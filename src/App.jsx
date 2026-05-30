@@ -17929,6 +17929,25 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     applyScoutScanExtraction(extraction);
   }
 
+  function quickAddScoutScanMissingFields(form = quickAddWizard) {
+    const storeName = String(form.scoutScanStoreName || "").trim();
+    const hasObservedDate = Boolean(form.scoutScanDate);
+    const hasObservedTime = Boolean(form.scoutScanTimeUnknown || (form.scoutScanDate && form.scoutScanTime));
+    const hasEvidence = Boolean(
+      String(form.scoutScanItems || "").trim() ||
+      String(form.scoutScanNotes || "").trim() ||
+      String(form.scoutScanSourceText || "").trim() ||
+      String(form.scoutScanPhotoFileName || "").trim() ||
+      String(form.scoutScanPhotoUrl || "").trim()
+    );
+    return {
+      store: !storeName,
+      date: !hasObservedDate,
+      time: !hasObservedTime,
+      evidence: !hasEvidence,
+    };
+  }
+
   async function handleQuickAddPhotoFile(event, target = "photo") {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -17960,19 +17979,26 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   }
 
   function quickAddScoutScanValidation(form = quickAddWizard) {
-    const storeName = String(form.scoutScanStoreName || "").trim();
-    const hasTime = Boolean(form.scoutScanTimeUnknown || (form.scoutScanDate && form.scoutScanTime));
-    const hasEvidence = Boolean(
-      String(form.scoutScanItems || "").trim() ||
-      String(form.scoutScanNotes || "").trim() ||
-      String(form.scoutScanSourceText || "").trim() ||
-      String(form.scoutScanPhotoFileName || "").trim() ||
-      String(form.scoutScanPhotoUrl || "").trim()
-    );
-    if (!storeName) return "Add the store or store name before saving.";
-    if (!hasTime) return "Add observed date/time or mark the time unknown.";
-    if (!hasEvidence) return "Add at least one item, note, or screenshot/photo indicator.";
+    const missing = quickAddScoutScanMissingFields(form);
+    if (missing.store) return "Add the store or store name before saving.";
+    if (missing.date || missing.time) return "Add observed date/time or mark the time unknown.";
+    if (missing.evidence) return "Add at least one item, note, or screenshot/photo indicator.";
     return "";
+  }
+
+  function appendScoutScanItemCategory(category) {
+    const categoryLabel = String(category || "").trim();
+    if (!categoryLabel) return;
+    setQuickAddWizard((current) => {
+      const rows = String(current.scoutScanItems || "")
+        .split(/\r?\n|,/)
+        .map((value) => value.trim())
+        .filter(Boolean);
+      if (rows.some((row) => normalizeSearchText(row) === normalizeSearchText(categoryLabel))) {
+        return { ...current, message: "" };
+      }
+      return { ...current, scoutScanItems: [...rows, categoryLabel].join("\n"), message: "" };
+    });
   }
 
   async function saveQuickAddScoutScanReport(event) {
@@ -18014,9 +18040,9 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       itemName: itemRows[0] || "",
       productName: itemRows[0] || "",
       product_name: itemRows[0] || "",
-      productCategory: itemRows.length ? "Pokemon" : "",
-      product_category: itemRows.length ? "Pokemon" : "",
-      itemsSeen: itemRows.map((productName) => ({ productName, category: "Pokemon", source: "scan_anything_manual_review" })),
+      productCategory: itemRows.length ? "Pokemon TCG" : "",
+      product_category: itemRows.length ? "Pokemon TCG" : "",
+      itemsSeen: itemRows.map((productName) => ({ productName, category: "Pokemon TCG", source: "scan_anything_manual_review" })),
       reportText: [
         "Scan Anything manual Scout review.",
         sourceText ? `Source text: ${sourceText}` : "",
@@ -18046,8 +18072,8 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       ocr_confidence: quickAddWizard.scoutScanOcrConfidence || "manual_review",
       ocrFlags: quickAddWizard.scoutScanOcrFlags || [],
       ocr_flags: quickAddWizard.scoutScanOcrFlags || [],
-      sourceLabel: quickAddWizard.scoutScanOcrStatus === "complete" ? "OCR-assisted Scan Anything review" : "Manual Scan Anything review",
-      source_label: quickAddWizard.scoutScanOcrStatus === "complete" ? "OCR-assisted Scan Anything review" : "Manual Scan Anything review",
+      sourceLabel: quickAddWizard.scoutScanOcrStatus === "complete" ? "Browser text extraction review" : "Manual Scan Anything review",
+      source_label: quickAddWizard.scoutScanOcrStatus === "complete" ? "Browser text extraction review" : "Manual Scan Anything review",
       observedAt,
       observed_at: observedAt,
       reportDate: quickAddWizard.scoutScanDate || now.slice(0, 10),
@@ -18071,11 +18097,19 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       sourceStatus: BETA_LOCAL_MODE ? "local_beta" : "local",
       report_type: "other",
     };
-    const scoutData = getSharedScoutData();
-    const nextReports = [report, ...(scoutData.reports || [])]
-      .filter((entry, index, list) => list.findIndex((candidate) => String(getScoutReportId(candidate)) === String(getScoutReportId(entry))) === index);
-    saveSharedScoutData({ ...scoutData, reports: nextReports });
-    setQuickAddWizard((current) => ({ ...current, scoutScanSaving: false, scoutScanSavedReport: report, screen: "scoutScanSuccess", path: "scoutScanSuccess", message: "Scout report saved from Scan Anything." }));
+    try {
+      const scoutData = getSharedScoutData();
+      const nextReports = [report, ...(scoutData.reports || [])]
+        .filter((entry, index, list) => list.findIndex((candidate) => String(getScoutReportId(candidate)) === String(getScoutReportId(entry))) === index);
+      saveSharedScoutData({ ...scoutData, reports: nextReports });
+    } catch (error) {
+      logAppError("scout_scan_report_save", error, { storeName: report.storeName || "" }, "normal");
+      setQuickAddWizard((current) => ({ ...current, scoutScanSaving: false, message: "Report could not be saved. Please review and try again." }));
+      showErrorToast("Report could not be saved.", { message: "Please review and try again." });
+      return;
+    }
+    setQuickAddWizard((current) => ({ ...current, scoutScanSaving: false, scoutScanSavedReport: report, screen: "scoutScanSuccess", path: "scoutScanSuccess", message: "Want to add proof or more details?" }));
+    showSuccessToast("Scout report saved.", { message: "Want to add proof or more details?" });
     setScoutView("reports");
     setScoutReportFilter("Latest");
     window.setTimeout(() => {
@@ -40785,24 +40819,27 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
     if (quickAddScreen === "scoutScreenshotReview") {
       const validationError = quickAddScoutScanValidation();
+      const missingScanFields = quickAddScoutScanMissingFields();
       const ocrFlags = Array.isArray(quickAddWizard.scoutScanOcrFlags) ? quickAddWizard.scoutScanOcrFlags : [];
-      const ocrStatusLabel = quickAddWizard.scoutScanOcrStatus === "running"
-        ? "Reading screenshot..."
-        : quickAddWizard.scoutScanOcrStatus === "complete"
-          ? "Extraction ready for review"
-          : quickAddWizard.scoutScanOcrStatus === "unsupported"
-            ? "Manual review fallback"
-            : quickAddWizard.scoutScanOcrStatus === "failed"
-              ? "Extraction failed safely"
-              : quickAddWizard.scoutScanOcrStatus === "low_confidence"
-                ? "Needs manual review"
-                : "Waiting for screenshot or text";
+      const scanOcrStatus = quickAddWizard.scoutScanOcrStatus || "idle";
+      const scanHasSourceText = Boolean(String(quickAddWizard.scoutScanSourceText || "").trim());
+      const scanMissingRequired = Object.values(missingScanFields).some(Boolean);
+      const scanLowConfidence = ["low", "low_confidence"].includes(String(quickAddWizard.scoutScanOcrConfidence || scanOcrStatus).toLowerCase());
+      const scanNeedsReview = scanMissingRequired || scanLowConfidence || ["idle", "running", "failed", "unsupported", "low_confidence"].includes(scanOcrStatus);
+      const scanSourceStatusLabel = scanOcrStatus === "complete" && scanHasSourceText
+        ? "Text extracted"
+        : ["unsupported", "failed"].includes(scanOcrStatus)
+          ? "OCR unavailable"
+          : scanHasSourceText
+            ? "Paste review"
+            : "Needs review";
+      const scanReviewStateLabel = scanNeedsReview ? "Needs Review" : "Ready to save";
       return (
         <form className="add-anything-flow add-anything-scout-scan-review" onSubmit={saveQuickAddScoutScanReport}>
-          {renderFlowHeader("Scout screenshot/photo review", "Upload a reference image, let Scout try text extraction, then review every field before saving.")}
+          {renderFlowHeader("Review Scout Scan", "We filled what we could. Review before saving. Nothing is saved yet.")}
           <div className="scan-anything-principle-card">
-            <strong>Review before saving.</strong>
-            <p>OCR results never save silently. Confirm the store, observed time, items, and notes before submitting a Scout report.</p>
+            <strong>Nothing is saved yet.</strong>
+            <p>Browser text extraction and pasted text only prefill this draft. Confirm the store, observed time, items, and notes before saving a Scout report.</p>
           </div>
           <div className="quick-add-photo-panel">
             {quickAddWizard.scoutScanPhotoUrl ? (
@@ -40820,29 +40857,34 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               Upload screenshot/photo
               <input type="file" accept="image/*" onChange={(event) => handleQuickAddPhotoFile(event, "scoutScan")} />
             </label>
+            <p className="scan-proof-note">Screenshot uploads are used for review in this beta flow. Add proof later if you need a lasting image on the report.</p>
           </div>
-          <div className={`scout-scan-ocr-panel scout-scan-ocr-panel--${quickAddWizard.scoutScanOcrStatus || "idle"}`} aria-live="polite">
+          <div className={`scout-scan-ocr-panel scout-scan-ocr-panel--${scanOcrStatus}`} aria-live="polite">
             <div>
-              <strong>{ocrStatusLabel}</strong>
-              <span>{quickAddWizard.scoutScanOcrConfidence ? `Confidence: ${quickAddWizard.scoutScanOcrConfidence}` : "Upload an image or paste visible text to prefill the draft."}</span>
+              <strong>{scanSourceStatusLabel}</strong>
+              <span>Review state: {scanReviewStateLabel}</span>
+              {quickAddWizard.scoutScanOcrConfidence ? <em>Confidence: {quickAddWizard.scoutScanOcrConfidence}</em> : null}
             </div>
             {ocrFlags.length ? (
               <ul>
                 {ocrFlags.map((flag) => <li key={flag}>{flag}</li>)}
               </ul>
             ) : (
-              <p>Store, date, time, items, and source text can be adjusted before saving.</p>
+              <p>Store, date, time, items/categories, details, and source text can all be edited before Save Report.</p>
             )}
           </div>
           <div className="flow-form-grid quick-add-scout-scan-grid">
             <Field label="Store or store name">
               <input value={quickAddWizard.scoutScanStoreName} autoFocus onChange={(event) => updateQuickAddWizard({ scoutScanStoreName: event.target.value, message: "" })} placeholder="Target, Walmart, local shop..." />
+              {missingScanFields.store ? <p className="scan-field-hint">Store is required before saving.</p> : null}
             </Field>
             <Field label="Observed date">
               <input type="date" value={quickAddWizard.scoutScanDate} onChange={(event) => updateQuickAddWizard({ scoutScanDate: event.target.value, message: "" })} />
+              {missingScanFields.date ? <p className="scan-field-hint">Add the observed date.</p> : null}
             </Field>
             <Field label="Observed time">
               <input type="time" value={quickAddWizard.scoutScanTime} disabled={quickAddWizard.scoutScanTimeUnknown} onChange={(event) => updateQuickAddWizard({ scoutScanTime: event.target.value, message: "" })} />
+              {missingScanFields.time ? <p className="scan-field-hint">Add the time or mark it unknown.</p> : null}
             </Field>
             <label className="field checkbox-field quick-add-unknown-time">
               <input type="checkbox" checked={Boolean(quickAddWizard.scoutScanTimeUnknown)} onChange={(event) => updateQuickAddWizard({ scoutScanTimeUnknown: event.target.checked, message: "" })} />
@@ -40856,22 +40898,31 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </select>
             </Field>
           </div>
-          <Field label="Items/products mentioned">
-            <textarea value={quickAddWizard.scoutScanItems} onChange={(event) => updateQuickAddWizard({ scoutScanItems: event.target.value, message: "" })} placeholder="One item per line, or comma-separated products seen." />
+          <div className="scout-scan-review-section">
+            <div className="scan-category-chip-row" role="group" aria-label="Quick item categories">
+              {SCOUT_PRODUCT_CATEGORY_OPTIONS.slice(0, 7).map((category) => (
+                <button key={category} type="button" className="secondary-button" onClick={() => appendScoutScanItemCategory(category)}>{category}</button>
+              ))}
+            </div>
+            <Field label="Items/categories">
+              <textarea value={quickAddWizard.scoutScanItems} onChange={(event) => updateQuickAddWizard({ scoutScanItems: event.target.value, message: "" })} placeholder="One item/category per line: Pokemon TCG, ETBs, packs, binders..." />
+              {missingScanFields.evidence ? <p className="scan-field-hint">Add at least one item, category, note, source text, or screenshot/photo indicator.</p> : null}
+            </Field>
+          </div>
+          <Field label="Details / source text">
+            <textarea className="scout-scan-source-textarea" value={quickAddWizard.scoutScanSourceText} onChange={(event) => updateQuickAddWizard({ scoutScanSourceText: event.target.value, message: "" })} placeholder="Paste Facebook post text, store update text, caption, or OCR text here." />
           </Field>
-          <Field label="Source text">
-            <textarea value={quickAddWizard.scoutScanSourceText} onChange={(event) => updateQuickAddWizard({ scoutScanSourceText: event.target.value, message: "" })} placeholder="Extracted OCR text appears here when available. You can also paste the store update, Facebook post text, caption, or screenshot wording." />
-          </Field>
-          <Field label="Notes">
+          <Field label="Review notes">
             <textarea value={quickAddWizard.scoutScanNotes} onChange={(event) => updateQuickAddWizard({ scoutScanNotes: event.target.value, message: "" })} placeholder="Stock status, limits, shelf context, or what needs review." />
           </Field>
           {quickAddWizard.message ? <p className="flow-inline-message is-warning" role="alert">{quickAddWizard.message}</p> : null}
           <div className="quick-add-inline-actions quick-add-sticky-actions">
-            <button type="button" className="secondary-button" onClick={runScoutScanExtractionFromText}>Extract fields from text</button>
-            <button type="button" className="secondary-button" onClick={() => setQuickAddPath("scanAnything")}>Search Again</button>
+            <button type="button" className="secondary-button" onClick={runScoutScanExtractionFromText}>Re-run Extraction</button>
+            <button type="button" className="secondary-button" onClick={() => updateQuickAddWizard({ message: "Edit any field above before saving. Nothing is saved yet." })}>Edit Details</button>
+            <button type="button" className="secondary-button" onClick={() => setQuickAddPath("scanAnything")}>Back</button>
             <button type="button" className="secondary-button" onClick={() => setQuickAddPath("manual")}>Manual Entry</button>
             <button type="button" className="ghost-button" onClick={openQuickAddMissingProduct}>Request Missing Item</button>
-            <button type="submit" disabled={Boolean(validationError) || quickAddWizard.scoutScanSaving}>{quickAddWizard.scoutScanSaving ? "Saving..." : "Save Scout Report"}</button>
+            <button type="submit" disabled={Boolean(validationError) || quickAddWizard.scoutScanSaving}>{quickAddWizard.scoutScanSaving ? "Saving..." : "Save Report"}</button>
           </div>
           {validationError ? <p className="compact-subtitle">Required before saving: {validationError}</p> : null}
         </form>

@@ -42445,10 +42445,16 @@ body,
 }
 
 .scout-scan-ocr-panel span,
+.scout-scan-ocr-panel em,
 .scout-scan-ocr-panel p,
 .scout-scan-ocr-panel li {
   color: rgba(229, 240, 255, 0.74);
   overflow-wrap: anywhere;
+}
+
+.scout-scan-ocr-panel em {
+  font-size: 0.78rem;
+  font-style: normal;
 }
 
 .scout-scan-ocr-panel p {
@@ -42474,6 +42480,40 @@ body,
 .scout-scan-ocr-panel--unsupported,
 .scout-scan-ocr-panel--low_confidence {
   border-color: rgba(245, 158, 11, 0.3);
+}
+
+.scan-proof-note,
+.scan-field-hint {
+  margin: 0;
+  color: rgba(255, 209, 102, 0.82);
+  font-size: 0.76rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.scout-scan-review-section {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.scan-category-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  min-width: 0;
+}
+
+.scan-category-chip-row button {
+  flex: 0 1 auto;
+  min-height: 34px;
+  min-width: 0;
+  padding: 7px 10px;
+  white-space: normal;
+}
+
+.scout-scan-source-textarea {
+  max-height: 138px;
 }
 
 .quick-add-receipt-grid,

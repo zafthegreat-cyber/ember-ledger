@@ -563,7 +563,14 @@ async function main() {
     await assertVisibleText("Family-safe store signals. Current reports only.");
     await expectVisible(page.locator(".scout-watch-stores-card").first(), "My Watch Stores section");
     await assertVisibleText("Nearby Reports");
-    await expectVisible(page.getByRole("button", { name: /^Scan Screenshot$/ }).first(), "Scout Scan Screenshot action");
+    const scanScreenshotButton = page.getByRole("button", { name: /^Scan Screenshot$/ }).first();
+    await expectVisible(scanScreenshotButton, "Scout Scan Screenshot action");
+    await scanScreenshotButton.click();
+    await expectVisible(page.locator("form.add-anything-scout-scan-review").first(), "Scout Scan Screenshot review form");
+    await assertVisibleText("Review Scout Scan");
+    await assertVisibleText("We filled what we could. Review before saving. Nothing is saved yet.");
+    await assertVisibleText(/Text extracted|Paste review|Needs review|OCR unavailable/);
+    await closeOpenModals();
     const addReportButton = page.getByRole("button", { name: /^Add Report$/ }).first();
     await expectVisible(addReportButton, "Scout Add Report action");
     await addReportButton.click();
