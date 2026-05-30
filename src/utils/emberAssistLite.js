@@ -15,17 +15,18 @@ export const EMBER_ASSIST_ESCALATION_CATEGORIES = [
 ];
 
 const PAGE_PROMPTS = {
-  scout: ["Help me submit a report", "Why is this report low confidence?", "What should I check first?", "How do Scout reports work?"],
+  hearth: ["What should I do first today?", "How do Ember Points work?", "How do I customize Hearth?", "Why did this Spark disappear?"],
+  scout: ["What does this Scout signal mean?", "Why can't I see full history?", "How do I add proof?", "Can I change my watched store?", "Why was my report flagged?"],
   dropRadar: ["Explain this drop prediction", "What releases are coming up?", "What does confirmed vs predicted mean?", "Help me follow a store"],
-  vault: ["Help me add an item", "Explain this value", "What details are missing?", "What should I move to Forge?"],
-  forge: ["What should I list for sale?", "Help me set a planned sale price", "Show items missing cost or photos", "What is ready to sell?"],
-  market: ["Help me create a safe listing", "Why is my listing pending?", "How do I report a listing?", "What does seller trust mean?"],
+  vault: ["How do I scan cards?", "How do I add a missing card?", "Why does this card need a photo?", "How do I track set completion?"],
+  forge: ["What receipts am I missing?", "How do I add cost basis?", "How do I log mileage?", "What affects profit?"],
+  market: ["How do I scan a UPC?", "How do I compare prices?", "Can I add this to Vault?", "Can I add this to Forge?"],
   expenses: ["What receipts are missing?", "Summarize this year's expenses", "Help me categorize this expense", "What do I need for tax records?"],
   mileage: ["Summarize miles by vehicle", "Help me log a trip", "What mileage records are missing notes?", "Explain this vehicle summary"],
-  spark: ["How does The Spark work?", "Help me submit a kid request", "What does waitlisted mean?", "Are there upcoming kid-friendly events?"],
+  spark: ["How do I build a kids pack?", "What donations can I add?", "How do Trusted Family Friends work?", "How do giveaways work?"],
   tidepool: ["What is Tidepool Community?", "How do I post safely?", "Why is my post pending?", "How do I report a post?"],
   settings: ["Help me switch workspaces", "Explain personal Forge vs Ember & Tide Forge", "Help me update my profile", "Explain seller mode"],
-  admin: ["What needs review?", "Explain this user status", "How do I message admin?", "Show admin message queue"],
+  admin: ["What needs review?", "Show duplicate Scout reports.", "How do I review shop applications?", "What reports were flagged?"],
   permissionDenied: ["Why am I blocked?", "Explain this user status", "How do I message admin?", "Return to Hearth"],
   general: ["What should I do first?", "How do I add inventory?", "How do I scan a barcode?", "What is Forge for?", "How do alerts work?", "How do I message admin?"],
 };
@@ -54,6 +55,7 @@ function safeJsonParse(value, fallback) {
 }
 
 function emberAssistPageKind(activeTab = "", extra = {}) {
+  if (["dashboard", "home", "hearth"].includes(activeTab)) return "hearth";
   if (extra.scoutView === "alerts" || extra.scoutView === "predictions" || activeTab === "watch") return "dropRadar";
   if (activeTab === "scout") return "scout";
   if (activeTab === "vault") return "vault";
@@ -65,6 +67,7 @@ function emberAssistPageKind(activeTab = "", extra = {}) {
   if (activeTab === "tidepool") return "tidepool";
   if (["menu", "profileProgress", "membership"].includes(activeTab)) return "settings";
   if (activeTab === "adminReview" || extra.isAdminPage) return "admin";
+  if (activeTab === "dailyTide") return "hearth";
   return "general";
 }
 
@@ -89,6 +92,7 @@ export function clearEmberAssistThread() {
 export function getEmberAssistStarterPrompts({ activeTab = "", scoutView = "", isAdmin = false, permissionDenied = false } = {}) {
   if (permissionDenied) return PAGE_PROMPTS.permissionDenied;
   const page = emberAssistPageKind(activeTab, { scoutView, isAdminPage: activeTab === "adminReview" });
+  if (page === "admin" && !isAdmin) return PAGE_PROMPTS.permissionDenied;
   const pagePrompts = PAGE_PROMPTS[page] || PAGE_PROMPTS.general;
   const prompts = [...new Set([...pagePrompts, "How do I message admin?", ...CORE_PROMPTS])];
   if (isAdmin && page !== "admin") prompts.push("What needs admin review?");

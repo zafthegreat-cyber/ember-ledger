@@ -11,12 +11,20 @@ import {
 } from "../src/utils/emberAssist.js";
 
 const scoutPrompts = getEmberAssistStarterPrompts({ activeTab: "scout" });
-assert.ok(scoutPrompts.includes("How do Scout reports work?"), "Scout should show Scout-aware starter prompts");
-assert.ok(scoutPrompts.includes("What should I do first?"), "Starter prompts should include onboarding help");
+assert.ok(scoutPrompts.includes("How do I add proof?"), "Scout should show Scout-aware starter prompts");
+assert.ok(scoutPrompts.includes("Why can't I see full history?"), "Scout should explain protected history");
 
 const forgePrompts = getEmberAssistStarterPrompts({ activeTab: "inventory" });
-assert.ok(forgePrompts.includes("Help me set a planned sale price"), "Forge should show seller-oriented starter prompts");
+assert.ok(forgePrompts.includes("How do I add cost basis?"), "Forge should show seller-oriented starter prompts");
 assert.ok(forgePrompts.includes("How do I message admin?"), "Starter prompts should keep admin fallback visible");
+
+const hearthPrompts = getEmberAssistStarterPrompts({ activeTab: "dashboard" });
+assert.ok(hearthPrompts.includes("How do Ember Points work?"), "Hearth should show Sparks and points prompts");
+
+const adminPrompts = getEmberAssistStarterPrompts({ activeTab: "adminReview", isAdmin: true });
+assert.ok(adminPrompts.includes("What reports were flagged?"), "Admins should see admin review prompts");
+const nonAdminAdminPrompts = getEmberAssistStarterPrompts({ activeTab: "adminReview", isAdmin: false });
+assert.equal(nonAdminAdminPrompts.includes("What reports were flagged?"), false, "Non-admins should not see admin prompts");
 
 const quickAddAnswer = buildEmberAssistFallbackResponse("How do I add inventory?", buildEmberAssistContext({ activeTab: "dashboard" }));
 assert.match(quickAddAnswer.answer, /center plus|Quick Add/i);
@@ -60,7 +68,7 @@ assert.match(scoutPointsAnswer.answer, /confirmed reports|clear store/i);
 
 const adminHelpAnswer = buildEmberAssistFallbackResponse("How do I message admin?", buildEmberAssistContext({ activeTab: "settings" }));
 assert.match(adminHelpAnswer.answer, /admin inbox/i);
-assert.ok(adminHelpAnswer.actions.includes("Send to Admin"));
+assert.ok(adminHelpAnswer.actions.includes("Send Message to Admin"));
 
 const alertsAnswer = buildEmberAssistFallbackResponse("How do alerts work?", buildEmberAssistContext({ activeTab: "dashboard" }));
 assert.match(alertsAnswer.answer, /in-app only/i);
@@ -79,6 +87,21 @@ const firstStepAnswer = buildEmberAssistFallbackResponse("What should I do first
 assert.equal(firstStepAnswer.shouldEscalate, false);
 assert.match(firstStepAnswer.answer, /Start with the piece that matches why you came in/i);
 assert.match(firstStepAnswer.answer, /Vault is for collection/i);
+
+const emberPointsAnswer = buildEmberAssistFallbackResponse("How do Ember Points work?", buildEmberAssistContext({ activeTab: "dashboard" }));
+assert.match(emberPointsAnswer.answer, /real completed Sparks/i);
+assert.match(emberPointsAnswer.answer, /Dismissing a Spark earns zero/i);
+
+const protectedScoutAnswer = buildEmberAssistFallbackResponse("Why can't I see full history?", buildEmberAssistContext({ activeTab: "scout" }));
+assert.match(protectedScoutAnswer.answer, /protects raw history/i);
+assert.match(protectedScoutAnswer.answer, /current selected-store reports/i);
+
+const marketUpcAnswer = buildEmberAssistFallbackResponse("How do I scan a UPC?", buildEmberAssistContext({ activeTab: "market" }));
+assert.match(marketUpcAnswer.answer, /Scan UPC/i);
+assert.match(marketUpcAnswer.answer, /weak match/i);
+
+const adminFlagAnswer = buildEmberAssistFallbackResponse("What reports were flagged?", buildEmberAssistContext({ activeTab: "adminReview", isAdmin: true }));
+assert.match(adminFlagAnswer.answer, /flagged Scout reports/i);
 
 const dropContext = buildEmberAssistContext({ activeTab: "scout", scoutView: "alerts" });
 const dropAnswer = buildEmberAssistFallbackResponse("What is Drop Radar?", dropContext);
@@ -105,7 +128,7 @@ assert.equal(bugAnswer.category, "Wrong Scout report/store");
 const unknownAnswer = buildEmberAssistFallbackResponse("Can the moon folder sort my cereal?", buildEmberAssistContext({ activeTab: "dashboard" }));
 assert.equal(unknownAnswer.shouldEscalate, true);
 assert.equal(unknownAnswer.confidence, "low");
-assert.match(unknownAnswer.answer, /not sure yet/i);
+assert.match(unknownAnswer.answer, /not fully sure/i);
 
 const adminMessage = makeEmberAssistAdminMessage({
   question: "Product missing",

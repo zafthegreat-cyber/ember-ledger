@@ -27061,13 +27061,23 @@ function renderForgeAccessState() {
     const visibleStarterPrompts = emberAssistMorePromptsOpen ? emberAssistStarterPrompts : emberAssistStarterPrompts.slice(0, 3);
     const hiddenStarterPromptCount = Math.max(0, emberAssistStarterPrompts.length - 3);
     const sparkHelpfulLinkVisible = emberAssistPermissionDenied || ["kidsProgram", "settings", "profileProgress", "membership"].includes(activeTab);
+    const emberAssistPageIntro = {
+      hearth: "I can explain Sparks, Ember Points, and the next useful action.",
+      scout: "I can explain current reports, watched stores, proof, and why raw history stays protected.",
+      vault: "I can help with card scans, missing cards, photos, and set progress.",
+      forge: "I can point you to receipts, cost basis, mileage, and profit records.",
+      market: "I can help with UPC search, price labels, and review-before-save choices.",
+      spark: "I can explain kids packs, donations, trusted helpers, and giveaways.",
+      admin: "I can point admins to flagged reports, duplicates, beta requests, and shop reviews.",
+      settings: "I can help with workspace, profile, plans, and support questions.",
+    };
     const helpfulLinks = [
       emberAssistPermissionDenied ? { label: "Return to Hearth", action: () => { setEmberAssistOpen(false); setActiveTab("dashboard"); } } : null,
       sparkHelpfulLinkVisible ? { label: "Open The Spark", action: () => { setEmberAssistOpen(false); setActiveTab("kidsProgram"); } } : null,
     ].filter(Boolean);
     const assistIntroCopy = emberAssistPermissionDenied
       ? "You may not have access to this area yet. Admin or moderator role may be required. If this looks wrong, message an admin or return to Hearth."
-      : "Ask about this page, a next step, or a confusing status.";
+      : emberAssistPageIntro[emberAssistContext.page] || "Ask about this page, a next step, or a confusing status.";
     return (
       <section
         className={[
@@ -27096,7 +27106,7 @@ function renderForgeAccessState() {
           }}
         >
           <span aria-hidden="true">E</span>
-          <b>Ask Ember ✨</b>
+          <b>Ask Ember</b>
         </button>
         ) : null}
         {emberAssistOpen ? (
@@ -27154,9 +27164,9 @@ function renderForgeAccessState() {
                 <article className={`ember-assist-message is-${message.role}`} key={message.id}>
                   <span>{message.role === "user" ? "You" : "Ember Assist"}</span>
                   <p>{message.text}</p>
-                  {message.actions?.filter((action) => !(message.shouldEscalate && /send to admin/i.test(action)))?.length ? (
+                  {message.actions?.filter((action) => !(message.shouldEscalate && /send( message)? to admin|send message to admin|message admin/i.test(action)))?.length ? (
                     <div className="ember-assist-actions">
-                      {message.actions.filter((action) => !(message.shouldEscalate && /send to admin/i.test(action))).slice(0, 3).map((action) => (
+                      {message.actions.filter((action) => !(message.shouldEscalate && /send( message)? to admin|send message to admin|message admin/i.test(action))).slice(0, 3).map((action) => (
                         <button type="button" key={action} className="secondary-button" onClick={() => runEmberAssistAction(action)}>{action}</button>
                       ))}
                     </div>
@@ -27172,7 +27182,7 @@ function renderForgeAccessState() {
                         lastResponse: message.text,
                       })}
                     >
-                      Send to Admin
+                      Send Message to Admin
                     </button>
                   ) : null}
                 </article>
@@ -27209,7 +27219,7 @@ function renderForgeAccessState() {
                   details: "",
                   category: latestAssistant?.category || "Other",
                   lastResponse: latestAssistant?.text || "",
-                })}>Message Admin</button>
+                })}>Send Message to Admin</button>
                 <button type="button" className="ghost-button" onClick={() => {
                   setEmberAssistMessages(clearEmberAssistThread());
                   setEmberAssistInput("");
@@ -27242,7 +27252,7 @@ function renderForgeAccessState() {
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={(event) => submitEmberAssistEscalation(event)}
                 >
-                  Send to Admin
+                  Send Message to Admin
                 </button>
               </div>
             ) : null}
