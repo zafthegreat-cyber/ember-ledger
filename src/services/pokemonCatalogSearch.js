@@ -541,6 +541,15 @@ function applyTextSearch(query, term, fields = TEXT_SEARCH_FIELDS) {
   return query.or(fields.map((field) => `${field}.ilike.${like}`).join(","));
 }
 
+function buildPriorityTextClauses(terms = []) {
+  return [...new Set(terms.map(safeOrTerm).filter((term) => term.length >= 3))]
+    .slice(0, 6)
+    .flatMap((term) => [
+      `name.ilike.%${term}%`,
+      `product_name.ilike.%${term}%`,
+    ]);
+}
+
 function exactPriority(product = {}, term = "") {
   const cleaned = String(term || "").trim().toLowerCase();
   if (!cleaned) return 999;
@@ -882,8 +891,9 @@ async function runTextSearchAgainstSource({ supabase, sourceName, query, barcode
   const analysis = analyzeCatalogSearch(exactTerm);
   const pageOffset = Math.max(0, (page - 1) * pageSize);
   const searchTerms = buildSearchTerms(cleanedQuery || cleanedBarcode, mode);
+  const structuredSetProductSearch = (analysis.setMatches || []).length > 0 && (analysis.productMatches || []).length > 0;
   const structuredSealedSetSearch = filters.productGroup === "Sealed" && (analysis.setMatches || []).length > 0;
-  const candidateLimit = structuredSealedSetSearch
+  const candidateLimit = (structuredSealedSetSearch || structuredSetProductSearch)
     ? Math.min(Math.max(pageSize * Math.max(page, 1) * 6, 120), 300)
     : sort === "bestMatch" && searchTerms.length > 1
       ? Math.min(Math.max(pageSize * Math.max(page, 1) * 3, 60), 180)
@@ -907,7 +917,24 @@ async function runTextSearchAgainstSource({ supabase, sourceName, query, barcode
   const { data, error, count } = await dbQuery;
   if (error) throw error;
 
-  const rankedRows = rankRows(filterRowsByProductGroup(dedupeRows(data || []), filters), analysis, exactTerm, sort);
+  let priorityRows = [];
+  if (sort === "bestMatch" && searchTerms.length > 1) {
+    const priorityClauses = buildPriorityTextClauses([exactTerm, ...searchTerms]);
+    if (priorityClauses.length) {
+      let priorityQuery = supabase
+        .from(sourceName)
+        .select(selectFields)
+        .limit(Math.max(pageSize, 50));
+      priorityQuery = applyFilters(priorityQuery, filters);
+      priorityQuery = priorityQuery.or(priorityClauses.join(","));
+      priorityQuery = withAbortSignal(priorityQuery, signal);
+      const priorityResult = await priorityQuery;
+      if (priorityResult.error) throw priorityResult.error;
+      priorityRows = priorityResult.data || [];
+    }
+  }
+
+  const rankedRows = rankRows(filterRowsByProductGroup(dedupeRows([...(data || []), ...priorityRows]), filters), analysis, exactTerm, sort);
   const rows = rankedRows
     .slice(searchTerms.length > 1 ? pageOffset : 0)
     .slice(0, pageSize);

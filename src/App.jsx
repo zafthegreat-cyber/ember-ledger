@@ -5231,6 +5231,7 @@ export default function App() {
   const [localCatalogSeedStatus, setLocalCatalogSeedStatus] = useState("idle");
   const localCatalogSeedLoadRef = useRef(null);
   const localCatalogSeedStatusRef = useRef("idle");
+  const localCatalogSeedProductsRef = useRef([]);
   const [virginiaStoreSeed, setVirginiaStoreSeed] = useState([]);
   const [virginiaStoreSeedStatus, setVirginiaStoreSeedStatus] = useState("idle");
   const virginiaStoreSeedLoadRef = useRef(null);
@@ -9611,10 +9612,10 @@ export default function App() {
     setSupabaseImportStatus({ ...nextStatus, loading: false });
   }
 
-  function getLocalCatalogSeedMatches(query = "", limit = 16) {
+  function getLocalCatalogSeedMatches(query = "", limit = 16, seedProducts = localCatalogSeedProductsRef.current) {
     const cleaned = String(query || "").trim();
     if (!cleaned) return [];
-    return getBestCatalogMatches(cleaned, localCatalogSeedProducts)
+    return getBestCatalogMatches(cleaned, seedProducts || [])
       .map((match) => mapCatalog(match.item))
       .slice(0, limit);
   }
@@ -9700,6 +9701,9 @@ export default function App() {
     }
 
     const cleanedSearch = String(searchTerm || "").trim().replace(/[,%()'"]/g, " ").slice(0, 140);
+    const localSeedPromise = loadLocalCatalogSeed("market search")
+      .then((seedProducts) => seedProducts || localCatalogSeedProductsRef.current || [])
+      .catch(() => localCatalogSeedProductsRef.current || []);
     setSupabaseCatalogStatus({
       loading: true,
       loadedCount: 0,
@@ -9819,7 +9823,8 @@ export default function App() {
     if (requestId !== supabaseCatalogRequestId.current) return;
 
     const importedProducts = (result.rows || []).map(mapCatalog);
-    const localSeedMatches = getLocalCatalogSeedMatches(cleanedSearch || barcode, pageSize);
+    const seedProductsForSearch = await localSeedPromise;
+    const localSeedMatches = getLocalCatalogSeedMatches(cleanedSearch || barcode, pageSize, seedProductsForSearch);
     const combinedProducts = mergeCatalogProductLists(localSeedMatches, importedProducts);
     setCatalogPagedResultIds(combinedProducts.map((product) => String(product.id)));
     setCatalogProducts((current) => {
@@ -13633,11 +13638,15 @@ export default function App() {
   }, [localCatalogSeedStatus]);
 
   useEffect(() => {
+    localCatalogSeedProductsRef.current = localCatalogSeedProducts;
+  }, [localCatalogSeedProducts]);
+
+  useEffect(() => {
     virginiaStoreSeedStatusRef.current = virginiaStoreSeedStatus;
   }, [virginiaStoreSeedStatus]);
 
   function loadLocalCatalogSeed(reason = "catalog") {
-    if (localCatalogSeedStatusRef.current === "ready") return Promise.resolve();
+    if (localCatalogSeedStatusRef.current === "ready") return Promise.resolve(localCatalogSeedProductsRef.current);
     if (localCatalogSeedLoadRef.current) return localCatalogSeedLoadRef.current;
     localCatalogSeedStatusRef.current = "loading";
     setLocalCatalogSeedStatus("loading");
@@ -13649,16 +13658,19 @@ export default function App() {
       ))
       .then((catalogData) => {
         const seededProducts = normalizeLocalCatalogSeedProducts(catalogData.POKEMON_PRODUCTS || []);
+        localCatalogSeedProductsRef.current = seededProducts;
         setLocalCatalogSeedProducts(seededProducts);
         setLocalCatalogProductUpcs(Array.isArray(catalogData.POKEMON_PRODUCT_UPCS) ? catalogData.POKEMON_PRODUCT_UPCS : []);
         setCatalogProducts((current) => mergeCatalogProductLists(seededProducts, current));
         localCatalogSeedStatusRef.current = "ready";
         setLocalCatalogSeedStatus("ready");
+        return seededProducts;
       })
       .catch((error) => {
         console.warn(`Could not load local catalog seed for ${reason}`, error);
         localCatalogSeedStatusRef.current = "error";
         setLocalCatalogSeedStatus("error");
+        return [];
       })
       .finally(() => {
         localCatalogSeedLoadRef.current = null;
