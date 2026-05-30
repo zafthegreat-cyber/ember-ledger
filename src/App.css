@@ -203,6 +203,17 @@
   background: rgba(6, 20, 38, 0.64) !important;
 }
 
+.app-scout .standard-page-header.scout-summary-card .standard-page-header-actions .scout-scan-screenshot-action {
+  border-color: rgba(132, 226, 255, 0.36) !important;
+  color: #dff8ff !important;
+}
+
+.app-scout .standard-page-header.scout-summary-card .standard-page-header-actions .scout-stores-link,
+.app-scout .scout-store-manage-link {
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  color: rgba(232, 246, 255, 0.86) !important;
+}
+
 .app-scout .standard-page-header.scout-summary-card .standard-page-header-tabs {
   width: 100%;
   justify-content: flex-start;
@@ -323,6 +334,109 @@
   display: grid;
   gap: 12px;
   padding: 14px !important;
+}
+
+.app-scout .scout-watch-stores-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px !important;
+  border-color: rgba(255, 190, 102, 0.2) !important;
+  background:
+    radial-gradient(circle at 12% 12%, rgba(255, 138, 28, 0.13), transparent 30%),
+    linear-gradient(145deg, rgba(13, 24, 38, 0.92), rgba(5, 13, 28, 0.96)) !important;
+}
+
+.app-scout .scout-watch-stores-card .compact-card-header {
+  gap: 10px;
+}
+
+.app-scout .scout-watch-stores-card .compact-card-header h2 {
+  font-size: 1.08rem !important;
+}
+
+.app-scout .scout-watch-stores-card .compact-card-header p {
+  margin: 4px 0 0;
+  color: var(--scout-muted) !important;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.app-scout .scout-watch-slot-line {
+  display: block;
+  margin-top: 4px;
+  color: rgba(132, 226, 255, 0.86);
+  font-size: 0.76rem;
+  font-weight: 850;
+  overflow-wrap: anywhere;
+}
+
+.app-scout .scout-watch-store-list {
+  display: grid;
+  gap: 9px;
+}
+
+.app-scout .scout-watch-store-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(132, 226, 255, 0.16);
+  border-radius: 16px;
+  background: rgba(5, 18, 34, 0.76);
+  color: #f8fbff;
+  text-align: left;
+}
+
+.app-scout .scout-watch-store-row .command-icon {
+  width: 40px;
+  height: 40px;
+}
+
+.app-scout .scout-watch-store-row span {
+  min-width: 0;
+}
+
+.app-scout .scout-watch-store-row strong,
+.app-scout .scout-watch-store-row small,
+.app-scout .scout-watch-store-row em {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.app-scout .scout-watch-store-row strong {
+  color: #fff7ed;
+  font-size: 0.9rem;
+}
+
+.app-scout .scout-watch-store-row small {
+  margin-top: 2px;
+  color: var(--scout-muted);
+  font-size: 0.74rem;
+  font-style: normal;
+}
+
+.app-scout .scout-watch-store-row em {
+  padding: 5px 8px;
+  border: 1px solid rgba(43, 217, 255, 0.18);
+  border-radius: 999px;
+  color: var(--scout-cyan);
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.app-scout .scout-watch-empty-state,
+.app-scout .scout-empty-signal-state {
+  min-width: 0;
+}
+
+.app-scout .scout-empty-signal-state .quick-actions {
+  margin-top: 10px;
 }
 
 .app-scout .scout-nearby-list-card .compact-card-header {
@@ -667,8 +781,13 @@
 
   .app-scout .standard-page-header.scout-summary-card .standard-page-header-actions {
     display: grid !important;
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     width: 100%;
+  }
+
+  .app-scout .standard-page-header.scout-summary-card .standard-page-header-actions .scout-stores-link {
+    grid-column: 1 / -1;
+    min-height: 38px !important;
   }
 
   .app-scout .standard-page-header.scout-summary-card .standard-page-header-actions .scout-store-suggestion-link {
@@ -695,6 +814,7 @@
   }
 
   .app-scout .scout-nearby-list-card,
+  .app-scout .scout-watch-stores-card,
   .app-scout .scout-subpage-panel,
   .app-scout .scout-combined-header {
     margin-inline: 10px;
@@ -703,14 +823,36 @@
   }
 
   .app-scout .scout-nearby-list-card .compact-card-header,
+  .app-scout .scout-watch-stores-card .compact-card-header,
   .app-scout .scout-subpage-panel .compact-card-header {
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: start;
   }
 
-  .app-scout .scout-nearby-list-card .compact-card-header p {
+  .app-scout .scout-nearby-list-card .compact-card-header p,
+  .app-scout .scout-watch-stores-card .compact-card-header p {
     display: none;
+  }
+
+  .app-scout .scout-watch-store-row {
+    grid-template-columns: 38px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .app-scout .scout-watch-store-row .command-icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .app-scout .scout-watch-store-row em {
+    grid-column: 2;
+    justify-self: start;
+    white-space: normal;
+  }
+
+  .app-scout .scout-empty-signal-state .quick-actions {
+    grid-template-columns: 1fr;
   }
 
   .app-scout .scout-report-compact-card {
@@ -10175,6 +10317,26 @@ textarea {
 
 .scout-tier-lock-card.compact {
   border-radius: 14px;
+}
+
+.scout-tier-lock-card.compact {
+  gap: 8px;
+}
+
+.scout-tier-lock-card.compact .compact-card-header {
+  align-items: start;
+}
+
+.scout-tier-lock-card.compact .compact-card-header h2 {
+  font-size: 1rem;
+}
+
+.scout-tier-lock-card.compact .compact-card-header p,
+.scout-tier-lock-compact-copy {
+  margin: 0;
+  color: rgba(226, 232, 240, 0.78);
+  font-size: 0.8rem;
+  line-height: 1.42;
 }
 
 .scout-tier-lock-list {
@@ -61159,5 +61321,19 @@ html body .app-command-shell.app-vault .ember-assist-shell {
   .app-home .hearth-snapshot-grid,
   .app-home .hearth-spark-card {
     display: none !important;
+  }
+}
+
+.app-scout .standard-page-header.scout-summary-card .standard-page-header-copy p {
+  display: block !important;
+}
+
+@media (max-width: 640px) {
+  .app-scout .standard-page-header.scout-summary-card .standard-page-header-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .app-scout .standard-page-header.scout-summary-card .standard-page-header-actions .scout-stores-link {
+    grid-column: 1 / -1 !important;
   }
 }

@@ -557,15 +557,22 @@ async function main() {
   }
 
   async function focusedScoutTest() {
+    await page.setViewportSize({ width: 390, height: 844 });
     await nav("Scout");
     await assertVisibleText("Scout");
-    const submitButton = page.getByRole("button", { name: /^Submit Report$/ }).first();
-    await expectVisible(submitButton, "Scout Submit Report action");
-    await submitButton.click();
+    await assertVisibleText("Family-safe store signals. Current reports only.");
+    await expectVisible(page.locator(".scout-watch-stores-card").first(), "My Watch Stores section");
+    await assertVisibleText("Nearby Reports");
+    await expectVisible(page.getByRole("button", { name: /^Scan Screenshot$/ }).first(), "Scout Scan Screenshot action");
+    const addReportButton = page.getByRole("button", { name: /^Add Report$/ }).first();
+    await expectVisible(addReportButton, "Scout Add Report action");
+    await addReportButton.click();
     const form = page.locator("form.scout-report-flow").first();
     await expectVisible(form, "Scout report form");
     await assertVisibleText(/Where and when|Post the restock essentials|Post store, status, and time|What did you see\?/i);
     await closeOpenModals();
+    await assertNoHorizontalOverflow("Scout mobile");
+    await page.setViewportSize({ width: 1366, height: 1600 });
   }
 
   async function focusedVaultTest() {

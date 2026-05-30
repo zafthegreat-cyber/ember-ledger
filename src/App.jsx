@@ -17538,6 +17538,15 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     openFlowModal("addActionSheet", { size: "medium", source });
   }
 
+  function openQuickAddPathFlow(path, patch = {}, source = "quick-add-path") {
+    setQuickAddWizard(createQuickAddWizardState({
+      screen: path,
+      path,
+      ...patch,
+    }));
+    openFlowModal("addActionSheet", { size: "medium", source });
+  }
+
   function runAddSheetAction(action) {
     setActiveFlowModal(null);
     window.setTimeout(() => openQuickAddAction(action), 0);
@@ -23276,9 +23285,13 @@ function renderTideTradrHeader() {
 }
 
 function renderScoutHeader() {
-  const scoutStoreCount = scoutSnapshot.stores?.length || virginiaStoreSeed.length;
+  const scoutWatchedStoreCount = (scoutSnapshot.stores || []).filter(isWatchedEmberStore).length;
   const scoutRecentReportCount = (scoutSnapshot.reports || []).length || (scoutSnapshot.tidepoolReports || []).length;
   const scoutTrustScore = Number.isFinite(Number(scoutSnapshot.scoutProfile?.trustScore)) ? Number(scoutSnapshot.scoutProfile.trustScore) : 0;
+  const scoutSlotLimit = Number(tierAccess.scoutStoreSlots || 0);
+  const scoutSlotLabel = scoutSlotLimit >= 99
+    ? "Admin store moderation"
+    : `${scoutWatchedStoreCount}/${scoutSlotLimit || 1} watched store${(scoutSlotLimit || 1) === 1 ? "" : "s"}`;
   const scoutTabs = [
     { key: "overview", label: "Nearby" },
     { key: "reports", label: "Following" },
@@ -23315,17 +23328,22 @@ function renderScoutHeader() {
     <PageHeader
       className={getHeaderCardClass("panel scout-summary-card")}
       title="Scout"
-      subtitle="Store Signals with honest Tide Score labels and family-safe reports."
+      subtitle="Family-safe store signals. Current reports only."
       tabs={scoutTabs}
       activeTab={activeScoutPage === "reports" && scoutReportFilter === "My Reports" ? "myReports" : activeScoutPage === "stores" && scoutStoresMode === "map" ? "storeMap" : activeScoutPage === "predictions" || activeScoutPage === "guesses" ? "forecast" : activeScoutPage}
       onTabChange={changeScoutPage}
       actions={(
         <>
-        <button type="button" className="scout-submit-primary" onClick={() => {
-          openScoutSubmitFlow({ source: "scout-header" });
-        }}>
-          Submit Report
-        </button>
+          <button type="button" className="secondary-button scout-scan-screenshot-action" onClick={() => {
+            openQuickAddPathFlow("scoutScreenshotReview", {}, "scout-header-scan-screenshot");
+          }}>
+            Scan Screenshot
+          </button>
+          <button type="button" className="scout-submit-primary" onClick={() => {
+            openScoutSubmitFlow({ source: "scout-header" });
+          }}>
+            Add Report
+          </button>
           <button type="button" className="secondary-button scout-stores-link" onClick={() => {
             setScoutSubTabTarget({ tab: "stores", id: Date.now() });
             setScoutStoresMode("list");
@@ -23335,8 +23353,8 @@ function renderScoutHeader() {
       )}
     >
       <div className="scout-header-trust-row" aria-label="Scout trust summary">
-        <span>{scoutStoreCount} stores tracked</span>
-        <span>{scoutRecentReportCount} recent signals</span>
+        <span>{scoutSlotLabel}</span>
+        <span>{scoutRecentReportCount} current reports</span>
         <span>Tide Score {scoutTrustScore}</span>
       </div>
     </PageHeader>
@@ -33142,19 +33160,29 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const latestReports = scoutReportRows.slice(0, 5);
     const freshReportCount = scoutReportRows.filter((report) => scoutReportFreshnessMeta(report).key === "fresh").length;
     const needsConfirmationCount = scoutReportRows.filter((report) => ["likely", "unconfirmed"].includes(scoutReportConfidenceBadge(report).key)).length;
+    const watchedStores = (scoutSnapshot.stores || []).filter(isWatchedEmberStore);
+    const scoutSlotLimit = Number(tierAccess.scoutStoreSlots || 0);
+    const watchedStoreLimitLabel = scoutSlotLimit >= 99
+      ? `${watchedStores.length} watched stores`
+      : `${watchedStores.length}/${scoutSlotLimit || 1} watched store${(scoutSlotLimit || 1) === 1 ? "" : "s"}`;
+    const watchedStoreSwapLabel = Number(tierAccess.scoutStoreSwapDays || 0) > 0
+      ? `Change one store every ${tierAccess.scoutStoreSwapDays} days.`
+      : "Admin store tools are available for moderation.";
+    const watchedStoreRows = watchedStores.slice(0, Math.min(3, scoutSlotLimit >= 99 ? 3 : Math.max(1, scoutSlotLimit || 1)));
+    const openScoutStoresList = () => {
+      setScoutSubTabTarget({ tab: "stores", id: Date.now() });
+      setScoutStoresMode("list");
+      setScoutView("stores");
+    };
     return (
-      <section className="scout-dashboard-overview scout-nearby-dashboard" aria-label="Scout nearby signals">
+      <section className="scout-dashboard-overview scout-nearby-dashboard" aria-label="Scout nearby reports">
         <article className="panel scout-nearby-cta-card">
           <div className="scout-nearby-cta-copy">
             <span className="section-kicker">Nearby Scout</span>
-            <h2>Check the current.</h2>
-            <p>Scout separates real store reports from guesses, old signals, and weak data.</p>
+            <h2>Current reports, not raw patterns.</h2>
+            <p>Use screenshots or a quick report to share what you saw. Scout keeps store signals current, family-safe, and reviewable.</p>
           </div>
           <div className="scout-nearby-cta-actions">
-            <button type="button" className="secondary-button" onClick={() => {
-              setScoutStoresMode("list");
-              setScoutView("stores");
-            }}>Stores</button>
             <div className="scout-nearby-quiet-stats" aria-label="Scout signal summary">
               <span><strong>{freshReportCount}</strong> fresh</span>
               <span><strong>{needsConfirmationCount}</strong> need confirmation</span>
@@ -33162,13 +33190,49 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </div>
         </article>
 
-        {renderScoutTierLockCard({ compact: true })}
+        <article className="panel scout-overview-card scout-watch-stores-card">
+          <div className="compact-card-header">
+            <div>
+              <p className="section-kicker">My Watch Stores</p>
+              <h2>My Watch Stores</h2>
+              <span className="scout-watch-slot-line">{watchedStoreLimitLabel} - {watchedStoreSwapLabel}</span>
+              <p>Current details only - no raw history or pattern windows.</p>
+            </div>
+            <button type="button" className="secondary-button scout-store-manage-link" onClick={openScoutStoresList}>Manage</button>
+          </div>
+          {watchedStoreRows.length ? (
+            <div className="scout-watch-store-list">
+              {watchedStoreRows.map((store, index) => {
+                const displayName = getScoutStoreDisplayName(store);
+                const retailer = getScoutQuickRetailer(store);
+                const region = getScoutQuickStoreRegion(store) || getScoutQuickStoreZip(store) || store.city || store.addressCity || store.address_city || "Selected store";
+                const key = getScoutQuickStoreId(store) || getStoreMapStoreId(store, index);
+                return (
+                  <button type="button" className="scout-watch-store-row" key={key} onClick={openScoutStoresList}>
+                    <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed="scout" /></span>
+                    <span>
+                      <strong>{displayName}</strong>
+                      <small>{retailer} - {region}</small>
+                    </span>
+                    <em>Current reports</em>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="empty-state scout-watch-empty-state">
+              <h3>Choose your first watched store.</h3>
+              <p>Free users can follow 1 Scout store and still contribute reports or confirmations for the community.</p>
+              <button type="button" className="secondary-button" onClick={openScoutStoresList}>Choose Store</button>
+            </div>
+          )}
+        </article>
 
         <article className="panel scout-overview-card scout-nearby-list-card">
           <div className="compact-card-header">
             <div>
-              <h2>Nearby Signals</h2>
-              <p>Freshness and trust labels keep live reports separate from old or unconfirmed notes.</p>
+              <h2>Nearby Reports</h2>
+              <p>Freshness and trust labels keep current reports separate from old or unconfirmed notes.</p>
             </div>
             <button type="button" className="secondary-button" onClick={() => {
               setScoutReportFilter("Latest");
@@ -33179,205 +33243,18 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <div className="scout-preview-list scout-nearby-report-list">
             {latestReports.length ? latestReports.map((report) => renderScoutReportCard(report, { compact: true })) : (
               <div className="empty-state scout-empty-signal-state">
-                <h3>No signals yet</h3>
-                <p>Be the first to report something in your area. Reports are shared by store, not private address.</p>
-                <button type="button" onClick={() => openScoutSubmitFlow({ source: "scout-nearby-empty" })}>Submit Scout Report</button>
-              </div>
-            )}
-          </div>
-        </article>
-      </section>
-    );
-    const forecastRows = scoutForecastPreviewRows.filter(scoutForecastHasEnoughData).slice(0, 5);
-    const scoutRadarRows = (forecastRows.length ? forecastRows : (scoutSnapshot.stores || []).slice(0, 5).map((store, index) => ({
-      id: store.id || `store-${index}`,
-      storeId: store.id || "",
-      store,
-      storeName: store.nickname || store.name || "Watched store",
-      retailer: store.retailer || store.chain || "Retailer",
-      city: store.city || store.addressCity || "",
-      windowLabel: store.bestCheckWindow || store.restockWindow || "Check afternoon",
-      confidenceLabel: index === 0 ? "Heating Up" : "Watching",
-      confidenceKey: index === 0 ? "likely" : "possible",
-      updatedLabel: store.lastConfirmedReport || store.lastReport || "No confirmed report yet",
-      products: [],
-    }))).slice(0, 5);
-    const scoutRadarStatus = (row) => {
-      const text = `${row.confidenceLabel || ""} ${row.status || ""}`.toLowerCase();
-      if (text.includes("confirmed")) return "Confirmed Drop";
-      if (text.includes("hot")) return "Hot";
-      if (text.includes("likely") || text.includes("heating")) return "Heating Up";
-      if (text.includes("possible") || text.includes("watch")) return "Watching";
-      return "Cold";
-    };
-    const forecastGroups = forecastRows.reduce((groups, row) => {
-      const label = row.groupLabel || "Unknown window";
-      const existing = groups.find((group) => group.label === label);
-      if (existing) existing.rows.push(row);
-      else groups.push({ label, rows: [row] });
-      return groups;
-    }, []);
-    return (
-      <section className="scout-dashboard-overview" aria-label="Scout overview">
-        <article className="panel scout-overview-card scout-overview-card--wide scout-drop-radar-panel">
-          <div className="compact-card-header">
-            <div>
-              <h2>Drop Radar</h2>
-              <p>Watched stores, confidence labels, and the next best check window.</p>
-            </div>
-            <button type="button" onClick={() => openScoutSubmitFlow({ source: "scout-overview" })}>Report a Check</button>
-          </div>
-          <div className="scout-radar-grid">
-            {scoutRadarRows.map((row) => {
-              const status = scoutRadarStatus(row);
-              const mapQuery = encodeURIComponent([row.storeName, row.city].filter(Boolean).join(" "));
-              return (
-                <article className="scout-radar-card" key={`radar-${row.id}`}>
-                  <div className="scout-radar-top">
-                    <div>
-                      <strong>{row.storeName}</strong>
-                      <span>{row.retailer}{row.city ? ` - ${row.city}` : ""}</span>
-                    </div>
-                    <b className={`scout-radar-status scout-radar-status--${status.toLowerCase().replace(/\s+/g, "-")}`}>{status}</b>
-                    {adminEditModeActive ? (
-                      <OverflowMenu
-                        buttonLabel="Admin"
-                        actions={[
-                          { label: "Edit Store", onClick: () => setVaultToast("Store editing will use the admin store approval flow in a later pass.") },
-                          { label: "View Details", onClick: () => setVaultToast("Store audit details are not available in this beta UI yet.") },
-                          { label: "Mark Disputed", disabled: true, reason: "Admin moderation queue is beta soon." },
-                        ]}
-                      />
-                    ) : null}
-                  </div>
-                  <dl>
-                    <div><dt>Last confirmed</dt><dd>{row.updatedLabel || "No report yet"}</dd></div>
-                    <div><dt>Expected day</dt><dd>{row.windowLabel || "Unknown"}</dd></div>
-                    <div><dt>Best window</dt><dd>{row.windowLabel || "Check midday"}</dd></div>
-                    <div><dt>Drop confidence</dt><dd>{row.confidenceLabel || status}</dd></div>
-                  </dl>
-                  <div className="scout-radar-actions">
-                    <button type="button" className="secondary-button" onClick={() => { completeDailyAction("store", { badge: "restock_reporter", points: 10 }); setVaultToast(`${row.storeName} added to today's watch.`); }}>Watch</button>
-                    <button type="button" className="secondary-button" onClick={() => openScoutSubmitFlow({
-                      source: "drop-radar",
-                      store: row.store || findScoutQuickStore({ storeId: row.storeId, storeName: row.storeName, retailer: row.retailer }) || {
-                        id: row.storeId,
-                        name: row.storeName,
-                        retailer: row.retailer,
-                        city: row.city,
-                      },
-                    })}>Report</button>
-                    <button type="button" className="secondary-button" onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${mapQuery}`, "_blank", "noopener,noreferrer")}>Directions</button>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        </article>
-
-        <article className="panel scout-overview-card scout-overview-card--wide">
-          <div className="compact-card-header">
-            <div>
-              <h2>Latest Reports</h2>
-              <p>Newest local Scout activity.</p>
-            </div>
-            <button type="button" className="secondary-button" onClick={() => {
-              setScoutReportFilter("Latest");
-              setScoutReportsPage(1);
-              setScoutView("reports");
-            }}>View all reports</button>
-          </div>
-          <div className="scout-preview-list">
-            {latestReports.length ? latestReports.map((report) => renderScoutReportCard(report, { compact: true })) : (
-              <div className="small-empty-state">
-                <strong>No reports yet</strong>
-                <span>Submit a quick store report after your next check.</span>
-              </div>
-            )}
-          </div>
-        </article>
-
-        <article className="panel scout-overview-card scout-overview-card--wide scout-forecast-overview-card">
-          <div className="compact-card-header scout-forecast-header">
-            <div>
-              <h2>Restock Forecast</h2>
-              <p>Next likely restock windows based on confirmed restock history. Community guesses stay labeled separately.</p>
-            </div>
-            <div className="scout-forecast-actions">
-              <button type="button" className="secondary-button" disabled={!currentUserCanSubmitScoutGuess} title={!currentUserCanSubmitScoutGuess ? DROP_RADAR_GUESS_LOCKED_MESSAGE : ""} onClick={openScoutGuessFlow}>Add Guess</button>
-              <button type="button" className="secondary-button" onClick={() => setScoutView("predictions")}>Open Predictions</button>
-            </div>
-          </div>
-          <p className="ai-helper-note">{AI_FORECAST_DISCLAIMER}</p>
-          {!currentUserCanSubmitScoutGuess ? (
-            <p className="ai-helper-note">{DROP_RADAR_GUESS_LOCKED_MESSAGE}</p>
-          ) : null}
-          <div className="scout-forecast-groups">
-            {forecastGroups.length ? forecastGroups.map((group) => (
-              <div className="scout-forecast-group" key={`forecast-group-${group.label}`}>
-                <span className="scout-forecast-group-label">{group.label}</span>
-                <div className="scout-forecast-card-grid">
-                  {group.rows.map((row) => (
-                    <article className="scout-forecast-card-item" key={`overview-forecast-${row.id}`}>
-                      <div className="scout-forecast-card-top">
-                        <div>
-                          <strong>{row.storeName}</strong>
-                          <span>{row.retailer}</span>
-                        </div>
-                        <span className={`status-badge scout-confidence-badge scout-confidence-badge--${row.confidenceKey}`}>
-                          {row.confidenceLabel}
-                        </span>
-                        {adminEditModeActive ? (
-                          <OverflowMenu
-                            buttonLabel="Admin"
-                            actions={[
-                              { label: "Edit Prediction", onClick: () => setVaultToast("Prediction editing will use admin prediction tools in a later pass.") },
-                              { label: "Verify", disabled: true, reason: "Backend persistence is beta soon." },
-                              { label: "Hide", disabled: true, reason: "Backend persistence is beta soon." },
-                              { label: "View Audit", onClick: () => setVaultToast("Prediction audit details are not available in this beta UI yet.") },
-                            ]}
-                          />
-                        ) : null}
-                      </div>
-                      <div className="scout-forecast-meta">
-                        <span>Expected: {row.windowLabel}</span>
-                        {row.updatedLabel ? <span>Updated: {row.updatedLabel}</span> : null}
-                        {row.lastConfirmedReportLabel ? <span>Last confirmed: {row.lastConfirmedReportLabel}</span> : null}
-                        <span>{row.supportingReportCount} report{row.supportingReportCount === 1 ? "" : "s"} | {row.supportingGuessCount} guess{row.supportingGuessCount === 1 ? "" : "es"}</span>
-                      </div>
-                      <div className="scout-forecast-chip-row">
-                        {row.badges.map((badge) => <span className="mini-badge" key={`${row.id}-${badge}`}>{badge}</span>)}
-                      </div>
-                      {row.products.length ? (
-                        <p className="scout-forecast-products">Items: {row.products.join(", ")}</p>
-                      ) : (
-                        <p className="scout-forecast-products scout-forecast-products--empty">Products unknown</p>
-                      )}
-                      {row.reason ? <p className="scout-forecast-reason">Reason: {row.reason}</p> : null}
-                      {row.basisSummary ? <p className="scout-forecast-reason">Basis: {row.basisSummary}</p> : null}
-                      {row.sourceLabel ? <small>Source: {row.sourceLabel}</small> : null}
-                      {row.submittedBy ? <small>Submitted by {row.submittedBy}</small> : null}
-                      <div className="scout-radar-actions">
-                        <button type="button" className="secondary-button" onClick={() => { completeDailyAction("store", { badge: "restock_reporter", points: 5 }); setVaultToast(`${row.storeName} added to watch.`); }}>Watch</button>
-                        <button type="button" className="secondary-button" onClick={() => void explainScoutForecast(row)}>Explain forecast</button>
-                        <button type="button" className="secondary-button" onClick={() => void summarizeScoutStore(row)}>Summarize reports</button>
-                        <button type="button" className="secondary-button" onClick={() => openScoutSubmitFlow({ source: "forecast-overview", store: findScoutQuickStore({ storeName: row.storeName, retailer: row.retailer }) || { name: row.storeName, retailer: row.retailer } })}>Report stock</button>
-                      </div>
-                    </article>
-                  ))}
+                <h3>No nearby reports yet</h3>
+                <p>Be the first to report something current in your area. Reports are shared by store, not private address.</p>
+                <div className="quick-actions">
+                  <button type="button" className="secondary-button" onClick={() => openQuickAddPathFlow("scoutScreenshotReview", {}, "scout-nearby-empty-screenshot")}>Scan Screenshot</button>
+                  <button type="button" onClick={() => openScoutSubmitFlow({ source: "scout-nearby-empty" })}>Add Report</button>
                 </div>
               </div>
-            )) : (
-              <div className="small-empty-state">
-                <strong>Not enough data yet.</strong>
-                <span>Forecast windows appear after repeated store patterns or enough confirmed community reports.</span>
-              </div>
             )}
           </div>
-          <div className="scout-forecast-footer">
-            <button type="button" className="secondary-button" onClick={() => setScoutView("predictions")}>View All Predictions</button>
-          </div>
         </article>
+
+        {renderScoutTierLockCard({ compact: true })}
       </section>
     );
   }
@@ -33552,19 +33429,23 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <div>
             <p className="section-kicker">Scout access foundation</p>
             <h2>Fair access, not raw patterns.</h2>
-            <p>Free users help the community and follow 1 Scout store. Collector unlocks 3 Scout stores and deeper current Scout details.</p>
+            <p>{compact ? "Free users can contribute and follow selected stores. Collector adds more watched stores and deeper current details." : "Free users help the community and follow 1 Scout store. Collector unlocks 3 Scout stores and deeper current Scout details."}</p>
           </div>
           <span className="status-badge">Protected</span>
         </div>
-        <div className="scout-tier-lock-list">
-          <span>Family includes Collector plus parent-managed kid profiles.</span>
-          <span>Seller adds Forge business tools.</span>
-          <span>Users follow selected stores. They do not get the whole network.</span>
-          <span>Raw restock patterns are protected to keep Scout fair.</span>
-        </div>
+        {compact ? (
+          <p className="scout-tier-lock-compact-copy">Users follow selected stores. Raw restock patterns stay protected to keep Scout fair.</p>
+        ) : (
+          <div className="scout-tier-lock-list">
+            <span>Family includes Collector plus parent-managed kid profiles.</span>
+            <span>Seller adds Forge business tools.</span>
+            <span>Users follow selected stores. They do not get the whole network.</span>
+            <span>Raw restock patterns are protected to keep Scout fair.</span>
+          </div>
+        )}
         <div className="quick-actions">
           <button type="button" className="secondary-button" onClick={() => setActiveTab("membership")}>View beta pricing</button>
-          <button type="button" className="ghost-button" onClick={() => openScoutSubmitFlow({ source: "scout-tier-foundation" })}>Submit Scout Report</button>
+          {!compact ? <button type="button" className="ghost-button" onClick={() => openScoutSubmitFlow({ source: "scout-tier-foundation" })}>Submit Scout Report</button> : null}
         </div>
       </article>
     );
