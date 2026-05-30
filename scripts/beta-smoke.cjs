@@ -1609,7 +1609,8 @@ async function main() {
       await page.getByRole("button", { name: "Enter ZIP" }).click();
       await page.getByRole("button", { name: /Nearby stores|Stores/i }).first().click();
     }
-    await assertVisibleText("Retailers");
+    await assertVisibleText("My Watch Stores");
+    await assertVisibleText("Choose from nearby stores");
     if (await page.getByRole("button", { name: /Target/i }).count()) {
       await page.getByRole("button", { name: /Target/i }).first().click();
     }
@@ -1619,7 +1620,7 @@ async function main() {
     }
     await assert.match(await page.locator("body").innerText(), /Smoke Shared Target/);
     const smokeStoreCard = page.locator(".scout-store-card").filter({ hasText: "Smoke Shared Target" }).first();
-    await smokeStoreCard.getByRole("button", { name: /Open Store|Open/i }).click();
+    await smokeStoreCard.getByRole("button", { name: /Open Store|Open|View/i }).click();
     await assertVisibleText(/Add Report|Submit Report/);
   });
 
@@ -1842,7 +1843,7 @@ async function main() {
       const pageText = (await page.locator("body").innerText()).slice(0, 2000);
       throw new Error(`Smoke Shared Target store card was not visible. Current Scout view: ${pageText}`);
     }
-    const openButton = smokeStoreCard.getByRole("button", { name: /Open Store|Open/i });
+    const openButton = smokeStoreCard.getByRole("button", { name: /Open Store|Open|View/i });
     if (await openButton.count()) {
       await openButton.click();
     } else {

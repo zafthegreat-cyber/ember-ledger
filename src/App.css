@@ -60225,7 +60225,7 @@ html body .app-command-shell.app-vault .ember-assist-shell {
 .app-scout .scout-report-action-backdrop,
 .app-command-shell.app-scout .scout-report-action-backdrop,
 .app.app-scout .scout-report-action-backdrop {
-  z-index: 1900 !important;
+  z-index: 2350 !important;
 }
 
 .app-scout .scout-report-action-sheet,
@@ -60236,6 +60236,8 @@ html body .app-command-shell.app-vault .ember-assist-shell {
   width: min(94vw, 540px) !important;
   max-height: calc(100dvh - env(safe-area-inset-top, 0px) - 18px) !important;
   overflow: hidden !important;
+  position: relative !important;
+  z-index: 2351 !important;
 }
 
 .app-scout .scout-report-action-body,
