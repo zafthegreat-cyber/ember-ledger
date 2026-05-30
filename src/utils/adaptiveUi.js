@@ -186,7 +186,7 @@ export function resolveSmartRouteContext(activeRoute = "") {
   if (route.includes("vault") || route.includes("collection")) return { key: "vault", label: "Vault" };
   if (["inventory", "forge", "sales", "expenses", "mileage", "reports"].includes(route)) return { key: "forge", label: "Forge" };
   if (["market", "tidetradr", "tide_tradr"].includes(route)) return { key: "market", label: "Market Watch" };
-  if (["kids_program", "spark"].includes(route)) return { key: "spark", label: "The Spark" };
+  if (["kids_program", "kidsprogram", "spark", "thespark"].includes(route)) return { key: "spark", label: "The Spark" };
   if (route.includes("admin") || route.includes("moderator")) return { key: "admin", label: "Admin" };
   return { key: route || "hearth", label: "Current page" };
 }
@@ -320,55 +320,65 @@ export function selectSmartQuickAddActionPlan(state = {}, { forgeAvailable = fal
 
   if (state.showAdminTools) {
     if (pageKey === "scout") {
-      orderedKeys = ["scout", "reviewMissing", "store", "vault", forgeAvailable ? "forge" : "", "missing", "announcement", "quickFind"];
+      orderedKeys = ["addScoutReport", "scanScreenshot", "reviewFlaggedReports", "mergeDuplicateReports", "reviewBetaRequests", "addVaultItem", forgeAvailable ? "uploadReceipt" : "", "requestMissingItem"];
+    } else if (pageKey === "admin") {
+      orderedKeys = ["reviewFlaggedReports", "mergeDuplicateReports", "reviewBetaRequests", "reviewShopApplications", "reviewSparkDonations", "addScoutReport", "scanScreenshot", "requestMissingItem"];
     } else {
-      orderedKeys = ["reviewMissing", "store", "announcement", "scout", "vault", forgeAvailable ? "forge" : "", "missing", "quickFind"];
+      orderedKeys = ["reviewFlaggedReports", "addScoutReport", "scanScreenshot", "addVaultItem", "scanCards", "reviewBetaRequests", "reviewShopApplications", "requestMissingItem"];
     }
   } else if (state.showSellerTools) {
     if (pageKey === "scout") {
-      orderedKeys = ["scout", "forge", "sale", "receipt", "mileage", "vault", "missing", "quickFind", "expense"];
+      orderedKeys = ["scanScreenshot", "addScoutReport", "uploadReceipt", "addVaultItem", "addSale", "chooseWatchedStore", "requestMissingItem", "scanCards", "addExpense"];
     } else if (pageKey === "vault") {
-      orderedKeys = ["vault", "forge", "sale", "receipt", "mileage", "missing", "scout", "quickFind", "expense"];
+      orderedKeys = ["scanCards", "addCardManual", "addSealedProduct", "addVaultItem", "uploadReceipt", "addInventoryCost", "addScoutReport", "requestMissingItem", "addExpense"];
     } else if (pageKey === "forge") {
       orderedKeys = businessTools
-        ? ["forge", "sale", "receipt", "mileage", "vault", "missing", "scout", "quickFind", "expense"]
-        : ["forge", "sale", "receipt", "mileage", "vault", "missing", "scout", "quickFind"];
+        ? ["uploadReceipt", "addSale", "addExpense", "logMileage", "addInventoryCost", "addVaultItem", "addScoutReport", "requestMissingItem", "scanCards"]
+        : ["uploadReceipt", "addSale", "logMileage", "addInventoryCost", "addVaultItem", "addScoutReport", "requestMissingItem", "scanCards"];
     } else if (pageKey === "market") {
       orderedKeys = businessTools
-        ? ["forge", "sale", "receipt", "mileage", "vault", "missing", "quickFind", "scout", "expense"]
-        : ["forge", "sale", "receipt", "mileage", "vault", "missing", "quickFind", "scout"];
+        ? ["searchCard", "scanUpc", "scanCard", "comparePrice", "addToVault", "uploadReceipt", "addInventoryCost", "addExpense", "addScoutReport"]
+        : ["searchCard", "scanUpc", "scanCard", "comparePrice", "addToVault", "uploadReceipt", "addInventoryCost", "addScoutReport"];
+    } else if (pageKey === "spark") {
+      orderedKeys = ["buildKidsPack", "addDonation", "logSupplies", "createGiveaway", "addEventSupport", "addScoutReport", "scanCards", "uploadReceipt"];
     } else {
       orderedKeys = businessTools
-        ? ["forge", "sale", "receipt", "mileage", "vault", "missing", "scout", "quickFind", "expense"]
-        : ["forge", "sale", "receipt", "mileage", "vault", "missing", "scout", "quickFind"];
+        ? ["scanCards", "addScoutReport", "scanScreenshot", "addVaultItem", "uploadReceipt", "addSale", "addExpense", "logMileage", "buildKidsPack"]
+        : ["scanCards", "addScoutReport", "scanScreenshot", "addVaultItem", "uploadReceipt", "addSale", "logMileage", "buildKidsPack"];
     }
   } else if (state.familyMode) {
-    visibleLimit = Math.min(maxVisible, 4);
-    if (pageKey === "scout") orderedKeys = ["scout", "vault", "missing", "spark", "quickFind"];
-    else if (pageKey === "vault") orderedKeys = ["vault", "scout", "missing", "spark", "quickFind"];
-    else orderedKeys = ["vault", "scout", "missing", "spark", "quickFind"];
+    visibleLimit = Math.min(maxVisible, 5);
+    if (pageKey === "scout") orderedKeys = ["scanScreenshot", "addScoutReport", "chooseWatchedStore", "addVaultItem", "buildKidsPack", "requestMissingItem"];
+    else if (pageKey === "vault") orderedKeys = ["scanCards", "addCardManual", "addSealedProduct", "addVaultItem", "addScoutReport", "buildKidsPack", "requestMissingItem"];
+    else if (pageKey === "market") orderedKeys = ["searchCard", "scanUpc", "scanCard", "comparePrice", "addToVault", "addScoutReport"];
+    else if (pageKey === "spark") orderedKeys = ["buildKidsPack", "addDonation", "logSupplies", "createGiveaway", "addEventSupport", "addScoutReport"];
+    else orderedKeys = ["scanCards", "addScoutReport", "scanScreenshot", "addVaultItem", "buildKidsPack", "requestMissingItem"];
   } else if (state.scoutMode) {
-    visibleLimit = Math.min(maxVisible, 4);
-    if (pageKey === "vault") orderedKeys = ["vault", "scout", "quickFind", "missing"];
-    else orderedKeys = ["scout", "vault", "quickFind", "missing"];
+    visibleLimit = Math.min(maxVisible, 5);
+    if (pageKey === "vault") orderedKeys = ["scanCards", "addCardManual", "addVaultItem", "scanScreenshot", "addScoutReport", "requestMissingItem"];
+    else if (pageKey === "market") orderedKeys = ["searchCard", "scanUpc", "comparePrice", "addToVault", "addScoutReport"];
+    else orderedKeys = ["scanScreenshot", "addScoutReport", "chooseWatchedStore", "addVaultItem", "scanCards", "requestMissingItem"];
   } else if (pageKey === "scout") {
-    visibleLimit = Math.min(maxVisible, 4);
-    orderedKeys = ["scout", "vault", "missing", "quickFind"];
+    visibleLimit = Math.min(maxVisible, 5);
+    orderedKeys = ["scanScreenshot", "addScoutReport", "chooseWatchedStore", "addVaultItem", "requestMissingItem", "scanCards"];
   } else if (pageKey === "vault") {
-    visibleLimit = Math.min(maxVisible, 4);
-    orderedKeys = ["vault", "quickFind", "scout", "missing"];
+    visibleLimit = Math.min(maxVisible, 5);
+    orderedKeys = ["scanCards", "addCardManual", "addSealedProduct", "addVaultItem", "addScoutReport", "requestMissingItem"];
   } else if (pageKey === "market") {
-    visibleLimit = Math.min(maxVisible, 4);
-    orderedKeys = ["quickFind", "vault", "scout", "missing"];
+    visibleLimit = Math.min(maxVisible, 5);
+    orderedKeys = ["searchCard", "scanUpc", "scanCard", "comparePrice", "addToVault", "addScoutReport"];
+  } else if (pageKey === "spark") {
+    visibleLimit = Math.min(maxVisible, 5);
+    orderedKeys = ["buildKidsPack", "addDonation", "logSupplies", "createGiveaway", "addEventSupport", "addScoutReport"];
   } else {
-    visibleLimit = Math.min(maxVisible, 4);
-    orderedKeys = ["vault", "scout", "missing", "quickFind"];
+    visibleLimit = Math.min(maxVisible, 5);
+    orderedKeys = ["scanCards", "addScoutReport", "scanScreenshot", "addVaultItem", "requestMissingItem"];
   }
 
   const adaptiveKeys = uniqueActionKeys(orderedKeys);
   const preferredVisibleKeys = uniqueActionKeys(preferredKeys);
   const allKeys = preferredVisibleKeys.length
-    ? uniqueActionKeys([...preferredVisibleKeys, ...adaptiveKeys.filter((key) => !preferredVisibleKeys.includes(key))])
+    ? uniqueActionKeys([...adaptiveKeys, ...preferredVisibleKeys.filter((key) => !adaptiveKeys.includes(key))])
     : adaptiveKeys;
   const visibleKeys = clampActionKeys(allKeys, visibleLimit);
   const overflowKeys = allKeys.filter((key) => !visibleKeys.includes(key));

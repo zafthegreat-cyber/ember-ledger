@@ -67,50 +67,52 @@ assert.equal(
 
 const collectorState = resolveAdaptiveUiState({ currentRoute: "dashboard" });
 const collectorQuickAdd = selectSmartQuickAddKeys(collectorState, { currentPage: "dashboard", forgeAvailable: true });
-assert.deepEqual(collectorQuickAdd, ["vault", "scout", "missing", "quickFind"]);
-assert.equal(collectorQuickAdd.some((key) => ["forge", "sale", "receipt", "mileage", "expense", "reviewMissing"].includes(key)), false);
+assert.deepEqual(collectorQuickAdd, ["scanCards", "addScoutReport", "scanScreenshot", "addVaultItem", "requestMissingItem"]);
+assert.equal(collectorQuickAdd.some((key) => ["uploadReceipt", "addSale", "logMileage", "addExpense", "reviewFlaggedReports"].includes(key)), false);
 
 const familyState = resolveAdaptiveUiState({
   currentRoute: "dashboard",
   setupPreferences: { purposes: ["collect_pokemon_with_my_family_kids"], enabledToolsets: ["the_spark_kids_program"] },
 });
 const familyPlan = selectSmartQuickAddActionPlan(familyState, { currentPage: "dashboard", forgeAvailable: true });
-assert.deepEqual(familyPlan.visibleKeys, ["vault", "scout", "missing", "spark"]);
-assert.deepEqual(familyPlan.overflowKeys, ["quickFind"]);
+assert.deepEqual(familyPlan.visibleKeys, ["scanCards", "addScoutReport", "scanScreenshot", "addVaultItem", "buildKidsPack"]);
+assert.deepEqual(familyPlan.overflowKeys, ["requestMissingItem"]);
 
 const sellerState = resolveAdaptiveUiState({
   currentRoute: "forge",
   setupPreferences: { primaryMode: "casual_seller", enabledToolsets: ["forge_seller_tools", "sales_tracking"] },
 });
 const sellerPlan = selectSmartQuickAddActionPlan(sellerState, { currentPage: "forge", forgeAvailable: true });
-assert.deepEqual(sellerPlan.visibleKeys, ["forge", "sale", "receipt", "mileage", "vault", "missing"]);
-assert.deepEqual(sellerPlan.overflowKeys, ["scout", "quickFind"]);
+assert.deepEqual(sellerPlan.visibleKeys, ["uploadReceipt", "addSale", "logMileage", "addInventoryCost", "addVaultItem", "addScoutReport"]);
+assert.deepEqual(sellerPlan.overflowKeys, ["requestMissingItem", "scanCards"]);
 
 const businessState = resolveAdaptiveUiState({
   currentRoute: "forge",
   setupPreferences: { primaryMode: "business_seller", businessTools: "yes_i_need_sales_expenses_mileage_receipts" },
 });
 const businessPlan = selectSmartQuickAddActionPlan(businessState, { currentPage: "forge", forgeAvailable: true });
-assert.deepEqual(businessPlan.visibleKeys, ["forge", "sale", "receipt", "mileage", "vault", "missing"]);
-assert.ok(businessPlan.overflowKeys.includes("expense"));
-assert.ok(businessPlan.overflowKeys.includes("scout"));
-assert.ok(businessPlan.overflowKeys.includes("quickFind"));
+assert.deepEqual(businessPlan.visibleKeys, ["uploadReceipt", "addSale", "addExpense", "logMileage", "addInventoryCost", "addVaultItem"]);
+assert.ok(businessPlan.overflowKeys.includes("addScoutReport"));
+assert.ok(businessPlan.overflowKeys.includes("requestMissingItem"));
+assert.ok(businessPlan.overflowKeys.includes("scanCards"));
 assert.ok(businessPlan.visibleKeys.length <= 6);
 
 const adminState = resolveAdaptiveUiState({ currentRoute: "admin", adminToolsVisible: true });
 const adminQuickAdd = selectSmartQuickAddKeys(adminState, { currentPage: "admin", forgeAvailable: true });
-assert.ok(adminQuickAdd.includes("reviewMissing"));
-assert.ok(adminQuickAdd.includes("store"));
-assert.equal(collectorQuickAdd.includes("reviewMissing"), false);
+assert.ok(adminQuickAdd.includes("reviewFlaggedReports"));
+assert.ok(adminQuickAdd.includes("reviewBetaRequests"));
+assert.equal(collectorQuickAdd.includes("reviewFlaggedReports"), false);
 
 const quickAddSetupGroup = APP_SETUP_PAGE_GROUPS.find((group) => group.key === "quickAdd");
-const scanAnythingOption = quickAddSetupGroup.options.find((option) => option.key === "quickFind");
-assert.equal(scanAnythingOption.label, "Scan Anything");
-assert.match(scanAnythingOption.helper, /Search, UPC\/SKU, or manual entry/);
+const scanCardsOption = quickAddSetupGroup.options.find((option) => option.key === "scanCards");
+const scanScreenshotOption = quickAddSetupGroup.options.find((option) => option.key === "scanScreenshot");
+assert.equal(scanCardsOption.label, "Scan Cards");
+assert.equal(scanScreenshotOption.label, "Scan Screenshot");
+assert.match(scanScreenshotOption.helper, /Review screenshot text/);
 
-assert.equal(selectSmartQuickAddKeys(collectorState, { currentPage: "scout", forgeAvailable: true })[0], "scout");
-assert.equal(selectSmartQuickAddKeys(collectorState, { currentPage: "vault", forgeAvailable: true })[0], "vault");
-assert.equal(selectSmartQuickAddKeys(sellerState, { currentPage: "market", forgeAvailable: true })[0], "forge");
+assert.equal(selectSmartQuickAddKeys(collectorState, { currentPage: "scout", forgeAvailable: true })[0], "scanScreenshot");
+assert.equal(selectSmartQuickAddKeys(collectorState, { currentPage: "vault", forgeAvailable: true })[0], "scanCards");
+assert.equal(selectSmartQuickAddKeys(sellerState, { currentPage: "market", forgeAvailable: true })[0], "searchCard");
 
 const appSource = fs.readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
 const upcFallbackStart = appSource.indexOf("quick-add-upc-fallback");
@@ -155,6 +157,15 @@ assert.match(appSource, /Save Report/);
 assert.match(appSource, /Want to add proof or more details\?/);
 assert.match(appSource, /Report could not be saved\. Please review and try again\./);
 assert.match(appSource, /openScoutReportDetail\(report, \{ fallback: report, focus: "details" \}\)/);
+assert.match(appSource, /className="mobile-quick-add-fab"/);
+assert.match(appSource, /Open Quick Add command center/);
+assert.doesNotMatch(appSource, /\{ key: "quickAdd", label: "Add", icon: "plus", center: true/);
+assert.match(appSource, /label: "More", icon: "settings"/);
+assert.match(appSource, /Customize Quick Add/);
+assert.match(appSource, /Reset to Recommended/);
+assert.match(appSource, /action === "scanScreenshot"/);
+assert.match(appSource, /action === "chooseWatchedStore"/);
+assert.match(appSource, /action === "reviewFlaggedReports"/);
 assert.match(appSource, /Scan page of cards/);
 assert.match(appSource, /cardScanRows/);
 assert.match(appSource, /Add card row/);

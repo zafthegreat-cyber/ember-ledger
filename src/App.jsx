@@ -6073,9 +6073,9 @@ export default function App() {
   const mobileBottomTabs = [
     { key: "home", label: "Hearth", icon: "home", target: "dashboard" },
     { key: "scout", label: "Scout", icon: "scout", target: "scout" },
-    { key: "quickAdd", label: "Add", icon: "plus", center: true, action: () => openAddActionSheet("mobile-dock") },
     { key: "vault", label: "Vault", icon: "vault", target: "vault" },
     { key: "tideTradr", label: "Market", icon: "market", target: "market", ariaLabel: "Market" },
+    { key: "menu", label: "More", icon: "settings", action: () => openMenuDrawer("more"), ariaLabel: "More" },
   ];
   const desktopSidebarByKey = {
     home: { key: "home", label: "Hearth", helper: "Your home base.", icon: "home", target: "dashboard" },
@@ -17544,6 +17544,24 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     openFlowModal("addActionSheet", { size: "medium", source });
   }
 
+  function openQuickAddCustomization() {
+    closeFlowModal({ force: true });
+    setAppSetupPanel("customize");
+    setActiveTab("settings");
+  }
+
+  function resetQuickAddToRecommended() {
+    const context = appPersonalizationContext();
+    const recommended = buildRecommendedAppPreferences(context);
+    updateAppSetupPersonalization((current) => ({
+      ...current,
+      pagePreferences: {
+        ...current.pagePreferences,
+        quickAdd: recommended.pagePreferences.quickAdd,
+      },
+    }), "Quick Add reset to recommended actions.");
+  }
+
   function openQuickAddPathFlow(path, patch = {}, source = "quick-add-path") {
     setQuickAddWizard(createQuickAddWizardState({
       screen: path,
@@ -19820,6 +19838,71 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   function openQuickAddAction(action) {
     setQuickAddMenuOpen(false);
     if (action === "tcgCommand") return openFlowModal("tcgCommandCenter", { size: "large", source: "quick-add" });
+    if (action === "scanCards") return openQuickAddPathFlow("cardPageReview", {}, "quick-add-scan-cards");
+    if (action === "scanScreenshot") return openQuickAddPathFlow("scoutScreenshotReview", {}, "quick-add-scan-screenshot");
+    if (action === "searchCard") {
+      setActiveTab("market");
+      setTideTradrSubTab("overview");
+      return;
+    }
+    if (action === "scanUpc") return openQuickFindFlow({ source: "quick-add-upc" });
+    if (action === "scanCard") return beginScanProduct("none");
+    if (action === "comparePrice") {
+      setActiveTab("market");
+      return openDealFinderModal();
+    }
+    if (action === "addToVault") return openProductAddFlow({ source: "quick-add-market-to-vault", destinations: { vault: true } });
+    if (action === "addCardManual") return openProductAddFlow({ source: "quick-add-card-manual", destinations: { vault: true }, seed: { productType: "Individual Card" } });
+    if (action === "addSealedProduct") return openProductAddFlow({ source: "quick-add-sealed-product", destinations: { vault: true }, seed: { productType: "Sealed Product" } });
+    if (action === "addPhotos") return openProductAddFlow({ source: "quick-add-vault-photo", destinations: { vault: true }, seed: { notes: "Add or update photos after saving the Vault item." } });
+    if (action === "reviewUnmatchedScans") return openQuickAddPathFlow("cardPageReview", {}, "quick-add-unmatched-scans");
+    if (action === "chooseWatchedStore") {
+      setScoutView("stores");
+      setScoutStoresMode("list");
+      setActiveTab("scout");
+      openWatchStorePicker();
+      return;
+    }
+    if (action === "confirmReport") {
+      if (selectedScoutReport) return openScoutReportConfirmAction(selectedScoutReport);
+      showAppMessage("Open a Scout report first, then confirm it.");
+      return;
+    }
+    if (action === "addProofReport") {
+      if (selectedScoutReport) return openScoutReportProofAction(selectedScoutReport);
+      showAppMessage("Open a Scout report first, then add proof.");
+      return;
+    }
+    if (action === "buildKidsPack" || action === "addDonation" || action === "logSupplies" || action === "createGiveaway" || action === "addEventSupport") {
+      setActiveTab("kidsProgram");
+      return;
+    }
+    if (action === "reviewFlaggedReports") {
+      setAdminReviewFilter("Reports & Moderation");
+      setActiveTab("adminReview");
+      return;
+    }
+    if (action === "mergeDuplicateReports") {
+      setAdminReviewFilter("Scout Report Review");
+      setActiveTab("adminReview");
+      return;
+    }
+    if (action === "reviewBetaRequests") {
+      setAdminReviewFilter("Beta Access");
+      setActiveTab("adminReview");
+      return;
+    }
+    if (action === "reviewShopApplications") {
+      setAdminReviewFilter("Family-Friendly Shop Review");
+      setActiveTab("adminReview");
+      return;
+    }
+    if (action === "reviewSparkDonations") {
+      setAdminReviewFilter("Kids Program Applications");
+      setActiveTab("adminReview");
+      return;
+    }
+    if (action === "addInventoryCost") return openProductAddFlow({ source: "quick-add-inventory-cost", destinations: { forge: Boolean(activeForgeWorkspace), vault: !activeForgeWorkspace } });
     if (action === "receipt") return openReceiptScanWorkflow();
     if (action === "multiDestination") return openProductAddFlow({ source: "quick-add" });
     if (action === "bulkAdd") return openBulkAddFlow("Mixed");
@@ -19829,7 +19912,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (action === "searchVaultCatalog") return openVaultCatalogSearchFlow({ source: "quick-add" });
     if (action === "importCollection") return openVaultImportCollectionFlow();
     if (action === "quickFind" || action === "manualLookup" || action === "enterUpcSku") return openQuickFindFlow({ source: "quick-add" });
-    if (action === "suggestCatalogItem") {
+    if (action === "suggestCatalogItem" || action === "requestMissingItem") {
       return openMultiDestinationAddFlow({
         seed: {
           destinations: destinationDefaults({ tidetradr: true }),
@@ -41735,6 +41818,38 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       store: { key: "store", title: "Add Store", helper: "Suggest store", action: "storeSuggestion", icon: "scout", tone: "scout" },
       reviewMissing: { key: "reviewMissing", title: "Review Missing Item", helper: "Catalog review", action: "reviewMissingCatalog", icon: "search", tone: "admin" },
       announcement: { key: "announcement", title: "Add Announcement", helper: "Admin update", action: "addAnnouncement", icon: "bell", tone: "admin" },
+      scanCards: { key: "scanCards", title: "Scan Cards", helper: "Manual card-page review", action: "scanCards", icon: "scan", tone: "vault" },
+      addScoutReport: { key: "addScoutReport", title: "Add Scout Report", helper: "Share a current store signal", action: "storeReport", icon: "scout", tone: "scout" },
+      scanScreenshot: { key: "scanScreenshot", title: "Scan Screenshot", helper: "Review screenshot text before saving", action: "scanScreenshot", icon: "scan", tone: "scout" },
+      addVaultItem: { key: "addVaultItem", title: "Add Vault Item", helper: "Save one card or sealed item", action: "vaultItem", icon: "vault", tone: "vault" },
+      uploadReceipt: { key: "uploadReceipt", title: "Upload Receipt", helper: "Save receipt proof", action: "receipt", icon: "receipt", tone: "forge", disabled: !activeForgeWorkspace && quickAddSellerToolsEnabled(), disabledMessage: forgeWorkspaceUnavailableMessage },
+      buildKidsPack: { key: "buildKidsPack", title: "Build Kids Pack", helper: "Open The Spark support flow", action: "buildKidsPack", icon: "spark", tone: "spark" },
+      addDonation: { key: "addDonation", title: "Add Donation", helper: "Track cards, supplies, or support", action: "addDonation", icon: "spark", tone: "spark" },
+      logSupplies: { key: "logSupplies", title: "Log Supplies", helper: "Track sleeves, binders, or support", action: "logSupplies", icon: "spark", tone: "spark" },
+      createGiveaway: { key: "createGiveaway", title: "Create Giveaway", helper: "Open The Spark planning area", action: "createGiveaway", icon: "spark", tone: "spark" },
+      addEventSupport: { key: "addEventSupport", title: "Add Event Support", helper: "Open The Spark event support", action: "addEventSupport", icon: "spark", tone: "spark" },
+      chooseWatchedStore: { key: "chooseWatchedStore", title: "Choose Watched Store", helper: "Pick a Scout store slot", action: "chooseWatchedStore", icon: "scout", tone: "scout" },
+      confirmReport: { key: "confirmReport", title: "Confirm Report", helper: "Confirm a current Scout report", action: "confirmReport", icon: "scout", tone: "scout", disabled: !selectedScoutReport, disabledMessage: "Open a Scout report first." },
+      addProofReport: { key: "addProofReport", title: "Add Proof", helper: "Add proof to an open report", action: "addProofReport", icon: "scan", tone: "scout", disabled: !selectedScoutReport, disabledMessage: "Open a Scout report first." },
+      addCardManual: { key: "addCardManual", title: "Add Card Manually", helper: "Create a card record", action: "addCardManual", icon: "vault", tone: "vault" },
+      addSealedProduct: { key: "addSealedProduct", title: "Add Sealed Product", helper: "Create a sealed product record", action: "addSealedProduct", icon: "vault", tone: "vault" },
+      addPhotos: { key: "addPhotos", title: "Add Photos", helper: "Start item review with photo notes", action: "addPhotos", icon: "scan", tone: "vault" },
+      reviewUnmatchedScans: { key: "reviewUnmatchedScans", title: "Review Unmatched Scans", helper: "Manual scan review foundation", action: "reviewUnmatchedScans", icon: "scan", tone: "vault" },
+      searchCard: { key: "searchCard", title: "Search Card", helper: "Search Market Watch", action: "searchCard", icon: "search", tone: "search" },
+      scanUpc: { key: "scanUpc", title: "Scan UPC", helper: "Search by UPC or SKU", action: "scanUpc", icon: "scan", tone: "search" },
+      scanCard: { key: "scanCard", title: "Scan Card", helper: "Open scanner review", action: "scanCard", icon: "scan", tone: "search" },
+      comparePrice: { key: "comparePrice", title: "Compare Price", helper: "Open Deal Finder", action: "comparePrice", icon: "market", tone: "market" },
+      addToVault: { key: "addToVault", title: "Add to Vault", helper: "Save market item to Vault", action: "addToVault", icon: "vault", tone: "vault" },
+      addSale: { key: "addSale", title: "Add Sale", helper: "Record revenue", action: "sale", icon: "forge", tone: "forge", disabled: !activeForgeWorkspace, disabledMessage: forgeWorkspaceUnavailableMessage },
+      addExpense: { key: "addExpense", title: "Add Expense", helper: "Track business cost", action: "expense", icon: "expense", tone: "forge", disabled: !activeForgeWorkspace, disabledMessage: forgeWorkspaceUnavailableMessage },
+      logMileage: { key: "logMileage", title: "Log Mileage", helper: "Track a business trip", action: "mileage", icon: "mileage", tone: "forge", disabled: !activeForgeWorkspace, disabledMessage: forgeWorkspaceUnavailableMessage },
+      addInventoryCost: { key: "addInventoryCost", title: "Add Inventory Cost", helper: "Review cost basis", action: "addInventoryCost", icon: "forge", tone: "forge", disabled: !activeForgeWorkspace, disabledMessage: forgeWorkspaceUnavailableMessage },
+      requestMissingItem: { key: "requestMissingItem", title: "Request Missing Item", helper: "Ask for a catalog item", action: "requestMissingItem", icon: "search", tone: "warning" },
+      reviewFlaggedReports: { key: "reviewFlaggedReports", title: "Review Flagged Reports", helper: "Open moderation queue", action: "reviewFlaggedReports", icon: "scout", tone: "admin" },
+      mergeDuplicateReports: { key: "mergeDuplicateReports", title: "Merge Duplicate Reports", helper: "Open Scout report review", action: "mergeDuplicateReports", icon: "scout", tone: "admin" },
+      reviewBetaRequests: { key: "reviewBetaRequests", title: "Review Beta Requests", helper: "Open beta approvals", action: "reviewBetaRequests", icon: "settings", tone: "admin" },
+      reviewShopApplications: { key: "reviewShopApplications", title: "Review Shop Applications", helper: "Open shop review", action: "reviewShopApplications", icon: "settings", tone: "admin" },
+      reviewSparkDonations: { key: "reviewSparkDonations", title: "Review Spark Donations", helper: "Open Spark review", action: "reviewSparkDonations", icon: "spark", tone: "admin" },
     };
     const quickAddPreferencePlan = resolveQuickAddPreferenceActionKeys(currentAppSetupPreferences(), appPersonalizationContext(), { maxVisible: 6 });
     const quickAddActionPlan = selectSmartQuickAddActionPlan(adaptiveUiState, {
@@ -41954,6 +42069,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <p className="quick-add-missing-help">
               Can't find it? Request it or add manually.
             </p>
+            <div className="guided-quick-customize-row">
+              <button type="button" className="secondary-button" onClick={openQuickAddCustomization}>Customize Quick Add</button>
+              <button type="button" className="ghost-button" onClick={resetQuickAddToRecommended}>Reset to Recommended</button>
+            </div>
           </>
         ) : (
           <>
@@ -58197,6 +58316,18 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
         <b>Top</b>
       </button>
       {renderEmberAssist()}
+      <button
+        type="button"
+        className="mobile-quick-add-fab"
+        aria-label="Open Quick Add command center"
+        onClick={() => openAddActionSheet("mobile-fab")}
+      >
+        <span className="mobile-tab-icon" aria-hidden="true">
+          <AppNavIcon kind="plus" />
+        </span>
+        <b>Add</b>
+      </button>
+
       <nav className="mobile-bottom-nav" aria-label="Mobile main navigation">
         {mobileBottomTabs.map((tab) => (
           <button

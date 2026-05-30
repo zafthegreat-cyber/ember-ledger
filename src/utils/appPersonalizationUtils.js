@@ -47,16 +47,21 @@ export const APP_SETUP_PAGE_GROUPS = [
     subtitle: "Adaptive add hub. Four to six actions show first; the rest go under More.",
     maxVisible: QUICK_ADD_MAX_VISIBLE,
     options: [
-      { key: "vault", label: "Add to Vault", helper: "Save to your collection.", recommended: APP_SETUP_MODES },
-      { key: "scout", label: "Scout Report", helper: "Report store stock.", recommended: APP_SETUP_MODES },
-      { key: "missing", label: "Request Missing Item", helper: "Request or manually add an item.", recommended: APP_SETUP_MODES },
-      { key: "spark", label: "The Spark", helper: "Open the Kids Program request flow.", recommended: ["collector", "family", "admin"] },
-      { key: "quickFind", label: "Scan Anything", helper: "Search, UPC/SKU, or manual entry.", recommended: APP_SETUP_MODES },
-      { key: "forge", label: "Add to Forge", helper: "Add seller inventory.", sellerOnly: true, recommended: ["seller", "admin"] },
-      { key: "sale", label: "Add Sale", helper: "Record a sale.", sellerOnly: true, recommended: ["seller", "admin"] },
-      { key: "receipt", label: "Add Receipt", helper: "Save purchase proof.", sellerOnly: true, recommended: ["seller", "admin"] },
-      { key: "mileage", label: "Add Mileage", helper: "Log a store or business trip.", sellerOnly: true, recommended: ["seller", "admin"] },
-      { key: "expense", label: "Add Expense", helper: "Track seller/business costs.", sellerOnly: true, recommended: ["seller", "admin"] },
+      { key: "scanCards", label: "Scan Cards", helper: "Manual card-page review.", recommended: APP_SETUP_MODES },
+      { key: "addScoutReport", label: "Add Scout Report", helper: "Report current store stock.", recommended: APP_SETUP_MODES },
+      { key: "scanScreenshot", label: "Scan Screenshot", helper: "Review screenshot text before saving.", recommended: APP_SETUP_MODES },
+      { key: "addVaultItem", label: "Add Vault Item", helper: "Save to your collection.", recommended: APP_SETUP_MODES },
+      { key: "requestMissingItem", label: "Request Missing Item", helper: "Request or manually add an item.", recommended: APP_SETUP_MODES },
+      { key: "buildKidsPack", label: "Build Kids Pack", helper: "Open The Spark support flow.", recommended: ["collector", "family", "admin"] },
+      { key: "searchCard", label: "Search Card", helper: "Search Market Watch.", recommended: APP_SETUP_MODES },
+      { key: "scanUpc", label: "Scan UPC", helper: "Search by UPC or SKU.", recommended: APP_SETUP_MODES },
+      { key: "uploadReceipt", label: "Upload Receipt", helper: "Save purchase proof.", sellerOnly: true, recommended: ["seller", "admin"] },
+      { key: "addSale", label: "Add Sale", helper: "Record a sale.", sellerOnly: true, recommended: ["seller", "admin"] },
+      { key: "addExpense", label: "Add Expense", helper: "Track seller/business costs.", sellerOnly: true, recommended: ["seller", "admin"] },
+      { key: "logMileage", label: "Log Mileage", helper: "Log a store or business trip.", sellerOnly: true, recommended: ["seller", "admin"] },
+      { key: "addInventoryCost", label: "Add Inventory Cost", helper: "Review seller cost basis.", sellerOnly: true, recommended: ["seller", "admin"] },
+      { key: "reviewFlaggedReports", label: "Review Flagged Reports", helper: "Open admin moderation.", adminOnly: true, recommended: ["admin"] },
+      { key: "reviewBetaRequests", label: "Review Beta Requests", helper: "Open beta approvals.", adminOnly: true, recommended: ["admin"] },
     ],
   },
   {
@@ -290,7 +295,7 @@ const RECOMMENDATION_BUILDERS = [
   {
     id: "prioritize_scout_report_quick_add",
     pageKey: "quickAdd",
-    optionKey: "scout",
+    optionKey: "addScoutReport",
     title: "Move Scout Report higher in Quick Add?",
     body: "You submit or review Scout reports often. Put reports closer to your thumb.",
     gate: (context, usage) => !context.sellerToolsEnabled && (context.scoutMode || Number(usage.scoutReports || 0) > 1),
@@ -306,7 +311,7 @@ const RECOMMENDATION_BUILDERS = [
   {
     id: "hide_unused_seller_quick_add",
     pageKey: "quickAdd",
-    optionKey: "forge",
+    optionKey: "addInventoryCost",
     title: "Tuck away seller actions?",
     body: "Forge has not been used much yet. Keep seller actions under More until you need them.",
     gate: (context, usage) => context.sellerToolsEnabled && Number(usage.forgeItems || 0) === 0 && Number(usage.sales || 0) === 0,
@@ -348,7 +353,7 @@ export function buildAppSetupRecommendations(preferences = {}, context = {}, usa
 export function applyAppSetupRecommendation(preferences = {}, recommendationId = "", context = {}) {
   let next = normalizeAppPersonalizationPreferences(preferences, context);
   if (recommendationId === "hide_unused_seller_quick_add") {
-    next = removePreferenceKeys(next, "quickAdd", ["forge", "sale", "receipt", "mileage", "expense"], context);
+    next = removePreferenceKeys(next, "quickAdd", ["uploadReceipt", "addSale", "addExpense", "logMileage", "addInventoryCost"], context);
   } else {
     const recommendation = RECOMMENDATION_BUILDERS.find((entry) => entry.id === recommendationId);
     if (recommendation) next = addPreferenceKey(next, recommendation.pageKey, recommendation.optionKey, context);
