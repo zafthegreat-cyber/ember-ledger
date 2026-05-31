@@ -55532,10 +55532,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
             {vaultSubTab === "sets" ? (
               <section className="panel vault-sets-panel">
-                <div className="compact-card-header">
+                <div className="compact-card-header vault-set-page-heading">
                   <div>
-                    <h2>{selectedVaultSet ? selectedVaultSet.name : "Pokemon Sets"}</h2>
-                    <p>{selectedVaultSet ? "Tracked cards, variants, sealed products, wishlist gaps, and honest checklist status for this set." : "Open a set to review tracked items, safe sealed matches, wishlist gaps, and completion only when checklist data supports it."}</p>
+                    <span className="trust-badge trust-badge--secure">Protected checklist</span>
+                    <h2>{selectedVaultSet ? selectedVaultSet.name : "Set Mastery"}</h2>
+                    <p>{selectedVaultSet ? "Card completion, missing cards, wishlist gaps, and sealed products stay clearly separated." : "Track owned cards, missing checklist gaps, and sealed products without mixing them."}</p>
                   </div>
                   <div className="summary-pill-row">
                     {selectedVaultSet ? <button type="button" className="secondary-button" onClick={() => setSelectedVaultSetId("")}>All Sets</button> : null}
@@ -55550,7 +55551,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                         value={vaultSetSearchQuery}
                         onInput={(event) => setVaultSetSearchQuery(event.target.value)}
                         onChange={(event) => setVaultSetSearchQuery(event.target.value)}
-                        placeholder="Prismatic Evolutions, 151, Crown Zenith..."
+                        placeholder="Search sets"
                       />
                     </label>
                     <div className="vault-set-chip-row vault-set-master-tabs" role="group" aria-label="Set Mastery views">
@@ -55575,20 +55576,24 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                           <img src={selectedVaultSet.logoUrl || selectedVaultSet.symbolUrl} alt="" />
                         </div>
                       ) : null}
-                      <div>
+                      <div className="vault-set-detail-hero-copy">
                         <span>{selectedVaultSet.series || "Pokemon set"}</span>
                         <h3>{selectedVaultSet.completionLabel}</h3>
                         <p>{selectedVaultSet.progressCopy}{selectedVaultSet.releaseDate ? ` Released ${shortDate(selectedVaultSet.releaseDate)}.` : ""}</p>
+                        <div className="vault-set-separation-note" aria-label="Set completion scope">
+                          <span>Card completion counts cards only.</span>
+                          <span>Sealed products stay separate.</span>
+                        </div>
                       </div>
                       <div className="vault-progress-track" aria-label={`${selectedVaultSet.name} completion`}>
                         <i style={{ width: `${selectedVaultSet.percent ?? 0}%` }} />
                       </div>
                     </div>
                     <div className="vault-set-detail-grid">
-                      <div className="stat-tile"><span>{selectedVaultSet.checklistAvailable ? "Checklist cards" : "Tracked items"}</span><strong>{selectedVaultSet.checklistAvailable ? selectedVaultSet.totalCards || selectedVaultSet.catalogCards.length : selectedVaultSet.trackedItemCount}</strong></div>
-                      <div className="stat-tile"><span>Owned variants</span><strong>{selectedVaultSet.ownedQuantity}</strong></div>
-                      <div className="stat-tile"><span>{selectedVaultSet.missingSupported ? "Missing cards" : "Checklist status"}</span><strong>{selectedVaultSet.missingSupported ? selectedVaultSet.missingCount : "Unavailable"}</strong></div>
-                      <div className="stat-tile"><span>Sealed products</span><strong>{selectedVaultSet.trackedSealedCount || selectedVaultSet.sealedProducts.length}</strong></div>
+                      <div className="stat-tile vault-set-stat--cards"><span>{selectedVaultSet.checklistAvailable ? "Checklist cards" : "Tracked items"}</span><strong>{selectedVaultSet.checklistAvailable ? selectedVaultSet.totalCards || selectedVaultSet.catalogCards.length : selectedVaultSet.trackedItemCount}</strong></div>
+                      <div className="stat-tile vault-set-stat--owned"><span>Owned variants</span><strong>{selectedVaultSet.ownedQuantity}</strong></div>
+                      <div className="stat-tile vault-set-stat--missing"><span>{selectedVaultSet.missingSupported ? "Missing cards" : "Checklist status"}</span><strong>{selectedVaultSet.missingSupported ? selectedVaultSet.missingCount : "Unavailable"}</strong></div>
+                      <div className="stat-tile vault-set-stat--sealed"><span>Sealed products</span><strong>{selectedVaultSet.trackedSealedCount || selectedVaultSet.sealedProducts.length}</strong><small>Separate from card completion</small></div>
                     </div>
                     {!selectedVaultSet.checklistAvailable ? (
                       <div className="vault-set-trust-note">
@@ -55804,7 +55809,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     ) : null}
 
                     {selectedVaultSetView?.showSealed ? (
-                    <div className="vault-set-subsection">
+                    <div className="vault-set-subsection vault-set-subsection--sealed">
                       <div className="compact-card-header">
                         <div>
                           <h3>Sealed products</h3>
@@ -55837,21 +55842,37 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 ) : (
                   <div className="vault-set-grid">
                     {vaultSetMasteryRows.length ? vaultSetMasteryRows.map((set) => (
-                      <button type="button" className="vault-set-card vault-set-card-button" key={set.key || `${set.id}-${set.name}`} onClick={() => setSelectedVaultSetId(set.id)}>
-                        {set.logoUrl || set.symbolUrl ? <img className="vault-set-card-logo" src={set.logoUrl || set.symbolUrl} alt="" /> : null}
-                        <span>{set.series || "Pokemon set"}</span>
-                        <h3>{set.name}</h3>
-                        <div className="vault-progress-track" aria-label={`${set.name} completion`}>
-                          <i style={{ width: `${set.percent ?? 0}%` }} />
+                      <button type="button" className={`vault-set-card vault-set-card-button${set.percent === 100 ? " is-complete" : set.ownedCount > 0 ? " has-progress" : " is-empty"}`} key={set.key || `${set.id}-${set.name}`} onClick={() => setSelectedVaultSetId(set.id)}>
+                        <div className="vault-set-card-shell">
+                          {set.logoUrl || set.symbolUrl ? (
+                            <span className="vault-set-card-logo-wrap"><img className="vault-set-card-logo" src={set.logoUrl || set.symbolUrl} alt="" /></span>
+                          ) : (
+                            <span className="vault-set-card-logo-wrap vault-set-card-logo-wrap--placeholder">Set</span>
+                          )}
+                          <div className="vault-set-card-main">
+                            <div className="vault-set-card-kicker">
+                              <span>{set.series || "Pokemon set"}</span>
+                              {set.releaseDate ? <span>Released {shortDate(set.releaseDate)}</span> : null}
+                            </div>
+                            <h3>{set.name}</h3>
+                            <div className="vault-progress-track" aria-label={`${set.name} completion`}>
+                              <i style={{ width: `${set.percent ?? 0}%` }} />
+                            </div>
+                            <p>{set.checklistAvailable ? set.progressCopy : `${set.trackedItemCount} tracked item${set.trackedItemCount === 1 ? "" : "s"} - ${set.checklistStatus}`}</p>
+                            <dl className="vault-set-card-metrics">
+                              <div><dt>Owned</dt><dd>{set.ownedCount || 0}</dd></div>
+                              <div><dt>Total</dt><dd>{set.totalCards || set.catalogCards?.length || "Needs data"}</dd></div>
+                              <div><dt>Missing</dt><dd>{set.missingSupported ? set.missingCount : "Needs data"}</dd></div>
+                              <div><dt>Sealed</dt><dd>{set.trackedSealedCount || set.sealedProducts?.length || 0}</dd></div>
+                            </dl>
+                            <strong>{set.completionLabel}</strong>
+                          </div>
                         </div>
-                        <p>{set.checklistAvailable ? set.progressCopy : `${set.trackedItemCount} tracked item${set.trackedItemCount === 1 ? "" : "s"} - ${set.checklistStatus}`}</p>
-                        {set.releaseDate ? <span>Released {shortDate(set.releaseDate)}</span> : null}
-                        <strong>{set.completionLabel}</strong>
                       </button>
                     )) : (
                       <div className="empty-state small-empty-state">
                         <h3>No sets found yet.</h3>
-                        <p>Add cards with set names or load catalog products to start tracking set completion.</p>
+                        <p>Start this set by adding your first card. Sealed products can be tracked separately when catalog data is available.</p>
                         <button type="button" onClick={openVaultQuickAddFlow}>Add Item</button>
                       </div>
                     )}

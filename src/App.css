@@ -66450,3 +66450,445 @@ html body .app .scan-product-modal .scanner-review-primary-action {
     min-height: 38px !important;
   }
 }
+
+/* Final UI Pass 5: Vault Set Mastery / Completion polish. */
+.app-vault .vault-sets-panel {
+  overflow: hidden;
+  border-color: rgba(181, 107, 255, 0.22) !important;
+  background:
+    radial-gradient(circle at 12% -10%, rgba(181, 107, 255, 0.18), transparent 18rem),
+    radial-gradient(circle at 94% 0%, rgba(255, 179, 71, 0.12), transparent 16rem),
+    linear-gradient(145deg, rgba(9, 15, 34, 0.96), rgba(3, 9, 21, 0.98)) !important;
+}
+
+.app-vault .vault-set-page-heading {
+  align-items: start;
+  padding: clamp(12px, 1.3vw, 16px) !important;
+  border: 1px solid rgba(181, 107, 255, 0.18);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(124, 231, 255, 0.1), transparent 12rem),
+    rgba(7, 15, 32, 0.72);
+}
+
+.app-vault .vault-set-page-heading h2 {
+  color: #fbf3ff !important;
+}
+
+.app-vault .vault-set-page-heading p {
+  max-width: 72ch;
+  color: rgba(236, 244, 255, 0.76) !important;
+}
+
+.app-vault .vault-set-master-toolbar,
+.app-vault .vault-set-controls {
+  border-color: rgba(181, 107, 255, 0.2) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(124, 231, 255, 0.08), transparent 10rem),
+    rgba(3, 11, 25, 0.74) !important;
+}
+
+.app-vault .vault-set-master-toolbar .vault-search-field input,
+.app-vault .vault-set-controls select {
+  border-color: rgba(181, 107, 255, 0.24) !important;
+  background: rgba(2, 8, 22, 0.84) !important;
+}
+
+.app-vault .vault-set-chip-row button {
+  border-color: rgba(124, 231, 255, 0.2) !important;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015)),
+    rgba(8, 18, 39, 0.78) !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-vault .vault-set-chip-row button.active {
+  border-color: rgba(255, 184, 92, 0.62) !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 184, 92, 0.2), transparent 8rem),
+    linear-gradient(135deg, rgba(255, 122, 26, 0.24), rgba(181, 107, 255, 0.18)) !important;
+  box-shadow: 0 0 20px rgba(255, 179, 71, 0.1) !important;
+}
+
+.app-vault .vault-set-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important;
+  gap: clamp(10px, 1.2vw, 14px) !important;
+}
+
+.app-vault .vault-set-card-button {
+  display: block !important;
+  width: 100%;
+  min-height: 0;
+  padding: 0 !important;
+  border-color: rgba(181, 107, 255, 0.2) !important;
+  border-radius: 20px !important;
+  justify-items: stretch;
+  text-align: left;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(181, 107, 255, 0.16), transparent 11rem),
+    linear-gradient(145deg, rgba(13, 22, 49, 0.92), rgba(4, 10, 24, 0.98)) !important;
+  overflow: hidden;
+}
+
+.app-vault .vault-set-card-button.has-progress {
+  border-color: rgba(255, 179, 71, 0.28) !important;
+}
+
+.app-vault .vault-set-card-button.is-complete {
+  border-color: rgba(124, 231, 255, 0.38) !important;
+  box-shadow: 0 0 28px rgba(124, 231, 255, 0.1) !important;
+}
+
+.app-vault .vault-set-card-shell {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 12px;
+  min-width: 0;
+  width: 100%;
+  padding: 13px;
+}
+
+.app-vault .vault-set-card-logo-wrap {
+  display: grid;
+  place-items: center;
+  align-self: start;
+  width: 72px;
+  min-height: 72px;
+  overflow: hidden;
+  border: 1px solid rgba(181, 107, 255, 0.22);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 179, 71, 0.12), transparent 5rem),
+    rgba(2, 8, 22, 0.68);
+  color: rgba(232, 246, 255, 0.7);
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.app-vault .vault-set-card-logo-wrap .vault-set-card-logo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-height: 58px;
+  object-fit: contain;
+  border: 0;
+  background: transparent;
+}
+
+.app-vault .vault-set-card-main {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.app-vault .vault-set-card-kicker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.app-vault .vault-set-card-kicker span,
+.app-vault .vault-set-card-metrics dt {
+  color: rgba(124, 231, 255, 0.78);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.app-vault .vault-set-card-button h3 {
+  margin: 0 !important;
+  color: #fbf3ff !important;
+  font-size: clamp(1.02rem, 1.4vw, 1.24rem) !important;
+  line-height: 1.12 !important;
+  overflow-wrap: anywhere;
+}
+
+.app-vault .vault-set-card-button p {
+  margin: 0 !important;
+  color: rgba(232, 246, 255, 0.7) !important;
+  font-size: 0.83rem !important;
+  line-height: 1.32 !important;
+}
+
+.app-vault .vault-set-card-button strong {
+  color: #ffda8a !important;
+}
+
+.app-vault .vault-set-card-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0;
+}
+
+.app-vault .vault-set-card-metrics div {
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid rgba(181, 107, 255, 0.14);
+  border-radius: 12px;
+  background: rgba(3, 10, 24, 0.56);
+}
+
+.app-vault .vault-set-card-metrics dd {
+  margin: 3px 0 0;
+  color: #fff7ed;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.app-vault .vault-progress-track {
+  overflow: hidden;
+  min-height: 8px;
+  border: 1px solid rgba(181, 107, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(12, 18, 34, 0.88) !important;
+}
+
+.app-vault .vault-progress-track i {
+  background:
+    linear-gradient(90deg, rgba(255, 184, 92, 0.95), rgba(255, 122, 26, 0.96), rgba(124, 231, 255, 0.72)) !important;
+  box-shadow: 0 0 18px rgba(255, 184, 92, 0.22);
+}
+
+.app-vault .vault-set-card-button.is-empty .vault-progress-track i {
+  background: rgba(124, 139, 163, 0.42) !important;
+  box-shadow: none;
+}
+
+.app-vault .vault-set-card-button.is-complete .vault-progress-track i {
+  background: linear-gradient(90deg, rgba(124, 231, 255, 0.96), rgba(151, 255, 221, 0.94)) !important;
+  box-shadow: 0 0 18px rgba(124, 231, 255, 0.24);
+}
+
+.app-vault .vault-set-detail {
+  gap: clamp(12px, 1.4vw, 18px) !important;
+}
+
+.app-vault .vault-set-detail-hero {
+  border-color: rgba(181, 107, 255, 0.26) !important;
+  background:
+    radial-gradient(circle at 86% 8%, rgba(181, 107, 255, 0.2), transparent 17rem),
+    radial-gradient(circle at 0% 100%, rgba(255, 179, 71, 0.14), transparent 15rem),
+    rgba(5, 15, 31, 0.76) !important;
+}
+
+.app-vault .vault-set-detail-hero h3 {
+  color: #fff3d6 !important;
+  text-shadow: 0 0 18px rgba(255, 179, 71, 0.12);
+}
+
+.app-vault .vault-set-detail-hero-copy {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.app-vault .vault-set-separation-note {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.app-vault .vault-set-separation-note span {
+  padding: 5px 8px;
+  border: 1px solid rgba(124, 231, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(124, 231, 255, 0.07);
+  color: rgba(232, 246, 255, 0.78);
+  font-size: 0.74rem;
+  font-weight: 850;
+}
+
+.app-vault .vault-set-detail-grid {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important;
+}
+
+.app-vault .vault-set-detail-grid .stat-tile {
+  min-height: 88px;
+  border-color: rgba(181, 107, 255, 0.18);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(181, 107, 255, 0.1), transparent 8rem),
+    rgba(4, 12, 28, 0.68);
+}
+
+.app-vault .vault-set-stat--owned strong {
+  color: #ffda8a;
+}
+
+.app-vault .vault-set-stat--sealed {
+  border-color: rgba(124, 231, 255, 0.22) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(124, 231, 255, 0.12), transparent 8rem),
+    rgba(4, 12, 28, 0.68) !important;
+}
+
+.app-vault .vault-set-detail-grid .stat-tile small {
+  color: rgba(232, 246, 255, 0.64);
+  font-size: 0.75rem;
+  line-height: 1.25;
+}
+
+.app-vault .vault-set-subsection {
+  padding: clamp(11px, 1vw, 14px);
+  border: 1px solid rgba(181, 107, 255, 0.16);
+  border-radius: 18px;
+  background: rgba(3, 10, 24, 0.48);
+}
+
+.app-vault .vault-set-subsection--sealed {
+  border-color: rgba(124, 231, 255, 0.22);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(124, 231, 255, 0.1), transparent 12rem),
+    rgba(3, 10, 24, 0.52);
+}
+
+.app-vault .vault-set-mini-card {
+  border-color: rgba(124, 231, 255, 0.18) !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(124, 231, 255, 0.1), transparent 8rem),
+    rgba(7, 18, 36, 0.82) !important;
+}
+
+.app-vault .vault-set-card-row {
+  border-color: rgba(181, 107, 255, 0.18) !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(181, 107, 255, 0.12), transparent 8rem),
+    rgba(6, 18, 35, 0.84) !important;
+}
+
+.app-vault .vault-set-card-row .status-badge {
+  width: fit-content;
+  max-width: 100%;
+}
+
+@media (min-width: 1024px) {
+  .app-vault .vault-sets-panel {
+    max-width: 1220px !important;
+    width: min(100%, 1220px) !important;
+    margin-inline: auto;
+  }
+
+  .app-vault .vault-set-grid {
+    grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)) !important;
+  }
+}
+
+@media (max-width: 780px) {
+  .app-vault .vault-sets-panel {
+    padding: 12px !important;
+    padding-bottom: max(132px, calc(env(safe-area-inset-bottom) + 116px)) !important;
+  }
+
+  .app-vault .vault-set-page-heading {
+    gap: 10px !important;
+  }
+
+  .app-vault .vault-set-page-heading .summary-pill-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .app-vault .vault-set-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .app-vault .vault-set-card-shell {
+    grid-template-columns: 56px minmax(0, 1fr);
+    gap: 10px;
+    padding: 11px;
+  }
+
+  .app-vault .vault-set-card-logo-wrap {
+    width: 56px;
+    min-height: 56px;
+    border-radius: 14px;
+  }
+
+  .app-vault .vault-set-card-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .app-vault .vault-set-detail-hero {
+    padding: 13px !important;
+  }
+
+  .app-vault .vault-set-detail-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .app-vault .vault-set-detail-grid .stat-tile {
+    min-height: 82px;
+    padding: 10px;
+  }
+
+  .app-vault .vault-set-controls {
+    grid-template-columns: 1fr !important;
+    padding: 10px !important;
+  }
+
+  .app-vault .vault-set-chip-row {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    padding-bottom: 5px;
+    scrollbar-width: none;
+  }
+
+  .app-vault .vault-set-chip-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .app-vault .vault-set-chip-row button {
+    min-height: 36px;
+    padding-inline: 10px;
+    font-size: 0.8rem;
+  }
+
+  .app-vault .vault-set-controls > .vault-set-chip-row {
+    flex-wrap: wrap !important;
+    overflow-x: visible !important;
+    padding-bottom: 0;
+  }
+
+  .app-vault .vault-set-controls > .vault-set-chip-row:first-child button {
+    flex: 1 1 calc(33.333% - 8px);
+  }
+
+  .app-vault .vault-set-controls > .vault-set-chip-row:last-child {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .app-vault .vault-set-controls > .vault-set-chip-row:last-child button {
+    width: 100%;
+  }
+
+  .app-vault .vault-set-product-grid,
+  .app-vault .vault-set-card-row-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .app-vault .vault-set-card-row {
+    grid-template-columns: 64px minmax(0, 1fr) !important;
+    padding: 10px;
+  }
+
+  .app-vault .vault-set-card-row-image {
+    width: 64px !important;
+    border-radius: 12px;
+  }
+
+  .app-vault .vault-set-card-row-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .app-vault .vault-set-card-row-facts p:nth-child(3) {
+    grid-column: 1 / -1;
+  }
+}
