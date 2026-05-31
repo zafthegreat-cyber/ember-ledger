@@ -29381,7 +29381,7 @@ button:not(.auth-text-button):not(.inline-text-button):not(.mobile-tab):not(.mai
   border-radius: 16px !important;
 }
 
-button:not(.secondary-button):not(.ghost-button):not(.auth-text-button):not(.inline-text-button):not(.mobile-tab):not(.main-tab):not(.hearth-primary-cta):not([disabled]) {
+button:not(.secondary-button):not(.ghost-button):not(.auth-text-button):not(.inline-text-button):not(.mobile-tab):not(.main-tab):not(.hearth-primary-cta):not(.scan-product-mode-button):not(.scan-product-primary-button):not(.scanner-camera-retry):not(.scan-product-type-chip):not(.scan-product-stepper-button):not([disabled]) {
   background: linear-gradient(135deg, var(--cmd-ember), var(--cmd-pink) 52%, var(--cmd-purple)) !important;
   border: 1px solid rgba(255, 255, 255, 0.2) !important;
   color: #fff !important;
@@ -30604,7 +30604,7 @@ button,
   border-radius: 14px;
 }
 
-button:not(.primary-button):not(.ember-gradient-button):not(.tide-gradient-button):not(.delete-button):not(.auth-submit):not(.quick-add-fab):not(.command-hub-core):not(.hearth-primary-cta),
+button:not(.primary-button):not(.ember-gradient-button):not(.tide-gradient-button):not(.delete-button):not(.auth-submit):not(.quick-add-fab):not(.command-hub-core):not(.hearth-primary-cta):not(.scan-product-mode-button):not(.scan-product-primary-button):not(.scanner-camera-retry):not(.scan-product-type-chip):not(.scan-product-stepper-button),
 .secondary-button,
 .ghost-button,
 .drawer-link {
@@ -45533,7 +45533,7 @@ body {
   box-shadow: var(--et-focus), inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
 }
 
-.app button:not(.secondary-button):not(.ghost-button):not(.auth-text-button):not(.inline-text-button):not(.main-tab):not(.mobile-tab):not(.mobile-dock-item):not(.mobile-dock-add):not(.web-command-nav-item):not(.web-command-more-item):not(.web-command-tool):not(.overflow-menu-button):not(.topbar-brand):not(.topbar-workspace-chip):not(.notification-bell-button):not(.ember-assist-fab):not(.hearth-primary-cta):not([disabled]) {
+.app button:not(.secondary-button):not(.ghost-button):not(.auth-text-button):not(.inline-text-button):not(.main-tab):not(.mobile-tab):not(.mobile-dock-item):not(.mobile-dock-add):not(.web-command-nav-item):not(.web-command-more-item):not(.web-command-tool):not(.overflow-menu-button):not(.topbar-brand):not(.topbar-workspace-chip):not(.notification-bell-button):not(.ember-assist-fab):not(.hearth-primary-cta):not(.scan-product-mode-button):not(.scan-product-primary-button):not(.scanner-camera-retry):not(.scan-product-type-chip):not(.scan-product-stepper-button):not([disabled]) {
   border-color: rgba(249, 115, 22, 0.38);
   background: linear-gradient(135deg, var(--et-ember), #f59e0b);
   color: #170b04;
@@ -63786,6 +63786,68 @@ html body .app-command-shell.app-vault .ember-assist-shell {
   }
 }
 
+html body .app .scan-product-modal .scanner-modal-header h2 {
+  font-size: clamp(1.16rem, 1.08rem + 0.25vw, 1.38rem) !important;
+  line-height: 1.08 !important;
+}
+
+html body .app .scan-product-modal .scanner-modal-header p {
+  font-size: clamp(0.8rem, 0.76rem + 0.1vw, 0.88rem) !important;
+  line-height: 1.28 !important;
+  font-weight: 650 !important;
+}
+
+html body .app .scan-product-modal button.scan-product-primary-button {
+  color: #fff8ed !important;
+  border: 0 !important;
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22) !important;
+}
+
+html body .app .scan-product-modal button.scan-product-primary-button--barcode,
+html body .app .scan-product-modal button.scan-product-primary-button--manual {
+  background:
+    linear-gradient(135deg, #ffd166 0%, #ff9a2e 44%, #ff5a1f 100%) !important;
+  color: #170704 !important;
+  box-shadow:
+    0 12px 30px rgba(255, 101, 28, 0.26),
+    0 0 22px rgba(255, 151, 54, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.38) !important;
+}
+
+html body .app .scan-product-modal button.scan-product-primary-button--card {
+  background: linear-gradient(135deg, #f472ff 0%, #c026d3 52%, #86198f 100%) !important;
+  box-shadow:
+    0 12px 30px rgba(217, 70, 239, 0.24),
+    0 0 22px rgba(244, 114, 255, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+}
+
+html body .app .scan-product-modal button.scan-product-primary-button--photo {
+  background: linear-gradient(135deg, #67e8f9 0%, #22d3ee 45%, #0891b2 100%) !important;
+  color: #02131a !important;
+  box-shadow:
+    0 12px 30px rgba(34, 211, 238, 0.24),
+    0 0 22px rgba(103, 232, 249, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.26) !important;
+}
+
+html body .app .scan-product-modal button.scan-product-primary-button--receipt {
+  background: linear-gradient(135deg, #93c5fd 0%, #3b82f6 44%, #1d4ed8 100%) !important;
+  color: #f8fbff !important;
+  box-shadow:
+    0 12px 30px rgba(59, 130, 246, 0.24),
+    0 0 22px rgba(147, 197, 253, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24) !important;
+}
+
+html body .app .scan-product-modal button.scanner-camera-retry {
+  background:
+    linear-gradient(135deg, #ffd166 0%, #ff9a2e 44%, #ff5a1f 100%) !important;
+  color: #170704 !important;
+}
+
 @media (min-width: 860px) {
   .scan-product-modal {
     width: min(920px, calc(100vw - 48px)) !important;
@@ -63803,5 +63865,601 @@ html body .app-command-shell.app-vault .ember-assist-shell {
 
   .scan-product-modal .scanner-video {
     min-height: 260px;
+  }
+}
+
+/* Final UI Pass 1 perfect polish: make Scan Product/Card the visual standard. */
+.scan-product-backdrop {
+  background:
+    radial-gradient(circle at 50% 8%, rgba(34, 211, 238, 0.14), transparent 34rem),
+    radial-gradient(circle at 30% 90%, rgba(255, 122, 26, 0.12), transparent 30rem),
+    rgba(0, 4, 12, 0.74) !important;
+  backdrop-filter: blur(12px) saturate(1.15);
+}
+
+.scan-product-modal {
+  --scan-card-bg: rgba(8, 21, 42, 0.86);
+  --scan-card-bg-deep: rgba(3, 10, 25, 0.92);
+  --scan-text: #f8fbff;
+  --scan-muted: rgba(232, 244, 255, 0.72);
+  position: relative;
+  overflow: auto !important;
+  border: 1px solid rgba(137, 235, 255, 0.28) !important;
+  background:
+    radial-gradient(circle at 4% -4%, rgba(255, 139, 36, 0.22), transparent 17rem),
+    radial-gradient(circle at 102% 3%, rgba(34, 211, 238, 0.2), transparent 18rem),
+    radial-gradient(circle at 54% 108%, rgba(159, 98, 255, 0.14), transparent 22rem),
+    linear-gradient(155deg, rgba(7, 15, 35, 0.99), rgba(1, 5, 16, 0.99)) !important;
+  box-shadow:
+    0 30px 70px rgba(0, 0, 0, 0.64),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+    0 0 44px rgba(34, 211, 238, 0.12),
+    0 0 32px rgba(255, 122, 26, 0.1) !important;
+}
+
+.scan-product-modal::before {
+  content: none;
+}
+
+.scan-product-modal .scanner-modal-header {
+  border-bottom-color: rgba(137, 235, 255, 0.18) !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 151, 54, 0.13), transparent 12rem),
+    linear-gradient(180deg, rgba(5, 12, 29, 0.98), rgba(5, 12, 29, 0.9)) !important;
+}
+
+.scan-product-modal .scanner-modal-header h2 {
+  letter-spacing: 0;
+  font-size: clamp(1.22rem, 1.08rem + 0.46vw, 1.58rem);
+  line-height: 1.08;
+}
+
+.scan-product-modal .scanner-modal-header p {
+  max-width: 48ch;
+  color: rgba(232, 244, 255, 0.74) !important;
+  font-size: clamp(0.82rem, 0.78rem + 0.12vw, 0.9rem);
+}
+
+.scan-product-modal .modal-close-button {
+  border-radius: 16px !important;
+  border-color: rgba(137, 235, 255, 0.26) !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 151, 54, 0.14), transparent 70%),
+    rgba(9, 19, 38, 0.9) !important;
+  color: #fff8ed !important;
+  box-shadow:
+    0 8px 18px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+.scan-product-mode-rail {
+  padding: 5px;
+  border: 1px solid rgba(137, 235, 255, 0.16);
+  border-radius: 22px;
+  background:
+    linear-gradient(145deg, rgba(7, 18, 38, 0.72), rgba(2, 8, 21, 0.88));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.scan-product-mode-button {
+  min-height: 62px;
+  gap: 5px;
+  border-radius: 17px;
+  border-color: rgba(137, 235, 255, 0.14);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(137, 235, 255, 0.08), transparent 3.4rem),
+    linear-gradient(145deg, rgba(14, 30, 57, 0.76), rgba(4, 12, 29, 0.86));
+}
+
+.scan-product-mode-icon {
+  width: 29px;
+  height: 29px;
+  border-radius: 11px;
+  color: rgba(232, 244, 255, 0.84);
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255, 255, 255, 0.15), transparent 64%),
+    rgba(4, 12, 27, 0.66);
+}
+
+.scan-product-mode-button strong {
+  font-size: 0.74rem;
+}
+
+.scan-product-mode-button.is-selected .scan-product-mode-icon {
+  color: #fff8ed;
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.scan-product-mode-button--barcode.is-selected,
+.scan-product-mode-button--manual.is-selected {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 210, 108, 0.3), transparent 4rem),
+    linear-gradient(150deg, rgba(255, 145, 34, 0.44), rgba(76, 22, 8, 0.9)) !important;
+}
+
+.scan-product-mode-button--card.is-selected {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(244, 114, 255, 0.31), transparent 4rem),
+    linear-gradient(150deg, rgba(190, 24, 180, 0.4), rgba(43, 13, 72, 0.92)) !important;
+}
+
+.scan-product-mode-button--photo.is-selected {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(103, 232, 249, 0.3), transparent 4rem),
+    linear-gradient(150deg, rgba(14, 165, 168, 0.42), rgba(5, 43, 54, 0.92)) !important;
+}
+
+.scan-product-mode-button--receipt.is-selected {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(96, 165, 250, 0.31), transparent 4rem),
+    linear-gradient(150deg, rgba(37, 99, 235, 0.42), rgba(11, 37, 92, 0.92)) !important;
+}
+
+.scan-product-modal .scanner-camera-panel,
+.scan-product-mode-panel,
+.scan-product-search-card {
+  border-radius: 22px;
+  border-color: rgba(137, 235, 255, 0.2);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(34, 211, 238, 0.1), transparent 11rem),
+    linear-gradient(150deg, var(--scan-card-bg), var(--scan-card-bg-deep)) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 12px 30px rgba(0, 0, 0, 0.24);
+}
+
+.scan-product-modal .scanner-camera-panel {
+  position: relative;
+  padding: 17px;
+  border-color: rgba(255, 169, 64, 0.36);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 210, 108, 0.12), transparent 10rem),
+    radial-gradient(circle at 100% 100%, rgba(34, 211, 238, 0.12), transparent 12rem),
+    linear-gradient(150deg, rgba(11, 25, 49, 0.93), rgba(4, 10, 24, 0.97)) !important;
+}
+
+.scan-product-modal .scanner-camera-panel::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  pointer-events: none;
+  border-radius: inherit;
+  box-shadow: 0 0 22px rgba(255, 122, 26, 0.18), inset 0 0 28px rgba(34, 211, 238, 0.06);
+}
+
+.scan-product-section-heading {
+  padding: 10px 12px;
+  border: 1px solid rgba(137, 235, 255, 0.16);
+  border-radius: 16px;
+  background: rgba(2, 10, 24, 0.42);
+}
+
+.scan-product-section-heading strong,
+.scan-product-modal .scanner-camera-panel h2 {
+  font-size: 1.08rem;
+  letter-spacing: 0;
+}
+
+.scan-product-section-heading span,
+.scan-product-modal .scanner-camera-panel p,
+.scan-product-message {
+  color: var(--scan-muted) !important;
+}
+
+.scan-product-modal .scanner-camera-empty {
+  min-height: 156px;
+  align-content: center;
+  padding: 22px 18px;
+  border-radius: 18px;
+  border-color: rgba(255, 180, 74, 0.44);
+  background:
+    radial-gradient(circle at 10% 0%, rgba(255, 210, 108, 0.16), transparent 10rem),
+    radial-gradient(circle at 100% 110%, rgba(34, 211, 238, 0.14), transparent 12rem),
+    linear-gradient(145deg, rgba(29, 28, 34, 0.78), rgba(7, 18, 36, 0.9));
+}
+
+.scan-product-modal .scanner-camera-empty h3 {
+  font-size: 1.06rem;
+}
+
+.scan-product-modal .scanner-camera-empty .quick-actions {
+  gap: 10px;
+}
+
+.scan-product-modal .scanner-camera-retry,
+.scan-product-modal .scan-product-primary-button--barcode,
+.scan-product-modal .scan-product-primary-button--manual {
+  background:
+    linear-gradient(135deg, #ffd166 0%, #ff8a24 42%, #ff5a1f 100%) !important;
+  color: #170704 !important;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.18);
+  box-shadow:
+    0 12px 28px rgba(255, 101, 28, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.38) !important;
+}
+
+.scan-product-modal .scanner-camera-help,
+.scan-product-modal .scanner-camera-panel > .secondary-button,
+.scan-product-modal .scan-product-secondary-action {
+  border-color: rgba(137, 235, 255, 0.22) !important;
+  color: rgba(238, 248, 255, 0.88) !important;
+  background:
+    linear-gradient(145deg, rgba(14, 30, 57, 0.86), rgba(4, 12, 29, 0.88)) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+}
+
+.scan-product-search-card {
+  gap: 14px;
+  border-color: rgba(137, 235, 255, 0.18);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(34, 211, 238, 0.08), transparent 9rem),
+    linear-gradient(150deg, rgba(8, 20, 41, 0.78), rgba(3, 10, 25, 0.92)) !important;
+}
+
+.scan-product-search-control input,
+.scan-product-modal input,
+.scan-product-modal textarea,
+.scan-product-modal select {
+  min-height: 48px;
+  border-radius: 15px !important;
+  border-color: rgba(137, 235, 255, 0.22) !important;
+  background:
+    linear-gradient(145deg, rgba(4, 13, 29, 0.94), rgba(2, 8, 19, 0.96)) !important;
+  color: #f8fbff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 0 0 1px rgba(255, 255, 255, 0.015);
+}
+
+.scan-product-primary-button {
+  min-height: 50px;
+  border-radius: 16px;
+  font-size: 0.96rem;
+}
+
+.scan-product-modal .scan-product-primary-button--card {
+  background: linear-gradient(135deg, #f472ff, #c026d3 52%, #86198f) !important;
+  box-shadow: 0 12px 28px rgba(217, 70, 239, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.22) !important;
+}
+
+.scan-product-modal .scan-product-primary-button--photo {
+  background: linear-gradient(135deg, #67e8f9, #22d3ee 42%, #0891b2) !important;
+  color: #02131a !important;
+  box-shadow: 0 12px 28px rgba(34, 211, 238, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.26) !important;
+}
+
+.scan-product-modal .scan-product-primary-button--receipt {
+  background: linear-gradient(135deg, #93c5fd, #3b82f6 44%, #1d4ed8) !important;
+  box-shadow: 0 12px 28px rgba(59, 130, 246, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.24) !important;
+}
+
+.scan-product-file-action {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "icon title"
+    "icon sub";
+  justify-content: start !important;
+  align-items: center !important;
+  min-height: 74px;
+  gap: 2px 12px;
+  padding: 13px !important;
+  text-align: left;
+  border-color: rgba(137, 235, 255, 0.22) !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(137, 235, 255, 0.08), transparent 7rem),
+    linear-gradient(145deg, rgba(10, 25, 49, 0.86), rgba(4, 12, 29, 0.9)) !important;
+}
+
+.scan-product-file-action strong {
+  grid-area: title;
+  color: #f8fbff;
+}
+
+.scan-product-file-action small {
+  grid-area: sub;
+  color: rgba(232, 244, 255, 0.64);
+  font-weight: 700;
+}
+
+.scan-product-file-icon {
+  grid-area: icon;
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border-radius: 13px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.scan-product-file-icon::before,
+.scan-product-file-icon::after {
+  content: "";
+  position: absolute;
+}
+
+.scan-product-file-icon--camera::before {
+  inset: 10px 7px;
+  border: 2px solid currentColor;
+  border-radius: 6px;
+}
+
+.scan-product-file-icon--camera::after {
+  width: 8px;
+  height: 8px;
+  inset: 14px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+}
+
+.scan-product-file-icon--gallery::before {
+  inset: 8px;
+  border: 2px solid currentColor;
+  border-radius: 5px;
+}
+
+.scan-product-file-icon--gallery::after {
+  left: 11px;
+  right: 9px;
+  bottom: 10px;
+  height: 9px;
+  background: currentColor;
+  clip-path: polygon(0 100%, 38% 36%, 56% 62%, 72% 42%, 100% 100%);
+  opacity: 0.85;
+}
+
+.scan-product-mode-panel--card .scan-product-file-action,
+.scan-product-mode-panel--card .scan-product-file-icon {
+  color: #f0abfc !important;
+  border-color: rgba(217, 70, 239, 0.32) !important;
+}
+
+.scan-product-mode-panel--photo .scan-product-file-action,
+.scan-product-mode-panel--photo .scan-product-file-icon {
+  color: #67e8f9 !important;
+  border-color: rgba(34, 211, 238, 0.34) !important;
+}
+
+.scan-product-mode-panel--receipt .scan-product-file-action,
+.scan-product-mode-panel--receipt .scan-product-file-icon {
+  color: #93c5fd !important;
+  border-color: rgba(59, 130, 246, 0.34) !important;
+}
+
+.scan-product-helper-card,
+.scan-product-tip-list {
+  border-radius: 18px;
+  border-color: rgba(137, 235, 255, 0.18);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(34, 211, 238, 0.08), transparent 8rem),
+    rgba(3, 12, 29, 0.66);
+}
+
+.scan-product-tip-list li::marker {
+  color: #f0abfc;
+}
+
+.scan-product-helper-card--manual {
+  border-color: rgba(255, 169, 64, 0.26);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 210, 108, 0.12), transparent 8rem),
+    rgba(3, 12, 29, 0.66);
+}
+
+.scan-product-type-row button.is-selected {
+  box-shadow: 0 0 18px rgba(255, 122, 26, 0.22);
+}
+
+.scan-product-type-chip,
+.scan-product-stepper-button {
+  border: 1px solid rgba(137, 235, 255, 0.2) !important;
+  color: rgba(238, 248, 255, 0.9) !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(137, 235, 255, 0.08), transparent 4rem),
+    linear-gradient(145deg, rgba(10, 25, 49, 0.84), rgba(4, 12, 29, 0.92)) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+}
+
+.scan-product-type-chip.is-selected {
+  border-color: rgba(255, 169, 64, 0.44) !important;
+  color: #170704 !important;
+  background: linear-gradient(135deg, #ffd166, #ff9a2e 50%, #ff6b21) !important;
+  box-shadow:
+    0 10px 22px rgba(255, 101, 28, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+}
+
+.scan-product-modal .scanner-review-card {
+  border-radius: 22px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 12px 30px rgba(0, 0, 0, 0.24) !important;
+}
+
+.vault-item-card {
+  border-color: rgba(137, 235, 255, 0.2) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 12px 34px rgba(0, 0, 0, 0.24) !important;
+}
+
+.vault-image-wrap,
+.inventory-card.vault-item-card .vault-image-wrap {
+  border-color: rgba(137, 235, 255, 0.22);
+  background:
+    radial-gradient(circle at 50% 18%, rgba(34, 211, 238, 0.12), transparent 50%),
+    rgba(3, 12, 29, 0.76);
+  box-shadow: inset 0 0 24px rgba(34, 211, 238, 0.08);
+}
+
+.vault-card-actions .secondary-button {
+  border: 0 !important;
+  color: #170704 !important;
+  font-weight: 900;
+  background: linear-gradient(135deg, #ffd166, #ff8a24 46%, #ff5a1f) !important;
+  box-shadow: 0 10px 22px rgba(255, 101, 28, 0.2) !important;
+}
+
+@media (max-width: 520px) {
+  .scan-product-backdrop {
+    padding: 6px !important;
+  }
+
+  .scan-product-modal {
+    width: calc(100vw - 14px) !important;
+    max-width: calc(100vw - 14px) !important;
+    gap: 12px !important;
+    padding-inline: 12px !important;
+  }
+
+  .scan-product-modal .scanner-modal-header {
+    margin-inline: -12px !important;
+    padding: 14px 14px 11px !important;
+  }
+
+  .scan-product-modal .scanner-modal-header h2 {
+    font-size: 1.18rem;
+  }
+
+  .scan-product-modal .scanner-modal-header p {
+    font-size: 0.8rem;
+    line-height: 1.28;
+  }
+
+  .scan-product-mode-button {
+    min-height: 58px;
+    padding: 7px 3px;
+  }
+
+  .scan-product-mode-icon {
+    width: 25px;
+    height: 25px;
+    border-radius: 9px;
+  }
+
+  .scan-product-mode-button strong {
+    font-size: 0.68rem;
+  }
+
+  .scan-product-modal .scanner-camera-panel,
+  .scan-product-mode-panel,
+  .scan-product-search-card {
+    padding: 14px;
+  }
+
+  .scan-product-file-action {
+    min-height: 66px;
+  }
+}
+
+/* Final scanner cascade lock: keep scanner-specific controls out of global button flattening. */
+html body .app .scan-product-modal .scan-product-mode-button {
+  border: 1px solid rgba(137, 235, 255, 0.14) !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(137, 235, 255, 0.08), transparent 3.4rem),
+    linear-gradient(145deg, rgba(14, 30, 57, 0.76), rgba(4, 12, 29, 0.86)) !important;
+  color: rgba(238, 248, 255, 0.82) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 9px 18px rgba(0, 0, 0, 0.18) !important;
+}
+
+html body .app .scan-product-modal .scanner-modal-header {
+  box-sizing: border-box !important;
+  height: auto !important;
+  min-height: 104px !important;
+  overflow: hidden !important;
+}
+
+html body .app .scan-product-modal .scan-product-mode-button--barcode.is-selected,
+html body .app .scan-product-modal .scan-product-mode-button--manual.is-selected {
+  border-color: rgba(255, 169, 64, 0.56) !important;
+  color: #fff7ed !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 210, 108, 0.32), transparent 4.2rem),
+    linear-gradient(150deg, rgba(255, 145, 34, 0.52), rgba(76, 22, 8, 0.92)) !important;
+  box-shadow:
+    0 0 22px rgba(255, 122, 26, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14) !important;
+}
+
+html body .app .scan-product-modal .scan-product-mode-button--card.is-selected {
+  border-color: rgba(244, 114, 255, 0.54) !important;
+  color: #fff1ff !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(244, 114, 255, 0.32), transparent 4.2rem),
+    linear-gradient(150deg, rgba(190, 24, 180, 0.48), rgba(43, 13, 72, 0.94)) !important;
+  box-shadow:
+    0 0 22px rgba(217, 70, 239, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.13) !important;
+}
+
+html body .app .scan-product-modal .scan-product-mode-button--photo.is-selected {
+  border-color: rgba(103, 232, 249, 0.54) !important;
+  color: #ecfeff !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(103, 232, 249, 0.32), transparent 4.2rem),
+    linear-gradient(150deg, rgba(14, 165, 168, 0.48), rgba(5, 43, 54, 0.94)) !important;
+  box-shadow:
+    0 0 22px rgba(34, 211, 238, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.13) !important;
+}
+
+html body .app .scan-product-modal .scan-product-mode-button--receipt.is-selected {
+  border-color: rgba(147, 197, 253, 0.52) !important;
+  color: #eff6ff !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(96, 165, 250, 0.34), transparent 4.2rem),
+    linear-gradient(150deg, rgba(37, 99, 235, 0.5), rgba(11, 37, 92, 0.94)) !important;
+  box-shadow:
+    0 0 22px rgba(59, 130, 246, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.13) !important;
+}
+
+html body .app .scan-product-modal .scan-product-primary-button--barcode,
+html body .app .scan-product-modal .scan-product-primary-button--manual,
+html body .app .scan-product-modal .scanner-camera-retry {
+  border: 0 !important;
+  color: #170704 !important;
+  background: linear-gradient(135deg, #ffd166 0%, #ff9a2e 44%, #ff5a1f 100%) !important;
+  box-shadow:
+    0 14px 30px rgba(255, 101, 28, 0.28),
+    0 0 24px rgba(255, 151, 54, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.38) !important;
+}
+
+html body .app .scan-product-modal .scan-product-primary-button--card {
+  border: 0 !important;
+  color: #fff7ff !important;
+  background: linear-gradient(135deg, #f472ff 0%, #c026d3 52%, #86198f 100%) !important;
+  box-shadow:
+    0 14px 30px rgba(217, 70, 239, 0.26),
+    0 0 24px rgba(244, 114, 255, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+}
+
+html body .app .scan-product-modal .scan-product-primary-button--photo {
+  border: 0 !important;
+  color: #02131a !important;
+  background: linear-gradient(135deg, #67e8f9 0%, #22d3ee 45%, #0891b2 100%) !important;
+  box-shadow:
+    0 14px 30px rgba(34, 211, 238, 0.26),
+    0 0 24px rgba(103, 232, 249, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.26) !important;
+}
+
+html body .app .scan-product-modal .scan-product-primary-button--receipt {
+  border: 0 !important;
+  color: #f8fbff !important;
+  background: linear-gradient(135deg, #93c5fd 0%, #3b82f6 44%, #1d4ed8 100%) !important;
+  box-shadow:
+    0 14px 30px rgba(59, 130, 246, 0.26),
+    0 0 24px rgba(147, 197, 253, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24) !important;
+}
+
+@media (max-width: 520px) {
+  html body .app .scan-product-modal .scanner-modal-header {
+    min-height: 124px !important;
   }
 }

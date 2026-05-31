@@ -4981,7 +4981,7 @@ function BarcodeScanner({
           <h3>Camera unavailable</h3>
           <p>Check browser permissions, or search manually below.</p>
           <div className="quick-actions">
-            <button type="button" className="scanner-camera-retry" onClick={() => setRetryKey((current) => current + 1)}>Try Camera Again</button>
+            <button type="button" className="primary-button scanner-camera-retry" onClick={() => setRetryKey((current) => current + 1)}>Try Camera Again</button>
             <button type="button" className="secondary-button scanner-camera-help" onClick={onClose}>{manualLabel}</button>
           </div>
         </div>
@@ -53080,11 +53080,15 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </div>
                 <div className="scan-product-photo-actions">
                   <label className="secondary-button file-action-label scan-product-file-action">
-                    Take Photo
+                    <span className="scan-product-file-icon scan-product-file-icon--camera" aria-hidden="true" />
+                    <strong>Take Photo</strong>
+                    <small>Use camera</small>
                     <input type="file" accept="image/*" capture="environment" onChange={handlePictureLookupFile} />
                   </label>
                   <label className="secondary-button file-action-label scan-product-file-action">
-                    Choose from Gallery
+                    <span className="scan-product-file-icon scan-product-file-icon--gallery" aria-hidden="true" />
+                    <strong>Choose from Gallery</strong>
+                    <small>Upload image</small>
                     <input type="file" accept="image/*" onChange={handlePictureLookupFile} />
                   </label>
                 </div>
@@ -53105,7 +53109,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <strong>We’ll suggest the closest match before anything is saved.</strong>
                   <span>You review every match and can edit details before saving.</span>
                 </div>
-                <button type="button" className="scan-product-primary-button scan-product-primary-button--photo" disabled={scanSearchState === "loading"} onClick={runPictureLookupSearch}>
+                <button type="button" className="primary-button scan-product-primary-button scan-product-primary-button--photo" disabled={scanSearchState === "loading"} onClick={runPictureLookupSearch}>
                   {scanSearchState === "loading" ? "Checking..." : "Continue"}
                 </button>
                 {pictureLookup.message ? <p className="compact-subtitle scan-product-message">{pictureLookup.message}</p> : null}
@@ -53118,11 +53122,15 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </div>
                 <div className="scan-product-photo-actions">
                   <label className="secondary-button file-action-label scan-product-file-action">
-                    Take Photo
+                    <span className="scan-product-file-icon scan-product-file-icon--camera" aria-hidden="true" />
+                    <strong>Take Photo</strong>
+                    <small>Use camera</small>
                     <input type="file" accept="image/*" capture="environment" onChange={(event) => handleReceiptScanFile(event, "camera")} />
                   </label>
                   <label className="secondary-button file-action-label scan-product-file-action">
-                    Choose from Gallery
+                    <span className="scan-product-file-icon scan-product-file-icon--gallery" aria-hidden="true" />
+                    <strong>Choose from Gallery</strong>
+                    <small>Upload receipt</small>
                     <input type="file" accept="image/*,application/pdf" onChange={(event) => handleReceiptScanFile(event, "upload")} />
                   </label>
                 </div>
@@ -53142,7 +53150,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     <li>Quantity</li>
                   </ul>
                 </div>
-                <button type="button" className="scan-product-primary-button scan-product-primary-button--receipt" onClick={openReceiptScanWorkflow}>
+                <button type="button" className="primary-button scan-product-primary-button scan-product-primary-button--receipt" onClick={openReceiptScanWorkflow}>
                   Continue
                 </button>
                 {receiptScanMessage ? <p className="compact-subtitle scan-product-message">{receiptScanMessage}</p> : null}
@@ -53155,11 +53163,15 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </div>
                 <div className="scan-product-photo-actions">
                   <label className="secondary-button file-action-label scan-product-file-action">
-                    Take Photo
+                    <span className="scan-product-file-icon scan-product-file-icon--camera" aria-hidden="true" />
+                    <strong>Take Photo</strong>
+                    <small>Use camera</small>
                     <input type="file" accept="image/*" capture="environment" onChange={handlePictureLookupFile} />
                   </label>
                   <label className="secondary-button file-action-label scan-product-file-action">
-                    Choose from Gallery
+                    <span className="scan-product-file-icon scan-product-file-icon--gallery" aria-hidden="true" />
+                    <strong>Choose from Gallery</strong>
+                    <small>Upload image</small>
                     <input type="file" accept="image/*" onChange={handlePictureLookupFile} />
                   </label>
                 </div>
@@ -53188,7 +53200,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <li>Include the full card</li>
                   <li>Make sure it is in focus</li>
                 </ul>
-                <button type="button" className="scan-product-primary-button scan-product-primary-button--card" disabled={scanSearchState === "loading"} onClick={() => handleCatalogScanMatch(scanInput || pictureLookup.text)}>
+                <button type="button" className="primary-button scan-product-primary-button scan-product-primary-button--card" disabled={scanSearchState === "loading"} onClick={() => handleCatalogScanMatch(scanInput || pictureLookup.text)}>
                   {scanSearchState === "loading" ? "Checking..." : "Continue"}
                 </button>
               </div>
@@ -53198,13 +53210,17 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <strong>Manual Add</strong>
                   <span>Add an item when scan or search does not find it.</span>
                 </div>
+                <div className="scan-product-helper-card scan-product-helper-card--manual">
+                  <strong>You are still in control.</strong>
+                  <span>Enter the basics here, then review destination, quantity, price, and notes before anything is saved.</span>
+                </div>
                 <Field label="Item type">
                   <div className="scan-product-type-row">
                     {["Card", "Sealed", "Accessory", "Other"].map((type) => (
                       <button
                         key={type}
                         type="button"
-                        className={scanManualDraft.itemType === type ? "is-selected" : ""}
+                        className={`scan-product-type-chip ${scanManualDraft.itemType === type ? "is-selected" : ""}`}
                         onClick={() => setScanManualDraft((current) => ({ ...current, itemType: type }))}
                       >
                         {type}
@@ -53224,14 +53240,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </Field>
                 <Field label="Quantity">
                   <div className="scan-product-quantity-stepper">
-                    <button type="button" onClick={() => setScanManualDraft((current) => ({ ...current, quantity: Math.max(1, Number(current.quantity || 1) - 1) }))}>-</button>
+                    <button type="button" className="scan-product-stepper-button" onClick={() => setScanManualDraft((current) => ({ ...current, quantity: Math.max(1, Number(current.quantity || 1) - 1) }))}>-</button>
                     <input
                       type="number"
                       min="1"
                       value={scanManualDraft.quantity}
                       onChange={(event) => setScanManualDraft((current) => ({ ...current, quantity: Math.max(1, Number(event.target.value || 1)) }))}
                     />
-                    <button type="button" onClick={() => setScanManualDraft((current) => ({ ...current, quantity: Math.max(1, Number(current.quantity || 1) + 1) }))}>+</button>
+                    <button type="button" className="scan-product-stepper-button" onClick={() => setScanManualDraft((current) => ({ ...current, quantity: Math.max(1, Number(current.quantity || 1) + 1) }))}>+</button>
                   </div>
                 </Field>
                 <Field label="Purchase price (optional)">
@@ -53244,7 +53260,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </Field>
                 <button
                   type="button"
-                  className="scan-product-primary-button scan-product-primary-button--manual"
+                  className="primary-button scan-product-primary-button scan-product-primary-button--manual"
                   onClick={() => {
                     const itemName = String(scanInput || "").trim();
                     if (!itemName) {
@@ -53306,11 +53322,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                       placeholder="Enter UPC, SKU, TCIN, or product name"
                     />
                   </label>
-                  <button type="button" className="scan-product-primary-button scan-product-primary-button--barcode" disabled={scanSearchState === "loading"} onClick={() => handleCatalogScanMatch(scanInput)}>
+                  <button type="button" className="primary-button scan-product-primary-button scan-product-primary-button--barcode" disabled={scanSearchState === "loading"} onClick={() => handleCatalogScanMatch(scanInput)}>
                     {scanSearchState === "loading" ? "Searching..." : "Search Item"}
-                  </button>
-                  <button type="button" className="secondary-button scan-product-secondary-action" onClick={() => void runItemIdentificationAssist(scanInput)}>
-                    Help Identify Item
                   </button>
                 </div>
               </div>
