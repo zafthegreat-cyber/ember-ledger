@@ -6280,6 +6280,8 @@ export default function App() {
     { key: "tideTradr", label: "Market", icon: "market", target: "market", ariaLabel: "Market" },
     { key: "menu", label: "More", icon: "settings", action: () => openMenuDrawer("more"), ariaLabel: "More" },
   ];
+  const mobilePrimaryTabKeys = new Set(mobileBottomTabs.map((tab) => tab.key).filter((key) => key !== "menu"));
+  const activeMobileTabKey = menuOpen ? "menu" : mobilePrimaryTabKeys.has(activeMainTab) ? activeMainTab : "menu";
   const desktopSidebarByKey = {
     home: { key: "home", label: "Hearth", helper: "Your home base.", icon: "home", target: "dashboard" },
     today: { key: "today", label: "Today's Tide", helper: "Today's attention list", icon: "calendar", target: "dailyTide" },
@@ -6331,6 +6333,12 @@ export default function App() {
     .map((key) => desktopCommandDeskByKey[key])
     .filter(Boolean);
   const mobileMenuByKey = {
+    scout: { key: "scout", label: "Scout", helper: "Current store reports and watched stores.", icon: "scout", target: "scout" },
+    vault: { key: "vault", label: "Vault", helper: "Collection, scans, and item details.", icon: "vault", target: "vault" },
+    quickAdd: { key: "quickAdd", label: "Quick Add", helper: "Scan, add, report, or request.", icon: "plus", action: () => openAddActionSheet("menu-quick-add") },
+    scanProduct: { key: "scanProduct", label: "Scan Product/Card", helper: "Open scanner review before saving.", icon: "scan", action: () => openQuickAddAction("scanProduct") },
+    emberAssist: { key: "emberAssist", label: "Ember Assist", helper: "Open the app guide.", icon: "spark", action: () => setEmberAssistOpen(true) },
+    watchList: { key: "watchList", label: "Watch List", helper: "Watched stores, alerts, and drop signals.", icon: "bell", action: openEmberWatchSection },
     forge: { key: "forge", label: "Forge", helper: "Seller Tools for inventory, expenses, mileage, and reports.", icon: "forge", target: "inventory" },
     sales: { key: "sales", label: "Sales", helper: "Sales records and profit review.", icon: "forge", action: () => setActiveTab("sales") },
     receipts: { key: "receipts", label: "Receipts", helper: "Receipt review and business expenses.", icon: "clipboard", action: () => setActiveTab("expenses") },
@@ -6355,21 +6363,34 @@ export default function App() {
     feedbackInbox: adaptiveAdminNavVisible ? { key: "feedbackInbox", label: "Feedback Inbox", helper: "Support messages and beta feedback.", icon: "bell", action: () => { setAdminReviewFilter("Beta Feedback"); setActiveTab("adminReview"); } } : null,
     moderation: adaptiveModeratorNavVisible ? { key: "moderation", label: "Moderation", helper: "Community and marketplace review.", icon: "settings", target: "adminReview" } : null,
   };
-  const menuPrimaryItems = [
-    { key: "home", label: "Hearth", helper: "Your home base.", icon: "home", target: "dashboard" },
-    { key: "scout", label: "Scout", helper: "Store Signals and fair reports.", icon: "scout", target: "scout" },
-    { key: "quickAdd", label: "Quick Add", helper: "Add, scan, report, or request.", icon: "plus", action: () => openAddActionSheet("menu-primary") },
-    { key: "vault", label: "Vault", helper: "Collection.", icon: "vault", target: "vault" },
-    mobileMenuByKey.market,
-  ].filter(Boolean);
-  const menuSecondaryItems = [
-    mobileMenuByKey.comingSoon,
-    mobileMenuByKey.forge,
-    mobileMenuByKey.tidepool,
-    mobileMenuByKey.spark,
-    { key: "collections", label: "Collections", helper: "Workspace and members.", icon: "settings", action: () => openUtilityPage("collections") },
+  const menuAccountItems = [
+    mobileMenuByKey.profile,
+    mobileMenuByKey.account,
+    { key: "collections", label: "Workspace / Family", helper: "Collection workspace, members, and privacy.", icon: "settings", action: () => openUtilityPage("collections") },
     mobileMenuByKey.membership,
     mobileMenuByKey.settings,
+  ].filter(Boolean);
+  const menuCollectionItems = [
+    mobileMenuByKey.vault,
+    mobileMenuByKey.forge,
+    mobileMenuByKey.market,
+    mobileMenuByKey.watchList,
+    mobileMenuByKey.quickAdd,
+  ].filter(Boolean);
+  const menuCommunityItems = [
+    mobileMenuByKey.scout,
+    mobileMenuByKey.tidepool,
+    mobileMenuByKey.spark,
+    mobileMenuByKey.announcements,
+  ].filter(Boolean);
+  const menuToolItems = [
+    mobileMenuByKey.emberAssist,
+    mobileMenuByKey.scanProduct,
+    mobileMenuByKey.help,
+    { key: "feedback", label: "Help / Support", helper: "Send feedback or contact admin.", icon: "bell", action: () => openFeedbackDialog("feedback") },
+  ].filter(Boolean);
+  const menuRoadmapItems = [
+    mobileMenuByKey.comingSoon,
   ].filter(Boolean);
   const menuAdminItems = [
     mobileMenuByKey.admin,
@@ -6378,17 +6399,16 @@ export default function App() {
     mobileMenuByKey.feedbackInbox,
     mobileMenuByKey.moderation,
   ].filter(Boolean);
-  const menuSupportItems = [
-    { key: "ask-ember", label: "Ask Ember", helper: "Open the assistant.", icon: "spark", action: () => setEmberAssistOpen(true) },
-    { key: "feedback", label: "Feedback", helper: "Bug, request, or admin message.", icon: "bell", action: () => openFeedbackDialog("feedback") },
-    mobileMenuByKey.help,
-    Boolean(user?.id && user.id !== "local-beta") ? { key: "sign-out", label: "Sign out", helper: "Leave this device session.", icon: "settings", action: signOut } : null,
-  ].filter(Boolean);
+  if (Boolean(user?.id && user.id !== "local-beta")) {
+    menuAccountItems.push({ key: "sign-out", label: "Sign out", helper: "Leave this device session.", icon: "settings", action: signOut });
+  }
   const menuCommandSections = [
-    { key: "primary", title: "Primary", items: menuPrimaryItems },
-    { key: "secondary", title: "Secondary", items: menuSecondaryItems },
-    menuAdminItems.length ? { key: "admin", title: "Admin / Owner", items: menuAdminItems } : null,
-    { key: "support", title: "Support", items: menuSupportItems },
+    { key: "account", title: "Account", items: menuAccountItems },
+    { key: "collection", title: "Collection", items: menuCollectionItems },
+    { key: "community", title: "Community", items: menuCommunityItems },
+    { key: "tools", title: "Tools", items: menuToolItems },
+    menuAdminItems.length ? { key: "admin", title: "Admin", items: menuAdminItems } : null,
+    { key: "roadmap", title: "Coming Soon / Roadmap", items: menuRoadmapItems },
   ].filter(Boolean);
   const topbarSectionOptions = [
     ...mainTabs,
@@ -35723,9 +35743,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               className={appSetupPanel === panel.key ? "app-setup-tab is-active" : "app-setup-tab"}
               onClick={() => setAppSetupPanel(panel.key)}
               aria-pressed={appSetupPanel === panel.key}
+              aria-label={`${panel.label}. ${panel.help}`}
+              title={panel.help}
             >
               <span>{panel.label}</span>
-              <InfoTooltip label={`${panel.label} help`}>{panel.help}</InfoTooltip>
             </button>
           ))}
         </div>
@@ -49723,8 +49744,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <section className="menu-command-links" aria-label="Menu destinations">
                 <div className="menu-command-links-header">
                   <div>
-                    <strong>Command Menu</strong>
-                    <p>{adaptiveUiState.modeLabel}. Daily actions stay in the bottom dock; deeper tools live here.</p>
+                    <strong>Everything in one place</strong>
+                    <p>{adaptiveUiState.modeLabel}. Core tabs stay in the dock; deeper account, collection, community, and roadmap tools live here.</p>
                   </div>
                   <button type="button" className="secondary-button" onClick={() => openAddActionSheet("menu")}>
                     Quick Add
@@ -49732,7 +49753,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </div>
                 <div className="menu-command-groups">
                   {menuCommandSections.map((section) => (
-                    <section className={`menu-command-section menu-command-section--${section.key}`} key={section.key}>
+                    <section className={`menu-command-section menu-command-section--${section.key}`} data-menu-section={section.key} key={section.key}>
                       <h4>{section.title}</h4>
                       <div className="menu-command-grid">
                         {section.items.map((item) => (
@@ -49740,6 +49761,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                             type="button"
                             key={`${section.key}-${item.key}`}
                             className={isDesktopSidebarItemActive(item) ? "menu-command-link active" : "menu-command-link"}
+                            data-menu-key={item.key}
                             aria-current={isDesktopSidebarItemActive(item) ? "page" : undefined}
                             onClick={() => {
                               if (item.keepOpen) {
@@ -58894,8 +58916,9 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
           <button
             key={tab.key}
             type="button"
-            className={`${tab.center ? "mobile-dock-add" : "mobile-dock-item"} ${activeMainTab === tab.key || (tab.key === "menu" && menuOpen) ? "active" : ""}`.trim()}
-            aria-current={activeMainTab === tab.key || (tab.key === "menu" && menuOpen) ? "page" : undefined}
+            className={`${tab.center ? "mobile-dock-add" : "mobile-dock-item"} ${activeMobileTabKey === tab.key ? "active" : ""}`.trim()}
+            data-nav-key={tab.key}
+            aria-current={activeMobileTabKey === tab.key ? "page" : undefined}
             onClick={() => tab.action ? tab.action() : navigateMainTab(tab)}
             aria-label={tab.ariaLabel || tab.label}
           >

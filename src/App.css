@@ -64688,3 +64688,395 @@ html body .app .scan-product-modal .scanner-review-primary-action {
     grid-template-columns: 1fr;
   }
 }
+
+/* Final UI Pass 2: app shell, bottom navigation, More menu, and shared route chrome. */
+.app-command-shell {
+  --et-shell-page-rgb: 148, 163, 184;
+  --et-shell-page-accent: rgb(var(--et-shell-page-rgb));
+}
+
+.app-home {
+  --et-shell-page-rgb: 255, 179, 71;
+}
+
+.app-scout {
+  --et-shell-page-rgb: 34, 199, 255;
+}
+
+.app-vault {
+  --et-shell-page-rgb: 181, 107, 255;
+}
+
+.app-market,
+.app-tidetradr,
+.app-catalog {
+  --et-shell-page-rgb: 0, 212, 200;
+}
+
+.app-forge,
+.app-inventory,
+.app-sales,
+.app-expenses,
+.app-reports,
+.app-mileage {
+  --et-shell-page-rgb: 255, 107, 85;
+}
+
+.app-tidepool {
+  --et-shell-page-rgb: 61, 214, 255;
+}
+
+.app-kidsprogram {
+  --et-shell-page-rgb: 255, 211, 77;
+}
+
+.app-comingsoon,
+.app-settings,
+.app-account,
+.app-collections,
+.app-help,
+.app-membership,
+.app-profile,
+.app-adminreview,
+.app-moderator {
+  --et-shell-page-rgb: 148, 163, 184;
+}
+
+.app-command-shell .web-command-nav-item.active,
+.app-command-shell .web-command-more-item.active,
+.app-command-shell .web-command-tool.active {
+  border-color: rgba(var(--et-shell-page-rgb), 0.42) !important;
+  background:
+    radial-gradient(circle at 10% 0%, rgba(var(--et-shell-page-rgb), 0.22), transparent 7rem),
+    linear-gradient(135deg, rgba(255, 154, 67, 0.1), rgba(var(--et-shell-page-rgb), 0.1)) !important;
+  box-shadow:
+    0 0 24px rgba(var(--et-shell-page-rgb), 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+.menu-command-links {
+  border-color: rgba(137, 225, 255, 0.2) !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 154, 67, 0.13), transparent 12rem),
+    radial-gradient(circle at 100% 10%, rgba(37, 217, 255, 0.12), transparent 13rem),
+    linear-gradient(145deg, rgba(8, 20, 40, 0.86), rgba(3, 9, 22, 0.9)) !important;
+}
+
+.menu-command-links-header {
+  padding-bottom: 2px;
+}
+
+.menu-command-links-header strong {
+  font-size: clamp(1.02rem, 0.96rem + 0.25vw, 1.2rem) !important;
+}
+
+.menu-command-groups {
+  gap: 14px !important;
+}
+
+.menu-command-section {
+  gap: 9px !important;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(137, 225, 255, 0.12);
+  border-radius: 18px;
+  background: rgba(1, 8, 19, 0.34);
+}
+
+.menu-command-section h4 {
+  color: rgba(255, 244, 223, 0.9) !important;
+}
+
+.menu-command-section--account .menu-command-icon {
+  color: #d9e6ff;
+  border-color: rgba(148, 163, 184, 0.24);
+  background: rgba(148, 163, 184, 0.11);
+}
+
+.menu-command-section--collection .menu-command-icon {
+  color: #c691ff;
+  border-color: rgba(181, 107, 255, 0.26);
+  background: rgba(181, 107, 255, 0.12);
+}
+
+.menu-command-section--community .menu-command-icon {
+  color: #34d6ff;
+  border-color: rgba(52, 214, 255, 0.26);
+  background: rgba(52, 214, 255, 0.12);
+}
+
+.menu-command-section--tools .menu-command-icon {
+  color: #b78cff;
+  border-color: rgba(183, 140, 255, 0.26);
+  background: rgba(183, 140, 255, 0.12);
+}
+
+.menu-command-section--roadmap {
+  border-color: rgba(255, 179, 71, 0.18);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 179, 71, 0.11), transparent 8rem),
+    rgba(13, 18, 30, 0.46);
+}
+
+.menu-command-section--roadmap .menu-command-grid {
+  grid-template-columns: 1fr;
+}
+
+.menu-command-section--roadmap .menu-command-link {
+  min-height: 62px !important;
+  border-color: rgba(255, 179, 71, 0.25) !important;
+  background:
+    linear-gradient(135deg, rgba(255, 179, 71, 0.12), rgba(37, 217, 255, 0.06)) !important;
+}
+
+.menu-command-link {
+  min-width: 0;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.menu-command-link:hover,
+.menu-command-link:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(137, 225, 255, 0.28) !important;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(255, 154, 67, 0.12), transparent 7rem),
+    rgba(255, 255, 255, 0.06) !important;
+}
+
+.menu-command-link.active {
+  border-color: rgba(var(--et-shell-page-rgb), 0.42) !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(var(--et-shell-page-rgb), 0.22), transparent 6rem),
+    linear-gradient(135deg, rgba(255, 154, 67, 0.14), rgba(var(--et-shell-page-rgb), 0.1)) !important;
+  box-shadow: 0 0 24px rgba(var(--et-shell-page-rgb), 0.12) !important;
+}
+
+.utility-page-header .utility-page-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.utility-page-header .utility-page-header-actions > button {
+  min-width: max-content;
+}
+
+@media (max-width: 780px) {
+  .app-command-shell {
+    --bottom-nav-height: 88px;
+    --etds-bottom-nav-h: 88px;
+  }
+
+  .app-command-shell > main,
+  .app-shell-dark > main,
+  .app-command-shell .utility-page,
+  .app-command-shell .utility-page-layout {
+    padding-bottom: max(174px, calc(var(--bottom-nav-height, 74px) + env(safe-area-inset-bottom, 0px) + 104px)) !important;
+    scroll-padding-bottom: max(174px, calc(var(--bottom-nav-height, 74px) + env(safe-area-inset-bottom, 0px) + 104px)) !important;
+  }
+
+  .mobile-bottom-nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) 68px repeat(3, minmax(0, 1fr)) !important;
+    gap: 4px !important;
+    height: 88px !important;
+    max-height: 88px !important;
+    min-height: 88px !important;
+    padding: 7px 7px calc(8px + env(safe-area-inset-bottom, 0px)) !important;
+    border-radius: 24px 24px 0 0 !important;
+  }
+
+  .mobile-bottom-nav button[data-nav-key="home"] {
+    grid-column: 1;
+  }
+
+  .mobile-bottom-nav button[data-nav-key="scout"] {
+    grid-column: 2;
+  }
+
+  .mobile-bottom-nav button[data-nav-key="vault"] {
+    grid-column: 4;
+  }
+
+  .mobile-bottom-nav button[data-nav-key="tideTradr"] {
+    grid-column: 5;
+  }
+
+  .mobile-bottom-nav button[data-nav-key="menu"] {
+    grid-column: 6;
+  }
+
+  .mobile-bottom-nav button {
+    --nav-rgb: 148, 163, 184;
+    display: grid !important;
+    place-items: center !important;
+    gap: 3px !important;
+    min-height: 54px !important;
+    padding: 6px 4px !important;
+    border: 1px solid transparent !important;
+    border-radius: 17px !important;
+    color: rgba(225, 237, 255, 0.74) !important;
+    background: rgba(255, 255, 255, 0.025) !important;
+    box-shadow: none !important;
+  }
+
+  .mobile-bottom-nav button[data-nav-key="home"] {
+    --nav-rgb: 255, 179, 71;
+  }
+
+  .mobile-bottom-nav button[data-nav-key="scout"] {
+    --nav-rgb: 34, 199, 255;
+  }
+
+  .mobile-bottom-nav button[data-nav-key="vault"] {
+    --nav-rgb: 181, 107, 255;
+  }
+
+  .mobile-bottom-nav button[data-nav-key="tideTradr"] {
+    --nav-rgb: 0, 212, 200;
+  }
+
+  .mobile-bottom-nav button[data-nav-key="menu"] {
+    --nav-rgb: 148, 163, 184;
+  }
+
+  .mobile-bottom-nav button.active,
+  .mobile-bottom-nav button[aria-current="page"] {
+    color: #fff8e8 !important;
+    border-color: rgba(var(--nav-rgb), 0.46) !important;
+    background:
+      radial-gradient(circle at 50% 0%, rgba(var(--nav-rgb), 0.22), transparent 3rem),
+      linear-gradient(180deg, rgba(var(--nav-rgb), 0.13), rgba(255, 255, 255, 0.035)) !important;
+    box-shadow:
+      0 0 18px rgba(var(--nav-rgb), 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .mobile-bottom-nav .mobile-tab-icon {
+    width: 24px !important;
+    height: 24px !important;
+    color: currentColor !important;
+  }
+
+  .mobile-bottom-nav button b {
+    max-width: 100%;
+    color: inherit !important;
+    font-size: 0.68rem !important;
+    line-height: 1.05 !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-quick-add-fab {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 20px) !important;
+    left: calc(50% - 28px) !important;
+    width: 66px !important;
+    height: 66px !important;
+    min-width: 66px !important;
+    border-radius: 24px !important;
+  }
+
+  .app .drawer.open.menu-drawer,
+  .app-command-shell .drawer.open.menu-drawer,
+  .app-shell-dark .drawer.open.menu-drawer {
+    background:
+      radial-gradient(circle at 0% 0%, rgba(255, 154, 67, 0.14), transparent 16rem),
+      radial-gradient(circle at 100% 0%, rgba(37, 217, 255, 0.12), transparent 17rem),
+      linear-gradient(180deg, rgba(5, 14, 29, 0.98), rgba(2, 7, 17, 0.99)) !important;
+  }
+
+  .app .drawer.open.menu-drawer .drawer-header,
+  .app-command-shell .drawer.open.menu-drawer .drawer-header,
+  .app-shell-dark .drawer.open.menu-drawer .drawer-header {
+    padding: calc(14px + env(safe-area-inset-top, 0px)) 14px 12px !important;
+    border-bottom: 1px solid rgba(137, 225, 255, 0.16);
+    background: rgba(3, 9, 22, 0.76);
+    backdrop-filter: blur(18px);
+  }
+
+  .app .drawer.open.menu-drawer .drawer-menu-stack,
+  .app-command-shell .drawer.open.menu-drawer .drawer-menu-stack,
+  .app-shell-dark .drawer.open.menu-drawer .drawer-menu-stack {
+    padding: 12px 12px calc(var(--bottom-nav-height, 74px) + env(safe-area-inset-bottom, 0px) + 132px) !important;
+    scroll-padding-bottom: calc(var(--bottom-nav-height, 74px) + env(safe-area-inset-bottom, 0px) + 132px) !important;
+  }
+
+  .menu-command-links {
+    gap: 13px !important;
+    padding: 12px !important;
+    border-radius: 22px !important;
+  }
+
+  .menu-command-links-header {
+    align-items: stretch !important;
+    flex-direction: column !important;
+  }
+
+  .menu-command-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .menu-command-section--roadmap .menu-command-grid,
+  .menu-command-section--account .menu-command-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .menu-command-link {
+    grid-template-columns: 34px minmax(0, 1fr) !important;
+    gap: 9px !important;
+    min-height: 58px !important;
+    padding: 9px !important;
+  }
+
+  .menu-command-icon {
+    width: 34px !important;
+    height: 34px !important;
+    border-radius: 12px !important;
+  }
+
+  .menu-command-link strong {
+    font-size: 0.82rem !important;
+  }
+
+  .menu-command-link small {
+    display: -webkit-box !important;
+    min-height: 2.45em;
+    overflow: hidden;
+    font-size: 0.68rem !important;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .utility-page-header .standard-page-header-main {
+    gap: 12px !important;
+  }
+
+  .utility-page-header .utility-page-header-actions {
+    justify-content: stretch;
+    width: 100%;
+  }
+
+  .utility-page-header .utility-page-header-actions > button {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+}
+
+@media (min-width: 781px) {
+  .menu-command-groups {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .menu-command-section--roadmap,
+  .menu-command-section--admin {
+    grid-column: 1 / -1;
+  }
+
+  .menu-command-section--roadmap .menu-command-grid,
+  .menu-command-section--admin .menu-command-grid {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
+}
