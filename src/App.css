@@ -65066,6 +65066,12 @@ html body .app .scan-product-modal .scanner-review-primary-action {
 }
 
 @media (min-width: 781px) {
+  .app .drawer.open.menu-drawer .drawer-menu-stack,
+  .app-command-shell .drawer.open.menu-drawer .drawer-menu-stack,
+  .app-shell-dark .drawer.open.menu-drawer .drawer-menu-stack {
+    grid-template-columns: 1fr !important;
+  }
+
   .menu-command-groups {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -65078,5 +65084,220 @@ html body .app .scan-product-modal .scanner-review-primary-action {
   .menu-command-section--roadmap .menu-command-grid,
   .menu-command-section--admin .menu-command-grid {
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
+}
+
+/* Final UI Pass 2 polish follow-up: keep the shell spacious without topbar or menu collisions. */
+@media (min-width: 1024px) {
+  .app.app-command-shell > .topbar,
+  .app-command-shell > .topbar {
+    grid-template-columns: minmax(184px, 244px) minmax(280px, 1fr) max-content !important;
+    align-items: center !important;
+    gap: clamp(10px, 0.9vw, 16px) !important;
+  }
+
+  .app.app-command-shell > .topbar .app-search,
+  .app-command-shell > .topbar .app-search,
+  .app.app-command-shell > .topbar:not(.topbar-search-open) .app-search,
+  .app-command-shell > .topbar:not(.topbar-search-open) .app-search {
+    min-width: 0 !important;
+    max-width: none !important;
+  }
+
+  .app.app-command-shell > .topbar .app-search input,
+  .app-command-shell > .topbar .app-search input {
+    min-width: 0 !important;
+    text-overflow: ellipsis;
+  }
+
+  .app-command-shell .topbar-command-actions {
+    flex-wrap: nowrap !important;
+    justify-content: flex-end !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .app-command-shell .topbar-command-actions > button,
+  .app-command-shell .topbar-command-actions .notification-button,
+  .app-command-shell .topbar-command-actions .notification-trigger {
+    flex: 0 0 auto;
+    padding-inline: 11px !important;
+  }
+
+  .app-command-shell .topbar-workspace-chip {
+    min-width: 154px !important;
+    max-width: 188px !important;
+    padding-inline: 11px !important;
+  }
+
+  .app-command-shell .topbar-workspace-chip small {
+    display: none !important;
+  }
+
+  .app-command-shell .web-command-tools--quiet {
+    padding: 14px !important;
+    border-radius: 18px !important;
+  }
+
+  .app-command-shell .web-command-tools--quiet .web-command-tools-heading {
+    display: grid;
+    gap: 5px;
+    align-items: start;
+  }
+
+  .app-command-shell .web-command-tools--quiet .web-command-tools-heading span {
+    max-width: 24ch;
+    font-size: 0.72rem !important;
+    line-height: 1.3 !important;
+  }
+}
+
+@media (min-width: 1024px) and (max-width: 1500px) {
+  .app.app-command-shell > .topbar,
+  .app-command-shell > .topbar {
+    grid-template-columns: minmax(172px, 218px) minmax(240px, 1fr) max-content !important;
+  }
+
+  .app-command-shell .topbar-brand-copy small {
+    display: none !important;
+  }
+
+  .app-command-shell .topbar-brand {
+    grid-template-columns: 40px minmax(0, 1fr) !important;
+    min-height: 50px !important;
+    padding-inline: 9px !important;
+  }
+
+  .app-command-shell .topbar-brand-mark,
+  .app-command-shell .topbar-brand-mark img {
+    width: 40px !important;
+    height: 40px !important;
+  }
+
+  .app-command-shell .topbar-command-actions {
+    gap: 6px !important;
+  }
+
+  .app-command-shell .topbar-command-actions > button,
+  .app-command-shell .topbar-command-actions .notification-button,
+  .app-command-shell .topbar-command-actions .notification-trigger {
+    min-height: 42px !important;
+    padding-inline: 9px !important;
+  }
+
+  .app-command-shell .topbar-profile-button span:not(.action-icon),
+  .app-command-shell .topbar .menu-button span:not(.action-icon) {
+    display: none !important;
+  }
+
+  .app-command-shell .topbar-workspace-chip {
+    min-width: 132px !important;
+    max-width: 156px !important;
+  }
+}
+
+@media (max-width: 780px) {
+  .app-command-shell > .topbar,
+  .app.app-command-shell > .topbar {
+    min-height: 52px !important;
+    padding: calc(7px + env(safe-area-inset-top, 0px)) 10px 7px !important;
+    border-radius: 0 0 22px 22px !important;
+    border-color: rgba(137, 225, 255, 0.16) !important;
+    background:
+      radial-gradient(circle at 8% 0%, rgba(255, 159, 64, 0.16), transparent 8rem),
+      radial-gradient(circle at 100% 0%, rgba(37, 217, 255, 0.12), transparent 8rem),
+      rgba(3, 9, 22, 0.92) !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.07) !important;
+  }
+
+  .app-command-shell .topbar-brand,
+  .app.app-command-shell .topbar-brand {
+    width: 42px !important;
+    min-width: 42px !important;
+    min-height: 42px !important;
+    padding: 5px !important;
+    border: 1px solid rgba(255, 179, 71, 0.22) !important;
+    border-radius: 15px !important;
+    background:
+      radial-gradient(circle at 30% 0%, rgba(255, 179, 71, 0.16), transparent 2.7rem),
+      rgba(255, 255, 255, 0.045) !important;
+  }
+
+  .app-command-shell .topbar-brand-mark,
+  .app-command-shell .topbar-brand-mark img {
+    width: 31px !important;
+    height: 31px !important;
+    border-radius: 11px !important;
+  }
+
+  .app-command-shell .topbar-command-actions {
+    gap: 6px !important;
+  }
+
+  .app-command-shell .topbar-command-actions > .topbar-ask-ember-button,
+  .app-command-shell .topbar .menu-button {
+    min-height: 40px !important;
+    min-width: 66px !important;
+    padding: 7px 10px !important;
+    border: 1px solid rgba(137, 225, 255, 0.18) !important;
+    border-radius: 15px !important;
+    background:
+      linear-gradient(145deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.025)),
+      rgba(5, 14, 29, 0.72) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07) !important;
+    color: rgba(248, 251, 255, 0.92) !important;
+  }
+
+  .app-command-shell .topbar-ask-ember-button .action-icon {
+    width: 22px !important;
+    height: 22px !important;
+    font-size: 0.72rem !important;
+  }
+
+  .app .drawer.open.menu-drawer,
+  .app-command-shell .drawer.open.menu-drawer,
+  .app-shell-dark .drawer.open.menu-drawer {
+    grid-template-rows: auto minmax(0, 1fr) auto !important;
+  }
+
+  .app .drawer.open.menu-drawer .drawer-footer-card,
+  .app-command-shell .drawer.open.menu-drawer .drawer-footer-card,
+  .app-shell-dark .drawer.open.menu-drawer .drawer-footer-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 0 12px calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+    padding: 9px 10px !important;
+    border-radius: 16px !important;
+    border-color: rgba(137, 225, 255, 0.14) !important;
+    background: rgba(255, 255, 255, 0.035) !important;
+  }
+
+  .app .drawer.open.menu-drawer .drawer-footer-card span,
+  .app-command-shell .drawer.open.menu-drawer .drawer-footer-card span,
+  .app-shell-dark .drawer.open.menu-drawer .drawer-footer-card span {
+    min-width: 0;
+    overflow: hidden;
+    font-size: 0.68rem !important;
+    line-height: 1.18;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .app .drawer.open.menu-drawer .drawer-footer-card button,
+  .app-command-shell .drawer.open.menu-drawer .drawer-footer-card button,
+  .app-shell-dark .drawer.open.menu-drawer .drawer-footer-card button {
+    width: auto !important;
+    min-height: 34px !important;
+    padding: 7px 10px !important;
+    white-space: nowrap;
+  }
+
+  .app .drawer.open.menu-drawer .drawer-menu-stack,
+  .app-command-shell .drawer.open.menu-drawer .drawer-menu-stack,
+  .app-shell-dark .drawer.open.menu-drawer .drawer-menu-stack {
+    padding-bottom: calc(var(--bottom-nav-height, 74px) + env(safe-area-inset-bottom, 0px) + 56px) !important;
+    scroll-padding-bottom: calc(var(--bottom-nav-height, 74px) + env(safe-area-inset-bottom, 0px) + 56px) !important;
   }
 }

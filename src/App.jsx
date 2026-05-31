@@ -6289,7 +6289,7 @@ export default function App() {
     vault: { key: "vault", label: "Vault", helper: "Collection.", icon: "vault", target: "vault" },
     tideTradr: { key: "tideTradr", label: "Market", helper: "Market Watch price labels.", icon: "market", target: "market" },
     forge: { key: "forge", label: "Forge", helper: "Seller Tools.", icon: "forge", target: "inventory" },
-    tidepool: { key: "tidepool", label: "Tidepool Community", helper: "Family-safe community.", icon: "pool", target: "tidepool" },
+    tidepool: { key: "tidepool", label: "Tidepool", helper: "Community.", icon: "pool", target: "tidepool" },
   };
   const desktopSidebarItems = selectAdaptiveDesktopMainKeys(adaptiveUiState)
     .map((key) => desktopSidebarByKey[key])
@@ -7141,7 +7141,7 @@ export default function App() {
           <section className="web-command-tools web-command-tools--quiet" aria-label="Command desk management tools">
             <div className="web-command-tools-heading">
               <strong>Command Desk</strong>
-              <span>Seller and admin tools stay private until enabled.</span>
+              <span>Private seller and admin tools.</span>
             </div>
           </section>
         )}
