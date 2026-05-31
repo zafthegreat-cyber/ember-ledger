@@ -65301,3 +65301,323 @@ html body .app .scan-product-modal .scanner-review-primary-action {
     scroll-padding-bottom: calc(var(--bottom-nav-height, 74px) + env(safe-area-inset-bottom, 0px) + 56px) !important;
   }
 }
+
+/* Final UI Pass 3: Hearth adaptive home polish only. */
+.app-home .hearth-northstar {
+  --hearth-ember: #ff9f2f;
+  --hearth-ember-soft: rgba(255, 159, 47, 0.16);
+  --hearth-gold: #ffd36a;
+  --hearth-tide: #37d6ff;
+  gap: clamp(12px, 1.15vw, 22px) !important;
+}
+
+.app-home .hearth-northstar-header {
+  border-color: rgba(255, 179, 71, 0.26) !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 179, 71, 0.2), transparent 13rem),
+    radial-gradient(circle at 100% 0%, rgba(55, 214, 255, 0.1), transparent 13rem),
+    linear-gradient(145deg, rgba(11, 23, 42, 0.96), rgba(4, 10, 22, 0.96)) !important;
+}
+
+.app-home .hearth-greeting-block h1 {
+  color: #fff7e8 !important;
+  font-weight: 950 !important;
+}
+
+.app-home .hearth-greeting-block p {
+  max-width: 34rem;
+  color: rgba(245, 235, 219, 0.75) !important;
+}
+
+.app-home .hearth-points-badge {
+  border: 1px solid rgba(255, 211, 106, 0.28);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 211, 106, 0.18), transparent 4.5rem),
+    rgba(5, 14, 29, 0.72);
+  box-shadow: 0 0 20px rgba(255, 159, 47, 0.1);
+}
+
+.app-home .hearth-today-sparks-panel {
+  position: relative;
+  overflow: hidden;
+  border-color: rgba(255, 179, 71, 0.28) !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 179, 71, 0.16), transparent 14rem),
+    radial-gradient(circle at 100% 12%, rgba(55, 214, 255, 0.08), transparent 13rem),
+    linear-gradient(145deg, rgba(10, 22, 42, 0.94), rgba(4, 10, 22, 0.96)) !important;
+}
+
+.app-home .hearth-today-sparks-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(255, 211, 106, 0.72), rgba(255, 122, 24, 0.4), transparent);
+}
+
+.app-home .hearth-sparks-heading,
+.app-home .hearth-sparks-state-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.app-home .hearth-sparks-heading h2,
+.app-home .hearth-sparks-state-header h2 {
+  color: #fff2d7 !important;
+  letter-spacing: 0;
+}
+
+.app-home .hearth-sparks-heading p,
+.app-home .hearth-sparks-state-header p {
+  color: rgba(245, 235, 219, 0.74) !important;
+}
+
+.app-home .hearth-spark-mission-list {
+  display: grid;
+  gap: 10px;
+}
+
+.app-home .hearth-spark-mission-card {
+  border-color: rgba(255, 211, 106, 0.16) !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 179, 71, 0.1), transparent 7rem),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015)),
+    rgba(5, 14, 29, 0.7) !important;
+}
+
+.app-home .hearth-spark-mission-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.app-home .hearth-spark-mission-copy h3 {
+  color: #fff8ea !important;
+}
+
+.app-home .hearth-spark-mission-copy small {
+  display: block;
+  color: rgba(232, 246, 255, 0.68);
+  font-size: 0.72rem;
+  line-height: 1.28;
+}
+
+.app-home .hearth-spark-reward {
+  color: var(--hearth-gold) !important;
+}
+
+.app-home .hearth-spark-action-button {
+  border-color: rgba(255, 179, 71, 0.42) !important;
+  background: linear-gradient(135deg, #ff9f2f, #ffd36a) !important;
+  color: #1d1004 !important;
+  box-shadow: 0 10px 22px rgba(255, 159, 47, 0.16) !important;
+}
+
+.app-home .hearth-spark-dismiss {
+  border-color: rgba(255, 255, 255, 0.13) !important;
+  background: rgba(255, 255, 255, 0.045) !important;
+}
+
+.app-home .hearth-quick-actions-panel {
+  border: 1px solid rgba(132, 226, 255, 0.14) !important;
+  border-radius: 20px !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(55, 214, 255, 0.08), transparent 10rem),
+    rgba(5, 14, 29, 0.5) !important;
+  padding: 12px !important;
+}
+
+.app-home .hearth-quick-action {
+  border-color: rgba(255, 179, 71, 0.14) !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 179, 71, 0.09), transparent 6rem),
+    rgba(7, 16, 32, 0.72) !important;
+}
+
+.app-home .hearth-feature-card,
+.app-home .hearth-recent-panel {
+  border-color: rgba(132, 226, 255, 0.16) !important;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.016)),
+    rgba(5, 14, 29, 0.74) !important;
+}
+
+.app-home .hearth-feature-card {
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.app-home .hearth-feature-card:hover,
+.app-home .hearth-feature-card:focus-visible {
+  border-color: rgba(255, 179, 71, 0.32) !important;
+  box-shadow: 0 0 24px rgba(255, 159, 47, 0.1) !important;
+  transform: translateY(-1px);
+}
+
+.app-home .hearth-feature-card strong,
+.app-home .hearth-recent-panel h2 {
+  color: #fff2d7 !important;
+}
+
+.app-home .hearth-feature-card em {
+  color: var(--hearth-gold) !important;
+}
+
+.app-home .hearth-empty-state {
+  justify-items: center;
+  text-align: center;
+}
+
+.app-home .hearth-start-here-row label {
+  display: grid !important;
+  grid-template-columns: 26px minmax(0, 1fr);
+  column-gap: 10px;
+  row-gap: 2px;
+  align-items: center;
+  min-width: 0;
+}
+
+.app-home .hearth-start-here-row input {
+  grid-row: 1 / span 2;
+  align-self: center;
+}
+
+.app-home .hearth-start-here-row strong,
+.app-home .hearth-start-here-row small {
+  display: block;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.app-home .hearth-start-here-row strong {
+  color: #fff8ea !important;
+}
+
+@media (min-width: 1024px) {
+  .app-home .hearth-today-sparks-panel {
+    padding: clamp(18px, 1.25vw, 24px) !important;
+  }
+
+  .app-home .hearth-spark-mission-card {
+    grid-template-columns: 48px minmax(0, 1fr) auto;
+    gap: 12px;
+    min-height: 96px;
+    padding: 13px 14px;
+  }
+
+  .app-home .hearth-spark-mission-actions {
+    grid-column: 3;
+    display: grid;
+    grid-template-columns: minmax(104px, auto) 34px;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .app-home .hearth-spark-reward {
+    align-self: center;
+    justify-self: end;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 780px) {
+  .app-home .hearth-northstar {
+    gap: 10px !important;
+    padding: 8px 10px calc(178px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .app-home .hearth-greeting-block p {
+    max-width: 18ch;
+  }
+
+  .app-home .hearth-today-sparks-panel {
+    padding: 12px !important;
+  }
+
+  .app-home .hearth-spark-mission-list {
+    gap: 8px;
+  }
+
+  .app-home .hearth-spark-mission-card {
+    grid-template-columns: 38px minmax(0, 1fr) auto;
+    gap: 8px;
+    min-height: 0;
+    padding: 9px !important;
+  }
+
+  .app-home .hearth-spark-mission-icon {
+    width: 36px !important;
+    height: 36px !important;
+  }
+
+  .app-home .hearth-spark-mission-copy h3 {
+    font-size: 0.88rem !important;
+    line-height: 1.12;
+  }
+
+  .app-home .hearth-spark-mission-copy small {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: 0.66rem;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+  }
+
+  .app-home .hearth-spark-mission-copy p {
+    font-size: 0.68rem !important;
+  }
+
+  .app-home .hearth-spark-reward {
+    grid-column: 2 / -1 !important;
+    justify-self: start !important;
+    font-size: 0.72rem !important;
+  }
+
+  .app-home .hearth-spark-mission-actions {
+    grid-column: 2 / -1 !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 38px;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .app-home .hearth-spark-action-button {
+    min-height: 36px !important;
+  }
+
+  .app-home .hearth-spark-dismiss {
+    width: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+  }
+
+  .app-home .hearth-quick-actions-panel {
+    display: block !important;
+    padding: 10px !important;
+    border-radius: 18px !important;
+  }
+
+  .app-home .hearth-quick-action-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .app-home .hearth-quick-action {
+    min-height: 68px !important;
+    padding: 9px 8px !important;
+  }
+
+  .app-home .hearth-quick-action strong {
+    font-size: 0.74rem !important;
+    line-height: 1.08;
+    white-space: normal !important;
+  }
+
+  .app-home .hearth-feature-card {
+    min-height: 78px !important;
+    padding: 11px !important;
+  }
+}

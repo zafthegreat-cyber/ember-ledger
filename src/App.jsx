@@ -46969,20 +46969,18 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       openFlowModal("addActionSheet", { size: "medium", source });
     };
     const quickActionByKey = {
+      scanProduct: { key: "scan-product", label: "Scan Product/Card", helper: "Review before saving.", icon: "scan", onClick: () => openQuickAddAction("scanProduct") },
       quickAdd: { key: "quick-add", label: "Quick Add", helper: "Add anything.", icon: "plus", onClick: () => openAddActionSheet("hearth") },
-      scoutReport: { key: "scout-report", label: "Scout Report", helper: "Share a find.", icon: "scout", onClick: () => openQuickAddAction("storeReport") },
-      vault: { key: "vault", label: "Open Vault", helper: "My collection.", icon: "vault", onClick: () => setActiveTab("vault") },
-      market: { key: "market", label: "Open Market", helper: "Fair prices.", icon: "market", onClick: () => setActiveTab("market") },
-      spark: { key: "spark", label: "The Spark", helper: "Family fun.", icon: "spark", onClick: () => setActiveTab("kidsProgram") },
+      scoutReport: { key: "scout-report", label: "Add Scout Report", helper: "Share a current find.", icon: "scout", onClick: () => openQuickAddAction("storeReport") },
+      vault: { key: "vault", label: "View Vault", helper: "Review your collection.", icon: "vault", onClick: () => setActiveTab("vault") },
+      market: { key: "market", label: "Search Market", helper: "Check fair prices.", icon: "market", onClick: () => setActiveTab("market") },
+      spark: { key: "spark", label: "The Spark", helper: "Family support.", icon: "spark", onClick: () => setActiveTab("kidsProgram") },
+      emberAssist: { key: "ember-assist", label: "Ask Ember", helper: "Get a guided next step.", icon: "spark", onClick: () => setEmberAssistOpen(true) },
       forge: { key: "forge", label: "Open Forge", helper: "My business.", icon: "forge", onClick: () => setActiveTab("inventory") },
       addSale: { key: "add-sale", label: "Add Sale", helper: "Record revenue.", icon: "forge", onClick: () => openQuickAddAction("sale") },
       addReceipt: { key: "add-receipt", label: "Add Receipt", helper: "Track cost.", icon: "receipt", onClick: () => openQuickAddAction("receipt") },
       admin: { key: "admin", label: "Admin", helper: "Review queue.", icon: "settings", onClick: () => setActiveTab("adminReview") },
     };
-    const quickActions = ["quickAdd", "scoutReport", "vault", "market"]
-      .map((key) => quickActionByKey[key])
-      .filter(Boolean)
-      .slice(0, 4);
     const modePriorityCards = {
       admin: [
         { key: "beta", eyebrow: "Beta Access", title: "Access requests", value: pendingBetaRequests, detail: "Pending or paused beta access rows.", cta: "Review", onClick: () => { setAdminReviewFilter("Beta Access"); setActiveTab("adminReview"); }, accent: "admin" },
@@ -47106,6 +47104,17 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const hearthCanUseVault = featureAllowed("vault_basic") || featureAllowed("collection_basic") || BETA_LOCAL_MODE || activeVaultItems.length > 0;
     const hearthSparkRelevant = Boolean(hearthMode === "simple" || adaptiveUiState.familyMode || kidsApplication || pendingKidsRequests || adminToolsVisible);
     const hearthSellerRelevant = Boolean(sellerAccessVisible || forgeInventoryItems.length || workspaceSales.length || workspaceExpenses.length || visibleReceiptRecords.length);
+    const quickActions = [
+      hearthCanUseVault ? "scanProduct" : null,
+      hearthCanUseScout ? "scoutReport" : null,
+      hearthCanUseVault ? "vault" : null,
+      "market",
+      hearthSparkRelevant ? "spark" : null,
+      "emberAssist",
+    ]
+      .map((key) => quickActionByKey[key])
+      .filter(Boolean)
+      .slice(0, 4);
     const openSparkManualSeed = (kind) => {
       const donation = kind === "donation";
       openQuickAddPathFromHearth("manual", {
@@ -47145,6 +47154,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       hearthCanUseScout ? {
         key: "add-scout-report",
         title: "Add one Scout report",
+        purpose: "Help nearby families see what is current.",
         icon: "scout",
         tone: "scout",
         reward: 10,
@@ -47155,6 +47165,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       hearthCanUseScout ? {
         key: "add-scout-proof",
         title: "Add proof to one Scout report",
+        purpose: "Proof keeps current reports trustworthy.",
         icon: "scan",
         tone: "scout",
         reward: 12,
@@ -47165,6 +47176,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       hearthCanUseVault ? {
         key: "add-vault-item",
         title: "Add one Vault item",
+        purpose: "Start building a cleaner collection record.",
         icon: "vault",
         tone: "vault",
         reward: 10,
@@ -47175,6 +47187,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       hearthCanUseVault && activeVaultItems.length ? {
         key: "add-vault-photos",
         title: "Add photos to 3 Vault items",
+        purpose: "Photos make your Vault easier to review.",
         icon: "scan",
         tone: "vault",
         reward: 15,
@@ -47185,6 +47198,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       hearthSellerRelevant ? {
         key: "upload-receipt",
         title: "Upload one receipt",
+        purpose: "Receipts protect cost basis and profit.",
         icon: "clipboard",
         tone: "forge",
         reward: 15,
@@ -47195,6 +47209,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       sellerAccessVisible ? {
         key: "record-sale",
         title: "Record one sale",
+        purpose: "Keep Forge profit and history current.",
         icon: "forge",
         tone: "forge",
         reward: 15,
@@ -47205,6 +47220,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       hearthSparkRelevant ? {
         key: "add-spark-donation",
         title: "Add one Spark donation item",
+        purpose: "Track support for kid packs and events.",
         icon: "spark",
         tone: "spark",
         reward: 15,
@@ -47307,6 +47323,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     <span className="hearth-spark-mission-icon" aria-hidden="true"><AppNavIcon kind={mission.icon} /></span>
                     <div className="hearth-spark-mission-copy">
                       <h3>{mission.title}</h3>
+                      <small>{mission.purpose}</small>
                       <p>{mission.current}/{mission.target} complete</p>
                     </div>
                     <strong className="hearth-spark-reward">+{mission.reward} Ember Points</strong>
@@ -47355,7 +47372,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         value: activeVaultItems.length ? `${activeVaultItems.length} item${activeVaultItems.length === 1 ? "" : "s"} tracked` : "Start Vault",
         detail: activeVaultItems.length
           ? `${vaultMissingPhotoCount} missing photo${vaultMissingPhotoCount === 1 ? "" : "s"}${latestVaultSetName ? ` | Newest: ${latestVaultSetName}` : ""}`
-          : "Add your first card or sealed product.",
+          : "Start your collection by scanning your first item.",
         meta: hearthVaultValueLabel,
         icon: "vault",
         onClick: () => activeVaultItems.length ? setActiveTab("vault") : openQuickAddAction("vaultItem"),
@@ -47364,7 +47381,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       },
       {
         key: "spark",
-        title: "The Spark",
+        title: "Family & The Spark",
         value: kidsApplication ? "Kids Program tracked" : hearthSparkRelevant ? "Build family support" : "Add The Spark",
         detail: kidsApplication ? statusLabel(kidsApplication.status || "pending") : pendingKidsRequests ? `${pendingKidsRequests} request${pendingKidsRequests === 1 ? "" : "s"} need review` : "Kid packs, donations, and parent-safe requests.",
         meta: "Next: Build a kids pack",
@@ -47375,7 +47392,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       },
       {
         key: "forge",
-        title: "Forge",
+        title: "Forge Snapshot",
         value: workspaceSales.length || workspaceExpenses.length ? `${money(totalSalesRevenue)} revenue` : "Start Forge",
         detail: workspaceSales.length || workspaceExpenses.length
           ? `${money(monthlyProfitLoss)} profit | ${receiptsNeedingReviewCount} receipt${receiptsNeedingReviewCount === 1 ? "" : "s"} missing`
@@ -47401,7 +47418,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <span className="hearth-greeting-full">{hearthGreeting}, {hearthGreetingName}!</span>
                   <span className="hearth-greeting-short">{hearthGreeting}!</span>
                 </h1>
-                <p>Your home base. {PRODUCT_TAGLINES.primary}</p>
+                <p>Here&apos;s what needs your attention today.</p>
               </div>
             </div>
             <div className="hearth-header-actions">
@@ -49610,6 +49627,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     <button
       type="button"
       className="topbar-quick-add-button"
+      aria-label="Open Quick Add command center"
       onClick={() => openAddActionSheet("topbar")}
     >
       <span className="action-icon" aria-hidden="true">
