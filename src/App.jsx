@@ -23906,11 +23906,14 @@ function renderVaultHeader() {
     <PageHeader
       className={getHeaderCardClass("panel vault-command-center")}
       title="Vault"
-      subtitle="Collection."
+      subtitle="Protected collection."
       actions={(
         <>
         <button type="button" className="vault-command-quick-add" aria-label="Quick Add" onClick={openVaultQuickAddFlow}>
           Add Item
+        </button>
+        <button type="button" className="secondary-button vault-command-scan" aria-label="Scan Product/Card" onClick={openVaultScanFlow}>
+          Scan
         </button>
         <button type="button" className="secondary-button vault-settings-link" aria-label="Collection Settings" onClick={() => setCollectionManagerOpen(true)}>
           Settings
@@ -23943,7 +23946,7 @@ function renderVaultHeader() {
           setTimeout(() => document.getElementById("vault-items-section")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
         }
       }}
-      summaryLabel="Collection Overview"
+      summaryLabel="Vault Overview"
       summary={(
         vaultIsEmpty ? (
           <div className="vault-empty-overview-card" aria-label="Vault empty overview">
@@ -55388,11 +55391,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 {vaultItems.length === 0 ? (
                   <div className="empty-state vault-empty-action-card">
                     <span className="trust-badge trust-badge--secure">Protected collection</span>
-                    <h3>Start with one item.</h3>
-                    <p>Add a card or sealed product. Vault values appear only when market data exists.</p>
+                    <h3>Your Vault is ready.</h3>
+                    <p>Add your first item and keep your collection protected. Values appear only when market data exists.</p>
                     <div className="quick-actions">
                       <button type="button" onClick={openVaultQuickAddFlow}>Add to Vault</button>
-                      <button type="button" className="secondary-button" onClick={() => openQuickAddAction("scanVault")}>Search / Scan Item</button>
+                      <button type="button" className="secondary-button" onClick={openVaultScanFlow}>Scan Product/Card</button>
                       <button type="button" className="secondary-button" onClick={() => openQuickAddAction("suggestCatalogItem")}>Request Missing Item</button>
                     </div>
                   </div>
