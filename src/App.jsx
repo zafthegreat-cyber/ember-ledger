@@ -53366,11 +53366,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <strong>Review Before Saving</strong>
                   <span>Best match selected. Change it below if needed. Nothing is saved early.</span>
                 </div>
-                <div className="small-empty-state ai-helper-note">
+                <div className="small-empty-state ai-helper-note scanner-match-confidence-note">
                   <strong>{aiConfidenceLabel(scanReview.matchConfidence)}</strong>
                   <span>{scanReview.aiSummary || "Suggested matches may be incomplete. Review every detail before saving."}</span>
                 </div>
-                <div className="compact-card-header">
+                <div className="compact-card-header scanner-review-product-summary">
                   <div>
                     <h3>{scanReview.itemName}</h3>
                     <p>{scanReview.setName || "No set"} | {scanReview.productType || scanReview.catalogType}</p>
@@ -53420,8 +53420,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                         : "Choose a destination before continuing. Nothing is saved automatically."}
                 </p>
                 {scanMessage ? <p className="compact-subtitle">{scanMessage}</p> : null}
-                <div className="quick-actions">
-                  <button type="button" onClick={confirmScannerDestination}>
+                <div className="quick-actions scanner-review-actions">
+                  <button type="button" className="primary-button scanner-review-primary-action" onClick={confirmScannerDestination}>
                     {scanDestination === "none"
                       ? "Choose Destination"
                       : scanDestination === "expense_only"

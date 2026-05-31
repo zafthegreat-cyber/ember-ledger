@@ -29381,7 +29381,7 @@ button:not(.auth-text-button):not(.inline-text-button):not(.mobile-tab):not(.mai
   border-radius: 16px !important;
 }
 
-button:not(.secondary-button):not(.ghost-button):not(.auth-text-button):not(.inline-text-button):not(.mobile-tab):not(.main-tab):not(.hearth-primary-cta):not(.scan-product-mode-button):not(.scan-product-primary-button):not(.scanner-camera-retry):not(.scan-product-type-chip):not(.scan-product-stepper-button):not([disabled]) {
+button:not(.secondary-button):not(.ghost-button):not(.auth-text-button):not(.inline-text-button):not(.mobile-tab):not(.main-tab):not(.hearth-primary-cta):not(.scan-product-mode-button):not(.scan-product-primary-button):not(.scanner-camera-retry):not(.scanner-review-primary-action):not(.scan-product-type-chip):not(.scan-product-stepper-button):not([disabled]) {
   background: linear-gradient(135deg, var(--cmd-ember), var(--cmd-pink) 52%, var(--cmd-purple)) !important;
   border: 1px solid rgba(255, 255, 255, 0.2) !important;
   color: #fff !important;
@@ -30604,7 +30604,7 @@ button,
   border-radius: 14px;
 }
 
-button:not(.primary-button):not(.ember-gradient-button):not(.tide-gradient-button):not(.delete-button):not(.auth-submit):not(.quick-add-fab):not(.command-hub-core):not(.hearth-primary-cta):not(.scan-product-mode-button):not(.scan-product-primary-button):not(.scanner-camera-retry):not(.scan-product-type-chip):not(.scan-product-stepper-button),
+button:not(.primary-button):not(.ember-gradient-button):not(.tide-gradient-button):not(.delete-button):not(.auth-submit):not(.quick-add-fab):not(.command-hub-core):not(.hearth-primary-cta):not(.scan-product-mode-button):not(.scan-product-primary-button):not(.scanner-camera-retry):not(.scanner-review-primary-action):not(.scan-product-type-chip):not(.scan-product-stepper-button),
 .secondary-button,
 .ghost-button,
 .drawer-link {
@@ -45533,7 +45533,7 @@ body {
   box-shadow: var(--et-focus), inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
 }
 
-.app button:not(.secondary-button):not(.ghost-button):not(.auth-text-button):not(.inline-text-button):not(.main-tab):not(.mobile-tab):not(.mobile-dock-item):not(.mobile-dock-add):not(.web-command-nav-item):not(.web-command-more-item):not(.web-command-tool):not(.overflow-menu-button):not(.topbar-brand):not(.topbar-workspace-chip):not(.notification-bell-button):not(.ember-assist-fab):not(.hearth-primary-cta):not(.scan-product-mode-button):not(.scan-product-primary-button):not(.scanner-camera-retry):not(.scan-product-type-chip):not(.scan-product-stepper-button):not([disabled]) {
+.app button:not(.secondary-button):not(.ghost-button):not(.auth-text-button):not(.inline-text-button):not(.main-tab):not(.mobile-tab):not(.mobile-dock-item):not(.mobile-dock-add):not(.web-command-nav-item):not(.web-command-more-item):not(.web-command-tool):not(.overflow-menu-button):not(.topbar-brand):not(.topbar-workspace-chip):not(.notification-bell-button):not(.ember-assist-fab):not(.hearth-primary-cta):not(.scan-product-mode-button):not(.scan-product-primary-button):not(.scanner-camera-retry):not(.scanner-review-primary-action):not(.scan-product-type-chip):not(.scan-product-stepper-button):not([disabled]) {
   border-color: rgba(249, 115, 22, 0.38);
   background: linear-gradient(135deg, var(--et-ember), #f59e0b);
   color: #170b04;
@@ -64461,5 +64461,230 @@ html body .app .scan-product-modal .scan-product-primary-button--receipt {
 @media (max-width: 520px) {
   html body .app .scan-product-modal .scanner-modal-header {
     min-height: 124px !important;
+  }
+}
+
+/* Final UI Pass 1 cleanup: review state rhythm and reachable actions. */
+html body .app .scan-product-modal {
+  scroll-padding-top: 132px;
+  scroll-padding-bottom: calc(132px + env(safe-area-inset-bottom, 0px));
+}
+
+html body .app .scan-product-modal .scanner-review-card {
+  gap: 10px !important;
+  padding: 13px !important;
+  overflow: visible !important;
+}
+
+html body .app .scan-product-modal .scanner-review-card > .scanner-section-heading {
+  padding: 12px 14px !important;
+  border-color: rgba(137, 235, 255, 0.2) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(137, 235, 255, 0.08), transparent 9rem),
+    rgba(9, 22, 44, 0.72) !important;
+}
+
+html body .app .scan-product-modal .scanner-match-confidence-note {
+  min-height: 0 !important;
+  padding: 12px 14px !important;
+  gap: 5px !important;
+  text-align: left !important;
+  border-style: solid !important;
+  border-color: rgba(255, 169, 64, 0.22) !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 210, 108, 0.08), transparent 8rem),
+    rgba(3, 12, 29, 0.62) !important;
+}
+
+html body .app .scan-product-modal .scanner-match-confidence-note strong,
+html body .app .scan-product-modal .scanner-match-confidence-note span {
+  display: block;
+  max-width: 100%;
+  line-height: 1.35 !important;
+}
+
+html body .app .scan-product-modal .scanner-review-product-summary {
+  align-items: start !important;
+  gap: 10px !important;
+  padding: 13px 14px !important;
+  border: 1px solid rgba(137, 235, 255, 0.18);
+  border-radius: 17px;
+  background:
+    linear-gradient(145deg, rgba(12, 25, 49, 0.86), rgba(4, 12, 29, 0.92)) !important;
+}
+
+html body .app .scan-product-modal .scanner-review-product-summary h3 {
+  margin: 0 0 5px;
+  font-size: clamp(1rem, 0.95rem + 0.18vw, 1.14rem);
+  line-height: 1.16;
+  color: #fff8ed !important;
+}
+
+html body .app .scan-product-modal .scanner-review-product-summary p {
+  margin: 0;
+  line-height: 1.35;
+}
+
+html body .app .scan-product-modal .scanner-confidence-badge {
+  min-height: 30px;
+  padding: 6px 10px;
+  color: #dff6ff !important;
+  background: rgba(19, 72, 105, 0.72) !important;
+  border: 1px solid rgba(137, 235, 255, 0.2);
+}
+
+html body .app .scan-product-modal .scanner-review-image {
+  width: min(100%, 280px);
+  max-height: 164px !important;
+  justify-self: center;
+  padding: 8px;
+  border-color: rgba(137, 235, 255, 0.18) !important;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(34, 211, 238, 0.08), transparent 9rem),
+    rgba(3, 10, 23, 0.82) !important;
+}
+
+html body .app .scan-product-modal .catalog-detail-grid {
+  gap: 8px !important;
+}
+
+html body .app .scan-product-modal .catalog-detail-grid > * {
+  min-height: 54px;
+  border-radius: 15px;
+}
+
+html body .app .scan-product-modal .scanner-correction-panel {
+  gap: 7px !important;
+  padding: 11px !important;
+  border-radius: 17px !important;
+}
+
+html body .app .scan-product-modal .scanner-correction-panel .compact-subtitle {
+  margin: 0 !important;
+  font-size: 0.78rem !important;
+}
+
+html body .app .scan-product-modal .scanner-correction-grid {
+  gap: 6px !important;
+}
+
+html body .app .scan-product-modal .scanner-correction-grid button {
+  min-height: 34px !important;
+  padding: 7px 8px !important;
+  font-size: 0.72rem !important;
+}
+
+html body .app .scan-product-modal .scanner-review-actions {
+  position: static !important;
+  z-index: auto !important;
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px !important;
+  margin: 2px 0 0 !important;
+  padding: 12px !important;
+  border: 1px solid rgba(137, 235, 255, 0.14);
+  border-top: 1px solid rgba(137, 235, 255, 0.16);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 169, 64, 0.1), transparent 10rem),
+    linear-gradient(145deg, rgba(9, 22, 44, 0.86), rgba(3, 10, 24, 0.94)) !important;
+  border-radius: 18px;
+}
+
+html body .app .scan-product-modal .scanner-review-primary-action {
+  border: 0 !important;
+  color: #170704 !important;
+  background: linear-gradient(135deg, #ffd166 0%, #ff9a2e 44%, #ff5a1f 100%) !important;
+  background-image: linear-gradient(135deg, #ffd166 0%, #ff9a2e 44%, #ff5a1f 100%) !important;
+  box-shadow:
+    0 12px 26px rgba(255, 101, 28, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.34) !important;
+}
+
+@media (min-width: 860px) {
+  html body .app .scan-product-modal {
+    scroll-padding-top: 116px;
+  }
+
+  html body .app .scan-product-modal .scanner-review-card {
+    gap: 12px !important;
+    padding: 14px !important;
+  }
+
+  html body .app .scan-product-modal .scanner-review-image {
+    width: min(52%, 360px);
+    max-height: 210px !important;
+  }
+
+  html body .app .scan-product-modal .scanner-review-actions {
+    grid-template-columns: minmax(220px, 1fr) repeat(3, minmax(140px, auto));
+    align-items: center;
+  }
+}
+
+@media (max-width: 520px) {
+  html body .app .scan-product-modal {
+    scroll-padding-top: 140px;
+    gap: 10px !important;
+  }
+
+  html body .app .scan-product-mode-rail {
+    gap: 6px !important;
+    padding: 4px !important;
+    border-radius: 20px;
+  }
+
+  html body .app .scan-product-modal .scan-product-mode-button {
+    min-height: 54px !important;
+    gap: 4px !important;
+    border-radius: 15px !important;
+  }
+
+  html body .app .scan-product-modal .scan-product-mode-icon {
+    width: 23px !important;
+    height: 23px !important;
+  }
+
+  html body .app .scan-product-modal .scanner-camera-panel,
+  html body .app .scan-product-modal .scan-product-mode-panel,
+  html body .app .scan-product-modal .scan-product-search-card {
+    padding: 13px !important;
+    border-radius: 20px !important;
+  }
+
+  html body .app .scan-product-modal .scanner-review-card {
+    gap: 9px !important;
+    padding: 12px !important;
+  }
+
+  html body .app .scan-product-modal .scanner-review-steps {
+    gap: 6px !important;
+  }
+
+  html body .app .scan-product-modal .scanner-review-steps span {
+    min-height: 28px !important;
+    padding: 5px 7px !important;
+  }
+
+  html body .app .scan-product-modal .scanner-review-product-summary {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  html body .app .scan-product-modal .scanner-confidence-badge {
+    justify-self: start;
+    white-space: normal;
+  }
+
+  html body .app .scan-product-modal .scanner-review-image {
+    width: min(100%, 245px);
+    max-height: 138px !important;
+  }
+
+  html body .app .scan-product-modal .catalog-detail-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  html body .app .scan-product-modal .scanner-review-actions {
+    grid-template-columns: 1fr;
   }
 }
