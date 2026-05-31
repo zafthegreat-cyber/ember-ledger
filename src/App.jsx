@@ -4978,11 +4978,11 @@ function BarcodeScanner({
       <h2>{title}</h2>
       {scannerError ? (
         <div className="scanner-camera-empty">
-          <h3>Camera unavailable.</h3>
-          <p>Check browser permissions or enter the UPC/card name manually.</p>
+          <h3>Camera unavailable</h3>
+          <p>Check browser permissions, or search manually below.</p>
           <div className="quick-actions">
-            <button type="button" onClick={() => setRetryKey((current) => current + 1)}>Try Camera Again</button>
-            <button type="button" className="secondary-button" onClick={onClose}>{manualLabel}</button>
+            <button type="button" className="scanner-camera-retry" onClick={() => setRetryKey((current) => current + 1)}>Try Camera Again</button>
+            <button type="button" className="secondary-button scanner-camera-help" onClick={onClose}>{manualLabel}</button>
           </div>
         </div>
       ) : (
@@ -53037,7 +53037,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       ) : null}
 
       {showInventoryScanner ? (
-        <div className="location-modal-backdrop" role="presentation" onClick={closeInventoryScanner}>
+        <div className="location-modal-backdrop scan-product-backdrop" role="presentation" onClick={closeInventoryScanner}>
           <section className={`scanner-review-modal scan-product-modal scan-product-modal--${scanMode === "upc" ? "barcode" : scanMode}`} role="dialog" aria-modal="true" aria-labelledby="scanner-review-title" onClick={(event) => event.stopPropagation()}>
             <div className="modal-title-row modal-sticky-header scanner-modal-header">
               <div>
@@ -53054,7 +53054,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 ["picture", "Photo", "photo", "□"],
                 ["receipt", "Receipt", "receipt", "▤"],
                 ["manual", "Manual", "manual", "✎"],
-              ].map(([key, label, tone, icon]) => (
+              ].map(([key, label, tone]) => (
                 <button
                   key={key}
                   type="button"
@@ -53066,7 +53066,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     setScanMessage("");
                   }}
                 >
-                  <span aria-hidden="true">{icon}</span>
+                  <span className={`scan-product-mode-icon scan-product-mode-icon--${tone}`} aria-hidden="true" />
                   <strong>{label}</strong>
                 </button>
               ))}
@@ -53291,7 +53291,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     <strong>Search Item</strong>
                     <span>Enter UPC, SKU, TCIN, or product name</span>
                   </div>
-                  <Field label="Search Item">
+                  <label className="scan-product-search-control">
+                    <span className="sr-only">Search Item</span>
                     <input
                       value={scanReview?.rawValue || scanInput}
                       onChange={(event) => {
@@ -53304,7 +53305,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                       }}
                       placeholder="Enter UPC, SKU, TCIN, or product name"
                     />
-                  </Field>
+                  </label>
                   <button type="button" className="scan-product-primary-button scan-product-primary-button--barcode" disabled={scanSearchState === "loading"} onClick={() => handleCatalogScanMatch(scanInput)}>
                     {scanSearchState === "loading" ? "Searching..." : "Search Item"}
                   </button>
@@ -53473,9 +53474,6 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 ))}
               </div>
             ) : null}
-            <div className="location-modal-actions modal-sticky-footer scanner-modal-footer">
-              <button type="button" className="secondary-button" onClick={closeInventoryScanner}>Close</button>
-            </div>
           </section>
         </div>
       ) : null}
