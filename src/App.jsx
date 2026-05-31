@@ -55261,7 +55261,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               ) : null}
 
               {vaultItems.length ? (
-              <details className="vault-mobile-filter-drawer" defaultOpen={vaultActiveFilterCount > 0 && !vaultSearch}>
+              <details className="vault-mobile-filter-drawer" open={vaultActiveFilterCount > 0 && !vaultSearch ? true : undefined}>
                 <summary>Filters{vaultActiveFilterCount ? ` (${vaultActiveFilterCount})` : ""}</summary>
               <div className="vault-toolbar vault-filter-panel">
                 <label className="vault-filter-field">

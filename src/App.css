@@ -66093,3 +66093,337 @@ html body .app .scan-product-modal .scanner-review-primary-action {
     grid-template-columns: minmax(0, 1fr) auto !important;
   }
 }
+
+/* Final UI Pass 4 follow-up: tighten Vault Main hierarchy and browsing controls. */
+.app-vault .vault-command-center .section-hero-art {
+  opacity: 0.68 !important;
+  filter: saturate(1.12);
+}
+
+.app-vault .vault-command-center .standard-page-header-main {
+  align-items: center !important;
+}
+
+.app-vault .vault-collection-panel {
+  gap: clamp(10px, 1.2vw, 14px) !important;
+}
+
+.app-vault .vault-collection-heading {
+  padding: 10px 12px !important;
+  border: 1px solid rgba(181, 107, 255, 0.18);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(124, 231, 255, 0.08), transparent 10rem),
+    rgba(7, 15, 32, 0.68);
+}
+
+.app-vault .vault-collection-heading .eyebrow {
+  margin-bottom: 4px !important;
+}
+
+.app-vault .vault-collection-heading h2 {
+  margin-bottom: 4px !important;
+}
+
+.app-vault .vault-collection-heading p:not(.eyebrow) {
+  margin: 0 !important;
+}
+
+.app-vault .vault-collection-panel .vault-detail-disclosure {
+  margin-top: 0 !important;
+}
+
+.app-vault .vault-mobile-filter-drawer summary {
+  min-height: 38px !important;
+  padding-inline: 12px !important;
+}
+
+.app-vault .vault-mobile-filter-drawer:not([open]) {
+  background:
+    linear-gradient(145deg, rgba(7, 15, 32, 0.82), rgba(4, 10, 24, 0.86)) !important;
+}
+
+.app-vault .vault-view-strip {
+  display: flex !important;
+  gap: 6px !important;
+  align-items: center !important;
+  padding: 4px !important;
+  border-radius: 18px !important;
+}
+
+.app-vault .vault-view-strip button {
+  flex: 0 0 auto !important;
+  min-height: 36px !important;
+  padding: 7px 12px !important;
+  border-radius: 13px !important;
+  font-size: 0.82rem !important;
+}
+
+.app-vault .vault-card-topline > .status-badge {
+  border-color: rgba(181, 107, 255, 0.22) !important;
+  background: rgba(181, 107, 255, 0.08) !important;
+  color: rgba(245, 235, 255, 0.82) !important;
+  font-weight: 850 !important;
+}
+
+@media (min-width: 980px) {
+  .app-vault .vault-command-center {
+    padding-block: clamp(18px, 2vw, 26px) !important;
+  }
+
+  .app-vault .vault-command-center .standard-page-header-main {
+    grid-template-columns: minmax(260px, 0.78fr) minmax(112px, 0.18fr) minmax(390px, auto) !important;
+    min-height: 118px !important;
+  }
+
+  .app-vault .vault-command-center .section-hero-art {
+    width: clamp(112px, 9vw, 156px) !important;
+    min-width: 112px !important;
+    max-width: 156px !important;
+    min-height: 106px !important;
+    max-height: 128px !important;
+    justify-self: center !important;
+  }
+
+  .app-vault .vault-command-center .standard-page-header-actions {
+    align-self: center !important;
+  }
+
+  .app-vault .vault-command-center .standard-page-header-summary {
+    margin-top: 4px !important;
+  }
+
+  .app-vault .vault-command-center .vault-command-overview {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important;
+  }
+
+  .app-vault .vault-command-center .vault-overview-card {
+    min-height: 92px !important;
+    padding: 13px !important;
+  }
+
+  .app-vault .vault-collection-panel {
+    padding: clamp(14px, 1.4vw, 18px) !important;
+  }
+
+  .app-vault .vault-primary-controls {
+    grid-template-columns: minmax(320px, 0.72fr) minmax(0, 1fr) !important;
+  }
+}
+
+@media (max-width: 780px) {
+  .app-vault .vault-command-center .standard-page-header-main {
+    gap: 9px !important;
+  }
+
+  .app-vault .vault-command-center .section-hero-art {
+    display: none !important;
+  }
+
+  .app-vault .vault-command-center .standard-page-header-copy h2 {
+    font-size: clamp(1.82rem, 8vw, 2.18rem) !important;
+  }
+
+  .app-vault .vault-command-center .standard-page-header-tabs {
+    display: flex !important;
+    gap: 7px !important;
+    overflow-x: auto !important;
+    padding: 4px !important;
+    border-radius: 16px !important;
+    background: rgba(3, 11, 25, 0.62) !important;
+  }
+
+  .app-vault .vault-command-center .standard-page-header-tabs button {
+    flex: 0 0 auto !important;
+    min-height: 34px !important;
+    padding: 7px 12px !important;
+    border-radius: 12px !important;
+    font-size: 0.78rem !important;
+  }
+
+  .app-vault .vault-command-center .vault-command-overview {
+    margin-top: 0 !important;
+  }
+
+  .app-vault .vault-command-center .vault-overview-card {
+    flex-basis: min(132px, 38vw) !important;
+    min-height: 82px !important;
+    padding: 10px !important;
+  }
+
+  .app-vault .vault-command-center .vault-overview-card span:last-child {
+    display: -webkit-box !important;
+    overflow: hidden !important;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+  }
+
+  .app-vault .vault-collection-heading {
+    grid-template-columns: 1fr !important;
+    padding: 10px !important;
+  }
+
+  .app-vault .vault-collection-heading .eyebrow,
+  .app-vault .vault-collection-heading p:not(.eyebrow) {
+    display: none !important;
+  }
+
+  .app-vault .vault-collection-heading h2 {
+    margin: 0 !important;
+    font-size: 1rem !important;
+  }
+
+  .app-vault .vault-heading-actions button {
+    min-height: 38px !important;
+    padding-block: 7px !important;
+  }
+
+  .app-vault .vault-collection-summary {
+    display: flex !important;
+    grid-template-columns: none !important;
+    gap: 8px !important;
+    overflow-x: auto !important;
+    padding: 1px 2px 7px !important;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+
+  .app-vault .vault-collection-summary::-webkit-scrollbar {
+    display: none;
+  }
+
+  .app-vault .vault-collection-summary > div {
+    flex: 0 0 min(154px, 43vw);
+    min-height: 86px;
+    padding: 10px !important;
+    scroll-snap-align: start;
+  }
+
+  .app-vault .vault-collection-summary strong {
+    font-size: 1.08rem !important;
+  }
+
+  .app-vault .vault-home-preview-grid {
+    display: flex !important;
+    grid-template-columns: none !important;
+    gap: 8px !important;
+    overflow-x: auto !important;
+    padding: 1px 2px 7px !important;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+
+  .app-vault .vault-home-preview-grid::-webkit-scrollbar {
+    display: none;
+  }
+
+  .app-vault .vault-home-preview-card {
+    flex: 0 0 min(168px, 46vw);
+    min-height: 88px !important;
+    padding: 10px !important;
+    scroll-snap-align: start;
+  }
+
+  .app-vault .vault-home-preview-card small {
+    display: -webkit-box !important;
+    overflow: hidden !important;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .app-vault .vault-primary-controls {
+    padding: 8px !important;
+    gap: 7px !important;
+  }
+
+  .app-vault .vault-primary-controls .vault-search-field {
+    gap: 5px !important;
+  }
+
+  .app-vault .vault-primary-controls .vault-search-input {
+    min-height: 40px !important;
+    border-radius: 13px !important;
+    font-size: 0.84rem !important;
+  }
+
+  .app-vault .vault-mobile-filter-drawer summary {
+    min-height: 36px !important;
+    font-size: 0.82rem !important;
+  }
+
+  .app-vault .vault-filter-panel {
+    padding: 9px !important;
+  }
+
+  .app-vault .vault-view-strip {
+    width: auto !important;
+    margin-inline: 0 !important;
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    justify-content: flex-start !important;
+    overflow-x: auto !important;
+    border-radius: 16px !important;
+    scrollbar-width: none;
+  }
+
+  .app-vault .vault-view-strip::-webkit-scrollbar {
+    display: none;
+  }
+
+  .app-vault .vault-view-strip button {
+    width: auto !important;
+    flex: 0 0 auto !important;
+    white-space: nowrap !important;
+    min-height: 34px !important;
+    padding: 6px 11px !important;
+    font-size: 0.78rem !important;
+  }
+
+  .app-vault .vault-empty-summary-card {
+    display: none !important;
+  }
+
+  .app-vault .vault-item-card {
+    gap: 9px !important;
+    padding: 11px !important;
+    border-radius: 18px !important;
+  }
+
+  .app-vault .vault-card-topline h3 {
+    font-size: 0.92rem !important;
+    line-height: 1.12 !important;
+  }
+
+  .app-vault .vault-card-topline .compact-subtitle {
+    font-size: 0.76rem !important;
+  }
+
+  .app-vault .vault-card-main,
+  .app-vault .vault-collection-panel .vault-card-main {
+    grid-template-columns: 78px minmax(0, 1fr) !important;
+    gap: 9px !important;
+  }
+
+  .app-vault .vault-image-wrap,
+  .app-vault .inventory-card.vault-item-card .vault-image-wrap,
+  .app-vault .vault-collection-panel .vault-image-wrap {
+    width: 78px !important;
+    height: 78px !important;
+    min-height: 78px !important;
+    border-radius: 14px !important;
+  }
+
+  .app-vault .vault-card-facts {
+    gap: 6px !important;
+  }
+
+  .app-vault .vault-card-facts p {
+    min-height: 36px !important;
+    padding: 6px 8px !important;
+  }
+
+  .app-vault .vault-card-actions .secondary-button {
+    min-height: 38px !important;
+  }
+}
