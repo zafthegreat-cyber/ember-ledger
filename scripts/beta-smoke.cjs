@@ -788,7 +788,7 @@ async function main() {
       assert.equal(opened, true, "Quick Add command entry should be visible");
       const quickAddModal = page.locator('.flow-modal[data-flow="addActionSheet"]').first();
       await quickAddModal.waitFor({ state: "visible", timeout: 5000 });
-      await assertVisibleText("Scan Anything");
+      await assertVisibleText("Scan Product/Card");
       await quickAddModal.locator('.modal-close-button[aria-label="Close Quick Add"]').click();
       await quickAddModal.waitFor({ state: "hidden", timeout: 5000 });
     });

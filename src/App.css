@@ -65325,6 +65325,7 @@ html body .app .scan-product-modal .scanner-review-primary-action {
 }
 
 .app-home .hearth-greeting-block p {
+  display: block !important;
   max-width: 34rem;
   color: rgba(245, 235, 219, 0.75) !important;
 }
@@ -65406,8 +65407,17 @@ html body .app .scan-product-modal .scanner-review-primary-action {
   line-height: 1.28;
 }
 
+.app-home .hearth-spark-mission-copy p {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+
 .app-home .hearth-spark-reward {
   color: var(--hearth-gold) !important;
+  font-size: 0.78rem;
+  line-height: 1.12;
 }
 
 .app-home .hearth-spark-action-button {
@@ -65504,7 +65514,7 @@ html body .app .scan-product-modal .scanner-review-primary-action {
   .app-home .hearth-spark-mission-card {
     grid-template-columns: 48px minmax(0, 1fr) auto;
     gap: 12px;
-    min-height: 96px;
+    min-height: 82px;
     padding: 13px 14px;
   }
 
@@ -65517,8 +65527,6 @@ html body .app .scan-product-modal .scanner-review-primary-action {
   }
 
   .app-home .hearth-spark-reward {
-    align-self: center;
-    justify-self: end;
     white-space: nowrap;
   }
 }
@@ -65526,72 +65534,78 @@ html body .app .scan-product-modal .scanner-review-primary-action {
 @media (max-width: 780px) {
   .app-home .hearth-northstar {
     gap: 10px !important;
-    padding: 8px 10px calc(178px + env(safe-area-inset-bottom, 0px)) !important;
+    padding: 8px 10px calc(212px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   .app-home .hearth-greeting-block p {
-    max-width: 18ch;
+    max-width: 22ch;
+    font-size: 0.74rem !important;
+    line-height: 1.25 !important;
   }
 
   .app-home .hearth-today-sparks-panel {
-    padding: 12px !important;
+    padding: 11px !important;
   }
 
   .app-home .hearth-spark-mission-list {
-    gap: 8px;
+    gap: 7px;
   }
 
   .app-home .hearth-spark-mission-card {
-    grid-template-columns: 38px minmax(0, 1fr) auto;
+    grid-template-columns: 34px minmax(0, 1fr) minmax(102px, auto);
     gap: 8px;
     min-height: 0;
-    padding: 9px !important;
+    align-items: center;
+    padding: 8px !important;
   }
 
   .app-home .hearth-spark-mission-icon {
-    width: 36px !important;
-    height: 36px !important;
+    width: 32px !important;
+    height: 32px !important;
   }
 
   .app-home .hearth-spark-mission-copy h3 {
-    font-size: 0.88rem !important;
+    font-size: 0.82rem !important;
     line-height: 1.12;
   }
 
   .app-home .hearth-spark-mission-copy small {
     display: -webkit-box;
     overflow: hidden;
-    font-size: 0.66rem;
+    font-size: 0.64rem;
     -webkit-box-orient: vertical;
-    -webkit-line-clamp: 1;
+    -webkit-line-clamp: 2;
   }
 
   .app-home .hearth-spark-mission-copy p {
-    font-size: 0.68rem !important;
+    gap: 4px 7px;
+    font-size: 0.66rem !important;
+    line-height: 1.12 !important;
   }
 
   .app-home .hearth-spark-reward {
-    grid-column: 2 / -1 !important;
-    justify-self: start !important;
-    font-size: 0.72rem !important;
+    font-size: 0.66rem !important;
   }
 
   .app-home .hearth-spark-mission-actions {
-    grid-column: 2 / -1 !important;
+    grid-column: 3 !important;
+    grid-row: 1 / span 2;
     display: grid !important;
-    grid-template-columns: minmax(0, 1fr) 38px;
-    gap: 8px;
+    grid-template-columns: minmax(66px, 1fr) 30px;
+    gap: 6px;
     align-items: center;
   }
 
   .app-home .hearth-spark-action-button {
-    min-height: 36px !important;
+    min-height: 34px !important;
+    padding: 0 10px !important;
+    font-size: 0.74rem !important;
   }
 
   .app-home .hearth-spark-dismiss {
-    width: 36px !important;
-    min-width: 36px !important;
-    min-height: 36px !important;
+    width: 30px !important;
+    min-width: 30px !important;
+    min-height: 34px !important;
   }
 
   .app-home .hearth-quick-actions-panel {
@@ -65619,5 +65633,35 @@ html body .app .scan-product-modal .scanner-review-primary-action {
   .app-home .hearth-feature-card {
     min-height: 78px !important;
     padding: 11px !important;
+  }
+}
+
+/* Final UI Pass 3 follow-up: Hearth compact Sparks and friendlier Quick Add launcher copy. */
+.add-anything-entry .add-anything-hero p,
+.add-anything-entry .quick-add-missing-help,
+.add-anything-entry .add-anything-option small {
+  color: rgba(232, 246, 255, 0.72) !important;
+}
+
+.add-anything-entry .quick-add-missing-help {
+  border-color: rgba(255, 211, 106, 0.18) !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 159, 47, 0.1), transparent 7rem),
+    rgba(255, 255, 255, 0.045) !important;
+}
+
+@media (max-width: 780px) {
+  .add-anything-entry .add-anything-hero {
+    min-height: 112px !important;
+    padding: 14px !important;
+  }
+
+  .add-anything-entry .add-anything-hero p {
+    max-width: 27ch;
+  }
+
+  .add-anything-entry .add-anything-option {
+    min-height: 96px !important;
+    padding: 12px !important;
   }
 }

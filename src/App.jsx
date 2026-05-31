@@ -42072,7 +42072,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       scout: { key: "scout", title: "Scout Report", helper: "Post store, status, and time first.", icon: "scout", tone: "scout", onClick: () => runAddSheetAction("storeReport") },
       missing: { key: "missing", title: "Request Missing Item", helper: "Ask for a missing catalog item or add manually.", icon: "search", tone: "warning", onClick: () => runAddSheetAction("suggestCatalogItem") },
       spark: { key: "spark", title: "The Spark", helper: "Open the Kids Program request flow.", icon: "spark", tone: "spark", onClick: () => runAddSheetAction("kidsRequest") },
-      quickFind: { key: "quickFind", title: "Scan Anything", helper: "Search, UPC/SKU, or manual entry first.", icon: "search", tone: "search", onClick: () => setQuickAddPath("scanAnything") },
+      quickFind: { key: "quickFind", title: "Scan Product/Card", helper: "Use barcode, photo, receipt, or manual entry.", icon: "search", tone: "search", onClick: () => setQuickAddPath("scanAnything") },
       forge: { key: "forge", title: "Add to Forge", helper: "Add seller inventory.", icon: "forge", tone: "forge", onClick: () => runAddSheetAction("inventory") },
       sale: { key: "sale", title: "Add Sale", helper: "Record a sale.", icon: "forge", tone: "forge", onClick: () => runAddSheetAction("sale") },
       receipt: { key: "receipt", title: "Add Receipt", helper: "Save proof now; link items later.", icon: "receipt", tone: "forge", onClick: () => setQuickAddPath("receipt") },
@@ -42080,8 +42080,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       expense: { key: "expense", title: "Add Expense", helper: "Track seller or business costs.", icon: "expense", tone: "forge", onClick: () => runAddSheetAction("expense") },
     };
     const fallbackEntryOptions = [
-      { key: "upc", title: "Enter UPC/SKU", helper: "Look up identifiers manually.", icon: "scan", tone: "search", onClick: () => setQuickAddPath("upc") },
-      { key: "photo", title: "Photo reference", helper: "Camera AI is coming later.", icon: "camera", tone: "vault", onClick: () => setQuickAddPath("photo") },
+      { key: "upc", title: "Enter UPC/SKU", helper: "Search item codes or product names.", icon: "scan", tone: "search", onClick: () => setQuickAddPath("upc") },
+      { key: "photo", title: "Photo reference", helper: "Use a clear photo for review.", icon: "camera", tone: "vault", onClick: () => setQuickAddPath("photo") },
       { key: "manual", title: "Manual Entry", helper: "Add anything without a catalog match.", icon: "manual_entry", tone: "warning", ariaLabel: "Manual Add item", onClick: () => setQuickAddPath("manual") },
     ];
     const preferredEntryKeys = sellerQuickAddActive ? sellerQuickAddOrder : quickAddAdaptivePlan.allKeys;
@@ -42097,7 +42097,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       <div className="add-anything-flow add-anything-entry">
         <div className="add-anything-hero">
           <div>
-            <strong>Scan Anything</strong>
+            <strong>Scan Product/Card</strong>
             <p>Scan, search, or enter manually - then review before saving.</p>
           </div>
           <span aria-hidden="true">+</span>
@@ -42153,7 +42153,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </div>
           </details>
         ) : null}
-        <p className="quick-add-missing-help">Search and UPC use the Market catalog. Automated scan modes are coming later.</p>
+        <p className="quick-add-missing-help">Use barcode, photo, receipt, or manual entry. Nothing is saved until you confirm.</p>
       </div>
     );
   }
@@ -47154,7 +47154,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       hearthCanUseScout ? {
         key: "add-scout-report",
         title: "Add one Scout report",
-        purpose: "Help nearby families see what is current.",
+        purpose: "Share a current store signal.",
         icon: "scout",
         tone: "scout",
         reward: 10,
@@ -47165,7 +47165,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       hearthCanUseScout ? {
         key: "add-scout-proof",
         title: "Add proof to one Scout report",
-        purpose: "Proof keeps current reports trustworthy.",
+        purpose: "Boost trust with proof.",
         icon: "scan",
         tone: "scout",
         reward: 12,
@@ -47176,7 +47176,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       hearthCanUseVault ? {
         key: "add-vault-item",
         title: "Add one Vault item",
-        purpose: "Start building a cleaner collection record.",
+        purpose: "Add a clean collection record.",
         icon: "vault",
         tone: "vault",
         reward: 10,
@@ -47187,7 +47187,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       hearthCanUseVault && activeVaultItems.length ? {
         key: "add-vault-photos",
         title: "Add photos to 3 Vault items",
-        purpose: "Photos make your Vault easier to review.",
+        purpose: "Improve your Vault with photos.",
         icon: "scan",
         tone: "vault",
         reward: 15,
@@ -47198,7 +47198,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       hearthSellerRelevant ? {
         key: "upload-receipt",
         title: "Upload one receipt",
-        purpose: "Receipts protect cost basis and profit.",
+        purpose: "Protect cost and profit.",
         icon: "clipboard",
         tone: "forge",
         reward: 15,
@@ -47209,7 +47209,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       sellerAccessVisible ? {
         key: "record-sale",
         title: "Record one sale",
-        purpose: "Keep Forge profit and history current.",
+        purpose: "Keep profit history current.",
         icon: "forge",
         tone: "forge",
         reward: 15,
@@ -47220,7 +47220,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       hearthSparkRelevant ? {
         key: "add-spark-donation",
         title: "Add one Spark donation item",
-        purpose: "Track support for kid packs and events.",
+        purpose: "Support kid packs and events.",
         icon: "spark",
         tone: "spark",
         reward: 15,
@@ -47324,9 +47324,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     <div className="hearth-spark-mission-copy">
                       <h3>{mission.title}</h3>
                       <small>{mission.purpose}</small>
-                      <p>{mission.current}/{mission.target} complete</p>
+                      <p>
+                        <span>{mission.current}/{mission.target} complete</span>
+                        <strong className="hearth-spark-reward">+{mission.reward} Ember Points</strong>
+                      </p>
                     </div>
-                    <strong className="hearth-spark-reward">+{mission.reward} Ember Points</strong>
                     <div className="hearth-spark-mission-actions">
                       <button type="button" className="hearth-spark-action-button" onClick={mission.onAction} disabled={complete}>
                         {complete ? "Done" : started ? "Continue" : "Start"}
@@ -47418,7 +47420,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <span className="hearth-greeting-full">{hearthGreeting}, {hearthGreetingName}!</span>
                   <span className="hearth-greeting-short">{hearthGreeting}!</span>
                 </h1>
-                <p>Here&apos;s what needs your attention today.</p>
+                <p>Collect with confidence. Protect what matters. Help families find fair access.</p>
               </div>
             </div>
             <div className="hearth-header-actions">
