@@ -55242,7 +55242,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <div className="vault-primary-controls" aria-label="Vault search and active filters">
                   <label className="vault-filter-field vault-search-field">
                     <span>Search collection</span>
-                    <input className="vault-search-input" value={vaultSearch} onChange={(event) => setVaultSearch(event.target.value)} placeholder="Search name, set, UPC, SKU, purchaser, notes..." />
+                    <input className="vault-search-input" value={vaultSearch} onChange={(event) => setVaultSearch(event.target.value)} placeholder="Search Vault" />
                   </label>
                   {vaultActiveFilterCount ? (
                     <div className="vault-active-filter-chips" aria-label="Active Vault filters">

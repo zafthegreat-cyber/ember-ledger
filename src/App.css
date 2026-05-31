@@ -66242,13 +66242,30 @@ html body .app .scan-product-modal .scanner-review-primary-action {
   }
 
   .app-vault .vault-command-center .vault-command-overview {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-auto-flow: row !important;
+    grid-auto-columns: auto !important;
+    gap: 8px !important;
     margin-top: 0 !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    scroll-snap-type: none !important;
+    width: 100% !important;
   }
 
   .app-vault .vault-command-center .vault-overview-card {
-    flex-basis: min(132px, 38vw) !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    flex: initial !important;
     min-height: 82px !important;
     padding: 10px !important;
+    grid-column: auto !important;
+    scroll-snap-align: none !important;
+  }
+
+  .app-vault .vault-command-center .vault-command-overview .vault-overview-card:nth-child(n+3) {
+    grid-column: auto !important;
   }
 
   .app-vault .vault-command-center .vault-overview-card span:last-child {
@@ -66344,6 +66361,7 @@ html body .app .scan-product-modal .scanner-review-primary-action {
     min-height: 40px !important;
     border-radius: 13px !important;
     font-size: 0.84rem !important;
+    text-overflow: ellipsis !important;
   }
 
   .app-vault .vault-mobile-filter-drawer summary {
@@ -66386,13 +66404,14 @@ html body .app .scan-product-modal .scanner-review-primary-action {
 
   .app-vault .vault-item-card {
     gap: 9px !important;
-    padding: 11px !important;
+    padding: 12px !important;
     border-radius: 18px !important;
   }
 
   .app-vault .vault-card-topline h3 {
     font-size: 0.92rem !important;
-    line-height: 1.12 !important;
+    line-height: 1.16 !important;
+    overflow-wrap: anywhere !important;
   }
 
   .app-vault .vault-card-topline .compact-subtitle {
@@ -66421,6 +66440,10 @@ html body .app .scan-product-modal .scanner-review-primary-action {
   .app-vault .vault-card-facts p {
     min-height: 36px !important;
     padding: 6px 8px !important;
+  }
+
+  .app-vault .vault-collection-panel .compact-inventory-list {
+    padding-bottom: max(128px, calc(env(safe-area-inset-bottom) + 112px)) !important;
   }
 
   .app-vault .vault-card-actions .secondary-button {
