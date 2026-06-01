@@ -177,11 +177,13 @@ import {
   PAID_HOME_STATS,
   PLAN_FEATURE_GROUPS,
   PLAN_TYPES,
+  TIER_DISPLAY_GUIDANCE,
   TIER_LABELS,
   USER_ROLES,
   canUseFeature,
   getTierAccess,
   getTierAddOns,
+  getLockedFeatureDetails,
   getTierPricingCards,
   getLockedFeatures,
   getUnlockedFeatures,
@@ -37497,24 +37499,58 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const plan = tierAccess.planTier;
     const planLabel = tierAccess.tierLabel || TIER_LABELS[currentTier] || "Free";
     const trialActive = isTrialActive(currentUserProfile);
-    const tierCards = getTierPricingCards();
+    const tierCards = getTierPricingCards().map((tier) => ({
+      ...tier,
+      display: TIER_DISPLAY_GUIDANCE[tier.id] || {},
+      access: getTierAccess({ tier: tier.id }),
+    }));
     const addOns = getTierAddOns();
+    const planScoutDetailsAllowed = canUseFeature({ tier: plan }, "scout_current_details");
+    const betaStatusLabel = tierAccess.isBeta || BETA_LOCAL_MODE ? "Active beta access" : "Approval required";
+    const adminStatusVisible = Boolean(actualAdminUser || adminViewingAsAdmin);
+    const accessStatusRows = [
+      {
+        label: "Beta",
+        value: betaStatusLabel,
+        helper: "Early access status. It can stack with Free, Collector, Family, Seller, or Shop.",
+      },
+      {
+        label: "Admin",
+        value: adminStatusVisible ? "Visible for this session" : "Internal only",
+        helper: adminStatusVisible
+          ? "Admin tools remain permission-gated and are not customer plan features."
+          : "Hidden from normal users. Admin is not available through signup, checkout, or add-ons.",
+      },
+      {
+        label: "Checkout",
+        value: "Not live",
+        helper: "Pricing, trials, and add-ons are beta preview copy. Admin handles access changes for now.",
+      },
+    ];
+    const lockPreviewKeys = ["restock_predictions", "seller_tools", "kid_profiles", "shop_profile_tools"];
+    const lockPreviews = lockPreviewKeys.map((featureKey) => getLockedFeatureDetails(featureKey));
     return (
       <section className="panel membership-foundation-panel tier-foundation-panel" data-qa="tier-pricing-explainer">
         <div className="compact-card-header">
           <div>
+            <p className="section-kicker">Plans &amp; Feature Gates</p>
             <h2>Membership Foundation</h2>
-            <p>Beta launch pricing is modeled for feature gates. Checkout is not live; upgrades are admin-managed during beta.</p>
+            <p>Clear tiers, friendly locks, and Scout guardrails. Checkout is not live; upgrades are admin-managed during beta.</p>
           </div>
           <span className="status-badge">{planLabel}</span>
         </div>
-        <div className="cards mini-cards">
-          <div className="card"><p>Current plan</p><h2>{planLabel}</h2></div>
-          <div className="card"><p>Trial</p><h2>{trialActive ? "Active" : "None"}</h2></div>
-          <div className="card"><p>Scout stores</p><h2>{String(tierAccess.scoutStoreSlots)}</h2></div>
-          <div className="card"><p>Swap cadence</p><h2>{tierAccess.scoutStoreSwapDays ? `${tierAccess.scoutStoreSwapDays} days` : "Admin"}</h2></div>
-          <div className="card"><p>Raw Scout history</p><h2>{tierAccess.canViewRawScoutHistory ? "Admin" : "Protected"}</h2></div>
-          <div className="card"><p>Pattern tools</p><h2>{tierAccess.canViewPatternTools ? "Admin" : "Protected"}</h2></div>
+        <div className="tier-status-panel" aria-label="Current membership status">
+          <div className="tier-current-plan-card">
+            <span>Current plan</span>
+            <strong>{planLabel}</strong>
+            <p>{trialActive ? "Trial is active." : "No active trial on this profile."}</p>
+          </div>
+          <div className="tier-status-grid">
+            <article><span>Scout watch stores</span><strong>{String(tierAccess.scoutStoreSlots)}</strong><small>{tierAccess.scoutStoreSwapDays ? `Change once every ${tierAccess.scoutStoreSwapDays} days` : "Admin moderation access"}</small></article>
+            <article><span>Current Scout details</span><strong>{planScoutDetailsAllowed ? "Selected stores" : "Limited"}</strong><small>Selected-store current details only.</small></article>
+            <article><span>Raw Scout history</span><strong>{tierAccess.canViewRawScoutHistory ? "Admin" : "Protected"}</strong><small>No hidden history behind paid locks.</small></article>
+            <article><span>Pattern tools</span><strong>{tierAccess.canViewPatternTools ? "Admin" : "Protected"}</strong><small>Protected from non-admin users.</small></article>
+          </div>
         </div>
         <div className="tier-foundation-note">
           <strong>Scout fairness guardrail</strong>
@@ -37524,11 +37560,19 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           {tierCards.map((tier) => (
             <article className={`tier-plan-card${tier.id === plan ? " current" : ""}`} key={tier.id} data-tier-plan={tier.id}>
               <div className="tier-plan-card-top">
-                <span>{tier.id === plan ? "Current" : "Beta preview"}</span>
+                <span>{tier.id === plan ? "Current" : tier.display.status || "Beta preview"}</span>
                 <strong>{tier.label}</strong>
               </div>
+              {tier.display.audience ? <p className="tier-plan-audience">{tier.display.audience}</p> : null}
               <h3>{tier.price}</h3>
               <p>{tier.summary}</p>
+              {tier.display.benefit ? <p className="tier-plan-benefit">{tier.display.benefit}</p> : null}
+              {tier.display.gateCopy ? <p className="tier-plan-gate-copy">{tier.display.gateCopy}</p> : null}
+              <div className="tier-plan-rule-row">
+                <span>{tier.access.scoutStoreSlots} Scout store{Number(tier.access.scoutStoreSlots) === 1 ? "" : "s"}</span>
+                <span>{tier.access.scoutStoreSwapDays ? `${tier.access.scoutStoreSwapDays}-day changes` : "Admin changes"}</span>
+                <span>{tier.access.canViewPatternTools ? "Admin patterns" : "Raw patterns protected"}</span>
+              </div>
               {tier.trialCopy ? <p className="tier-trial-copy">{tier.trialCopy}</p> : null}
               {tier.futurePrice ? <p className="compact-subtitle">{tier.futurePrice}</p> : null}
               <ul>
@@ -37538,6 +37582,25 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </article>
           ))}
         </div>
+        <section className="tier-lock-preview-panel" aria-label="Locked state examples">
+          <div className="compact-card-header">
+            <div>
+              <h3>Locked states</h3>
+              <p>Locks explain the benefit and next step without revealing hidden data.</p>
+            </div>
+            <span className="status-badge">Clear gates</span>
+          </div>
+          <div className="tier-lock-preview-grid">
+            {lockPreviews.map((lock) => (
+              <article className="tier-lock-preview-card" key={lock.label}>
+                <span>{lock.statusLabel}</span>
+                <strong>{lock.label}</strong>
+                <p>{lock.benefit}</p>
+                <small>{lock.guardrail}</small>
+              </article>
+            ))}
+          </div>
+        </section>
         <section className="tier-add-on-panel" aria-label="Membership add-ons">
           <div className="compact-card-header">
             <div>
@@ -37549,26 +37612,22 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <div className="tier-add-on-grid">
             {addOns.map((addOn) => (
               <article className="tier-add-on-card" key={addOn.id}>
+                <span>{addOn.status}</span>
                 <strong>{addOn.label}</strong>
-                <span>{addOn.price}</span>
+                <b>{addOn.price}</b>
                 <p>{addOn.appliesTo}</p>
               </article>
             ))}
           </div>
         </section>
-        <div className="tier-beta-flags">
-          <article>
-            <strong>Beta</strong>
-            <p>Early access/status flag. It can stack with Free, Collector, Family, Seller, or Shop, but it is not a paid tier.</p>
-          </article>
-          <article>
-            <strong>Admin</strong>
-            <p>Internal moderation flag with full Scout history for review, beta/report/shop/family management, and tier override for testing.</p>
-          </article>
-          <article>
-            <strong>Payment status</strong>
-            <p>Stripe, Apple, Google, and real checkout are not wired in this pass. Ask admin to upgrade during beta.</p>
-          </article>
+        <div className="tier-beta-flags" aria-label="Beta and admin status">
+          {accessStatusRows.map((row) => (
+            <article key={row.label}>
+              <span className="status-badge">{row.value}</span>
+              <strong>{row.label}</strong>
+              <p>{row.helper}</p>
+            </article>
+          ))}
         </div>
         <div className="quick-actions">
           <button type="button" className="secondary-button" disabled>Checkout coming soon</button>

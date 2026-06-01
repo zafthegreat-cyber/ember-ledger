@@ -1,7 +1,5 @@
 import {
-  FEATURE_DESCRIPTIONS,
-  FEATURE_LABELS,
-  FEATURE_MIN_TIER_LABELS,
+  getLockedFeatureDetails,
 } from "../services/featureGates";
 
 export default function LockedFeatureNotice({
@@ -10,19 +8,23 @@ export default function LockedFeatureNotice({
   onRequestAccess,
   compact = false,
 }) {
-  const featureName = FEATURE_LABELS[featureKey] || "Locked feature";
-  const tierName = FEATURE_MIN_TIER_LABELS[featureKey] || "paid";
-  const description = FEATURE_DESCRIPTIONS[featureKey] || "This feature is part of a paid tier.";
+  const lock = getLockedFeatureDetails(featureKey);
 
   return (
-    <section className={compact ? "locked-feature-card" : "panel upgrade-panel locked-feature-notice"}>
-      <p>{tierName}</p>
-      <h2>{featureName}</h2>
-      <p>{description}</p>
+    <section className={compact ? "locked-feature-card" : "panel upgrade-panel locked-feature-notice"} data-lock-tier={lock.requiredTier}>
+      <p className="locked-feature-eyebrow">{lock.statusLabel}</p>
+      <h2>{lock.title}</h2>
+      <strong>{lock.label}</strong>
+      <p>{lock.description}</p>
+      <div className="locked-feature-detail-grid">
+        <span><b>Benefit</b>{lock.benefit}</span>
+        <span><b>Next step</b>{lock.action}</span>
+      </div>
+      <p className="locked-feature-guardrail">{lock.guardrail}</p>
       <p className="compact-subtitle">Beta launch pricing is a preview. No payment processing or live checkout is connected in this beta build.</p>
-      <div className="quick-actions">
+      <div className="quick-actions locked-feature-actions">
         <button type="button" className="secondary-button" onClick={onRequestAccess}>
-          Ask admin to upgrade during beta
+          {lock.cta}
         </button>
         {onClose ? (
           <button type="button" className="ghost-button" onClick={onClose}>

@@ -4,8 +4,10 @@ import fs from "node:fs";
 import {
   PLAN_IDS,
   TIER_ADD_ONS,
+  TIER_DISPLAY_GUIDANCE,
   TIER_PRICING,
   canUseFeature,
+  getLockedFeatureDetails,
   getTierAccess,
   getTierPricingCards,
   normalizeTier,
@@ -27,6 +29,12 @@ assert.match(TIER_PRICING.seller.price, /\$5\.99\/month beta price/);
 assert.match(TIER_PRICING.shop.price, /Shop Basic \$19\/month/);
 assert.match(TIER_PRICING.shop.trialCopy, /Shop Plus \$39\/month/);
 assert.match(TIER_PRICING.shop.features.join(" "), /approval-based, not automatic payment-based/i);
+
+assert.match(TIER_DISPLAY_GUIDANCE.free.gateCopy, /1 Scout watch store/i);
+assert.match(TIER_DISPLAY_GUIDANCE.free.gateCopy, /30 days/i);
+assert.match(TIER_DISPLAY_GUIDANCE.collector.gateCopy, /7-day free trial/i);
+assert.match(TIER_DISPLAY_GUIDANCE.seller.gateCopy, /do not unlock raw Scout history/i);
+assert.match(TIER_DISPLAY_GUIDANCE.shop.gateCopy, /approval-based/i);
 
 assert.ok(TIER_ADD_ONS.some((addOn) => addOn.label === "Extra kid profile" && addOn.price === "$0.99/month"));
 assert.ok(TIER_ADD_ONS.some((addOn) => addOn.label === "Extra adult family member" && addOn.price === "$0.99/month"));
@@ -84,6 +92,23 @@ assert.equal(canUseFeature("collector", "scout_pattern_tools"), false);
 assert.equal(canUseFeature("family", "scout_raw_history"), false);
 assert.equal(canUseFeature("seller", "restock_predictions"), false);
 assert.equal(canUseFeature({ tier: "admin" }, "scout_pattern_tools"), true);
+
+const protectedScoutLock = getLockedFeatureDetails("restock_predictions");
+assert.equal(protectedScoutLock.statusLabel, "Admin protected");
+assert.match(protectedScoutLock.guardrail, /never reveals raw restock history/i);
+assert.match(protectedScoutLock.guardrail, /all-store data/i);
+
+const sellerLock = getLockedFeatureDetails("seller_tools");
+assert.match(sellerLock.title, /Seller tools are gated/i);
+assert.match(sellerLock.action, /Checkout is not live yet/i);
+
+const familyLock = getLockedFeatureDetails("kid_profiles");
+assert.match(familyLock.title, /Family support is gated/i);
+assert.match(familyLock.guardrail, /No child profiles/i);
+
+const shopLock = getLockedFeatureDetails("shop_profile_tools");
+assert.match(shopLock.title, /Shop access needs review/i);
+assert.match(shopLock.guardrail, /Paying is not enough/i);
 
 const tierAnswer = buildEmberAssistFallbackResponse(
   "What do tiers cost and does Collector unlock raw Scout patterns?",

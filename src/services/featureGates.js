@@ -181,6 +181,39 @@ export const TIER_ADD_ONS = [
   { id: "extra_shop_location", label: "Extra shop location", price: "$9.99/month", appliesTo: "Shop", status: "Coming soon" },
 ];
 
+export const TIER_DISPLAY_GUIDANCE = {
+  [PLAN_IDS.FREE]: {
+    status: "Included",
+    audience: "Families, collectors, and Scout helpers",
+    benefit: "Start safely with current reports, one watched Scout store, and core collection tools.",
+    gateCopy: "1 Scout watch store | change once every 30 days | raw Scout history and pattern tools protected.",
+  },
+  [PLAN_IDS.COLLECTOR]: {
+    status: "Beta path",
+    audience: "Collectors",
+    benefit: "Adds deeper collection tools and more selected-store context while keeping Scout fair.",
+    gateCopy: "3 watched stores | 14-day store changes | 7-day free trial planned.",
+  },
+  [PLAN_IDS.FAMILY]: {
+    status: "Beta path",
+    audience: "Families",
+    benefit: "Collector plus parent-managed family and kid support where currently available.",
+    gateCopy: "Includes 2 kid profiles in the model | extra child accounts are add-ons when supported.",
+  },
+  [PLAN_IDS.SELLER]: {
+    status: "Beta path",
+    audience: "Sellers",
+    benefit: "Adds Forge business tools for inventory, sales, receipts, expenses, and profit/loss.",
+    gateCopy: "Seller tools do not unlock raw Scout history, all-store access, or pattern windows.",
+  },
+  [PLAN_IDS.SHOP]: {
+    status: "Partner review",
+    audience: "Shops and partners",
+    benefit: "Supports shop profile, sponsor, trusted partner, and family-friendly shop surfaces.",
+    gateCopy: "Trusted status is approval-based and not automatic payment-based.",
+  },
+};
+
 export const TIER_ACCESS_RULES = {
   [PLAN_IDS.FREE]: {
     scoutStoreSlots: 1,
@@ -505,6 +538,120 @@ export const FEATURE_DESCRIPTIONS = {
   shared_workspace: "Use team/shared workspaces and permissions.",
   team_access: "Invite teammates and share selected workspaces.",
 };
+
+const SELLER_LOCKED_FEATURES = new Set([
+  "seller_tools",
+  "forge_inventory",
+  "forge_sales",
+  "forge_expenses",
+  "forge_mileage",
+  "forge_reports",
+  "receipt_scan_review",
+  "profit_loss",
+  "deal_finder",
+  "marketplace_exports",
+  "listing_prep",
+  "business_reports",
+  "export_tools",
+  "advanced_reports",
+]);
+
+const FAMILY_LOCKED_FEATURES = new Set([
+  "family_vault",
+  "kid_profiles",
+  "kid_safe_vault",
+  "kid_wishlists",
+  "spark_family_reminders",
+  "shared_workspace",
+  "team_access",
+]);
+
+const SHOP_LOCKED_FEATURES = new Set([
+  "shop_profile_tools",
+  "shop_directory_profile",
+  "shop_event_support",
+  "shop_featured_placement",
+]);
+
+export function getLockedFeatureDetails(featureKey) {
+  const label = FEATURE_LABELS[featureKey] || "Locked feature";
+  const requiredTier = (FEATURE_GATES[featureKey] || [PLAN_IDS.COLLECTOR])[0] || PLAN_IDS.COLLECTOR;
+  const tierLabel = FEATURE_MIN_TIER_LABELS[featureKey] || "paid";
+  const description = FEATURE_DESCRIPTIONS[featureKey] || `${label} is part of the ${tierLabel} tier.`;
+
+  if (isProtectedScoutFeature(featureKey)) {
+    return {
+      label,
+      title: "Protected for fair access",
+      statusLabel: "Admin protected",
+      requiredTier,
+      tierLabel: "Admin",
+      description,
+      benefit: "Scout stays focused on current reports, selected stores, confirmations, and proof the community can review.",
+      action: "Submit or confirm a current report instead, or ask admin if you need moderation access.",
+      guardrail: "This lock never reveals raw restock history, exact pattern windows, or all-store data.",
+      cta: "Ask admin for review access",
+    };
+  }
+
+  if (SELLER_LOCKED_FEATURES.has(featureKey)) {
+    return {
+      label,
+      title: "Seller tools are gated",
+      statusLabel: `${tierLabel} tier`,
+      requiredTier,
+      tierLabel,
+      description,
+      benefit: "Forge keeps business records, sales, receipts, expenses, mileage, and exports organized.",
+      action: "Ask admin to enable the Seller path during beta. Checkout is not live yet.",
+      guardrail: "Locked business tools do not change your saved Vault or Scout data.",
+      cta: "Ask admin about Seller",
+    };
+  }
+
+  if (FAMILY_LOCKED_FEATURES.has(featureKey)) {
+    return {
+      label,
+      title: "Family support is gated",
+      statusLabel: `${tierLabel} tier`,
+      requiredTier,
+      tierLabel,
+      description,
+      benefit: "Family tools are parent-managed and keep child/family setup private by default.",
+      action: "Ask admin to enable the Family path during beta, or keep using the core adult-first app.",
+      guardrail: "No child profiles, private family details, or hidden records are exposed behind this lock.",
+      cta: "Ask admin about Family",
+    };
+  }
+
+  if (SHOP_LOCKED_FEATURES.has(featureKey)) {
+    return {
+      label,
+      title: "Shop access needs review",
+      statusLabel: `${tierLabel} tier`,
+      requiredTier,
+      tierLabel,
+      description,
+      benefit: "Shop tools support family-friendly profiles, partner participation, sponsorships, and local events.",
+      action: "Ask admin about shop/partner review. Trusted status is approval-based.",
+      guardrail: "Paying is not enough to unlock trusted shop status in beta.",
+      cta: "Ask admin about Shop",
+    };
+  }
+
+  return {
+    label,
+    title: "This is part of a higher tier",
+    statusLabel: `${tierLabel} tier`,
+    requiredTier,
+    tierLabel,
+    description,
+    benefit: "Upgrade paths keep advanced tools clear without cluttering the core app.",
+    action: "Ask admin to adjust your beta access if this belongs in your setup.",
+    guardrail: "The locked state explains the benefit without exposing hidden data.",
+    cta: "Ask admin to upgrade during beta",
+  };
+}
 
 export const FEATURE_TIERS = Object.fromEntries(
   Object.entries(FEATURE_GATES).map(([featureKey, tiers]) => [featureKey, tiers[0] || PLAN_IDS.FREE])
