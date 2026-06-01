@@ -649,6 +649,281 @@
   align-content: start;
 }
 
+/* Final production UI correction pass: remaining mobile overflow and safe-area polish. */
+.app-version-details {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+  color: rgba(232, 246, 255, 0.72);
+}
+
+.app-version-details summary {
+  width: fit-content;
+  min-height: 30px;
+  padding: 6px 9px;
+  border: 1px solid rgba(124, 231, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(8, 18, 34, 0.58);
+  color: rgba(232, 246, 255, 0.78);
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.app-version-details code {
+  display: block;
+  max-width: 100%;
+  padding: 8px 10px;
+  border: 1px solid rgba(124, 231, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(2, 8, 22, 0.72);
+  color: rgba(232, 246, 255, 0.72);
+  font-size: 0.7rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.app-scout .scout-watch-picker-controls,
+.app-command-shell.app-scout .scout-watch-picker-controls,
+.app-shell-dark.app-scout .scout-watch-picker-controls {
+  display: grid;
+  gap: 10px;
+  margin: 10px 0 12px;
+  min-width: 0;
+}
+
+.app-scout .scout-watch-picker-search,
+.app-command-shell.app-scout .scout-watch-picker-search,
+.app-shell-dark.app-scout .scout-watch-picker-search {
+  display: grid;
+  gap: 7px;
+  margin: 0 !important;
+  min-height: 0 !important;
+  width: 100%;
+}
+
+.app-scout .scout-watch-picker-search input,
+.app-command-shell.app-scout .scout-watch-picker-search input,
+.app-shell-dark.app-scout .scout-watch-picker-search input {
+  width: 100%;
+  min-width: 0;
+}
+
+.app-scout .scout-watch-picker-context,
+.app-command-shell.app-scout .scout-watch-picker-context,
+.app-shell-dark.app-scout .scout-watch-picker-context {
+  margin: 0 !important;
+}
+
+.app-scout .scout-watch-picker-list,
+.app-command-shell.app-scout .scout-watch-picker-list,
+.app-shell-dark.app-scout .scout-watch-picker-list {
+  padding-bottom: calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 26px);
+}
+
+.app .flow-modal[data-flow="scoutSubmit"] .flow-modal-body,
+.app-command-shell .flow-modal[data-flow="scoutSubmit"] .flow-modal-body,
+.app-shell-dark .flow-modal[data-flow="scoutSubmit"] .flow-modal-body {
+  padding-bottom: calc(var(--et-shell-form-safe, 132px) + 72px) !important;
+  scroll-padding-bottom: calc(var(--et-shell-form-safe, 132px) + 92px) !important;
+}
+
+.app .flow-modal[data-flow="scoutSubmit"] .scout-report-store-list,
+.app-command-shell .flow-modal[data-flow="scoutSubmit"] .scout-report-store-list,
+.app-shell-dark .flow-modal[data-flow="scoutSubmit"] .scout-report-store-list {
+  padding-bottom: 18px;
+}
+
+.app .flow-modal[data-flow="scoutSubmit"] .scout-report-store-card,
+.app-command-shell .flow-modal[data-flow="scoutSubmit"] .scout-report-store-card,
+.app-shell-dark .flow-modal[data-flow="scoutSubmit"] .scout-report-store-card {
+  scroll-margin-bottom: calc(var(--et-shell-form-safe, 132px) + 70px);
+}
+
+@media (max-width: 640px) {
+  .app .flow-modal[data-flow="multiDestinationAdd"] .add-item-chip-row,
+  .app-command-shell .flow-modal[data-flow="multiDestinationAdd"] .add-item-chip-row,
+  .app-shell-dark .flow-modal[data-flow="multiDestinationAdd"] .add-item-chip-row,
+  .app .flow-modal[data-flow="multiDestinationAdd"] .catalog-chip-row.add-item-chip-row,
+  .app-command-shell .flow-modal[data-flow="multiDestinationAdd"] .catalog-chip-row.add-item-chip-row,
+  .app-shell-dark .flow-modal[data-flow="multiDestinationAdd"] .catalog-chip-row.add-item-chip-row,
+  .app .flow-modal[data-flow="multiDestinationAdd"] .catalog-selector-actions.match-tools,
+  .app-command-shell .flow-modal[data-flow="multiDestinationAdd"] .catalog-selector-actions.match-tools,
+  .app-shell-dark .flow-modal[data-flow="multiDestinationAdd"] .catalog-selector-actions.match-tools {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+  }
+
+  .app .flow-modal[data-flow="multiDestinationAdd"] .add-item-chip-row button,
+  .app-command-shell .flow-modal[data-flow="multiDestinationAdd"] .add-item-chip-row button,
+  .app-shell-dark .flow-modal[data-flow="multiDestinationAdd"] .add-item-chip-row button,
+  .app .flow-modal[data-flow="multiDestinationAdd"] .catalog-selector-actions.match-tools button,
+  .app-command-shell .flow-modal[data-flow="multiDestinationAdd"] .catalog-selector-actions.match-tools button,
+  .app-shell-dark .flow-modal[data-flow="multiDestinationAdd"] .catalog-selector-actions.match-tools button {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    min-height: 40px !important;
+    padding: 8px 9px !important;
+    overflow-wrap: anywhere !important;
+    white-space: normal !important;
+  }
+
+  .app .flow-modal[data-flow="multiDestinationAdd"] .add-item-picker-start,
+  .app-command-shell .flow-modal[data-flow="multiDestinationAdd"] .add-item-picker-start,
+  .app-shell-dark .flow-modal[data-flow="multiDestinationAdd"] .add-item-picker-start,
+  .app .flow-modal[data-flow="multiDestinationAdd"] .add-item-no-results,
+  .app-command-shell .flow-modal[data-flow="multiDestinationAdd"] .add-item-no-results,
+  .app-shell-dark .flow-modal[data-flow="multiDestinationAdd"] .add-item-no-results {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  .app-vault .vault-view-strip,
+  .app-command-shell.app-vault .vault-view-strip,
+  .app-shell-dark.app-vault .vault-view-strip {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+    overflow: visible !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 5px !important;
+  }
+
+  .app-vault .vault-view-strip button,
+  .app-command-shell.app-vault .vault-view-strip button,
+  .app-shell-dark.app-vault .vault-view-strip button {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    flex: initial !important;
+    white-space: normal !important;
+  }
+
+  .app-kidsprogram,
+  .app-command-shell.app-kidsprogram,
+  .app-shell-dark.app-kidsprogram,
+  .app-kidsprogram .spark-page,
+  .app-command-shell.app-kidsprogram .spark-page,
+  .app-shell-dark.app-kidsprogram .spark-page,
+  .app-kidsprogram .spark-program-layout,
+  .app-command-shell.app-kidsprogram .spark-program-layout,
+  .app-shell-dark.app-kidsprogram .spark-program-layout {
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  .app-kidsprogram .spark-status-strip,
+  .app-command-shell.app-kidsprogram .spark-status-strip,
+  .app-shell-dark.app-kidsprogram .spark-status-strip,
+  .app-kidsprogram .spark-stepper,
+  .app-command-shell.app-kidsprogram .spark-stepper,
+  .app-shell-dark.app-kidsprogram .spark-stepper {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+    overflow: visible !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .app-kidsprogram .spark-status-card,
+  .app-command-shell.app-kidsprogram .spark-status-card,
+  .app-shell-dark.app-kidsprogram .spark-status-card,
+  .app-kidsprogram .spark-stepper button,
+  .app-command-shell.app-kidsprogram .spark-stepper button,
+  .app-shell-dark.app-kidsprogram .spark-stepper button {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    flex: initial !important;
+  }
+
+  .app-kidsprogram .spark-mission-card,
+  .app-command-shell.app-kidsprogram .spark-mission-card,
+  .app-shell-dark.app-kidsprogram .spark-mission-card,
+  .app-kidsprogram .spark-admin-shortcut,
+  .app-command-shell.app-kidsprogram .spark-admin-shortcut,
+  .app-shell-dark.app-kidsprogram .spark-admin-shortcut {
+    max-width: 100% !important;
+    overflow: hidden !important;
+  }
+
+  .app-home .hearth-northstar,
+  .app-command-shell.app-home .hearth-northstar,
+  .app-shell-dark.app-home .hearth-northstar {
+    padding-bottom: calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 96px) !important;
+  }
+
+  .app-home .hearth-today-sparks-panel,
+  .app-command-shell.app-home .hearth-today-sparks-panel,
+  .app-shell-dark.app-home .hearth-today-sparks-panel {
+    margin-bottom: 12px !important;
+  }
+
+  .app-tidepool .tidepool-community,
+  .app-command-shell.app-tidepool .tidepool-community,
+  .app-shell-dark.app-tidepool .tidepool-community {
+    padding-bottom: calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 96px) !important;
+  }
+
+  .tidepool-community-header.standard-page-header .standard-page-header-tabs {
+    margin-bottom: 10px !important;
+  }
+
+  .app-market .market-page-heading,
+  .app-command-shell.app-market .market-page-heading,
+  .app-shell-dark.app-market .market-page-heading {
+    gap: 8px !important;
+    padding: 12px !important;
+  }
+
+  .app-market .market-search-helper-grid,
+  .app-command-shell.app-market .market-search-helper-grid,
+  .app-shell-dark.app-market .market-search-helper-grid {
+    gap: 5px !important;
+    margin-top: 2px !important;
+  }
+
+  .app-market .market-search-helper-grid span,
+  .app-command-shell.app-market .market-search-helper-grid span,
+  .app-shell-dark.app-market .market-search-helper-grid span {
+    min-height: 28px !important;
+    padding: 5px 4px !important;
+  }
+
+  .app-market .market-search-options,
+  .app-command-shell.app-market .market-search-options,
+  .app-shell-dark.app-market .market-search-options {
+    margin-top: 2px !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .app-kidsprogram .spark-section-grid,
+  .app-command-shell.app-kidsprogram .spark-section-grid,
+  .app-shell-dark.app-kidsprogram .spark-section-grid,
+  .app-kidsprogram .spark-learning-grid,
+  .app-command-shell.app-kidsprogram .spark-learning-grid,
+  .app-shell-dark.app-kidsprogram .spark-learning-grid,
+  .app-kidsprogram .spark-support-examples,
+  .app-command-shell.app-kidsprogram .spark-support-examples,
+  .app-shell-dark.app-kidsprogram .spark-support-examples {
+    grid-template-columns: 1fr !important;
+  }
+
+  .app-vault .vault-view-strip {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}
+
 .app-scout .scout-watch-picker-context {
   display: grid;
   gap: 4px;
@@ -70857,4 +71132,18 @@ html body .app .ember-assist-shell.is-open {
     min-height: 0 !important;
     overflow-wrap: anywhere;
   }
+}
+
+/* Keep Scout report intake content clear of its sticky footer after page-specific modal polish. */
+.app-scout .flow-modal[data-flow="scoutSubmit"] .flow-modal-body,
+.app-command-shell.app-scout .flow-modal[data-flow="scoutSubmit"] .flow-modal-body,
+.app-shell-dark.app-scout .flow-modal[data-flow="scoutSubmit"] .flow-modal-body {
+  padding-bottom: calc(var(--et-shell-form-safe, 132px) + 96px + env(safe-area-inset-bottom, 0px)) !important;
+  scroll-padding-bottom: calc(var(--et-shell-form-safe, 132px) + 116px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+.app-scout .flow-modal[data-flow="scoutSubmit"] .scout-report-store-card,
+.app-command-shell.app-scout .flow-modal[data-flow="scoutSubmit"] .scout-report-store-card,
+.app-shell-dark.app-scout .flow-modal[data-flow="scoutSubmit"] .scout-report-store-card {
+  scroll-margin-bottom: calc(var(--et-shell-form-safe, 132px) + 96px + env(safe-area-inset-bottom, 0px)) !important;
 }

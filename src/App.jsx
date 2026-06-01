@@ -1618,6 +1618,29 @@ function routeStateFromPath(pathname = "") {
   return { activeTab: "dashboard" };
 }
 
+function publicAppVersionLabel(value = APP_VERSION) {
+  const text = String(value || "").trim();
+  if (!text) return "Build unknown";
+  if (text === "dev") return "Build dev";
+  const deployMatch = text.match(/^dpl_?([a-z0-9]+)/i);
+  if (deployMatch?.[1]) return `Build ${deployMatch[1].slice(0, 7)}`;
+  const shaMatch = text.match(/[a-f0-9]{7,40}/i);
+  if (shaMatch?.[0]) return `Build ${shaMatch[0].slice(0, 7)}`;
+  if (text.length > 18) return `Build ${text.slice(0, 7)}`;
+  return /^build\b/i.test(text) ? text : `Build ${text}`;
+}
+
+const PUBLIC_APP_VERSION_LABEL = publicAppVersionLabel(APP_VERSION);
+
+function renderAppBuildDetails() {
+  return (
+    <details className="app-version-details">
+      <summary>Technical build details</summary>
+      <code>{APP_VERSION}</code>
+    </details>
+  );
+}
+
 function loadInitialRouteState() {
   if (typeof window === "undefined") return { activeTab: "dashboard" };
   let saved = {};
@@ -43757,7 +43780,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </div>
           <label className="scout-store-list-search">
             <span>Search stores</span>
-            <input value={storeMapFilters.query} onChange={(event) => updateStoreMapFilter("query", event.target.value)} placeholder="Search store, city, ZIP, nickname, or address" />
+            <input value={storeMapFilters.query} onChange={(event) => updateStoreMapFilter("query", event.target.value)} placeholder="Store, city, ZIP, or nickname" />
           </label>
         </div>
         {scoutStoresMode === "map" ? renderStoreMapPanel() : (
@@ -43826,13 +43849,15 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </div>
                 <button type="button" className="modal-close-button" aria-label="Close watched store picker" onClick={closeWatchStorePicker}>X</button>
               </div>
-              <label className="scout-store-list-search scout-watch-picker-search">
-                <span>Search stores</span>
-                <input value={watchStorePickerState.query} onChange={(event) => setWatchStorePickerState((current) => ({ ...current, query: event.target.value }))} placeholder="Search store, city, ZIP, or nickname" autoFocus />
-              </label>
-              <div className="scout-watch-picker-context">
-                <strong>{scoutWatchSlotSummary(watchedStoreRows.length)}</strong>
-                <span>{scoutWatchSwapWindowLabel()} Current reports only; raw restock patterns stay protected.</span>
+              <div className="scout-watch-picker-controls">
+                <label className="scout-store-list-search scout-watch-picker-search">
+                  <span>Search stores</span>
+                  <input value={watchStorePickerState.query} onChange={(event) => setWatchStorePickerState((current) => ({ ...current, query: event.target.value }))} placeholder="Store, city, ZIP, or nickname" autoFocus />
+                </label>
+                <div className="scout-watch-picker-context">
+                  <strong>{scoutWatchSlotSummary(watchedStoreRows.length)}</strong>
+                  <span>{scoutWatchSwapWindowLabel()} Current reports only; raw restock patterns stay protected.</span>
+                </div>
               </div>
               <div className="scout-watch-picker-list">
                 {pickerRows.length ? pickerRows.map((row) => {
@@ -48173,7 +48198,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           : "Collector";
     const hearthSupportRows = [
       { label: "Beta", value: betaAccessAllowed() ? "Approved" : "Limited", helper: "Features may change during beta." },
-      { label: "App", value: APP_VERSION, helper: appUpdate.available ? "Update available." : "Current build loaded." },
+      { label: "App", value: PUBLIC_APP_VERSION_LABEL, helper: appUpdate.available ? "Update available." : "Current build loaded." },
       { label: "Support", value: "Feedback ready", helper: "Bug, missing item, wrong store, bad report, or feature request." },
     ];
     const hearthKnownIssues = [
@@ -49273,7 +49298,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     {
       title: "About Ember & Tide",
       body: "Protect the spark. Follow the tide.",
-      status: APP_VERSION,
+      status: PUBLIC_APP_VERSION_LABEL,
     },
   ];
 
@@ -49631,12 +49656,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <p className="compact-subtitle">{accountStatusDescription}</p>
             </div>
             <dl className="drawer-status-list">
-              <div><dt>App Version</dt><dd>{APP_VERSION}</dd></div>
+              <div><dt>Build</dt><dd>{PUBLIC_APP_VERSION_LABEL}</dd></div>
               <div><dt>Account</dt><dd>{guestPreviewActive ? "Guest preview" : signedInWithSupabase ? "Supabase" : "Private beta"}</dd></div>
               <div><dt>Role</dt><dd>{actualAdminUser ? actualAdminRole : "user"}</dd></div>
               <div><dt>Tier</dt><dd>{TIER_LABELS[currentTier] || "Free"}</dd></div>
               <div><dt>Data</dt><dd>{guestPreviewActive ? "Read-only preview" : cloudSyncPreference === "cloud" ? "Local now, cloud sync requested" : "Stored on this device"}</dd></div>
             </dl>
+            {renderAppBuildDetails()}
             {actualAdminUser ? <span className="status-badge">{actualAdminRole}</span> : null}
           </div>
 
@@ -49747,9 +49773,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <p className="compact-subtitle">Features, labels, and signals may change during beta. Help keeps known issues, release notes, and feedback together.</p>
             <dl className="drawer-status-list settings-compact-status-list">
               <div><dt>Access</dt><dd>{betaAccessAllowed() ? "Approved beta" : "Pending or limited"}</dd></div>
-              <div><dt>Version</dt><dd>{APP_VERSION}</dd></div>
+              <div><dt>Build</dt><dd>{PUBLIC_APP_VERSION_LABEL}</dd></div>
               <div><dt>Support</dt><dd>Known Issues and Feedback live in Help.</dd></div>
             </dl>
+            {renderAppBuildDetails()}
             <button type="button" className="secondary-button" onClick={() => openUtilityPage("help")}>Open Help</button>
           </div>
           <div className="drawer-info-card experience-mode-settings-card utility-card utility-card-wide">
@@ -50326,10 +50353,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <span className="status-badge">{appUpdate.available ? "Update available" : "Up to date"}</span>
             </div>
             <dl className="drawer-status-list">
-              <div><dt>App version</dt><dd>{APP_VERSION}</dd></div>
+              <div><dt>Build</dt><dd>{PUBLIC_APP_VERSION_LABEL}</dd></div>
               <div><dt>Beta access</dt><dd>{betaAccessAllowed() ? "Approved beta" : "Pending or limited"}</dd></div>
               <div><dt>Support path</dt><dd>{BETA_FEEDBACK_TYPES.slice(0, 4).join(", ")}</dd></div>
             </dl>
+            {renderAppBuildDetails()}
             <div className="drawer-inline-actions settings-action-row">
               <button type="button" className="drawer-link" disabled={appRefreshInProgress} onClick={() => void handleSafeAppRefresh()}>{appRefreshInProgress ? "Refreshing..." : "Refresh app"}</button>
               <button type="button" className="secondary-button" onClick={restartOnboarding}>Replay guide</button>
@@ -51941,9 +51969,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     <strong>App Support</strong>
                     <p className="compact-subtitle">Having issues after an update? Refresh Ember & Tide to load the newest version.</p>
                     <dl className="drawer-status-list">
-                      <div><dt>Loaded version</dt><dd>{APP_VERSION}</dd></div>
+                      <div><dt>Loaded build</dt><dd>{PUBLIC_APP_VERSION_LABEL}</dd></div>
                       <div><dt>Update status</dt><dd>{appUpdate.available ? "Update available" : "Up to date"}</dd></div>
                     </dl>
+                    {renderAppBuildDetails()}
                     <button type="button" className="drawer-link" disabled={appRefreshInProgress} onClick={() => runMenuAction(() => void handleSafeAppRefresh())}>
                       {appRefreshInProgress ? "Refreshing..." : "Refresh App"}
                     </button>
