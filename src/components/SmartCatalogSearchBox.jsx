@@ -67,6 +67,35 @@ function CatalogSuggestionThumbnail({ suggestion }) {
   );
 }
 
+function suggestionKey(suggestion = {}) {
+  const product = suggestion.product || {};
+  return [
+    product.id || suggestion.id || "",
+    suggestion.mode || "",
+    suggestion.label || "",
+    suggestion.description || "",
+    suggestion.searchValue || "",
+    suggestion.badge || suggestion.type || "",
+    suggestion.marketPrice || "",
+  ].join("|");
+}
+
+function suggestionListsMatch(current = [], next = []) {
+  if (current === next) return true;
+  if (!Array.isArray(current) || !Array.isArray(next)) return false;
+  if (current.length !== next.length) return false;
+  return current.every((suggestion, index) => suggestionKey(suggestion) === suggestionKey(next[index]));
+}
+
+function timingMatches(current, next) {
+  if (current === next) return true;
+  if (!current || !next) return false;
+  return current.elapsedMs === next.elapsedMs &&
+    current.sourceName === next.sourceName &&
+    current.cacheState === next.cacheState &&
+    current.searchPhase === next.searchPhase;
+}
+
 export default function SmartCatalogSearchBox({
   value,
   onChange,
@@ -269,6 +298,14 @@ export default function SmartCatalogSearchBox({
     });
   }
 
+  function setSuggestionsIfChanged(nextSuggestions = []) {
+    setSuggestions((current) => suggestionListsMatch(current, nextSuggestions) ? current : nextSuggestions);
+  }
+
+  function setLastTimingIfChanged(nextTiming) {
+    setLastTiming((current) => timingMatches(current, nextTiming) ? current : nextTiming);
+  }
+
   useEffect(() => {
     mapRowRef.current = mapRow;
   }, [mapRow]);
@@ -295,7 +332,7 @@ export default function SmartCatalogSearchBox({
     const mode = detectCatalogSearchMode(deferredValue);
     const exactIdentifier = ["barcode", "id"].includes(mode);
     if (!cleanedValue || (cleanedValue.length < 2 && !exactIdentifier)) {
-      setSuggestions([]);
+      setSuggestionsIfChanged([]);
       setLoading(false);
       setErrorMessage("");
       setOpen(false);
@@ -308,12 +345,12 @@ export default function SmartCatalogSearchBox({
         ...buildScopeSuggestions(deferredValue),
         ...buildLocalSuggestions(deferredValue),
       ]).slice(0, maxSuggestions);
-      setSuggestions(localSuggestions);
+      setSuggestionsIfChanged(localSuggestions);
       setLoading(false);
       setErrorMessage("");
       setOpen(true);
       setActiveIndex(localSuggestions.length ? 0 : -1);
-      setLastTiming({ sourceName: "catalog seed", cacheState: "local", searchPhase: "local" });
+      setLastTimingIfChanged({ sourceName: "catalog seed", cacheState: "local", searchPhase: "local" });
       return;
     }
 
@@ -338,15 +375,15 @@ export default function SmartCatalogSearchBox({
         ...buildLocalSuggestions(deferredValue),
         ...filteredSuggestions,
       ]).slice(0, maxSuggestions);
-      setSuggestions(nextSuggestions);
+      setSuggestionsIfChanged(nextSuggestions);
       setLoading(false);
       setErrorMessage("");
       setOpen(true);
       setActiveIndex(nextSuggestions.length ? 0 : -1);
-      setLastTiming({ elapsedMs: cached.elapsedMs, sourceName: cached.sourceName, cacheState: "hit", searchPhase: cached.searchPhase });
+      setLastTimingIfChanged({ elapsedMs: cached.elapsedMs, sourceName: cached.sourceName, cacheState: "hit", searchPhase: cached.searchPhase });
     }
 
-    if (!cached) setSuggestions([]);
+    if (!cached) setSuggestionsIfChanged([]);
     setLoading(!cached);
     setErrorMessage("");
     setOpen(true);
@@ -373,15 +410,15 @@ export default function SmartCatalogSearchBox({
           ...buildLocalSuggestions(deferredValue),
           ...filteredSuggestions,
         ]).slice(0, maxSuggestions);
-        setSuggestions(nextSuggestions);
+        setSuggestionsIfChanged(nextSuggestions);
         setOpen(true);
         setActiveIndex(nextSuggestions.length ? 0 : -1);
         setErrorMessage("");
-        setLastTiming({ elapsedMs: result.elapsedMs, sourceName: result.sourceName, cacheState: result.cached ? "hit" : result.cacheState, searchPhase: result.searchPhase });
+        setLastTimingIfChanged({ elapsedMs: result.elapsedMs, sourceName: result.sourceName, cacheState: result.cached ? "hit" : result.cacheState, searchPhase: result.searchPhase });
       } catch (error) {
         if (requestId.current !== currentRequestId) return;
         if (error?.name === "AbortError") return;
-        setSuggestions([]);
+        setSuggestionsIfChanged([]);
         setOpen(true);
         setErrorMessage(error?.message || "Catalog search is unavailable. Try again.");
         setActiveIndex(-1);
@@ -462,12 +499,12 @@ export default function SmartCatalogSearchBox({
           });
           const cachedSuggestions = cached?.suggestions || [];
           const scopeSuggestions = buildScopeSuggestions(nextValue);
-          setSuggestions(scopeSuggestions);
+          setSuggestionsIfChanged(scopeSuggestions);
           setErrorMessage("");
           setActiveIndex(scopeSuggestions.length ? 0 : -1);
           if (cached) {
             const nextSuggestions = dedupeSuggestionList([...scopeSuggestions, ...cachedSuggestions]).slice(0, maxSuggestions);
-            setSuggestions(nextSuggestions);
+            setSuggestionsIfChanged(nextSuggestions);
             setLoading(false);
             setActiveIndex(nextSuggestions.length ? 0 : -1);
           } else {
