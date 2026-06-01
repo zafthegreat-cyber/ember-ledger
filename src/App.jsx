@@ -24164,6 +24164,169 @@ function renderForgeAccessState() {
   );
 }
 
+function renderForgeBusinessCommandPanel() {
+  const topForgeGroups = groupedSortedFilteredItems.slice(0, 3);
+  const recentForgeSales = [...workspaceSales]
+    .sort((a, b) => String(b.saleDate || b.createdAt || "").localeCompare(String(a.saleDate || a.createdAt || "")))
+    .slice(0, 3);
+  const forgeLedgerCards = [
+    {
+      key: "groups",
+      label: "Grouped inventory",
+      value: groupedSortedFilteredItems.length || 0,
+      helper: `${forgeTotalProductQuantity || 0} sellable item${forgeTotalProductQuantity === 1 ? "" : "s"}`,
+    },
+    {
+      key: "cost",
+      label: "Cost basis",
+      value: forgeValuationSummary.costKnownQuantity ? money(totalSpent) : "Unknown",
+      helper: forgeValuationSummary.missingCostCount ? `${forgeValuationSummary.missingCostCount} cost detail${forgeValuationSummary.missingCostCount === 1 ? "" : "s"} needed` : "Known inventory cost",
+    },
+    {
+      key: "sales",
+      label: "Sales records",
+      value: workspaceSales.length || 0,
+      helper: workspaceSales.length ? `${totalItemsSold || 0} item${totalItemsSold === 1 ? "" : "s"} sold` : "No sales yet",
+    },
+    {
+      key: "profit",
+      label: "Profit / loss",
+      value: forgeHasProfitSnapshot ? money(salesSummary.estimatedProfitLoss - totalExpenses) : "Not started",
+      helper: `${money(totalSalesRevenue)} revenue | ${money(totalExpenses)} expenses`,
+    },
+  ];
+  const renderForgeGroupPreview = (item) => {
+    const entryCount = item.groupedEntryCount || inventoryGroupEntries(item).length;
+    const valuation = item.valuationSummary || buildGroupedInventoryValuation(item, { context: "forge" });
+    const status = item.statusSummary || summarizeForgeGroupedInventoryStatus(inventoryGroupEntries(item), item.saleHistory || []);
+    return (
+      <article className="forge-command-group-preview" key={item.groupId || item.id}>
+        <div>
+          <span className="forge-preview-kicker">{entryCount > 1 ? `${entryCount} entries grouped` : "Single entry"}</span>
+          <h4>{item.name}</h4>
+          <p>{[item.productType, item.expansion, item.locationSummary || forgePhysicalLocationLabel(item)].filter(Boolean).join(" | ") || "Business inventory"}</p>
+        </div>
+        <dl>
+          <div><dt>Held</dt><dd>{status.currentQuantity || item.quantity || 0}</dd></div>
+          <div><dt>Sold</dt><dd>{status.soldQuantity || 0}</dd></div>
+          <div><dt>Cost</dt><dd>{valuation.costKnownQuantity ? money(valuation.totalCostBasis) : "Unknown"}</dd></div>
+          <div><dt>Planned</dt><dd>{valuation.plannedKnownQuantity ? money(valuation.plannedSaleTotal) : "Not set"}</dd></div>
+        </dl>
+        <button type="button" className="secondary-button" onClick={() => setSelectedForgeDetailId(item.groupId || item.id)}>
+          View history
+        </button>
+      </article>
+    );
+  };
+
+  return (
+    <section className="forge-main-command-panel" aria-label="Forge business dashboard">
+      <div className="compact-card-header forge-main-command-heading">
+        <div>
+          <span className="section-kicker">Business ledger</span>
+          <h3>Inventory, sales, and profit in one workspace.</h3>
+          <p>Forge keeps sellable inventory separate from Vault, groups same items, and keeps cost basis, sale records, and item history easy to review.</p>
+        </div>
+        <span className="trust-badge trust-badge--secure">Owner-safe tools</span>
+      </div>
+
+      <div className="forge-ledger-card-grid" aria-label="Forge ledger summary">
+        {forgeLedgerCards.map((card) => (
+          <div className="forge-ledger-card" key={card.key}>
+            <span>{card.label}</span>
+            <strong>{card.value}</strong>
+            <small>{card.helper}</small>
+          </div>
+        ))}
+      </div>
+
+      {!forgeBusinessHasRecords ? (
+        <div className="small-empty-state forge-start-empty-state">
+          <strong>Start tracking sales and trades.</strong>
+          <span>Add sellable inventory, record a sale, or save a receipt when you are ready.</span>
+        </div>
+      ) : null}
+
+      <div className="forge-main-command-columns">
+        <div className="forge-main-command-card">
+          <div className="compact-card-header">
+            <div>
+              <h4>Grouped inventory</h4>
+              <p>Same products roll up together, while purchaser, location, dates, and sale history stay preserved in details.</p>
+            </div>
+            <span className="forge-command-count-badge">{groupedSortedFilteredItems.length} groups</span>
+          </div>
+          <div className="forge-command-preview-list">
+            {topForgeGroups.length ? topForgeGroups.map(renderForgeGroupPreview) : (
+              <div className="small-empty-state forge-start-empty-state">
+                <strong>Start tracking sales and trades.</strong>
+                <span>Add your first Forge item to create grouped business inventory.</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="forge-main-command-card">
+          <div className="compact-card-header">
+            <div>
+              <h4>Sales records</h4>
+              <p>Scan gross sales, fees, cost basis, and estimated profit/loss before opening the full sales view.</p>
+            </div>
+            <button type="button" className="secondary-button" onClick={() => setActiveTab("sales")}>Open Sales</button>
+          </div>
+          <div className="forge-sales-preview-list">
+            {recentForgeSales.length ? recentForgeSales.map((sale) => (
+              <article className="forge-sale-preview-row" key={sale.id}>
+                <div>
+                  <strong>{sale.itemName || "Sale record"}</strong>
+                  <span>{[sale.platform || "Sale", sale.saleDate || shortDate(sale.createdAt)].filter(Boolean).join(" | ")}</span>
+                </div>
+                <dl>
+                  <div><dt>Gross</dt><dd>{money(sale.grossSale || sale.finalSalePrice || 0)}</dd></div>
+                  <div><dt>Cost</dt><dd>{money(sale.costBasis || sale.itemCost || 0)}</dd></div>
+                  <div><dt>Profit</dt><dd>{money(sale.estimatedProfitLoss ?? sale.netProfit ?? 0)}</dd></div>
+                </dl>
+              </article>
+            )) : (
+              <div className="small-empty-state forge-start-empty-state">
+                <strong>No sales records yet.</strong>
+                <span>Record your first sale when an item leaves Forge.</span>
+                <button type="button" className="secondary-button" onClick={() => openAddSaleFlow()}>Add Sale</button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="forge-main-command-card forge-activity-command-card">
+          <div className="compact-card-header">
+            <div>
+              <h4>Recent activity</h4>
+              <p>Latest inventory, sale, expense, and mileage activity in this Forge workspace.</p>
+            </div>
+          </div>
+          {forgeRecentActivity.length ? (
+            <div className="forge-activity-preview-list">
+              {forgeRecentActivity.slice(0, 4).map((entry) => (
+                <div className="forge-activity-preview-row" key={entry.key}>
+                  <span>{entry.source}</span>
+                  <strong>{entry.title}</strong>
+                  <small>{entry.detail}</small>
+                  <time>{shortDate(entry.date)}</time>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="small-empty-state forge-start-empty-state">
+              <strong>No Forge activity yet.</strong>
+              <span>Add inventory, a sale, receipt, or mileage trip to build your business record.</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
   function buildReceiptWorkflowFromExpense(expense = {}) {
     const rawText = expense.rawReceiptText || "";
     const parsedLines = parseReceiptText(rawText);
@@ -57771,6 +57934,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 <button type="button" className="secondary-button" onClick={() => setActiveTab("menu")}>Open Forge settings</button>
               </div>
             ) : null}
+            {renderForgeBusinessCommandPanel()}
             <div className="quick-actions forge-action-strip" aria-label="Forge quick actions">
               <button type="button" onClick={() => openProductAddFlow({ source: "forge-action-strip", destinations: { forge: true } })}>Add Inventory</button>
               <button type="button" className="secondary-button" onClick={() => openAddSaleFlow()}>Add Sale</button>
@@ -57977,7 +58141,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
               </p>
             </div>
             {groupedSortedFilteredItems.length === 0 ? (
-              <p className="forge-empty-inline-prompt">Ready to track your first sale?</p>
+              <p className="forge-empty-inline-prompt">Start tracking sales and trades.</p>
             ) : null}
             {editingItemId && (
               <section className="panel forge-edit-panel">
@@ -58029,8 +58193,8 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
             <div className="inventory-list compact-inventory-list">
               {groupedSortedFilteredItems.length === 0 ? (
                 renderGuidedEmptyState("forge", {
-                  title: "Ready to track your first sale?",
-                  body: "Ready to track your first sale? Your workshop is ready. Add inventory, a receipt, mileage, or a sale when you are ready.",
+                  title: "Start tracking sales and trades.",
+                  body: "Your workshop is ready. Add inventory, a receipt, mileage, or a sale when you are ready.",
                   actionLabel: "Add first Forge item",
                   actionTarget: "forge",
                 })

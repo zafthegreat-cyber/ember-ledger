@@ -68537,3 +68537,404 @@ html body .app .scan-product-modal .scanner-review-primary-action {
     padding: 10px 11px;
   }
 }
+
+/* Final UI Pass 10: Forge Main business dashboard polish. */
+.app-forge .forge-main-command-panel,
+.app-command-shell.app-forge .forge-main-command-panel,
+.app-shell-dark.app-forge .forge-main-command-panel {
+  display: grid;
+  gap: 14px;
+  padding: clamp(14px, 2vw, 18px);
+  border: 1px solid rgba(255, 111, 78, 0.2);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 111, 78, 0.13), transparent 14rem),
+    radial-gradient(circle at 100% 10%, rgba(255, 184, 77, 0.08), transparent 16rem),
+    linear-gradient(145deg, rgba(44, 12, 11, 0.46), rgba(4, 14, 28, 0.9));
+  box-shadow: 0 22px 50px rgba(0, 0, 0, 0.24);
+}
+
+.app-forge .forge-main-command-heading,
+.app-command-shell.app-forge .forge-main-command-heading,
+.app-shell-dark.app-forge .forge-main-command-heading {
+  align-items: start;
+}
+
+.app-forge .forge-main-command-heading h3,
+.app-command-shell.app-forge .forge-main-command-heading h3,
+.app-shell-dark.app-forge .forge-main-command-heading h3,
+.app-forge .forge-main-command-card h4,
+.app-command-shell.app-forge .forge-main-command-card h4,
+.app-shell-dark.app-forge .forge-main-command-card h4 {
+  margin: 2px 0 0;
+  color: #fff7ed;
+  letter-spacing: 0;
+}
+
+.app-forge .forge-main-command-heading p,
+.app-command-shell.app-forge .forge-main-command-heading p,
+.app-shell-dark.app-forge .forge-main-command-heading p,
+.app-forge .forge-main-command-card p,
+.app-command-shell.app-forge .forge-main-command-card p,
+.app-shell-dark.app-forge .forge-main-command-card p {
+  margin: 5px 0 0;
+  max-width: 62rem;
+  color: rgba(232, 238, 246, 0.72);
+  line-height: 1.45;
+}
+
+.app-forge .forge-ledger-card-grid,
+.app-command-shell.app-forge .forge-ledger-card-grid,
+.app-shell-dark.app-forge .forge-ledger-card-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.app-forge .forge-ledger-card,
+.app-command-shell.app-forge .forge-ledger-card,
+.app-shell-dark.app-forge .forge-ledger-card {
+  display: grid;
+  align-content: center;
+  min-width: 0;
+  min-height: 94px;
+  gap: 5px;
+  padding: 12px;
+  border: 1px solid rgba(255, 184, 77, 0.16);
+  border-radius: 17px;
+  background:
+    linear-gradient(145deg, rgba(255, 111, 78, 0.08), rgba(34, 211, 238, 0.025)),
+    rgba(5, 14, 29, 0.78);
+}
+
+.app-forge .forge-ledger-card span,
+.app-command-shell.app-forge .forge-ledger-card span,
+.app-shell-dark.app-forge .forge-ledger-card span,
+.app-forge .forge-preview-kicker,
+.app-command-shell.app-forge .forge-preview-kicker,
+.app-shell-dark.app-forge .forge-preview-kicker {
+  color: rgba(255, 218, 182, 0.82);
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.app-forge .forge-ledger-card strong,
+.app-command-shell.app-forge .forge-ledger-card strong,
+.app-shell-dark.app-forge .forge-ledger-card strong {
+  color: #fff7ed;
+  font-size: clamp(1.18rem, 2.2vw, 1.5rem);
+  line-height: 1.05;
+  overflow-wrap: anywhere;
+}
+
+.app-forge .forge-ledger-card small,
+.app-command-shell.app-forge .forge-ledger-card small,
+.app-shell-dark.app-forge .forge-ledger-card small {
+  color: rgba(232, 238, 246, 0.68);
+  font-size: 0.74rem;
+  line-height: 1.28;
+}
+
+.app-forge .forge-main-command-columns,
+.app-command-shell.app-forge .forge-main-command-columns,
+.app-shell-dark.app-forge .forge-main-command-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.app-forge .forge-activity-command-card,
+.app-command-shell.app-forge .forge-activity-command-card,
+.app-shell-dark.app-forge .forge-activity-command-card {
+  grid-column: 1 / -1;
+}
+
+.app-forge .forge-main-command-card,
+.app-command-shell.app-forge .forge-main-command-card,
+.app-shell-dark.app-forge .forge-main-command-card {
+  display: grid;
+  gap: 11px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 18px;
+  background: rgba(3, 11, 24, 0.58);
+}
+
+.app-forge .forge-command-count-badge,
+.app-command-shell.app-forge .forge-command-count-badge,
+.app-shell-dark.app-forge .forge-command-count-badge {
+  justify-self: end;
+  align-self: start;
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  width: max-content;
+  max-width: 100%;
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 184, 77, 0.2);
+  border-radius: 999px;
+  background: rgba(255, 111, 78, 0.1);
+  color: #ffd6ad;
+  font-size: 0.72rem;
+  font-weight: 850;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.app-forge .forge-command-preview-list,
+.app-command-shell.app-forge .forge-command-preview-list,
+.app-shell-dark.app-forge .forge-command-preview-list,
+.app-forge .forge-sales-preview-list,
+.app-command-shell.app-forge .forge-sales-preview-list,
+.app-shell-dark.app-forge .forge-sales-preview-list,
+.app-forge .forge-activity-preview-list,
+.app-command-shell.app-forge .forge-activity-preview-list,
+.app-shell-dark.app-forge .forge-activity-preview-list {
+  display: grid;
+  gap: 9px;
+}
+
+.app-forge .forge-command-group-preview,
+.app-command-shell.app-forge .forge-command-group-preview,
+.app-shell-dark.app-forge .forge-command-group-preview,
+.app-forge .forge-sale-preview-row,
+.app-command-shell.app-forge .forge-sale-preview-row,
+.app-shell-dark.app-forge .forge-sale-preview-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.9fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid rgba(255, 184, 77, 0.13);
+  border-radius: 15px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012)),
+    rgba(5, 14, 29, 0.72);
+}
+
+.app-forge .forge-command-group-preview h4,
+.app-command-shell.app-forge .forge-command-group-preview h4,
+.app-shell-dark.app-forge .forge-command-group-preview h4 {
+  margin: 3px 0 0;
+  color: #fff7ed;
+  font-size: 0.96rem;
+  line-height: 1.18;
+}
+
+.app-forge .forge-command-group-preview p,
+.app-command-shell.app-forge .forge-command-group-preview p,
+.app-shell-dark.app-forge .forge-command-group-preview p,
+.app-forge .forge-sale-preview-row span,
+.app-command-shell.app-forge .forge-sale-preview-row span,
+.app-shell-dark.app-forge .forge-sale-preview-row span {
+  color: rgba(232, 238, 246, 0.66);
+  font-size: 0.76rem;
+  line-height: 1.28;
+}
+
+.app-forge .forge-command-group-preview dl,
+.app-command-shell.app-forge .forge-command-group-preview dl,
+.app-shell-dark.app-forge .forge-command-group-preview dl,
+.app-forge .forge-sale-preview-row dl,
+.app-command-shell.app-forge .forge-sale-preview-row dl,
+.app-shell-dark.app-forge .forge-sale-preview-row dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin: 0;
+}
+
+.app-forge .forge-sale-preview-row dl,
+.app-command-shell.app-forge .forge-sale-preview-row dl,
+.app-shell-dark.app-forge .forge-sale-preview-row dl {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.app-forge .forge-command-group-preview dl div,
+.app-command-shell.app-forge .forge-command-group-preview dl div,
+.app-shell-dark.app-forge .forge-command-group-preview dl div,
+.app-forge .forge-sale-preview-row dl div,
+.app-command-shell.app-forge .forge-sale-preview-row dl div,
+.app-shell-dark.app-forge .forge-sale-preview-row dl div {
+  min-width: 0;
+  padding: 7px;
+  border-radius: 12px;
+  background: rgba(3, 10, 22, 0.62);
+}
+
+.app-forge .forge-command-group-preview dt,
+.app-command-shell.app-forge .forge-command-group-preview dt,
+.app-shell-dark.app-forge .forge-command-group-preview dt,
+.app-forge .forge-sale-preview-row dt,
+.app-command-shell.app-forge .forge-sale-preview-row dt,
+.app-shell-dark.app-forge .forge-sale-preview-row dt {
+  color: rgba(255, 218, 182, 0.72);
+  font-size: 0.64rem;
+  font-weight: 850;
+}
+
+.app-forge .forge-command-group-preview dd,
+.app-command-shell.app-forge .forge-command-group-preview dd,
+.app-shell-dark.app-forge .forge-command-group-preview dd,
+.app-forge .forge-sale-preview-row dd,
+.app-command-shell.app-forge .forge-sale-preview-row dd,
+.app-shell-dark.app-forge .forge-sale-preview-row dd {
+  margin: 2px 0 0;
+  color: #fff7ed;
+  font-size: 0.82rem;
+  font-weight: 850;
+  overflow-wrap: anywhere;
+}
+
+.app-forge .forge-activity-preview-row,
+.app-command-shell.app-forge .forge-activity-preview-row,
+.app-shell-dark.app-forge .forge-activity-preview-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  background: rgba(5, 14, 29, 0.56);
+}
+
+.app-forge .forge-activity-preview-row span,
+.app-command-shell.app-forge .forge-activity-preview-row span,
+.app-shell-dark.app-forge .forge-activity-preview-row span {
+  padding: 5px 7px;
+  border-radius: 999px;
+  color: #ffd6ad;
+  font-size: 0.68rem;
+  font-weight: 850;
+  background: rgba(255, 111, 78, 0.12);
+}
+
+.app-forge .forge-activity-preview-row strong,
+.app-command-shell.app-forge .forge-activity-preview-row strong,
+.app-shell-dark.app-forge .forge-activity-preview-row strong,
+.app-forge .forge-sale-preview-row strong,
+.app-command-shell.app-forge .forge-sale-preview-row strong,
+.app-shell-dark.app-forge .forge-sale-preview-row strong {
+  color: #fff7ed;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.app-forge .forge-activity-preview-row small,
+.app-command-shell.app-forge .forge-activity-preview-row small,
+.app-shell-dark.app-forge .forge-activity-preview-row small,
+.app-forge .forge-activity-preview-row time,
+.app-command-shell.app-forge .forge-activity-preview-row time,
+.app-shell-dark.app-forge .forge-activity-preview-row time {
+  color: rgba(232, 238, 246, 0.66);
+  font-size: 0.72rem;
+}
+
+.app-forge .forge-start-empty-state,
+.app-command-shell.app-forge .forge-start-empty-state,
+.app-shell-dark.app-forge .forge-start-empty-state {
+  min-height: 0 !important;
+  padding: 13px !important;
+  border-color: rgba(255, 184, 77, 0.16) !important;
+  background: rgba(47, 18, 10, 0.32) !important;
+}
+
+@media (max-width: 900px) {
+  .app-forge .forge-ledger-card-grid,
+  .app-command-shell.app-forge .forge-ledger-card-grid,
+  .app-shell-dark.app-forge .forge-ledger-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .app-forge .forge-main-command-columns,
+  .app-command-shell.app-forge .forge-main-command-columns,
+  .app-shell-dark.app-forge .forge-main-command-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 780px) {
+  .app-forge .forge-main-command-panel,
+  .app-command-shell.app-forge .forge-main-command-panel,
+  .app-shell-dark.app-forge .forge-main-command-panel {
+    gap: 11px;
+    padding: 12px;
+    border-radius: 19px;
+  }
+
+  .app-forge .forge-main-command-heading,
+  .app-command-shell.app-forge .forge-main-command-heading,
+  .app-shell-dark.app-forge .forge-main-command-heading {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-forge .forge-ledger-card,
+  .app-command-shell.app-forge .forge-ledger-card,
+  .app-shell-dark.app-forge .forge-ledger-card {
+    min-height: 76px;
+    padding: 10px;
+  }
+
+  .app-forge .forge-ledger-card strong,
+  .app-command-shell.app-forge .forge-ledger-card strong,
+  .app-shell-dark.app-forge .forge-ledger-card strong {
+    font-size: 1.02rem;
+  }
+
+  .app-forge .forge-command-group-preview,
+  .app-command-shell.app-forge .forge-command-group-preview,
+  .app-shell-dark.app-forge .forge-command-group-preview,
+  .app-forge .forge-sale-preview-row,
+  .app-command-shell.app-forge .forge-sale-preview-row,
+  .app-shell-dark.app-forge .forge-sale-preview-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-forge .forge-command-group-preview dl,
+  .app-command-shell.app-forge .forge-command-group-preview dl,
+  .app-shell-dark.app-forge .forge-command-group-preview dl,
+  .app-forge .forge-sale-preview-row dl,
+  .app-command-shell.app-forge .forge-sale-preview-row dl,
+  .app-shell-dark.app-forge .forge-sale-preview-row dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .app-forge .forge-command-group-preview > button,
+  .app-command-shell.app-forge .forge-command-group-preview > button,
+  .app-shell-dark.app-forge .forge-command-group-preview > button {
+    width: 100%;
+  }
+
+  .app-forge .forge-activity-preview-row,
+  .app-command-shell.app-forge .forge-activity-preview-row,
+  .app-shell-dark.app-forge .forge-activity-preview-row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .app-forge .forge-activity-preview-row small,
+  .app-command-shell.app-forge .forge-activity-preview-row small,
+  .app-shell-dark.app-forge .forge-activity-preview-row small {
+    grid-column: 2 / -1;
+  }
+}
+
+@media (max-width: 390px) {
+  .app-forge .forge-ledger-card-grid,
+  .app-command-shell.app-forge .forge-ledger-card-grid,
+  .app-shell-dark.app-forge .forge-ledger-card-grid {
+    gap: 8px;
+  }
+
+  .app-forge .forge-ledger-card small,
+  .app-command-shell.app-forge .forge-ledger-card small,
+  .app-shell-dark.app-forge .forge-ledger-card small {
+    font-size: 0.68rem;
+  }
+}
