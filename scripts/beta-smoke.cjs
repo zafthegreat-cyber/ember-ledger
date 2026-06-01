@@ -1438,7 +1438,7 @@ async function main() {
       throw new Error(`Scout wizard did not open at the essentials step.\n${bodyText.slice(0, 1600)}`);
     }
 
-    const storeSearch = form.getByPlaceholder("Search store, city, ZIP, nickname, or address").first();
+    const storeSearch = form.getByPlaceholder("Search store, city, ZIP, or nickname").first();
     if (await storeSearch.count()) {
       await storeSearch.scrollIntoViewIfNeeded().catch(() => {});
       await storeSearch.fill(storeSearchText);
@@ -1447,7 +1447,7 @@ async function main() {
           const inputs = [...document.querySelectorAll(selector)];
           return inputs.some((input) => input.value === expected);
         },
-        { selector: 'form.scout-report-flow input[placeholder="Search store, city, ZIP, nickname, or address"]', expected: storeSearchText },
+        { selector: 'form.scout-report-flow input[placeholder="Search store, city, ZIP, or nickname"]', expected: storeSearchText },
         { timeout: 1200 }
       ).then(() => true).catch(() => false);
       if (!filled) {
@@ -1554,7 +1554,7 @@ async function main() {
     });
     await assertVisibleText("Current choice");
 
-    await form.getByPlaceholder("Search store, city, ZIP, nickname, or address").fill(visibleStore.nickname);
+    await form.getByPlaceholder("Search store, city, ZIP, or nickname").fill(visibleStore.nickname);
     const storeCard = form.locator(".scout-report-store-pick, .scout-report-store-card").filter({ hasText: visibleStore.nickname }).first();
     await storeCard.waitFor({ state: "visible", timeout: 5000 });
     if ((await storeCard.evaluate((node) => node.tagName.toLowerCase())) === "button") {

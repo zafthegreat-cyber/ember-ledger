@@ -44695,7 +44695,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <input
                     value={quickScoutReportForm.storeSearch}
                     onChange={(event) => updateQuickScoutReportForm("storeSearch", event.target.value)}
-                    placeholder="Search store, city, ZIP, nickname, or address"
+                    placeholder="Search store, city, ZIP, or nickname"
                   />
                 </label>
                 <input
@@ -45038,7 +45038,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <input
                     value={quickScoutReportForm.storeSearch}
                     onChange={(event) => updateQuickScoutReportForm("storeSearch", event.target.value)}
-                    placeholder="Search store, city, ZIP, nickname, or address"
+                    placeholder="Search store, city, ZIP, or nickname"
                   />
                 </div>
                 <div className="scout-location-trust-note">
@@ -46844,7 +46844,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         || flowModalRef.current;
       focusScope?.scrollIntoView?.({ block: "nearest" });
       const preferredFocusSelector = activeFlowModal?.type === "scoutSubmit"
-        ? "input[placeholder='Search store, city, ZIP, nickname, or address']:not([disabled]), input:not([type='hidden']):not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not(.modal-close-button):not([disabled]), [href], summary, [tabindex]:not([tabindex='-1'])"
+        ? "input[placeholder='Search store, city, ZIP, or nickname']:not([disabled]), input:not([type='hidden']):not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not(.modal-close-button):not([disabled]), [href], summary, [tabindex]:not([tabindex='-1'])"
         : "input:not([type='hidden']):not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not(.modal-close-button):not([disabled]), [href], summary, [tabindex]:not([tabindex='-1'])";
       const focusable = focusScope?.querySelector(preferredFocusSelector)
         || flowModalRef.current?.querySelector("button:not(.modal-close-button):not([disabled]), [href], input:not([type='hidden']):not([disabled]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex]:not([tabindex='-1'])");

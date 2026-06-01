@@ -70602,3 +70602,72 @@ html body .app .ember-assist-shell.is-open {
     font-size: 0.68rem;
   }
 }
+
+/* Final Scout report intake spacing cleanup: keep the sticky footer, but stop it
+   from covering desktop content or forcing empty mobile space. */
+.app-scout .flow-modal[data-flow="scoutSubmit"] .flow-modal-body,
+.app-command-shell.app-scout .flow-modal[data-flow="scoutSubmit"] .flow-modal-body,
+.app.app-scout .flow-modal[data-flow="scoutSubmit"] .flow-modal-body {
+  padding-bottom: clamp(96px, 12vh, 132px) !important;
+  scroll-padding-bottom: clamp(104px, 13vh, 144px) !important;
+}
+
+.app-scout .scout-report-flow.scout-report-wizard > .scout-report-step-card.active,
+.app-command-shell.app-scout .scout-report-flow.scout-report-wizard > .scout-report-step-card.active,
+.app.app-scout .scout-report-flow.scout-report-wizard > .scout-report-step-card.active {
+  margin-bottom: 12px !important;
+}
+
+.app-scout .scout-report-store-list,
+.app-command-shell.app-scout .scout-report-store-list,
+.app.app-scout .scout-report-store-list {
+  padding-bottom: 18px !important;
+  scroll-padding-bottom: 18px !important;
+}
+
+.app-scout .scout-required-checklist,
+.app-command-shell.app-scout .scout-required-checklist,
+.app.app-scout .scout-required-checklist {
+  align-items: stretch !important;
+}
+
+@media (max-width: 780px) {
+  .app-scout .flow-modal[data-flow="scoutSubmit"] .flow-modal-body,
+  .app-command-shell.app-scout .flow-modal[data-flow="scoutSubmit"] .flow-modal-body,
+  .app.app-scout .flow-modal[data-flow="scoutSubmit"] .flow-modal-body {
+    display: block !important;
+    overflow-y: auto !important;
+    padding: 0 12px calc(16px + env(safe-area-inset-bottom, 0px)) !important;
+    scroll-padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .app-scout .scout-report-flow.scout-report-wizard,
+  .app-command-shell.app-scout .scout-report-flow.scout-report-wizard,
+  .app.app-scout .scout-report-flow.scout-report-wizard {
+    display: grid !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 0 0 10px !important;
+  }
+
+  .app-scout .scout-report-flow.scout-report-wizard > .scout-report-step-card.active,
+  .app-command-shell.app-scout .scout-report-flow.scout-report-wizard > .scout-report-step-card.active,
+  .app.app-scout .scout-report-flow.scout-report-wizard > .scout-report-step-card.active {
+    display: grid !important;
+    flex: initial !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding-bottom: 12px !important;
+    scroll-padding-bottom: 12px !important;
+  }
+
+  .app-scout .scout-report-flow > .scout-wizard-footer,
+  .app-command-shell.app-scout .scout-report-flow > .scout-wizard-footer,
+  .app.app-scout .scout-report-flow > .scout-wizard-footer {
+    position: sticky !important;
+    bottom: 0 !important;
+    margin-top: 8px !important;
+    padding: 10px 0 calc(6px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
