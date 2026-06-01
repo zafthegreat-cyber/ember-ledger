@@ -67637,3 +67637,299 @@ html body .app .scan-product-modal .scanner-review-primary-action {
     justify-content: flex-start !important;
   }
 }
+
+/* Final UI Pass 7 follow-up: Scout Home spacing, friendly watch rules, and aligned desktop cards. */
+.app-scout .standard-page-header.scout-summary-card,
+.app-command-shell.app-scout .standard-page-header.scout-summary-card,
+.app-shell-dark.app-scout .standard-page-header.scout-summary-card {
+  border-color: rgba(43, 217, 255, 0.24) !important;
+  background:
+    radial-gradient(circle at 90% 0%, rgba(43, 217, 255, 0.14), transparent 17rem),
+    radial-gradient(circle at 8% 100%, rgba(255, 122, 24, 0.08), transparent 15rem),
+    linear-gradient(145deg, rgba(6, 22, 41, 0.96), rgba(3, 10, 23, 0.98)) !important;
+}
+
+.app-scout .standard-page-header.scout-summary-card .standard-page-header-actions,
+.app-command-shell.app-scout .standard-page-header.scout-summary-card .standard-page-header-actions,
+.app-shell-dark.app-scout .standard-page-header.scout-summary-card .standard-page-header-actions {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(112px, auto)) !important;
+  gap: 8px !important;
+  align-items: stretch !important;
+}
+
+.app-scout .standard-page-header.scout-summary-card .standard-page-header-actions > button,
+.app-command-shell.app-scout .standard-page-header.scout-summary-card .standard-page-header-actions > button,
+.app-shell-dark.app-scout .standard-page-header.scout-summary-card .standard-page-header-actions > button {
+  min-height: 44px !important;
+  border-radius: 15px !important;
+  white-space: normal !important;
+}
+
+.app-scout .scout-summary-card .standard-page-header-actions .scout-scan-screenshot-action,
+.app-command-shell.app-scout .scout-summary-card .standard-page-header-actions .scout-scan-screenshot-action,
+.app-shell-dark.app-scout .scout-summary-card .standard-page-header-actions .scout-scan-screenshot-action,
+.app-scout .scout-summary-card .standard-page-header-actions .scout-submit-primary,
+.app-command-shell.app-scout .scout-summary-card .standard-page-header-actions .scout-submit-primary,
+.app-shell-dark.app-scout .scout-summary-card .standard-page-header-actions .scout-submit-primary {
+  border-color: rgba(43, 217, 255, 0.36) !important;
+  box-shadow: 0 14px 32px rgba(5, 18, 36, 0.3), 0 0 18px rgba(43, 217, 255, 0.08) !important;
+}
+
+.app-scout .scout-summary-card .standard-page-header-actions .scout-submit-primary,
+.app-command-shell.app-scout .scout-summary-card .standard-page-header-actions .scout-submit-primary,
+.app-shell-dark.app-scout .scout-summary-card .standard-page-header-actions .scout-submit-primary {
+  background: linear-gradient(135deg, #22d3ee, #14b8a6) !important;
+  color: #031b24 !important;
+  font-weight: 950 !important;
+}
+
+.app-scout .scout-summary-card .standard-page-header-actions .scout-stores-link,
+.app-command-shell.app-scout .scout-summary-card .standard-page-header-actions .scout-stores-link,
+.app-shell-dark.app-scout .scout-summary-card .standard-page-header-actions .scout-stores-link {
+  border-color: rgba(132, 226, 255, 0.2) !important;
+  background: rgba(5, 17, 34, 0.74) !important;
+  color: rgba(232, 246, 255, 0.86) !important;
+}
+
+.app-scout .scout-dashboard-overview.scout-nearby-dashboard,
+.app-command-shell.app-scout .scout-dashboard-overview.scout-nearby-dashboard,
+.app-shell-dark.app-scout .scout-dashboard-overview.scout-nearby-dashboard {
+  width: min(100%, 1220px) !important;
+  margin-inline: auto !important;
+  align-items: start !important;
+  gap: 14px !important;
+}
+
+.scout-overview-primary-column,
+.scout-overview-support-column,
+.scout-overview-reports-column {
+  min-width: 0;
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+
+.scout-overview-primary-column > *,
+.scout-overview-support-column > *,
+.scout-overview-reports-column > * {
+  min-width: 0;
+}
+
+.scout-nearby-desktop-slot {
+  display: none;
+  min-width: 0;
+}
+
+.app-scout .scout-watch-stores-card,
+.app-command-shell.app-scout .scout-watch-stores-card,
+.app-shell-dark.app-scout .scout-watch-stores-card,
+.app-scout .scout-tier-lock-card.compact,
+.app-command-shell.app-scout .scout-tier-lock-card.compact,
+.app-shell-dark.app-scout .scout-tier-lock-card.compact,
+.app-scout .scout-nearby-list-card,
+.app-command-shell.app-scout .scout-nearby-list-card,
+.app-shell-dark.app-scout .scout-nearby-list-card,
+.app-scout .scout-nearby-cta-card,
+.app-command-shell.app-scout .scout-nearby-cta-card,
+.app-shell-dark.app-scout .scout-nearby-cta-card {
+  min-width: 0 !important;
+  border-color: rgba(43, 217, 255, 0.18) !important;
+}
+
+.scout-watch-rule-stack {
+  display: grid;
+  gap: 5px;
+  margin: 8px 0;
+  padding: 10px 11px;
+  border: 1px solid rgba(43, 217, 255, 0.16);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(43, 217, 255, 0.08), transparent 8rem),
+    rgba(4, 15, 30, 0.68);
+}
+
+.scout-watch-rule-stack span {
+  color: rgba(232, 246, 255, 0.88);
+  font-size: 0.82rem;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.scout-watch-rule-stack span:first-child {
+  color: #ccfbf1;
+}
+
+.scout-watch-rule-stack small {
+  width: max-content;
+  max-width: 100%;
+  min-height: 22px;
+  padding: 4px 8px;
+  border: 1px solid rgba(132, 226, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(3, 12, 25, 0.58);
+  color: rgba(232, 246, 255, 0.66);
+  font-size: 0.68rem;
+  font-weight: 850;
+  line-height: 1;
+}
+
+.app-scout .scout-watch-empty-state,
+.app-command-shell.app-scout .scout-watch-empty-state,
+.app-shell-dark.app-scout .scout-watch-empty-state {
+  border-color: rgba(43, 217, 255, 0.2) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(43, 217, 255, 0.08), transparent 10rem),
+    rgba(4, 15, 30, 0.72) !important;
+}
+
+.app-scout .scout-tier-lock-card.compact,
+.app-command-shell.app-scout .scout-tier-lock-card.compact,
+.app-shell-dark.app-scout .scout-tier-lock-card.compact {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(255, 184, 77, 0.1), transparent 12rem),
+    linear-gradient(145deg, rgba(9, 24, 43, 0.94), rgba(4, 12, 27, 0.98)) !important;
+}
+
+.app-scout .scout-tier-lock-card.compact .quick-actions,
+.app-command-shell.app-scout .scout-tier-lock-card.compact .quick-actions,
+.app-shell-dark.app-scout .scout-tier-lock-card.compact .quick-actions {
+  margin-top: 10px !important;
+}
+
+@media (min-width: 1024px) {
+  .app-scout .scout-dashboard-overview.scout-nearby-dashboard,
+  .app-command-shell.app-scout .scout-dashboard-overview.scout-nearby-dashboard,
+  .app-shell-dark.app-scout .scout-dashboard-overview.scout-nearby-dashboard {
+    grid-template-columns: minmax(0, 1.22fr) minmax(320px, 0.78fr) !important;
+    grid-auto-rows: auto !important;
+  }
+
+  .scout-overview-primary-column {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+  }
+
+  .scout-nearby-desktop-slot {
+    display: grid;
+    min-width: 0;
+  }
+
+  .scout-overview-support-column {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+  }
+
+  .scout-nearby-mobile-slot {
+    display: none !important;
+  }
+
+  .app-scout .scout-nearby-cta-card,
+  .app-command-shell.app-scout .scout-nearby-cta-card,
+  .app-shell-dark.app-scout .scout-nearby-cta-card,
+  .app-scout .scout-tier-lock-card.compact,
+  .app-command-shell.app-scout .scout-tier-lock-card.compact,
+  .app-shell-dark.app-scout .scout-tier-lock-card.compact,
+  .app-scout .scout-watch-stores-card,
+  .app-command-shell.app-scout .scout-watch-stores-card,
+  .app-shell-dark.app-scout .scout-watch-stores-card,
+  .app-scout .scout-nearby-list-card,
+  .app-command-shell.app-scout .scout-nearby-list-card,
+  .app-shell-dark.app-scout .scout-nearby-list-card {
+    grid-column: auto !important;
+    grid-row: auto !important;
+  }
+}
+
+@media (max-width: 780px) {
+  .app-scout .scout-dashboard-overview.scout-nearby-dashboard,
+  .app-command-shell.app-scout .scout-dashboard-overview.scout-nearby-dashboard,
+  .app-shell-dark.app-scout .scout-dashboard-overview.scout-nearby-dashboard {
+    gap: 11px !important;
+    padding-bottom: max(184px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 118px)) !important;
+    scroll-padding-bottom: max(184px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 118px)) !important;
+  }
+
+  .app-scout .standard-page-header.scout-summary-card .standard-page-header-actions,
+  .app-command-shell.app-scout .standard-page-header.scout-summary-card .standard-page-header-actions,
+  .app-shell-dark.app-scout .standard-page-header.scout-summary-card .standard-page-header-actions {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .app-scout .standard-page-header.scout-summary-card .standard-page-header-actions .scout-stores-link,
+  .app-command-shell.app-scout .standard-page-header.scout-summary-card .standard-page-header-actions .scout-stores-link,
+  .app-shell-dark.app-scout .standard-page-header.scout-summary-card .standard-page-header-actions .scout-stores-link {
+    grid-column: 1 / -1 !important;
+    justify-self: stretch !important;
+    min-height: 40px !important;
+  }
+
+  .app-scout .scout-nearby-cta-card,
+  .app-command-shell.app-scout .scout-nearby-cta-card,
+  .app-shell-dark.app-scout .scout-nearby-cta-card,
+  .app-scout .scout-watch-stores-card,
+  .app-command-shell.app-scout .scout-watch-stores-card,
+  .app-shell-dark.app-scout .scout-watch-stores-card,
+  .app-scout .scout-nearby-list-card,
+  .app-command-shell.app-scout .scout-nearby-list-card,
+  .app-shell-dark.app-scout .scout-nearby-list-card,
+  .app-scout .scout-tier-lock-card.compact,
+  .app-command-shell.app-scout .scout-tier-lock-card.compact,
+  .app-shell-dark.app-scout .scout-tier-lock-card.compact {
+    margin-inline: 10px !important;
+    padding: 13px !important;
+    border-radius: 18px !important;
+  }
+
+  .app-scout .scout-nearby-list-card .compact-card-header,
+  .app-command-shell.app-scout .scout-nearby-list-card .compact-card-header,
+  .app-shell-dark.app-scout .scout-nearby-list-card .compact-card-header,
+  .app-scout .scout-watch-stores-card .compact-card-header,
+  .app-command-shell.app-scout .scout-watch-stores-card .compact-card-header,
+  .app-shell-dark.app-scout .scout-watch-stores-card .compact-card-header {
+    align-items: start !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    gap: 10px !important;
+  }
+
+  .scout-watch-rule-stack {
+    padding: 9px 10px;
+  }
+
+  .scout-watch-rule-stack span {
+    font-size: 0.78rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .app-scout .standard-page-header.scout-summary-card,
+  .app-command-shell.app-scout .standard-page-header.scout-summary-card,
+  .app-shell-dark.app-scout .standard-page-header.scout-summary-card {
+    margin-inline: 8px !important;
+  }
+
+  .app-scout .standard-page-header.scout-summary-card .standard-page-header-actions > button,
+  .app-command-shell.app-scout .standard-page-header.scout-summary-card .standard-page-header-actions > button,
+  .app-shell-dark.app-scout .standard-page-header.scout-summary-card .standard-page-header-actions > button {
+    font-size: 0.76rem !important;
+    padding-inline: 9px !important;
+  }
+
+  .app-scout .scout-nearby-quiet-stats,
+  .app-command-shell.app-scout .scout-nearby-quiet-stats,
+  .app-shell-dark.app-scout .scout-nearby-quiet-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  .app-scout .scout-nearby-quiet-stats span,
+  .app-command-shell.app-scout .scout-nearby-quiet-stats span,
+  .app-shell-dark.app-scout .scout-nearby-quiet-stats span {
+    min-width: 0 !important;
+    padding: 7px 5px !important;
+    text-align: center !important;
+  }
+}

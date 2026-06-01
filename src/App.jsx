@@ -34134,11 +34134,16 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const scoutTrustScore = Number.isFinite(Number(scoutSnapshot.scoutProfile?.trustScore)) ? Number(scoutSnapshot.scoutProfile.trustScore) : 0;
     const scoutTrustLabel = scoutTrustScore > 0 ? scoutTrustScore : "New";
     const scoutSlotLimit = Number(tierAccess.scoutStoreSlots || 0);
-    const watchedStoreLimitLabel = scoutSlotLimit >= 99
-      ? `${watchedStores.length} watched stores`
-      : `${watchedStores.length}/${scoutSlotLimit || 1} watched store${(scoutSlotLimit || 1) === 1 ? "" : "s"}`;
+    const watchedStorePlanName = tierAccess.tierLabel || "Free";
+    const watchedStoreSlotCount = scoutSlotLimit || 1;
+    const watchedStorePlanLabel = scoutSlotLimit >= 99
+      ? "Admin: store moderation"
+      : `${watchedStorePlanName} plan: ${watchedStoreSlotCount} watched store${watchedStoreSlotCount === 1 ? "" : "s"}`;
+    const watchedStoreUsageLabel = scoutSlotLimit >= 99
+      ? `${watchedStores.length} selected store${watchedStores.length === 1 ? "" : "s"}`
+      : `${watchedStores.length} selected now`;
     const watchedStoreSwapLabel = Number(tierAccess.scoutStoreSwapDays || 0) > 0
-      ? `Change one store every ${tierAccess.scoutStoreSwapDays} days.`
+      ? `You can change ${watchedStoreSlotCount === 1 ? "it" : "one store"} once every ${tierAccess.scoutStoreSwapDays} days.`
       : "Admin store tools are available for moderation.";
     const watchedStoreSafetyCopy = tierAccess.canViewPatternTools
       ? "Admin moderation can view protected history."
@@ -34149,93 +34154,109 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       setScoutStoresMode("list");
       setScoutView("stores");
     };
-    return (
-      <section className="scout-dashboard-overview scout-nearby-dashboard" aria-label="Scout nearby reports">
-        <article className="panel scout-nearby-cta-card">
-          <div className="scout-nearby-cta-copy">
-            <span className="section-kicker">Nearby Scout</span>
-            <h2>Current reports, not raw patterns.</h2>
-            <p>Use screenshots or a quick report to share what you saw. Scout keeps store signals current, family-safe, and reviewable.</p>
-            <div className="scout-safety-strip" aria-label="Scout safety rules">
-              <span>Family-safe</span>
-              <span>Selected stores</span>
-              <span>Raw history protected</span>
-            </div>
+    const renderScoutNearbyReportsCard = () => (
+      <article className="panel scout-overview-card scout-nearby-list-card">
+        <div className="compact-card-header">
+          <div>
+            <h2>Nearby Reports</h2>
+            <p>Freshness, proof, and confirmations help families read current reports without exposing restock patterns.</p>
           </div>
-          <div className="scout-nearby-cta-actions">
-            <div className="scout-nearby-quiet-stats" aria-label="Scout signal summary">
-              <span><strong>{freshReportCount}</strong> fresh</span>
-              <span><strong>{needsConfirmationCount}</strong> need confirmation</span>
-              <span><strong>{scoutTrustLabel}</strong> trust</span>
-            </div>
-          </div>
-        </article>
-
-        <article className="panel scout-overview-card scout-watch-stores-card">
-          <div className="compact-card-header">
-            <div>
-              <p className="section-kicker">My Watch Stores</p>
-              <h2>My Watch Stores</h2>
-              <span className="scout-watch-slot-line">{watchedStoreLimitLabel} - {watchedStoreSwapLabel}</span>
-              <p>{watchedStoreSafetyCopy}</p>
-            </div>
-            <button type="button" className="secondary-button scout-store-manage-link" onClick={openScoutStoresList}>Manage</button>
-          </div>
-          {watchedStoreRows.length ? (
-            <div className="scout-watch-store-list">
-              {watchedStoreRows.map((store, index) => {
-                const displayName = getScoutStoreDisplayName(store);
-                const retailer = getScoutQuickRetailer(store);
-                const region = getScoutQuickStoreRegion(store) || getScoutQuickStoreZip(store) || store.city || store.addressCity || store.address_city || "Selected store";
-                const key = getScoutQuickStoreId(store) || getStoreMapStoreId(store, index);
-                return (
-                  <button type="button" className="scout-watch-store-row" key={key} onClick={openScoutStoresList}>
-                    <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed="scout" /></span>
-                    <span>
-                      <strong>{displayName}</strong>
-                      <small>{retailer} - {region}</small>
-                    </span>
-                    <em>Current reports</em>
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="empty-state scout-watch-empty-state">
-              <h3>Choose your first watched store.</h3>
-              <p>Free users can follow 1 Scout store, change once every 30 days, and still submit or confirm reports for the community.</p>
-              <button type="button" className="secondary-button" onClick={openScoutStoresList}>Choose Store</button>
+          <button type="button" className="secondary-button" onClick={() => {
+            setScoutReportFilter("Latest");
+            setScoutReportsPage(1);
+            setScoutView("reports");
+          }}>View all</button>
+        </div>
+        <div className="scout-preview-list scout-nearby-report-list">
+          {latestReports.length ? latestReports.map((report) => renderScoutReportCard(report, { compact: true })) : (
+            <div className="empty-state scout-empty-signal-state">
+              <h3>No nearby reports yet</h3>
+              <p>Be the first to report something current in your area. Reports are shared by store, not private address.</p>
+              <div className="quick-actions">
+                <button type="button" className="secondary-button" onClick={() => openQuickAddPathFlow("scoutScreenshotReview", {}, "scout-nearby-empty-screenshot")}>Scan Screenshot</button>
+                <button type="button" onClick={() => openScoutSubmitFlow({ source: "scout-nearby-empty" })}>Add Report</button>
+              </div>
             </div>
           )}
-        </article>
-
-        <article className="panel scout-overview-card scout-nearby-list-card">
-          <div className="compact-card-header">
-            <div>
-              <h2>Nearby Reports</h2>
-              <p>Freshness, proof, and confirmations help families read current reports without exposing restock patterns.</p>
+        </div>
+      </article>
+    );
+    return (
+      <section className="scout-dashboard-overview scout-nearby-dashboard" aria-label="Scout nearby reports">
+        <div className="scout-overview-primary-column">
+          <article className="panel scout-nearby-cta-card">
+            <div className="scout-nearby-cta-copy">
+              <span className="section-kicker">Nearby Scout</span>
+              <h2>Current reports, not raw patterns.</h2>
+              <p>Use screenshots or a quick report to share what you saw. Scout keeps store signals current, family-safe, and reviewable.</p>
+              <div className="scout-safety-strip" aria-label="Scout safety rules">
+                <span>Family-safe</span>
+                <span>Selected stores</span>
+                <span>Raw history protected</span>
+              </div>
             </div>
-            <button type="button" className="secondary-button" onClick={() => {
-              setScoutReportFilter("Latest");
-              setScoutReportsPage(1);
-              setScoutView("reports");
-            }}>View all</button>
+            <div className="scout-nearby-cta-actions">
+              <div className="scout-nearby-quiet-stats" aria-label="Scout signal summary">
+                <span><strong>{freshReportCount}</strong> fresh</span>
+                <span><strong>{needsConfirmationCount}</strong> need confirmation</span>
+                <span><strong>{scoutTrustLabel}</strong> trust</span>
+              </div>
+            </div>
+          </article>
+          <div className="scout-nearby-desktop-slot">
+            {renderScoutNearbyReportsCard()}
           </div>
-          <div className="scout-preview-list scout-nearby-report-list">
-            {latestReports.length ? latestReports.map((report) => renderScoutReportCard(report, { compact: true })) : (
-              <div className="empty-state scout-empty-signal-state">
-                <h3>No nearby reports yet</h3>
-                <p>Be the first to report something current in your area. Reports are shared by store, not private address.</p>
-                <div className="quick-actions">
-                  <button type="button" className="secondary-button" onClick={() => openQuickAddPathFlow("scoutScreenshotReview", {}, "scout-nearby-empty-screenshot")}>Scan Screenshot</button>
-                  <button type="button" onClick={() => openScoutSubmitFlow({ source: "scout-nearby-empty" })}>Add Report</button>
+        </div>
+
+        <div className="scout-overview-support-column">
+          <article className="panel scout-overview-card scout-watch-stores-card">
+            <div className="compact-card-header">
+              <div>
+                <p className="section-kicker">My Watch Stores</p>
+                <h2>My Watch Stores</h2>
+                <div className="scout-watch-rule-stack" aria-label="Scout watched store rule">
+                  <span>{watchedStorePlanLabel}</span>
+                  <span>{watchedStoreSwapLabel}</span>
+                  <small>{watchedStoreUsageLabel}</small>
                 </div>
+                <p>{watchedStoreSafetyCopy}</p>
+              </div>
+              <button type="button" className="secondary-button scout-store-manage-link" onClick={openScoutStoresList}>Manage</button>
+            </div>
+            {watchedStoreRows.length ? (
+              <div className="scout-watch-store-list">
+                {watchedStoreRows.map((store, index) => {
+                  const displayName = getScoutStoreDisplayName(store);
+                  const retailer = getScoutQuickRetailer(store);
+                  const region = getScoutQuickStoreRegion(store) || getScoutQuickStoreZip(store) || store.city || store.addressCity || store.address_city || "Selected store";
+                  const key = getScoutQuickStoreId(store) || getStoreMapStoreId(store, index);
+                  return (
+                    <button type="button" className="scout-watch-store-row" key={key} onClick={openScoutStoresList}>
+                      <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed="scout" /></span>
+                      <span>
+                        <strong>{displayName}</strong>
+                        <small>{retailer} - {region}</small>
+                      </span>
+                      <em>Current reports</em>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="empty-state scout-watch-empty-state">
+                <h3>Choose your first watched store.</h3>
+                <p>{watchedStorePlanLabel}. {watchedStoreSwapLabel} You can still submit or confirm reports for the community.</p>
+                <button type="button" className="secondary-button" onClick={openScoutStoresList}>Choose Store</button>
               </div>
             )}
-          </div>
-        </article>
+          </article>
 
-        {renderScoutTierLockCard({ compact: true })}
+          {renderScoutTierLockCard({ compact: true })}
+        </div>
+
+        <div className="scout-overview-reports-column scout-nearby-mobile-slot">
+          {renderScoutNearbyReportsCard()}
+        </div>
       </section>
     );
   }
@@ -34410,12 +34431,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <div>
             <p className="section-kicker">Scout access foundation</p>
             <h2>Fair access, not raw patterns.</h2>
-            <p>{compact ? "Free users can contribute and follow selected stores. Collector adds more watched stores and deeper current details." : "Free users help the community and follow 1 Scout store. Collector unlocks 3 Scout stores and deeper current Scout details."}</p>
+            <p>{compact ? "Collectors can report and confirm current store signals. Raw restock patterns stay protected." : "Free users help the community and follow 1 Scout store. Collector unlocks 3 Scout stores and deeper current Scout details."}</p>
           </div>
           <span className="status-badge">Protected</span>
         </div>
         {compact ? (
-          <p className="scout-tier-lock-compact-copy">Users follow selected stores. Raw restock patterns stay protected to keep Scout fair.</p>
+          <p className="scout-tier-lock-compact-copy">Fair access stays focused on current reports, selected stores, and proof the community can review.</p>
         ) : (
           <div className="scout-tier-lock-list">
             <span>Family includes Collector plus parent-managed kid profiles.</span>
