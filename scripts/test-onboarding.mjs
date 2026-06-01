@@ -1,9 +1,16 @@
 import assert from "node:assert/strict";
 
 import {
+  ACCOUNT_SETUP_TIER_ROWS,
+  ACCOUNT_SETUP_USERNAME_RULES,
+  ACCOUNT_SETUP_WORKSPACE_ROWS,
   ONBOARDING_ASSIST_PROMPTS,
   ONBOARDING_GOALS,
+  betaAccessWaitlistMessage,
   buildOnboardingChecklist,
+  formatBetaAccessAreaAnswer,
+  isVirginiaAccessState,
+  normalizeAccessState,
   normalizeOnboardingGoalKeys,
   normalizeOnboardingState,
   onboardingChecklistSummary,
@@ -19,6 +26,21 @@ import {
 assert.ok(ONBOARDING_GOALS.some((goal) => goal.key === "parent_family"), "parent/family goal should exist");
 assert.ok(ONBOARDING_GOALS.some((goal) => goal.key === "seller_forge"), "seller/business goal should exist");
 assert.ok(ONBOARDING_ASSIST_PROMPTS.includes("What should I do first?"), "starter prompts should include first-step help");
+assert.ok(ACCOUNT_SETUP_USERNAME_RULES.some((rule) => /reserved/i.test(rule)), "username rules should mention reserved names");
+assert.deepEqual(
+  ACCOUNT_SETUP_TIER_ROWS.map((tier) => tier.label),
+  ["Free", "Collector", "Family", "Seller", "Shop", "Beta", "Admin"],
+  "account setup should show every requested tier/status"
+);
+assert.ok(ACCOUNT_SETUP_WORKSPACE_ROWS.some((row) => row.key === "family"), "family workspace setup should be described");
+assert.equal(normalizeAccessState("Virginia"), "VA");
+assert.equal(isVirginiaAccessState("VA"), true);
+assert.equal(isVirginiaAccessState("NC"), false);
+assert.match(betaAccessWaitlistMessage("NC"), /North Carolina/);
+assert.equal(
+  formatBetaAccessAreaAnswer({ state: "VA", localAreaAnswer: "hampton_roads", tierInterest: "family" }),
+  "State: VA | Area: Hampton Roads | Path: Family"
+);
 
 assert.deepEqual(
   normalizeOnboardingGoalKeys([

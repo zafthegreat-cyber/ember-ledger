@@ -1,5 +1,12 @@
 import { isSupabaseConfigured, supabase } from "../supabaseClient.js";
 import {
+  accessStateFromAreaAnswer,
+  accountSetupTierLabel,
+  formatBetaAccessAreaAnswer,
+  isVirginiaAccessState,
+  normalizeAccessState,
+} from "../utils/onboardingGuidance.js";
+import {
   BETA_REQUEST_STATUSES,
   LITTLE_SPARKS_STATUSES,
   betaAccessAllowedForProfile,
@@ -31,6 +38,7 @@ function mapBetaRequest(row = {}) {
     collectorType: row.collector_type || row.collectorType || "",
     reason: row.reason || "",
     localAreaAnswer: row.local_area_answer || row.localAreaAnswer || "",
+    state: row.state || row.stateCode || accessStateFromAreaAnswer(row.local_area_answer || row.localAreaAnswer || ""),
     socialHandle: row.social_handle || row.socialHandle || "",
     rulesAgreed: Boolean(row.rules_agreed ?? row.rulesAgreed),
     status: normalizeBetaStatus(row.status),
@@ -286,17 +294,24 @@ export async function submitBetaAccessRequest(user, payload) {
     throw new Error("Sign in is required before requesting beta access.");
   }
 
+  const state = normalizeAccessState(payload.state || payload.stateCode || "VA") || "VA";
+  const tierLabel = accountSetupTierLabel(payload.tierInterest);
+  const reason = String(payload.reason || "").trim();
   const row = {
     user_id: user.id,
     full_name: String(payload.fullName || "").trim(),
     email: String(payload.email || user.email || "").trim(),
-    city_area: String(payload.cityArea || "").trim(),
+    city_area: [String(payload.cityArea || "").trim(), state].filter(Boolean).join(", "),
     collector_type: String(payload.collectorType || "other").trim(),
-    reason: String(payload.reason || "").trim(),
-    local_area_answer: String(payload.localAreaAnswer || "").trim(),
+    reason: tierLabel ? `${reason}\n\nStarting path: ${tierLabel}` : reason,
+    local_area_answer: formatBetaAccessAreaAnswer({
+      state,
+      localAreaAnswer: isVirginiaAccessState(state) ? String(payload.localAreaAnswer || "").trim() : "not_local",
+      tierInterest: payload.tierInterest,
+    }),
     social_handle: String(payload.socialHandle || "").trim(),
     rules_agreed: Boolean(payload.rulesAgreed),
-    status: "pending",
+    status: isVirginiaAccessState(state) ? "pending" : "waitlist",
     updated_at: new Date().toISOString(),
   };
 

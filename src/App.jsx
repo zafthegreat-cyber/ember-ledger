@@ -412,9 +412,17 @@ import {
   upsertNotificationState,
 } from "./utils/notificationCenterUtils";
 import {
+  ACCOUNT_SETUP_STATE_OPTIONS,
+  ACCOUNT_SETUP_TIER_ROWS,
+  ACCOUNT_SETUP_USERNAME_RULES,
+  ACCOUNT_SETUP_WORKSPACE_ROWS,
   ONBOARDING_PERSISTENCE_NOTE,
+  accessStateLabel,
+  betaAccessWaitlistMessage,
   buildOnboardingChecklist,
   getEmptyStateGuidance,
+  isVirginiaAccessState,
+  normalizeAccessState,
   normalizeOnboardingGoalKeys,
   normalizeOnboardingState,
   onboardingChecklistSummary,
@@ -5359,6 +5367,8 @@ export default function App() {
   const [shorelineBetaForm, setShorelineBetaForm] = useState({
     fullName: "",
     email: "",
+    state: "VA",
+    tierInterest: "free",
     cityArea: "",
     collectorType: "parent_family",
     reason: "",
@@ -8380,7 +8390,13 @@ export default function App() {
   }
 
   function updateShorelineBetaField(field, value) {
-    setShorelineBetaForm((current) => ({ ...current, [field]: value }));
+    setShorelineBetaForm((current) => {
+      const next = { ...current, [field]: value };
+      if (field === "state" && !isVirginiaAccessState(value)) {
+        next.localAreaAnswer = "";
+      }
+      return next;
+    });
   }
 
   function updateShorelineSparksField(field, value) {
@@ -8392,8 +8408,13 @@ export default function App() {
     const fullName = String(shorelineBetaForm.fullName || "").trim();
     const email = String(shorelineBetaForm.email || accountEmail()).trim();
     const reason = String(shorelineBetaForm.reason || "").trim();
+    const accessState = normalizeAccessState(shorelineBetaForm.state || "");
     if (!fullName || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setShorelineState((current) => ({ ...current, error: "Add your full name and a valid email before requesting beta access." }));
+      return;
+    }
+    if (!accessState) {
+      setShorelineState((current) => ({ ...current, error: "Choose your state so we know whether to review beta access or add you to the waitlist." }));
       return;
     }
     if (!reason) {
@@ -8407,8 +8428,11 @@ export default function App() {
     setShorelineSaving("beta");
     setShorelineState((current) => ({ ...current, error: "", message: "" }));
     try {
-      const request = await submitBetaAccessRequest(user, { ...shorelineBetaForm, email, fullName });
-      setShorelineState((current) => ({ ...current, betaRequest: request, message: "Beta access request submitted for review." }));
+      const request = await submitBetaAccessRequest(user, { ...shorelineBetaForm, state: accessState, email, fullName });
+      const accessMessage = isVirginiaAccessState(accessState)
+        ? "Beta access request submitted for review."
+        : betaAccessWaitlistMessage(accessState);
+      setShorelineState((current) => ({ ...current, betaRequest: request, message: accessMessage }));
       setCurrentUserProfile((current) => ({
         ...current,
         betaStatus: request.status,
@@ -8419,7 +8443,7 @@ export default function App() {
         entityType: "beta_access_request",
         entityId: request.id,
       });
-      setVaultToast("Beta access request submitted.");
+      setVaultToast(isVirginiaAccessState(accessState) ? "Beta access request submitted." : `${accessStateLabel(accessState)} waitlist request submitted.`);
     } catch (error) {
       logAppError("shoreline_beta_submit", error, { userId: user?.id }, "normal");
       setShorelineState((current) => ({ ...current, error: error.message || "Could not submit beta access request." }));
@@ -47213,7 +47237,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <p className="section-kicker">Private beta</p>
               <h2>Fair collecting starts here.</h2>
               <p>A family-friendly Pokemon TCG app for fair restocks, collections, Scout reports, and community.</p>
-              <p className="auth-landing-note">New accounts may need approval before full app access. We review beta access to keep Ember & Tide safe for families and collectors.</p>
+              <p className="auth-landing-note">New accounts may need approval before full app access. Ember &amp; Tide is starting in Virginia; out-of-state requests join the waitlist and help us choose where to expand next.</p>
               <div className="quick-actions auth-choice-row">
                 <button type="button" className="ember-gradient-button auth-choice-button" onClick={() => openAuthPanel("login")}>Log In</button>
                 <button type="button" className="secondary-button auth-choice-button" onClick={() => openAuthPanel("signup")}>Create Account / Request Beta Access</button>
@@ -47321,7 +47345,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                         />
                       </Field>
                       <p className="compact-subtitle auth-name-helper">{SIGNUP_NAME_HELPER}</p>
-                      <p className="compact-subtitle auth-name-helper">Shown publicly in Marketplace and Tidepool. Ember & Tide staff names are reserved.</p>
+                      {renderUsernameRulesCard({ compact: true })}
                     </div>
                   ) : null}
                   <Field label="Email"><input type="email" value={authEmail} autoComplete="email" onChange={(e) => setAuthEmail(e.target.value)} /></Field>
@@ -47345,7 +47369,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   {authMessage ? <p className="auth-status-message success" role="status">{authMessage}</p> : null}
                   <button type="submit" disabled={authLoading || !isSupabaseConfigured}>{authLoading ? "Working..." : authMode === "login" ? "Log In" : "Create Account / Request Beta Access"}</button>
                 </form>
-                <p className="auth-beta-note">We review new accounts to keep Ember & Tide safe for families and collectors. You&apos;ll see a welcome screen while your access is pending.</p>
+                <p className="auth-beta-note">We review new accounts to keep Ember &amp; Tide safe for families and collectors. Virginia requests can be reviewed for beta access; out-of-state requests join the waitlist.</p>
                 <div className="auth-link-stack" aria-label="Account options">
                   {authMode === "login" ? (
                     <>
@@ -47414,6 +47438,18 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const betaStatus = normalizeBetaStatus(shorelineState.betaRequest?.status || currentUserProfile?.betaStatus || currentUserProfile?.betaAccessStatus);
     const sparksStatus = littleSparksStatus();
     const accessStatusUpdatedAt = shorelineState.betaRequest?.updatedAt || shorelineState.betaRequest?.createdAt || currentUserProfile?.updatedAt;
+    const selectedAccessState = normalizeAccessState(shorelineBetaForm.state || "VA") || "VA";
+    const selectedAccessIsVirginia = isVirginiaAccessState(selectedAccessState);
+    const accessHeadline = betaStatus === "waitlist"
+      ? "You are on the state waitlist."
+      : betaStatus === "approved"
+        ? "Your beta access is approved."
+        : betaStatus === "not_requested"
+          ? "Set up your Ember & Tide access."
+          : "Your access request is pending.";
+    const accessIntroCopy = betaStatus === "waitlist"
+      ? "Ember & Tide is starting in Virginia. Your state waitlist request helps us decide where to expand next."
+      : "We review beta access to keep the community safe and family-friendly.";
     return (
       <div className="app app-shoreline-access">
         <main className="main shoreline-access-main">
@@ -47423,10 +47459,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </div>
             <div>
               <p className="section-kicker">Beta access</p>
-              <h1>Your access request is pending.</h1>
-              <p>
-                Thanks for joining Ember &amp; Tide. We review beta access to keep the community safe and family-friendly.
-              </p>
+              <h1>{accessHeadline}</h1>
+              <p>{accessIntroCopy}</p>
               <p className="compact-subtitle">Once approved, your full app access will unlock after you refresh or sign in again.</p>
               <div className="shoreline-action-row">
                 <button type="button" className="ember-gradient-button" onClick={() => void refreshShorelineAccessStatus()} disabled={shorelineState.loading}>
@@ -47454,6 +47488,26 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           {shorelineState.message ? <div className="glass-card shoreline-message" role="status">{shorelineState.message}</div> : null}
           {shorelineState.error ? <div className="glass-card shoreline-message shoreline-error" role="alert">{shorelineState.error}</div> : null}
 
+          <section className="shoreline-access-note-grid" aria-label="Account setup guidance">
+            <article className="shoreline-access-note glass-card">
+              <span className="status-badge">Virginia first</span>
+              <strong>Current beta access is VA-only.</strong>
+              <p>Out-of-state families and collectors can join the waitlist. We use state demand to decide which states to add next.</p>
+            </article>
+            <article className="shoreline-access-note glass-card">
+              <span className="status-badge">Safe identity</span>
+              <strong>Usernames protect private details.</strong>
+              <p>Public usernames can appear in Marketplace, Tidepool, Scout, and confirmations. Official Ember &amp; Tide names stay reserved.</p>
+            </article>
+            <article className="shoreline-access-note glass-card">
+              <span className="status-badge">Setup paths</span>
+              <strong>Free, Collector, Family, Seller, Shop, Beta, and Admin are clearly separated.</strong>
+              <p>Beta and Admin are protected access statuses. Checkout and self-serve upgrades are not live in this flow.</p>
+            </article>
+          </section>
+
+          {renderAccountSetupOverviewCard({ compact: true })}
+
           <section className="shoreline-form-grid">
             <form className="shoreline-form glass-card" onSubmit={handleSubmitShorelineBetaRequest}>
               <div className="compact-card-header">
@@ -47465,7 +47519,25 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </div>
               <label>Full name<input value={shorelineBetaForm.fullName} onChange={(event) => updateShorelineBetaField("fullName", event.target.value)} /></label>
               <label>Email<input type="email" value={shorelineBetaForm.email} onChange={(event) => updateShorelineBetaField("email", event.target.value)} /></label>
-              <label>City / area<input value={shorelineBetaForm.cityArea} onChange={(event) => updateShorelineBetaField("cityArea", event.target.value)} placeholder="Hampton Roads, Fredericksburg, Virginia..." /></label>
+              <label>State
+                <select value={shorelineBetaForm.state || "VA"} onChange={(event) => updateShorelineBetaField("state", event.target.value)}>
+                  {ACCOUNT_SETUP_STATE_OPTIONS.map((state) => (
+                    <option key={state.value} value={state.value}>{state.label}</option>
+                  ))}
+                </select>
+              </label>
+              <div className={selectedAccessIsVirginia ? "shoreline-state-note" : "shoreline-state-note waitlist"}>
+                <strong>{selectedAccessIsVirginia ? "Virginia beta review" : `${accessStateLabel(selectedAccessState)} waitlist`}</strong>
+                <span>{selectedAccessIsVirginia ? "Virginia requests can be reviewed for beta access." : betaAccessWaitlistMessage(selectedAccessState)}</span>
+              </div>
+              <label>City / area (no exact address)<input value={shorelineBetaForm.cityArea} onChange={(event) => updateShorelineBetaField("cityArea", event.target.value)} placeholder="Hampton Roads, Fredericksburg, or your city" /></label>
+              <label>Starting path
+                <select value={shorelineBetaForm.tierInterest || "free"} onChange={(event) => updateShorelineBetaField("tierInterest", event.target.value)}>
+                  {ACCOUNT_SETUP_TIER_ROWS.map((tier) => (
+                    <option key={tier.key} value={tier.key}>{tier.label} - {tier.status}</option>
+                  ))}
+                </select>
+              </label>
               <label>Collector type
                 <select value={shorelineBetaForm.collectorType} onChange={(event) => updateShorelineBetaField("collectorType", event.target.value)}>
                   <option value="parent_family">Parent / family</option>
@@ -47477,21 +47549,22 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </select>
               </label>
               <label>Why do you want beta access?<textarea value={shorelineBetaForm.reason} onChange={(event) => updateShorelineBetaField("reason", event.target.value)} /></label>
-              <label>Are you local to Hampton Roads, Fredericksburg, or Virginia?
-                <select value={shorelineBetaForm.localAreaAnswer} onChange={(event) => updateShorelineBetaField("localAreaAnswer", event.target.value)}>
-                  <option value="">Choose one</option>
-                  <option value="hampton_roads">Hampton Roads</option>
-                  <option value="fredericksburg">Fredericksburg</option>
-                  <option value="virginia">Virginia</option>
-                  <option value="not_local">Not local</option>
-                </select>
-              </label>
+              {selectedAccessIsVirginia ? (
+                <label>Virginia area
+                  <select value={shorelineBetaForm.localAreaAnswer} onChange={(event) => updateShorelineBetaField("localAreaAnswer", event.target.value)}>
+                    <option value="">Choose one</option>
+                    <option value="hampton_roads">Hampton Roads</option>
+                    <option value="fredericksburg">Fredericksburg</option>
+                    <option value="virginia">Other Virginia</option>
+                  </select>
+                </label>
+              ) : null}
               <label>Optional social handle<input value={shorelineBetaForm.socialHandle} onChange={(event) => updateShorelineBetaField("socialHandle", event.target.value)} /></label>
               <label className="checkbox-row">
                 <input type="checkbox" checked={shorelineBetaForm.rulesAgreed} onChange={(event) => updateShorelineBetaField("rulesAgreed", event.target.checked)} />
                 <span>I agree to the community rules and fair-use expectations.</span>
               </label>
-              <button type="submit" className="ember-gradient-button" disabled={shorelineSaving === "beta"}>{shorelineSaving === "beta" ? "Submitting..." : "Request Beta Access"}</button>
+              <button type="submit" className="ember-gradient-button" disabled={shorelineSaving === "beta"}>{shorelineSaving === "beta" ? "Submitting..." : selectedAccessIsVirginia ? "Request Beta Access" : "Join State Waitlist"}</button>
             </form>
 
             <form className="shoreline-form glass-card" onSubmit={handleSubmitLittleSparksApplication}>
@@ -49107,6 +49180,61 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     );
   }
 
+  function renderUsernameRulesCard({ compact = false } = {}) {
+    return (
+      <div className={`account-setup-rule-card${compact ? " compact" : ""}`}>
+        <div>
+          <strong>Public username rules</strong>
+          <p>Choose a handle that can safely represent you in community areas.</p>
+        </div>
+        <ul>
+          {ACCOUNT_SETUP_USERNAME_RULES.map((rule) => <li key={rule}>{rule}</li>)}
+        </ul>
+      </div>
+    );
+  }
+
+  function renderAccountSetupOverviewCard({ compact = false } = {}) {
+    return (
+      <section className={`drawer-info-card account-setup-overview-card utility-card${compact ? "" : " utility-card-wide"}`}>
+        <div className="compact-card-header">
+          <div>
+            <p className="section-kicker">Account setup</p>
+            <strong>Pick the right path without changing billing or permissions.</strong>
+            <p className="compact-subtitle">During beta, setup labels guide the app experience. Admin and shop access stay protected and reviewed.</p>
+          </div>
+          <span className="status-badge">Beta-safe</span>
+        </div>
+        <div className="account-setup-tier-grid">
+          {ACCOUNT_SETUP_TIER_ROWS.map((tier) => (
+            <article className="account-setup-mini-card" key={tier.key}>
+              <span>{tier.status}</span>
+              <strong>{tier.label}</strong>
+              <p>{tier.description}</p>
+            </article>
+          ))}
+        </div>
+        <div className="account-setup-section-heading">
+          <strong>Workspace options</strong>
+          <p>Use the setup that matches how you collect, share, or sell.</p>
+        </div>
+        <div className="account-setup-workspace-grid">
+          {ACCOUNT_SETUP_WORKSPACE_ROWS.map((workspace) => (
+            <article className="account-setup-mini-card" key={workspace.key}>
+              <span>{workspace.status}</span>
+              <strong>{workspace.label}</strong>
+              <p>{workspace.description}</p>
+            </article>
+          ))}
+        </div>
+        <div className="account-setup-family-note">
+          <strong>Family and kid setup</strong>
+          <p>Parent-managed Spark interest is supported now. Child profiles, parent approvals, and parent/child mode switching stay marked as future work until the safety system is ready.</p>
+        </div>
+      </section>
+    );
+  }
+
   function renderProfileSettingsCard({ compact = false } = {}) {
     if (guestPreviewActive) {
       return (
@@ -49151,6 +49279,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             autoComplete="nickname"
           />
           <small>Shown publicly instead of private account details. Ember & Tide staff, support, moderator, and official names are protected.</small>
+          {renderUsernameRulesCard({ compact: true })}
           {publicIdentityForProfile({ ...currentUserProfile, email: accountEmail() }).isOfficialAdminIdentity ? (
             <small className="status-badge verified-badge">Official Ember & Tide admin identity: {publicProfileLabel()}</small>
           ) : null}
@@ -49392,6 +49521,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             {actualAdminUser ? <span className="status-badge">{actualAdminRole}</span> : null}
           </div>
 
+          {renderAccountSetupOverviewCard()}
+
           {guestPreviewActive ? (
             <div className="drawer-info-card utility-card">
               <strong>Preview mode</strong>
@@ -49428,6 +49559,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     </div>
                     <input className="drawer-field" type="text" value={authPublicUsername} onChange={(event) => setAuthPublicUsername(normalizePublicUsername(event.target.value))} placeholder="public_username" autoComplete="nickname" />
                     <p className="compact-subtitle">{SIGNUP_NAME_HELPER}</p>
+                    {renderUsernameRulesCard({ compact: true })}
                     <label className="checkbox-row"><input type="checkbox" checked={authTermsAccepted} onChange={(event) => setAuthTermsAccepted(event.target.checked)} /><span>{SIGNUP_TERMS_TEXT}</span></label>
                     <label className="checkbox-row"><input type="checkbox" checked={authBetaAcknowledged} onChange={(event) => setAuthBetaAcknowledged(event.target.checked)} /><span>{SIGNUP_BETA_ACK_TEXT}</span></label>
                   </>
@@ -49475,6 +49607,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       children: (
         <>
           {renderAppSetupPersonalizationCard()}
+          {renderAccountSetupOverviewCard({ compact: true })}
           {renderSettingsProfileSummaryCard({ compact: true })}
           {renderSettingsWorkspaceCard()}
           <div className="drawer-info-card settings-command-overview utility-card">
@@ -50836,7 +50969,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                               autoComplete="nickname"
                             />
                             <p className="compact-subtitle">{SIGNUP_NAME_HELPER}</p>
-                            <p className="compact-subtitle">Public usernames appear in Marketplace and Tidepool instead of private account details. Ember & Tide official names are reserved.</p>
+                            {renderUsernameRulesCard({ compact: true })}
                             <label className="checkbox-row">
                               <input type="checkbox" checked={authTermsAccepted} onChange={(event) => setAuthTermsAccepted(event.target.checked)} />
                               <span>{SIGNUP_TERMS_TEXT}</span>

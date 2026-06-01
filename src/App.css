@@ -30367,6 +30367,36 @@ html body .standard-page-header .vault-command-overview button.vault-overview-ca
   padding: 12px 14px;
 }
 
+.shoreline-access-note-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.shoreline-access-note {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 15px;
+  border: 1px solid rgba(91, 221, 255, 0.18);
+  background:
+    radial-gradient(circle at 84% 12%, rgba(91, 221, 255, 0.12), transparent 34%),
+    rgba(4, 13, 28, 0.72);
+}
+
+.shoreline-access-note strong {
+  color: #fff7dc;
+  line-height: 1.2;
+}
+
+.shoreline-access-note p {
+  margin: 0;
+  color: rgba(238, 246, 255, 0.74);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
 .shoreline-action-row {
   display: flex;
   flex-wrap: wrap;
@@ -30440,6 +30470,114 @@ html body .standard-page-header .vault-command-overview button.vault-overview-ca
   margin-top: 2px;
 }
 
+.shoreline-state-note,
+.account-setup-family-note,
+.account-setup-rule-card {
+  display: grid;
+  gap: 6px;
+  padding: 11px 12px;
+  border: 1px solid rgba(246, 184, 75, 0.26);
+  border-radius: 15px;
+  background:
+    radial-gradient(circle at 94% 4%, rgba(246, 184, 75, 0.14), transparent 34%),
+    rgba(41, 29, 13, 0.38);
+  color: rgba(255, 247, 222, 0.9);
+}
+
+.shoreline-state-note.waitlist {
+  border-color: rgba(91, 221, 255, 0.28);
+  background:
+    radial-gradient(circle at 94% 4%, rgba(91, 221, 255, 0.14), transparent 34%),
+    rgba(6, 22, 39, 0.46);
+}
+
+.shoreline-state-note span,
+.account-setup-family-note p,
+.account-setup-rule-card p,
+.account-setup-rule-card li {
+  margin: 0;
+  color: rgba(238, 246, 255, 0.76);
+  font-size: 0.82rem;
+  line-height: 1.42;
+}
+
+.account-setup-rule-card ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.account-setup-rule-card.compact {
+  grid-column: 1 / -1;
+  padding: 10px;
+  border-radius: 14px;
+}
+
+.account-setup-overview-card {
+  gap: 15px;
+}
+
+.account-setup-overview-card > .compact-card-header {
+  align-items: flex-start;
+}
+
+.account-setup-overview-card > .compact-card-header .status-badge {
+  flex: 0 0 auto;
+  width: max-content;
+  white-space: nowrap;
+}
+
+.account-setup-tier-grid,
+.account-setup-workspace-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+  gap: 10px;
+}
+
+.account-setup-mini-card {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-height: 132px;
+  padding: 13px;
+  border: 1px solid rgba(133, 224, 255, 0.16);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 88% 10%, rgba(133, 224, 255, 0.08), transparent 36%),
+    rgba(5, 15, 32, 0.72);
+}
+
+.account-setup-mini-card span {
+  width: max-content;
+  max-width: 100%;
+  padding: 4px 7px;
+  border: 1px solid rgba(246, 184, 75, 0.22);
+  border-radius: 999px;
+  color: #ffd98b;
+  background: rgba(246, 184, 75, 0.1);
+  font-size: 0.7rem;
+  font-weight: 850;
+}
+
+.account-setup-mini-card strong,
+.account-setup-section-heading strong,
+.account-setup-family-note strong {
+  color: #fff7dc;
+}
+
+.account-setup-mini-card p,
+.account-setup-section-heading p {
+  margin: 0;
+  color: rgba(238, 246, 255, 0.74);
+  font-size: 0.82rem;
+  line-height: 1.42;
+}
+
+.account-setup-section-heading {
+  display: grid;
+  gap: 4px;
+  padding-top: 2px;
+}
+
 .status-badge.not_requested,
 .status-badge.not_applied,
 .status-badge.waitlist {
@@ -30460,7 +30598,8 @@ html body .standard-page-header .vault-command-overview button.vault-overview-ca
   }
 
   .shoreline-status-grid,
-  .shoreline-form-grid {
+  .shoreline-form-grid,
+  .shoreline-access-note-grid {
     grid-template-columns: 1fr;
   }
 
@@ -30475,6 +30614,20 @@ html body .standard-page-header .vault-command-overview button.vault-overview-ca
 
   .shoreline-action-row button {
     width: 100%;
+  }
+
+  .account-setup-overview-card > .compact-card-header {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .account-setup-tier-grid,
+  .account-setup-workspace-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .account-setup-mini-card {
+    min-height: auto;
   }
 }
 

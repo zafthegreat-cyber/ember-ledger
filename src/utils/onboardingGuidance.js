@@ -4,6 +4,198 @@ export const ONBOARDING_PERSISTENCE_NOTE =
 export const ONBOARDING_WELCOME_COPY =
   "Welcome to Ember & Tide. We're here to help families, kids, collectors, and small sellers make Pokemon collecting fairer, easier, and more community-centered.";
 
+export const ACCOUNT_SETUP_USERNAME_RULES = [
+  "Public usernames may appear on Marketplace, Tidepool, Scout reports, and community confirmations.",
+  "They must be unique in Ember & Tide so reports and community activity can be attributed clearly.",
+  "Use letters, numbers, and underscores so other collectors can recognize you safely.",
+  "Ember & Tide, staff, support, moderator, and official admin names are reserved.",
+];
+
+export const ACCOUNT_SETUP_TIER_ROWS = [
+  {
+    key: "free",
+    label: "Free",
+    status: "Available",
+    description: "Start with Hearth, Vault basics, current Scout reports, and one watched store.",
+  },
+  {
+    key: "collector",
+    label: "Collector",
+    status: "Beta path",
+    description: "For collectors who want deeper collection tracking and more watched stores during beta.",
+  },
+  {
+    key: "family",
+    label: "Family",
+    status: "Beta path",
+    description: "For parent-managed family collecting, The Spark interest, and safer shared setup.",
+  },
+  {
+    key: "seller",
+    label: "Seller",
+    status: "Beta path",
+    description: "For Forge inventory, sales records, receipts, expenses, and seller-focused setup.",
+  },
+  {
+    key: "shop",
+    label: "Shop",
+    status: "Partner review",
+    description: "For approved shops and local partners. Public shop tools are not self-serve yet.",
+  },
+  {
+    key: "beta",
+    label: "Beta",
+    status: "Access status",
+    description: "Early access is reviewed before full app use so the community stays family-safe.",
+  },
+  {
+    key: "admin",
+    label: "Admin",
+    status: "Internal only",
+    description: "Protected Ember & Tide operations. Admin access is never granted through normal signup.",
+  },
+];
+
+export const ACCOUNT_SETUP_WORKSPACE_ROWS = [
+  {
+    key: "personal",
+    label: "Personal",
+    status: "Supported",
+    description: "Your private collection workspace for Vault, Market Watch, and personal records.",
+  },
+  {
+    key: "family",
+    label: "Family",
+    status: "Supported locally",
+    description: "A shared collection setup for parent-managed family collecting and safe preferences.",
+  },
+  {
+    key: "seller",
+    label: "Seller",
+    status: "Supported",
+    description: "Forge can use a seller or business workspace for inventory, receipts, and sales records.",
+  },
+  {
+    key: "shop",
+    label: "Shop",
+    status: "Approval later",
+    description: "Shop/partner workspace setup stays gated until partner tools are ready.",
+  },
+];
+
+export const ACCOUNT_SETUP_STATE_OPTIONS = [
+  { value: "VA", label: "Virginia" },
+  { value: "AL", label: "Alabama" },
+  { value: "AK", label: "Alaska" },
+  { value: "AZ", label: "Arizona" },
+  { value: "AR", label: "Arkansas" },
+  { value: "CA", label: "California" },
+  { value: "CO", label: "Colorado" },
+  { value: "CT", label: "Connecticut" },
+  { value: "DE", label: "Delaware" },
+  { value: "FL", label: "Florida" },
+  { value: "GA", label: "Georgia" },
+  { value: "HI", label: "Hawaii" },
+  { value: "ID", label: "Idaho" },
+  { value: "IL", label: "Illinois" },
+  { value: "IN", label: "Indiana" },
+  { value: "IA", label: "Iowa" },
+  { value: "KS", label: "Kansas" },
+  { value: "KY", label: "Kentucky" },
+  { value: "LA", label: "Louisiana" },
+  { value: "ME", label: "Maine" },
+  { value: "MD", label: "Maryland" },
+  { value: "MA", label: "Massachusetts" },
+  { value: "MI", label: "Michigan" },
+  { value: "MN", label: "Minnesota" },
+  { value: "MS", label: "Mississippi" },
+  { value: "MO", label: "Missouri" },
+  { value: "MT", label: "Montana" },
+  { value: "NE", label: "Nebraska" },
+  { value: "NV", label: "Nevada" },
+  { value: "NH", label: "New Hampshire" },
+  { value: "NJ", label: "New Jersey" },
+  { value: "NM", label: "New Mexico" },
+  { value: "NY", label: "New York" },
+  { value: "NC", label: "North Carolina" },
+  { value: "ND", label: "North Dakota" },
+  { value: "OH", label: "Ohio" },
+  { value: "OK", label: "Oklahoma" },
+  { value: "OR", label: "Oregon" },
+  { value: "PA", label: "Pennsylvania" },
+  { value: "RI", label: "Rhode Island" },
+  { value: "SC", label: "South Carolina" },
+  { value: "SD", label: "South Dakota" },
+  { value: "TN", label: "Tennessee" },
+  { value: "TX", label: "Texas" },
+  { value: "UT", label: "Utah" },
+  { value: "VT", label: "Vermont" },
+  { value: "WA", label: "Washington" },
+  { value: "WV", label: "West Virginia" },
+  { value: "WI", label: "Wisconsin" },
+  { value: "WY", label: "Wyoming" },
+  { value: "DC", label: "Washington, DC" },
+];
+
+const STATE_CODE_BY_LABEL = Object.fromEntries(
+  ACCOUNT_SETUP_STATE_OPTIONS.map((state) => [state.label.toLowerCase(), state.value])
+);
+const STATE_LABEL_BY_CODE = Object.fromEntries(
+  ACCOUNT_SETUP_STATE_OPTIONS.map((state) => [state.value, state.label])
+);
+const TIER_LABEL_BY_KEY = Object.fromEntries(
+  ACCOUNT_SETUP_TIER_ROWS.map((tier) => [tier.key, tier.label])
+);
+
+export function normalizeAccessState(value = "") {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const upper = raw.toUpperCase();
+  if (STATE_LABEL_BY_CODE[upper]) return upper;
+  return STATE_CODE_BY_LABEL[raw.toLowerCase()] || upper.slice(0, 2);
+}
+
+export function accessStateLabel(value = "") {
+  const code = normalizeAccessState(value);
+  return STATE_LABEL_BY_CODE[code] || code || "your state";
+}
+
+export function isVirginiaAccessState(value = "") {
+  return normalizeAccessState(value) === "VA";
+}
+
+export function accountSetupTierLabel(value = "") {
+  const key = String(value || "").trim().toLowerCase();
+  return TIER_LABEL_BY_KEY[key] || "";
+}
+
+export function betaAccessWaitlistMessage(state = "") {
+  const label = accessStateLabel(state);
+  return `Ember & Tide is starting in Virginia. We will add ${label} to the waitlist and use waitlist demand to decide which states to add next.`;
+}
+
+export function formatBetaAccessAreaAnswer({ state = "", localAreaAnswer = "", tierInterest = "" } = {}) {
+  const stateCode = normalizeAccessState(state);
+  const areaLabels = {
+    hampton_roads: "Hampton Roads",
+    fredericksburg: "Fredericksburg",
+    virginia: "Virginia",
+    other_virginia: "Other Virginia",
+    not_local: "Not local",
+  };
+  const rows = [];
+  if (stateCode) rows.push(`State: ${stateCode}`);
+  if (localAreaAnswer) rows.push(`Area: ${areaLabels[localAreaAnswer] || localAreaAnswer}`);
+  const tierLabel = accountSetupTierLabel(tierInterest);
+  if (tierLabel) rows.push(`Path: ${tierLabel}`);
+  return rows.join(" | ");
+}
+
+export function accessStateFromAreaAnswer(value = "") {
+  const match = String(value || "").match(/\bState:\s*([A-Z]{2})\b/i);
+  return match ? normalizeAccessState(match[1]) : "";
+}
+
 export const ONBOARDING_GOALS = [
   {
     key: "parent_family",
