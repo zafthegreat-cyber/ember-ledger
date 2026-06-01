@@ -31003,7 +31003,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     if (itemId) setSelectedForgeDetailId(itemId);
   }
 
-  function renderTideTradrCatalogResultCard(product) {
+  function renderTideTradrCatalogResultCard(product, options = {}) {
     const marketInfo = getTideTradrMarketInfo(product);
     const isCard = isCatalogCardProduct(product);
     const isCodeCard = isCatalogCodeCardProduct(product);
@@ -31033,8 +31033,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const primaryAddLabel = sellerMarketMode && activeForgeWorkspace ? "Add to Forge" : "Add to Vault";
     const primaryAddDestination = sellerMarketMode && activeForgeWorkspace ? "forge" : "vault";
     const watched = workspaceWatchlist.some((item) => String(item.productId || "") === String(product.id));
+    const topResult = Boolean(options.topResult);
     return (
-      <div className="catalog-result-card market-fair-card market-mobile-product-card market-result-clickable-card" key={product.id}>
+      <div className={`catalog-result-card market-fair-card market-mobile-product-card market-result-clickable-card${topResult ? " market-top-result-card" : ""}`} key={product.id}>
+        {topResult ? <span className="market-top-match-badge">Best match</span> : null}
         <button
           type="button"
           className="catalog-result-main"
@@ -31054,10 +31056,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     event.currentTarget.nextElementSibling?.removeAttribute("hidden");
                   }}
                 />
-                {renderProductImageFallback(product, { hidden: true })}
+                {renderProductImageFallback(product, { hidden: true, title: productTypeLabel, setName: productSetName, badge: "No image yet" })}
               </>
             ) : (
-              renderProductImageFallback(product)
+              renderProductImageFallback(product, { title: productTypeLabel, setName: productSetName, badge: "No image yet" })
             )}
           </div>
           <div className="market-card-body">
@@ -31079,19 +31081,30 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div className="market-card-price-row">
               <div className="market-price-stack">
                 <strong>{productMarketLabel}</strong>
-                <span>{sellerMarketMode ? "Market comps" : "Market estimate"}</span>
+                <span>{productHasMarketPrice ? (sellerMarketMode ? "Market comps" : "Market estimate") : "No current value"}</span>
               </div>
-              {renderFairPriceBadge(productFairAssessment)}
+              {productHasMarketPrice ? renderFairPriceBadge(productFairAssessment) : null}
             </div>
-            <div className="market-trust-badge-row">
-              <span className={`market-status-pill market-status-pill--${productHasMarketPrice ? "catalog" : "unknown"}`}>{marketSourceLabel}</span>
-              <span className={`market-status-pill market-status-pill--${marketInfo.marketDataTone || "unknown"}`}>{marketInfo.marketDataLabel}</span>
+            <div className={`market-trust-badge-row market-data-quality-row${productHasMarketPrice ? "" : " is-missing"}`}>
+              {productHasMarketPrice ? (
+                <>
+                  <span className="market-status-pill market-status-pill--catalog">{marketSourceLabel}</span>
+                  <span className={`market-status-pill market-status-pill--${marketInfo.marketDataTone || "unknown"}`}>{marketInfo.marketDataLabel}</span>
+                </>
+              ) : (
+                <>
+                  <span className="market-status-pill market-status-pill--unknown">Needs stronger source</span>
+                  <small>We'll label this honestly until better data is available.</small>
+                </>
+              )}
               {watched ? <span className="market-status-pill market-status-pill--watchlist">Watchlist</span> : null}
             </div>
-            <p className="market-card-freshness-line">
-              <span>{marketFreshnessLabel}</span>
-              <span>{productHasMarketPrice ? "Known value" : "Needs stronger source"}</span>
-            </p>
+            {productHasMarketPrice ? (
+              <p className="market-card-freshness-line">
+                <span>{marketFreshnessLabel}</span>
+                <span>Known value</span>
+              </p>
+            ) : null}
             {productReferenceParts.length && showRepairMeta ? <p className="market-card-reference-line">{productReferenceParts.join(" | ")}</p> : null}
             {showRepairMeta ? (
               <>
@@ -56337,7 +56350,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                           : "Compare catalog values, retail context, and saved watches."}
                       </p>
                     </div>
-                    <span className="status-badge">{supabaseCatalogStatus.loading ? "Searching..." : catalogSearchHasRun ? `${supabaseCatalogStatus.totalCount ?? tideTradrCatalogResults.length} results` : "Search first"}</span>
+                    <span className="status-badge">{supabaseCatalogStatus.loading && tideTradrCatalogResults.length === 0 && marketSetSearchResults.length === 0 ? "Searching..." : catalogSearchHasRun ? `${supabaseCatalogStatus.totalCount ?? tideTradrCatalogResults.length} results` : "Search first"}</span>
                   </div>
 
                   {catalogSearchHasRun ? (
@@ -56524,7 +56537,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     </div>
                   ) : null}
 
-                  {supabaseCatalogStatus.loading ? (
+                  {supabaseCatalogStatus.loading && tideTradrCatalogResults.length === 0 && marketSetSearchResults.length === 0 ? (
                     <div className="catalog-results-list catalog-results-grid catalog-results-loading" aria-label="Loading catalog results">
                       {Array.from({ length: 6 }).map((_, index) => (
                         <div className="catalog-result-card catalog-result-skeleton" key={`catalog-loading-${index}`}>
@@ -56638,7 +56651,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
 	                  {catalogSearchHasRun && tideTradrCatalogResults.length > 0 ? (
 	                    <div className="catalog-result-groups">
-	                      {tideTradrCatalogResultGroups.map((group) => (
+	                      {tideTradrCatalogResultGroups.map((group, groupIndex) => (
 	                        <section className="catalog-result-group" key={group.key}>
 	                          {catalogKindFilter === "All" ? (
 	                            <div className="catalog-result-group-header">
@@ -56647,7 +56660,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 	                            </div>
 	                          ) : null}
 	                          <div className={`catalog-results-list catalog-results-${catalogViewMode}`}>
-	                            {group.items.map((product) => renderTideTradrCatalogResultCard(product))}
+	                            {group.items.map((product, productIndex) => renderTideTradrCatalogResultCard(product, { topResult: groupIndex === 0 && productIndex === 0 }))}
 	                          </div>
 	                        </section>
 	                      ))}

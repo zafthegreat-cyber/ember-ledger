@@ -67933,3 +67933,254 @@ html body .app .scan-product-modal .scanner-review-primary-action {
     text-align: center !important;
   }
 }
+
+/* Final Market approval overrides. Keep last so older catalog/mobile rules cannot re-cramp results. */
+.app-market .market-search-form .catalog-search-input,
+.app-market .market-search-form .search-input,
+.app-command-shell.app-market .market-search-form .catalog-search-input,
+.app-command-shell.app-market .market-search-form .search-input,
+.app-shell-dark.app-market .market-search-form .catalog-search-input,
+.app-shell-dark.app-market .market-search-form .search-input {
+  box-sizing: border-box !important;
+  direction: ltr !important;
+  overflow: hidden !important;
+  padding-inline: 14px !important;
+  text-align: left !important;
+  text-overflow: ellipsis !important;
+}
+
+.app-market .market-search-helper-grid span,
+.app-command-shell.app-market .market-search-helper-grid span,
+.app-shell-dark.app-market .market-search-helper-grid span {
+  align-content: center !important;
+  min-height: 34px !important;
+}
+
+.app-market .market-top-result-card,
+.app-command-shell.app-market .market-top-result-card,
+.app-shell-dark.app-market .market-top-result-card {
+  position: relative !important;
+  border-color: rgba(94, 234, 212, 0.42) !important;
+  background:
+    radial-gradient(circle at 90% 0%, rgba(45, 212, 191, 0.18), transparent 13rem),
+    radial-gradient(circle at 4% 100%, rgba(34, 211, 238, 0.09), transparent 11rem),
+    linear-gradient(145deg, rgba(7, 27, 44, 0.98), rgba(3, 10, 23, 0.99)) !important;
+  box-shadow:
+    0 18px 48px rgba(0, 0, 0, 0.34),
+    0 0 0 1px rgba(94, 234, 212, 0.12) inset,
+    0 0 26px rgba(45, 212, 191, 0.1) !important;
+}
+
+.market-top-match-badge {
+  justify-self: start;
+  width: max-content;
+  max-width: 100%;
+  min-height: 24px;
+  padding: 5px 9px;
+  border: 1px solid rgba(94, 234, 212, 0.32);
+  border-radius: 999px;
+  background: rgba(6, 78, 77, 0.42);
+  color: #ccfbf1;
+  font-size: 0.68rem;
+  font-weight: 950;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.app-market .market-mobile-product-card .market-data-quality-row,
+.app-command-shell.app-market .market-mobile-product-card .market-data-quality-row,
+.app-shell-dark.app-market .market-mobile-product-card .market-data-quality-row {
+  align-items: center !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+}
+
+.app-market .market-mobile-product-card .market-data-quality-row.is-missing,
+.app-command-shell.app-market .market-mobile-product-card .market-data-quality-row.is-missing,
+.app-shell-dark.app-market .market-mobile-product-card .market-data-quality-row.is-missing {
+  padding: 8px 9px !important;
+  border: 1px solid rgba(125, 211, 252, 0.12) !important;
+  border-radius: 13px !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(34, 211, 238, 0.08), transparent 8rem),
+    rgba(3, 12, 25, 0.52) !important;
+}
+
+.app-market .market-mobile-product-card .market-data-quality-row.is-missing small,
+.app-command-shell.app-market .market-mobile-product-card .market-data-quality-row.is-missing small,
+.app-shell-dark.app-market .market-mobile-product-card .market-data-quality-row.is-missing small {
+  flex: 1 1 150px;
+  min-width: 0;
+  color: rgba(224, 242, 254, 0.68);
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.app-market .market-mobile-product-card .image-needed-placeholder,
+.app-command-shell.app-market .market-mobile-product-card .image-needed-placeholder,
+.app-shell-dark.app-market .market-mobile-product-card .image-needed-placeholder {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(45, 212, 191, 0.14), transparent 5.5rem),
+    linear-gradient(145deg, rgba(7, 24, 43, 0.98), rgba(3, 10, 23, 0.98)) !important;
+  border-style: solid !important;
+}
+
+.app-market .market-mobile-product-card .image-needed-placeholder b,
+.app-command-shell.app-market .market-mobile-product-card .image-needed-placeholder b,
+.app-shell-dark.app-market .market-mobile-product-card .image-needed-placeholder b {
+  color: #5eead4 !important;
+  font-size: 0.58rem !important;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 520px) {
+  .app-market .market-search-form,
+  .app-command-shell.app-market .market-search-form,
+  .app-shell-dark.app-market .market-search-form {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .app-market .market-smart-search > input,
+  .app-command-shell.app-market .market-smart-search > input,
+  .app-shell-dark.app-market .market-smart-search > input {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    min-height: 46px !important;
+    font-size: 0.82rem !important;
+  }
+
+  .app-market .market-search-form > button,
+  .app-command-shell.app-market .market-search-form > button,
+  .app-shell-dark.app-market .market-search-form > button {
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+    min-height: 40px !important;
+    width: 100% !important;
+  }
+
+  .app-market .market-smart-search .smart-catalog-suggestions,
+  .app-command-shell.app-market .market-smart-search .smart-catalog-suggestions,
+  .app-shell-dark.app-market .market-smart-search .smart-catalog-suggestions {
+    grid-column: 1 !important;
+    grid-row: 3 !important;
+  }
+
+  .app-market .market-search-helper-grid,
+  .app-command-shell.app-market .market-search-helper-grid,
+  .app-shell-dark.app-market .market-search-helper-grid {
+    gap: 6px !important;
+  }
+
+  .app-market .market-search-helper-grid span,
+  .app-command-shell.app-market .market-search-helper-grid span,
+  .app-shell-dark.app-market .market-search-helper-grid span {
+    min-height: 31px !important;
+    padding: 6px 4px !important;
+  }
+
+  .app-market .market-search-helper-grid strong,
+  .app-command-shell.app-market .market-search-helper-grid strong,
+  .app-shell-dark.app-market .market-search-helper-grid strong {
+    font-size: 0.63rem !important;
+    line-height: 1 !important;
+  }
+
+  .app-market .catalog-result-card.market-mobile-product-card .catalog-result-main,
+  .app-command-shell.app-market .catalog-result-card.market-mobile-product-card .catalog-result-main,
+  .app-shell-dark.app-market .catalog-result-card.market-mobile-product-card .catalog-result-main {
+    grid-template-columns: 72px minmax(0, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .app-market .market-top-result-card .catalog-result-main,
+  .app-command-shell.app-market .market-top-result-card .catalog-result-main,
+  .app-shell-dark.app-market .market-top-result-card .catalog-result-main {
+    grid-template-columns: 76px minmax(0, 1fr) !important;
+  }
+
+  .app-market .market-mobile-product-card .catalog-thumb,
+  .app-command-shell.app-market .market-mobile-product-card .catalog-thumb,
+  .app-shell-dark.app-market .market-mobile-product-card .catalog-thumb {
+    height: 72px !important;
+    min-height: 72px !important;
+    min-width: 72px !important;
+    width: 72px !important;
+  }
+
+  .app-market .market-top-result-card .catalog-thumb,
+  .app-command-shell.app-market .market-top-result-card .catalog-thumb,
+  .app-shell-dark.app-market .market-top-result-card .catalog-thumb {
+    height: 76px !important;
+    min-height: 76px !important;
+    min-width: 76px !important;
+    width: 76px !important;
+  }
+
+  .app-market .market-mobile-product-card .image-needed-placeholder strong,
+  .app-command-shell.app-market .market-mobile-product-card .image-needed-placeholder strong,
+  .app-shell-dark.app-market .market-mobile-product-card .image-needed-placeholder strong {
+    max-height: 3.15em !important;
+    overflow: hidden !important;
+    font-size: 0.52rem !important;
+    line-height: 1.05 !important;
+  }
+
+  .app-market .market-mobile-product-card .image-needed-placeholder span,
+  .app-command-shell.app-market .market-mobile-product-card .image-needed-placeholder span,
+  .app-shell-dark.app-market .market-mobile-product-card .image-needed-placeholder span {
+    display: none !important;
+  }
+
+  .app-market .market-mobile-product-card .market-data-quality-row.is-missing,
+  .app-command-shell.app-market .market-mobile-product-card .market-data-quality-row.is-missing,
+  .app-shell-dark.app-market .market-mobile-product-card .market-data-quality-row.is-missing {
+    gap: 4px !important;
+    padding: 6px 7px !important;
+  }
+
+  .app-market .market-mobile-product-card .market-data-quality-row.is-missing small,
+  .app-command-shell.app-market .market-mobile-product-card .market-data-quality-row.is-missing small,
+  .app-shell-dark.app-market .market-mobile-product-card .market-data-quality-row.is-missing small {
+    display: none !important;
+  }
+
+  .app-market .market-mobile-product-card .market-result-add-actions,
+  .app-command-shell.app-market .market-mobile-product-card .market-result-add-actions,
+  .app-shell-dark.app-market .market-mobile-product-card .market-result-add-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+  }
+
+  .app-market .market-mobile-product-card .market-result-add-actions .market-result-add-button,
+  .app-command-shell.app-market .market-mobile-product-card .market-result-add-actions .market-result-add-button,
+  .app-shell-dark.app-market .market-mobile-product-card .market-result-add-actions .market-result-add-button {
+    grid-column: auto !important;
+  }
+
+  .app-market .market-mobile-product-card .market-result-add-actions button,
+  .app-command-shell.app-market .market-mobile-product-card .market-result-add-actions button,
+  .app-shell-dark.app-market .market-mobile-product-card .market-result-add-actions button {
+    min-height: 36px !important;
+    padding-inline: 6px !important;
+  }
+
+  .app-market .market-mobile-product-card .market-card-title,
+  .app-command-shell.app-market .market-mobile-product-card .market-card-title,
+  .app-shell-dark.app-market .market-mobile-product-card .market-card-title {
+    font-size: 0.92rem !important;
+    line-height: 1.14 !important;
+  }
+
+  .app-market .market-mobile-product-card .market-card-context,
+  .app-market .market-mobile-product-card .market-card-reference-line,
+  .app-command-shell.app-market .market-mobile-product-card .market-card-context,
+  .app-command-shell.app-market .market-mobile-product-card .market-card-reference-line,
+  .app-shell-dark.app-market .market-mobile-product-card .market-card-context,
+  .app-shell-dark.app-market .market-mobile-product-card .market-card-reference-line {
+    font-size: 0.68rem !important;
+  }
+}
