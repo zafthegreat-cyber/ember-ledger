@@ -23672,7 +23672,7 @@ function renderTideTradrHeader() {
         <span><strong>UPC/SKU</strong><small>exact lookup</small></span>
         <span><strong>Freshness</strong><small>labeled when known</small></span>
       </div>
-      <details className="market-search-options market-upc-disclosure" defaultOpen={Boolean(catalogBarcodeSearch || submittedCatalogBarcodeSearch)}>
+      <details className="market-search-options market-upc-disclosure" open={Boolean(catalogBarcodeSearch || submittedCatalogBarcodeSearch)}>
         <summary>UPC / SKU lookup</summary>
         <form className="market-barcode-search" onSubmit={submitCatalogBarcodeSearch} aria-label="Market UPC and SKU lookup">
           <label htmlFor="market-upc-search">UPC / SKU</label>
