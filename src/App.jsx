@@ -2302,6 +2302,13 @@ const BLANK_TIDEPOOL_POST_FORM = {
   zip: "",
   photoUrl: "",
 };
+const EMBER_ASSIST_PRIMARY_PROMPTS = [
+  "Identify this card",
+  "Is this a good deal?",
+  "Help with my collection",
+  "Scanner not working",
+  "What should I collect?",
+];
 const MARKETPLACE_LISTING_TYPES = ["For Sale", "For Trade", "Looking For", "Free / Donation", "Kid-friendly deal"];
 const MARKETPLACE_STATUSES = TIDETRADR_LISTING_STATUSES;
 const MARKETPLACE_REPORT_REASONS = TIDETRADR_REPORT_REASONS;
@@ -5401,6 +5408,8 @@ export default function App() {
   const [emberAssistLauncherState, setEmberAssistLauncherState] = useState({ compact: false, nearEnd: false });
   const [emberAssistMessages, setEmberAssistMessages] = useState(() => loadEmberAssistThread());
   const [emberAssistInput, setEmberAssistInput] = useState("");
+  const [emberAssistPending, setEmberAssistPending] = useState(false);
+  const [emberAssistError, setEmberAssistError] = useState("");
   const [emberAssistEscalationDraft, setEmberAssistEscalationDraft] = useState(null);
   const initialWorkspaceBundle = useMemo(() => createDefaultWorkspaceBundle({ id: "local-beta" }), []);
   const [workspaces, setWorkspaces] = useState(initialWorkspaceBundle.workspaces);
@@ -6900,6 +6909,17 @@ export default function App() {
     if (!shellOverlayOpen && !shellLongFormActive) return;
     setEmberAssistOpen(false);
   }, [emberAssistOpen, shellOverlayOpen, shellLongFormActive]);
+
+  useEffect(() => {
+    if (!emberAssistOpen || !emberAssistMessages.length) return undefined;
+    const scrollTimer = window.setTimeout(() => {
+      document.querySelector(".ember-assist-scroll.has-thread .ember-assist-message:last-of-type")?.scrollIntoView({
+        block: "nearest",
+        behavior: "smooth",
+      });
+    }, 60);
+    return () => window.clearTimeout(scrollTimer);
+  }, [emberAssistOpen, emberAssistMessages.length]);
   const autoHideResetKey = [
     activeTab,
     activeMainTab || "standalone",
@@ -27456,23 +27476,43 @@ function renderForgeBusinessCommandPanel() {
   async function sendEmberAssistMessage(text = emberAssistInput) {
     const question = String(text || "").trim();
     if (!question) return;
+    if (emberAssistPending) return;
     const userMessage = { id: makeId("ember-user"), role: "user", text: question, createdAt: new Date().toISOString() };
-    const {
-      buildEmberAssistFallbackResponse,
-      shouldOfferAdminEscalation,
-    } = await loadEmberAssistBrainModule();
-    const answer = buildEmberAssistFallbackResponse(question, emberAssistContext);
-    const assistantMessage = {
-      id: makeId("ember-assist"),
-      role: "assistant",
-      text: answer.answer,
-      actions: answer.actions || [],
-      category: answer.category,
-      shouldEscalate: shouldOfferAdminEscalation(question, answer),
-      createdAt: new Date().toISOString(),
-    };
-    setEmberAssistMessages((current) => saveEmberAssistThread([...current, userMessage, assistantMessage]));
-    setEmberAssistInput("");
+    setEmberAssistPending(true);
+    setEmberAssistError("");
+    try {
+      const {
+        buildEmberAssistFallbackResponse,
+        shouldOfferAdminEscalation,
+      } = await loadEmberAssistBrainModule();
+      const answer = buildEmberAssistFallbackResponse(question, emberAssistContext);
+      const assistantMessage = {
+        id: makeId("ember-assist"),
+        role: "assistant",
+        text: answer.answer,
+        actions: answer.actions || [],
+        category: answer.category,
+        shouldEscalate: shouldOfferAdminEscalation(question, answer),
+        createdAt: new Date().toISOString(),
+      };
+      setEmberAssistMessages((current) => saveEmberAssistThread([...current, userMessage, assistantMessage]));
+      setEmberAssistInput("");
+    } catch (error) {
+      logAppError("ember_assist_response", error, { question }, "normal");
+      const fallbackMessage = {
+        id: makeId("ember-assist"),
+        role: "assistant",
+        text: "I could not load the local helper right now. You can try again, use Quick Add, or send this to Ember & Tide admin for review.",
+        actions: ["Open Quick Add", "Send Message to Admin"],
+        category: "App bug",
+        shouldEscalate: true,
+        createdAt: new Date().toISOString(),
+      };
+      setEmberAssistMessages((current) => saveEmberAssistThread([...current, userMessage, fallbackMessage]));
+      setEmberAssistError("Ember Assist could not load that answer. Nothing was changed or saved.");
+    } finally {
+      setEmberAssistPending(false);
+    }
   }
 
   function submitEmberAssistEscalation(event) {
@@ -27688,8 +27728,9 @@ function renderForgeBusinessCommandPanel() {
     const emberAssistSuppressed = Boolean(!emberAssistOpen && (autoHideBlocked || emberAssistCollisionBlocked));
     if (emberAssistSuppressed) return null;
     const latestAssistant = [...emberAssistMessages].reverse().find((message) => message.role === "assistant");
-    const visibleStarterPrompts = emberAssistMorePromptsOpen ? emberAssistStarterPrompts : emberAssistStarterPrompts.slice(0, 3);
-    const hiddenStarterPromptCount = Math.max(0, emberAssistStarterPrompts.length - 3);
+    const contextualPrompts = emberAssistStarterPrompts.filter((prompt) => !EMBER_ASSIST_PRIMARY_PROMPTS.includes(prompt));
+    const visibleStarterPrompts = emberAssistMorePromptsOpen ? contextualPrompts : contextualPrompts.slice(0, 3);
+    const hiddenStarterPromptCount = Math.max(0, contextualPrompts.length - 3);
     const sparkHelpfulLinkVisible = emberAssistPermissionDenied || ["kidsProgram", "settings", "profileProgress", "membership"].includes(activeTab);
     const emberAssistPageIntro = {
       hearth: "I can explain Sparks, Ember Points, and the next useful action.",
@@ -27746,48 +27787,44 @@ function renderForgeBusinessCommandPanel() {
             <div className="ember-assist-header">
               <div>
                 <p className="section-kicker">Ember Assist</p>
-                <h2 id="ember-assist-title">Hi, I&apos;m Ember Assist.</h2>
+                <h2 id="ember-assist-title">Ask Ember</h2>
                 <p>{assistIntroCopy}</p>
               </div>
               <button type="button" className="modal-close-button" aria-label="Close Ember Assist" onClick={() => setEmberAssistOpen(false)}>X</button>
             </div>
-            <div className="ember-assist-scroll">
+            <div className={`ember-assist-scroll ${emberAssistMessages.length ? "has-thread" : ""}`}>
             {emberAssistPermissionDenied ? (
               <div className="ember-assist-context-card">
                 <strong>Access help</strong>
                 <span>Admin tools are protected. You can return to Hearth, ask what role is needed, or send a short message to admin if this looks wrong.</span>
               </div>
             ) : null}
-            <div className="ember-assist-prompts" aria-label="Starter prompts">
-              {visibleStarterPrompts.map((prompt) => (
-                <button type="button" key={prompt} onClick={() => sendEmberAssistMessage(prompt)}>{prompt}</button>
-              ))}
-              {hiddenStarterPromptCount ? (
-                <button
-                  type="button"
-                  className="ember-assist-more-prompts"
-                  aria-expanded={emberAssistMorePromptsOpen ? "true" : "false"}
-                  onClick={() => setEmberAssistMorePromptsOpen((open) => !open)}
-                >
-                  {emberAssistMorePromptsOpen ? "Hide more questions" : "More questions"}
-                </button>
-              ) : null}
+            <div className="ember-assist-context-card ember-assist-guidance-card">
+              <strong>Helpful, not magic</strong>
+              <span>I can guide app steps, card or product identification, scanner troubleshooting, collection choices, and trade or value explanations. I will say when I am unsure.</span>
             </div>
-            {helpfulLinks.length ? (
-              <div className="ember-assist-helpful-links" aria-label="Helpful links">
-                <strong>Helpful links</strong>
-                <div>
-                  {helpfulLinks.map((link) => (
-                    <button type="button" key={link.label} className="ghost-button" onClick={link.action}>{link.label}</button>
-                  ))}
-                </div>
-              </div>
-            ) : null}
+            <div className="ember-assist-primary-prompts" aria-label="Quick Ember prompts">
+              {EMBER_ASSIST_PRIMARY_PROMPTS.map((prompt) => (
+                <button type="button" key={prompt} onClick={() => sendEmberAssistMessage(prompt)} disabled={emberAssistPending}>{prompt}</button>
+              ))}
+            </div>
             <div className="ember-assist-messages" aria-live="polite">
               {!emberAssistMessages.length ? (
                 <div className="ember-assist-empty">
-                  <strong>{emberAssistPermissionDenied ? "Need access?" : "What should we make easier?"}</strong>
-                  <span>{emberAssistPermissionDenied ? "I can explain the blocked area and help you message admin without exposing private admin notes." : "Pick a question above or type what you are trying to do."}</span>
+                  <strong>{emberAssistPermissionDenied ? "Need access?" : "What can I help with?"}</strong>
+                  <span>{emberAssistPermissionDenied ? "I can explain the blocked area and help you message admin without exposing private admin notes." : "Pick a prompt or type what you are trying to do. Nothing is saved from a question."}</span>
+                </div>
+              ) : null}
+              {emberAssistPending ? (
+                <div className="ember-assist-status ember-assist-loading" role="status">
+                  <strong>Thinking through the safest next step...</strong>
+                  <span>Ember uses local app guidance first and avoids pretending uncertain data is confirmed.</span>
+                </div>
+              ) : null}
+              {emberAssistError ? (
+                <div className="ember-assist-status ember-assist-error" role="status">
+                  <strong>Answer unavailable</strong>
+                  <span>{emberAssistError}</span>
                 </div>
               ) : null}
               {emberAssistMessages.map((message) => (
@@ -27829,6 +27866,32 @@ function renderForgeBusinessCommandPanel() {
                 ))}
               </details>
             ) : null}
+            <div className="ember-assist-prompts" aria-label="Page-aware prompts">
+              {visibleStarterPrompts.map((prompt) => (
+                <button type="button" key={prompt} onClick={() => sendEmberAssistMessage(prompt)} disabled={emberAssistPending}>{prompt}</button>
+              ))}
+              {hiddenStarterPromptCount ? (
+                <button
+                  type="button"
+                  className="ember-assist-more-prompts"
+                  aria-expanded={emberAssistMorePromptsOpen ? "true" : "false"}
+                  onClick={() => setEmberAssistMorePromptsOpen((open) => !open)}
+                >
+                  {emberAssistMorePromptsOpen ? "Hide more questions" : "More questions"}
+                </button>
+              ) : null}
+              {contextualPrompts.length ? <span className="ember-assist-prompt-note">Page help changes based on where you are.</span> : null}
+            </div>
+            {helpfulLinks.length ? (
+              <div className="ember-assist-helpful-links" aria-label="Helpful links">
+                <strong>Helpful links</strong>
+                <div>
+                  {helpfulLinks.map((link) => (
+                    <button type="button" key={link.label} className="ghost-button" onClick={link.action}>{link.label}</button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             </div>
             <form className="ember-assist-form" onSubmit={(event) => {
               event.preventDefault();
@@ -27841,19 +27904,21 @@ function renderForgeBusinessCommandPanel() {
                 value={emberAssistInput}
                 onChange={(event) => setEmberAssistInput(event.target.value)}
                 placeholder="Ask what to do next..."
+                disabled={emberAssistPending}
               />
               <div className="ember-assist-footer-actions">
-                <button type="submit">Send</button>
+                <button type="submit" disabled={emberAssistPending}>{emberAssistPending ? "Sending..." : "Send"}</button>
                 <button type="button" className="secondary-button" onClick={() => setEmberAssistEscalationDraft({
                   question: emberAssistInput || latestAssistant?.text || "",
                   details: "",
                   category: latestAssistant?.category || "Other",
                   lastResponse: latestAssistant?.text || "",
-                })}>Send Message to Admin</button>
+                })} disabled={emberAssistPending}>Send Message to Admin</button>
                 <button type="button" className="ghost-button" onClick={() => {
                   setEmberAssistMessages(clearEmberAssistThread());
                   setEmberAssistInput("");
-                }}>Clear</button>
+                  setEmberAssistError("");
+                }} disabled={emberAssistPending}>Clear</button>
               </div>
             </form>
             {emberAssistEscalationDraft ? (

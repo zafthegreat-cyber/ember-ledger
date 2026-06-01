@@ -69847,3 +69847,187 @@ html body .app .scan-product-modal .scanner-review-primary-action {
     min-height: 112px !important;
   }
 }
+
+/* Final UI Pass 15: Ember Assist polish */
+.ember-assist-shell.is-open {
+  display: block !important;
+  opacity: 1 !important;
+  pointer-events: none !important;
+  transform: none !important;
+}
+
+html body .app-command-shell .ember-assist-shell.is-open,
+html body .app-shell-dark .ember-assist-shell.is-open,
+html body .app .ember-assist-shell.is-open {
+  display: block !important;
+  opacity: 1 !important;
+  pointer-events: none !important;
+  transform: none !important;
+}
+
+.ember-assist-panel {
+  border-color: rgba(167, 139, 250, 0.34) !important;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(167, 139, 250, 0.2), transparent 16rem),
+    radial-gradient(circle at 92% 4%, rgba(45, 212, 191, 0.1), transparent 13rem),
+    linear-gradient(165deg, rgba(10, 8, 28, 0.98), rgba(9, 18, 36, 0.99)) !important;
+  box-shadow:
+    0 28px 90px rgba(0, 0, 0, 0.58),
+    0 0 0 1px rgba(216, 180, 254, 0.08),
+    0 0 38px rgba(124, 58, 237, 0.16) !important;
+}
+
+.ember-assist-scroll {
+  display: flex;
+  flex-direction: column;
+}
+
+.ember-assist-scroll.has-thread .ember-assist-messages {
+  order: -1;
+}
+
+.ember-assist-header {
+  border-bottom: 1px solid rgba(167, 139, 250, 0.18) !important;
+  background:
+    linear-gradient(135deg, rgba(20, 12, 46, 0.96), rgba(4, 10, 22, 0.94)) !important;
+}
+
+.ember-assist-header .section-kicker {
+  color: #c4b5fd !important;
+}
+
+.ember-assist-header h2 {
+  color: #fff7ed !important;
+}
+
+.ember-assist-guidance-card {
+  border-color: rgba(167, 139, 250, 0.28) !important;
+  background:
+    radial-gradient(circle at 96% 0%, rgba(167, 139, 250, 0.18), transparent 11rem),
+    rgba(15, 13, 37, 0.88) !important;
+}
+
+.ember-assist-primary-prompts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0.75rem 0.9rem 0;
+}
+
+.ember-assist-primary-prompts button,
+.ember-assist-prompts button,
+.ember-assist-more-prompts {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  color: #f8f3ff !important;
+  border-color: rgba(167, 139, 250, 0.26) !important;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(216, 180, 254, 0.16), transparent 7rem),
+    rgba(9, 15, 32, 0.86) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045) !important;
+}
+
+.ember-assist-primary-prompts button {
+  min-height: 58px !important;
+  justify-content: start;
+  padding: 0.72rem 0.78rem !important;
+  text-align: left;
+}
+
+.ember-assist-primary-prompts button:first-child,
+.ember-assist-primary-prompts button:nth-child(2) {
+  border-color: rgba(216, 180, 254, 0.42) !important;
+  background:
+    linear-gradient(135deg, rgba(124, 58, 237, 0.32), rgba(12, 21, 44, 0.92)) !important;
+}
+
+.ember-assist-primary-prompts button:focus-visible,
+.ember-assist-prompts button:focus-visible,
+.ember-assist-footer-actions button:focus-visible {
+  outline: 2px solid rgba(216, 180, 254, 0.75) !important;
+  outline-offset: 2px;
+}
+
+.ember-assist-prompt-note {
+  color: rgba(232, 222, 255, 0.66);
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.ember-assist-empty,
+.ember-assist-status,
+.ember-assist-message {
+  border-color: rgba(167, 139, 250, 0.2) !important;
+  background: rgba(7, 12, 28, 0.82) !important;
+}
+
+.ember-assist-message.is-assistant {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(167, 139, 250, 0.16), transparent 10rem),
+    rgba(14, 13, 36, 0.9) !important;
+}
+
+.ember-assist-message.is-user {
+  border-color: rgba(45, 212, 191, 0.2) !important;
+  background: rgba(5, 28, 42, 0.72) !important;
+}
+
+.ember-assist-loading {
+  border-color: rgba(216, 180, 254, 0.34) !important;
+}
+
+.ember-assist-error {
+  border-color: rgba(251, 146, 60, 0.36) !important;
+}
+
+.ember-assist-form {
+  border-top: 1px solid rgba(167, 139, 250, 0.18) !important;
+  background:
+    linear-gradient(180deg, rgba(4, 8, 18, 0.98), rgba(10, 8, 28, 0.98)) !important;
+}
+
+.ember-assist-form textarea {
+  border-color: rgba(167, 139, 250, 0.3) !important;
+  background: rgba(4, 8, 20, 0.88) !important;
+}
+
+.ember-assist-footer-actions button[type="submit"],
+.ember-assist-escalate {
+  border-color: rgba(216, 180, 254, 0.42) !important;
+  background: linear-gradient(135deg, #7c3aed, #a855f7 58%, #22d3ee) !important;
+  color: #fff !important;
+  box-shadow: 0 12px 28px rgba(124, 58, 237, 0.22) !important;
+}
+
+.ember-assist-panel button:disabled,
+.ember-assist-panel textarea:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+@media (max-width: 640px) {
+  .ember-assist-primary-prompts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+    margin-left: 0.65rem;
+    margin-right: 0.65rem;
+  }
+
+  .ember-assist-primary-prompts button {
+    min-height: 52px !important;
+    padding: 0.62rem 0.66rem !important;
+    font-size: 0.78rem !important;
+    line-height: 1.2 !important;
+  }
+
+  .ember-assist-guidance-card {
+    margin-left: 0.65rem !important;
+    margin-right: 0.65rem !important;
+  }
+
+  .ember-assist-prompt-note {
+    font-size: 0.68rem;
+  }
+}

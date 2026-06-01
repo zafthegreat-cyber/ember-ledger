@@ -78,6 +78,11 @@ const VALUATION_WORDS = /\b(cost basis|market value|price missing|missing price|
 const MARKET_WORDS = /\b(market|tidetradr|listing|seller|sold|trade|price|checkout|payment|pay through|buy through)\b/i;
 const TIDEPOOL_WORDS = /\b(tidepool|community post|post safely|why is my post pending|report a post|flag a post|can kids post|community board)\b/i;
 const TIER_WORDS = /\b(tier|tiers|plan|plans|pricing|subscription|subscribe|upgrade|trial|collector plan|family plan|seller plan|shop basic|shop plus|add[-\s]?on|addon|paid tier|billing)\b/i;
+const IDENTIFY_CARD_WORDS = /\b(identify this card|identify card|what card is this|what is this card)\b/i;
+const GOOD_DEAL_WORDS = /\b(is this a good deal|good deal|worth it|fair price|overpay|under market)\b/i;
+const COLLECTION_GUIDANCE_WORDS = /\b(help with my collection|help me organize|collection guidance|track my collection)\b/i;
+const SCANNER_TROUBLE_WORDS = /\b(scanner not working|camera not working|scan not working|barcode not scanning|camera unavailable)\b/i;
+const COLLECTING_GUIDANCE_WORDS = /\b(what should i collect|what should i buy|what should i focus on|what set should i collect)\b/i;
 
 function safeJsonParse(value, fallback) {
   try {
@@ -315,6 +320,41 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
     return response("Use Send Message to Admin when Ember Assist cannot solve it cleanly. I will include your question, current page, public username, and safe context so Ember & Tide can review it in the admin inbox.", {
       actions: ["Send Message to Admin"],
       category: "Other",
+    });
+  }
+
+  if (IDENTIFY_CARD_WORDS.test(text)) {
+    return response("Use Quick Add, then Card or Photo. Take a clear photo, review the suggested match, and edit the card name, set, number, variant, and notes before saving. Nothing should be saved until you confirm.", {
+      actions: ["Open Quick Add", "Go to Vault"],
+      category: "Vault/Forge inventory question",
+    });
+  }
+
+  if (SCANNER_TROUBLE_WORDS.test(text)) {
+    return response("If the scanner is not working, check camera permission, lighting, and focus first. You can still type a UPC/SKU, choose a photo, or use Manual Add so the item is reviewable before saving.", {
+      actions: ["Open Quick Add", "Send Message to Admin"],
+      category: "App bug",
+    });
+  }
+
+  if (GOOD_DEAL_WORDS.test(text)) {
+    return response("A good deal depends on condition, sealed status, known market value, fees, and your goal. Use Market Watch for honest source labels, then review before saving; Ember & Tide should not pretend weak or missing price data is certain.", {
+      actions: ["Open Market", "Open Quick Add"],
+      category: "Market Watch question",
+    });
+  }
+
+  if (COLLECTION_GUIDANCE_WORDS.test(text)) {
+    return response("Start by deciding what the item is for: personal collection, set completion, trade, donation, or seller inventory. Vault keeps protected collection records; Forge keeps business/seller records; Set Detail helps track owned and missing cards.", {
+      actions: ["Go to Vault", "Open Quick Add", "Go to Forge"],
+      category: "Vault/Forge inventory question",
+    });
+  }
+
+  if (COLLECTING_GUIDANCE_WORDS.test(text)) {
+    return response("Collect around a clear goal: a favorite Pokemon, a set you can finish, a playable deck, or cards your family actually enjoys. Avoid chasing hype blindly; use Market Watch and Vault set progress to keep choices fair and affordable.", {
+      actions: ["Go to Vault", "Open Market"],
+      category: "Market Watch question",
     });
   }
 
