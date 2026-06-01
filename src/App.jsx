@@ -56494,6 +56494,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     <div className="small-empty-state tidetradr-search-prompt market-empty-state">
                       <strong>Search cards, sets, or sealed products.</strong>
                       <span>Market shows known values and labels weak data honestly.</span>
+                      <div className="market-empty-examples" aria-label="Market search examples">
+                        <span>Card names</span>
+                        <span>Set names</span>
+                        <span>Sealed products</span>
+                        <span>UPC / SKU</span>
+                      </div>
                     </div>
                   ) : null}
 
