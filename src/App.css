@@ -69296,3 +69296,201 @@ html body .app .scan-product-modal .scanner-review-primary-action {
     font-size: 0.7rem;
   }
 }
+
+/* Final UI Pass 12: Taxes / Export recordkeeping polish. */
+.app-forge .forge-tax-overview-panel,
+.app-forge .tax-readiness-panel {
+  justify-self: stretch;
+  width: 100%;
+  max-width: none !important;
+  border-color: rgba(255, 107, 77, 0.28) !important;
+  background:
+    radial-gradient(circle at 10% 0%, rgba(255, 107, 77, 0.13), transparent 28%),
+    radial-gradient(circle at 92% 8%, rgba(255, 184, 77, 0.11), transparent 30%),
+    rgba(5, 12, 25, 0.9) !important;
+}
+
+@media (min-width: 960px) {
+  .app-forge .forge-tax-overview-panel,
+  .app-forge .tax-readiness-panel {
+    grid-column: 1 / -1;
+  }
+
+  .app-forge .forge-tax-command-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+  }
+
+  .app-forge .tax-year-summary-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+  }
+
+  .app-forge .tax-recordkeeping-layout {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+}
+
+.app-forge .forge-tax-command-grid,
+.app-forge .tax-year-summary-grid,
+.app-forge .tax-recordkeeping-layout,
+.app-forge .tax-export-actions {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.app-forge .forge-tax-command-grid {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.app-forge .tax-year-summary-grid {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  margin-top: 14px;
+}
+
+.app-forge .tax-recordkeeping-layout {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  margin-top: 14px;
+}
+
+.app-forge .tax-command-card,
+.app-forge .tax-year-summary-grid > div,
+.app-forge .tax-export-panel,
+.app-forge .tax-empty-state {
+  min-width: 0;
+  border: 1px solid rgba(255, 184, 77, 0.16) !important;
+  border-radius: 18px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012)),
+    rgba(5, 14, 29, 0.82) !important;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.18);
+}
+
+.app-forge .tax-command-card,
+.app-forge .tax-year-summary-grid > div {
+  display: grid;
+  gap: 4px;
+  padding: 13px;
+}
+
+.app-forge .tax-command-card--primary {
+  border-color: rgba(255, 184, 77, 0.42) !important;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(255, 184, 77, 0.18), transparent 42%),
+    rgba(9, 18, 34, 0.92) !important;
+}
+
+.app-forge .tax-command-card.is-positive strong {
+  color: #8df8d5 !important;
+}
+
+.app-forge .tax-command-card.is-negative strong {
+  color: #ffb4a2 !important;
+}
+
+.app-forge .tax-command-card span,
+.app-forge .tax-year-summary-grid span,
+.app-forge .tax-export-panel .eyebrow {
+  color: rgba(255, 232, 200, 0.74) !important;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.app-forge .tax-command-card strong,
+.app-forge .tax-year-summary-grid strong {
+  color: #fff7ed !important;
+  font-size: clamp(1.05rem, 1vw, 1.32rem);
+  line-height: 1.08;
+}
+
+.app-forge .tax-command-card small,
+.app-forge .tax-year-summary-grid small,
+.app-forge .tax-empty-state p,
+.app-forge .tax-export-panel p {
+  color: rgba(232, 238, 246, 0.72) !important;
+  line-height: 1.35;
+}
+
+.app-forge .tax-record-card--focus {
+  border-color: rgba(255, 184, 77, 0.28) !important;
+}
+
+.app-forge .tax-record-card p {
+  min-width: 0;
+}
+
+.app-forge .tax-record-card p span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.app-forge .tax-record-card p strong {
+  color: #fff7ed !important;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.app-forge .tax-export-panel,
+.app-forge .tax-empty-state {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 15px;
+}
+
+.app-forge .tax-export-panel {
+  grid-template-columns: minmax(0, 0.72fr) minmax(260px, 1fr);
+  align-items: center;
+}
+
+.app-forge .tax-export-panel h3,
+.app-forge .tax-empty-state h3 {
+  margin: 2px 0 0;
+  color: #fff7ed !important;
+}
+
+.app-forge .tax-export-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.app-forge .tax-export-actions button,
+.app-forge .tax-empty-state .quick-actions button {
+  min-height: 42px;
+}
+
+@media (max-width: 780px) {
+  .app-forge .main:has(.tax-readiness-panel) {
+    padding-bottom: calc(var(--bottom-nav-offset, 92px) + env(safe-area-inset-bottom, 0px) + 132px) !important;
+  }
+
+  .app-forge .forge-tax-command-grid,
+  .app-forge .tax-year-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .app-forge .tax-recordkeeping-layout,
+  .app-forge .tax-export-panel,
+  .app-forge .tax-export-actions {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .app-forge .tax-command-card,
+  .app-forge .tax-year-summary-grid > div,
+  .app-forge .tax-record-card,
+  .app-forge .tax-export-panel,
+  .app-forge .tax-empty-state {
+    border-radius: 16px;
+    padding: 12px;
+  }
+
+  .app-forge .tax-command-card span,
+  .app-forge .tax-year-summary-grid span {
+    font-size: 0.68rem;
+  }
+
+  .app-forge .tax-command-card strong,
+  .app-forge .tax-year-summary-grid strong {
+    font-size: 1rem;
+  }
+}

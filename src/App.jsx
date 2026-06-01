@@ -25820,6 +25820,29 @@ function renderForgeBusinessCommandPanel() {
     inventoryItems: forgeInventoryItems,
     sales: workspaceSales,
   }), [taxSummaryYear, workspaceExpenses, workspaceMileageTrips, vehicles, forgeInventoryItems, workspaceSales]);
+  const yearEndRecordCount =
+    (yearEndTaxSummary.expenses.count || 0) +
+    (yearEndTaxSummary.mileage.tripCount || 0) +
+    (yearEndTaxSummary.inventory.itemCount || 0) +
+    (yearEndTaxSummary.sales.count || 0);
+  const taxExpenseCategoryRows = useMemo(() => (
+    Object.entries(yearEndTaxSummary.expenses.byCategory || {})
+      .map(([category, amount]) => ({ category, amount: Number(amount || 0) }))
+      .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount) || a.category.localeCompare(b.category))
+      .slice(0, 6)
+  ), [yearEndTaxSummary.expenses.byCategory]);
+  const deductibleExpenseCategoryRows = useMemo(() => {
+    const rows = new Map();
+    workspaceExpenses
+      .filter((expense) => expense.taxDeductible && String(expenseDateValue(expense) || "").slice(0, 4) === String(taxSummaryYear))
+      .forEach((expense) => {
+        const category = expense.category || "Supplies";
+        rows.set(category, (rows.get(category) || 0) + Number(expense.amount || 0));
+      });
+    return [...rows.entries()]
+      .map(([category, amount]) => ({ category, amount }))
+      .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount) || a.category.localeCompare(b.category));
+  }, [workspaceExpenses, taxSummaryYear]);
   const filteredExpenseTotal = useMemo(
     () => filteredExpenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0),
     [filteredExpenses]
@@ -59074,8 +59097,9 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
             <section className="panel forge-tax-overview-panel">
               <div className="compact-card-header">
                 <div>
-                  <h2>Taxes</h2>
-                  <p>Tax-ready summary for records. Confirm with a tax professional.</p>
+                  <p className="eyebrow">Taxes / Export</p>
+                  <h2>Business recordkeeping summary</h2>
+                  <p>For recordkeeping. Confirm with your tax professional.</p>
                 </div>
                 {reportFocus ? (
                   <button
@@ -59087,11 +59111,37 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   </button>
                 ) : null}
               </div>
-              <div className="forge-tax-readiness-grid">
-                <div><span>Receipts captured</span><strong>{yearEndTaxSummary.expenses.count}</strong><small>{yearEndTaxSummary.expenses.missingReceiptCount} missing</small></div>
-                <div><span>Mileage logged</span><strong>{yearEndTaxSummary.mileage.totalMiles.toFixed(1)} mi</strong><small>{money(yearEndTaxSummary.mileage.totalValue)} estimate</small></div>
-                <div><span>Sales recorded</span><strong>{workspaceSales.length}</strong><small>{money(yearEndTaxSummary.sales.profit)} profit</small></div>
-                <div><span>Missing cost basis</span><strong>{missingMarketPriceItems.length + missingMsrpItems.length}</strong><small>Review before export</small></div>
+              <div className="forge-tax-command-grid">
+                <div className="tax-command-card tax-command-card--primary">
+                  <span>Revenue</span>
+                  <strong>{money(yearEndTaxSummary.sales.revenue)}</strong>
+                  <small>{yearEndTaxSummary.sales.count} sale{yearEndTaxSummary.sales.count === 1 ? "" : "s"} recorded for {taxSummaryYear}</small>
+                </div>
+                <div className="tax-command-card">
+                  <span>Cost basis</span>
+                  <strong>{money(yearEndTaxSummary.sales.estimatedCostBasis || yearEndTaxSummary.inventory.costBasis)}</strong>
+                  <small>Known sold-item cost plus tracked inventory context</small>
+                </div>
+                <div className={`tax-command-card ${yearEndTaxSummary.sales.profit < 0 ? "is-negative" : "is-positive"}`}>
+                  <span>Profit / loss</span>
+                  <strong>{money(yearEndTaxSummary.sales.profit)}</strong>
+                  <small>After known sales costs, fees, and shipping</small>
+                </div>
+                <div className="tax-command-card">
+                  <span>Fees + shipping</span>
+                  <strong>{money((yearEndTaxSummary.sales.estimatedFees || 0) + (yearEndTaxSummary.sales.estimatedShippingCosts || 0))}</strong>
+                  <small>{money(yearEndTaxSummary.sales.estimatedFees || 0)} fees / {money(yearEndTaxSummary.sales.estimatedShippingCosts || 0)} shipping</small>
+                </div>
+                <div className="tax-command-card">
+                  <span>Expenses</span>
+                  <strong>{money(yearEndTaxSummary.expenses.total)}</strong>
+                  <small>{yearEndTaxSummary.expenses.count} receipt or expense record{yearEndTaxSummary.expenses.count === 1 ? "" : "s"}</small>
+                </div>
+                <div className="tax-command-card">
+                  <span>Mileage</span>
+                  <strong>{yearEndTaxSummary.mileage.totalMiles.toFixed(1)} mi</strong>
+                  <small>{money(yearEndTaxSummary.mileage.totalValue)} recordkeeping estimate</small>
+                </div>
               </div>
             </section>
 
@@ -59182,9 +59232,9 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
             <section className="panel tax-readiness-panel">
               <div className="compact-card-header">
                 <div>
-                  <p className="eyebrow">Tax Records</p>
-                  <h2>Year-end summary for review</h2>
-                  <p>Tax-ready summary for records. Source records stay underneath for review with your tax professional.</p>
+                  <p className="eyebrow">Yearly records</p>
+                  <h2>{taxSummaryYear} business summary</h2>
+                  <p>For recordkeeping. Confirm with your tax professional. Source records stay underneath for review.</p>
                 </div>
                 <Field label="Year">
                   <select value={taxSummaryYear} onChange={(event) => setTaxSummaryYear(event.target.value)}>
@@ -59192,57 +59242,99 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   </select>
                 </Field>
               </div>
-              <div className="expense-summary-grid tax-summary-grid">
-                <div><span>Expenses</span><strong>{money(yearEndTaxSummary.expenses.total)}</strong><small>{yearEndTaxSummary.expenses.count} transaction{yearEndTaxSummary.expenses.count === 1 ? "" : "s"}</small></div>
-                <div><span>Mileage</span><strong>{yearEndTaxSummary.mileage.totalMiles.toFixed(1)} mi</strong><small>{money(yearEndTaxSummary.mileage.totalValue)} mileage value estimate</small></div>
-                <div><span>Inventory cost basis</span><strong>{money(yearEndTaxSummary.inventory.costBasis)}</strong><small>{yearEndTaxSummary.inventory.quantity} unit{yearEndTaxSummary.inventory.quantity === 1 ? "" : "s"}</small></div>
-                <div><span>Sales / profit</span><strong>{money(yearEndTaxSummary.sales.revenue)}</strong><small>{money(yearEndTaxSummary.sales.profit)} net profit</small></div>
-                <div><span>Missing receipts</span><strong>{yearEndTaxSummary.expenses.missingReceiptCount}</strong><small>Attach or review before filing</small></div>
-                <div><span>Sales references</span><strong>{yearEndTaxSummary.sales.receiptCoverage?.withReference || 0}/{yearEndTaxSummary.sales.receiptCoverage?.total || 0}</strong><small>{yearEndTaxSummary.sales.receiptCoverage?.missingReference || 0} missing sale reference{yearEndTaxSummary.sales.receiptCoverage?.missingReference === 1 ? "" : "s"}</small></div>
-              </div>
-              <details className="forge-report-details">
-                <summary>View record breakdown</summary>
-              <div className="tax-record-grid">
-                <div className="tax-record-card">
-                  <h3>Top expense vendors</h3>
-                  {yearEndTaxSummary.expenses.vendorGroups.slice(0, 5).map((group) => (
-                    <p key={group.key}><span>{group.vendorName}</span><strong>{money(group.total)}</strong></p>
-                  ))}
-                  {!yearEndTaxSummary.expenses.vendorGroups.length ? <p className="compact-subtitle">No expense records for {taxSummaryYear}.</p> : null}
+              {yearEndRecordCount ? (
+                <>
+                  <div className="tax-year-summary-grid">
+                    <div><span>Revenue</span><strong>{money(yearEndTaxSummary.sales.revenue)}</strong><small>{yearEndTaxSummary.sales.count} sale{yearEndTaxSummary.sales.count === 1 ? "" : "s"}</small></div>
+                    <div><span>Cost basis</span><strong>{money(yearEndTaxSummary.inventory.costBasis)}</strong><small>{yearEndTaxSummary.inventory.quantity} inventory unit{yearEndTaxSummary.inventory.quantity === 1 ? "" : "s"}</small></div>
+                    <div><span>Profit / loss</span><strong>{money(yearEndTaxSummary.sales.profit)}</strong><small>Known sales record estimate</small></div>
+                    <div><span>Fees</span><strong>{money(yearEndTaxSummary.sales.estimatedFees || 0)}</strong><small>Platform and payment fees when recorded</small></div>
+                    <div><span>Shipping</span><strong>{money(yearEndTaxSummary.sales.estimatedShippingCosts || 0)}</strong><small>Shipping costs when recorded</small></div>
+                    <div><span>Supplies / expenses</span><strong>{money(yearEndTaxSummary.expenses.total)}</strong><small>{yearEndTaxSummary.expenses.count} expense record{yearEndTaxSummary.expenses.count === 1 ? "" : "s"}</small></div>
+                  </div>
+
+                  <div className="tax-recordkeeping-layout">
+                    <div className="tax-record-card tax-record-card--focus">
+                      <h3>Record health</h3>
+                      <p><span>Missing receipts</span><strong>{yearEndTaxSummary.expenses.missingReceiptCount + yearEndTaxSummary.inventory.missingReceiptCount}</strong></p>
+                      <p><span>Sales references</span><strong>{yearEndTaxSummary.sales.receiptCoverage?.withReference || 0}/{yearEndTaxSummary.sales.receiptCoverage?.total || 0}</strong></p>
+                      <p><span>Missing cost basis</span><strong>{yearEndTaxSummary.inventory.missingCostCount || 0}</strong></p>
+                      <p className="compact-subtitle">Review missing receipts, sale references, and costs before sharing exports with a tax professional.</p>
+                    </div>
+                    <div className="tax-record-card">
+                      <h3>Deductible categories</h3>
+                      {deductibleExpenseCategoryRows.slice(0, 5).map((row) => (
+                        <p key={row.category}><span>{row.category}</span><strong>{money(row.amount)}</strong></p>
+                      ))}
+                      {!deductibleExpenseCategoryRows.length ? <p className="compact-subtitle">No deductible categories marked for {taxSummaryYear}.</p> : null}
+                    </div>
+                    <div className="tax-record-card">
+                      <h3>Expense categories</h3>
+                      {taxExpenseCategoryRows.map((row) => (
+                        <p key={row.category}><span>{row.category}</span><strong>{money(row.amount)}</strong></p>
+                      ))}
+                      {!taxExpenseCategoryRows.length ? <p className="compact-subtitle">No expense records for {taxSummaryYear}.</p> : null}
+                    </div>
+                    <div className="tax-record-card">
+                      <h3>Sales channels</h3>
+                      {yearEndTaxSummary.sales.byPlatform.slice(0, 5).map((group) => (
+                        <p key={group.label}><span>{group.label}</span><strong>{money(group.grossSales)}</strong></p>
+                      ))}
+                      {!yearEndTaxSummary.sales.byPlatform.length ? <p className="compact-subtitle">No sales records for {taxSummaryYear}.</p> : null}
+                    </div>
+                  </div>
+
+                  <details className="forge-report-details">
+                    <summary>View source breakdown</summary>
+                    <div className="tax-record-grid">
+                      <div className="tax-record-card">
+                        <h3>Top expense vendors</h3>
+                        {yearEndTaxSummary.expenses.vendorGroups.slice(0, 5).map((group) => (
+                          <p key={group.key}><span>{group.vendorName}</span><strong>{money(group.total)}</strong></p>
+                        ))}
+                        {!yearEndTaxSummary.expenses.vendorGroups.length ? <p className="compact-subtitle">No expense records for {taxSummaryYear}.</p> : null}
+                      </div>
+                      <div className="tax-record-card">
+                        <h3>Mileage by vehicle</h3>
+                        {yearEndTaxSummary.mileage.vehicleGroups.slice(0, 5).map((group) => (
+                          <p key={group.key}><span>{group.vehicleName}</span><strong>{group.totalMiles.toFixed(1)} mi</strong></p>
+                        ))}
+                        {!yearEndTaxSummary.mileage.vehicleGroups.length ? <p className="compact-subtitle">No mileage records for {taxSummaryYear}.</p> : null}
+                      </div>
+                      <div className="tax-record-card">
+                        <h3>Inventory by purchaser</h3>
+                        {yearEndTaxSummary.inventory.purchaserTotals.slice(0, 5).map((group) => (
+                          <p key={group.name}><span>{group.name}</span><strong>{money(group.costBasis)}</strong></p>
+                        ))}
+                        {!yearEndTaxSummary.inventory.purchaserTotals.length ? <p className="compact-subtitle">No inventory cost basis for {taxSummaryYear}.</p> : null}
+                      </div>
+                    </div>
+                  </details>
+                </>
+              ) : (
+                <div className="tax-empty-state">
+                  <span className="trust-badge trust-badge--secure">Recordkeeping</span>
+                  <h3>Start recording sales to build your tax summary.</h3>
+                  <p>Add sales, inventory cost basis, expenses, and mileage in Forge. Exports will stay for recordkeeping and review.</p>
+                  <div className="quick-actions">
+                    <button type="button" onClick={() => setActiveTab("sales")}>Record a sale</button>
+                    <button type="button" className="secondary-button" onClick={() => setActiveTab("expenses")}>Add expense</button>
+                  </div>
                 </div>
-                <div className="tax-record-card">
-                  <h3>Mileage by vehicle</h3>
-                  {yearEndTaxSummary.mileage.vehicleGroups.slice(0, 5).map((group) => (
-                    <p key={group.key}><span>{group.vehicleName}</span><strong>{group.totalMiles.toFixed(1)} mi</strong></p>
-                  ))}
-                  {!yearEndTaxSummary.mileage.vehicleGroups.length ? <p className="compact-subtitle">No mileage records for {taxSummaryYear}.</p> : null}
+              )}
+
+              <div className="tax-export-panel">
+                <div>
+                  <p className="eyebrow">Export</p>
+                  <h3>End-of-year report</h3>
+                  <p>Exports organize records for review. They are not tax advice or a filing.</p>
                 </div>
-                <div className="tax-record-card">
-                  <h3>Inventory by purchaser</h3>
-                  {yearEndTaxSummary.inventory.purchaserTotals.slice(0, 5).map((group) => (
-                    <p key={group.name}><span>{group.name}</span><strong>{money(group.costBasis)}</strong></p>
-                  ))}
-                  {!yearEndTaxSummary.inventory.purchaserTotals.length ? <p className="compact-subtitle">No inventory cost basis for {taxSummaryYear}.</p> : null}
+                <div className="tax-export-actions">
+                  <button type="button" onClick={() => downloadYearEndTaxSummary("csv")}>Export summary CSV</button>
+                  <button type="button" className="secondary-button" onClick={() => downloadYearEndTaxSummary("json")}>Export report JSON</button>
+                  <button type="button" className="secondary-button" onClick={() => downloadSalesRecords("csv")}>Export sales CSV</button>
+                  <button type="button" className="secondary-button" onClick={() => downloadMileageRecords("csv")}>Export mileage CSV</button>
                 </div>
-                <div className="tax-record-card">
-                  <h3>Sales channels</h3>
-                  {yearEndTaxSummary.sales.byPlatform.slice(0, 5).map((group) => (
-                    <p key={group.label}><span>{group.label}</span><strong>{money(group.grossSales)}</strong></p>
-                  ))}
-                  {!yearEndTaxSummary.sales.byPlatform.length ? <p className="compact-subtitle">No sales records for {taxSummaryYear}.</p> : null}
-                </div>
-                <div className="tax-record-card">
-                  <h3>Export center</h3>
-                  <p><span>Inventory, sales, expenses, mileage</span><strong>CSV/JSON</strong></p>
-                  <p className="compact-subtitle">Exports organize records for review with your tax professional. They are not tax advice or a filing.</p>
-                </div>
-              </div>
-              </details>
-              <div className="drawer-inline-actions">
-                <button type="button" onClick={() => downloadYearEndTaxSummary("csv")}>Export Year-End CSV</button>
-                <button type="button" className="secondary-button" onClick={() => downloadYearEndTaxSummary("json")}>Export Year-End JSON</button>
-                <button type="button" className="secondary-button" onClick={() => downloadSalesRecords("csv")}>Export Sales CSV</button>
-                <button type="button" className="secondary-button" onClick={() => downloadMileageRecords("csv")}>Export Mileage CSV</button>
               </div>
             </section>
 
