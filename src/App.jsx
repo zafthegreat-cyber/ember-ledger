@@ -36546,6 +36546,38 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       "Shipping help",
       "Other family collecting support",
     ];
+    const sparkMissionCards = [
+      { key: "packs", icon: "Pack", title: "Kids packs", detail: "Parent-safe starter packs built from reviewed support." },
+      { key: "giveaways", icon: "Give", title: "Giveaways", detail: "Family-friendly opportunities with clear guardrails." },
+      { key: "events", icon: "Meet", title: "Events", detail: "General-area events, learn-to-play days, and pack building." },
+      { key: "learn", icon: "Learn", title: "Learning", detail: "Card care, fair trading, price basics, and kind collecting." },
+      { key: "donations", icon: "Track", title: "Donation tracking", detail: "Products, supplies, sponsorships, services, and volunteer help." },
+      { key: "trusted-friends", icon: "Trust", title: "Trusted family friends", detail: "Approved helpers for packs, events, donations, and learning." },
+      { key: "shops", icon: "Shop", title: "Shop and seller support", detail: "Partner participation for drop sites, events, and fair access." },
+    ];
+    const sparkDonationGroups = [
+      { title: "Cards and products", items: ["Cards", "Sealed products", "Packs"] },
+      { title: "Collecting supplies", items: ["Binders", "Sleeves", "Deck boxes", "Storage", "Playmats"] },
+      { title: "Event support", items: ["Toys/prizes", "Gift cards", "Food/snacks", "Event support"] },
+      { title: "Mission support", items: ["Money/sponsorships", "Services", "Volunteer time", "Shipping help", "Other family collecting support"] },
+    ];
+    const sparkParticipationCards = [
+      {
+        title: "Families",
+        detail: "Request access, share collecting needs, and participate through parent-managed reviews.",
+        badge: activeApplication ? sparkProgramStatusLabel(activeApplication.status || "interest_submitted") : "Parent managed",
+      },
+      {
+        title: "Trusted family friends",
+        detail: "Approved helpers can support safe packs, learning, events, and donation prep without private child messaging.",
+        badge: "Trusted helpers",
+      },
+      {
+        title: "Shops and sellers",
+        detail: "Partners can help with drop-off sites, Learn to Play days, fair access, sponsorships, or verified support.",
+        badge: "Partner-ready",
+      },
+    ];
     const sparkSections = [
       {
         key: "parent-requests",
@@ -36572,7 +36604,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <PageHeader
           className={getHeaderCardClass("panel page-summary-card kids-spark-header spark-page-header")}
           title="The Spark"
-          subtitle="Kids Program"
+          subtitle="Igniting the spark within kids and families."
           actions={null}
           summary={<p className="spark-header-mission-line">Helping families keep collecting fun, fair, and kid-friendly. Parent-safe requests. No private child messaging.</p>}
         />
@@ -36583,11 +36615,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </div>
           <div className="spark-mission-copy">
             <p className="section-kicker">The Spark mission</p>
-            <h2>Bring Pokemon back to kids.</h2>
-            <p>Igniting the spark within them through kids packs, giveaways, family-friendly events, and learning support that stays safe, fair, and parent-managed.</p>
+            <h2>Collecting support for kids and families.</h2>
+            <p>Igniting the spark within them through kids packs, giveaways, family-friendly events, learning, donations, and trusted community help that stays safe, fair, and parent-managed.</p>
             <div className="spark-mission-facts" aria-label="The Spark guardrails">
               <span>Parent-managed</span>
               <span>Admin-reviewed</span>
+              <span>Mission-centered</span>
             </div>
           </div>
           <button
@@ -36617,11 +36650,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div className="compact-card-header">
               <div>
                 <h3>What The Spark supports</h3>
-                <p>Four safe ways we help families collect.</p>
+                <p>Mission areas for family collecting support, learning, donations, and trusted helpers.</p>
               </div>
             </div>
             <div className="spark-section-grid">
-              {sparkProgramCards.map((section) => (
+              {sparkMissionCards.map((section) => (
                 <button type="button" className="spark-section-card" key={section.key} onClick={section.key === "events" ? openPokemonWatchCalendar : scrollToSparkDetails}>
                   <span className="spark-section-icon" aria-hidden="true">{section.icon}</span>
                   <strong>{section.title}</strong>
@@ -36631,6 +36664,44 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </div>
             <div className="spark-support-examples" aria-label="The Spark support examples">
               {sparkSupportExamples.map((item) => <span key={item}>{item}</span>)}
+            </div>
+          </section>
+
+          <section className="spark-donation-tracking-panel" aria-label="Donation tracking categories">
+            <div className="compact-card-header">
+              <div>
+                <h3>Donation tracking</h3>
+                <p>Track more than cards. The Spark can organize the support families actually use.</p>
+              </div>
+              <span className="trust-badge trust-badge--kid">Broad support</span>
+            </div>
+            <div className="spark-donation-group-grid">
+              {sparkDonationGroups.map((group) => (
+                <article className="spark-donation-group-card" key={group.title}>
+                  <strong>{group.title}</strong>
+                  <div>
+                    {group.items.map((item) => <span key={item}>{item}</span>)}
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className="spark-participation-panel" aria-label="Spark participation paths">
+            <div className="compact-card-header">
+              <div>
+                <h3>Who can help</h3>
+                <p>Participation stays parent-safe, admin-reviewed, and focused on fair family access.</p>
+              </div>
+            </div>
+            <div className="spark-participation-grid">
+              {sparkParticipationCards.map((card) => (
+                <article className="spark-participation-card" key={card.title}>
+                  <span>{card.badge}</span>
+                  <strong>{card.title}</strong>
+                  <p>{card.detail}</p>
+                </article>
+              ))}
             </div>
           </section>
 
@@ -36707,8 +36778,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </section>
           ) : (
             <div className="empty-state spark-empty-state spark-event-empty-state">
-              <h3>The Spark is warming up.</h3>
-              <p>Check back soon for kids packs, giveaways, and family-friendly events.</p>
+              <h3>The Spark is opening carefully.</h3>
+              <p>Join the mission with kids packs, giveaways, donation support, learning help, or family-friendly events when local opportunities are ready.</p>
               <button type="button" onClick={scrollToSparkDetails}>Learn about The Spark</button>
             </div>
           )}
@@ -36716,7 +36787,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           {!activeApplication ? (
             <div className="empty-state spark-empty-state spark-request-empty-state">
               <h3>No Kids Program request yet.</h3>
-              <p>Start with a parent-approved interest request. We cannot promise inventory, but The Spark helps Ember & Tide understand what local families hope to find.</p>
+              <p>Start with a parent-approved interest request or review the mission areas above. We cannot promise inventory, but The Spark helps Ember & Tide understand how local families want to participate.</p>
               <div className="quick-actions">
                 <button type="button" onClick={scrollToSparkRequest}>Request access</button>
                 <button type="button" className="secondary-button" onClick={scrollToSparkRules}>View Rules</button>
