@@ -23719,6 +23719,11 @@ function renderScoutHeader() {
   const scoutSlotLabel = scoutSlotLimit >= 99
     ? "Admin store moderation"
     : `${scoutWatchedStoreCount}/${scoutSlotLimit || 1} watched store${(scoutSlotLimit || 1) === 1 ? "" : "s"}`;
+  const scoutSwapLabel = Number(tierAccess.scoutStoreSwapDays || 0) > 0
+    ? `Change every ${tierAccess.scoutStoreSwapDays} days`
+    : "Admin review access";
+  const scoutReportLabel = `${scoutRecentReportCount} current report${scoutRecentReportCount === 1 ? "" : "s"}`;
+  const scoutTrustLabel = scoutTrustScore > 0 ? `Trust score ${scoutTrustScore}` : "Trust score building";
   const scoutTabs = [
     { key: "overview", label: "Nearby" },
     { key: "reports", label: "Following" },
@@ -23781,8 +23786,9 @@ function renderScoutHeader() {
     >
       <div className="scout-header-trust-row" aria-label="Scout trust summary">
         <span>{scoutSlotLabel}</span>
-        <span>{scoutRecentReportCount} current reports</span>
-        <span>Tide Score {scoutTrustScore}</span>
+        <span>{scoutSwapLabel}</span>
+        <span>{scoutReportLabel}</span>
+        <span>{scoutTrustLabel}</span>
       </div>
     </PageHeader>
   );
@@ -34125,6 +34131,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const freshReportCount = scoutReportRows.filter((report) => scoutReportFreshnessMeta(report).key === "fresh").length;
     const needsConfirmationCount = scoutReportRows.filter((report) => ["likely", "unconfirmed"].includes(scoutReportConfidenceBadge(report).key)).length;
     const watchedStores = (scoutSnapshot.stores || []).filter(isWatchedEmberStore);
+    const scoutTrustScore = Number.isFinite(Number(scoutSnapshot.scoutProfile?.trustScore)) ? Number(scoutSnapshot.scoutProfile.trustScore) : 0;
+    const scoutTrustLabel = scoutTrustScore > 0 ? scoutTrustScore : "New";
     const scoutSlotLimit = Number(tierAccess.scoutStoreSlots || 0);
     const watchedStoreLimitLabel = scoutSlotLimit >= 99
       ? `${watchedStores.length} watched stores`
@@ -34132,6 +34140,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const watchedStoreSwapLabel = Number(tierAccess.scoutStoreSwapDays || 0) > 0
       ? `Change one store every ${tierAccess.scoutStoreSwapDays} days.`
       : "Admin store tools are available for moderation.";
+    const watchedStoreSafetyCopy = tierAccess.canViewPatternTools
+      ? "Admin moderation can view protected history."
+      : "Selected-store current details only - no raw history or pattern windows.";
     const watchedStoreRows = watchedStores.slice(0, Math.min(3, scoutSlotLimit >= 99 ? 3 : Math.max(1, scoutSlotLimit || 1)));
     const openScoutStoresList = () => {
       setScoutSubTabTarget({ tab: "stores", id: Date.now() });
@@ -34145,11 +34156,17 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <span className="section-kicker">Nearby Scout</span>
             <h2>Current reports, not raw patterns.</h2>
             <p>Use screenshots or a quick report to share what you saw. Scout keeps store signals current, family-safe, and reviewable.</p>
+            <div className="scout-safety-strip" aria-label="Scout safety rules">
+              <span>Family-safe</span>
+              <span>Selected stores</span>
+              <span>Raw history protected</span>
+            </div>
           </div>
           <div className="scout-nearby-cta-actions">
             <div className="scout-nearby-quiet-stats" aria-label="Scout signal summary">
               <span><strong>{freshReportCount}</strong> fresh</span>
               <span><strong>{needsConfirmationCount}</strong> need confirmation</span>
+              <span><strong>{scoutTrustLabel}</strong> trust</span>
             </div>
           </div>
         </article>
@@ -34160,7 +34177,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <p className="section-kicker">My Watch Stores</p>
               <h2>My Watch Stores</h2>
               <span className="scout-watch-slot-line">{watchedStoreLimitLabel} - {watchedStoreSwapLabel}</span>
-              <p>Current details only - no raw history or pattern windows.</p>
+              <p>{watchedStoreSafetyCopy}</p>
             </div>
             <button type="button" className="secondary-button scout-store-manage-link" onClick={openScoutStoresList}>Manage</button>
           </div>
@@ -34186,7 +34203,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           ) : (
             <div className="empty-state scout-watch-empty-state">
               <h3>Choose your first watched store.</h3>
-              <p>Free users can follow 1 Scout store and still contribute reports or confirmations for the community.</p>
+              <p>Free users can follow 1 Scout store, change once every 30 days, and still submit or confirm reports for the community.</p>
               <button type="button" className="secondary-button" onClick={openScoutStoresList}>Choose Store</button>
             </div>
           )}
@@ -34196,7 +34213,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <div className="compact-card-header">
             <div>
               <h2>Nearby Reports</h2>
-              <p>Freshness and trust labels keep current reports separate from old or unconfirmed notes.</p>
+              <p>Freshness, proof, and confirmations help families read current reports without exposing restock patterns.</p>
             </div>
             <button type="button" className="secondary-button" onClick={() => {
               setScoutReportFilter("Latest");

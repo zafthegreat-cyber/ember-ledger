@@ -300,6 +300,27 @@
   line-height: 1.42;
 }
 
+.app-scout .scout-safety-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.app-scout .scout-safety-strip span {
+  min-height: 26px;
+  padding: 5px 8px;
+  border: 1px solid rgba(43, 217, 255, 0.18);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(43, 217, 255, 0.12), transparent 5rem),
+    rgba(4, 14, 28, 0.58);
+  color: rgba(224, 251, 255, 0.86);
+  font-size: 0.68rem;
+  font-weight: 850;
+  line-height: 1.1;
+}
+
 .app-scout .scout-nearby-cta-actions {
   display: grid;
   gap: 10px;
@@ -328,6 +349,15 @@
 
 .app-scout .scout-nearby-quiet-stats strong {
   color: var(--scout-cyan);
+}
+
+.app-scout .scout-watch-empty-state {
+  min-height: 0 !important;
+  padding: 14px !important;
+  border-color: rgba(43, 217, 255, 0.18) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(43, 217, 255, 0.1), transparent 9rem),
+    rgba(5, 18, 34, 0.7) !important;
 }
 
 .app-scout .scout-nearby-list-card {
@@ -367,7 +397,12 @@
   color: rgba(132, 226, 255, 0.86);
   font-size: 0.76rem;
   font-weight: 850;
+  line-height: 1.3;
+  max-width: 100%;
+  overflow: visible !important;
   overflow-wrap: anywhere;
+  text-overflow: clip !important;
+  white-space: normal !important;
 }
 
 .app-scout .scout-watch-store-list {
