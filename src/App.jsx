@@ -18401,10 +18401,6 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     showSuccessToast("Scout report saved.", { message: "Want to add proof or more details?" });
     setScoutView("reports");
     setScoutReportFilter("Latest");
-    window.setTimeout(() => {
-      closeFlowModal({ force: true, reset: false });
-      window.setTimeout(() => openScoutReportDetail(report, { fallback: report, focus: "details" }), 80);
-    }, 400);
   }
 
   async function saveQuickAddBasicReceipt(event) {
@@ -41570,6 +41566,15 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <em>Coming later</em>
       </button>
     );
+    const openScoutScanSavedReportDetails = () => {
+      const report = quickAddWizard.scoutScanSavedReport;
+      if (!report) {
+        updateQuickAddWizard({ message: "Saved report is not available. Open Scout reports to find it." });
+        return;
+      }
+      closeFlowModal({ force: true, reset: false });
+      window.setTimeout(() => openScoutReportDetail(report, { fallback: report, focus: "details" }), 80);
+    };
     const updateCardScanRow = (rowId, patch = {}) => {
       const rows = Array.isArray(quickAddWizard.cardScanRows) && quickAddWizard.cardScanRows.length
         ? quickAddWizard.cardScanRows
@@ -41686,6 +41691,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             ? "Paste review"
             : "Needs review";
       const scanReviewStateLabel = scanNeedsReview ? "Needs Review" : "Ready to save";
+      const scanRequiredItems = [
+        { key: "store", label: "Store", ready: !missingScanFields.store },
+        { key: "date", label: "Date", ready: !missingScanFields.date },
+        { key: "time", label: "Time", ready: !missingScanFields.time },
+        { key: "detail", label: "Items/details", ready: !missingScanFields.evidence },
+      ];
       return (
         <form className="add-anything-flow add-anything-scout-scan-review" onSubmit={saveQuickAddScoutScanReport}>
           {renderFlowHeader("Review Scout Scan", "We filled what we could. Review before saving. Nothing is saved yet.")}
@@ -41693,7 +41704,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <strong>Nothing is saved yet.</strong>
             <p>Browser text extraction and pasted text only prefill this draft. Confirm the store, observed time, items, and notes before saving a Scout report.</p>
           </div>
-          <div className="quick-add-photo-panel">
+          <div className="scout-scan-required-strip" aria-label="Required Scout scan fields">
+            {scanRequiredItems.map((item) => (
+              <span key={item.key} className={item.ready ? "is-ready" : "needs-review"}>
+                {item.ready ? "Ready" : "Needed"}: {item.label}
+              </span>
+            ))}
+          </div>
+          <div className="quick-add-photo-panel scout-scan-photo-panel">
             {quickAddWizard.scoutScanPhotoUrl ? (
               <div className="picture-lookup-preview quick-add-photo-preview">
                 <img src={quickAddWizard.scoutScanPhotoUrl} alt="Scout screenshot reference" />
@@ -41701,13 +41719,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </div>
             ) : (
               <div className="small-empty-state">
-                <strong>No screenshot attached.</strong>
-                <span>You can still save if items or notes explain what was observed.</span>
+                <strong>Add a screenshot or paste the source text.</strong>
+                <span>Use a store screenshot, shelf photo, receipt, or post text. You stay in control before saving.</span>
               </div>
             )}
             <label className="secondary-button file-action-label">
-              Upload screenshot/photo
-              <input type="file" accept="image/*" onChange={(event) => handleQuickAddPhotoFile(event, "scoutScan")} />
+              Upload or take photo
+              <input type="file" accept="image/*" capture="environment" onChange={(event) => handleQuickAddPhotoFile(event, "scoutScan")} />
             </label>
             <p className="scan-proof-note">Screenshot uploads are used for review in this beta flow. Add proof later if you need a lasting image on the report.</p>
           </div>
@@ -41790,8 +41808,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <p>{quickAddWizard.message || "Opening the created Scout report detail."}</p>
           </div>
           <div className="quick-add-inline-actions">
-            <button type="button" onClick={() => openScoutReportDetail(quickAddWizard.scoutScanSavedReport, { fallback: quickAddWizard.scoutScanSavedReport, focus: "details" })}>View Scout report</button>
-            <button type="button" className="secondary-button" onClick={() => setQuickAddPath("scoutScreenshotReview")}>Add another screenshot</button>
+            <button type="button" onClick={openScoutScanSavedReportDetails}>Add More Details</button>
+            <button type="button" className="secondary-button" onClick={() => setQuickAddPath("scoutScreenshotReview")}>Review another screenshot</button>
             <button type="button" className="ghost-button" onClick={() => closeFlowModal({ force: true, reset: true })}>Finish</button>
           </div>
         </div>
@@ -43460,6 +43478,21 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const reviewStepError = scoutWizardStepError("review");
     const scoutSubmitBlocked = quickScoutReportSubmitting || Boolean(reviewStepError) || (currentType.isGuess && !currentUserCanSubmitScoutGuess);
     const confidenceBadge = quickScoutConfidenceBadge(quickScoutReportForm, currentType, storeSelection);
+    const visitValidationPreview = currentType.isGuess
+      ? { ok: true }
+      : validateScoutVisitDateTime(quickScoutReportForm, { allowFutureConfirmation: adminEditModeActive });
+    const scoutRequiredChecklist = currentType.isGuess
+      ? [
+          { key: "store", label: "Store", ready: storeSelection.valid },
+          { key: "context", label: "Guess context", ready: Boolean(quickScoutReportForm.reportType) },
+          { key: "review", label: "Review", ready: quickScoutReportReady() },
+        ]
+      : [
+          { key: "store", label: "Store", ready: storeSelection.valid && !quickScoutStoreNeedsReviewConfirmation() },
+          { key: "time", label: "Observed time", ready: Boolean(visitValidationPreview.ok) },
+          { key: "status", label: "Shelf status", ready: Boolean(quickScoutReportForm.reportType) },
+          { key: "details", label: "Item/details", ready: quickScoutHasMeaningfulReportDetail() },
+        ];
     const scoutPointsRemaining = Math.max(0, MIN_SCOUT_POINTS_FOR_GUESS - scoutGuessPoints);
     const scoutPointsProgress = Math.min(100, Math.round((scoutGuessPoints / Math.max(1, MIN_SCOUT_POINTS_FOR_GUESS)) * 100));
     const productDetailSummary = quickScoutReportForm.productName
@@ -43569,14 +43602,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         : (quickScoutReportSaved?.confidenceLabel || quickScoutReportSaved?.confidence_label || scoutReportConfidenceBadge(quickScoutReportSaved || {}).label || "New Scout report");
       const savedToCloud = quickScoutReportSaved?.sourceStatus === "supabase";
       const optionalDetailActions = [
-        "Add products seen",
-        "Add quantity estimate",
-        "Add another photo",
-        "Add receipt proof",
-        "Add shelf/display location",
-        "Add price/MSRP notes",
-        "Add limit/signage info",
-        "Add vendor note",
+        "Products seen",
+        "Quantity/price",
+        "Proof/photo",
+        "Limit/signage",
       ];
       return (
         <section className="scout-quick-report-v2 scout-quick-report-sent">
@@ -43610,7 +43639,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </div>
           {!currentType.isGuess ? (
             <div className="scout-post-submit-actions" aria-label="Optional Scout report follow-up details">
-              <strong>Add details if you have them</strong>
+              <strong>Add more details if you have them</strong>
               <div>
                 {optionalDetailActions.map((label) => (
                   <button key={label} type="button" className="secondary-button" onClick={openQuickScoutReportDetails}>{label}</button>
@@ -43620,7 +43649,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </div>
           ) : null}
           <div className="quick-actions">
-            <button type="button" onClick={openQuickScoutReportDetails}>View my report</button>
+            <button type="button" onClick={openQuickScoutReportDetails}>Add More Details</button>
             <button type="button" className="secondary-button" onClick={() => closeFlowModal({ force: true, reset: true })}>Done</button>
           </div>
         </section>
@@ -43667,6 +43696,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <span>Store: {selectedStoreSummary}</span>
           <span>{currentType.isGuess ? "Timing" : "Status"}: {selectedStockSummary}</span>
           <span>Product: {selectedProductSummary}</span>
+        </div>
+        <div className="scout-required-checklist" aria-label="Required Scout report fields">
+          {scoutRequiredChecklist.map((item) => (
+            <span key={item.key} className={item.ready ? "is-ready" : "needs-review"}>
+              {item.ready ? "Ready" : "Needed"}: {item.label}
+            </span>
+          ))}
         </div>
         <div className="scout-flow-guidance-card" aria-live="polite">
           <div>
