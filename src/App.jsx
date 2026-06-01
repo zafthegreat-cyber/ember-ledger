@@ -1292,7 +1292,7 @@ const WATCH_CALENDAR_VIEW_OPTIONS = [
 ];
 const WATCH_CALENDAR_LAYER_OPTIONS = [
   { key: "confirmedRestocks", label: "Confirmed restocks" },
-  { key: "predictedDrops", label: "Predicted drops" },
+  { key: "predictedDrops", label: "Possible drops" },
   { key: "followedStores", label: "My followed stores" },
   { key: "kidsCommunity", label: "Kids/community" },
   { key: "adminInternal", label: "Admin/internal", adminOnly: true },
@@ -1301,8 +1301,8 @@ const WATCH_CALENDAR_LAYER_OPTIONS = [
   { key: "pokemonReleases", label: "Pokemon releases" },
   { key: "expansionReleases", label: "Expansion releases" },
   { key: "retailDrops", label: "Retail drops" },
-  { key: "userGuesses", label: "User guesses" },
-  { key: "appPredictions", label: "App predictions" },
+  { key: "userGuesses", label: "Community notes" },
+  { key: "appPredictions", label: "Possible watch items" },
   { key: "adminVerifiedOnly", label: "Admin verified only" },
   { key: "highConfidenceOnly", label: "High confidence only" },
   { key: "militaryStores", label: "Military stores" },
@@ -18789,6 +18789,22 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       .slice(0, 3);
   }
 
+  function scoutStoreShorthandLabel(store = {}) {
+    const values = scoutStoreAliasDisplayValues(store);
+    const storeNumber = scoutText(
+      store.storeNumber ||
+      store.store_number ||
+      store.retailerStoreNumber ||
+      store.retailer_store_number ||
+      store.locationCode ||
+      store.location_code
+    );
+    if (storeNumber && !values.some((value) => normalizeStoreSearch(value).includes(normalizeStoreSearch(storeNumber)))) {
+      values.push(`Store #${storeNumber}`);
+    }
+    return values.slice(0, 3).join(" / ");
+  }
+
   function scoutStoreLocationSummary(store = {}) {
     const cityStateZip = [
       scoutText(store.city || store.addressCity || store.region),
@@ -23724,6 +23740,7 @@ function renderScoutHeader() {
     { key: "overview", label: "Nearby" },
     { key: "reports", label: "Following" },
     { key: "storeMap", label: "Map" },
+    { key: "alerts", label: "Alerts" },
     { key: "myReports", label: "My Reports" },
     scoutReviewVisible ? { key: "review", label: "Review" } : null,
   ].filter(Boolean);
@@ -32684,8 +32701,19 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     );
   }
 
+  function watchCalendarEventStatusLabel(event = {}) {
+    return event.locationType === "release" || /release/i.test(event.eventType || "")
+      ? "Known release"
+      : event.confidenceKey === "confirmed" || /confirmed/i.test(event.eventType || "")
+        ? "Known report"
+        : event.locationType === "store"
+          ? "Planned store watch"
+          : "Watch item";
+  }
+
   function renderWatchCalendarEventRow(event) {
     const products = event.products?.filter(Boolean) || [];
+    const eventStatusLabel = watchCalendarEventStatusLabel(event);
     const reportStore = event.store || {
       name: event.title,
       retailer: event.retailer,
@@ -32724,6 +32752,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </span>
         </button>
         <div className="watch-calendar-event-meta">
+          <span className="watch-calendar-event-label">{eventStatusLabel}</span>
           <span>{event.confidenceLabel || "Possible"}</span>
           {event.reportable ? (
             <button type="button" className="secondary-button" onClick={() => openScoutSubmitFlow({ source: "watch-calendar", store: reportStore })}>
@@ -32783,7 +32812,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <div>
             <p className="section-kicker">Ember Watch</p>
             <h2>Today + Next 7 Days</h2>
-            <p>Focused local restock, online watch, release, guess, and prediction rows. Empty layers stay empty instead of inventing events.</p>
+            <p>Known local reports, online watch items, and product releases. Possible items stay labeled; Scout never guarantees stock.</p>
           </div>
           <button type="button" onClick={() => openScoutSubmitFlow({ source: "watch-calendar-header" })}>Quick Report</button>
         </div>
@@ -32904,20 +32933,22 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const emptyReport = reports.find((report) => /empty|no_stock/i.test(`${report.stockStatus || report.stock_status || report.reportType || report.report_type || ""}`));
     const bestWindow = row.store.bestCheckWindow || row.store.restockWindow || row.store.truckDays || row.store.restockDays || "Needs more data";
     const confidence = ["High", "Medium", "Low"].includes(row.confidence) ? row.confidence : row.reports.length ? row.confidence : "Needs Data";
+    const shorthand = scoutStoreShorthandLabel(row.store || row.profile?.store || row);
     return (
       <article className="ember-watch-store-card" key={`ember-watch-store-${row.id}`}>
         <div className="compact-card-header">
           <div>
             <h3>{row.name}</h3>
             <p>{row.retailer} | {row.area || "Area not listed"}</p>
+            {shorthand ? <small className="scout-store-alias-line">Shorthand: {shorthand}</small> : null}
           </div>
           <span className={`status-badge ember-watch-confidence ember-watch-confidence--${String(confidence).toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>
             {confidence}
           </span>
         </div>
         <div className="ember-watch-store-grid">
-          <DetailItem label="Known truck/restock days" value={row.store.truckDays || row.store.restockDays || row.store.usualDays || "Not logged yet"} />
-          <DetailItem label="Historical report pattern" value={reports.length ? `${reports.length} report${reports.length === 1 ? "" : "s"} connected` : "Needs more reports"} />
+          <DetailItem label="Known store schedule" value={row.store.truckDays || row.store.restockDays || row.store.usualDays || "Not logged yet"} />
+          <DetailItem label="Current report context" value={reports.length ? `${reports.length} current report${reports.length === 1 ? "" : "s"} connected` : "Needs more reports"} />
           <DetailItem label="Last confirmed stock" value={confirmed ? scoutReportDateTimeLabel(confirmed) : "No confirmed stock yet"} />
           <DetailItem label="Last empty report" value={emptyReport ? scoutReportDateTimeLabel(emptyReport) : "No empty report yet"} />
           <DetailItem label="Best days/times" value={bestWindow} />
@@ -32936,6 +32967,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   function renderEmberWatchPanel() {
     const storeRows = buildStoreMapRows();
     const watchedStoreRows = storeRows.filter((row) => row.watchlisted || isWatchedEmberStore(row.store));
+    const alertPreferenceRows = NOTIFICATION_PREFERENCE_ROWS.filter((row) => ["confirmed_restocks", "favorite_stores", "saved_products"].includes(row.key));
+    const alertPreferenceOnCount = alertPreferenceRows.filter((row) => scoutSnapshot.alertSettings?.[row.key] !== false).length;
+    const selectedAreaLabel = WATCH_CALENDAR_AREAS.find((area) => area.value === watchCalendarArea)?.label || "Virginia";
     const todayLikelyRestocks = watchCalendarTodayEvents.filter((event) => (
       event.layerKeys.includes("localRestocks") && ["confirmed", "high", "medium"].includes(event.confidenceKey)
     )).slice(0, 8);
@@ -32952,8 +32986,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <div className="compact-card-header ember-watch-header">
           <div>
             <p className="section-kicker">Ember Watch</p>
-            <h2>Tide Watch Intelligence</h2>
-            <p>Restock watch windows from Scout reports, past timing patterns, watched stores, and upcoming TCG drops. Signals are likely or possible, never guaranteed.</p>
+            <h2>Scout Alerts &amp; Calendar</h2>
+            <p>Known drops, current store reports, and planned product releases for your selected Virginia area. Alerts are helpful reminders, never stock guarantees.</p>
           </div>
           <SectionHeroArt title="Ember Watch" className="ember-watch-feature-art" />
           <div className="summary-pill-row">
@@ -32998,9 +33032,32 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <span>{kidAlertsDisabled ? "Kid location and calendar alerts are disabled unless a parent allows them." : "Private user notes stay private. Kid location/calendar alerts stay disabled unless a parent allows them."}</span>
         </div>
 
+        <section className="scout-alert-setup-card" aria-label="Scout alert setup">
+          <div>
+            <span className="section-kicker">Alert setup</span>
+            <h3>{alertPreferenceOnCount}/{alertPreferenceRows.length} restock alert preferences on</h3>
+            <p>{IN_APP_ALERT_DISCLOSURE} Known and planned labels keep Scout honest when data is weak.</p>
+          </div>
+          <div className="scout-alert-preference-grid">
+            {alertPreferenceRows.map((row) => (
+              <label className="scout-alert-preference-toggle" key={row.key}>
+                <span>
+                  <strong>{row.label}</strong>
+                  <small>{row.description}</small>
+                </span>
+                <input type="checkbox" checked={scoutSnapshot.alertSettings?.[row.key] !== false} onChange={(event) => updateScoutAlertPreference(row.key, event.target.checked)} />
+              </label>
+            ))}
+          </div>
+          <div className="scout-alert-scope-note">
+            <strong>{selectedAreaLabel}</strong>
+            <span>VA pilot scope. Store releases, product releases, and watch items are area-limited where data exists.</span>
+          </div>
+        </section>
+
         {watchCalendarView === "today" ? (
           <div className="ember-watch-today-grid">
-            {renderEmberWatchSection("Today's Tide Watch", "Likely or possible Scout signals for today's store checks.", todayLikelyRestocks, "No likely restocks today")}
+            {renderEmberWatchSection("Today's Tide Watch", "Known or clearly labeled watch items for today's store checks.", todayLikelyRestocks, "No store watch items today")}
             {renderEmberWatchSection("Recent Confirmed Reports", "Confirmed stock reports in the current watch window.", recentConfirmedReports, "No confirmed reports in this window")}
             {renderEmberWatchSection("Watchlist Alerts", "Signals connected to stores you watch.", watchlistAlerts, "No watchlist alerts yet")}
             <section className="ember-watch-section ember-watch-route-card">
@@ -33026,7 +33083,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <div className="watch-calendar-day-heading">
                   <div>
                     <strong>{group.label}</strong>
-                    <span>Daily restock signals, confirmed reports, and possible windows.</span>
+                    <span>Known reports, planned releases, and possible watch items stay clearly labeled.</span>
                   </div>
                   <span>{group.events.length} signal{group.events.length === 1 ? "" : "s"}</span>
                 </div>
@@ -42716,6 +42773,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const pickerRows = allStoreRows
       .filter((row) => !pickerQuery || scoutStoreMatchesLookup(row, pickerQuery))
       .slice(0, 12);
+    const watchRuleTitle = slotLimit >= 99
+      ? "Admin: broader store review"
+      : `${scoutWatchPlanLabel()} plan: ${slotLimit} watched store${slotLimit === 1 ? "" : "s"}`;
+    const watchRuleHelper = slotLimit >= 99
+      ? "Admin tools can review wider coverage for moderation. Public views still protect raw history."
+      : scoutWatchSwapWindowLabel();
     const watchSignalLabel = (row = {}) => {
       const statusText = `${row.status || ""} ${row.confidence || ""}`.toLowerCase();
       if (statusText.includes("stock reported") || statusText.includes("restock") || statusText.includes("high")) return "Hot";
@@ -42724,28 +42787,33 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       return "Calm";
     };
     const categorySummary = (row = {}) => row.categories?.length ? row.categories.slice(0, 3).join(", ") : "No product summary yet";
-    const renderWatchedStoreCard = (row) => (
-      <article className="scout-watch-management-card" key={`watch-${row.id}`}>
-        <div className="scout-watch-management-main">
-          <span className="store-map-retailer-mark">{row.retailer.slice(0, 2).toUpperCase()}</span>
-          <div>
-            <h3>{row.name}</h3>
-            <p>{row.retailer} | {row.area || row.city || "Area not listed"}</p>
+    const renderWatchedStoreCard = (row) => {
+      const shorthand = scoutStoreShorthandLabel(row.store || row.profile?.store || row);
+      return (
+        <article className="scout-watch-management-card" key={`watch-${row.id}`}>
+          <div className="scout-watch-management-main">
+            <span className="store-map-retailer-mark">{row.retailer.slice(0, 2).toUpperCase()}</span>
+            <div>
+              <h3>{row.name}</h3>
+              <p>{row.retailer} | {row.area || row.city || "Area not listed"}</p>
+              {shorthand ? <small className="scout-watch-alias-line">Shorthand: {shorthand}</small> : null}
+            </div>
+            <span className={`scout-watch-signal scout-watch-signal--${watchSignalLabel(row).toLowerCase()}`}>{watchSignalLabel(row)}</span>
           </div>
-          <span className={`scout-watch-signal scout-watch-signal--${watchSignalLabel(row).toLowerCase()}`}>{watchSignalLabel(row)}</span>
-        </div>
-        <dl className="scout-watch-store-facts">
-          <div><dt>Last confirmed</dt><dd>{row.latestReport ? scoutReportDateTimeLabel(row.latestReport) : "No current report yet"}</dd></div>
-          <div><dt>Recent categories</dt><dd>{categorySummary(row)}</dd></div>
-          <div><dt>Change window</dt><dd>{scoutWatchNextChangeLabel(row)}</dd></div>
-        </dl>
-        <div className="scout-watch-management-actions">
-          <button type="button" className="secondary-button" onClick={() => openStoreProfile(row)}>View</button>
-          <button type="button" className="secondary-button" onClick={() => openWatchStorePicker({ replaceStoreId: getStoreMapStoreId(row.store) })}>Change</button>
-          <button type="button" className="ghost-button" onClick={() => void removeWatchedStore(row)}>Remove</button>
-        </div>
-      </article>
-    );
+          <dl className="scout-watch-store-facts">
+            <div><dt>Watch status</dt><dd>Watching current reports</dd></div>
+            <div><dt>Last confirmed</dt><dd>{row.latestReport ? scoutReportDateTimeLabel(row.latestReport) : "No current report yet"}</dd></div>
+            <div><dt>Recent categories</dt><dd>{categorySummary(row)}</dd></div>
+            <div><dt>Change window</dt><dd>{scoutWatchNextChangeLabel(row)}</dd></div>
+          </dl>
+          <div className="scout-watch-management-actions">
+            <button type="button" className="secondary-button" onClick={() => openStoreProfile(row)}>View</button>
+            <button type="button" className="secondary-button" onClick={() => openWatchStorePicker({ replaceStoreId: getStoreMapStoreId(row.store) })}>Change</button>
+            <button type="button" className="ghost-button" onClick={() => void removeWatchedStore(row)}>Remove</button>
+          </div>
+        </article>
+      );
+    };
     const renderEmptySlotCard = (_, index) => (
       <article className="scout-watch-empty-slot" key={`empty-watch-slot-${index}`}>
         <strong>{watchedStoreRows.length ? "Choose another store" : "Choose your first watched store."}</strong>
@@ -42780,6 +42848,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <span>Change rule</span>
               <strong>{scoutWatchSwapWindowLabel()}</strong>
             </div>
+          </div>
+          <div className="scout-watch-rule-card">
+            <strong>{watchRuleTitle}</strong>
+            <span>{watchRuleHelper}</span>
+            <small>Current reports only. Raw history and pattern tools stay protected.</small>
           </div>
           <div className="scout-store-retailer-note">
             <strong>Tier-safe Scout</strong>
@@ -42832,6 +42905,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <span>
                     <strong>{row.name}</strong>
                     <small>{row.retailer} | {row.city || row.area || "Area not set"}</small>
+                    {scoutStoreShorthandLabel(row.store || row.profile?.store || row) ? <em className="scout-store-alias-line">Shorthand: {scoutStoreShorthandLabel(row.store || row.profile?.store || row)}</em> : null}
                   </span>
                 </button>
                 <div className="store-map-card-meta">
@@ -42873,7 +42947,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </label>
               <div className="scout-watch-picker-context">
                 <strong>{scoutWatchSlotSummary(watchedStoreRows.length)}</strong>
-                <span>{scoutWatchSwapWindowLabel()} Raw restock patterns stay protected.</span>
+                <span>{scoutWatchSwapWindowLabel()} Current reports only; raw restock patterns stay protected.</span>
               </div>
               <div className="scout-watch-picker-list">
                 {pickerRows.length ? pickerRows.map((row) => {
@@ -42892,6 +42966,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                       <div className="store-map-card-meta">
                         {renderStoreMapStatusBadge(row)}
                         <span>{row.latestReport ? `Last: ${scoutReportDateTimeLabel(row.latestReport)}` : "No current report"}</span>
+                        {scoutStoreShorthandLabel(row.store || row.profile?.store || row) ? <span>Alias: {scoutStoreShorthandLabel(row.store || row.profile?.store || row)}</span> : null}
                       </div>
                       <div className="store-map-card-actions">
                         <button type="button" className="secondary-button" onClick={() => { closeWatchStorePicker(); openStoreProfile(row); }}>View</button>
@@ -51931,6 +52006,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <div>
                 <h2 id="store-map-detail-title">{selectedStoreMapStore.name}</h2>
                 <p>{selectedStoreMapStore.retailer} | {selectedStoreMapStore.profile?.storeType || selectedStoreMapStore.storeType || "Store"} | {selectedStoreMapStore.area || "Area not listed"} | Current reports only.</p>
+                {scoutStoreShorthandLabel(selectedStoreMapStore.store || selectedStoreMapStore.profile?.store || selectedStoreMapStore) ? (
+                  <small className="scout-store-detail-alias">Shorthand: {scoutStoreShorthandLabel(selectedStoreMapStore.store || selectedStoreMapStore.profile?.store || selectedStoreMapStore)}</small>
+                ) : null}
               </div>
               <button type="button" className="modal-close-button" aria-label="Close store details" onClick={closeStoreProfile}>X</button>
             </div>
@@ -51944,7 +52022,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     {renderStoreMapStatusBadge(selectedStoreMapStore)}
                     <span className="confidence-badge">{selectedStoreMapStore.confidence} confidence</span>
                     <span className={selectedStoreMapStore.watchlisted ? "status-badge watchlist" : "status-badge"}>{selectedStoreMapStore.watchlisted ? "Watching" : "Not watched"}</span>
+                    <span className="status-badge">VA pilot</span>
                   </div>
+                  {scoutStoreShorthandLabel(selectedStoreMapStore.store || selectedStoreMapStore.profile?.store || selectedStoreMapStore) ? (
+                    <small className="scout-store-alias-line">Also known as {scoutStoreShorthandLabel(selectedStoreMapStore.store || selectedStoreMapStore.profile?.store || selectedStoreMapStore)}</small>
+                  ) : null}
                   {renderStoreProfileBadges(selectedStoreMapStore.profile, { hideWhenEmpty: true })}
                 </div>
               </article>
@@ -51960,6 +52042,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <DetailItem label="Last confirmed" value={selectedStoreMapStore.latestReport ? scoutReportDateTimeLabel(selectedStoreMapStore.latestReport) : "No current report yet"} />
                   <DetailItem label="Trusted confirmations" value={String(storeDetailTrustedConfirmationCount(selectedStoreMapStore.reports || []))} />
                   <DetailItem label="Proof count" value={String((selectedStoreMapStore.reports || []).filter(storeDetailReportProofAttached).length)} />
+                  <DetailItem label="Watch status" value={selectedStoreMapStore.watchlisted ? "Watched store" : "Not watched"} />
                 </div>
               </section>
 
@@ -54047,6 +54130,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </div>
             )}
             <div className="catalog-detail-grid">
+              <DetailItem label="Label" value={watchCalendarEventStatusLabel(selectedWatchCalendarEvent)} />
               <DetailItem label="Event type" value={selectedWatchCalendarEvent.eventType || "Calendar event"} />
               <DetailItem label="When" value={selectedWatchCalendarEvent.timeLabel || "Unknown"} />
               <DetailItem label="Confidence" value={selectedWatchCalendarEvent.confidenceLabel || "Possible"} />
@@ -54069,7 +54153,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <p>{selectedWatchCalendarEvent.reason || selectedWatchCalendarEvent.basisSummary || "Tide Watch is using available Scout reports, watched-store data, or release dates. Treat this as a watch window, not a guarantee."}</p>
               <div className="watch-calendar-why-grid">
                 <span>Past reports: {selectedWatchCalendarEvent.supportingReportCount ?? "Unknown"}</span>
-                <span>Guesses/patterns: {selectedWatchCalendarEvent.supportingGuessCount ?? "Unknown"}</span>
+                <span>Planned context: {selectedWatchCalendarEvent.supportingGuessCount ?? "Unknown"}</span>
                 <span>Last confirmed: {selectedWatchCalendarEvent.lastConfirmedReportLabel || "Not confirmed yet"}</span>
               </div>
               {selectedWatchCalendarEvent.sourceUrl ? (

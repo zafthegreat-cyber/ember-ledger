@@ -68257,3 +68257,283 @@ html body .app .scan-product-modal .scanner-review-primary-action {
     font-size: 0.68rem !important;
   }
 }
+
+/* Final UI Pass 9: Scout Stores / Alerts / Calendar polish. */
+.app-scout .scout-watch-rule-card,
+.app-command-shell.app-scout .scout-watch-rule-card,
+.app-shell-dark.app-scout .scout-watch-rule-card {
+  display: grid;
+  gap: 6px;
+  padding: 12px 13px;
+  border: 1px solid rgba(43, 217, 255, 0.2);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(43, 217, 255, 0.1), transparent 10rem),
+    linear-gradient(145deg, rgba(5, 23, 42, 0.9), rgba(3, 12, 25, 0.92));
+}
+
+.app-scout .scout-watch-rule-card strong,
+.app-command-shell.app-scout .scout-watch-rule-card strong,
+.app-shell-dark.app-scout .scout-watch-rule-card strong {
+  color: #ccfbf1;
+  font-size: 0.9rem;
+  line-height: 1.2;
+}
+
+.app-scout .scout-watch-rule-card span,
+.app-scout .scout-watch-rule-card small,
+.app-command-shell.app-scout .scout-watch-rule-card span,
+.app-command-shell.app-scout .scout-watch-rule-card small,
+.app-shell-dark.app-scout .scout-watch-rule-card span,
+.app-shell-dark.app-scout .scout-watch-rule-card small {
+  color: rgba(232, 246, 255, 0.72);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.app-scout .scout-watch-alias-line,
+.app-command-shell.app-scout .scout-watch-alias-line,
+.app-shell-dark.app-scout .scout-watch-alias-line,
+.app-scout .scout-store-detail-alias,
+.app-command-shell.app-scout .scout-store-detail-alias,
+.app-shell-dark.app-scout .scout-store-detail-alias {
+  display: block;
+  margin-top: 5px;
+  color: rgba(191, 241, 255, 0.76);
+  font-size: 0.74rem;
+  font-weight: 800;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.app-scout .scout-watch-management-main,
+.app-command-shell.app-scout .scout-watch-management-main,
+.app-shell-dark.app-scout .scout-watch-management-main {
+  align-items: start;
+}
+
+.app-scout .scout-watch-store-facts,
+.app-command-shell.app-scout .scout-watch-store-facts,
+.app-shell-dark.app-scout .scout-watch-store-facts {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.app-scout .scout-alert-setup-card,
+.app-command-shell.app-scout .scout-alert-setup-card,
+.app-shell-dark.app-scout .scout-alert-setup-card {
+  display: grid;
+  gap: 13px;
+  padding: 14px;
+  border: 1px solid rgba(43, 217, 255, 0.2);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(43, 217, 255, 0.12), transparent 11rem),
+    radial-gradient(circle at 100% 10%, rgba(255, 184, 77, 0.08), transparent 12rem),
+    rgba(4, 16, 31, 0.9);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.2);
+}
+
+.app-scout .scout-alert-setup-card h3,
+.app-command-shell.app-scout .scout-alert-setup-card h3,
+.app-shell-dark.app-scout .scout-alert-setup-card h3 {
+  margin: 3px 0 0;
+  color: #fff7ed;
+  font-size: clamp(1rem, 1.8vw, 1.16rem);
+}
+
+.app-scout .scout-alert-setup-card p,
+.app-command-shell.app-scout .scout-alert-setup-card p,
+.app-shell-dark.app-scout .scout-alert-setup-card p {
+  margin: 5px 0 0;
+  color: rgba(232, 246, 255, 0.72);
+  line-height: 1.45;
+}
+
+.app-scout .scout-alert-preference-grid,
+.app-command-shell.app-scout .scout-alert-preference-grid,
+.app-shell-dark.app-scout .scout-alert-preference-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.app-scout .scout-alert-preference-toggle,
+.app-command-shell.app-scout .scout-alert-preference-toggle,
+.app-shell-dark.app-scout .scout-alert-preference-toggle {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(132, 226, 255, 0.14);
+  border-radius: 14px;
+  background: rgba(3, 12, 25, 0.56);
+}
+
+.app-scout .scout-alert-preference-toggle strong,
+.app-command-shell.app-scout .scout-alert-preference-toggle strong,
+.app-shell-dark.app-scout .scout-alert-preference-toggle strong {
+  display: block;
+  color: rgba(255, 247, 237, 0.94);
+  font-size: 0.82rem;
+  line-height: 1.2;
+}
+
+.app-scout .scout-alert-preference-toggle small,
+.app-command-shell.app-scout .scout-alert-preference-toggle small,
+.app-shell-dark.app-scout .scout-alert-preference-toggle small {
+  display: block;
+  margin-top: 3px;
+  color: rgba(232, 246, 255, 0.62);
+  font-size: 0.7rem;
+  line-height: 1.25;
+}
+
+.app-scout .scout-alert-scope-note,
+.app-command-shell.app-scout .scout-alert-scope-note,
+.app-shell-dark.app-scout .scout-alert-scope-note {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px dashed rgba(255, 184, 77, 0.28);
+  border-radius: 14px;
+  background: rgba(47, 24, 8, 0.36);
+}
+
+.app-scout .scout-alert-scope-note strong,
+.app-command-shell.app-scout .scout-alert-scope-note strong,
+.app-shell-dark.app-scout .scout-alert-scope-note strong {
+  color: #ffe2a5;
+}
+
+.app-scout .scout-alert-scope-note span,
+.app-command-shell.app-scout .scout-alert-scope-note span,
+.app-shell-dark.app-scout .scout-alert-scope-note span {
+  color: rgba(232, 246, 255, 0.72);
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.app-scout .watch-calendar-event-label,
+.app-command-shell.app-scout .watch-calendar-event-label,
+.app-shell-dark.app-scout .watch-calendar-event-label {
+  border-color: rgba(43, 217, 255, 0.2) !important;
+  color: #ccfbf1 !important;
+  background: rgba(14, 116, 144, 0.2) !important;
+}
+
+.app-scout .watch-calendar-event-meta,
+.app-command-shell.app-scout .watch-calendar-event-meta,
+.app-shell-dark.app-scout .watch-calendar-event-meta {
+  align-items: end;
+}
+
+.app-scout .watch-calendar-day-heading > div,
+.app-command-shell.app-scout .watch-calendar-day-heading > div,
+.app-shell-dark.app-scout .watch-calendar-day-heading > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.app-scout .watch-calendar-day-heading strong,
+.app-command-shell.app-scout .watch-calendar-day-heading strong,
+.app-shell-dark.app-scout .watch-calendar-day-heading strong,
+.app-scout .watch-calendar-day-heading span,
+.app-command-shell.app-scout .watch-calendar-day-heading span,
+.app-shell-dark.app-scout .watch-calendar-day-heading span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.app-scout .store-map-detail-sheet,
+.app-command-shell.app-scout .store-map-detail-sheet,
+.app-shell-dark.app-scout .store-map-detail-sheet {
+  border-color: rgba(43, 217, 255, 0.22) !important;
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.42),
+    0 0 38px rgba(43, 217, 255, 0.1) !important;
+}
+
+.app-scout .store-detail-hero .summary-pill-row,
+.app-command-shell.app-scout .store-detail-hero .summary-pill-row,
+.app-shell-dark.app-scout .store-detail-hero .summary-pill-row {
+  margin-top: 8px;
+}
+
+@media (min-width: 1024px) {
+  .app-scout .scout-stores-combined,
+  .app-command-shell.app-scout .scout-stores-combined,
+  .app-shell-dark.app-scout .scout-stores-combined {
+    display: grid;
+    gap: 16px;
+  }
+
+  .app-scout .scout-watch-store-page,
+  .app-command-shell.app-scout .scout-watch-store-page,
+  .app-shell-dark.app-scout .scout-watch-store-page {
+    grid-template-columns: minmax(0, 1.05fr) minmax(330px, 0.95fr);
+    align-items: start;
+  }
+}
+
+@media (max-width: 780px) {
+  .app-scout .scout-stores-combined,
+  .app-command-shell.app-scout .scout-stores-combined,
+  .app-shell-dark.app-scout .scout-stores-combined,
+  .app-scout .pokemon-watch-calendar-panel,
+  .app-command-shell.app-scout .pokemon-watch-calendar-panel,
+  .app-shell-dark.app-scout .pokemon-watch-calendar-panel {
+    padding-bottom: max(168px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 100px)) !important;
+    scroll-padding-bottom: max(168px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 100px)) !important;
+  }
+
+  .app-scout .scout-watch-tier-summary,
+  .app-command-shell.app-scout .scout-watch-tier-summary,
+  .app-shell-dark.app-scout .scout-watch-tier-summary,
+  .app-scout .scout-alert-preference-grid,
+  .app-command-shell.app-scout .scout-alert-preference-grid,
+  .app-shell-dark.app-scout .scout-alert-preference-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .app-scout .scout-watch-store-facts,
+  .app-command-shell.app-scout .scout-watch-store-facts,
+  .app-shell-dark.app-scout .scout-watch-store-facts {
+    grid-template-columns: 1fr;
+  }
+
+  .app-scout .store-detail-action-bar,
+  .app-command-shell.app-scout .store-detail-action-bar,
+  .app-shell-dark.app-scout .store-detail-action-bar {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 780px) {
+  .app-scout .scout-watch-tier-summary,
+  .app-command-shell.app-scout .scout-watch-tier-summary,
+  .app-shell-dark.app-scout .scout-watch-tier-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .app-scout .scout-watch-tier-summary > div,
+  .app-command-shell.app-scout .scout-watch-tier-summary > div,
+  .app-shell-dark.app-scout .scout-watch-tier-summary > div {
+    padding: 10px !important;
+  }
+
+  .app-scout .scout-watch-tier-summary > div:nth-child(3),
+  .app-command-shell.app-scout .scout-watch-tier-summary > div:nth-child(3),
+  .app-shell-dark.app-scout .scout-watch-tier-summary > div:nth-child(3) {
+    grid-column: 1 / -1;
+  }
+
+  .app-scout .scout-watch-rule-card,
+  .app-command-shell.app-scout .scout-watch-rule-card,
+  .app-shell-dark.app-scout .scout-watch-rule-card {
+    padding: 10px 11px;
+  }
+}
