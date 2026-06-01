@@ -264,6 +264,13 @@ import {
   summarizeInventoryValuation,
 } from "./utils/inventoryValuationUtils";
 import {
+  TRADE_RECEIVED_ITEM_TYPES,
+  buildTradeComparison,
+  buildTradeHistoryRecord,
+  normalizeTradeDraft,
+  validateTradeDraft,
+} from "./utils/tradeValueUtils";
+import {
   buildDropRadarPriceDisplay,
   buildMarketValueReviewPatch,
   buildPriceReliabilityCards,
@@ -1983,6 +1990,19 @@ const MULTI_DESTINATION_STEP_INDEX = MULTI_DESTINATION_STEPS.reduce((acc, step, 
   acc[step] = index;
   return acc;
 }, {});
+const BLANK_TRADE_DRAFT = {
+  id: "",
+  sourceItemId: "",
+  sourceKind: "",
+  outgoingQuantity: 1,
+  receivedName: "",
+  receivedType: "Card",
+  receivedSet: "",
+  receivedCondition: "",
+  receivedQuantity: 1,
+  receivedValue: "",
+  notes: "",
+};
 
 function createQuickAddWizardState(overrides = {}) {
   const today = new Date().toISOString().slice(0, 10);
@@ -5456,6 +5476,7 @@ export default function App() {
   });
   const [expenses, setExpenses] = useState([]);
   const [sales, setSales] = useState([]);
+  const [tradeRecords, setTradeRecords] = useState([]);
   const restoredSaleInventoryIdsRef = useRef(new Set());
   const [vehicles, setVehicles] = useState([]);
   const [mileageTrips, setMileageTrips] = useState([]);
@@ -5899,6 +5920,10 @@ export default function App() {
   const [saleForm, setSaleForm] = useState(blankSale);
   const [forgeSaleSaveSuccess, setForgeSaleSaveSuccess] = useState(null);
   const [activeFlowModal, setActiveFlowModal] = useState(null);
+  const [tradeDraft, setTradeDraft] = useState(BLANK_TRADE_DRAFT);
+  const [tradeStep, setTradeStep] = useState("details");
+  const [tradeMessage, setTradeMessage] = useState("");
+  const [tradeSaving, setTradeSaving] = useState(false);
   const [quickFindForm, setQuickFindForm] = useState(BLANK_QUICK_FIND_FORM);
   const [multiDestinationForm, setMultiDestinationForm] = useState(BLANK_MULTI_DESTINATION_FORM);
   const [multiDestinationStep, setMultiDestinationStep] = useState("item");
@@ -14135,6 +14160,7 @@ export default function App() {
       setUserSearchAliases(Array.isArray(saved.userSearchAliases) ? saved.userSearchAliases : []);
       setExpenses(migrateRecordsToWorkspace(saved.expenses || [], personalWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID, workspaceState.workspaces).map(mapExpense));
       setSales(migrateRecordsToWorkspace(saved.sales || [], personalWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID, workspaceState.workspaces));
+      setTradeRecords(migrateRecordsToWorkspace(saved.tradeRecords || saved.trades || [], personalWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID, workspaceState.workspaces));
       setVehicles(saved.vehicles || []);
       setMileageTrips(migrateRecordsToWorkspace(saved.mileageTrips || [], personalWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID, workspaceState.workspaces));
       setDealForm({
@@ -14182,6 +14208,7 @@ export default function App() {
         setCatalogProducts([]);
         setExpenses([]);
         setSales([]);
+        setTradeRecords([]);
         setVehicles([]);
         setMileageTrips([]);
         return;
@@ -14193,6 +14220,7 @@ export default function App() {
       setCatalogProducts([]);
       setExpenses([]);
       setSales([]);
+      setTradeRecords([]);
       setVehicles([]);
       setMileageTrips([]);
     }
@@ -14517,6 +14545,7 @@ export default function App() {
         userSearchAliases,
         expenses,
         sales,
+        tradeRecords,
         vehicles,
         mileageTrips,
         workspaces,
@@ -14547,7 +14576,7 @@ export default function App() {
         },
       })
     );
-  }, [items, purchasers, catalogProducts, tideTradrWatchlist, marketplaceListings, marketplaceReports, marketplaceSavedIds, tideTradrLookupId, marketPriceCache, userSearchAliases, expenses, sales, vehicles, mileageTrips, workspaces, workspaceMembers, workspaceInvites, activeWorkspaceId, forgeModeSettings, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, appSetupPersonalization, cloudSyncPreference, locationSettings, subscriptionProfile, currentUserProfile, adminModeStorageReady, adminViewMode, localDataLoaded]);
+  }, [items, purchasers, catalogProducts, tideTradrWatchlist, marketplaceListings, marketplaceReports, marketplaceSavedIds, tideTradrLookupId, marketPriceCache, userSearchAliases, expenses, sales, tradeRecords, vehicles, mileageTrips, workspaces, workspaceMembers, workspaceInvites, activeWorkspaceId, forgeModeSettings, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, appSetupPersonalization, cloudSyncPreference, locationSettings, subscriptionProfile, currentUserProfile, adminModeStorageReady, adminViewMode, localDataLoaded]);
 
   useEffect(() => {
     if (!BETA_LOCAL_MODE || !localDataLoaded) return;
@@ -14899,6 +14928,7 @@ export default function App() {
     setItems([]);
     setExpenses([]);
     setSales([]);
+    setTradeRecords([]);
     setVehicles([]);
     setMileageTrips([]);
     setTideTradrWatchlist([]);
@@ -15827,6 +15857,7 @@ export default function App() {
     setTidepoolReactions(defaultTidepool.reactions);
     setExpenses([]);
     setSales([]);
+    setTradeRecords([]);
     setVehicles([]);
     setMileageTrips([]);
     setDealForm({
@@ -17619,6 +17650,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (type === "scoutSubmit") return quickScoutReportStep !== "submitted" && formsDiffer(quickScoutReportForm, flowModalBaselineRef.current.scoutSubmit || createQuickScoutReportDraft());
     if (type === "tidepoolCreatePost") return formsDiffer(tidepoolPostForm, BLANK_TIDEPOOL_POST_FORM);
     if (type === "multiDestinationAdd") return formsDiffer(multiDestinationForm, flowModalBaselineRef.current.multiDestinationAdd || BLANK_MULTI_DESTINATION_FORM);
+    if (type === "tradeValue") return tradeStep !== "saved" && formsDiffer(tradeDraft, flowModalBaselineRef.current.tradeValue || BLANK_TRADE_DRAFT);
     return false;
   }
 
@@ -17681,6 +17713,12 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     }
     if (type === "multiDestinationAdd") {
       resetMultiDestinationForm();
+    }
+    if (type === "tradeValue") {
+      setTradeDraft(BLANK_TRADE_DRAFT);
+      setTradeStep("details");
+      setTradeMessage("");
+      setTradeSaving(false);
     }
   }
 
@@ -22329,6 +22367,83 @@ function mapCatalog(row) {
     );
   }
 
+  function tradeSourceKindForItem(item = {}) {
+    if (isForgeInventoryItem(item)) return "forge";
+    if (isVaultItemRecord(item) || normalizeInventoryDestination(item) === "vault") return "vault";
+    return normalizeInventoryDestination(item) || "inventory";
+  }
+
+  function openTradeValueFlow(item = {}, options = {}) {
+    const sourceEntry = inventoryGroupEntries(item).find((entry) => Number(entry.quantity || 0) > 0) || item;
+    if (!sourceEntry?.id) {
+      setVaultToast("Choose a saved Vault or Forge item before starting a trade.");
+      return;
+    }
+    const draft = {
+      ...BLANK_TRADE_DRAFT,
+      id: makeId("trade-draft"),
+      sourceItemId: sourceEntry.id,
+      sourceKind: options.sourceKind || tradeSourceKindForItem(sourceEntry),
+      outgoingQuantity: 1,
+    };
+    setTradeDraft(draft);
+    setTradeStep("details");
+    setTradeMessage("");
+    setTradeSaving(false);
+    flowModalBaselineRef.current.tradeValue = draft;
+    openFlowModal("tradeValue", { size: "medium", source: options.source || "inventory-card" });
+  }
+
+  function updateTradeDraftField(field, value) {
+    setTradeDraft((current) => normalizeTradeDraft({ ...current, [field]: value }));
+    setTradeMessage("");
+  }
+
+  function selectedTradeSourceItem() {
+    return tradeSourceOptions.find((option) => String(option.id) === String(tradeDraft.sourceItemId))?.item || null;
+  }
+
+  function reviewTradeDraft(event) {
+    event?.preventDefault?.();
+    const sourceItem = selectedTradeSourceItem();
+    const validation = validateTradeDraft(tradeDraft, sourceItem);
+    if (!validation.ok) {
+      setTradeMessage(Object.values(validation.errors)[0] || "Review the trade details.");
+      return;
+    }
+    setTradeStep("review");
+    setTradeMessage("");
+  }
+
+  function saveTradeHistory(event) {
+    event?.preventDefault?.();
+    if (tradeSaving || tradeStep === "saved") return;
+    const sourceItem = selectedTradeSourceItem();
+    const validation = validateTradeDraft(tradeDraft, sourceItem);
+    if (!validation.ok) {
+      setTradeMessage(Object.values(validation.errors)[0] || "Review the trade details.");
+      setTradeStep("details");
+      return;
+    }
+    setTradeSaving(true);
+    const now = new Date().toISOString();
+    const record = applyWorkspaceToRecord({
+      ...buildTradeHistoryRecord(tradeDraft, sourceItem, {
+        id: makeId("trade"),
+        now,
+      }),
+      workspaceId: sourceItem.workspaceId || sourceItem.workspace_id || activeWorkspace?.id || activeWorkspaceId,
+      workspace_id: sourceItem.workspace_id || sourceItem.workspaceId || activeWorkspace?.id || activeWorkspaceId,
+      workspaceName: sourceItem.workspaceName || sourceItem.workspace_name || activeWorkspace?.name || "",
+      savedBy: user?.id || "local-beta",
+    }, activeWorkspace);
+    setTradeRecords((current) => [record, ...current]);
+    setTradeStep("saved");
+    setTradeMessage("Trade saved to local history. Inventory counts were not changed.");
+    setTradeSaving(false);
+    setVaultToast("Trade saved to history.");
+  }
+
   function vaultForgeTransferEntries(transfer = vaultForgeTransfer) {
     return inventoryGroupEntries(transfer?.item).filter((entry) => Number(entry.quantity || 0) > 0);
   }
@@ -26091,6 +26206,33 @@ function renderForgeBusinessCommandPanel() {
   const activeVaultItems = useMemo(() => vaultItems.filter(isActiveVaultItem), [vaultItems]);
   const activeVaultCardItems = useMemo(() => activeVaultItems.filter(isInventoryCardProduct), [activeVaultItems]);
   const activeVaultSealedItems = useMemo(() => activeVaultItems.filter(isInventorySealedProduct), [activeVaultItems]);
+  const tradeSourceOptions = useMemo(() => {
+    const seen = new Set();
+    const makeOption = (item, sourceKind) => {
+      const id = String(item.id || "");
+      if (!id || seen.has(id) || Number(item.quantity || 0) < 1) return null;
+      seen.add(id);
+      const valueSummary = buildTradeComparison({ sourceItemId: id, outgoingQuantity: 1, receivedName: "Trade item" }, item, { moneyFormatter: money });
+      const subtitle = sourceKind === "forge"
+        ? [item.productType, item.expansion || item.setName, `Qty ${item.quantity || 0}`].filter(Boolean).join(" - ")
+        : [vaultItemSetLabel(item), vaultItemTypeLabel(item), `Qty ${item.quantity || 0}`].filter(Boolean).join(" - ");
+      return {
+        id,
+        item,
+        label: item.name || item.itemName || "Saved item",
+        sourceKind,
+        subtitle,
+        valueLabel: valueSummary.outgoingLabel,
+        valueConfidence: valueSummary.outgoing.confidence,
+      };
+    };
+    return [
+      ...activeVaultItems
+        .filter((item) => !isWishlistLikeVaultItem(item))
+        .map((item) => makeOption(item, "vault")),
+      ...forgeInventoryItems.map((item) => makeOption(item, "forge")),
+    ].filter(Boolean);
+  }, [activeVaultItems, forgeInventoryItems]);
   const vaultValuationSummary = useMemo(
     () => summarizeInventoryValuation(activeVaultItems, { context: "vault" }),
     [activeVaultItems]
@@ -41479,6 +41621,254 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     );
   }
 
+  function renderTradeValueFlowContent() {
+    const sourceItem = selectedTradeSourceItem();
+    const validation = validateTradeDraft(tradeDraft, sourceItem);
+    const comparison = buildTradeComparison(tradeDraft, sourceItem || {}, { moneyFormatter: money });
+    const selectedOption = tradeSourceOptions.find((option) => String(option.id) === String(tradeDraft.sourceItemId));
+    const recentTrades = tradeRecords.slice(0, 3);
+    const receivedSummary = [
+      tradeDraft.receivedType,
+      tradeDraft.receivedSet,
+      tradeDraft.receivedCondition,
+    ].filter(Boolean).join(" - ");
+    const sourceTitle = sourceItem?.name || sourceItem?.itemName || "Choose an item";
+    const sourceSubtitle = selectedOption?.subtitle || (sourceItem ? [sourceItem.productType, sourceItem.expansion || sourceItem.setName].filter(Boolean).join(" - ") : "");
+
+    if (tradeStep === "saved") {
+      return (
+        <div className="trade-value-flow trade-value-flow--saved">
+          <section className="trade-value-success-card">
+            <span className="trust-badge trust-badge--verified">Saved locally</span>
+            <h3>Trade saved to history.</h3>
+            <p>No Vault or Forge inventory counts were changed. Update item records separately after the trade is complete.</p>
+            <div className="trade-comparison-grid">
+              <div>
+                <span>You traded away</span>
+                <strong>{sourceTitle}</strong>
+                <small>{comparison.outgoingLabel}</small>
+              </div>
+              <div>
+                <span>You received</span>
+                <strong>{tradeDraft.receivedName || "Received item"}</strong>
+                <small>{comparison.receivedLabel}</small>
+              </div>
+              <div className={`trade-guidance-card ${comparison.tone}`}>
+                <span>Difference</span>
+                <strong>{comparison.differenceLabel}</strong>
+                <small>{comparison.label}</small>
+              </div>
+            </div>
+          </section>
+          <div className="quick-actions trade-value-actions">
+            <button type="button" onClick={() => {
+              const nextDraft = { ...BLANK_TRADE_DRAFT, id: makeId("trade-draft") };
+              setTradeDraft(nextDraft);
+              flowModalBaselineRef.current.tradeValue = nextDraft;
+              setTradeStep("details");
+              setTradeMessage("");
+            }}>
+              Start another trade
+            </button>
+            <button type="button" className="secondary-button" onClick={() => closeFlowModal({ force: true })}>Close</button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <form className="trade-value-flow" onSubmit={tradeStep === "review" ? saveTradeHistory : reviewTradeDraft}>
+        <section className="trade-value-hero-card">
+          <span className="section-kicker">Trade review</span>
+          <h3>Is this trade worth it?</h3>
+          <p>Use estimates as a sanity check, then review condition, demand, and family rules before saving anything.</p>
+          <div className="trade-safety-strip">
+            <span>Review before saving</span>
+            <span>No inventory changes</span>
+            <span>Values are estimates</span>
+          </div>
+        </section>
+
+        <section className="trade-builder-grid">
+          <div className="trade-side-card trade-side-card--outgoing">
+            <div className="compact-card-header">
+              <div>
+                <span className="trust-badge trust-badge--secure">You give</span>
+                <h4>Traded away</h4>
+              </div>
+              <strong>{comparison.outgoingLabel}</strong>
+            </div>
+            <Field label="Item from Vault or Forge" error={tradeMessage && validation.errors.sourceItemId ? validation.errors.sourceItemId : ""}>
+              <select
+                value={tradeDraft.sourceItemId}
+                onChange={(event) => {
+                  const option = tradeSourceOptions.find((entry) => String(entry.id) === String(event.target.value));
+                  const nextDraft = normalizeTradeDraft({
+                    ...tradeDraft,
+                    sourceItemId: event.target.value,
+                    sourceKind: option?.sourceKind || "",
+                  });
+                  setTradeDraft(nextDraft);
+                  setTradeMessage("");
+                }}
+              >
+                <option value="">Choose item</option>
+                {tradeSourceOptions.map((option) => (
+                  <option key={`${option.sourceKind}-${option.id}`} value={option.id}>
+                    {option.label} - {option.sourceKind === "forge" ? "Forge" : "Vault"} - {option.valueLabel}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Quantity traded">
+              <input
+                type="number"
+                min="1"
+                step="1"
+                value={tradeDraft.outgoingQuantity}
+                onChange={(event) => updateTradeDraftField("outgoingQuantity", event.target.value)}
+              />
+            </Field>
+            <div className="trade-item-preview">
+              <strong>{sourceTitle}</strong>
+              <span>{sourceSubtitle || "Select one of your saved items."}</span>
+              <small>{comparison.outgoing.confidence}</small>
+            </div>
+          </div>
+
+          <div className="trade-side-card trade-side-card--incoming">
+            <div className="compact-card-header">
+              <div>
+                <span className="trust-badge trust-badge--verified">You receive</span>
+                <h4>Received item</h4>
+              </div>
+              <strong>{comparison.receivedLabel}</strong>
+            </div>
+            <Field label="Item received" error={tradeMessage && validation.errors.receivedName ? validation.errors.receivedName : ""}>
+              <input
+                value={tradeDraft.receivedName}
+                onChange={(event) => updateTradeDraftField("receivedName", event.target.value)}
+                placeholder="Card, sealed product, bundle, or accessory"
+              />
+            </Field>
+            <div className="trade-value-form-grid">
+              <Field label="Type">
+                <select value={tradeDraft.receivedType} onChange={(event) => updateTradeDraftField("receivedType", event.target.value)}>
+                  {TRADE_RECEIVED_ITEM_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+                </select>
+              </Field>
+              <Field label="Quantity" error={tradeMessage && validation.errors.receivedQuantity ? validation.errors.receivedQuantity : ""}>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={tradeDraft.receivedQuantity}
+                  onChange={(event) => updateTradeDraftField("receivedQuantity", event.target.value)}
+                />
+              </Field>
+              <Field label="Estimated value">
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={tradeDraft.receivedValue}
+                  onChange={(event) => updateTradeDraftField("receivedValue", event.target.value)}
+                  placeholder="0.00"
+                />
+              </Field>
+              <Field label="Condition">
+                <input
+                  value={tradeDraft.receivedCondition}
+                  onChange={(event) => updateTradeDraftField("receivedCondition", event.target.value)}
+                  placeholder="Near Mint, sealed, box wear..."
+                />
+              </Field>
+            </div>
+            <Field label="Set / product line">
+              <input
+                value={tradeDraft.receivedSet}
+                onChange={(event) => updateTradeDraftField("receivedSet", event.target.value)}
+                placeholder="Prismatic Evolutions, Crown Zenith..."
+              />
+            </Field>
+            <Field label="Trade notes">
+              <textarea
+                value={tradeDraft.notes}
+                onChange={(event) => updateTradeDraftField("notes", event.target.value)}
+                placeholder="Condition notes, who checked values, or family approval notes."
+                rows={3}
+              />
+            </Field>
+          </div>
+        </section>
+
+        <section className={`trade-review-card ${comparison.tone}`}>
+          <div className="compact-card-header">
+            <div>
+              <span className="section-kicker">Guidance</span>
+              <h4>{comparison.label}</h4>
+              <p>{comparison.guidance}</p>
+            </div>
+            <strong>{comparison.differenceLabel}</strong>
+          </div>
+          <div className="trade-comparison-grid">
+            <div>
+              <span>You give</span>
+              <strong>{comparison.outgoingLabel}</strong>
+              <small>{sourceTitle}</small>
+            </div>
+            <div>
+              <span>You receive</span>
+              <strong>{comparison.receivedLabel}</strong>
+              <small>{[tradeDraft.receivedName, receivedSummary].filter(Boolean).join(" - ") || "Add item details"}</small>
+            </div>
+            <div>
+              <span>Inventory</span>
+              <strong>No changes</strong>
+              <small>Saving history does not edit Vault or Forge records.</small>
+            </div>
+          </div>
+        </section>
+
+        {recentTrades.length ? (
+          <section className="trade-history-panel">
+            <div className="compact-card-header">
+              <div>
+                <h4>Recent trade history</h4>
+                <p>Local beta records only. Edit inventory separately after a real trade is complete.</p>
+              </div>
+            </div>
+            <div className="trade-history-list">
+              {recentTrades.map((record) => (
+                <article key={record.id}>
+                  <span>{shortDate(record.createdAt)}</span>
+                  <strong>{record.sourceItemName} for {record.receivedName}</strong>
+                  <small>{record.guidance} | {record.inventoryMutation === "none" ? "Inventory unchanged" : "Review item records"}</small>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {tradeMessage ? <p className="field-error trade-value-message" role="alert">{tradeMessage}</p> : null}
+
+        <div className="quick-actions trade-value-actions">
+          {tradeStep === "review" ? (
+            <>
+              <button type="button" className="secondary-button" onClick={() => setTradeStep("details")} disabled={tradeSaving}>Edit trade</button>
+              <button type="submit" disabled={tradeSaving}>{tradeSaving ? "Saving..." : "Save Trade History"}</button>
+            </>
+          ) : (
+            <>
+              <button type="submit">Review Trade</button>
+              <button type="button" className="secondary-button" onClick={() => closeFlowModal()}>Cancel</button>
+            </>
+          )}
+        </div>
+      </form>
+    );
+  }
+
   function flowModalMeta() {
     if (activeFlowModal?.type === "forgeQuickAdd") {
       return {
@@ -41575,6 +41965,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       return {
         title: "Move Item to Forge",
         description: "Choose a Vault item to move into business inventory.",
+        size: "medium",
+      };
+    }
+    if (activeFlowModal?.type === "tradeValue") {
+      return {
+        title: "Trade Value",
+        description: "Compare what leaves your collection with what comes in. Review first; inventory is not changed.",
         size: "medium",
       };
     }
@@ -46097,6 +46494,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     if (activeFlowModal?.type === "vaultCatalogSearch") return renderVaultCatalogSearchFlowContent();
     if (activeFlowModal?.type === "vaultScan") return renderVaultScanFlowContent();
     if (activeFlowModal?.type === "vaultImportCollection") return renderVaultImportCollectionFlowContent();
+    if (activeFlowModal?.type === "tradeValue") return renderTradeValueFlowContent();
     if (activeFlowModal?.type === "quickFind") return renderQuickFindFlowContent();
     if (activeFlowModal?.type === "multiDestinationAdd") return renderMultiDestinationAddFlowContent();
     if (activeFlowModal?.type === "vaultMoveToForge") return renderVaultMoveToForgeFlowContent();
@@ -55738,6 +56136,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   onRefreshMarket={refreshVaultMarket}
                   onQuickUpdateMarketValue={quickUpdateMarketValue}
                   onQuickUpdateSalePrice={quickUpdatePlannedSalePrice}
+                  onStartTrade={(item) => openTradeValueFlow(item, { source: "vault-detail", sourceKind: "vault" })}
                   showSellerTools={adaptiveSellerToolsVisible}
                 />
               ) : null}
@@ -55770,6 +56169,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                       onDuplicate={openVaultDuplicateItem}
                       onQuickUpdateMarketValue={quickUpdateMarketValue}
                       onQuickUpdateSalePrice={quickUpdatePlannedSalePrice}
+                      onStartTrade={(vaultItem) => openTradeValueFlow(vaultItem, { source: "vault-card", sourceKind: "vault" })}
                       showSellerTools={adaptiveSellerToolsVisible}
                     />
                   ))
@@ -58179,6 +58579,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 onAttachReceipt={(item) => openReceiptForItem(item, "forge-item")}
                 onQuickUpdateMarketValue={quickUpdateMarketValue}
                 onQuickUpdateSalePrice={quickUpdatePlannedSalePrice}
+                onStartTrade={(item) => openTradeValueFlow(item, { source: "forge-detail", sourceKind: "forge" })}
                 onSell={(item) => {
                   setSaleForm((current) => ({
                     ...current,
@@ -58210,6 +58611,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   onCreateListing={(forgeItem) => openMarketplaceCreate("forge", forgeItem)}
                   onQuickUpdateMarketValue={quickUpdateMarketValue}
                   onQuickUpdateSalePrice={quickUpdatePlannedSalePrice}
+                  onStartTrade={(forgeItem) => openTradeValueFlow(forgeItem, { source: "forge-card", sourceKind: "forge" })}
                   onSell={(forgeItem) => {
                     setSaleForm((current) => ({
                       ...current,
@@ -59573,7 +59975,7 @@ function PriceReviewPanel({ item, variant = "forge", onReviewMarket, onReviewPla
   );
 }
 
-function ForgeItemDetail({ item, onClose, onEdit, onDelete, onEditSale, onSell, onCreateListing, onAttachReceipt, onQuickUpdateMarketValue, onQuickUpdateSalePrice }) {
+function ForgeItemDetail({ item, onClose, onEdit, onDelete, onEditSale, onSell, onCreateListing, onAttachReceipt, onQuickUpdateMarketValue, onQuickUpdateSalePrice, onStartTrade }) {
   if (!item) return null;
   const detailImage = item.itemImage || vaultItemDisplayImage(item);
   const setLabel = item.setName || item.expansion || "";
@@ -59669,6 +60071,7 @@ function ForgeItemDetail({ item, onClose, onEdit, onDelete, onEditSale, onSell, 
       </div>
       <div className="vault-detail-primary-actions forge-detail-primary-actions">
         <button type="button" disabled={Number(nextSellEntry?.quantity || 0) < 1} onClick={() => onSell(nextSellEntry)}>Mark sold / add sale</button>
+        <button type="button" className="secondary-button" onClick={() => onStartTrade?.(primaryEntry)}>Start Trade</button>
         <button type="button" className="secondary-button" onClick={() => onEdit(primaryEntry)}>Edit / add details</button>
         <button type="button" className="secondary-button" onClick={() => onAttachReceipt?.(primaryEntry)}>Attach receipt</button>
         <button type="button" className="secondary-button" onClick={() => onQuickUpdateMarketValue?.(item)}>Review value</button>
@@ -59725,6 +60128,7 @@ function ForgeItemDetail({ item, onClose, onEdit, onDelete, onEditSale, onSell, 
           <summary>More actions</summary>
           <div className="quick-actions">
             <button type="button" className="secondary-button" onClick={() => onCreateListing?.(item)}>Create Listing</button>
+            <button type="button" className="secondary-button" onClick={() => onStartTrade?.(primaryEntry)}>Start Trade</button>
             <button type="button" className="secondary-button" onClick={() => onAttachReceipt?.(primaryEntry)}>Attach receipt</button>
             <button type="button" className="secondary-button" onClick={() => onQuickUpdateSalePrice?.(item)}>Update Planned Price</button>
             <button type="button" className="secondary-button" onClick={() => onDelete(primaryEntry)}>Delete primary entry</button>
@@ -59928,7 +60332,7 @@ function gradeAssistValueComparison(item = {}, moneyFormatter = money) {
   };
 }
 
-function VaultItemDetail({ item, setSummary, onClose, onEdit, onDelete, onViewSet, onMarkOwned, onMoveToForge, onCopyToForge, onCreateListing, onDuplicate, onAttachReceipt, onRefreshMarket, onQuickUpdateMarketValue, onQuickUpdateSalePrice, showSellerTools = false }) {
+function VaultItemDetail({ item, setSummary, onClose, onEdit, onDelete, onViewSet, onMarkOwned, onMoveToForge, onCopyToForge, onCreateListing, onDuplicate, onAttachReceipt, onRefreshMarket, onQuickUpdateMarketValue, onQuickUpdateSalePrice, onStartTrade, showSellerTools = false }) {
   const gradeAssistKey = gradeAssistRecordKey(item || {});
   const [gradeAssistDraft, setGradeAssistDraft] = useState(() => loadGradeAssistDraft(item || {}));
   const [gradeAssistMessage, setGradeAssistMessage] = useState("");
@@ -60125,6 +60529,7 @@ function VaultItemDetail({ item, setSummary, onClose, onEdit, onDelete, onViewSe
       </div>
       <div className="vault-detail-primary-actions">
         <button type="button" onClick={() => onEdit(item)}>Edit / Add details</button>
+        {!itemIsWishlist ? <button type="button" className="secondary-button" onClick={() => onStartTrade?.(item)}>Start Trade</button> : null}
         {itemIsWishlist ? <button type="button" onClick={() => onMarkOwned?.(item)}>Mark owned</button> : null}
         {setSummary ? <button type="button" className="secondary-button" onClick={() => onViewSet?.(setSummary)}>View Set</button> : null}
         <button type="button" className="secondary-button" onClick={() => onAttachReceipt?.(item)}>Attach receipt</button>
@@ -60349,6 +60754,7 @@ function VaultItemDetail({ item, setSummary, onClose, onEdit, onDelete, onViewSe
           <div className="quick-actions">
             {showVaultSellerTools ? <button type="button" className="secondary-button" onClick={() => onCopyToForge(item)}>Copy to Forge</button> : null}
             {showVaultSellerTools ? <button type="button" className="secondary-button" onClick={() => onCreateListing?.(item)}>Create Listing</button> : null}
+            {!itemIsWishlist ? <button type="button" className="secondary-button" onClick={() => onStartTrade?.(item)}>Start Trade</button> : null}
             {showVaultSellerTools ? <button type="button" className="secondary-button" onClick={() => onQuickUpdateSalePrice?.(item)}>Update Planned Price</button> : null}
             <button type="button" className="secondary-button" onClick={() => onAttachReceipt?.(item)}>Attach receipt</button>
             <button type="button" className="secondary-button" onClick={() => onDuplicate?.(item)}>Duplicate Item</button>
@@ -60378,6 +60784,7 @@ function CompactInventoryCard({
   onQuickUpdateSalePrice,
   onSell,
   onCreateListing,
+  onStartTrade,
   showSellerTools = false,
 }) {
   const isVault = variant === "vault";
@@ -60412,6 +60819,7 @@ function CompactInventoryCard({
     const vaultOverflowActions = [
       { label: "Edit", onClick: () => onEdit?.(item) },
       { label: "Review Market Value", onClick: () => onQuickUpdateMarketValue?.(item) },
+      { label: "Start Trade Review", onClick: () => onStartTrade?.(item), disabled: quantity < 1 },
       ...(showVaultSellerTools ? [
         { label: "Move to Forge", onClick: () => onMoveToForge?.(item), disabled: quantity < 1 },
         { label: "Update Planned Price", onClick: () => onQuickUpdateSalePrice?.(item) },
@@ -60464,6 +60872,7 @@ function CompactInventoryCard({
 
         <div className="compact-actions vault-card-actions">
           <button type="button" className="secondary-button" aria-label={`View details for ${item.name}`} onClick={() => onViewDetails?.(item)}>View details</button>
+          <button type="button" className="secondary-button trade-card-action" onClick={() => onStartTrade?.(item)} disabled={quantity < 1}>Trade</button>
           <OverflowMenu
             buttonLabel="More"
             actions={vaultOverflowActions}
@@ -60593,12 +61002,14 @@ function CompactInventoryCard({
 
       <div className="compact-actions forge-card-actions">
         <button type="button" className="secondary-button" onClick={() => onViewDetails?.(item)}>View / Edit</button>
+        <button type="button" className="secondary-button trade-card-action" onClick={() => onStartTrade?.(primaryEntry)} disabled={Number(nextSellEntry?.quantity || 0) < 1}>Trade</button>
         <OverflowMenu
           buttonLabel="More"
           actions={[
             { label: "Mark sold / add sale", onClick: () => onSell?.(nextSellEntry), disabled: Number(nextSellEntry?.quantity || 0) < 1 },
             { label: "Edit primary entry", onClick: () => onEdit?.(primaryEntry) },
             { label: "Review Market Value", onClick: () => onQuickUpdateMarketValue?.(item) },
+            { label: "Start Trade Review", onClick: () => onStartTrade?.(primaryEntry), disabled: Number(nextSellEntry?.quantity || 0) < 1 },
             { label: "Update Planned Price", onClick: () => onQuickUpdateSalePrice?.(item) },
             { label: "List", onClick: () => onCreateListing?.(item) },
             { label: "Restock", onClick: () => onRestock?.(item) },

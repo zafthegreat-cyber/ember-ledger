@@ -151,6 +151,7 @@ export function sanitizeAppLocalData(value = {}) {
     tideTradrWatchlist: filterDemoArray(value.tideTradrWatchlist),
     marketplaceListings: filterDemoArray(value.marketplaceListings),
     marketplaceReports: filterDemoArray(value.marketplaceReports),
+    tradeRecords: filterDemoArray(value.tradeRecords || value.trades),
     expenses: filterDemoArray(value.expenses),
     sales: filterDemoArray(value.sales),
     vehicles: filterDemoArray(value.vehicles),

@@ -62,6 +62,7 @@
     "test:route-loading": "node --no-warnings scripts/test-route-loading.mjs",
     "test:business-tax": "node --no-warnings scripts/test-business-tax-records.mjs",
     "test:sales-records": "node --no-warnings scripts/test-sales-records.mjs",
+    "test:trade-value": "node --no-warnings scripts/test-trade-value-flow.mjs",
     "test:year-end-exports": "node --no-warnings scripts/test-year-end-exports.mjs",
     "test:ember-assist": "node --no-warnings scripts/test-ember-assist.mjs",
     "test:store-expansion": "node --no-warnings scripts/test-store-expansion.mjs",
