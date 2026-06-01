@@ -6442,6 +6442,11 @@ export default function App() {
     mobileMenuByKey.admin,
     mobileMenuByKey.invites,
     mobileMenuByKey.betaUsers,
+    mobileMenuByKey.reportReview,
+    mobileMenuByKey.missingCatalog,
+    adaptiveAdminNavVisible ? { key: "storeProductAdmin", label: "Store / Product Management", helper: "Store fixes, catalog corrections, and duplicate review.", icon: "search", action: () => { setAdminReviewFilter("Store Management"); setActiveTab("adminReview"); } } : null,
+    adaptiveAdminNavVisible ? { key: "sparkDonationAdmin", label: "Spark Donations Admin", helper: "Kids Program requests, donation review, and shop support.", icon: "spark", action: () => { setAdminReviewFilter("Kids Program Applications"); setActiveTab("adminReview"); } } : null,
+    adaptiveAdminNavVisible ? { key: "waitlistByState", label: "Waitlist by State", helper: "Review access requests and expansion signals.", icon: "calendar", action: () => { setAdminReviewFilter("Beta Access"); setActiveTab("adminReview"); } } : null,
     mobileMenuByKey.feedbackInbox,
     mobileMenuByKey.moderation,
   ].filter(Boolean);
@@ -8993,6 +8998,7 @@ export default function App() {
       title: "Revoke invite?",
       message: `This will deactivate the one-time invite for ${invite.recipientName || invite.recipientEmail || "this recipient"}. It cannot be claimed after revocation.`,
       details: "The invite history stays available to admins, but the link stops granting beta access.",
+      targetName: invite.recipientName || invite.recipientEmail || "Beta invite",
       confirmLabel: "Revoke invite",
       danger: true,
       successMessage: "Invite revoked.",
@@ -9070,6 +9076,7 @@ export default function App() {
       title: "Hide this test account?",
       message: `This disables app-level beta access for ${betaUserCleanupLabel(targetUser)} and removes it from normal approved-user visibility.`,
       details: "Supabase Auth deletion is not exposed from the frontend. Use secure backend admin tooling if full Auth deletion is required.",
+      targetName: betaUserCleanupLabel(targetUser),
       confirmLabel: "Disable access",
       danger: true,
       successMessage: "App access disabled for cleanup.",
@@ -13820,6 +13827,7 @@ export default function App() {
     title,
     message,
     details = "",
+    targetName = "",
     confirmLabel = "Confirm",
     danger = false,
     onConfirm,
@@ -13831,6 +13839,7 @@ export default function App() {
       title,
       message,
       details,
+      targetName,
       confirmLabel,
       danger,
       onConfirm,
@@ -13885,6 +13894,7 @@ export default function App() {
       requestAdminActionConfirmation({
         title: `${label} Tidepool post?`,
         message: options.message || "This changes the post moderation state for beta users.",
+        targetName: post.title || post.topic || post.body?.slice?.(0, 64) || "Tidepool post",
         confirmLabel: label,
         danger: Boolean(options.danger),
         onConfirm: execute,
@@ -32285,6 +32295,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       title: `${action.label} Scout report?`,
       message: `${storeName} will be updated for public Scout trust surfaces.`,
       details: `Confidence: ${confidence.label}. Reason: ${(report.confidenceReasons || report.confidence_reasons || [confidence.helper]).join(" | ")}`,
+      targetName: storeName,
       confirmLabel: action.label,
       danger: Boolean(action.risky),
       successMessage: action.message,
@@ -39740,6 +39751,36 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       { key: "shops", title: "Family-friendly Shop Approvals", count: commandSummary.shopsNeedingReview, status: commandSummary.shopsNeedingReview ? "Needs review" : "Clear", detail: "Approve shop badges and community-safe partner metadata.", filter: "Family-Friendly Shop Review" },
       { key: "roles", title: "User / Role Controls", count: roleManagementCount || approvedBetaUserCount || 0, status: roleManagementVisible ? "Protected" : "View only", detail: "Manage users and roles only when protected admin tools allow it.", filter: "Role Management" },
     ];
+    const adminControlGroups = [
+      {
+        key: "people",
+        label: "People & Access",
+        value: betaRequests.length + approvedBetaUserCount,
+        helper: "Beta approvals, invites, waitlist by state, role management, and test/fake cleanup.",
+        filter: "Beta Users",
+      },
+      {
+        key: "reports",
+        label: "Reports & Moderation",
+        value: commandSummary.pendingScoutReports + flaggedContentCount,
+        helper: "Scout report review, flagged content, community guesses, and Assist messages.",
+        filter: "Reports & Moderation",
+      },
+      {
+        key: "data",
+        label: "Stores & Products",
+        value: buildStoreMapRows().length + catalogCorrectionCount,
+        helper: "Store management, product/catalog corrections, duplicate review, and safe public labels.",
+        filter: "Store Management",
+      },
+      {
+        key: "spark",
+        label: "Spark & Partners",
+        value: kidsReviewCount + sponsorRows.length + shopWorkspaces.length,
+        helper: "Kids Program requests, Spark donation admin, shop partners, and family-friendly approvals.",
+        filter: "Kids Program Applications",
+      },
+    ];
     const adminQueueSearchText = adminQueueSearch.trim().toLowerCase();
     const filteredAdminEssentialQueues = adminQueueSearchText
       ? adminEssentialQueues.filter((queue) => [
@@ -39804,6 +39845,25 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </div>
           <span className={adminEditModeActive ? "status-badge danger" : "status-badge"}>{adminEditModeActive ? "Admin Edit On" : "View Mode"}</span>
         </div>
+
+        <section className="admin-control-map" aria-label="Admin control map">
+          <div className="compact-card-header">
+            <div>
+              <h3>Admin control map</h3>
+              <p>Start from the area you need. Edit, delete, revoke, and moderation actions stay behind confirmations.</p>
+            </div>
+            <span className="status-badge">Admin only</span>
+          </div>
+          <div className="admin-control-map-grid">
+            {adminControlGroups.map((group) => (
+              <button type="button" className="admin-control-map-card" key={group.key} onClick={() => chooseAdminQueue(group.filter)}>
+                <span>{group.label}</span>
+                <strong>{group.value}</strong>
+                <p>{group.helper}</p>
+              </button>
+            ))}
+          </div>
+        </section>
 
         <section className="admin-overview-strip" aria-label="Admin overview">
           {adminOverviewRows.map((item) => (
@@ -53655,7 +53715,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </div>
               <button type="button" className="modal-close-button" aria-label="Close admin confirmation" disabled={adminConfirmAction.loading} onClick={() => setAdminConfirmAction(null)}>X</button>
             </div>
-            {adminConfirmAction.details ? <p className="compact-subtitle">{adminConfirmAction.details}</p> : null}
+            <div className="admin-confirm-target-card">
+              <span>Affected item</span>
+              <strong>{adminConfirmAction.targetName || "Selected admin record"}</strong>
+              <p>{adminConfirmAction.details || "Review the action and confirm only if this is the intended record."}</p>
+            </div>
             {adminConfirmAction.loading ? <p className="auth-status-message" role="status">Working...</p> : null}
             {adminConfirmAction.success ? <p className="auth-status-message success" role="status">{adminConfirmAction.success}</p> : null}
             {adminConfirmAction.error ? <p className="auth-status-message error" role="alert">{adminConfirmAction.error}</p> : null}

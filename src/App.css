@@ -25573,6 +25573,37 @@ button.admin-edit-toggle.active {
   z-index: 13201 !important;
 }
 
+.admin-confirm-target-card {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 10px;
+  padding: 13px;
+  border: 1px solid rgba(255, 184, 92, 0.24);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 184, 92, 0.14), transparent 10rem),
+    rgba(4, 12, 26, 0.72);
+}
+
+.admin-confirm-target-card span {
+  color: #7ce7ff;
+  font-size: 0.72rem;
+  font-weight: 950;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.admin-confirm-target-card strong {
+  color: #fff7ed;
+  font-size: 1.05rem;
+}
+
+.admin-confirm-target-card p {
+  margin: 0;
+  color: rgba(232, 246, 255, 0.72);
+  line-height: 1.4;
+}
+
 /* Admin operations dashboard */
 .admin-ops-dashboard {
   display: grid;
@@ -54704,6 +54735,105 @@ body {
   gap: 10px;
 }
 
+.app .admin-control-map,
+.app-command-shell .admin-control-map,
+.app-shell-dark .admin-control-map {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--admin-border) !important;
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 184, 92, 0.1), transparent 12rem),
+    radial-gradient(circle at 100% 0%, rgba(41, 207, 255, 0.08), transparent 13rem),
+    rgba(4, 12, 26, 0.82) !important;
+  color: #f8fbff;
+}
+
+.app .admin-control-map > .compact-card-header,
+.app-command-shell .admin-control-map > .compact-card-header,
+.app-shell-dark .admin-control-map > .compact-card-header {
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.app .admin-control-map > .compact-card-header > div,
+.app-command-shell .admin-control-map > .compact-card-header > div,
+.app-shell-dark .admin-control-map > .compact-card-header > div {
+  min-width: 0;
+}
+
+.app .admin-control-map > .compact-card-header .status-badge,
+.app-command-shell .admin-control-map > .compact-card-header .status-badge,
+.app-shell-dark .admin-control-map > .compact-card-header .status-badge {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  max-width: max-content;
+}
+
+.app .admin-control-map-grid,
+.app-command-shell .admin-control-map-grid,
+.app-shell-dark .admin-control-map-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+
+.app .admin-control-map-card,
+.app-command-shell .admin-control-map-card,
+.app-shell-dark .admin-control-map-card {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+  min-height: 128px;
+  padding: 13px;
+  border: 1px solid rgba(124, 231, 255, 0.16) !important;
+  border-radius: 16px;
+  background:
+    linear-gradient(145deg, rgba(8, 18, 36, 0.9), rgba(2, 8, 22, 0.7)) !important;
+  color: #f8fbff !important;
+  text-align: left;
+  box-shadow: none !important;
+}
+
+.app .admin-control-map-card:hover,
+.app-command-shell .admin-control-map-card:hover,
+.app-shell-dark .admin-control-map-card:hover,
+.app .admin-control-map-card:focus-visible,
+.app-command-shell .admin-control-map-card:focus-visible,
+.app-shell-dark .admin-control-map-card:focus-visible {
+  border-color: rgba(255, 184, 92, 0.34) !important;
+  transform: translateY(-1px);
+}
+
+.app .admin-control-map-card span,
+.app-command-shell .admin-control-map-card span,
+.app-shell-dark .admin-control-map-card span {
+  color: #7ce7ff;
+  font-size: 0.72rem;
+  font-weight: 950;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.app .admin-control-map-card strong,
+.app-command-shell .admin-control-map-card strong,
+.app-shell-dark .admin-control-map-card strong {
+  color: #fff7ed;
+  font-size: 1.65rem;
+  line-height: 1;
+}
+
+.app .admin-control-map-card p,
+.app-command-shell .admin-control-map-card p,
+.app-shell-dark .admin-control-map-card p {
+  margin: 0;
+  color: var(--admin-muted);
+  line-height: 1.38;
+}
+
 .app .admin-overview-tile,
 .app-command-shell .admin-overview-tile,
 .app-shell-dark .admin-overview-tile {
@@ -55251,6 +55381,32 @@ body {
   .app-command-shell .admin-overview-strip,
   .app-shell-dark .admin-overview-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .app .admin-control-map,
+  .app-command-shell .admin-control-map,
+  .app-shell-dark .admin-control-map {
+    padding: 12px;
+    border-radius: 18px;
+  }
+
+  .app .admin-control-map > .compact-card-header,
+  .app-command-shell .admin-control-map > .compact-card-header,
+  .app-shell-dark .admin-control-map > .compact-card-header {
+    flex-direction: row;
+  }
+
+  .app .admin-control-map-grid,
+  .app-command-shell .admin-control-map-grid,
+  .app-shell-dark .admin-control-map-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app .admin-control-map-card,
+  .app-command-shell .admin-control-map-card,
+  .app-shell-dark .admin-control-map-card {
+    min-height: 0;
+    padding: 12px;
   }
 
   .app .admin-overview-tile,

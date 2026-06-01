@@ -104,11 +104,21 @@ for (const label of [
   "Kids Program Requests",
   "Family-friendly Shop Approvals",
   "User / Role Controls",
+  "Admin control map",
+  "People & Access",
+  "Stores & Products",
+  "Spark & Partners",
+  "Store / Product Management",
+  "Spark Donations Admin",
+  "Waitlist by State",
+  "Affected item",
 ]) {
   assert.match(app, new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `Admin Command Center should expose ${label}`);
 }
 assert.match(app, /adminQueueSearch/, "Admin Command Center should provide search/filter over priority queues");
 assert.match(app, /admin-essential-queue-grid/, "Admin Command Center should render a compact priority queue grid");
+assert.match(app, /targetName/, "Admin destructive confirmations should include an explicit affected item name");
+assert.match(app, /Supabase Auth deletion is not exposed/, "Fake account cleanup should not expose frontend Auth deletion");
 assert.match(app, /Permission Denied/, "Non-admin users should see a permission denied state instead of admin tools");
 
 console.log("Admin Command Center utility tests passed.");
