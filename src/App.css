@@ -70671,3 +70671,184 @@ html body .app .ember-assist-shell.is-open {
     padding: 10px 0 calc(6px + env(safe-area-inset-bottom, 0px)) !important;
   }
 }
+
+/* Pass 8-18 correction sprint: targeted mobile readability and safe-bottom fixes only. */
+@media (max-width: 780px) {
+  .app-command-shell.app-scout .main,
+  .app-command-shell.app-forge .main,
+  .app-command-shell.app-sales .main,
+  .app-command-shell.app-reports .main,
+  .app-command-shell.app-kidsprogram .main,
+  .app-command-shell.app-tidepool .main,
+  .app-command-shell.app-settings .main,
+  .app-command-shell.app-profile .main,
+  .app-command-shell.app-membership .main,
+  .app-command-shell.app-tier .main,
+  .app-command-shell.app-adminreview .main {
+    padding-bottom: calc(var(--etds-bottom-nav-h, 76px) + env(safe-area-inset-bottom, 0px) + 92px) !important;
+    scroll-padding-bottom: calc(var(--etds-bottom-nav-h, 76px) + env(safe-area-inset-bottom, 0px) + 96px) !important;
+  }
+
+  .app-scout .store-map-detail-sheet,
+  .app-command-shell.app-scout .store-map-detail-sheet,
+  .app-shell-dark.app-scout .store-map-detail-sheet {
+    padding-bottom: calc(var(--etds-bottom-nav-h, 76px) + env(safe-area-inset-bottom, 0px) + 26px) !important;
+  }
+
+  .app-scout .store-detail-action-bar,
+  .app-command-shell.app-scout .store-detail-action-bar,
+  .app-shell-dark.app-scout .store-detail-action-bar {
+    gap: 8px !important;
+    padding: 9px !important;
+  }
+
+  .app-scout .store-detail-action-bar button,
+  .app-command-shell.app-scout .store-detail-action-bar button,
+  .app-shell-dark.app-scout .store-detail-action-bar button {
+    min-height: 42px !important;
+    padding: 9px 10px !important;
+    font-size: 0.78rem !important;
+  }
+
+  .app-forge .forge-ledger-card-grid,
+  .app-command-shell.app-forge .forge-ledger-card-grid,
+  .app-shell-dark.app-forge .forge-ledger-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .app-forge .forge-ledger-card,
+  .app-command-shell.app-forge .forge-ledger-card,
+  .app-shell-dark.app-forge .forge-ledger-card,
+  .app-forge .tax-command-card,
+  .app-command-shell.app-forge .tax-command-card,
+  .app-shell-dark.app-forge .tax-command-card {
+    min-width: 0 !important;
+    overflow-wrap: anywhere;
+  }
+
+  .app-forge .sales-record-card .compact-card-header,
+  .app-command-shell.app-forge .sales-record-card .compact-card-header,
+  .app-shell-dark.app-forge .sales-record-card .compact-card-header {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 7px !important;
+  }
+
+  .app-forge .sales-record-card h3,
+  .app-command-shell.app-forge .sales-record-card h3,
+  .app-shell-dark.app-forge .sales-record-card h3 {
+    overflow-wrap: anywhere;
+    line-height: 1.16 !important;
+  }
+
+  .app-forge .sales-record-card .compact-card-header p,
+  .app-command-shell.app-forge .sales-record-card .compact-card-header p,
+  .app-shell-dark.app-forge .sales-record-card .compact-card-header p {
+    display: block !important;
+    margin-top: 4px !important;
+    line-height: 1.35 !important;
+    white-space: normal !important;
+  }
+
+  .app-forge .sales-record-card .status-badge,
+  .app-command-shell.app-forge .sales-record-card .status-badge,
+  .app-shell-dark.app-forge .sales-record-card .status-badge {
+    justify-self: start;
+    max-width: 100%;
+    white-space: normal !important;
+  }
+
+  .app .flow-modal[data-flow="tradeValue"] .flow-modal-body,
+  .app-command-shell .flow-modal[data-flow="tradeValue"] .flow-modal-body,
+  .app-shell-dark .flow-modal[data-flow="tradeValue"] .flow-modal-body {
+    padding-bottom: calc(var(--etds-bottom-nav-h, 76px) + env(safe-area-inset-bottom, 0px) + 24px) !important;
+    scroll-padding-bottom: calc(var(--etds-bottom-nav-h, 76px) + env(safe-area-inset-bottom, 0px) + 32px) !important;
+  }
+
+  .trade-value-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
+    padding: 8px 0 calc(6px + env(safe-area-inset-bottom, 0px));
+    border-radius: 16px;
+    background: linear-gradient(180deg, rgba(3, 10, 24, 0.78), rgba(3, 10, 24, 0.96));
+  }
+
+  .app-forge .tax-export-panel,
+  .app-command-shell.app-forge .tax-export-panel,
+  .app-shell-dark.app-forge .tax-export-panel {
+    margin-bottom: calc(var(--etds-bottom-nav-h, 76px) + env(safe-area-inset-bottom, 0px) + 28px) !important;
+  }
+
+  .app-kidsprogram .spark-request-flow,
+  .app-command-shell.app-kidsprogram .spark-request-flow,
+  .app-shell-dark.app-kidsprogram .spark-request-flow {
+    padding-bottom: calc(var(--etds-bottom-nav-h, 76px) + env(safe-area-inset-bottom, 0px) + 56px) !important;
+  }
+
+  .app-tidepool .tidepool-trust-grid,
+  .app-command-shell.app-tidepool .tidepool-trust-grid,
+  .app-shell-dark.app-tidepool .tidepool-trust-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .app-tidepool .tidepool-trust-card,
+  .app-command-shell.app-tidepool .tidepool-trust-card,
+  .app-shell-dark.app-tidepool .tidepool-trust-card {
+    padding: 10px 11px !important;
+  }
+
+  .app-tidepool .tidepool-trust-card span,
+  .app-command-shell.app-tidepool .tidepool-trust-card span,
+  .app-shell-dark.app-tidepool .tidepool-trust-card span {
+    display: block !important;
+    overflow: visible !important;
+    -webkit-line-clamp: initial !important;
+  }
+
+  .ember-assist-escalation-form {
+    left: 0.65rem !important;
+    right: 0.65rem !important;
+    padding: 0.75rem !important;
+    border-color: rgba(168, 85, 247, 0.24) !important;
+    background:
+      radial-gradient(circle at 100% 0%, rgba(168, 85, 247, 0.13), transparent 9rem),
+      rgba(3, 10, 24, 0.96) !important;
+  }
+
+  .ember-assist-escalation-form .quick-actions,
+  .ember-assist-footer-actions {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+  }
+
+  .app .locked-feature-detail-grid,
+  .app-command-shell .locked-feature-detail-grid,
+  .app-shell-dark .locked-feature-detail-grid,
+  .app .tier-status-grid,
+  .app-command-shell .tier-status-grid,
+  .app-shell-dark .tier-status-grid,
+  .app .tier-beta-flags,
+  .app-command-shell .tier-beta-flags,
+  .app-shell-dark .tier-beta-flags {
+    grid-template-columns: 1fr !important;
+  }
+
+  .app-adminreview .admin-command-grid,
+  .app-command-shell.app-adminreview .admin-command-grid,
+  .app-shell-dark.app-adminreview .admin-command-grid,
+  .app-adminreview .admin-essential-queue-grid,
+  .app-command-shell.app-adminreview .admin-essential-queue-grid,
+  .app-shell-dark.app-adminreview .admin-essential-queue-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .app-adminreview .admin-command-card,
+  .app-command-shell.app-adminreview .admin-command-card,
+  .app-shell-dark.app-adminreview .admin-command-card,
+  .app-adminreview .admin-essential-queue-card,
+  .app-command-shell.app-adminreview .admin-essential-queue-card,
+  .app-shell-dark.app-adminreview .admin-essential-queue-card {
+    min-height: 0 !important;
+    overflow-wrap: anywhere;
+  }
+}

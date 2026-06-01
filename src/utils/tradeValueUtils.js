@@ -103,8 +103,8 @@ export function buildTradeComparison(draft = {}, sourceItem = {}, options = {}) 
       guidance = "The received side estimates higher. Confirm condition and source data before saving.";
     } else {
       tone = "caution";
-      label = "You may give more value";
-      guidance = "The item you give estimates higher. Pause and review before accepting.";
+      label = "Review carefully";
+      guidance = "You may be giving more estimated value. Confirm condition, demand, and family rules before accepting.";
     }
   }
 

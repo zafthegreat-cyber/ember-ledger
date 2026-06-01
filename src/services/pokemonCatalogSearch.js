@@ -775,10 +775,19 @@ function buildSearchTerms(term, mode) {
   const cleaned = cleanCatalogSearch(term);
   if (!cleaned) return [];
   if (isExactIdentifierMode(mode, cleaned)) return [cleaned];
-  return [cleaned, ...expandCatalogAliases(cleaned)]
+  const expanded = expandCatalogAliases(cleaned).filter((value) => {
+    const normalized = cleanCatalogSearch(value);
+    return normalized.length > 3 || normalized === cleaned || !cleaned.includes(" ");
+  });
+  const terms = [cleaned, ...expanded]
     .filter(Boolean)
-    .filter((value, index, list) => list.indexOf(value) === index)
-    .slice(0, 4);
+    .filter((value, index, list) => list.indexOf(value) === index);
+  if (cleaned.includes(" ") && cleaned.length >= 12) {
+    return terms
+      .filter((value, index) => index === 0 || cleanCatalogSearch(value).length > cleaned.length)
+      .slice(0, 2);
+  }
+  return terms.slice(0, 4);
 }
 
 function applyDbSort(query, sortKey = "bestMatch") {

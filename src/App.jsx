@@ -33481,7 +33481,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </div>
           <div className="scout-alert-scope-note">
             <strong>{selectedAreaLabel}</strong>
-            <span>VA pilot scope. Store releases, product releases, and watch items are area-limited where data exists.</span>
+            <span>Virginia pilot area. Store releases, product releases, and watch items are area-limited where data exists.</span>
           </div>
         </section>
 
@@ -41478,10 +41478,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       { label: "Replies", value: tidepoolComments.filter((comment) => visibleTidepoolPostIds.has(comment.postId) && comment.status !== "removed").length },
     ];
     const tidepoolTrustCards = [
-      { title: "Trusted members", detail: "Public profile badges help show helpful collectors without exposing private details." },
-      { title: "Proof-based confirmations", detail: "Photos, replies, and confirmations add trust without turning posts into raw restock patterns." },
-      { title: "Family-friendly discussion", detail: "Questions, events, local collecting help, and shop tips stay kind and moderated." },
-      { title: "Report confirmations", detail: "Use each post's Safety menu to flag unsafe claims, private info, or fake restocks." },
+      { title: "Trusted members", detail: "Helpful public badges. Private details stay private." },
+      { title: "Proof-based confirmations", detail: "Photos and replies build trust." },
+      { title: "Family-friendly discussion", detail: "Questions, events, and collecting help." },
+      { title: "Report confirmations", detail: "Flag unsafe posts, fake info, or private details." },
     ];
 
     return (
@@ -53017,7 +53017,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     {renderStoreMapStatusBadge(selectedStoreMapStore)}
                     <span className="confidence-badge">{selectedStoreMapStore.confidence} confidence</span>
                     <span className={selectedStoreMapStore.watchlisted ? "status-badge watchlist" : "status-badge"}>{selectedStoreMapStore.watchlisted ? "Watching" : "Not watched"}</span>
-                    <span className="status-badge">VA pilot</span>
+                    <span className="status-badge">Virginia pilot area</span>
                   </div>
                   {scoutStoreShorthandLabel(selectedStoreMapStore.store || selectedStoreMapStore.profile?.store || selectedStoreMapStore) ? (
                     <small className="scout-store-alias-line">Also known as {scoutStoreShorthandLabel(selectedStoreMapStore.store || selectedStoreMapStore.profile?.store || selectedStoreMapStore)}</small>
