@@ -23651,7 +23651,7 @@ function renderTideTradrHeader() {
           productGroup={currentCatalogProductGroup()}
           dataFilter={catalogDataFilter}
           inputClassName="search-input"
-          placeholder="Search cards, sets, or sealed products..."
+          placeholder="Search Market Watch"
           closeSignal={catalogSuggestionCloseSignal}
           maxSuggestions={6}
           localCatalogProducts={catalogProducts}
@@ -23662,9 +23662,16 @@ function renderTideTradrHeader() {
           className="market-smart-search"
           money={money}
           suppressSuggestions={catalogSearchHasRun || supabaseCatalogStatus.loading}
+          timingStatusLabel="Suggestions refreshed. Pick a scope or search to compare values."
         />
         <button type="submit">Search</button>
       </form>
+      <div className="market-search-helper-grid" aria-label="Market search guidance">
+        <span><strong>Cards</strong><small>name, set, or number</small></span>
+        <span><strong>Sealed</strong><small>ETB, bundle, box, tins</small></span>
+        <span><strong>UPC/SKU</strong><small>exact lookup</small></span>
+        <span><strong>Freshness</strong><small>labeled when known</small></span>
+      </div>
       <details className="market-search-options market-upc-disclosure" defaultOpen={Boolean(catalogBarcodeSearch || submittedCatalogBarcodeSearch)}>
         <summary>UPC / SKU lookup</summary>
         <form className="market-barcode-search" onSubmit={submitCatalogBarcodeSearch} aria-label="Market UPC and SKU lookup">
@@ -23688,11 +23695,14 @@ function renderTideTradrHeader() {
         <summary>Search options</summary>
         <div className="market-data-refresh-strip" aria-label="Market data freshness">
           <span>{marketRefreshLabel}</span>
-          <p>{marketDailyRefreshCommand} refreshes public TCGCSV catalog and price cache data. No live price is shown unless data has a saved timestamp.</p>
+          <p>
+            {adminEditModeActive ? `${marketDailyRefreshCommand} refreshes public TCGCSV catalog and price cache data.` : "Daily catalog refresh checks public price data when available."}
+            {" "}No live price is shown unless data has a saved timestamp.
+          </p>
         </div>
         <div className="market-mode-strip" aria-label="Market guidance">
-          <span>{adaptiveSellerToolsVisible ? "Seller Market Watch" : "Collector Market Watch"}</span>
-          <span>{adaptiveSellerToolsVisible ? "Forge comps" : "Vault first"}</span>
+          <span>{adaptiveSellerToolsVisible ? "Seller comps" : "Collector values"}</span>
+          <span>{adaptiveSellerToolsVisible ? "Forge ready" : "Vault ready"}</span>
           <span>Honest labels</span>
           <button type="button" className="secondary-button" onClick={() => openDealFinderModal()}>Check Deal</button>
         </div>
@@ -31007,6 +31017,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const productSetName = catalogExpansionName(product) || "Set unavailable";
     const productTypeLabel = catalogProductTypeLabel(product);
     const marketSourceLabel = productHasMarketPrice ? getCatalogMarketSourceLabel(product) : "Market data unavailable";
+    const marketFreshnessTimestamp = marketInfo.lastUpdated || product.lastPriceChecked || product.marketLastUpdated || product.market_last_updated || product.updatedAt || product.updated_at || "";
+    const marketFreshnessLabel = marketFreshnessTimestamp
+      ? marketDataAgeMeta(marketFreshnessTimestamp, productHasMarketPrice).label
+      : productHasMarketPrice
+        ? "Freshness not labeled"
+        : "Weak data";
     const sellerMarketMode = Boolean(adaptiveSellerToolsVisible || adminToolsVisible);
     const primaryAddLabel = sellerMarketMode && activeForgeWorkspace ? "Add to Forge" : "Add to Vault";
     const primaryAddDestination = sellerMarketMode && activeForgeWorkspace ? "forge" : "vault";
@@ -31066,6 +31082,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <span className={`market-status-pill market-status-pill--${marketInfo.marketDataTone || "unknown"}`}>{marketInfo.marketDataLabel}</span>
               {watched ? <span className="market-status-pill market-status-pill--watchlist">Watchlist</span> : null}
             </div>
+            <p className="market-card-freshness-line">
+              <span>{marketFreshnessLabel}</span>
+              <span>{productHasMarketPrice ? "Known value" : "Needs stronger source"}</span>
+            </p>
             {productReferenceParts.length && showRepairMeta ? <p className="market-card-reference-line">{productReferenceParts.join(" | ")}</p> : null}
             {showRepairMeta ? (
               <>

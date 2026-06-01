@@ -95,6 +95,7 @@ export default function SmartCatalogSearchBox({
   scopeSets = [],
   scopeProductTypes = [],
   suppressSuggestions = false,
+  timingStatusLabel = "",
 }) {
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -494,7 +495,9 @@ export default function SmartCatalogSearchBox({
           {loading ? <div className="smart-catalog-suggestion-status">Finding smart matches...</div> : null}
           {!loading && errorMessage ? <div className="smart-catalog-suggestion-status error">{errorMessage}</div> : null}
           {showTiming && !loading && !errorMessage && lastTiming?.elapsedMs ? (
-            <div className="smart-catalog-suggestion-status">Search completed in {lastTiming.elapsedMs}ms via {lastTiming.sourceName || "catalog"} ({lastTiming.cacheState || "miss"}).</div>
+            <div className="smart-catalog-suggestion-status">
+              {timingStatusLabel || `Search completed in ${lastTiming.elapsedMs}ms via ${lastTiming.sourceName || "catalog"} (${lastTiming.cacheState || "miss"}).`}
+            </div>
           ) : null}
           {!loading && !errorMessage && suggestions.length === 0 && immediateCleanedValue.length >= 2 ? (
             <div className="smart-catalog-suggestion-status smart-catalog-empty-state">
