@@ -41269,13 +41269,19 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       { label: "Local", value: localPosts },
       { label: "Replies", value: tidepoolComments.filter((comment) => visibleTidepoolPostIds.has(comment.postId) && comment.status !== "removed").length },
     ];
+    const tidepoolTrustCards = [
+      { title: "Trusted members", detail: "Public profile badges help show helpful collectors without exposing private details." },
+      { title: "Proof-based confirmations", detail: "Photos, replies, and confirmations add trust without turning posts into raw restock patterns." },
+      { title: "Family-friendly discussion", detail: "Questions, events, local collecting help, and shop tips stay kind and moderated." },
+      { title: "Report confirmations", detail: "Use each post's Safety menu to flag unsafe claims, private info, or fake restocks." },
+    ];
 
     return (
       <>
         <PageHeader
           className={getHeaderCardClass("panel tidepool-community-header")}
           title="Tidepool Community"
-          subtitle="Family-safe community currents for collectors and families."
+          subtitle="Safe community posts, proof-based confirmations, and local collecting help."
           actions={(
             <>
               <button type="button" onClick={openTidepoolCreatePostFlow} disabled={!canCreateTidepoolPost}>Start a Post</button>
@@ -41294,6 +41300,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </div>
               <p>Keep it kind, helpful, and family-friendly. Posts use general areas only.</p>
               {!canCreateTidepoolPost ? <p>Tidepool posting opens after beta access is approved. Published posts remain visible when allowed.</p> : null}
+              <div className="tidepool-trust-grid" aria-label="Tidepool trust and safety">
+                {tidepoolTrustCards.map((card) => (
+                  <div className="tidepool-trust-card" key={card.title}>
+                    <strong>{card.title}</strong>
+                    <span>{card.detail}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
           tabs={visibleTidepoolFilters.map((filter) => ({ key: filter, label: filter }))}
@@ -41305,15 +41319,15 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <div className="compact-card-header">
             <div>
               <h2>{tidepoolFilter === "Feed" ? "Community feed" : tidepoolFilter}</h2>
-              <p>Helpful local posts, questions, events, and family-safe collector updates.</p>
+              <p>Helpful local posts, questions, events, proof-backed confirmations, and family-safe collector updates.</p>
             </div>
             <span className="status-badge">{visiblePosts} visible</span>
           </div>
 
           <div className="tidepool-support-strip">
             <div>
-              <strong>Need help?</strong>
-              <span>Send app feedback or report a bug. Post safety reports stay in each post&apos;s Safety menu.</span>
+              <strong>Safety and support</strong>
+              <span>Report unsafe posts from each post&apos;s Safety menu. Use feedback for app issues or moderation questions.</span>
             </div>
             <div className="tidepool-support-actions">
               <button type="button" className="secondary-button" onClick={() => openFeedbackDialog("feedback", { page: "Tidepool Community" })}>Send feedback</button>
@@ -41324,8 +41338,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <div className="tidepool-feed-grid">
             {filteredTidepoolPosts.length === 0 ? (
               <div className="empty-state tidepool-empty-state">
-                <h3>The Tidepool is quiet.</h3>
-                <p>Start a helpful community post or check back soon.</p>
+                <h3>Community posts and confirmations will appear here.</h3>
+                <p>Start a family-friendly question, local collecting tip, or proof-backed Scout confirmation.</p>
                 <div className="quick-actions">
                   <button type="button" onClick={openTidepoolCreatePostFlow} disabled={!canCreateTidepoolPost}>Start a Post</button>
                   <button type="button" className="secondary-button" onClick={() => setActiveTab("scout")}>View Scout Signals</button>
@@ -41341,14 +41355,18 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               const preview = publicSummary.bodyPreview || "No post body yet.";
               const postCategory = normalizeTidepoolPostCategory(post.postType || post.category);
               const postStatus = normalizeTidepoolPostStatus(post);
-              const sourceBadge = post.sourceType === "mock" || post.sourceType === "demo" ? "Demo" : post.sourceType === "admin" ? "Admin" : "User";
+              const sourceBadge = post.sourceType === "mock" || post.sourceType === "demo" ? "Demo" : post.sourceType === "admin" ? "Admin" : "Member";
               const usernameLabel = publicUsernameLabelFromRecord(post, "community");
               const avatarInitial = usernameLabel.replace(/^@/, "").slice(0, 1).toUpperCase() || "C";
               const trustBadges = trustBadgesForPost(post);
+              if (post.photoUrl) trustBadges.push("Proof attached");
+              if (post.commentCount > 0) trustBadges.push("Community confirmed");
               const currentUserId = currentUserProfile.userId || "local-beta";
               const canHidePost = post.userId === currentUserId || adminToolsVisible;
               const showStatusToViewer = adminToolsVisible || post.userId === currentUserId || postStatus !== "Published";
               const safePostDetailsId = `tidepool-post-details-${post.postId}`;
+              const proofLabel = post.photoUrl ? "Proof attached" : "Proof can be added";
+              const confirmationLabel = post.commentCount > 0 ? `${post.commentCount} report confirmation${post.commentCount === 1 ? "" : "s"}` : "Open for helpful replies";
               const openPostDetails = () => {
                 const details = document.getElementById(safePostDetailsId);
                 if (details) details.open = true;
@@ -41402,6 +41420,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     {showStatusToViewer && postStatus === "Pending Review" ? (
                       <p className="compact-subtitle">Pending review: admins will check it before it appears publicly.</p>
                     ) : null}
+                    <div className="tidepool-proof-row" aria-label="Post trust details">
+                      <span>{proofLabel}</span>
+                      <span>{confirmationLabel}</span>
+                      <span>No private contact info</span>
+                    </div>
                     {post.photoUrl ? <img className="tidepool-post-image" src={post.photoUrl} alt="" /> : null}
                   </div>
                   <div className="tidepool-post-counts">
