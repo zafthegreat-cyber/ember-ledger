@@ -645,6 +645,8 @@
 
 .app-scout .scout-watch-picker-search {
   margin: 10px 0;
+  min-height: 68px;
+  align-content: start;
 }
 
 .app-scout .scout-watch-picker-context {
@@ -1117,6 +1119,10 @@
   .app-scout .scout-watch-picker-sheet {
     max-width: calc(100vw - 12px);
     max-height: calc(100dvh - 24px);
+  }
+
+  .app-scout .scout-watch-picker-context {
+    margin-top: 72px;
   }
 
   .app-scout .scout-report-compact-card {

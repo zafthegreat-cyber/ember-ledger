@@ -43828,7 +43828,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </div>
               <label className="scout-store-list-search scout-watch-picker-search">
                 <span>Search stores</span>
-                <input value={watchStorePickerState.query} onChange={(event) => setWatchStorePickerState((current) => ({ ...current, query: event.target.value }))} placeholder="Search store, city, ZIP, nickname, or retailer" autoFocus />
+                <input value={watchStorePickerState.query} onChange={(event) => setWatchStorePickerState((current) => ({ ...current, query: event.target.value }))} placeholder="Search store, city, ZIP, or nickname" autoFocus />
               </label>
               <div className="scout-watch-picker-context">
                 <strong>{scoutWatchSlotSummary(watchedStoreRows.length)}</strong>
@@ -46079,7 +46079,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               ) : (
                 <>
                   <div className="add-item-search-card">
-                    <Field label="Search product, card, UPC, or set">
+                    <Field label="Search product, set, UPC, or SKU">
                       <LazySmartCatalogSearchBox
                         value={multiDestinationCatalogQuery}
                         onChange={(value) => {
@@ -46093,12 +46093,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                         mapRow={mapCatalog}
                         productGroup="All"
                         dataFilter="All"
-                        placeholder="Search Pokemon product, set, UPC, or card name"
+                        placeholder="Search product, set, UPC, or SKU"
                         maxSuggestions={8}
                         inputClassName="add-item-search-input"
                         localCatalogProducts={catalogProducts}
                         autoFocus
-                        inputLabel="Search Pokemon product, set, UPC, or card name"
+                        inputLabel="Search product, set, UPC, or SKU"
                         inlineResults
                         emptyMessage="No Market Watch match found. Try fewer words, a UPC/SKU, or add it manually."
                         renderEmptyActions={() => (
