@@ -5086,6 +5086,7 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showTopbarActions, setShowTopbarActions] = useState(true);
   const [showFullTopbar, setShowFullTopbar] = useState(true);
+  const [showMobileQuickAddFab, setShowMobileQuickAddFab] = useState(true);
   const [searchExpanded, setSearchExpanded] = useState(false);
   const [quickAddMenuOpen, setQuickAddMenuOpen] = useState(false);
   const [quickAddWizard, setQuickAddWizard] = useState(() => createQuickAddWizardState());
@@ -10359,11 +10360,19 @@ export default function App() {
 
   useEffect(() => {
     let frameId = 0;
+    let settleTimer = 0;
     const lastScrollY = { current: window.scrollY || 0 };
     const downDistance = { current: 0 };
     const upDistance = { current: 0 };
+    const setFabVisible = (visible) => {
+      setShowMobileQuickAddFab((current) => (current === visible ? current : visible));
+    };
 
     function handleScroll() {
+      if (settleTimer) window.clearTimeout(settleTimer);
+      settleTimer = window.setTimeout(() => {
+        setFabVisible(true);
+      }, 520);
       if (frameId) return;
 
       frameId = window.requestAnimationFrame(() => {
@@ -10373,6 +10382,7 @@ export default function App() {
         if (currentScrollY <= 24) {
           setShowTopbarActions(true);
           setShowFullTopbar(true);
+          setFabVisible(true);
           downDistance.current = 0;
           upDistance.current = 0;
         } else if (Math.abs(delta) >= 5) {
@@ -10382,6 +10392,7 @@ export default function App() {
             upDistance.current = 0;
             if (currentScrollY > 96 && downDistance.current >= 88) {
               setShowFullTopbar(false);
+              setFabVisible(false);
               downDistance.current = 0;
             }
           } else {
@@ -10389,6 +10400,7 @@ export default function App() {
             downDistance.current = 0;
             if (currentScrollY <= 96 || upDistance.current >= 76) {
               setShowFullTopbar(true);
+              setFabVisible(true);
               upDistance.current = 0;
             }
           }
@@ -10404,6 +10416,7 @@ export default function App() {
     return () => {
       window.removeEventListener("scroll", handleScroll);
       if (frameId) window.cancelAnimationFrame(frameId);
+      if (settleTimer) window.clearTimeout(settleTimer);
     };
   }, []);
 
@@ -48552,6 +48565,200 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       },
     ].filter((card) => card.visible);
     const hearthAdminShortcutVisible = Boolean(adminViewingAsAdmin || adminEditModeActive);
+    const commandAssistMessages = adminToolsVisible ? suggestions.filter(isEmberAssistSuggestion) : [];
+    const commandShopRows = adminToolsVisible
+      ? buildStoreMapRows().filter((row) => storeLooksLikeCommunityShop(row) || shopReviewBadges(row.store).length)
+      : [];
+    const commandSummary = adminToolsVisible
+      ? buildAdminCommandCenterSummary({
+          scoutReports: scoutReportRows,
+          communityGuesses: scoutGuessRows,
+          assistMessages: commandAssistMessages,
+          stores: commandShopRows.map((row) => row.store),
+          tidepoolPosts,
+          feedback: betaReadinessData.betaFeedback || [],
+          errors: betaReadinessData.appErrorLogs || [],
+        })
+      : null;
+    const commandCatalogIssueCount = adminToolsVisible
+      ? suggestions.filter((suggestion) => ["Catalog Suggestions", "SKU / UPC Suggestions", "Store Suggestions"].includes(REVIEW_SECTION_LABELS[getSuggestionReviewSection(suggestion)])).length
+      : 0;
+    const openCommandQueue = (filter = "Trust Command Center") => {
+      setAdminReviewFilter(filter);
+      setActiveTab("adminReview");
+    };
+    const commandPriorityCards = [
+      {
+        key: "scout-reports",
+        title: "Scout Reports",
+        count: scoutNeedsReviewReports.length,
+        empty: "No urgent review items",
+        detail: "Reports that need moderation before they influence trust signals.",
+        filter: "Scout Report Review",
+        icon: "scout",
+        tone: "scout",
+      },
+      {
+        key: "spark-requests",
+        title: "Spark Requests",
+        count: pendingKidsRequests,
+        empty: "No pending requests",
+        detail: "Family and Spark requests waiting for safe review.",
+        filter: "Kids Program Applications",
+        icon: "spark",
+        tone: "spark",
+      },
+      {
+        key: "catalog-issues",
+        title: "Catalog Issues",
+        count: commandCatalogIssueCount,
+        empty: "All clear for now",
+        detail: "Missing products, UPC/SKU fixes, and store corrections.",
+        filter: "Catalog Suggestions",
+        icon: "search",
+        tone: "vault",
+      },
+      {
+        key: "shop-approvals",
+        title: "Shop Approvals",
+        count: commandSummary?.shopsNeedingReview || 0,
+        empty: "All clear for now",
+        detail: "Family-friendly shop badges and community-safe partner metadata.",
+        filter: "Family-Friendly Shop Review",
+        icon: "settings",
+        tone: "admin",
+      },
+    ];
+    const commandQueueRows = [...commandPriorityCards].sort((a, b) => b.count - a.count || a.title.localeCompare(b.title));
+    const commandQuickActions = [
+      { key: "admin-dashboard", label: "Admin Dashboard", helper: "Open the protected command center.", icon: "settings", filter: "Trust Command Center" },
+      { key: "scout-queue", label: "Scout Reports", helper: "Review current report safety.", icon: "scout", filter: "Scout Report Review" },
+      { key: "spark-queue", label: "Spark Requests", helper: "Review family requests.", icon: "spark", filter: "Kids Program Applications" },
+      { key: "catalog-queue", label: "Catalog Issues", helper: "Review products and UPC/SKU fixes.", icon: "search", filter: "Catalog Suggestions" },
+    ];
+    if (adminToolsVisible) {
+      const openItems = commandPriorityCards.reduce((sum, card) => sum + Number(card.count || 0), 0);
+      return (
+        <div className="dashboard-layout home-clean-layout hearth-command-layout hearth-command-view command-hearth">
+          <section className="panel command-hearth-header" aria-label="Command Hearth status">
+            <div className="command-hearth-title-block">
+              <span className="hearth-logo-mark command-hearth-mark" aria-hidden="true">
+                <img src={BRAND_ASSETS.mark} alt="" />
+              </span>
+              <div>
+                <p className="section-kicker">Hearth</p>
+                <h1>Command Hearth</h1>
+                <strong>Good afternoon, Ember</strong>
+                <p>Here&apos;s what needs your attention today.</p>
+              </div>
+            </div>
+            <div className="command-hearth-status-stack" aria-label="Command summary">
+              <span className={openItems ? "status-badge warning" : "status-badge success"}>
+                {openItems ? `${openItems} open` : "All clear for now"}
+              </span>
+              <button type="button" className="secondary-button" onClick={() => openCommandQueue("Trust Command Center")}>Open Admin</button>
+            </div>
+          </section>
+
+          <section className="command-hearth-main-grid" aria-label="Command Hearth overview">
+            <div className="command-hearth-primary-column">
+              <section className="panel command-hearth-priority-panel" aria-label="Priority cards">
+                <div className="compact-card-header">
+                  <div>
+                    <h2>Priority Cards</h2>
+                    <p>Protected admin queues only. Normal users never see this view.</p>
+                  </div>
+                </div>
+                <div className="command-hearth-priority-grid">
+                  {commandPriorityCards.map((card) => (
+                    <button
+                      type="button"
+                      className={`command-hearth-card hearth-accent-${card.tone} ${card.count ? "needs-review" : "is-clear"}`}
+                      key={card.key}
+                      onClick={() => openCommandQueue(card.filter)}
+                    >
+                      <span className="command-hearth-card-icon" aria-hidden="true"><AppNavIcon kind={card.icon} /></span>
+                      <span>
+                        <small>{card.title}</small>
+                        <strong>{card.count ? card.count : "Clear"}</strong>
+                        <em>{card.count ? card.detail : card.empty}</em>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              <section className="panel command-hearth-queue-panel" aria-label="Priority Queue">
+                <div className="compact-card-header">
+                  <div>
+                    <h2>Priority Queue</h2>
+                    <p>Start with items that affect trust, family safety, or catalog quality.</p>
+                  </div>
+                </div>
+                <div className="command-hearth-queue-list">
+                  {commandQueueRows.map((row) => (
+                    <button type="button" className="command-hearth-queue-row" key={row.key} onClick={() => openCommandQueue(row.filter)}>
+                      <span>
+                        <strong>{row.title}</strong>
+                        <small>{row.count ? row.detail : row.empty}</small>
+                      </span>
+                      <b>{row.count ? row.count : "Clear"}</b>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            </div>
+
+            <aside className="command-hearth-side-column" aria-label="Command Hearth actions">
+              <section className="panel command-hearth-actions-panel">
+                <div className="compact-card-header">
+                  <div>
+                    <h2>Admin Quick Actions</h2>
+                    <p>Protected tools for owner/admin review.</p>
+                  </div>
+                </div>
+                <div className="command-hearth-action-grid">
+                  {commandQuickActions.map((action) => (
+                    <button type="button" className="command-hearth-action" key={action.key} onClick={() => openCommandQueue(action.filter)}>
+                      <span aria-hidden="true"><AppNavIcon kind={action.icon} /></span>
+                      <span>
+                        <strong>{action.label}</strong>
+                        <small>{action.helper}</small>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              <section className="panel command-hearth-recent-panel" aria-label="Recent Activity">
+                <div className="compact-card-header">
+                  <div>
+                    <h2>Recent Activity</h2>
+                    <p>Latest app movement across protected queues.</p>
+                  </div>
+                </div>
+                <div className="home-list compact-home-list hearth-recent-list">
+                  {recentRows.length ? recentRows.map((activity) => (
+                    <button type="button" className="home-list-row hearth-recent-row" key={activity.id} onClick={activity.action}>
+                      <span>
+                        <strong>{activity.title}</strong>
+                        <small>{activity.label} | {activity.detail}</small>
+                      </span>
+                      <b>Open</b>
+                    </button>
+                  )) : (
+                    <div className="small-empty-state hearth-empty-state">
+                      <strong>No recent activity yet.</strong>
+                      <p>No urgent review items are moving right now.</p>
+                    </div>
+                  )}
+                </div>
+              </section>
+            </aside>
+          </section>
+        </div>
+      );
+    }
     return (
       <div className={`dashboard-layout home-clean-layout hearth-command-layout hearth-command-view hearth-northstar hearth-mode-${hearthMode}`}>
         <div className="hearth-primary-column">
@@ -60244,14 +60451,13 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
       {renderEmberAssist()}
       <button
         type="button"
-        className="mobile-quick-add-fab"
+        className={`mobile-quick-add-fab ${showMobileQuickAddFab ? "is-visible" : "is-scroll-hidden"}`}
         aria-label="Open Quick Add command center"
         onClick={() => openAddActionSheet("mobile-fab")}
       >
         <span className="mobile-tab-icon" aria-hidden="true">
           <AppNavIcon kind="plus" />
         </span>
-        <b>Add</b>
       </button>
 
       <nav className="mobile-bottom-nav" aria-label="Mobile main navigation">
