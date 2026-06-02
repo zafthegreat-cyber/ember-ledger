@@ -71820,3 +71820,228 @@ html body .app .ember-assist-shell.is-open {
     padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)) !important;
   }
 }
+
+/* Page accent color system: one Ember & Tide base, recognizable page signals. */
+.app,
+.app-command-shell,
+.app-shell-dark {
+  --et-page-accent-rgb: var(--et-shell-page-rgb, 148, 163, 184);
+  --et-page-accent-2-rgb: 255, 179, 71;
+  --et-page-accent: rgb(var(--et-page-accent-rgb));
+  --et-page-accent-2: rgb(var(--et-page-accent-2-rgb));
+  --et-page-accent-border: rgba(var(--et-page-accent-rgb), 0.24);
+  --et-page-accent-soft: rgba(var(--et-page-accent-rgb), 0.13);
+  --et-page-accent-glow: rgba(var(--et-page-accent-rgb), 0.18);
+}
+
+.app-home,
+.app-dashboard,
+.app-today {
+  --et-page-accent-rgb: 255, 151, 41;
+  --et-page-accent-2-rgb: 255, 211, 111;
+  --et-shell-page-rgb: var(--et-page-accent-rgb);
+}
+
+.app-scout {
+  --et-page-accent-rgb: 34, 199, 255;
+  --et-page-accent-2-rgb: 255, 184, 77;
+  --et-shell-page-rgb: var(--et-page-accent-rgb);
+}
+
+.app-vault {
+  --et-page-accent-rgb: 181, 107, 255;
+  --et-page-accent-2-rgb: 88, 144, 255;
+  --et-shell-page-rgb: var(--et-page-accent-rgb);
+}
+
+.app-market,
+.app-tidetradr,
+.app-catalog {
+  --et-page-accent-rgb: 20, 216, 204;
+  --et-page-accent-2-rgb: 125, 249, 255;
+  --et-shell-page-rgb: var(--et-page-accent-rgb);
+}
+
+.app-forge,
+.app-inventory,
+.app-sales,
+.app-expenses,
+.app-reports,
+.app-mileage {
+  --et-page-accent-rgb: 231, 116, 74;
+  --et-page-accent-2-rgb: 255, 175, 102;
+  --et-shell-page-rgb: var(--et-page-accent-rgb);
+}
+
+.app-tidepool {
+  --et-page-accent-rgb: 61, 214, 255;
+  --et-page-accent-2-rgb: 45, 212, 191;
+  --et-shell-page-rgb: var(--et-page-accent-rgb);
+}
+
+.app-kidsprogram {
+  --et-page-accent-rgb: 255, 211, 77;
+  --et-page-accent-2-rgb: 232, 121, 249;
+  --et-shell-page-rgb: var(--et-page-accent-rgb);
+}
+
+.ember-assist-shell,
+.app-emberassist {
+  --et-page-accent-rgb: 168, 85, 247;
+  --et-page-accent-2-rgb: 216, 180, 254;
+}
+
+.app-adminreview,
+.app-moderator {
+  --et-page-accent-rgb: 190, 38, 38;
+  --et-page-accent-2-rgb: 255, 211, 77;
+  --et-shell-page-rgb: var(--et-page-accent-rgb);
+}
+
+.app-settings,
+.app-account,
+.app-profile,
+.app-membership,
+.app-tier,
+.app-menu,
+.app-comingsoon,
+.app-help,
+.app-collections,
+.app-command-shell:has(.settings-page-layout),
+.app-command-shell:has(.settings-page-header),
+.app-command-shell:has(.membership-foundation-page),
+.app-command-shell:has(.profile-utility-page),
+.app-command-shell:has(.account-utility-page) {
+  --et-page-accent-rgb: 148, 163, 184;
+  --et-page-accent-2-rgb: 34, 211, 238;
+  --et-shell-page-rgb: var(--et-page-accent-rgb);
+}
+
+.app-command-shell :where(.standard-page-header, .app-header-card, .command-screen-hero),
+.app-shell-dark :where(.standard-page-header, .app-header-card, .command-screen-hero) {
+  border-color: var(--et-page-accent-border) !important;
+  background:
+    linear-gradient(90deg, rgba(var(--et-page-accent-rgb), 0.58), rgba(var(--et-page-accent-2-rgb), 0.28) 34%, transparent 74%) 0 0 / 100% 2px no-repeat,
+    radial-gradient(circle at 8% 0%, rgba(var(--et-page-accent-rgb), 0.12), transparent 14rem),
+    radial-gradient(circle at 100% 8%, rgba(var(--et-page-accent-2-rgb), 0.08), transparent 14rem),
+    linear-gradient(145deg, rgba(9, 20, 38, 0.92), rgba(3, 9, 21, 0.96)) !important;
+  box-shadow:
+    0 18px 44px rgba(0, 0, 0, 0.22),
+    0 0 34px rgba(var(--et-page-accent-rgb), 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.055) !important;
+}
+
+.app-command-shell :where(.standard-page-header-label, .section-kicker, .eyebrow),
+.app-shell-dark :where(.standard-page-header-label, .section-kicker, .eyebrow) {
+  color: rgb(var(--et-page-accent-rgb)) !important;
+  text-shadow: 0 0 18px rgba(var(--et-page-accent-rgb), 0.16);
+}
+
+.app-command-shell :where(.panel, .card, .compact-card, .drawer-info-card, .empty-state, .small-empty-state, .section-card),
+.app-shell-dark :where(.panel, .card, .compact-card, .drawer-info-card, .empty-state, .small-empty-state, .section-card) {
+  border-color: rgba(var(--et-page-accent-rgb), 0.14) !important;
+}
+
+.app-command-shell :where(.panel, .card, .compact-card, .drawer-info-card, .section-card):hover,
+.app-shell-dark :where(.panel, .card, .compact-card, .drawer-info-card, .section-card):hover {
+  border-color: rgba(var(--et-page-accent-rgb), 0.2) !important;
+}
+
+.app-command-shell :where(.primary-button, .standard-page-header-actions button:not(.secondary-button):not(.ghost-button):not(.delete-button), .quick-actions button:not(.secondary-button):not(.ghost-button):not(.delete-button):first-child),
+.app-shell-dark :where(.primary-button, .standard-page-header-actions button:not(.secondary-button):not(.ghost-button):not(.delete-button), .quick-actions button:not(.secondary-button):not(.ghost-button):not(.delete-button):first-child) {
+  border-color: rgba(var(--et-page-accent-rgb), 0.5) !important;
+  background:
+    linear-gradient(135deg, rgba(var(--et-page-accent-rgb), 0.9), rgba(var(--et-page-accent-2-rgb), 0.74)) !important;
+  color: #07111f !important;
+  box-shadow:
+    0 14px 30px rgba(var(--et-page-accent-rgb), 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28) !important;
+}
+
+.app-command-shell :where(.standard-page-header-tabs button.active, .standard-page-header-tabs button[aria-selected="true"], .segmented-control button.active, .vault-view-strip button.active, .forge-section-tabs button.is-active, .market-tabs button.active, .filter-chip-row button.active, .chip-row button.active),
+.app-shell-dark :where(.standard-page-header-tabs button.active, .standard-page-header-tabs button[aria-selected="true"], .segmented-control button.active, .vault-view-strip button.active, .forge-section-tabs button.is-active, .market-tabs button.active, .filter-chip-row button.active, .chip-row button.active) {
+  border-color: rgba(var(--et-page-accent-rgb), 0.46) !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(var(--et-page-accent-rgb), 0.22), transparent 4rem),
+    rgba(var(--et-page-accent-rgb), 0.13) !important;
+  color: #fff7ed !important;
+  box-shadow: 0 0 22px rgba(var(--et-page-accent-rgb), 0.14) !important;
+}
+
+.app-command-shell :where(.status-badge, .trust-badge, .source-badge, .mini-badge, .market-status-pill, .price-badge):not(.danger):not(.warning):not(.success):not(.verified):not(.approved):not(.denied):not(.error):not(.sold):not(.in-stock),
+.app-shell-dark :where(.status-badge, .trust-badge, .source-badge, .mini-badge, .market-status-pill, .price-badge):not(.danger):not(.warning):not(.success):not(.verified):not(.approved):not(.denied):not(.error):not(.sold):not(.in-stock) {
+  border-color: rgba(var(--et-page-accent-rgb), 0.24) !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(var(--et-page-accent-rgb), 0.13), transparent 4rem),
+    rgba(5, 15, 30, 0.72) !important;
+  color: rgba(248, 251, 255, 0.86) !important;
+}
+
+.app-command-shell .web-command-nav-item,
+.app-command-shell .web-command-more-item,
+.app-command-shell .web-command-tool {
+  --nav-rgb: 148, 163, 184;
+}
+
+.app-command-shell .web-command-nav-item.active,
+.app-command-shell .web-command-more-item.active,
+.app-command-shell .web-command-tool.active {
+  border-color: rgba(var(--et-page-accent-rgb), 0.46) !important;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(var(--et-page-accent-rgb), 0.22), transparent 7rem),
+    linear-gradient(135deg, rgba(var(--et-page-accent-rgb), 0.13), rgba(var(--et-page-accent-2-rgb), 0.08)) !important;
+  box-shadow:
+    0 0 24px rgba(var(--et-page-accent-rgb), 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+.app-command-shell :where(.web-command-nav-item.active, .web-command-more-item.active, .web-command-tool.active) .web-command-nav-icon {
+  color: rgb(var(--et-page-accent-rgb)) !important;
+  border-color: rgba(var(--et-page-accent-rgb), 0.34) !important;
+  background: rgba(var(--et-page-accent-rgb), 0.12) !important;
+  box-shadow: 0 0 18px rgba(var(--et-page-accent-rgb), 0.14) !important;
+}
+
+@media (max-width: 780px) {
+  .mobile-bottom-nav button[data-nav-key="home"] {
+    --nav-rgb: 255, 151, 41;
+    --nav-rgb-2: 255, 211, 111;
+  }
+
+  .mobile-bottom-nav button[data-nav-key="scout"] {
+    --nav-rgb: 34, 199, 255;
+    --nav-rgb-2: 255, 184, 77;
+  }
+
+  .mobile-bottom-nav button[data-nav-key="vault"] {
+    --nav-rgb: 181, 107, 255;
+    --nav-rgb-2: 88, 144, 255;
+  }
+
+  .mobile-bottom-nav button[data-nav-key="tideTradr"] {
+    --nav-rgb: 20, 216, 204;
+    --nav-rgb-2: 125, 249, 255;
+  }
+
+  .mobile-bottom-nav button[data-nav-key="menu"] {
+    --nav-rgb: 148, 163, 184;
+    --nav-rgb-2: 34, 211, 238;
+  }
+
+  .mobile-bottom-nav button.active,
+  .mobile-bottom-nav button[aria-current="page"] {
+    color: #fff9ec !important;
+    border-color: rgba(var(--nav-rgb), 0.5) !important;
+    background:
+      radial-gradient(circle at 50% 0%, rgba(var(--nav-rgb), 0.24), transparent 3.25rem),
+      linear-gradient(180deg, rgba(var(--nav-rgb), 0.14), rgba(var(--nav-rgb-2), 0.06)) !important;
+    box-shadow:
+      0 0 20px rgba(var(--nav-rgb), 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.09) !important;
+  }
+
+  .mobile-bottom-nav button.active .mobile-tab-icon,
+  .mobile-bottom-nav button[aria-current="page"] .mobile-tab-icon {
+    filter: drop-shadow(0 0 10px rgba(var(--nav-rgb), 0.32));
+  }
+}
