@@ -10489,7 +10489,7 @@ export default function App() {
       if (settleTimer) window.clearTimeout(settleTimer);
       settleTimer = window.setTimeout(() => {
         setFabVisible(true);
-      }, 520);
+      }, 720);
       if (frameId) return;
 
       frameId = window.requestAnimationFrame(() => {
@@ -10507,15 +10507,17 @@ export default function App() {
           if (delta > 0) {
             downDistance.current += delta;
             upDistance.current = 0;
-            if (currentScrollY > 96 && downDistance.current >= 88) {
-              setShowFullTopbar(false);
+            if (currentScrollY > 36 && downDistance.current >= 18) {
               setFabVisible(false);
+            }
+            if (currentScrollY > 96 && downDistance.current >= 72) {
+              setShowFullTopbar(false);
               downDistance.current = 0;
             }
           } else {
             upDistance.current += Math.abs(delta);
             downDistance.current = 0;
-            if (currentScrollY <= 96 || upDistance.current >= 76) {
+            if (currentScrollY <= 96 || upDistance.current >= 36) {
               setShowFullTopbar(true);
               setFabVisible(true);
               upDistance.current = 0;
