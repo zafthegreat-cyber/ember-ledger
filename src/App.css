@@ -72288,3 +72288,385 @@ html body .app .ember-assist-shell.is-open {
     display: none !important;
   }
 }
+
+/* Hearth final layout polish: compact, useful home base without changing data or routing. */
+.app-home .hearth-command-view.hearth-northstar {
+  gap: clamp(12px, 2vw, 22px) !important;
+}
+
+.app-home .hearth-northstar .hearth-primary-column,
+.app-home .hearth-northstar .hearth-side-column {
+  gap: clamp(10px, 1.6vw, 16px) !important;
+}
+
+.app-home .hearth-snapshot-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.app-home .hearth-snapshot-pill {
+  display: grid;
+  justify-items: start;
+  justify-content: stretch !important;
+  align-content: center;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+  min-height: 86px;
+  padding: 12px 13px;
+  border: 1px solid rgba(var(--et-page-accent-rgb, 255, 151, 41), 0.2);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(var(--et-page-accent-rgb, 255, 151, 41), 0.16), transparent 6rem),
+    linear-gradient(145deg, rgba(17, 25, 51, 0.9), rgba(6, 13, 27, 0.82));
+  color: #fff7e8;
+  text-align: left !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.app-home .hearth-snapshot-pill:hover,
+.app-home .hearth-snapshot-pill:focus-visible {
+  border-color: rgba(var(--et-page-accent-rgb, 255, 151, 41), 0.42);
+  box-shadow:
+    0 0 22px rgba(var(--et-page-accent-rgb, 255, 151, 41), 0.13),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transform: translateY(-1px);
+}
+
+.app-home .hearth-snapshot-pill span {
+  color: rgba(255, 239, 215, 0.66);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.app-home .hearth-snapshot-pill strong {
+  min-width: 0;
+  color: #fffaf1;
+  font-size: clamp(0.98rem, 1.2vw, 1.18rem);
+  line-height: 1.08;
+  overflow-wrap: anywhere;
+}
+
+.app-home .hearth-snapshot-pill small {
+  min-width: 0;
+  color: rgba(229, 241, 255, 0.72);
+  font-size: 0.75rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.app-home .hearth-snapshot-strip .hearth-snapshot-pill:nth-child(3):last-child {
+  grid-column: 1 / -1;
+}
+
+.app-home .hearth-today-sparks-panel {
+  padding: clamp(13px, 1.6vw, 18px) !important;
+  border-radius: 22px !important;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(255, 179, 64, 0.14), transparent 12rem),
+    linear-gradient(145deg, rgba(18, 20, 38, 0.96), rgba(8, 16, 34, 0.9)) !important;
+}
+
+.app-home .hearth-sparks-heading {
+  align-items: start !important;
+  margin-bottom: 10px !important;
+}
+
+.app-home .hearth-sparks-heading h2,
+.app-home .hearth-quick-actions-heading h2 {
+  margin: 0;
+  color: #fff8ec;
+  font-size: clamp(1rem, 1.3vw, 1.22rem);
+  line-height: 1.1;
+}
+
+.app-home .hearth-sparks-heading p,
+.app-home .hearth-quick-actions-heading p {
+  margin: 4px 0 0;
+  color: rgba(232, 246, 255, 0.7);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.app-home .hearth-spark-mission-list {
+  gap: 8px !important;
+}
+
+.app-home .hearth-spark-mission-card {
+  grid-template-columns: 36px minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 9px !important;
+  min-height: 70px !important;
+  padding: 9px 10px !important;
+  border-radius: 16px !important;
+}
+
+.app-home .hearth-spark-mission-icon {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 13px !important;
+}
+
+.app-home .hearth-spark-mission-copy {
+  gap: 3px !important;
+  min-width: 0;
+}
+
+.app-home .hearth-spark-mission-copy h3 {
+  font-size: 0.88rem !important;
+  line-height: 1.15 !important;
+}
+
+.app-home .hearth-spark-mission-copy small {
+  color: rgba(232, 246, 255, 0.68) !important;
+  font-size: 0.72rem !important;
+  line-height: 1.25 !important;
+}
+
+.app-home .hearth-spark-mission-copy p {
+  gap: 7px !important;
+  color: rgba(255, 239, 215, 0.72) !important;
+  font-size: 0.7rem !important;
+  line-height: 1.2 !important;
+}
+
+.app-home .hearth-spark-reward {
+  color: #ffdb7a !important;
+  font-size: 0.7rem !important;
+}
+
+.app-home .hearth-spark-mission-actions {
+  align-items: end !important;
+  gap: 6px !important;
+}
+
+.app-home .hearth-spark-action-button {
+  min-height: 32px !important;
+  padding: 0 12px !important;
+  border-radius: 999px !important;
+  font-size: 0.74rem !important;
+}
+
+.app-home .hearth-spark-dismiss {
+  width: 30px !important;
+  min-width: 30px !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  border-radius: 999px !important;
+}
+
+.app-home .hearth-sparks-footnote {
+  margin: 8px 0 0 !important;
+  color: rgba(229, 241, 255, 0.62) !important;
+  font-size: 0.7rem !important;
+  line-height: 1.3 !important;
+}
+
+.app-home .hearth-best-action-card {
+  min-height: 0 !important;
+}
+
+.app-home .hearth-quick-actions-panel {
+  display: grid;
+  gap: 10px;
+  padding: clamp(12px, 1.6vw, 16px) !important;
+}
+
+.app-home .hearth-quick-actions-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.app-home .hearth-quick-actions-heading span {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  padding: 5px 8px;
+  border: 1px solid rgba(255, 197, 97, 0.18);
+  border-radius: 999px;
+  color: rgba(255, 229, 175, 0.78);
+  background: rgba(255, 179, 64, 0.06);
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
+.app-home .hearth-quick-action-grid {
+  gap: 8px !important;
+}
+
+.app-home .hearth-quick-action {
+  grid-template-columns: 34px minmax(0, 1fr) !important;
+  justify-items: start !important;
+  min-height: 64px !important;
+  padding: 10px !important;
+  text-align: left !important;
+}
+
+.app-home .hearth-quick-action-icon {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 13px !important;
+}
+
+.app-home .hearth-quick-action strong {
+  font-size: 0.84rem !important;
+  line-height: 1.12 !important;
+}
+
+.app-home .hearth-quick-action small {
+  display: block !important;
+  margin-top: 3px;
+  color: rgba(232, 246, 255, 0.66) !important;
+  font-size: 0.69rem !important;
+  line-height: 1.25 !important;
+}
+
+.app-home .hearth-feature-card,
+.app-home .hearth-recent-panel {
+  border-radius: 20px !important;
+}
+
+@media (min-width: 1180px) {
+  .app-home .hearth-command-view.hearth-northstar {
+    grid-template-columns: minmax(0, 1.28fr) minmax(300px, 0.72fr) !important;
+  }
+
+  .app-home .command-hearth-main-grid {
+    grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.8fr) !important;
+  }
+}
+
+@media (max-width: 780px) {
+  .app-home .dashboard-layout.hearth-command-view.hearth-northstar,
+  .app-home .dashboard-layout.command-hearth {
+    padding-bottom: max(166px, calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 104px)) !important;
+  }
+
+  .app-home .hearth-northstar-header {
+    gap: 9px !important;
+    padding: 12px !important;
+    border-radius: 20px !important;
+  }
+
+  .app-home .hearth-greeting-block {
+    gap: 9px !important;
+  }
+
+  .app-home .hearth-greeting-block h1 {
+    font-size: 1.08rem !important;
+    line-height: 1.12 !important;
+  }
+
+  .app-home .hearth-greeting-block p {
+    font-size: 0.78rem !important;
+    line-height: 1.33 !important;
+  }
+
+  .app-home .hearth-header-actions {
+    gap: 6px !important;
+  }
+
+  .app-home .hearth-points-badge {
+    padding: 6px 8px !important;
+  }
+
+  .app-home .hearth-snapshot-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .app-home .hearth-snapshot-pill {
+    min-height: 72px;
+    padding: 9px 10px;
+    border-radius: 16px;
+  }
+
+  .app-home .hearth-snapshot-pill strong {
+    font-size: 0.9rem;
+  }
+
+  .app-home .hearth-snapshot-pill small {
+    font-size: 0.68rem;
+  }
+
+  .app-home .hearth-spark-mission-card {
+    grid-template-columns: 32px minmax(0, 1fr) auto !important;
+    min-height: 62px !important;
+    padding: 8px !important;
+  }
+
+  .app-home .hearth-spark-mission-icon {
+    width: 30px !important;
+    height: 30px !important;
+  }
+
+  .app-home .hearth-spark-mission-copy small {
+    display: none !important;
+  }
+
+  .app-home .hearth-spark-mission-copy p {
+    flex-wrap: wrap !important;
+  }
+
+  .app-home .hearth-sparks-footnote {
+    display: none !important;
+  }
+
+  .app-home .hearth-spark-action-button {
+    min-height: 30px !important;
+    padding: 0 10px !important;
+  }
+
+  .app-home .hearth-spark-dismiss {
+    width: 28px !important;
+    min-width: 28px !important;
+    height: 28px !important;
+    min-height: 28px !important;
+  }
+
+  .app-home .hearth-best-action-card {
+    padding: 14px !important;
+    border-radius: 22px !important;
+  }
+
+  .app-home .hearth-hero-stat-row {
+    gap: 6px !important;
+  }
+
+  .app-home .hearth-quick-actions-heading {
+    align-items: center;
+  }
+
+  .app-home .hearth-quick-actions-heading span {
+    display: none;
+  }
+
+  .app-home .hearth-quick-action-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .app-home .hearth-quick-action {
+    min-height: 58px !important;
+    padding: 9px !important;
+  }
+
+  .app-home .hearth-quick-action small {
+    display: none !important;
+  }
+
+  .app-home .hearth-feature-list {
+    gap: 8px !important;
+  }
+
+  .app-home .hearth-feature-card {
+    padding: 10px !important;
+  }
+
+  .app-home .hearth-recent-panel {
+    margin-bottom: 12px !important;
+  }
+}

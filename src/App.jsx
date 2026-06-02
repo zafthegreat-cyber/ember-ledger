@@ -48683,6 +48683,40 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         visible: hearthSellerRelevant,
       },
     ].filter((card) => card.visible);
+    const hearthSnapshotCards = [
+      {
+        key: "snapshot-vault",
+        label: "Vault",
+        value: activeVaultItems.length ? `${activeVaultItems.length} item${activeVaultItems.length === 1 ? "" : "s"}` : "Start Vault",
+        detail: vaultValue > 0 ? hearthVaultValueLabel : "Add your first item",
+        accent: "vault",
+        onClick: () => activeVaultItems.length ? setActiveTab("vault") : openQuickAddAction("vaultItem"),
+      },
+      hearthCanUseScout ? {
+        key: "snapshot-scout",
+        label: "Scout",
+        value: latestScoutReport ? "Signal ready" : `${followedStores.length || 0} watched`,
+        detail: latestScoutReport ? latestScoutStoreName : "Current reports only",
+        accent: "scout",
+        onClick: () => setActiveTab("scout"),
+      } : null,
+      {
+        key: "snapshot-market",
+        label: "Market",
+        value: workspaceWatchlist.length ? `${workspaceWatchlist.length} watched` : "Fair value",
+        detail: bestMarketMover ? (bestMarketMover.name || bestMarketMover.productName || "Check watchlist") : "Search before buying",
+        accent: "market",
+        onClick: () => setActiveTab("market"),
+      },
+      hearthSparkRelevant ? {
+        key: "snapshot-spark",
+        label: "Spark",
+        value: kidsApplication ? statusLabel(kidsApplication.status || "pending") : "Family support",
+        detail: kidsApplication ? "Request tracked" : "Kid-safe collecting",
+        accent: "spark",
+        onClick: () => setActiveTab("kidsProgram"),
+      } : null,
+    ].filter(Boolean);
     const hearthAdminShortcutVisible = Boolean(adminViewingAsAdmin || adminEditModeActive);
     const commandAssistMessages = adminToolsVisible ? suggestions.filter(isEmberAssistSuggestion) : [];
     const commandShopRows = adminToolsVisible
@@ -48907,6 +48941,16 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </div>
           </section>
 
+          <section className="hearth-snapshot-strip" aria-label="Hearth snapshot">
+            {hearthSnapshotCards.map((card) => (
+              <button type="button" className={`hearth-snapshot-pill hearth-accent-${card.accent}`} key={card.key} onClick={card.onClick}>
+                <span>{card.label}</span>
+                <strong>{card.value}</strong>
+                <small>{card.detail}</small>
+              </button>
+            ))}
+          </section>
+
           {renderTodaySparksPanel()}
 
           {isOffline ? (
@@ -48949,6 +48993,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </section>
 
           <section className="panel hearth-quick-actions-panel" aria-label="Hearth quick actions">
+            <div className="hearth-quick-actions-heading">
+              <div>
+                <h2>Shortcuts</h2>
+                <p>Fast routes for common collection tasks.</p>
+              </div>
+              <span>Use + for more</span>
+            </div>
             <div className="hearth-quick-action-grid">
               {quickActions.map((action) => (
                 <button
