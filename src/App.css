@@ -71515,3 +71515,308 @@ html body .app .ember-assist-shell.is-open {
     transform: translateX(-50%) translateY(18px) scale(0.88) !important;
   }
 }
+
+/* Mobile complex flows: use page-like sheets for forms while leaving small dialogs alone. */
+@media (max-width: 780px) {
+  .app .flow-modal-backdrop:has(.flow-modal[data-flow="addActionSheet"]),
+  .app .flow-modal-backdrop:has(.flow-modal[data-flow="multiDestinationAdd"]),
+  .app .flow-modal-backdrop:has(.flow-modal[data-flow="scoutSubmit"]),
+  .app .flow-modal-backdrop:has(.flow-modal[data-flow="tradeValue"]),
+  .app .flow-modal-backdrop:has(.flow-modal[data-flow="addInventory"]),
+  .app .flow-modal-backdrop:has(.flow-modal[data-flow="addSale"]),
+  .app .flow-modal-backdrop:has(.flow-modal[data-flow="addExpense"]),
+  .app .flow-modal-backdrop:has(.flow-modal[data-flow="addMileage"]),
+  .app .flow-modal-backdrop:has(.flow-modal[data-flow="forgeImport"]),
+  .app .flow-modal-backdrop:has(.flow-modal[data-flow="batchIntake"]),
+  .app .flow-modal-backdrop:has(.flow-modal[data-flow="vaultCatalogSearch"]),
+  .app .flow-modal-backdrop:has(.flow-modal[data-flow="vaultScan"]),
+  .app .flow-modal-backdrop:has(.flow-modal[data-flow="vaultMoveToForge"]),
+  .app .flow-modal-backdrop:has(.flow-modal[data-flow="createListing"]),
+  .app .flow-modal-backdrop:has(.flow-modal[data-flow="tidepoolCreatePost"]),
+  .app .location-modal-backdrop:has(.receipt-scan-modal),
+  .app .location-modal-backdrop:has(.store-map-detail-sheet),
+  .app-command-shell .flow-modal-backdrop:has(.flow-modal[data-flow="addActionSheet"]),
+  .app-command-shell .flow-modal-backdrop:has(.flow-modal[data-flow="multiDestinationAdd"]),
+  .app-command-shell .flow-modal-backdrop:has(.flow-modal[data-flow="scoutSubmit"]),
+  .app-command-shell .flow-modal-backdrop:has(.flow-modal[data-flow="tradeValue"]),
+  .app-command-shell .flow-modal-backdrop:has(.flow-modal[data-flow="addInventory"]),
+  .app-command-shell .flow-modal-backdrop:has(.flow-modal[data-flow="addSale"]),
+  .app-command-shell .flow-modal-backdrop:has(.flow-modal[data-flow="addExpense"]),
+  .app-command-shell .flow-modal-backdrop:has(.flow-modal[data-flow="addMileage"]),
+  .app-command-shell .flow-modal-backdrop:has(.flow-modal[data-flow="forgeImport"]),
+  .app-command-shell .flow-modal-backdrop:has(.flow-modal[data-flow="batchIntake"]),
+  .app-command-shell .flow-modal-backdrop:has(.flow-modal[data-flow="vaultCatalogSearch"]),
+  .app-command-shell .flow-modal-backdrop:has(.flow-modal[data-flow="vaultScan"]),
+  .app-command-shell .flow-modal-backdrop:has(.flow-modal[data-flow="vaultMoveToForge"]),
+  .app-command-shell .flow-modal-backdrop:has(.flow-modal[data-flow="createListing"]),
+  .app-command-shell .flow-modal-backdrop:has(.flow-modal[data-flow="tidepoolCreatePost"]),
+  .app-command-shell .location-modal-backdrop:has(.receipt-scan-modal),
+  .app-command-shell .location-modal-backdrop:has(.store-map-detail-sheet),
+  .app-shell-dark .flow-modal-backdrop:has(.flow-modal[data-flow="addActionSheet"]),
+  .app-shell-dark .flow-modal-backdrop:has(.flow-modal[data-flow="multiDestinationAdd"]),
+  .app-shell-dark .flow-modal-backdrop:has(.flow-modal[data-flow="scoutSubmit"]),
+  .app-shell-dark .flow-modal-backdrop:has(.flow-modal[data-flow="tradeValue"]),
+  .app-shell-dark .flow-modal-backdrop:has(.flow-modal[data-flow="addInventory"]),
+  .app-shell-dark .flow-modal-backdrop:has(.flow-modal[data-flow="addSale"]),
+  .app-shell-dark .flow-modal-backdrop:has(.flow-modal[data-flow="addExpense"]),
+  .app-shell-dark .flow-modal-backdrop:has(.flow-modal[data-flow="addMileage"]),
+  .app-shell-dark .flow-modal-backdrop:has(.flow-modal[data-flow="forgeImport"]),
+  .app-shell-dark .flow-modal-backdrop:has(.flow-modal[data-flow="batchIntake"]),
+  .app-shell-dark .flow-modal-backdrop:has(.flow-modal[data-flow="vaultCatalogSearch"]),
+  .app-shell-dark .flow-modal-backdrop:has(.flow-modal[data-flow="vaultScan"]),
+  .app-shell-dark .flow-modal-backdrop:has(.flow-modal[data-flow="vaultMoveToForge"]),
+  .app-shell-dark .flow-modal-backdrop:has(.flow-modal[data-flow="createListing"]),
+  .app-shell-dark .flow-modal-backdrop:has(.flow-modal[data-flow="tidepoolCreatePost"]),
+  .app-shell-dark .location-modal-backdrop:has(.receipt-scan-modal),
+  .app-shell-dark .location-modal-backdrop:has(.store-map-detail-sheet) {
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    place-items: stretch !important;
+    padding: 0 !important;
+  }
+
+  .app .flow-modal[data-flow="addActionSheet"],
+  .app .flow-modal[data-flow="multiDestinationAdd"],
+  .app .flow-modal[data-flow="scoutSubmit"],
+  .app .flow-modal[data-flow="tradeValue"],
+  .app .flow-modal[data-flow="addInventory"],
+  .app .flow-modal[data-flow="addSale"],
+  .app .flow-modal[data-flow="addExpense"],
+  .app .flow-modal[data-flow="addMileage"],
+  .app .flow-modal[data-flow="forgeImport"],
+  .app .flow-modal[data-flow="batchIntake"],
+  .app .flow-modal[data-flow="vaultCatalogSearch"],
+  .app .flow-modal[data-flow="vaultScan"],
+  .app .flow-modal[data-flow="vaultMoveToForge"],
+  .app .flow-modal[data-flow="createListing"],
+  .app .flow-modal[data-flow="tidepoolCreatePost"],
+  .app .receipt-scan-modal,
+  .app .store-map-detail-sheet,
+  .app-command-shell .flow-modal[data-flow="addActionSheet"],
+  .app-command-shell .flow-modal[data-flow="multiDestinationAdd"],
+  .app-command-shell .flow-modal[data-flow="scoutSubmit"],
+  .app-command-shell .flow-modal[data-flow="tradeValue"],
+  .app-command-shell .flow-modal[data-flow="addInventory"],
+  .app-command-shell .flow-modal[data-flow="addSale"],
+  .app-command-shell .flow-modal[data-flow="addExpense"],
+  .app-command-shell .flow-modal[data-flow="addMileage"],
+  .app-command-shell .flow-modal[data-flow="forgeImport"],
+  .app-command-shell .flow-modal[data-flow="batchIntake"],
+  .app-command-shell .flow-modal[data-flow="vaultCatalogSearch"],
+  .app-command-shell .flow-modal[data-flow="vaultScan"],
+  .app-command-shell .flow-modal[data-flow="vaultMoveToForge"],
+  .app-command-shell .flow-modal[data-flow="createListing"],
+  .app-command-shell .flow-modal[data-flow="tidepoolCreatePost"],
+  .app-command-shell .receipt-scan-modal,
+  .app-command-shell .store-map-detail-sheet,
+  .app-shell-dark .flow-modal[data-flow="addActionSheet"],
+  .app-shell-dark .flow-modal[data-flow="multiDestinationAdd"],
+  .app-shell-dark .flow-modal[data-flow="scoutSubmit"],
+  .app-shell-dark .flow-modal[data-flow="tradeValue"],
+  .app-shell-dark .flow-modal[data-flow="addInventory"],
+  .app-shell-dark .flow-modal[data-flow="addSale"],
+  .app-shell-dark .flow-modal[data-flow="addExpense"],
+  .app-shell-dark .flow-modal[data-flow="addMileage"],
+  .app-shell-dark .flow-modal[data-flow="forgeImport"],
+  .app-shell-dark .flow-modal[data-flow="batchIntake"],
+  .app-shell-dark .flow-modal[data-flow="vaultCatalogSearch"],
+  .app-shell-dark .flow-modal[data-flow="vaultScan"],
+  .app-shell-dark .flow-modal[data-flow="vaultMoveToForge"],
+  .app-shell-dark .flow-modal[data-flow="createListing"],
+  .app-shell-dark .flow-modal[data-flow="tidepoolCreatePost"],
+  .app-shell-dark .receipt-scan-modal,
+  .app-shell-dark .store-map-detail-sheet {
+    position: fixed !important;
+    inset: 0 !important;
+    display: grid !important;
+    grid-template-rows: auto minmax(0, 1fr) auto !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+    max-height: 100dvh !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    overflow: hidden !important;
+    transform: none !important;
+  }
+
+  .app .receipt-scan-modal,
+  .app-command-shell .receipt-scan-modal,
+  .app-shell-dark .receipt-scan-modal {
+    grid-template-rows: auto auto minmax(0, 1fr) !important;
+  }
+
+  .app .flow-modal[data-flow="addActionSheet"] > .modal-title-row,
+  .app .flow-modal[data-flow="multiDestinationAdd"] > .modal-title-row,
+  .app .flow-modal[data-flow="scoutSubmit"] > .modal-title-row,
+  .app .flow-modal[data-flow="tradeValue"] > .modal-title-row,
+  .app .flow-modal[data-flow="addInventory"] > .modal-title-row,
+  .app .flow-modal[data-flow="addSale"] > .modal-title-row,
+  .app .flow-modal[data-flow="addExpense"] > .modal-title-row,
+  .app .flow-modal[data-flow="addMileage"] > .modal-title-row,
+  .app .flow-modal[data-flow="forgeImport"] > .modal-title-row,
+  .app .flow-modal[data-flow="batchIntake"] > .modal-title-row,
+  .app .flow-modal[data-flow="vaultCatalogSearch"] > .modal-title-row,
+  .app .flow-modal[data-flow="vaultScan"] > .modal-title-row,
+  .app .flow-modal[data-flow="vaultMoveToForge"] > .modal-title-row,
+  .app .flow-modal[data-flow="createListing"] > .modal-title-row,
+  .app .flow-modal[data-flow="tidepoolCreatePost"] > .modal-title-row,
+  .app .receipt-scan-modal > .compact-card-header,
+  .app .store-map-detail-sheet > .modal-title-row,
+  .app-command-shell .flow-modal[data-flow="addActionSheet"] > .modal-title-row,
+  .app-command-shell .flow-modal[data-flow="multiDestinationAdd"] > .modal-title-row,
+  .app-command-shell .flow-modal[data-flow="scoutSubmit"] > .modal-title-row,
+  .app-command-shell .flow-modal[data-flow="tradeValue"] > .modal-title-row,
+  .app-command-shell .flow-modal[data-flow="addInventory"] > .modal-title-row,
+  .app-command-shell .flow-modal[data-flow="addSale"] > .modal-title-row,
+  .app-command-shell .flow-modal[data-flow="addExpense"] > .modal-title-row,
+  .app-command-shell .flow-modal[data-flow="addMileage"] > .modal-title-row,
+  .app-command-shell .flow-modal[data-flow="forgeImport"] > .modal-title-row,
+  .app-command-shell .flow-modal[data-flow="batchIntake"] > .modal-title-row,
+  .app-command-shell .flow-modal[data-flow="vaultCatalogSearch"] > .modal-title-row,
+  .app-command-shell .flow-modal[data-flow="vaultScan"] > .modal-title-row,
+  .app-command-shell .flow-modal[data-flow="vaultMoveToForge"] > .modal-title-row,
+  .app-command-shell .flow-modal[data-flow="createListing"] > .modal-title-row,
+  .app-command-shell .flow-modal[data-flow="tidepoolCreatePost"] > .modal-title-row,
+  .app-command-shell .receipt-scan-modal > .compact-card-header,
+  .app-command-shell .store-map-detail-sheet > .modal-title-row {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 12 !important;
+    min-width: 0 !important;
+    padding: calc(12px + env(safe-area-inset-top, 0px)) 14px 12px !important;
+  }
+
+  .app .flow-modal[data-flow="addActionSheet"] > .flow-modal-body,
+  .app .flow-modal[data-flow="multiDestinationAdd"] > .flow-modal-body,
+  .app .flow-modal[data-flow="scoutSubmit"] > .flow-modal-body,
+  .app .flow-modal[data-flow="tradeValue"] > .flow-modal-body,
+  .app .flow-modal[data-flow="addInventory"] > .flow-modal-body,
+  .app .flow-modal[data-flow="addSale"] > .flow-modal-body,
+  .app .flow-modal[data-flow="addExpense"] > .flow-modal-body,
+  .app .flow-modal[data-flow="addMileage"] > .flow-modal-body,
+  .app .flow-modal[data-flow="forgeImport"] > .flow-modal-body,
+  .app .flow-modal[data-flow="batchIntake"] > .flow-modal-body,
+  .app .flow-modal[data-flow="vaultCatalogSearch"] > .flow-modal-body,
+  .app .flow-modal[data-flow="vaultScan"] > .flow-modal-body,
+  .app .flow-modal[data-flow="vaultMoveToForge"] > .flow-modal-body,
+  .app .flow-modal[data-flow="createListing"] > .flow-modal-body,
+  .app .flow-modal[data-flow="tidepoolCreatePost"] > .flow-modal-body,
+  .app .receipt-scan-modal > .receipt-scan-layout,
+  .app .store-map-detail-sheet > .store-map-detail-body,
+  .app-command-shell .flow-modal[data-flow="addActionSheet"] > .flow-modal-body,
+  .app-command-shell .flow-modal[data-flow="multiDestinationAdd"] > .flow-modal-body,
+  .app-command-shell .flow-modal[data-flow="scoutSubmit"] > .flow-modal-body,
+  .app-command-shell .flow-modal[data-flow="tradeValue"] > .flow-modal-body,
+  .app-command-shell .flow-modal[data-flow="addInventory"] > .flow-modal-body,
+  .app-command-shell .flow-modal[data-flow="addSale"] > .flow-modal-body,
+  .app-command-shell .flow-modal[data-flow="addExpense"] > .flow-modal-body,
+  .app-command-shell .flow-modal[data-flow="addMileage"] > .flow-modal-body,
+  .app-command-shell .flow-modal[data-flow="forgeImport"] > .flow-modal-body,
+  .app-command-shell .flow-modal[data-flow="batchIntake"] > .flow-modal-body,
+  .app-command-shell .flow-modal[data-flow="vaultCatalogSearch"] > .flow-modal-body,
+  .app-command-shell .flow-modal[data-flow="vaultScan"] > .flow-modal-body,
+  .app-command-shell .flow-modal[data-flow="vaultMoveToForge"] > .flow-modal-body,
+  .app-command-shell .flow-modal[data-flow="createListing"] > .flow-modal-body,
+  .app-command-shell .flow-modal[data-flow="tidepoolCreatePost"] > .flow-modal-body,
+  .app-command-shell .receipt-scan-modal > .receipt-scan-layout,
+  .app-command-shell .store-map-detail-sheet > .store-map-detail-body {
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding: 14px 14px calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 96px) !important;
+    scroll-padding-bottom: calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 112px) !important;
+  }
+
+  .app .flow-modal[data-flow="addActionSheet"] > .flow-modal-footer,
+  .app .flow-modal[data-flow="multiDestinationAdd"] > .flow-modal-footer,
+  .app .flow-modal[data-flow="scoutSubmit"] > .flow-modal-footer,
+  .app .flow-modal[data-flow="addInventory"] > .flow-modal-footer,
+  .app .flow-modal[data-flow="addSale"] > .flow-modal-footer,
+  .app .flow-modal[data-flow="addExpense"] > .flow-modal-footer,
+  .app .flow-modal[data-flow="addMileage"] > .flow-modal-footer,
+  .app .flow-modal[data-flow="forgeImport"] > .flow-modal-footer,
+  .app .flow-modal[data-flow="batchIntake"] > .flow-modal-footer,
+  .app .flow-modal[data-flow="vaultCatalogSearch"] > .flow-modal-footer,
+  .app .flow-modal[data-flow="vaultScan"] > .flow-modal-footer,
+  .app .flow-modal[data-flow="vaultMoveToForge"] > .flow-modal-footer,
+  .app .flow-modal[data-flow="createListing"] > .flow-modal-footer,
+  .app .flow-modal[data-flow="tidepoolCreatePost"] > .flow-modal-footer,
+  .app .receipt-scan-modal .location-modal-actions,
+  .app .store-map-detail-sheet > .modal-sticky-footer,
+  .app-command-shell .flow-modal[data-flow="addActionSheet"] > .flow-modal-footer,
+  .app-command-shell .flow-modal[data-flow="multiDestinationAdd"] > .flow-modal-footer,
+  .app-command-shell .flow-modal[data-flow="scoutSubmit"] > .flow-modal-footer,
+  .app-command-shell .flow-modal[data-flow="addInventory"] > .flow-modal-footer,
+  .app-command-shell .flow-modal[data-flow="addSale"] > .flow-modal-footer,
+  .app-command-shell .flow-modal[data-flow="addExpense"] > .flow-modal-footer,
+  .app-command-shell .flow-modal[data-flow="addMileage"] > .flow-modal-footer,
+  .app-command-shell .flow-modal[data-flow="forgeImport"] > .flow-modal-footer,
+  .app-command-shell .flow-modal[data-flow="batchIntake"] > .flow-modal-footer,
+  .app-command-shell .flow-modal[data-flow="vaultCatalogSearch"] > .flow-modal-footer,
+  .app-command-shell .flow-modal[data-flow="vaultScan"] > .flow-modal-footer,
+  .app-command-shell .flow-modal[data-flow="vaultMoveToForge"] > .flow-modal-footer,
+  .app-command-shell .flow-modal[data-flow="createListing"] > .flow-modal-footer,
+  .app-command-shell .flow-modal[data-flow="tidepoolCreatePost"] > .flow-modal-footer,
+  .app-command-shell .receipt-scan-modal .location-modal-actions,
+  .app-command-shell .store-map-detail-sheet > .modal-sticky-footer {
+    position: sticky !important;
+    bottom: 0 !important;
+    z-index: 12 !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    margin: 0 !important;
+    padding: 10px 14px calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .app .flow-modal[data-flow="tradeValue"] > .flow-modal-footer,
+  .app-command-shell .flow-modal[data-flow="tradeValue"] > .flow-modal-footer,
+  .app-shell-dark .flow-modal[data-flow="tradeValue"] > .flow-modal-footer {
+    display: none !important;
+  }
+
+  .app :is(
+    .flow-modal[data-flow="addInventory"],
+    .flow-modal[data-flow="addSale"],
+    .flow-modal[data-flow="addExpense"],
+    .flow-modal[data-flow="addMileage"],
+    .flow-modal[data-flow="forgeImport"],
+    .flow-modal[data-flow="batchIntake"],
+    .flow-modal[data-flow="createListing"],
+    .flow-modal[data-flow="tidepoolCreatePost"]
+  ) :is(.flow-form-grid, .form-grid, .marketplace-form, .catalog-detail-grid),
+  .app-command-shell :is(
+    .flow-modal[data-flow="addInventory"],
+    .flow-modal[data-flow="addSale"],
+    .flow-modal[data-flow="addExpense"],
+    .flow-modal[data-flow="addMileage"],
+    .flow-modal[data-flow="forgeImport"],
+    .flow-modal[data-flow="batchIntake"],
+    .flow-modal[data-flow="createListing"],
+    .flow-modal[data-flow="tidepoolCreatePost"]
+  ) :is(.flow-form-grid, .form-grid, .marketplace-form, .catalog-detail-grid),
+  .app .receipt-scan-modal :is(.receipt-scan-layout, .catalog-detail-grid),
+  .app-command-shell .receipt-scan-modal :is(.receipt-scan-layout, .catalog-detail-grid),
+  .app .store-map-detail-sheet :is(.store-detail-signal-grid, .store-map-detail-grid, .scout-preview-list),
+  .app-command-shell .store-map-detail-sheet :is(.store-detail-signal-grid, .store-map-detail-grid, .scout-preview-list) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .app .receipt-progress-steps,
+  .app-command-shell .receipt-progress-steps,
+  .app-shell-dark .receipt-progress-steps {
+    top: calc(72px + env(safe-area-inset-top, 0px)) !important;
+  }
+
+  .app .flow-modal[data-flow="scoutSubmit"] .scout-report-flow > .scout-wizard-footer,
+  .app-command-shell .flow-modal[data-flow="scoutSubmit"] .scout-report-flow > .scout-wizard-footer,
+  .app-shell-dark .flow-modal[data-flow="scoutSubmit"] .scout-report-flow > .scout-wizard-footer {
+    margin-bottom: 0 !important;
+    padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
