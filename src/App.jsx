@@ -7725,8 +7725,7 @@ export default function App() {
       };
     });
 
-    const allReports = [...(scoutSnapshot.reports || []), ...(scoutSnapshot.tidepoolReports || [])];
-    const reportResults = allReports.map((report) => {
+    const reportResults = (scoutSnapshot.reports || []).map((report) => {
       const candidate = {
         fields: [report.itemName, report.productName, report.reportText, report.notes, report.storeName, report.reportType, report.upc, report.sku],
         exactIds: [report.upc, report.sku],
@@ -7744,30 +7743,61 @@ export default function App() {
         reason,
       };
     });
-    const tidepoolPostResults = tidepoolPosts.map((post) => {
-      const candidate = {
-        fields: [post.title, post.body, post.postType, post.city, post.zip, post.verificationStatus],
+
+    const pageDestinations = [
+      { key: "hearth", title: "Hearth", subtitle: "Adaptive home and next actions", target: "dashboard", terms: ["home", "hearth", "dashboard", "today", "sparks"] },
+      { key: "market", title: "Market Watch", subtitle: "Cards, sets, sealed products, UPC, and SKU search", target: "market", terms: ["market", "catalog", "price", "prices", "sealed", "cards", "sets", "upc", "sku"] },
+      { key: "vault", title: "Vault", subtitle: "Local collection search and item details", target: "vault", terms: ["vault", "collection", "cards", "sealed", "wishlist", "binder"] },
+      { key: "scout", title: "Scout", subtitle: "Current store reports and watched stores", target: "scout", terms: ["scout", "stores", "reports", "watch stores", "alerts", "current reports"] },
+      { key: "forge", title: "Forge", subtitle: "Seller tools, inventory groups, and sales records", target: "forge", terms: ["forge", "sales", "business", "ledger", "inventory", "tax", "export"] },
+      { key: "tidepool", title: "Tidepool", subtitle: "Family-safe community area", target: "tidepool", terms: ["tidepool", "community", "posts", "safe community"] },
+      { key: "spark", title: "The Spark", subtitle: "Kids program and family support", target: "kidsProgram", terms: ["spark", "kids", "family", "donations", "giveaways", "events"] },
+      { key: "settings", title: "Settings", subtitle: "Account, privacy, workspace, and app setup", target: "settings", terms: ["settings", "account", "profile", "privacy", "workspace"] },
+    ];
+    const pageResults = pageDestinations.map((page) => {
+      const { score, reason } = scoreSearchCandidate(queryInfo, {
+        fields: [page.title, page.subtitle, page.terms],
         exactIds: [],
-        aliases: [],
-        names: [post.title],
-      };
-      const { score, reason } = scoreSearchCandidate(queryInfo, candidate);
+        aliases: page.terms,
+        names: [page.title],
+      });
       return {
-        id: `tidepool-${post.postId}`,
-        category: "Reports",
-        title: post.title || post.postType,
-        subtitle: `Tidepool - ${post.postType} - ${post.verificationStatus}`,
-        source: post,
-        score: score * 0.66,
+        id: `page-${page.key}`,
+        category: "Pages",
+        title: page.title,
+        subtitle: page.subtitle,
+        source: page,
+        score: score * 0.7,
         reason,
       };
     });
 
-    return [...catalogResults, ...inventoryResults, ...storeResults, ...reportResults, ...tidepoolPostResults]
+    const helpResults = [
+      { key: "help", title: "Help & Support", subtitle: "Known issues, feedback, safety, and app guidance", target: "help", terms: ["help", "support", "feedback", "bug", "safety", "how do i", "scanner help"] },
+      { key: "membership", title: "Membership Foundation", subtitle: "Plans, locked states, and feature gates", target: "membership", terms: ["tier", "plan", "membership", "locked", "features", "free", "collector", "seller", "shop"] },
+    ].map((topic) => {
+      const { score, reason } = scoreSearchCandidate(queryInfo, {
+        fields: [topic.title, topic.subtitle, topic.terms],
+        exactIds: [],
+        aliases: topic.terms,
+        names: [topic.title],
+      });
+      return {
+        id: `help-${topic.key}`,
+        category: "Help",
+        title: topic.title,
+        subtitle: topic.subtitle,
+        source: topic,
+        score: score * 0.72,
+        reason,
+      };
+    });
+
+    return [...catalogResults, ...inventoryResults, ...storeResults, ...reportResults, ...pageResults, ...helpResults]
       .filter((result) => result.score > 25)
       .sort((a, b) => b.score - a.score)
       .slice(0, 24);
-  }, [deferredAppSearchQuery, catalogProducts, items, marketPriceCache, scoutSnapshot, tidepoolPosts, userSearchAliases]);
+  }, [deferredAppSearchQuery, catalogProducts, items, marketPriceCache, scoutSnapshot, userSearchAliases]);
 
   const appSearchSuggestion = useMemo(() => {
     const queryInfo = expandSearchQuery(deferredAppSearchQuery);
@@ -7776,9 +7806,78 @@ export default function App() {
     return alias?.canonical || "";
   }, [deferredAppSearchQuery, appSearchResults.length]);
 
+  const globalSearchQueryText = String(appSearchQuery || "").trim();
+  const globalSearchDestinationGroups = useMemo(() => ([
+    {
+      key: "search",
+      title: "Search existing areas",
+      items: [
+        { key: "market", title: "Search Market", helper: "Cards, sets, sealed products, UPC, or SKU.", icon: "search" },
+        { key: "vault", title: "Search Vault", helper: "Search your local collection items.", icon: "vault" },
+        { key: "scoutStores", title: "Search Scout stores", helper: "Open current store directory signals.", icon: "scout" },
+        { key: "scoutReports", title: "Current Scout reports", helper: "Open report feed. No raw patterns.", icon: "scout" },
+      ],
+    },
+    {
+      key: "open",
+      title: "Open safe destinations",
+      items: [
+        { key: "help", title: "Open Help", helper: "Guides, support, safety, and feedback.", icon: "search" },
+        { key: "pages", title: "Go to page", helper: "Open More to choose app pages.", icon: "settings" },
+      ],
+    },
+  ]), []);
+
   function closeSearchResults() {
     setAppSearchQuery("");
     setSearchExpanded(false);
+  }
+
+  function runGlobalSearchDestination(destinationKey) {
+    const query = String(appSearchQuery || "").trim();
+    setQuickAddMenuOpen(false);
+    setMenuOpen(false);
+    if (destinationKey === "market") {
+      setActiveTab("market");
+      setTideTradrSubTab("catalog");
+      if (query) {
+        updateCatalogSearchInput(query);
+        window.setTimeout(() => submitCatalogSearch(query), 0);
+      }
+      setSearchExpanded(false);
+      return;
+    }
+    if (destinationKey === "vault") {
+      setActiveTab("vault");
+      if (query) setVaultSearch(query);
+      setFeatureSectionsOpen((current) => ({ ...current, vault_collection_items: true }));
+      setSearchExpanded(false);
+      return;
+    }
+    if (destinationKey === "scoutStores") {
+      setActiveTab("scout");
+      setScoutView("stores");
+      setScoutStoresMode("map");
+      if (query) updateStoreMapFilter("query", query);
+      setSearchExpanded(false);
+      return;
+    }
+    if (destinationKey === "scoutReports") {
+      setActiveTab("scout");
+      setScoutView("reports");
+      setScoutReportFilter("Latest");
+      setScoutReportsPage(1);
+      setSearchExpanded(false);
+      return;
+    }
+    if (destinationKey === "help") {
+      openUtilityPage("help");
+      return;
+    }
+    if (destinationKey === "pages") {
+      setSearchExpanded(false);
+      openMenuDrawer();
+    }
   }
 
   function scrollToPageTop() {
@@ -7842,14 +7941,26 @@ export default function App() {
       setActiveTab("inventory");
     } else if (result.category === "Vault") {
       setActiveTab("vault");
+      setVaultSearch(result.source.name || appSearchQuery || "");
       setFeatureSectionsOpen((current) => ({ ...current, vault_collection_items: true }));
-    } else if (result.category === "Stores" || result.category === "Reports") {
-      if (result.category === "Stores") {
-        setActiveTab("scout");
-        setFeatureSectionsOpen((current) => ({ ...current, scout_stores: true }));
-        setScoutSubTabTarget({ tab: "stores", id: Date.now() });
+    } else if (result.category === "Stores") {
+      setActiveTab("scout");
+      setScoutView("stores");
+      setScoutStoresMode("map");
+      setFeatureSectionsOpen((current) => ({ ...current, scout_stores: true }));
+      updateStoreMapFilter("query", result.title || appSearchQuery || "");
+      setScoutSubTabTarget({ tab: "stores", id: Date.now() });
+    } else if (result.category === "Reports") {
+      setActiveTab("scout");
+      setScoutView("reports");
+      setScoutReportFilter("Latest");
+      setScoutReportsPage(1);
+    } else if (result.category === "Pages" || result.category === "Help") {
+      const target = result.source?.target || "dashboard";
+      if (target === "help" || target === "settings" || target === "membership") {
+        openUtilityPage(target);
       } else {
-        openTidepoolCommunity("Latest");
+        setActiveTab(target);
       }
     }
     setSearchExpanded(false);
@@ -7903,6 +8014,12 @@ export default function App() {
     }
     if (result.category === "Reports") {
       return <button type="button" onClick={() => viewSearchResult(result)}>Open report</button>;
+    }
+    if (result.category === "Pages") {
+      return <button type="button" onClick={() => viewSearchResult(result)}>Open page</button>;
+    }
+    if (result.category === "Help") {
+      return <button type="button" onClick={() => viewSearchResult(result)}>Open help</button>;
     }
     return <button type="button" onClick={() => viewSearchResult(result)}>View item</button>;
   }
@@ -50939,27 +51056,23 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   <div className={searchExpanded ? "app-search expanded" : "app-search"}>
     {searchExpanded ? (
       <div className="app-search-mobile-header">
-        <strong>{activeTab === "market" ? "Quick Find" : "Search"}</strong>
+        <strong>Search Ember &amp; Tide</strong>
         <button type="button" className="modal-icon-close" aria-label="Close search" onClick={closeSearchResults}>X</button>
       </div>
     ) : null}
     <button
       type="button"
       className="app-search-toggle"
-      aria-label={activeTab === "market" ? "Quick Find Market Watch" : "Search Ember & Tide"}
+      aria-label="Search Ember & Tide"
       onClick={() => {
         setQuickAddMenuOpen(false);
-        if (activeTab === "market") {
-          openQuickFindFlow({ source: "market" });
-          return;
-        }
         setSearchExpanded((current) => !current);
       }}
     >
       <span className="action-icon" aria-hidden="true">
         <AppNavIcon kind="search" />
       </span>
-      <span>{activeTab === "market" ? "Quick Find" : "Search"}</span>
+      <span>Search</span>
     </button>
     <input
       value={appSearchQuery}
@@ -50969,21 +51082,45 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         setAppSearchQuery(event.target.value);
         setSearchExpanded(true);
       }}
-      placeholder="Try: sv8 etb, 151 zard, evs booster..."
+      placeholder="Search cards, stores, sets, reports, help..."
       aria-label="Search across Ember & Tide"
     />
-    {searchExpanded && appSearchQuery.trim().length >= 2 ? (
+    {searchExpanded ? (
       <div className="app-search-results">
         <div className="compact-card-header">
           <div>
-            <h3>Search results</h3>
-            <p>{appSearchResults.length} matches across Ember & Tide</p>
+            <h3>Search foundation</h3>
+            <p>Routes to existing safe search areas. It does not search private, admin, child, or raw Scout pattern data.</p>
           </div>
           <button type="button" className="secondary-button" onClick={closeSearchResults}>Close</button>
         </div>
-        {appSearchResults.length === 0 ? (
-          <div>
-            <p className="compact-subtitle">No matches yet. Try: sv8 etb, 151 zard, evs booster, crz tin, pri etb, 199/165, target greenbrier.</p>
+        <div className="global-search-destination-stack">
+          {globalSearchDestinationGroups.map((group) => (
+            <section className="global-search-destination-group" key={group.key}>
+              <h4>{group.title}</h4>
+              <div className="global-search-destination-grid">
+                {group.items.map((item) => (
+                  <button type="button" className="global-search-destination-card" key={item.key} onClick={() => runGlobalSearchDestination(item.key)}>
+                    <span className="action-icon" aria-hidden="true">
+                      <AppNavIcon kind={item.icon} />
+                    </span>
+                    <strong>{item.title}</strong>
+                    <small>{globalSearchQueryText && item.key !== "help" && item.key !== "pages" ? `Use "${globalSearchQueryText}" here. ` : ""}{item.helper}</small>
+                  </button>
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+        {globalSearchQueryText.length < 2 ? (
+          <div className="app-search-foundation-note">
+            <strong>Start with a destination.</strong>
+            <p>Type at least two characters for local matches from Market, Vault, Scout stores, current Scout reports, app pages, and Help.</p>
+          </div>
+        ) : appSearchResults.length === 0 ? (
+          <div className="app-search-foundation-note">
+            <strong>No local matches in safe areas yet.</strong>
+            <p>Choose a destination above to run the search where it already exists.</p>
             {appSearchSuggestion ? (
               <button type="button" className="secondary-button" onClick={() => setAppSearchQuery(appSearchSuggestion)}>
                 Did you mean {appSearchSuggestion}?
@@ -50991,6 +51128,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             ) : null}
           </div>
         ) : (
+          <section className="app-search-local-results" aria-label="Local search matches">
+            <div className="compact-card-header">
+              <div>
+                <h3>Local matches</h3>
+                <p>{appSearchResults.length} safe match{appSearchResults.length === 1 ? "" : "es"} from existing app data and pages.</p>
+              </div>
+            </div>
           <div className="app-search-list">
             {appSearchResults.map((result) => (
               <div className="app-search-result" key={result.id}>
@@ -51008,8 +51152,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </div>
             ))}
           </div>
+          </section>
         )}
-        <p className="compact-subtitle">Try: pri etb, 151 bundle, zard 199, gengar sir, walmart greenbrier, mini tin.</p>
+        <p className="compact-subtitle">Global Search is a routing foundation: use Market for catalog results, Vault for your collection, Scout for current stores/reports, and Help for app guidance.</p>
       </div>
     ) : null}
   </div>
