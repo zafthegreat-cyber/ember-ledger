@@ -10489,7 +10489,7 @@ export default function App() {
       if (settleTimer) window.clearTimeout(settleTimer);
       settleTimer = window.setTimeout(() => {
         setFabVisible(true);
-      }, 720);
+      }, 1000);
       if (frameId) return;
 
       frameId = window.requestAnimationFrame(() => {
@@ -10507,7 +10507,7 @@ export default function App() {
           if (delta > 0) {
             downDistance.current += delta;
             upDistance.current = 0;
-            if (currentScrollY > 36 && downDistance.current >= 18) {
+            if (currentScrollY > 28 && downDistance.current >= 8) {
               setFabVisible(false);
             }
             if (currentScrollY > 96 && downDistance.current >= 72) {
@@ -60598,7 +60598,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
       {renderEmberAssist()}
       <button
         type="button"
-        className={`mobile-quick-add-fab ${showMobileQuickAddFab ? "is-visible" : "is-scroll-hidden"}`}
+        className={`mobile-quick-add-fab ${showMobileQuickAddFab && !searchExpanded ? "is-visible" : "is-scroll-hidden"}`}
         aria-label="Open Quick Add command center"
         onClick={() => openAddActionSheet("mobile-fab")}
       >

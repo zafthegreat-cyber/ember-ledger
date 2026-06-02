@@ -72164,6 +72164,14 @@ html body .app .ember-assist-shell.is-open {
 
 /* Mobile dock micro-polish: keep Quick Add as a light utility action. */
 @media (max-width: 780px) {
+  .topbar {
+    display: grid !important;
+    grid-template-columns: 42px minmax(0, 1fr) 42px !important;
+    align-items: center !important;
+    gap: 6px !important;
+    overflow: visible !important;
+  }
+
   .mobile-bottom-nav button.active,
   .mobile-bottom-nav button[aria-current="page"] {
     border-color: rgba(var(--nav-rgb, 255, 151, 41), 0.34) !important;
@@ -72181,28 +72189,102 @@ html body .app .ember-assist-shell.is-open {
   }
 
   .mobile-quick-add-fab {
-    bottom: calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) - 8px) !important;
-    width: 42px !important;
-    height: 42px !important;
-    min-width: 42px !important;
-    min-height: 42px !important;
-    border-color: rgba(255, 216, 146, 0.58) !important;
+    bottom: calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) - 16px) !important;
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    min-height: 38px !important;
+    border-color: rgba(255, 216, 146, 0.5) !important;
     background:
-      radial-gradient(circle at 35% 22%, rgba(255, 255, 255, 0.26), transparent 0.95rem),
+      radial-gradient(circle at 35% 22%, rgba(255, 255, 255, 0.22), transparent 0.82rem),
       linear-gradient(135deg, #ffc85d 0%, #ff9429 48%, #f05a20 100%) !important;
     box-shadow:
-      0 0 0 2px rgba(255, 141, 31, 0.045),
-      0 7px 16px rgba(255, 116, 20, 0.18),
-      inset 0 1px 0 rgba(255, 255, 255, 0.32) !important;
+      0 0 0 1px rgba(255, 141, 31, 0.04),
+      0 6px 14px rgba(255, 116, 20, 0.15),
+      inset 0 1px 0 rgba(255, 255, 255, 0.28) !important;
   }
 
   .mobile-quick-add-fab .mobile-tab-icon {
-    width: 20px !important;
-    height: 20px !important;
+    width: 18px !important;
+    height: 18px !important;
   }
 
   .mobile-quick-add-fab.is-scroll-hidden {
     opacity: 0 !important;
     transform: translateX(-50%) translateY(20px) scale(0.78) !important;
+  }
+
+  .topbar .app-search:not(.expanded) {
+    display: flex !important;
+    grid-column: 3;
+    grid-row: 1;
+    order: 2;
+    flex: 0 0 42px !important;
+    width: 42px !important;
+    min-width: 42px !important;
+    max-width: 42px !important;
+    margin-left: 0 !important;
+    justify-self: end !important;
+  }
+
+  .topbar .app-search:not(.expanded) input {
+    display: none !important;
+  }
+
+  .topbar .app-search:not(.expanded) .app-search-toggle {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 42px !important;
+    min-width: 42px !important;
+    height: 42px !important;
+    min-height: 42px !important;
+    padding: 0 !important;
+  }
+
+  .topbar .app-search:not(.expanded) .app-search-toggle::before,
+  .topbar .app-search:not(.expanded) .app-search-toggle span:not(.action-icon) {
+    content: "" !important;
+    display: none !important;
+  }
+
+  .topbar .app-search:not(.expanded) .app-search-toggle .action-icon {
+    display: inline-flex !important;
+    width: 20px !important;
+    height: 20px !important;
+  }
+
+  .topbar-brand {
+    grid-column: 1;
+    grid-row: 1;
+    order: 1;
+  }
+
+  .topbar-command-actions {
+    grid-column: 2;
+    grid-row: 1;
+    order: 3;
+    flex: 0 0 auto;
+    justify-self: end;
+    min-width: 0 !important;
+  }
+
+  .topbar .app-search.expanded .compact-card-header {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .topbar .app-search.expanded .compact-card-header p,
+  .topbar .app-search.expanded .global-search-destination-card small,
+  .topbar .app-search.expanded .app-search-foundation-note p,
+  .topbar .app-search.expanded .compact-subtitle {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+  }
+
+  .app .flow-modal[data-flow="scoutSubmit"] .scout-report-flow > .scout-wizard-footer,
+  .app-command-shell .flow-modal[data-flow="scoutSubmit"] .scout-report-flow > .scout-wizard-footer,
+  .app-shell-dark .flow-modal[data-flow="scoutSubmit"] .scout-report-flow > .scout-wizard-footer {
+    display: none !important;
   }
 }
