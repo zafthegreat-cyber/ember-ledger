@@ -57072,20 +57072,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   showSellerTools={adaptiveSellerToolsVisible}
                 />
               ) : null}
+              {vaultItems.length ? (
               <div className="inventory-list compact-inventory-list">
-                {vaultItems.length === 0 ? (
-                  <div className="empty-state vault-empty-action-card">
-                    <span className="trust-badge trust-badge--secure">Protected collection</span>
-                    <h3>Your Vault is ready.</h3>
-                    <p>Add your first item and keep your collection protected. Values appear only when market data exists.</p>
-                    <div className="quick-actions">
-                      <button type="button" onClick={openVaultQuickAddFlow}>Add to Vault</button>
-                      <button type="button" className="secondary-button" onClick={openVaultScanFlow}>Scan Product/Card</button>
-                      <button type="button" className="secondary-button" onClick={() => openQuickAddAction("suggestCatalogItem")}>Request Missing Item</button>
-                    </div>
-                  </div>
-                ) : (
-                  pagedVaultItems.items.map((item) => (
+                {pagedVaultItems.items.map((item) => (
                     <CompactInventoryCard
                       key={item.id}
                       item={item}
@@ -57104,9 +57093,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                       onStartTrade={(vaultItem) => openTradeValueFlow(vaultItem, { source: "vault-card", sourceKind: "vault" })}
                       showSellerTools={adaptiveSellerToolsVisible}
                     />
-                  ))
-                )}
-                {vaultItems.length > 0 && visibleVaultItems.length === 0 ? (
+                  ))}
+                {visibleVaultItems.length === 0 ? (
                   <div className="empty-state">
                     <h3>No matching Vault items.</h3>
                     <p>Filters are hiding items, or this search term is not in your collection yet.</p>
@@ -57117,6 +57105,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   </div>
                 ) : null}
               </div>
+              ) : null}
+              {vaultItems.length ? (
               <PaginationControls
                 label="Vault Items"
                 page={pagedVaultItems.page}
@@ -57129,6 +57119,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 }}
                 compact
               />
+              ) : null}
             </section>
             ) : null}
 

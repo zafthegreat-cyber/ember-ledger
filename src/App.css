@@ -74425,3 +74425,75 @@ html body .app .ember-assist-shell.is-open {
     gap: 10px !important;
   }
 }
+
+/* Phase 3 Vault final UI: protected collection spacing and mobile binder tabs. */
+@media (max-width: 780px) {
+  .app-vault > main,
+  .app-command-shell.app-vault > main,
+  .app-shell-dark.app-vault > main {
+    padding-bottom: max(176px, calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 110px)) !important;
+    scroll-padding-bottom: max(176px, calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 110px)) !important;
+  }
+
+  .app-vault .vault-command-center,
+  .app-vault .vault-collection-panel {
+    min-height: 0 !important;
+    padding-bottom: 18px !important;
+  }
+
+  .app-vault .vault-empty-summary-card {
+    gap: 10px !important;
+    padding: 12px !important;
+  }
+
+  .app-vault .vault-empty-summary-card dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .app-vault .vault-empty-summary-card dl div {
+    min-height: 70px !important;
+    padding: 10px !important;
+  }
+
+  .app-vault .vault-view-strip {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
+    grid-template-columns: none !important;
+    overflow-x: auto !important;
+    padding: 2px 2px 8px !important;
+    scrollbar-width: none;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-collection-panel .vault-view-strip,
+  html body #root .app.app-vault .vault-collection-panel .vault-view-strip {
+    display: flex !important;
+    flex-flow: row nowrap !important;
+    grid-template-columns: none !important;
+    overflow-x: auto !important;
+    justify-content: flex-start !important;
+  }
+
+  .app-vault .vault-view-strip::-webkit-scrollbar {
+    display: none;
+  }
+
+  .app-vault .vault-view-strip button {
+    flex: 0 0 auto !important;
+    min-width: max-content !important;
+    min-height: 34px !important;
+    padding: 7px 13px !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-collection-panel .vault-view-strip button,
+  html body #root .app.app-vault .vault-collection-panel .vault-view-strip button {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    min-width: max-content !important;
+  }
+
+  .app-vault .mobile-quick-add-fab.is-scroll-hidden {
+    display: none !important;
+  }
+}
