@@ -10488,7 +10488,8 @@ export default function App() {
     function handleScroll() {
       if (settleTimer) window.clearTimeout(settleTimer);
       settleTimer = window.setTimeout(() => {
-        setFabVisible(true);
+        const settledY = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
+        setFabVisible(settledY <= 96);
       }, 1000);
       if (frameId) return;
 
@@ -48328,6 +48329,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         : hearthMode === "simple"
           ? "Family"
           : "Collector";
+    const hearthHomeTitle = hearthGreetingName && hearthGreetingName !== "friend"
+      ? `${hearthGreeting}, ${hearthGreetingName}`
+      : `${hearthGreeting}, ${hearthModeChipLabel}`;
+    const hearthTodayMessage = bestAction?.badge ? `${bestAction.badge}: ${bestAction.title}` : bestAction.title;
+    const hearthIsNewUser = !activeVaultItems.length && !scoutReportRows.length && !workspaceWatchlist.length && !recentRows.length;
+    const hearthOnboardingPanel = shouldRenderFirstRunOnboarding() ? renderOnboardingPanel() : null;
     const hearthSupportRows = [
       { label: "Beta", value: betaAccessAllowed() ? "Approved" : "Limited", helper: "Features may change during beta." },
       { label: "App", value: PUBLIC_APP_VERSION_LABEL, helper: appUpdate.available ? "Update available." : "Current build loaded." },
@@ -48510,6 +48517,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       .slice(0, 5);
     const dismissedSparkKeys = new Set(dailyTideToday.dismissedSparks || []);
     const visibleSparkMissions = sparkMissionCandidates.filter((mission) => !dismissedSparkKeys.has(mission.key));
+    const visibleSparkPreview = hearthDetailsExpanded ? visibleSparkMissions : visibleSparkMissions.slice(0, 1);
+    const hiddenSparkCount = Math.max(0, visibleSparkMissions.length - visibleSparkPreview.length);
     const allSparksDismissed = sparkMissionCandidates.length > 0 && visibleSparkMissions.length === 0;
     const allSparksComplete = visibleSparkMissions.length > 0 && visibleSparkMissions.every((mission) => mission.current >= mission.target);
     const todaySparkEarnedPoints = visibleSparkMissions
@@ -48592,7 +48601,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </div>
             </div>
             <div className="hearth-spark-mission-list">
-              {visibleSparkMissions.map((mission) => {
+              {visibleSparkPreview.map((mission) => {
                 const complete = mission.current >= mission.target;
                 const started = mission.current > 0 && !complete;
                 return (
@@ -48624,7 +48633,18 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 );
               })}
             </div>
-            <p className="hearth-sparks-footnote">Sparks refresh tomorrow. Points are awarded only when the action is completed in the app.</p>
+            <div className="hearth-sparks-footer-row">
+              <p className="hearth-sparks-footnote">Sparks refresh tomorrow. Points are awarded only when the action is completed in the app.</p>
+              {hiddenSparkCount || (hearthDetailsExpanded && visibleSparkMissions.length > 3) ? (
+                <button
+                  type="button"
+                  className="hearth-sparks-view-all"
+                  onClick={() => setHearthDetailsExpanded((current) => !current)}
+                >
+                  {hearthDetailsExpanded ? "Show fewer" : `View all Sparks (${visibleSparkMissions.length})`}
+                </button>
+              ) : null}
+            </div>
           </>
         )}
       </section>
@@ -48921,11 +48941,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <img src={BRAND_ASSETS.mark} alt="" />
               </span>
               <div>
-                <h1>
-                  <span className="hearth-greeting-full">{hearthGreeting}, {hearthGreetingName}!</span>
-                  <span className="hearth-greeting-short">{hearthGreeting}!</span>
-                </h1>
+                <h1>{hearthHomeTitle}</h1>
                 <p>Collect with confidence. Protect what matters. Help families find fair access.</p>
+                <div className="hearth-today-message" aria-label="Today's Hearth focus">
+                  <span>Today</span>
+                  <strong>{hearthTodayMessage}</strong>
+                </div>
               </div>
             </div>
             <div className="hearth-header-actions">
@@ -48933,23 +48954,37 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <strong>{hearthEmberPoints}</strong>
                 <small>Ember Points</small>
               </span>
-              <span className="status-badge hearth-beta-badge">Beta</span>
-              <span className="hearth-mode-chip">{hearthModeChipLabel}</span>
+              <span className="hearth-mini-badge-row" aria-label="Hearth plan and beta status">
+                <span className="status-badge hearth-beta-badge">Beta</span>
+                <span className="hearth-mode-chip">{hearthModeChipLabel}</span>
+              </span>
               {hearthAdminShortcutVisible ? (
                 <button type="button" className="hearth-admin-badge" onClick={() => setActiveTab("adminReview")}>Admin</button>
               ) : null}
             </div>
           </section>
 
-          <section className="hearth-snapshot-strip" aria-label="Hearth snapshot">
-            {hearthSnapshotCards.map((card) => (
-              <button type="button" className={`hearth-snapshot-pill hearth-accent-${card.accent}`} key={card.key} onClick={card.onClick}>
-                <span>{card.label}</span>
-                <strong>{card.value}</strong>
-                <small>{card.detail}</small>
-              </button>
-            ))}
+          <section className="panel hearth-at-glance-panel" aria-label="At a glance">
+            <div className="compact-card-header">
+              <div>
+                <h2>At a glance</h2>
+                <p>Vault, Scout, Market, and Spark signals for your current collecting day.</p>
+              </div>
+            </div>
+            <div className="hearth-snapshot-strip">
+              {hearthSnapshotCards.map((card) => (
+                <button type="button" className={`hearth-snapshot-pill hearth-accent-${card.accent}`} key={card.key} onClick={card.onClick}>
+                  <span>{card.label}</span>
+                  <strong>{card.value}</strong>
+                  <small>{card.detail}</small>
+                </button>
+              ))}
+            </div>
           </section>
+
+          {hearthOnboardingPanel && hearthIsNewUser ? (
+            <div className="hearth-onboarding-slot hearth-onboarding-slot-primary">{hearthOnboardingPanel}</div>
+          ) : null}
 
           {renderTodaySparksPanel()}
 
@@ -48996,7 +49031,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div className="hearth-quick-actions-heading">
               <div>
                 <h2>Shortcuts</h2>
-                <p>Fast routes for common collection tasks.</p>
+                <p>Compact routes for common collection tasks.</p>
               </div>
               <span>Use + for more</span>
             </div>
@@ -49019,23 +49054,33 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </div>
           </section>
 
-          {shouldRenderFirstRunOnboarding() ? renderOnboardingPanel() : null}
+          {hearthOnboardingPanel && !hearthIsNewUser ? (
+            <div className="hearth-onboarding-slot hearth-onboarding-slot-secondary">{hearthOnboardingPanel}</div>
+          ) : null}
         </div>
 
         <div className="hearth-side-column">
-          <section className="hearth-feature-list" aria-label="Hearth feature status">
-            {hearthFeatureCards.map((card) => (
-              <button type="button" className={`hearth-feature-card hearth-accent-${card.accent}`} key={card.key} onClick={card.onClick}>
-                <span className="hearth-feature-icon" aria-hidden="true"><AppNavIcon kind={card.icon} /></span>
-                <span className="hearth-feature-copy">
-                  <strong>{card.title}</strong>
-                  <span>{card.value}</span>
-                  <small>{card.detail}</small>
-                  {card.meta ? <em>{card.meta}</em> : null}
-                </span>
-                <span className="hearth-feature-chevron" aria-hidden="true">&gt;</span>
-              </button>
-            ))}
+          <section className="panel hearth-build-hearth-panel" aria-label="Next best actions">
+            <div className="compact-card-header">
+              <div>
+                <h2>Next best actions</h2>
+                <p>{hearthIsNewUser ? "Start with one useful action." : "Signals worth checking when you have a minute."}</p>
+              </div>
+            </div>
+            <div className="hearth-feature-list" aria-label="Hearth feature status">
+              {hearthFeatureCards.map((card) => (
+                <button type="button" className={`hearth-feature-card hearth-accent-${card.accent}`} key={card.key} onClick={card.onClick}>
+                  <span className="hearth-feature-icon" aria-hidden="true"><AppNavIcon kind={card.icon} /></span>
+                  <span className="hearth-feature-copy">
+                    <strong>{card.title}</strong>
+                    <span>{card.value}</span>
+                    <small>{card.detail}</small>
+                    {card.meta ? <em>{card.meta}</em> : null}
+                  </span>
+                  <span className="hearth-feature-chevron" aria-hidden="true">&gt;</span>
+                </button>
+              ))}
+            </div>
           </section>
 
           <section className="panel hearth-recent-panel" aria-label="Recent activity">
@@ -51057,6 +51102,21 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   if (user && !guestPreviewActive && !betaAccessAllowed()) {
     return renderShorelineAccessGate();
   }
+
+  const marketResultsVisible = Boolean(
+    activeTab === "market" &&
+    (catalogSearchHasRun || supabaseCatalogStatus.loading || submittedCatalogSearch || submittedCatalogBarcodeSearch)
+  );
+  const mobileQuickAddFabSuppressed = Boolean(
+    searchExpanded ||
+    emberAssistOpen ||
+    menuOpen ||
+    quickAddMenuOpen ||
+    activeFlowModal ||
+    marketResultsVisible ||
+    ["scout", "vault", "market", "forge", "inventory", "sales", "expenses", "reports", "tidepool", "kidsProgram", "account", "settings", "comingSoon"].includes(activeTab) ||
+    ["scout", "vault", "market", "forge", "tidepool", "kidsProgram"].includes(activeMainTab)
+  );
 
   return (
     <div className={`app app-command-shell app-${String(activeMainTab || activeTab || "home").toLowerCase()}${activeTab === "market" ? " app-market" : ""} app-adaptive-${adaptiveUiState.mode} app-header-${headerMode}${guestPreviewActive ? " guest-preview-mode" : ""}${adminViewingAsAdmin ? " admin-view-mode" : ""}${adminEditModeActive ? " admin-edit-mode" : ""}`}>
@@ -60649,7 +60709,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
       {renderEmberAssist()}
       <button
         type="button"
-        className={`mobile-quick-add-fab ${showMobileQuickAddFab && !searchExpanded ? "is-visible" : "is-scroll-hidden"}`}
+        className={`mobile-quick-add-fab ${showMobileQuickAddFab && !mobileQuickAddFabSuppressed ? "is-visible" : "is-scroll-hidden"}`}
         aria-label="Open Quick Add command center"
         onClick={() => openAddActionSheet("mobile-fab")}
       >

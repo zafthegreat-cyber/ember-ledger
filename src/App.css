@@ -72670,3 +72670,1578 @@ html body .app .ember-assist-shell.is-open {
     margin-bottom: 12px !important;
   }
 }
+
+/* Final mobile overlap correction: keep dock/FAB out of content and make search/sheets page-like. */
+@media (max-width: 780px) {
+  .app-command-shell,
+  .app-shell-dark {
+    --bottom-nav-height: 66px;
+    --et-mobile-shell-safe-bottom: max(174px, calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 112px));
+  }
+
+  .app-command-shell > main,
+  .app-shell-dark > main,
+  .app-command-shell .utility-page,
+  .app-shell-dark .utility-page,
+  .app-command-shell .utility-page-layout,
+  .app-shell-dark .utility-page-layout {
+    padding-bottom: var(--et-mobile-shell-safe-bottom) !important;
+    scroll-padding-bottom: var(--et-mobile-shell-safe-bottom) !important;
+  }
+
+  .mobile-bottom-nav {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 5px !important;
+    height: calc(58px + env(safe-area-inset-bottom, 0px)) !important;
+    min-height: calc(58px + env(safe-area-inset-bottom, 0px)) !important;
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px)) !important;
+    border-radius: 22px 22px 0 0 !important;
+    isolation: isolate !important;
+    background:
+      radial-gradient(circle at 50% 0%, rgba(255, 179, 71, 0.08), transparent 8rem),
+      linear-gradient(180deg, rgba(5, 13, 28, 0.995), rgba(2, 7, 18, 1)) !important;
+    box-shadow:
+      0 -22px 30px rgba(2, 7, 18, 0.9),
+      0 -8px 18px rgba(0, 0, 0, 0.36),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .mobile-bottom-nav::before {
+    content: "" !important;
+    position: absolute !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: -24px !important;
+    height: 26px !important;
+    pointer-events: none !important;
+    background: linear-gradient(180deg, rgba(2, 7, 18, 0), rgba(2, 7, 18, 0.92)) !important;
+    border-radius: 24px 24px 0 0 !important;
+    z-index: -1 !important;
+  }
+
+  .mobile-bottom-nav .mobile-dock-add {
+    display: none !important;
+  }
+
+  .mobile-bottom-nav button {
+    min-height: 46px !important;
+    padding: 5px 2px !important;
+  }
+
+  .mobile-bottom-nav button.active,
+  .mobile-bottom-nav button[aria-current="page"] {
+    border-color: rgba(var(--nav-rgb, 255, 151, 41), 0.34) !important;
+    background:
+      radial-gradient(circle at 50% 0%, rgba(var(--nav-rgb, 255, 151, 41), 0.13), transparent 2.4rem),
+      linear-gradient(180deg, rgba(var(--nav-rgb, 255, 151, 41), 0.08), rgba(var(--nav-rgb-2, 255, 211, 111), 0.035)) !important;
+    box-shadow:
+      0 0 12px rgba(var(--nav-rgb, 255, 151, 41), 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.07) !important;
+  }
+
+  .mobile-quick-add-fab {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    min-height: 32px !important;
+    bottom: calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) - 20px) !important;
+    box-shadow:
+      0 0 0 1px rgba(255, 141, 31, 0.04),
+      0 5px 12px rgba(255, 116, 20, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.24) !important;
+  }
+
+  .mobile-quick-add-fab.is-scroll-hidden,
+  .app-command-shell:has(.app-search.expanded) .mobile-quick-add-fab,
+  .app-shell-dark:has(.app-search.expanded) .mobile-quick-add-fab,
+  .app-command-shell:has(.topbar-search-open) .mobile-quick-add-fab,
+  .app-shell-dark:has(.topbar-search-open) .mobile-quick-add-fab,
+  .ember-assist-open .mobile-quick-add-fab,
+  .app-command-shell.app-scout .mobile-quick-add-fab,
+  .app-command-shell.app-vault .mobile-quick-add-fab,
+  .app-command-shell.app-market .mobile-quick-add-fab,
+  .app-command-shell.app-forge .mobile-quick-add-fab,
+  .app-command-shell.app-inventory .mobile-quick-add-fab,
+  .app-command-shell.app-sales .mobile-quick-add-fab,
+  .app-command-shell.app-expenses .mobile-quick-add-fab,
+  .app-command-shell.app-reports .mobile-quick-add-fab,
+  .app-command-shell.app-tidepool .mobile-quick-add-fab,
+  .app-command-shell.app-kidsprogram .mobile-quick-add-fab,
+  .app-command-shell.app-account .mobile-quick-add-fab,
+  .app-command-shell.app-settings .mobile-quick-add-fab,
+  .app-command-shell.app-comingsoon .mobile-quick-add-fab,
+  .app-command-shell:has(.flow-modal-backdrop) .mobile-quick-add-fab,
+  .app-shell-dark:has(.flow-modal-backdrop) .mobile-quick-add-fab,
+  .app-command-shell:has(.location-modal-backdrop) .mobile-quick-add-fab,
+  .app-shell-dark:has(.location-modal-backdrop) .mobile-quick-add-fab {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transform: translateX(-50%) translateY(20px) scale(0.78) !important;
+  }
+
+  .app-command-shell:has(.flow-modal-backdrop) .mobile-bottom-nav,
+  .app-shell-dark:has(.flow-modal-backdrop) .mobile-bottom-nav,
+  .app-command-shell:has(.location-modal-backdrop) .mobile-bottom-nav,
+  .app-shell-dark:has(.location-modal-backdrop) .mobile-bottom-nav,
+  .app-command-shell:has(.topbar-search-open) .mobile-bottom-nav,
+  .app-shell-dark:has(.topbar-search-open) .mobile-bottom-nav {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transform: translateY(calc(100% + env(safe-area-inset-bottom, 0px))) !important;
+  }
+
+  .topbar.topbar-search-open {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 3200 !important;
+    display: block !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+    padding: calc(12px + env(safe-area-inset-top, 0px)) 12px calc(18px + env(safe-area-inset-bottom, 0px)) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    background:
+      radial-gradient(circle at 80% -10%, rgba(34, 211, 238, 0.18), transparent 14rem),
+      radial-gradient(circle at 8% 4%, rgba(255, 151, 41, 0.1), transparent 12rem),
+      linear-gradient(180deg, rgba(5, 12, 27, 0.99), rgba(2, 7, 18, 0.995)) !important;
+  }
+
+  .topbar.topbar-search-open .topbar-brand,
+  .topbar.topbar-search-open .topbar-command-actions {
+    display: none !important;
+  }
+
+  .topbar.topbar-search-open .app-search.expanded {
+    position: static !important;
+    display: grid !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .topbar.topbar-search-open .app-search.expanded input,
+  .topbar.topbar-search-open .app-search.expanded .app-search-mobile-header,
+  .topbar.topbar-search-open .app-search.expanded .app-search-results {
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .topbar.topbar-search-open .app-search.expanded .app-search-results {
+    display: grid !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding-bottom: 24px !important;
+  }
+
+  .app-market > main,
+  .app-command-shell.app-market > main,
+  .app-shell-dark.app-market > main {
+    padding-bottom: max(210px, calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 148px)) !important;
+    scroll-padding-bottom: max(210px, calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 148px)) !important;
+  }
+
+  .app-market .market-results-panel,
+  .app-command-shell.app-market .market-results-panel,
+  .app-shell-dark.app-market .market-results-panel {
+    margin-bottom: max(118px, calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 48px)) !important;
+    scroll-margin-bottom: max(150px, calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 88px)) !important;
+  }
+
+  .app-market .catalog-result-groups,
+  .app-command-shell.app-market .catalog-result-groups,
+  .app-shell-dark.app-market .catalog-result-groups,
+  .app-market .catalog-results-list,
+  .app-command-shell.app-market .catalog-results-list,
+  .app-shell-dark.app-market .catalog-results-list {
+    padding-bottom: 26px !important;
+  }
+
+  .app-market .catalog-result-card,
+  .app-command-shell.app-market .catalog-result-card,
+  .app-shell-dark.app-market .catalog-result-card,
+  .app-market .market-set-card,
+  .app-command-shell.app-market .market-set-card,
+  .app-shell-dark.app-market .market-set-card {
+    scroll-margin-bottom: max(156px, calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 96px)) !important;
+  }
+
+  .app .flow-modal[data-flow="scoutSubmit"] > .flow-modal-body,
+  .app-command-shell .flow-modal[data-flow="scoutSubmit"] > .flow-modal-body,
+  .app-shell-dark .flow-modal[data-flow="scoutSubmit"] > .flow-modal-body {
+    padding-bottom: calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 150px) !important;
+    scroll-padding-bottom: calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 170px) !important;
+  }
+
+  .app .flow-modal[data-flow="scoutSubmit"] .scout-report-store-list,
+  .app-command-shell .flow-modal[data-flow="scoutSubmit"] .scout-report-store-list,
+  .app-shell-dark .flow-modal[data-flow="scoutSubmit"] .scout-report-store-list {
+    padding-bottom: calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 104px) !important;
+  }
+
+  .app .flow-modal[data-flow="scoutSubmit"] .scout-report-store-card:last-child,
+  .app-command-shell .flow-modal[data-flow="scoutSubmit"] .scout-report-store-card:last-child,
+  .app-shell-dark .flow-modal[data-flow="scoutSubmit"] .scout-report-store-card:last-child {
+    margin-bottom: 28px !important;
+  }
+}
+
+/* Hearth home dashboard finalization: make Home feel like a useful base, not a task list. */
+.app-home .hearth-command-view.hearth-northstar {
+  gap: clamp(14px, 1.7vw, 22px) !important;
+}
+
+.app-home .hearth-northstar-header {
+  position: relative;
+  align-items: stretch !important;
+  min-height: 0 !important;
+  overflow: hidden;
+  border-color: rgba(255, 179, 71, 0.26) !important;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(255, 179, 71, 0.2), transparent 13rem),
+    radial-gradient(circle at 96% 12%, rgba(34, 211, 238, 0.12), transparent 16rem),
+    linear-gradient(145deg, rgba(16, 24, 45, 0.96), rgba(6, 13, 28, 0.94)) !important;
+}
+
+.app-home .hearth-northstar-header::after {
+  content: "";
+  position: absolute;
+  inset: auto 18px 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 210, 111, 0.56), rgba(61, 214, 255, 0.35), transparent);
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+.app-home .hearth-greeting-block {
+  align-items: flex-start !important;
+}
+
+.app-home .hearth-greeting-block h1 {
+  color: #fff8ed !important;
+  font-size: clamp(1.55rem, 2.6vw, 2.6rem) !important;
+  line-height: 0.98 !important;
+  letter-spacing: 0 !important;
+}
+
+.app-home .hearth-greeting-block p {
+  max-width: 38rem !important;
+  margin-top: 8px !important;
+  color: rgba(245, 238, 224, 0.78) !important;
+  font-size: clamp(0.9rem, 1vw, 1rem) !important;
+  line-height: 1.38 !important;
+}
+
+.app-home .hearth-today-message {
+  display: inline-flex;
+  align-items: center;
+  max-width: min(100%, 42rem);
+  gap: 8px;
+  margin-top: 12px;
+  padding: 7px 10px;
+  border: 1px solid rgba(255, 211, 111, 0.2);
+  border-radius: 999px;
+  background: rgba(255, 179, 71, 0.08);
+  color: rgba(255, 249, 236, 0.9);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.app-home .hearth-today-message span {
+  flex: 0 0 auto;
+  color: #ffd36f;
+  font-size: 0.66rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.app-home .hearth-today-message strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #fff8ed;
+  font-size: 0.82rem;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-home .hearth-header-actions {
+  display: grid !important;
+  align-content: start;
+  justify-items: end;
+  min-width: 150px;
+  gap: 8px !important;
+}
+
+.app-home .hearth-mini-badge-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.app-home .hearth-points-badge {
+  min-height: 42px !important;
+  padding: 7px 10px !important;
+  border-color: rgba(255, 211, 111, 0.24) !important;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(255, 211, 111, 0.2), transparent 3rem),
+    rgba(255, 179, 71, 0.08) !important;
+}
+
+.app-home .hearth-points-badge strong {
+  font-size: 1rem !important;
+}
+
+.app-home .hearth-at-glance-panel,
+.app-home .hearth-build-hearth-panel {
+  display: grid;
+  gap: 12px;
+  padding: clamp(13px, 1.6vw, 18px) !important;
+}
+
+.app-home .hearth-at-glance-panel {
+  border-color: rgba(132, 226, 255, 0.18) !important;
+  background:
+    radial-gradient(circle at 0 0, rgba(34, 211, 238, 0.12), transparent 12rem),
+    linear-gradient(145deg, rgba(11, 22, 43, 0.92), rgba(5, 12, 27, 0.9)) !important;
+}
+
+.app-home .hearth-at-glance-panel .compact-card-header,
+.app-home .hearth-build-hearth-panel .compact-card-header,
+.app-home .hearth-quick-actions-panel .hearth-quick-actions-heading {
+  margin: 0 !important;
+}
+
+.app-home .hearth-at-glance-panel .compact-card-header h2,
+.app-home .hearth-build-hearth-panel .compact-card-header h2 {
+  margin: 0;
+  color: #fff8ed;
+  font-size: clamp(1rem, 1.2vw, 1.22rem);
+}
+
+.app-home .hearth-at-glance-panel .compact-card-header p,
+.app-home .hearth-build-hearth-panel .compact-card-header p {
+  margin-top: 3px;
+  color: rgba(229, 241, 255, 0.68);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.app-home .hearth-at-glance-panel .hearth-snapshot-strip {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.app-home .hearth-at-glance-panel .hearth-snapshot-pill {
+  min-height: 82px;
+}
+
+.app-home .hearth-best-action-card {
+  min-height: 198px !important;
+}
+
+.app-home .hearth-today-sparks-panel {
+  border-color: rgba(255, 179, 71, 0.22) !important;
+}
+
+.app-home .hearth-sparks-footer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.app-home .hearth-sparks-footer-row .hearth-sparks-footnote {
+  margin: 0 !important;
+}
+
+.app-home .hearth-sparks-view-all {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 211, 111, 0.2);
+  border-radius: 999px;
+  background: rgba(255, 179, 71, 0.07);
+  color: #ffd36f;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.app-home .hearth-quick-actions-panel {
+  border-color: rgba(255, 211, 111, 0.16) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(255, 179, 71, 0.1), transparent 12rem),
+    rgba(7, 16, 32, 0.72) !important;
+}
+
+.app-home .hearth-quick-action-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+
+.app-home .hearth-quick-action {
+  min-height: 68px !important;
+  border-color: rgba(132, 226, 255, 0.13) !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 211, 111, 0.08), transparent 5rem),
+    rgba(3, 12, 26, 0.46) !important;
+}
+
+.app-home .hearth-quick-action-icon {
+  color: #ffd36f !important;
+  background: rgba(255, 179, 71, 0.1) !important;
+}
+
+.app-home .hearth-onboarding-slot > .hearth-start-here-panel {
+  margin: 0 !important;
+}
+
+.app-home .hearth-onboarding-slot-secondary .hearth-start-here-panel {
+  opacity: 0.94;
+}
+
+.app-home .hearth-build-hearth-panel {
+  border-color: rgba(168, 85, 247, 0.18) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(168, 85, 247, 0.11), transparent 11rem),
+    rgba(7, 16, 32, 0.76) !important;
+}
+
+.app-home .hearth-build-hearth-panel .hearth-feature-list {
+  display: grid;
+  gap: 9px;
+}
+
+.app-home .hearth-build-hearth-panel .hearth-feature-card {
+  min-height: 74px;
+}
+
+.app-home .hearth-recent-panel .compact-card-header::after {
+  content: none !important;
+}
+
+.app-home .hearth-empty-state {
+  min-height: 134px !important;
+  align-content: center;
+}
+
+.app-home .hearth-empty-state .secondary-button {
+  width: fit-content;
+  min-height: 34px !important;
+  margin-top: 4px;
+  padding: 0 12px !important;
+  font-size: 0.75rem !important;
+}
+
+.app-home .command-hearth-header {
+  border-color: rgba(255, 211, 111, 0.24);
+}
+
+.app-home .command-hearth-card,
+.app-home .command-hearth-queue-row,
+.app-home .command-hearth-action {
+  border-radius: 16px;
+}
+
+@media (min-width: 1180px) {
+  .app-home .hearth-command-view.hearth-northstar {
+    grid-template-columns: minmax(0, 1.18fr) minmax(340px, 0.82fr) !important;
+  }
+
+  .app-home .hearth-side-column {
+    position: sticky;
+    top: 18px;
+  }
+}
+
+@media (max-width: 780px) {
+  .app-home .dashboard-layout.hearth-command-view.hearth-northstar,
+  .app-home .dashboard-layout.command-hearth {
+    padding-bottom: max(188px, calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 126px)) !important;
+  }
+
+  .app-home .hearth-northstar-header {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 11px !important;
+    padding: 14px !important;
+  }
+
+  .app-home .hearth-greeting-block {
+    gap: 10px !important;
+  }
+
+  .app-home .hearth-greeting-block h1 {
+    max-width: 100% !important;
+    font-size: clamp(1.38rem, 8vw, 1.85rem) !important;
+    white-space: normal !important;
+  }
+
+  .app-home .hearth-greeting-block p {
+    display: block !important;
+    max-width: 30ch !important;
+    margin-top: 6px !important;
+    font-size: 0.78rem !important;
+    line-height: 1.32 !important;
+  }
+
+  .app-home .hearth-today-message {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    width: 100%;
+    max-width: 100%;
+    margin-top: 9px;
+    padding: 7px 9px;
+    border-radius: 14px;
+  }
+
+  .app-home .hearth-today-message strong {
+    font-size: 0.74rem;
+    white-space: normal;
+  }
+
+  .app-home .hearth-header-actions {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    justify-items: start;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .app-home .hearth-mini-badge-row {
+    justify-content: start;
+  }
+
+  .app-home .hearth-points-badge {
+    min-height: 34px !important;
+    padding: 5px 8px !important;
+  }
+
+  .app-home .hearth-points-badge strong {
+    font-size: 0.86rem !important;
+  }
+
+  .app-home .hearth-points-badge small {
+    font-size: 0.58rem !important;
+  }
+
+  .app-home .hearth-beta-badge,
+  .app-home .hearth-mode-chip,
+  .app-home .hearth-admin-badge {
+    min-height: 25px !important;
+    padding-inline: 7px !important;
+    font-size: 0.58rem !important;
+  }
+
+  .app-home .hearth-at-glance-panel,
+  .app-home .hearth-build-hearth-panel,
+  .app-home .hearth-quick-actions-panel,
+  .app-home .hearth-recent-panel {
+    border-radius: 20px !important;
+  }
+
+  .app-home .hearth-at-glance-panel {
+    gap: 9px;
+    padding: 12px !important;
+  }
+
+  .app-home .hearth-at-glance-panel .compact-card-header p {
+    display: none;
+  }
+
+  .app-home .hearth-at-glance-panel .hearth-snapshot-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .app-home .hearth-at-glance-panel .hearth-snapshot-pill {
+    min-height: 74px;
+    padding: 9px;
+  }
+
+  .app-home .hearth-at-glance-panel .hearth-snapshot-pill span {
+    font-size: 0.61rem;
+  }
+
+  .app-home .hearth-at-glance-panel .hearth-snapshot-pill strong {
+    font-size: 0.86rem;
+  }
+
+  .app-home .hearth-at-glance-panel .hearth-snapshot-pill small {
+    font-size: 0.64rem;
+  }
+
+  .app-home .hearth-spark-mission-list {
+    gap: 7px !important;
+  }
+
+  .app-home .hearth-spark-mission-card {
+    grid-template-columns: 30px minmax(0, 1fr) auto !important;
+    min-height: 58px !important;
+    gap: 7px !important;
+  }
+
+  .app-home .hearth-spark-mission-copy h3 {
+    font-size: 0.82rem !important;
+  }
+
+  .app-home .hearth-spark-mission-copy p {
+    font-size: 0.66rem !important;
+  }
+
+  .app-home .hearth-sparks-footer-row {
+    align-items: flex-start;
+  }
+
+  .app-home .hearth-sparks-footer-row .hearth-sparks-footnote {
+    display: block !important;
+    max-width: 18ch;
+    font-size: 0.64rem !important;
+  }
+
+  .app-home .hearth-sparks-view-all {
+    min-height: 30px;
+    padding: 0 9px;
+    font-size: 0.66rem;
+  }
+
+  .app-home .hearth-best-action-card {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .app-home .hearth-best-action-art {
+    display: none !important;
+  }
+
+  .app-home .hearth-best-action-card h2 {
+    max-width: none !important;
+  }
+
+  .app-home .hearth-best-action-reason {
+    max-width: none !important;
+    -webkit-line-clamp: 2 !important;
+  }
+
+  .app-home .hearth-quick-action-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .app-home .hearth-quick-action {
+    grid-template-columns: 28px minmax(0, 1fr) !important;
+    align-items: center !important;
+    justify-items: start !important;
+    min-height: 54px !important;
+    padding: 8px !important;
+  }
+
+  .app-home .hearth-quick-action-icon {
+    width: 28px !important;
+    height: 28px !important;
+    border-radius: 11px !important;
+  }
+
+  .app-home .hearth-quick-action strong {
+    font-size: 0.76rem !important;
+  }
+
+  .app-home .hearth-build-hearth-panel {
+    padding: 12px !important;
+  }
+
+  .app-home .hearth-build-hearth-panel .compact-card-header p {
+    display: block;
+    font-size: 0.72rem;
+  }
+
+  .app-home .hearth-build-hearth-panel .hearth-feature-card {
+    min-height: 64px;
+    padding: 9px !important;
+  }
+
+  .app-home .hearth-feature-copy small,
+  .app-home .hearth-feature-copy em {
+    font-size: 0.65rem !important;
+  }
+
+  .app-home .hearth-empty-state {
+    min-height: 118px !important;
+    padding: 14px !important;
+  }
+
+  .app-home .command-hearth-main-grid,
+  .app-home .command-hearth-primary-column,
+  .app-home .command-hearth-side-column {
+    gap: 10px !important;
+  }
+
+  .app-home .command-hearth-priority-panel,
+  .app-home .command-hearth-queue-panel,
+  .app-home .command-hearth-actions-panel,
+  .app-home .command-hearth-recent-panel {
+    padding: 12px !important;
+    border-radius: 20px !important;
+  }
+}
+
+/* Hearth mobile overlap cleanup: keep approved Home content clear of the dock. */
+@media (max-width: 780px) {
+  .app-home {
+    --hearth-mobile-dock-clearance: max(228px, calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 156px));
+    --hearth-mobile-visual-guard: max(74px, calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 8px));
+  }
+
+  .app-home.admin-view-mode .mobile-quick-add-fab,
+  .app-home:has(.command-hearth) .mobile-quick-add-fab {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transform: translateX(-50%) translateY(24px) scale(0.72) !important;
+  }
+
+  .app-home .mobile-bottom-nav::before {
+    top: calc(-1 * var(--hearth-mobile-visual-guard)) !important;
+    height: calc(var(--hearth-mobile-visual-guard) + 2px) !important;
+    background:
+      linear-gradient(180deg, rgba(2, 7, 18, 0), rgba(2, 7, 18, 0.96) 58%, rgba(2, 7, 18, 1)) !important;
+  }
+
+  .app-home .dashboard-layout.hearth-command-view.hearth-northstar,
+  .app-home .dashboard-layout.command-hearth {
+    padding-bottom: var(--hearth-mobile-dock-clearance) !important;
+    scroll-padding-bottom: var(--hearth-mobile-dock-clearance) !important;
+  }
+
+  .app-home .hearth-command-view.hearth-northstar::after,
+  .app-home .command-hearth::after {
+    content: "" !important;
+    display: block !important;
+    grid-column: 1 / -1;
+    min-height: calc(var(--hearth-mobile-dock-clearance) - 48px);
+    pointer-events: none;
+  }
+
+  .app-home .hearth-northstar-header {
+    gap: 8px !important;
+    padding: 11px !important;
+  }
+
+  .app-home .hearth-greeting-block {
+    gap: 8px !important;
+  }
+
+  .app-home .hearth-greeting-block h1 {
+    font-size: clamp(1.28rem, 7.1vw, 1.58rem) !important;
+    line-height: 0.98 !important;
+  }
+
+  .app-home .hearth-greeting-block p {
+    margin-top: 4px !important;
+    font-size: 0.73rem !important;
+    line-height: 1.26 !important;
+  }
+
+  .app-home .hearth-today-message {
+    margin-top: 7px !important;
+    padding: 6px 8px !important;
+    border-radius: 13px !important;
+  }
+
+  .app-home .hearth-today-message strong {
+    font-size: 0.7rem !important;
+  }
+
+  .app-home .hearth-points-badge {
+    min-height: 30px !important;
+    padding: 4px 8px !important;
+  }
+
+  .app-home .hearth-at-glance-panel {
+    gap: 7px !important;
+    padding: 10px !important;
+  }
+
+  .app-home .hearth-at-glance-panel .hearth-snapshot-pill {
+    min-height: 62px !important;
+    padding: 8px !important;
+  }
+
+  .app-home .hearth-spark-mission-list {
+    gap: 6px !important;
+  }
+
+  .app-home .hearth-spark-mission-card {
+    min-height: 52px !important;
+    gap: 6px !important;
+    padding: 8px !important;
+  }
+
+  .app-home .hearth-spark-mission-copy h3 {
+    font-size: 0.78rem !important;
+  }
+
+  .app-home .hearth-spark-mission-copy p {
+    font-size: 0.62rem !important;
+  }
+
+  .app-home .hearth-spark-action-button {
+    min-height: 28px !important;
+    padding-inline: 11px !important;
+  }
+
+  .app-home .hearth-spark-mission-card.is-complete .hearth-spark-mission-actions {
+    display: none !important;
+  }
+
+  .app-home .hearth-spark-mission-list .hearth-spark-mission-card:nth-child(n+3) {
+    display: none !important;
+  }
+
+  .app-home .hearth-recent-list .hearth-recent-row:nth-child(n+2) {
+    display: none !important;
+  }
+
+  .app-home .hearth-recent-row {
+    min-height: 72px !important;
+    padding: 9px 10px !important;
+  }
+
+  .app-home .hearth-recent-row small {
+    display: -webkit-box !important;
+    overflow: hidden !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-line-clamp: 1 !important;
+  }
+
+  .app-home .hearth-recent-row b {
+    min-height: 28px !important;
+    padding: 0 9px !important;
+  }
+
+  .app-home .hearth-sparks-footer-row {
+    margin-top: 132px !important;
+  }
+
+  .app-home .hearth-side-column,
+  .app-home .command-hearth-side-column {
+    padding-bottom: calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 42px) !important;
+  }
+
+  .app-home .hearth-recent-panel,
+  .app-home .command-hearth-recent-panel,
+  .app-home .command-hearth-actions-panel {
+    margin-bottom: calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 28px) !important;
+    scroll-margin-bottom: var(--hearth-mobile-dock-clearance) !important;
+  }
+
+  .app-home .command-hearth-main-grid,
+  .app-home .command-hearth-primary-column,
+  .app-home .command-hearth-side-column {
+    gap: 8px !important;
+  }
+
+  .app-home .command-hearth-priority-panel,
+  .app-home .command-hearth-queue-panel,
+  .app-home .command-hearth-actions-panel,
+  .app-home .command-hearth-recent-panel {
+    padding: 10px !important;
+  }
+
+  .app-home .command-hearth-priority-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .app-home .command-hearth-queue-panel {
+    margin-top: 82px !important;
+  }
+
+  .app-home .command-hearth-card {
+    min-height: 76px !important;
+    padding: 9px !important;
+    gap: 6px !important;
+  }
+
+  .app-home .command-hearth-card-icon {
+    width: 28px !important;
+    height: 28px !important;
+    border-radius: 11px !important;
+  }
+
+  .app-home .command-hearth-card strong {
+    font-size: 0.95rem !important;
+  }
+
+  .app-home .command-hearth-card small,
+  .app-home .command-hearth-card em {
+    font-size: 0.66rem !important;
+  }
+}
+
+/* Hearth visual approval polish: refine mobile Home without changing other pages. */
+.app-home .hearth-build-hearth-panel .compact-card-header h2 {
+  letter-spacing: 0;
+}
+
+@media (max-width: 780px) {
+  .app-home {
+    --hearth-mobile-dock-clearance: max(168px, calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 100px));
+  }
+
+  .app-command-shell.app-home > main,
+  .app-shell-dark.app-home > main {
+    padding-bottom: max(168px, calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 100px)) !important;
+    scroll-padding-bottom: max(168px, calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 100px)) !important;
+  }
+
+  .app-home .hearth-northstar-header {
+    gap: 12px !important;
+    padding: 14px !important;
+    border-radius: 24px !important;
+    background:
+      radial-gradient(circle at 12% 2%, rgba(255, 179, 71, 0.24), transparent 9rem),
+      radial-gradient(circle at 96% 8%, rgba(34, 211, 238, 0.13), transparent 11rem),
+      linear-gradient(145deg, rgba(18, 27, 47, 0.96), rgba(5, 13, 28, 0.96)) !important;
+  }
+
+  .app-home .hearth-greeting-block {
+    display: grid !important;
+    grid-template-columns: 38px minmax(0, 1fr);
+    align-items: start !important;
+    gap: 10px !important;
+  }
+
+  .app-home .hearth-logo-mark {
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 14px !important;
+  }
+
+  .app-home .hearth-logo-mark img {
+    width: 28px !important;
+    height: 28px !important;
+  }
+
+  .app-home .hearth-greeting-block h1 {
+    max-width: 13ch !important;
+    font-size: clamp(1.62rem, 8.4vw, 1.92rem) !important;
+    line-height: 1.02 !important;
+  }
+
+  .app-home .hearth-greeting-block p {
+    max-width: 27ch !important;
+    margin-top: 6px !important;
+    font-size: 0.76rem !important;
+    line-height: 1.3 !important;
+  }
+
+  .app-home .hearth-today-message {
+    grid-column: 1 / -1;
+    margin-top: 9px !important;
+    padding: 7px 9px !important;
+    border-color: rgba(255, 211, 111, 0.26) !important;
+    background:
+      linear-gradient(135deg, rgba(255, 179, 71, 0.13), rgba(34, 211, 238, 0.06)) !important;
+  }
+
+  .app-home .hearth-header-actions {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    gap: 8px !important;
+    padding: 8px !important;
+    border: 1px solid rgba(255, 211, 111, 0.14);
+    border-radius: 17px;
+    background: rgba(2, 9, 21, 0.26);
+  }
+
+  .app-home .hearth-points-badge {
+    flex: 0 0 auto;
+    min-height: 36px !important;
+    padding: 5px 10px !important;
+    border-radius: 14px !important;
+  }
+
+  .app-home .hearth-points-badge strong {
+    font-size: 0.98rem !important;
+  }
+
+  .app-home .hearth-mini-badge-row {
+    flex: 1 1 auto;
+    justify-content: flex-start !important;
+    gap: 6px !important;
+    min-width: 0;
+  }
+
+  .app-home .hearth-beta-badge,
+  .app-home .hearth-mode-chip,
+  .app-home .hearth-admin-badge {
+    min-height: 28px !important;
+    padding-inline: 9px !important;
+    border-radius: 999px !important;
+    background: rgba(255, 255, 255, 0.045) !important;
+  }
+
+  .app-home .hearth-at-glance-panel {
+    gap: 10px !important;
+    padding: 12px !important;
+    border-radius: 22px !important;
+  }
+
+  .app-home .hearth-at-glance-panel .hearth-snapshot-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 9px !important;
+  }
+
+  .app-home .hearth-at-glance-panel .hearth-snapshot-pill {
+    min-height: 68px !important;
+    border-radius: 17px !important;
+    background:
+      radial-gradient(circle at 12% 0%, rgba(255, 211, 111, 0.08), transparent 4.2rem),
+      linear-gradient(145deg, rgba(15, 26, 47, 0.92), rgba(7, 15, 30, 0.9)) !important;
+  }
+
+  .app-home .hearth-at-glance-panel .hearth-snapshot-pill:nth-child(3):last-child {
+    grid-column: 1 / -1;
+  }
+
+  .app-home .hearth-spark-mission-list {
+    gap: 10px !important;
+  }
+
+  .app-home .hearth-spark-mission-list .hearth-spark-mission-card:nth-child(n+3) {
+    display: grid !important;
+  }
+
+  .app-home .hearth-spark-mission-card {
+    grid-template-columns: 36px minmax(0, 1fr) !important;
+    align-items: start !important;
+    min-height: 0 !important;
+    gap: 9px !important;
+    padding: 10px !important;
+    border-radius: 18px !important;
+  }
+
+  .app-home .hearth-spark-mission-actions {
+    display: flex !important;
+    grid-column: 2 !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+    margin-top: 4px;
+  }
+
+  .app-home .hearth-spark-mission-copy h3 {
+    font-size: 0.84rem !important;
+    line-height: 1.18 !important;
+  }
+
+  .app-home .hearth-spark-mission-copy small {
+    font-size: 0.7rem !important;
+  }
+
+  .app-home .hearth-spark-mission-copy p {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px !important;
+    font-size: 0.68rem !important;
+  }
+
+  .app-home .hearth-spark-reward {
+    flex: 0 0 auto;
+    font-size: 0.68rem !important;
+    white-space: nowrap;
+  }
+
+  .app-home .hearth-spark-action-button {
+    min-width: 76px;
+    min-height: 32px !important;
+    padding: 0 13px !important;
+  }
+
+  .app-home .hearth-spark-dismiss {
+    width: 28px !important;
+    min-width: 28px !important;
+    height: 28px !important;
+    min-height: 28px !important;
+    opacity: 0.72;
+  }
+
+  .app-home .hearth-sparks-footer-row {
+    margin-top: 14px !important;
+    padding-top: 2px;
+  }
+
+  .app-home .hearth-sparks-view-all {
+    width: auto;
+    min-width: 134px;
+  }
+
+  .app-home .hearth-quick-action {
+    min-height: 58px !important;
+    border-radius: 17px !important;
+    background:
+      radial-gradient(circle at 22% 0%, rgba(255, 211, 111, 0.09), transparent 4rem),
+      rgba(5, 15, 31, 0.72) !important;
+  }
+
+  .app-home .hearth-quick-action-icon {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  .app-home .hearth-build-hearth-panel .compact-card-header h2 {
+    font-size: 1rem !important;
+  }
+
+  .app-home .hearth-recent-panel {
+    min-height: 0;
+  }
+
+  .app-home .hearth-recent-row {
+    border-radius: 17px !important;
+    background:
+      linear-gradient(145deg, rgba(18, 31, 54, 0.86), rgba(7, 15, 30, 0.9)) !important;
+  }
+
+  .app-home .command-hearth-queue-panel {
+    margin-top: 14px !important;
+  }
+
+  .app-home .command-hearth-actions-panel,
+  .app-home .command-hearth-recent-panel {
+    margin-top: 0 !important;
+  }
+
+  .app-home .command-hearth-queue-row,
+  .app-home .command-hearth-action {
+    min-height: 58px;
+    border-radius: 16px;
+  }
+}
+
+/* Hearth mobile hero correction: stacked status, no boxed badge wall. */
+@media (max-width: 780px) {
+  .app-home .hearth-northstar-header {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 12px !important;
+    padding: 14px !important;
+  }
+
+  .app-home .hearth-greeting-block {
+    display: grid !important;
+    grid-template-columns: 38px minmax(0, 1fr) !important;
+    align-items: start !important;
+    gap: 10px !important;
+  }
+
+  .app-home .hearth-greeting-block > div {
+    min-width: 0;
+  }
+
+  .app-home .hearth-greeting-block h1 {
+    max-width: 14ch !important;
+    font-size: clamp(1.48rem, 7.2vw, 1.78rem) !important;
+    line-height: 1.04 !important;
+  }
+
+  .app-home .hearth-greeting-block p {
+    max-width: 29ch !important;
+    font-size: 0.76rem !important;
+    line-height: 1.32 !important;
+  }
+
+  .app-home .hearth-today-message {
+    display: inline-flex !important;
+    grid-template-columns: none !important;
+    width: auto !important;
+    max-width: 100% !important;
+    align-items: center !important;
+    gap: 8px !important;
+    margin-top: 9px !important;
+    padding: 7px 10px !important;
+  }
+
+  .app-home .hearth-today-message span {
+    writing-mode: horizontal-tb !important;
+    text-orientation: mixed !important;
+    white-space: nowrap !important;
+  }
+
+  .app-home .hearth-today-message strong {
+    overflow: visible !important;
+    font-size: 0.72rem !important;
+    line-height: 1.18 !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+  }
+
+  .app-home .hearth-header-actions {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    gap: 7px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+  }
+
+  .app-home .hearth-points-badge {
+    min-height: 34px !important;
+    border-radius: 15px !important;
+  }
+
+  .app-home .hearth-mini-badge-row {
+    flex: 1 1 150px;
+  }
+
+  .app-home .hearth-spark-mission-card {
+    padding: 11px !important;
+  }
+
+  .app-home .hearth-spark-mission-actions {
+    margin-top: 6px !important;
+  }
+
+  .app-home .command-hearth-queue-panel {
+    margin-top: 88px !important;
+  }
+}
+
+@media (max-width: 780px) {
+  .app-home .hearth-spark-mission-icon {
+    grid-column: 1 !important;
+    grid-row: 1 / span 2 !important;
+  }
+
+  .app-home .hearth-spark-mission-copy {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+  }
+
+  .app-home .hearth-spark-mission-actions {
+    grid-column: 2 !important;
+    grid-row: 2 !important;
+    margin-top: 6px !important;
+  }
+
+  .app-home .hearth-spark-mission-copy h3 {
+    overflow-wrap: normal !important;
+  }
+
+  .app-home .command-hearth-queue-panel {
+    margin-top: 142px !important;
+  }
+
+  .app-home .hearth-sparks-footer-row {
+    margin-top: 108px !important;
+  }
+}
+
+/* Hearth visual finish: lighter mobile hero, cleaner Sparks, tighter Command rhythm. */
+@media (max-width: 780px) {
+  .app-home .hearth-northstar-header {
+    gap: 13px !important;
+    padding: 14px 14px 13px !important;
+    background:
+      radial-gradient(circle at 14% 4%, rgba(255, 179, 71, 0.22), transparent 8.8rem),
+      radial-gradient(circle at 100% 5%, rgba(34, 211, 238, 0.12), transparent 10rem),
+      linear-gradient(145deg, rgba(19, 29, 49, 0.96), rgba(5, 13, 28, 0.965)) !important;
+  }
+
+  .app-home .hearth-greeting-block {
+    grid-template-columns: 36px minmax(0, 1fr) !important;
+    gap: 11px !important;
+  }
+
+  .app-home .hearth-logo-mark {
+    width: 36px !important;
+    height: 36px !important;
+    margin-top: 1px;
+  }
+
+  .app-home .hearth-logo-mark img {
+    width: 26px !important;
+    height: 26px !important;
+  }
+
+  .app-home .hearth-greeting-block h1 {
+    max-width: 16ch !important;
+    font-size: clamp(1.4rem, 6.7vw, 1.72rem) !important;
+    line-height: 1.04 !important;
+  }
+
+  .app-home .hearth-greeting-block p {
+    max-width: 31ch !important;
+    margin-top: 5px !important;
+    color: rgba(255, 247, 234, 0.74) !important;
+    font-size: 0.75rem !important;
+    line-height: 1.32 !important;
+  }
+
+  .app-home .hearth-today-message {
+    margin-top: 8px !important;
+    padding: 6px 9px !important;
+    border-radius: 999px !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+  }
+
+  .app-home .hearth-header-actions {
+    gap: 7px !important;
+    row-gap: 6px !important;
+  }
+
+  .app-home .hearth-points-badge {
+    flex-direction: row !important;
+    align-items: baseline !important;
+    min-height: 31px !important;
+    gap: 5px !important;
+    padding: 5px 9px !important;
+    border-radius: 999px !important;
+    background:
+      linear-gradient(135deg, rgba(255, 211, 111, 0.17), rgba(255, 151, 41, 0.07)),
+      rgba(255, 255, 255, 0.035) !important;
+  }
+
+  .app-home .hearth-points-badge strong {
+    font-size: 0.92rem !important;
+    line-height: 1 !important;
+  }
+
+  .app-home .hearth-points-badge small {
+    font-size: 0.62rem !important;
+    line-height: 1 !important;
+  }
+
+  .app-home .hearth-mini-badge-row {
+    flex: 0 1 auto !important;
+    gap: 6px !important;
+  }
+
+  .app-home .hearth-mini-badge-row .status-badge,
+  .app-home .hearth-mode-chip,
+  .app-home .hearth-admin-badge {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+    min-height: 27px !important;
+    padding: 0 10px !important;
+    border-color: rgba(255, 211, 111, 0.18) !important;
+    background: rgba(255, 255, 255, 0.04) !important;
+    color: rgba(255, 248, 237, 0.88) !important;
+    font-size: 0.66rem !important;
+  }
+
+  .app-home .hearth-at-glance-panel {
+    padding: 11px !important;
+    border-color: rgba(132, 226, 255, 0.18) !important;
+  }
+
+  .app-home .hearth-at-glance-panel .compact-card-header {
+    padding: 0 1px 1px !important;
+    border: 0 !important;
+    background: transparent !important;
+  }
+
+  .app-home .hearth-at-glance-panel .compact-card-header h2 {
+    font-size: 1rem !important;
+  }
+
+  .app-home .hearth-at-glance-panel .hearth-snapshot-pill {
+    min-height: 64px !important;
+    padding: 9px !important;
+    border-color: rgba(132, 226, 255, 0.16) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  .app-home .hearth-today-sparks-panel {
+    padding: 13px !important;
+  }
+
+  .app-home .hearth-sparks-heading {
+    margin-bottom: 12px !important;
+  }
+
+  .app-home .hearth-spark-mission-card {
+    position: relative;
+    grid-template-columns: 36px minmax(0, 1fr) !important;
+    gap: 10px !important;
+    min-height: 92px !important;
+    padding: 12px 40px 12px 11px !important;
+    border-radius: 19px !important;
+  }
+
+  .app-home .hearth-spark-mission-icon {
+    width: 34px !important;
+    height: 34px !important;
+    border-radius: 13px !important;
+  }
+
+  .app-home .hearth-spark-mission-copy {
+    gap: 4px !important;
+  }
+
+  .app-home .hearth-spark-mission-copy h3 {
+    font-size: 0.86rem !important;
+    line-height: 1.18 !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .app-home .hearth-spark-mission-copy p {
+    gap: 5px 9px !important;
+    font-size: 0.68rem !important;
+    line-height: 1.22 !important;
+  }
+
+  .app-home .hearth-spark-reward {
+    font-size: 0.68rem !important;
+  }
+
+  .app-home .hearth-spark-mission-actions {
+    grid-column: 2 !important;
+    grid-row: 2 !important;
+    justify-content: flex-start !important;
+    margin-top: 8px !important;
+  }
+
+  .app-home .hearth-spark-action-button {
+    flex: 0 0 auto !important;
+    min-width: 96px !important;
+    min-height: 32px !important;
+    padding: 0 15px !important;
+    box-shadow: 0 8px 18px rgba(255, 159, 47, 0.12) !important;
+  }
+
+  .app-home .hearth-spark-dismiss {
+    position: absolute !important;
+    top: 10px !important;
+    right: 10px !important;
+    width: 24px !important;
+    min-width: 24px !important;
+    height: 24px !important;
+    min-height: 24px !important;
+    border-color: rgba(255, 255, 255, 0.09) !important;
+    color: rgba(232, 246, 255, 0.52) !important;
+    opacity: 0.58 !important;
+  }
+
+  .app-home .hearth-spark-dismiss:focus-visible,
+  .app-home .hearth-spark-dismiss:hover {
+    opacity: 0.9 !important;
+  }
+
+  .app-home .hearth-sparks-footer-row {
+    display: none !important;
+    margin-top: 0 !important;
+  }
+
+  .app-home .hearth-quick-action {
+    min-height: 60px !important;
+    border-color: rgba(132, 226, 255, 0.15) !important;
+  }
+
+  .app-home .hearth-quick-actions-panel {
+    margin-top: 86px !important;
+  }
+
+  .app-home .hearth-command-view.hearth-northstar::after,
+  .app-home .command-hearth::after {
+    min-height: 0 !important;
+  }
+
+  .app-home .hearth-side-column,
+  .app-home .command-hearth-side-column {
+    padding-bottom: 0 !important;
+  }
+
+  .app-home .hearth-recent-panel,
+  .app-home .command-hearth-recent-panel,
+  .app-home .command-hearth-actions-panel {
+    margin-bottom: 0 !important;
+  }
+
+  .app-home .hearth-quick-action-icon {
+    background:
+      radial-gradient(circle at 40% 20%, rgba(255, 211, 111, 0.14), transparent 2rem),
+      rgba(8, 22, 42, 0.92) !important;
+  }
+
+  .app-home .hearth-build-hearth-panel {
+    border-color: rgba(255, 211, 111, 0.18) !important;
+  }
+
+  .app-home .hearth-build-hearth-panel .compact-card-header h2,
+  .app-home .hearth-recent-panel .compact-card-header h2 {
+    font-size: 1.02rem !important;
+  }
+
+  .app-home .command-hearth-header {
+    padding: 13px !important;
+  }
+
+  .app-home .command-hearth-priority-panel {
+    padding: 10px !important;
+  }
+
+  .app-home .command-hearth-card {
+    min-height: 70px !important;
+    padding: 8px !important;
+  }
+
+  .app-home .command-hearth-card em {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .app-home .command-hearth-queue-panel {
+    margin-top: 66px !important;
+  }
+
+  .app-home .command-hearth-actions-panel {
+    margin-top: 4px !important;
+  }
+}
+
+@media (min-width: 980px) {
+  .app-home .hearth-northstar-header,
+  .app-home .hearth-at-glance-panel,
+  .app-home .hearth-today-sparks-panel,
+  .app-home .hearth-best-action-card,
+  .app-home .hearth-quick-actions-panel,
+  .app-home .hearth-build-hearth-panel,
+  .app-home .hearth-recent-panel {
+    box-shadow:
+      0 18px 50px rgba(0, 0, 0, 0.22),
+      inset 0 1px 0 rgba(255, 255, 255, 0.055) !important;
+  }
+
+  .app-home .hearth-at-glance-panel,
+  .app-home .hearth-build-hearth-panel,
+  .app-home .hearth-recent-panel {
+    background:
+      radial-gradient(circle at 0% 0%, rgba(255, 179, 71, 0.08), transparent 12rem),
+      linear-gradient(145deg, rgba(11, 23, 43, 0.88), rgba(5, 14, 29, 0.74)) !important;
+  }
+
+  .app-home .hearth-side-column {
+    gap: clamp(14px, 1.2vw, 20px) !important;
+  }
+
+  .app-home .hearth-feature-list,
+  .app-home .hearth-recent-list {
+    gap: 10px !important;
+  }
+}
