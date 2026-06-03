@@ -550,6 +550,12 @@ function buildPriorityTextClauses(terms = []) {
     ]);
 }
 
+function compactTextFieldsForBroadSearch(fields = []) {
+  const preferredFields = ["name", "product_name", "set_name", "product_type"];
+  const compactFields = preferredFields.filter((field) => fields.includes(field));
+  return compactFields.length ? compactFields : fields.slice(0, 4);
+}
+
 function exactPriority(product = {}, term = "") {
   const cleaned = String(term || "").trim().toLowerCase();
   if (!cleaned) return 999;
@@ -900,6 +906,9 @@ async function runTextSearchAgainstSource({ supabase, sourceName, query, barcode
   const analysis = analyzeCatalogSearch(exactTerm);
   const pageOffset = Math.max(0, (page - 1) * pageSize);
   const searchTerms = buildSearchTerms(cleanedQuery || cleanedBarcode, mode);
+  const broadMultiTokenSearch = mode === "general" && sort === "bestMatch" && searchTerms.length > 1 && exactTerm.includes(" ");
+  const remoteSearchTerms = broadMultiTokenSearch ? [exactTerm] : searchTerms;
+  const remoteTextFields = broadMultiTokenSearch ? compactTextFieldsForBroadSearch(textFields) : textFields;
   const structuredSetProductSearch = (analysis.setMatches || []).length > 0 && (analysis.productMatches || []).length > 0;
   const structuredSealedSetSearch = filters.productGroup === "Sealed" && (analysis.setMatches || []).length > 0;
   const candidateLimit = (structuredSealedSetSearch || structuredSetProductSearch)
@@ -913,9 +922,9 @@ async function runTextSearchAgainstSource({ supabase, sourceName, query, barcode
     .from(sourceName)
     .select(selectFields, { count: "estimated" });
   dbQuery = applyFilters(dbQuery, filters);
-  if (searchTerms.length) {
-    const orClauses = searchTerms.flatMap((term) =>
-      textFields.map((field) => `${field}.ilike.${matchMode === "prefix" ? `${safeOrTerm(term)}%` : `%${safeOrTerm(term)}%`}`)
+  if (remoteSearchTerms.length) {
+    const orClauses = remoteSearchTerms.flatMap((term) =>
+      remoteTextFields.map((field) => `${field}.ilike.${matchMode === "prefix" ? `${safeOrTerm(term)}%` : `%${safeOrTerm(term)}%`}`)
     );
     dbQuery = dbQuery.or(orClauses.join(","));
   }
@@ -927,7 +936,7 @@ async function runTextSearchAgainstSource({ supabase, sourceName, query, barcode
   if (error) throw error;
 
   let priorityRows = [];
-  if (sort === "bestMatch" && searchTerms.length > 1) {
+  if (sort === "bestMatch" && searchTerms.length > 1 && !broadMultiTokenSearch) {
     const priorityClauses = buildPriorityTextClauses([exactTerm, ...searchTerms]);
     if (priorityClauses.length) {
       let priorityQuery = supabase

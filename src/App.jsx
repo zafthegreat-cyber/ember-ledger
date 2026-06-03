@@ -1649,9 +1649,19 @@ function loadInitialRouteState() {
   } catch {
     saved = {};
   }
+  const route = routeStateFromPath(window.location.pathname);
+  const params = new URLSearchParams(window.location.search || "");
+  const marketQuery = String(params.get("q") || "").trim().slice(0, 140);
+  const vaultQuery = String(params.get("vaultQ") || "").trim().slice(0, 140);
+  const vaultFilter = String(params.get("filter") || "").trim();
   return {
     ...saved,
-    ...routeStateFromPath(window.location.pathname),
+    ...route,
+    ...((route.activeTab === "market" || route.activeTab === "catalog") && marketQuery
+      ? { catalogSearch: marketQuery, submittedCatalogSearch: marketQuery }
+      : {}),
+    ...(route.activeTab === "vault" && vaultQuery ? { vaultSearch: vaultQuery } : {}),
+    ...(route.activeTab === "vault" && vaultFilter ? { vaultFilter } : {}),
   };
 }
 
@@ -5777,7 +5787,9 @@ export default function App() {
     productsMissingMarketPrices: null,
     errors: [],
   });
-  const [catalogSearchHasRun, setCatalogSearchHasRun] = useState(false);
+  const [catalogSearchHasRun, setCatalogSearchHasRun] = useState(
+    Boolean((initialRouteState.activeTab === "market" || initialRouteState.activeTab === "catalog") && (initialRouteState.submittedCatalogSearch || initialRouteState.catalogSearch))
+  );
   const [catalogSuggestionCloseSignal, setCatalogSuggestionCloseSignal] = useState(0);
   const [supabaseCatalogStatus, setSupabaseCatalogStatus] = useState({
     loading: false,
@@ -7899,7 +7911,11 @@ export default function App() {
       scrollToPageTop();
       return;
     }
-    const top = Math.max(0, target.getBoundingClientRect().top + window.scrollY - 96);
+    const isMobileCatalogResults =
+      targetRef === catalogResultsRef &&
+      window.matchMedia?.("(max-width: 780px)")?.matches;
+    const topOffset = isMobileCatalogResults ? -56 : 96;
+    const top = Math.max(0, target.getBoundingClientRect().top + window.scrollY - topOffset);
     window.scrollTo({
       top,
       left: 0,
@@ -10433,7 +10449,7 @@ export default function App() {
         mode: barcode ? "barcode" : "general",
         barcode,
         forceSearch: true,
-      });
+      }).then(() => scrollToResultsTop(catalogResultsRef));
     }, 200);
     return () => window.clearTimeout(timer);
   }, [
