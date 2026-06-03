@@ -906,6 +906,186 @@
   }
 }
 
+/* Phase 2 Scout final UI: current-report safe spacing and mobile flow polish. */
+.app-scout .scout-watch-rule-card {
+  display: grid;
+  gap: 4px;
+  padding: 11px 12px;
+  border: 1px solid rgba(132, 226, 255, 0.16);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(43, 217, 255, 0.1), transparent 8rem),
+    rgba(5, 18, 34, 0.76);
+}
+
+.app-scout .scout-watch-rule-card strong {
+  color: #fff8ed;
+  line-height: 1.2;
+}
+
+.app-scout .scout-watch-rule-card span,
+.app-scout .scout-watch-rule-card small {
+  color: rgba(232, 246, 255, 0.72);
+  line-height: 1.35;
+}
+
+@media (max-width: 780px) {
+  .app-command-shell.app-scout > main,
+  .app-shell-dark.app-scout > main,
+  .app-scout > main {
+    padding-bottom: max(174px, calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 108px)) !important;
+    scroll-padding-bottom: max(174px, calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 108px)) !important;
+  }
+
+  .app-scout .scout-dashboard-overview.scout-nearby-dashboard,
+  .app-scout .scout-combined-section,
+  .app-scout .scout-watch-store-page,
+  .app-scout .pokemon-watch-calendar-panel,
+  .app-scout .pokemon-watch-home {
+    padding-bottom: max(150px, calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 84px)) !important;
+    scroll-padding-bottom: max(150px, calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 84px)) !important;
+  }
+
+  .app-scout .scout-overview-support-column,
+  .app-scout .scout-overview-reports-column,
+  .app-scout .store-map-card-list,
+  .app-scout .watch-calendar-agenda {
+    padding-bottom: 34px !important;
+  }
+
+  .app-scout .scout-nearby-cta-card {
+    margin-bottom: 2px !important;
+  }
+
+  .app-scout .scout-watch-stores-card {
+    margin-bottom: 46px !important;
+  }
+
+  .app-scout .scout-watch-stores-card .compact-card-header {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+  }
+
+  .app-scout .scout-watch-rule-stack {
+    display: grid;
+    gap: 4px;
+    margin-top: 8px;
+    padding: 10px;
+    border: 1px solid rgba(132, 226, 255, 0.14);
+    border-radius: 14px;
+    background: rgba(5, 18, 34, 0.74);
+  }
+
+  .app-scout .scout-watch-rule-stack span,
+  .app-scout .scout-watch-rule-stack small {
+    line-height: 1.28;
+  }
+
+  .app-scout .scout-watch-stores-card .scout-watch-rule-stack {
+    gap: 3px !important;
+    margin: 6px 0 4px !important;
+    padding: 9px 10px !important;
+  }
+
+  .app-scout .scout-watch-stores-card .scout-watch-rule-stack small {
+    display: none !important;
+  }
+
+  .app-scout .scout-watch-empty-state {
+    margin-bottom: 42px !important;
+  }
+
+  .app-scout .scout-watch-tier-summary {
+    gap: 8px !important;
+  }
+
+  .app-scout .scout-watch-tier-summary > div {
+    padding: 10px !important;
+  }
+
+  .app-scout .scout-watch-rule-card,
+  .app-scout .scout-store-retailer-note {
+    margin-bottom: 22px;
+  }
+
+  .app-scout .scout-watch-stores-header .scout-watch-rule-card {
+    display: none !important;
+  }
+
+  .app-scout .mobile-quick-add-fab.is-scroll-hidden {
+    display: none !important;
+  }
+
+  .app-scout .scout-store-retailer-chips {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .app-scout .scout-store-retailer-chips::-webkit-scrollbar {
+    display: none;
+  }
+
+  .app-scout .flow-modal[data-flow="scoutSubmit"] {
+    width: 100vw !important;
+    height: 100dvh !important;
+    max-width: 100vw !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+  }
+
+  .app-scout .flow-modal[data-flow="scoutSubmit"] .flow-modal-body {
+    padding-bottom: calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 136px) !important;
+    scroll-padding-bottom: calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 150px) !important;
+  }
+
+  .app-scout .flow-modal[data-flow="scoutSubmit"] .modal-title-row {
+    padding: calc(16px + env(safe-area-inset-top, 0px)) 18px 14px !important;
+  }
+
+  .app-scout .flow-modal[data-flow="scoutSubmit"] .modal-title-row h2 {
+    font-size: 1.2rem !important;
+    line-height: 1.12 !important;
+  }
+
+  .app-scout .flow-modal[data-flow="scoutSubmit"] .flow-modal-footer {
+    padding: 12px 18px calc(14px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .app-scout .scout-report-progress {
+    gap: 8px !important;
+  }
+
+  .app-scout .scout-report-step-card {
+    padding: 12px !important;
+  }
+
+  .app-scout .scout-report-step-card label,
+  .app-scout .scout-report-step-card input,
+  .app-scout .scout-report-step-card textarea,
+  .app-scout .scout-report-step-card select {
+    max-width: 100%;
+  }
+
+  .app-scout .scout-report-store-list {
+    padding-bottom: calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 150px) !important;
+  }
+
+  .app-scout .scout-report-store-card:last-child {
+    margin-bottom: 32px !important;
+  }
+
+  .app-command-shell.app-scout .flow-modal[data-flow="scoutScreenshotReview"] .flow-modal-footer,
+  .app-shell-dark.app-scout .flow-modal[data-flow="scoutScreenshotReview"] .flow-modal-footer,
+  .app-scout .flow-modal[data-flow="scoutScreenshotReview"] .flow-modal-footer {
+    min-height: 0 !important;
+  }
+
+  .app-command-shell.app-scout .flow-modal[data-flow="scoutScreenshotReview"] .flow-modal-body,
+  .app-shell-dark.app-scout .flow-modal[data-flow="scoutScreenshotReview"] .flow-modal-body,
+  .app-scout .flow-modal[data-flow="scoutScreenshotReview"] .flow-modal-body {
+    padding-bottom: calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 100px) !important;
+  }
+}
+
 @media (max-width: 420px) {
   .app-kidsprogram .spark-section-grid,
   .app-command-shell.app-kidsprogram .spark-section-grid,
