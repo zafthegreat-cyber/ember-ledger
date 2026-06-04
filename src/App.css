@@ -75632,3 +75632,121 @@ html body .app .ember-assist-shell.is-open {
     padding-bottom: 0 !important;
   }
 }
+
+/* Phase 8: Ember Assist final UI polish. */
+.ember-assist-panel:has(.ember-assist-escalation-form) .ember-assist-scroll,
+.ember-assist-panel:has(.ember-assist-escalation-form) .ember-assist-form {
+  opacity: 0.08 !important;
+  filter: blur(2px);
+  pointer-events: none !important;
+}
+
+.ember-assist-panel:has(.ember-assist-escalation-form) .ember-assist-header {
+  border-bottom-color: rgba(216, 180, 254, 0.26) !important;
+}
+
+.ember-assist-footer-actions {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 7px !important;
+}
+
+.ember-assist-footer-actions button {
+  justify-content: center !important;
+  min-height: 40px !important;
+  width: 100% !important;
+  white-space: normal !important;
+}
+
+.ember-assist-escalation-form {
+  top: calc(88px + env(safe-area-inset-top, 0px)) !important;
+  bottom: 14px !important;
+  left: 14px !important;
+  right: 14px !important;
+  max-height: none !important;
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  border: 1px solid rgba(216, 180, 254, 0.3) !important;
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.56),
+    0 0 0 1px rgba(255, 255, 255, 0.04) !important;
+}
+
+.ember-assist-escalation-form .compact-card-header {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  gap: 10px !important;
+  align-items: start !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.ember-assist-escalation-form .compact-card-header h3 {
+  margin: 0;
+  color: #fff7ed !important;
+  font-size: 1rem;
+  line-height: 1.15;
+}
+
+.ember-assist-escalation-form .compact-card-header p,
+.ember-assist-escalation-form .compact-subtitle {
+  color: rgba(232, 246, 255, 0.72) !important;
+  font-size: 0.78rem !important;
+  line-height: 1.35 !important;
+}
+
+.ember-assist-escalation-form .compact-card-header .ghost-button {
+  min-height: 34px !important;
+  padding: 7px 10px !important;
+  width: auto !important;
+}
+
+.ember-assist-escalation-form label {
+  display: grid;
+  gap: 6px;
+}
+
+.ember-assist-escalation-form textarea,
+.ember-assist-escalation-form select {
+  border-radius: 14px !important;
+  font-size: 0.88rem !important;
+}
+
+.ember-assist-escalation-form > button[type="button"] {
+  min-height: 42px !important;
+  border-radius: 14px !important;
+  background: linear-gradient(135deg, #7c3aed, #a855f7 58%, #22d3ee) !important;
+  color: #fff !important;
+}
+
+@media (max-width: 640px) {
+  .ember-assist-panel {
+    max-height: min(82dvh, calc(100dvh - var(--etds-bottom-nav-h, 76px) - env(safe-area-inset-bottom, 0px) - 18px)) !important;
+  }
+
+  .ember-assist-escalation-form {
+    top: calc(74px + env(safe-area-inset-top, 0px)) !important;
+    bottom: 10px !important;
+    left: 10px !important;
+    right: 10px !important;
+    padding: 0.78rem !important;
+    border-radius: 18px !important;
+  }
+
+  .ember-assist-escalation-form .compact-card-header {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  .ember-assist-escalation-form .compact-card-header .ghost-button {
+    justify-self: start;
+  }
+
+  .ember-assist-escalation-form textarea {
+    min-height: 72px !important;
+  }
+}
