@@ -24365,7 +24365,7 @@ function renderVaultHeader() {
 function renderForgeHeader() {
   const forgeReportRecordCount = workspaceSales.length + workspaceExpenses.length + workspaceMileageTrips.length;
   const forgeWorkspaceContextLabel = activeForgeWorkspace
-    ? `Forge workspace: ${activeForgeWorkspace.name || "Ember & Tide"}${forgeModeSettings.lockToEmberTide ? " (locked)" : ""}`
+    ? `${activeForgeWorkspace.name || "Ember & Tide"}${forgeModeSettings.lockToEmberTide ? " (locked)" : ""} | Private Forge`
     : forgeWorkspaceUnavailableMessage;
   const forgeSummaryCards = [
     {
@@ -24486,11 +24486,18 @@ function renderForgeHeader() {
 
 function renderForgeAccessState() {
   const forgeAccessMessage = adaptiveForgeAccessMessage(adaptiveUiState);
+  const forgePreviewCards = [
+    { title: "Inventory groups", body: "Group same items, keep purchaser and location notes, and review item history." },
+    { title: "Sales records", body: "Record gross sale, cost basis, fees, and estimated profit without changing Vault items." },
+    { title: "Receipts and mileage", body: "Keep expenses, receipts, and trips organized for business recordkeeping." },
+  ];
   return (
     <section className="panel empty-state forge-workspace-unavailable adaptive-forge-intro" aria-label="Forge access required">
-      <span className="trust-badge trust-badge--secure">Private Forge</span>
-      <h2>Seller tools are off</h2>
-      <p>{forgeAccessMessage || "Turn on seller tools to use inventory, receipts, mileage, and sales."}</p>
+      <div className="forge-access-heading">
+        <span className="trust-badge trust-badge--secure">Private Forge</span>
+        <h2>Seller tools are off</h2>
+        <p>{forgeAccessMessage || "Turn on seller tools to use inventory, receipts, mileage, and sales."}</p>
+      </div>
       <div className="forge-intro-benefits" aria-label="Forge seller tools">
         {[
           "Track inventory",
@@ -24503,6 +24510,15 @@ function renderForgeAccessState() {
         <button type="button" onClick={() => openMenuDrawer("settings")}>Turn on seller tools</button>
         <button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Return to Hearth</button>
       </div>
+      <div className="forge-access-preview-grid" aria-label="Forge overview">
+        {forgePreviewCards.map((card) => (
+          <article key={card.title} className="forge-access-preview-card">
+            <strong>{card.title}</strong>
+            <span>{card.body}</span>
+          </article>
+        ))}
+      </div>
+      <p className="forge-access-note">Forge is optional and private. For recordkeeping, confirm summaries with your tax professional.</p>
     </section>
   );
 }

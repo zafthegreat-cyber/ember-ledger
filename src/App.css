@@ -74896,3 +74896,213 @@ html body .app .ember-assist-shell.is-open {
     white-space: nowrap !important;
   }
 }
+
+/* Phase 5 Forge final UI: make optional seller tools feel intentional before activation. */
+.forge-workspace-unavailable.adaptive-forge-intro,
+.app-command-shell .forge-workspace-unavailable.adaptive-forge-intro,
+.app-shell-dark .forge-workspace-unavailable.adaptive-forge-intro {
+  align-content: start;
+  gap: 18px;
+  min-height: 0;
+  border-color: rgba(255, 107, 73, 0.28);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 107, 73, 0.16), transparent 15rem),
+    radial-gradient(circle at 100% 12%, rgba(251, 146, 60, 0.1), transparent 13rem),
+    linear-gradient(145deg, rgba(22, 10, 16, 0.94), rgba(5, 15, 30, 0.96));
+  text-align: left;
+}
+
+.forge-access-heading,
+.app-command-shell .forge-access-heading,
+.app-shell-dark .forge-access-heading {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  max-width: 720px;
+}
+
+.forge-access-heading h2,
+.app-command-shell .forge-access-heading h2,
+.app-shell-dark .forge-access-heading h2 {
+  margin: 0;
+  color: #fff7ed;
+  font-size: clamp(1.45rem, 3vw, 2.25rem);
+  line-height: 1.05;
+}
+
+.forge-access-heading p,
+.app-command-shell .forge-access-heading p,
+.app-shell-dark .forge-access-heading p,
+.forge-access-note,
+.app-command-shell .forge-access-note,
+.app-shell-dark .forge-access-note {
+  margin: 0;
+  color: rgba(255, 237, 213, 0.72);
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.forge-access-preview-grid,
+.app-command-shell .forge-access-preview-grid,
+.app-shell-dark .forge-access-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.forge-access-preview-card,
+.app-command-shell .forge-access-preview-card,
+.app-shell-dark .forge-access-preview-card {
+  display: grid;
+  gap: 6px;
+  padding: 13px;
+  border: 1px solid rgba(251, 146, 60, 0.18);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(255, 183, 74, 0.1), transparent 8rem),
+    rgba(8, 18, 32, 0.72);
+}
+
+.forge-access-preview-card strong,
+.app-command-shell .forge-access-preview-card strong,
+.app-shell-dark .forge-access-preview-card strong {
+  color: #fed7aa;
+  font-size: 0.88rem;
+  line-height: 1.15;
+}
+
+.forge-access-preview-card span,
+.app-command-shell .forge-access-preview-card span,
+.app-shell-dark .forge-access-preview-card span {
+  color: rgba(255, 237, 213, 0.68);
+  font-size: 0.76rem;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+@media (max-width: 780px) {
+  .forge-workspace-unavailable.adaptive-forge-intro,
+  .app-command-shell .forge-workspace-unavailable.adaptive-forge-intro,
+  .app-shell-dark .forge-workspace-unavailable.adaptive-forge-intro {
+    gap: 14px;
+    margin-bottom: max(120px, calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 46px));
+    padding: 18px;
+  }
+
+  .forge-access-heading,
+  .app-command-shell .forge-access-heading,
+  .app-shell-dark .forge-access-heading {
+    justify-items: center;
+    text-align: center;
+  }
+
+  .forge-intro-benefits,
+  .app-command-shell .forge-intro-benefits,
+  .app-shell-dark .forge-intro-benefits {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .forge-access-preview-grid,
+  .app-command-shell .forge-access-preview-grid,
+  .app-shell-dark .forge-access-preview-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .forge-access-preview-card,
+  .app-command-shell .forge-access-preview-card,
+  .app-shell-dark .forge-access-preview-card {
+    padding: 11px 12px;
+  }
+
+  .forge-access-note,
+  .app-command-shell .forge-access-note,
+  .app-shell-dark .forge-access-note {
+    text-align: center;
+    font-size: 0.78rem;
+  }
+}
+
+@media (max-width: 780px) {
+  .app-forge .main {
+    padding-bottom: calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 96px) !important;
+  }
+
+  .app-forge .standard-page-header.panel.forge-command-center {
+    gap: 10px !important;
+    overflow: visible !important;
+  }
+
+  .app-forge .standard-page-header.panel.forge-command-center .standard-page-header-summary,
+  .app-forge .standard-page-header.panel.forge-command-center .forge-command-summary {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .app-forge .forge-command-center .standard-page-header-label {
+    max-width: 100%;
+    color: rgba(255, 184, 92, 0.9) !important;
+    font-size: 0.7rem !important;
+    line-height: 1.28 !important;
+    overflow-wrap: anywhere;
+  }
+
+  .app-forge .forge-top-summary,
+  .app-command-shell.app-forge .forge-top-summary,
+  .app.app-command-shell.app-forge .standard-page-header.panel.forge-command-center .forge-top-summary {
+    display: grid !important;
+    grid-auto-flow: row !important;
+    grid-auto-columns: auto !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+    flex-wrap: wrap !important;
+    padding-bottom: 0 !important;
+    gap: 8px !important;
+  }
+
+  .app-forge .forge-summary-card {
+    min-height: 78px !important;
+    padding: 10px !important;
+  }
+
+  .app-forge .forge-summary-card span,
+  .app-forge .forge-summary-card small {
+    overflow-wrap: anywhere;
+  }
+
+  .app-forge .forge-main-command-panel,
+  .app-forge .sales-records-summary-panel,
+  .app-forge .expense-list-panel,
+  .app-forge .panel:has(.expense-summary-grid) {
+    margin-bottom: calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 30px);
+  }
+
+  .app.app-command-shell.app-forge .mobile-quick-add-fab,
+  .app-forge .mobile-quick-add-fab {
+    display: none !important;
+    pointer-events: none !important;
+  }
+
+  .app-forge .forge-command-center .forge-command-overview.forge-section-tabs,
+  .app.app-forge .standard-page-header.panel.forge-command-center .forge-command-overview.forge-section-tabs,
+  .app.app-command-shell.app-forge .standard-page-header.panel.forge-command-center .forge-command-overview.forge-section-tabs {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    grid-template-columns: none !important;
+    grid-auto-flow: column !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    padding: 0 0 2px !important;
+    scrollbar-width: none !important;
+  }
+
+  .app-forge .standard-page-header.panel.forge-command-center .forge-command-overview.forge-section-tabs > button.forge-overview-card.forge-section-tab,
+  .app.app-forge .standard-page-header.panel.forge-command-center .forge-command-overview.forge-section-tabs > button.forge-overview-card.forge-section-tab,
+  .app.app-command-shell.app-forge .standard-page-header.panel.forge-command-center .forge-command-overview.forge-section-tabs > button.forge-overview-card.forge-section-tab {
+    flex: 0 0 min(42vw, 144px) !important;
+    min-width: min(42vw, 144px) !important;
+    width: auto !important;
+  }
+}
