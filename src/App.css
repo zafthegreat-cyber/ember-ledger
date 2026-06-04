@@ -75300,3 +75300,335 @@ html body .app .ember-assist-shell.is-open {
     margin-bottom: 0 !important;
   }
 }
+
+/* Phase 7: The Spark final UI polish. */
+@media (max-width: 780px) {
+  .app-kidsprogram,
+  .app-command-shell.app-kidsprogram,
+  .app-shell-dark.app-kidsprogram {
+    --spark-mobile-clearance: max(208px, calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 142px));
+  }
+
+  .app-kidsprogram .mobile-quick-add-fab,
+  .app-command-shell.app-kidsprogram .mobile-quick-add-fab,
+  .app-shell-dark.app-kidsprogram .mobile-quick-add-fab {
+    display: none !important;
+    pointer-events: none !important;
+  }
+
+  .app-kidsprogram .mobile-bottom-nav,
+  .app-command-shell.app-kidsprogram .mobile-bottom-nav,
+  .app-shell-dark.app-kidsprogram .mobile-bottom-nav {
+    border-color: rgba(255, 211, 77, 0.14) !important;
+    background:
+      linear-gradient(180deg, rgba(5, 12, 26, 0.98), rgba(3, 8, 19, 0.995)) !important;
+    box-shadow:
+      0 -16px 32px rgba(2, 8, 23, 0.9),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+  }
+
+  .app-kidsprogram .mobile-bottom-nav::before,
+  .app-command-shell.app-kidsprogram .mobile-bottom-nav::before,
+  .app-shell-dark.app-kidsprogram .mobile-bottom-nav::before {
+    content: "";
+    position: absolute;
+    inset: -24px 0 auto;
+    height: 28px;
+    pointer-events: none;
+    background: linear-gradient(180deg, rgba(3, 8, 19, 0), rgba(3, 8, 19, 0.96));
+  }
+
+  .app-kidsprogram .main,
+  .app-command-shell.app-kidsprogram .main,
+  .app-shell-dark.app-kidsprogram .main {
+    padding-bottom: var(--spark-mobile-clearance) !important;
+    scroll-padding-bottom: var(--spark-mobile-clearance) !important;
+  }
+
+  .app-kidsprogram .spark-page-header,
+  .app-command-shell.app-kidsprogram .spark-page-header,
+  .app-shell-dark.app-kidsprogram .spark-page-header {
+    padding: 12px !important;
+    border-radius: 19px !important;
+  }
+
+  .app-kidsprogram .spark-page-header .standard-page-header-main,
+  .app-command-shell.app-kidsprogram .spark-page-header .standard-page-header-main,
+  .app-shell-dark.app-kidsprogram .spark-page-header .standard-page-header-main {
+    gap: 8px !important;
+  }
+
+  .app-kidsprogram .spark-page-header .section-hero-art,
+  .app-command-shell.app-kidsprogram .spark-page-header .section-hero-art,
+  .app-shell-dark.app-kidsprogram .spark-page-header .section-hero-art {
+    display: none !important;
+  }
+
+  .app-kidsprogram .spark-page-header .standard-page-header-copy h2,
+  .app-command-shell.app-kidsprogram .spark-page-header .standard-page-header-copy h2,
+  .app-shell-dark.app-kidsprogram .spark-page-header .standard-page-header-copy h2 {
+    font-size: clamp(1.42rem, 7vw, 1.85rem) !important;
+    line-height: 1.04 !important;
+  }
+
+  .app-kidsprogram .spark-header-mission-line,
+  .app-command-shell.app-kidsprogram .spark-header-mission-line,
+  .app-shell-dark.app-kidsprogram .spark-header-mission-line {
+    display: none !important;
+  }
+
+  .app-kidsprogram .spark-mission-card,
+  .app-command-shell.app-kidsprogram .spark-mission-card,
+  .app-shell-dark.app-kidsprogram .spark-mission-card {
+    gap: 9px !important;
+    padding: 12px !important;
+    border-radius: 20px !important;
+  }
+
+  .app-kidsprogram .spark-mission-orb,
+  .app-command-shell.app-kidsprogram .spark-mission-orb,
+  .app-shell-dark.app-kidsprogram .spark-mission-orb {
+    width: 44px !important;
+    height: 44px !important;
+    border-radius: 16px !important;
+  }
+
+  .app-kidsprogram .spark-mission-copy,
+  .app-command-shell.app-kidsprogram .spark-mission-copy,
+  .app-shell-dark.app-kidsprogram .spark-mission-copy {
+    gap: 5px !important;
+  }
+
+  .app-kidsprogram .spark-mission-copy .section-kicker,
+  .app-command-shell.app-kidsprogram .spark-mission-copy .section-kicker,
+  .app-shell-dark.app-kidsprogram .spark-mission-copy .section-kicker {
+    display: none !important;
+  }
+
+  .app-kidsprogram .spark-mission-copy h2,
+  .app-command-shell.app-kidsprogram .spark-mission-copy h2,
+  .app-shell-dark.app-kidsprogram .spark-mission-copy h2 {
+    font-size: clamp(1.22rem, 5.8vw, 1.46rem) !important;
+    line-height: 1.06 !important;
+  }
+
+  .app-kidsprogram .spark-mission-copy p,
+  .app-command-shell.app-kidsprogram .spark-mission-copy p,
+  .app-shell-dark.app-kidsprogram .spark-mission-copy p {
+    font-size: 0.76rem !important;
+    line-height: 1.3 !important;
+  }
+
+  .app-kidsprogram .spark-mission-facts,
+  .app-command-shell.app-kidsprogram .spark-mission-facts,
+  .app-shell-dark.app-kidsprogram .spark-mission-facts {
+    flex-wrap: nowrap !important;
+    gap: 4px !important;
+  }
+
+  .app-kidsprogram .spark-mission-facts span,
+  .app-command-shell.app-kidsprogram .spark-mission-facts span,
+  .app-shell-dark.app-kidsprogram .spark-mission-facts span {
+    min-height: 22px !important;
+    padding: 3px 5px !important;
+    font-size: 0.58rem !important;
+    white-space: nowrap;
+  }
+
+  .app-kidsprogram .spark-mission-card > .spark-primary-cta,
+  .app-command-shell.app-kidsprogram .spark-mission-card > .spark-primary-cta,
+  .app-shell-dark.app-kidsprogram .spark-mission-card > .spark-primary-cta {
+    min-height: 38px !important;
+    margin-top: 2px !important;
+  }
+
+  .app-kidsprogram .spark-program-layout,
+  .app-command-shell.app-kidsprogram .spark-program-layout,
+  .app-shell-dark.app-kidsprogram .spark-program-layout {
+    gap: 10px !important;
+    padding: 11px 11px var(--spark-mobile-clearance) !important;
+    margin-bottom: calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 34px) !important;
+    scroll-padding-bottom: var(--spark-mobile-clearance) !important;
+  }
+
+  .app-kidsprogram .spark-section-block,
+  .app-command-shell.app-kidsprogram .spark-section-block,
+  .app-shell-dark.app-kidsprogram .spark-section-block,
+  .app-kidsprogram .spark-donation-tracking-panel,
+  .app-command-shell.app-kidsprogram .spark-donation-tracking-panel,
+  .app-shell-dark.app-kidsprogram .spark-donation-tracking-panel,
+  .app-kidsprogram .spark-participation-panel,
+  .app-command-shell.app-kidsprogram .spark-participation-panel,
+  .app-shell-dark.app-kidsprogram .spark-participation-panel {
+    gap: 9px !important;
+    padding: 11px !important;
+    scroll-margin-bottom: var(--spark-mobile-clearance) !important;
+  }
+
+  .app-kidsprogram .spark-section-block > .compact-card-header,
+  .app-command-shell.app-kidsprogram .spark-section-block > .compact-card-header,
+  .app-shell-dark.app-kidsprogram .spark-section-block > .compact-card-header,
+  .app-kidsprogram .spark-donation-tracking-panel > .compact-card-header,
+  .app-command-shell.app-kidsprogram .spark-donation-tracking-panel > .compact-card-header,
+  .app-shell-dark.app-kidsprogram .spark-donation-tracking-panel > .compact-card-header,
+  .app-kidsprogram .spark-participation-panel > .compact-card-header,
+  .app-command-shell.app-kidsprogram .spark-participation-panel > .compact-card-header,
+  .app-shell-dark.app-kidsprogram .spark-participation-panel > .compact-card-header {
+    gap: 8px !important;
+    align-items: start !important;
+  }
+
+  .app-kidsprogram .spark-section-block > .compact-card-header p,
+  .app-command-shell.app-kidsprogram .spark-section-block > .compact-card-header p,
+  .app-shell-dark.app-kidsprogram .spark-section-block > .compact-card-header p,
+  .app-kidsprogram .spark-donation-tracking-panel > .compact-card-header p,
+  .app-command-shell.app-kidsprogram .spark-donation-tracking-panel > .compact-card-header p,
+  .app-shell-dark.app-kidsprogram .spark-donation-tracking-panel > .compact-card-header p,
+  .app-kidsprogram .spark-participation-panel > .compact-card-header p,
+  .app-command-shell.app-kidsprogram .spark-participation-panel > .compact-card-header p,
+  .app-shell-dark.app-kidsprogram .spark-participation-panel > .compact-card-header p {
+    font-size: 0.78rem !important;
+    line-height: 1.3 !important;
+  }
+
+  .app-kidsprogram .spark-section-grid,
+  .app-command-shell.app-kidsprogram .spark-section-grid,
+  .app-shell-dark.app-kidsprogram .spark-section-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .app-kidsprogram .spark-section-card,
+  .app-command-shell.app-kidsprogram .spark-section-card,
+  .app-shell-dark.app-kidsprogram .spark-section-card {
+    min-height: 114px !important;
+    align-content: start;
+    gap: 7px !important;
+    padding: 10px !important;
+    border-radius: 16px !important;
+  }
+
+  .app-kidsprogram .spark-section-icon,
+  .app-command-shell.app-kidsprogram .spark-section-icon,
+  .app-shell-dark.app-kidsprogram .spark-section-icon {
+    width: fit-content !important;
+    min-width: 30px !important;
+    height: 24px !important;
+    padding: 0 7px !important;
+    border-radius: 999px !important;
+    font-size: 0.6rem !important;
+  }
+
+  .app-kidsprogram .spark-section-card strong,
+  .app-command-shell.app-kidsprogram .spark-section-card strong,
+  .app-shell-dark.app-kidsprogram .spark-section-card strong {
+    font-size: 0.9rem !important;
+    line-height: 1.12 !important;
+  }
+
+  .app-kidsprogram .spark-section-card p,
+  .app-command-shell.app-kidsprogram .spark-section-card p,
+  .app-shell-dark.app-kidsprogram .spark-section-card p {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: 0.7rem !important;
+    line-height: 1.28 !important;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .app-kidsprogram .spark-support-examples,
+  .app-command-shell.app-kidsprogram .spark-support-examples,
+  .app-shell-dark.app-kidsprogram .spark-support-examples {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+    margin-inline: 0;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  .app-kidsprogram .spark-support-examples span,
+  .app-command-shell.app-kidsprogram .spark-support-examples span,
+  .app-shell-dark.app-kidsprogram .spark-support-examples span {
+    min-height: 26px !important;
+    padding: 5px 8px !important;
+    border-radius: 999px !important;
+    font-size: 0.66rem !important;
+    white-space: normal;
+  }
+
+  .app-kidsprogram .spark-donation-group-card,
+  .app-command-shell.app-kidsprogram .spark-donation-group-card,
+  .app-shell-dark.app-kidsprogram .spark-donation-group-card,
+  .app-kidsprogram .spark-participation-card,
+  .app-command-shell.app-kidsprogram .spark-participation-card,
+  .app-shell-dark.app-kidsprogram .spark-participation-card {
+    gap: 8px !important;
+    padding: 11px !important;
+    border-radius: 16px !important;
+  }
+
+  .app-kidsprogram .spark-donation-group-card span,
+  .app-command-shell.app-kidsprogram .spark-donation-group-card span,
+  .app-shell-dark.app-kidsprogram .spark-donation-group-card span,
+  .app-kidsprogram .spark-participation-card > span,
+  .app-command-shell.app-kidsprogram .spark-participation-card > span,
+  .app-shell-dark.app-kidsprogram .spark-participation-card > span {
+    min-height: 24px !important;
+    padding: 4px 7px !important;
+    font-size: 0.66rem !important;
+  }
+
+  .app-kidsprogram .spark-participation-card p,
+  .app-command-shell.app-kidsprogram .spark-participation-card p,
+  .app-shell-dark.app-kidsprogram .spark-participation-card p {
+    font-size: 0.78rem !important;
+    line-height: 1.35 !important;
+  }
+
+  .app-kidsprogram .spark-empty-state,
+  .app-command-shell.app-kidsprogram .spark-empty-state,
+  .app-shell-dark.app-kidsprogram .spark-empty-state,
+  .app-kidsprogram .spark-parent-safe-panel,
+  .app-command-shell.app-kidsprogram .spark-parent-safe-panel,
+  .app-shell-dark.app-kidsprogram .spark-parent-safe-panel,
+  .app-kidsprogram .spark-safety-rules-panel,
+  .app-command-shell.app-kidsprogram .spark-safety-rules-panel,
+  .app-shell-dark.app-kidsprogram .spark-safety-rules-panel,
+  .app-kidsprogram .spark-learning-panel,
+  .app-command-shell.app-kidsprogram .spark-learning-panel,
+  .app-shell-dark.app-kidsprogram .spark-learning-panel,
+  .app-kidsprogram .spark-request-flow,
+  .app-command-shell.app-kidsprogram .spark-request-flow,
+  .app-shell-dark.app-kidsprogram .spark-request-flow {
+    scroll-margin-bottom: var(--spark-mobile-clearance) !important;
+  }
+
+  .app-kidsprogram .spark-request-flow,
+  .app-command-shell.app-kidsprogram .spark-request-flow,
+  .app-shell-dark.app-kidsprogram .spark-request-flow {
+    padding-bottom: var(--spark-mobile-clearance) !important;
+  }
+
+  .app-kidsprogram .spark-request-flow input,
+  .app-command-shell.app-kidsprogram .spark-request-flow input,
+  .app-shell-dark.app-kidsprogram .spark-request-flow input,
+  .app-kidsprogram .spark-request-flow select,
+  .app-command-shell.app-kidsprogram .spark-request-flow select,
+  .app-shell-dark.app-kidsprogram .spark-request-flow select {
+    min-height: 42px !important;
+  }
+
+  .app-kidsprogram .spark-stepper button,
+  .app-command-shell.app-kidsprogram .spark-stepper button,
+  .app-shell-dark.app-kidsprogram .spark-stepper button {
+    min-height: 42px !important;
+  }
+
+  .app-kidsprogram .spark-flow-actions,
+  .app-command-shell.app-kidsprogram .spark-flow-actions,
+  .app-shell-dark.app-kidsprogram .spark-flow-actions {
+    padding-bottom: 0 !important;
+  }
+}
