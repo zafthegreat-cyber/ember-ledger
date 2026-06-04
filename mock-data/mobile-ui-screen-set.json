@@ -1,0 +1,120 @@
+{
+  "screens": [
+    {
+      "key": "hearth",
+      "label": "Hearth",
+      "accent": "ember",
+      "tagline": "Your cozy hub. Track, plan, and stay inspired.",
+      "stats": [
+        { "label": "Vault", "value": "1,246" },
+        { "label": "Tidepool", "value": "87" },
+        { "label": "The Spark", "value": "320" }
+      ],
+      "journey": [
+        { "title": "Scout nearby restocks", "detail": "3 new updates in your area" },
+        { "title": "Complete 2 trades", "detail": "0/2", "reward": "+50" },
+        { "title": "Kids Trade Night", "detail": "Fri, May 24 - Richmond, VA" }
+      ]
+    },
+    {
+      "key": "scout",
+      "label": "Scout",
+      "accent": "scout",
+      "tagline": "Find restocks. Save time. Shop smarter.",
+      "updates": [
+        { "store": "Target - Short Pump", "detail": "24m ago - Verified", "score": "92%" },
+        { "store": "Best Buy - West Broad", "detail": "1h ago - Fair find", "score": "78%" },
+        { "store": "GameStop - West End", "detail": "2h ago - Reported", "score": "56%" },
+        { "store": "Family Card Shop", "detail": "30m ago - Singles and supplies", "score": "Shop" }
+      ]
+    },
+    {
+      "key": "vault",
+      "label": "Vault",
+      "accent": "vault",
+      "tagline": "Your collection. Organized, valued, and always with you.",
+      "stats": [
+        { "label": "Total Cards", "value": "1,246" },
+        { "label": "Est. Value", "value": "$4,812" },
+        { "label": "Complete Sets", "value": "87%" }
+      ],
+      "cards": [
+        { "name": "Sky Fox", "set": "Sunrise Sparks" },
+        { "name": "Ember Drake", "set": "Foundry Peak" },
+        { "name": "Tide Fawn", "set": "Crown Harbor" }
+      ]
+    },
+    {
+      "key": "market",
+      "label": "Market",
+      "accent": "market",
+      "tagline": "Buy, sell, and trade fairly. All in one safe place.",
+      "items": [
+        { "name": "Ember Drake", "detail": "Near Mint", "price": "$128.00" },
+        { "name": "Moonlit Fates", "detail": "Sealed Box", "price": "$59.99" },
+        { "name": "Crown Harbor", "detail": "Booster Box", "price": "$149.99" }
+      ]
+    },
+    {
+      "key": "more",
+      "label": "More",
+      "accent": "tide",
+      "tagline": "Tools, community, and settings live here.",
+      "groups": [
+        { "title": "Tools", "items": ["Forge", "Tidepool", "The Spark", "Seller/Shop Portal"] },
+        { "title": "Account", "items": ["Settings", "Family", "Plan", "Safety"] },
+        { "title": "Help", "items": ["Ember Assist", "Support", "Roadmap", "Feedback"] }
+      ]
+    },
+    {
+      "key": "forge",
+      "label": "Forge",
+      "accent": "forge",
+      "tagline": "Build decks. Test ideas. Sharpen your strategy.",
+      "deck": { "name": "Ember Storm", "type": "Deck", "score": "60/60" },
+      "decks": ["Relentless Bolt", "Moonlit Mirage", "Water's Edge"]
+    },
+    {
+      "key": "tidepool",
+      "label": "Tidepool",
+      "accent": "tideBlue",
+      "tagline": "Track prices. Spot trends. Never miss a dip.",
+      "metrics": [
+        { "label": "Hot Right Now", "value": "$128.00" },
+        { "label": "Best Deals", "value": "$72.40" },
+        { "label": "Rising Fast", "value": "$620.00" }
+      ]
+    },
+    {
+      "key": "spark",
+      "label": "The Spark",
+      "accent": "spark",
+      "tagline": "Give back. Grow the hobby. Make a real impact.",
+      "impact": [
+        { "label": "Spark Points", "value": "320" },
+        { "label": "Kids Helped", "value": "12" }
+      ],
+      "events": ["Kids Trade Night", "Learn and Play Day", "Spark Pack Drive"]
+    },
+    {
+      "key": "assist",
+      "label": "Ember Assist",
+      "accent": "assist",
+      "tagline": "Your app helper. Scan, answer, guide, protect.",
+      "prompts": [
+        "Scan a Card",
+        "Scan a Restock Screenshot",
+        "Ask a Question",
+        "Collection Checkup",
+        "Report Something"
+      ]
+    }
+  ],
+  "principles": [
+    { "title": "Family first", "detail": "Designed for collectors of all ages. Safe, kind, and welcoming." },
+    { "title": "Fair and trusted", "detail": "Trusted reports, shop-verified posts, and anti-scalper protection." },
+    { "title": "Smart scouting", "detail": "Real reports, real photos, real community. Worth the trip, not hype." },
+    { "title": "Powerful tools", "detail": "Build better decks, track your collection, and grow with confidence." },
+    { "title": "Give back", "detail": "Every pack you share helps grow the next generation of players." }
+  ]
+}

@@ -22,6 +22,25 @@
   --radius-md: 18px;
   --radius-sm: 12px;
   --bottom-nav-height: 74px;
+  --et-token-bg: #02070f;
+  --et-token-surface: #07111f;
+  --et-token-surface-raised: #101827;
+  --et-token-text: #fff7e8;
+  --et-token-text-muted: #c6d3df;
+  --et-token-line: rgba(184, 220, 255, 0.16);
+  --et-token-line-strong: rgba(255, 220, 154, 0.32);
+  --et-token-ember: #ff7a1a;
+  --et-token-gold: #ffca55;
+  --et-token-tide: #1ed6d0;
+  --et-token-scout: #55d9ff;
+  --et-token-vault: #b16bff;
+  --et-token-market: #65d978;
+  --et-token-forge: #c879ff;
+  --et-token-spark: #ffce59;
+  --et-token-assist: #ff8b4a;
+  --et-token-radius-lg: 16px;
+  --et-token-radius-xl: 22px;
+  --et-token-touch: 44px;
   --rust: #c2412d;
   --color-bg: #fff8f1;
   --color-bg-soft: #fef3e7;
@@ -73072,6 +73091,280 @@ html body .app .ember-assist-shell.is-open {
   }
 }
 
+/* Shared Ember & Tide live-route foundation components. */
+.et-live-tone-hearth {
+  --et-live-tone-rgb: 255, 122, 26;
+  --et-live-tone-2-rgb: 255, 202, 85;
+}
+
+.et-live-tone-scout {
+  --et-live-tone-rgb: 85, 217, 255;
+  --et-live-tone-2-rgb: 255, 202, 85;
+}
+
+.et-live-tone-vault {
+  --et-live-tone-rgb: 177, 107, 255;
+  --et-live-tone-2-rgb: 49, 170, 255;
+}
+
+.et-live-tone-market {
+  --et-live-tone-rgb: 30, 214, 208;
+  --et-live-tone-2-rgb: 101, 217, 120;
+}
+
+.et-live-tone-forge {
+  --et-live-tone-rgb: 255, 139, 74;
+  --et-live-tone-2-rgb: 200, 121, 255;
+}
+
+.et-live-tone-spark {
+  --et-live-tone-rgb: 255, 206, 89;
+  --et-live-tone-2-rgb: 255, 139, 74;
+}
+
+.et-live-tone-assist {
+  --et-live-tone-rgb: 177, 107, 255;
+  --et-live-tone-2-rgb: 255, 139, 74;
+}
+
+.et-live-tone-more {
+  --et-live-tone-rgb: 148, 163, 184;
+  --et-live-tone-2-rgb: 85, 217, 255;
+}
+
+.et-live-panel {
+  display: grid;
+  gap: clamp(10px, 1.3vw, 14px);
+  padding: clamp(13px, 1.6vw, 18px);
+  border: 1px solid rgba(var(--et-live-tone-rgb, 255, 122, 26), 0.2);
+  border-radius: var(--et-token-radius-xl, 22px);
+  background:
+    radial-gradient(circle at 0 0, rgba(var(--et-live-tone-rgb, 255, 122, 26), 0.13), transparent 12rem),
+    radial-gradient(circle at 100% 0, rgba(var(--et-live-tone-2-rgb, 255, 202, 85), 0.08), transparent 11rem),
+    linear-gradient(145deg, rgba(10, 20, 38, 0.94), rgba(4, 10, 24, 0.88));
+  color: var(--et-token-text, #fff7e8);
+  box-shadow:
+    0 18px 45px rgba(0, 0, 0, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.et-live-stat,
+.et-live-action {
+  color: var(--et-token-text, #fff7e8);
+  font: inherit;
+  text-align: left;
+}
+
+.et-live-stat {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  min-height: 82px;
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid rgba(var(--et-live-tone-rgb, 255, 122, 26), 0.18);
+  border-radius: var(--et-token-radius-lg, 16px);
+  background:
+    radial-gradient(circle at 16% 0, rgba(var(--et-live-tone-rgb, 255, 122, 26), 0.14), transparent 4.8rem),
+    rgba(4, 13, 28, 0.64);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.055);
+}
+
+button.et-live-stat,
+button.et-live-action {
+  cursor: pointer;
+}
+
+button.et-live-stat:hover,
+button.et-live-stat:focus-visible,
+button.et-live-action:hover,
+button.et-live-action:focus-visible {
+  border-color: rgba(var(--et-live-tone-rgb, 255, 122, 26), 0.38);
+  box-shadow:
+    0 0 0 1px rgba(var(--et-live-tone-rgb, 255, 122, 26), 0.08),
+    0 14px 30px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.et-live-stat span,
+.et-live-action small {
+  color: rgba(230, 242, 255, 0.7);
+}
+
+.et-live-stat span {
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.et-live-stat strong {
+  min-width: 0;
+  color: #fff8ed;
+  font-size: clamp(1rem, 1.4vw, 1.35rem);
+  line-height: 1.02;
+}
+
+.et-live-stat small {
+  overflow: hidden;
+  color: rgba(255, 247, 234, 0.68);
+  font-size: 0.7rem;
+  line-height: 1.22;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.et-live-action {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 68px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(var(--et-live-tone-rgb, 255, 122, 26), 0.17);
+  border-radius: var(--et-token-radius-lg, 16px);
+  background:
+    linear-gradient(145deg, rgba(var(--et-live-tone-rgb, 255, 122, 26), 0.08), rgba(var(--et-live-tone-2-rgb, 255, 202, 85), 0.035)),
+    rgba(3, 12, 26, 0.68);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.et-live-action-icon {
+  display: inline-grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 1px solid rgba(var(--et-live-tone-rgb, 255, 122, 26), 0.25);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 40% 20%, rgba(var(--et-live-tone-rgb, 255, 122, 26), 0.23), transparent 2.4rem),
+    rgba(6, 20, 39, 0.86);
+  color: rgb(var(--et-live-tone-rgb, 255, 122, 26));
+}
+
+.et-live-action-icon svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.et-live-action-copy {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.et-live-action-copy strong {
+  overflow-wrap: anywhere;
+  color: #fff8ed;
+  font-size: 0.86rem;
+  line-height: 1.16;
+}
+
+.et-live-action-copy small {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 0.7rem;
+  line-height: 1.22;
+}
+
+.et-live-action b {
+  align-self: center;
+  justify-self: end;
+  max-width: 8rem;
+  padding: 5px 8px;
+  border: 1px solid rgba(var(--et-live-tone-rgb, 255, 122, 26), 0.18);
+  border-radius: 999px;
+  background: rgba(var(--et-live-tone-rgb, 255, 122, 26), 0.09);
+  color: rgb(var(--et-live-tone-2-rgb, 255, 202, 85));
+  font-size: 0.66rem;
+  font-weight: 900;
+  line-height: 1.1;
+  text-align: right;
+}
+
+.et-live-trust-note {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 202, 85, 0.24);
+  border-radius: var(--et-token-radius-xl, 22px);
+  background:
+    radial-gradient(circle at 0 0, rgba(255, 202, 85, 0.14), transparent 10rem),
+    linear-gradient(145deg, rgba(15, 23, 43, 0.86), rgba(5, 13, 28, 0.82));
+  color: #fff8ed;
+}
+
+.et-live-trust-note > span {
+  display: inline-grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 1px solid rgba(255, 202, 85, 0.24);
+  border-radius: 14px;
+  color: #ffca55;
+  background: rgba(255, 202, 85, 0.08);
+}
+
+.et-live-trust-note svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.et-live-trust-note strong {
+  color: rgba(255, 248, 237, 0.92);
+  font-size: 0.86rem;
+  line-height: 1.25;
+}
+
+.app-home .hearth-foundation-brand {
+  display: block;
+  margin-bottom: 4px;
+  color: #ffca55;
+  font-size: 0.68rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.app-home .hearth-foundation-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.app-home .hearth-foundation-journey-panel .compact-card-header,
+.app-home .hearth-foundation-journey-panel .compact-card-header h2,
+.app-home .hearth-foundation-journey-panel .compact-card-header p {
+  margin: 0;
+}
+
+.app-home .hearth-foundation-journey-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.app-home .hearth-foundation-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
 /* Hearth home dashboard finalization: make Home feel like a useful base, not a task list. */
 .app-home .hearth-command-view.hearth-northstar {
   gap: clamp(14px, 1.7vw, 22px) !important;
@@ -73342,6 +73635,99 @@ html body .app .ember-assist-shell.is-open {
 }
 
 @media (max-width: 780px) {
+  .app-home .hearth-foundation-brand {
+    margin-bottom: 3px;
+    font-size: 0.62rem;
+  }
+
+  .app-home .hearth-foundation-stat-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .app-home .hearth-foundation-stat-grid .et-live-stat {
+    min-height: 72px;
+    padding: 9px 8px;
+  }
+
+  .app-home .hearth-foundation-stat-grid .et-live-stat span {
+    font-size: 0.58rem;
+  }
+
+  .app-home .hearth-foundation-stat-grid .et-live-stat strong {
+    font-size: 0.94rem;
+  }
+
+  .app-home .hearth-foundation-stat-grid .et-live-stat small {
+    font-size: 0.62rem;
+    white-space: normal;
+  }
+
+  .app-home .hearth-foundation-journey-panel {
+    padding: 12px !important;
+    border-radius: 22px !important;
+  }
+
+  .app-home .hearth-foundation-journey-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .app-home .hearth-foundation-quick-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .app-home .hearth-foundation-quick-grid .et-live-action {
+    grid-template-columns: 30px minmax(0, 1fr);
+    min-height: 62px;
+    gap: 8px;
+    padding: 9px;
+  }
+
+  .app-home .hearth-foundation-quick-grid .et-live-action-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 12px;
+  }
+
+  .app-home .hearth-foundation-quick-grid .et-live-action-icon svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .app-home .hearth-foundation-quick-grid .et-live-action-copy strong {
+    font-size: 0.76rem;
+  }
+
+  .app-home .hearth-foundation-quick-grid .et-live-action-copy small {
+    font-size: 0.62rem;
+    -webkit-line-clamp: 2;
+  }
+
+  .app-home .et-live-action b {
+    justify-self: start;
+    grid-column: 2;
+    margin-top: 2px;
+    font-size: 0.6rem;
+  }
+
+  .app-home .et-live-trust-note {
+    grid-template-columns: 32px minmax(0, 1fr);
+    padding: 11px 12px;
+    border-radius: 20px;
+  }
+
+  .app-home .et-live-trust-note > span {
+    width: 32px;
+    height: 32px;
+    border-radius: 12px;
+  }
+
+  .app-home .et-live-trust-note strong {
+    font-size: 0.78rem;
+  }
+
   .app-home .dashboard-layout.hearth-command-view.hearth-northstar,
   .app-home .dashboard-layout.command-hearth {
     padding-bottom: max(188px, calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 126px)) !important;

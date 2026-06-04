@@ -3,6 +3,8 @@ import "./App.css";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
 import OverflowMenu from "./components/OverflowMenu";
 import LockedFeatureNotice from "./components/LockedFeatureNotice";
+import { LiveEmberActionCard, LiveEmberPanel, LiveEmberStatCard, LiveEmberTrustNote } from "./components/ember-ui";
+import { emberTideData } from "./mock/emberTideData";
 import { APP_VERSION, checkForEmberTideUpdate, refreshEmberTideApp } from "./appUpdate";
 import { SEALED_PRODUCT_TYPES, SET_SEARCH_METADATA } from "./data/pokemonCatalogCoreData";
 import {
@@ -499,6 +501,9 @@ import {
   resolveQuickAddPreferenceActionKeys,
   sanitizeAppSetupVisibleKeys,
 } from "./utils/appPersonalizationUtils";
+
+const HEARTH_FOUNDATION_SCREEN = emberTideData.screens.find((screen) => screen.key === "hearth") || {};
+const HEARTH_FOUNDATION_TRUST_MESSAGE = "Fair collecting. Kid-friendly access. Trusted community.";
 
 const SmartAddInventory = lazy(() => import("./components/SmartAddInventory"));
 const SmartAddCatalog = lazy(() => import("./components/SmartAddCatalog"));
@@ -48448,6 +48453,121 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           : "Build or prepare a kid pack for The Spark.",
       }, `hearth-spark-${kind}`);
     };
+    const foundationStatsByLabel = new Map((HEARTH_FOUNDATION_SCREEN.stats || []).map((stat) => [String(stat.label || "").toLowerCase(), stat]));
+    const foundationStat = (label, fallback) => foundationStatsByLabel.get(String(label || "").toLowerCase()) || fallback;
+    const foundationVaultStat = foundationStat("Vault", { value: "1,246", detail: "cards tracked" });
+    const foundationScoutStat = foundationStat("Scout", { value: "3", detail: "useful signals" });
+    const foundationSparkStat = foundationStat("Spark", { value: "320", detail: "points" });
+    const foundationJourneyItems = (HEARTH_FOUNDATION_SCREEN.sections || []).find((section) => section.title === "Today's Journey")?.items || [];
+    const foundationQuickActionItems = (HEARTH_FOUNDATION_SCREEN.sections || []).find((section) => section.title === "Quick Actions")?.items || [];
+    const foundationTradeSourceItem = activeVaultItems.find((item) => item?.id);
+    // TODO: Replace mock Hearth foundation cards with persisted home-dashboard data after the backend contract is approved.
+    const hearthFoundationStats = [
+      {
+        key: "foundation-vault",
+        label: "Vault Items",
+        value: foundationVaultStat.value || "1,246",
+        detail: foundationVaultStat.detail || "cards tracked",
+        tone: "vault",
+        onClick: () => setActiveTab("vault"),
+      },
+      {
+        key: "foundation-scout",
+        label: "Scout Alerts",
+        value: foundationScoutStat.value || "3",
+        detail: foundationScoutStat.detail || "useful signals",
+        tone: "scout",
+        onClick: () => setActiveTab("scout"),
+      },
+      {
+        key: "foundation-spark",
+        label: "Spark Points",
+        value: foundationSparkStat.value || "320",
+        detail: foundationSparkStat.detail || "points",
+        tone: "spark",
+        onClick: () => setActiveTab("kidsProgram"),
+      },
+    ];
+    const hearthFoundationJourneyCards = [
+      {
+        key: "foundation-restock",
+        title: foundationJourneyItems[0]?.title || "Scout nearby restocks",
+        detail: foundationJourneyItems[0]?.detail || "3 useful Richmond signals",
+        meta: foundationJourneyItems[0]?.status || "Worth checking",
+        icon: "scout",
+        tone: "scout",
+        onClick: () => setActiveTab("scout"),
+      },
+      {
+        key: "foundation-forge",
+        title: foundationJourneyItems[1]?.title || "Review a pending trade",
+        detail: foundationJourneyItems[1]?.detail || "Parent approval recommended",
+        meta: foundationJourneyItems[1]?.meta || "+50 pts",
+        icon: "forge",
+        tone: "forge",
+        onClick: () => foundationTradeSourceItem ? openTradeValueFlow(foundationTradeSourceItem, { source: "hearth-foundation" }) : setActiveTab("vault"),
+      },
+      {
+        key: "foundation-event",
+        title: foundationJourneyItems[2]?.title || "Kids Trade Night",
+        detail: foundationJourneyItems[2]?.detail || "Fri, May 24 - Richmond, VA",
+        meta: foundationJourneyItems[2]?.status || "Family friendly",
+        icon: "calendar",
+        tone: "spark",
+        onClick: () => setActiveTab("kidsProgram"),
+      },
+      {
+        key: "foundation-vault-reminder",
+        title: "Vault reminder",
+        detail: "Add one card or sealed product, then review before saving.",
+        meta: "Protected",
+        icon: "vault",
+        tone: "vault",
+        onClick: () => openQuickAddAction("vaultItem"),
+      },
+    ];
+    const hearthFoundationQuickActions = [
+      {
+        key: "foundation-scan-card",
+        title: foundationQuickActionItems[0]?.title || "Scan card",
+        detail: foundationQuickActionItems[0]?.detail || "Identify and review before saving",
+        icon: "scan",
+        tone: "vault",
+        onClick: () => openQuickAddAction("scanProduct"),
+      },
+      {
+        key: "foundation-scan-restock",
+        title: foundationQuickActionItems[1]?.title || "Scan restock screenshot",
+        detail: foundationQuickActionItems[1]?.detail || "Extract store, item, and time",
+        icon: "scout",
+        tone: "scout",
+        onClick: () => openQuickAddPathFromHearth("scoutScreenshotReview", {}, "hearth-foundation-screenshot"),
+      },
+      {
+        key: "foundation-add-vault",
+        title: "Add to Vault",
+        detail: "Save only after review.",
+        icon: "plus",
+        tone: "vault",
+        onClick: () => openQuickAddAction("vaultItem"),
+      },
+      {
+        key: "foundation-check-trade",
+        title: foundationQuickActionItems[2]?.title || "Check trade",
+        detail: foundationQuickActionItems[2]?.detail || "Compare values and safety",
+        icon: "forge",
+        tone: "forge",
+        onClick: () => foundationTradeSourceItem ? openTradeValueFlow(foundationTradeSourceItem, { source: "hearth-foundation-trade" }) : setActiveTab("vault"),
+      },
+      {
+        key: "foundation-donate-spark",
+        title: "Donate to The Spark",
+        detail: "Track kid-safe family support.",
+        icon: "spark",
+        tone: "spark",
+        onClick: () => openSparkManualSeed("donation"),
+      },
+    ];
     const routeToAdminReportReview = () => {
       setAdminReviewFilter("Scout Report Review");
       setActiveTab("adminReview");
@@ -48978,6 +49098,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <img src={BRAND_ASSETS.mark} alt="" />
               </span>
               <div>
+                <span className="hearth-foundation-brand">Ember &amp; Tide</span>
                 <h1>{hearthHomeTitle}</h1>
                 <p>Collect with confidence. Protect what matters. Help families find fair access.</p>
                 <div className="hearth-today-message" aria-label="Today's Hearth focus">
@@ -49008,16 +49129,41 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <p>Vault, Scout, Market, and Spark signals for your current collecting day.</p>
               </div>
             </div>
-            <div className="hearth-snapshot-strip">
-              {hearthSnapshotCards.map((card) => (
-                <button type="button" className={`hearth-snapshot-pill hearth-accent-${card.accent}`} key={card.key} onClick={card.onClick}>
-                  <span>{card.label}</span>
-                  <strong>{card.value}</strong>
-                  <small>{card.detail}</small>
-                </button>
+            <div className="hearth-foundation-stat-grid">
+              {hearthFoundationStats.map((stat) => (
+                <LiveEmberStatCard
+                  key={stat.key}
+                  label={stat.label}
+                  value={stat.value}
+                  detail={stat.detail}
+                  tone={stat.tone}
+                  onClick={stat.onClick}
+                />
               ))}
             </div>
           </section>
+
+          <LiveEmberPanel className="hearth-foundation-journey-panel" tone="hearth" ariaLabel="Today's Journey">
+            <div className="compact-card-header">
+              <div>
+                <h2>Today&apos;s Journey</h2>
+                <p>One warm path through Scout, Vault, family events, and fair trades.</p>
+              </div>
+            </div>
+            <div className="hearth-foundation-journey-grid">
+              {hearthFoundationJourneyCards.map((card) => (
+                <LiveEmberActionCard
+                  key={card.key}
+                  title={card.title}
+                  detail={card.detail}
+                  meta={card.meta}
+                  icon={card.icon}
+                  tone={card.tone}
+                  onClick={card.onClick}
+                />
+              ))}
+            </div>
+          </LiveEmberPanel>
 
           {hearthOnboardingPanel && hearthIsNewUser ? (
             <div className="hearth-onboarding-slot hearth-onboarding-slot-primary">{hearthOnboardingPanel}</div>
@@ -49067,29 +49213,26 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <section className="panel hearth-quick-actions-panel" aria-label="Hearth quick actions">
             <div className="hearth-quick-actions-heading">
               <div>
-                <h2>Shortcuts</h2>
-                <p>Compact routes for common collection tasks.</p>
+                <h2>Quick Actions</h2>
+                <p>Thumb-friendly tools for collecting, Scout proof, and family support.</p>
               </div>
               <span>Use + for more</span>
             </div>
-            <div className="hearth-quick-action-grid">
-              {quickActions.map((action) => (
-                <button
-                  type="button"
-                  className="hearth-quick-action"
+            <div className="hearth-foundation-quick-grid">
+              {hearthFoundationQuickActions.map((action) => (
+                <LiveEmberActionCard
                   key={action.key}
-                  aria-label={action.key === "quick-add" ? "Open Quick Add command center" : undefined}
+                  title={action.title}
+                  detail={action.detail}
+                  icon={action.icon}
+                  tone={action.tone}
                   onClick={action.onClick}
-                >
-                  <span className="hearth-quick-action-icon" aria-hidden="true"><AppNavIcon kind={action.icon} /></span>
-                  <span>
-                    <strong>{action.label}</strong>
-                    <small>{action.helper}</small>
-                  </span>
-                </button>
+                />
               ))}
             </div>
           </section>
+
+          <LiveEmberTrustNote message={HEARTH_FOUNDATION_TRUST_MESSAGE} />
 
           {hearthOnboardingPanel && !hearthIsNewUser ? (
             <div className="hearth-onboarding-slot hearth-onboarding-slot-secondary">{hearthOnboardingPanel}</div>
