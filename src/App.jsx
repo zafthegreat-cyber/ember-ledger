@@ -1610,6 +1610,7 @@ function routeStateFromPath(pathname = "") {
   if (section === "tcg-os") return { activeTab: "tcgOs" };
   if (section === "help" || section === "support") return { activeTab: "help" };
   if (section === "moderator" || section === "moderation") return { activeTab: "moderator" };
+  if (section === "membership" || section === "tiers" || section === "plans") return { activeTab: "membership" };
   if (section === "reports" || section === "business-reports" || section === "exports") return { activeTab: "reports", forgeSubTab: "overview" };
   if (section === "admin" || section === "admin-review") return { activeTab: "adminReview" };
   if (section === "partner" || section === "sponsor") return { activeTab: "sponsor" };
