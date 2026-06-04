@@ -10535,9 +10535,13 @@ export default function App() {
           } else {
             upDistance.current += Math.abs(delta);
             downDistance.current = 0;
-            if (currentScrollY <= 96 || upDistance.current >= 36) {
+            if (currentScrollY <= 96) {
               setShowFullTopbar(true);
               setFabVisible(true);
+              upDistance.current = 0;
+            } else if (upDistance.current >= 36) {
+              setShowFullTopbar(true);
+              setFabVisible(false);
               upDistance.current = 0;
             }
           }
@@ -36838,13 +36842,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       "Other family collecting support",
     ];
     const sparkMissionCards = [
-      { key: "packs", icon: "Pack", title: "Kids packs", detail: "Parent-safe starter packs built from reviewed support." },
-      { key: "giveaways", icon: "Give", title: "Giveaways", detail: "Family-friendly opportunities with clear guardrails." },
-      { key: "events", icon: "Meet", title: "Events", detail: "General-area events, learn-to-play days, and pack building." },
-      { key: "learn", icon: "Learn", title: "Learning", detail: "Card care, fair trading, price basics, and kind collecting." },
-      { key: "donations", icon: "Track", title: "Donation tracking", detail: "Products, supplies, sponsorships, services, and volunteer help." },
-      { key: "trusted-friends", icon: "Trust", title: "Trusted family friends", detail: "Approved helpers for packs, events, donations, and learning." },
-      { key: "shops", icon: "Shop", title: "Shop and seller support", detail: "Partner participation for drop sites, events, and fair access." },
+      { key: "packs", icon: "Pack", title: "Kids packs", detail: "Reviewed starter packs." },
+      { key: "giveaways", icon: "Give", title: "Giveaways", detail: "Family-friendly guardrails." },
+      { key: "events", icon: "Meet", title: "Events", detail: "General-area family days." },
+      { key: "learn", icon: "Learn", title: "Learning", detail: "Card care and fair trades." },
+      { key: "donations", icon: "Track", title: "Donation tracking", detail: "Products, supplies, time, and support." },
+      { key: "trusted-friends", icon: "Trust", title: "Trusted family friends", detail: "Approved helpers only." },
+      { key: "shops", icon: "Shop", title: "Shop and seller support", detail: "Drop sites, events, and fair access." },
     ];
     const sparkDonationGroups = [
       { title: "Cards and products", items: ["Cards", "Sealed products", "Packs"] },

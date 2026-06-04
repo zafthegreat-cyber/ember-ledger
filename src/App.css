@@ -76152,3 +76152,126 @@ html body .app .ember-assist-shell.is-open {
     padding-bottom: 4px !important;
   }
 }
+
+/* Live production mobile polish: clear the dock without changing feature behavior. */
+@media (max-width: 780px) {
+  .app-command-shell,
+  .app-shell-dark {
+    --et-live-mobile-dock-fade: max(94px, calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 28px));
+  }
+
+  .mobile-bottom-nav::before {
+    top: calc(-1 * var(--et-live-mobile-dock-fade)) !important;
+    height: calc(var(--et-live-mobile-dock-fade) + 2px) !important;
+    background:
+      linear-gradient(180deg, rgba(2, 7, 18, 0), rgba(2, 7, 18, 0.92) 36%, rgba(2, 7, 18, 0.995) 62%, rgba(2, 7, 18, 1)) !important;
+    z-index: 0 !important;
+  }
+
+  .mobile-bottom-nav button {
+    position: relative;
+    z-index: 1;
+  }
+
+  .app-home {
+    --hearth-mobile-dock-clearance: max(256px, calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 184px));
+  }
+
+  .app-home .dashboard-layout.hearth-command-view.hearth-northstar,
+  .app-home .dashboard-layout.command-hearth {
+    padding-bottom: var(--hearth-mobile-dock-clearance) !important;
+    scroll-padding-bottom: var(--hearth-mobile-dock-clearance) !important;
+  }
+
+  .app-home .hearth-command-view.hearth-northstar::after,
+  .app-home .command-hearth::after {
+    min-height: calc(var(--hearth-mobile-dock-clearance) - 44px) !important;
+  }
+
+  .app-market > main,
+  .app-command-shell.app-market > main,
+  .app-shell-dark.app-market > main {
+    padding-bottom: max(270px, calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 196px)) !important;
+    scroll-padding-bottom: max(270px, calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 196px)) !important;
+  }
+
+  .app-market .market-results-panel,
+  .app-command-shell.app-market .market-results-panel,
+  .app-shell-dark.app-market .market-results-panel {
+    margin-bottom: max(168px, calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 96px)) !important;
+    scroll-margin-bottom: max(210px, calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 136px)) !important;
+  }
+
+  .app-market .catalog-result-groups,
+  .app-command-shell.app-market .catalog-result-groups,
+  .app-shell-dark.app-market .catalog-result-groups,
+  .app-market .catalog-results-list,
+  .app-command-shell.app-market .catalog-results-list,
+  .app-shell-dark.app-market .catalog-results-list {
+    padding-bottom: max(128px, calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 58px)) !important;
+  }
+
+  .app-market .catalog-result-card:last-child,
+  .app-command-shell.app-market .catalog-result-card:last-child,
+  .app-shell-dark.app-market .catalog-result-card:last-child,
+  .app-market .market-set-card:last-child,
+  .app-command-shell.app-market .market-set-card:last-child,
+  .app-shell-dark.app-market .market-set-card:last-child {
+    margin-bottom: max(96px, calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 32px)) !important;
+  }
+
+  .app-kidsprogram,
+  .app-command-shell.app-kidsprogram,
+  .app-shell-dark.app-kidsprogram {
+    --spark-mobile-clearance: max(260px, calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 188px));
+  }
+
+  .app-kidsprogram .spark-program-layout,
+  .app-command-shell.app-kidsprogram .spark-program-layout,
+  .app-shell-dark.app-kidsprogram .spark-program-layout {
+    padding-bottom: var(--spark-mobile-clearance) !important;
+    margin-bottom: calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 70px) !important;
+  }
+
+  .app-kidsprogram .spark-section-card,
+  .app-command-shell.app-kidsprogram .spark-section-card,
+  .app-shell-dark.app-kidsprogram .spark-section-card {
+    min-height: 106px !important;
+  }
+
+  .app-kidsprogram .spark-section-card p,
+  .app-command-shell.app-kidsprogram .spark-section-card p,
+  .app-shell-dark.app-kidsprogram .spark-section-card p {
+    -webkit-line-clamp: 2 !important;
+  }
+
+  .app .flow-modal[data-flow="scoutSubmit"] > .flow-modal-body,
+  .app-command-shell .flow-modal[data-flow="scoutSubmit"] > .flow-modal-body,
+  .app-shell-dark .flow-modal[data-flow="scoutSubmit"] > .flow-modal-body {
+    padding-bottom: calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 216px) !important;
+    scroll-padding-bottom: calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 232px) !important;
+  }
+
+  .app .flow-modal[data-flow="scoutSubmit"] .scout-report-store-list,
+  .app-command-shell .flow-modal[data-flow="scoutSubmit"] .scout-report-store-list,
+  .app-shell-dark .flow-modal[data-flow="scoutSubmit"] .scout-report-store-list {
+    padding-bottom: calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 172px) !important;
+  }
+
+  .app .flow-modal[data-flow="scoutSubmit"] .scout-report-store-card:last-child,
+  .app-command-shell .flow-modal[data-flow="scoutSubmit"] .scout-report-store-card:last-child,
+  .app-shell-dark .flow-modal[data-flow="scoutSubmit"] .scout-report-store-card:last-child,
+  .app .flow-modal[data-flow="scoutSubmit"] .scout-report-store-pick:last-child,
+  .app-command-shell .flow-modal[data-flow="scoutSubmit"] .scout-report-store-pick:last-child,
+  .app-shell-dark .flow-modal[data-flow="scoutSubmit"] .scout-report-store-pick:last-child {
+    margin-bottom: max(84px, calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 22px)) !important;
+    scroll-margin-bottom: calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 150px) !important;
+  }
+
+  .app .drawer.open.menu-drawer .drawer-menu-stack,
+  .app-command-shell .drawer.open.menu-drawer .drawer-menu-stack,
+  .app-shell-dark .drawer.open.menu-drawer .drawer-menu-stack {
+    padding-bottom: calc(126px + env(safe-area-inset-bottom, 0px)) !important;
+    scroll-padding-bottom: calc(132px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
