@@ -75106,3 +75106,197 @@ html body .app .ember-assist-shell.is-open {
     width: auto !important;
   }
 }
+
+/* Phase 6: Tidepool final UI polish. */
+.app-tidepool .tidepool-community-header,
+.app-command-shell.app-tidepool .tidepool-community-header,
+.app-shell-dark.app-tidepool .tidepool-community-header {
+  overflow: hidden !important;
+}
+
+.app-tidepool .tidepool-header-summary,
+.app-command-shell.app-tidepool .tidepool-header-summary,
+.app-shell-dark.app-tidepool .tidepool-header-summary {
+  display: grid !important;
+  gap: 10px !important;
+}
+
+.app-tidepool .tidepool-trust-card,
+.app-command-shell.app-tidepool .tidepool-trust-card,
+.app-shell-dark.app-tidepool .tidepool-trust-card {
+  min-height: 72px;
+  align-content: start;
+}
+
+.app-tidepool .tidepool-support-strip,
+.app-command-shell.app-tidepool .tidepool-support-strip,
+.app-shell-dark.app-tidepool .tidepool-support-strip {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 14px 34px rgba(2, 8, 23, 0.18);
+}
+
+.app-tidepool .tidepool-post-card,
+.app-command-shell.app-tidepool .tidepool-post-card,
+.app-shell-dark.app-tidepool .tidepool-post-card {
+  position: relative;
+}
+
+.app-tidepool .tidepool-post-card::before,
+.app-command-shell.app-tidepool .tidepool-post-card::before,
+.app-shell-dark.app-tidepool .tidepool-post-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.12), transparent 36%, rgba(168, 85, 247, 0.08));
+  opacity: 0.62;
+}
+
+.app-tidepool .tidepool-post-card > *,
+.app-command-shell.app-tidepool .tidepool-post-card > *,
+.app-shell-dark.app-tidepool .tidepool-post-card > * {
+  position: relative;
+}
+
+.app-tidepool .tidepool-post-actions .overflow-menu-button,
+.app-command-shell.app-tidepool .tidepool-post-actions .overflow-menu-button,
+.app-shell-dark.app-tidepool .tidepool-post-actions .overflow-menu-button {
+  border-color: rgba(34, 211, 238, 0.24) !important;
+}
+
+@media (max-width: 780px) {
+  .app-tidepool .mobile-quick-add-fab,
+  .app-command-shell.app-tidepool .mobile-quick-add-fab,
+  .app-shell-dark.app-tidepool .mobile-quick-add-fab {
+    display: none !important;
+    pointer-events: none !important;
+  }
+
+  .app-tidepool .main,
+  .app-command-shell.app-tidepool .main,
+  .app-shell-dark.app-tidepool .main {
+    padding-bottom: calc(var(--et-mobile-scroll-clearance, 144px) + 42px) !important;
+    scroll-padding-bottom: calc(var(--et-mobile-scroll-clearance, 144px) + 42px) !important;
+  }
+
+  .app-tidepool .tidepool-community,
+  .app-command-shell.app-tidepool .tidepool-community,
+  .app-shell-dark.app-tidepool .tidepool-community {
+    gap: 10px !important;
+    margin-bottom: calc(var(--et-mobile-nav-clearance, 76px) + 42px) !important;
+    padding-bottom: calc(var(--et-mobile-scroll-clearance, 144px) + 16px) !important;
+  }
+
+  .app-tidepool .tidepool-community-header .standard-page-header-copy h2,
+  .app-command-shell.app-tidepool .tidepool-community-header .standard-page-header-copy h2,
+  .app-shell-dark.app-tidepool .tidepool-community-header .standard-page-header-copy h2 {
+    max-width: 12ch;
+    font-size: clamp(1.48rem, 7.4vw, 1.95rem) !important;
+    line-height: 1.02 !important;
+  }
+
+  .app-tidepool .tidepool-community-header .standard-page-header-copy p,
+  .app-command-shell.app-tidepool .tidepool-community-header .standard-page-header-copy p,
+  .app-shell-dark.app-tidepool .tidepool-community-header .standard-page-header-copy p {
+    font-size: 0.88rem !important;
+    line-height: 1.38 !important;
+  }
+
+  .app-tidepool .tidepool-stat-grid,
+  .app-command-shell.app-tidepool .tidepool-stat-grid,
+  .app-shell-dark.app-tidepool .tidepool-stat-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    overflow: visible !important;
+  }
+
+  .app-tidepool .tidepool-stat-card,
+  .app-command-shell.app-tidepool .tidepool-stat-card,
+  .app-shell-dark.app-tidepool .tidepool-stat-card {
+    min-height: 56px !important;
+    padding: 9px 8px !important;
+  }
+
+  .app-tidepool .tidepool-stat-card span,
+  .app-command-shell.app-tidepool .tidepool-stat-card span,
+  .app-shell-dark.app-tidepool .tidepool-stat-card span {
+    font-size: 0.62rem !important;
+    letter-spacing: 0.04em;
+  }
+
+  .app-tidepool .tidepool-trust-grid,
+  .app-command-shell.app-tidepool .tidepool-trust-grid,
+  .app-shell-dark.app-tidepool .tidepool-trust-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+  }
+
+  .app-tidepool .tidepool-trust-card,
+  .app-command-shell.app-tidepool .tidepool-trust-card,
+  .app-shell-dark.app-tidepool .tidepool-trust-card {
+    min-height: 0 !important;
+    padding: 9px 10px !important;
+    border-radius: 16px !important;
+  }
+
+  .app-tidepool .tidepool-trust-card strong,
+  .app-command-shell.app-tidepool .tidepool-trust-card strong,
+  .app-shell-dark.app-tidepool .tidepool-trust-card strong {
+    font-size: 0.76rem !important;
+  }
+
+  .app-tidepool .tidepool-trust-card span,
+  .app-command-shell.app-tidepool .tidepool-trust-card span,
+  .app-shell-dark.app-tidepool .tidepool-trust-card span {
+    font-size: 0.68rem !important;
+    line-height: 1.25 !important;
+  }
+
+  .app-tidepool .tidepool-support-strip,
+  .app-command-shell.app-tidepool .tidepool-support-strip,
+  .app-shell-dark.app-tidepool .tidepool-support-strip {
+    padding: 12px !important;
+  }
+
+  .app-tidepool .tidepool-support-actions,
+  .app-command-shell.app-tidepool .tidepool-support-actions,
+  .app-shell-dark.app-tidepool .tidepool-support-actions {
+    grid-template-columns: 1fr !important;
+  }
+
+  .app-tidepool .tidepool-post-card,
+  .app-command-shell.app-tidepool .tidepool-post-card,
+  .app-shell-dark.app-tidepool .tidepool-post-card {
+    gap: 11px !important;
+    padding: 13px !important;
+  }
+
+  .app-tidepool .tidepool-profile-card,
+  .app-command-shell.app-tidepool .tidepool-profile-card,
+  .app-shell-dark.app-tidepool .tidepool-profile-card {
+    display: none !important;
+  }
+
+  .app-tidepool .tidepool-post-actions,
+  .app-command-shell.app-tidepool .tidepool-post-actions,
+  .app-shell-dark.app-tidepool .tidepool-post-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .app-tidepool .tidepool-comments summary,
+  .app-command-shell.app-tidepool .tidepool-comments summary,
+  .app-shell-dark.app-tidepool .tidepool-comments summary {
+    min-height: 24px !important;
+    padding: 2px 9px !important;
+    font-size: 0.72rem !important;
+  }
+
+  .app-tidepool .tidepool-empty-state,
+  .app-command-shell.app-tidepool .tidepool-empty-state,
+  .app-shell-dark.app-tidepool .tidepool-empty-state,
+  .app-tidepool .tidepool-rules-card,
+  .app-command-shell.app-tidepool .tidepool-rules-card,
+  .app-shell-dark.app-tidepool .tidepool-rules-card {
+    margin-bottom: 0 !important;
+  }
+}
