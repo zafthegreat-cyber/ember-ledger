@@ -6469,7 +6469,7 @@ export default function App() {
     mobileMenuByKey.emberAssist,
     mobileMenuByKey.scanProduct,
     mobileMenuByKey.help,
-    { key: "feedback", label: "Help / Support", helper: "Send feedback or contact admin.", icon: "bell", action: () => openFeedbackDialog("feedback") },
+    { key: "feedback", label: "Send Feedback", helper: "Share a bug, idea, or support note.", icon: "bell", action: () => openFeedbackDialog("feedback") },
   ].filter(Boolean);
   const menuRoadmapItems = [
     mobileMenuByKey.comingSoon,

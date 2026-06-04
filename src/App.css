@@ -75750,3 +75750,212 @@ html body .app .ember-assist-shell.is-open {
     min-height: 72px !important;
   }
 }
+
+/* Full UI sprint Phase 9: More/Menu command hub polish. */
+.app .drawer.open.menu-drawer,
+.app-command-shell .drawer.open.menu-drawer,
+.app-shell-dark .drawer.open.menu-drawer {
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) auto !important;
+  overflow: hidden !important;
+  border-color: rgba(137, 225, 255, 0.22) !important;
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.48),
+    0 0 56px rgba(37, 217, 255, 0.08) !important;
+}
+
+.app .drawer.open.menu-drawer .drawer-menu-stack,
+.app-command-shell .drawer.open.menu-drawer .drawer-menu-stack,
+.app-shell-dark .drawer.open.menu-drawer .drawer-menu-stack {
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+}
+
+.menu-command-links-header p {
+  max-width: 72ch;
+}
+
+.menu-command-section--admin {
+  border-color: rgba(255, 107, 85, 0.22) !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 107, 85, 0.1), transparent 8rem),
+    rgba(15, 20, 32, 0.48) !important;
+}
+
+.menu-command-section--admin .menu-command-icon {
+  color: #ffcf8a;
+  border-color: rgba(255, 107, 85, 0.28);
+  background: rgba(255, 107, 85, 0.12);
+}
+
+.app .drawer.open.menu-drawer .drawer-footer-card,
+.app-command-shell .drawer.open.menu-drawer .drawer-footer-card,
+.app-shell-dark .drawer.open.menu-drawer .drawer-footer-card {
+  flex-shrink: 0;
+  backdrop-filter: blur(16px);
+}
+
+@media (max-width: 780px) {
+  .app:has(.drawer.open.menu-drawer) .mobile-bottom-nav,
+  .app-command-shell:has(.drawer.open.menu-drawer) .mobile-bottom-nav,
+  .app-shell-dark:has(.drawer.open.menu-drawer) .mobile-bottom-nav,
+  .app:has(.drawer.open.menu-drawer) .mobile-quick-add-fab,
+  .app-command-shell:has(.drawer.open.menu-drawer) .mobile-quick-add-fab,
+  .app-shell-dark:has(.drawer.open.menu-drawer) .mobile-quick-add-fab {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transform: translateY(120%) scale(0.94) !important;
+  }
+
+  .app .drawer.open.menu-drawer,
+  .app-command-shell .drawer.open.menu-drawer,
+  .app-shell-dark .drawer.open.menu-drawer {
+    inset: 0 !important;
+    width: 100vw !important;
+    max-width: none !important;
+    height: 100dvh !important;
+    max-height: none !important;
+    border-radius: 0 !important;
+    border-left: 0 !important;
+    border-right: 0 !important;
+  }
+
+  .app .drawer.open.menu-drawer .drawer-header,
+  .app-command-shell .drawer.open.menu-drawer .drawer-header,
+  .app-shell-dark .drawer.open.menu-drawer .drawer-header {
+    margin: 0 !important;
+    padding: calc(12px + env(safe-area-inset-top, 0px)) 14px 10px !important;
+  }
+
+  .app .drawer.open.menu-drawer .drawer-header h3,
+  .app-command-shell .drawer.open.menu-drawer .drawer-header h3,
+  .app-shell-dark .drawer.open.menu-drawer .drawer-header h3 {
+    font-size: 1.34rem !important;
+    line-height: 1.05 !important;
+  }
+
+  .app .drawer.open.menu-drawer .drawer-menu-stack,
+  .app-command-shell .drawer.open.menu-drawer .drawer-menu-stack,
+  .app-shell-dark .drawer.open.menu-drawer .drawer-menu-stack {
+    gap: 11px !important;
+    padding: 10px 12px calc(62px + env(safe-area-inset-bottom, 0px)) !important;
+    scroll-padding-bottom: calc(62px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .menu-command-links {
+    gap: 11px !important;
+    padding: 10px !important;
+    border-radius: 20px !important;
+  }
+
+  .menu-command-links-header {
+    gap: 7px !important;
+    padding-bottom: 0 !important;
+  }
+
+  .menu-command-links-header p {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: 0.74rem !important;
+    line-height: 1.28 !important;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .menu-command-links-header > button {
+    display: none !important;
+  }
+
+  .menu-command-groups {
+    gap: 10px !important;
+  }
+
+  .menu-command-section {
+    gap: 7px !important;
+    padding: 8px !important;
+    border-radius: 17px !important;
+  }
+
+  .menu-command-section h4 {
+    font-size: 0.7rem !important;
+    letter-spacing: 0.03em !important;
+  }
+
+  .menu-command-grid,
+  .menu-command-section--account .menu-command-grid,
+  .menu-command-section--admin .menu-command-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+  }
+
+  .menu-command-section--roadmap .menu-command-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .menu-command-link {
+    grid-template-columns: 30px minmax(0, 1fr) !important;
+    gap: 8px !important;
+    min-height: 54px !important;
+    padding: 8px !important;
+    border-radius: 14px !important;
+  }
+
+  .menu-command-icon {
+    width: 30px !important;
+    height: 30px !important;
+    border-radius: 11px !important;
+  }
+
+  .menu-command-link strong {
+    font-size: 0.77rem !important;
+    line-height: 1.08 !important;
+  }
+
+  .menu-command-link small {
+    min-height: 0 !important;
+    font-size: 0.63rem !important;
+    line-height: 1.16 !important;
+    -webkit-line-clamp: 2 !important;
+  }
+
+  .app .drawer.open.menu-drawer .drawer-footer-card,
+  .app-command-shell .drawer.open.menu-drawer .drawer-footer-card,
+  .app-shell-dark .drawer.open.menu-drawer .drawer-footer-card {
+    min-height: 42px !important;
+    margin: 0 12px calc(8px + env(safe-area-inset-bottom, 0px)) !important;
+    padding: 7px 9px !important;
+    border-radius: 15px !important;
+  }
+
+  .app .drawer.open.menu-drawer .drawer-footer-card span,
+  .app-command-shell .drawer.open.menu-drawer .drawer-footer-card span,
+  .app-shell-dark .drawer.open.menu-drawer .drawer-footer-card span {
+    font-size: 0.64rem !important;
+  }
+
+  .app .drawer.open.menu-drawer .drawer-footer-card button,
+  .app-command-shell .drawer.open.menu-drawer .drawer-footer-card button,
+  .app-shell-dark .drawer.open.menu-drawer .drawer-footer-card button {
+    min-height: 30px !important;
+    padding: 6px 10px !important;
+    font-size: 0.74rem !important;
+  }
+}
+
+@media (min-width: 781px) {
+  .app .drawer.open.menu-drawer,
+  .app-command-shell .drawer.open.menu-drawer,
+  .app-shell-dark .drawer.open.menu-drawer {
+    top: 16px !important;
+    bottom: 16px !important;
+    max-height: calc(100dvh - 32px) !important;
+    border-radius: 28px !important;
+  }
+
+  .app .drawer.open.menu-drawer .drawer-menu-stack,
+  .app-command-shell .drawer.open.menu-drawer .drawer-menu-stack,
+  .app-shell-dark .drawer.open.menu-drawer .drawer-menu-stack {
+    padding-bottom: 16px !important;
+  }
+}
