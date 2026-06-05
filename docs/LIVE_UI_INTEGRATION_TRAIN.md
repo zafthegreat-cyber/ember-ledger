@@ -30,30 +30,28 @@
 | 11 | Ember Assist | Complete | `e920470` | Mock/local helper UI framing; no live AI calls added. |
 | 12 | Forge / Trade Analyzer / Listing Builder / Sales Ledger | Complete | `a84238e` | Mock-only workspace UI; no inventory writes. |
 | 13 | Shop Portal | Complete | `384243d` | Mock-only trust controls; no shop backend changes. |
-| 14 | Admin Review | Complete | Commit pending for this section | Mock-only review UI; no admin mutations. |
-| 15 | Onboarding and Virginia-first Flow | Not started | - | Mock/local UI only unless existing safe onboarding exists. |
+| 14 | Admin Review | Complete | `27d00ff` | Mock-only review UI; no admin mutations. |
+| 15 | Onboarding and Virginia-first Flow | Complete | Commit pending for this section | Mock/local UI only; no account, waitlist, billing, or database writes. |
 | 16 | Final Integration QA and Polish | Not started | - | Final consistency, spacing, docs, screenshots, tests. |
 
-## Current Section: Onboarding and Virginia-first Flow
+## Current Section: Final Integration QA and Polish
 
-Started: Pending after Section 14 commit.
+Started: Pending after Section 15 commit.
 
 Scope:
 
-- Welcome, State Check, Waitlist, Choose Role, Family Setup, Notifications, First Store, and Permission Needed UI surfaces
-- Virginia-first launch framing
-- Mock/local UI only unless existing safe onboarding already supports the flow
+- Final consistency, spacing, docs, screenshots, route links, and tests
+- No new feature work
 
 Allowed behavior:
 
-- Mock/local onboarding UI state
+- Copy cleanup, spacing cleanup, screenshot QA, and documentation updates
 - Existing approved Hearth / Scout / Vault / Market / More nav
-- Existing safe route/state handling
 
 Disallowed behavior:
 
 - Auth, billing, database, or RLS changes
-- Account creation, auth routing, billing/subscription, waitlist backend, or admin gate changes
+- Account creation, auth routing, billing/subscription, waitlist backend, admin gate changes, or new section integration
 - Live posting, exact inventory quantity, checkout, or payments
 - Uploads, live AI, live messaging, scraping, or auto-buy behavior
 - Backend writes or Supabase mutations
@@ -425,7 +423,7 @@ Mock-only notes:
 
 ### Section 14 - Admin Review
 
-Status: Complete. Commit pending for this section.
+Status: Complete. Commit `27d00ff`.
 
 Screenshots:
 
@@ -465,6 +463,63 @@ Mock-only notes:
 - Action vocabulary chips are not wired to mutations.
 - Existing admin route gating remains intact; normal users still see Permission Denied.
 - No real moderation call, approve/reject action, hide action, suspend action, user mutation, admin backend change, database write, auth change, billing change, schema change, or RLS change was added.
+
+### Section 15 - Onboarding and Virginia-first Flow
+
+Status: Complete. Commit pending for this section.
+
+Screenshots:
+
+- `artifacts/qa/live-ui-integration-train/onboarding/onboarding-welcome-390x844.png`
+- `artifacts/qa/live-ui-integration-train/onboarding/onboarding-welcome-430x932.png`
+- `artifacts/qa/live-ui-integration-train/onboarding/onboarding-welcome-1440x900.png`
+- `artifacts/qa/live-ui-integration-train/onboarding/onboarding-state-check-390x844.png`
+- `artifacts/qa/live-ui-integration-train/onboarding/onboarding-state-check-430x932.png`
+- `artifacts/qa/live-ui-integration-train/onboarding/onboarding-state-check-1440x900.png`
+- `artifacts/qa/live-ui-integration-train/onboarding/onboarding-waitlist-390x844.png`
+- `artifacts/qa/live-ui-integration-train/onboarding/onboarding-waitlist-430x932.png`
+- `artifacts/qa/live-ui-integration-train/onboarding/onboarding-waitlist-1440x900.png`
+- `artifacts/qa/live-ui-integration-train/onboarding/onboarding-choose-role-390x844.png`
+- `artifacts/qa/live-ui-integration-train/onboarding/onboarding-choose-role-430x932.png`
+- `artifacts/qa/live-ui-integration-train/onboarding/onboarding-choose-role-1440x900.png`
+- `artifacts/qa/live-ui-integration-train/onboarding/onboarding-family-setup-390x844.png`
+- `artifacts/qa/live-ui-integration-train/onboarding/onboarding-family-setup-430x932.png`
+- `artifacts/qa/live-ui-integration-train/onboarding/onboarding-family-setup-1440x900.png`
+- `artifacts/qa/live-ui-integration-train/onboarding/onboarding-notifications-390x844.png`
+- `artifacts/qa/live-ui-integration-train/onboarding/onboarding-notifications-430x932.png`
+- `artifacts/qa/live-ui-integration-train/onboarding/onboarding-notifications-1440x900.png`
+- `artifacts/qa/live-ui-integration-train/onboarding/onboarding-first-store-390x844.png`
+- `artifacts/qa/live-ui-integration-train/onboarding/onboarding-first-store-430x932.png`
+- `artifacts/qa/live-ui-integration-train/onboarding/onboarding-first-store-1440x900.png`
+- `artifacts/qa/live-ui-integration-train/onboarding/onboarding-permission-needed-390x844.png`
+- `artifacts/qa/live-ui-integration-train/onboarding/onboarding-permission-needed-430x932.png`
+- `artifacts/qa/live-ui-integration-train/onboarding/onboarding-permission-needed-1440x900.png`
+- `artifacts/qa/live-ui-integration-train/onboarding/live-onboarding-qa-results.json`
+
+QA results:
+
+- All eight onboarding views rendered at 390x844, 430x932, and 1440x900.
+- No horizontal overflow, no console errors, no maximum update depth errors, required Virginia-first and safety copy present.
+- Browser screenshots required an outside-sandbox Playwright rerun after sandbox Chromium `spawn EPERM`.
+
+Checks:
+
+- `git diff --check`: passed with existing LF-to-CRLF warnings only.
+- `npm.cmd run build`: passed with existing Vite large chunk warning.
+- `npm.cmd run lint --if-present`: exited cleanly.
+- `npm.cmd run typecheck --if-present`: exited cleanly.
+- `npm.cmd test --if-present`: exited cleanly.
+- `npm.cmd run format:check --if-present`: exited cleanly.
+- `npm.cmd run smoke:beta`: passed.
+- `npm.cmd run test:app-fallbacks`: passed.
+- `npm.cmd run test:menu-full-page-routes`: passed.
+- `npm.cmd run test:onboarding --if-present`: passed.
+
+Mock-only notes:
+
+- The `/onboarding/:view` route family is a local preview shell.
+- Buttons move between local onboarding subviews or existing safe app surfaces.
+- No account creation change, beta waitlist submission, notification preference write, child account backend change, billing/subscription connection, upload service, live AI, database write, auth change, schema change, or RLS change was added.
 
 ### Section 2 - Scout Online and Watchlist
 

@@ -1580,6 +1580,10 @@ function routeStateFromPath(pathname = "") {
     return { activeTab: "workspaceInvite", workspaceInviteId: decodeURIComponent(subSection || "") };
   }
   if (section === "reset-password") return { activeTab: "resetPassword" };
+  if (section === "onboarding" || section === "welcome" || section === "state-check" || section === "waitlist") {
+    const view = section === "onboarding" ? subSection || "welcome" : section;
+    return { activeTab: "onboarding", onboardingView: view };
+  }
   if (section === "scout") {
     state.activeTab = "scout";
     state.scoutView = subSection === "stores"
@@ -5114,6 +5118,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState(initialRouteState.activeTab || "dashboard");
   const [betaInviteToken, setBetaInviteToken] = useState(initialRouteState.inviteToken || "");
   const [workspaceInviteId, setWorkspaceInviteId] = useState(initialRouteState.workspaceInviteId || "");
+  const [onboardingView, setOnboardingView] = useState(initialRouteState.onboardingView || "welcome");
   const betaInviteClaimInFlightRef = useRef("");
   const workspaceInviteClaimInFlightRef = useRef("");
   const startupPriorityAppliedRef = useRef(false);
@@ -29966,6 +29971,7 @@ function renderForgeBusinessCommandPanel() {
     if (activeTab === "invite") return betaInviteToken ? `/invite/${encodeURIComponent(betaInviteToken)}` : "/invite";
     if (activeTab === "workspaceInvite") return workspaceInviteId ? `/workspace-invite/${encodeURIComponent(workspaceInviteId)}` : "/workspace-invite";
     if (activeTab === "resetPassword") return "/reset-password";
+    if (activeTab === "onboarding") return `/onboarding/${encodeURIComponent(onboardingView || "welcome")}`;
     if (activeTab === "dailyTide") return "/today";
     if (activeTab === "scout") {
       if (activeScoutPage === "stores" && scoutSubTabTarget.storeId) return `/scout/stores/${encodeURIComponent(scoutSubTabTarget.storeId)}`;
@@ -30021,6 +30027,7 @@ function renderForgeBusinessCommandPanel() {
       activeTab,
       inviteToken: activeTab === "invite" ? betaInviteToken : "",
       workspaceInviteId: activeTab === "workspaceInvite" ? workspaceInviteId : "",
+      onboardingView: activeTab === "onboarding" ? onboardingView : "welcome",
       activeWorkspaceId,
       homeSubTab,
       forgeSubTab,
@@ -30063,6 +30070,7 @@ function renderForgeBusinessCommandPanel() {
     activeTab,
     betaInviteToken,
     workspaceInviteId,
+    onboardingView,
     activeWorkspaceId,
     homeSubTab,
     forgeSubTab,
@@ -48946,10 +48954,219 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     );
   }
 
+  function renderLiveOnboardingPage({ signedOut = false } = {}) {
+    const normalizedView = String(onboardingView || "welcome").toLowerCase();
+    const viewKey = [
+      "welcome",
+      "state-check",
+      "waitlist",
+      "choose-role",
+      "family-setup",
+      "notifications",
+      "first-store",
+      "permission-needed",
+    ].includes(normalizedView) ? normalizedView : "welcome";
+    const viewRows = [
+      { key: "welcome", label: "Welcome", helper: "Mission and beta path" },
+      { key: "state-check", label: "State Check", helper: "Virginia-first access" },
+      { key: "waitlist", label: "Waitlist", helper: "Expansion signal" },
+      { key: "choose-role", label: "Choose Role", helper: "Collector, family, seller, shop" },
+      { key: "family-setup", label: "Family Setup", helper: "Parent-guided defaults" },
+      { key: "notifications", label: "Notifications", helper: "Safe alert choices" },
+      { key: "first-store", label: "First Store", helper: "One watched store" },
+      { key: "permission-needed", label: "Permission Needed", helper: "Locked state clarity" },
+    ];
+    const tierRows = [
+      { title: "Free", body: "Start with Vault, Market, and one Scout watched store.", status: "1 watched store" },
+      { title: "Collector", body: "More collector tools and saved product context.", status: "Preview tier" },
+      { title: "Family", body: "Parent-guided tools, Spark participation, and kid-safe defaults.", status: "Family safe" },
+      { title: "Seller", body: "Forge workspace, receipts, listings, and sales organization.", status: "Optional" },
+      { title: "Shop", body: "Trusted family friend updates and Spark support placeholders.", status: "Admin reviewed" },
+      { title: "Beta / Admin", body: "Protected access for testing, review queues, and operations.", status: "Permission gated" },
+    ];
+    const stateRows = [
+      { title: "Virginia", body: "Virginia users can continue into beta review.", status: "Current launch" },
+      { title: "Outside Virginia", body: "Join the waitlist so we know what states to add next.", status: "Waitlist" },
+    ];
+    const firstStoreRows = [
+      { title: "Target - Short Pump", body: "Watch current reports near Richmond without exact quantities.", status: "VA store" },
+      { title: "Best Buy - West Broad", body: "Useful online/store signals, no checkout or scraping.", status: "Safe signal" },
+      { title: "Family Card Shop", body: "Trusted shop updates can be reviewed before publishing.", status: "Shop reviewed" },
+    ];
+    const viewCopy = {
+      welcome: {
+        kicker: "Welcome",
+        title: "Fair collecting starts with a safer home base.",
+        body: "Ember & Tide helps families collect, report, trade, and give back without turning Scout into a rush feed.",
+        badge: "Mock onboarding",
+      },
+      "state-check": {
+        kicker: "State Check",
+        title: "We are launching in Virginia first.",
+        body: "We are launching in Virginia first so Ember & Tide can stay safe, fair, and useful for families.",
+        badge: "Virginia first",
+      },
+      waitlist: {
+        kicker: "Waitlist",
+        title: "Outside Virginia joins the expansion list.",
+        body: "Out-of-state interest is kept as a planning signal only. This preview does not submit a real waitlist request.",
+        badge: "Mock only",
+      },
+      "choose-role": {
+        kicker: "Choose Role",
+        title: "Pick the setup that matches how your family collects.",
+        body: "Free, Collector, Family, Seller, Shop, Beta, and Admin stay clearly separated. Billing is not connected here.",
+        badge: "No checkout",
+      },
+      "family-setup": {
+        kicker: "Family Setup",
+        title: "Kids can collect safely with parent-guided tools.",
+        body: "Child-sensitive actions stay private, parent-guided, and separate from public Tidepool or marketplace context.",
+        badge: "Parent guided",
+      },
+      notifications: {
+        kicker: "Notifications",
+        title: "Choose helpful alerts without pressure.",
+        body: "Alerts should point families toward current signals, not vendor schedules, exact quantities, or auto-buy behavior.",
+        badge: "Safe alerts",
+      },
+      "first-store": {
+        kicker: "First Store",
+        title: "Choose your first watched store.",
+        body: "Free users start with one watched store and can change it once every 30 days. This preview does not save a store.",
+        badge: "1 watched store",
+      },
+      "permission-needed": {
+        kicker: "Permission Needed",
+        title: "Some tools stay locked until access is approved.",
+        body: "Locked states explain the benefit without exposing hidden Scout data, private family details, or admin tools.",
+        badge: "Protected",
+      },
+    };
+    const currentCopy = viewCopy[viewKey] || viewCopy.welcome;
+    const setView = (key) => {
+      setOnboardingView(key);
+      setActiveTab("onboarding");
+    };
+    const primaryActions = {
+      welcome: [
+        { label: "Check your state", action: () => setView("state-check") },
+        { label: "Choose role", action: () => setView("choose-role") },
+      ],
+      "state-check": [
+        { label: "Continue as Virginia", action: () => setView("choose-role") },
+        { label: "Preview waitlist", action: () => setView("waitlist") },
+      ],
+      waitlist: [
+        { label: "Back to state check", action: () => setView("state-check") },
+        { label: "Choose role anyway", action: () => setView("choose-role") },
+      ],
+      "choose-role": [
+        { label: "Family setup", action: () => setView("family-setup") },
+        { label: "Notification choices", action: () => setView("notifications") },
+      ],
+      "family-setup": [
+        { label: "Set alerts", action: () => setView("notifications") },
+        { label: "Pick first store", action: () => setView("first-store") },
+      ],
+      notifications: [
+        { label: "Pick first store", action: () => setView("first-store") },
+        { label: "See locked state", action: () => setView("permission-needed") },
+      ],
+      "first-store": [
+        { label: "Open Hearth preview", action: () => { startGuestPreview(); setActiveTab("dashboard"); } },
+        { label: "Permission example", action: () => setView("permission-needed") },
+      ],
+      "permission-needed": [
+        { label: "Back to welcome", action: () => setView("welcome") },
+        { label: "Open privacy & safety", action: () => { startGuestPreview(); setActiveTab("trust"); } },
+      ],
+    };
+    return (
+      <section className={`live-onboarding-page live-onboarding-page--${viewKey}`} aria-label="Ember and Tide onboarding preview">
+        <div className="live-onboarding-hero glass-panel">
+          <div>
+            <p className="section-kicker">{currentCopy.kicker}</p>
+            <h2>{currentCopy.title}</h2>
+            <p>{currentCopy.body}</p>
+            <p className="compact-subtitle">Fair collecting. Kid-friendly access. Trusted community. Virginia-first launch preview.</p>
+          </div>
+          <span className="status-badge">{currentCopy.badge}</span>
+        </div>
+
+        <nav className="live-onboarding-step-nav" aria-label="Onboarding screens">
+          {viewRows.map((row) => (
+            <button
+              type="button"
+              className={row.key === viewKey ? "live-onboarding-step is-active" : "live-onboarding-step"}
+              key={row.key}
+              onClick={() => setView(row.key)}
+              aria-current={row.key === viewKey ? "step" : undefined}
+            >
+              <strong>{row.label}</strong>
+              <span>{row.helper}</span>
+            </button>
+          ))}
+        </nav>
+
+        <div className="live-onboarding-grid">
+          <article className="live-onboarding-card glass-card">
+            <div className="compact-card-header">
+              <div>
+                <strong>{viewKey === "choose-role" ? "Role and tier choices" : viewKey === "first-store" ? "First store examples" : viewKey === "state-check" || viewKey === "waitlist" ? "Virginia-first rules" : "Setup guidance"}</strong>
+                <p className="compact-subtitle">Preview-only UI. No account, waitlist, billing, or database write happens here.</p>
+              </div>
+              <span className="status-badge">Mock/local</span>
+            </div>
+            <div className="live-onboarding-card-grid">
+              {(viewKey === "choose-role" ? tierRows : viewKey === "first-store" ? firstStoreRows : stateRows).map((row) => (
+                <article className="live-onboarding-mini-card" key={row.title}>
+                  <strong>{row.title}</strong>
+                  <span>{row.body}</span>
+                  <small>{row.status}</small>
+                </article>
+              ))}
+            </div>
+          </article>
+
+          <aside className="live-onboarding-card live-onboarding-safety glass-card">
+            <strong>Safety foundation</strong>
+            <div className="settings-stacked-list">
+              {[
+                ["No raw Scout patterns", "Exact pattern windows, vendor schedules, and employee details stay hidden."],
+                ["No private child data", "Family setup is parent-guided and child details stay private."],
+                ["No checkout wired", "Membership and shop paths are preview-only in this screen."],
+                ["Role-scoped tools", "Admin, Shop, and Beta surfaces stay permission-gated."],
+              ].map(([title, body]) => (
+                <article className="settings-list-row" key={title}>
+                  <span className="status-dot status-success" aria-hidden="true" />
+                  <div><strong>{title}</strong><small>{body}</small></div>
+                </article>
+              ))}
+            </div>
+          </aside>
+        </div>
+
+        <div className="live-onboarding-actions glass-card">
+          <div>
+            <strong>Next safe step</strong>
+            <p className="compact-subtitle">{signedOut ? "Create/sign in when ready, or preview the app without changing account data." : "Continue through the mock onboarding path or return to Hearth."}</p>
+          </div>
+          <div className="drawer-inline-actions">
+            {(primaryActions[viewKey] || primaryActions.welcome).map((action) => (
+              <button type="button" className="drawer-link" key={action.label} onClick={action.action}>{action.label}</button>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   if (!user && !guestPreviewActive) {
     const signedOutPublicContent = (() => {
       if (activeTab === "invite") return renderBetaInviteClaimPage({ signedOut: true });
       if (activeTab === "workspaceInvite") return renderWorkspaceInviteClaimPage({ signedOut: true });
+      if (activeTab === "onboarding") return renderLiveOnboardingPage({ signedOut: true });
       if (activeTab === "kidsProgram") return renderKidsProgramPage();
       if (activeTab === "parentCenter") return renderParentCenterPage();
       if (activeTab === "sponsor") return renderSponsorInterestPage();
@@ -57396,6 +57613,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         {!activeTabLocked && activeTab === "moderator" && renderModeratorPage()}
         {!activeTabLocked && activeTab === "profileProgress" && renderProfileProgressPage()}
         {!activeTabLocked && activeTab === "membership" && renderMembershipFoundation()}
+        {!activeTabLocked && activeTab === "onboarding" && renderLiveOnboardingPage()}
         {!activeTabLocked && activeTab === "betaReadiness" && adminToolsVisible && renderBetaReadinessPanel()}
         {!activeTabLocked && activeTab === "dailyTide" && renderTodaysTideCommandCenter()}
         {!activeTabLocked && activeTab === "dashboard" && renderHearthHomeCommandView()}
