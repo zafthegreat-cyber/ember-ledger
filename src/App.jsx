@@ -42689,6 +42689,43 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       { title: "Family-friendly discussion", detail: "Questions, events, and collecting help." },
       { title: "Report confirmations", detail: "Flag unsafe posts, fake info, or private details." },
     ];
+    const tidepoolSectionCards = [
+      { title: "Local", detail: "General area collecting help without exact rush alerts.", status: `${localPosts} local` },
+      { title: "Families", detail: "Parent-guided questions, kid-friendly wins, and safe tips.", status: "Family-safe" },
+      { title: "Events", detail: "Trade nights, learning days, Spark events, and shop meetups.", status: "Moderated" },
+      { title: "Shops", detail: "Trusted shop updates without inventory guarantees or pressure.", status: "Shop-safe" },
+      { title: "Tips", detail: "Binder care, fair value, and collecting help for newer families.", status: "Helpful" },
+    ];
+    const tidepoolPreviewCards = [
+      {
+        type: "Trusted shop update",
+        title: "Family Table TCG posted a learning night",
+        body: "Beginner-friendly table space is planned for Saturday afternoon. No inventory promises; call first if you need accessibility details.",
+        meta: "Trusted shop | Event note | Richmond, VA",
+        badge: "Shop update",
+      },
+      {
+        type: "Event card",
+        title: "Kids trade night needs sleeve donations",
+        body: "A parent helper is collecting sleeves and deck boxes for a community table. Donation details stay reviewed through The Spark.",
+        meta: "Spark support | Parent reviewed",
+        badge: "Family event",
+      },
+      {
+        type: "Tip post",
+        title: "How to check a fair sealed price",
+        body: "Compare Market fair range, recent source freshness, and MSRP before buying. Tidepool is not an auto-buy feed.",
+        meta: "Marketplace tip | No checkout",
+        badge: "Tip",
+      },
+      {
+        type: "Trade interest post",
+        title: "Trade interest post: safe binder practice",
+        body: "Family wants to practice value comparison before a real trade. Parent approval and review-first trade tools are recommended.",
+        meta: "Trade interest | Parent-guided",
+        badge: "Trade help",
+      },
+    ];
 
     return (
       <>
@@ -42713,6 +42750,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 ))}
               </div>
               <p>Keep it kind, helpful, and family-friendly. Posts use general areas only.</p>
+              <p>Tidepool is for trusted collecting activity, not rush alerts.</p>
               {!canCreateTidepoolPost ? <p>Tidepool posting opens after beta access is approved. Published posts remain visible when allowed.</p> : null}
               <div className="tidepool-trust-grid" aria-label="Tidepool trust and safety">
                 {tidepoolTrustCards.map((card) => (
@@ -42736,6 +42774,33 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <p>Helpful local posts, questions, events, proof-backed confirmations, and family-safe collector updates.</p>
             </div>
             <span className="status-badge">{visiblePosts} visible</span>
+          </div>
+
+          <div className="tidepool-live-section-grid" aria-label="Tidepool safe community sections">
+            {tidepoolSectionCards.map((card) => (
+              <article className="tidepool-live-section-card" key={card.title}>
+                <span className="status-badge">{card.status}</span>
+                <strong>{card.title}</strong>
+                <p>{card.detail}</p>
+              </article>
+            ))}
+          </div>
+
+          <div className="tidepool-preview-feed" aria-label="Tidepool moderated examples">
+            {tidepoolPreviewCards.map((card) => (
+              <article className="tidepool-preview-card" key={card.title}>
+                <div className="compact-card-header">
+                  <div>
+                    <span className="section-kicker">{card.type}</span>
+                    <strong>{card.title}</strong>
+                  </div>
+                  <span className="status-badge">{card.badge}</span>
+                </div>
+                <p>{card.body}</p>
+                <small>{card.meta}</small>
+                <button type="button" className="secondary-button" onClick={() => openFeedbackDialog("feedback", { page: "Tidepool Community", whatHappened: `${card.type}: ` })}>Report or ask for review</button>
+              </article>
+            ))}
           </div>
 
           <div className="tidepool-support-strip">

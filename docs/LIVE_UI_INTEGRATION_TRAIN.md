@@ -24,8 +24,8 @@
 | 5 | Market Home | Complete | `eca2e65` | Mock-only market search/discovery UI. |
 | 6 | Market Product Detail / Loading / Error | Complete | `d9d9e82` | Honest labels only; no live price API. |
 | 7 | More / Settings / Privacy & Safety / Membership | Complete | `16a5c36` | No billing or auth changes. |
-| 8 | Parent Center | Complete | This section commit | Mock-only safety center; no child account backend changes. |
-| 9 | Tidepool | Not started | - | Mock-only moderated community UI. |
+| 8 | Parent Center | Complete | `854cc25` | Mock-only safety center; no child account backend changes. |
+| 9 | Tidepool | Complete | Commit pending for this section | Mock-only moderated community UI. |
 | 10 | The Spark / Donate / Thank You | Not started | - | Mock-only giving flow; no payments. |
 | 11 | Ember Assist | Not started | - | Mock-only helper UI; no live AI calls. |
 | 12 | Forge / Trade Analyzer / Listing Builder / Sales Ledger | Not started | - | Mock-only workspace UI; no inventory writes. |
@@ -34,35 +34,37 @@
 | 15 | Onboarding and Virginia-first Flow | Not started | - | Mock/local UI only unless existing safe onboarding exists. |
 | 16 | Final Integration QA and Polish | Not started | - | Final consistency, spacing, docs, screenshots, tests. |
 
-## Current Section: Parent Center
+## Current Section: Tidepool
 
-Started: 2026-06-05 02:28:00 -04:00
+Started: 2026-06-05 02:41:51 -04:00
 
 Scope:
 
-- Parent Center route/page
-- Mock kid profiles
-- Parent visibility, approval, restriction, purchase reminder, Spark participation, trusted adult, and safety summary cards
+- Tidepool route/page
+- Mock moderated community sections
+- Trusted shop update, event card, tip post, trade interest post, and report/moderation affordance
 
 Allowed behavior:
 
-- Mock-only family safety UI
-- Links to existing safe Spark, Privacy & Safety, and Settings surfaces
+- Mock-only community UI examples
+- Existing local/report affordances
+- Existing Tidepool route and approved Hearth / Scout / Vault / Market / More nav
 
 Disallowed behavior:
 
 - Auth, billing, database, or RLS changes
-- Child account backend changes
+- Community post backend changes
 - Live messaging
 - Backend writes or Supabase mutations
-- Parent/child auth changes
+- Unmoderated child interaction
+- Restock leak feed, exact quantity claims, vendor schedules, or scraping
 - Checkout, payments, uploads, or live AI
 
 ## Section QA Log
 
 ### Section 5 - Market Home
 
-Status: Complete. Commit pending for this section.
+Status: Complete. Commit `854cc25`.
 
 Screenshots:
 
@@ -223,6 +225,44 @@ Mock-only notes:
 - Parent Center uses mock kid profile rows and planning cards only.
 - No child account backend, auth change, live messaging, payment flow, upload flow, backend write, database schema change, or RLS change was added.
 - More now links Parent Center to the dedicated `parentCenter` route.
+
+### Section 9 - Tidepool
+
+Status: Complete. Commit pending for this section.
+
+Screenshots:
+
+- `artifacts/qa/live-ui-integration-train/tidepool/tidepool-390x844.png`
+- `artifacts/qa/live-ui-integration-train/tidepool/tidepool-430x932.png`
+- `artifacts/qa/live-ui-integration-train/tidepool/tidepool-1440x900.png`
+- `artifacts/qa/live-ui-integration-train/tidepool/live-tidepool-qa-results.json`
+
+QA results:
+
+- 390x844: no horizontal overflow, no bottom dock overlap, no console errors, no maximum update depth errors, and required Tidepool safety/community copy present.
+- 430x932: no horizontal overflow, no bottom dock overlap, no console errors, no maximum update depth errors, and required Tidepool safety/community copy present.
+- 1440x900: no horizontal overflow, no bottom dock overlap, no console errors, no maximum update depth errors, and required Tidepool safety/community copy present.
+- Browser screenshots required an outside-sandbox Playwright rerun after sandbox Chromium `spawn EPERM`.
+
+Checks:
+
+- `git diff --check`: passed with existing LF-to-CRLF warnings only.
+- `npm.cmd run build`: passed with existing Vite large chunk warning.
+- `npm.cmd run lint --if-present`: exited cleanly.
+- `npm.cmd run typecheck --if-present`: exited cleanly.
+- `npm.cmd test --if-present`: exited cleanly.
+- `npm.cmd run format:check --if-present`: exited cleanly.
+- `npm.cmd run smoke:beta`: passed.
+- `npm.cmd run test:app-fallbacks`: passed.
+- `npm.cmd run test:menu-full-page-routes`: passed.
+- `npm.cmd run test:tidepool-community`: passed.
+- `npm.cmd run test:tidepool-moderation`: passed.
+
+Mock-only notes:
+
+- Tidepool safe community sections and preview cards are static UI examples.
+- Existing moderation/report affordances remain reachable.
+- No live posting backend, live messaging, scraping, upload service, payment flow, checkout flow, database write, auth change, billing change, schema change, or RLS change was added.
 
 ### Section 2 - Scout Online and Watchlist
 
