@@ -237,7 +237,7 @@ export const PRODUCTION_CONFIG_AUDIT = [
   "Auth Site URL should be https://emberandtide.app",
   "Redirect URLs should include https://emberandtide.app, https://emberandtide.app/, and https://emberandtide.app/reset-password",
   "Local dev reset URLs may be included as secondary development redirects only.",
-  "No localhost or old Vercel URL should be primary production auth redirect.",
+  "No development or old Vercel URL should be primary production auth redirect.",
   "Custom SMTP should send Ember & Tide branded emails.",
   "Frontend environment variables must not expose service-role keys or secrets.",
   "Guest preview must not expose private data.",

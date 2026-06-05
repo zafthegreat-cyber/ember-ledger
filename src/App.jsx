@@ -57269,7 +57269,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 )}
                 {adminEditModeActive ? (
                   <details className="catalog-source-details">
-                    <summary>Receipt debug/source info</summary>
+                    <summary>Receipt source details</summary>
                     <div className="catalog-detail-grid">
                       <DetailItem label="Source" value={receiptScanDraft.source || "manual"} />
                       <DetailItem label="Status" value={receiptScanDraft.status} />
@@ -58201,7 +58201,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </p>
                 <p className="compact-subtitle">
                   {currentUserProfile.source === "local-beta"
-                    ? "Private beta mode: admin/tier features require sign-in or a localhost dev override."
+                    ? "Public beta mode: admin/tier features require sign-in or a local development override."
                     : `Profile source: ${currentUserProfile.source || "local"}. Email: ${currentUserProfile.email || "Unknown"}.`}
                 </p>
               </div>
