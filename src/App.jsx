@@ -28117,6 +28117,19 @@ function renderForgeBusinessCommandPanel() {
       emberAssistPermissionDenied ? { label: "Return to Hearth", action: () => { setEmberAssistOpen(false); setActiveTab("dashboard"); } } : null,
       sparkHelpfulLinkVisible ? { label: "Open The Spark", action: () => { setEmberAssistOpen(false); setActiveTab("kidsProgram"); } } : null,
     ].filter(Boolean);
+    const emberAssistQuickActions = [
+      { label: "Scan a card", helper: "Open review-first card scan.", action: () => { setEmberAssistOpen(false); openQuickAddAction("scanProduct"); } },
+      { label: "Scan restock screenshot", helper: "Open Scout screenshot review.", action: () => { setEmberAssistOpen(false); openLiveScoutReportFlow("scanScreenshot"); } },
+      { label: "Check trade fairness", helper: "Compare value before deciding.", action: () => { setEmberAssistOpen(false); setActiveTab("forge"); } },
+      { label: "Help price listing", helper: "Open Market for fair context.", action: () => { setEmberAssistOpen(false); setActiveTab("market"); } },
+      { label: "Recommend kid-friendly set", helper: "Open The Spark guidance.", action: () => { setEmberAssistOpen(false); setActiveTab("kidsProgram"); } },
+      { label: "Report something unsafe", helper: "Send a safety note to review.", action: () => { setEmberAssistOpen(false); openFeedbackDialog("feedback", { page: "Ember Assist", topic: "Safety concern" }); } },
+    ];
+    const emberAssistRecentHelp = [
+      { title: "Scanner troubleshooting", detail: "Helped review lighting, glare, and review-before-save steps." },
+      { title: "Trade fairness", detail: "Explained value ranges without promising a perfect answer." },
+      { title: "Family collection choice", detail: "Suggested a safer next step for a kid-friendly binder goal." },
+    ];
     const assistIntroCopy = emberAssistPermissionDenied
       ? "You may not have access to this area yet. Admin or moderator role may be required. If this looks wrong, message an admin or return to Hearth."
       : emberAssistPageIntro[emberAssistContext.page] || "Ask about this page, a next step, or a confusing status.";
@@ -28174,9 +28187,43 @@ function renderForgeBusinessCommandPanel() {
               <strong>Helpful, not magic</strong>
               <span>I can guide app steps, card or product identification, scanner troubleshooting, collection choices, and trade or value explanations. I will say when I am unsure.</span>
             </div>
+            <div className="ember-assist-live-hero">
+              <div>
+                <p className="section-kicker">Warm helper layer. No fake promises.</p>
+                <h3>Get a clear next step without exposing private family or Scout data.</h3>
+                <p>Ember can guide safe app workflows, explain value context, and point you to review-first tools. It does not promise live stock, checkout, or guaranteed prices.</p>
+              </div>
+              <span className="ember-assist-hero-mark" aria-hidden="true">E</span>
+            </div>
+            <div className="ember-assist-quick-action-grid" aria-label="Ember Assist quick actions">
+              {emberAssistQuickActions.map((action) => (
+                <button type="button" key={action.label} onClick={action.action}>
+                  <strong>{action.label}</strong>
+                  <span>{action.helper}</span>
+                </button>
+              ))}
+            </div>
+            <div className="ember-assist-safety-note">
+              <strong>Private by design</strong>
+              <span>Ember Assist does not search private child details, hidden admin notes, raw Scout patterns, or retailer schedules. Use it for guidance, not guaranteed outcomes.</span>
+            </div>
             <div className="ember-assist-primary-prompts" aria-label="Quick Ember prompts">
               {EMBER_ASSIST_PRIMARY_PROMPTS.map((prompt) => (
                 <button type="button" key={prompt} onClick={() => sendEmberAssistMessage(prompt)} disabled={emberAssistPending}>{prompt}</button>
+              ))}
+            </div>
+            <div className="ember-assist-recent-help" aria-label="Recent Ember Assist examples">
+              <div className="compact-card-header">
+                <div>
+                  <h3>Recent help examples</h3>
+                  <p>Mock examples show the kind of support Ember can provide without making live-data promises.</p>
+                </div>
+              </div>
+              {emberAssistRecentHelp.map((card) => (
+                <article key={card.title}>
+                  <strong>{card.title}</strong>
+                  <span>{card.detail}</span>
+                </article>
               ))}
             </div>
             <div className="ember-assist-messages" aria-live="polite">

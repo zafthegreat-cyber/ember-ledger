@@ -26,39 +26,39 @@
 | 7 | More / Settings / Privacy & Safety / Membership | Complete | `16a5c36` | No billing or auth changes. |
 | 8 | Parent Center | Complete | `854cc25` | Mock-only safety center; no child account backend changes. |
 | 9 | Tidepool | Complete | `9dae179` | Mock-only moderated community UI. |
-| 10 | The Spark / Donate / Thank You | Complete | Commit pending for this section | Mock-only giving flow; no payments. |
-| 11 | Ember Assist | Not started | - | Mock-only helper UI; no live AI calls. |
+| 10 | The Spark / Donate / Thank You | Complete | `91a03f6` | Mock-only giving flow; no payments. |
+| 11 | Ember Assist | Complete | Commit pending for this section | Mock/local helper UI framing; no live AI calls added. |
 | 12 | Forge / Trade Analyzer / Listing Builder / Sales Ledger | Not started | - | Mock-only workspace UI; no inventory writes. |
 | 13 | Shop Portal | Not started | - | Mock-only trust controls; no shop backend changes. |
 | 14 | Admin Review | Not started | - | Mock-only review UI; no admin mutations. |
 | 15 | Onboarding and Virginia-first Flow | Not started | - | Mock/local UI only unless existing safe onboarding exists. |
 | 16 | Final Integration QA and Polish | Not started | - | Final consistency, spacing, docs, screenshots, tests. |
 
-## Current Section: The Spark / Donate / Thank You
+## Current Section: Ember Assist
 
-Started: 2026-06-05 03:05:00 -04:00
+Started: 2026-06-05 03:58:00 -04:00
 
 Scope:
 
-- The Spark route/page
-- Donate mock sub-view
-- Thank You mock sub-view
-- Impact, donation categories, sponsor/shop support, and admin-review note
+- Ember Assist floating helper panel
+- Friendly helper hero
+- Prompt chips, quick actions, and recent-help examples
+- Privacy/safety note and no-fake-promises copy
 
 Allowed behavior:
 
-- Mock-only giving UI examples
-- Local UI state transitions between Spark, Donate, and Thank You
-- Existing Spark route and approved Hearth / Scout / Vault / Market / More nav
+- Mock/static helper content and quick action routing to existing safe app flows
+- Existing local helper fallback behavior already present in the app
+- Existing approved Hearth / Scout / Vault / Market / More nav
 
 Disallowed behavior:
 
 - Auth, billing, database, or RLS changes
-- Donation backend changes
-- Live payments, checkout, or external payment links
+- Live AI calls or assistant API calls
+- New chat persistence or chat backend changes
+- Uploads, live messaging, scraping, checkout, payments, or auto-buy behavior
 - Backend writes or Supabase mutations
-- Unmoderated child interaction or private child/family data exposure
-- Uploads, live AI, scraping, or messaging
+- Private child/family data exposure, raw Scout pattern exposure, or admin data exposure to normal users
 
 ## Section QA Log
 
@@ -266,7 +266,7 @@ Mock-only notes:
 
 ### Section 10 - The Spark / Donate / Thank You
 
-Status: Complete. Commit pending for this section.
+Status: Complete. Commit `91a03f6`.
 
 Screenshots:
 
@@ -308,6 +308,43 @@ Mock-only notes:
 - Donation categories, impact meter, sponsor/shop support, and impact stories are static UI examples.
 - Submit mock donation only switches to the mock Thank You view.
 - No payment, checkout, donation backend, external payment link, upload service, database write, auth change, billing change, schema change, or RLS change was added.
+
+### Section 11 - Ember Assist
+
+Status: Complete. Commit pending for this section.
+
+Screenshots:
+
+- `artifacts/qa/live-ui-integration-train/assist/ember-assist-390x844.png`
+- `artifacts/qa/live-ui-integration-train/assist/ember-assist-430x932.png`
+- `artifacts/qa/live-ui-integration-train/assist/ember-assist-1440x900.png`
+- `artifacts/qa/live-ui-integration-train/assist/live-ember-assist-qa-results.json`
+
+QA results:
+
+- 390x844: no horizontal overflow, no console errors, no maximum update depth errors, and required helper/safety actions present.
+- 430x932: no horizontal overflow, no console errors, no maximum update depth errors, and required helper/safety actions present.
+- 1440x900: no horizontal overflow, no console errors, no maximum update depth errors, and required helper/safety actions present.
+- Browser screenshots required an outside-sandbox Playwright rerun after sandbox Chromium `spawn EPERM`.
+
+Checks:
+
+- `git diff --check`: passed with existing LF-to-CRLF warnings only.
+- `npm.cmd run build`: passed with existing Vite large chunk warning.
+- `npm.cmd run lint --if-present`: exited cleanly.
+- `npm.cmd run typecheck --if-present`: exited cleanly.
+- `npm.cmd test --if-present`: exited cleanly.
+- `npm.cmd run format:check --if-present`: exited cleanly.
+- `npm.cmd run smoke:beta`: passed.
+- `npm.cmd run test:app-fallbacks`: passed.
+- `npm.cmd run test:menu-full-page-routes`: passed.
+- `npm.cmd run test:ember-assist`: passed.
+
+Mock-only notes:
+
+- The helper hero, recent-help examples, and safety note are static UI framing.
+- Quick action cards use existing safe app surfaces and existing review-first flows.
+- No live AI call, assistant API, upload service, new chat persistence, messaging backend, scraping, checkout, payment flow, database write, auth change, billing change, schema change, or RLS change was added.
 
 ### Section 2 - Scout Online and Watchlist
 

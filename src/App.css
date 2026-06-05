@@ -42449,6 +42449,110 @@ body,
   gap: 0.5rem;
 }
 
+.ember-assist-live-hero,
+.ember-assist-safety-note,
+.ember-assist-recent-help {
+  margin: 0 1rem 0.75rem;
+}
+
+.ember-assist-guidance-card {
+  display: none !important;
+}
+.ember-assist-live-hero {
+  align-items: flex-start;
+  background:
+    radial-gradient(circle at 88% 12%, rgba(167, 139, 250, 0.22), transparent 34%),
+    linear-gradient(145deg, rgba(36, 20, 55, 0.82), rgba(5, 20, 37, 0.9));
+  border: 1px solid rgba(167, 139, 250, 0.28);
+  border-radius: 18px;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.24);
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 1rem;
+}
+
+.ember-assist-live-hero h3 {
+  color: var(--et-readable-text);
+  font-size: 1.12rem;
+  line-height: 1.2;
+  margin: 0.15rem 0 0.35rem;
+}
+
+.ember-assist-live-hero p:not(.section-kicker),
+.ember-assist-safety-note span,
+.ember-assist-recent-help span,
+.ember-assist-quick-action-grid span {
+  color: var(--et-readable-muted);
+  line-height: 1.4;
+}
+
+.ember-assist-hero-mark {
+  align-items: center;
+  background: linear-gradient(145deg, rgba(249, 115, 22, 0.92), rgba(250, 204, 21, 0.82));
+  border-radius: 18px;
+  color: #170a04;
+  display: inline-flex;
+  font-weight: 900;
+  height: 46px;
+  justify-content: center;
+  width: 46px;
+}
+
+.ember-assist-quick-action-grid {
+  display: grid;
+  gap: 0.55rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0 1rem 0.75rem;
+}
+
+.ember-assist-quick-action-grid button {
+  align-items: flex-start;
+  background: rgba(15, 23, 42, 0.7) !important;
+  border: 1px solid rgba(132, 226, 255, 0.2) !important;
+  border-radius: 16px;
+  color: var(--et-readable-text) !important;
+  display: grid;
+  gap: 0.25rem;
+  justify-items: start;
+  min-height: 72px;
+  padding: 0.75rem;
+  text-align: left;
+}
+
+.ember-assist-quick-action-grid strong,
+.ember-assist-safety-note strong,
+.ember-assist-recent-help strong {
+  color: var(--et-readable-text);
+}
+
+.ember-assist-safety-note {
+  background: rgba(14, 165, 233, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.24);
+  border-radius: 16px;
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.8rem;
+}
+
+.ember-assist-recent-help {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.ember-assist-recent-help .compact-card-header {
+  margin-bottom: 0.1rem;
+}
+
+.ember-assist-recent-help article {
+  background: rgba(3, 8, 18, 0.46);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 14px;
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.72rem;
+}
+
 .ember-assist-prompts {
   border-bottom: 1px solid rgba(148, 163, 184, 0.16);
   padding: 0.85rem 1rem;
@@ -42632,6 +42736,18 @@ body,
   .ember-assist-message.is-assistant {
     margin-left: 0;
     margin-right: 0;
+  }
+
+  .ember-assist-live-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .ember-assist-hero-mark {
+    display: none;
+  }
+
+  .ember-assist-quick-action-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -57988,6 +58104,56 @@ body {
 
   .ember-assist-scroll {
     padding-bottom: 144px !important;
+  }
+
+  .ember-assist-live-hero,
+  .ember-assist-safety-note,
+  .ember-assist-recent-help,
+  .ember-assist-quick-action-grid {
+    margin-left: 0.75rem !important;
+    margin-right: 0.75rem !important;
+  }
+
+  .ember-assist-live-hero {
+    padding: 0.78rem !important;
+  }
+
+  .ember-assist-live-hero h3 {
+    font-size: 1rem !important;
+  }
+
+  .ember-assist-live-hero p:not(.section-kicker) {
+    font-size: 0.84rem !important;
+    line-height: 1.32 !important;
+  }
+
+  .ember-assist-quick-action-grid button {
+    min-height: 62px !important;
+    padding: 0.65rem !important;
+  }
+
+  .ember-assist-quick-action-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .ember-assist-quick-action-grid strong {
+    font-size: 0.84rem !important;
+    line-height: 1.16 !important;
+  }
+
+  .ember-assist-quick-action-grid span {
+    font-size: 0.74rem !important;
+    line-height: 1.22 !important;
+  }
+
+  .ember-assist-footer-actions {
+    display: grid !important;
+    gap: 0.5rem !important;
+    grid-template-columns: 1fr !important;
+  }
+
+  .ember-assist-footer-actions button {
+    min-height: 40px !important;
   }
 
   .ember-assist-empty {
@@ -77803,6 +77969,11 @@ button.et-live-action:focus-visible {
   opacity: 0.08 !important;
   filter: blur(2px);
   pointer-events: none !important;
+}
+
+/* Live integration train Section 11: the new helper hero replaces the older generic guidance card. */
+.ember-assist-guidance-card {
+  display: none !important;
 }
 
 .ember-assist-panel:has(.ember-assist-escalation-form) .ember-assist-header {
