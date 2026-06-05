@@ -69849,6 +69849,44 @@ html body .app .scan-product-modal .scanner-review-primary-action {
   margin-top: 8px;
 }
 
+.app-scout .scout-subtoggle.segmented-control button,
+.app-command-shell.app-scout .scout-subtoggle.segmented-control button,
+.app-shell-dark.app-scout .scout-subtoggle.segmented-control button,
+.app-scout .scout-store-retailer-chips button,
+.app-command-shell.app-scout .scout-store-retailer-chips button,
+.app-shell-dark.app-scout .scout-store-retailer-chips button {
+  min-height: 44px;
+}
+
+.app-scout .watch-calendar-toolbar .segmented-control button,
+.app-command-shell.app-scout .watch-calendar-toolbar .segmented-control button,
+.app-shell-dark.app-scout .watch-calendar-toolbar .segmented-control button {
+  min-height: 44px;
+  padding-inline: 14px;
+}
+
+.app-scout .watch-layer-chip,
+.app-command-shell.app-scout .watch-layer-chip,
+.app-shell-dark.app-scout .watch-layer-chip {
+  min-height: 44px;
+  padding-block: 9px;
+}
+
+.app-scout .watch-calendar-layer-strip,
+.app-command-shell.app-scout .watch-calendar-layer-strip,
+.app-shell-dark.app-scout .watch-calendar-layer-strip {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.app-scout .watch-layer-chip input,
+.app-command-shell.app-scout .watch-layer-chip input,
+.app-shell-dark.app-scout .watch-layer-chip input {
+  width: 24px;
+  height: 24px;
+}
+
 @media (min-width: 1024px) {
   .app-scout .scout-stores-combined,
   .app-command-shell.app-scout .scout-stores-combined,
@@ -69869,11 +69907,14 @@ html body .app .scan-product-modal .scanner-review-primary-action {
   .app-scout .scout-stores-combined,
   .app-command-shell.app-scout .scout-stores-combined,
   .app-shell-dark.app-scout .scout-stores-combined,
+  .app-scout .scout-watch-store-page,
+  .app-command-shell.app-scout .scout-watch-store-page,
+  .app-shell-dark.app-scout .scout-watch-store-page,
   .app-scout .pokemon-watch-calendar-panel,
   .app-command-shell.app-scout .pokemon-watch-calendar-panel,
   .app-shell-dark.app-scout .pokemon-watch-calendar-panel {
-    padding-bottom: max(168px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 100px)) !important;
-    scroll-padding-bottom: max(168px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 100px)) !important;
+    padding-bottom: max(190px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 122px)) !important;
+    scroll-padding-bottom: max(190px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 122px)) !important;
   }
 
   .app-scout .scout-watch-tier-summary,
@@ -69922,6 +69963,98 @@ html body .app .scan-product-modal .scanner-review-primary-action {
   .app-command-shell.app-scout .scout-watch-rule-card,
   .app-shell-dark.app-scout .scout-watch-rule-card {
     padding: 10px 11px;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-scout .standard-page-header.scout-summary-card,
+  .app-command-shell.app-scout .standard-page-header.scout-summary-card,
+  .app-shell-dark.app-scout .standard-page-header.scout-summary-card {
+    gap: 8px !important;
+    padding-block: 10px !important;
+  }
+
+  .app-scout .scout-store-retailer-chips,
+  .app-command-shell.app-scout .scout-store-retailer-chips,
+  .app-shell-dark.app-scout .scout-store-retailer-chips,
+  .app-scout .scout-store-list-search,
+  .app-command-shell.app-scout .scout-store-list-search,
+  .app-shell-dark.app-scout .scout-store-list-search {
+    display: none !important;
+  }
+
+  .app-scout .ember-watch-header .feature-hero-scene,
+  .app-command-shell.app-scout .ember-watch-header .feature-hero-scene,
+  .app-shell-dark.app-scout .ember-watch-header .feature-hero-scene {
+    display: none !important;
+  }
+
+  .app-scout .watch-calendar-home-metrics,
+  .app-command-shell.app-scout .watch-calendar-home-metrics,
+  .app-shell-dark.app-scout .watch-calendar-home-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+  }
+
+  .app-scout .watch-calendar-home-metrics button,
+  .app-command-shell.app-scout .watch-calendar-home-metrics button,
+  .app-shell-dark.app-scout .watch-calendar-home-metrics button {
+    min-height: 62px !important;
+    padding: 8px !important;
+  }
+
+  .app-scout .watch-calendar-home-metrics span,
+  .app-scout .watch-calendar-home-metrics small,
+  .app-command-shell.app-scout .watch-calendar-home-metrics span,
+  .app-command-shell.app-scout .watch-calendar-home-metrics small,
+  .app-shell-dark.app-scout .watch-calendar-home-metrics span,
+  .app-shell-dark.app-scout .watch-calendar-home-metrics small {
+    font-size: 0.66rem !important;
+    line-height: 1.15 !important;
+  }
+
+  .app-scout .watch-calendar-home-metrics strong,
+  .app-command-shell.app-scout .watch-calendar-home-metrics strong,
+  .app-shell-dark.app-scout .watch-calendar-home-metrics strong {
+    margin-block: 3px !important;
+    font-size: 0.9rem !important;
+    line-height: 1.08 !important;
+  }
+
+  .app-scout .scout-store-retailer-note,
+  .app-command-shell.app-scout .scout-store-retailer-note,
+  .app-shell-dark.app-scout .scout-store-retailer-note {
+    display: none;
+  }
+
+  .app-scout .scout-watch-tier-summary,
+  .app-command-shell.app-scout .scout-watch-tier-summary,
+  .app-shell-dark.app-scout .scout-watch-tier-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+  }
+
+  .app-scout .scout-watch-tier-summary > div,
+  .app-command-shell.app-scout .scout-watch-tier-summary > div,
+  .app-shell-dark.app-scout .scout-watch-tier-summary > div,
+  .app-scout .scout-watch-tier-summary > div:nth-child(3),
+  .app-command-shell.app-scout .scout-watch-tier-summary > div:nth-child(3),
+  .app-shell-dark.app-scout .scout-watch-tier-summary > div:nth-child(3) {
+    grid-column: auto !important;
+    padding: 8px !important;
+  }
+
+  .app-scout .scout-watch-tier-summary span,
+  .app-command-shell.app-scout .scout-watch-tier-summary span,
+  .app-shell-dark.app-scout .scout-watch-tier-summary span {
+    font-size: 0.66rem !important;
+  }
+
+  .app-scout .scout-watch-tier-summary strong,
+  .app-command-shell.app-scout .scout-watch-tier-summary strong,
+  .app-shell-dark.app-scout .scout-watch-tier-summary strong {
+    font-size: 0.78rem !important;
+    line-height: 1.15 !important;
   }
 }
 
@@ -77193,4 +77326,75 @@ button.et-live-action:focus-visible {
     padding-bottom: calc(126px + env(safe-area-inset-bottom, 0px)) !important;
     scroll-padding-bottom: calc(132px + env(safe-area-inset-bottom, 0px)) !important;
   }
+}
+
+@media (max-width: 480px) {
+  .app-scout .pokemon-watch-calendar-panel .watch-calendar-home-metrics,
+  .app-scout .pokemon-watch-calendar-panel .watch-calendar-summary-grid,
+  .app-command-shell.app-scout .pokemon-watch-calendar-panel .watch-calendar-home-metrics,
+  .app-command-shell.app-scout .pokemon-watch-calendar-panel .watch-calendar-summary-grid,
+  .app-shell-dark.app-scout .pokemon-watch-calendar-panel .watch-calendar-home-metrics,
+  .app-shell-dark.app-scout .pokemon-watch-calendar-panel .watch-calendar-summary-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+  }
+
+  .app-scout .pokemon-watch-calendar-panel .watch-calendar-home-metrics button,
+  .app-scout .pokemon-watch-calendar-panel .watch-calendar-summary-grid > div,
+  .app-command-shell.app-scout .pokemon-watch-calendar-panel .watch-calendar-home-metrics button,
+  .app-command-shell.app-scout .pokemon-watch-calendar-panel .watch-calendar-summary-grid > div,
+  .app-shell-dark.app-scout .pokemon-watch-calendar-panel .watch-calendar-home-metrics button,
+  .app-shell-dark.app-scout .pokemon-watch-calendar-panel .watch-calendar-summary-grid > div {
+    min-height: 58px !important;
+    padding: 7px !important;
+  }
+
+  .app-scout .pokemon-watch-calendar-panel .watch-calendar-home-metrics span,
+  .app-scout .pokemon-watch-calendar-panel .watch-calendar-home-metrics small,
+  .app-scout .pokemon-watch-calendar-panel .watch-calendar-summary-grid span,
+  .app-scout .pokemon-watch-calendar-panel .watch-calendar-summary-grid small,
+  .app-command-shell.app-scout .pokemon-watch-calendar-panel .watch-calendar-home-metrics span,
+  .app-command-shell.app-scout .pokemon-watch-calendar-panel .watch-calendar-home-metrics small,
+  .app-command-shell.app-scout .pokemon-watch-calendar-panel .watch-calendar-summary-grid span,
+  .app-command-shell.app-scout .pokemon-watch-calendar-panel .watch-calendar-summary-grid small,
+  .app-shell-dark.app-scout .pokemon-watch-calendar-panel .watch-calendar-home-metrics span,
+  .app-shell-dark.app-scout .pokemon-watch-calendar-panel .watch-calendar-home-metrics small,
+  .app-shell-dark.app-scout .pokemon-watch-calendar-panel .watch-calendar-summary-grid span,
+  .app-shell-dark.app-scout .pokemon-watch-calendar-panel .watch-calendar-summary-grid small {
+    font-size: 0.64rem !important;
+    line-height: 1.1 !important;
+  }
+
+  .app-scout .pokemon-watch-calendar-panel .watch-calendar-home-metrics strong,
+  .app-scout .pokemon-watch-calendar-panel .watch-calendar-summary-grid strong,
+  .app-command-shell.app-scout .pokemon-watch-calendar-panel .watch-calendar-home-metrics strong,
+  .app-command-shell.app-scout .pokemon-watch-calendar-panel .watch-calendar-summary-grid strong,
+  .app-shell-dark.app-scout .pokemon-watch-calendar-panel .watch-calendar-home-metrics strong,
+  .app-shell-dark.app-scout .pokemon-watch-calendar-panel .watch-calendar-summary-grid strong {
+    margin-block: 2px !important;
+    font-size: 0.88rem !important;
+    line-height: 1.05 !important;
+  }
+
+  .app-scout .pokemon-watch-calendar-panel .watch-calendar-toolbar,
+  .app-command-shell.app-scout .pokemon-watch-calendar-panel .watch-calendar-toolbar,
+  .app-shell-dark.app-scout .pokemon-watch-calendar-panel .watch-calendar-toolbar {
+    gap: 7px !important;
+    padding: 8px !important;
+  }
+
+  .app-scout .pokemon-watch-calendar-panel .watch-calendar-area-select,
+  .app-command-shell.app-scout .pokemon-watch-calendar-panel .watch-calendar-area-select,
+  .app-shell-dark.app-scout .pokemon-watch-calendar-panel .watch-calendar-area-select,
+  .app-scout .pokemon-watch-calendar-panel .watch-calendar-layer-strip,
+  .app-command-shell.app-scout .pokemon-watch-calendar-panel .watch-calendar-layer-strip,
+  .app-shell-dark.app-scout .pokemon-watch-calendar-panel .watch-calendar-layer-strip {
+    display: none !important;
+  }
+}
+
+.app-scout .store-map-filters button,
+.app-command-shell.app-scout .store-map-filters button,
+.app-shell-dark.app-scout .store-map-filters button {
+  min-height: 44px !important;
 }

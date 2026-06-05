@@ -44205,7 +44205,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const renderEmptySlotCard = (_, index) => (
       <article className="scout-watch-empty-slot" key={`empty-watch-slot-${index}`}>
         <strong>{watchedStoreRows.length ? "Choose another store" : "Choose your first watched store."}</strong>
-        <p>Scout will keep this store&apos;s current signals close without exposing raw restock history or pattern windows.</p>
+        <p>Scout will keep this store&apos;s current signals close while sensitive history stays protected.</p>
         <button type="button" className="secondary-button" onClick={() => openWatchStorePicker()}>Choose Store</button>
       </article>
     );
@@ -44240,11 +44240,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <div className="scout-watch-rule-card">
             <strong>{watchRuleTitle}</strong>
             <span>{watchRuleHelper}</span>
-            <small>Current reports only. Raw history and pattern tools stay protected.</small>
+            <small>Current reports only. Sensitive history stays protected.</small>
           </div>
           <div className="scout-store-retailer-note">
             <strong>Tier-safe Scout</strong>
-            <span>{slotLimit >= 99 ? "Admin tools can review broader store coverage for moderation. Raw history and pattern tools stay protected from public access." : `Your plan watches ${slotLimit} selected store${slotLimit === 1 ? "" : "s"} for current signals. Higher tiers can add selected stores. Raw history and pattern tools stay protected.`}</span>
+            <span>{slotLimit >= 99 ? "Admin tools can review broader store coverage for moderation. Sensitive history stays protected from public access." : `Your plan watches ${slotLimit} selected store${slotLimit === 1 ? "" : "s"} for current signals. Higher tiers can add selected stores. Sensitive history stays protected.`}</span>
           </div>
           <div className="scout-store-retailer-chips" aria-label="Retailer filters">
             {["All", "Target", "Walmart", "GameStop"].map((retailer) => (
