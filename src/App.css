@@ -79302,3 +79302,29 @@ button.et-live-action:focus-visible {
     margin-top: 152px;
   }
 }
+
+/* Public beta post-deploy QA: reserve real mobile space for the fixed dock. */
+@media (max-width: 780px) {
+  .app.app-command-shell {
+    display: grid !important;
+    grid-template-rows: auto minmax(0, 1fr) !important;
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+    overflow: hidden !important;
+    padding-bottom: calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 18px) !important;
+  }
+
+  .app.app-command-shell > .main.app-shell-dark {
+    min-height: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    padding-bottom: max(184px, calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 112px)) !important;
+    scroll-padding-bottom: max(196px, calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 124px)) !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .app.app-command-shell .mobile-bottom-nav {
+    bottom: max(8px, env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
