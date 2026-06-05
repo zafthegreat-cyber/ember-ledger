@@ -25,8 +25,8 @@
 | 6 | Market Product Detail / Loading / Error | Complete | `d9d9e82` | Honest labels only; no live price API. |
 | 7 | More / Settings / Privacy & Safety / Membership | Complete | `16a5c36` | No billing or auth changes. |
 | 8 | Parent Center | Complete | `854cc25` | Mock-only safety center; no child account backend changes. |
-| 9 | Tidepool | Complete | Commit pending for this section | Mock-only moderated community UI. |
-| 10 | The Spark / Donate / Thank You | Not started | - | Mock-only giving flow; no payments. |
+| 9 | Tidepool | Complete | `9dae179` | Mock-only moderated community UI. |
+| 10 | The Spark / Donate / Thank You | Complete | Commit pending for this section | Mock-only giving flow; no payments. |
 | 11 | Ember Assist | Not started | - | Mock-only helper UI; no live AI calls. |
 | 12 | Forge / Trade Analyzer / Listing Builder / Sales Ledger | Not started | - | Mock-only workspace UI; no inventory writes. |
 | 13 | Shop Portal | Not started | - | Mock-only trust controls; no shop backend changes. |
@@ -34,31 +34,31 @@
 | 15 | Onboarding and Virginia-first Flow | Not started | - | Mock/local UI only unless existing safe onboarding exists. |
 | 16 | Final Integration QA and Polish | Not started | - | Final consistency, spacing, docs, screenshots, tests. |
 
-## Current Section: Tidepool
+## Current Section: The Spark / Donate / Thank You
 
-Started: 2026-06-05 02:41:51 -04:00
+Started: 2026-06-05 03:05:00 -04:00
 
 Scope:
 
-- Tidepool route/page
-- Mock moderated community sections
-- Trusted shop update, event card, tip post, trade interest post, and report/moderation affordance
+- The Spark route/page
+- Donate mock sub-view
+- Thank You mock sub-view
+- Impact, donation categories, sponsor/shop support, and admin-review note
 
 Allowed behavior:
 
-- Mock-only community UI examples
-- Existing local/report affordances
-- Existing Tidepool route and approved Hearth / Scout / Vault / Market / More nav
+- Mock-only giving UI examples
+- Local UI state transitions between Spark, Donate, and Thank You
+- Existing Spark route and approved Hearth / Scout / Vault / Market / More nav
 
 Disallowed behavior:
 
 - Auth, billing, database, or RLS changes
-- Community post backend changes
-- Live messaging
+- Donation backend changes
+- Live payments, checkout, or external payment links
 - Backend writes or Supabase mutations
-- Unmoderated child interaction
-- Restock leak feed, exact quantity claims, vendor schedules, or scraping
-- Checkout, payments, uploads, or live AI
+- Unmoderated child interaction or private child/family data exposure
+- Uploads, live AI, scraping, or messaging
 
 ## Section QA Log
 
@@ -103,7 +103,7 @@ Mock-only notes:
 
 ### Section 6 - Market Product Detail / Loading / Error
 
-Status: Complete. Commit pending for this section.
+Status: Complete. Commit `9dae179`.
 
 Screenshots:
 
@@ -263,6 +263,51 @@ Mock-only notes:
 - Tidepool safe community sections and preview cards are static UI examples.
 - Existing moderation/report affordances remain reachable.
 - No live posting backend, live messaging, scraping, upload service, payment flow, checkout flow, database write, auth change, billing change, schema change, or RLS change was added.
+
+### Section 10 - The Spark / Donate / Thank You
+
+Status: Complete. Commit pending for this section.
+
+Screenshots:
+
+- `artifacts/qa/live-ui-integration-train/spark/spark-390x844.png`
+- `artifacts/qa/live-ui-integration-train/spark/spark-430x932.png`
+- `artifacts/qa/live-ui-integration-train/spark/spark-1440x900.png`
+- `artifacts/qa/live-ui-integration-train/spark/spark-donate-390x844.png`
+- `artifacts/qa/live-ui-integration-train/spark/spark-donate-430x932.png`
+- `artifacts/qa/live-ui-integration-train/spark/spark-donate-1440x900.png`
+- `artifacts/qa/live-ui-integration-train/spark/spark-thank-you-390x844.png`
+- `artifacts/qa/live-ui-integration-train/spark/spark-thank-you-430x932.png`
+- `artifacts/qa/live-ui-integration-train/spark/spark-thank-you-1440x900.png`
+- `artifacts/qa/live-ui-integration-train/spark/live-spark-qa-results.json`
+
+QA results:
+
+- Spark 390x844 / 430x932 / 1440x900: no horizontal overflow, no bottom dock overlap, no console errors, no maximum update depth errors, and required Spark copy present.
+- Donate 390x844 / 430x932 / 1440x900: no horizontal overflow, no bottom dock overlap, no console errors, no maximum update depth errors, and no-payment/no-checkout copy present.
+- Thank You 390x844 / 430x932 / 1440x900: no horizontal overflow, no bottom dock overlap, no console errors, no maximum update depth errors, and mock review/impact copy present.
+- Browser screenshots required an outside-sandbox Playwright rerun after sandbox Chromium `spawn EPERM`.
+
+Checks:
+
+- `git diff --check`: passed with existing LF-to-CRLF warnings only.
+- `npm.cmd run build`: passed with existing Vite large chunk warning.
+- `npm.cmd run lint --if-present`: exited cleanly.
+- `npm.cmd run typecheck --if-present`: exited cleanly.
+- `npm.cmd test --if-present`: exited cleanly.
+- `npm.cmd run format:check --if-present`: exited cleanly.
+- `npm.cmd run smoke:beta`: passed.
+- `npm.cmd run test:app-fallbacks`: passed.
+- `npm.cmd run test:menu-full-page-routes`: passed.
+- `npm.cmd run test:kids-program`: passed.
+- `npm.cmd run test:spark`: sandbox Chromium `spawn EPERM`; outside-sandbox rerun passed.
+
+Mock-only notes:
+
+- Donate and Thank You are local UI states under `/kids-program/donate` and `/kids-program/thank-you`.
+- Donation categories, impact meter, sponsor/shop support, and impact stories are static UI examples.
+- Submit mock donation only switches to the mock Thank You view.
+- No payment, checkout, donation backend, external payment link, upload service, database write, auth change, billing change, schema change, or RLS change was added.
 
 ### Section 2 - Scout Online and Watchlist
 

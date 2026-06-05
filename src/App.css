@@ -78514,3 +78514,211 @@ button.et-live-action:focus-visible {
 .app-shell-dark.app-scout .store-map-filters button {
   min-height: 44px !important;
 }
+
+/* Live integration train Section 10: The Spark donate and thank-you states. */
+.app-kidsprogram .spark-secondary-cta,
+.app-command-shell.app-kidsprogram .spark-secondary-cta,
+.app-shell-dark.app-kidsprogram .spark-secondary-cta {
+  justify-self: start;
+}
+
+.app-kidsprogram .spark-donation-route-button,
+.app-command-shell.app-kidsprogram .spark-donation-route-button,
+.app-shell-dark.app-kidsprogram .spark-donation-route-button {
+  width: fit-content;
+  min-height: 40px;
+}
+
+.app-kidsprogram .spark-donate-panel,
+.app-command-shell.app-kidsprogram .spark-donate-panel,
+.app-shell-dark.app-kidsprogram .spark-donate-panel,
+.app-kidsprogram .spark-thank-you-panel,
+.app-command-shell.app-kidsprogram .spark-thank-you-panel,
+.app-shell-dark.app-kidsprogram .spark-thank-you-panel {
+  display: grid;
+  gap: 14px;
+  border-color: rgba(255, 207, 92, 0.28) !important;
+  background:
+    radial-gradient(circle at 88% 0%, rgba(255, 207, 92, 0.2), transparent 14rem),
+    radial-gradient(circle at 0% 100%, rgba(255, 90, 122, 0.16), transparent 16rem),
+    linear-gradient(145deg, rgba(38, 18, 5, 0.9), rgba(7, 10, 22, 0.94)) !important;
+}
+
+.app-kidsprogram .spark-impact-meter,
+.app-command-shell.app-kidsprogram .spark-impact-meter,
+.app-shell-dark.app-kidsprogram .spark-impact-meter {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(255, 207, 92, 0.22);
+  border-radius: 18px;
+  background: rgba(10, 17, 31, 0.64);
+}
+
+.app-kidsprogram .spark-impact-meter span,
+.app-command-shell.app-kidsprogram .spark-impact-meter span,
+.app-shell-dark.app-kidsprogram .spark-impact-meter span {
+  color: rgba(255, 248, 225, 0.88);
+  font-size: 0.88rem;
+}
+
+.app-kidsprogram .spark-impact-meter i,
+.app-command-shell.app-kidsprogram .spark-impact-meter i,
+.app-shell-dark.app-kidsprogram .spark-impact-meter i {
+  display: block;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.app-kidsprogram .spark-impact-meter em,
+.app-command-shell.app-kidsprogram .spark-impact-meter em,
+.app-shell-dark.app-kidsprogram .spark-impact-meter em {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ffcf5c, #ff8a3d, #ff5f8f);
+  box-shadow: 0 0 22px rgba(255, 194, 71, 0.28);
+}
+
+.app-kidsprogram .spark-donate-category-grid,
+.app-command-shell.app-kidsprogram .spark-donate-category-grid,
+.app-shell-dark.app-kidsprogram .spark-donate-category-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 9px;
+}
+
+.app-kidsprogram .spark-donate-category,
+.app-command-shell.app-kidsprogram .spark-donate-category,
+.app-shell-dark.app-kidsprogram .spark-donate-category {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 42px;
+  padding: 9px 11px;
+  border-color: rgba(255, 207, 92, 0.22);
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.055);
+  color: #fff7ed;
+  text-align: left;
+}
+
+.app-kidsprogram .spark-sponsor-card,
+.app-command-shell.app-kidsprogram .spark-sponsor-card,
+.app-shell-dark.app-kidsprogram .spark-sponsor-card {
+  display: grid;
+  gap: 5px;
+  padding: 13px;
+  border: 1px solid rgba(45, 212, 191, 0.2);
+  border-radius: 18px;
+  background: rgba(5, 20, 32, 0.62);
+}
+
+.app-kidsprogram .spark-sponsor-card p,
+.app-command-shell.app-kidsprogram .spark-sponsor-card p,
+.app-shell-dark.app-kidsprogram .spark-sponsor-card p {
+  margin: 0;
+  color: rgba(232, 246, 255, 0.72);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.app-kidsprogram .spark-thank-you-panel,
+.app-command-shell.app-kidsprogram .spark-thank-you-panel,
+.app-shell-dark.app-kidsprogram .spark-thank-you-panel {
+  justify-items: start;
+}
+
+.app-kidsprogram .spark-thank-you-orb,
+.app-command-shell.app-kidsprogram .spark-thank-you-orb,
+.app-shell-dark.app-kidsprogram .spark-thank-you-orb {
+  position: relative;
+  width: 78px;
+  height: 78px;
+  border-radius: 26px;
+  background: radial-gradient(circle at 50% 34%, #fff2a8 0 16%, #ffb547 17% 38%, #ff6b4a 39% 62%, rgba(255, 107, 74, 0.16) 63%);
+  box-shadow: 0 0 32px rgba(255, 194, 71, 0.32);
+}
+
+.app-kidsprogram .spark-thank-you-orb span,
+.app-command-shell.app-kidsprogram .spark-thank-you-orb span,
+.app-shell-dark.app-kidsprogram .spark-thank-you-orb span {
+  position: absolute;
+  inset: 22px 19px 18px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 34% 43%, #251325 0 8%, transparent 9%),
+    radial-gradient(circle at 66% 43%, #251325 0 8%, transparent 9%),
+    radial-gradient(ellipse at 50% 72%, rgba(37, 19, 37, 0.95) 0 10%, transparent 11%),
+    rgba(255, 236, 166, 0.58);
+}
+
+.app-kidsprogram .spark-impact-story-grid,
+.app-command-shell.app-kidsprogram .spark-impact-story-grid,
+.app-shell-dark.app-kidsprogram .spark-impact-story-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+  width: 100%;
+}
+
+.app-kidsprogram .spark-impact-story-card,
+.app-command-shell.app-kidsprogram .spark-impact-story-card,
+.app-shell-dark.app-kidsprogram .spark-impact-story-card {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid rgba(255, 207, 92, 0.18);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.app-kidsprogram .spark-impact-story-card p,
+.app-command-shell.app-kidsprogram .spark-impact-story-card p,
+.app-shell-dark.app-kidsprogram .spark-impact-story-card p {
+  margin: 0;
+  color: rgba(255, 248, 225, 0.74);
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+@media (max-width: 640px) {
+  .app-kidsprogram .spark-donate-panel,
+  .app-command-shell.app-kidsprogram .spark-donate-panel,
+  .app-shell-dark.app-kidsprogram .spark-donate-panel,
+  .app-kidsprogram .spark-thank-you-panel,
+  .app-command-shell.app-kidsprogram .spark-thank-you-panel,
+  .app-shell-dark.app-kidsprogram .spark-thank-you-panel {
+    margin-bottom: calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 52px);
+    padding-bottom: calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 34px) !important;
+  }
+
+  .app-kidsprogram .spark-donate-category-grid,
+  .app-command-shell.app-kidsprogram .spark-donate-category-grid,
+  .app-shell-dark.app-kidsprogram .spark-donate-category-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .app-kidsprogram .spark-donate-category,
+  .app-command-shell.app-kidsprogram .spark-donate-category,
+  .app-shell-dark.app-kidsprogram .spark-donate-category {
+    min-height: 44px;
+    font-size: 0.78rem;
+    line-height: 1.2;
+  }
+
+  .app-kidsprogram .spark-flow-actions,
+  .app-command-shell.app-kidsprogram .spark-flow-actions,
+  .app-shell-dark.app-kidsprogram .spark-flow-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .app-kidsprogram .spark-thank-you-panel .spark-flow-actions,
+  .app-command-shell.app-kidsprogram .spark-thank-you-panel .spark-flow-actions,
+  .app-shell-dark.app-kidsprogram .spark-thank-you-panel .spark-flow-actions {
+    margin-top: 152px;
+  }
+}

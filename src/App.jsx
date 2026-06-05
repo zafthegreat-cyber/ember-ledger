@@ -1618,7 +1618,12 @@ function routeStateFromPath(pathname = "") {
   if (section === "whats-new" || section === "changelog") return { activeTab: "whatsNew" };
   if (section === "known-limitations") return { activeTab: "knownLimitations" };
   if (section === "coming-soon" || section === "roadmap") return { activeTab: "comingSoon" };
-  if (section === "kids-program") return { activeTab: "kidsProgram" };
+  if (section === "kids-program") {
+    return {
+      activeTab: "kidsProgram",
+      sparkFlowView: subSection === "donate" || subSection === "thank-you" ? subSection : "home",
+    };
+  }
   if (section === "parent-center" || section === "parent") return { activeTab: "parentCenter" };
   if (section === "profile") return { activeTab: subSection === "progress" ? "profileProgress" : "profile" };
   if (section === "account") return { activeTab: "account" };
@@ -5159,6 +5164,7 @@ export default function App() {
     consentContact: false,
   });
   const [kidsProgramRequestStep, setKidsProgramRequestStep] = useState(1);
+  const [sparkFlowView, setSparkFlowView] = useState(initialRouteState.sparkFlowView || "home");
   const [sponsorForm, setSponsorForm] = useState({
     name: "",
     businessName: "",
@@ -29868,7 +29874,11 @@ function renderForgeBusinessCommandPanel() {
     if (activeTab === "inventory" || activeTab === "addInventory" || activeTab === "addSale") return "/forge";
     if (activeTab === "vault") return "/vault/cards";
     if (activeTab === "tidepool") return "/tidepool";
-    if (activeTab === "kidsProgram") return "/kids-program";
+    if (activeTab === "kidsProgram") {
+      if (sparkFlowView === "donate") return "/kids-program/donate";
+      if (sparkFlowView === "thank-you") return "/kids-program/thank-you";
+      return "/kids-program";
+    }
     if (activeTab === "parentCenter") return "/parent-center";
     if (activeTab === "sponsor") return "/partner";
     if (activeTab === "trust") return "/trust";
@@ -29920,6 +29930,7 @@ function renderForgeBusinessCommandPanel() {
       catalogKindFilter,
       catalogSetFilter,
       catalogTypeFilter,
+      sparkFlowView: activeTab === "kidsProgram" ? sparkFlowView : "home",
     };
     localStorage.setItem(APP_ROUTE_STORAGE_KEY, JSON.stringify(routeState));
 
@@ -29961,7 +29972,13 @@ function renderForgeBusinessCommandPanel() {
     catalogKindFilter,
     catalogSetFilter,
     catalogTypeFilter,
+    sparkFlowView,
   ]);
+  useEffect(() => {
+    if (activeTab !== "kidsProgram" && sparkFlowView !== "home") {
+      setSparkFlowView("home");
+    }
+  }, [activeTab, sparkFlowView]);
   const pagedTidepoolPosts = getPagedItems(filteredTidepoolPosts, tidepoolPage, LONG_LIST_PAGE_SIZE);
   const pagedScoutReports = getPagedItems(filteredScoutReports, scoutReportsPage, LONG_LIST_PAGE_SIZE);
   const dealAskingPrice = Number(dealForm.askingPrice || 0);
@@ -37762,15 +37779,110 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const scrollToSparkRequest = () => document.getElementById("spark-request-flow")?.scrollIntoView({ behavior: "smooth", block: "start" });
     const scrollToSparkRules = () => document.getElementById("spark-safety-rules")?.scrollIntoView({ behavior: "smooth", block: "start" });
     const scrollToSparkDetails = () => document.getElementById("spark-program-sections")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const openSparkDonate = () => setSparkFlowView("donate");
+    const openSparkThanks = () => setSparkFlowView("thank-you");
+    const openSparkHome = () => setSparkFlowView("home");
+    const sparkImpactStats = [
+      { label: "Kids helped", value: "12", detail: "Mock impact count" },
+      { label: "Packs donated", value: "320", detail: "Starter support planned" },
+      { label: "Events supported", value: "4", detail: "Family-friendly days" },
+    ];
+    const sparkImpactStories = [
+      { title: "Starter packs for new collectors", body: "Mock story: kid-safe packs help families start without rush alerts or pressure." },
+      { title: "Learning table support", body: "Sleeves, deck boxes, snacks, and volunteers can make events easier for families." },
+      { title: "Trusted shop help", body: "Shops and sellers can support drop-off days without creating a public rush feed." },
+    ];
+    const sparkDonationCategories = [
+      "Cards",
+      "Sealed products",
+      "Packs",
+      "Binders",
+      "Sleeves",
+      "Deck boxes",
+      "Playmats",
+      "Toys/prizes",
+      "Gift cards",
+      "Money/sponsorship placeholder only",
+      "Event support",
+      "Food/snacks",
+      "Shipping help",
+      "Volunteer time",
+      "Services",
+      "Other",
+    ];
+    const renderSparkHero = () => (
+      <PageHeader
+        className={getHeaderCardClass("panel page-summary-card kids-spark-header spark-page-header")}
+        title="The Spark"
+        subtitle="Igniting the spark within kids and families."
+        actions={sparkFlowView === "home" ? (
+          <button type="button" className="secondary-button" onClick={openSparkDonate}>Donate / support</button>
+        ) : (
+          <button type="button" className="secondary-button" onClick={openSparkHome}>Back to The Spark</button>
+        )}
+        summary={<p className="spark-header-mission-line">Helping families keep collecting fun, fair, and kid-friendly. Parent-safe requests. No private child messaging.</p>}
+      />
+    );
+    const renderSparkDonatePage = () => (
+      <>
+        {renderSparkHero()}
+        <section className="panel spark-donate-panel">
+          <div className="compact-card-header">
+            <div>
+              <p className="section-kicker">Donate</p>
+              <h2>Donate to The Spark.</h2>
+              <p>This is a mock intake preview. No payment, checkout, external link, or donation backend is connected.</p>
+            </div>
+            <span className="trust-badge trust-badge--kid">Admin-reviewed</span>
+          </div>
+          <div className="spark-impact-meter" aria-label="The Spark impact progress">
+            <span><b>68%</b> toward this month&apos;s mock kid-pack goal</span>
+            <i><em style={{ width: "68%" }} /></i>
+          </div>
+          <div className="spark-donate-category-grid" aria-label="Donation categories">
+            {sparkDonationCategories.map((category) => <span key={category} className="spark-donate-category">{category}</span>)}
+          </div>
+          <div className="spark-sponsor-card">
+            <strong>Shop / sponsor support</strong>
+            <p>Trusted shops and sellers can help with drop-off days, supplies, learning tables, and sponsorship placeholders after review.</p>
+          </div>
+          <div className="spark-flow-actions">
+            <button type="button" onClick={openSparkThanks}>Submit mock donation</button>
+            <button type="button" className="secondary-button" onClick={openSparkHome}>Back to The Spark</button>
+          </div>
+        </section>
+      </>
+    );
+    const renderSparkThankYouPage = () => (
+      <>
+        {renderSparkHero()}
+        <section className="panel spark-thank-you-panel">
+          <div className="spark-thank-you-orb" aria-hidden="true"><span /></div>
+          <div>
+            <p className="section-kicker">Thank You</p>
+            <h2>Thank You - donation submitted for mock review.</h2>
+            <p>Thanks - your support is queued for admin review before it counts toward The Spark impact. Nothing is charged or processed here.</p>
+          </div>
+          <div className="spark-impact-story-grid" aria-label="Spark impact story">
+            {sparkImpactStories.map((story) => (
+              <article className="spark-impact-story-card" key={story.title}>
+                <strong>{story.title}</strong>
+                <p>{story.body}</p>
+              </article>
+            ))}
+          </div>
+          <div className="spark-flow-actions">
+            <button type="button" onClick={openSparkHome}>View impact</button>
+            <button type="button" className="secondary-button" onClick={openSparkDonate}>Add another mock support item</button>
+          </div>
+        </section>
+      </>
+    );
+    if (sparkFlowView === "donate") return renderSparkDonatePage();
+    if (sparkFlowView === "thank-you") return renderSparkThankYouPage();
     return (
       <>
-        <PageHeader
-          className={getHeaderCardClass("panel page-summary-card kids-spark-header spark-page-header")}
-          title="The Spark"
-          subtitle="Igniting the spark within kids and families."
-          actions={null}
-          summary={<p className="spark-header-mission-line">Helping families keep collecting fun, fair, and kid-friendly. Parent-safe requests. No private child messaging.</p>}
-        />
+        {renderSparkHero()}
 
         <section className="panel spark-mission-card">
           <div className="spark-mission-orb" aria-hidden="true">
@@ -37793,6 +37905,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           >
             {activeApplication ? "View status" : "Request access"}
           </button>
+          <button type="button" className="secondary-button spark-secondary-cta" onClick={openSparkDonate}>Donate / support</button>
         </section>
 
         {adminToolsVisible ? (
@@ -37818,11 +37931,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </div>
             <div className="spark-section-grid">
               {sparkMissionCards.map((section) => (
-                <button type="button" className="spark-section-card" key={section.key} onClick={section.key === "events" ? openPokemonWatchCalendar : scrollToSparkDetails}>
+                <article className="spark-section-card" key={section.key}>
                   <span className="spark-section-icon" aria-hidden="true">{section.icon}</span>
                   <strong>{section.title}</strong>
                   <p>{section.detail}</p>
-                </button>
+                </article>
               ))}
             </div>
             <div className="spark-support-examples" aria-label="The Spark support examples">
@@ -37848,6 +37961,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </article>
               ))}
             </div>
+            <button type="button" className="secondary-button spark-donation-route-button" onClick={openSparkDonate}>Open Donate preview</button>
           </section>
 
           <section className="spark-participation-panel" aria-label="Spark participation paths">
