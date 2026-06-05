@@ -32,7 +32,7 @@
 | 13 | Shop Portal | Complete | `384243d` | Mock-only trust controls; no shop backend changes. |
 | 14 | Admin Review | Complete | `27d00ff` | Mock-only review UI; no admin mutations. |
 | 15 | Onboarding and Virginia-first Flow | Complete | `5431f2e` | Mock/local UI only; no account, waitlist, billing, or database writes. |
-| 16 | Final Integration QA and Polish | Complete | Commit pending for this section | Documentation-only final QA checkpoint; no UI code changes. |
+| 16 | Final Integration QA and Polish | Complete | `2cbefeb` | Documentation-only final QA checkpoint; no UI code changes. |
 
 ## Current Section: Complete
 
@@ -59,6 +59,7 @@ Disallowed behavior:
 Final status:
 
 - Git status was clean before Section 16 documentation updates.
+- Final QA checkpoint was committed as `2cbefeb`.
 - No deploy was run.
 - No backend/auth/billing/database/RLS changes were made by this train.
 
@@ -528,7 +529,7 @@ Mock-only notes:
 
 ### Section 16 - Final Integration QA and Polish
 
-Status: Complete. Commit pending for this section.
+Status: Complete. Commit `2cbefeb`.
 
 Screenshots:
 
