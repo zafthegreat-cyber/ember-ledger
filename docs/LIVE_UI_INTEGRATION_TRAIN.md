@@ -18,8 +18,8 @@
 | 0.2 | Live Scout Home | Complete | `ff6d8a3` | Scout Home integrated with current-report mock UI and safety copy. |
 | 0.3 | Scout Store Detail / Watch Stores / Alerts / Calendar | Complete | `ed815c5` | Supporting Scout stores/alerts section completed before this expanded train order. |
 | 1 | Scout Add Report / Scan Screenshot / Review Report | Complete | `f88384a` | Mock-only page shells inside existing Scout route state. |
-| 2 | Scout Online and Watchlist | Complete | This section commit | Mock-only online signals and tier-safe watchlist. |
-| 3 | Vault Home | Not started | - | Next section after Scout Online/Watchlist commit. |
+| 2 | Scout Online and Watchlist | Complete | `00c723d` | Mock-only online signals and tier-safe watchlist. |
+| 3 | Vault Home | Complete | This section commit | Live Vault Home dashboard integrated above existing collection list. |
 | 4 | Vault Item Detail / Add Item / Empty Vault | Not started | - | Do not start until Vault Home completes. |
 | 5 | Market Home | Not started | - | Mock-only market search/discovery UI. |
 | 6 | Market Product Detail / Loading / Error | Not started | - | Honest labels only; no live price API. |
@@ -107,7 +107,48 @@ Backend/auth/billing/database/RLS changes: none.
 
 Deploy run: no.
 
-### Section 3 - Scout Add Report / Scan Screenshot / Review Report
+### Section 3 - Vault Home
+
+Status: Complete. Commit pending for this section.
+
+Screenshots:
+
+- `artifacts/qa/live-ui-integration-train/vault-home/vault-home-390x844.png`
+- `artifacts/qa/live-ui-integration-train/vault-home/vault-home-430x932.png`
+- `artifacts/qa/live-ui-integration-train/vault-home/vault-home-1440x900.png`
+- `artifacts/qa/live-ui-integration-train/vault-home/live-vault-home-qa-results.json`
+
+QA results:
+
+- 390x844: no horizontal overflow, no bottom dock overlap, no console errors, no maximum update depth errors.
+- 430x932: no horizontal overflow, no bottom dock overlap, no console errors, no maximum update depth errors.
+- 1440x900: no horizontal overflow, no bottom dock overlap, no console errors, no maximum update depth errors.
+- Standalone `screen-set.html` preview rendered at 390x844 with approved Hearth / Scout / Vault / Market / More nav text, no horizontal overflow, and no console/page errors.
+
+Checks:
+
+- `git diff --check`: passed with existing LF-to-CRLF warnings only.
+- `npm.cmd run build`: passed with existing Vite large-chunk warning.
+- `npm.cmd run lint --if-present`: exited cleanly.
+- `npm.cmd run typecheck --if-present`: exited cleanly.
+- `npm.cmd test --if-present`: exited cleanly.
+- `npm.cmd run format:check --if-present`: exited cleanly.
+- `npm.cmd run smoke:beta`: passed.
+- `npm.cmd run test:app-fallbacks`: passed.
+- `npm.cmd run test:menu-full-page-routes`: passed.
+- `npm.cmd run test:vault`: passed outside sandbox after sandbox Chromium `spawn EPERM`.
+
+Warnings:
+
+- Existing Vite large chunk warning.
+- Existing LF-to-CRLF working-copy warning.
+- Chromium needs outside-sandbox rerun in this environment when sandbox launch hits `spawn EPERM`.
+
+Backend/auth/billing/database/RLS changes: none.
+
+Deploy run: no.
+
+### Section 1 - Scout Add Report / Scan Screenshot / Review Report
 
 Status: Complete. Committed as the section commit containing this document update.
 
@@ -157,7 +198,7 @@ Backend/auth/billing/database/RLS changes: none.
 
 Deploy run: no.
 
-### Section 4 - Scout Store Detail / Watch Stores / Alerts / Calendar
+### Supporting Scout Section - Store Detail / Watch Stores / Alerts / Calendar
 
 Status: Complete. Committed as the section commit containing this document update.
 

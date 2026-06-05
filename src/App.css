@@ -66944,6 +66944,258 @@ html body .app .scan-product-modal .scanner-review-primary-action {
   color: rgba(241, 232, 255, 0.76) !important;
 }
 
+.app-vault .vault-live-home-dashboard,
+.app-command-shell.app-vault .vault-live-home-dashboard,
+.app-shell-dark.app-vault .vault-live-home-dashboard {
+  width: min(100%, 1220px);
+  margin-inline: auto;
+  display: grid;
+  gap: 14px;
+  padding-bottom: 2px;
+}
+
+.app-vault .vault-live-home-hero,
+.app-vault .vault-live-controls-card,
+.app-vault .vault-live-folder-card,
+.app-vault .vault-live-recent-card,
+.app-vault .vault-live-health-card,
+.app-vault .vault-live-actions-card {
+  min-width: 0;
+  border-color: rgba(181, 107, 255, 0.22) !important;
+  background:
+    radial-gradient(circle at 88% 0%, rgba(181, 107, 255, 0.16), transparent 14rem),
+    radial-gradient(circle at 4% 8%, rgba(255, 179, 71, 0.1), transparent 12rem),
+    linear-gradient(145deg, rgba(10, 17, 36, 0.94), rgba(4, 9, 21, 0.98)) !important;
+  color: rgba(251, 243, 255, 0.96) !important;
+}
+
+.app-vault .vault-live-home-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 0.82fr);
+  gap: 14px;
+  align-items: end;
+}
+
+.app-vault .vault-live-home-hero h2,
+.app-vault .vault-live-controls-card h2,
+.app-vault .vault-live-folder-card h2,
+.app-vault .vault-live-recent-card h2,
+.app-vault .vault-live-health-card h2,
+.app-vault .vault-live-actions-card h2 {
+  margin: 0;
+  color: #fbf3ff;
+  letter-spacing: 0;
+}
+
+.app-vault .vault-live-home-hero h2 {
+  font-size: clamp(1.45rem, 3vw, 2.15rem);
+}
+
+.app-vault .vault-live-home-hero p,
+.app-vault .vault-live-controls-card p,
+.app-vault .vault-live-folder-card p,
+.app-vault .vault-live-recent-card p,
+.app-vault .vault-live-health-card p,
+.app-vault .vault-live-actions-card p {
+  color: rgba(241, 232, 255, 0.74) !important;
+  line-height: 1.45;
+}
+
+.app-vault .vault-live-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.app-vault .vault-live-summary-grid > div {
+  min-width: 0;
+  min-height: 86px;
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  padding: 11px;
+  border: 1px solid rgba(181, 107, 255, 0.18);
+  border-radius: 16px;
+  background: rgba(5, 13, 28, 0.7);
+}
+
+.app-vault .vault-live-summary-grid span,
+.app-vault .vault-live-summary-grid small,
+.app-vault .vault-live-folder-tile span,
+.app-vault .vault-live-folder-tile small,
+.app-vault .vault-live-action-tile span {
+  color: rgba(232, 246, 255, 0.68);
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+.app-vault .vault-live-summary-grid strong {
+  min-width: 0;
+  color: #fff3d6;
+  font-size: 1.18rem;
+  line-height: 1.05;
+  overflow-wrap: anywhere;
+}
+
+.app-vault .vault-live-search-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.app-vault .vault-live-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.app-vault .vault-live-filter-row button {
+  min-height: 42px;
+  padding-inline: 12px;
+  border-color: rgba(181, 107, 255, 0.22) !important;
+  background: rgba(181, 107, 255, 0.08) !important;
+  color: rgba(246, 234, 255, 0.88) !important;
+}
+
+.app-vault .vault-live-filter-row button.active {
+  border-color: rgba(255, 179, 71, 0.48) !important;
+  background: linear-gradient(135deg, var(--vault-ember), var(--vault-ember-hot)) !important;
+  color: #231002 !important;
+}
+
+.app-vault .vault-live-main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(270px, 0.62fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.app-vault .vault-live-folder-grid,
+.app-vault .vault-live-action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.app-vault .vault-live-folder-tile,
+.app-vault .vault-live-action-tile {
+  min-width: 0;
+  min-height: 104px;
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  padding: 12px;
+  border: 1px solid rgba(181, 107, 255, 0.18);
+  border-radius: 17px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(181, 107, 255, 0.12), transparent 8rem),
+    rgba(4, 12, 27, 0.74);
+  color: inherit;
+  text-align: left;
+}
+
+.app-vault .vault-live-folder-tile strong,
+.app-vault .vault-live-action-tile strong {
+  color: #fbf3ff;
+  font-size: 1.1rem;
+  line-height: 1.1;
+}
+
+.app-vault .vault-live-recent-list {
+  display: grid;
+  gap: 9px;
+}
+
+.app-vault .vault-live-recent-row {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  min-height: 74px;
+  padding: 10px;
+  border: 1px solid rgba(181, 107, 255, 0.18);
+  border-radius: 16px;
+  background: rgba(4, 12, 27, 0.72);
+  color: inherit;
+  text-align: left;
+}
+
+.app-vault .vault-live-item-thumb {
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(255, 179, 71, 0.24);
+  border-radius: 13px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 179, 71, 0.16), transparent 4rem),
+    rgba(3, 11, 25, 0.82);
+  color: #ffe2a5;
+  font-size: 0.68rem;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.app-vault .vault-live-item-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.app-vault .vault-live-recent-row span:last-child {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.app-vault .vault-live-recent-row strong {
+  color: #fbf3ff;
+  font-size: 0.96rem;
+  line-height: 1.18;
+  overflow-wrap: anywhere;
+}
+
+.app-vault .vault-live-recent-row small {
+  color: rgba(232, 246, 255, 0.68);
+  font-size: 0.76rem;
+  line-height: 1.25;
+}
+
+.app-vault .vault-live-health-card {
+  display: grid;
+  gap: 11px;
+  align-content: start;
+}
+
+.app-vault .vault-live-health-card h2 {
+  color: #fff3d6;
+  font-size: clamp(2rem, 5vw, 3.1rem);
+  line-height: 0.95;
+}
+
+.app-vault .vault-live-actions-card {
+  display: grid;
+  gap: 12px;
+}
+
+.app-vault .vault-live-action-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.app-vault .vault-live-action-tile {
+  min-height: 92px;
+  border-color: rgba(255, 179, 71, 0.22) !important;
+}
+
+.app-vault .vault-live-action-tile strong {
+  color: #fff3d6;
+}
+
 .app-vault .vault-command-center .standard-page-header-actions {
   display: flex !important;
   flex-wrap: wrap !important;
@@ -67242,6 +67494,10 @@ html body .app .scan-product-modal .scanner-review-primary-action {
     grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)) !important;
   }
 
+  .app-vault .vault-live-main-grid {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(270px, 0.62fr);
+  }
+
   .app-vault .vault-collection-panel .compact-inventory-list {
     grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)) !important;
   }
@@ -67261,6 +67517,38 @@ html body .app .scan-product-modal .scanner-review-primary-action {
 
   .app-vault .vault-command-center .ai-assist-menu {
     grid-column: 1 / -1;
+  }
+
+  .app-vault .vault-live-home-hero,
+  .app-vault .vault-live-main-grid,
+  .app-vault .vault-live-search-row {
+    grid-template-columns: 1fr;
+  }
+
+  .app-vault .vault-live-home-dashboard {
+    margin-top: calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 78px);
+  }
+
+  .app-vault .vault-live-summary-grid,
+  .app-vault .vault-live-action-grid,
+  .app-vault .vault-live-folder-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .app-vault .vault-live-folder-tile,
+  .app-vault .vault-live-action-tile {
+    min-height: 88px;
+    padding: 10px;
+  }
+
+  .app-vault .vault-live-recent-row {
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+
+  .app-vault .vault-live-item-thumb {
+    width: 48px;
+    height: 48px;
   }
 
   .app-vault .vault-command-center .standard-page-header-actions > button {

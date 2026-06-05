@@ -35305,6 +35305,172 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     );
   }
 
+  function renderVaultHomeDashboard() {
+    // TODO: Replace folder health and binder reminders with a reviewed read-only Vault summary contract when available.
+    const cardQuantity = activeVaultCardItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+    const sealedQuantity = activeVaultSealedItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+    const topSet = vaultSetCompletionRows.find((row) => row.ownedCount > 0 && (row.totalCards > 0 || row.catalogCards.length));
+    const knownValueCount = activeVaultItems.filter((item) => Number(vaultItemTotalMarketValue(item) || item.marketPrice || item.marketValue || 0) > 0).length;
+    const collectionHealthPercent = activeVaultItems.length ? Math.round((knownValueCount / activeVaultItems.length) * 100) : 0;
+    const estimatedValue = vaultMarketValueDisplay === "Price data unavailable" ? "Value pending" : vaultMarketValueDisplay;
+    const folderCards = [
+      { key: "main", title: "Main Binder", count: cardQuantity || activeVaultCardItems.length, detail: "Cards and slabs", action: () => openVaultItems("all", { type: "Card" }) },
+      { key: "sealed", title: "Sealed", count: sealedQuantity || activeVaultSealedItems.length, detail: "Products kept separate", action: () => setVaultSubTab("sealed") },
+      { key: "favorites", title: "Favorites", count: activeVaultItems.filter((item) => item.favorite || item.pinned || item.featured).length, detail: "Pinned family picks", action: () => openVaultItems("all") },
+      { key: "kids", title: "Kids Collection", count: activeVaultItems.filter((item) => /kid|child|family/i.test(`${item.location || ""} ${item.owner || ""} ${item.purchaser || ""}`)).length, detail: "Family-safe grouping", action: () => openVaultItems("all") },
+      { key: "wishlist", title: "Wish List", count: wishlistItems.length, detail: "Wanted, not owned", action: () => setVaultSubTab("wishlist") },
+    ];
+    const recentRows = recentVaultItems.slice(0, 3);
+    const quickActions = [
+      { key: "scan-card", title: "Scan card", detail: "Identify one item", onClick: () => openVaultScanFlow() },
+      { key: "scan-binder", title: "Scan binder page", detail: "Review before saving", onClick: () => openProductAddFlow({ source: "vault-home-binder-page", destinations: { vault: true } }) },
+      { key: "manual", title: "Add manually", detail: "Cards or sealed", onClick: () => openVaultQuickAddFlow() },
+      { key: "import", title: "Import list", detail: "Bulk review flow", onClick: () => openVaultImportCollectionFlow() },
+    ];
+
+    return (
+      <section className="vault-live-home-dashboard" aria-label="Vault Home dashboard">
+        <article className="panel vault-live-home-hero">
+          <div>
+            <p className="section-kicker">Vault Home</p>
+            <h2>Your collection room, organized and protected.</h2>
+            <p>Track cards, sealed products, wishlist gaps, and set progress without mixing owned items with wants or Forge inventory.</p>
+          </div>
+          <div className="vault-live-summary-grid" aria-label="Vault collection summary">
+            <div><span>Cards</span><strong>{cardQuantity}</strong><small>Owned quantity</small></div>
+            <div><span>Sealed</span><strong>{sealedQuantity}</strong><small>Separate from sets</small></div>
+            <div><span>Est. value</span><strong>{estimatedValue}</strong><small>Known values only</small></div>
+            <div><span>Completion</span><strong>{topSet ? topSet.completionLabel : "Ready"}</strong><small>{topSet ? topSet.name : "Add set details"}</small></div>
+          </div>
+        </article>
+
+        <article className="panel vault-live-controls-card">
+          <div className="compact-card-header">
+            <div>
+              <h2>Find anything in Vault</h2>
+              <p>Search locally, filter by folder, or jump into a protected review flow.</p>
+            </div>
+            <button type="button" className="secondary-button" onClick={() => document.getElementById("vault-items-section")?.scrollIntoView({ behavior: "smooth", block: "start" })}>Open collection</button>
+          </div>
+          <div className="vault-live-search-row">
+            <label className="vault-filter-field vault-search-field">
+              <span>Search Vault</span>
+              <input className="vault-search-input" value={vaultSearch} onChange={(event) => setVaultSearch(event.target.value)} placeholder="Search cards, sealed, sets, notes" />
+            </label>
+            <div className="vault-live-filter-row" role="group" aria-label="Vault quick filters">
+              {[
+                ["all", "All"],
+                ["card", "Cards"],
+                ["sealed", "Sealed"],
+                ["wishlist", "Wishlist"],
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={(value === "wishlist" ? vaultSubTab === "wishlist" : value === "card" ? vaultTypeFilter === "Card" : vaultFilter === value || (value === "all" && vaultFilter === "all" && vaultTypeFilter === "all")) ? "active" : ""}
+                  onClick={() => {
+                    if (value === "wishlist") {
+                      setVaultSubTab("wishlist");
+                      return;
+                    }
+                    setVaultSubTab("collection");
+                    if (value === "card") {
+                      setVaultFilter("all");
+                      setVaultTypeFilter("Card");
+                      return;
+                    }
+                    setVaultFilter(value);
+                    setVaultTypeFilter("all");
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </article>
+
+        <div className="vault-live-main-grid">
+          <article className="panel vault-live-folder-card">
+            <div className="compact-card-header">
+              <div>
+                <h2>Folders</h2>
+                <p>Mock folder labels keep this home organized while real folder data is reviewed later.</p>
+              </div>
+              <span className="status-badge">{folderCards.length} folders</span>
+            </div>
+            <div className="vault-live-folder-grid">
+              {folderCards.map((folder) => (
+                <button type="button" className="vault-live-folder-tile" key={folder.key} onClick={folder.action}>
+                  <span>{folder.title}</span>
+                  <strong>{folder.count}</strong>
+                  <small>{folder.detail}</small>
+                </button>
+              ))}
+            </div>
+          </article>
+
+          <article className="panel vault-live-recent-card">
+            <div className="compact-card-header">
+              <div>
+                <h2>Recent additions</h2>
+                <p>Recent items stay reviewable before trades, sales, or set completion.</p>
+              </div>
+              <button type="button" className="secondary-button" onClick={() => openVaultItems("all")}>See all</button>
+            </div>
+            <div className="vault-live-recent-list">
+              {recentRows.length ? recentRows.map((item) => (
+                <button type="button" className="vault-live-recent-row" key={item.id} onClick={() => setSelectedVaultDetailId(item.id)}>
+                  <span className="vault-live-item-thumb" aria-hidden="true">{vaultItemDisplayImage(item) ? <img src={vaultItemDisplayImage(item)} alt="" /> : "Card"}</span>
+                  <span>
+                    <strong>{item.name}</strong>
+                    <small>{[vaultItemSetLabel(item), `Qty ${item.quantity || 1}`, vaultStatusLabel(normalizeVaultStatus(item))].filter(Boolean).join(" | ")}</small>
+                  </span>
+                </button>
+              )) : (
+                <div className="empty-state small-empty-state">
+                  <h3>No recent additions yet.</h3>
+                  <p>Add a card, sealed product, or import a list to start your Vault trail.</p>
+                </div>
+              )}
+            </div>
+          </article>
+
+          <aside className="panel vault-live-health-card">
+            <p className="section-kicker">Collection Health</p>
+            <h2>{collectionHealthPercent || "Ready"}{collectionHealthPercent ? "%" : ""}</h2>
+            <div className="vault-progress-track" aria-label="Vault collection health">
+              <i style={{ width: `${collectionHealthPercent || 8}%` }} />
+            </div>
+            <p>{activeVaultItems.length ? `${knownValueCount} of ${activeVaultItems.length} grouped items have known value context.` : "Start with one reviewed item to build health signals."}</p>
+            <div className="scout-safety-strip">
+              <span>Review before saving</span>
+              <span>Sealed separate</span>
+              <span>Wishlist separate</span>
+            </div>
+          </aside>
+        </div>
+
+        <article className="panel vault-live-actions-card">
+          <div className="compact-card-header">
+            <div>
+              <h2>Quick actions</h2>
+              <p>Every add path stays review-first. No card scanning service or upload backend is added in this section.</p>
+            </div>
+          </div>
+          <div className="vault-live-action-grid">
+            {quickActions.map((action) => (
+              <button type="button" className="vault-live-action-tile" key={action.key} onClick={action.onClick}>
+                <strong>{action.title}</strong>
+                <span>{action.detail}</span>
+              </button>
+            ))}
+          </div>
+        </article>
+      </section>
+    );
+  }
+
   function renderLiveScoutReportFlowPage(flow) {
     const mockReport = {
       store: "Target",
@@ -57558,6 +57724,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             {renderVaultHeader()}
 
             {(vaultSubTab === "overview" || vaultSubTab === "collection") ? (
+            <>
+            {renderVaultHomeDashboard()}
             <section id="vault-items-section" className="panel vault-collection-panel">
               <div className="compact-card-header vault-collection-heading">
                 <div>
@@ -57906,6 +58074,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               />
               ) : null}
             </section>
+            </>
             ) : null}
 
             {vaultSubTab === "wishlist" ? (
