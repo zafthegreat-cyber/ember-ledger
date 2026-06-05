@@ -42636,6 +42636,78 @@ body,
     grid-template-columns: 1fr;
   }
 }
+
+/* Live integration train Section 14: Admin Review foundation readability. */
+.admin-review-foundation {
+  background:
+    radial-gradient(circle at 86% 10%, rgba(255, 194, 71, 0.14), transparent 30%),
+    linear-gradient(145deg, rgba(31, 7, 12, 0.86), rgba(4, 12, 26, 0.94));
+  border: 1px solid rgba(255, 194, 71, 0.2);
+  border-radius: 20px;
+  color: var(--et-readable-text, #f7fbff);
+  display: grid;
+  gap: 0.9rem;
+  padding: 1rem;
+}
+
+.admin-review-foundation h3 {
+  color: var(--et-readable-text, #f7fbff);
+  margin: 0.2rem 0 0.35rem;
+}
+
+.admin-review-foundation p,
+.admin-review-foundation-card span,
+.admin-review-action-map p {
+  color: var(--et-readable-muted, rgba(232, 246, 255, 0.72));
+  line-height: 1.38;
+  margin: 0;
+}
+
+.admin-review-foundation-grid {
+  display: grid;
+  gap: 0.7rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.admin-review-foundation-card {
+  background: rgba(5, 13, 27, 0.72);
+  border: 1px solid rgba(132, 226, 255, 0.16);
+  border-radius: 16px;
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.8rem;
+}
+
+.admin-review-foundation-card strong,
+.admin-review-action-map strong {
+  color: var(--et-readable-text, #f7fbff);
+}
+
+.admin-review-foundation-card small {
+  color: rgba(255, 214, 148, 0.82);
+  font-weight: 800;
+}
+
+.admin-review-action-map {
+  background: rgba(5, 13, 27, 0.58);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.8rem;
+}
+
+.admin-review-action-map > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+@media (max-width: 900px) {
+  .admin-review-foundation-grid {
+    grid-template-columns: 1fr;
+  }
+}
 .ember-assist-live-hero {
   align-items: flex-start;
   background:

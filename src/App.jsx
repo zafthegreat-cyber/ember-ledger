@@ -41333,6 +41333,15 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       { title: "App Content / Admin Edit", value: adminEditModeActive ? "On" : "Off", helper: "Safe edit mode and content review", filter: "App Content / Admin Edit" },
       { title: "System Health / Logs", value: (betaReadinessData.appErrorLogs || []).length + auditLogs.length, helper: "Client errors and admin audit log", filter: "System Health / Logs" },
     ];
+    const adminReviewFoundationRows = [
+      { title: "Proof review queue", detail: "Receipts, photos, confirmations, and admin-visible proof summaries.", status: "Review before action" },
+      { title: "Scout report review", detail: "Current reports, disputed reports, hidden unsafe details, and confidence labels.", status: "No raw patterns" },
+      { title: "Tidepool moderation", detail: "Family-safe community posts, reports, shop updates, and event notes.", status: "Moderated only" },
+      { title: "Shop approvals", detail: "Trusted family friend badges, shop metadata, and safe update permissions.", status: "Admin gated" },
+      { title: "Spark donation review", detail: "Donation requests, sponsor support, event help, and thank-you states.", status: "Private family context" },
+      { title: "Suspicious behavior review", detail: "Fake accounts, unsafe content, exploit attempts, and repeated bad reports.", status: "Escalate carefully" },
+    ];
+    const adminMockActions = ["Approve", "Reject", "Request proof", "Hide", "Escalate", "Suspend placeholder"];
     const activeAdminQueue = adminEssentialQueues.find((queue) => queue.filter === adminReviewFilter)
       || adminQueueRows.find((queue) => queue.filter === adminReviewFilter)
       || adminOpsSections.find((section) => section.filter === adminReviewFilter)
@@ -41355,6 +41364,33 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </div>
           <span className={adminEditModeActive ? "status-badge danger" : "status-badge"}>{adminEditModeActive ? "Admin Edit On" : "View Mode"}</span>
         </div>
+
+        <section className="admin-review-foundation" aria-label="Admin Review foundation">
+          <div className="compact-card-header">
+            <div>
+              <span className="section-kicker">Admin Review</span>
+              <h3>Proof, safety, shops, Spark, and moderation in one protected queue.</h3>
+              <p>These are mock UI summaries layered over existing admin sections. No new admin actions are wired from this panel.</p>
+            </div>
+            <span className="status-badge">Mock action map</span>
+          </div>
+          <div className="admin-review-foundation-grid">
+            {adminReviewFoundationRows.map((row) => (
+              <article className="admin-review-foundation-card" key={row.title}>
+                <strong>{row.title}</strong>
+                <span>{row.detail}</span>
+                <small>{row.status}</small>
+              </article>
+            ))}
+          </div>
+          <div className="admin-review-action-map" aria-label="Mock admin review actions">
+            <strong>Action vocabulary</strong>
+            <div>
+              {adminMockActions.map((action) => <span className="status-badge" key={action}>{action}</span>)}
+            </div>
+            <p>Destructive and moderation actions still require existing confirmation flows and protected admin access. This row is a visual map only.</p>
+          </div>
+        </section>
 
         <section className="admin-control-map" aria-label="Admin control map">
           <div className="compact-card-header">

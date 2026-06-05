@@ -29,33 +29,32 @@
 | 10 | The Spark / Donate / Thank You | Complete | `91a03f6` | Mock-only giving flow; no payments. |
 | 11 | Ember Assist | Complete | `e920470` | Mock/local helper UI framing; no live AI calls added. |
 | 12 | Forge / Trade Analyzer / Listing Builder / Sales Ledger | Complete | `a84238e` | Mock-only workspace UI; no inventory writes. |
-| 13 | Shop Portal | Complete | Commit pending for this section | Mock-only trust controls; no shop backend changes. |
-| 14 | Admin Review | Not started | - | Mock-only review UI; no admin mutations. |
+| 13 | Shop Portal | Complete | `384243d` | Mock-only trust controls; no shop backend changes. |
+| 14 | Admin Review | Complete | Commit pending for this section | Mock-only review UI; no admin mutations. |
 | 15 | Onboarding and Virginia-first Flow | Not started | - | Mock/local UI only unless existing safe onboarding exists. |
 | 16 | Final Integration QA and Polish | Not started | - | Final consistency, spacing, docs, screenshots, tests. |
 
-## Current Section: Shop Portal
+## Current Section: Onboarding and Virginia-first Flow
 
-Started: 2026-06-05 04:43:00 -04:00
+Started: Pending after Section 14 commit.
 
 Scope:
 
-- Shop Portal route
-- Shop profile and trusted family friend badge preview
-- Restock status and event composer previews
-- Donation/sponsor tools and admin review status
+- Welcome, State Check, Waitlist, Choose Role, Family Setup, Notifications, First Store, and Permission Needed UI surfaces
+- Virginia-first launch framing
+- Mock/local UI only unless existing safe onboarding already supports the flow
 
 Allowed behavior:
 
-- Mock/static shop trust controls and interest intake UI
-- Existing partner interest route and local beta interest behavior
+- Mock/local onboarding UI state
 - Existing approved Hearth / Scout / Vault / Market / More nav
+- Existing safe route/state handling
 
 Disallowed behavior:
 
 - Auth, billing, database, or RLS changes
-- Shop backend changes or inventory sync
-- Live posting, live shop updates, exact inventory quantity, checkout, or payments
+- Account creation, auth routing, billing/subscription, waitlist backend, or admin gate changes
+- Live posting, exact inventory quantity, checkout, or payments
 - Uploads, live AI, live messaging, scraping, or auto-buy behavior
 - Backend writes or Supabase mutations
 - Private child/family data exposure, raw Scout pattern exposure, or admin data exposure to normal users
@@ -423,6 +422,49 @@ Mock-only notes:
 - Shop profile, trusted family friend badge, restock status composer, event draft, donation/sponsor tools, and admin review status are static UI previews.
 - The previous AI drafting action was removed from this surface for the no-live-AI boundary.
 - No shop backend change, inventory sync, live posting, exact quantity publishing, payment, checkout, upload service, database write, auth change, billing change, schema change, or RLS change was added.
+
+### Section 14 - Admin Review
+
+Status: Complete. Commit pending for this section.
+
+Screenshots:
+
+- `artifacts/qa/live-ui-integration-train/admin-review/admin-review-390x844.png`
+- `artifacts/qa/live-ui-integration-train/admin-review/admin-review-430x932.png`
+- `artifacts/qa/live-ui-integration-train/admin-review/admin-review-1440x900.png`
+- `artifacts/qa/live-ui-integration-train/admin-review/live-admin-review-qa-results.json`
+- `artifacts/qa/live-ui-integration-train/admin-review/admin-review-admin-390x844.png`
+- `artifacts/qa/live-ui-integration-train/admin-review/admin-review-admin-430x932.png`
+- `artifacts/qa/live-ui-integration-train/admin-review/admin-review-admin-1440x900.png`
+- `artifacts/qa/live-ui-integration-train/admin-review/live-admin-review-admin-seeded-qa-results.json`
+
+QA results:
+
+- Normal-user 390x844 / 430x932 / 1440x900: Permission Denied state rendered, no horizontal overflow, no console errors, and no maximum update depth errors.
+- Seeded owner/admin 390x844 / 430x932 / 1440x900: Admin Command Center rendered, new Admin Review foundation copy rendered, action vocabulary rendered, no horizontal overflow, no console errors, and no maximum update depth errors.
+- Browser screenshots required an outside-sandbox Playwright rerun after sandbox Chromium `spawn EPERM`.
+
+Checks:
+
+- `git diff --check`: passed with existing LF-to-CRLF warnings only.
+- `npm.cmd run build`: passed with existing Vite large chunk warning.
+- `npm.cmd run lint --if-present`: exited cleanly.
+- `npm.cmd run typecheck --if-present`: exited cleanly.
+- `npm.cmd test --if-present`: exited cleanly.
+- `npm.cmd run format:check --if-present`: exited cleanly.
+- `npm.cmd run smoke:beta`: passed.
+- `npm.cmd run test:app-fallbacks`: passed.
+- `npm.cmd run test:menu-full-page-routes`: passed.
+- `npm.cmd run test:admin-command-center`: passed.
+- `npm.cmd run test:admin-store-tools`: passed.
+- `npm.cmd run test:admin`: sandbox Chromium `spawn EPERM`; outside-sandbox rerun passed.
+
+Mock-only notes:
+
+- The new Admin Review foundation band is a static readability layer inside the protected Admin Command Center.
+- Action vocabulary chips are not wired to mutations.
+- Existing admin route gating remains intact; normal users still see Permission Denied.
+- No real moderation call, approve/reject action, hide action, suspend action, user mutation, admin backend change, database write, auth change, billing change, schema change, or RLS change was added.
 
 ### Section 2 - Scout Online and Watchlist
 
