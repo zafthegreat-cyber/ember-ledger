@@ -45963,6 +45963,59 @@ body.shell-long-form-active .ember-assist-shell:not(.is-open),
   line-height: 1.45;
 }
 
+.parent-center-page .parent-center-hero-card,
+.parent-center-page .parent-center-summary-card {
+  border-color: rgba(255, 214, 107, 0.2) !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 184, 92, 0.13), transparent 12rem),
+    radial-gradient(circle at 100% 10%, rgba(236, 72, 153, 0.08), transparent 11rem),
+    rgba(6, 15, 31, 0.9) !important;
+}
+
+.parent-center-page .parent-center-hero-card h3 {
+  margin: 4px 0 8px;
+  color: #fff7ed;
+}
+
+.parent-center-profile-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.parent-center-profile-row {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid rgba(255, 214, 107, 0.16);
+  border-radius: 14px;
+  background: rgba(2, 8, 22, 0.5);
+}
+
+.parent-center-profile-row div,
+.parent-center-profile-row p {
+  min-width: 0;
+}
+
+.parent-center-profile-row div {
+  display: grid;
+  gap: 3px;
+}
+
+.parent-center-profile-row span,
+.parent-center-profile-row p {
+  margin: 0;
+  color: rgba(232, 246, 255, 0.74);
+  line-height: 1.35;
+}
+
+.parent-center-action-card button {
+  width: 100%;
+  margin-top: 4px;
+}
+
 @media (max-width: 760px) {
   .utility-page {
     width: 100%;
@@ -45986,6 +46039,10 @@ body.shell-long-form-active .ember-assist-shell:not(.is-open),
   .utility-page .settings-mode-grid,
   .utility-page .settings-section-grid,
   .utility-page .tcg-os-link-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .parent-center-profile-row {
     grid-template-columns: minmax(0, 1fr);
   }
 }

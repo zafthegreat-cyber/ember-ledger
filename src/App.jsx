@@ -1619,6 +1619,7 @@ function routeStateFromPath(pathname = "") {
   if (section === "known-limitations") return { activeTab: "knownLimitations" };
   if (section === "coming-soon" || section === "roadmap") return { activeTab: "comingSoon" };
   if (section === "kids-program") return { activeTab: "kidsProgram" };
+  if (section === "parent-center" || section === "parent") return { activeTab: "parentCenter" };
   if (section === "profile") return { activeTab: subSection === "progress" ? "profileProgress" : "profile" };
   if (section === "account") return { activeTab: "account" };
   if (section === "collections" || section === "workspaces") return { activeTab: "collections" };
@@ -6340,6 +6341,7 @@ export default function App() {
     help: "Help & Support",
     moderator: "Moderator",
     kidsProgram: "The Spark",
+    parentCenter: "Parent Center",
     sponsor: "Sponsor Interest",
     trust: "Trust Pages",
     links: "Links",
@@ -6455,7 +6457,7 @@ export default function App() {
     account: { key: "account", label: "Account", helper: "Sign-in, beta status, and app version.", icon: "settings", action: () => openUtilityPage("account") },
     membership: { key: "membership", label: "Plans & Features", helper: "Beta pricing, trials, add-ons, and Scout gates.", icon: "settings", action: () => setActiveTab("membership") },
     privacySafety: { key: "privacySafety", label: "Privacy & Safety", helper: "Child privacy, Scout guardrails, and role-scoped data.", icon: "settings", action: () => setActiveTab("trust") },
-    parentCenter: { key: "parentCenter", label: "Parent Center", helper: "Parent-guided Spark and family safety setup.", icon: "spark", action: () => setActiveTab("kidsProgram") },
+    parentCenter: { key: "parentCenter", label: "Parent Center", helper: "Parent-guided Spark and family safety setup.", icon: "spark", action: () => setActiveTab("parentCenter") },
     shopPortal: { key: "shopPortal", label: "Shop Portal", helper: "Partner interest and family-friendly shop review path.", icon: "market", action: () => setActiveTab("sponsor") },
     help: { key: "help", label: "Help & Support", helper: "Feedback, bug reports, and support.", icon: "search", action: () => openUtilityPage("help") },
     settings: { key: "settings", label: "Settings", helper: "Profile, workspace, alerts, and privacy.", icon: "settings", action: () => openUtilityPage("settings") },
@@ -29867,6 +29869,7 @@ function renderForgeBusinessCommandPanel() {
     if (activeTab === "vault") return "/vault/cards";
     if (activeTab === "tidepool") return "/tidepool";
     if (activeTab === "kidsProgram") return "/kids-program";
+    if (activeTab === "parentCenter") return "/parent-center";
     if (activeTab === "sponsor") return "/partner";
     if (activeTab === "trust") return "/trust";
     if (activeTab === "links") return "/links";
@@ -38133,6 +38136,110 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         </section>
       </>
     );
+  }
+
+  function renderParentCenterPage() {
+    const parentCenterKidsApplication = (betaReadinessData.kidsApplications || [])[0] || null;
+    const mockKidProfiles = [
+      { name: "Ash", age: "8-10", visibility: "Private family profile", status: "Parent managed" },
+      { name: "Mia", age: "11-13", visibility: "Private wishlist only", status: "Setup later" },
+    ];
+    const safetyRows = [
+      { title: "Profile visibility", body: "Child profiles stay private and parent-managed. Public child profiles are not enabled.", status: "Private" },
+      { title: "Trade approval", body: "Trade requests should be reviewed by a parent or guardian before anything changes hands.", status: "Parent review" },
+      { title: "Community restrictions", body: "No unmoderated kid messaging is connected. Tidepool stays adult-guided and moderated.", status: "Restricted" },
+      { title: "Purchase reminders", body: "Market and Scout copy encourages fair value checks, not rush buying or auto-checkout.", status: "Reminder" },
+    ];
+    const participationRows = [
+      { title: "The Spark", body: parentCenterKidsApplication ? `Request status: ${statusLabel(parentCenterKidsApplication.status || "pending")}.` : "Parent-approved Spark requests can start from The Spark.", action: "Open The Spark", onClick: () => setActiveTab("kidsProgram") },
+      { title: "Trusted adults", body: "Trusted adult helpers are a placeholder until the safety model is approved.", action: "Review Privacy", onClick: () => setActiveTab("trust") },
+      { title: "Family workspace", body: activeWorkspace?.name ? `${activeWorkspace.name} keeps collection access scoped.` : "Use workspace settings to keep family collection access scoped.", action: "Open Settings", onClick: () => openUtilityPage("settings") },
+    ];
+    return renderUtilityPageShell({
+      title: "Parent Center",
+      subtitle: "Kids can collect safely with parent-guided tools.",
+      className: "parent-center-page",
+      actions: (
+        <>
+          <button type="button" className="secondary-button" onClick={() => setActiveTab("kidsProgram")}>Open The Spark</button>
+          <button type="button" className="secondary-button" onClick={() => setActiveTab("trust")}>Privacy &amp; Safety</button>
+        </>
+      ),
+      children: (
+        <>
+          <section className="drawer-info-card parent-center-hero-card utility-card utility-card-wide">
+            <div>
+              <p className="section-kicker">Family safety</p>
+              <h3>Parent-guided collecting, not public kid accounts.</h3>
+              <p className="compact-subtitle">Parent Center is a mock-only safety shell for profile visibility, approvals, purchase reminders, and Spark participation. No child account backend, messaging, or auth change is connected.</p>
+            </div>
+            <div className="settings-section-grid compact">
+              {safetyRows.map((row) => (
+                <article className="settings-section-card" key={row.title}>
+                  <strong>{row.title}</strong>
+                  <span>{row.body}</span>
+                  <small className="status-badge">{row.status}</small>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className="drawer-info-card parent-center-profile-card utility-card">
+            <div className="compact-card-header">
+              <div>
+                <strong>Kid profiles</strong>
+                <p className="compact-subtitle">Mock-only examples. No public child profiles or child account records are created.</p>
+              </div>
+              <span className="status-badge">Private</span>
+            </div>
+            <div className="parent-center-profile-list">
+              {mockKidProfiles.map((profile) => (
+                <article className="parent-center-profile-row" key={profile.name}>
+                  <div>
+                    <strong>{profile.name}</strong>
+                    <span>{profile.age}</span>
+                  </div>
+                  <p>{profile.visibility}</p>
+                  <small className="status-badge">{profile.status}</small>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className="drawer-info-card parent-center-support-card utility-card">
+            <div className="compact-card-header">
+              <div>
+                <strong>Parent approvals</strong>
+                <p className="compact-subtitle">A safe planning view for trades, community participation, purchases, and Spark support.</p>
+              </div>
+              <span className="status-badge">Mock controls</span>
+            </div>
+            <div className="settings-section-grid compact">
+              {participationRows.map((row) => (
+                <article className="settings-section-card parent-center-action-card" key={row.title}>
+                  <strong>{row.title}</strong>
+                  <span>{row.body}</span>
+                  <button type="button" className="secondary-button" onClick={row.onClick}>{row.action}</button>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className="drawer-info-card parent-center-summary-card utility-card utility-card-wide">
+            <strong>Safety summary</strong>
+            <p className="compact-subtitle">No live messaging, no child account backend, no payment flow, no public child identity, and no unsafe Scout pattern access were added. Parent Center stays a UI shell until the safety system is explicitly approved.</p>
+            <div className="settings-section-grid compact">
+              {["No unmoderated kid messaging", "Parent-reviewed trade guidance", "Private child/family details", "Spark participation is reviewed"].map((item) => (
+                <article className="settings-section-card" key={item}>
+                  <strong>{item}</strong>
+                  <span>Enabled as safety copy and mock UI only.</span>
+                </article>
+              ))}
+            </div>
+          </section>
+        </>
+      ),
+    });
   }
 
   function renderSponsorInterestPage() {
@@ -48439,6 +48546,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       if (activeTab === "invite") return renderBetaInviteClaimPage({ signedOut: true });
       if (activeTab === "workspaceInvite") return renderWorkspaceInviteClaimPage({ signedOut: true });
       if (activeTab === "kidsProgram") return renderKidsProgramPage();
+      if (activeTab === "parentCenter") return renderParentCenterPage();
       if (activeTab === "sponsor") return renderSponsorInterestPage();
       if (activeTab === "trust") return renderTrustPages();
       if (activeTab === "links") return renderLinksPage();
@@ -52252,7 +52360,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     quickAddMenuOpen ||
     activeFlowModal ||
     marketResultsVisible ||
-    ["scout", "vault", "market", "forge", "inventory", "sales", "expenses", "reports", "tidepool", "kidsProgram", "account", "settings", "menu", "trust", "membership", "profile", "help", "adminReview", "moderator", "comingSoon"].includes(activeTab) ||
+    ["scout", "vault", "market", "forge", "inventory", "sales", "expenses", "reports", "tidepool", "kidsProgram", "parentCenter", "account", "settings", "menu", "trust", "membership", "profile", "help", "adminReview", "moderator", "comingSoon"].includes(activeTab) ||
     ["scout", "vault", "market", "forge", "tidepool", "kidsProgram"].includes(activeMainTab)
   );
 
@@ -56866,6 +56974,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         {!activeTabLocked && activeTab === "mySuggestions" && renderMySuggestionsPage()}
         {!activeTabLocked && activeTab === "adminReview" && renderAdminReviewPage()}
         {!activeTabLocked && activeTab === "kidsProgram" && renderKidsProgramPage()}
+        {!activeTabLocked && activeTab === "parentCenter" && renderParentCenterPage()}
         {!activeTabLocked && activeTab === "sponsor" && renderSponsorInterestPage()}
         {!activeTabLocked && activeTab === "trust" && renderTrustPages()}
         {!activeTabLocked && activeTab === "links" && renderLinksPage()}

@@ -23,8 +23,8 @@
 | 4 | Vault Item Detail / Add Item / Empty Vault | Complete | `25ea98c` | Empty Vault and Add Item flow polished; existing item detail preserved. |
 | 5 | Market Home | Complete | `eca2e65` | Mock-only market search/discovery UI. |
 | 6 | Market Product Detail / Loading / Error | Complete | `d9d9e82` | Honest labels only; no live price API. |
-| 7 | More / Settings / Privacy & Safety / Membership | Complete | This section commit | No billing or auth changes. |
-| 8 | Parent Center | Not started | - | Mock-only safety center; no child account backend changes. |
+| 7 | More / Settings / Privacy & Safety / Membership | Complete | `16a5c36` | No billing or auth changes. |
+| 8 | Parent Center | Complete | This section commit | Mock-only safety center; no child account backend changes. |
 | 9 | Tidepool | Not started | - | Mock-only moderated community UI. |
 | 10 | The Spark / Donate / Thank You | Not started | - | Mock-only giving flow; no payments. |
 | 11 | Ember Assist | Not started | - | Mock-only helper UI; no live AI calls. |
@@ -34,30 +34,29 @@
 | 15 | Onboarding and Virginia-first Flow | Not started | - | Mock/local UI only unless existing safe onboarding exists. |
 | 16 | Final Integration QA and Polish | Not started | - | Final consistency, spacing, docs, screenshots, tests. |
 
-## Current Section: More / Settings / Privacy & Safety / Membership
+## Current Section: Parent Center
 
-Started: 2026-06-05 02:13:28 -04:00
+Started: 2026-06-05 02:28:00 -04:00
 
 Scope:
 
-- More command menu shortcuts
-- Settings safety, Scout limits, workspace, and profile surfaces
-- Privacy & Safety / Trust page
-- Membership Foundation
+- Parent Center route/page
+- Mock kid profiles
+- Parent visibility, approval, restriction, purchase reminder, Spark participation, trusted adult, and safety summary cards
 
 Allowed behavior:
 
-- Safe route links into existing live surfaces
-- Mock/beta preview copy for tiers and locked states
-- Privacy, family safety, Scout guardrail, and role-scoped tool copy
+- Mock-only family safety UI
+- Links to existing safe Spark, Privacy & Safety, and Settings surfaces
 
 Disallowed behavior:
 
 - Auth, billing, database, or RLS changes
-- Billing/subscription integration
-- Checkout, payments, or add-on purchases
-- Admin gate changes
+- Child account backend changes
+- Live messaging
 - Backend writes or Supabase mutations
+- Parent/child auth changes
+- Checkout, payments, uploads, or live AI
 
 ## Section QA Log
 
@@ -188,6 +187,42 @@ Mock-only notes:
 - Membership remains beta preview copy with checkout disabled.
 - Settings and Privacy & Safety copy documents child privacy, protected Scout data, role-scoped tools, and no unmoderated kid messaging.
 - No auth, billing, database, RLS, checkout, payment, subscription, backend write, or admin gate change was added.
+
+### Section 8 - Parent Center
+
+Status: Complete. Commit pending for this section.
+
+Screenshots:
+
+- `artifacts/qa/live-ui-integration-train/parent-center/parent-center-390x844.png`
+- `artifacts/qa/live-ui-integration-train/parent-center/parent-center-430x932.png`
+- `artifacts/qa/live-ui-integration-train/parent-center/parent-center-1440x900.png`
+- `artifacts/qa/live-ui-integration-train/parent-center/live-parent-center-qa-results.json`
+
+QA results:
+
+- 390x844: no horizontal overflow, no bottom dock overlap, no console errors, no maximum update depth errors, and required parent-safety copy present.
+- 430x932: no horizontal overflow, no bottom dock overlap, no console errors, no maximum update depth errors, and required parent-safety copy present.
+- 1440x900: no horizontal overflow, no bottom dock overlap, no console errors, no maximum update depth errors, and required parent-safety copy present.
+
+Checks:
+
+- `git diff --check`: passed with existing LF-to-CRLF warnings only.
+- `npm.cmd run build`: passed with existing Vite large chunk warning.
+- `npm.cmd run lint --if-present`: exited cleanly.
+- `npm.cmd run typecheck --if-present`: exited cleanly.
+- `npm.cmd test --if-present`: exited cleanly.
+- `npm.cmd run format:check --if-present`: exited cleanly.
+- `npm.cmd run smoke:beta`: passed.
+- `npm.cmd run test:app-fallbacks`: passed.
+- `npm.cmd run test:menu-full-page-routes`: passed.
+- `npm.cmd run test:kids-program`: passed.
+
+Mock-only notes:
+
+- Parent Center uses mock kid profile rows and planning cards only.
+- No child account backend, auth change, live messaging, payment flow, upload flow, backend write, database schema change, or RLS change was added.
+- More now links Parent Center to the dedicated `parentCenter` route.
 
 ### Section 2 - Scout Online and Watchlist
 
