@@ -45942,6 +45942,27 @@ body.shell-long-form-active .ember-assist-shell:not(.is-open),
   flex: 1 1 160px;
 }
 
+.trust-page-hero-card {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 16px;
+  border-color: rgba(124, 231, 255, 0.18) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(41, 207, 255, 0.12), transparent 14rem),
+    radial-gradient(circle at 0% 100%, rgba(255, 184, 92, 0.11), transparent 12rem),
+    rgba(6, 15, 31, 0.9) !important;
+}
+
+.trust-page-hero-card h2 {
+  margin: 4px 0 6px;
+}
+
+.trust-page-hero-card > div:first-child p:last-child {
+  max-width: 760px;
+  color: rgba(255, 247, 237, 0.8);
+  line-height: 1.45;
+}
+
 @media (max-width: 760px) {
   .utility-page {
     width: 100%;
@@ -73955,7 +73976,9 @@ html body .app .ember-assist-shell.is-open {
   .app-command-shell:has(.location-modal-backdrop) .mobile-bottom-nav,
   .app-shell-dark:has(.location-modal-backdrop) .mobile-bottom-nav,
   .app-command-shell:has(.topbar-search-open) .mobile-bottom-nav,
-  .app-shell-dark:has(.topbar-search-open) .mobile-bottom-nav {
+  .app-shell-dark:has(.topbar-search-open) .mobile-bottom-nav,
+  .app-command-shell:has(.drawer.open.menu-drawer) .mobile-bottom-nav,
+  .app-shell-dark:has(.drawer.open.menu-drawer) .mobile-bottom-nav {
     opacity: 0 !important;
     pointer-events: none !important;
     transform: translateY(calc(100% + env(safe-area-inset-bottom, 0px))) !important;
@@ -77928,6 +77951,10 @@ button.et-live-action:focus-visible {
   .app-command-shell.app-profile .mobile-quick-add-fab,
   .app-help .mobile-quick-add-fab,
   .app-command-shell.app-help .mobile-quick-add-fab,
+  .app-trust .mobile-quick-add-fab,
+  .app-command-shell.app-trust .mobile-quick-add-fab,
+  .app-menu .mobile-quick-add-fab,
+  .app-command-shell.app-menu .mobile-quick-add-fab,
   .app-moderator .mobile-quick-add-fab,
   .app-command-shell.app-moderator .mobile-quick-add-fab {
     display: none !important;

@@ -22,8 +22,8 @@
 | 3 | Vault Home | Complete | `d3b19e7` | Live Vault Home dashboard integrated above existing collection list. |
 | 4 | Vault Item Detail / Add Item / Empty Vault | Complete | `25ea98c` | Empty Vault and Add Item flow polished; existing item detail preserved. |
 | 5 | Market Home | Complete | `eca2e65` | Mock-only market search/discovery UI. |
-| 6 | Market Product Detail / Loading / Error | Complete | This section commit | Honest labels only; no live price API. |
-| 7 | More / Settings / Privacy & Safety / Membership | Not started | - | No billing or auth changes. |
+| 6 | Market Product Detail / Loading / Error | Complete | `d9d9e82` | Honest labels only; no live price API. |
+| 7 | More / Settings / Privacy & Safety / Membership | Complete | This section commit | No billing or auth changes. |
 | 8 | Parent Center | Not started | - | Mock-only safety center; no child account backend changes. |
 | 9 | Tidepool | Not started | - | Mock-only moderated community UI. |
 | 10 | The Spark / Donate / Thank You | Not started | - | Mock-only giving flow; no payments. |
@@ -34,31 +34,30 @@
 | 15 | Onboarding and Virginia-first Flow | Not started | - | Mock/local UI only unless existing safe onboarding exists. |
 | 16 | Final Integration QA and Polish | Not started | - | Final consistency, spacing, docs, screenshots, tests. |
 
-## Current Section: Market Product Detail / Loading / Error
+## Current Section: More / Settings / Privacy & Safety / Membership
 
-Started: 2026-06-05 01:51:00 -04:00
+Started: 2026-06-05 02:13:28 -04:00
 
 Scope:
 
-- Market Product Detail
-- Market Loading
-- Market Error
+- More command menu shortcuts
+- Settings safety, Scout limits, workspace, and profile surfaces
+- Privacy & Safety / Trust page
+- Membership Foundation
 
 Allowed behavior:
 
-- Existing Market product detail drawer
-- Existing Market search loading state
-- Existing Market search error state
-- Honest source/freshness, no-checkout, and safe fallback copy
+- Safe route links into existing live surfaces
+- Mock/beta preview copy for tiers and locked states
+- Privacy, family safety, Scout guardrail, and role-scoped tool copy
 
 Disallowed behavior:
 
-- Real price API integration
-- Retailer scraping
-- Checkout, payments, or auto-buy behavior
-- Purchase flow
-- Database writes or Supabase mutations
 - Auth, billing, database, or RLS changes
+- Billing/subscription integration
+- Checkout, payments, or add-on purchases
+- Admin gate changes
+- Backend writes or Supabase mutations
 
 ## Section QA Log
 
@@ -141,6 +140,54 @@ Mock-only notes:
 - Loading state labels fair-value checking without promising live data.
 - Error/fallback state explains unavailable live catalog data and offers safe retries/fallbacks.
 - No live price API, scraping, checkout, purchase flow, database write, auth change, billing change, schema change, or RLS change was added.
+
+### Section 7 - More / Settings / Privacy & Safety / Membership
+
+Status: Complete. Commit pending for this section.
+
+Screenshots:
+
+- `artifacts/qa/live-ui-integration-train/more-settings/more-390x844.png`
+- `artifacts/qa/live-ui-integration-train/more-settings/more-430x932.png`
+- `artifacts/qa/live-ui-integration-train/more-settings/more-1440x900.png`
+- `artifacts/qa/live-ui-integration-train/more-settings/settings-390x844.png`
+- `artifacts/qa/live-ui-integration-train/more-settings/settings-430x932.png`
+- `artifacts/qa/live-ui-integration-train/more-settings/settings-1440x900.png`
+- `artifacts/qa/live-ui-integration-train/more-settings/privacy-safety-390x844.png`
+- `artifacts/qa/live-ui-integration-train/more-settings/privacy-safety-430x932.png`
+- `artifacts/qa/live-ui-integration-train/more-settings/privacy-safety-1440x900.png`
+- `artifacts/qa/live-ui-integration-train/more-settings/membership-390x844.png`
+- `artifacts/qa/live-ui-integration-train/more-settings/membership-430x932.png`
+- `artifacts/qa/live-ui-integration-train/more-settings/membership-1440x900.png`
+- `artifacts/qa/live-ui-integration-train/more-settings/live-more-settings-qa-results.json`
+
+QA results:
+
+- More 390x844 / 430x932 / 1440x900: no horizontal overflow, no bottom dock overlap, no console errors, no maximum update depth errors.
+- Settings 390x844 / 430x932 / 1440x900: no horizontal overflow, no bottom dock overlap, no console errors, no maximum update depth errors.
+- Privacy & Safety 390x844 / 430x932 / 1440x900: no horizontal overflow, no bottom dock overlap, no console errors, no maximum update depth errors.
+- Membership 390x844 / 430x932 / 1440x900: no horizontal overflow, no bottom dock overlap, no console errors, no maximum update depth errors.
+
+Checks:
+
+- `git diff --check`: passed with existing LF-to-CRLF warnings only.
+- `npm.cmd run build`: passed with existing Vite large chunk warning.
+- `npm.cmd run lint --if-present`: exited cleanly.
+- `npm.cmd run typecheck --if-present`: exited cleanly.
+- `npm.cmd test --if-present`: exited cleanly.
+- `npm.cmd run format:check --if-present`: exited cleanly.
+- `npm.cmd run smoke:beta`: passed.
+- `npm.cmd run test:app-fallbacks`: passed.
+- `npm.cmd run test:menu-full-page-routes`: passed.
+- `npm.cmd run test:admin`: sandbox Chromium `spawn EPERM`; outside-sandbox rerun passed.
+- `npm.cmd run test:admin-command-center`: passed.
+
+Mock-only notes:
+
+- More exposes Parent Center and Shop Portal as safe shortcuts to existing parent/Spark and partner interest surfaces until their dedicated sections are integrated.
+- Membership remains beta preview copy with checkout disabled.
+- Settings and Privacy & Safety copy documents child privacy, protected Scout data, role-scoped tools, and no unmoderated kid messaging.
+- No auth, billing, database, RLS, checkout, payment, subscription, backend write, or admin gate change was added.
 
 ### Section 2 - Scout Online and Watchlist
 

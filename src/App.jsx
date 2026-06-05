@@ -1625,6 +1625,7 @@ function routeStateFromPath(pathname = "") {
   if (section === "data-backup" || section === "backup") return { activeTab: "dataBackup" };
   if (section === "tcg-os") return { activeTab: "tcgOs" };
   if (section === "help" || section === "support") return { activeTab: "help" };
+  if (section === "menu" || section === "more") return { activeTab: "menu" };
   if (section === "moderator" || section === "moderation") return { activeTab: "moderator" };
   if (section === "membership" || section === "tiers" || section === "plans") return { activeTab: "membership" };
   if (section === "reports" || section === "business-reports" || section === "exports") return { activeTab: "reports", forgeSubTab: "overview" };
@@ -6453,6 +6454,9 @@ export default function App() {
     profile: { key: "profile", label: "Ember ID", helper: "Public username and trust identity.", icon: "settings", action: () => openUtilityPage("profile") },
     account: { key: "account", label: "Account", helper: "Sign-in, beta status, and app version.", icon: "settings", action: () => openUtilityPage("account") },
     membership: { key: "membership", label: "Plans & Features", helper: "Beta pricing, trials, add-ons, and Scout gates.", icon: "settings", action: () => setActiveTab("membership") },
+    privacySafety: { key: "privacySafety", label: "Privacy & Safety", helper: "Child privacy, Scout guardrails, and role-scoped data.", icon: "settings", action: () => setActiveTab("trust") },
+    parentCenter: { key: "parentCenter", label: "Parent Center", helper: "Parent-guided Spark and family safety setup.", icon: "spark", action: () => setActiveTab("kidsProgram") },
+    shopPortal: { key: "shopPortal", label: "Shop Portal", helper: "Partner interest and family-friendly shop review path.", icon: "market", action: () => setActiveTab("sponsor") },
     help: { key: "help", label: "Help & Support", helper: "Feedback, bug reports, and support.", icon: "search", action: () => openUtilityPage("help") },
     settings: { key: "settings", label: "Settings", helper: "Profile, workspace, alerts, and privacy.", icon: "settings", action: () => openUtilityPage("settings") },
     admin: adaptiveAdminNavVisible ? { key: "admin", label: "Admin Command Center", helper: "Protected approvals, reviews, and roles.", icon: "settings", target: "adminReview" } : null,
@@ -6468,6 +6472,7 @@ export default function App() {
     mobileMenuByKey.account,
     { key: "collections", label: "Workspace / Family", helper: "Collection workspace, members, and privacy.", icon: "settings", action: () => openUtilityPage("collections") },
     mobileMenuByKey.membership,
+    mobileMenuByKey.privacySafety,
     mobileMenuByKey.settings,
   ].filter(Boolean);
   const menuCollectionItems = [
@@ -6481,6 +6486,8 @@ export default function App() {
     mobileMenuByKey.scout,
     mobileMenuByKey.tidepool,
     mobileMenuByKey.spark,
+    mobileMenuByKey.parentCenter,
+    mobileMenuByKey.shopPortal,
     mobileMenuByKey.announcements,
   ].filter(Boolean);
   const menuToolItems = [
@@ -38197,6 +38204,28 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }
 
   function renderTrustPages() {
+    const trustSafetyRows = [
+      {
+        title: "Child privacy",
+        body: "Kid and family details stay private and parent-managed. The app does not publish child profiles or private family context.",
+        status: "Protected",
+      },
+      {
+        title: "Scout protections",
+        body: "Scout shares current signals and proof context, not raw restock history, vendor schedules, employee names, or pattern windows.",
+        status: "Anti-scalper",
+      },
+      {
+        title: "Community moderation",
+        body: "Tidepool and public surfaces are built around family-safe posts, proof labels, and reporting instead of unmoderated feeds.",
+        status: "Moderated",
+      },
+      {
+        title: "Role-scoped tools",
+        body: "Seller, shop, and admin tools stay behind role-aware app controls. Normal users do not see admin controls.",
+        status: "Scoped",
+      },
+    ];
     return (
       <>
         <PageHeader
@@ -38210,6 +38239,25 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </>
           )}
         />
+        <section className="panel trust-page-hero-card">
+          <div>
+            <p className="section-kicker">Privacy &amp; Safety</p>
+            <h2>Family-first guardrails before growth.</h2>
+            <p>
+              Ember &amp; Tide keeps collecting useful without exposing private child details, harmful Scout patterns,
+              or admin-only moderation data.
+            </p>
+          </div>
+          <div className="settings-section-grid compact">
+            {trustSafetyRows.map((row) => (
+              <article className="settings-section-card" key={row.title}>
+                <strong>{row.title}</strong>
+                <span>{row.body}</span>
+                <small className="status-badge">{row.status}</small>
+              </article>
+            ))}
+          </div>
+        </section>
         <section className="trust-page-grid">
           {TRUST_PAGE_CONTENT.map((entry) => (
             <article className="panel trust-page-card" key={entry.key}>
@@ -50764,14 +50812,24 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       status: settingsScoutAlertPersistenceLabel,
     },
     {
+      title: "Scout Limits",
+      body: `Current tier: ${TIER_LABELS[currentTier] || "Free"}. ${tierAccess.scoutStoreSlots} watched store${Number(tierAccess.scoutStoreSlots) === 1 ? "" : "s"} and protected raw history.`,
+      status: tierAccess.scoutStoreSwapDays ? `${tierAccess.scoutStoreSwapDays}-day changes` : "Admin-managed",
+    },
+    {
       title: "Store Alerts",
       body: `${settingsFollowedStores.length} followed store${settingsFollowedStores.length === 1 ? "" : "s"} currently visible.`,
       status: settingsStoreAlertPersistenceLabel,
     },
     {
       title: "Privacy & Data",
-      body: "Business data, Scout location, exports, and support requests stay scoped to your account/workspace.",
+      body: "Child privacy, Scout location, exports, and support requests stay scoped to your account/workspace.",
       status: "Private by default",
+    },
+    {
+      title: "Family Safety",
+      body: "No unmoderated kid messaging, public child profiles, or raw Scout pattern access is enabled.",
+      status: settingsFamilyStatusLabel,
     },
     {
       title: "Trust & Reputation",
@@ -51115,6 +51173,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   function renderSettingsPrivacySafetyCard() {
     const privacyRows = [
       { title: "Private location", body: "Exact user location is never shown publicly. Reports are shared by store, not private address.", status: locationSettings.trackingEnabled ? "Device location on" : "Manual/local" },
+      { title: "Child privacy", body: "Child-sensitive details stay parent-managed. Public child profiles and private family information are not exposed.", status: "Protected" },
+      { title: "No open kid messaging", body: "The app does not enable unmoderated child messaging. Family tools stay parent-guided.", status: "Not connected" },
+      { title: "Protected Scout data", body: "Raw restock history, exact pattern windows, and unsafe Scout details stay hidden from normal users.", status: "Guarded" },
+      { title: "Role-scoped tools", body: "Forge, shop, admin, and moderation surfaces follow role and workspace access instead of public visibility.", status: "Scoped" },
       { title: "Family-safe community", body: "Public community areas stay family-friendly. Use report/block when something feels off.", status: settingsFamilyStatusLabel },
       { title: "Admin review", body: "Flagged reports, posts, Spark requests, and support messages may be reviewed by approved admins.", status: actualAdminUser ? "Admin visible" : "Protected" },
       { title: "Business records", body: "Forge sales, receipts, mileage, and expenses stay private to seller/business workspaces.", status: commandDeskSellerAccess ? "Seller enabled" : "Hidden" },
@@ -52190,7 +52252,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     quickAddMenuOpen ||
     activeFlowModal ||
     marketResultsVisible ||
-    ["scout", "vault", "market", "forge", "inventory", "sales", "expenses", "reports", "tidepool", "kidsProgram", "account", "settings", "comingSoon"].includes(activeTab) ||
+    ["scout", "vault", "market", "forge", "inventory", "sales", "expenses", "reports", "tidepool", "kidsProgram", "account", "settings", "menu", "trust", "membership", "profile", "help", "adminReview", "moderator", "comingSoon"].includes(activeTab) ||
     ["scout", "vault", "market", "forge", "tidepool", "kidsProgram"].includes(activeMainTab)
   );
 
