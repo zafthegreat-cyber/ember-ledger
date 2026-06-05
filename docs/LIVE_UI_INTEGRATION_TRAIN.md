@@ -31,22 +31,21 @@
 | 12 | Forge / Trade Analyzer / Listing Builder / Sales Ledger | Complete | `a84238e` | Mock-only workspace UI; no inventory writes. |
 | 13 | Shop Portal | Complete | `384243d` | Mock-only trust controls; no shop backend changes. |
 | 14 | Admin Review | Complete | `27d00ff` | Mock-only review UI; no admin mutations. |
-| 15 | Onboarding and Virginia-first Flow | Complete | Commit pending for this section | Mock/local UI only; no account, waitlist, billing, or database writes. |
-| 16 | Final Integration QA and Polish | Not started | - | Final consistency, spacing, docs, screenshots, tests. |
+| 15 | Onboarding and Virginia-first Flow | Complete | `5431f2e` | Mock/local UI only; no account, waitlist, billing, or database writes. |
+| 16 | Final Integration QA and Polish | Complete | Commit pending for this section | Documentation-only final QA checkpoint; no UI code changes. |
 
-## Current Section: Final Integration QA and Polish
+## Current Section: Complete
 
-Started: Pending after Section 15 commit.
+Finished: 2026-06-05
 
 Scope:
 
-- Final consistency, spacing, docs, screenshots, route links, and tests
-- No new feature work
+- All ordered live UI integration sections are complete.
+- Final QA and documentation completed.
 
 Allowed behavior:
 
-- Copy cleanup, spacing cleanup, screenshot QA, and documentation updates
-- Existing approved Hearth / Scout / Vault / Market / More nav
+- Post-train review only unless a new task is opened.
 
 Disallowed behavior:
 
@@ -56,6 +55,12 @@ Disallowed behavior:
 - Uploads, live AI, live messaging, scraping, or auto-buy behavior
 - Backend writes or Supabase mutations
 - Private child/family data exposure, raw Scout pattern exposure, or admin data exposure to normal users
+
+Final status:
+
+- Git status was clean before Section 16 documentation updates.
+- No deploy was run.
+- No backend/auth/billing/database/RLS changes were made by this train.
 
 ## Section QA Log
 
@@ -466,7 +471,7 @@ Mock-only notes:
 
 ### Section 15 - Onboarding and Virginia-first Flow
 
-Status: Complete. Commit pending for this section.
+Status: Complete. Commit `5431f2e`.
 
 Screenshots:
 
@@ -520,6 +525,51 @@ Mock-only notes:
 - The `/onboarding/:view` route family is a local preview shell.
 - Buttons move between local onboarding subviews or existing safe app surfaces.
 - No account creation change, beta waitlist submission, notification preference write, child account backend change, billing/subscription connection, upload service, live AI, database write, auth change, schema change, or RLS change was added.
+
+### Section 16 - Final Integration QA and Polish
+
+Status: Complete. Commit pending for this section.
+
+Screenshots:
+
+- `artifacts/qa/live-ui-integration-train/final/final-live-ui-qa-results.json`
+- Sampled route screenshots under `artifacts/qa/live-ui-integration-train/final/` for Hearth, Scout, Scout Online, Scout Watchlist, Vault, Market, Forge, More/Settings, Parent Center, Tidepool, The Spark, Donate, Shop Portal, Admin normal-user state, Onboarding, and `screen-set.html`.
+
+QA results:
+
+- Sampled live routes and the standalone preview rendered at 390x844, 430x932, and 1440x900.
+- No horizontal overflow, no console warnings/errors, and no maximum update depth errors were found in the sampled route matrix.
+- Standalone `screen-set.html` still rendered and retained the approved Hearth / Scout / Vault / Market / More nav text.
+
+Checks:
+
+- `git diff --check`: passed.
+- `npm.cmd run build`: passed with existing Vite large chunk warning.
+- `npm.cmd run lint --if-present`: exited cleanly.
+- `npm.cmd run typecheck --if-present`: exited cleanly.
+- `npm.cmd test --if-present`: exited cleanly.
+- `npm.cmd run format:check --if-present`: exited cleanly.
+- `npm.cmd run smoke:beta`: passed.
+- `npm.cmd run test:app-fallbacks`: passed.
+- `npm.cmd run test:menu-full-page-routes`: passed.
+- `npm.cmd run test:onboarding --if-present`: passed.
+- `npm.cmd run test:scout`: sandbox Chromium `spawn EPERM`; outside-sandbox rerun passed.
+- `npm.cmd run test:market`: sandbox Chromium `spawn EPERM`; outside-sandbox rerun passed.
+- `npm.cmd run test:kids-program`: passed.
+- `npm.cmd run test:spark`: sandbox Chromium `spawn EPERM`; outside-sandbox rerun passed.
+- `npm.cmd run test:ember-assist`: passed.
+- `npm.cmd run test:admin`: sandbox Chromium `spawn EPERM`; outside-sandbox rerun passed.
+- `npm.cmd run test:admin-command-center`: passed.
+- `npm.cmd run test:tidepool-community`: passed.
+- `npm.cmd run test:sales-records`: passed.
+- `npm.cmd run test:forge-grouped-inventory`: passed.
+- `npm.cmd run test:trade-value`: passed.
+- `npm.cmd run test:quick-add`: passed.
+
+Mock-only notes:
+
+- Section 16 made no UI code changes.
+- No backend, auth, billing, database, schema, RLS, tier, inventory, scraping, checkout, payment, upload, live AI, messaging, or retailer integration change was made.
 
 ### Section 2 - Scout Online and Watchlist
 
