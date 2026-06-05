@@ -67424,6 +67424,202 @@ html body .app .scan-product-modal .scanner-review-primary-action {
   line-height: 1.35;
 }
 
+.app-market .market-home-foundation,
+.app-command-shell.app-market .market-home-foundation,
+.app-shell-dark.app-market .market-home-foundation {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.app-market .market-fair-search-card,
+.app-command-shell.app-market .market-fair-search-card,
+.app-shell-dark.app-market .market-fair-search-card,
+.app-market .market-watchlist-prompt,
+.app-command-shell.app-market .market-watchlist-prompt,
+.app-shell-dark.app-market .market-watchlist-prompt {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid rgba(80, 229, 214, 0.22);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(80, 229, 214, 0.14), transparent 11rem),
+    linear-gradient(135deg, rgba(5, 22, 40, 0.94), rgba(8, 14, 29, 0.9));
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.22);
+}
+
+.app-market .market-fair-search-card h2,
+.app-command-shell.app-market .market-fair-search-card h2,
+.app-shell-dark.app-market .market-fair-search-card h2,
+.app-market .market-watchlist-prompt h3,
+.app-command-shell.app-market .market-watchlist-prompt h3,
+.app-shell-dark.app-market .market-watchlist-prompt h3 {
+  margin: 0;
+  color: #f4fffb;
+  line-height: 1.12;
+}
+
+.app-market .market-fair-search-card p,
+.app-command-shell.app-market .market-fair-search-card p,
+.app-shell-dark.app-market .market-fair-search-card p,
+.app-market .market-watchlist-prompt p,
+.app-command-shell.app-market .market-watchlist-prompt p,
+.app-shell-dark.app-market .market-watchlist-prompt p {
+  margin: 4px 0 0;
+  color: rgba(232, 246, 255, 0.74);
+  line-height: 1.45;
+}
+
+.app-market .market-home-category-row,
+.app-command-shell.app-market .market-home-category-row,
+.app-shell-dark.app-market .market-home-category-row {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+
+.app-market .market-home-category-row::-webkit-scrollbar,
+.app-command-shell.app-market .market-home-category-row::-webkit-scrollbar,
+.app-shell-dark.app-market .market-home-category-row::-webkit-scrollbar {
+  display: none;
+}
+
+.app-market .market-home-category-row button,
+.app-command-shell.app-market .market-home-category-row button,
+.app-shell-dark.app-market .market-home-category-row button {
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid rgba(80, 229, 214, 0.2);
+  border-radius: 999px;
+  color: #ddfbff;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.app-market .market-home-category-row button.active,
+.app-command-shell.app-market .market-home-category-row button.active,
+.app-shell-dark.app-market .market-home-category-row button.active {
+  border-color: rgba(80, 229, 214, 0.46);
+  background: rgba(80, 229, 214, 0.16);
+}
+
+.app-market .market-home-grid,
+.app-command-shell.app-market .market-home-grid,
+.app-shell-dark.app-market .market-home-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.app-market .market-home-product-card,
+.app-command-shell.app-market .market-home-product-card,
+.app-shell-dark.app-market .market-home-product-card {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 15% 0%, rgba(255, 179, 71, 0.1), transparent 8rem),
+    rgba(7, 18, 34, 0.82);
+}
+
+.app-market .market-home-product-top,
+.app-command-shell.app-market .market-home-product-top,
+.app-shell-dark.app-market .market-home-product-top {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.app-market .market-home-product-art,
+.app-command-shell.app-market .market-home-product-art,
+.app-shell-dark.app-market .market-home-product-art {
+  display: grid;
+  width: 58px;
+  aspect-ratio: 1;
+  place-items: center;
+  border: 1px solid rgba(80, 229, 214, 0.22);
+  border-radius: 16px;
+  color: #eafffb;
+  font-weight: 800;
+  background:
+    linear-gradient(145deg, rgba(80, 229, 214, 0.18), rgba(255, 179, 71, 0.12)),
+    rgba(5, 16, 30, 0.9);
+}
+
+.app-market .market-home-product-card h3,
+.app-command-shell.app-market .market-home-product-card h3,
+.app-shell-dark.app-market .market-home-product-card h3 {
+  margin: 7px 0 3px;
+  color: #f6fffb;
+  line-height: 1.14;
+}
+
+.app-market .market-home-product-card p,
+.app-command-shell.app-market .market-home-product-card p,
+.app-shell-dark.app-market .market-home-product-card p {
+  margin: 0;
+  color: rgba(232, 246, 255, 0.68);
+  line-height: 1.38;
+}
+
+.app-market .market-home-product-meta,
+.app-command-shell.app-market .market-home-product-meta,
+.app-shell-dark.app-market .market-home-product-meta {
+  display: grid;
+  gap: 8px;
+}
+
+.app-market .market-home-product-meta span,
+.app-command-shell.app-market .market-home-product-meta span,
+.app-shell-dark.app-market .market-home-product-meta span {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.app-market .market-home-product-meta strong,
+.app-command-shell.app-market .market-home-product-meta strong,
+.app-shell-dark.app-market .market-home-product-meta strong {
+  color: #fff4d6;
+  font-size: 0.86rem;
+}
+
+.app-market .market-home-product-meta small,
+.app-command-shell.app-market .market-home-product-meta small,
+.app-shell-dark.app-market .market-home-product-meta small {
+  color: rgba(232, 246, 255, 0.62);
+}
+
+.app-market .market-watchlist-prompt,
+.app-command-shell.app-market .market-watchlist-prompt,
+.app-shell-dark.app-market .market-watchlist-prompt {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+@media (max-width: 720px) {
+  .app-market .market-home-grid,
+  .app-command-shell.app-market .market-home-grid,
+  .app-shell-dark.app-market .market-home-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .app-market .market-watchlist-prompt,
+  .app-command-shell.app-market .market-watchlist-prompt,
+  .app-shell-dark.app-market .market-watchlist-prompt {
+    grid-template-columns: 1fr;
+  }
+}
+
 .app-vault .vault-primary-controls,
 .app-vault .vault-mobile-filter-drawer,
 .app-vault .vault-filter-panel {

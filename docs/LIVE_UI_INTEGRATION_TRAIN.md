@@ -20,8 +20,8 @@
 | 1 | Scout Add Report / Scan Screenshot / Review Report | Complete | `f88384a` | Mock-only page shells inside existing Scout route state. |
 | 2 | Scout Online and Watchlist | Complete | `00c723d` | Mock-only online signals and tier-safe watchlist. |
 | 3 | Vault Home | Complete | `d3b19e7` | Live Vault Home dashboard integrated above existing collection list. |
-| 4 | Vault Item Detail / Add Item / Empty Vault | Complete | This section commit | Empty Vault and Add Item flow polished; existing item detail preserved. |
-| 5 | Market Home | Not started | - | Mock-only market search/discovery UI. |
+| 4 | Vault Item Detail / Add Item / Empty Vault | Complete | `25ea98c` | Empty Vault and Add Item flow polished; existing item detail preserved. |
+| 5 | Market Home | Complete | This section commit | Mock-only market search/discovery UI. |
 | 6 | Market Product Detail / Loading / Error | Not started | - | Honest labels only; no live price API. |
 | 7 | More / Settings / Privacy & Safety / Membership | Not started | - | No billing or auth changes. |
 | 8 | Parent Center | Not started | - | Mock-only safety center; no child account backend changes. |
@@ -34,34 +34,70 @@
 | 15 | Onboarding and Virginia-first Flow | Not started | - | Mock/local UI only unless existing safe onboarding exists. |
 | 16 | Final Integration QA and Polish | Not started | - | Final consistency, spacing, docs, screenshots, tests. |
 
-## Current Section: Scout Online and Watchlist
+## Current Section: Market Home
 
-Started: 2026-06-05 01:14:19 -04:00
+Started: 2026-06-05 01:46:01 -04:00
 
 Scope:
 
-- Scout Online
-- Scout Watchlist
+- Market Home
 
 Allowed behavior:
 
-- Existing Scout route/page shell
-- Mock-only online signal rows
-- Mock-only watched product rows
-- Existing watched-store read state already present in the app
-- Safety copy and responsive UI polish
+- Existing Market route/page shell
+- Mock-only discovery cards
+- Existing catalog search field and results behavior remain intact
+- Category chips, fair search guidance, source/freshness labels, and watchlist prompt
 
 Disallowed behavior:
 
-- Real retailer scraping
+- Real price API integration
+- Retailer scraping
 - Checkout, payments, or auto-buy behavior
-- Live inventory pulls or exact quantities
-- Vendor schedule data
-- Raw restock pattern history
+- Purchase flow
 - Database writes or Supabase mutations
 - Auth, billing, database, or RLS changes
 
 ## Section QA Log
+
+### Section 5 - Market Home
+
+Status: Complete. Commit pending for this section.
+
+Screenshots:
+
+- `artifacts/qa/live-ui-integration-train/market-home/market-home-390x844.png`
+- `artifacts/qa/live-ui-integration-train/market-home/market-home-430x932.png`
+- `artifacts/qa/live-ui-integration-train/market-home/market-home-1440x900.png`
+- `artifacts/qa/live-ui-integration-train/market-home/screen-set-preview-390x844.png`
+- `artifacts/qa/live-ui-integration-train/market-home/live-market-home-qa-results.json`
+
+QA results:
+
+- 390x844: no horizontal overflow, no bottom dock overlap, no console errors, no maximum update depth errors.
+- 430x932: no horizontal overflow, no bottom dock overlap, no console errors, no maximum update depth errors.
+- 1440x900: no horizontal overflow, no bottom dock overlap, no console errors, no maximum update depth errors.
+- Standalone `screen-set.html` preview rendered at 390x844 with approved Hearth / Scout / Vault / Market / More nav text, no horizontal overflow, and no console/page errors.
+
+Checks:
+
+- `git diff --check`: passed with existing LF-to-CRLF warnings only.
+- `npm.cmd run build`: passed with existing Vite large chunk warning.
+- `npm.cmd run lint --if-present`: exited cleanly.
+- `npm.cmd run typecheck --if-present`: exited cleanly.
+- `npm.cmd test --if-present`: exited cleanly.
+- `npm.cmd run format:check --if-present`: exited cleanly.
+- `npm.cmd run smoke:beta`: passed.
+- `npm.cmd run test:app-fallbacks`: passed.
+- `npm.cmd run test:menu-full-page-routes`: passed.
+- `npm.cmd run test:market`: sandbox Chromium `spawn EPERM`; outside-sandbox rerun first hit an intermittent Supabase REST 500, second outside-sandbox rerun passed.
+
+Mock-only notes:
+
+- Discovery cards, fair ranges, freshness labels, and source labels are mock UI examples.
+- Watch action only opens the existing Market watchlist tab.
+- Use in search only places text into the existing search input.
+- No live price API, scraping, checkout, purchase flow, database write, auth change, billing change, schema change, or RLS change was added.
 
 ### Section 2 - Scout Online and Watchlist
 

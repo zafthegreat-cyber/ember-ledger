@@ -24094,6 +24094,105 @@ function renderTideTradrHeader() {
   );
 }
 
+function renderMarketHomeFoundation() {
+  // TODO: Replace these mock cards with a read-only market discovery contract when approved.
+  const categories = ["Singles", "Sealed", "Supplies", "Graded", "Local Pickup"];
+  const discoveryCards = [
+    {
+      name: "Scarlet chase single",
+      type: "Single",
+      fairRange: "$8-$12",
+      source: "Catalog + saved comps",
+      freshness: "Freshness labeled",
+      note: "Good for wishlist checks before buying.",
+      accent: "SG",
+    },
+    {
+      name: "Elite trainer style box",
+      type: "Sealed",
+      fairRange: "$44-$52",
+      source: "Trusted shop signal",
+      freshness: "Review before trip",
+      note: "Watch for fair retail context, not rush alerts.",
+      accent: "ET",
+    },
+    {
+      name: "Binder supply bundle",
+      type: "Supplies",
+      fairRange: "$18-$24",
+      source: "Family setup list",
+      freshness: "Low confidence",
+      note: "Useful when protecting kids collection cards.",
+      accent: "BD",
+    },
+  ];
+
+  return (
+    <section className="market-home-foundation" aria-label="Market discovery home">
+      <article className="market-fair-search-card">
+        <span className="trust-badge trust-badge--secure">Fair search</span>
+        <div>
+          <h2>Find a fair range before you buy.</h2>
+          <p>Market compares fair value. It is not an auto-buy dashboard.</p>
+        </div>
+        <div className="market-home-category-row" aria-label="Market categories">
+          {categories.map((category) => (
+            <button
+              key={category}
+              type="button"
+              className={catalogKindFilter === category.toLowerCase() ? "active" : ""}
+              onClick={() => {
+                if (category === "Singles") switchCatalogKindFilter("card");
+                else if (category === "Sealed") switchCatalogKindFilter("sealed");
+                else switchCatalogKindFilter("All");
+              }}
+            >
+              {category}
+            </button>
+          ))}
+        </div>
+      </article>
+
+      <div className="market-home-grid">
+        {discoveryCards.map((card) => (
+          <article className="market-home-product-card" key={card.name}>
+            <div className="market-home-product-top">
+              <div className="market-home-product-art" aria-hidden="true">{card.accent}</div>
+              <div>
+                <span className="market-status-pill">{card.type}</span>
+                <h3>{card.name}</h3>
+                <p>{card.note}</p>
+              </div>
+            </div>
+            <div className="market-home-product-meta">
+              <span><strong>{card.fairRange}</strong><small>Fair range</small></span>
+              <span><strong>{card.source}</strong><small>Source</small></span>
+              <span><strong>{card.freshness}</strong><small>Data label</small></span>
+            </div>
+            <div className="market-card-actions">
+              <button type="button" onClick={() => {
+                setCatalogSearch(card.name);
+                setSubmittedCatalogSearch("");
+                setCatalogSearchHasRun(false);
+              }}>Use in search</button>
+              <button type="button" className="secondary-button" onClick={() => setTideTradrSubTab("watch")}>Watch</button>
+            </div>
+          </article>
+        ))}
+      </div>
+
+      <article className="market-watchlist-prompt">
+        <div>
+          <span className="trust-badge">Watchlist</span>
+          <h3>Watch products without creating a rush feed.</h3>
+          <p>Save interest, label weak data honestly, and avoid checkout or exact-stock promises.</p>
+        </div>
+        <button type="button" className="secondary-button" onClick={() => setTideTradrSubTab("watch")}>Open Watchlist</button>
+      </article>
+    </section>
+  );
+}
+
 function renderScoutHeader() {
   const scoutWatchedStoreCount = (scoutSnapshot.stores || []).filter(isWatchedEmberStore).length;
   const scoutRecentReportCount = (scoutSnapshot.reports || []).length || (scoutSnapshot.tidepoolReports || []).length;
@@ -58829,6 +58928,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </>
             ) : (
               <>
+                {renderMarketHomeFoundation()}
+
                 {false ? (
                 <section className={getHeaderCardClass("tab-summary panel tidetradr-summary-card")}>
                   <div>
