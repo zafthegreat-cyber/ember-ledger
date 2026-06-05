@@ -502,8 +502,9 @@ import {
   sanitizeAppSetupVisibleKeys,
 } from "./utils/appPersonalizationUtils";
 
+// TODO: Replace preview-backed Hearth foundation copy with backend-owned home summary data when that contract exists.
 const HEARTH_FOUNDATION_SCREEN = emberTideData.screens.find((screen) => screen.key === "hearth") || {};
-const HEARTH_FOUNDATION_TRUST_MESSAGE = "Fair collecting. Kid-friendly access. Trusted community.";
+const HEARTH_FOUNDATION_TRUST_MESSAGE = "We help families collect fairly without exposing harmful restock patterns.";
 
 const SmartAddInventory = lazy(() => import("./components/SmartAddInventory"));
 const SmartAddCatalog = lazy(() => import("./components/SmartAddCatalog"));
@@ -48061,6 +48062,15 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       pendingAdminCount: pendingBetaRequests + pendingKidsRequests + scoutNeedsReviewReports.length + pendingFeedbackCount + pendingSuggestionCount + marketReviewCount,
       kidsProgramFocus: Boolean(adaptiveUiState.familyMode && !kidsApplication),
     });
+    const foundationStatsByLabel = new Map((HEARTH_FOUNDATION_SCREEN.stats || []).map((stat) => [String(stat.label || "").toLowerCase(), stat]));
+    const foundationStat = (label, fallback) => foundationStatsByLabel.get(String(label || "").toLowerCase()) || fallback;
+    const foundationVaultStat = foundationStat("Vault", { value: "1,246", detail: "cards tracked" });
+    const foundationScoutStat = foundationStat("Scout", { value: "3", detail: "useful signals" });
+    const foundationSparkStat = foundationStat("Spark", { value: "320", detail: "points" });
+    const hearthPreviewNumber = (value) => Number(String(value ?? "").replace(/[^\d.-]/g, "")) || 0;
+    const hearthPreviewVaultCount = hearthPreviewNumber(foundationVaultStat.value);
+    const hearthHasVaultItems = activeVaultItems.length > 0 || hearthPreviewVaultCount > 0;
+    const hearthFallbackPoints = hearthPreviewNumber(foundationSparkStat.value) || 320;
     const renderSmartGuidanceAction = () => {
       if (!hearthSmartGuidance) return null;
       if (hearthSmartGuidance.key === "admin_review") return {
@@ -48087,6 +48097,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         ...hearthSmartGuidance,
         onPrimary: () => setActiveTab("scout"),
         onSecondary: () => openQuickAddAction("storeReport"),
+      };
+      if (hearthSmartGuidance.key === "start_collection" && hearthHasVaultItems) return {
+        ...hearthSmartGuidance,
+        title: "Review recent Vault additions",
+        reason: "Your protected collection is already started. Add one card or sealed product, then review before saving.",
+        primaryLabel: "Open Vault",
+        onPrimary: () => setActiveTab("vault"),
+        onSecondary: () => openQuickAddAction("vaultItem"),
       };
       return {
         ...hearthSmartGuidance,
@@ -48332,7 +48350,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const visiblePriorityCards = hearthDetailsExpanded ? priorityCards : priorityCards.slice(0, 3);
     const hiddenPriorityCount = Math.max(0, priorityCards.length - visiblePriorityCards.length);
     const fallbackCards = getStartedCards.filter((card) => {
-      if (card.key === "start-collection") return !activeVaultItems.length;
+      if (card.key === "start-collection") return !hearthHasVaultItems;
       if (card.key === "follow-stores") return !(scoutSnapshot.reports || []).length;
       if (card.key === "market-alert") return !workspaceWatchlist.length;
       if (card.key === "kids-access") return hearthMode === "simple" && !kidsApplication;
@@ -48345,11 +48363,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       currentUserProfile?.first_name ||
       currentUserProfile?.displayName ||
       currentUserProfile?.display_name ||
-      publicProfileLabel() ||
-      accountEmail().split("@")[0] ||
       ""
     ).trim();
-    const hearthGreetingName = rawHearthName && !/@/.test(rawHearthName) ? rawHearthName.split(/\s+/)[0] : "friend";
+    const rawHearthFirstName = rawHearthName && !/@/.test(rawHearthName) ? rawHearthName.split(/\s+/)[0] : "";
+    const unsafeHearthName = /^(local|localhost|beta|guest|user|friend|collector)$/i.test(rawHearthFirstName);
+    const hearthGreetingName = rawHearthFirstName && !unsafeHearthName ? rawHearthFirstName : "";
     const hearthHour = new Date().getHours();
     const hearthGreeting = hearthHour < 12 ? "Good morning" : hearthHour < 18 ? "Good afternoon" : "Good evening";
     const hearthAvatarInitial = (hearthGreetingName || "E").slice(0, 1).toUpperCase();
@@ -48371,7 +48389,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         : hearthMode === "simple"
           ? "Family"
           : "Collector";
-    const hearthHomeTitle = hearthGreetingName && hearthGreetingName !== "friend"
+    const hearthHomeTitle = hearthGreetingName
       ? `${hearthGreeting}, ${hearthGreetingName}`
       : `${hearthGreeting}, ${hearthModeChipLabel}`;
     const hearthTodayMessage = bestAction?.badge ? `${bestAction.badge}: ${bestAction.title}` : bestAction.title;
@@ -48453,11 +48471,6 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           : "Build or prepare a kid pack for The Spark.",
       }, `hearth-spark-${kind}`);
     };
-    const foundationStatsByLabel = new Map((HEARTH_FOUNDATION_SCREEN.stats || []).map((stat) => [String(stat.label || "").toLowerCase(), stat]));
-    const foundationStat = (label, fallback) => foundationStatsByLabel.get(String(label || "").toLowerCase()) || fallback;
-    const foundationVaultStat = foundationStat("Vault", { value: "1,246", detail: "cards tracked" });
-    const foundationScoutStat = foundationStat("Scout", { value: "3", detail: "useful signals" });
-    const foundationSparkStat = foundationStat("Spark", { value: "320", detail: "points" });
     const foundationJourneyItems = (HEARTH_FOUNDATION_SCREEN.sections || []).find((section) => section.title === "Today's Journey")?.items || [];
     const foundationQuickActionItems = (HEARTH_FOUNDATION_SCREEN.sections || []).find((section) => section.title === "Quick Actions")?.items || [];
     const foundationTradeSourceItem = activeVaultItems.find((item) => item?.id);
@@ -48681,7 +48694,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const todaySparkEarnedPoints = visibleSparkMissions
       .filter((mission) => mission.current >= mission.target)
       .reduce((sum, mission) => sum + Number(mission.reward || 0), 0);
-    const hearthEmberPoints = Number(scoutSnapshot.scoutProfile?.rewardPoints || scoutSnapshot.scoutProfile?.emberPoints || dailyTideToday.tidePoints || 0) + todaySparkEarnedPoints;
+    const realHearthPoints = Number(scoutSnapshot.scoutProfile?.rewardPoints || scoutSnapshot.scoutProfile?.emberPoints || dailyTideToday.tidePoints || 0) + todaySparkEarnedPoints;
+    const hearthEmberPoints = realHearthPoints > 0 ? realHearthPoints : hearthFallbackPoints;
     const dismissTodaySpark = async (sparkKey) => {
       const confirmed = await requestConfirmation({
         title: "Dismiss Spark?",
@@ -48825,13 +48839,19 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       {
         key: "vault",
         title: "Vault",
-        value: activeVaultItems.length ? `${activeVaultItems.length} item${activeVaultItems.length === 1 ? "" : "s"} tracked` : "Start Vault",
+        value: activeVaultItems.length
+          ? `${activeVaultItems.length} item${activeVaultItems.length === 1 ? "" : "s"} tracked`
+          : hearthPreviewVaultCount
+            ? "Review recent additions"
+            : "Start Vault",
         detail: activeVaultItems.length
           ? `${vaultMissingPhotoCount} missing photo${vaultMissingPhotoCount === 1 ? "" : "s"}${latestVaultSetName ? ` | Newest: ${latestVaultSetName}` : ""}`
-          : "Start your collection by scanning your first item.",
+          : hearthPreviewVaultCount
+            ? "Add one card or sealed product, then review before saving."
+            : "Start your collection by scanning your first item.",
         meta: hearthVaultValueLabel,
         icon: "vault",
-        onClick: () => activeVaultItems.length ? setActiveTab("vault") : openQuickAddAction("vaultItem"),
+        onClick: () => hearthHasVaultItems ? setActiveTab("vault") : openQuickAddAction("vaultItem"),
         accent: "vault",
         visible: hearthCanUseVault,
       },
@@ -48864,10 +48884,18 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       {
         key: "snapshot-vault",
         label: "Vault",
-        value: activeVaultItems.length ? `${activeVaultItems.length} item${activeVaultItems.length === 1 ? "" : "s"}` : "Start Vault",
-        detail: vaultValue > 0 ? hearthVaultValueLabel : "Add your first item",
+        value: activeVaultItems.length
+          ? `${activeVaultItems.length} item${activeVaultItems.length === 1 ? "" : "s"}`
+          : hearthPreviewVaultCount
+            ? "Review Vault"
+            : "Start Vault",
+        detail: vaultValue > 0
+          ? hearthVaultValueLabel
+          : hearthPreviewVaultCount
+            ? "Protected collection"
+            : "Add your first item",
         accent: "vault",
-        onClick: () => activeVaultItems.length ? setActiveTab("vault") : openQuickAddAction("vaultItem"),
+        onClick: () => hearthHasVaultItems ? setActiveTab("vault") : openQuickAddAction("vaultItem"),
       },
       hearthCanUseScout ? {
         key: "snapshot-scout",
@@ -49281,8 +49309,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </button>
               )) : (
                 <div className="small-empty-state hearth-empty-state">
-                  <strong>No recent activity yet.</strong>
-                  <p>Add a Vault item, submit a Scout report, or create a market watch to start building your Hearth.</p>
+                  <strong>No saved activity yet on this device.</strong>
+                  <p>Complete a Hearth action to start your activity trail.</p>
                   <button type="button" className="secondary-button" onClick={() => openAddActionSheet("hearth-empty")}>Quick Add</button>
                 </div>
               )}
