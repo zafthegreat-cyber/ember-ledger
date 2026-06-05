@@ -24637,6 +24637,9 @@ function renderForgeAccessState() {
     { title: "Inventory groups", body: "Group same items, keep purchaser and location notes, and review item history." },
     { title: "Sales records", body: "Record gross sale, cost basis, fees, and estimated profit without changing Vault items." },
     { title: "Receipts and mileage", body: "Keep expenses, receipts, and trips organized for business recordkeeping." },
+    { title: "Trade Analyzer", body: "Preview trade value and parent approval guidance before saving any history." },
+    { title: "Listing Builder", body: "Draft condition, fair range, and family-safe notes without posting or checkout." },
+    { title: "Sales Ledger", body: "Review revenue, cost basis, fees, and receipt needs for recordkeeping." },
   ];
   return (
     <section className="panel empty-state forge-workspace-unavailable adaptive-forge-intro" aria-label="Forge access required">
@@ -24701,6 +24704,39 @@ function renderForgeBusinessCommandPanel() {
       helper: `${money(totalSalesRevenue)} revenue | ${money(totalExpenses)} expenses`,
     },
   ];
+  const forgeWorkspaceFlows = [
+    {
+      key: "trade-analyzer",
+      eyebrow: "Trade Analyzer",
+      title: "Worth it for the family?",
+      summary: "Compare what leaves Forge against what comes in before any record changes.",
+      detail: "Give: sealed ETB + 2 singles | Receive: binder lot",
+      value: "+$18 fair range",
+      note: "Parent approval recommended for kid-owned items.",
+      cta: "Mock trade review",
+    },
+    {
+      key: "listing-builder",
+      eyebrow: "Listing Builder",
+      title: "Draft before posting.",
+      summary: "Stage title, condition, fair range, and family-safe notes without publishing.",
+      detail: "Condition: Near Mint | Fair range: $42-$48",
+      value: "Draft only",
+      note: "No checkout, payment, or marketplace posting is connected.",
+      cta: "Mock listing draft",
+    },
+    {
+      key: "sales-ledger",
+      eyebrow: "Sales Ledger",
+      title: "Keep the record clear.",
+      summary: "Track revenue, cost basis, fees, and receipt needs for seller recordkeeping.",
+      detail: "Revenue $128 | Cost basis $76 | Fees pending",
+      value: "$52 est. P/L",
+      note: "For recordkeeping. Confirm summaries with your tax professional.",
+      cta: "Open Sales Records",
+      onClick: () => setActiveTab("sales"),
+    },
+  ];
   const renderForgeGroupPreview = (item) => {
     const entryCount = item.groupedEntryCount || inventoryGroupEntries(item).length;
     const valuation = item.valuationSummary || buildGroupedInventoryValuation(item, { context: "forge" });
@@ -24743,6 +24779,36 @@ function renderForgeBusinessCommandPanel() {
             <strong>{card.value}</strong>
             <small>{card.helper}</small>
           </div>
+        ))}
+      </div>
+
+      <div className="forge-workspace-flow-grid" aria-label="Forge trade listing and sales flows">
+        {forgeWorkspaceFlows.map((flow) => (
+          <article className={`forge-workspace-flow-card is-${flow.key}`} key={flow.key}>
+            <div>
+              <span className="forge-preview-kicker">{flow.eyebrow}</span>
+              <h4>{flow.title}</h4>
+              <p>{flow.summary}</p>
+            </div>
+            <dl>
+              <div>
+                <dt>Preview</dt>
+                <dd>{flow.detail}</dd>
+              </div>
+              <div>
+                <dt>Value</dt>
+                <dd>{flow.value}</dd>
+              </div>
+            </dl>
+            <div className="forge-workspace-flow-footer">
+              <small>{flow.note}</small>
+              {flow.onClick ? (
+                <button type="button" className="secondary-button" onClick={flow.onClick}>{flow.cta}</button>
+              ) : (
+                <span className="status-badge">{flow.cta}</span>
+              )}
+            </div>
+          </article>
         ))}
       </div>
 

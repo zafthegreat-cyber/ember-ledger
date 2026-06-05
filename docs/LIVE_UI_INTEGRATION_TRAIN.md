@@ -27,36 +27,36 @@
 | 8 | Parent Center | Complete | `854cc25` | Mock-only safety center; no child account backend changes. |
 | 9 | Tidepool | Complete | `9dae179` | Mock-only moderated community UI. |
 | 10 | The Spark / Donate / Thank You | Complete | `91a03f6` | Mock-only giving flow; no payments. |
-| 11 | Ember Assist | Complete | Commit pending for this section | Mock/local helper UI framing; no live AI calls added. |
-| 12 | Forge / Trade Analyzer / Listing Builder / Sales Ledger | Not started | - | Mock-only workspace UI; no inventory writes. |
+| 11 | Ember Assist | Complete | `e920470` | Mock/local helper UI framing; no live AI calls added. |
+| 12 | Forge / Trade Analyzer / Listing Builder / Sales Ledger | Complete | Commit pending for this section | Mock-only workspace UI; no inventory writes. |
 | 13 | Shop Portal | Not started | - | Mock-only trust controls; no shop backend changes. |
 | 14 | Admin Review | Not started | - | Mock-only review UI; no admin mutations. |
 | 15 | Onboarding and Virginia-first Flow | Not started | - | Mock/local UI only unless existing safe onboarding exists. |
 | 16 | Final Integration QA and Polish | Not started | - | Final consistency, spacing, docs, screenshots, tests. |
 
-## Current Section: Ember Assist
+## Current Section: Forge / Trade Analyzer / Listing Builder / Sales Ledger
 
-Started: 2026-06-05 03:58:00 -04:00
+Started: 2026-06-05 04:20:00 -04:00
 
 Scope:
 
-- Ember Assist floating helper panel
-- Friendly helper hero
-- Prompt chips, quick actions, and recent-help examples
-- Privacy/safety note and no-fake-promises copy
+- Forge dashboard workspace
+- Trade Analyzer mock preview
+- Listing Builder mock preview
+- Sales Ledger preview and existing Sales Records entry point
 
 Allowed behavior:
 
-- Mock/static helper content and quick action routing to existing safe app flows
-- Existing local helper fallback behavior already present in the app
+- Mock/static trade, listing, and sales preview cards
+- Existing Forge inventory, sales records, and route surfaces
 - Existing approved Hearth / Scout / Vault / Market / More nav
 
 Disallowed behavior:
 
 - Auth, billing, database, or RLS changes
-- Live AI calls or assistant API calls
-- New chat persistence or chat backend changes
-- Uploads, live messaging, scraping, checkout, payments, or auto-buy behavior
+- Inventory mutation changes or new backend writes
+- Live sales, checkout, payments, or marketplace posting
+- Uploads, live AI, live messaging, scraping, or auto-buy behavior
 - Backend writes or Supabase mutations
 - Private child/family data exposure, raw Scout pattern exposure, or admin data exposure to normal users
 
@@ -311,7 +311,7 @@ Mock-only notes:
 
 ### Section 11 - Ember Assist
 
-Status: Complete. Commit pending for this section.
+Status: Complete. Commit `e920470`.
 
 Screenshots:
 
@@ -345,6 +345,45 @@ Mock-only notes:
 - The helper hero, recent-help examples, and safety note are static UI framing.
 - Quick action cards use existing safe app surfaces and existing review-first flows.
 - No live AI call, assistant API, upload service, new chat persistence, messaging backend, scraping, checkout, payment flow, database write, auth change, billing change, schema change, or RLS change was added.
+
+### Section 12 - Forge / Trade Analyzer / Listing Builder / Sales Ledger
+
+Status: Complete. Commit pending for this section.
+
+Screenshots:
+
+- `artifacts/qa/live-ui-integration-train/forge/forge-390x844.png`
+- `artifacts/qa/live-ui-integration-train/forge/forge-430x932.png`
+- `artifacts/qa/live-ui-integration-train/forge/forge-1440x900.png`
+- `artifacts/qa/live-ui-integration-train/forge/live-forge-qa-results.json`
+
+QA results:
+
+- 390x844: no horizontal overflow, no console errors, no maximum update depth errors, and required Forge flow copy present.
+- 430x932: no horizontal overflow, no console errors, no maximum update depth errors, and required Forge flow copy present.
+- 1440x900: no horizontal overflow, no console errors, no maximum update depth errors, and required Forge flow copy present.
+- Current local QA role shows seller tools disabled. Trade Analyzer, Listing Builder, and Sales Ledger are still represented as preview/access-state cards without enabling seller tools.
+- Browser screenshots required an outside-sandbox Playwright rerun after sandbox Chromium `spawn EPERM`.
+
+Checks:
+
+- `git diff --check`: passed with existing LF-to-CRLF warnings only.
+- `npm.cmd run build`: passed with existing Vite large chunk warning.
+- `npm.cmd run lint --if-present`: exited cleanly.
+- `npm.cmd run typecheck --if-present`: exited cleanly.
+- `npm.cmd test --if-present`: exited cleanly.
+- `npm.cmd run format:check --if-present`: exited cleanly.
+- `npm.cmd run smoke:beta`: passed.
+- `npm.cmd run test:app-fallbacks`: passed.
+- `npm.cmd run test:menu-full-page-routes`: passed.
+- `npm.cmd run test:sales-records`: passed.
+- `npm.cmd run test:forge-grouped-inventory`: passed.
+
+Mock-only notes:
+
+- Trade Analyzer, Listing Builder, and Sales Ledger cards are static UI previews in the existing Forge dashboard/access state.
+- Sales Ledger can open existing Sales Records; Trade Analyzer and Listing Builder cards do not create records, mutate inventory, post listings, process checkout, or save trade history.
+- No inventory mutation, live sale, payment, checkout, marketplace posting, upload service, database write, auth change, billing change, schema change, or RLS change was added.
 
 ### Section 2 - Scout Online and Watchlist
 

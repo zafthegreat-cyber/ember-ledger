@@ -42458,6 +42458,91 @@ body,
 .ember-assist-guidance-card {
   display: none !important;
 }
+
+/* Live integration train Section 12: Forge trade/listing/sales workspace previews. */
+.forge-workspace-flow-grid {
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0.95rem 0;
+}
+
+.forge-workspace-flow-card {
+  background:
+    radial-gradient(circle at 84% 10%, rgba(255, 122, 24, 0.18), transparent 30%),
+    linear-gradient(145deg, rgba(38, 13, 8, 0.86), rgba(5, 11, 22, 0.92));
+  border: 1px solid rgba(255, 154, 82, 0.24);
+  border-radius: 18px;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.24);
+  display: grid;
+  gap: 0.75rem;
+  min-height: 100%;
+  padding: 0.95rem;
+}
+
+.forge-workspace-flow-card h4 {
+  color: var(--et-readable-text, #f7fbff);
+  margin: 0.2rem 0 0.35rem;
+}
+
+.forge-workspace-flow-card p,
+.forge-workspace-flow-card small {
+  color: var(--et-readable-muted, rgba(232, 246, 255, 0.72));
+  line-height: 1.38;
+  margin: 0;
+}
+
+.forge-workspace-flow-card dl {
+  background: rgba(2, 8, 18, 0.48);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0.72rem;
+}
+
+.forge-workspace-flow-card dl div {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.forge-workspace-flow-card dt {
+  color: rgba(255, 214, 148, 0.82);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
+.forge-workspace-flow-card dd {
+  color: var(--et-readable-text, #f7fbff);
+  font-weight: 800;
+  margin: 0;
+}
+
+.forge-workspace-flow-footer {
+  align-items: end;
+  display: grid;
+  gap: 0.65rem;
+  margin-top: auto;
+}
+
+.forge-workspace-flow-card.is-trade-analyzer {
+  border-color: rgba(255, 194, 71, 0.32);
+}
+
+.forge-workspace-flow-card.is-listing-builder {
+  border-color: rgba(255, 122, 24, 0.32);
+}
+
+.forge-workspace-flow-card.is-sales-ledger {
+  border-color: rgba(132, 226, 255, 0.24);
+}
+
+@media (max-width: 900px) {
+  .forge-workspace-flow-grid {
+    grid-template-columns: 1fr;
+  }
+}
 .ember-assist-live-hero {
   align-items: flex-start;
   background:
