@@ -46393,16 +46393,28 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     };
     const options = [
       {
-        key: "catalog",
-        title: "Search Market Watch Catalog",
-        helper: "Search catalog and prefill item data.",
-        onClick: () => runVaultQuickAction(() => openVaultCatalogSearchFlow({ source: "vault" })),
+        key: "scan-one",
+        title: "Scan one card",
+        helper: "Scan first, verify the match, then review before saving.",
+        onClick: () => runVaultQuickAction(() => openVaultScanFlow()),
       },
       {
-        key: "scan",
-        title: "Scan Product/Card",
-        helper: "Scan first, verify the match, then choose Vault or another destination.",
-        onClick: () => runVaultQuickAction(() => openVaultScanFlow()),
+        key: "binder-page",
+        title: "Scan binder page",
+        helper: "Stage a page as review-first entries. No upload backend is added here.",
+        onClick: () => runVaultQuickAction(() => openProductAddFlow({ source: "vault-binder-page", destinations: { vault: true } })),
+      },
+      {
+        key: "sealed",
+        title: "Add sealed product",
+        helper: "Keep sealed products separate from card completion.",
+        onClick: () => runVaultQuickAction(() => openProductAddFlow({ source: "vault-sealed-quick-add", destinations: { vault: true }, seed: { productType: "Sealed Product" } })),
+      },
+      {
+        key: "catalog",
+        title: "Search catalog",
+        helper: "Search catalog and prefill item data.",
+        onClick: () => runVaultQuickAction(() => openVaultCatalogSearchFlow({ source: "vault" })),
       },
       {
         key: "picture",
@@ -46412,7 +46424,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       },
       {
         key: "add",
-        title: "Manual Add",
+        title: "Add manually",
         helper: "Add an item with your own details.",
         onClick: () => runVaultQuickAction(() => openMultiDestinationAddFlow({
           source: "vault-manual",
@@ -46427,7 +46439,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       },
       {
         key: "collection-import",
-        title: "Import Collection",
+        title: "Import list",
         helper: "Upload or map a collection file.",
         onClick: () => runVaultQuickAction(() => openVaultImportCollectionFlow()),
       },
@@ -46447,6 +46459,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
     return (
       <div className="vault-quick-add-panel">
+        <div className="vault-add-review-note">
+          <strong>Review before saving.</strong>
+          <span>Vault add paths stage details first. Nothing is saved until you confirm the final item.</span>
+        </div>
         <div className="vault-quick-add-grid">
           {options.map((option) => (
             <button key={option.key} type="button" className="vault-quick-add-option" onClick={option.onClick}>
@@ -57873,6 +57889,19 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   </div>
                 </div>
               </details>
+              ) : null}
+
+              {!vaultItems.length ? (
+                <article className="vault-empty-action-card" aria-label="Empty Vault first actions">
+                  <span className="trust-badge trust-badge--secure">Empty Vault</span>
+                  <h3>Start with one reviewed item.</h3>
+                  <p>Add a card, sealed product, binder page, or import list. Vault keeps wishlist wants, sealed products, and owned cards separate.</p>
+                  <div className="quick-actions">
+                    <button type="button" onClick={openVaultQuickAddFlow}>Add first item</button>
+                    <button type="button" className="secondary-button" onClick={openVaultScanFlow}>Scan card</button>
+                    <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ source: "vault-empty-sealed", destinations: { vault: true }, seed: { productType: "Sealed Product" } })}>Add sealed</button>
+                  </div>
+                </article>
               ) : null}
 
               {vaultItems.length ? (

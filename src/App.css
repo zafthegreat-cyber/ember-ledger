@@ -67395,6 +67395,35 @@ html body .app .scan-product-modal .scanner-review-primary-action {
   color: #fbf3ff !important;
 }
 
+.app-vault .vault-add-review-note,
+.app-command-shell.app-vault .vault-add-review-note,
+.app-shell-dark.app-vault .vault-add-review-note {
+  display: grid;
+  gap: 4px;
+  padding: 11px 12px;
+  border: 1px solid rgba(255, 179, 71, 0.24);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 179, 71, 0.13), transparent 9rem),
+    rgba(4, 12, 27, 0.76);
+}
+
+.app-vault .vault-add-review-note strong,
+.app-command-shell.app-vault .vault-add-review-note strong,
+.app-shell-dark.app-vault .vault-add-review-note strong {
+  color: #fff3d6;
+  font-size: 0.9rem;
+  line-height: 1.2;
+}
+
+.app-vault .vault-add-review-note span,
+.app-command-shell.app-vault .vault-add-review-note span,
+.app-shell-dark.app-vault .vault-add-review-note span {
+  color: rgba(232, 246, 255, 0.72);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
 .app-vault .vault-primary-controls,
 .app-vault .vault-mobile-filter-drawer,
 .app-vault .vault-filter-panel {

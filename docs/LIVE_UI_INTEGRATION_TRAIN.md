@@ -19,8 +19,8 @@
 | 0.3 | Scout Store Detail / Watch Stores / Alerts / Calendar | Complete | `ed815c5` | Supporting Scout stores/alerts section completed before this expanded train order. |
 | 1 | Scout Add Report / Scan Screenshot / Review Report | Complete | `f88384a` | Mock-only page shells inside existing Scout route state. |
 | 2 | Scout Online and Watchlist | Complete | `00c723d` | Mock-only online signals and tier-safe watchlist. |
-| 3 | Vault Home | Complete | This section commit | Live Vault Home dashboard integrated above existing collection list. |
-| 4 | Vault Item Detail / Add Item / Empty Vault | Not started | - | Do not start until Vault Home completes. |
+| 3 | Vault Home | Complete | `d3b19e7` | Live Vault Home dashboard integrated above existing collection list. |
+| 4 | Vault Item Detail / Add Item / Empty Vault | Complete | This section commit | Empty Vault and Add Item flow polished; existing item detail preserved. |
 | 5 | Market Home | Not started | - | Mock-only market search/discovery UI. |
 | 6 | Market Product Detail / Loading / Error | Not started | - | Honest labels only; no live price API. |
 | 7 | More / Settings / Privacy & Safety / Membership | Not started | - | No billing or auth changes. |
@@ -143,6 +143,52 @@ Warnings:
 - Existing Vite large chunk warning.
 - Existing LF-to-CRLF working-copy warning.
 - Chromium needs outside-sandbox rerun in this environment when sandbox launch hits `spawn EPERM`.
+
+Backend/auth/billing/database/RLS changes: none.
+
+Deploy run: no.
+
+### Section 4 - Vault Item Detail / Add Item / Empty Vault
+
+Status: Complete. Commit pending for this section.
+
+Screenshots:
+
+- `artifacts/qa/live-ui-integration-train/vault-item-flows/vault-empty-390x844.png`
+- `artifacts/qa/live-ui-integration-train/vault-item-flows/vault-empty-430x932.png`
+- `artifacts/qa/live-ui-integration-train/vault-item-flows/vault-empty-1440x900.png`
+- `artifacts/qa/live-ui-integration-train/vault-item-flows/vault-add-item-390x844.png`
+- `artifacts/qa/live-ui-integration-train/vault-item-flows/vault-add-item-430x932.png`
+- `artifacts/qa/live-ui-integration-train/vault-item-flows/vault-add-item-1440x900.png`
+- `artifacts/qa/live-ui-integration-train/vault-item-flows/live-vault-item-flows-qa-results.json`
+
+QA results:
+
+- 390x844: no horizontal overflow, no bottom dock overlap, no console errors, no maximum update depth errors.
+- 430x932: no horizontal overflow, no bottom dock overlap, no console errors, no maximum update depth errors.
+- 1440x900: no horizontal overflow, no bottom dock overlap, no console errors, no maximum update depth errors.
+- Populated item detail screenshot was not reachable because the current beta-local Vault state is empty; existing `VaultItemDetail` remains the live detail component.
+- Standalone `screen-set.html` preview rendered at 390x844 with approved Hearth / Scout / Vault / Market / More nav text, no horizontal overflow, and no console/page errors.
+
+Checks:
+
+- `git diff --check`: passed with existing LF-to-CRLF warnings only.
+- `npm.cmd run build`: passed with existing Vite large-chunk warning.
+- `npm.cmd run lint --if-present`: exited cleanly.
+- `npm.cmd run typecheck --if-present`: exited cleanly.
+- `npm.cmd test --if-present`: exited cleanly.
+- `npm.cmd run format:check --if-present`: exited cleanly.
+- `npm.cmd run smoke:beta`: passed.
+- `npm.cmd run test:app-fallbacks`: passed.
+- `npm.cmd run test:menu-full-page-routes`: passed.
+- `npm.cmd run test:vault`: passed outside sandbox after sandbox Chromium `spawn EPERM`.
+
+Warnings:
+
+- Existing Vite large chunk warning.
+- Existing LF-to-CRLF working-copy warning.
+- Chromium needs outside-sandbox rerun in this environment when sandbox launch hits `spawn EPERM`.
+- Populated item detail screenshot was not captured because the current beta-local Vault state is empty.
 
 Backend/auth/billing/database/RLS changes: none.
 
