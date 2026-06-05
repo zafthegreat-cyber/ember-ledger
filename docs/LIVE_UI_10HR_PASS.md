@@ -41,7 +41,7 @@
 ## Commits Created
 
 - `aa6a7ea Integrate live Hearth UI foundation` was already present at the start of this pass.
-- Scout Home integration commit: pending until final commit step.
+- `ff6d8a3 Integrate live Scout home UI` was created for the live Scout Home integration.
 
 ## Files Changed
 
@@ -197,6 +197,8 @@ Probe results:
 - No RLS policy changed.
 - No payments, checkout, subscriptions, scraping, auto-buy, live AI, or live messaging added.
 - No Scout report save logic or tier enforcement changed.
+- Final git status after commit: clean.
+- Deploy run: no.
 
 ## Next Recommended Task
 

@@ -73862,6 +73862,290 @@ button.et-live-action:focus-visible {
   font-size: 0.75rem !important;
 }
 
+/* Live Scout report flow integration: mock-only, review-first Scout shells. */
+.app-scout .scout-live-flow,
+.app-command-shell.app-scout .scout-live-flow,
+.app-shell-dark.app-scout .scout-live-flow {
+  width: min(100%, 1220px);
+  margin-inline: auto;
+  display: grid;
+  gap: 14px;
+  padding-bottom: max(150px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 82px));
+}
+
+.scout-live-flow-hero,
+.scout-live-safe-notice,
+.scout-live-upload-card,
+.scout-live-extraction-card,
+.scout-live-review-card,
+.scout-live-form-card,
+.scout-live-trust-card {
+  min-width: 0;
+  border-color: rgba(43, 217, 255, 0.22) !important;
+  background:
+    radial-gradient(circle at 88% 0%, rgba(43, 217, 255, 0.13), transparent 14rem),
+    linear-gradient(145deg, rgba(6, 23, 42, 0.96), rgba(3, 10, 23, 0.98)) !important;
+  color: rgba(247, 252, 255, 0.96) !important;
+}
+
+.scout-live-flow-hero {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.scout-live-flow-hero h2,
+.scout-live-form-card h3,
+.scout-live-extraction-card h3,
+.scout-live-review-card h3,
+.scout-live-trust-card h3 {
+  margin: 0;
+  color: #f7fcff;
+  letter-spacing: 0;
+}
+
+.scout-live-flow-hero h2 {
+  font-size: clamp(1.45rem, 4vw, 2.15rem);
+}
+
+.scout-live-flow-hero p,
+.scout-live-safe-notice p,
+.scout-live-upload-card p,
+.scout-live-trust-card p {
+  margin: 4px 0 0;
+  color: rgba(219, 244, 255, 0.76);
+  line-height: 1.45;
+}
+
+.scout-live-safe-notice {
+  display: grid;
+  gap: 4px;
+  border-color: rgba(255, 211, 111, 0.26) !important;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(255, 184, 72, 0.14), transparent 12rem),
+    linear-gradient(135deg, rgba(22, 18, 10, 0.9), rgba(5, 18, 34, 0.9)) !important;
+}
+
+.scout-live-safe-notice strong {
+  color: #ffd36f;
+}
+
+.scout-live-flow-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.75fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.scout-live-upload-zone {
+  min-height: 210px;
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  padding: 22px;
+  text-align: center;
+  border: 1px dashed rgba(132, 226, 255, 0.32);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 50% 12%, rgba(43, 217, 255, 0.16), transparent 10rem),
+    rgba(2, 13, 28, 0.62);
+}
+
+.scout-live-upload-zone .command-icon {
+  width: 52px;
+  height: 52px;
+  color: #b9f7ff;
+  background: rgba(43, 217, 255, 0.12);
+  border-color: rgba(43, 217, 255, 0.28);
+}
+
+.scout-live-chip-grid,
+.scout-live-warning-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.scout-live-chip-grid span,
+.scout-live-warning-list span {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 7px 10px;
+  border: 1px solid rgba(132, 226, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(2, 13, 28, 0.58);
+  color: rgba(232, 246, 255, 0.84);
+  font-size: 0.78rem;
+  font-weight: 850;
+  line-height: 1.15;
+}
+
+.scout-live-warning-list span {
+  border-color: rgba(255, 211, 111, 0.22);
+  color: #ffe3a5;
+}
+
+.scout-live-summary-list,
+.scout-live-field-grid,
+.scout-live-option-grid {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.scout-live-summary-row {
+  min-height: 52px;
+  display: grid;
+  grid-template-columns: minmax(88px, 0.35fr) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid rgba(43, 217, 255, 0.16);
+  border-radius: 16px;
+  background: rgba(2, 13, 28, 0.58);
+  text-align: left;
+}
+
+.scout-live-summary-row span,
+.scout-live-field-grid label span {
+  color: rgba(219, 244, 255, 0.66);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  line-height: 1.15;
+}
+
+.scout-live-summary-row strong {
+  min-width: 0;
+  color: #f7fcff;
+  font-size: 0.92rem;
+  line-height: 1.25;
+}
+
+.scout-live-summary-row em {
+  color: #b9f7ff;
+  font-size: 0.74rem;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.scout-live-option-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 12px;
+}
+
+.scout-live-option-grid button {
+  min-height: 78px;
+  display: grid;
+  gap: 4px;
+  align-content: center;
+  padding: 12px;
+  border: 1px solid rgba(43, 217, 255, 0.16);
+  border-radius: 18px;
+  background: rgba(2, 13, 28, 0.58);
+  color: rgba(247, 252, 255, 0.94);
+  text-align: left;
+}
+
+.scout-live-option-grid button.is-selected {
+  border-color: rgba(255, 211, 111, 0.48);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(255, 184, 72, 0.14), transparent 8rem),
+    rgba(24, 20, 11, 0.78);
+}
+
+.scout-live-option-grid button span {
+  color: rgba(219, 244, 255, 0.66);
+  font-size: 0.78rem;
+}
+
+.scout-live-field-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.scout-live-field-grid label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.scout-live-field-grid input {
+  min-height: 46px;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(43, 217, 255, 0.18);
+  border-radius: 14px;
+  background: rgba(2, 13, 28, 0.62);
+  color: #f7fcff;
+  padding: 9px 11px;
+}
+
+.scout-live-actions {
+  margin-top: 14px;
+}
+
+.scout-live-actions button {
+  min-height: 46px;
+}
+
+.scout-live-success {
+  margin-top: 12px;
+  padding: 13px;
+  border: 1px solid rgba(78, 235, 169, 0.28);
+  border-radius: 18px;
+  background: rgba(14, 80, 58, 0.28);
+}
+
+.scout-live-success strong {
+  color: #b8ffd8;
+}
+
+.scout-live-success p {
+  margin: 4px 0 0;
+  color: rgba(219, 244, 255, 0.74);
+}
+
+@media (max-width: 700px) {
+  .app-scout .scout-live-flow,
+  .app-command-shell.app-scout .scout-live-flow,
+  .app-shell-dark.app-scout .scout-live-flow,
+  .scout-live-flow-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .app-scout .scout-live-flow,
+  .app-command-shell.app-scout .scout-live-flow,
+  .app-shell-dark.app-scout .scout-live-flow {
+    padding-inline: 8px;
+    padding-bottom: max(190px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 112px));
+  }
+
+  .scout-live-flow-hero {
+    align-items: start;
+    display: grid;
+  }
+
+  .scout-live-option-grid,
+  .scout-live-field-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .scout-live-summary-row {
+    grid-template-columns: 1fr;
+  }
+
+  .scout-live-summary-row em {
+    justify-self: start;
+  }
+}
+
 .app-home .command-hearth-header {
   border-color: rgba(255, 211, 111, 0.24);
 }

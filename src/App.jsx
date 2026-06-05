@@ -5181,6 +5181,7 @@ export default function App() {
   const [tidepoolFlagReason, setTidepoolFlagReason] = useState(TIDEPOOL_FLAG_REASONS[0]);
   const [tidepoolFlagDetails, setTidepoolFlagDetails] = useState("");
   const [scoutView, setScoutView] = useState(initialRouteState.scoutView || "overview");
+  const [scoutReviewMockSubmitted, setScoutReviewMockSubmitted] = useState(false);
   const [whatDidISeeSeedProduct, setWhatDidISeeSeedProduct] = useState(null);
   const [scoutReportFilter, setScoutReportFilter] = useState(initialRouteState.scoutReportFilter || "Latest");
   const [scoutReportSort, setScoutReportSort] = useState(initialRouteState.scoutReportSort || "Newest first");
@@ -20385,6 +20386,12 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     openFlowModal("scoutSubmit", { size: "medium", source: options.source });
   }
 
+  function openLiveScoutReportFlow(flow = "addReport") {
+    setActiveTab("scout");
+    setScoutReviewMockSubmitted(false);
+    setScoutView(flow);
+  }
+
   function openScoutGuessFlow() {
     if (!currentUserCanSubmitScoutGuess) {
       setScoutForecastMode("guesses");
@@ -24134,12 +24141,12 @@ function renderScoutHeader() {
       actions={(
         <>
           <button type="button" className="secondary-button scout-scan-screenshot-action" onClick={() => {
-            openQuickAddPathFlow("scoutScreenshotReview", {}, "scout-header-scan-screenshot");
+            openLiveScoutReportFlow("scanScreenshot");
           }}>
             Scan Screenshot
           </button>
           <button type="button" className="scout-submit-primary" onClick={() => {
-            openScoutSubmitFlow({ source: "scout-header" });
+            openLiveScoutReportFlow("addReport");
           }}>
             Add Report
           </button>
@@ -34926,7 +34933,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </div>
             <div className="quick-actions">
               <button type="button" onClick={openScoutStoresList}>Choose watched store</button>
-              <button type="button" className="secondary-button" onClick={() => openScoutSubmitFlow({ source: "scout-home" })}>Submit report</button>
+              <button type="button" className="secondary-button" onClick={() => openLiveScoutReportFlow("addReport")}>Submit report</button>
             </div>
           </article>
 
@@ -34936,11 +34943,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <h2>Nearby Reports</h2>
                 <p>Mock current signals show store, proof, confidence, and family context without exploitable details.</p>
               </div>
-              <button type="button" className="secondary-button" onClick={() => {
-                setScoutReportFilter("Latest");
-                setScoutReportsPage(1);
-                setScoutView("reports");
-              }}>Open report flow</button>
+              <button type="button" className="secondary-button" onClick={() => openLiveScoutReportFlow("reviewReport")}>Review report</button>
             </div>
             <div className="scout-home-report-grid">
               {scoutHomeReports.map((report) => (
@@ -35025,6 +35028,234 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
           {renderScoutTierLockCard({ compact: true })}
         </aside>
+      </section>
+    );
+  }
+
+  function renderLiveScoutReportFlowPage(flow) {
+    const mockReport = {
+      store: "Target",
+      area: "Short Pump, Richmond VA",
+      productCategory: "Pokemon sealed products",
+      status: "Worth checking today",
+      timeSeen: "Today, 4:18 PM",
+      proof: "Shelf photo",
+      confidence: "92%",
+      familyNote: "Useful for a parent stop after errands. Sensitive details stay protected.",
+    };
+    const reportTypes = [
+      "Store restock",
+      "Online availability",
+      "Sold out confirmation",
+      "Shop update",
+      "Event / family-friendly drop",
+    ];
+    const acceptedSources = [
+      "Facebook post",
+      "Discord screenshot",
+      "store app screenshot",
+      "shelf photo",
+      "receipt photo",
+      "shop post",
+    ];
+    const summaryRows = [
+      { label: "Store", value: mockReport.store },
+      { label: "Area", value: mockReport.area },
+      { label: "Product category", value: mockReport.productCategory },
+      { label: "Status", value: mockReport.status },
+      { label: "Time seen", value: mockReport.timeSeen },
+      { label: "Proof", value: mockReport.proof },
+      { label: "Confidence", value: mockReport.confidence },
+      { label: "Family note", value: mockReport.familyNote },
+    ];
+    const backToScout = () => {
+      setScoutReviewMockSubmitted(false);
+      setScoutView("overview");
+    };
+    const safetyNotice = "Please avoid employee names, private messages, vendor schedules, and unsafe details.";
+
+    if (flow === "scanScreenshot") {
+      return (
+        <section className="scout-live-flow scout-live-flow--scan" aria-label="Scout Scan Screenshot">
+          <article className="panel scout-live-flow-hero">
+            <div>
+              <p className="section-kicker">Scout proof flow</p>
+              <h2>Scan Screenshot</h2>
+              <p>Upload, extract, review, then submit.</p>
+            </div>
+            <button type="button" className="secondary-button" onClick={backToScout}>Back to Scout</button>
+          </article>
+
+          <article className="panel scout-live-safe-notice">
+            <strong>Current signals only.</strong>
+            <p>We use reports to help families, not expose restock patterns.</p>
+          </article>
+
+          <div className="scout-live-flow-grid">
+            <article className="panel scout-live-upload-card">
+              <div className="scout-live-upload-zone" role="img" aria-label="Mock screenshot upload area">
+                <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed="scan" /></span>
+                <strong>Mock scan area</strong>
+                <p>This local preview shell does not send files, extract live text, or save reports.</p>
+              </div>
+              <div className="scout-live-chip-grid" aria-label="Accepted mock proof sources">
+                {acceptedSources.map((source) => <span key={source}>{source}</span>)}
+              </div>
+              <div className="quick-actions scout-live-actions">
+                <button type="button" onClick={() => openLiveScoutReportFlow("reviewReport")}>Review extracted report</button>
+                <button type="button" className="secondary-button" onClick={() => openLiveScoutReportFlow("addReport")}>Enter manually</button>
+              </div>
+            </article>
+
+            <article className="panel scout-live-extraction-card">
+              <div className="compact-card-header">
+                <div>
+                  <p className="section-kicker">Mock extraction result</p>
+                  <h3>Review-ready details</h3>
+                </div>
+                <span className="status-badge scout-confidence-badge scout-confidence-badge--verified">{mockReport.confidence}</span>
+              </div>
+              <div className="scout-live-summary-list">
+                {summaryRows.slice(0, 7).map((row) => (
+                  <div className="scout-live-summary-row" key={row.label}>
+                    <span>{row.label}</span>
+                    <strong>{row.value}</strong>
+                  </div>
+                ))}
+              </div>
+            </article>
+          </div>
+        </section>
+      );
+    }
+
+    if (flow === "reviewReport") {
+      return (
+        <section className="scout-live-flow scout-live-flow--review" aria-label="Scout Review Report">
+          <article className="panel scout-live-flow-hero">
+            <div>
+              <p className="section-kicker">Review before sharing</p>
+              <h2>Review Report</h2>
+              <p>Confirm details before sharing.</p>
+            </div>
+            <button type="button" className="secondary-button" onClick={backToScout}>Back to Scout</button>
+          </article>
+
+          <article className="panel scout-live-safe-notice">
+            <strong>Nothing is shared until you review and confirm.</strong>
+            <p>Proof helps families decide whether a trip is worth it.</p>
+          </article>
+
+          <div className="scout-live-flow-grid">
+            <article className="panel scout-live-review-card">
+              <div className="compact-card-header">
+                <div>
+                  <p className="section-kicker">Editable-looking summary</p>
+                  <h3>Current report details</h3>
+                </div>
+                <span className="status-badge">Mock only</span>
+              </div>
+              <div className="scout-live-summary-list">
+                {summaryRows.map((row) => (
+                  <button type="button" className="scout-live-summary-row is-editable" key={row.label}>
+                    <span>{row.label}</span>
+                    <strong>{row.value}</strong>
+                    <em>Edit</em>
+                  </button>
+                ))}
+              </div>
+              <div className="quick-actions scout-live-actions">
+                <button type="button" onClick={() => setScoutReviewMockSubmitted(true)}>Submit current report</button>
+                <button type="button" className="secondary-button" onClick={() => openLiveScoutReportFlow("addReport")}>Edit manually</button>
+              </div>
+              {scoutReviewMockSubmitted ? (
+                <div className="scout-live-success" role="status">
+                  <strong>Thanks - your report is queued for trust review.</strong>
+                  <p>No real report was saved in this mock-only production shell.</p>
+                </div>
+              ) : null}
+            </article>
+
+            <aside className="panel scout-live-trust-card">
+              <div>
+                <p className="section-kicker">Trust impact</p>
+                <h3>Your proof helps families decide whether a trip is worth it.</h3>
+                <p>Review-first reports keep Scout useful without turning it into a scalper feed.</p>
+              </div>
+              <div className="scout-live-warning-list">
+                <span>No vendor schedules</span>
+                <span>No employee names</span>
+                <span>No private messages</span>
+                <span>Exact quantities stay hidden unless a trusted shop chooses to share them.</span>
+              </div>
+              <button type="button" className="secondary-button" onClick={backToScout}>Back to Scout</button>
+            </aside>
+          </div>
+        </section>
+      );
+    }
+
+    return (
+      <section className="scout-live-flow scout-live-flow--add" aria-label="Scout Add Report">
+        <article className="panel scout-live-flow-hero">
+          <div>
+            <p className="section-kicker">Proof-based Scout</p>
+            <h2>Add Report</h2>
+            <p>Share useful proof, not exploitable patterns.</p>
+          </div>
+          <button type="button" className="secondary-button" onClick={backToScout}>Back to Scout</button>
+        </article>
+
+        <article className="panel scout-live-safe-notice">
+          <strong>Safety first.</strong>
+          <p>{safetyNotice}</p>
+        </article>
+
+        <div className="scout-live-flow-grid">
+          <article className="panel scout-live-form-card">
+            <div className="compact-card-header">
+              <div>
+                <p className="section-kicker">Report type</p>
+                <h3>What are you sharing?</h3>
+              </div>
+              <span className="status-badge">Mock only</span>
+            </div>
+            <div className="scout-live-option-grid">
+              {reportTypes.map((type, index) => (
+                <button type="button" className={index === 0 ? "is-selected" : ""} key={type}>
+                  <strong>{type}</strong>
+                  <span>{index === 0 ? "Current store signal" : "Review-first signal"}</span>
+                </button>
+              ))}
+            </div>
+            <div className="scout-live-field-grid">
+              {summaryRows.filter((row) => row.label !== "Confidence").map((row) => (
+                <label key={row.label}>
+                  <span>{row.label}</span>
+                  <input value={row.value} readOnly aria-label={`${row.label} mock value`} />
+                </label>
+              ))}
+            </div>
+            <div className="quick-actions scout-live-actions">
+              <button type="button" onClick={() => openLiveScoutReportFlow("reviewReport")}>Review report</button>
+              <button type="button" className="secondary-button" onClick={() => openLiveScoutReportFlow("scanScreenshot")}>Scan screenshot instead</button>
+            </div>
+          </article>
+
+          <aside className="panel scout-live-trust-card">
+            <div>
+              <p className="section-kicker">Scout guardrails</p>
+              <h3>Useful proof, not exploitable patterns.</h3>
+              <p>Current signals only. We hide harmful pattern details and keep sensitive store context out of public view.</p>
+            </div>
+            <div className="scout-live-warning-list">
+              <span>No vendor schedules</span>
+              <span>No employee names</span>
+              <span>No private messages</span>
+              <span>Proof helps families decide whether a trip is worth it.</span>
+            </div>
+          </aside>
+        </div>
       </section>
     );
   }
@@ -57961,6 +58192,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               renderScoutReportsPanel()
             ) : activeScoutPage === "review" ? (
               renderScoutReviewPanel()
+            ) : normalizedScoutView === "addReport" || normalizedScoutView === "scanScreenshot" || normalizedScoutView === "reviewReport" ? (
+              renderLiveScoutReportFlowPage(normalizedScoutView)
             ) : (
               renderScoutOverviewPanel()
             )}
