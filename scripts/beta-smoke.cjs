@@ -567,7 +567,7 @@ async function main() {
     await page.setViewportSize({ width: 390, height: 844 });
     await nav("Scout");
     await assertVisibleText("Scout");
-    await assertVisibleText("Family-safe store signals. Current reports only.");
+    await assertVisibleText("Current reports, not raw patterns.");
     await expectVisible(page.locator(".scout-watch-stores-card").first(), "My Watch Stores section");
     await assertVisibleText("Nearby Reports");
     const scanScreenshotButton = page.getByRole("button", { name: /^Scan Screenshot$/ }).first();
