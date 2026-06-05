@@ -6,8 +6,11 @@
 - QA date/time: 2026-06-05 12:03:34 -04:00
 - Hosting provider: Vercel Git integration
 - Original public beta deployment commit tested: `3209a126422a50e6ad1036b1e67454958894efeb`
+- Fix commit deployed: `bb003f42edc16f790a57171ca513a8ec2cbd904c`
+- Vercel deployment ID after fix: `dpl_BPy2RLXbsqnj8CCJNuQp7u8qQUMp`
+- Live app-version after fix: `dpl_BPy2RLXbsqnj8CCJNuQp7u8qQUMp-bb003f42edc16f790a57171ca513a8ec2cbd904c-2026-06-05T16:05:39.333Z`
 - Local fix verification branch: `ui-100-preview-checkpoint`
-- Redeploy status at document creation: pending code-fix deploy
+- Redeploy result: succeeded through the existing Vercel Git integration.
 
 ## Screens Tested
 
@@ -83,6 +86,28 @@ Results:
 - Membership retained Free as a complete core collector app.
 - Scout retained anti-scalper copy and avoided unsafe pattern data.
 - Admin Review remained protected in normal-user/signed-out state.
+
+## Live Post-Fix QA
+
+Production was rechecked after the fix deployment.
+
+- Screenshot folder: `artifacts/qa/public-beta-post-deploy/live-after-fix/`
+- Result file: `artifacts/qa/public-beta-post-deploy/live-after-fix/live-after-fix-qa-results.json`
+- Captures: 104
+- Failures: 0
+- Viewports: 390x844, 430x932, 768x1024, 1440x900
+
+Results:
+
+- Public URL loaded.
+- No blank screens.
+- No console errors.
+- No React maximum update depth errors.
+- No horizontal overflow.
+- No visible bottom-dock overlap.
+- Bottom nav worked on compact viewports.
+- Mock-only flows remained framed as preview, coming soon, queued, or review-first.
+- No local Windows paths, local artifact paths, localhost text, raw debug text, secrets, private child data, or admin controls were exposed to normal users.
 
 ## Free Feature Parity Result
 
