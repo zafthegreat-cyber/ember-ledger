@@ -28,34 +28,34 @@
 | 9 | Tidepool | Complete | `9dae179` | Mock-only moderated community UI. |
 | 10 | The Spark / Donate / Thank You | Complete | `91a03f6` | Mock-only giving flow; no payments. |
 | 11 | Ember Assist | Complete | `e920470` | Mock/local helper UI framing; no live AI calls added. |
-| 12 | Forge / Trade Analyzer / Listing Builder / Sales Ledger | Complete | Commit pending for this section | Mock-only workspace UI; no inventory writes. |
-| 13 | Shop Portal | Not started | - | Mock-only trust controls; no shop backend changes. |
+| 12 | Forge / Trade Analyzer / Listing Builder / Sales Ledger | Complete | `a84238e` | Mock-only workspace UI; no inventory writes. |
+| 13 | Shop Portal | Complete | Commit pending for this section | Mock-only trust controls; no shop backend changes. |
 | 14 | Admin Review | Not started | - | Mock-only review UI; no admin mutations. |
 | 15 | Onboarding and Virginia-first Flow | Not started | - | Mock/local UI only unless existing safe onboarding exists. |
 | 16 | Final Integration QA and Polish | Not started | - | Final consistency, spacing, docs, screenshots, tests. |
 
-## Current Section: Forge / Trade Analyzer / Listing Builder / Sales Ledger
+## Current Section: Shop Portal
 
-Started: 2026-06-05 04:20:00 -04:00
+Started: 2026-06-05 04:43:00 -04:00
 
 Scope:
 
-- Forge dashboard workspace
-- Trade Analyzer mock preview
-- Listing Builder mock preview
-- Sales Ledger preview and existing Sales Records entry point
+- Shop Portal route
+- Shop profile and trusted family friend badge preview
+- Restock status and event composer previews
+- Donation/sponsor tools and admin review status
 
 Allowed behavior:
 
-- Mock/static trade, listing, and sales preview cards
-- Existing Forge inventory, sales records, and route surfaces
+- Mock/static shop trust controls and interest intake UI
+- Existing partner interest route and local beta interest behavior
 - Existing approved Hearth / Scout / Vault / Market / More nav
 
 Disallowed behavior:
 
 - Auth, billing, database, or RLS changes
-- Inventory mutation changes or new backend writes
-- Live sales, checkout, payments, or marketplace posting
+- Shop backend changes or inventory sync
+- Live posting, live shop updates, exact inventory quantity, checkout, or payments
 - Uploads, live AI, live messaging, scraping, or auto-buy behavior
 - Backend writes or Supabase mutations
 - Private child/family data exposure, raw Scout pattern exposure, or admin data exposure to normal users
@@ -348,7 +348,7 @@ Mock-only notes:
 
 ### Section 12 - Forge / Trade Analyzer / Listing Builder / Sales Ledger
 
-Status: Complete. Commit pending for this section.
+Status: Complete. Commit `a84238e`.
 
 Screenshots:
 
@@ -384,6 +384,45 @@ Mock-only notes:
 - Trade Analyzer, Listing Builder, and Sales Ledger cards are static UI previews in the existing Forge dashboard/access state.
 - Sales Ledger can open existing Sales Records; Trade Analyzer and Listing Builder cards do not create records, mutate inventory, post listings, process checkout, or save trade history.
 - No inventory mutation, live sale, payment, checkout, marketplace posting, upload service, database write, auth change, billing change, schema change, or RLS change was added.
+
+### Section 13 - Shop Portal
+
+Status: Complete. Commit pending for this section.
+
+Screenshots:
+
+- `artifacts/qa/live-ui-integration-train/shop-portal/shop-portal-390x844.png`
+- `artifacts/qa/live-ui-integration-train/shop-portal/shop-portal-430x932.png`
+- `artifacts/qa/live-ui-integration-train/shop-portal/shop-portal-1440x900.png`
+- `artifacts/qa/live-ui-integration-train/shop-portal/live-shop-portal-qa-results.json`
+
+QA results:
+
+- 390x844: no horizontal overflow, no console errors, no maximum update depth errors, and required shop trust/composer copy present.
+- 430x932: no horizontal overflow, no console errors, no maximum update depth errors, and required shop trust/composer copy present.
+- 1440x900: no horizontal overflow, no console errors, no maximum update depth errors, and required shop trust/composer copy present.
+- QA text search found "checkout" only in explicit safety copy saying checkout is not connected.
+- Browser screenshots required an outside-sandbox Playwright rerun after sandbox Chromium `spawn EPERM`.
+
+Checks:
+
+- `git diff --check`: passed with existing LF-to-CRLF warnings only.
+- `npm.cmd run build`: passed with existing Vite large chunk warning.
+- `npm.cmd run lint --if-present`: exited cleanly.
+- `npm.cmd run typecheck --if-present`: exited cleanly.
+- `npm.cmd test --if-present`: exited cleanly.
+- `npm.cmd run format:check --if-present`: exited cleanly.
+- `npm.cmd run smoke:beta`: passed.
+- `npm.cmd run test:app-fallbacks`: passed.
+- `npm.cmd run test:menu-full-page-routes`: passed.
+- `npm.cmd run test:kids-program`: passed.
+- `npm.cmd run test:admin`: sandbox Chromium `spawn EPERM`; outside-sandbox rerun passed.
+
+Mock-only notes:
+
+- Shop profile, trusted family friend badge, restock status composer, event draft, donation/sponsor tools, and admin review status are static UI previews.
+- The previous AI drafting action was removed from this surface for the no-live-AI boundary.
+- No shop backend change, inventory sync, live posting, exact quantity publishing, payment, checkout, upload service, database write, auth change, billing change, schema change, or RLS change was added.
 
 ### Section 2 - Scout Online and Watchlist
 

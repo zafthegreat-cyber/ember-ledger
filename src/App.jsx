@@ -38470,21 +38470,98 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }
 
   function renderSponsorInterestPage() {
+    const shopPortalTrustCards = [
+      { title: "Trusted family friend", body: "Approved shops can show family-safe event support, fair update language, and Spark participation status.", status: "Review required" },
+      { title: "Helpful updates", body: "Post broad status context without exact quantity, vendor schedule, or rush-feed language.", status: "No rush feed" },
+      { title: "Donation support", body: "Coordinate packs, supplies, event help, or sponsor support for The Spark after admin review.", status: "Mock only" },
+    ];
+    const shopPortalStatuses = ["In stock", "Limited", "Sold out", "Call first", "Family hold", "Event only"];
+    const shopPortalTools = [
+      { title: "Drop/event composer", body: "Draft a Learn to Play Day or Spark drop-off event for review." },
+      { title: "Restock status composer", body: "Use safe broad labels instead of exact quantities or vendor timing." },
+      { title: "Donation/sponsor tools", body: "Share support categories without payments or checkout." },
+      { title: "Admin review status", body: "Updates stay pending until Ember & Tide review is approved." },
+    ];
     return (
       <>
         <PageHeader
-          className={getHeaderCardClass("panel page-summary-card")}
-          title="Partner With Ember & Tide"
-          subtitle="Support kid-friendly Pokemon access, local events, fair collecting, and beta sponsor opportunities."
+          className={getHeaderCardClass("panel page-summary-card shop-portal-header")}
+          title="Shop Portal"
+          subtitle="Post helpful updates without creating a rush feed."
           actions={(
             <>
-              <button type="button" className="secondary-button" onClick={() => void runMarketingAiAssist("sponsor")}>Draft sponsor message</button>
+              <button type="button" className="secondary-button" onClick={() => setActiveTab("trust")}>Review safety rules</button>
               <button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Back to Home</button>
             </>
           )}
         />
         <section className="panel sponsor-interest-panel">
+          <div className="shop-portal-grid" aria-label="Shop Portal trust controls">
+            <article className="shop-portal-profile-card">
+              <span className="section-kicker">Family-friendly shop profile</span>
+              <h2>Trusted local support, never a scalper feed.</h2>
+              <p>Shop Portal is a mock-only review surface for future trusted family friends, stores, sellers, and sponsors. Nothing posts publicly from this page.</p>
+              <div className="summary-pill-row">
+                <span className="trust-badge trust-badge--secure">Trusted family friend badge pending</span>
+                <span className="status-badge">Admin review required</span>
+              </div>
+            </article>
+            {shopPortalTrustCards.map((card) => (
+              <article className="shop-portal-trust-card" key={card.title}>
+                <strong>{card.title}</strong>
+                <span>{card.body}</span>
+                <small>{card.status}</small>
+              </article>
+            ))}
+          </div>
+
+          <div className="shop-portal-composer-grid" aria-label="Shop Portal mock composer">
+            <article className="shop-portal-composer-card">
+              <div className="compact-card-header">
+                <div>
+                  <h3>Restock status composer</h3>
+                  <p>Choose broad, family-safe labels. Exact quantities stay hidden unless a trusted shop chooses to share them later.</p>
+                </div>
+              </div>
+              <div className="shop-portal-status-row">
+                {shopPortalStatuses.map((status) => <span className="status-badge" key={status}>{status}</span>)}
+              </div>
+              <p className="compact-subtitle">Mock composer only. No live posting, inventory sync, checkout, or notification blast is connected.</p>
+            </article>
+            <article className="shop-portal-composer-card">
+              <div className="compact-card-header">
+                <div>
+                  <h3>Drop or event draft</h3>
+                  <p>Preview a family-safe event update before admin review.</p>
+                </div>
+                <span className="status-badge">Draft only</span>
+              </div>
+              <div className="catalog-detail-grid">
+                <DetailItem label="Event type" value="Learn to Play afternoon" />
+                <DetailItem label="Audience" value="Families and new collectors" />
+                <DetailItem label="Safety" value="No vendor schedule or rush window" />
+                <DetailItem label="Review" value="Pending admin approval" />
+              </div>
+            </article>
+          </div>
+
+          <div className="shop-portal-tools-grid" aria-label="Shop Portal support tools">
+            {shopPortalTools.map((tool) => (
+              <article className="shop-portal-tool-card" key={tool.title}>
+                <strong>{tool.title}</strong>
+                <span>{tool.body}</span>
+              </article>
+            ))}
+          </div>
+
           <form className="form beta-form-card" onSubmit={submitSponsorInterest} noValidate>
+            <div className="compact-card-header">
+              <div>
+                <h3>Partner interest</h3>
+                <p>Tell Ember & Tide about your shop or support idea. This queues a local beta interest record only.</p>
+              </div>
+              <span className="status-badge">Mock review intake</span>
+            </div>
             <Field label="Name">
               <input value={sponsorForm.name} onChange={(event) => updateSponsorForm("name", event.target.value)} />
             </Field>

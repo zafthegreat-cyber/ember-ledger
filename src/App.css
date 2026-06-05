@@ -42543,6 +42543,99 @@ body,
     grid-template-columns: 1fr;
   }
 }
+
+/* Live integration train Section 13: Shop Portal trust controls. */
+.shop-portal-header {
+  border-color: rgba(255, 194, 71, 0.36) !important;
+  background:
+    radial-gradient(circle at 82% 12%, rgba(255, 194, 71, 0.18), transparent 30%),
+    linear-gradient(145deg, rgba(30, 16, 4, 0.94), rgba(5, 14, 28, 0.94)) !important;
+}
+
+.shop-portal-grid,
+.shop-portal-composer-grid,
+.shop-portal-tools-grid {
+  display: grid;
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.shop-portal-grid {
+  grid-template-columns: minmax(0, 1.25fr) repeat(3, minmax(0, 0.75fr));
+}
+
+.shop-portal-composer-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.shop-portal-tools-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.shop-portal-profile-card,
+.shop-portal-trust-card,
+.shop-portal-composer-card,
+.shop-portal-tool-card {
+  background:
+    radial-gradient(circle at 86% 12%, rgba(0, 216, 255, 0.12), transparent 30%),
+    linear-gradient(145deg, rgba(9, 23, 36, 0.86), rgba(5, 10, 20, 0.92));
+  border: 1px solid rgba(132, 226, 255, 0.2);
+  border-radius: 18px;
+  color: var(--et-readable-text, #f7fbff);
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.95rem;
+}
+
+.shop-portal-profile-card {
+  border-color: rgba(255, 194, 71, 0.32);
+}
+
+.shop-portal-profile-card h2,
+.shop-portal-composer-card h3 {
+  color: var(--et-readable-text, #f7fbff);
+  margin: 0;
+}
+
+.shop-portal-profile-card p,
+.shop-portal-trust-card span,
+.shop-portal-tool-card span,
+.shop-portal-composer-card p {
+  color: var(--et-readable-muted, rgba(232, 246, 255, 0.72));
+  line-height: 1.38;
+  margin: 0;
+}
+
+.shop-portal-trust-card small {
+  color: rgba(255, 214, 148, 0.82);
+  font-weight: 800;
+}
+
+.shop-portal-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.shop-portal-tool-card strong,
+.shop-portal-trust-card strong {
+  color: var(--et-readable-text, #f7fbff);
+}
+
+.sponsor-interest-panel .beta-form-card {
+  background: rgba(5, 12, 24, 0.62);
+  border: 1px solid rgba(255, 194, 71, 0.18);
+  border-radius: 18px;
+  padding: 1rem;
+}
+
+@media (max-width: 980px) {
+  .shop-portal-grid,
+  .shop-portal-composer-grid,
+  .shop-portal-tools-grid {
+    grid-template-columns: 1fr;
+  }
+}
 .ember-assist-live-hero {
   align-items: flex-start;
   background:
