@@ -39037,6 +39037,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const planScoutDetailsAllowed = canUseFeature({ tier: plan }, "scout_current_details");
     const betaStatusLabel = tierAccess.isBeta || BETA_LOCAL_MODE ? "Active beta access" : "Approval required";
     const adminStatusVisible = Boolean(actualAdminUser || adminViewingAsAdmin);
+    const freeCoreFeatures = [
+      "Manual card, sealed, and graded tracking",
+      "Folders, tags, wishlist, favorites, missing cards, and set progress",
+      "Basic fair range, collection value, card search, and product search",
+      "Basic trade analyzer, deck/list builder, and Forge ledger",
+      "Manual Scout reports, screenshot scan UI, proof review, and 1 watched store",
+      "Tidepool read/report, The Spark view, Ember Assist prompts, and safety basics",
+    ];
     const accessStatusRows = [
       {
         label: "Beta",
@@ -39085,6 +39093,24 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <strong>Scout fairness guardrail</strong>
           <p>Free users can still submit and confirm Scout reports. Paid tiers unlock deeper current details for selected stores, not raw restock history, pattern tools, or all-store exact access.</p>
         </div>
+        <section className="tier-lock-preview-panel" aria-label="Free core collector tools">
+          <div className="compact-card-header">
+            <div>
+              <h3>Free is the core collector app</h3>
+              <p>Paid plans add scale, convenience, family seats, seller workflows, or shop tools. Core collecting and safety basics stay included.</p>
+            </div>
+            <span className="status-badge">Included</span>
+          </div>
+          <div className="tier-lock-preview-grid">
+            {freeCoreFeatures.map((feature) => (
+              <article className="tier-lock-preview-card" key={feature}>
+                <span>Free</span>
+                <strong>{feature}</strong>
+                <p>Available as part of the beta core experience.</p>
+              </article>
+            ))}
+          </div>
+        </section>
         <div className="tier-plan-grid" aria-label="Ember & Tide public plans">
           {tierCards.map((tier) => (
             <article className={`tier-plan-card${tier.id === plan ? " current" : ""}`} key={tier.id} data-tier-plan={tier.id}>

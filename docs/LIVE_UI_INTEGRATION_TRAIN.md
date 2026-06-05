@@ -60,6 +60,7 @@ Final status:
 
 - Git status was clean before Section 16 documentation updates.
 - Final QA checkpoint was committed as `2cbefeb`.
+- Follow-up tracker reconciliation was committed as `de9f0d7`; the ordered table above is the source of truth for section completion.
 - No deploy was run.
 - No backend/auth/billing/database/RLS changes were made by this train.
 
@@ -67,7 +68,7 @@ Final status:
 
 ### Section 5 - Market Home
 
-Status: Complete. Commit `854cc25`.
+Status: Complete. Commit `eca2e65`.
 
 Screenshots:
 
@@ -106,7 +107,7 @@ Mock-only notes:
 
 ### Section 6 - Market Product Detail / Loading / Error
 
-Status: Complete. Commit `9dae179`.
+Status: Complete. Commit `d9d9e82`.
 
 Screenshots:
 
@@ -147,7 +148,7 @@ Mock-only notes:
 
 ### Section 7 - More / Settings / Privacy & Safety / Membership
 
-Status: Complete. Commit pending for this section.
+Status: Complete. Commit `16a5c36`.
 
 Screenshots:
 
@@ -195,7 +196,7 @@ Mock-only notes:
 
 ### Section 8 - Parent Center
 
-Status: Complete. Commit pending for this section.
+Status: Complete. Commit `854cc25`.
 
 Screenshots:
 
@@ -231,7 +232,7 @@ Mock-only notes:
 
 ### Section 9 - Tidepool
 
-Status: Complete. Commit pending for this section.
+Status: Complete. Commit `9dae179`.
 
 Screenshots:
 
@@ -390,7 +391,7 @@ Mock-only notes:
 
 ### Section 13 - Shop Portal
 
-Status: Complete. Commit pending for this section.
+Status: Complete. Commit `384243d`.
 
 Screenshots:
 
@@ -574,7 +575,7 @@ Mock-only notes:
 
 ### Section 2 - Scout Online and Watchlist
 
-Status: Complete. Commit pending for this section.
+Status: Complete. Commit `00c723d`.
 
 Screenshots:
 
@@ -618,7 +619,7 @@ Deploy run: no.
 
 ### Section 3 - Vault Home
 
-Status: Complete. Commit pending for this section.
+Status: Complete. Commit `d3b19e7`.
 
 Screenshots:
 
@@ -659,7 +660,7 @@ Deploy run: no.
 
 ### Section 4 - Vault Item Detail / Add Item / Empty Vault
 
-Status: Complete. Commit pending for this section.
+Status: Complete. Commit `25ea98c`.
 
 Screenshots:
 
@@ -705,7 +706,7 @@ Deploy run: no.
 
 ### Section 1 - Scout Add Report / Scan Screenshot / Review Report
 
-Status: Complete. Committed as the section commit containing this document update.
+Status: Complete. Commit `f88384a`.
 
 Screenshots:
 
@@ -755,7 +756,7 @@ Deploy run: no.
 
 ### Supporting Scout Section - Store Detail / Watch Stores / Alerts / Calendar
 
-Status: Complete. Committed as the section commit containing this document update.
+Status: Complete. Commit `ed815c5`.
 
 Screenshots:
 
