@@ -30473,6 +30473,16 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   const selectedCatalogDetailPricingProduct = selectedCatalogDetailVariant?.sourceProduct || selectedCatalogDetailProduct;
   const selectedCatalogDetailMarketInfo = selectedCatalogDetailPricingProduct ? getTideTradrMarketInfo(selectedCatalogDetailPricingProduct) : null;
   const selectedCatalogDetailCondition = catalogConditionSelection[selectedCatalogDetailProduct?.id] || "Near Mint";
+  const selectedCatalogDetailFairRange = selectedCatalogDetailPricingProduct
+    ? [
+        selectedCatalogDetailPricingProduct.lowPrice || selectedCatalogDetailMarketInfo?.lowPrice,
+        selectedCatalogDetailPricingProduct.highPrice || selectedCatalogDetailMarketInfo?.highPrice,
+      ].some((value) => Number(value || 0) > 0)
+      ? `${money(selectedCatalogDetailPricingProduct.lowPrice || selectedCatalogDetailMarketInfo?.lowPrice)} - ${money(selectedCatalogDetailPricingProduct.highPrice || selectedCatalogDetailMarketInfo?.highPrice)}`
+      : hasCatalogMarketPrice(selectedCatalogDetailPricingProduct)
+        ? money(selectedCatalogDetailMarketInfo?.currentMarketValue)
+        : "Fair range unavailable"
+    : "Fair range unavailable";
   const filteredCatalogProductsById = useMemo(
     () => new Map(filteredCatalogProducts.map((product) => [String(product.id), product])),
     [filteredCatalogProducts]
@@ -59170,7 +59180,66 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     </details>
                   ) : null}
                   {supabaseCatalogStatus.message ? <p className="compact-subtitle market-status-message">{supabaseCatalogStatus.message}</p> : null}
-                  {supabaseCatalogStatus.error ? <p className="compact-subtitle danger-text">{supabaseCatalogStatus.error}</p> : null}
+                  {supabaseCatalogStatus.error ? (
+                    <div className="market-state-card market-state-card--error" role="status">
+                      <span className="trust-badge trust-badge--secure">Data check</span>
+                      <h3>Market data check failed.</h3>
+                      <p>{supabaseCatalogStatus.error}</p>
+                      <p>Try the search again, add the item to Vault for review, or ask Ember for help interpreting weak data.</p>
+                      <div className="quick-actions market-empty-actions">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSupabaseCatalogStatus((current) => ({ ...current, error: "", message: "" }));
+                            submitCatalogSearch();
+                          }}
+                        >
+                          Try Search Again
+                        </button>
+                        <button type="button" className="secondary-button" onClick={() => openProductAddFlow({
+                          source: "market-error-vault",
+                          seed: {
+                            initialStep: "item",
+                            itemName: catalogEmptyTerm || catalogSearch,
+                            catalogSearchQuery: catalogEmptyTerm || catalogSearch,
+                            destinations: destinationDefaults({ vault: true }),
+                            notes: "Vault fallback from Market error state.",
+                          },
+                        })}>Add to Vault review</button>
+                        <button type="button" className="secondary-button" onClick={() => setEmberAssistOpen(true)}>Ask Ember</button>
+                      </div>
+                    </div>
+                  ) : null}
+                  {!supabaseCatalogStatus.error && supabaseCatalogStatus.usedFallback ? (
+                    <div className="market-state-card market-state-card--error" role="status">
+                      <span className="trust-badge trust-badge--secure">Fallback mode</span>
+                      <h3>Market search is using fallback data.</h3>
+                      <p>{supabaseCatalogStatus.message || "Live catalog data was not available, so Market is showing safer fallback results."}</p>
+                      <p>Freshness and source strength may be limited. No checkout or stock guarantee is implied.</p>
+                      <div className="quick-actions market-empty-actions">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSupabaseCatalogStatus((current) => ({ ...current, message: "", usedFallback: false }));
+                            submitCatalogSearch();
+                          }}
+                        >
+                          Try Search Again
+                        </button>
+                        <button type="button" className="secondary-button" onClick={() => openProductAddFlow({
+                          source: "market-fallback-vault",
+                          seed: {
+                            initialStep: "item",
+                            itemName: catalogEmptyTerm || catalogSearch,
+                            catalogSearchQuery: catalogEmptyTerm || catalogSearch,
+                            destinations: destinationDefaults({ vault: true }),
+                            notes: "Vault fallback from Market fallback state.",
+                          },
+                        })}>Add to Vault review</button>
+                        <button type="button" className="secondary-button" onClick={() => setEmberAssistOpen(true)}>Ask Ember</button>
+                      </div>
+                    </div>
+                  ) : null}
                   {supabaseCatalogStatus.exactBarcodeMiss ? <p className="compact-subtitle">No match yet. You can add this product to the catalog or try a name search.</p> : null}
                   {catalogSearchHasRun && !supabaseCatalogStatus.loading && supabaseCatalogStatus.coverageWarning ? (
                     <div className="catalog-coverage-warning">
@@ -59234,15 +59303,22 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   ) : null}
 
                   {supabaseCatalogStatus.loading && tideTradrCatalogResults.length === 0 && marketSetSearchResults.length === 0 ? (
-                    <div className="catalog-results-list catalog-results-grid catalog-results-loading" aria-label="Loading catalog results">
-                      {Array.from({ length: 6 }).map((_, index) => (
-                        <div className="catalog-result-card catalog-result-skeleton" key={`catalog-loading-${index}`}>
-                          <div className="catalog-thumb" />
-                          <span />
-                          <strong />
-                          <em />
-                        </div>
-                      ))}
+                    <div className="catalog-results-loading" aria-label="Loading catalog results">
+                      <div className="market-state-card market-state-card--loading" role="status">
+                        <span className="trust-badge trust-badge--secure">Checking fair value</span>
+                        <h3>Checking fair value</h3>
+                        <p>Market searches known catalog data and labels weak sources. It is not an auto-buy dashboard.</p>
+                      </div>
+                      <div className="catalog-results-list catalog-results-grid">
+                        {Array.from({ length: 6 }).map((_, index) => (
+                          <div className="catalog-result-card catalog-result-skeleton" key={`catalog-loading-${index}`}>
+                            <div className="catalog-thumb" />
+                            <span />
+                            <strong />
+                            <em />
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   ) : null}
 
@@ -61531,6 +61607,14 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                       <span className={`market-status-pill market-status-pill--${hasCatalogMarketPrice(selectedCatalogDetailPricingProduct) ? "catalog" : "unknown"}`}>{hasCatalogMarketPrice(selectedCatalogDetailPricingProduct) ? getCatalogMarketSourceLabel(selectedCatalogDetailPricingProduct) : "Market data unavailable"}</span>
                       <span className={`market-status-pill market-status-pill--${selectedCatalogDetailMarketInfo?.marketDataTone || "unknown"}`}>{selectedCatalogDetailMarketInfo?.marketDataLabel || "Not checked yet"}</span>
                       <span className="market-status-pill market-status-pill--catalog">{selectedCatalogDetailMarketInfo?.confidenceLevel || "Data quality unknown"}</span>
+                    </div>
+                    <div className="market-detail-safety-card">
+                      <div>
+                        <span className="trust-badge trust-badge--secure">No checkout</span>
+                        <strong>Fair range: {selectedCatalogDetailFairRange}</strong>
+                        <p>Use this as collector context only. Market Watch labels source freshness and does not auto-buy or guarantee stock.</p>
+                      </div>
+                      <button type="button" className="secondary-button" onClick={() => addCatalogDetailToWatchlist(selectedCatalogDetailProduct)}>Watch safely</button>
                     </div>
                     {shouldShowCatalogRepairLabels() ? (
                       <div className="admin-inline-panel">

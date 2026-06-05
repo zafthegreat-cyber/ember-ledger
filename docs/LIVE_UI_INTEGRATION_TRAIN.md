@@ -21,8 +21,8 @@
 | 2 | Scout Online and Watchlist | Complete | `00c723d` | Mock-only online signals and tier-safe watchlist. |
 | 3 | Vault Home | Complete | `d3b19e7` | Live Vault Home dashboard integrated above existing collection list. |
 | 4 | Vault Item Detail / Add Item / Empty Vault | Complete | `25ea98c` | Empty Vault and Add Item flow polished; existing item detail preserved. |
-| 5 | Market Home | Complete | This section commit | Mock-only market search/discovery UI. |
-| 6 | Market Product Detail / Loading / Error | Not started | - | Honest labels only; no live price API. |
+| 5 | Market Home | Complete | `eca2e65` | Mock-only market search/discovery UI. |
+| 6 | Market Product Detail / Loading / Error | Complete | This section commit | Honest labels only; no live price API. |
 | 7 | More / Settings / Privacy & Safety / Membership | Not started | - | No billing or auth changes. |
 | 8 | Parent Center | Not started | - | Mock-only safety center; no child account backend changes. |
 | 9 | Tidepool | Not started | - | Mock-only moderated community UI. |
@@ -34,20 +34,22 @@
 | 15 | Onboarding and Virginia-first Flow | Not started | - | Mock/local UI only unless existing safe onboarding exists. |
 | 16 | Final Integration QA and Polish | Not started | - | Final consistency, spacing, docs, screenshots, tests. |
 
-## Current Section: Market Home
+## Current Section: Market Product Detail / Loading / Error
 
-Started: 2026-06-05 01:46:01 -04:00
+Started: 2026-06-05 01:51:00 -04:00
 
 Scope:
 
-- Market Home
+- Market Product Detail
+- Market Loading
+- Market Error
 
 Allowed behavior:
 
-- Existing Market route/page shell
-- Mock-only discovery cards
-- Existing catalog search field and results behavior remain intact
-- Category chips, fair search guidance, source/freshness labels, and watchlist prompt
+- Existing Market product detail drawer
+- Existing Market search loading state
+- Existing Market search error state
+- Honest source/freshness, no-checkout, and safe fallback copy
 
 Disallowed behavior:
 
@@ -97,6 +99,47 @@ Mock-only notes:
 - Discovery cards, fair ranges, freshness labels, and source labels are mock UI examples.
 - Watch action only opens the existing Market watchlist tab.
 - Use in search only places text into the existing search input.
+- No live price API, scraping, checkout, purchase flow, database write, auth change, billing change, schema change, or RLS change was added.
+
+### Section 6 - Market Product Detail / Loading / Error
+
+Status: Complete. Commit pending for this section.
+
+Screenshots:
+
+- `artifacts/qa/live-ui-integration-train/market-detail-states/market-product-detail-390x844.png`
+- `artifacts/qa/live-ui-integration-train/market-detail-states/market-product-detail-430x932.png`
+- `artifacts/qa/live-ui-integration-train/market-detail-states/market-product-detail-1440x900.png`
+- `artifacts/qa/live-ui-integration-train/market-detail-states/market-loading-390x844.png`
+- `artifacts/qa/live-ui-integration-train/market-detail-states/market-error-390x844.png`
+- `artifacts/qa/live-ui-integration-train/market-detail-states/live-market-detail-states-qa-results.json`
+
+QA results:
+
+- Product Detail 390x844: no horizontal overflow, no bottom dock overlap, no console errors, no maximum update depth errors.
+- Product Detail 430x932: no horizontal overflow, no bottom dock overlap, no console errors, no maximum update depth errors.
+- Product Detail 1440x900: no horizontal overflow, no bottom dock overlap, no console errors, no maximum update depth errors.
+- Loading 390x844: no horizontal overflow, no bottom dock overlap, no console errors, no maximum update depth errors.
+- Error/fallback 390x844: no horizontal overflow, no bottom dock overlap, no console errors, no maximum update depth errors.
+
+Checks:
+
+- `git diff --check`: passed with existing LF-to-CRLF warnings only.
+- `npm.cmd run build`: passed with existing Vite large chunk warning.
+- `npm.cmd run lint --if-present`: exited cleanly.
+- `npm.cmd run typecheck --if-present`: exited cleanly.
+- `npm.cmd test --if-present`: exited cleanly.
+- `npm.cmd run format:check --if-present`: exited cleanly.
+- `npm.cmd run smoke:beta`: passed.
+- `npm.cmd run test:app-fallbacks`: passed.
+- `npm.cmd run test:menu-full-page-routes`: passed.
+- `npm.cmd run test:market`: sandbox Chromium `spawn EPERM`; outside-sandbox rerun passed.
+
+Mock-only notes:
+
+- Product Detail now shows fair-range/no-checkout context using existing available values only.
+- Loading state labels fair-value checking without promising live data.
+- Error/fallback state explains unavailable live catalog data and offers safe retries/fallbacks.
 - No live price API, scraping, checkout, purchase flow, database write, auth change, billing change, schema change, or RLS change was added.
 
 ### Section 2 - Scout Online and Watchlist
