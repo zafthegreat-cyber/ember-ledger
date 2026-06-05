@@ -73995,6 +73995,318 @@ button.et-live-action:focus-visible {
   font-size: 0.75rem !important;
 }
 
+/* Live Scout Online + Watchlist integration: mock-only current signals. */
+.app-scout .scout-online-page,
+.app-command-shell.app-scout .scout-online-page,
+.app-shell-dark.app-scout .scout-online-page,
+.app-scout .scout-watchlist-page,
+.app-command-shell.app-scout .scout-watchlist-page,
+.app-shell-dark.app-scout .scout-watchlist-page {
+  width: min(100%, 1220px);
+  margin-inline: auto;
+  display: grid;
+  gap: 14px;
+  padding-bottom: max(150px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 82px));
+}
+
+.scout-online-hero,
+.scout-watchlist-hero,
+.scout-online-signal-list,
+.scout-online-safety-panel,
+.scout-watchlist-store-card,
+.scout-watchlist-products-card,
+.scout-watchlist-alert-card {
+  min-width: 0;
+  border-color: rgba(43, 217, 255, 0.22) !important;
+  background:
+    radial-gradient(circle at 90% 0%, rgba(43, 217, 255, 0.14), transparent 14rem),
+    radial-gradient(circle at 4% 6%, rgba(255, 184, 77, 0.08), transparent 12rem),
+    linear-gradient(145deg, rgba(6, 23, 42, 0.96), rgba(3, 10, 23, 0.98)) !important;
+  color: rgba(247, 252, 255, 0.96) !important;
+}
+
+.scout-online-hero,
+.scout-watchlist-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 0.68fr);
+  gap: 14px;
+  align-items: end;
+}
+
+.scout-online-hero h2,
+.scout-watchlist-hero h2,
+.scout-online-safety-panel h2,
+.scout-watchlist-alert-card h2,
+.scout-online-signal-card h3,
+.scout-watchlist-product-card h3 {
+  margin: 0;
+  color: #f7fcff;
+  letter-spacing: 0;
+}
+
+.scout-online-hero h2,
+.scout-watchlist-hero h2 {
+  font-size: clamp(1.4rem, 3.2vw, 2.05rem);
+}
+
+.scout-online-hero p,
+.scout-watchlist-hero p,
+.scout-online-safety-panel p,
+.scout-online-signal-list p,
+.scout-watchlist-store-card p,
+.scout-watchlist-products-card p,
+.scout-watchlist-product-card p {
+  color: rgba(219, 244, 255, 0.74) !important;
+  line-height: 1.45;
+}
+
+.scout-online-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.scout-online-stat-grid > div {
+  min-width: 0;
+  min-height: 82px;
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  padding: 11px;
+  border: 1px solid rgba(43, 217, 255, 0.18);
+  border-radius: 16px;
+  background: rgba(2, 13, 28, 0.58);
+}
+
+.scout-online-stat-grid span,
+.scout-online-stat-grid small,
+.scout-online-signal-card span,
+.scout-watchlist-product-card span,
+.scout-watchlist-product-card dt {
+  color: rgba(219, 244, 255, 0.66);
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+.scout-online-stat-grid strong {
+  color: #b9f7ff;
+  font-size: 1.18rem;
+  line-height: 1.05;
+}
+
+.scout-online-layout,
+.scout-watchlist-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.75fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.scout-online-signal-list,
+.scout-watchlist-products-card {
+  display: grid;
+  gap: 12px;
+}
+
+.scout-online-card-grid,
+.scout-watchlist-product-grid,
+.scout-watchlist-store-list {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.scout-online-signal-card,
+.scout-watchlist-product-card {
+  display: grid;
+  gap: 11px;
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid rgba(43, 217, 255, 0.17);
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(5, 18, 34, 0.88), rgba(7, 23, 42, 0.64));
+}
+
+.scout-online-signal-card--featured {
+  border-color: rgba(255, 211, 111, 0.32);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(255, 184, 77, 0.12), transparent 12rem),
+    linear-gradient(135deg, rgba(9, 31, 48, 0.96), rgba(7, 23, 42, 0.72));
+}
+
+.scout-online-signal-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+}
+
+.scout-online-signal-top div,
+.scout-watchlist-product-card > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.scout-online-signal-top b {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 10px;
+  border: 1px solid rgba(255, 211, 111, 0.28);
+  border-radius: 999px;
+  background: rgba(36, 24, 8, 0.58);
+  color: #ffe2a5;
+  font-size: 0.86rem;
+  white-space: nowrap;
+}
+
+.scout-online-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.scout-online-meta-row span {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 5px 9px;
+  border: 1px solid rgba(132, 226, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(2, 13, 28, 0.58);
+  color: rgba(232, 246, 255, 0.82);
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.scout-online-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.scout-online-actions button {
+  flex: 1 1 150px;
+  min-height: 44px;
+}
+
+.scout-online-safety-panel,
+.scout-watchlist-alert-card {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.scout-watchlist-products-card {
+  grid-column: 1 / 2;
+}
+
+.scout-watchlist-alert-card {
+  grid-column: 2 / 3;
+  grid-row: 1 / span 2;
+}
+
+.scout-watchlist-product-card dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.scout-watchlist-product-card dl div {
+  min-width: 0;
+  padding: 9px;
+  border: 1px solid rgba(43, 217, 255, 0.14);
+  border-radius: 13px;
+  background: rgba(2, 13, 28, 0.5);
+}
+
+.scout-watchlist-product-card dd {
+  min-width: 0;
+  margin: 4px 0 0;
+  color: #f7fcff;
+  font-size: 0.8rem;
+  font-weight: 850;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.scout-watchlist-alert-card .scout-alert-preference-toggle b {
+  color: #b9f7ff;
+  font-size: 0.78rem;
+  line-height: 1.2;
+  text-align: right;
+}
+
+@media (max-width: 900px) {
+  .scout-online-hero,
+  .scout-watchlist-hero,
+  .scout-online-layout,
+  .scout-watchlist-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .scout-watchlist-products-card,
+  .scout-watchlist-alert-card {
+    grid-column: auto;
+    grid-row: auto;
+  }
+}
+
+@media (max-width: 520px) {
+  .app-scout .scout-online-page,
+  .app-command-shell.app-scout .scout-online-page,
+  .app-shell-dark.app-scout .scout-online-page,
+  .app-scout .scout-watchlist-page,
+  .app-command-shell.app-scout .scout-watchlist-page,
+  .app-shell-dark.app-scout .scout-watchlist-page {
+    padding-inline: 8px;
+    padding-bottom: max(190px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 112px));
+  }
+
+  .scout-online-stat-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .scout-online-stat-grid > div {
+    min-height: 70px;
+    padding: 8px;
+  }
+
+  .scout-online-stat-grid span,
+  .scout-online-stat-grid small {
+    font-size: 0.62rem;
+  }
+
+  .scout-online-stat-grid strong {
+    font-size: 0.92rem;
+  }
+
+  .scout-online-signal-top {
+    grid-template-columns: 1fr;
+  }
+
+  .scout-online-signal-top b {
+    justify-self: start;
+  }
+
+  .scout-online-hero,
+  .scout-watchlist-hero {
+    margin-bottom: calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 112px);
+  }
+
+  .scout-watchlist-product-card dl {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Live Scout report flow integration: mock-only, review-first Scout shells. */
 .app-scout .scout-live-flow,
 .app-command-shell.app-scout .scout-live-flow,

@@ -1582,7 +1582,17 @@ function routeStateFromPath(pathname = "") {
   if (section === "reset-password") return { activeTab: "resetPassword" };
   if (section === "scout") {
     state.activeTab = "scout";
-    state.scoutView = subSection === "stores" ? "stores" : subSection === "reports" ? "reports" : subSection === "calendar" ? "alerts" : "overview";
+    state.scoutView = subSection === "stores"
+      ? "stores"
+      : subSection === "reports"
+        ? "reports"
+        : subSection === "calendar"
+          ? "alerts"
+          : subSection === "online"
+            ? "online"
+            : subSection === "watchlist"
+              ? "watchlist"
+              : "overview";
     if (subSection === "stores" && detailId) state.scoutStoreId = decodeURIComponent(detailId);
     if (subSection === "reports" && detailId) state.scoutReportId = decodeURIComponent(detailId);
     return state;
@@ -24099,6 +24109,8 @@ function renderScoutHeader() {
   const scoutTrustLabel = scoutTrustScore > 0 ? `Trust score ${scoutTrustScore}` : "Trust score building";
   const scoutTabs = [
     { key: "overview", label: "Nearby" },
+    { key: "online", label: "Online" },
+    { key: "watchlist", label: "Watchlist" },
     { key: "reports", label: "Following" },
     { key: "storeMap", label: "Map" },
     { key: "alerts", label: "Alerts" },
@@ -24127,6 +24139,9 @@ function renderScoutHeader() {
     }
     if (normalizedNextPage === "alerts") {
       setScoutSubTabTarget({ tab: "alerts", id: Date.now() });
+    }
+    if (normalizedNextPage === "watchlist") {
+      setScoutSubTabTarget({ tab: "watchlist", id: Date.now() });
     }
   };
 
@@ -29730,6 +29745,8 @@ function renderForgeBusinessCommandPanel() {
       if (activeScoutPage === "reports" && selectedScoutReport) return `/scout/reports/${encodeURIComponent(getScoutReportId(selectedScoutReport) || "selected")}`;
       if (activeScoutPage === "storeMap") return "/scout/store-map";
       if (activeScoutPage === "alerts") return "/scout/calendar";
+      if (activeScoutPage === "online") return "/scout/online";
+      if (activeScoutPage === "watchlist") return "/scout/watchlist";
       return "/scout";
     }
     if (activeTab === "market" || activeTab === "catalog") {
@@ -35028,6 +35045,262 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
           {renderScoutTierLockCard({ compact: true })}
         </aside>
+      </section>
+    );
+  }
+
+  function renderScoutOnlinePanel() {
+    // TODO: Replace mock online signal rows with a reviewed read-only Scout source contract. No scraping, checkout, or live inventory is wired here.
+    const onlineSignals = [
+      {
+        key: "pokemon-center-bundle",
+        source: "Pokemon Center",
+        product: "Prismatic Evolutions bundle",
+        category: "Sealed",
+        status: "Check manually",
+        fairRange: "$69-$84",
+        freshness: "Community signal, 38 min ago",
+        trust: "Official source label",
+        note: "Good candidate to watch, but Scout will not auto-buy or expose exact timing patterns.",
+      },
+      {
+        key: "local-shop-post",
+        source: "Family Card Shop",
+        product: "Weekend kid packs",
+        category: "Shop post",
+        status: "Family-friendly update",
+        fairRange: "Near MSRP",
+        freshness: "Trusted shop post, 1 hr ago",
+        trust: "Shop-confirmed",
+        note: "Shop-shared current context. Exact quantity stays hidden unless the shop chooses to publish it.",
+      },
+      {
+        key: "big-box-app",
+        source: "Retailer app screenshot",
+        product: "Assorted booster packs",
+        category: "Online availability",
+        status: "Verify before driving",
+        fairRange: "$4-$6 per pack",
+        freshness: "Screenshot proof, today",
+        trust: "Needs second proof",
+        note: "Useful as a soft signal only. Scout avoids checkout shortcuts and vendor schedule guesses.",
+      },
+    ];
+    const onlineStats = [
+      { label: "Online signals", value: onlineSignals.length, detail: "Mock-only" },
+      { label: "Checkout", value: "Off", detail: "No auto-buy" },
+      { label: "Patterns", value: "Hidden", detail: "Current signals only" },
+    ];
+
+    return (
+      <section className="scout-online-page" aria-label="Scout Online">
+        <article className="panel scout-online-hero">
+          <div>
+            <p className="section-kicker">Scout Online</p>
+            <h2>Online signals without auto-checkout pressure.</h2>
+            <p>Watch safe, current product context from trusted labels and community proof. Scout does not scrape retailers, buy automatically, or reveal exploitable timing patterns.</p>
+          </div>
+          <div className="scout-online-stat-grid" aria-label="Scout Online safety summary">
+            {onlineStats.map((stat) => (
+              <div key={stat.label}>
+                <span>{stat.label}</span>
+                <strong>{stat.value}</strong>
+                <small>{stat.detail}</small>
+              </div>
+            ))}
+          </div>
+        </article>
+
+        <div className="scout-online-layout">
+          <article className="panel scout-online-signal-list">
+            <div className="compact-card-header">
+              <div>
+                <h2>Online Signals</h2>
+                <p>Fair value, freshness, and source labels help families decide what is worth checking manually.</p>
+              </div>
+              <button type="button" className="secondary-button" onClick={() => setScoutView("watchlist")}>Open Watchlist</button>
+            </div>
+            <div className="scout-online-card-grid">
+              {onlineSignals.map((signal, index) => (
+                <article className={`scout-online-signal-card${index === 0 ? " scout-online-signal-card--featured" : ""}`} key={signal.key}>
+                  <div className="scout-online-signal-top">
+                    <div>
+                      <span>{signal.source}</span>
+                      <h3>{signal.product}</h3>
+                      <p>{signal.category} | {signal.status}</p>
+                    </div>
+                    <b>{signal.fairRange}</b>
+                  </div>
+                  <div className="scout-online-meta-row">
+                    <span>{signal.freshness}</span>
+                    <span>{signal.trust}</span>
+                  </div>
+                  <p>{signal.note}</p>
+                  <div className="scout-online-actions">
+                    <button type="button" onClick={() => setScoutView("watchlist")}>Watch Product</button>
+                    <button type="button" className="secondary-button" onClick={() => setActiveTab("market")}>Check fair value</button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </article>
+
+          <aside className="panel scout-online-safety-panel">
+            <p className="section-kicker">Protected by design</p>
+            <h2>No checkout, no scraping, no exact pattern feed.</h2>
+            <p>Scout Online stays in the lane of family-safe context. It can show honest labels and manual watch actions, but it does not become a bot tool.</p>
+            <div className="scout-safety-strip">
+              <span>No auto-buy</span>
+              <span>No exact quantities</span>
+              <span>No vendor schedules</span>
+              <span>No pattern history</span>
+            </div>
+            <button type="button" className="secondary-button" onClick={() => openLiveScoutReportFlow("scanScreenshot")}>Scan screenshot proof</button>
+          </aside>
+        </div>
+      </section>
+    );
+  }
+
+  function renderScoutWatchlistPanel() {
+    // TODO: Replace mock watched product rows with reviewed read-only product watch data when Scout product watch backend is approved.
+    const watchedStores = getWatchedStoreRows(buildStoreMapRows({ unfiltered: true }));
+    const slotLimit = scoutWatchSlotLimit();
+    const watchedStoreRows = watchedStores.slice(0, Math.max(1, Math.min(3, slotLimit >= 99 ? 3 : slotLimit)));
+    const watchedProducts = [
+      {
+        key: "prismatic-bundle",
+        name: "Prismatic Evolutions bundle",
+        kind: "Sealed product",
+        target: "Near retail",
+        freshness: "Check manually",
+        source: "Community proof needed",
+        setting: "Alert on trusted proof",
+      },
+      {
+        key: "kids-packs",
+        name: "Kid-friendly pack bundle",
+        kind: "Family event support",
+        target: "Shop-confirmed",
+        freshness: "Trusted shop only",
+        source: "Family Card Shop",
+        setting: "Quiet family alert",
+      },
+      {
+        key: "binder-supplies",
+        name: "Binder and sleeve restock",
+        kind: "Supplies",
+        target: "Fair price",
+        freshness: "Weekly check",
+        source: "No rush signal",
+        setting: "Summary only",
+      },
+    ];
+    const alertSettings = [
+      { label: "Proof required", value: "On", detail: "Avoid rumor-only pushes" },
+      { label: "Exact quantities", value: "Hidden", detail: "Unless shop-approved" },
+      { label: "Change rule", value: scoutWatchSwapWindowLabel(), detail: "Tier-safe store changes" },
+    ];
+
+    return (
+      <section className="scout-watchlist-page" aria-label="Scout Watchlist">
+        <article className="panel scout-watchlist-hero">
+          <div>
+            <p className="section-kicker">Scout Watchlist</p>
+            <h2>Selected stores and products, with limits that stay fair.</h2>
+            <p>Keep current signals close without turning Scout into unlimited all-store access or a raw restock pattern feed.</p>
+          </div>
+          <div className="scout-watch-tier-summary" aria-label="Scout watchlist limits">
+            <div>
+              <span>Plan</span>
+              <strong>{scoutWatchPlanLabel()}</strong>
+            </div>
+            <div>
+              <span>Stores</span>
+              <strong>{scoutWatchSlotSummary(watchedStores.length)}</strong>
+            </div>
+            <div>
+              <span>Cooldown</span>
+              <strong>{scoutWatchSwapWindowLabel()}</strong>
+            </div>
+          </div>
+        </article>
+
+        <div className="scout-watchlist-layout">
+          <article className="panel scout-watchlist-store-card">
+            <div className="compact-card-header">
+              <div>
+                <h2>Watched Store</h2>
+                <p>Free users can keep one selected store and change it on the cooldown window.</p>
+              </div>
+              <button type="button" className="secondary-button" onClick={() => setScoutView("stores")}>Change watched store</button>
+            </div>
+            <div className="scout-watchlist-store-list">
+              {watchedStoreRows.length ? watchedStoreRows.map((row) => (
+                <button type="button" className="scout-watch-store-row" key={`watchlist-${row.id}`} onClick={() => openStoreProfile(row)}>
+                  <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed="scout" /></span>
+                  <span>
+                    <strong>{row.name}</strong>
+                    <small>{row.retailer} - {row.area || row.city || "Selected store"}</small>
+                  </span>
+                  <em>{row.latestReport ? "Current signal" : "Watching"}</em>
+                </button>
+              )) : (
+                <div className="empty-state scout-watch-empty-state">
+                  <h3>Choose your first watched store.</h3>
+                  <p>{scoutWatchPlanLabel()} plan: {slotLimit >= 99 ? "admin store review" : `${slotLimit} watched store${slotLimit === 1 ? "" : "s"}`}. {scoutWatchSwapWindowLabel()}</p>
+                  <button type="button" className="secondary-button" onClick={() => setScoutView("stores")}>Choose Store</button>
+                </div>
+              )}
+            </div>
+          </article>
+
+          <article className="panel scout-watchlist-products-card">
+            <div className="compact-card-header">
+              <div>
+                <h2>Watched Products</h2>
+                <p>Mock product watches show fair-price and source context only. No checkout or live inventory is connected.</p>
+              </div>
+              <button type="button" className="secondary-button" onClick={() => setScoutView("online")}>Add product watch</button>
+            </div>
+            <div className="scout-watchlist-product-grid">
+              {watchedProducts.map((product) => (
+                <article className="scout-watchlist-product-card" key={product.key}>
+                  <div>
+                    <span>{product.kind}</span>
+                    <h3>{product.name}</h3>
+                    <p>{product.setting}</p>
+                  </div>
+                  <dl>
+                    <div><dt>Target</dt><dd>{product.target}</dd></div>
+                    <div><dt>Freshness</dt><dd>{product.freshness}</dd></div>
+                    <div><dt>Source</dt><dd>{product.source}</dd></div>
+                  </dl>
+                </article>
+              ))}
+            </div>
+          </article>
+
+          <aside className="panel scout-watchlist-alert-card">
+            <p className="section-kicker">Alert settings</p>
+            <h2>Helpful, quiet, and tier-safe.</h2>
+            <div className="scout-alert-preference-grid">
+              {alertSettings.map((setting) => (
+                <div className="scout-alert-preference-toggle" key={setting.label}>
+                  <span>
+                    <strong>{setting.label}</strong>
+                    <small>{setting.detail}</small>
+                  </span>
+                  <b>{setting.value}</b>
+                </div>
+              ))}
+            </div>
+            <div className="scout-alert-scope-note">
+              <strong>Current signals only.</strong>
+              <span>Scout watchlist alerts do not expose raw history, exact restock windows, vendor schedules, or checkout shortcuts.</span>
+            </div>
+          </aside>
+        </div>
       </section>
     );
   }
@@ -58182,6 +58455,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </>
             ) : activeScoutPage === "reports" ? (
               renderScoutReportsPanel()
+            ) : activeScoutPage === "online" ? (
+              renderScoutOnlinePanel()
+            ) : activeScoutPage === "watchlist" ? (
+              renderScoutWatchlistPanel()
             ) : activeScoutPage === "alerts" ? (
               renderEmberWatchPanel()
             ) : activeScoutPage === "storeMap" || activeScoutPage === "stores" ? (
