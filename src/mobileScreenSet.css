@@ -1806,10 +1806,60 @@ button {
 .ets-card-thumb-grid,
 .ets-product-strip,
 .ets-impact-metrics,
-.ets-admin-meter {
+.ets-admin-meter,
+.ets-home-cues,
+.ets-community-feed {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--ets-space-3);
+}
+
+.ets-home-feature {
+  background:
+    radial-gradient(circle at 14% 8%, color-mix(in srgb, var(--ets-color-gold) 18%, transparent), transparent 46%),
+    radial-gradient(circle at 86% 28%, color-mix(in srgb, var(--ets-color-tideBlue) 10%, transparent), transparent 42%),
+    color-mix(in srgb, var(--ets-color-surfaceRaised) 82%, transparent);
+}
+
+.ets-home-cues span,
+.ets-community-feed span {
+  display: grid;
+  gap: var(--ets-space-1);
+  min-width: 0;
+  padding: var(--ets-space-3);
+  border: var(--ets-border-thin) solid color-mix(in srgb, var(--ets-accent, var(--ets-color-gold)) 28%, var(--ets-color-line));
+  border-radius: var(--ets-radius-md);
+  background: color-mix(in srgb, var(--ets-color-surface) 74%, transparent);
+  color: var(--ets-color-text);
+}
+
+.ets-home-cues svg {
+  width: var(--ets-space-5);
+  height: var(--ets-space-5);
+  color: var(--ets-accent, var(--ets-color-gold));
+}
+
+.ets-home-cues strong,
+.ets-community-feed strong {
+  font-size: var(--ets-typography-small);
+  line-height: var(--ets-typography-lineTight);
+}
+
+.ets-home-cues small,
+.ets-community-feed small {
+  color: var(--ets-color-textMuted);
+  font-size: var(--ets-typography-micro);
+  line-height: var(--ets-typography-lineBody);
+}
+
+.ets-community-feature {
+  background:
+    radial-gradient(circle at 18% 8%, color-mix(in srgb, var(--ets-color-tide) 16%, transparent), transparent 44%),
+    color-mix(in srgb, var(--ets-color-surfaceRaised) 82%, transparent);
+}
+
+.ets-community-feed {
+  grid-template-columns: 1fr;
 }
 
 .ets-card-art,
@@ -1847,11 +1897,27 @@ button {
 }
 
 .ets-trade-balance {
+  display: grid;
+  gap: var(--ets-space-2);
   padding: var(--ets-space-4);
   border: var(--ets-border-thin) solid color-mix(in srgb, var(--ets-color-gold) 42%, var(--ets-color-line));
   border-radius: var(--ets-radius-md);
   color: var(--ets-color-gold);
   text-align: center;
+}
+
+.ets-trade-balance span {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--ets-space-3);
+  min-width: 0;
+  color: var(--ets-color-textMuted);
+  font-size: var(--ets-typography-small);
+}
+
+.ets-trade-balance strong {
+  color: var(--ets-color-gold);
+  white-space: nowrap;
 }
 
 .ets-chart-canvas {

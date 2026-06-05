@@ -10,9 +10,10 @@ This pass polished the mock-only Ember & Tide full-app UI preview and reusable d
 
 - `screen-set.html` remains the standalone visual QA entry.
 - `src/mobileScreenSet.jsx` now renders a clickable full-app screen preview with role switching, screen rail navigation, semantic selected states, and mock-only safety states.
-- `src/mobileScreenSet.css` now supports the responsive preview board, compact mobile ordering, accessible wrapped role controls, five-destination compact bottom nav, dock-safe phone scrollports, safety panels, focused loading/restricted states, compact Market chart treatment, overflow-safe detail badges, and high-contrast role/context cards.
+- `src/mobileScreenSet.jsx` now also replaces the repeated generic role card with contextual role/safety cards per screen, so Hearth, Scout, Vault, Forge, Market, Tidepool, The Spark, Ember Assist, More, Parent Center, Shop Portal, and Admin Review have page-specific context.
+- `src/mobileScreenSet.css` now supports the responsive preview board, compact mobile ordering, accessible wrapped role controls, five-destination compact bottom nav, dock-safe phone scrollports, safety panels, focused loading/restricted states, compact Market chart treatment, overflow-safe detail badges, high-contrast role/context cards, Hearth command-center cue cards, Tidepool community preview cards, and cleaner Forge value comparison rows.
 - `src/components/ember-ui/index.tsx` gained reusable icon and state primitives for the preview/component foundation.
-- `src/mock/emberTideData.ts` and `src/types/emberTide.ts` now cover broader mock-only UI states, page types, role-gated previews, Scout safety copy, Spark mission copy, Parent Center privacy copy, Shop trust controls, and Admin review guardrails.
+- `src/mock/emberTideData.ts` and `src/types/emberTide.ts` now cover broader mock-only UI states, page types, role-gated previews, Scout safety copy, richer Scout report extraction examples, Vault tracker actions, Forge trade/listing/sales workspace content, Market search/discovery cards, Tidepool moderated-community examples, Spark emotional impact content, Ember Assist prompt/help examples, More command shortcuts, Parent Center privacy copy, Shop trust controls, and Admin review guardrails.
 - `design/tokens/tokens.json` was adjusted for the phone preview density, touch layout, and detail badge width containment.
 
 ## Screenshot Artifacts
@@ -49,6 +50,16 @@ This pass polished the mock-only Ember & Tide full-app UI preview and reusable d
 - Full 390px all-screen matrix folder: `C:\Users\Zena\Apps\Embers ledger\ember-hearth-command-pass\artifacts\qa\ember-tide-ui-100\all-screens\`
 - Full 390px all-screen QA results JSON: `C:\Users\Zena\Apps\Embers ledger\ember-hearth-command-pass\artifacts\qa\ember-tide-ui-100\all-screens\all-screens-390-qa-results.json`
 - Corrected Mobile Product Detail 390x844: `C:\Users\Zena\Apps\Embers ledger\ember-hearth-command-pass\artifacts\qa\ember-tide-ui-100\all-screens\24-market-product-detail.png`
+- Targeted realism screenshots folder: `C:\Users\Zena\Apps\Embers ledger\ember-hearth-command-pass\artifacts\qa\ember-tide-ui-100\realism-pass\`
+- Targeted realism QA results JSON: `C:\Users\Zena\Apps\Embers ledger\ember-hearth-command-pass\artifacts\qa\ember-tide-ui-100\realism-pass\realism-pass-results.json`
+- Realism Mobile Hearth 390x844: `C:\Users\Zena\Apps\Embers ledger\ember-hearth-command-pass\artifacts\qa\ember-tide-ui-100\realism-pass\hearth-realism.png`
+- Realism Mobile Scout 390x844: `C:\Users\Zena\Apps\Embers ledger\ember-hearth-command-pass\artifacts\qa\ember-tide-ui-100\realism-pass\scout-realism.png`
+- Realism Mobile Forge Seller 390x844: `C:\Users\Zena\Apps\Embers ledger\ember-hearth-command-pass\artifacts\qa\ember-tide-ui-100\realism-pass\forge-realism.png`
+- Realism Mobile Market 390x844: `C:\Users\Zena\Apps\Embers ledger\ember-hearth-command-pass\artifacts\qa\ember-tide-ui-100\realism-pass\market-realism.png`
+- Realism Mobile Tidepool 390x844: `C:\Users\Zena\Apps\Embers ledger\ember-hearth-command-pass\artifacts\qa\ember-tide-ui-100\realism-pass\tidepool-realism.png`
+- Realism Mobile The Spark 390x844: `C:\Users\Zena\Apps\Embers ledger\ember-hearth-command-pass\artifacts\qa\ember-tide-ui-100\realism-pass\the-spark-realism.png`
+- Realism Mobile Ember Assist 390x844: `C:\Users\Zena\Apps\Embers ledger\ember-hearth-command-pass\artifacts\qa\ember-tide-ui-100\realism-pass\ember-assist-realism.png`
+- Realism Mobile More 390x844: `C:\Users\Zena\Apps\Embers ledger\ember-hearth-command-pass\artifacts\qa\ember-tide-ui-100\realism-pass\more-realism.png`
 
 ## QA Results
 
@@ -82,6 +93,12 @@ This pass polished the mock-only Ember & Tide full-app UI preview and reusable d
 | Persistent Ember Assist geometry | Pass: stricter 40-screen geometry check found no content overlap, no nav overlap, and no assist-action overlap |
 | Role-context icon sizing | Pass: 20x20 rendered icon |
 | Role summary text contrast | Pass: computed `rgb(255, 247, 232)` for title text |
+| Generic role-card repetition | Pass: repeated `Family view` template phrase removed from the focused preview screens and role-gated header copy |
+| Targeted realism screenshot pass | Pass: Hearth, Scout, Vault, Forge, Market, Tidepool, The Spark, Ember Assist, More, and Admin Review captured at 390x844 with no overflow, no page console errors, and no generic role-card copy |
+| Page-specific realism | Pass: primary pages now have distinct contextual cards and mock content instead of duplicated safety cards |
+| Forge workspace realism | Pass: Forge now shows trade desk, value comparison, grouped inventory, listing draft, sales ledger, and seller boundary content |
+| Ember Assist utility | Pass: prompt cards include scan card, screenshot scan, trade fairness, listing price help, kid-friendly set guidance, unsafe-report routing, recent help examples, and privacy copy |
+| More command menu | Pass: More surfaces Forge, Tidepool, The Spark, Parent Center, Shop Portal, Admin Review, Settings, Privacy & Safety, Membership, Ember Assist, and Support as role-aware shortcuts |
 
 ## Commands Run
 
@@ -101,6 +118,8 @@ This pass polished the mock-only Ember & Tide full-app UI preview and reusable d
 - `npm.cmd run test:admin`
 - `npm.cmd run test:ember-assist`
 - One-off 40-screen Playwright geometry check for content, bottom nav, and persistent Ember Assist overlap
+- Targeted 390x844 realism screenshot pass for Hearth, Scout, Vault, Forge, Market, Tidepool, The Spark, Ember Assist, More, and Admin Review
+- Refreshed full 40-screen 390x844 matrix with no-overflow, five-item-nav, dock/assist overlap, console-error, and generic role-card checks
 
 ## Known Warnings
 

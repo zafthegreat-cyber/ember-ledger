@@ -269,6 +269,31 @@ function FeatureSummary({ screen }) {
     );
   }
 
+  if (feature.kind === "home") {
+    return (
+      <MagicCard className="ets-feature-card ets-home-feature">
+        <FeatureTitle feature={feature} />
+        <div className="ets-home-cues">
+          <span><Icon name="scout" /><strong>Scout</strong><small>Worth the trip</small></span>
+          <span><Icon name="vault" /><strong>Vault</strong><small>Protect value</small></span>
+          <span><Icon name="spark" /><strong>Spark</strong><small>Give back</small></span>
+        </div>
+      </MagicCard>
+    );
+  }
+
+  if (feature.kind === "community") {
+    return (
+      <MagicCard className="ets-feature-card ets-community-feature">
+        <FeatureTitle feature={feature} />
+        <div className="ets-community-feed">
+          <span><strong>Shop update</strong><small>Event note, no exact counts</small></span>
+          <span><strong>Parent tip</strong><small>Moderator reviewed</small></span>
+        </div>
+      </MagicCard>
+    );
+  }
+
   if (feature.kind === "spark" || feature.kind === "donation") {
     return (
       <MagicCard className="ets-feature-card ets-impact-feature">
@@ -347,6 +372,94 @@ function ScreenSections({ screen }) {
   ));
 }
 
+const roleIconMap = {
+  Free: "lock",
+  Collector: "vault",
+  Family: "parent",
+  Seller: "forge",
+  Shop: "shop",
+  Admin: "admin",
+  Beta: "assist",
+};
+
+const contextualCards = {
+  hearth: {
+    Family: ["Tonight's family plan", "Scout one useful signal, protect the Vault, and choose a Spark moment without turning the night into a rush feed.", "spark", "hearth"],
+    Seller: ["Seller next move", "Check the pending trade, draft one clean listing, and keep inventory changes review-first.", "forge", "forge"],
+    Shop: ["Shop family signal", "Post helpful availability or an event without exact counts, hype, or checkout pressure.", "shop", "shop"],
+    Admin: ["Command glance", "Review Scout proof, Spark requests, shop approvals, and safety flags from protected queues.", "admin", "admin"],
+  },
+  "scout-near-me": {
+    Family: ["Family trip lens", "See current proof, confidence, and Worth the Trip notes without raw timing history.", "scout", "scout"],
+    Seller: ["Seller boundary", "Use Scout for fair access context, not sourcing patterns or exact inventory timing.", "scout", "shield"],
+    Shop: ["Shop trust signal", "Share useful status only when it helps families plan calmly.", "shop", "store"],
+    Admin: ["Scout review lens", "Watch proof quality, disputed reports, and unsafe pattern exposure.", "admin", "report"],
+  },
+  "scout-screenshot-scan": {
+    Family: ["Review-first proof", "Screenshots stay private while store, date, time, product, and confidence are checked.", "scout", "scan"],
+  },
+  "scout-report-review": {
+    Family: ["Before families act", "Confirm useful report details and remove private or pattern-like information.", "scout", "verified"],
+  },
+  vault: {
+    Family: ["Protected collection room", "Folders, completion, wish list, and kid-visible collections stay organized without public child details.", "vault", "vault"],
+    Seller: ["Inventory bridge", "Move eligible items into Forge only after review so Vault records remain intact.", "forge", "forge"],
+  },
+  "vault-item-detail": {
+    Family: ["Item decision view", "Condition, owned count, value range, notes, trade, Forge, and wish list actions stay scannable.", "vault", "card"],
+  },
+  forge: {
+    Seller: ["Seller workspace", "Trades, listings, sales, and cost basis live together without checkout or inventory mutation surprises.", "forge", "forge"],
+    Family: ["Protected seller tools", "Family users see why Forge is gated without exposing seller records.", "more", "lock"],
+  },
+  market: {
+    Family: ["Fair discovery", "Search cards, sealed, and supplies with honest freshness labels and no auto-buy pressure.", "market", "market"],
+    Seller: ["Pricing context", "Use fair ranges and freshness labels for drafts, not overconfident live pricing.", "market", "market"],
+  },
+  tidepool: {
+    Family: ["Moderated community", "Trusted posts, confirmations, and family events appear without becoming a restock leak feed.", "tidepool", "shield"],
+  },
+  spark: {
+    Family: ["Impact hub", "Track packs, supplies, trusted helpers, events, and thank-you moments that grow the hobby kindly.", "spark", "heart"],
+    Shop: ["Sponsor pathway", "Support kids packs, events, and supplies through reviewed shop participation.", "shop", "gift"],
+  },
+  "ember-assist": {
+    Family: ["Private helper", "Ask for scanner help, trade context, kid-friendly sets, and app guidance without fake AI promises.", "assist", "assist"],
+  },
+  more: {
+    Family: ["Family command menu", "Open Forge, Tidepool, The Spark, Parent Center, privacy, membership, and safe help from one place.", "more", "more"],
+    Seller: ["Seller shortcuts", "Forge, listings, sales ledger, trade value, and exports stay one tap away.", "forge", "forge"],
+    Shop: ["Shop shortcuts", "Shop Portal, Spark sponsorship, Tidepool events, and safety settings stay grouped.", "shop", "shop"],
+    Admin: ["Admin shortcuts", "Review queues, protected moderation, shop approvals, and safety tools stay admin-only.", "admin", "admin"],
+  },
+  "parent-center": {
+    Family: ["Parent safety center", "Approvals, private kid profiles, Spark participation, and community restrictions stay parent-guided.", "spark", "parent"],
+  },
+  "shop-portal": {
+    Shop: ["Trusted shop controls", "Post calm family updates with quantity privacy, proof review, and opt-in sponsorship tools.", "shop", "shop"],
+  },
+  "admin-review": {
+    Admin: ["Protected review desk", "Moderation queues show affected item details before any destructive decision.", "admin", "admin"],
+  },
+};
+
+function getContextualCard(screen, role) {
+  const roleCards = contextualCards[screen.key] || contextualCards[screen.group?.toLowerCase?.()] || {};
+  const card = roleCards[role] || roleCards.Family;
+  if (card) {
+    const [title, detail, accent, icon] = card;
+    return { title, detail, accent, icon };
+  }
+  const accent = screen.role === "Admin" ? "admin" : screen.role === "Shop" ? "shop" : screen.role === "Seller" ? "forge" : screen.accent;
+  const rolePrefix = screen.role && screen.role !== role ? `${screen.role} gated preview. ` : "";
+  return {
+    title: `${screen.title} lens`,
+    detail: `${rolePrefix}${screen.notice || screen.feature?.safety || screen.feature?.detail || "This screen uses mock-only, safety-bounded preview data."}`,
+    accent,
+    icon: screen.feature?.kind === "map" ? "scout" : screen.feature?.kind === "admin" ? "admin" : roleIconMap[role] || "shield",
+  };
+}
+
 function PhoneFrame({ screen, selectedRole, compact = false }) {
   const roleMismatch = Boolean(screen.role && screen.role !== selectedRole);
   const showFeatureSummary = !screen.state;
@@ -361,7 +474,7 @@ function PhoneFrame({ screen, selectedRole, compact = false }) {
       </div>
       <AppScreen label={screen.title}>
         <StatusBar />
-        <AppHeader title={screen.title} detail={screen.role ? `${screen.role} view` : screen.group} accent={screen.accent} />
+        <AppHeader title={screen.title} detail={screen.role ? `${screen.role} tools` : screen.group} accent={screen.accent} />
         <main className="ets-phone-content">
           {screen.hero ? <PageHero eyebrow={screen.hero.eyebrow} title={screen.hero.title} detail={screen.hero.detail} /> : null}
           <RoleContext role={selectedRole} screen={screen} />
@@ -391,14 +504,13 @@ function PhoneFrame({ screen, selectedRole, compact = false }) {
 }
 
 function RoleContext({ role, screen }) {
-  const guidance = emberTideData.roleGuidance.find((item) => item.role === role);
-  if (!guidance) return null;
+  const context = getContextualCard(screen, role);
   return (
-    <aside className={`ets-role-context ets-item-${guidance.accent}`}>
-      <span><Icon name={role === "Family" ? "parent" : role === "Shop" ? "shop" : role === "Admin" ? "admin" : "roles"} /></span>
+    <aside className={`ets-role-context ets-item-${context.accent}`}>
+      <span><Icon name={context.icon} /></span>
       <div>
-        <strong>{guidance.title} view</strong>
-        <small>{screen.role && screen.role !== role ? `${screen.role} gated preview. ` : ""}{guidance.detail}</small>
+        <strong>{context.title}</strong>
+        <small>{context.detail}</small>
       </div>
     </aside>
   );

@@ -234,6 +234,15 @@ const screens: EmberScreen[] = [
     },
     sections: [
       {
+        title: "Best next action",
+        variant: "compact",
+        detail: "A quick daily plan using only safe, review-first tools.",
+        items: [
+          { title: "Check Short Pump signal", detail: "92% confidence, photo proof, and a family note before anyone drives.", status: "Worth the trip", accent: "scout", icon: "location" },
+          { title: "Ask Ember what to do next", detail: "Get help choosing between Scout, Vault, trade review, or Spark support.", status: "Private", accent: "assist", icon: "assist" },
+        ],
+      },
+      {
         title: "Today matters",
         items: [
           { title: "Scout nearby restocks", detail: "3 Richmond signals with proof context.", status: "Worth checking", accent: "scout", icon: "scout" },
@@ -251,6 +260,18 @@ const screens: EmberScreen[] = [
           { title: "Add to Vault", detail: "Save after review.", accent: "vault", icon: "plus" },
           { title: "Check trade", detail: "Compare fairly.", accent: "forge", icon: "trade" },
           { title: "Donate", detail: "Support The Spark.", accent: "spark", icon: "gift" },
+        ],
+      },
+      {
+        title: "Role pathways",
+        variant: "grid",
+        items: [
+          { title: "Forge workspace", detail: "Trades, listings, and sales.", accent: "forge", icon: "forge" },
+          { title: "Tidepool feed", detail: "Trusted community posts.", accent: "tidepool", icon: "shield" },
+          { title: "Parent Center", detail: "Approvals and kid safety.", accent: "spark", icon: "parent" },
+          { title: "Shop Portal", detail: "Trusted family updates.", accent: "shop", icon: "shop" },
+          { title: "Admin Review", detail: "Protected safety queues.", accent: "admin", icon: "admin" },
+          { title: "The Spark", detail: "Events and giving.", accent: "spark", icon: "heart" },
         ],
       },
     ],
@@ -469,6 +490,16 @@ const screens: EmberScreen[] = [
     },
     sections: [
       {
+        title: "Search and filters",
+        variant: "grid",
+        items: [
+          { title: "Search Vault", detail: "Name, set, UPC, SKU, notes.", status: "Ready", accent: "vault", icon: "search" },
+          { title: "Filter folders", detail: "Binder, sealed, kids, wish list.", status: "4 folders", accent: "vault", icon: "vault" },
+          { title: "Scan card", detail: "Review before saving.", status: "Quick add", accent: "assist", icon: "scan" },
+          { title: "Import list", detail: "Paste a checklist safely.", status: "Manual", accent: "more", icon: "report" },
+        ],
+      },
+      {
         title: "Recent additions",
         items: [
           { title: "Ember Drake", detail: "Foundry Peak, #128, near mint.", meta: "$128", accent: "vault", icon: "card" },
@@ -484,6 +515,8 @@ const screens: EmberScreen[] = [
           { title: "Sealed", detail: "87 products.", accent: "market", icon: "box" },
           { title: "Kids Collection", detail: "Parent-visible space.", accent: "spark", icon: "parent" },
           { title: "Wish List", detail: "Fair price watch.", accent: "market", icon: "bell" },
+          { title: "Binder page scan", detail: "Add multiple cards after review.", accent: "assist", icon: "scan" },
+          { title: "Manual add", detail: "Card, sealed, accessory, other.", accent: "hearth", icon: "plus" },
         ],
       },
     ],
@@ -513,6 +546,8 @@ const screens: EmberScreen[] = [
           { title: "Condition", detail: "Near Mint. Photo proof attached.", accent: "scout", icon: "verified" },
           { title: "Value movement", detail: "Small rise, source confidence medium.", accent: "market", icon: "market" },
           { title: "Family note", detail: "Kid favorite. Do not list without parent approval.", accent: "spark", icon: "parent" },
+          { title: "Trade readiness", detail: "Compare before saving history. Vault inventory stays unchanged.", accent: "forge", icon: "trade" },
+          { title: "Forge bridge", detail: "Move to listing draft only after owner review.", accent: "forge", icon: "forge" },
         ],
       },
     ],
@@ -592,11 +627,21 @@ const screens: EmberScreen[] = [
     },
     sections: [
       {
-        title: "Workspace",
+        title: "Trade desk",
+        variant: "compact",
+        detail: "Compare value, confidence, parent approval, and notes before saving trade history.",
         items: [
-          { title: "Grouped inventory", detail: "Duplicate items grouped with cost context.", status: "Seller", accent: "forge", icon: "forge" },
-          { title: "Listing drafts", detail: "No checkout connected. Draft only.", status: "Mock", accent: "market", icon: "market" },
-          { title: "Sales records", detail: "Cost basis and profit placeholders.", status: "Review", accent: "admin", icon: "report" },
+          { title: "Ember Drake for Tide Fawn bundle", detail: "You give $128. Receive $124. Difference -$4.", status: "Fair range", accent: "forge", icon: "trade" },
+          { title: "Moonlit Crest sleeves add-on", detail: "Accessory value closes the gap without changing inventory yet.", status: "Optional", accent: "vault", icon: "box" },
+        ],
+      },
+      {
+        title: "Seller workspace",
+        items: [
+          { title: "Grouped inventory", detail: "Duplicate items grouped with purchase dates and cost context.", status: "Seller", accent: "forge", icon: "forge" },
+          { title: "Listing draft", detail: "Condition, fair range, photo proof, and family-safe copy.", status: "Draft only", accent: "market", icon: "market" },
+          { title: "Sales ledger", detail: "Revenue, cost basis, fees, shipping, and supplies.", status: "Recordkeeping", accent: "admin", icon: "report" },
+          { title: "Seller boundary", detail: "No checkout, subscriptions, or live listing integrations.", status: "Protected", accent: "more", icon: "shield" },
         ],
       },
     ],
@@ -702,11 +747,22 @@ const screens: EmberScreen[] = [
     },
     sections: [
       {
+        title: "Search tools",
+        variant: "grid",
+        items: [
+          { title: "Search cards", detail: "Name, set, or shorthand.", status: "Cards", accent: "market", icon: "search" },
+          { title: "Search sealed", detail: "Product, UPC, or SKU.", status: "Sealed", accent: "vault", icon: "box" },
+          { title: "Trusted shops", detail: "Family-safe local pickup.", status: "Source", accent: "shop", icon: "shop" },
+          { title: "Freshness", detail: "Weak data gets labeled.", status: "Honest", accent: "scout", icon: "verified" },
+        ],
+      },
+      {
         title: "Recommended",
         items: [
-          { title: "Ember Drake", detail: "Known value, source confidence high.", meta: "$128", accent: "market", icon: "card" },
-          { title: "Moonlit Fates Box", detail: "Near retail, no bot claims.", meta: "$59.99", accent: "vault", icon: "box" },
-          { title: "Crown Harbor Bundle", detail: "Watchlist price dip.", meta: "$149", accent: "tidepool", icon: "bell" },
+          { title: "Ember Drake", detail: "Card. Known value. Source confidence high.", meta: "$128", accent: "market", icon: "card" },
+          { title: "Moonlit Fates Box", detail: "Sealed. Near retail. Freshness: today.", meta: "$59.99", accent: "vault", icon: "box" },
+          { title: "Crown Harbor Bundle", detail: "Sealed. Watchlist price dip. Trusted shop.", meta: "$149", accent: "shop", icon: "bell" },
+          { title: "Starter sleeves", detail: "Supplies. Good family pickup. Price stable.", meta: "$6", accent: "tidepool", icon: "market" },
         ],
       },
     ],
@@ -734,7 +790,8 @@ const screens: EmberScreen[] = [
         items: [
           { title: "Fair range", detail: "$58-$66 based on known values.", status: "Honest", accent: "market", icon: "market" },
           { title: "Trusted shop", detail: "Family-friendly local seller.", status: "Shop", accent: "shop", icon: "shop" },
-          { title: "Watchlist", detail: "Alert on fair value changes, not rush feeds.", accent: "scout", icon: "bell" },
+          { title: "Freshness", detail: "Last checked today. Weak source labels stay visible.", status: "Medium", accent: "scout", icon: "verified" },
+          { title: "Watchlist", detail: "Alert on fair value changes, not rush feeds.", status: "Track", accent: "scout", icon: "bell" },
         ],
       },
     ],
@@ -808,9 +865,18 @@ const screens: EmberScreen[] = [
       {
         title: "Community posts",
         items: [
-          { title: "Parent tip: trading with kids", detail: "Moderator reviewed and family friendly.", status: "Parent", accent: "spark", icon: "parent" },
-          { title: "Trusted shop event", detail: "Learn and Play Day this weekend.", status: "Shop", accent: "shop", icon: "shop" },
-          { title: "Confirm report", detail: "Add proof without exposing raw patterns.", status: "Proof based", accent: "scout", icon: "verified" },
+          { title: "Parent tip: trading with kids", detail: "Use a value range, then let kids explain why they like the trade.", status: "Parent", accent: "spark", icon: "parent" },
+          { title: "Trusted shop event", detail: "Learn and Play Day this weekend. No limited-stock hype.", status: "Shop", accent: "shop", icon: "shop" },
+          { title: "Scout confirmation", detail: "Proof attached to a current report without exposing raw patterns.", status: "Proof based", accent: "scout", icon: "verified" },
+          { title: "Moderation", detail: "Report unsafe posts or scalper behavior for review.", status: "Reachable", accent: "admin", icon: "shield" },
+        ],
+      },
+      {
+        title: "Helpful local notes",
+        variant: "compact",
+        items: [
+          { title: "Community trade table", detail: "Family-friendly meetup note, not a buy/sell feed.", accent: "tidepool", icon: "heart" },
+          { title: "Shop supply tip", detail: "Sleeves and binders restocked for starter collectors.", accent: "market", icon: "box" },
         ],
       },
     ],
@@ -861,6 +927,15 @@ const screens: EmberScreen[] = [
     },
     sections: [
       {
+        title: "Impact progress",
+        variant: "compact",
+        detail: "This mock impact meter keeps giving visible without exposing kids or families.",
+        items: [
+          { title: "Starter packs", detail: "48 of 60 packs prepared for first-time collectors.", status: "80%", accent: "spark", icon: "gift" },
+          { title: "Kids helped story", detail: "A family built their first binder after Learn and Play Day.", status: "Private", accent: "parent", icon: "heart" },
+        ],
+      },
+      {
         title: "Why it matters",
         variant: "compact",
         detail: "The Spark turns extra collecting energy into safe starter moments for kids and families.",
@@ -875,6 +950,7 @@ const screens: EmberScreen[] = [
           { title: "Kids Trade Night", detail: "Friday at 6:00 PM, Richmond VA.", status: "Event", accent: "spark", icon: "calendar" },
           { title: "Spark Pack Drive", detail: "Starter packs and sleeves needed.", status: "Giveaway", accent: "vault", icon: "gift" },
           { title: "Trusted shop partner", detail: "Shop sponsor support pending review.", status: "Sponsor", accent: "shop", icon: "shop" },
+          { title: "Thank-you notes", detail: "Impact updates stay warm while protecting family privacy.", status: "Safe", accent: "tidepool", icon: "verified" },
         ],
       },
     ],
@@ -956,7 +1032,19 @@ const screens: EmberScreen[] = [
           { title: "Scan a card", detail: "Identify, value, and add.", accent: "vault", icon: "scan" },
           { title: "Scan restock screenshot", detail: "Extract store and time.", accent: "scout", icon: "report" },
           { title: "Check trade fairness", detail: "Explain value and safety.", accent: "forge", icon: "trade" },
+          { title: "Help price listing", detail: "Draft fair copy, not hype.", accent: "market", icon: "market" },
+          { title: "Kid-friendly set", detail: "Recommend starter-safe choices.", accent: "spark", icon: "gift" },
           { title: "Report something unsafe", detail: "Send to moderation.", accent: "admin", icon: "shield" },
+        ],
+      },
+      {
+        title: "Recent help",
+        variant: "compact",
+        detail: "Mock-only examples of helpful guidance. No live AI calls are connected.",
+        items: [
+          { title: "Scanner troubleshooting", detail: "Try better light, plain background, and full-card framing.", status: "Helpful", accent: "assist", icon: "scan" },
+          { title: "Collection checkup", detail: "Sleeve valuable cards and log condition before trading.", status: "Safe", accent: "vault", icon: "verified" },
+          { title: "Privacy note", detail: "Ember never surfaces private child, admin, or raw Scout pattern data.", status: "Protected", accent: "more", icon: "lock" },
         ],
       },
     ],
@@ -971,10 +1059,22 @@ const screens: EmberScreen[] = [
     primaryAction: "Open settings",
     feature: {
       kind: "settings",
-      title: "Command menu",
-      detail: "Forge, Tidepool, The Spark, Parent Center, Shop Portal, and Settings live here.",
+      title: "Role-aware shortcuts",
+      detail: "Forge, Tidepool, The Spark, Parent Center, Shop Portal, privacy, membership, and safety tools live here.",
     },
     sections: [
+      {
+        title: "Command shortcuts",
+        variant: "grid",
+        items: [
+          { title: "Forge", detail: "Trades, listings, sales.", accent: "forge", icon: "forge" },
+          { title: "Tidepool", detail: "Moderated community.", accent: "tidepool", icon: "shield" },
+          { title: "The Spark", detail: "Giving and events.", accent: "spark", icon: "spark" },
+          { title: "Parent Center", detail: "Family approvals.", accent: "spark", icon: "parent" },
+          { title: "Shop Portal", detail: "Trusted shop updates.", accent: "shop", icon: "shop" },
+          { title: "Admin Review", detail: "Protected queues.", accent: "admin", icon: "admin" },
+        ],
+      },
       {
         title: "Account",
         variant: "grid",
@@ -986,13 +1086,13 @@ const screens: EmberScreen[] = [
         ],
       },
       {
-        title: "Role tools",
+        title: "Safety and membership",
         variant: "grid",
         items: [
-          { title: "Parent Center", detail: "Family controls.", accent: "spark", icon: "parent" },
-          { title: "Shop Portal", detail: "Trusted shop posts.", accent: "shop", icon: "shop" },
-          { title: "Admin Review", detail: "Protected moderation.", accent: "admin", icon: "admin" },
-          { title: "The Spark", detail: "Donations and events.", accent: "spark", icon: "spark" },
+          { title: "Privacy & Safety", detail: "Scout, child, and community boundaries.", accent: "spark", icon: "shield" },
+          { title: "Membership", detail: "Friendly locked states.", accent: "market", icon: "lock" },
+          { title: "Ember Assist", detail: "Warm helper prompts.", accent: "assist", icon: "assist" },
+          { title: "Support", detail: "Feedback and help.", accent: "more", icon: "bell" },
         ],
       },
     ],
