@@ -1095,6 +1095,41 @@ const LOCAL_STORAGE_KEY = "et-tcg-beta-data";
 const SCOUT_STORAGE_KEY = "et-tcg-beta-scout";
 const TIDEPOOL_STORAGE_KEY = "et-tcg-beta-tidepool";
 const FEEDBACK_STORAGE_KEY = "et-tcg-beta-feedback";
+const PUBLIC_BETA_FEEDBACK_DIALOG = "public_beta";
+const PUBLIC_BETA_ROLE_OPTIONS = [
+  "Parent / Family",
+  "Collector",
+  "Player",
+  "Seller",
+  "Shop",
+  "Sponsor / Donor",
+  "Other",
+];
+const PUBLIC_BETA_REASON_OPTIONS = [
+  "Join waitlist",
+  "Request my state",
+  "Report a bug",
+  "Request a feature",
+  "Shop partnership",
+  "Sponsor / donate to The Spark",
+  "General feedback",
+];
+const PUBLIC_BETA_INTEREST_OPTIONS = [
+  "Vault collection tracking",
+  "Scout restock alerts",
+  "Market fair value",
+  "Forge trades/sales",
+  "The Spark kids program",
+  "Shop partnership",
+  "Family safety tools",
+  "Other",
+];
+const PUBLIC_BETA_REASON_FEEDBACK_TYPES = {
+  "Report a bug": "Bug",
+  "Request a feature": "Feature request",
+  "Sponsor / donate to The Spark": "Kids Program question",
+};
+const PUBLIC_BETA_SAFETY_CONSENT = "Please do not include private child information, payment details, passwords, or sensitive account details.";
 const DAILY_TIDE_STORAGE_KEY = "et-tcg-daily-tide";
 const CATALOG_VIEW_STORAGE_KEY = "et-tcg-beta-catalog-view";
 const CATALOG_PAGE_SIZE_STORAGE_KEY = "et-tcg-beta-catalog-page-size";
@@ -1644,6 +1679,14 @@ function routeStateFromPath(pathname = "") {
   if (section === "privacy" || section === "terms" || section === "trust") return { activeTab: "trust" };
   if (section === "settings") return { activeTab: "settings" };
   return { activeTab: "dashboard" };
+}
+
+function isEmailLike(value = "") {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "").trim());
+}
+
+function isUuidLike(value = "") {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || "").trim());
 }
 
 function publicAppVersionLabel(value = APP_VERSION) {
@@ -5559,8 +5602,19 @@ export default function App() {
     page: "",
     steps: "",
     screenshotName: "",
+    name: "",
+    email: "",
+    state: "",
+    cityRegion: "",
+    role: "",
+    mainReason: "",
+    message: "",
+    interests: [],
+    wantsFollowUp: true,
+    safetyConsent: false,
     metadata: {},
   });
+  const [feedbackSubmitState, setFeedbackSubmitState] = useState({ status: "idle", message: "", error: "", persisted: "" });
   const [betaReadinessData, setBetaReadinessData] = useState(() => loadBetaReadinessData());
   const [backendNotifications, setBackendNotifications] = useState([]);
   const [backendNotificationsReady, setBackendNotificationsReady] = useState(false);
@@ -6879,6 +6933,7 @@ export default function App() {
     privacySafety: { key: "privacySafety", label: "Privacy & Safety", helper: "Child privacy, Scout guardrails, and role-scoped data.", icon: "settings", action: () => setActiveTab("trust") },
     parentCenter: { key: "parentCenter", label: "Parent Center", helper: "Parent-guided Spark and family safety setup.", icon: "spark", action: () => setActiveTab("parentCenter") },
     shopPortal: { key: "shopPortal", label: "Shop Portal", helper: "Partner interest and family-friendly shop review path.", icon: "market", action: () => setActiveTab("sponsor") },
+    publicBetaFeedback: { key: "publicBetaFeedback", label: "Join / Feedback", helper: "Waitlist, state requests, bugs, features, shops, and Spark support.", icon: "bell", action: () => openPublicBetaFeedback({ page: "More" }) },
     help: { key: "help", label: "Help & Support", helper: "Feedback, bug reports, and support.", icon: "search", action: () => openUtilityPage("help") },
     settings: { key: "settings", label: "Settings", helper: "Profile, workspace, alerts, and privacy.", icon: "settings", action: () => openUtilityPage("settings") },
     admin: adaptiveAdminNavVisible ? { key: "admin", label: "Admin Command Center", helper: "Protected approvals, reviews, and roles.", icon: "settings", target: "adminReview" } : null,
@@ -6915,6 +6970,7 @@ export default function App() {
   const menuToolItems = [
     mobileMenuByKey.emberAssist,
     mobileMenuByKey.scanProduct,
+    mobileMenuByKey.publicBetaFeedback,
     mobileMenuByKey.help,
     { key: "feedback", label: "Send Feedback", helper: "Share a bug, idea, or support note.", icon: "bell", action: () => openFeedbackDialog("feedback") },
   ].filter(Boolean);
@@ -8518,11 +8574,40 @@ export default function App() {
   function openFeedbackDialog(type, defaults = {}) {
     const now = new Date().toISOString();
     setFeedbackDialog(type);
+    setFeedbackSubmitState({ status: "idle", message: "", error: "", persisted: "" });
+    const feedbackNameDefault = String(defaults.name || currentUserProfile?.displayName || currentUserProfile?.display_name || currentUserProfile?.firstName || "").trim();
+    const feedbackEmailDefault = String(defaults.email || accountEmail()).trim();
+    const safeFeedbackNameDefault = /^(local|local beta|beta|guest|user|collector)$/i.test(feedbackNameDefault) ? "" : feedbackNameDefault;
+    const safeFeedbackEmailDefault = isEmailLike(feedbackEmailDefault) ? feedbackEmailDefault : "";
+    const publicBetaDefaults = type === PUBLIC_BETA_FEEDBACK_DIALOG
+      ? {
+          name: safeFeedbackNameDefault,
+          email: safeFeedbackEmailDefault,
+          state: defaults.state || shorelineBetaForm?.state || "",
+          cityRegion: defaults.cityRegion || defaults.city || "",
+          role: defaults.role || "",
+          mainReason: defaults.mainReason || "Join waitlist",
+          message: defaults.message || defaults.steps || defaults.whatHappened || "",
+          interests: Array.isArray(defaults.interests) ? defaults.interests : [],
+          wantsFollowUp: defaults.wantsFollowUp ?? true,
+          safetyConsent: Boolean(defaults.safetyConsent),
+        }
+      : {};
     setFeedbackForm({
       whatHappened: defaults.whatHappened || "",
       page: defaults.page || activeTabLabel,
       steps: defaults.steps || "",
       screenshotName: "",
+      name: publicBetaDefaults.name || "",
+      email: publicBetaDefaults.email || "",
+      state: publicBetaDefaults.state || "",
+      cityRegion: publicBetaDefaults.cityRegion || "",
+      role: publicBetaDefaults.role || "",
+      mainReason: publicBetaDefaults.mainReason || "",
+      message: publicBetaDefaults.message || "",
+      interests: publicBetaDefaults.interests || [],
+      wantsFollowUp: publicBetaDefaults.wantsFollowUp ?? true,
+      safetyConsent: publicBetaDefaults.safetyConsent || false,
       metadata: {
         appVersion: "Ember & Tide beta web app",
         route: activeTab,
@@ -8542,17 +8627,257 @@ export default function App() {
     return Boolean(
       String(feedbackForm.whatHappened || "").trim() ||
       String(feedbackForm.steps || "").trim() ||
-      String(feedbackForm.screenshotName || "").trim()
+      String(feedbackForm.screenshotName || "").trim() ||
+      String(feedbackForm.name || "").trim() ||
+      String(feedbackForm.email || "").trim() ||
+      String(feedbackForm.state || "").trim() ||
+      String(feedbackForm.cityRegion || "").trim() ||
+      String(feedbackForm.role || "").trim() ||
+      String(feedbackForm.mainReason || "").trim() ||
+      String(feedbackForm.message || "").trim() ||
+      Boolean(feedbackForm.interests?.length)
     );
   }
 
   function closeFeedbackDialog(force = false) {
-    if (!force && feedbackFormHasDraft() && !window.confirm("Discard changes?")) {
+    if (!force && feedbackSubmitState.status !== "success" && feedbackFormHasDraft() && !window.confirm("Discard changes?")) {
       return false;
     }
     setFeedbackDialog(null);
-    setFeedbackForm({ whatHappened: "", page: "", steps: "", screenshotName: "", metadata: {} });
+    setFeedbackSubmitState({ status: "idle", message: "", error: "", persisted: "" });
+    setFeedbackForm({
+      whatHappened: "",
+      page: "",
+      steps: "",
+      screenshotName: "",
+      name: "",
+      email: "",
+      state: "",
+      cityRegion: "",
+      role: "",
+      mainReason: "",
+      message: "",
+      interests: [],
+      wantsFollowUp: true,
+      safetyConsent: false,
+      metadata: {},
+    });
     return true;
+  }
+
+  function openPublicBetaFeedback(defaults = {}) {
+    if (!user && !guestPreviewActive) {
+      startGuestPreview();
+    }
+    openFeedbackDialog(PUBLIC_BETA_FEEDBACK_DIALOG, defaults);
+  }
+
+  function updatePublicBetaFeedbackField(field, value) {
+    setFeedbackSubmitState((current) => current.status === "success" ? { status: "idle", message: "", error: "", persisted: "" } : current);
+    setFeedbackForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function togglePublicBetaInterest(option) {
+    setFeedbackSubmitState((current) => current.status === "success" ? { status: "idle", message: "", error: "", persisted: "" } : current);
+    setFeedbackForm((current) => ({
+      ...current,
+      interests: toggleArrayValue(current.interests || [], option),
+    }));
+  }
+
+  function readLocalFeedbackQueue() {
+    try {
+      const rows = JSON.parse(localStorage.getItem(FEEDBACK_STORAGE_KEY) || "[]");
+      return Array.isArray(rows) ? rows : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function publicBetaFeedbackLooksDuplicate(form = feedbackForm, rows = readLocalFeedbackQueue()) {
+    const email = String(form.email || "").trim().toLowerCase();
+    const stateValue = String(form.state || "").trim().toUpperCase();
+    const reason = String(form.mainReason || "").trim();
+    if (!email && !stateValue && !reason) return false;
+    return rows.some((row) => {
+      if (row.type !== PUBLIC_BETA_FEEDBACK_DIALOG) return false;
+      const rowEmail = String(row.email || "").trim().toLowerCase();
+      const rowState = String(row.state || "").trim().toUpperCase();
+      const rowReason = String(row.mainReason || "").trim();
+      if (email && rowEmail && rowEmail === email && rowReason === reason) return true;
+      return Boolean(stateValue && rowState === stateValue && rowReason === reason && String(row.role || "") === String(form.role || ""));
+    });
+  }
+
+  function buildPublicBetaFeedbackDescription(form = feedbackForm) {
+    return [
+      `Role: ${form.role || "Not selected"}`,
+      `State: ${String(form.state || "").trim().toUpperCase() || "Not selected"}`,
+      form.cityRegion ? `City/region: ${form.cityRegion}` : "",
+      form.wantsFollowUp ? "Follow-up requested" : "No follow-up requested",
+      form.interests?.length ? `Interests: ${form.interests.join(", ")}` : "Interests: Not selected",
+      form.message ? `Message: ${form.message}` : "Message: Not provided",
+      PUBLIC_BETA_SAFETY_CONSENT,
+    ].filter(Boolean).join("\n");
+  }
+
+  async function trySubmitPublicBetaFeedbackToBackend(payload) {
+    if (!isSupabaseConfigured || !supabase) {
+      return { ok: false, reason: "backend-unavailable" };
+    }
+    const feedbackType = PUBLIC_BETA_REASON_FEEDBACK_TYPES[payload.mainReason] || "Other";
+    const safeUserId = signedInWithSupabase && isUuidLike(user?.id) ? user.id : null;
+    const safeWorkspaceId = signedInWithSupabase && isUuidLike(activeWorkspace?.id) ? activeWorkspace.id : null;
+    const row = {
+      user_id: safeUserId,
+      workspace_id: safeWorkspaceId,
+      guest_email: payload.email || null,
+      feedback_type: feedbackType,
+      page: payload.page || "Public Beta Feedback",
+      title: payload.mainReason || "Public beta feedback",
+      description: buildPublicBetaFeedbackDescription(payload),
+      expected_result: payload.mainReason === "Request my state" || payload.mainReason === "Join waitlist"
+        ? "Use state requests to decide where Ember & Tide opens next."
+        : "Review during public beta planning.",
+      severity: payload.mainReason === "Report a bug" ? "normal" : "low",
+      status: "new",
+      screenshot_url: "",
+      device_info: {
+        source: "public_beta_feedback_waitlist",
+        nameProvided: Boolean(payload.name),
+        state: String(payload.state || "").trim().toUpperCase(),
+        cityRegion: payload.cityRegion || "",
+        role: payload.role || "",
+        reason: payload.mainReason || "",
+        interests: payload.interests || [],
+        wantsFollowUp: Boolean(payload.wantsFollowUp),
+        route: payload.metadata?.route || activeTab,
+        device: payload.metadata?.device || "",
+      },
+      browser_info: typeof navigator !== "undefined" ? navigator.userAgent : "",
+      app_version: APP_VERSION || "Ember & Tide beta web app",
+      related_entity_type: "public_beta_feedback",
+      related_entity_id: null,
+    };
+    const { error } = await supabase.from("beta_feedback").insert(row);
+    if (error) {
+      logAppError("public_beta_feedback_backend_insert", error, {
+        reason: payload.mainReason,
+        role: payload.role,
+        state: payload.state,
+      }, "low");
+      return { ok: false, reason: error.message || "backend-error" };
+    }
+    return { ok: true, reason: "backend" };
+  }
+
+  async function submitPublicBetaFeedbackDialog(event) {
+    event.preventDefault();
+    const form = {
+      ...feedbackForm,
+      name: String(feedbackForm.name || "").trim(),
+      email: String(feedbackForm.email || "").trim(),
+      state: String(feedbackForm.state || "").trim().toUpperCase(),
+      cityRegion: String(feedbackForm.cityRegion || "").trim(),
+      role: String(feedbackForm.role || "").trim(),
+      mainReason: String(feedbackForm.mainReason || "").trim(),
+      message: String(feedbackForm.message || "").trim(),
+      interests: Array.isArray(feedbackForm.interests) ? feedbackForm.interests : [],
+      wantsFollowUp: Boolean(feedbackForm.wantsFollowUp),
+      safetyConsent: Boolean(feedbackForm.safetyConsent),
+    };
+    const validationErrors = [];
+    if (!form.state) validationErrors.push("Choose a state so we know where beta demand is coming from.");
+    if (!form.role) validationErrors.push("Choose the role that best describes you.");
+    if (!form.mainReason) validationErrors.push("Choose the main reason you are reaching out.");
+    if (form.wantsFollowUp && !form.email) validationErrors.push("Add an email if you want follow-up.");
+    if (form.email && !isEmailLike(form.email)) validationErrors.push("Enter a valid email address or turn off follow-up.");
+    if (!form.safetyConsent) validationErrors.push(PUBLIC_BETA_SAFETY_CONSENT);
+    if (validationErrors.length) {
+      setFeedbackSubmitState({
+        status: "error",
+        message: "",
+        error: validationErrors.join(" "),
+        persisted: "",
+      });
+      return;
+    }
+
+    setFeedbackSubmitState({ status: "submitting", message: "Submitting public beta feedback...", error: "", persisted: "" });
+    const createdAt = new Date().toISOString();
+    const payload = {
+      id: makeId("public-beta-feedback"),
+      type: PUBLIC_BETA_FEEDBACK_DIALOG,
+      ...form,
+      whatHappened: form.mainReason,
+      steps: form.message,
+      page: feedbackForm.page || activeTabLabel || "Public Beta",
+      metadata: {
+        ...(feedbackForm.metadata || {}),
+        publicBetaFeedback: true,
+        interests: form.interests,
+        state: form.state,
+        role: form.role,
+        mainReason: form.mainReason,
+      },
+      createdAt,
+    };
+    let localRows = [];
+    let duplicate = false;
+    try {
+      localRows = readLocalFeedbackQueue();
+      duplicate = publicBetaFeedbackLooksDuplicate(payload, localRows);
+      localStorage.setItem(FEEDBACK_STORAGE_KEY, JSON.stringify([payload, ...localRows].slice(0, 200)));
+    } catch (error) {
+      console.warn("Unable to queue public beta feedback", error);
+      logAppError("public_beta_feedback_local_queue", error, { reason: form.mainReason, state: form.state }, "normal");
+      setFeedbackSubmitState({
+        status: "error",
+        message: "",
+        error: "Could not queue feedback on this device. Please try again.",
+        persisted: "",
+      });
+      return;
+    }
+
+    updateBetaReadinessData((current) => ({
+      ...current,
+      betaFeedback: [
+        {
+          id: payload.id,
+          userId: user?.id || null,
+          workspaceId: activeWorkspace?.id || null,
+          feedbackType: `Public Beta - ${payload.mainReason}`,
+          page: payload.page,
+          title: payload.mainReason || "Public beta feedback",
+          description: buildPublicBetaFeedbackDescription(payload),
+          severity: payload.mainReason === "Report a bug" ? "normal" : "low",
+          status: "new",
+          screenshotUrl: "",
+          deviceInfo: payload.metadata || {},
+          browserInfo: typeof navigator !== "undefined" ? navigator.userAgent : "",
+          appVersion: APP_VERSION || "Ember & Tide beta web app",
+          createdAt,
+        },
+        ...(current.betaFeedback || []),
+      ].slice(0, 250),
+    }));
+
+    const backendResult = await trySubmitPublicBetaFeedbackToBackend(payload);
+    const isWaitlist = payload.mainReason === "Join waitlist" || payload.mainReason === "Request my state";
+    const successCopy = isWaitlist
+      ? "Thank you - we'll use state requests to decide where Ember & Tide opens next."
+      : "Thank you - your beta feedback helps shape Ember & Tide.";
+    const fallbackCopy = backendResult.ok
+      ? successCopy
+      : `${duplicate ? "Already queued - thank you again." : "Queued locally for beta review."} Feedback capture connection is unavailable, so this public beta response is saved on this device for now.`;
+    setFeedbackSubmitState({
+      status: "success",
+      message: backendResult.ok ? (duplicate ? `Already submitted here too. ${successCopy}` : successCopy) : fallbackCopy,
+      error: "",
+      persisted: backendResult.ok ? "backend" : "local",
+    });
+    setVaultToast(backendResult.ok ? "Public beta feedback submitted." : "Public beta feedback queued locally.");
   }
 
   function updateBetaReadinessData(updater) {
@@ -8721,7 +9046,11 @@ export default function App() {
     ));
   }
 
-  function submitFeedbackDialog(event) {
+  async function submitFeedbackDialog(event) {
+    if (feedbackDialog === PUBLIC_BETA_FEEDBACK_DIALOG) {
+      await submitPublicBetaFeedbackDialog(event);
+      return;
+    }
     event.preventDefault();
     const payload = {
       id: makeId(feedbackDialog || "feedback"),
@@ -27984,6 +28313,15 @@ function renderForgeBusinessCommandPanel() {
     { key: "kid_community", label: "Kid / Community Mode" },
   ];
   const feedbackDialogCopy = {
+    [PUBLIC_BETA_FEEDBACK_DIALOG]: {
+      title: "Join the Public Beta",
+      intro: "Help build a fairer way to collect. Families, collectors, sellers, shops, and Spark supporters all help shape Ember & Tide.",
+      label: "Message",
+      placeholder: "Tell us what would make Ember & Tide more useful for your family, collection, shop, or community.",
+      stepsLabel: "Extra context",
+      stepsPlaceholder: "Optional: what page, role, state, or beta flow should we review?",
+      submit: "Send Public Beta Feedback",
+    },
     bug: {
       title: "Report a Bug",
       intro: "Tell us what broke or looked wrong so we can clean it up for beta.",
@@ -28039,6 +28377,138 @@ function renderForgeBusinessCommandPanel() {
       submit: "Submit Market Report",
     },
   }[feedbackDialog || "feedback"];
+  const publicBetaFeedbackActive = feedbackDialog === PUBLIC_BETA_FEEDBACK_DIALOG;
+  const publicBetaSubmissionComplete = publicBetaFeedbackActive && feedbackSubmitState.status === "success";
+  function renderPublicBetaFeedbackFields() {
+    const submitStateIsError = feedbackSubmitState.status === "error";
+    return (
+      <div className="public-beta-feedback-body">
+        {publicBetaSubmissionComplete ? (
+          <div className={`public-beta-submit-state ${feedbackSubmitState.persisted === "backend" ? "is-cloud" : "is-local"}`} role="status">
+            <span className="section-kicker">{feedbackSubmitState.persisted === "backend" ? "Submitted" : "Queued locally"}</span>
+            <h3>{feedbackSubmitState.persisted === "backend" ? "Thank you - your beta feedback helps shape Ember & Tide." : "Feedback capture connection coming soon."}</h3>
+            <p>{feedbackSubmitState.message}</p>
+            {feedbackSubmitState.persisted !== "backend" ? (
+              <small>Nothing was uploaded, paid, messaged, or shared publicly. This response is stored locally on this device until the feedback connection is available.</small>
+            ) : null}
+          </div>
+        ) : (
+          <>
+            <div className="public-beta-intake-card">
+              <strong>Help build a fairer way to collect.</strong>
+              <p>Tell us what state should open next, report a bug, request a feature, or share how you want to support The Spark, shops, families, and collectors.</p>
+              <span>Public Beta</span>
+            </div>
+            <div className="inline-input-grid">
+              <Field label="Name optional">
+                <input
+                  value={feedbackForm.name || ""}
+                  onChange={(event) => updatePublicBetaFeedbackField("name", event.target.value)}
+                  placeholder="Collector, parent, shop, or sponsor name"
+                />
+              </Field>
+              <Field label="Email for follow-up">
+                <input
+                  type="email"
+                  value={feedbackForm.email || ""}
+                  onChange={(event) => updatePublicBetaFeedbackField("email", event.target.value)}
+                  placeholder="you@example.com"
+                />
+              </Field>
+            </div>
+            <label className="checkbox-row public-beta-followup-row">
+              <input
+                type="checkbox"
+                checked={Boolean(feedbackForm.wantsFollowUp)}
+                onChange={(event) => updatePublicBetaFeedbackField("wantsFollowUp", event.target.checked)}
+              />
+              <span>I want follow-up by email.</span>
+            </label>
+            <div className="inline-input-grid">
+              <Field label="State required">
+                <input
+                  value={feedbackForm.state || ""}
+                  onChange={(event) => updatePublicBetaFeedbackField("state", event.target.value)}
+                  placeholder="VA, NC, TX..."
+                  required
+                />
+              </Field>
+              <Field label="City / region optional">
+                <input
+                  value={feedbackForm.cityRegion || ""}
+                  onChange={(event) => updatePublicBetaFeedbackField("cityRegion", event.target.value)}
+                  placeholder="Hampton Roads, Richmond, your area"
+                />
+              </Field>
+            </div>
+            <div className="inline-input-grid">
+              <Field label="Role required">
+                <select
+                  value={feedbackForm.role || ""}
+                  onChange={(event) => updatePublicBetaFeedbackField("role", event.target.value)}
+                  required
+                >
+                  <option value="">Choose role</option>
+                  {PUBLIC_BETA_ROLE_OPTIONS.map((option) => <option key={option}>{option}</option>)}
+                </select>
+              </Field>
+              <Field label="Main reason required">
+                <select
+                  value={feedbackForm.mainReason || ""}
+                  onChange={(event) => updatePublicBetaFeedbackField("mainReason", event.target.value)}
+                  required
+                >
+                  <option value="">Choose reason</option>
+                  {PUBLIC_BETA_REASON_OPTIONS.map((option) => <option key={option}>{option}</option>)}
+                </select>
+              </Field>
+            </div>
+            <Field label="App interests">
+              <div className="checkbox-grid public-beta-interest-grid">
+                {PUBLIC_BETA_INTEREST_OPTIONS.map((option) => (
+                  <label key={option}>
+                    <input
+                      type="checkbox"
+                      checked={(feedbackForm.interests || []).includes(option)}
+                      onChange={() => togglePublicBetaInterest(option)}
+                    />
+                    <span>{option}</span>
+                  </label>
+                ))}
+              </div>
+            </Field>
+            <Field label="Message optional but encouraged">
+              <textarea
+                value={feedbackForm.message || ""}
+                onChange={(event) => updatePublicBetaFeedbackField("message", event.target.value)}
+                placeholder="Your feedback helps us decide what to build next."
+              />
+            </Field>
+            <div className="small-empty-state public-beta-safety-note">
+              <strong>Safety and privacy</strong>
+              <p>{PUBLIC_BETA_SAFETY_CONSENT}</p>
+              <p>Feedback is for public beta planning. No payments, uploads, messaging, checkout, live AI, or retailer scraping are connected here.</p>
+            </div>
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={Boolean(feedbackForm.safetyConsent)}
+                onChange={(event) => updatePublicBetaFeedbackField("safetyConsent", event.target.checked)}
+              />
+              <span>I understand and will not include sensitive details.</span>
+            </label>
+            <div className="public-beta-backend-note">
+              <strong>{isSupabaseConfigured ? "Feedback inbox connection available" : "Public beta feedback capture is being connected"}</strong>
+              <span>{isSupabaseConfigured ? "Submissions use the existing beta feedback inbox when available, with a local fallback." : "For now, this preview queues responses locally on this device."}</span>
+            </div>
+            {submitStateIsError ? (
+              <p className="flow-inline-message is-warning" role="alert">{feedbackSubmitState.error}</p>
+            ) : null}
+          </>
+        )}
+      </div>
+    );
+  }
   const paidStatLocked = (statKey) => PAID_HOME_STATS.includes(statKey) && !featureAllowed("seller_tools");
   const visibleDashboardStats = dashboardStats.filter((stat) => isHomeStatEnabled(homeStatsProfile, stat.key) && !paidStatLocked(stat.key));
   const visibleCoreHomeStats = visibleDashboardStats.filter((stat) => CORE_HOME_STAT_KEYS.includes(stat.key));
@@ -28650,6 +29120,7 @@ function renderForgeBusinessCommandPanel() {
       { label: "Check trade fairness", helper: "Compare value before deciding.", action: () => { setEmberAssistOpen(false); setActiveTab("forge"); } },
       { label: "Help price listing", helper: "Open Market for fair context.", action: () => { setEmberAssistOpen(false); setActiveTab("market"); } },
       { label: "Recommend kid-friendly set", helper: "Open The Spark guidance.", action: () => { setEmberAssistOpen(false); setActiveTab("kidsProgram"); } },
+      { label: "Join beta / send feedback", helper: "Request a state, shop path, sponsor path, or beta fix.", action: () => { setEmberAssistOpen(false); openPublicBetaFeedback({ page: "Ember Assist", mainReason: "General feedback" }); } },
       { label: "Report something unsafe", helper: "Send a safety note to review.", action: () => { setEmberAssistOpen(false); openFeedbackDialog("feedback", { page: "Ember Assist", topic: "Safety concern" }); } },
     ];
     const emberAssistRecentHelp = [
@@ -38450,7 +38921,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         title="The Spark"
         subtitle="Igniting the spark within kids and families."
         actions={sparkFlowView === "home" ? (
-          <button type="button" className="secondary-button" onClick={openSparkDonate}>Donate / support</button>
+          <>
+            <button type="button" className="secondary-button" onClick={openSparkDonate}>Donate / support</button>
+            <button type="button" className="secondary-button" onClick={() => openPublicBetaFeedback({ page: "The Spark", role: "Sponsor / Donor", mainReason: "Sponsor / donate to The Spark", interests: ["The Spark kids program"] })}>Help The Spark</button>
+          </>
         ) : (
           <button type="button" className="secondary-button" onClick={openSparkHome}>Back to The Spark</button>
         )}
@@ -38479,6 +38953,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <div className="spark-sponsor-card">
             <strong>Shop / sponsor support</strong>
             <p>Trusted shops and sellers can help with drop-off days, supplies, learning tables, and sponsorship placeholders after review.</p>
+            <button type="button" className="secondary-button" onClick={() => openPublicBetaFeedback({ page: "The Spark Donate", role: "Sponsor / Donor", mainReason: "Sponsor / donate to The Spark", interests: ["The Spark kids program", "Shop partnership"] })}>Share sponsor interest</button>
           </div>
           <div className="spark-flow-actions">
             <button type="button" onClick={openSparkThanks}>Submit mock donation</button>
@@ -39011,6 +39486,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           subtitle="Post helpful updates without creating a rush feed."
           actions={(
             <>
+              <button type="button" className="secondary-button" onClick={() => openPublicBetaFeedback({ page: "Shop Portal", role: "Shop", mainReason: "Shop partnership", interests: ["Shop partnership", "Scout restock alerts", "The Spark kids program"] })}>I&apos;m a shop or sponsor</button>
               <button type="button" className="secondary-button" onClick={() => setActiveTab("trust")}>Review safety rules</button>
               <button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Back to Home</button>
             </>
@@ -39125,6 +39601,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <span>I agree Ember & Tide may contact me about partnership opportunities.</span>
             </label>
             <button type="submit">Send sponsor interest</button>
+            <button type="button" className="secondary-button" onClick={() => openPublicBetaFeedback({ page: "Shop Portal", role: "Shop", mainReason: "Shop partnership", interests: ["Shop partnership"] })}>Join beta / request review</button>
           </form>
           <footer className="brand-legal-footer">
             <p>{BRAND_LEGAL_NOTICE}</p>
@@ -47679,7 +48156,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       <div className="vault-quick-add-panel">
         <div className="vault-add-review-note">
           <strong>Review before saving.</strong>
-          <span>Vault add paths stage details first. Nothing is saved until you confirm the final item.</span>
+          <span>Vault add paths stage details first. Already have this card? Add it as a variant or duplicate under the same master card.</span>
         </div>
         <div className="vault-quick-add-grid">
           {options.map((option) => (
@@ -49599,6 +50076,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         { label: "Preview waitlist", action: () => setView("waitlist") },
       ],
       waitlist: [
+        { label: "Request your state", action: () => openPublicBetaFeedback({ page: "Onboarding Waitlist", mainReason: "Request my state" }) },
         { label: "Back to state check", action: () => setView("state-check") },
         { label: "Choose role anyway", action: () => setView("choose-role") },
       ],
@@ -49685,6 +50163,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </article>
               ))}
             </div>
+            <button type="button" className="secondary-button" onClick={() => openPublicBetaFeedback({ page: "Onboarding", mainReason: viewKey === "waitlist" ? "Request my state" : "Join waitlist" })}>Join beta / request state</button>
           </aside>
         </div>
 
@@ -49741,13 +50220,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <section className="signed-out-landing panel">
             <div className="landing-hero">
               <img className="landing-brand-mark" src={BRAND_ASSETS.mark} alt="" aria-hidden="true" />
-              <p className="section-kicker">Private beta</p>
+              <p className="section-kicker">Public Beta</p>
               <h2>Fair collecting starts here.</h2>
               <p>A family-friendly Pokemon TCG app for fair restocks, collections, Scout reports, and community.</p>
               <p className="auth-landing-note">New accounts may need approval before full app access. Ember &amp; Tide is starting in Virginia; out-of-state requests join the waitlist and help us choose where to expand next.</p>
               <div className="quick-actions auth-choice-row">
                 <button type="button" className="ember-gradient-button auth-choice-button" onClick={() => openAuthPanel("login")}>Log In</button>
                 <button type="button" className="secondary-button auth-choice-button" onClick={() => openAuthPanel("signup")}>Create Account / Request Beta Access</button>
+                <button type="button" className="secondary-button auth-choice-button" onClick={() => openPublicBetaFeedback({ page: "Public Beta Landing", mainReason: "Join waitlist" })}>Join Beta / Request State</button>
                 <button type="button" className="auth-text-button auth-help-link" onClick={() => window.location.assign(`mailto:${SUPPORT_EMAIL}`)}>Need help?</button>
               </div>
             </div>
@@ -49772,6 +50252,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div className="landing-link-row">
               <button type="button" className="auth-text-button" onClick={() => { startGuestPreview(); setActiveTab("kidsProgram"); }}>Kids Program</button>
               <button type="button" className="auth-text-button" onClick={() => { startGuestPreview(); setActiveTab("sponsor"); }}>Partner With Us</button>
+              <button type="button" className="auth-text-button" onClick={() => openPublicBetaFeedback({ page: "Public Beta Landing", mainReason: "General feedback" })}>Send Beta Feedback</button>
               <button type="button" className="auth-text-button" onClick={() => { startGuestPreview(); setActiveTab("links"); }}>Links</button>
               <button type="button" className="auth-text-button" onClick={() => { startGuestPreview(); setActiveTab("whatsNew"); }}>What's New</button>
               <button type="button" className="auth-text-button" onClick={() => { startGuestPreview(); setActiveTab("knownLimitations"); }}>Known Limitations</button>
@@ -50501,6 +50982,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       market: { key: "market", label: "Search Market", helper: "Check fair prices.", icon: "market", onClick: () => setActiveTab("market") },
       spark: { key: "spark", label: "The Spark", helper: "Family support.", icon: "spark", onClick: () => setActiveTab("kidsProgram") },
       emberAssist: { key: "ember-assist", label: "Ask Ember", helper: "Get a guided next step.", icon: "spark", onClick: () => setEmberAssistOpen(true) },
+      betaFeedback: { key: "beta-feedback", label: "Join / Feedback", helper: "Request a state or share beta feedback.", icon: "bell", onClick: () => openPublicBetaFeedback({ page: "Hearth" }) },
       forge: { key: "forge", label: "Open Forge", helper: "My business.", icon: "forge", onClick: () => setActiveTab("inventory") },
       addSale: { key: "add-sale", label: "Add Sale", helper: "Record revenue.", icon: "forge", onClick: () => openQuickAddAction("sale") },
       addReceipt: { key: "add-receipt", label: "Add Receipt", helper: "Track cost.", icon: "receipt", onClick: () => openQuickAddAction("receipt") },
@@ -50641,6 +51123,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       hearthCanUseVault ? "vault" : null,
       "market",
       hearthSparkRelevant ? "spark" : null,
+      "betaFeedback",
       "emberAssist",
     ]
       .map((key) => quickActionByKey[key])
@@ -50766,6 +51249,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         icon: "spark",
         tone: "spark",
         onClick: () => openSparkManualSeed("donation"),
+      },
+      {
+        key: "foundation-beta-feedback",
+        title: "Join beta / send feedback",
+        detail: "Request a state, report a bug, or tell us what to build next.",
+        icon: "bell",
+        tone: "gold",
+        onClick: () => openPublicBetaFeedback({ page: "Hearth", mainReason: "General feedback" }),
       },
     ];
     const routeToAdminReportReview = () => {
@@ -54864,6 +55355,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     <p className="compact-subtitle">Hearth, Market Watch, Tidepool Community, Tide Score, Fair Price Badges, and future roadmap names live with Known Limitations.</p>
                     <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("knownLimitations"))}>Open Glossary</button>
                   </div>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openPublicBetaFeedback({ page: "More Feedback", mainReason: "General feedback" }))}>Join Beta / Request State</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("feedback"))}>Send Feedback</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("bug"))}>Report a Bug</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("feature"))}>Request a Feature</button>
@@ -55697,7 +56189,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       {feedbackDialog ? (
         <div className="location-modal-backdrop" role="presentation" onClick={() => closeFeedbackDialog()}>
           <form
-            className="location-modal feedback-modal"
+            className={publicBetaFeedbackActive ? "location-modal feedback-modal public-beta-feedback-modal" : "location-modal feedback-modal"}
             role="dialog"
             aria-modal="true"
             aria-labelledby="feedback-dialog-title"
@@ -55713,31 +56205,35 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 X
               </button>
             </div>
-            <Field label={feedbackDialogCopy.label}>
-              <textarea
-                value={feedbackForm.whatHappened}
-                onChange={(event) => setFeedbackForm((current) => ({ ...current, whatHappened: event.target.value }))}
-                placeholder={feedbackDialogCopy.placeholder}
-              />
-            </Field>
-            <Field label="Page / screen">
-              <input
-                value={feedbackForm.page}
-                onChange={(event) => setFeedbackForm((current) => ({ ...current, page: event.target.value }))}
-                placeholder="Home, Scout, The Vault..."
-              />
-            </Field>
-            <Field label={feedbackDialogCopy.stepsLabel}>
-              <textarea
-                value={feedbackForm.steps}
-                onChange={(event) => setFeedbackForm((current) => ({ ...current, steps: event.target.value }))}
-                placeholder={feedbackDialogCopy.stepsPlaceholder}
-              />
-            </Field>
-            <div className="small-empty-state">
-              <strong>Optional screenshot - coming soon</strong>
-              <p>Screenshot upload is not connected yet. For now, describe what you saw or export beta data if support needs details.</p>
-            </div>
+            {publicBetaFeedbackActive ? renderPublicBetaFeedbackFields() : (
+              <>
+                <Field label={feedbackDialogCopy.label}>
+                  <textarea
+                    value={feedbackForm.whatHappened}
+                    onChange={(event) => setFeedbackForm((current) => ({ ...current, whatHappened: event.target.value }))}
+                    placeholder={feedbackDialogCopy.placeholder}
+                  />
+                </Field>
+                <Field label="Page / screen">
+                  <input
+                    value={feedbackForm.page}
+                    onChange={(event) => setFeedbackForm((current) => ({ ...current, page: event.target.value }))}
+                    placeholder="Home, Scout, The Vault..."
+                  />
+                </Field>
+                <Field label={feedbackDialogCopy.stepsLabel}>
+                  <textarea
+                    value={feedbackForm.steps}
+                    onChange={(event) => setFeedbackForm((current) => ({ ...current, steps: event.target.value }))}
+                    placeholder={feedbackDialogCopy.stepsPlaceholder}
+                  />
+                </Field>
+                <div className="small-empty-state">
+                  <strong>Optional screenshot - coming soon</strong>
+                  <p>Screenshot upload is not connected yet. For now, describe what you saw or export beta data if support needs details.</p>
+                </div>
+              </>
+            )}
             <dl className="drawer-status-list feedback-metadata">
               <div><dt>Version</dt><dd>{feedbackForm.metadata?.appVersion || "Beta"}</dd></div>
               <div><dt>Screen</dt><dd>{feedbackForm.metadata?.route || activeTab}</dd></div>
@@ -55745,7 +56241,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <div><dt>Time</dt><dd>{feedbackForm.metadata?.timestamp ? new Date(feedbackForm.metadata.timestamp).toLocaleString() : "Now"}</dd></div>
             </dl>
             <div className="location-modal-actions">
-              <button type="submit">{feedbackDialogCopy.submit}</button>
+              {publicBetaSubmissionComplete ? (
+                <button type="button" onClick={() => closeFeedbackDialog(true)}>Done</button>
+              ) : (
+                <button type="submit" disabled={feedbackSubmitState.status === "submitting"}>
+                  {feedbackSubmitState.status === "submitting" ? "Submitting..." : feedbackDialogCopy.submit}
+                </button>
+              )}
               <button type="button" className="secondary-button" onClick={() => closeFeedbackDialog()}>Cancel</button>
             </div>
           </form>
