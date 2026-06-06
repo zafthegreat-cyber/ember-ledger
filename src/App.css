@@ -79885,6 +79885,77 @@ button.et-live-action:focus-visible {
   min-height: 40px;
 }
 
+.app-kidsprogram .spark-impact-dashboard,
+.app-command-shell.app-kidsprogram .spark-impact-dashboard,
+.app-shell-dark.app-kidsprogram .spark-impact-dashboard {
+  display: grid;
+  gap: 14px;
+  border-color: rgba(255, 207, 92, 0.24) !important;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(255, 207, 92, 0.14), transparent 14rem),
+    linear-gradient(145deg, rgba(37, 19, 7, 0.86), rgba(8, 13, 25, 0.92)) !important;
+}
+
+.app-kidsprogram .spark-impact-stat-grid,
+.app-command-shell.app-kidsprogram .spark-impact-stat-grid,
+.app-shell-dark.app-kidsprogram .spark-impact-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.app-kidsprogram .spark-impact-stat-card,
+.app-command-shell.app-kidsprogram .spark-impact-stat-card,
+.app-shell-dark.app-kidsprogram .spark-impact-stat-card,
+.app-kidsprogram .spark-impact-milestone-card,
+.app-command-shell.app-kidsprogram .spark-impact-milestone-card,
+.app-shell-dark.app-kidsprogram .spark-impact-milestone-card {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid rgba(255, 207, 92, 0.17);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.app-kidsprogram .spark-impact-stat-card span,
+.app-command-shell.app-kidsprogram .spark-impact-stat-card span,
+.app-shell-dark.app-kidsprogram .spark-impact-stat-card span {
+  color: rgba(255, 235, 196, 0.72);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.app-kidsprogram .spark-impact-stat-card strong,
+.app-command-shell.app-kidsprogram .spark-impact-stat-card strong,
+.app-shell-dark.app-kidsprogram .spark-impact-stat-card strong {
+  color: #fff5c7;
+  font-size: clamp(1.45rem, 4vw, 2rem);
+  line-height: 1;
+}
+
+.app-kidsprogram .spark-impact-stat-card p,
+.app-command-shell.app-kidsprogram .spark-impact-stat-card p,
+.app-shell-dark.app-kidsprogram .spark-impact-stat-card p,
+.app-kidsprogram .spark-impact-milestone-card p,
+.app-command-shell.app-kidsprogram .spark-impact-milestone-card p,
+.app-shell-dark.app-kidsprogram .spark-impact-milestone-card p {
+  margin: 0;
+  color: rgba(255, 248, 225, 0.72);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.app-kidsprogram .spark-impact-milestone-grid,
+.app-command-shell.app-kidsprogram .spark-impact-milestone-grid,
+.app-shell-dark.app-kidsprogram .spark-impact-milestone-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
 .app-kidsprogram .spark-donate-panel,
 .app-command-shell.app-kidsprogram .spark-donate-panel,
 .app-shell-dark.app-kidsprogram .spark-donate-panel,
@@ -80046,9 +80117,31 @@ button.et-live-action:focus-visible {
   .app-shell-dark.app-kidsprogram .spark-donate-panel,
   .app-kidsprogram .spark-thank-you-panel,
   .app-command-shell.app-kidsprogram .spark-thank-you-panel,
-  .app-shell-dark.app-kidsprogram .spark-thank-you-panel {
+  .app-shell-dark.app-kidsprogram .spark-thank-you-panel,
+  .app-kidsprogram .spark-impact-dashboard,
+  .app-command-shell.app-kidsprogram .spark-impact-dashboard,
+  .app-shell-dark.app-kidsprogram .spark-impact-dashboard {
     margin-bottom: calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 52px);
     padding-bottom: calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 34px) !important;
+  }
+
+  .app-kidsprogram .spark-impact-stat-grid,
+  .app-command-shell.app-kidsprogram .spark-impact-stat-grid,
+  .app-shell-dark.app-kidsprogram .spark-impact-stat-grid,
+  .app-kidsprogram .spark-impact-milestone-grid,
+  .app-command-shell.app-kidsprogram .spark-impact-milestone-grid,
+  .app-shell-dark.app-kidsprogram .spark-impact-milestone-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .app-kidsprogram .spark-impact-stat-card,
+  .app-command-shell.app-kidsprogram .spark-impact-stat-card,
+  .app-shell-dark.app-kidsprogram .spark-impact-stat-card,
+  .app-kidsprogram .spark-impact-milestone-card,
+  .app-command-shell.app-kidsprogram .spark-impact-milestone-card,
+  .app-shell-dark.app-kidsprogram .spark-impact-milestone-card {
+    padding: 11px;
+    border-radius: 16px;
   }
 
   .app-kidsprogram .spark-donate-category-grid,

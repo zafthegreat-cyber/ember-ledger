@@ -38944,7 +38944,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       "Toys/prizes",
       "Gift cards",
       "Event support",
-      "Money/sponsorships",
+      "Sponsorship interest",
       "Services",
       "Volunteer time",
       "Food/snacks",
@@ -38964,7 +38964,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       { title: "Cards and products", items: ["Cards", "Sealed products", "Packs"] },
       { title: "Collecting supplies", items: ["Binders", "Sleeves", "Deck boxes", "Storage", "Playmats"] },
       { title: "Event support", items: ["Toys/prizes", "Gift cards", "Food/snacks", "Event support"] },
-      { title: "Mission support", items: ["Money/sponsorships", "Services", "Volunteer time", "Shipping help", "Other family collecting support"] },
+      { title: "Mission support", items: ["Sponsorship interest", "Services", "Volunteer time", "Shipping help", "Other family collecting support"] },
     ];
     const sparkParticipationCards = [
       {
@@ -39008,14 +39008,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const openSparkThanks = () => setSparkFlowView("thank-you");
     const openSparkHome = () => setSparkFlowView("home");
     const sparkImpactStats = [
-      { label: "Kids helped", value: "12", detail: "Mock impact count" },
-      { label: "Packs donated", value: "320", detail: "Starter support planned" },
+      { label: "Kids helped", value: "12", detail: "Preview impact count" },
+      { label: "Packs planned", value: "320", detail: "Starter support goal" },
       { label: "Events supported", value: "4", detail: "Family-friendly days" },
     ];
     const sparkImpactStories = [
-      { title: "Starter packs for new collectors", body: "Mock story: kid-safe packs help families start without rush alerts or pressure." },
-      { title: "Learning table support", body: "Sleeves, deck boxes, snacks, and volunteers can make events easier for families." },
-      { title: "Trusted shop help", body: "Shops and sellers can support drop-off days without creating a public rush feed." },
+      { title: "Starter packs for new collectors", body: "Preview story: kid-safe packs help families start without rush alerts, pressure, or resale-first energy." },
+      { title: "Learning table support", body: "Sleeves, deck boxes, snacks, and volunteers can make family events calmer and easier to join." },
+      { title: "Trusted shop help", body: "Shops and sellers can support drop-off days without creating a public rush feed or exact stock signal." },
     ];
     const sparkDonationCategories = [
       "Cards",
@@ -39027,13 +39027,18 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       "Playmats",
       "Toys/prizes",
       "Gift cards",
-      "Money/sponsorship placeholder only",
+      "Sponsorship interest",
       "Event support",
       "Food/snacks",
       "Shipping help",
       "Volunteer time",
       "Services",
       "Other",
+    ];
+    const sparkImpactMilestones = [
+      { title: "Build safe starter packs", detail: "Cards, sleeves, and deck boxes are reviewed before they count toward impact." },
+      { title: "Support local family days", detail: "Event help stays general-area only and avoids private child or home details." },
+      { title: "Thank helpers clearly", detail: "Sponsors and shops can express interest, then wait for review before anything goes public." },
     ];
     const renderSparkHero = () => (
       <PageHeader
@@ -39059,12 +39064,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div>
               <p className="section-kicker">Donate</p>
               <h2>Donate to The Spark.</h2>
-              <p>This is a mock intake preview. No payment, checkout, external link, or donation backend is connected.</p>
+              <p>This is a public beta support preview. No payment is processed, no checkout opens, and no donation backend is connected here.</p>
             </div>
-            <span className="trust-badge trust-badge--kid">Admin-reviewed</span>
+            <span className="trust-badge trust-badge--kid">Preview only</span>
           </div>
           <div className="spark-impact-meter" aria-label="The Spark impact progress">
-            <span><b>68%</b> toward this month&apos;s mock kid-pack goal</span>
+            <span><b>68%</b> toward this month&apos;s preview kid-pack goal</span>
             <i><em style={{ width: "68%" }} /></i>
           </div>
           <div className="spark-donate-category-grid" aria-label="Donation categories">
@@ -39072,11 +39077,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </div>
           <div className="spark-sponsor-card">
             <strong>Shop / sponsor support</strong>
-            <p>Trusted shops and sellers can help with drop-off days, supplies, learning tables, and sponsorship placeholders after review.</p>
+            <p>Trusted shops, sponsors, and volunteers can help with drop-off days, supplies, learning tables, shipping help, or service support after review.</p>
             <button type="button" className="secondary-button" onClick={() => openPublicBetaFeedback({ page: "The Spark Donate", role: "Sponsor / Donor", mainReason: "Sponsor / donate to The Spark", interests: ["The Spark kids program", "Shop partnership"] })}>Share sponsor interest</button>
           </div>
           <div className="spark-flow-actions">
-            <button type="button" onClick={openSparkThanks}>Submit mock donation</button>
+            <button type="button" onClick={openSparkThanks}>Preview support review</button>
             <button type="button" className="secondary-button" onClick={openSparkHome}>Back to The Spark</button>
           </div>
         </section>
@@ -39089,8 +39094,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <div className="spark-thank-you-orb" aria-hidden="true"><span /></div>
           <div>
             <p className="section-kicker">Thank You</p>
-            <h2>Thank You - donation submitted for mock review.</h2>
-            <p>Thanks - your support is queued for admin review before it counts toward The Spark impact. Nothing is charged or processed here.</p>
+            <h2>Thank you - support interest queued for preview review.</h2>
+            <p>Your support preview is queued for review before it would count toward The Spark impact. Nothing is charged, posted, or processed here.</p>
           </div>
           <div className="spark-impact-story-grid" aria-label="Spark impact story">
             {sparkImpactStories.map((story) => (
@@ -39102,7 +39107,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </div>
           <div className="spark-flow-actions">
             <button type="button" onClick={openSparkHome}>View impact</button>
-            <button type="button" className="secondary-button" onClick={openSparkDonate}>Add another mock support item</button>
+            <button type="button" className="secondary-button" onClick={openSparkDonate}>Add another support preview</button>
           </div>
         </section>
       </>
@@ -39135,6 +39140,38 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             {activeApplication ? "View status" : "Request access"}
           </button>
           <button type="button" className="secondary-button spark-secondary-cta" onClick={openSparkDonate}>Donate / support</button>
+        </section>
+
+        <section className="panel spark-impact-dashboard" aria-label="The Spark impact preview">
+          <div className="compact-card-header">
+            <div>
+              <p className="section-kicker">Impact preview</p>
+              <h3>Small support can make collecting feel safer.</h3>
+              <p>Impact tracking is public-beta preview only. Child/family details stay private, and support is reviewed before anything counts.</p>
+            </div>
+            <span className="trust-badge trust-badge--kid">No payment processed</span>
+          </div>
+          <div className="spark-impact-stat-grid" aria-label="The Spark impact stats">
+            {sparkImpactStats.map((stat) => (
+              <article className="spark-impact-stat-card" key={stat.label}>
+                <span>{stat.label}</span>
+                <strong>{stat.value}</strong>
+                <p>{stat.detail}</p>
+              </article>
+            ))}
+          </div>
+          <div className="spark-impact-meter" aria-label="The Spark monthly support goal">
+            <span><b>68%</b> toward this month&apos;s preview kid-pack goal</span>
+            <i><em style={{ width: "68%" }} /></i>
+          </div>
+          <div className="spark-impact-milestone-grid">
+            {sparkImpactMilestones.map((milestone) => (
+              <article className="spark-impact-milestone-card" key={milestone.title}>
+                <strong>{milestone.title}</strong>
+                <p>{milestone.detail}</p>
+              </article>
+            ))}
+          </div>
         </section>
 
         {adminToolsVisible ? (

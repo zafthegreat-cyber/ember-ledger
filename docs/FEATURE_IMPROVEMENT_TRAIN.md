@@ -24,8 +24,8 @@
 | 2 - Scout Improvement | Complete | `821567f` | Family-safe Scout polish. |
 | 3 - Vault Improvement | Complete | `973e854` | Master-card grouping clarity, Add Item copy, and Vault QA. |
 | 4 - Market Improvement | Complete | `b372544` | Fair discovery polish, honest value/source copy, and mobile search/results spacing. |
-| 5 - Forge Improvement | Complete | `Improve Forge trade and seller workspace` | Exact variant/copy language, trade/listing/sales preview polish, and safer suggestion copy. |
-| 6 - The Spark Improvement | Pending | Pending | Impact and donation preview polish. |
+| 5 - Forge Improvement | Complete | `2f88f4e` | Exact variant/copy language, trade/listing/sales preview polish, and safer suggestion copy. |
+| 6 - The Spark Improvement | Complete | `Improve The Spark impact and donation preview` | Impact dashboard, donation category, sponsor/volunteer, and no-payment preview polish. |
 | 7 - Tidepool Improvement | Pending | Pending | Safe community polish. |
 | 8 - Ember Assist Improvement | Pending | Pending | Guided helper polish. |
 | 9 - Parent Center Improvement | Pending | Pending | Safety controls polish. |
@@ -223,4 +223,40 @@ QA:
 Mock-only notes:
 
 - Trade Analyzer, Listing Builder, Sales Ledger, listing suggestions, and seller workflow cards remain UI/mock/local-only unless existing app behavior already stores local records.
+- No deploy was run.
+
+### Section 6 - The Spark Improvement
+
+Status: Complete. Commit message `Improve The Spark impact and donation preview`.
+
+Summary:
+
+- Added a warmer Spark impact dashboard with kids helped, packs planned, events supported, monthly progress, and reviewed support milestones.
+- Expanded and clarified donation/support language around cards, sealed products, packs, supplies, toys/prizes, gift cards, sponsorship interest, services, volunteer time, food/snacks, and shipping help.
+- Reframed donation and thank-you actions as public beta support previews with explicit no-payment, no-checkout, no-posting, and review-before-counting copy.
+- Improved shop/sponsor/volunteer support copy so The Spark feels like an emotional impact hub without implying live payments or donation processing.
+- Kept parent safety, private child/family details, admin review, and no private child messaging guardrails visible.
+- No Spark payment processing, donation backend, checkout, upload, live AI, auth, billing, database schema, or RLS behavior was changed.
+
+Checks:
+
+- `npm.cmd run build`: passed with existing Vite large chunk warning.
+- `git diff --check`: passed with existing LF-to-CRLF working-copy warnings only.
+- `npm.cmd run test:kids-program`: passed.
+- `npm.cmd run test:quick-add`: passed.
+- `npm.cmd run test:app-fallbacks`: passed.
+- `npm.cmd run test:menu-full-page-routes`: passed.
+- `npm.cmd run test:spark`: sandbox Chromium `spawn EPERM`; outside-sandbox rerun passed.
+- `npm.cmd run smoke:beta`: outside-sandbox rerun passed.
+
+QA:
+
+- Screenshots and result JSON: `artifacts/qa/feature-improvement-train/spark/`
+- Captured The Spark home, Donate, and Thank You routes at 390x844, 430x932, and 1440x900.
+- Result: no horizontal overflow, no console errors, no maximum update depth errors.
+- Automated fixed-bottom-nav detection flagged mobile intersections because the fixed dock is present in the viewport; visual review found no hidden primary Spark action.
+
+Mock-only notes:
+
+- Impact counts, monthly support goal, donation categories, sponsor interest, support review, and thank-you state remain UI/mock/local-only.
 - No deploy was run.
