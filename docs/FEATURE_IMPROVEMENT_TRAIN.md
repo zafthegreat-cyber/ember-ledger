@@ -26,7 +26,7 @@
 | 4 - Market Improvement | Complete | `b372544` | Fair discovery polish, honest value/source copy, and mobile search/results spacing. |
 | 5 - Forge Improvement | Complete | `2f88f4e` | Exact variant/copy language, trade/listing/sales preview polish, and safer suggestion copy. |
 | 6 - The Spark Improvement | Complete | `Improve The Spark impact and donation preview` | Impact dashboard, donation category, sponsor/volunteer, and no-payment preview polish. |
-| 7 - Tidepool Improvement | Pending | Pending | Safe community polish. |
+| 7 - Tidepool Improvement | Complete | `Improve Tidepool safe community UI` | Moderated community sections, anti-rush-feed copy, and mobile hero polish. |
 | 8 - Ember Assist Improvement | Pending | Pending | Guided helper polish. |
 | 9 - Parent Center Improvement | Pending | Pending | Safety controls polish. |
 | 10 - Shop Portal Improvement | Pending | Pending | Trusted shop preview polish. |
@@ -259,4 +259,40 @@ QA:
 Mock-only notes:
 
 - Impact counts, monthly support goal, donation categories, sponsor interest, support review, and thank-you state remain UI/mock/local-only.
+- No deploy was run.
+
+### Section 7 - Tidepool Improvement
+
+Status: Complete. Commit message `Improve Tidepool safe community UI`.
+
+Summary:
+
+- Strengthened Tidepool as a moderated community space with clearer Local, Families, Events, Shops, and Tips section cards.
+- Added explicit moderation guardrails for read/report access, no rush feed, no vendor schedules, no restock pattern history, and no unmoderated kid messaging.
+- Improved preview post copy so trusted shop updates, event cards, trade interest, and tips avoid inventory guarantees, checkout, profit, and scalper-friendly language.
+- Polished the mobile Tidepool hero to keep the primary action visible at 390px while moving dense trust details into the community feed below.
+- Kept reporting/moderation affordances visible without adding live messaging, posting backend changes, or admin/user mutations.
+- No Tidepool backend write, messaging, upload, live AI, auth, billing, database schema, or RLS behavior was changed.
+
+Checks:
+
+- `npm.cmd run build`: passed with existing Vite large chunk warning.
+- `git diff --check`: passed with existing LF-to-CRLF working-copy warnings only.
+- `npm.cmd run test:tidepool-community`: passed.
+- `npm.cmd run test:community-safety`: passed.
+- `npm.cmd run test:quick-add`: passed.
+- `npm.cmd run test:app-fallbacks`: passed.
+- `npm.cmd run test:menu-full-page-routes`: passed.
+- `npm.cmd run smoke:beta`: outside-sandbox rerun passed.
+
+QA:
+
+- Screenshots and result JSON: `artifacts/qa/feature-improvement-train/tidepool/`
+- Captured Tidepool at 390x844, 430x932, and 1440x900.
+- Result: no horizontal overflow, no bottom-nav overlap, no console errors, no maximum update depth errors.
+- Visual review found the final 390px hero keeps the primary Tidepool action visible and the dock clear.
+
+Mock-only notes:
+
+- Community examples, moderation guidance cards, post/report actions, and support language remain UI/mock/local-only unless existing app behavior already handles safe local state.
 - No deploy was run.

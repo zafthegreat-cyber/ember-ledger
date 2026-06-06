@@ -44205,23 +44205,28 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       { label: "Replies", value: tidepoolComments.filter((comment) => visibleTidepoolPostIds.has(comment.postId) && comment.status !== "removed").length },
     ];
     const tidepoolTrustCards = [
-      { title: "Trusted members", detail: "Helpful public badges. Private details stay private." },
-      { title: "Proof-based confirmations", detail: "Photos and replies build trust." },
-      { title: "Family-friendly discussion", detail: "Questions, events, and collecting help." },
-      { title: "Report confirmations", detail: "Flag unsafe posts, fake info, or private details." },
+      { title: "Trusted members", detail: "Helpful public badges. Private emails, child details, and admin notes stay private." },
+      { title: "Proof-based confirmations", detail: "Photos and replies build trust without exposing exact restock patterns." },
+      { title: "Family-friendly discussion", detail: "Questions, events, tips, and collecting help stay calm and adult-guided." },
+      { title: "Report and review", detail: "Flag unsafe posts, fake info, private details, or rush-alert behavior." },
     ];
     const tidepoolSectionCards = [
-      { title: "Local", detail: "General area collecting help without exact rush alerts.", status: `${localPosts} local` },
-      { title: "Families", detail: "Parent-guided questions, kid-friendly wins, and safe tips.", status: "Family-safe" },
-      { title: "Events", detail: "Trade nights, learning days, Spark events, and shop meetups.", status: "Moderated" },
-      { title: "Shops", detail: "Trusted shop updates without inventory guarantees or pressure.", status: "Shop-safe" },
-      { title: "Tips", detail: "Binder care, fair value, and collecting help for newer families.", status: "Helpful" },
+      { title: "Local", detail: "General-area collecting help without exact rush alerts, store routes, or private addresses.", status: `${localPosts} local` },
+      { title: "Families", detail: "Parent-guided questions, kid-friendly wins, safe tips, and read/report community access.", status: "Family-safe" },
+      { title: "Events", detail: "Trade nights, learning days, Spark support, and shop meetups with moderation guardrails.", status: "Moderated" },
+      { title: "Shops", detail: "Trusted shop updates without inventory guarantees, exact quantities, or pressure.", status: "Shop-safe" },
+      { title: "Tips", detail: "Binder care, fair value, scam awareness, and collecting help for newer families.", status: "Helpful" },
+    ];
+    const tidepoolModerationCards = [
+      { title: "Read and report", detail: "Free users can read Tidepool and report unsafe content. Posting stays beta-reviewed." },
+      { title: "Not a rush feed", detail: "No vendor schedules, raw restock pattern history, or guaranteed-stock language belongs here." },
+      { title: "Adult-guided community", detail: "No unmoderated kid messaging, public child profiles, or private family details." },
     ];
     const tidepoolPreviewCards = [
       {
         type: "Trusted shop update",
         title: "Family Table TCG posted a learning night",
-        body: "Beginner-friendly table space is planned for Saturday afternoon. No inventory promises; call first if you need accessibility details.",
+        body: "Beginner-friendly table space is planned for Saturday afternoon. No inventory promises, exact quantities, or rush-alert wording.",
         meta: "Trusted shop | Event note | Richmond, VA",
         badge: "Shop update",
       },
@@ -44235,7 +44240,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       {
         type: "Tip post",
         title: "How to check a fair sealed price",
-        body: "Compare Market fair range, recent source freshness, and MSRP before buying. Tidepool is not an auto-buy feed.",
+        body: "Compare Market fair range, recent source freshness, and MSRP before buying. Tidepool is not an auto-buy or profit feed.",
         meta: "Marketplace tip | No checkout",
         badge: "Tip",
       },
@@ -44252,7 +44257,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       <>
         <PageHeader
           className={getHeaderCardClass("panel tidepool-community-header")}
-          title="Tidepool Community"
+          title="Tidepool"
           subtitle="Safe community posts, proof-based confirmations, and local collecting help."
           actions={(
             <>
@@ -44272,6 +44277,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </div>
               <p>Keep it kind, helpful, and family-friendly. Posts use general areas only.</p>
               <p>Tidepool is for trusted collecting activity, not rush alerts.</p>
+              <p>No private child data, vendor schedules, exact restock patterns, or guaranteed-stock claims.</p>
               {!canCreateTidepoolPost ? <p>Tidepool posting opens after beta access is approved. Published posts remain visible when allowed.</p> : null}
               <div className="tidepool-trust-grid" aria-label="Tidepool trust and safety">
                 {tidepoolTrustCards.map((card) => (
@@ -44301,6 +44307,15 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             {tidepoolSectionCards.map((card) => (
               <article className="tidepool-live-section-card" key={card.title}>
                 <span className="status-badge">{card.status}</span>
+                <strong>{card.title}</strong>
+                <p>{card.detail}</p>
+              </article>
+            ))}
+          </div>
+
+          <div className="tidepool-moderation-grid" aria-label="Tidepool moderation guardrails">
+            {tidepoolModerationCards.map((card) => (
+              <article className="tidepool-moderation-card" key={card.title}>
                 <strong>{card.title}</strong>
                 <p>{card.detail}</p>
               </article>
@@ -44339,7 +44354,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             {filteredTidepoolPosts.length === 0 ? (
               <div className="empty-state tidepool-empty-state">
                 <h3>Community posts and confirmations will appear here.</h3>
-                <p>Start a family-friendly question, local collecting tip, or proof-backed Scout confirmation.</p>
+                <p>Start a family-friendly question, local collecting tip, event note, or proof-backed Scout confirmation. Tidepool is for trusted collecting activity, not rush alerts.</p>
                 <div className="quick-actions">
                   <button type="button" onClick={openTidepoolCreatePostFlow} disabled={!canCreateTidepoolPost}>Start a Post</button>
                   <button type="button" className="secondary-button" onClick={() => setActiveTab("scout")}>View Scout Signals</button>
@@ -44497,7 +44512,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
           <div className="tidepool-rules-card">
             <strong>Family-safe Tidepool</strong>
-            <p>Keep it kind, helpful, and general. Use report/block if something feels off.</p>
+            <p>Keep it kind, helpful, and general. Use report/block if something feels off. Tidepool is not a restock leak feed.</p>
             <div className="tidepool-guideline-list">
               {TIDEPOOL_FAMILY_SAFE_RULES.slice(0, 3).map((guideline) => <span key={guideline}>{guideline}</span>)}
             </div>
