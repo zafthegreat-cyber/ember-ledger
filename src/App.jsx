@@ -29130,36 +29130,37 @@ function renderForgeBusinessCommandPanel() {
     const hiddenStarterPromptCount = Math.max(0, contextualPrompts.length - 3);
     const sparkHelpfulLinkVisible = emberAssistPermissionDenied || ["kidsProgram", "settings", "profileProgress", "membership"].includes(activeTab);
     const emberAssistPageIntro = {
-      hearth: "I can explain Sparks, Ember Points, and the next useful action.",
-      scout: "I can explain current reports, watched stores, proof, and why raw history stays protected.",
-      vault: "I can help with card scans, missing cards, photos, and set progress.",
-      forge: "I can point you to receipts, cost basis, mileage, and profit records.",
-      market: "I can help with UPC search, price labels, and review-before-save choices.",
-      spark: "I can explain kids packs, donations, trusted helpers, and giveaways.",
-      admin: "I can point admins to flagged reports, duplicates, beta requests, and shop reviews.",
-      settings: "I can help with workspace, profile, plans, and support questions.",
+      hearth: "Helper preview: I can explain Sparks, Ember Points, and the next useful action.",
+      scout: "Helper preview: I can explain current reports, watched stores, proof, and why raw history stays protected.",
+      vault: "Helper preview: I can help with card scans, missing cards, photos, and set progress.",
+      forge: "Helper preview: I can guide trade fairness, exact-copy choices, receipts, cost basis, mileage, and sales records.",
+      market: "Helper preview: I can help with UPC search, fair-value labels, and review-before-save choices.",
+      spark: "Helper preview: I can explain kids packs, donations, trusted helpers, and giveaways.",
+      admin: "Helper preview: I can point admins to flagged reports, duplicates, beta requests, and shop reviews.",
+      settings: "Helper preview: I can help with workspace, profile, plans, and support questions.",
     };
     const helpfulLinks = [
       emberAssistPermissionDenied ? { label: "Return to Hearth", action: () => { setEmberAssistOpen(false); setActiveTab("dashboard"); } } : null,
       sparkHelpfulLinkVisible ? { label: "Open The Spark", action: () => { setEmberAssistOpen(false); setActiveTab("kidsProgram"); } } : null,
     ].filter(Boolean);
     const emberAssistQuickActions = [
-      { label: "Scan a card", helper: "Open review-first card scan.", action: () => { setEmberAssistOpen(false); openQuickAddAction("scanProduct"); } },
-      { label: "Scan restock screenshot", helper: "Open Scout screenshot review.", action: () => { setEmberAssistOpen(false); openLiveScoutReportFlow("scanScreenshot"); } },
-      { label: "Check trade fairness", helper: "Compare value before deciding.", action: () => { setEmberAssistOpen(false); setActiveTab("forge"); } },
-      { label: "Help price listing", helper: "Open Market for fair context.", action: () => { setEmberAssistOpen(false); setActiveTab("market"); } },
-      { label: "Recommend kid-friendly set", helper: "Open The Spark guidance.", action: () => { setEmberAssistOpen(false); setActiveTab("kidsProgram"); } },
+      { label: "Scan a card", helper: "Open review-first card or product scan.", action: () => { setEmberAssistOpen(false); openQuickAddAction("scanProduct"); } },
+      { label: "Scan restock screenshot", helper: "Review proof first; no upload or live AI promise.", action: () => { setEmberAssistOpen(false); openLiveScoutReportFlow("scanScreenshot"); } },
+      { label: "Check trade fairness", helper: "Compare exact variants with parent-aware warnings.", action: () => { setEmberAssistOpen(false); setActiveTab("forge"); } },
+      { label: "Help price listing", helper: "Use fair context; nothing posts or checks out.", action: () => { setEmberAssistOpen(false); setActiveTab("market"); } },
+      { label: "Recommend kid-friendly set", helper: "Guided suggestions for safer family collecting.", action: () => { setEmberAssistOpen(false); setActiveTab("kidsProgram"); } },
       { label: "Join beta / send feedback", helper: "Request a state, shop path, sponsor path, or beta fix.", action: () => { setEmberAssistOpen(false); openPublicBetaFeedback({ page: "Ember Assist", mainReason: "General feedback" }); } },
       { label: "Report something unsafe", helper: "Send a safety note to review.", action: () => { setEmberAssistOpen(false); openFeedbackDialog("feedback", { page: "Ember Assist", topic: "Safety concern" }); } },
     ];
     const emberAssistRecentHelp = [
-      { title: "Scanner troubleshooting", detail: "Helped review lighting, glare, and review-before-save steps." },
-      { title: "Trade fairness", detail: "Explained value ranges without promising a perfect answer." },
-      { title: "Family collection choice", detail: "Suggested a safer next step for a kid-friendly binder goal." },
+      { title: "Card and product explanation", detail: "Explains a set, card number, variant, or sealed product without fetching new images or live inventory." },
+      { title: "Trade fairness check", detail: "Compares exact variants, condition, fair range, and parent approval prompts without calling a deal final." },
+      { title: "Restock screenshot review", detail: "Points to proof review and safety warnings while hiding pattern, schedule, and quantity details." },
+      { title: "Bug or safety report", detail: "Routes concerns to beta feedback or admin review without exposing private child or admin data." },
     ];
     const assistIntroCopy = emberAssistPermissionDenied
       ? "You may not have access to this area yet. Admin or moderator role may be required. If this looks wrong, message an admin or return to Hearth."
-      : emberAssistPageIntro[emberAssistContext.page] || "Ask about this page, a next step, or a confusing status.";
+      : emberAssistPageIntro[emberAssistContext.page] || "Helper preview: ask about this page, a next step, or a confusing status.";
     return (
       <section
         className={[
@@ -29197,7 +29198,7 @@ function renderForgeBusinessCommandPanel() {
           <aside className="ember-assist-panel" role="dialog" aria-modal="true" aria-labelledby="ember-assist-title">
             <div className="ember-assist-header">
               <div>
-                <p className="section-kicker">Ember Assist</p>
+                <p className="section-kicker">Helper preview</p>
                 <h2 id="ember-assist-title">Ask Ember</h2>
                 <p>{assistIntroCopy}</p>
               </div>
@@ -29216,11 +29217,15 @@ function renderForgeBusinessCommandPanel() {
             </div>
             <div className="ember-assist-live-hero">
               <div>
-                <p className="section-kicker">Warm helper layer. No fake promises.</p>
+                <p className="section-kicker">Guided suggestions. No live AI promises.</p>
                 <h3>Get a clear next step without exposing private family or Scout data.</h3>
-                <p>Ember can guide safe app workflows, explain value context, and point you to review-first tools. It does not promise live stock, checkout, or guaranteed prices.</p>
+                <p>Ember can guide safe app workflows, explain card and product context, and point you to review-first tools. It does not promise live stock, checkout, guaranteed prices, or private-data searches.</p>
               </div>
               <span className="ember-assist-hero-mark" aria-hidden="true">E</span>
+            </div>
+            <div className="ember-assist-guidance-strip" role="note">
+              <strong>Public beta helper preview</strong>
+              <span>Guidance stays local and review-first here. No live AI call is required for these suggestions.</span>
             </div>
             <div className="ember-assist-quick-action-grid" aria-label="Ember Assist quick actions">
               {emberAssistQuickActions.map((action) => (
@@ -29232,7 +29237,7 @@ function renderForgeBusinessCommandPanel() {
             </div>
             <div className="ember-assist-safety-note">
               <strong>Private by design</strong>
-              <span>Ember Assist does not search private child details, hidden admin notes, raw Scout patterns, or retailer schedules. Use it for guidance, not guaranteed outcomes.</span>
+              <span>Ember Assist does not search private child details, hidden admin notes, raw Scout patterns, retailer schedules, or payment details. Use it for guided suggestions, not guaranteed outcomes.</span>
             </div>
             <div className="ember-assist-primary-prompts" aria-label="Quick Ember prompts">
               {EMBER_ASSIST_PRIMARY_PROMPTS.map((prompt) => (
@@ -29243,7 +29248,7 @@ function renderForgeBusinessCommandPanel() {
               <div className="compact-card-header">
                 <div>
                   <h3>Recent help examples</h3>
-                  <p>Mock examples show the kind of support Ember can provide without making live-data promises.</p>
+                  <p>Preview examples show guided support for collecting, Scout proof, trades, and safety reports without live-data promises.</p>
                 </div>
               </div>
               {emberAssistRecentHelp.map((card) => (

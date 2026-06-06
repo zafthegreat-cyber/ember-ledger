@@ -42610,7 +42610,8 @@ body,
 
 .ember-assist-live-hero,
 .ember-assist-safety-note,
-.ember-assist-recent-help {
+.ember-assist-recent-help,
+.ember-assist-guidance-strip {
   margin: 0 1rem 0.75rem;
 }
 
@@ -43000,6 +43001,29 @@ body,
   display: grid;
   gap: 0.25rem;
   padding: 0.8rem;
+}
+
+.ember-assist-guidance-strip {
+  align-items: start;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(216, 180, 254, 0.12), transparent 9rem),
+    rgba(8, 18, 34, 0.78);
+  border: 1px solid rgba(216, 180, 254, 0.2);
+  border-radius: 14px;
+  display: grid;
+  gap: 0.18rem;
+  padding: 0.7rem 0.78rem;
+}
+
+.ember-assist-guidance-strip strong {
+  color: #fff7ed;
+  font-size: 0.86rem;
+}
+
+.ember-assist-guidance-strip span {
+  color: rgba(232, 246, 255, 0.72);
+  font-size: 0.78rem;
+  line-height: 1.35;
 }
 
 .ember-assist-recent-help {
@@ -58647,7 +58671,8 @@ body {
   .ember-assist-live-hero,
   .ember-assist-safety-note,
   .ember-assist-recent-help,
-  .ember-assist-quick-action-grid {
+  .ember-assist-quick-action-grid,
+  .ember-assist-guidance-strip {
     margin-left: 0.75rem !important;
     margin-right: 0.75rem !important;
   }

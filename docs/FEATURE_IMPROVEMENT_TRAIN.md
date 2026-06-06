@@ -27,7 +27,7 @@
 | 5 - Forge Improvement | Complete | `2f88f4e` | Exact variant/copy language, trade/listing/sales preview polish, and safer suggestion copy. |
 | 6 - The Spark Improvement | Complete | `Improve The Spark impact and donation preview` | Impact dashboard, donation category, sponsor/volunteer, and no-payment preview polish. |
 | 7 - Tidepool Improvement | Complete | `Improve Tidepool safe community UI` | Moderated community sections, anti-rush-feed copy, and mobile hero polish. |
-| 8 - Ember Assist Improvement | Pending | Pending | Guided helper polish. |
+| 8 - Ember Assist Improvement | Complete | `Improve Ember Assist guided helper UI` | Helper preview copy, guided suggestions, safe quick actions, and recent-help examples. |
 | 9 - Parent Center Improvement | Pending | Pending | Safety controls polish. |
 | 10 - Shop Portal Improvement | Pending | Pending | Trusted shop preview polish. |
 | 11 - Admin Review Improvement | Pending | Pending | Moderation readability polish. |
@@ -295,4 +295,39 @@ QA:
 Mock-only notes:
 
 - Community examples, moderation guidance cards, post/report actions, and support language remain UI/mock/local-only unless existing app behavior already handles safe local state.
+- No deploy was run.
+
+### Section 8 - Ember Assist Improvement
+
+Status: Complete. Commit message `Improve Ember Assist guided helper UI`.
+
+Summary:
+
+- Reframed Ember Assist as a public beta helper preview with guided suggestions instead of live AI promises.
+- Improved page-aware intro copy for Hearth, Scout, Vault, Forge, Market, The Spark, Admin, and Settings.
+- Strengthened quick actions for card/product scan, restock screenshot review, trade fairness, price listing help, kid-friendly set guidance, beta feedback, and safety reporting.
+- Added a compact helper-preview guidance strip that says suggestions stay local and review-first in this public beta flow.
+- Reworked recent help examples around card/product explanation, exact-variant trade fairness, Scout proof review, and bug/safety reports.
+- Kept private child details, hidden admin notes, raw Scout patterns, retailer schedules, payment details, checkout, live AI, uploads, messaging, and backend writes out of the flow.
+
+Checks:
+
+- `npm.cmd run build`: passed with existing Vite large chunk warning.
+- `git diff --check`: passed with existing LF-to-CRLF working-copy warnings only.
+- `npm.cmd run test:ember-assist`: passed.
+- `npm.cmd run test:quick-add`: passed.
+- `npm.cmd run test:app-fallbacks`: passed.
+- `npm.cmd run test:menu-full-page-routes`: passed.
+- `npm.cmd run smoke:beta`: passed.
+
+QA:
+
+- Screenshots and result JSON: `artifacts/qa/feature-improvement-train/ember-assist/`
+- Captured Ember Assist open panel and scrolled recent-help state at 390x844, 430x932, and 1440x900.
+- Result: no horizontal overflow, no panel/bottom-nav overlap, no console errors, no maximum update depth errors, helper-preview copy present, and no-live-AI copy present.
+- In-app Browser route was unavailable, so screenshot QA used Playwright fallback. Chromium initially hit sandbox `spawn EPERM`; outside-sandbox rerun passed.
+
+Mock-only notes:
+
+- Prompt suggestions, quick actions, recent help examples, and admin escalation messaging remain guided/local/mock-safe unless existing local/admin-inbox behavior already handles them.
 - No deploy was run.
