@@ -42573,12 +42573,28 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const adminReviewFoundationRows = [
       { title: "Proof review queue", detail: "Receipts, photos, confirmations, and admin-visible proof summaries.", status: "Review before action" },
       { title: "Scout report review", detail: "Current reports, disputed reports, hidden unsafe details, and confidence labels.", status: "No raw patterns" },
+      { title: "Disputed reports", detail: "Wrong-store, wrong-time, duplicate, stale, and unsafe reports stay separated from current signals.", status: "Protect signals" },
       { title: "Tidepool moderation", detail: "Family-safe community posts, reports, shop updates, and event notes.", status: "Moderated only" },
       { title: "Shop approvals", detail: "Trusted family friend badges, shop metadata, and safe update permissions.", status: "Admin gated" },
       { title: "Spark donation review", detail: "Donation requests, sponsor support, event help, and thank-you states.", status: "Private family context" },
       { title: "Suspicious behavior review", detail: "Fake accounts, unsafe content, exploit attempts, and repeated bad reports.", status: "Escalate carefully" },
+      { title: "User safety flags", detail: "Role issues, child-safety reports, suspicious accounts, and privacy requests stay admin-only.", status: "Protected" },
     ];
-    const adminMockActions = ["Approve", "Reject", "Request proof", "Hide", "Escalate", "Suspend placeholder"];
+    const adminMockActions = [
+      { label: "Approve", helper: "For clearly safe proof, badges, or content." },
+      { label: "Reject", helper: "For unsafe, stale, false, or exploit-friendly submissions." },
+      { label: "Request proof", helper: "Ask for safer evidence before anything public changes." },
+      { label: "Hide", helper: "Remove unsafe public visibility while preserving review context." },
+      { label: "Escalate", helper: "Move child safety, abuse, or policy issues to owner review." },
+      { label: "Suspend placeholder", helper: "Shown as vocabulary only; no user mutation is wired here." },
+    ];
+    const adminReviewDecisionRows = [
+      { title: "Scout proof", body: "Decide whether proof is useful for families without exposing exact quantities or raw patterns.", action: "Request proof" },
+      { title: "Tidepool post", body: "Keep family posts, shop updates, tips, and events moderated without enabling kid messaging.", action: "Hide / Escalate" },
+      { title: "Shop badge", body: "Review Trusted Family Friend language before any badge or update becomes public.", action: "Approve / Reject" },
+      { title: "Spark request", body: "Check parent-safe context before counting donations, events, or sponsorship interest.", action: "Review first" },
+      { title: "User safety flag", body: "Treat suspicious behavior and role issues as protected admin-only review.", action: "Escalate" },
+    ];
     const activeAdminQueue = adminEssentialQueues.find((queue) => queue.filter === adminReviewFilter)
       || adminQueueRows.find((queue) => queue.filter === adminReviewFilter)
       || adminOpsSections.find((section) => section.filter === adminReviewFilter)
@@ -42607,7 +42623,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div>
               <span className="section-kicker">Admin Review</span>
               <h3>Proof, safety, shops, Spark, and moderation in one protected queue.</h3>
-              <p>These are mock UI summaries layered over existing admin sections. No new admin actions are wired from this panel.</p>
+              <p>These are mock UI summaries layered over existing admin sections. No real moderation calls, user mutations, bans, suspensions, or backend writes are wired from this panel.</p>
             </div>
             <span className="status-badge">Mock action map</span>
           </div>
@@ -42623,9 +42639,23 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <div className="admin-review-action-map" aria-label="Mock admin review actions">
             <strong>Action vocabulary</strong>
             <div>
-              {adminMockActions.map((action) => <span className="status-badge" key={action}>{action}</span>)}
+              {adminMockActions.map((action) => (
+                <span className="status-badge admin-review-action-pill" key={action.label}>
+                  <b>{action.label}</b>
+                  <small>{action.helper}</small>
+                </span>
+              ))}
             </div>
             <p>Destructive and moderation actions still require existing confirmation flows and protected admin access. This row is a visual map only.</p>
+          </div>
+          <div className="admin-review-decision-grid" aria-label="Admin Review decision guidance">
+            {adminReviewDecisionRows.map((row) => (
+              <article className="admin-review-decision-card" key={row.title}>
+                <strong>{row.title}</strong>
+                <span>{row.body}</span>
+                <small className="status-badge">{row.action}</small>
+              </article>
+            ))}
           </div>
         </section>
 

@@ -42935,10 +42935,11 @@ body,
 .admin-review-foundation-grid {
   display: grid;
   gap: 0.7rem;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-.admin-review-foundation-card {
+.admin-review-foundation-card,
+.admin-review-decision-card {
   background: rgba(5, 13, 27, 0.72);
   border: 1px solid rgba(132, 226, 255, 0.16);
   border-radius: 16px;
@@ -42948,7 +42949,8 @@ body,
 }
 
 .admin-review-foundation-card strong,
-.admin-review-action-map strong {
+.admin-review-action-map strong,
+.admin-review-decision-card strong {
   color: var(--et-readable-text, #f7fbff);
 }
 
@@ -42972,9 +42974,53 @@ body,
   gap: 0.45rem;
 }
 
+.admin-review-action-pill {
+  align-items: flex-start;
+  display: grid !important;
+  gap: 0.15rem;
+  max-width: 220px;
+  padding: 0.5rem 0.65rem !important;
+  white-space: normal !important;
+}
+
+.admin-review-action-pill b {
+  color: var(--et-readable-text, #f7fbff);
+}
+
+.admin-review-action-pill small {
+  color: rgba(232, 246, 255, 0.68);
+  font-size: 0.72rem;
+  line-height: 1.25;
+}
+
+.admin-review-decision-grid {
+  display: grid;
+  gap: 0.7rem;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.admin-review-decision-card span {
+  color: var(--et-readable-muted, rgba(232, 246, 255, 0.72));
+  line-height: 1.35;
+}
+
+.admin-review-decision-card small {
+  justify-self: start;
+}
+
 @media (max-width: 900px) {
-  .admin-review-foundation-grid {
+  .admin-review-foundation-grid,
+  .admin-review-decision-grid {
     grid-template-columns: 1fr;
+  }
+
+  .admin-review-action-map > div {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .admin-review-action-pill {
+    max-width: none;
   }
 }
 .ember-assist-live-hero {

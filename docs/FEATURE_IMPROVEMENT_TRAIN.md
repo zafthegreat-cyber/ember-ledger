@@ -25,12 +25,12 @@
 | 3 - Vault Improvement | Complete | `973e854` | Master-card grouping clarity, Add Item copy, and Vault QA. |
 | 4 - Market Improvement | Complete | `b372544` | Fair discovery polish, honest value/source copy, and mobile search/results spacing. |
 | 5 - Forge Improvement | Complete | `2f88f4e` | Exact variant/copy language, trade/listing/sales preview polish, and safer suggestion copy. |
-| 6 - The Spark Improvement | Complete | `Improve The Spark impact and donation preview` | Impact dashboard, donation category, sponsor/volunteer, and no-payment preview polish. |
-| 7 - Tidepool Improvement | Complete | `Improve Tidepool safe community UI` | Moderated community sections, anti-rush-feed copy, and mobile hero polish. |
-| 8 - Ember Assist Improvement | Complete | `Improve Ember Assist guided helper UI` | Helper preview copy, guided suggestions, safe quick actions, and recent-help examples. |
-| 9 - Parent Center Improvement | Complete | `Improve Parent Center safety controls UI` | Private-by-default profiles, approval checklist, family support paths, and safety summary polish. |
-| 10 - Shop Portal Improvement | Complete | `Improve Shop Portal trusted shop preview` | Trusted Family Friend badge, safe composer/status controls, sponsorship tools, admin review status, and mobile header polish. |
-| 11 - Admin Review Improvement | Pending | Pending | Moderation readability polish. |
+| 6 - The Spark Improvement | Complete | `3af3205` | Impact dashboard, donation category, sponsor/volunteer, and no-payment preview polish. |
+| 7 - Tidepool Improvement | Complete | `fbf2b45` | Moderated community sections, anti-rush-feed copy, and mobile hero polish. |
+| 8 - Ember Assist Improvement | Complete | `5b11ee6` | Helper preview copy, guided suggestions, safe quick actions, and recent-help examples. |
+| 9 - Parent Center Improvement | Complete | `29ae0e3` | Private-by-default profiles, approval checklist, family support paths, and safety summary polish. |
+| 10 - Shop Portal Improvement | Complete | `389d724` | Trusted Family Friend badge, safe composer/status controls, sponsorship tools, admin review status, and mobile header polish. |
+| 11 - Admin Review Improvement | Complete | `Improve Admin Review moderation UI` | Review queue/action vocabulary, moderation readability, and protected mock-action framing. |
 | 12 - Onboarding Improvement | Pending | Pending | Virginia-first beta flow polish. |
 | 13 - Final Full-App Polish | Pending | Pending | Consistency, spacing, mock honesty, and public beta framing. |
 
@@ -406,4 +406,43 @@ QA:
 Mock-only notes:
 
 - Shop profile, Trusted Family Friend badge, restock/event composers, Spark sponsorship interest, admin review statuses, and partner interest intake remain UI/mock/local-only unless existing local beta-interest behavior already handles them.
+- No deploy was run.
+
+### Section 11 - Admin Review Improvement
+
+Status: Complete. Commit message `Improve Admin Review moderation UI`.
+
+Summary:
+
+- Expanded the protected Admin Review foundation so proof review, Scout report review, disputed reports, Tidepool moderation, shop approvals, Spark donation review, suspicious behavior review, and user safety flags read as distinct queues.
+- Reworked mock admin actions into a clearer action vocabulary with helper text for Approve, Reject, Request proof, Hide, Escalate, and Suspend placeholder.
+- Added decision guidance cards for Scout proof, Tidepool posts, shop badges, Spark requests, and user safety flags.
+- Clarified that the new foundation is a frontend mock action map only; it does not wire moderation calls, user mutations, bans, suspensions, backend writes, or RLS/auth changes.
+- Improved mobile readability for the Admin Review foundation, action map, and decision grid without exposing admin content to normal users.
+- No Admin Review backend action, user mutation, moderation call, upload, live AI, auth, billing, database schema, or RLS behavior was changed.
+
+Checks:
+
+- `npm.cmd run build`: passed with existing Vite large chunk warning.
+- `git diff --check`: passed with existing LF-to-CRLF working-copy warnings only.
+- `npm.cmd run test:admin-command-center`: passed.
+- `npm.cmd run test:moderation-queues`: passed.
+- `npm.cmd run test:admin-store-tools`: passed.
+- `npm.cmd run test:beta-user-approval`: passed.
+- `npm.cmd run test:quick-add`: passed.
+- `npm.cmd run test:app-fallbacks`: passed.
+- `npm.cmd run test:menu-full-page-routes`: passed.
+- `npm.cmd run test:admin`: sandbox Chromium `spawn EPERM`; outside-sandbox rerun passed.
+- `npm.cmd run smoke:beta`: passed.
+
+QA:
+
+- Screenshots and result JSON: `artifacts/qa/feature-improvement-train/admin-review/`
+- Captured Admin Review top and scrolled-bottom states at 390x844, 430x932, and 1440x900.
+- Result: no horizontal overflow, no content-button/bottom-nav overlap, no console errors, no maximum update depth errors, and no permission-denied fallback in the seeded admin QA state.
+- Admin Review remains protected; the screenshot QA used a local admin profile seed and admin display-mode seed only for browser verification.
+
+Mock-only notes:
+
+- Admin queues, action vocabulary, decision guidance, review counts, and protected action labels remain UI/mock/local-only unless existing protected admin sections already handle the underlying queue state.
 - No deploy was run.
