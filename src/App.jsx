@@ -25389,12 +25389,13 @@ function renderForgeHeader() {
 function renderForgeAccessState() {
   const forgeAccessMessage = adaptiveForgeAccessMessage(adaptiveUiState);
   const forgePreviewCards = [
-    { title: "Inventory groups", body: "Group same items, keep purchaser and location notes, and review item history." },
+    { title: "Inventory groups", body: "Group same items while keeping exact variants, purchaser notes, location notes, and item history." },
+    { title: "Exact variant / copy", body: "Select the raw, graded, sealed-related, promo, or duplicate copy before trade, listing, or sale review." },
     { title: "Sales records", body: "Record gross sale, cost basis, fees, and estimated profit without changing Vault items." },
     { title: "Receipts and mileage", body: "Keep expenses, receipts, and trips organized for business recordkeeping." },
-    { title: "Trade Analyzer", body: "Preview trade value and parent approval guidance before saving any history." },
-    { title: "Listing Builder", body: "Draft condition, fair range, and family-safe notes without posting or checkout." },
-    { title: "Sales Ledger", body: "Review revenue, cost basis, fees, and receipt needs for recordkeeping." },
+    { title: "Trade Analyzer", body: "Preview exact-copy trade value and parent approval guidance before saving any history." },
+    { title: "Listing Builder", body: "Draft exact variant, condition, fair range, and family-safe notes without posting or checkout." },
+    { title: "Sales Ledger", body: "Review revenue, cost basis, fees, receipt needs, and exact copy sold for recordkeeping." },
   ];
   return (
     <section className="panel empty-state forge-workspace-unavailable adaptive-forge-intro" aria-label="Forge access required">
@@ -25406,6 +25407,7 @@ function renderForgeAccessState() {
       <div className="forge-intro-benefits" aria-label="Forge seller tools">
         {[
           "Track inventory",
+          "Choose exact copy",
           "Record sales",
           "Save expenses and receipts",
           "Prepare tax summaries",
@@ -25469,13 +25471,30 @@ function renderForgeBusinessCommandPanel() {
       helper: `${money(totalSalesRevenue)} revenue | ${money(totalExpenses)} expenses`,
     },
   ];
+  const forgeExactCopyCards = [
+    {
+      label: "Master card",
+      value: "One identity",
+      helper: "Same name, set, and card number stay grouped before seller actions.",
+    },
+    {
+      label: "Exact copy",
+      value: "Variant first",
+      helper: "Choose raw, graded, sealed-related, promo, or duplicate before trade/listing review.",
+    },
+    {
+      label: "Family rule",
+      value: "Review before action",
+      helper: "Kid-owned items should get parent approval before moving into sale or trade context.",
+    },
+  ];
   const forgeWorkspaceFlows = [
     {
       key: "trade-analyzer",
       eyebrow: "Trade Analyzer",
       title: "Worth it for the family?",
-      summary: "Compare what leaves Forge against what comes in before any record changes.",
-      detail: "Give: sealed ETB + 2 singles | Receive: binder lot",
+      summary: "Compare exact variants and copies before any record changes.",
+      detail: "Give: NM foil copy + sealed item | Receive: binder lot",
       value: "+$18 fair range",
       note: "Parent approval recommended for kid-owned items.",
       cta: "Mock trade review",
@@ -25484,8 +25503,8 @@ function renderForgeBusinessCommandPanel() {
       key: "listing-builder",
       eyebrow: "Listing Builder",
       title: "Draft before posting.",
-      summary: "Stage title, condition, fair range, and family-safe notes without publishing.",
-      detail: "Condition: Near Mint | Fair range: $42-$48",
+      summary: "Stage title, exact variant, condition, fair range, and family-safe notes without publishing.",
+      detail: "Variant: Reverse Holo | Condition: Near Mint",
       value: "Draft only",
       note: "No checkout, payment, or marketplace posting is connected.",
       cta: "Mock listing draft",
@@ -25495,7 +25514,7 @@ function renderForgeBusinessCommandPanel() {
       eyebrow: "Sales Ledger",
       title: "Keep the record clear.",
       summary: "Track revenue, cost basis, fees, and receipt needs for seller recordkeeping.",
-      detail: "Revenue $128 | Cost basis $76 | Fees pending",
+      detail: "Revenue $128 | Cost basis $76 | Receipt needed",
       value: "$52 est. P/L",
       note: "For recordkeeping. Confirm summaries with your tax professional.",
       cta: "Open Sales Records",
@@ -25544,6 +25563,16 @@ function renderForgeBusinessCommandPanel() {
             <strong>{card.value}</strong>
             <small>{card.helper}</small>
           </div>
+        ))}
+      </div>
+
+      <div className="forge-exact-copy-strip" aria-label="Forge exact variant and copy rules">
+        {forgeExactCopyCards.map((card) => (
+          <article key={card.label}>
+            <span>{card.label}</span>
+            <strong>{card.value}</strong>
+            <small>{card.helper}</small>
+          </article>
         ))}
       </div>
 
@@ -43216,7 +43245,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       description: suggestion.drafts.facebookPost || current.description,
       sellerNotes: [
         current.sellerNotes,
-        "AI listing draft generated. Review title, description, photos, condition, and price before saving.",
+        "Listing suggestion generated. Review title, description, photos, condition, and price before saving.",
       ].filter(Boolean).join(" | "),
     }));
     await logAiAssistEvent(AI_FEATURE_AREAS.LISTING_DESCRIPTION, {
@@ -43908,8 +43937,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <Field label="Seller Notes"><input value={marketplaceForm.sellerNotes || ""} onChange={(event) => updateMarketplaceForm("sellerNotes", event.target.value)} /></Field>
                 <Field label="Description"><textarea value={marketplaceForm.description} onChange={(event) => updateMarketplaceForm("description", event.target.value)} /></Field>
                 <div className="ai-helper-note">
-                  <span>AI can draft listing copy, but it does not post anywhere. Review before saving.</span>
-                  <button type="button" className="secondary-button" onClick={() => void draftMarketplaceListingWithAi()}>Draft listing description</button>
+                  <span>Smart suggestions can draft listing copy, but nothing posts anywhere. Review before saving.</span>
+                  <button type="button" className="secondary-button" onClick={() => void draftMarketplaceListingWithAi()}>Draft listing suggestion</button>
                 </div>
                 <label className="toggle-row"><span>Pickup only</span><input type="checkbox" checked={marketplaceForm.pickupOnly} onChange={(event) => updateMarketplaceForm("pickupOnly", event.target.checked)} /></label>
                 <label className="toggle-row"><span>Shipping available</span><input type="checkbox" checked={marketplaceForm.shippingAvailable} onChange={(event) => updateMarketplaceForm("shippingAvailable", event.target.checked)} /></label>
@@ -44733,10 +44762,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <section className="trade-value-hero-card">
           <span className="section-kicker">Trade review</span>
           <h3>Is this trade worth it?</h3>
-          <p>Use estimates as a sanity check, then review condition, demand, and family rules before saving anything.</p>
+          <p>Use estimates as a sanity check, then review the exact variant or copy, condition, demand, and family rules before saving anything.</p>
           <div className="trade-safety-strip">
+            <span>Exact variant/copy</span>
             <span>Review before saving</span>
             <span>No inventory changes</span>
+            <span>Parent approval for kid items</span>
             <span>Values are estimates</span>
           </div>
         </section>
@@ -44787,6 +44818,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <small>{comparison.outgoing.confidence}</small>
             </div>
             <MasterCardFamilyNote masterCard={sourceMasterCard} />
+            <div className="trade-exact-copy-note">
+              <strong>Exact copy check</strong>
+              <span>Select the specific raw, graded, sealed-related, or duplicate copy before saving trade history. Saving this review still does not change Vault or Forge inventory.</span>
+            </div>
           </div>
 
           <div className="trade-side-card trade-side-card--incoming">
@@ -46976,8 +47011,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <Field label="Seller Notes"><input value={marketplaceForm.sellerNotes || ""} onChange={(event) => updateMarketplaceForm("sellerNotes", event.target.value)} /></Field>
               <Field label="Description"><textarea value={marketplaceForm.description} onChange={(event) => updateMarketplaceForm("description", event.target.value)} /></Field>
               <div className="ai-helper-note">
-                <span>AI can draft listing copy, but it does not post anywhere. Review before saving.</span>
-                <button type="button" className="secondary-button" onClick={() => void draftMarketplaceListingWithAi()}>Draft listing description</button>
+                <span>Smart suggestions can draft listing copy, but nothing posts anywhere. Review before saving.</span>
+                <button type="button" className="secondary-button" onClick={() => void draftMarketplaceListingWithAi()}>Draft listing suggestion</button>
               </div>
               <label className="toggle-row"><span>Pickup only</span><input type="checkbox" checked={marketplaceForm.pickupOnly} onChange={(event) => updateMarketplaceForm("pickupOnly", event.target.checked)} /></label>
               <label className="toggle-row"><span>Shipping available</span><input type="checkbox" checked={marketplaceForm.shippingAvailable} onChange={(event) => updateMarketplaceForm("shippingAvailable", event.target.checked)} /></label>
@@ -64226,6 +64261,12 @@ function ForgeItemDetail({ item, masterCard, onClose, onEdit, onDelete, onEditSa
         </div>
       </div>
       <MasterCardFamilyNote masterCard={masterCard} />
+      {masterCard ? (
+        <div className="forge-exact-copy-note">
+          <strong>Listing and trade actions use this exact copy.</strong>
+          <span>Choose the raw, graded, sealed-related, promo, or duplicate entry before creating a draft listing, trade review, or sale record. Parent approval still applies to kid-owned items.</span>
+        </div>
+      ) : null}
       <div className="vault-detail-primary-actions forge-detail-primary-actions">
         <button type="button" disabled={Number(nextSellEntry?.quantity || 0) < 1} onClick={() => onSell(nextSellEntry)}>Mark sold / add sale</button>
         <button type="button" className="secondary-button" onClick={() => onStartTrade?.(primaryEntry)}>Start Trade</button>

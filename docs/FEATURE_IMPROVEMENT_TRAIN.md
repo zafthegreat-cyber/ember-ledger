@@ -23,8 +23,8 @@
 | 1 - Public Beta Feedback + Waitlist | Complete | `87d7d1e` | Added public beta feedback/waitlist flow, local fallback, existing best-effort feedback path, safety copy, and docs before this train tracker was created. |
 | 2 - Scout Improvement | Complete | `821567f` | Family-safe Scout polish. |
 | 3 - Vault Improvement | Complete | `973e854` | Master-card grouping clarity, Add Item copy, and Vault QA. |
-| 4 - Market Improvement | Complete | `Improve Market discovery and fair value UI` | Fair discovery polish, honest value/source copy, and mobile search/results spacing. |
-| 5 - Forge Improvement | Pending | Pending | Trade/seller workspace polish. |
+| 4 - Market Improvement | Complete | `b372544` | Fair discovery polish, honest value/source copy, and mobile search/results spacing. |
+| 5 - Forge Improvement | Complete | `Improve Forge trade and seller workspace` | Exact variant/copy language, trade/listing/sales preview polish, and safer suggestion copy. |
 | 6 - The Spark Improvement | Pending | Pending | Impact and donation preview polish. |
 | 7 - Tidepool Improvement | Pending | Pending | Safe community polish. |
 | 8 - Ember Assist Improvement | Pending | Pending | Guided helper polish. |
@@ -184,4 +184,43 @@ Mock-only notes:
 
 - Market home discovery cards, fair range cards, watch prompts, and grouped/premium presentation remain UI/mock/local-only unless existing safe catalog data is already being read.
 - Existing catalog images may appear from the current product display path; this section did not add real image fetching or copyrighted assets.
+- No deploy was run.
+
+### Section 5 - Forge Improvement
+
+Status: Complete. Commit message `Improve Forge trade and seller workspace`.
+
+Summary:
+
+- Added exact variant/copy rules to the Forge command panel for master-card identity, exact-copy selection, and parent approval expectations.
+- Improved Forge trade/listing/sales preview cards so Trade Analyzer, Listing Builder, and Sales Ledger read as distinct workflows.
+- Improved the locked Forge access state so normal users see exact-copy, trade, listing, sales, receipt, and recordkeeping value before enabling seller tools.
+- Added exact-copy guidance to Trade Analyzer: select the specific raw, graded, sealed-related, or duplicate copy before saving trade history.
+- Added exact-copy guidance to Forge item detail so listing, trade, and sale actions stay tied to the selected variant/copy.
+- Softened remaining listing-draft copy from `AI` language to `Smart suggestions` / `Listing suggestion`, with review-before-saving and no-posting language.
+- No Forge backend write, inventory mutation behavior, marketplace posting, payment, checkout, upload, live AI, auth, billing, database schema, or RLS behavior was changed.
+
+Checks:
+
+- `npm.cmd run build`: passed with existing Vite large chunk warning.
+- `git diff --check`: passed with existing LF-to-CRLF working-copy warnings only.
+- `npm.cmd run test:forge`: sandbox Chromium `spawn EPERM`; outside-sandbox rerun passed.
+- `npm.cmd run test:forge-grouped-inventory`: passed.
+- `npm.cmd run test:trade-value`: passed.
+- `npm.cmd run test:sales-records`: passed.
+- `npm.cmd run test:quick-add`: passed.
+- `npm.cmd run test:app-fallbacks`: passed.
+- `npm.cmd run test:menu-full-page-routes`: passed.
+- `npm.cmd run smoke:beta`: passed.
+
+QA:
+
+- Screenshots and result JSON: `artifacts/qa/feature-improvement-train/forge/`
+- Captured Forge Home and Forge Sales Ledger routes at 390x844, 430x932, and 1440x900.
+- Result: no horizontal overflow, no console errors, no maximum update depth errors.
+- Public beta local state currently shows Forge locked until seller tools are enabled, so screenshots verify the locked Forge preview and sales-ledger route fallback. Source/build/tests verify seller-workspace exact-copy and smart-suggestion copy.
+
+Mock-only notes:
+
+- Trade Analyzer, Listing Builder, Sales Ledger, listing suggestions, and seller workflow cards remain UI/mock/local-only unless existing app behavior already stores local records.
 - No deploy was run.
