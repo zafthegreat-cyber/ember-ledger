@@ -39657,16 +39657,23 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
   function renderSponsorInterestPage() {
     const shopPortalTrustCards = [
-      { title: "Trusted family friend", body: "Approved shops can show family-safe event support, fair update language, and Spark participation status.", status: "Review required" },
-      { title: "Helpful updates", body: "Post broad status context without exact quantity, vendor schedule, or rush-feed language.", status: "No rush feed" },
-      { title: "Donation support", body: "Coordinate packs, supplies, event help, or sponsor support for The Spark after admin review.", status: "Mock only" },
+      { title: "Trusted Family Friend badge", body: "Approved shops can show family-safe event support, fair update language, and Spark participation status after review.", status: "Review required" },
+      { title: "Helpful updates", body: "Use broad status context without exact quantities, vendor schedules, employee details, or rush-feed language.", status: "No rush feed" },
+      { title: "Spark support", body: "Coordinate packs, supplies, volunteer support, event help, or sponsorship interest after admin review.", status: "Preview only" },
     ];
     const shopPortalStatuses = ["In stock", "Limited", "Sold out", "Call first", "Family hold", "Event only"];
     const shopPortalTools = [
-      { title: "Drop/event composer", body: "Draft a Learn to Play Day or Spark drop-off event for review." },
-      { title: "Restock status composer", body: "Use safe broad labels instead of exact quantities or vendor timing." },
-      { title: "Donation/sponsor tools", body: "Share support categories without payments or checkout." },
-      { title: "Admin review status", body: "Updates stay pending until Ember & Tide review is approved." },
+      { title: "Shop profile", body: "Preview family-friendly description, public contact boundaries, and review status." },
+      { title: "Drop/event composer", body: "Draft a Learn to Play Day, trade night, or Spark drop-off event for review." },
+      { title: "Restock status composer", body: "Use safe broad labels instead of exact quantities, vendor timing, or employee details." },
+      { title: "Spark sponsor tools", body: "Share support categories without payments, checkout, or donation processing." },
+      { title: "Admin review status", body: "Updates stay pending until Ember & Tide review approves safe public wording." },
+    ];
+    const shopPortalReviewSteps = [
+      { title: "Profile review", body: "Shop identity, region, and family-friendly contact details are reviewed before any badge appears.", status: "Pending" },
+      { title: "Update review", body: "Restock and event drafts stay broad, current, and non-exploitable.", status: "Manual review" },
+      { title: "Spark support review", body: "Donation or sponsor interest is counted only after a safe admin review.", status: "Review first" },
+      { title: "No live posting", body: "This preview does not publish posts, sync inventory, send alerts, or process payments.", status: "Preview-safe" },
     ];
     return (
       <>
@@ -39687,10 +39694,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <article className="shop-portal-profile-card">
               <span className="section-kicker">Family-friendly shop profile</span>
               <h2>Trusted local support, never a scalper feed.</h2>
-              <p>Shop Portal is a mock-only review surface for future trusted family friends, stores, sellers, and sponsors. Nothing posts publicly from this page.</p>
+              <p>Shop Portal is a mock-only review surface for future trusted family friends, stores, sellers, and sponsors. Nothing posts publicly, syncs inventory, charges money, or sends alerts from this page.</p>
               <div className="summary-pill-row">
-                <span className="trust-badge trust-badge--secure">Trusted family friend badge pending</span>
+                <span className="trust-badge trust-badge--secure">Trusted Family Friend badge pending</span>
                 <span className="status-badge">Admin review required</span>
+                <span className="status-badge">Preview-safe</span>
               </div>
             </article>
             {shopPortalTrustCards.map((card) => (
@@ -39707,13 +39715,17 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <div className="compact-card-header">
                 <div>
                   <h3>Restock status composer</h3>
-                  <p>Choose broad, family-safe labels. Exact quantities stay hidden unless a trusted shop chooses to share them later.</p>
+                  <p>Choose broad, family-safe labels. Exact quantities stay hidden unless a trusted shop chooses to share them later through an approved path.</p>
                 </div>
               </div>
               <div className="shop-portal-status-row">
                 {shopPortalStatuses.map((status) => <span className="status-badge" key={status}>{status}</span>)}
               </div>
-              <p className="compact-subtitle">Mock composer only. No live posting, inventory sync, checkout, or notification blast is connected.</p>
+              <div className="shop-portal-preview-post">
+                <strong>Preview update</strong>
+                <span>Helpful status: Call first. Family note: good for patient local planning, not rush buying.</span>
+              </div>
+              <p className="compact-subtitle">Mock composer only. No live posting, inventory sync, checkout, payment, upload, or notification blast is connected.</p>
             </article>
             <article className="shop-portal-composer-card">
               <div className="compact-card-header">
@@ -39732,6 +39744,16 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </article>
           </div>
 
+          <div className="shop-portal-review-grid" aria-label="Shop Portal review status">
+            {shopPortalReviewSteps.map((step) => (
+              <article className="shop-portal-review-card" key={step.title}>
+                <strong>{step.title}</strong>
+                <span>{step.body}</span>
+                <small className="status-badge">{step.status}</small>
+              </article>
+            ))}
+          </div>
+
           <div className="shop-portal-tools-grid" aria-label="Shop Portal support tools">
             {shopPortalTools.map((tool) => (
               <article className="shop-portal-tool-card" key={tool.title}>
@@ -39745,10 +39767,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div className="compact-card-header">
               <div>
                 <h3>Partner interest</h3>
-                <p>Tell Ember & Tide about your shop or support idea. This queues a local beta interest record only.</p>
+                <p>Tell Ember & Tide about your shop or support idea. This queues a local beta interest record only and does not publish anything publicly.</p>
               </div>
               <span className="status-badge">Mock review intake</span>
             </div>
+            <p className="compact-subtitle">Please do not include payment details, private child information, passwords, vendor schedules, or exact inventory quantities in this preview form.</p>
             <Field label="Name">
               <input value={sponsorForm.name} onChange={(event) => updateSponsorForm("name", event.target.value)} />
             </Field>

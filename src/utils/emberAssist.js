@@ -289,6 +289,12 @@ export function buildEmberAssistFallbackResponse(question = "", context = {}) {
         category: "Wrong Scout report/store",
       });
     }
+    if (/\b(admin store tools|store management|manage stores)\b/i.test(text)) {
+      return response("Admin Store Management is for reviewing suggestions, adding or editing local store metadata, marking stores inactive, and approving family-friendly or partner badges. Keep public copy clear: no guaranteed MSRP or inventory.", {
+        actions: ["Open Admin Review", "Open Stores"],
+        category: "Wrong Scout report/store",
+      });
+    }
     return response(`Start with the queues that can affect trust: Scout reports, beta access, Spark requests, listings, and app messages. You have ${context.counts?.adminOpenItems || 0} open review items in this local queue.`, {
       actions: ["Open Admin Review"],
       category: "Other",

@@ -42772,7 +42772,8 @@ body,
 
 .shop-portal-grid,
 .shop-portal-composer-grid,
-.shop-portal-tools-grid {
+.shop-portal-tools-grid,
+.shop-portal-review-grid {
   display: grid;
   gap: 0.85rem;
   margin-bottom: 1rem;
@@ -42787,13 +42788,19 @@ body,
 }
 
 .shop-portal-tools-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.shop-portal-review-grid {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .shop-portal-profile-card,
 .shop-portal-trust-card,
 .shop-portal-composer-card,
-.shop-portal-tool-card {
+.shop-portal-tool-card,
+.shop-portal-review-card,
+.shop-portal-preview-post {
   background:
     radial-gradient(circle at 86% 12%, rgba(0, 216, 255, 0.12), transparent 30%),
     linear-gradient(145deg, rgba(9, 23, 36, 0.86), rgba(5, 10, 20, 0.92));
@@ -42836,8 +42843,26 @@ body,
 }
 
 .shop-portal-tool-card strong,
-.shop-portal-trust-card strong {
+.shop-portal-trust-card strong,
+.shop-portal-review-card strong,
+.shop-portal-preview-post strong {
   color: var(--et-readable-text, #f7fbff);
+}
+
+.shop-portal-review-card span,
+.shop-portal-preview-post span {
+  color: var(--et-readable-muted, rgba(232, 246, 255, 0.72));
+  line-height: 1.38;
+}
+
+.shop-portal-review-card small {
+  justify-self: start;
+}
+
+.shop-portal-preview-post {
+  border-color: rgba(255, 194, 71, 0.2);
+  gap: 0.3rem;
+  padding: 0.75rem;
 }
 
 .sponsor-interest-panel .beta-form-card {
@@ -42850,8 +42875,34 @@ body,
 @media (max-width: 980px) {
   .shop-portal-grid,
   .shop-portal-composer-grid,
-  .shop-portal-tools-grid {
+  .shop-portal-tools-grid,
+  .shop-portal-review-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .shop-portal-header {
+    overflow: visible !important;
+    padding-bottom: 1rem !important;
+  }
+
+  .shop-portal-header .standard-page-header-main,
+  .shop-portal-header .standard-page-header-actions {
+    width: 100%;
+  }
+
+  .shop-portal-header .standard-page-header-actions {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 0.55rem !important;
+    overflow: visible !important;
+  }
+
+  .shop-portal-header .standard-page-header-actions button {
+    justify-content: center !important;
+    min-height: 44px !important;
+    width: 100% !important;
   }
 }
 

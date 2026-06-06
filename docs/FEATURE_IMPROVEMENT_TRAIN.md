@@ -29,7 +29,7 @@
 | 7 - Tidepool Improvement | Complete | `Improve Tidepool safe community UI` | Moderated community sections, anti-rush-feed copy, and mobile hero polish. |
 | 8 - Ember Assist Improvement | Complete | `Improve Ember Assist guided helper UI` | Helper preview copy, guided suggestions, safe quick actions, and recent-help examples. |
 | 9 - Parent Center Improvement | Complete | `Improve Parent Center safety controls UI` | Private-by-default profiles, approval checklist, family support paths, and safety summary polish. |
-| 10 - Shop Portal Improvement | Pending | Pending | Trusted shop preview polish. |
+| 10 - Shop Portal Improvement | Complete | `Improve Shop Portal trusted shop preview` | Trusted Family Friend badge, safe composer/status controls, sponsorship tools, admin review status, and mobile header polish. |
 | 11 - Admin Review Improvement | Pending | Pending | Moderation readability polish. |
 | 12 - Onboarding Improvement | Pending | Pending | Virginia-first beta flow polish. |
 | 13 - Final Full-App Polish | Pending | Pending | Consistency, spacing, mock honesty, and public beta framing. |
@@ -366,4 +366,44 @@ QA:
 Mock-only notes:
 
 - Kid profile previews, approval checklist, trusted adult placeholders, Spark participation status, and workspace privacy support remain UI/mock/local-only.
+- No deploy was run.
+
+### Section 10 - Shop Portal Improvement
+
+Status: Complete. Commit message `Improve Shop Portal trusted shop preview`.
+
+Summary:
+
+- Strengthened Shop Portal as a preview-only trusted shop surface with a clearer Trusted Family Friend badge state and admin-review-required status.
+- Improved restock status composer copy with safe broad statuses: In stock, Limited, Sold out, Call first, Family hold, and Event only.
+- Added a preview update card that models helpful family planning copy without rush-feed, exact quantity, checkout, or guaranteed-stock language.
+- Added review-status cards for shop profile review, safe update review, Spark sponsor support review, and no-live-posting boundaries.
+- Expanded support tools around shop profile, drop/event composer, restock status composer, Spark sponsor tools, and admin review status.
+- Added preview-form safety copy asking shops not to include payment details, private child information, passwords, vendor schedules, or exact inventory quantities.
+- Fixed a narrow Ember Assist helper-routing issue exposed by `test:store-suggestions`, so admin store-tool questions now reach the Admin Store Management guidance instead of the generic admin queue answer.
+- Polished mobile Shop Portal header actions so all three actions are visible at 44px touch height on 390/430 viewports.
+- No Shop Portal backend write, inventory sync, live posting, upload, payment, checkout, live AI, auth, billing, database schema, or RLS behavior was changed.
+
+Checks:
+
+- `npm.cmd run build`: passed with existing Vite large chunk warning.
+- `git diff --check`: passed with existing LF-to-CRLF working-copy warnings only.
+- `npm.cmd run test:admin-store-tools`: passed.
+- `npm.cmd run test:store-suggestions`: initially failed on stale helper routing, then passed after the narrow frontend helper fix.
+- `npm.cmd run test:ember-assist`: passed.
+- `npm.cmd run test:quick-add`: passed.
+- `npm.cmd run test:app-fallbacks`: passed.
+- `npm.cmd run test:menu-full-page-routes`: passed.
+- `npm.cmd run smoke:beta`: passed.
+
+QA:
+
+- Screenshots and result JSON: `artifacts/qa/feature-improvement-train/shop-portal/`
+- Captured Shop Portal top and scrolled-bottom states at 390x844, 430x932, and 1440x900.
+- Result: no horizontal overflow, no content-button/bottom-nav overlap, no console errors, no maximum update depth errors, trusted badge copy present, no-live-posting copy present, safe status labels present, and sensitive-info warning present.
+- Mobile header was recaptured after the spacing fix; all three header actions were visible at 44px height.
+
+Mock-only notes:
+
+- Shop profile, Trusted Family Friend badge, restock/event composers, Spark sponsorship interest, admin review statuses, and partner interest intake remain UI/mock/local-only unless existing local beta-interest behavior already handles them.
 - No deploy was run.
