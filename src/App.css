@@ -12535,18 +12535,48 @@ textarea {
 }
 
 @media (max-width: 900px) {
-  .live-onboarding-step-nav,
   .live-onboarding-grid,
   .live-onboarding-card-grid {
     grid-template-columns: 1fr;
+  }
+
+  .live-onboarding-page {
+    padding-bottom: max(7rem, calc(5.5rem + env(safe-area-inset-bottom)));
   }
 
   .live-onboarding-hero {
     display: grid;
   }
 
+  .live-onboarding-step-nav {
+    grid-auto-columns: minmax(148px, 72vw);
+    grid-auto-flow: column;
+    grid-template-columns: none;
+    overflow-x: auto;
+    padding-bottom: 0.2rem;
+    scroll-snap-type: x proximity;
+    scrollbar-width: thin;
+  }
+
   .live-onboarding-step {
     min-height: 54px;
+    scroll-snap-align: start;
+  }
+}
+
+@media (max-width: 520px) {
+  .live-onboarding-hero h2 {
+    font-size: clamp(1.55rem, 10vw, 2.15rem);
+    line-height: 1.08;
+  }
+
+  .live-onboarding-actions {
+    align-items: stretch;
+  }
+
+  .live-onboarding-actions .drawer-inline-actions,
+  .live-onboarding-actions .drawer-link {
+    width: 100%;
   }
 }
 

@@ -31,7 +31,7 @@
 | 9 - Parent Center Improvement | Complete | `29ae0e3` | Private-by-default profiles, approval checklist, family support paths, and safety summary polish. |
 | 10 - Shop Portal Improvement | Complete | `389d724` | Trusted Family Friend badge, safe composer/status controls, sponsorship tools, admin review status, and mobile header polish. |
 | 11 - Admin Review Improvement | Complete | `Improve Admin Review moderation UI` | Review queue/action vocabulary, moderation readability, and protected mock-action framing. |
-| 12 - Onboarding Improvement | Pending | Pending | Virginia-first beta flow polish. |
+| 12 - Onboarding Improvement | Complete | `Improve onboarding and Virginia-first beta flow` | Contextual onboarding steps, Virginia-first copy, mobile step rail, and mock-only clarity. |
 | 13 - Final Full-App Polish | Pending | Pending | Consistency, spacing, mock honesty, and public beta framing. |
 
 ## Section Logs
@@ -445,4 +445,38 @@ QA:
 Mock-only notes:
 
 - Admin queues, action vocabulary, decision guidance, review counts, and protected action labels remain UI/mock/local-only unless existing protected admin sections already handle the underlying queue state.
+- No deploy was run.
+
+### Section 12 - Onboarding Improvement
+
+Status: Complete. Commit message `Improve onboarding and Virginia-first beta flow`.
+
+Summary:
+
+- Improved the live onboarding preview so Welcome, State Check, Waitlist, Choose Role, Family Setup, Notifications, First Store, and Permission Needed each show contextual cards instead of repeating the same Virginia rules.
+- Updated the Virginia-first copy to the required public beta framing: "We're launching in Virginia first so Ember & Tide can stay safe, fair, and useful for families."
+- Added clearer Family Setup, Notifications, and Permission Needed content around parent guidance, child privacy, safe alerts, one watched store, and protected role-gated tools.
+- Adjusted the mobile onboarding step rail into a thumb-friendly horizontal rail and added stronger bottom-safe spacing for the logged-in app shell.
+- Kept all onboarding/waitlist behavior preview/mock-only with explicit no account, waitlist, billing, database write, checkout, scraping, upload, live AI, or messaging behavior.
+- No onboarding backend write, auth change, billing change, database schema change, RLS change, upload, messaging, or live AI behavior was changed.
+
+Checks:
+
+- `npm.cmd run build`: passed with existing Vite large chunk warning.
+- `git diff --check`: passed with existing LF-to-CRLF working-copy warnings only.
+- `npm.cmd run test:onboarding --if-present`: passed.
+- `npm.cmd run test:quick-add`: passed.
+- `npm.cmd run test:app-fallbacks`: passed.
+- `npm.cmd run test:menu-full-page-routes`: passed.
+- `npm.cmd run smoke:beta`: passed.
+
+QA:
+
+- Screenshots and result JSON: `artifacts/qa/feature-improvement-train/onboarding/`
+- Captured all eight onboarding screens at 390x844, 430x932, and 1440x900.
+- Result: no horizontal overflow, no content-button/bottom-nav overlap, no console errors, no maximum update depth errors, mock-only copy present, and Virginia-first copy present.
+
+Mock-only notes:
+
+- State check, waitlist, role choice, family setup, notification preferences, first watched store examples, and permission-needed examples remain UI/mock/local-only unless existing public beta feedback or auth flows are explicitly used elsewhere.
 - No deploy was run.

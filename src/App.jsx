@@ -50270,14 +50270,35 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       { title: "Shop", body: "Trusted family friend updates and Spark support placeholders.", status: "Admin reviewed" },
       { title: "Beta / Admin", body: "Protected access for testing, review queues, and operations.", status: "Permission gated" },
     ];
+    const setupRows = [
+      { title: "Start with Hearth", body: "Preview the warm home base, then choose the tools your family needs first.", status: "Home base" },
+      { title: "Pick your role", body: "Collector, family, seller, shop, sponsor, and admin paths stay clearly separated.", status: "Role scoped" },
+      { title: "Keep it safe", body: "Scout, Tidepool, Spark, and Parent Center avoid private child data and exploit-friendly details.", status: "Family first" },
+    ];
     const stateRows = [
       { title: "Virginia", body: "Virginia users can continue into beta review.", status: "Current launch" },
       { title: "Outside Virginia", body: "Join the waitlist so we know what states to add next.", status: "Waitlist" },
+      { title: "State requests", body: "Requests help decide where Ember & Tide opens next; no access is guaranteed.", status: "Planning signal" },
     ];
     const firstStoreRows = [
       { title: "Target - Short Pump", body: "Watch current reports near Richmond without exact quantities.", status: "VA store" },
       { title: "Best Buy - West Broad", body: "Useful online/store signals, no checkout or scraping.", status: "Safe signal" },
       { title: "Family Card Shop", body: "Trusted shop updates can be reviewed before publishing.", status: "Shop reviewed" },
+    ];
+    const familySetupRows = [
+      { title: "Kid profiles", body: "Use age-band previews and parent-guided settings instead of public child details.", status: "Private by default" },
+      { title: "Trade approval", body: "Parent review stays visible before kid-sensitive trade or community activity.", status: "Review first" },
+      { title: "Spark participation", body: "Giving, events, and thank-you states stay parent-safe and preview-only here.", status: "Parent guided" },
+    ];
+    const notificationRows = [
+      { title: "Scout signals", body: "Current reports and Worth the Trip labels are helpful without raw pattern history.", status: "Current only" },
+      { title: "Family reminders", body: "Spark events, safe trade review, and Vault tasks can be suggested without pressure.", status: "Calm alerts" },
+      { title: "No rush feed", body: "No guaranteed stock, auto-buy prompts, vendor schedules, or employee details.", status: "Anti-scalper" },
+    ];
+    const permissionRows = [
+      { title: "Admin Review", body: "Queues and moderation actions stay hidden unless the account is approved for that role.", status: "Protected" },
+      { title: "Shop Portal", body: "Shop tools show as preview-only until review and approval are complete.", status: "Review gated" },
+      { title: "Locked features", body: "Locked states explain benefits without exposing private, admin, or child-sensitive data.", status: "Clear limits" },
     ];
     const viewCopy = {
       welcome: {
@@ -50289,7 +50310,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       "state-check": {
         kicker: "State Check",
         title: "We are launching in Virginia first.",
-        body: "We are launching in Virginia first so Ember & Tide can stay safe, fair, and useful for families.",
+        body: "We're launching in Virginia first so Ember & Tide can stay safe, fair, and useful for families.",
         badge: "Virginia first",
       },
       waitlist: {
@@ -50330,6 +50351,24 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       },
     };
     const currentCopy = viewCopy[viewKey] || viewCopy.welcome;
+    const onboardingDetailRows = (
+      viewKey === "choose-role" ? tierRows :
+      viewKey === "first-store" ? firstStoreRows :
+      viewKey === "family-setup" ? familySetupRows :
+      viewKey === "notifications" ? notificationRows :
+      viewKey === "permission-needed" ? permissionRows :
+      viewKey === "state-check" || viewKey === "waitlist" ? stateRows :
+      setupRows
+    );
+    const onboardingDetailTitle = (
+      viewKey === "choose-role" ? "Role and tier choices" :
+      viewKey === "first-store" ? "First store examples" :
+      viewKey === "family-setup" ? "Parent-guided setup" :
+      viewKey === "notifications" ? "Notification choices" :
+      viewKey === "permission-needed" ? "Protected access examples" :
+      viewKey === "state-check" || viewKey === "waitlist" ? "Virginia-first rules" :
+      "Setup guidance"
+    );
     const setView = (key) => {
       setOnboardingView(key);
       setActiveTab("onboarding");
@@ -50340,7 +50379,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         { label: "Choose role", action: () => setView("choose-role") },
       ],
       "state-check": [
-        { label: "Continue as Virginia", action: () => setView("choose-role") },
+        { label: "Continue with Virginia review", action: () => setView("choose-role") },
         { label: "Preview waitlist", action: () => setView("waitlist") },
       ],
       waitlist: [
@@ -50400,13 +50439,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <article className="live-onboarding-card glass-card">
             <div className="compact-card-header">
               <div>
-                <strong>{viewKey === "choose-role" ? "Role and tier choices" : viewKey === "first-store" ? "First store examples" : viewKey === "state-check" || viewKey === "waitlist" ? "Virginia-first rules" : "Setup guidance"}</strong>
+                <strong>{onboardingDetailTitle}</strong>
                 <p className="compact-subtitle">Preview-only UI. No account, waitlist, billing, or database write happens here.</p>
               </div>
               <span className="status-badge">Mock/local</span>
             </div>
             <div className="live-onboarding-card-grid">
-              {(viewKey === "choose-role" ? tierRows : viewKey === "first-store" ? firstStoreRows : stateRows).map((row) => (
+              {onboardingDetailRows.map((row) => (
                 <article className="live-onboarding-mini-card" key={row.title}>
                   <strong>{row.title}</strong>
                   <span>{row.body}</span>
