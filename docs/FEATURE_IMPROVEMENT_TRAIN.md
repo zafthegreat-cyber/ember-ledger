@@ -30,9 +30,9 @@
 | 8 - Ember Assist Improvement | Complete | `5b11ee6` | Helper preview copy, guided suggestions, safe quick actions, and recent-help examples. |
 | 9 - Parent Center Improvement | Complete | `29ae0e3` | Private-by-default profiles, approval checklist, family support paths, and safety summary polish. |
 | 10 - Shop Portal Improvement | Complete | `389d724` | Trusted Family Friend badge, safe composer/status controls, sponsorship tools, admin review status, and mobile header polish. |
-| 11 - Admin Review Improvement | Complete | `Improve Admin Review moderation UI` | Review queue/action vocabulary, moderation readability, and protected mock-action framing. |
-| 12 - Onboarding Improvement | Complete | `Improve onboarding and Virginia-first beta flow` | Contextual onboarding steps, Virginia-first copy, mobile step rail, and mock-only clarity. |
-| 13 - Final Full-App Polish | Pending | Pending | Consistency, spacing, mock honesty, and public beta framing. |
+| 11 - Admin Review Improvement | Complete | `921dba2` | Review queue/action vocabulary, moderation readability, and protected mock-action framing. |
+| 12 - Onboarding Improvement | Complete | `4f45ceb` | Contextual onboarding steps, Virginia-first copy, mobile step rail, and mock-only clarity. |
+| 13 - Final Full-App Polish | Complete | `Polish public beta feature experience` | Full-app QA sweep, public beta safety review, and final tracker reconciliation. |
 
 ## Section Logs
 
@@ -479,4 +479,57 @@ QA:
 Mock-only notes:
 
 - State check, waitlist, role choice, family setup, notification preferences, first watched store examples, and permission-needed examples remain UI/mock/local-only unless existing public beta feedback or auth flows are explicitly used elsewhere.
+- No deploy was run.
+
+### Section 13 - Final Full-App Polish
+
+Status: Complete. Commit message `Polish public beta feature experience`.
+
+Summary:
+
+- Ran a final public beta feature-experience QA sweep across Hearth, Scout, Vault, Market, More, Forge, Tidepool, The Spark, Ember Assist, Parent Center, Shop Portal, Admin Review, and Onboarding.
+- Verified the latest feature-section work did not introduce horizontal overflow, console errors, maximum update depth errors, or unsafe public beta promises.
+- Reviewed the unsafe-copy detector hits and confirmed they were protective statements such as no auto-buy, no guaranteed stock, and no retailer-schedule style behavior.
+- Reviewed fixed dock/FAB overlap notes from the automated detector. The remaining notes are fixed-shell intersections over scrollable content or launcher elements; visual review did not find a release-blocking hidden primary action.
+- Kept all feature improvements UI/mock/local-only and did not add backend writes, auth changes, billing changes, database schema changes, RLS changes, payments, uploads, messaging, live AI, scraping, checkout, live inventory, or real image fetching.
+- No additional source UI patch was needed in this section.
+
+Checks:
+
+- `npm.cmd run build`: passed with existing Vite large chunk warning.
+- `git diff --check`: passed.
+- `npm.cmd run smoke:beta`: passed.
+- `npm.cmd run test:quick-add`: passed.
+- `npm.cmd run test:app-fallbacks`: passed.
+- `npm.cmd run test:menu-full-page-routes`: passed.
+- `npm.cmd run test:scout`: passed outside sandbox.
+- `npm.cmd run test:vault`: passed outside sandbox.
+- `npm.cmd run test:market`: passed outside sandbox.
+- `npm.cmd run test:forge`: passed outside sandbox.
+- `npm.cmd run test:admin`: passed outside sandbox.
+- `npm.cmd run test:spark`: passed outside sandbox.
+- `npm.cmd run test:vault-workflows`: passed.
+- `npm.cmd run test:inventory-detail`: passed.
+- `npm.cmd run test:vault-set-mastery`: passed.
+- `npm.cmd run test:forge-grouped-inventory`: passed.
+- `npm.cmd run test:trade-value`: passed.
+- `npm.cmd run test:sales-records`: passed.
+- `npm.cmd run test:kids-program`: passed.
+- `npm.cmd run test:ember-assist`: passed.
+- `npm.cmd run test:admin-command-center`: passed.
+- `npm.cmd run test:tidepool-community`: passed.
+- `npm.cmd run test:onboarding --if-present`: passed.
+- `npm.cmd run test:product-display`: passed.
+- `npm.cmd run smoke:catalog-search`: passed.
+
+QA:
+
+- Screenshots and result JSON: `artifacts/qa/feature-improvement-train/final/`
+- Captured 39 viewport screenshots across 390x844, 430x932, and 1440x900.
+- Result: no blockers, no horizontal overflow, no console errors, no maximum update depth errors, and no unsafe public beta copy after verified protective-copy exceptions.
+- Non-blocking note: the detector still records fixed bottom dock/FAB intersections on some mobile captures. Visual review found these to be fixed-shell/scrollable-content intersections rather than hidden primary actions.
+
+Mock-only notes:
+
+- Public beta feature previews remain mock/local-only unless existing app-local behavior already handles them.
 - No deploy was run.
