@@ -175,6 +175,68 @@ Pending. This pass used browser automation at compact mobile, tablet, and deskto
 - Local sandbox Chromium can hit `spawn EPERM`; browser checks were rerun outside the sandbox and passed.
 - Real-phone QA is still pending.
 
+## Master Card Grouping Deploy QA
+
+Date/time: 2026-06-06T11:24:04-04:00
+
+Production update:
+
+- Public URL: `https://emberandtide.app`
+- Deployed commit: `46c0d2c92457637d0e347b041a58d88c0601286a`
+- Vercel deployment ID: `dpl_DXX6pT2oJhnKdnW8Eyn7UJtoMCS6`
+- Live app-version: `dpl_DXX6pT2oJhnKdnW8Eyn7UJtoMCS6-46c0d2c92457637d0e347b041a58d88c0601286a-2026-06-06T15:12:24.645Z`
+- Build time: `2026-06-06T15:12:26.636Z`
+
+Release commits included:
+
+- `7cebc72` - Document Market catalog timeout investigation
+- `31cb033` - Add master card grouping and premium card effects
+- `46c0d2c` - Merge current production Market price data into the release candidate
+
+Screens and viewports tested:
+
+- Hearth
+- Scout
+- Vault
+- Vault Item Detail / grouped copies surface
+- Add Item
+- Market
+- Product Detail
+- Forge
+- Trade Analyzer
+- More
+- Viewports: 390x844, 430x932, 1440x900
+
+QA artifacts:
+
+- Screenshot folder: `artifacts/qa/master-card-grouping-live/`
+- Result file: `artifacts/qa/master-card-grouping-live/live-master-card-qa-results.json`
+- Captures: 30
+
+Master-card grouping result:
+
+- Vault showed grouped master-card preview sections with variants and premium card frames.
+- Vault item-detail checks exposed the grouped copies/variant context.
+- Add Item remained reachable and preserved review-first copy around variants and duplicates.
+- Market showed master-style result cards where the preview model applies.
+- Forge showed master-card context and exact variant/copy language.
+- Trade Analyzer remained reachable and did not mutate inventory.
+
+Visual and runtime result:
+
+- Public URL loaded.
+- No console errors were captured.
+- No horizontal overflow was detected in the tested viewports.
+- Premium card effects rendered as CSS-only frame/glow treatments and did not obscure text.
+- No copyrighted card art, official logos, official symbols, real image fetching workflow, scraping, checkout, payments, uploads, messaging, live AI, or live inventory integration was added.
+- Backend/auth/billing/database/RLS files were not changed.
+
+Known warnings from this deploy QA:
+
+- Existing TCGplayer CDN catalog image URLs can be blocked by Chromium ORB in live QA. The premium placeholder/effect path remains readable when external images fail.
+- Automated overlap detection reported fixed-bottom-nav intersections on some scrolled mobile captures; visual review found no release-blocking hidden primary action in the master-card surfaces tested.
+- Real-phone QA remains pending.
+
 ## Mock / Local-Only Boundaries
 
 These remain preview/mock/local UI unless later backend work is explicitly approved:

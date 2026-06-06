@@ -68,3 +68,33 @@ Future backend work, when approved, should consider:
 ## Safety Notes
 
 The grouping model does not expose Scout restock patterns, vendor schedules, employee details, exact quantities from retailers, private child data, or admin-only data. Market and Scout surfaces remain review-first and anti-scalper.
+
+## Public Beta Deploy QA
+
+The master-card grouping pass was deployed to the public beta in commit
+`46c0d2c92457637d0e347b041a58d88c0601286a`.
+
+Deployment metadata:
+
+- Public URL: `https://emberandtide.app`
+- Vercel deployment ID: `dpl_DXX6pT2oJhnKdnW8Eyn7UJtoMCS6`
+- Live app-version: `dpl_DXX6pT2oJhnKdnW8Eyn7UJtoMCS6-46c0d2c92457637d0e347b041a58d88c0601286a-2026-06-06T15:12:24.645Z`
+
+Live QA covered Hearth, Scout, Vault, Vault Item Detail, Add Item, Market,
+Product Detail, Forge, Trade Analyzer, and More at 390x844, 430x932, and
+1440x900.
+
+Result:
+
+- Grouped master-card behavior appeared in Vault and Forge.
+- Market rendered the premium master-style result treatment where applicable.
+- Premium CSS image effects rendered without obscuring text.
+- No horizontal overflow or console errors were captured.
+- No backend/auth/billing/database/RLS changes were made.
+- No scraping, checkout, payments, uploads, messaging, live AI, live inventory
+  integration, real image fetching workflow, or copyrighted assets were added.
+
+QA artifacts:
+
+- `artifacts/qa/master-card-grouping-live/`
+- `artifacts/qa/master-card-grouping-live/live-master-card-qa-results.json`
