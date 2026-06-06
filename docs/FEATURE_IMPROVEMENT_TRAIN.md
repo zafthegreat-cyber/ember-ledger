@@ -28,7 +28,7 @@
 | 6 - The Spark Improvement | Complete | `Improve The Spark impact and donation preview` | Impact dashboard, donation category, sponsor/volunteer, and no-payment preview polish. |
 | 7 - Tidepool Improvement | Complete | `Improve Tidepool safe community UI` | Moderated community sections, anti-rush-feed copy, and mobile hero polish. |
 | 8 - Ember Assist Improvement | Complete | `Improve Ember Assist guided helper UI` | Helper preview copy, guided suggestions, safe quick actions, and recent-help examples. |
-| 9 - Parent Center Improvement | Pending | Pending | Safety controls polish. |
+| 9 - Parent Center Improvement | Complete | `Improve Parent Center safety controls UI` | Private-by-default profiles, approval checklist, family support paths, and safety summary polish. |
 | 10 - Shop Portal Improvement | Pending | Pending | Trusted shop preview polish. |
 | 11 - Admin Review Improvement | Pending | Pending | Moderation readability polish. |
 | 12 - Onboarding Improvement | Pending | Pending | Virginia-first beta flow polish. |
@@ -330,4 +330,40 @@ QA:
 Mock-only notes:
 
 - Prompt suggestions, quick actions, recent help examples, and admin escalation messaging remain guided/local/mock-safe unless existing local/admin-inbox behavior already handles them.
+- No deploy was run.
+
+### Section 9 - Parent Center Improvement
+
+Status: Complete. Commit message `Improve Parent Center safety controls UI`.
+
+Summary:
+
+- Reworked mock kid profiles into safer age-band previews instead of real-looking child names, with private workspace visibility and child-account guardrails.
+- Added clearer child privacy defaults for hidden names, ages, notes, wishlists, and public child profile surfaces.
+- Added a parent approval checklist for exact-copy trade review, Scout trip decisions, Spark participation review, and purchase pause reminders.
+- Strengthened family support paths for The Spark, trusted adult placeholders, and workspace privacy review.
+- Kept Parent Center framed as a mock-only safety shell with no child account backend, no live messaging, no auth change, and no public child identity.
+- No Parent Center backend write, child account change, messaging, upload, payment, live AI, auth, billing, database schema, or RLS behavior was changed.
+
+Checks:
+
+- `npm.cmd run build`: passed with existing Vite large chunk warning.
+- `git diff --check`: passed with existing LF-to-CRLF working-copy warnings only.
+- `npm.cmd run test:kids-program`: passed.
+- `npm.cmd run test:quick-add`: passed.
+- `npm.cmd run test:app-fallbacks`: passed.
+- `npm.cmd run test:menu-full-page-routes`: passed.
+- `npm.cmd run test:onboarding --if-present`: passed.
+- `npm.cmd run smoke:beta`: passed.
+
+QA:
+
+- Screenshots and result JSON: `artifacts/qa/feature-improvement-train/parent-center/`
+- Captured Parent Center top and corrected scrolled-bottom state at 390x844, 430x932, and 1440x900.
+- Result: no horizontal overflow, no content-button/bottom-nav overlap in corrected scrolled-bottom checks, no console errors, no maximum update depth errors, privacy-default copy present, approval checklist present, and no-messaging copy present.
+- The first mobile detector run counted bottom-nav buttons against the fixed dock; corrected detector scoped overlap checks to Parent Center content buttons.
+
+Mock-only notes:
+
+- Kid profile previews, approval checklist, trusted adult placeholders, Spark participation status, and workspace privacy support remain UI/mock/local-only.
 - No deploy was run.

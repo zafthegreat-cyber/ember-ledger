@@ -46584,15 +46584,17 @@ body.shell-long-form-active .ember-assist-shell:not(.is-open),
   color: #fff7ed;
 }
 
-.parent-center-profile-list {
+.parent-center-profile-list,
+.parent-center-approval-list {
   display: grid;
   gap: 10px;
   margin-top: 12px;
 }
 
-.parent-center-profile-row {
+.parent-center-profile-row,
+.parent-center-approval-row {
   display: grid;
-  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 0.7fr) minmax(0, 1fr) minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
   padding: 12px;
@@ -46601,18 +46603,26 @@ body.shell-long-form-active .ember-assist-shell:not(.is-open),
   background: rgba(2, 8, 22, 0.5);
 }
 
+.parent-center-approval-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+
 .parent-center-profile-row div,
-.parent-center-profile-row p {
+.parent-center-profile-row p,
+.parent-center-approval-row div {
   min-width: 0;
 }
 
-.parent-center-profile-row div {
+.parent-center-profile-row div,
+.parent-center-approval-row div {
   display: grid;
   gap: 3px;
 }
 
 .parent-center-profile-row span,
-.parent-center-profile-row p {
+.parent-center-profile-row p,
+.parent-center-approval-row span {
   margin: 0;
   color: rgba(232, 246, 255, 0.74);
   line-height: 1.35;
@@ -46649,8 +46659,10 @@ body.shell-long-form-active .ember-assist-shell:not(.is-open),
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .parent-center-profile-row {
+  .parent-center-profile-row,
+  .parent-center-approval-row {
     grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
   }
 }
 
