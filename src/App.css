@@ -70814,6 +70814,9 @@ body:has(.catalog-detail-drawer) :where(.mobile-bottom-nav, .bottom-nav, .bottom
 }
 
 .scout-home-stat-card {
+  display: grid !important;
+  align-content: center !important;
+  gap: 4px !important;
   min-width: 0 !important;
   min-height: 88px !important;
   padding: 13px !important;
@@ -70839,7 +70842,7 @@ body:has(.catalog-detail-drawer) :where(.mobile-bottom-nav, .bottom-nav, .bottom
 
 .scout-home-stat-card strong {
   display: block;
-  margin: 7px 0 3px;
+  margin: 0;
   color: #b9f7ff;
   font-size: 1.5rem;
   line-height: 1;
@@ -70936,6 +70939,50 @@ body:has(.catalog-detail-drawer) :where(.mobile-bottom-nav, .bottom-nav, .bottom
   font-weight: 950;
 }
 
+.scout-signal-decision-grid,
+.scout-report-safety-dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  min-width: 0;
+}
+
+.scout-signal-decision-grid span,
+.scout-report-safety-dl div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid rgba(132, 226, 255, 0.16);
+  border-radius: 14px;
+  background: rgba(2, 13, 28, 0.48);
+}
+
+.scout-signal-decision-grid strong,
+.scout-report-safety-dl dt {
+  color: rgba(185, 247, 255, 0.86);
+  font-size: 0.66rem;
+  font-weight: 950;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.scout-signal-decision-grid span,
+.scout-report-safety-dl dd {
+  color: rgba(232, 246, 255, 0.78);
+  font-size: 0.75rem;
+  line-height: 1.25;
+}
+
+.scout-report-safety-dl {
+  margin: 0;
+}
+
+.scout-report-safety-dl dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 900px) {
   .app-scout .scout-home-foundation,
   .app-command-shell.app-scout .scout-home-foundation,
@@ -70969,12 +71016,18 @@ body:has(.catalog-detail-drawer) :where(.mobile-bottom-nav, .bottom-nav, .bottom
   }
 
   .scout-home-stat-card {
-    min-height: 76px !important;
-    padding: 10px !important;
+    min-height: 86px !important;
+    padding: 10px 8px !important;
   }
 
   .scout-home-stat-card strong {
-    font-size: 1.28rem;
+    font-size: 1.18rem;
+  }
+
+  .scout-home-stat-card span,
+  .scout-home-stat-card small {
+    font-size: 0.6rem;
+    line-height: 1.08;
   }
 
   .scout-home-report-top {
@@ -70983,6 +71036,11 @@ body:has(.catalog-detail-drawer) :where(.mobile-bottom-nav, .bottom-nav, .bottom
 
   .scout-home-report-card {
     padding: 12px;
+  }
+
+  .scout-signal-decision-grid,
+  .scout-report-safety-dl {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -76028,6 +76086,29 @@ button.et-live-action:focus-visible {
   color: #ffe3a5;
 }
 
+.scout-live-review-rules {
+  display: grid;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.scout-live-review-rules span,
+.scout-flow-footnote {
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid rgba(132, 226, 255, 0.16);
+  border-radius: 14px;
+  background: rgba(2, 13, 28, 0.46);
+  color: rgba(232, 246, 255, 0.78);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.scout-flow-footnote {
+  margin: 12px 0 0;
+}
+
 .scout-live-summary-list,
 .scout-live-field-grid,
 .scout-live-option-grid {
@@ -76076,6 +76157,38 @@ button.et-live-action:focus-visible {
 .scout-live-option-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-bottom: 12px;
+}
+
+.scout-live-form-card .compact-card-header,
+.scout-live-review-card .compact-card-header,
+.scout-live-extraction-card .compact-card-header {
+  align-items: start;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.scout-live-mock-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: start !important;
+  justify-self: end !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: 128px !important;
+  height: auto !important;
+  min-height: 28px !important;
+  padding: 6px 9px !important;
+  border: 1px solid rgba(132, 226, 255, 0.2);
+  border-radius: 999px !important;
+  background: rgba(2, 13, 28, 0.62);
+  color: rgba(232, 246, 255, 0.86);
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1.1;
+  white-space: normal !important;
+  text-align: center !important;
 }
 
 .scout-live-option-grid button {

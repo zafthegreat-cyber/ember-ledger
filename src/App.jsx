@@ -36098,6 +36098,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         freshness: "24 min ago",
         confidence: "92%",
         proof: "Photo proof",
+        tripAdvice: "Worth a normal errand stop",
+        proofStrength: "Shelf photo + current time",
+        hiddenDetail: "No exact count or stocking cadence",
         familyNote: "Good chance for a parent stop after errands. Sensitive details stay protected.",
       },
       {
@@ -36109,6 +36112,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         freshness: "48 min ago",
         confidence: "78%",
         proof: "Community confirmation",
+        tripAdvice: "Check online first",
+        proofStrength: "Second proof requested",
+        hiddenDetail: "No checkout shortcut",
         familyNote: "Useful signal, but verify online before making a special trip.",
       },
       {
@@ -36120,6 +36126,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         freshness: "1 hr ago",
         confidence: "84%",
         proof: "Trusted shop update",
+        tripAdvice: "Good family shop stop",
+        proofStrength: "Shop-confirmed label",
+        hiddenDetail: "Shop controls quantity language",
         familyNote: "Shop-labeled current signal. Quantity and timing stay protected.",
       },
     ];
@@ -36158,9 +36167,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <h2>Current reports, not raw patterns.</h2>
             <p>Scout helps families read what is useful right now while keeping sensitive timing and network-wide history protected.</p>
             <div className="scout-safety-strip" aria-label="Scout safety rules">
+              <span>Current reports, not raw patterns</span>
               <span>Family-safe</span>
               <span>Proof matters</span>
-              <span>Sensitive history protected</span>
+              <span>Exact quantities stay hidden unless shop-approved</span>
             </div>
           </div>
           <div className="scout-home-stat-grid" aria-label="Scout Home stats">
@@ -36188,6 +36198,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <span>{scoutHomeReports[0].category}</span>
               <span>{scoutHomeReports[0].freshness}</span>
               <span>{scoutHomeReports[0].proof}</span>
+            </div>
+            <div className="scout-signal-decision-grid" aria-label="Worth the Trip decision guide">
+              <span><strong>Trip guidance</strong>{scoutHomeReports[0].tripAdvice}</span>
+              <span><strong>Proof</strong>{scoutHomeReports[0].proofStrength}</span>
+              <span><strong>Hidden</strong>{scoutHomeReports[0].hiddenDetail}</span>
             </div>
             <div className="quick-actions">
               <button type="button" onClick={openScoutStoresList}>Choose watched store</button>
@@ -36218,6 +36233,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     <span>{report.freshness}</span>
                     <span>{report.proof}</span>
                   </div>
+                  <dl className="scout-report-safety-dl">
+                    <div><dt>Worth the Trip</dt><dd>{report.tripAdvice}</dd></div>
+                    <div><dt>Proof</dt><dd>{report.proofStrength}</dd></div>
+                    <div><dt>Protected</dt><dd>{report.hiddenDetail}</dd></div>
+                  </dl>
                   <p>{report.familyNote}</p>
                 </article>
               ))}
@@ -36279,6 +36299,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div className="scout-safety-strip">
               <span>No buying shortcuts</span>
               <span>No exact patterns</span>
+              <span>No vendor schedules</span>
               <span>Proof first</span>
             </div>
             <button type="button" className="secondary-button" onClick={() => setScoutView("online")}>View online signals</button>
@@ -36302,6 +36323,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         fairRange: "$69-$84",
         freshness: "Community signal, 38 min ago",
         trust: "Official source label",
+        watchScope: "Manual watch only",
         note: "Good candidate to watch, but Scout will not auto-buy or expose exact timing patterns.",
       },
       {
@@ -36313,6 +36335,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         fairRange: "Near MSRP",
         freshness: "Trusted shop post, 1 hr ago",
         trust: "Shop-confirmed",
+        watchScope: "Shop-approved wording",
         note: "Shop-shared current context. Exact quantity stays hidden unless the shop chooses to publish it.",
       },
       {
@@ -36324,6 +36347,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         fairRange: "$4-$6 per pack",
         freshness: "Screenshot proof, today",
         trust: "Needs second proof",
+        watchScope: "Review before alerting",
         note: "Useful as a soft signal only. Scout avoids checkout shortcuts and vendor schedule guesses.",
       },
     ];
@@ -36375,6 +36399,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <div className="scout-online-meta-row">
                     <span>{signal.freshness}</span>
                     <span>{signal.trust}</span>
+                    <span>{signal.watchScope}</span>
                   </div>
                   <p>{signal.note}</p>
                   <div className="scout-online-actions">
@@ -36391,6 +36416,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <h2>No checkout, no scraping, no exact pattern feed.</h2>
             <p>Scout Online stays in the lane of family-safe context. It can show honest labels and manual watch actions, but it does not become a bot tool.</p>
             <div className="scout-safety-strip">
+              <span>Useful proof</span>
               <span>No auto-buy</span>
               <span>No exact quantities</span>
               <span>No vendor schedules</span>
@@ -36539,6 +36565,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div className="scout-alert-scope-note">
               <strong>Current signals only.</strong>
               <span>Scout watchlist alerts do not expose raw history, exact restock windows, vendor schedules, or checkout shortcuts.</span>
+            </div>
+            <div className="scout-watchlist-free-note">
+              <strong>Free stays useful.</strong>
+              <span>One watched store, manual Scout reports, screenshot review UI, and Worth the Trip context remain part of the core collector experience.</span>
             </div>
           </aside>
         </div>
@@ -36753,6 +36783,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       setScoutView("overview");
     };
     const safetyNotice = "Please avoid employee names, private messages, vendor schedules, and unsafe details.";
+    const safetyChecks = [
+      "Useful proof, not exploitable patterns.",
+      "Current reports, not raw patterns.",
+      "Exact quantities stay hidden unless shop-approved.",
+      "No vendor schedules, employee names, or private messages.",
+    ];
 
     if (flow === "scanScreenshot") {
       return (
@@ -36777,6 +36813,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed="scan" /></span>
                 <strong>Mock scan area</strong>
                 <p>This local preview shell does not send files, extract live text, or save reports.</p>
+              </div>
+              <div className="scout-live-review-rules" aria-label="Screenshot scan safety checks">
+                {safetyChecks.slice(0, 3).map((check) => <span key={check}>{check}</span>)}
               </div>
               <div className="scout-live-chip-grid" aria-label="Accepted mock proof sources">
                 {acceptedSources.map((source) => <span key={source}>{source}</span>)}
@@ -36803,6 +36842,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   </div>
                 ))}
               </div>
+              <p className="scout-flow-footnote">Extraction is preview-only here. A real report should always be reviewed before anything is shared.</p>
             </article>
           </div>
         </section>
@@ -36833,7 +36873,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <p className="section-kicker">Editable-looking summary</p>
                   <h3>Current report details</h3>
                 </div>
-                <span className="status-badge">Mock only</span>
+                <span className="scout-live-mock-badge">Mock only</span>
               </div>
               <div className="scout-live-summary-list">
                 {summaryRows.map((row) => (
@@ -36868,6 +36908,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <span>No private messages</span>
                 <span>Exact quantities stay hidden unless a trusted shop chooses to share them.</span>
               </div>
+              <div className="scout-live-review-rules" aria-label="Scout review guardrails">
+                {safetyChecks.map((check) => <span key={check}>{check}</span>)}
+              </div>
               <button type="button" className="secondary-button" onClick={backToScout}>Back to Scout</button>
             </aside>
           </div>
@@ -36898,13 +36941,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <p className="section-kicker">Report type</p>
                 <h3>What are you sharing?</h3>
               </div>
-              <span className="status-badge">Mock only</span>
+              <span className="scout-live-mock-badge">Mock only</span>
             </div>
             <div className="scout-live-option-grid">
               {reportTypes.map((type, index) => (
                 <button type="button" className={index === 0 ? "is-selected" : ""} key={type}>
                   <strong>{type}</strong>
-                  <span>{index === 0 ? "Current store signal" : "Review-first signal"}</span>
+                  <span>{index === 0 ? "Worth the Trip context" : "Review-first signal"}</span>
                 </button>
               ))}
             </div>
@@ -36933,6 +36976,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <span>No employee names</span>
               <span>No private messages</span>
               <span>Proof helps families decide whether a trip is worth it.</span>
+            </div>
+            <div className="scout-live-review-rules" aria-label="Scout Add Report guardrails">
+              {safetyChecks.map((check) => <span key={check}>{check}</span>)}
             </div>
           </aside>
         </div>
