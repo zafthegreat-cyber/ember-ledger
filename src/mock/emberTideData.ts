@@ -1,4 +1,4 @@
-import type { EmberTideMockData, EmberScreen } from "../types/emberTide";
+import type { EmberTideMockData, EmberScreen, MasterCard } from "../types/emberTide";
 
 const safetyNotice = "We show useful signals, not exploitable restock patterns.";
 const reviewNotice = "Nothing is saved until you review and confirm.";
@@ -1316,6 +1316,127 @@ const screens: EmberScreen[] = [
   },
 ];
 
+export const masterCards: MasterCard[] = [
+  {
+    id: "master-ember-dragon-006",
+    name: "Ember Dragon ex",
+    setName: "Scarlet Hearth",
+    setCode: "SHR",
+    cardNumber: "006",
+    franchise: "tcg",
+    category: "card",
+    rarity: "Ultra Rare",
+    artist: "Ember & Tide Studio",
+    ownedTotal: 4,
+    wanted: true,
+    completionStatus: "partial",
+    variants: [
+      {
+        id: "variant-ember-dragon-normal",
+        masterCardId: "master-ember-dragon-006",
+        variantType: "normal",
+        label: "Normal",
+        condition: "near_mint",
+        ownedCount: 2,
+        estimatedValue: 18,
+        tags: ["binder", "duplicate"],
+      },
+      {
+        id: "variant-ember-dragon-reverse",
+        masterCardId: "master-ember-dragon-006",
+        variantType: "reverse_holo",
+        label: "Reverse Holo",
+        condition: "near_mint",
+        ownedCount: 1,
+        estimatedValue: 24,
+        tags: ["favorite"],
+      },
+      {
+        id: "variant-ember-dragon-graded",
+        masterCardId: "master-ember-dragon-006",
+        variantType: "graded",
+        label: "PSA 9 slab",
+        condition: "near_mint",
+        gradingCompany: "PSA",
+        grade: "9",
+        ownedCount: 1,
+        estimatedValue: 82,
+        tags: ["display"],
+      },
+      {
+        id: "variant-ember-dragon-illustration-want",
+        masterCardId: "master-ember-dragon-006",
+        variantType: "illustration",
+        label: "Illustration Rare",
+        ownedCount: 0,
+        estimatedValue: 46,
+        tags: ["wishlist"],
+      },
+    ],
+  },
+  {
+    id: "master-tide-fox-087",
+    name: "Tide Fox",
+    setName: "Coastal Crown",
+    setCode: "CCN",
+    cardNumber: "087",
+    franchise: "tcg",
+    category: "card",
+    rarity: "Illustration Rare",
+    artist: "Ember & Tide Studio",
+    ownedTotal: 2,
+    wanted: false,
+    completionStatus: "owned",
+    variants: [
+      {
+        id: "variant-tide-fox-holo",
+        masterCardId: "master-tide-fox-087",
+        variantType: "holo",
+        label: "Holo",
+        condition: "near_mint",
+        ownedCount: 1,
+        estimatedValue: 12,
+        tags: ["kids collection"],
+      },
+      {
+        id: "variant-tide-fox-stamped",
+        masterCardId: "master-tide-fox-087",
+        variantType: "stamped",
+        label: "Event stamped",
+        condition: "light_play",
+        ownedCount: 1,
+        estimatedValue: 16,
+        tags: ["event"],
+      },
+    ],
+  },
+  {
+    id: "master-moonlit-guardian-144",
+    name: "Moonlit Guardian",
+    setName: "Family Festival Promos",
+    setCode: "FFP",
+    cardNumber: "144",
+    franchise: "tcg",
+    category: "card",
+    rarity: "Promo",
+    artist: "Ember & Tide Studio",
+    ownedTotal: 0,
+    wanted: true,
+    completionStatus: "missing",
+    variants: [
+      {
+        id: "variant-moonlit-guardian-promo",
+        masterCardId: "master-moonlit-guardian-144",
+        variantType: "promo",
+        label: "Family event promo",
+        ownedCount: 0,
+        estimatedValue: 10,
+        tags: ["wishlist", "event"],
+      },
+    ],
+  },
+];
+
 export const emberTideData: EmberTideMockData = {
   profile: {
     name: "Collector",
@@ -1333,6 +1454,7 @@ export const emberTideData: EmberTideMockData = {
     { role: "Admin", title: "Admin", detail: "Protected review queues and safety moderation.", accent: "admin" },
     { role: "Beta", title: "Beta", detail: "Preview cards, feedback, and readiness checks.", accent: "assist" },
   ],
+  masterCards,
   screens,
   principles: [
     { title: "Family first", detail: "Designed for collectors of all ages. Safe, kind, and parent-aware.", icon: "shield" },

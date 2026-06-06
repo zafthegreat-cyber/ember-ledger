@@ -49,6 +49,67 @@ export type FeatureKind =
   | "onboarding"
   | "state";
 
+export type CardVariantType =
+  | "normal"
+  | "reverse_holo"
+  | "holo"
+  | "foil"
+  | "etched"
+  | "pokeball"
+  | "masterball"
+  | "stamped"
+  | "promo"
+  | "full_art"
+  | "illustration"
+  | "special_illustration"
+  | "secret"
+  | "graded"
+  | "sealed_related"
+  | "other";
+
+export type CardCondition =
+  | "mint"
+  | "near_mint"
+  | "light_play"
+  | "moderate_play"
+  | "heavy_play"
+  | "damaged"
+  | "sealed";
+
+export type GradingCompany = "PSA" | "BGS" | "CGC" | "SGC" | "Other";
+
+export type CardVariant = {
+  id: string;
+  masterCardId: string;
+  variantType: CardVariantType;
+  label: string;
+  condition?: CardCondition;
+  gradingCompany?: GradingCompany;
+  grade?: string;
+  ownedCount: number;
+  estimatedValue?: number;
+  imageUrl?: string;
+  notes?: string;
+  tags?: string[];
+};
+
+export type MasterCard = {
+  id: string;
+  name: string;
+  setName: string;
+  setCode?: string;
+  cardNumber?: string;
+  franchise?: "pokemon" | "tcg" | "other";
+  category: "card";
+  imageUrl?: string;
+  rarity?: string;
+  artist?: string;
+  ownedTotal: number;
+  wanted: boolean;
+  completionStatus?: "owned" | "missing" | "partial";
+  variants: CardVariant[];
+};
+
 export type Stat = {
   label: string;
   value: string;
@@ -129,6 +190,7 @@ export type EmberTideMockData = {
   };
   roles: EmberRole[];
   roleGuidance: RoleGuidance[];
+  masterCards: MasterCard[];
   screens: EmberScreen[];
   principles: Principle[];
 };

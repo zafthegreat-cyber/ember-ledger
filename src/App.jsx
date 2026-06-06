@@ -3001,6 +3001,415 @@ function vaultItemDisplayImage(item = {}) {
   return item.displayImage || item.itemImage || item.item_image || item.imageUrl || item.image_url || item.catalogImageUrl || item.productImageUrl || getCatalogImage(item);
 }
 
+const MASTER_CARD_VARIANT_LABELS = {
+  normal: "Normal",
+  reverse_holo: "Reverse Holo",
+  holo: "Holo",
+  foil: "Foil",
+  etched: "Etched",
+  pokeball: "Ball reverse",
+  masterball: "Master reverse",
+  stamped: "Stamped",
+  promo: "Promo",
+  full_art: "Full Art",
+  illustration: "Illustration",
+  special_illustration: "Special Illustration",
+  secret: "Secret",
+  graded: "Graded",
+  sealed_related: "Sealed related",
+  other: "Other",
+};
+
+const MASTER_CARD_CONDITION_LABELS = {
+  mint: "Mint",
+  near_mint: "Near Mint",
+  light_play: "Light Play",
+  moderate_play: "Moderate Play",
+  heavy_play: "Heavy Play",
+  damaged: "Damaged",
+  sealed: "Sealed",
+};
+
+const MASTER_CARD_GROUPING_PREVIEW_CARDS = (emberTideData.masterCards || []).map((masterCard) => {
+  const variants = (masterCard.variants || []).map((variant) => ({
+    ...variant,
+    wantedCount: Number(variant.ownedCount || 0) > 0 ? 0 : 1,
+    isPreview: true,
+  }));
+  const ownedTotal = Number(masterCard.ownedTotal || variants.reduce((sum, variant) => sum + Number(variant.ownedCount || 0), 0));
+  const variantOwnedCount = variants.filter((variant) => Number(variant.ownedCount || 0) > 0).length;
+  const variantWantedCount = variants.filter((variant) => Number(variant.ownedCount || 0) < 1).length;
+  return {
+    ...masterCard,
+    id: `preview-${masterCard.id}`,
+    isPreview: true,
+    ownedTotal,
+    variantCount: variants.length,
+    variantOwnedCount,
+    variantWantedCount,
+    totalEstimatedValue: variants.reduce((sum, variant) => (
+      sum + Number(variant.estimatedValue || 0) * Math.max(1, Number(variant.ownedCount || 0))
+    ), 0),
+    variants,
+  };
+});
+
+function masterCardTextKey(value = "") {
+  return normalizeSearchText(value).replace(/\s+/g, "-");
+}
+
+function masterCardDisplayName(item = {}) {
+  return String(item.cardName || item.card_name || item.name || item.itemName || item.item_name || item.catalogProductName || item.catalog_product_name || "Card").trim();
+}
+
+function masterCardSetName(item = {}) {
+  return String(item.setName || item.set_name || item.expansionOfficialName || item.expansion_official_name || item.expansion || item.productLine || item.product_line || "Set unknown").trim();
+}
+
+function masterCardSetCode(item = {}) {
+  return String(item.setCode || item.set_code || item.expansionCode || item.expansion_code || item.expansionId || item.expansion_id || "").trim();
+}
+
+function masterCardNumber(item = {}) {
+  return String(
+    item.cardNumber ||
+    item.card_number ||
+    item.collectorNumber ||
+    item.collector_number ||
+    item.number ||
+    vaultCardNumberLabel(item) ||
+    ""
+  ).trim();
+}
+
+function masterCardIdentityKey(item = {}) {
+  const canonical = getCanonicalCardKey(item);
+  if (canonical && !canonical.startsWith("product:")) return canonical;
+  const name = masterCardTextKey(masterCardDisplayName(item));
+  const setName = masterCardTextKey(masterCardSetName(item));
+  const number = masterCardTextKey(masterCardNumber(item));
+  if (name && setName && number) return `card:${setName}|number:${number}|title:${name}`;
+  if (name && setName) return `card:${setName}|title:${name}`;
+  if (name && number) return `card:number:${number}|title:${name}`;
+  return name ? `card:title:${name}` : "";
+}
+
+function normalizeMasterCardCondition(value = "") {
+  const text = normalizeSearchText(value);
+  if (!text) return "";
+  if (text.includes("mint") && !text.includes("near")) return "mint";
+  if (text.includes("near mint") || text === "nm") return "near_mint";
+  if (text.includes("light")) return "light_play";
+  if (text.includes("moderate")) return "moderate_play";
+  if (text.includes("heavy")) return "heavy_play";
+  if (text.includes("damaged")) return "damaged";
+  if (text.includes("sealed")) return "sealed";
+  return "";
+}
+
+function inferMasterCardVariantType(item = {}) {
+  if (item.graded || item.grade || item.gradingCompany || item.grading_company) return "graded";
+  const text = normalizeSearchText([
+    item.variantType,
+    item.variant_type,
+    item.variant,
+    item.variantName,
+    item.variant_name,
+    item.finish,
+    item.printing,
+    item.priceSubtype,
+    item.price_subtype,
+    item.rarity,
+    item.productType,
+    item.product_type,
+    item.condition,
+    item.conditionName,
+    vaultVariantLabel(item),
+  ].filter(Boolean).join(" "));
+  if (text.includes("special illustration")) return "special_illustration";
+  if (text.includes("illustration")) return "illustration";
+  if (text.includes("full art")) return "full_art";
+  if (text.includes("secret")) return "secret";
+  if (text.includes("promo")) return "promo";
+  if (text.includes("stamp") || text.includes("staff") || text.includes("prerelease")) return "stamped";
+  if (text.includes("master ball") || text.includes("masterball")) return "masterball";
+  if (text.includes("poke ball") || text.includes("pokeball")) return "pokeball";
+  if (text.includes("reverse")) return "reverse_holo";
+  if (text.includes("holo")) return "holo";
+  if (text.includes("etched")) return "etched";
+  if (text.includes("foil")) return "foil";
+  if (text.includes("sealed")) return "sealed_related";
+  if (text.includes("normal") || text.includes("standard") || text.includes("regular")) return "normal";
+  return "other";
+}
+
+function masterCardVariantLabel(item = {}) {
+  const explicit = String(item.variantLabel || item.variant_label || item.variantName || item.variant_name || item.variant || "").trim();
+  if (explicit) return explicit;
+  const grade = String(item.grade || "").trim();
+  const gradingCompany = String(item.gradingCompany || item.grading_company || "").trim();
+  if (grade || gradingCompany) return [gradingCompany || "Graded", grade ? `Grade ${grade}` : ""].filter(Boolean).join(" ");
+  const setMasteryLabel = vaultVariantLabel(item);
+  if (setMasteryLabel && !/unknown/i.test(setMasteryLabel)) return setMasteryLabel;
+  const type = inferMasterCardVariantType(item);
+  return MASTER_CARD_VARIANT_LABELS[type] || "Variant";
+}
+
+function masterCardLooksLikeCard(item = {}) {
+  if (!item || isInventorySealedProduct(item)) return false;
+  if (isInventoryCardProduct(item)) return true;
+  const typeText = normalizeSearchText([
+    item.productType,
+    item.product_type,
+    item.category,
+    item.recordType,
+    item.record_type,
+    item.status,
+    item.rarity,
+    item.grade,
+    item.gradingCompany,
+    item.grading_company,
+  ].filter(Boolean).join(" "));
+  return Boolean(masterCardNumber(item) || /\bcard\b|\bpromo\b|\bgraded\b|\bslab\b/.test(typeText));
+}
+
+function buildMasterCardsFromItems(records = []) {
+  const groups = new Map();
+  records.filter(Boolean).forEach((record) => {
+    if (!masterCardLooksLikeCard(record)) return;
+    const key = masterCardIdentityKey(record);
+    if (!key) return;
+    const name = masterCardDisplayName(record);
+    const setName = masterCardSetName(record);
+    const cardNumber = masterCardNumber(record);
+    const setCode = masterCardSetCode(record);
+    const isWishlist = isWishlistLikeVaultItem(record);
+    const ownedCount = isWishlist ? 0 : Math.max(0, Number(record.quantity || record.ownedQuantity || record.owned_count || 1));
+    const wantedCount = isWishlist ? Math.max(1, Number(record.quantityWanted || record.wantedQuantity || record.quantity || 1)) : 0;
+    const variantType = inferMasterCardVariantType(record);
+    const variantLabel = masterCardVariantLabel(record);
+    const condition = normalizeMasterCardCondition(record.conditionName || record.condition || (isInventorySealedProduct(record) ? "sealed" : ""));
+    const grade = String(record.grade || "").trim();
+    const gradingCompany = String(record.gradingCompany || record.grading_company || "").trim();
+    const variantKey = [
+      variantType,
+      masterCardTextKey(variantLabel),
+      condition,
+      gradingCompany,
+      grade,
+    ].filter(Boolean).join("|") || "variant";
+    const estimatedValue = firstKnownVaultNumber(
+      record.marketPrice,
+      record.market_price,
+      record.marketValue,
+      record.market_value,
+      record.estimatedValue,
+      record.estimated_value,
+      record.targetPrice,
+      record.target_price,
+    );
+
+    if (!groups.has(key)) {
+      groups.set(key, {
+        id: key,
+        name,
+        setName,
+        setCode,
+        cardNumber,
+        franchise: "tcg",
+        category: "card",
+        imageUrl: vaultItemDisplayImage(record),
+        rarity: record.rarity || "",
+        artist: record.artist || "",
+        ownedTotal: 0,
+        wanted: false,
+        completionStatus: "missing",
+        records: [],
+        variantsByKey: new Map(),
+      });
+    }
+
+    const group = groups.get(key);
+    group.ownedTotal += ownedCount;
+    group.wanted = group.wanted || Boolean(isWishlist || wantedCount > 0);
+    group.imageUrl = group.imageUrl || vaultItemDisplayImage(record);
+    group.rarity = group.rarity || record.rarity || "";
+    group.records.push(record);
+
+    if (!group.variantsByKey.has(variantKey)) {
+      group.variantsByKey.set(variantKey, {
+        id: `${key}|${variantKey}`,
+        masterCardId: key,
+        variantType,
+        label: variantLabel,
+        condition: condition || undefined,
+        gradingCompany: gradingCompany || undefined,
+        grade: grade || undefined,
+        ownedCount: 0,
+        wantedCount: 0,
+        estimatedValue: estimatedValue ?? undefined,
+        imageUrl: vaultItemDisplayImage(record),
+        notes: record.notes || record.actionNotes || record.action_notes || "",
+        tags: [],
+        records: [],
+      });
+    }
+
+    const variant = group.variantsByKey.get(variantKey);
+    variant.ownedCount += ownedCount;
+    variant.wantedCount += wantedCount;
+    variant.estimatedValue = variant.estimatedValue ?? estimatedValue ?? undefined;
+    variant.imageUrl = variant.imageUrl || vaultItemDisplayImage(record);
+    variant.records.push(record);
+  });
+
+  return [...groups.values()].map((group) => {
+    const variants = [...group.variantsByKey.values()]
+      .sort((a, b) => b.ownedCount - a.ownedCount || b.wantedCount - a.wantedCount || a.label.localeCompare(b.label));
+    const completionStatus = group.ownedTotal > 0 && group.wanted
+      ? "partial"
+      : group.ownedTotal > 0
+        ? "owned"
+        : "missing";
+    return {
+      ...group,
+      completionStatus,
+      variants,
+      variantCount: variants.length,
+      variantOwnedCount: variants.filter((variant) => variant.ownedCount > 0).length,
+      variantWantedCount: variants.filter((variant) => variant.wantedCount > 0).length,
+      totalEstimatedValue: variants.reduce((sum, variant) => sum + Number(variant.estimatedValue || 0) * Math.max(1, Number(variant.ownedCount || 0)), 0),
+      variantsByKey: undefined,
+    };
+  }).sort((a, b) =>
+    b.ownedTotal - a.ownedTotal ||
+    Number(b.wanted) - Number(a.wanted) ||
+    a.name.localeCompare(b.name)
+  );
+}
+
+function buildMasterCardItemIndex(masterCards = []) {
+  const index = new Map();
+  masterCards.forEach((masterCard) => {
+    (masterCard.records || []).forEach((record) => {
+      if (record?.id) index.set(String(record.id), masterCard);
+      if (record?.groupId) index.set(String(record.groupId), masterCard);
+    });
+    (masterCard.variants || []).forEach((variant) => {
+      (variant.records || []).forEach((record) => {
+        if (record?.id) index.set(String(record.id), masterCard);
+        if (record?.groupId) index.set(String(record.groupId), masterCard);
+      });
+    });
+  });
+  return index;
+}
+
+function findMasterCardForInventoryItem(item = {}, index = new Map()) {
+  if (!item) return null;
+  if (item.id && index.has(String(item.id))) return index.get(String(item.id));
+  if (item.groupId && index.has(String(item.groupId))) return index.get(String(item.groupId));
+  const entry = inventoryGroupEntries(item).find((record) => record?.id && index.has(String(record.id)));
+  return entry ? index.get(String(entry.id)) : null;
+}
+
+function PremiumCardImage({ image, title, subtitle, variantType = "normal", className = "" }) {
+  const tone = MASTER_CARD_VARIANT_LABELS[variantType] ? variantType : "other";
+  return (
+    <div className={`premium-card-image premium-card-image--${tone} ${image ? "has-image" : "is-placeholder"} ${className}`.trim()} aria-label={`${title || "Card"} visual`}>
+      {image ? <img src={image} alt="" loading="lazy" /> : (
+        <div className="premium-card-placeholder-art" aria-hidden="true">
+          <span className="premium-card-crest" />
+          <strong>{title || "Card"}</strong>
+          <small>{subtitle || "Ember & Tide"}</small>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MasterVariantRail({ masterCard, compact = false }) {
+  if (!masterCard?.variants?.length) return null;
+  return (
+    <div className={`master-variant-rail${compact ? " master-variant-rail--compact" : ""}`} aria-label={`${masterCard.name} variants and copies`}>
+      {masterCard.variants.slice(0, compact ? 4 : 8).map((variant) => {
+        const countLabel = variant.ownedCount > 0
+          ? `${variant.ownedCount} owned`
+          : variant.wantedCount > 0
+            ? `${variant.wantedCount} wanted`
+            : "Tracked";
+        const conditionLabel = variant.condition ? MASTER_CARD_CONDITION_LABELS[variant.condition] || "" : "";
+        return (
+          <span className={`master-variant-pill master-variant-pill--${variant.variantType}`} key={variant.id}>
+            <b>{variant.label}</b>
+            <small>{[countLabel, conditionLabel].filter(Boolean).join(" / ")}</small>
+          </span>
+        );
+      })}
+      {masterCard.variants.length > (compact ? 4 : 8) ? (
+        <span className="master-variant-pill master-variant-pill--more">
+          <b>+{masterCard.variants.length - (compact ? 4 : 8)}</b>
+          <small>more</small>
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+function MasterCardGroupPreview({ masterCard, onOpenRecord, onOpenMarket, compact = false }) {
+  if (!masterCard) return null;
+  const primaryRecord = masterCard.records?.find((record) => Number(record.quantity || 0) > 0) || masterCard.records?.[0] || masterCard.variants?.flatMap((variant) => variant.records || [])[0] || null;
+  const subtitle = [masterCard.setName, masterCard.cardNumber ? `#${masterCard.cardNumber}` : "", masterCard.rarity].filter(Boolean).join(" - ");
+  const ownedLabel = masterCard.ownedTotal > 0 ? `${masterCard.ownedTotal} owned` : masterCard.wanted ? "Wishlist" : "Tracked";
+  return (
+    <article className={`master-card-group-preview${compact ? " master-card-group-preview--compact" : ""}`}>
+      <PremiumCardImage
+        image={masterCard.imageUrl}
+        title={masterCard.name}
+        subtitle={masterCard.setName}
+        variantType={masterCard.variants?.[0]?.variantType || "normal"}
+      />
+      <div className="master-card-group-body">
+        <div className="compact-card-header">
+          <div>
+            <span className={`trust-badge master-card-status master-card-status--${masterCard.completionStatus || "partial"}`}>{ownedLabel}</span>
+            <h3>{masterCard.name}</h3>
+            <p>{subtitle || "Master card identity"}</p>
+          </div>
+          <strong>{masterCard.variantCount || masterCard.variants?.length || 0} variants</strong>
+        </div>
+        <MasterVariantRail masterCard={masterCard} compact={compact} />
+        <div className="master-card-summary-row">
+          <span>{masterCard.variantOwnedCount || 0} owned variant{masterCard.variantOwnedCount === 1 ? "" : "s"}</span>
+          <span>{masterCard.variantWantedCount || 0} wanted</span>
+          {masterCard.totalEstimatedValue ? <span>{money(masterCard.totalEstimatedValue)} est.</span> : <span>Value review needed</span>}
+        </div>
+        {masterCard.isPreview ? (
+          <p className="master-card-preview-note">Preview model only. Saved cards will group here once added.</p>
+        ) : null}
+        <div className="compact-actions master-card-actions">
+          {primaryRecord && onOpenRecord ? <button type="button" className="secondary-button" onClick={() => onOpenRecord(primaryRecord)}>View copies</button> : null}
+          {primaryRecord && onOpenMarket ? <button type="button" className="secondary-button" onClick={() => onOpenMarket(primaryRecord)}>Market</button> : null}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function MasterCardFamilyNote({ masterCard }) {
+  if (!masterCard) return null;
+  return (
+    <section className="master-card-family-note" aria-label="Master card grouping">
+      <div>
+        <span className="trust-badge trust-badge--secure">Master card</span>
+        <h4>{masterCard.name}</h4>
+        <p>{[masterCard.setName, masterCard.cardNumber ? `#${masterCard.cardNumber}` : ""].filter(Boolean).join(" - ") || "Grouped card identity"}</p>
+      </div>
+      <MasterVariantRail masterCard={masterCard} compact />
+    </section>
+  );
+}
+
 function vaultItemTypeLabel(item = {}) {
   if (item.graded || item.grade || item.gradingCompany || item.grading_company) return "Graded card";
   if (isInventorySealedProduct(item)) return item.productType || item.product_type || "Sealed product";
@@ -24126,6 +24535,7 @@ function renderMarketHomeFoundation() {
       freshness: "Freshness labeled",
       note: "Good for wishlist checks before buying.",
       accent: "SG",
+      masterCard: MASTER_CARD_GROUPING_PREVIEW_CARDS[0],
     },
     {
       name: "Elite trainer style box",
@@ -24177,13 +24587,24 @@ function renderMarketHomeFoundation() {
         {discoveryCards.map((card) => (
           <article className="market-home-product-card" key={card.name}>
             <div className="market-home-product-top">
-              <div className="market-home-product-art" aria-hidden="true">{card.accent}</div>
+              {card.masterCard ? (
+                <PremiumCardImage
+                  image={card.masterCard.imageUrl}
+                  title={card.masterCard.name}
+                  subtitle={card.masterCard.setName}
+                  variantType={card.masterCard.variants?.[0]?.variantType || "normal"}
+                  className="market-home-master-art"
+                />
+              ) : (
+                <div className="market-home-product-art" aria-hidden="true">{card.accent}</div>
+              )}
               <div>
                 <span className="market-status-pill">{card.type}</span>
                 <h3>{card.name}</h3>
                 <p>{card.note}</p>
               </div>
             </div>
+            {card.masterCard ? <MasterVariantRail masterCard={card.masterCard} compact /> : null}
             <div className="market-home-product-meta">
               <span><strong>{card.fairRange}</strong><small>Fair range</small></span>
               <span><strong>{card.source}</strong><small>Source</small></span>
@@ -24672,6 +25093,16 @@ function renderForgeAccessState() {
             <span>{card.body}</span>
           </article>
         ))}
+      </div>
+      <div className="forge-master-preview-panel" aria-label="Forge master card grouping preview">
+        <div className="compact-card-header">
+          <div>
+            <span className="trust-badge trust-badge--secure">Preview model</span>
+            <h3>Master card grouping</h3>
+            <p>Forge can select a card identity first, then choose the exact raw, graded, or special variant for a draft listing or trade review.</p>
+          </div>
+        </div>
+        <MasterCardGroupPreview masterCard={MASTER_CARD_GROUPING_PREVIEW_CARDS[0]} compact />
       </div>
       <p className="forge-access-note">Forge is optional and private. For recordkeeping, confirm summaries with your tax professional.</p>
     </section>
@@ -26069,6 +26500,17 @@ function renderForgeBusinessCommandPanel() {
     [marketplaceListings, activeWorkspace?.id]
   );
   const forgeInventoryItems = useMemo(() => forgeWorkspaceItems.filter(isForgeInventoryItem), [forgeWorkspaceItems]);
+  const forgeMasterCards = useMemo(
+    () => {
+      const groupedCards = buildMasterCardsFromItems(forgeInventoryItems);
+      return groupedCards.length ? groupedCards : MASTER_CARD_GROUPING_PREVIEW_CARDS;
+    },
+    [forgeInventoryItems]
+  );
+  const forgeMasterCardByItemId = useMemo(
+    () => buildMasterCardItemIndex(forgeMasterCards),
+    [forgeMasterCards]
+  );
   const forgeValuationSummary = useMemo(
     () => summarizeInventoryValuation(forgeInventoryItems, { context: "forge" }),
     [forgeInventoryItems]
@@ -26691,12 +27133,24 @@ function renderForgeBusinessCommandPanel() {
   const activeVaultItems = useMemo(() => vaultItems.filter(isActiveVaultItem), [vaultItems]);
   const activeVaultCardItems = useMemo(() => activeVaultItems.filter(isInventoryCardProduct), [activeVaultItems]);
   const activeVaultSealedItems = useMemo(() => activeVaultItems.filter(isInventorySealedProduct), [activeVaultItems]);
+  const vaultMasterCards = useMemo(
+    () => {
+      const groupedCards = buildMasterCardsFromItems([...activeVaultItems, ...wishlistItems]);
+      return groupedCards.length ? groupedCards : MASTER_CARD_GROUPING_PREVIEW_CARDS;
+    },
+    [activeVaultItems, wishlistItems]
+  );
+  const vaultMasterCardByItemId = useMemo(
+    () => buildMasterCardItemIndex(vaultMasterCards),
+    [vaultMasterCards]
+  );
   const tradeSourceOptions = useMemo(() => {
     const seen = new Set();
     const makeOption = (item, sourceKind) => {
       const id = String(item.id || "");
       if (!id || seen.has(id) || Number(item.quantity || 0) < 1) return null;
       seen.add(id);
+      const sourceMasterCard = buildMasterCardsFromItems(inventoryGroupEntries(item))[0] || null;
       const valueSummary = buildTradeComparison({ sourceItemId: id, outgoingQuantity: 1, receivedName: "Trade item" }, item, { moneyFormatter: money });
       const subtitle = sourceKind === "forge"
         ? [item.productType, item.expansion || item.setName, `Qty ${item.quantity || 0}`].filter(Boolean).join(" - ")
@@ -26704,9 +27158,11 @@ function renderForgeBusinessCommandPanel() {
       return {
         id,
         item,
-        label: item.name || item.itemName || "Saved item",
+        label: sourceMasterCard?.name || item.name || item.itemName || "Saved item",
         sourceKind,
-        subtitle,
+        subtitle: sourceMasterCard
+          ? [sourceMasterCard.setName, sourceMasterCard.cardNumber ? `#${sourceMasterCard.cardNumber}` : "", `${sourceMasterCard.variants.length} variant${sourceMasterCard.variants.length === 1 ? "" : "s"}`].filter(Boolean).join(" - ")
+          : subtitle,
         valueLabel: valueSummary.outgoingLabel,
         valueConfidence: valueSummary.outgoing.confidence,
       };
@@ -30314,6 +30770,24 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 }), [filteredForgeGroups, inventorySort]);
 
   const groupedVisibleVaultItems = useMemo(() => buildGroupedInventoryItems(visibleVaultItems, "vault"), [visibleVaultItems]);
+  const visibleVaultMasterCards = useMemo(
+    () => {
+      const groupedCards = buildMasterCardsFromItems(visibleVaultItems);
+      if (groupedCards.length) return groupedCards;
+      if (activeVaultItems.length || wishlistItems.length) return [];
+      return MASTER_CARD_GROUPING_PREVIEW_CARDS;
+    },
+    [activeVaultItems.length, visibleVaultItems, wishlistItems.length]
+  );
+  const wishlistMasterCards = useMemo(
+    () => {
+      const groupedCards = buildMasterCardsFromItems(wishlistItems);
+      if (groupedCards.length) return groupedCards;
+      if (activeVaultItems.length || wishlistItems.length) return [];
+      return MASTER_CARD_GROUPING_PREVIEW_CARDS.filter((masterCard) => masterCard.wanted);
+    },
+    [activeVaultItems.length, wishlistItems]
+  );
   const filteredForgeEntryCount = useMemo(
     () => groupedSortedFilteredItems.reduce((sum, group) => sum + inventoryGroupEntries(group).length, 0),
     [groupedSortedFilteredItems]
@@ -30321,12 +30795,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   const selectedVaultDetailItem = groupedVisibleVaultItems.find((item) => item.id === selectedVaultDetailId)
     || vaultItems.find((item) => item.id === selectedVaultDetailId)
     || wishlistItems.find((item) => item.id === selectedVaultDetailId);
+  const selectedVaultDetailMasterCard = findMasterCardForInventoryItem(selectedVaultDetailItem, vaultMasterCardByItemId);
   const selectedVaultDetailSetSummary = useMemo(
     () => findSetSummaryForItem(selectedVaultDetailItem, vaultSetCompletionRows),
     [selectedVaultDetailItem, vaultSetCompletionRows]
   );
   const selectedForgeDetailItem = groupedSortedFilteredItems.find((item) => item.groupId === selectedForgeDetailId || item.id === selectedForgeDetailId)
     || forgeInventoryItems.find((item) => item.id === selectedForgeDetailId);
+  const selectedForgeDetailMasterCard = findMasterCardForInventoryItem(selectedForgeDetailItem, forgeMasterCardByItemId);
   const pagedVaultItems = getPagedItems(groupedVisibleVaultItems, vaultPage, LONG_LIST_PAGE_SIZE);
   const pagedForgeInventory = getPagedItems(groupedSortedFilteredItems, forgeInventoryPage, LONG_LIST_PAGE_SIZE);
   const pagedMarketWatchItems = getPagedItems(workspaceWatchlist, marketWatchPage, LONG_LIST_PAGE_SIZE);
@@ -30618,6 +31094,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     selectedCatalogDetailVariants.find((variant) => variant.isDefault) ||
     selectedCatalogDetailVariants[0] ||
     null;
+  const selectedCatalogDetailMasterCard = selectedCatalogDetailProduct ? buildMarketMasterCardFromCatalogProduct(selectedCatalogDetailProduct) : null;
   const selectedCatalogDetailPricingProduct = selectedCatalogDetailVariant?.sourceProduct || selectedCatalogDetailProduct;
   const selectedCatalogDetailMarketInfo = selectedCatalogDetailPricingProduct ? getTideTradrMarketInfo(selectedCatalogDetailPricingProduct) : null;
   const selectedCatalogDetailCondition = catalogConditionSelection[selectedCatalogDetailProduct?.id] || "Near Mint";
@@ -31254,6 +31731,40 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     return product.catalogType === "card"
       ? [{ id: `${product.id}-default`, variantName: "Default", printing: "", finish: "", language: product.language || "English", conditionName: "", isDefault: true }]
       : [];
+  }
+
+  function buildMarketMasterCardFromCatalogProduct(product = {}) {
+    if (!isCatalogCardProduct(product) || isCatalogCodeCardProduct(product)) return null;
+    const variants = getCatalogVariantOptions(product);
+    const title = catalogTitle(product);
+    const setName = catalogExpansionName(product) || "Set unknown";
+    const ownedTotal = getCatalogOwnedCount(product);
+    return {
+      id: product.parentCardKey || product.parentCardId || product.id || `${setName}-${title}`,
+      name: title,
+      setName,
+      setCode: product.setCode || product.expansionCode || "",
+      cardNumber: product.cardNumber || catalogCardDetails(product).cardNumber || "",
+      franchise: "tcg",
+      category: "card",
+      imageUrl: catalogImage(product),
+      rarity: product.rarity || "",
+      artist: product.artist || "",
+      ownedTotal,
+      wanted: workspaceWatchlist.some((item) => String(item.productId || "") === String(product.id)),
+      completionStatus: ownedTotal > 0 ? "owned" : "missing",
+      variants: variants.map((variant, index) => ({
+        id: variant.id || `${product.id}-market-variant-${index}`,
+        masterCardId: product.parentCardKey || product.parentCardId || product.id || `${setName}-${title}`,
+        variantType: inferMasterCardVariantType({ variantName: variant.variantName, finish: variant.finish, printing: variant.printing }),
+        label: variant.variantName || `Variant ${index + 1}`,
+        condition: normalizeMasterCardCondition(variant.conditionName),
+        ownedCount: String(variant.sourceCatalogProductId || product.id) === String(product.id) && ownedTotal > 0 ? ownedTotal : 0,
+        estimatedValue: firstKnownVaultNumber(variant.sourceProduct?.marketPrice, product.marketPrice, product.marketValue) || undefined,
+        imageUrl: catalogImage(variant.sourceProduct || product),
+        tags: variant.isDefault ? ["default"] : [],
+      })),
+    };
   }
 
   function applyCatalogVariantToItemForm(variant = {}, product = {}) {
@@ -31944,6 +32455,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const productImageSrc = catalogImage(product);
     const productSetName = catalogExpansionName(product) || "Set unavailable";
     const productTypeLabel = catalogProductTypeLabel(product);
+    const productMasterCard = buildMarketMasterCardFromCatalogProduct(product);
     const marketSourceLabel = productHasMarketPrice ? getCatalogMarketSourceLabel(product) : "Market data unavailable";
     const marketFreshnessTimestamp = marketInfo.lastUpdated || product.lastPriceChecked || product.marketLastUpdated || product.market_last_updated || product.updatedAt || product.updated_at || "";
     const marketFreshnessLabel = marketFreshnessTimestamp
@@ -32000,6 +32512,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <p className="market-card-reference-line">
               {[productTypeLabel, isCard && product.cardNumber ? `#${product.cardNumber}` : "", isCard && product.rarity ? product.rarity : ""].filter(Boolean).join(" | ")}
             </p>
+            <MasterVariantRail masterCard={productMasterCard} compact />
             <div className="market-card-price-row">
               <div className="market-price-stack">
                 <strong>{productMarketLabel}</strong>
@@ -43597,6 +44110,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const comparison = buildTradeComparison(tradeDraft, sourceItem || {}, { moneyFormatter: money });
     const selectedOption = tradeSourceOptions.find((option) => String(option.id) === String(tradeDraft.sourceItemId));
     const recentTrades = tradeRecords.slice(0, 3);
+    const sourceMasterCard = sourceItem ? buildMasterCardsFromItems(inventoryGroupEntries(sourceItem))[0] || null : null;
     const receivedSummary = [
       tradeDraft.receivedType,
       tradeDraft.receivedSet,
@@ -43704,6 +44218,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <span>{sourceSubtitle || "Select one of your saved items."}</span>
               <small>{comparison.outgoing.confidence}</small>
             </div>
+            <MasterCardFamilyNote masterCard={sourceMasterCard} />
           </div>
 
           <div className="trade-side-card trade-side-card--incoming">
@@ -58962,9 +59477,35 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   onMoveToForge={(item) => openVaultForgeTransfer(item, "move")}
                 />
               )}
+              {visibleVaultMasterCards.length ? (
+                <section className="master-card-section vault-master-card-section" aria-label="Master card groups">
+                  <div className="compact-card-header">
+                    <div>
+                      <span className="trust-badge trust-badge--secure">Master cards</span>
+                      <h3>Card identities first</h3>
+                      <p>Variants, duplicates, graded copies, and wishlist wants stay grouped under the same card.</p>
+                    </div>
+                    <strong>{visibleVaultMasterCards.length} group{visibleVaultMasterCards.length === 1 ? "" : "s"}</strong>
+                  </div>
+                  <div className="master-card-grid">
+                    {visibleVaultMasterCards.slice(0, 6).map((masterCard) => (
+                      <MasterCardGroupPreview
+                        key={masterCard.id}
+                        masterCard={masterCard}
+                        onOpenRecord={(record) => setSelectedVaultDetailId(record.id)}
+                        onOpenMarket={openMarketWatchForVaultItem}
+                      />
+                    ))}
+                  </div>
+                  {visibleVaultMasterCards.length > 6 ? (
+                    <p className="compact-subtitle master-card-section-note">Showing the first 6 card identities for this filter. Narrow search or open Set Mastery for deeper checklist views.</p>
+                  ) : null}
+                </section>
+              ) : null}
               {selectedVaultDetailId ? (
                 <VaultItemDetail
                   item={selectedVaultDetailItem}
+                  masterCard={selectedVaultDetailMasterCard}
                   setSummary={selectedVaultDetailSetSummary}
                   onClose={() => setSelectedVaultDetailId("")}
                   onEdit={startEditingVaultItem}
@@ -58985,10 +59526,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               ) : null}
               {vaultItems.length ? (
               <div className="inventory-list compact-inventory-list">
-                {pagedVaultItems.items.map((item) => (
+                {pagedVaultItems.items.map((item) => {
+                  const itemMasterCard = findMasterCardForInventoryItem(item, vaultMasterCardByItemId);
+                  return (
                     <CompactInventoryCard
                       key={item.id}
                       item={item}
+                      masterCard={itemMasterCard}
                       variant="vault"
                       onRestock={prepareRestock}
                       onViewDetails={(vaultItem) => setSelectedVaultDetailId(vaultItem.id)}
@@ -59004,7 +59548,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                       onStartTrade={(vaultItem) => openTradeValueFlow(vaultItem, { source: "vault-card", sourceKind: "vault" })}
                       showSellerTools={adaptiveSellerToolsVisible}
                     />
-                  ))}
+                  );
+                })}
                 {visibleVaultItems.length === 0 ? (
                   <div className="empty-state">
                     <h3>No matching Vault items.</h3>
@@ -59050,6 +59595,29 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     Add Wishlist Item
                   </button>
                 </div>
+                {wishlistMasterCards.length ? (
+                  <section className="master-card-section vault-master-card-section vault-wishlist-master-section" aria-label="Wishlist master card groups">
+                    <div className="compact-card-header">
+                      <div>
+                        <span className="trust-badge trust-badge--verified">Wishlist groups</span>
+                        <h3>Wanted card identities</h3>
+                        <p>Wishlist variants stay attached to the same master card so missing copies do not feel scattered.</p>
+                      </div>
+                      <strong>{wishlistMasterCards.length} group{wishlistMasterCards.length === 1 ? "" : "s"}</strong>
+                    </div>
+                    <div className="master-card-grid">
+                      {wishlistMasterCards.slice(0, 4).map((masterCard) => (
+                        <MasterCardGroupPreview
+                          key={masterCard.id}
+                          masterCard={masterCard}
+                          compact
+                          onOpenRecord={(record) => setSelectedVaultDetailId(record.id)}
+                          onOpenMarket={openMarketWatchForVaultItem}
+                        />
+                      ))}
+                    </div>
+                  </section>
+                ) : null}
                 <div className="inventory-list compact-inventory-list vault-wishlist-list">
                   {wishlistItems.length === 0 ? (
                     <div className="empty-state vault-empty-state">
@@ -61480,6 +62048,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
             {selectedForgeDetailId ? (
               <ForgeItemDetail
                 item={selectedForgeDetailItem}
+                masterCard={selectedForgeDetailMasterCard}
                 onClose={() => setSelectedForgeDetailId("")}
                 onEdit={startEditingItem}
                 onEditSale={startEditingSale}
@@ -61508,10 +62077,13 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                   actionLabel: "Add first Forge item",
                   actionTarget: "forge",
                 })
-              ) : pagedForgeInventory.items.map((item) => (
+              ) : pagedForgeInventory.items.map((item) => {
+                const itemMasterCard = findMasterCardForInventoryItem(item, forgeMasterCardByItemId);
+                return (
                 <CompactInventoryCard
                   key={item.groupId || item.id}
                   item={item}
+                  masterCard={itemMasterCard}
                   onRestock={prepareRestock}
                   onViewDetails={(forgeItem) => setSelectedForgeDetailId(forgeItem.groupId || forgeItem.id)}
                   onEdit={startEditingItem}
@@ -61531,7 +62103,8 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                     openAddSaleFlow({ preserveForm: true, source: "inventory" });
                   }}
                 />
-              ))}
+                );
+              })}
             </div>
             <PaginationControls
               label="Inventory Records"
@@ -62436,6 +63009,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                       </div>
                       <button type="button" className="secondary-button" onClick={() => addCatalogDetailToWatchlist(selectedCatalogDetailProduct)}>Watch safely</button>
                     </div>
+                    <MasterCardFamilyNote masterCard={selectedCatalogDetailMasterCard} />
                     {shouldShowCatalogRepairLabels() ? (
                       <div className="admin-inline-panel">
                         <strong>Admin catalog controls</strong>
@@ -62960,7 +63534,7 @@ function PriceReviewPanel({ item, variant = "forge", onReviewMarket, onReviewPla
   );
 }
 
-function ForgeItemDetail({ item, onClose, onEdit, onDelete, onEditSale, onSell, onCreateListing, onAttachReceipt, onQuickUpdateMarketValue, onQuickUpdateSalePrice, onStartTrade }) {
+function ForgeItemDetail({ item, masterCard, onClose, onEdit, onDelete, onEditSale, onSell, onCreateListing, onAttachReceipt, onQuickUpdateMarketValue, onQuickUpdateSalePrice, onStartTrade }) {
   if (!item) return null;
   const detailImage = item.itemImage || vaultItemDisplayImage(item);
   const setLabel = item.setName || item.expansion || "";
@@ -63054,6 +63628,7 @@ function ForgeItemDetail({ item, onClose, onEdit, onDelete, onEditSale, onSell, 
           ) : null}
         </div>
       </div>
+      <MasterCardFamilyNote masterCard={masterCard} />
       <div className="vault-detail-primary-actions forge-detail-primary-actions">
         <button type="button" disabled={Number(nextSellEntry?.quantity || 0) < 1} onClick={() => onSell(nextSellEntry)}>Mark sold / add sale</button>
         <button type="button" className="secondary-button" onClick={() => onStartTrade?.(primaryEntry)}>Start Trade</button>
@@ -63317,7 +63892,7 @@ function gradeAssistValueComparison(item = {}, moneyFormatter = money) {
   };
 }
 
-function VaultItemDetail({ item, setSummary, onClose, onEdit, onDelete, onViewSet, onMarkOwned, onMoveToForge, onCopyToForge, onCreateListing, onDuplicate, onAttachReceipt, onRefreshMarket, onQuickUpdateMarketValue, onQuickUpdateSalePrice, onStartTrade, showSellerTools = false }) {
+function VaultItemDetail({ item, masterCard, setSummary, onClose, onEdit, onDelete, onViewSet, onMarkOwned, onMoveToForge, onCopyToForge, onCreateListing, onDuplicate, onAttachReceipt, onRefreshMarket, onQuickUpdateMarketValue, onQuickUpdateSalePrice, onStartTrade, showSellerTools = false }) {
   const gradeAssistKey = gradeAssistRecordKey(item || {});
   const [gradeAssistDraft, setGradeAssistDraft] = useState(() => loadGradeAssistDraft(item || {}));
   const [gradeAssistMessage, setGradeAssistMessage] = useState("");
@@ -63488,9 +64063,13 @@ function VaultItemDetail({ item, setSummary, onClose, onEdit, onDelete, onViewSe
         <button type="button" className="secondary-button" onClick={onClose}>Close</button>
       </div>
       <div className="inventory-detail-hero">
-        <div className={detailImage ? "inventory-detail-image-frame" : "inventory-detail-image-frame placeholder"}>
-          {detailImage ? <img src={detailImage} alt={item.name} /> : <span>Photo needed</span>}
-        </div>
+        <PremiumCardImage
+          image={detailImage}
+          title={masterCard?.name || item.name}
+          subtitle={masterCard?.setName || setLabel || itemType}
+          variantType={masterCard?.variants?.[0]?.variantType || inferMasterCardVariantType(item)}
+          className="inventory-detail-image-frame"
+        />
         <div className="inventory-detail-summary">
           <span className="trust-badge trust-badge--verified">Vault collection</span>
           <h4>{item.name}</h4>
@@ -63512,6 +64091,7 @@ function VaultItemDetail({ item, setSummary, onClose, onEdit, onDelete, onViewSe
           ) : null}
         </div>
       </div>
+      <MasterCardFamilyNote masterCard={masterCard} />
       <div className="vault-detail-primary-actions">
         <button type="button" onClick={() => onEdit(item)}>Edit / Add details</button>
         {!itemIsWishlist ? <button type="button" className="secondary-button" onClick={() => onStartTrade?.(item)}>Start Trade</button> : null}
@@ -63756,6 +64336,7 @@ function VaultItemDetail({ item, setSummary, onClose, onEdit, onDelete, onViewSe
 
 function CompactInventoryCard({
   item,
+  masterCard,
   variant = "forge",
   onRestock,
   onViewDetails,
@@ -63826,17 +64407,13 @@ function CompactInventoryCard({
         </div>
 
         <div className="vault-card-main">
-          <div className={image ? "compact-image-wrap vault-image-wrap" : "compact-image-wrap vault-image-wrap placeholder"}>
-            {image ? (
-              <img src={image} alt={item.name} />
-            ) : (
-              <>
-                <strong>{item.name}</strong>
-                <small>{setLabel || itemType || "Vault item"}</small>
-                <b>Photo needed</b>
-              </>
-            )}
-          </div>
+          <PremiumCardImage
+            image={image}
+            title={masterCard?.name || item.name}
+            subtitle={masterCard?.setName || setLabel || itemType || "Vault item"}
+            variantType={masterCard?.variants?.[0]?.variantType || inferMasterCardVariantType(item)}
+            className="compact-image-wrap vault-image-wrap"
+          />
 
           <div className="vault-card-facts">
             {vaultFactRows.map(([label, value]) => (
@@ -63844,6 +64421,7 @@ function CompactInventoryCard({
             ))}
           </div>
         </div>
+        <MasterVariantRail masterCard={masterCard} compact />
 
         {showVaultSellerTools && valuationPrompts.length ? (
           <div className="inventory-prompt-row compact">
@@ -63920,6 +64498,7 @@ function CompactInventoryCard({
           <b>Image needed</b>
         </div>
       )}
+      <MasterVariantRail masterCard={masterCard} compact />
 
       <div className="forge-group-status-row" aria-label="Grouped Forge status summary">
         <span>{statusSummary.currentQuantity || item.quantity || 0} held</span>
