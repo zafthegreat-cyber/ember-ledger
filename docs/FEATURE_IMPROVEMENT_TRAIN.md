@@ -21,8 +21,8 @@
 | Section | Status | Commit | Notes |
 | --- | --- | --- | --- |
 | 1 - Public Beta Feedback + Waitlist | Complete | `87d7d1e` | Added public beta feedback/waitlist flow, local fallback, existing best-effort feedback path, safety copy, and docs before this train tracker was created. |
-| 2 - Scout Improvement | Complete | `Improve Scout family-safe restock flows` | Family-safe Scout polish; final commit hash reported after commit. |
-| 3 - Vault Improvement | Pending | Pending | Master-card and collection flow polish. |
+| 2 - Scout Improvement | Complete | `821567f` | Family-safe Scout polish. |
+| 3 - Vault Improvement | Complete | `Improve Vault master-card collection flows` | Master-card grouping clarity, Add Item copy, and Vault QA; final commit hash reported after commit. |
 | 4 - Market Improvement | Pending | Pending | Fair discovery polish and mobile search spacing. |
 | 5 - Forge Improvement | Pending | Pending | Trade/seller workspace polish. |
 | 6 - The Spark Improvement | Pending | Pending | Impact and donation preview polish. |
@@ -107,4 +107,42 @@ QA:
 Mock-only notes:
 
 - Scout report cards, online signals, product watches, extracted screenshot data, and report submission state remain mock/local UI examples.
+- No deploy was run.
+
+### Section 3 - Vault Improvement
+
+Status: Complete. Commit message `Improve Vault master-card collection flows`.
+
+Summary:
+
+- Improved Vault Home master-card clarity with a compact model panel explaining that one card identity contains variants, duplicates, graded copies, promos, and wishlist wants.
+- Tightened Vault folder and quick-action copy around master cards, variants, manual add, graded/sealed tracking, duplicate review, and review-before-saving behavior.
+- Added item/detail copy for master-card grouping and exact copy context so variants and owned copies are easier to understand.
+- Added the requested Add Item sentence to the main Review and Add wizard: already-owned cards should be added as a variant or duplicate under the same master card.
+- Softened the shared public-facing disclaimer from `AI suggestions` to `Suggestions` to avoid implying live AI behavior.
+- No Vault backend write, schema change, upload service, card API, scraping, live image fetch, auth change, billing change, database schema change, or RLS change was added.
+
+Checks:
+
+- `npm.cmd run build`: passed with existing Vite large chunk warning.
+- `git diff --check`: passed with existing LF-to-CRLF working-copy warnings only.
+- `npm.cmd run test:vault`: sandbox Chromium `spawn EPERM`; outside-sandbox rerun passed.
+- `npm.cmd run test:vault-workflows`: passed.
+- `npm.cmd run test:inventory-detail`: passed.
+- `npm.cmd run test:vault-set-mastery`: passed.
+- `npm.cmd run test:quick-add`: passed.
+- `npm.cmd run test:app-fallbacks`: passed.
+- `npm.cmd run test:menu-full-page-routes`: passed.
+- `npm.cmd run smoke:beta`: passed.
+
+QA:
+
+- Screenshots and result JSON: `artifacts/qa/feature-improvement-train/vault/`
+- Captured Vault Home, Vault master-card panel, and Vault Add Item / Quick Add at 390x844, 430x932, and 1440x900.
+- Result: no horizontal overflow, no console errors, no maximum update depth errors.
+- Automated fixed-bottom-nav detection flagged scrollable home content intersections at mobile sizes; visual review found no hidden primary Vault action. Current preview data has an empty Vault, so item-detail copy was source/build verified but not opened from a saved record in screenshot QA.
+
+Mock-only notes:
+
+- Folder counts, master-card preview examples, Add Item review paths, scan/binder/import flows, and suggestions remain UI/mock/local-only unless existing app behavior already stores local records.
 - No deploy was run.

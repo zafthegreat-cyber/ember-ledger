@@ -1,4 +1,4 @@
-export const AI_REVIEW_DISCLAIMER = "AI suggestions may be incomplete or incorrect. Please review before saving.";
+export const AI_REVIEW_DISCLAIMER = "Suggestions may be incomplete or incorrect. Please review before saving.";
 export const AI_UPLOAD_WARNING = "Review images before uploading. Do not upload sensitive personal, payment, medical, or child information.";
 export const AI_FORECAST_DISCLAIMER = "Drop Radar predictions use confirmed restock history. Community guesses stay separate and are never guarantees.";
 export const AI_PRICE_DISCLAIMER = "Market values are estimates and may be outdated.";

@@ -36585,19 +36585,23 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const collectionHealthPercent = activeVaultItems.length ? Math.round((knownValueCount / activeVaultItems.length) * 100) : 0;
     const estimatedValue = vaultMarketValueDisplay === "Price data unavailable" ? "Value pending" : vaultMarketValueDisplay;
     const folderCards = [
-      { key: "main", title: "Main Binder", count: cardQuantity || activeVaultCardItems.length, detail: "Cards and slabs", action: () => openVaultItems("all", { type: "Card" }) },
+      { key: "main", title: "Main Binder", count: cardQuantity || activeVaultCardItems.length, detail: "Master cards + variants", action: () => openVaultItems("all", { type: "Card" }) },
       { key: "sealed", title: "Sealed", count: sealedQuantity || activeVaultSealedItems.length, detail: "Products kept separate", action: () => setVaultSubTab("sealed") },
       { key: "favorites", title: "Favorites", count: activeVaultItems.filter((item) => item.favorite || item.pinned || item.featured).length, detail: "Pinned family picks", action: () => openVaultItems("all") },
-      { key: "kids", title: "Kids Collection", count: activeVaultItems.filter((item) => /kid|child|family/i.test(`${item.location || ""} ${item.owner || ""} ${item.purchaser || ""}`)).length, detail: "Family-safe grouping", action: () => openVaultItems("all") },
+      { key: "kids", title: "Kids Collection", count: activeVaultItems.filter((item) => /kid|child|family/i.test(`${item.location || ""} ${item.owner || ""} ${item.purchaser || ""}`)).length, detail: "Family-safe folders", action: () => openVaultItems("all") },
       { key: "wishlist", title: "Wish List", count: wishlistItems.length, detail: "Wanted, not owned", action: () => setVaultSubTab("wishlist") },
     ];
     const recentRows = recentVaultItems.slice(0, 3);
     const quickActions = [
-      { key: "scan-card", title: "Scan card", detail: "Identify one item", onClick: () => openVaultScanFlow() },
-      { key: "scan-binder", title: "Scan binder page", detail: "Review before saving", onClick: () => openProductAddFlow({ source: "vault-home-binder-page", destinations: { vault: true } }) },
-      { key: "manual", title: "Add manually", detail: "Cards or sealed", onClick: () => openVaultQuickAddFlow() },
-      { key: "import", title: "Import list", detail: "Bulk review flow", onClick: () => openVaultImportCollectionFlow() },
+      { key: "scan-card", title: "Scan card", detail: "Find identity + variant", onClick: () => openVaultScanFlow() },
+      { key: "scan-binder", title: "Scan binder page", detail: "Group copies before saving", onClick: () => openProductAddFlow({ source: "vault-home-binder-page", destinations: { vault: true } }) },
+      { key: "manual", title: "Add manually", detail: "Cards, graded, sealed", onClick: () => openVaultQuickAddFlow() },
+      { key: "import", title: "Import list", detail: "Review duplicate groups", onClick: () => openVaultImportCollectionFlow() },
     ];
+    const masterPreviewCards = visibleVaultMasterCards.length
+      ? visibleVaultMasterCards.slice(0, 2)
+      : MASTER_CARD_GROUPING_PREVIEW_CARDS.slice(0, 2);
+    const groupedVariantCount = visibleVaultMasterCards.reduce((sum, card) => sum + Number(card.variantCount || card.variants?.length || 0), 0);
 
     return (
       <section className="vault-live-home-dashboard" aria-label="Vault Home dashboard">
@@ -36661,6 +36665,46 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </div>
         </article>
 
+        <article className="panel vault-live-master-card">
+          <div className="compact-card-header">
+            <div>
+              <span className="trust-badge trust-badge--secure">Master-card view</span>
+              <h2>One card identity, all exact copies.</h2>
+              <p>Vault groups cards by normalized name, set, and card number first. Normal, reverse holo, graded, promo, duplicates, and wishlist wants stay inside the same master card.</p>
+            </div>
+          </div>
+          <div className="vault-live-master-stats" aria-label="Master card grouping summary">
+            <div>
+              <span>Identities</span>
+              <strong>{visibleVaultMasterCards.length || "Preview"}</strong>
+              <small>Same card, set, number</small>
+            </div>
+            <div>
+              <span>Variants</span>
+              <strong>{groupedVariantCount || masterPreviewCards.reduce((sum, card) => sum + Number(card.variantCount || card.variants?.length || 0), 0)}</strong>
+              <small>Copies live below identity</small>
+            </div>
+            <div>
+              <span>Wishlist</span>
+              <strong>{wishlistItems.length}</strong>
+              <small>Wanted copies stay separate</small>
+            </div>
+          </div>
+          {masterPreviewCards.length ? (
+            <div className="vault-live-master-preview-grid">
+              {masterPreviewCards.map((masterCard) => (
+                <MasterCardGroupPreview
+                  key={masterCard.id}
+                  masterCard={masterCard}
+                  compact
+                  onOpenRecord={visibleVaultMasterCards.length ? (record) => setSelectedVaultDetailId(record.id) : null}
+                  onOpenMarket={visibleVaultMasterCards.length ? openMarketWatchForVaultItem : null}
+                />
+              ))}
+            </div>
+          ) : null}
+        </article>
+
         <div className="vault-live-main-grid">
           <article className="panel vault-live-folder-card">
             <div className="compact-card-header">
@@ -36716,6 +36760,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <p>{activeVaultItems.length ? `${knownValueCount} of ${activeVaultItems.length} grouped items have known value context.` : "Start with one reviewed item to build health signals."}</p>
             <div className="scout-safety-strip">
               <span>Review before saving</span>
+              <span>Variants grouped</span>
               <span>Sealed separate</span>
               <span>Wishlist separate</span>
             </div>
@@ -48626,6 +48671,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <div className="universal-review-banner">
           <strong>{MULTI_DESTINATION_STEP_LABELS[multiDestinationStep] || "Review and Add"}</strong>
           <span>Step {currentStepIndex + 1} of {MULTI_DESTINATION_STEPS.length}: select the item, choose where it belongs, add only the needed details, then review.</span>
+        </div>
+        <div className="vault-add-review-note add-item-master-note">
+          <strong>Master-card grouping.</strong>
+          <span>Already have this card? Add it as a variant or duplicate under the same master card instead of creating a scattered separate identity.</span>
         </div>
         {scanFoundationSourceActive ? (
           <div className="scan-anything-review-note">
@@ -64309,6 +64358,10 @@ function VaultGroupedCardDetail({ cardGroup, setSummary, onClose, onViewSet, onA
           <p className="vault-detail-action-note">Interactive card preview coming later.</p>
         </div>
       </div>
+      <div className="vault-master-detail-note">
+        <strong>Master card model</strong>
+        <span>This is the card identity. Exact variants, duplicates, graded copies, and wishlist wants are listed below so families do not have to hunt through scattered records.</span>
+      </div>
       <div className="vault-detail-primary-actions">
         {setSummary ? <button type="button" className="secondary-button" onClick={() => onViewSet?.(setSummary)}>View Set</button> : null}
         <button type="button" onClick={() => onAddVariant?.(cardGroup)}>Add another variant</button>
@@ -64640,6 +64693,13 @@ function VaultItemDetail({ item, masterCard, setSummary, onClose, onEdit, onDele
         </div>
       </div>
       <MasterCardFamilyNote masterCard={masterCard} />
+      {masterCard ? (
+        <div className="vault-master-detail-note vault-master-detail-note--copy">
+          <strong>Exact copy under a master card</strong>
+          <span>{[itemVariantLabel || "Variant pending", conditionLabel || "Condition not set"].join(" / ")}</span>
+          <span>{masterCard.ownedTotal || 0} owned across {masterCard.variantCount || masterCard.variants?.length || 0} grouped variant{(masterCard.variantCount || masterCard.variants?.length || 0) === 1 ? "" : "s"}.</span>
+        </div>
+      ) : null}
       <div className="vault-detail-primary-actions">
         <button type="button" onClick={() => onEdit(item)}>Edit / Add details</button>
         {!itemIsWishlist ? <button type="button" className="secondary-button" onClick={() => onStartTrade?.(item)}>Start Trade</button> : null}

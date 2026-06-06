@@ -68166,6 +68166,69 @@ html body .app .scan-product-modal .scanner-review-primary-action {
   line-height: 0.95;
 }
 
+.app-vault .vault-live-master-card {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  border-color: rgba(255, 179, 71, 0.2) !important;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(255, 179, 71, 0.12), transparent 13rem),
+    radial-gradient(circle at 90% 10%, rgba(181, 107, 255, 0.14), transparent 12rem),
+    linear-gradient(145deg, rgba(7, 18, 38, 0.94), rgba(3, 9, 21, 0.98)) !important;
+}
+
+.app-vault .vault-live-master-card h2 {
+  margin: 0;
+  color: #fff3d6;
+  line-height: 1.12;
+}
+
+.app-vault .vault-live-master-card p {
+  color: rgba(232, 246, 255, 0.74) !important;
+}
+
+.app-vault .vault-live-master-stats,
+.app-vault .vault-live-master-preview-grid {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.app-vault .vault-live-master-stats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.app-vault .vault-live-master-stats > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid rgba(255, 179, 71, 0.18);
+  border-radius: 15px;
+  background: rgba(4, 12, 27, 0.72);
+}
+
+.app-vault .vault-live-master-stats span,
+.app-vault .vault-live-master-stats small {
+  color: rgba(232, 246, 255, 0.68);
+  font-size: 0.7rem;
+  font-weight: 900;
+  line-height: 1.14;
+  text-transform: uppercase;
+}
+
+.app-vault .vault-live-master-stats strong {
+  min-width: 0;
+  color: #fbf3ff;
+  font-size: 1.04rem;
+  line-height: 1.08;
+  overflow-wrap: anywhere;
+}
+
+.app-vault .vault-live-master-preview-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .app-vault .vault-live-actions-card {
   display: grid;
   gap: 12px;
@@ -68385,7 +68448,10 @@ html body .app .scan-product-modal .scanner-review-primary-action {
 
 .app-vault .vault-add-review-note,
 .app-command-shell.app-vault .vault-add-review-note,
-.app-shell-dark.app-vault .vault-add-review-note {
+.app-shell-dark.app-vault .vault-add-review-note,
+.app .flow-modal[data-flow="multiDestinationAdd"] .add-item-master-note,
+.app-command-shell .flow-modal[data-flow="multiDestinationAdd"] .add-item-master-note,
+.app-shell-dark .flow-modal[data-flow="multiDestinationAdd"] .add-item-master-note {
   display: grid;
   gap: 4px;
   padding: 11px 12px;
@@ -68398,7 +68464,10 @@ html body .app .scan-product-modal .scanner-review-primary-action {
 
 .app-vault .vault-add-review-note strong,
 .app-command-shell.app-vault .vault-add-review-note strong,
-.app-shell-dark.app-vault .vault-add-review-note strong {
+.app-shell-dark.app-vault .vault-add-review-note strong,
+.app .flow-modal[data-flow="multiDestinationAdd"] .add-item-master-note strong,
+.app-command-shell .flow-modal[data-flow="multiDestinationAdd"] .add-item-master-note strong,
+.app-shell-dark .flow-modal[data-flow="multiDestinationAdd"] .add-item-master-note strong {
   color: #fff3d6;
   font-size: 0.9rem;
   line-height: 1.2;
@@ -68406,10 +68475,50 @@ html body .app .scan-product-modal .scanner-review-primary-action {
 
 .app-vault .vault-add-review-note span,
 .app-command-shell.app-vault .vault-add-review-note span,
-.app-shell-dark.app-vault .vault-add-review-note span {
+.app-shell-dark.app-vault .vault-add-review-note span,
+.app .flow-modal[data-flow="multiDestinationAdd"] .add-item-master-note span,
+.app-command-shell .flow-modal[data-flow="multiDestinationAdd"] .add-item-master-note span,
+.app-shell-dark .flow-modal[data-flow="multiDestinationAdd"] .add-item-master-note span {
   color: rgba(232, 246, 255, 0.72);
   font-size: 0.78rem;
   line-height: 1.35;
+}
+
+.app-vault .add-item-master-note,
+.app-command-shell.app-vault .add-item-master-note,
+.app-shell-dark.app-vault .add-item-master-note {
+  margin: 2px 0 10px;
+}
+
+.app-vault .vault-master-detail-note,
+.app-command-shell.app-vault .vault-master-detail-note,
+.app-shell-dark.app-vault .vault-master-detail-note {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(255, 179, 71, 0.2);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 179, 71, 0.12), transparent 9rem),
+    rgba(4, 12, 27, 0.74);
+}
+
+.app-vault .vault-master-detail-note strong,
+.app-command-shell.app-vault .vault-master-detail-note strong,
+.app-shell-dark.app-vault .vault-master-detail-note strong {
+  color: #fff3d6;
+  font-size: 0.92rem;
+  line-height: 1.18;
+}
+
+.app-vault .vault-master-detail-note span,
+.app-command-shell.app-vault .vault-master-detail-note span,
+.app-shell-dark.app-vault .vault-master-detail-note span {
+  color: rgba(232, 246, 255, 0.72);
+  font-size: 0.8rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .app-market .market-home-foundation,
@@ -68835,9 +68944,14 @@ body:has(.catalog-detail-drawer) :where(.mobile-bottom-nav, .bottom-nav, .bottom
 
   .app-vault .vault-live-summary-grid,
   .app-vault .vault-live-action-grid,
-  .app-vault .vault-live-folder-grid {
+  .app-vault .vault-live-folder-grid,
+  .app-vault .vault-live-master-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
+  }
+
+  .app-vault .vault-live-master-preview-grid {
+    grid-template-columns: 1fr;
   }
 
   .app-vault .vault-live-folder-tile,
