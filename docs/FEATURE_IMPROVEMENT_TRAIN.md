@@ -22,8 +22,8 @@
 | --- | --- | --- | --- |
 | 1 - Public Beta Feedback + Waitlist | Complete | `87d7d1e` | Added public beta feedback/waitlist flow, local fallback, existing best-effort feedback path, safety copy, and docs before this train tracker was created. |
 | 2 - Scout Improvement | Complete | `821567f` | Family-safe Scout polish. |
-| 3 - Vault Improvement | Complete | `Improve Vault master-card collection flows` | Master-card grouping clarity, Add Item copy, and Vault QA; final commit hash reported after commit. |
-| 4 - Market Improvement | Pending | Pending | Fair discovery polish and mobile search spacing. |
+| 3 - Vault Improvement | Complete | `973e854` | Master-card grouping clarity, Add Item copy, and Vault QA. |
+| 4 - Market Improvement | Complete | `Improve Market discovery and fair value UI` | Fair discovery polish, honest value/source copy, and mobile search/results spacing. |
 | 5 - Forge Improvement | Pending | Pending | Trade/seller workspace polish. |
 | 6 - The Spark Improvement | Pending | Pending | Impact and donation preview polish. |
 | 7 - Tidepool Improvement | Pending | Pending | Safe community polish. |
@@ -145,4 +145,43 @@ QA:
 Mock-only notes:
 
 - Folder counts, master-card preview examples, Add Item review paths, scan/binder/import flows, and suggestions remain UI/mock/local-only unless existing app behavior already stores local records.
+- No deploy was run.
+
+### Section 4 - Market Improvement
+
+Status: Complete. Commit message `Improve Market discovery and fair value UI`.
+
+Summary:
+
+- Improved Market copy so fair value, source labels, data freshness, and no-checkout/no-stock-guarantee boundaries are clearer.
+- Renamed result value labels from market-comps language to fair-estimate/fair-comps language.
+- Kept source/freshness labels visible on compact Market cards while limiting badge density on mobile.
+- Fixed the mobile Market prompt/search area so helper chips, UPC/SKU controls, Market tabs, and the fair-search card no longer collide at 390/430 widths.
+- Fixed typed Market results so the discovery foundation is prompt-only and no longer pushes search results far below the first viewport.
+- Fixed mobile searched-results spacing so the search field, results header, sort/filter controls, active filter chips, set match, and first result stack in a readable order.
+- No Market catalog RPC/query path, pricing API, checkout, scraping, auth, billing, database schema, or RLS behavior was changed.
+
+Checks:
+
+- `npm.cmd run build`: passed with existing Vite large chunk warning.
+- `git diff --check`: passed with existing LF-to-CRLF working-copy warnings only.
+- `npm.cmd run test:market`: sandbox Chromium `spawn EPERM`; outside-sandbox rerun passed.
+- `npm.cmd run smoke:catalog-search`: passed.
+- `npm.cmd run test:product-display`: passed.
+- `npm.cmd run test:quick-add`: passed.
+- `npm.cmd run test:app-fallbacks`: passed.
+- `npm.cmd run test:menu-full-page-routes`: passed.
+- `npm.cmd run smoke:beta`: passed.
+
+QA:
+
+- Screenshots and result JSON: `artifacts/qa/feature-improvement-train/market/`
+- Captured Market Home, typed Market results, and Product Detail at 390x844, 430x932, and 1440x900.
+- Result: no horizontal overflow, no console errors, no maximum update depth errors.
+- Automated fixed-bottom-nav detection flagged mobile home/results intersections because the fixed dock is present in the viewport; visual review did not find a hidden primary Market action.
+
+Mock-only notes:
+
+- Market home discovery cards, fair range cards, watch prompts, and grouped/premium presentation remain UI/mock/local-only unless existing safe catalog data is already being read.
+- Existing catalog images may appear from the current product display path; this section did not add real image fetching or copyrighted assets.
 - No deploy was run.

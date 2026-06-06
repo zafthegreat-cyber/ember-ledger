@@ -24892,7 +24892,7 @@ function renderMarketHomeFoundation() {
         <span className="trust-badge trust-badge--secure">Fair search</span>
         <div>
           <h2>Find a fair range before you buy.</h2>
-          <p>Market compares fair value. It is not an auto-buy dashboard.</p>
+          <p>Market compares fair value with source and freshness labels. It is not an auto-buy dashboard and does not guarantee stock.</p>
         </div>
         <div className="market-home-category-row" aria-label="Market categories">
           {categories.map((category) => (
@@ -32987,7 +32987,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div className="market-card-price-row">
               <div className="market-price-stack">
                 <strong>{productMarketLabel}</strong>
-                <span>{productHasMarketPrice ? (sellerMarketMode ? "Market comps" : "Market estimate") : "No current value"}</span>
+                <span>{productHasMarketPrice ? (sellerMarketMode ? "Fair comps" : "Fair estimate") : "No current value"}</span>
               </div>
               {productHasMarketPrice ? renderFairPriceBadge(productFairAssessment) : null}
             </div>
@@ -33008,7 +33008,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             {productHasMarketPrice ? (
               <p className="market-card-freshness-line">
                 <span>{marketFreshnessLabel}</span>
-                <span>Known value</span>
+                <span>No checkout or stock guarantee</span>
               </p>
             ) : null}
             {productReferenceParts.length && showRepairMeta ? <p className="market-card-reference-line">{productReferenceParts.join(" | ")}</p> : null}
@@ -60923,7 +60923,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </>
             ) : (
               <>
-                {renderMarketHomeFoundation()}
+                {!catalogSearchHasRun && !supabaseCatalogStatus.loading ? renderMarketHomeFoundation() : null}
 
                 {false ? (
                 <section className={getHeaderCardClass("tab-summary panel tidetradr-summary-card")}>

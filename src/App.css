@@ -78082,6 +78082,129 @@ button.et-live-action:focus-visible {
   }
 }
 
+/* Feature improvement train: keep Market source/freshness labels visible without making mobile cards feel like a feed. */
+@media (max-width: 780px) {
+  .app-market .market-search-helper-grid,
+  .app-command-shell.app-market .market-search-helper-grid,
+  .app-shell-dark.app-market .market-search-helper-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+  }
+
+  .app-market .market-search-helper-grid span,
+  .app-command-shell.app-market .market-search-helper-grid span,
+  .app-shell-dark.app-market .market-search-helper-grid span {
+    min-height: 42px !important;
+    padding: 7px 8px !important;
+  }
+
+  .app-market .market-search-options,
+  .app-command-shell.app-market .market-search-options,
+  .app-shell-dark.app-market .market-search-options {
+    margin-top: 7px !important;
+  }
+
+  .app-market .market-home-foundation,
+  .app-command-shell.app-market .market-home-foundation,
+  .app-shell-dark.app-market .market-home-foundation {
+    margin-top: clamp(380px, 45dvh, 430px) !important;
+  }
+
+  .app-market .market-fair-search-card,
+  .app-command-shell.app-market .market-fair-search-card,
+  .app-shell-dark.app-market .market-fair-search-card {
+    gap: 10px !important;
+    padding: 14px !important;
+  }
+
+  .app-market .market-home-category-row button,
+  .app-command-shell.app-market .market-home-category-row button,
+  .app-shell-dark.app-market .market-home-category-row button {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    min-width: max-content !important;
+    min-height: 36px !important;
+    padding: 0 11px !important;
+    white-space: nowrap !important;
+  }
+
+  .app-market .market-home-grid,
+  .app-command-shell.app-market .market-home-grid,
+  .app-shell-dark.app-market .market-home-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .app-market:has(.market-results-panel:not(.tidetradr-results-panel--prompt)) .market-page-heading .standard-page-header-tabs,
+  .app-command-shell.app-market:has(.market-results-panel:not(.tidetradr-results-panel--prompt)) .market-page-heading .standard-page-header-tabs,
+  .app-shell-dark.app-market:has(.market-results-panel:not(.tidetradr-results-panel--prompt)) .market-page-heading .standard-page-header-tabs,
+  .app-market:has(.market-results-panel:not(.tidetradr-results-panel--prompt)) .market-search-helper-grid,
+  .app-command-shell.app-market:has(.market-results-panel:not(.tidetradr-results-panel--prompt)) .market-search-helper-grid,
+  .app-shell-dark.app-market:has(.market-results-panel:not(.tidetradr-results-panel--prompt)) .market-search-helper-grid,
+  .app-market:has(.market-results-panel:not(.tidetradr-results-panel--prompt)) .market-upc-disclosure,
+  .app-command-shell.app-market:has(.market-results-panel:not(.tidetradr-results-panel--prompt)) .market-upc-disclosure,
+  .app-shell-dark.app-market:has(.market-results-panel:not(.tidetradr-results-panel--prompt)) .market-upc-disclosure,
+  .app-market:has(.market-results-panel:not(.tidetradr-results-panel--prompt)) .market-extra-options,
+  .app-command-shell.app-market:has(.market-results-panel:not(.tidetradr-results-panel--prompt)) .market-extra-options,
+  .app-shell-dark.app-market:has(.market-results-panel:not(.tidetradr-results-panel--prompt)) .market-extra-options {
+    display: none !important;
+  }
+
+  .app-market:has(.market-results-panel:not(.tidetradr-results-panel--prompt)) .market-results-panel,
+  .app-command-shell.app-market:has(.market-results-panel:not(.tidetradr-results-panel--prompt)) .market-results-panel,
+  .app-shell-dark.app-market:has(.market-results-panel:not(.tidetradr-results-panel--prompt)) .market-results-panel {
+    margin-top: clamp(148px, 17dvh, 176px) !important;
+  }
+
+  .app-market:has(.market-results-panel:not(.tidetradr-results-panel--prompt)) .market-results-panel > .compact-card-header,
+  .app-command-shell.app-market:has(.market-results-panel:not(.tidetradr-results-panel--prompt)) .market-results-panel > .compact-card-header,
+  .app-shell-dark.app-market:has(.market-results-panel:not(.tidetradr-results-panel--prompt)) .market-results-panel > .compact-card-header {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-items: start !important;
+    gap: 8px !important;
+    height: auto !important;
+    min-height: 48px !important;
+    padding: 0 0 10px !important;
+  }
+
+  .app-market:has(.market-results-panel:not(.tidetradr-results-panel--prompt)) .active-filter-chips,
+  .app-command-shell.app-market:has(.market-results-panel:not(.tidetradr-results-panel--prompt)) .active-filter-chips,
+  .app-shell-dark.app-market:has(.market-results-panel:not(.tidetradr-results-panel--prompt)) .active-filter-chips {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    height: auto !important;
+    min-height: 34px !important;
+    padding: 8px 0 0 !important;
+  }
+
+  .app-market .market-mobile-product-card .market-card-freshness-line,
+  .app-command-shell.app-market .market-mobile-product-card .market-card-freshness-line,
+  .app-shell-dark.app-market .market-mobile-product-card .market-card-freshness-line,
+  .app-market .market-mobile-product-card .market-trust-badge-row,
+  .app-command-shell.app-market .market-mobile-product-card .market-trust-badge-row,
+  .app-shell-dark.app-market .market-mobile-product-card .market-trust-badge-row {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+    margin: 1px 0 0 !important;
+  }
+
+  .app-market .market-mobile-product-card .market-card-freshness-line {
+    color: rgba(220, 252, 255, 0.72) !important;
+    font-size: 0.58rem !important;
+    line-height: 1.1 !important;
+  }
+
+  .app-market .market-mobile-product-card .market-trust-badge-row .market-status-pill:nth-child(n + 3),
+  .app-command-shell.app-market .market-mobile-product-card .market-trust-badge-row .market-status-pill:nth-child(n + 3),
+  .app-shell-dark.app-market .market-mobile-product-card .market-trust-badge-row .market-status-pill:nth-child(n + 3),
+  .app-market .market-mobile-product-card .market-card-freshness-line span:nth-child(n + 2),
+  .app-command-shell.app-market .market-mobile-product-card .market-card-freshness-line span:nth-child(n + 2),
+  .app-shell-dark.app-market .market-mobile-product-card .market-card-freshness-line span:nth-child(n + 2) {
+    display: none !important;
+  }
+}
+
 /* Phase 5 Forge final UI: make optional seller tools feel intentional before activation. */
 .forge-workspace-unavailable.adaptive-forge-intro,
 .app-command-shell .forge-workspace-unavailable.adaptive-forge-intro,
