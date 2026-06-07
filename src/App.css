@@ -81411,6 +81411,287 @@ html body #root .app.app-theme-light.app-command-shell :where(.settings-app-setu
   color: #7a2d1b !important;
 }
 
+html body #root .app.app-theme-light:not(.app-command-shell) {
+  background:
+    radial-gradient(circle at 14% -10%, rgba(245, 122, 80, 0.12), transparent 26rem),
+    radial-gradient(circle at 92% 0%, rgba(20, 184, 166, 0.1), transparent 24rem),
+    linear-gradient(180deg, rgba(255, 248, 239, 0.96), rgba(247, 234, 219, 0.94) 52%, rgba(238, 248, 246, 0.9)) !important;
+  color: #102033 !important;
+}
+
+html body #root .app.app-theme-light:not(.app-command-shell) :where(.header, .app-shell-header) {
+  background:
+    radial-gradient(circle at 8% 0%, rgba(245, 122, 80, 0.1), transparent 8rem),
+    rgba(255, 252, 247, 0.92) !important;
+  border-color: rgba(176, 127, 72, 0.2) !important;
+  color: #102033 !important;
+  box-shadow: 0 14px 34px rgba(70, 45, 24, 0.1) !important;
+}
+
+html body #root .app.app-theme-light:not(.app-command-shell) :where(.header, .app-shell-header) :where(h1, h2, h3, strong, p, span, small) {
+  color: #102033 !important;
+  text-shadow: none !important;
+}
+
+html body #root .app.app-theme-light :where(
+  .scout-home-hero,
+  .scout-home-hero-copy,
+  .scout-home-stat-card,
+  .scout-worth-trip-card,
+  .scout-worth-trip-meta,
+  .vault-empty-overview-card,
+  .standard-page-header-summary,
+  .vault-live-home-hero,
+  .vault-live-summary-grid,
+  .vault-live-summary-grid > div,
+  .vault-live-controls-card,
+  .vault-live-folder-card,
+  .vault-live-addition-card,
+  .forge-workspace-unavailable,
+  .forge-access-preview-grid,
+  .forge-access-preview-card,
+  .market-fair-search-card,
+  .market-home-category-row,
+  .market-home-product-card,
+  .market-home-product-top,
+  .market-data-refresh-strip,
+  .tidepool-community,
+  .tidepool-live-section-card,
+  .spark-impact-dashboard,
+  .spark-impact-stat-card,
+  .spark-impact-meter,
+  .spark-section-block,
+  .spark-section-card,
+  .spark-section-block > .compact-card-header,
+  .live-onboarding-card,
+  .live-onboarding-card > .compact-card-header,
+  .live-onboarding-step,
+  .quick-add-sheet,
+  .flow-modal,
+  .location-modal
+) {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(245, 122, 80, 0.08), transparent 12rem),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(255, 247, 237, 0.82)) !important;
+  border-color: rgba(176, 127, 72, 0.24) !important;
+  color: #102033 !important;
+  box-shadow: 0 14px 32px rgba(70, 45, 24, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.74) !important;
+}
+
+html body #root .app.app-theme-light :where(
+  .scout-home-hero,
+  .scout-home-hero-copy,
+  .scout-home-stat-card,
+  .scout-worth-trip-card,
+  .scout-worth-trip-meta,
+  .vault-empty-overview-card,
+  .standard-page-header-summary,
+  .vault-live-home-hero,
+  .vault-live-summary-grid,
+  .vault-live-summary-grid > div,
+  .vault-live-controls-card,
+  .vault-live-folder-card,
+  .vault-live-addition-card,
+  .forge-workspace-unavailable,
+  .forge-access-preview-grid,
+  .forge-access-preview-card,
+  .market-fair-search-card,
+  .market-home-category-row,
+  .market-home-product-card,
+  .market-home-product-top,
+  .market-data-refresh-strip,
+  .tidepool-community,
+  .tidepool-live-section-card,
+  .spark-impact-dashboard,
+  .spark-impact-stat-card,
+  .spark-impact-meter,
+  .spark-section-block,
+  .spark-section-card,
+  .spark-section-block > .compact-card-header,
+  .live-onboarding-card,
+  .live-onboarding-card > .compact-card-header,
+  .live-onboarding-step,
+  .quick-add-sheet,
+  .flow-modal,
+  .location-modal
+) :where(h1, h2, h3, h4, strong, b, dt) {
+  color: #0d1b2f !important;
+  text-shadow: none !important;
+}
+
+html body #root .app.app-theme-light :where(
+  .scout-home-hero,
+  .scout-home-hero-copy,
+  .scout-home-stat-card,
+  .scout-worth-trip-card,
+  .scout-worth-trip-meta,
+  .vault-empty-overview-card,
+  .standard-page-header-summary,
+  .vault-live-home-hero,
+  .vault-live-summary-grid,
+  .vault-live-summary-grid > div,
+  .vault-live-controls-card,
+  .vault-live-folder-card,
+  .vault-live-addition-card,
+  .forge-workspace-unavailable,
+  .forge-access-preview-grid,
+  .forge-access-preview-card,
+  .market-fair-search-card,
+  .market-home-category-row,
+  .market-home-product-card,
+  .market-home-product-top,
+  .market-data-refresh-strip,
+  .tidepool-community,
+  .tidepool-live-section-card,
+  .spark-impact-dashboard,
+  .spark-impact-stat-card,
+  .spark-impact-meter,
+  .spark-section-block,
+  .spark-section-card,
+  .spark-section-block > .compact-card-header,
+  .live-onboarding-card,
+  .live-onboarding-card > .compact-card-header,
+  .live-onboarding-step,
+  .quick-add-sheet,
+  .flow-modal,
+  .location-modal
+) :where(p, span, small, dd, li, label) {
+  color: rgba(16, 32, 51, 0.72) !important;
+  text-shadow: none !important;
+}
+
+html body #root .app.app-theme-light :where(
+  .scout-safety-strip,
+  .scout-worth-trip-meta,
+  .standard-page-header-tabs,
+  .market-home-category-row,
+  .spark-section-grid,
+  .tidepool-live-section-grid
+) {
+  background: rgba(255, 250, 244, 0.74) !important;
+  border-color: rgba(176, 127, 72, 0.18) !important;
+  color: #102033 !important;
+}
+
+html body #root .app.app-theme-light :where(
+  .scout-safety-strip,
+  .scout-worth-trip-meta,
+  .standard-page-header-tabs,
+  .market-home-category-row,
+  .spark-section-grid,
+  .tidepool-live-section-grid
+) :where(button, span, strong, small) {
+  color: #102033 !important;
+}
+
+html body #root .app.app-theme-light :where(
+  .scout-home-stat-card,
+  .scout-safety-strip span,
+  .scout-worth-trip-meta span,
+  .standard-page-header-tabs button,
+  .market-home-category-row button,
+  .live-onboarding-step,
+  .forge-intro-benefits > *,
+  .spark-section-card .status-badge,
+  .tidepool-live-section-card .status-badge
+) {
+  background: linear-gradient(145deg, rgba(255, 252, 247, 0.95), rgba(255, 241, 224, 0.84)) !important;
+  border-color: rgba(218, 165, 71, 0.24) !important;
+  color: #102033 !important;
+  box-shadow: 0 10px 22px rgba(70, 45, 24, 0.08) !important;
+}
+
+html body #root .app.app-theme-light :where(
+  .hearth-primary-cta,
+  .spark-primary-cta,
+  .scout-submit-primary,
+  .vault-command-quick-add,
+  .market-search-submit,
+  .public-beta-submit-button
+) {
+  border-color: rgba(245, 122, 80, 0.48) !important;
+  background: linear-gradient(135deg, #f57a50, #d9a547) !important;
+  color: #16110a !important;
+  box-shadow: 0 12px 28px rgba(245, 122, 80, 0.18) !important;
+}
+
+html body #root .app.app-theme-light :where(
+  .secondary-button,
+  .ghost-button,
+  .menu-button,
+  .scout-stores-link,
+  .scout-scan-screenshot-action,
+  .vault-command-scan,
+  .vault-settings-link,
+  .spark-secondary-cta,
+  .forge-workspace-unavailable .quick-actions button
+) {
+  border-color: rgba(16, 32, 51, 0.16) !important;
+  background: rgba(255, 255, 255, 0.78) !important;
+  color: #102033 !important;
+  box-shadow: 0 10px 22px rgba(70, 45, 24, 0.08) !important;
+}
+
+html body #root .app.app-theme-light :where(
+  .secondary-button,
+  .ghost-button,
+  .menu-button,
+  .scout-stores-link,
+  .scout-scan-screenshot-action,
+  .vault-command-scan,
+  .vault-settings-link,
+  .spark-secondary-cta,
+  .forge-workspace-unavailable .quick-actions button,
+  .hearth-primary-cta,
+  .spark-primary-cta,
+  .scout-submit-primary,
+  .vault-command-quick-add,
+  .market-search-submit,
+  .public-beta-submit-button
+) :where(span, strong, small) {
+  color: inherit !important;
+}
+
+html body #root .app.app-theme-light .mobile-bottom-nav {
+  border-color: rgba(176, 127, 72, 0.22) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 253, 248, 0.97), rgba(255, 245, 232, 0.95)) !important;
+  color: #102033 !important;
+  box-shadow: 0 14px 36px rgba(70, 45, 24, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.84) !important;
+}
+
+html body #root .app.app-theme-light .mobile-bottom-nav :where(button, span, small) {
+  color: rgba(16, 32, 51, 0.72) !important;
+  opacity: 1 !important;
+}
+
+html body #root .app.app-theme-light .mobile-bottom-nav button.active,
+html body #root .app.app-theme-light .mobile-bottom-nav button[aria-current="page"] {
+  color: #7a2d1b !important;
+  border-color: rgba(245, 122, 80, 0.42) !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(245, 122, 80, 0.18), transparent 3.25rem),
+    linear-gradient(180deg, rgba(255, 234, 214, 0.82), rgba(255, 248, 237, 0.9)) !important;
+}
+
+html body #root .app.app-theme-light .mobile-bottom-nav button.active :where(span, small),
+html body #root .app.app-theme-light .mobile-bottom-nav button[aria-current="page"] :where(span, small) {
+  color: #0d1b2f !important;
+}
+
+html body #root .app.app-theme-light :where(.scout-worth-trip-meta span, .scout-worth-trip-meta .status-badge) {
+  opacity: 1 !important;
+  background: rgba(255, 246, 224, 0.92) !important;
+  border-color: rgba(218, 165, 71, 0.24) !important;
+  color: #7a4a13 !important;
+}
+
+html body #root .app.app-theme-light :where(.live-onboarding-hero, .live-onboarding-hero.glass-panel) :where(.section-kicker, p, span, small) {
+  color: rgba(16, 32, 51, 0.72) !important;
+  opacity: 1 !important;
+  text-shadow: none !important;
+}
+
 .app-theme-dark.app-forge .forge-business-ledger-panel,
 .app-theme-dark .forge-business-ledger-panel {
   background:
