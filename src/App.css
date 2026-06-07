@@ -82936,6 +82936,164 @@ html body #root .app.app-theme-light :where(
   }
 }
 
+/* Targeted More/Menu overlay readability polish. */
+html body #root .app :where(.drawer.menu-drawer.navigation-drawer.open) {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(245, 122, 80, 0.18), transparent 17rem),
+    radial-gradient(circle at 100% 0%, rgba(37, 217, 255, 0.16), transparent 18rem),
+    linear-gradient(180deg, rgba(7, 17, 34, 0.995), rgba(3, 9, 22, 0.995)) !important;
+  border-right: 1px solid rgba(137, 225, 255, 0.2) !important;
+  color: #f7fbff !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(218, 165, 71, 0.52) rgba(5, 12, 28, 0.72);
+}
+
+html body #root .app :where(.drawer.menu-drawer.navigation-drawer.open)::-webkit-scrollbar {
+  width: 9px;
+}
+
+html body #root .app :where(.drawer.menu-drawer.navigation-drawer.open)::-webkit-scrollbar-track {
+  background: rgba(5, 12, 28, 0.72);
+  border-radius: 999px;
+}
+
+html body #root .app :where(.drawer.menu-drawer.navigation-drawer.open)::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(218, 165, 71, 0.72), rgba(37, 217, 255, 0.46));
+  border: 2px solid rgba(5, 12, 28, 0.72);
+  border-radius: 999px;
+}
+
+html body #root .app :where(.drawer.menu-drawer.navigation-drawer.open) :where(.drawer-header) {
+  background:
+    linear-gradient(180deg, rgba(7, 17, 34, 0.98), rgba(7, 17, 34, 0.9)) !important;
+  border-bottom: 1px solid rgba(137, 225, 255, 0.18) !important;
+  color: #f7fbff !important;
+}
+
+html body #root .app :where(.drawer.menu-drawer.navigation-drawer.open) :where(.drawer-header h3) {
+  color: #fff5df !important;
+  font-size: clamp(1.22rem, 4.8vw, 1.46rem) !important;
+  line-height: 1.05 !important;
+}
+
+html body #root .app :where(.drawer.menu-drawer.navigation-drawer.open) :where(.drawer-header p, .menu-command-links-header p, .drawer-section-copy small, .drawer-section-copy b) {
+  color: rgba(224, 239, 255, 0.78) !important;
+}
+
+html body #root .app :where(.drawer.menu-drawer.navigation-drawer.open) :where(.drawer-close-button) {
+  width: 38px !important;
+  min-width: 38px !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  border-radius: 13px !important;
+  background:
+    radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.2), transparent 32%),
+    linear-gradient(145deg, rgba(255, 248, 239, 0.96), rgba(226, 239, 246, 0.9)) !important;
+  border-color: rgba(137, 225, 255, 0.32) !important;
+  color: #0b1829 !important;
+  font-size: 0.9rem !important;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.26) !important;
+}
+
+html body #root .app :where(.drawer.menu-drawer.navigation-drawer.open) :where(.drawer-menu-stack) {
+  gap: 12px !important;
+  padding-bottom: calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 28px) !important;
+}
+
+html body #root .app :where(.drawer.menu-drawer.navigation-drawer.open) :where(.menu-command-links, .drawer-collapsible, .drawer-footer-card) {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(245, 122, 80, 0.09), transparent 12rem),
+    linear-gradient(145deg, rgba(13, 30, 54, 0.94), rgba(5, 13, 29, 0.96)) !important;
+  border-color: rgba(137, 225, 255, 0.22) !important;
+  color: #f7fbff !important;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+}
+
+html body #root .app :where(.drawer.menu-drawer.navigation-drawer.open) :where(.menu-command-section, .drawer-info-card) {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.025)),
+    rgba(9, 22, 42, 0.88) !important;
+  border: 1px solid rgba(137, 225, 255, 0.2) !important;
+  color: #f7fbff !important;
+}
+
+html body #root .app :where(.drawer.menu-drawer.navigation-drawer.open) :where(.menu-command-link, .drawer-link, .drawer-collapsible-toggle, .secondary-button) {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.085), rgba(255, 255, 255, 0.028)),
+    rgba(13, 29, 52, 0.92) !important;
+  border-color: rgba(137, 225, 255, 0.24) !important;
+  color: #f7fbff !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.055), 0 10px 22px rgba(0, 0, 0, 0.18) !important;
+}
+
+html body #root .app :where(.drawer.menu-drawer.navigation-drawer.open) :where(.menu-command-link:hover, .drawer-link:hover, .drawer-collapsible-toggle:hover) {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.045)),
+    rgba(20, 42, 70, 0.95) !important;
+  border-color: rgba(218, 165, 71, 0.36) !important;
+}
+
+html body #root .app :where(.drawer.menu-drawer.navigation-drawer.open) :where(.menu-command-link.active, .drawer-link.active) {
+  background:
+    linear-gradient(135deg, rgba(245, 122, 80, 0.42), rgba(37, 217, 255, 0.22)),
+    rgba(20, 42, 70, 0.96) !important;
+  border-color: rgba(218, 165, 71, 0.46) !important;
+}
+
+html body #root .app :where(.drawer.menu-drawer.navigation-drawer.open) :where(
+  .menu-command-links-header strong,
+  .menu-command-section h4,
+  .menu-command-link strong,
+  .drawer-collapsible-toggle strong,
+  .drawer-link,
+  .drawer-info-card strong,
+  .drawer-info-card h3,
+  .drawer-status-list dd,
+  .drawer-footer-card span
+) {
+  color: #f7fbff !important;
+  text-shadow: none !important;
+}
+
+html body #root .app :where(.drawer.menu-drawer.navigation-drawer.open) :where(.menu-command-section h4, .drawer-section-title) {
+  color: #ffdca0 !important;
+  letter-spacing: 0.04em !important;
+}
+
+html body #root .app :where(.drawer.menu-drawer.navigation-drawer.open) :where(
+  .menu-command-links-header p,
+  .menu-command-link small,
+  .drawer-collapsible-toggle small,
+  .drawer-collapsible-toggle b,
+  .drawer-info-card p,
+  .compact-subtitle,
+  .drawer-status-list dt,
+  .drawer-status-list div,
+  .menu-toggle-list .toggle-row small
+) {
+  color: rgba(224, 239, 255, 0.8) !important;
+  text-shadow: none !important;
+}
+
+html body #root .app :where(.drawer.menu-drawer.navigation-drawer.open) :where(.drawer-section-icon, .menu-command-icon) {
+  background:
+    radial-gradient(circle at 35% 24%, rgba(255, 255, 255, 0.18), transparent 30%),
+    linear-gradient(145deg, rgba(245, 122, 80, 0.2), rgba(37, 217, 255, 0.2)),
+    rgba(8, 18, 36, 0.94) !important;
+  border-color: rgba(137, 225, 255, 0.28) !important;
+  color: #e9fbff !important;
+}
+
+html body #root .app :where(.drawer.menu-drawer.navigation-drawer.open) :where(.drawer-link.disabled-link, .drawer-link:disabled) {
+  opacity: 0.62 !important;
+  color: rgba(224, 239, 255, 0.64) !important;
+  background: rgba(8, 18, 36, 0.62) !important;
+  border-color: rgba(137, 225, 255, 0.12) !important;
+  box-shadow: none !important;
+}
+
 /* Final global theme cleanup before page-by-page redesign. */
 html body #root .app.app-theme-light {
   --theme-final-ink: #102033;
