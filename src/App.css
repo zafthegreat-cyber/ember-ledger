@@ -82686,6 +82686,547 @@ html body #root .app.app-theme-light :where(
   background-color: rgba(255, 252, 247, 0.96) !important;
 }
 
+/* Final global theme cleanup tail overrides. Keep these last. */
+@media (max-width: 780px) {
+  html body #root .app.app-command-shell {
+    --theme-final-bottom-clearance: max(312px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 232px));
+  }
+
+  html body #root .app.app-command-shell > .main.app-shell-themed,
+  html body #root .app.app-command-shell > .main.app-shell-dark,
+  html body #root .app.app-command-shell :where(
+    .app-page,
+    .page-content,
+    .spark-program-layout,
+    .scout-dashboard-overview,
+    .vault-page,
+    .forge-page,
+    .market-page,
+    .tidepool-community,
+    .settings-page,
+    .settings-page-content
+  ) {
+    padding-bottom: var(--theme-final-bottom-clearance) !important;
+    scroll-padding-bottom: var(--theme-final-bottom-clearance) !important;
+  }
+
+  html body #root .app.app-command-shell .mobile-bottom-nav::before {
+    top: -42px !important;
+    height: 44px !important;
+    opacity: 0.58 !important;
+  }
+
+  html body #root .app.app-theme-light.app-command-shell .mobile-bottom-nav::before {
+    background: linear-gradient(180deg, rgba(255, 248, 239, 0), rgba(255, 248, 239, 0.38) 62%, rgba(255, 245, 232, 0.72)) !important;
+  }
+
+  html body #root .app.app-theme-dark.app-command-shell .mobile-bottom-nav::before {
+    background: linear-gradient(180deg, rgba(2, 7, 18, 0), rgba(2, 7, 18, 0.42) 62%, rgba(2, 7, 18, 0.82)) !important;
+  }
+
+  html body #root .app.app-command-shell :where(.panel, .card, .compact-card, .standard-page-header, .command-screen-hero):last-child {
+    margin-bottom: calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 118px) !important;
+  }
+
+  html body #root .app.app-command-shell .mobile-quick-add-fab {
+    bottom: calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 50px) !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-page-heading {
+    min-height: 390px !important;
+    gap: 10px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-home-foundation {
+    margin-top: 14px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-page-heading .standard-page-header-body,
+  html body #root .app.app-command-shell.app-market .market-search-helper-grid,
+  html body #root .app.app-command-shell.app-market .market-search-options {
+    gap: 7px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-search-form {
+    min-height: 0 !important;
+    padding: 7px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-results-panel {
+    margin-top: 10px !important;
+    transform: none !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-page-header {
+    min-height: 218px !important;
+    margin-bottom: 18px !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram :where(.spark-impact-dashboard, .spark-section-block) {
+    margin: 0 8px 18px !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-section-grid,
+  html body #root .app.app-command-shell.app-kidsprogram .spark-support-examples {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-section-card {
+    min-height: 112px !important;
+  }
+
+  html body #root .app.app-command-shell.app-settings .utility-page-header .standard-page-header-actions,
+  html body #root .app.app-command-shell.app-settings .utility-page-header-actions {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+    width: 100% !important;
+  }
+
+  html body #root .app.app-command-shell.app-settings .utility-page-header .standard-page-header-actions > *,
+  html body #root .app.app-command-shell.app-settings .utility-page-header-actions > * {
+    min-width: 0 !important;
+    width: 100% !important;
+    white-space: nowrap !important;
+    min-height: 46px !important;
+  }
+}
+
+@media (max-width: 430px) {
+  html body #root .app.app-command-shell.app-market .market-page-heading {
+    min-height: 390px !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-page-header {
+    min-height: 226px !important;
+  }
+
+  html body #root .app.app-command-shell.app-settings .utility-page-header .standard-page-header-actions,
+  html body #root .app.app-command-shell.app-settings .utility-page-header-actions {
+    grid-template-columns: 1fr !important;
+  }
+
+  html body #root .app.app-command-shell.app-settings .utility-page-header .standard-page-header-actions > *,
+  html body #root .app.app-command-shell.app-settings .utility-page-header-actions > * {
+    white-space: normal !important;
+  }
+}
+
+/* Final global theme cleanup tail overrides. Keep these last. */
+@media (max-width: 780px) {
+  html body #root .app.app-command-shell {
+    --theme-final-bottom-clearance: max(312px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 232px));
+  }
+
+  html body #root .app.app-command-shell > .main.app-shell-themed,
+  html body #root .app.app-command-shell > .main.app-shell-dark,
+  html body #root .app.app-command-shell :where(
+    .app-page,
+    .page-content,
+    .spark-program-layout,
+    .scout-dashboard-overview,
+    .vault-page,
+    .forge-page,
+    .market-page,
+    .tidepool-community,
+    .settings-page,
+    .settings-page-content
+  ) {
+    padding-bottom: var(--theme-final-bottom-clearance) !important;
+    scroll-padding-bottom: var(--theme-final-bottom-clearance) !important;
+  }
+
+  html body #root .app.app-command-shell .mobile-bottom-nav::before {
+    top: -42px !important;
+    height: 44px !important;
+    opacity: 0.58 !important;
+  }
+
+  html body #root .app.app-theme-light.app-command-shell .mobile-bottom-nav::before {
+    background: linear-gradient(180deg, rgba(255, 248, 239, 0), rgba(255, 248, 239, 0.38) 62%, rgba(255, 245, 232, 0.72)) !important;
+  }
+
+  html body #root .app.app-theme-dark.app-command-shell .mobile-bottom-nav::before {
+    background: linear-gradient(180deg, rgba(2, 7, 18, 0), rgba(2, 7, 18, 0.42) 62%, rgba(2, 7, 18, 0.82)) !important;
+  }
+
+  html body #root .app.app-command-shell :where(.panel, .card, .compact-card, .standard-page-header, .command-screen-hero):last-child {
+    margin-bottom: calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 118px) !important;
+  }
+
+  html body #root .app.app-command-shell .mobile-quick-add-fab {
+    bottom: calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 50px) !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-page-heading {
+    min-height: 350px !important;
+    gap: 10px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-page-heading .standard-page-header-body,
+  html body #root .app.app-command-shell.app-market .market-search-helper-grid,
+  html body #root .app.app-command-shell.app-market .market-search-options {
+    gap: 7px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-search-form {
+    min-height: 0 !important;
+    padding: 7px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-results-panel {
+    margin-top: 10px !important;
+    transform: none !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-page-header {
+    min-height: 218px !important;
+    margin-bottom: 18px !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram :where(.spark-impact-dashboard, .spark-section-block) {
+    margin: 0 8px 18px !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-section-grid,
+  html body #root .app.app-command-shell.app-kidsprogram .spark-support-examples {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-section-card {
+    min-height: 112px !important;
+  }
+
+  html body #root .app.app-command-shell.app-settings .utility-page-header .standard-page-header-actions,
+  html body #root .app.app-command-shell.app-settings .utility-page-header-actions {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+    width: 100% !important;
+  }
+
+  html body #root .app.app-command-shell.app-settings .utility-page-header .standard-page-header-actions > *,
+  html body #root .app.app-command-shell.app-settings .utility-page-header-actions > * {
+    min-width: 0 !important;
+    width: 100% !important;
+    white-space: nowrap !important;
+    min-height: 46px !important;
+  }
+}
+
+@media (max-width: 430px) {
+  html body #root .app.app-command-shell.app-market .market-page-heading {
+    min-height: 356px !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-page-header {
+    min-height: 226px !important;
+  }
+
+  html body #root .app.app-command-shell.app-settings .utility-page-header .standard-page-header-actions,
+  html body #root .app.app-command-shell.app-settings .utility-page-header-actions {
+    grid-template-columns: 1fr !important;
+  }
+
+  html body #root .app.app-command-shell.app-settings .utility-page-header .standard-page-header-actions > *,
+  html body #root .app.app-command-shell.app-settings .utility-page-header-actions > * {
+    white-space: normal !important;
+  }
+}
+
+/* Final global theme cleanup before page-by-page redesign. */
+html body #root .app.app-theme-light {
+  --theme-final-ink: #102033;
+  --theme-final-muted: rgba(16, 32, 51, 0.66);
+  --theme-final-card: rgba(255, 252, 247, 0.96);
+  --theme-final-card-strong: rgba(255, 255, 255, 0.98);
+  --theme-final-border: rgba(176, 127, 72, 0.24);
+}
+
+html body #root .app.app-theme-light :where(
+  .web-command-sidebar,
+  .web-command-topbar,
+  .topbar
+) {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(245, 122, 80, 0.07), transparent 15rem),
+    linear-gradient(145deg, rgba(255, 253, 249, 0.98), rgba(255, 248, 239, 0.94)) !important;
+  border-color: rgba(176, 127, 72, 0.2) !important;
+  color: var(--theme-final-ink) !important;
+}
+
+html body #root .app.app-theme-light :where(
+  .web-command-nav-item,
+  .web-command-more > summary,
+  .web-command-more-item,
+  .topbar-command-actions > button,
+  .topbar-profile-button,
+  .topbar-quick-add-button,
+  .topbar-workspace-chip,
+  .topbar-ask-ember-button,
+  .command-desk-card
+) {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(255, 246, 235, 0.88)) !important;
+  border-color: var(--theme-final-border) !important;
+  color: var(--theme-final-ink) !important;
+  box-shadow: 0 8px 22px rgba(70, 45, 24, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.62) !important;
+}
+
+html body #root .app.app-theme-light :where(
+  .web-command-nav-item.active,
+  .web-command-more[open] > summary,
+  .web-command-more-item.active
+) {
+  background:
+    linear-gradient(90deg, rgba(245, 122, 80, 0.48), rgba(218, 165, 71, 0.28) 48%, transparent 92%) 0 0 / 100% 2px no-repeat,
+    linear-gradient(145deg, rgba(255, 239, 225, 0.98), rgba(255, 250, 240, 0.92)) !important;
+  border-color: rgba(245, 122, 80, 0.36) !important;
+  color: #6e2919 !important;
+}
+
+html body #root .app.app-theme-light .command-desk-card {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(20, 184, 166, 0.08), transparent 9rem),
+    linear-gradient(145deg, rgba(255, 253, 249, 0.96), rgba(255, 242, 226, 0.86)) !important;
+}
+
+html body #root .app.app-theme-light .command-desk-card :where(h2, h3, strong, p, span, small) {
+  color: var(--theme-final-ink) !important;
+  text-shadow: none !important;
+}
+
+html body #root .app.app-theme-light :where(.vault-command-overview .vault-overview-card, .vault-empty-overview-card dl > div) {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(20, 184, 166, 0.08), transparent 8rem),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(255, 249, 240, 0.92)) !important;
+  border-color: rgba(176, 127, 72, 0.24) !important;
+  color: var(--theme-final-ink) !important;
+  box-shadow: 0 10px 22px rgba(70, 45, 24, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.7) !important;
+}
+
+html body #root .app.app-theme-light :where(.vault-empty-overview-card dl > div) :where(span, strong),
+html body #root .app.app-theme-light .vault-command-overview .vault-overview-card :where(span, strong) {
+  color: var(--theme-final-ink) !important;
+  text-shadow: none !important;
+}
+
+html body #root .app.app-theme-light :where(.vault-command-center .standard-page-header-actions .secondary-button, .vault-command-center .standard-page-header-tabs button) {
+  background: rgba(255, 255, 255, 0.96) !important;
+  border-color: rgba(176, 127, 72, 0.24) !important;
+  color: var(--theme-final-ink) !important;
+}
+
+html body #root .app.app-theme-light :where(
+  .live-onboarding-card,
+  .live-onboarding-mini-card,
+  .live-onboarding-card .card,
+  .live-onboarding-card .compact-card,
+  .theme-choice-card,
+  .settings-appearance-card
+) {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(20, 184, 166, 0.08), transparent 9rem),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(255, 248, 239, 0.9)) !important;
+  border-color: rgba(176, 127, 72, 0.24) !important;
+  color: var(--theme-final-ink) !important;
+}
+
+html body #root .app.app-theme-light :where(
+  .live-onboarding-card,
+  .live-onboarding-mini-card,
+  .theme-choice-card,
+  .settings-appearance-card
+) :where(h2, h3, strong, p, span, small) {
+  color: var(--theme-final-ink) !important;
+  text-shadow: none !important;
+}
+
+html body #root .app.app-theme-light.app-command-shell.app-settings :where(
+  .utility-page.settings-utility-page,
+  .settings-page,
+  .settings-page-content,
+  .settings-section
+) {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(46, 204, 182, 0.08), transparent 18rem),
+    linear-gradient(180deg, rgba(255, 250, 243, 0.98), rgba(255, 244, 231, 0.96)) !important;
+  color: var(--theme-final-ink) !important;
+}
+
+html body #root .app.app-theme-light :where(.live-onboarding-safety .settings-list-row) {
+  background:
+    linear-gradient(145deg, rgba(255, 252, 247, 0.97), rgba(248, 252, 248, 0.9)) !important;
+  border: 1px solid rgba(176, 127, 72, 0.24) !important;
+  color: var(--theme-final-ink) !important;
+}
+
+html body #root .app.app-theme-light :where(.live-onboarding-safety) {
+  background: transparent !important;
+  border-color: rgba(176, 127, 72, 0.18) !important;
+}
+
+html body #root .app.app-theme-light :where(.live-onboarding-safety .settings-stacked-list) {
+  background: transparent !important;
+  color: var(--theme-final-ink) !important;
+}
+
+html body #root .app.app-theme-light :where(.live-onboarding-safety .settings-list-row) :where(strong, b) {
+  color: var(--theme-final-ink) !important;
+}
+
+html body #root .app.app-theme-light :where(.live-onboarding-safety .settings-list-row) :where(p, span, small) {
+  color: rgba(16, 32, 51, 0.68) !important;
+}
+
+@media (max-width: 780px) {
+  html body #root .app.app-command-shell {
+    --theme-final-bottom-clearance: max(312px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 232px));
+  }
+
+  html body #root .app.app-command-shell > .main.app-shell-themed,
+  html body #root .app.app-command-shell > .main.app-shell-dark {
+    padding-bottom: var(--theme-final-bottom-clearance) !important;
+    scroll-padding-bottom: var(--theme-final-bottom-clearance) !important;
+  }
+
+  html body #root .app.app-command-shell :where(
+    .app-page,
+    .page-content,
+    .spark-program-layout,
+    .scout-dashboard-overview,
+    .vault-page,
+    .forge-page,
+    .market-page,
+    .tidepool-community,
+    .settings-page,
+    .settings-page-content
+  ) {
+    padding-bottom: var(--theme-final-bottom-clearance) !important;
+    scroll-padding-bottom: var(--theme-final-bottom-clearance) !important;
+  }
+
+  html body #root .app.app-command-shell :where(.flow-modal, .location-modal, .quick-add-sheet, .public-beta-feedback-modal) {
+    padding-bottom: calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 42px) !important;
+  }
+
+  html body #root .app.app-command-shell :where(.flow-modal-body, .location-modal-content, .quick-add-sheet-body, .public-beta-feedback-body) {
+    padding-bottom: calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 122px) !important;
+    scroll-padding-bottom: calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 144px) !important;
+  }
+
+  html body #root .app.app-command-shell .mobile-bottom-nav::before {
+    top: -42px !important;
+    height: 44px !important;
+    opacity: 0.58 !important;
+  }
+
+  html body #root .app.app-theme-light.app-command-shell .mobile-bottom-nav::before {
+    background: linear-gradient(180deg, rgba(255, 248, 239, 0), rgba(255, 248, 239, 0.38) 62%, rgba(255, 245, 232, 0.72)) !important;
+  }
+
+  html body #root .app.app-theme-dark.app-command-shell .mobile-bottom-nav::before {
+    background: linear-gradient(180deg, rgba(2, 7, 18, 0), rgba(2, 7, 18, 0.42) 62%, rgba(2, 7, 18, 0.82)) !important;
+  }
+
+  html body #root .app.app-command-shell :where(.panel, .card, .compact-card, .standard-page-header, .command-screen-hero):last-child {
+    margin-bottom: calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 118px) !important;
+  }
+
+  html body #root .app.app-command-shell .mobile-quick-add-fab {
+    bottom: calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 50px) !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-page-heading {
+    min-height: 350px !important;
+    gap: 10px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-page-heading .standard-page-header-body {
+    gap: 9px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-search-form {
+    min-height: 0 !important;
+    padding: 7px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-search-helper-grid,
+  html body #root .app.app-command-shell.app-market .market-search-options {
+    gap: 7px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .standard-page-header-tabs {
+    padding-bottom: 0 !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-results-panel {
+    margin-top: 10px !important;
+    transform: none !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-page-header {
+    min-height: 218px !important;
+    margin-bottom: 18px !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram :where(.spark-impact-dashboard, .spark-section-block) {
+    margin: 0 8px 18px !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-section-block {
+    padding-bottom: 20px !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-section-grid,
+  html body #root .app.app-command-shell.app-kidsprogram .spark-support-examples {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-section-card {
+    min-height: 112px !important;
+  }
+
+  html body #root .app.app-command-shell.app-settings .utility-page-header .standard-page-header-actions,
+  html body #root .app.app-command-shell.app-settings .utility-page-header-actions {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+    width: 100% !important;
+  }
+
+  html body #root .app.app-command-shell.app-settings .utility-page-header .standard-page-header-actions > *,
+  html body #root .app.app-command-shell.app-settings .utility-page-header-actions > * {
+    min-width: 0 !important;
+    width: 100% !important;
+    white-space: nowrap !important;
+    min-height: 46px !important;
+  }
+}
+
+@media (max-width: 430px) {
+  html body #root .app.app-command-shell.app-market .market-page-heading {
+    min-height: 356px !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-page-header {
+    min-height: 226px !important;
+  }
+
+  html body #root .app.app-command-shell.app-settings .utility-page-header .standard-page-header-actions,
+  html body #root .app.app-command-shell.app-settings .utility-page-header-actions {
+    grid-template-columns: 1fr !important;
+  }
+
+  html body #root .app.app-command-shell.app-settings .utility-page-header .standard-page-header-actions > *,
+  html body #root .app.app-command-shell.app-settings .utility-page-header-actions > * {
+    white-space: normal !important;
+  }
+}
+
 html body #root .app.app-theme-light :where(
   .market-search-form > button,
   .spark-page-header .standard-page-header-actions button:not(.secondary-button),
@@ -83105,4 +83646,127 @@ html body #root .app.app-theme-light :where(
   .utility-page-header
 ) {
   background-color: rgba(255, 252, 247, 0.96) !important;
+}
+
+/* Final global theme cleanup tail overrides. Keep these last. */
+@media (max-width: 780px) {
+  html body #root .app.app-command-shell {
+    --theme-final-bottom-clearance: max(312px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 232px));
+  }
+
+  html body #root .app.app-command-shell > .main.app-shell-themed,
+  html body #root .app.app-command-shell > .main.app-shell-dark,
+  html body #root .app.app-command-shell :where(
+    .app-page,
+    .page-content,
+    .spark-program-layout,
+    .scout-dashboard-overview,
+    .vault-page,
+    .forge-page,
+    .market-page,
+    .tidepool-community,
+    .settings-page,
+    .settings-page-content
+  ) {
+    padding-bottom: var(--theme-final-bottom-clearance) !important;
+    scroll-padding-bottom: var(--theme-final-bottom-clearance) !important;
+  }
+
+  html body #root .app.app-command-shell .mobile-bottom-nav::before {
+    top: -42px !important;
+    height: 44px !important;
+    opacity: 0.58 !important;
+  }
+
+  html body #root .app.app-theme-light.app-command-shell .mobile-bottom-nav::before {
+    background: linear-gradient(180deg, rgba(255, 248, 239, 0), rgba(255, 248, 239, 0.38) 62%, rgba(255, 245, 232, 0.72)) !important;
+  }
+
+  html body #root .app.app-theme-dark.app-command-shell .mobile-bottom-nav::before {
+    background: linear-gradient(180deg, rgba(2, 7, 18, 0), rgba(2, 7, 18, 0.42) 62%, rgba(2, 7, 18, 0.82)) !important;
+  }
+
+  html body #root .app.app-command-shell :where(.panel, .card, .compact-card, .standard-page-header, .command-screen-hero):last-child {
+    margin-bottom: calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 118px) !important;
+  }
+
+  html body #root .app.app-command-shell .mobile-quick-add-fab {
+    bottom: calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 50px) !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-page-heading {
+    min-height: 350px !important;
+    gap: 10px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-page-heading .standard-page-header-body,
+  html body #root .app.app-command-shell.app-market .market-search-helper-grid,
+  html body #root .app.app-command-shell.app-market .market-search-options {
+    gap: 7px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-search-form {
+    min-height: 0 !important;
+    padding: 7px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-results-panel {
+    margin-top: 10px !important;
+    transform: none !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-page-header {
+    min-height: 218px !important;
+    margin-bottom: 18px !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram :where(.spark-impact-dashboard, .spark-section-block) {
+    margin: 0 8px 18px !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-section-grid,
+  html body #root .app.app-command-shell.app-kidsprogram .spark-support-examples {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-section-card {
+    min-height: 112px !important;
+  }
+
+  html body #root .app.app-command-shell.app-settings .utility-page-header .standard-page-header-actions,
+  html body #root .app.app-command-shell.app-settings .utility-page-header-actions {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+    width: 100% !important;
+  }
+
+  html body #root .app.app-command-shell.app-settings .utility-page-header .standard-page-header-actions > *,
+  html body #root .app.app-command-shell.app-settings .utility-page-header-actions > * {
+    min-width: 0 !important;
+    width: 100% !important;
+    white-space: nowrap !important;
+    min-height: 46px !important;
+  }
+}
+
+@media (max-width: 430px) {
+  html body #root .app.app-command-shell.app-market .market-page-heading {
+    min-height: 356px !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-page-header {
+    min-height: 226px !important;
+  }
+
+  html body #root .app.app-command-shell.app-settings .utility-page-header .standard-page-header-actions,
+  html body #root .app.app-command-shell.app-settings .utility-page-header-actions {
+    grid-template-columns: 1fr !important;
+  }
+
+  html body #root .app.app-command-shell.app-settings .utility-page-header .standard-page-header-actions > *,
+  html body #root .app.app-command-shell.app-settings .utility-page-header-actions > * {
+    white-space: normal !important;
+  }
 }
