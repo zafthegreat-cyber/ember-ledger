@@ -8,7 +8,7 @@
 
 ## Git State
 
-- Latest local commit: `6314904 Polish public beta feature experience`
+- Latest local commit before this implementation pass: `310412d Document current public beta status`
 - Current git status before this document: clean
 - Current production branch reference: `origin/main` at `46c0d2c92457637d0e347b041a58d88c0601286a`
 - Live app-version: `dpl_DXX6pT2oJhnKdnW8Eyn7UJtoMCS6-46c0d2c92457637d0e347b041a58d88c0601286a-2026-06-06T15:12:24.645Z`
@@ -46,32 +46,24 @@ The local branch includes these post-production feature-improvement commits:
 
 ## Forge Business Ledger Status
 
-No current Forge Business Ledger commit was found.
+Forge Business Ledger is now implemented locally as a front-end-only planning surface. It is not deployed to production.
 
-Existing Forge and Sales surfaces do include:
+The local Forge Business Ledger includes:
 
-- Forge dashboard business snapshot
-- Sales Records
-- Business Expenses
-- Date/date-range style filters in existing sales and expense tools
-- Sales totals, estimated fees, net proceeds, profit/loss, and export actions in Sales Records
-- Expense totals, vendors, transactions, payment method labels, and recordkeeping summaries
-- Existing recordkeeping language that exports are not tax advice or a filing
-
-The requested Forge Business Ledger specification was not found as a completed implementation. Missing or not confirmed:
-
-- `Money In` section
-- `Money Out` section
-- Paid/unpaid status
-- Helper/employee payout tracking
-- Partner profit splits
+- `Money In`
+- `Money Out`
+- `Paid / Unpaid status`
+- Helper or employee payout tracking
+- Partner split tracking
 - Profit assignment buckets
 - Reinvestment buckets
-- Dedicated event/card show report
-- Export preview for the requested ledger
-- Exact disclaimer: `Forge Ledger is a planning tool. It does not send payments, process payroll, file taxes, or provide legal/tax advice.`
+- Event / card show report
+- Export preview
+- Exact visible disclaimer: `Planning tool only. Ember & Tide does not provide tax, payroll, accounting, or legal advice.`
 
-Forge Business Ledger deployment status: not deployed. It was also not found as a completed local commit in the current branch.
+The Ledger is reachable from Forge through the existing Forge action strip and by the local `/forge/ledger` route. It uses existing local sales, expenses, mileage, inventory, and payout-planning summaries where available, with clearly labeled planning examples when no records exist.
+
+Forge Business Ledger deployment status: local only, not deployed. Production remains at `46c0d2c92457637d0e347b041a58d88c0601286a`.
 
 ## Checks Run
 
@@ -100,6 +92,7 @@ Forge Business Ledger deployment status: not deployed. It was also not found as 
 
 - Local public beta feedback/waitlist flow remains local/unpublished unless the branch is pushed and deployed.
 - Feature-improvement train changes after `46c0d2c` remain local/unpublished.
+- Forge Business Ledger planning tools remain local/unpublished until this branch is released.
 - Existing Forge/Sales recordkeeping surfaces remain UI/local/mock-safe unless existing app-local behavior already applies.
 - No payment, payroll, tax filing, upload, messaging, live AI, scraping, checkout, or live inventory integration was added in this reconciliation.
 

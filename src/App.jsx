@@ -1645,6 +1645,11 @@ function routeStateFromPath(pathname = "") {
     return state;
   }
   if (section === "forge") {
+    if (subSection === "ledger") {
+      state.activeTab = "inventory";
+      state.forgeSubTab = "ledger";
+      return state;
+    }
     const forgeTabs = new Set(["expenses", "sales", "mileage", "reports"]);
     state.activeTab = forgeTabs.has(subSection) ? subSection : "inventory";
     state.forgeSubTab = subSection === "expenses" ? "expenses" : subSection === "sales" ? "sales" : subSection === "mileage" ? "mileage" : "overview";
@@ -4242,6 +4247,7 @@ function createDefaultPurchasers() {
 
 const PERSON_TYPE_OPTIONS = ["Family", "Seller", "Helper", "Partner", "Business", "Other"];
 const PAYOUT_ASSIST_DISCLAIMER = "Payout Assist is an estimate for planning. It is not payroll, tax, or legal advice.";
+const FORGE_BUSINESS_LEDGER_DISCLAIMER = "Planning tool only. Ember & Tide does not provide tax, payroll, accounting, or legal advice.";
 const INFO_TOOLTIP_COPY = {
   whoPaid: "The person or account that originally paid for this item or expense.",
   ownerPerson: "The person this record belongs to for family, collection, or business tracking.",
@@ -5747,6 +5753,7 @@ export default function App() {
   const scoutReportsRef = useRef(null);
   const [homeSubTab, setHomeSubTab] = useState(initialRouteState.homeSubTab || "overview");
   const [forgeSubTab, setForgeSubTab] = useState(initialRouteState.forgeSubTab || "overview");
+  const [forgeLedgerTimeframe, setForgeLedgerTimeframe] = useState("month");
   const [scoutSubTabTarget, setScoutSubTabTarget] = useState({
     tab: initialRouteState.scoutView || "overview",
     storeId: initialRouteState.scoutStoreId || "",
@@ -10308,6 +10315,11 @@ export default function App() {
       setActiveTab("scout");
       setScoutView("reports");
       setScoutSubTabTarget({ tab: "reports", id: Date.now() });
+      return;
+    }
+    if (route.startsWith("/forge/ledger")) {
+      setActiveTab("inventory");
+      setForgeSubTab("ledger");
       return;
     }
     if (route.startsWith("/forge/expenses")) {
@@ -25688,6 +25700,305 @@ function renderForgeBusinessCommandPanel() {
             </div>
           )}
         </div>
+      </div>
+    </section>
+  );
+}
+
+function openForgeBusinessLedgerSurface() {
+  setActiveTab("inventory");
+  setForgeSubTab("ledger");
+  if (typeof window !== "undefined") {
+    const resetForgeLedgerScroll = () => {
+      window.scrollTo({ top: 0, behavior: "auto" });
+      document.querySelectorAll("main, .main, .app, .app-command-shell, .app-shell-dark, .app-main, .command-shell-main, .app-shell-main, .page, .page-scroll").forEach((element) => {
+        if (element && element.scrollHeight > element.clientHeight) {
+          element.scrollTo({ top: 0, behavior: "auto" });
+        }
+      });
+    };
+    window.setTimeout(resetForgeLedgerScroll, 60);
+    window.setTimeout(resetForgeLedgerScroll, 220);
+  }
+}
+
+function renderForgeBusinessLedgerPanel() {
+  const ledgerTimeframes = [
+    { key: "month", label: "This month", helper: "Current working view" },
+    { key: "quarter", label: "Quarter", helper: "Planning window" },
+    { key: "year", label: String(taxSummaryYear || new Date().getFullYear()), helper: "Recordkeeping year" },
+    { key: "event", label: "Event", helper: "Card show view" },
+  ];
+  const selectedTimeframe = ledgerTimeframes.find((entry) => entry.key === forgeLedgerTimeframe) || ledgerTimeframes[0];
+  const positiveLedgerProfit = Math.max(0, Number(payoutAssistSummary.netProfit || monthlyProfitLoss || yearEndTaxSummary.sales.profit || 0));
+  const totalLedgerOutflow = Number(totalExpenses || 0) + Number(totalMileageValue || 0);
+  const totalLedgerBudget = positiveLedgerProfit || Math.max(0, Number(totalSalesRevenue || 0) - totalLedgerOutflow);
+  const eventSalesRow = (salesSummary.byPlatform || []).find((row) => /show|event|local/i.test(row.label || ""));
+  const ledgerMoneyInRows = workspaceSales.slice(0, 4).map((sale) => {
+    const gross = Number(sale.grossSale ?? sale.finalSalePrice ?? 0);
+    const status = String(sale.paymentStatus || sale.status || "Paid");
+    return {
+      key: sale.id || `sale-${sale.itemName || sale.platform}`,
+      label: sale.itemName || "Recorded sale",
+      meta: [sale.platform || "Sale", sale.saleDate || shortDate(sale.createdAt), status].filter(Boolean).join(" | "),
+      value: money(gross),
+      status: /unpaid|pending|open/i.test(status) ? "Unpaid" : "Paid",
+    };
+  });
+  if (!ledgerMoneyInRows.length) {
+    ledgerMoneyInRows.push(
+      { key: "preview-in-card-show", label: "Planning example: card show sales", meta: "Event revenue | Preview only", value: money(240), status: "Paid" },
+      { key: "preview-in-marketplace", label: "Planning example: marketplace sale", meta: "Online sale | Awaiting payout", value: money(86), status: "Unpaid" },
+    );
+  }
+  const ledgerMoneyOutRows = workspaceExpenses.slice(0, 4).map((expense) => {
+    const status = String(expense.paidStatus || expense.status || "Paid");
+    return {
+      key: expense.id || `expense-${expense.vendor || expense.category}`,
+      label: expense.vendor || expense.category || "Expense",
+      meta: [expense.category || "Expense", expense.date || shortDate(expense.createdAt), expense.paymentMethod || "Payment not set"].filter(Boolean).join(" | "),
+      value: money(expense.amount || 0),
+      status: /unpaid|pending|open/i.test(status) ? "Unpaid" : "Paid",
+    };
+  });
+  if (workspaceMileageTrips.length) {
+    ledgerMoneyOutRows.push({
+      key: "mileage-outflow",
+      label: "Mileage estimate",
+      meta: `${workspaceMileageTrips.length} trip${workspaceMileageTrips.length === 1 ? "" : "s"} | Planning reimbursement`,
+      value: money(totalMileageValue),
+      status: "Unpaid",
+    });
+  }
+  if (!ledgerMoneyOutRows.length) {
+    ledgerMoneyOutRows.push(
+      { key: "preview-out-supplies", label: "Planning example: sleeves and mailers", meta: "Supplies | Preview only", value: money(38), status: "Paid" },
+      { key: "preview-out-table", label: "Planning example: card show table", meta: "Event cost | Due later", value: money(75), status: "Unpaid" },
+    );
+  }
+  const paidCount = [...ledgerMoneyInRows, ...ledgerMoneyOutRows].filter((row) => row.status === "Paid").length;
+  const unpaidCount = [...ledgerMoneyInRows, ...ledgerMoneyOutRows].filter((row) => row.status === "Unpaid").length;
+  const helperPayoutRows = payoutAssistRows.length
+    ? payoutAssistRows.slice(0, 4).map((row) => ({
+      key: row.name,
+      label: row.name,
+      meta: `${row.type || "Helper"} | ${row.salesCount || 0} sale${row.salesCount === 1 ? "" : "s"} | ${row.inventoryCount || 0} item${row.inventoryCount === 1 ? "" : "s"}`,
+      value: money(row.suggestedPayout || row.reimbursementsOwed || 0),
+      status: Number(row.suggestedPayout || row.reimbursementsOwed || 0) > 0 ? "Review" : "Clear",
+    }))
+    : [
+      { key: "helper-preview", label: "Planning example: table helper", meta: "Helper payout planning | No payroll", value: money(40), status: "Review" },
+      { key: "employee-preview", label: "Planning example: employee hours", meta: "Record note only | No payroll processing", value: money(0), status: "Not connected" },
+    ];
+  const partnerSplitRows = [
+    { key: "owner", label: activeForgeWorkspace?.name || "Owner workspace", meta: "Primary share after expenses", value: money(totalLedgerBudget * 0.6), status: "60%" },
+    { key: "partner", label: "Partner split planning", meta: "Optional collaborator share", value: money(totalLedgerBudget * 0.25), status: "25%" },
+    { key: "reserve", label: "Shared reserve", meta: "Fees, returns, and event buffer", value: money(totalLedgerBudget * 0.15), status: "15%" },
+  ];
+  const profitAssignmentBuckets = [
+    { key: "owner-draw", label: "Owner draw", helper: "Personal payout planning only", value: money(totalLedgerBudget * 0.35) },
+    { key: "helper-payouts", label: "Helper payouts", helper: "Review owed reimbursements first", value: money(totalLedgerBudget * 0.15) },
+    { key: "spark-support", label: "The Spark support", helper: "Optional family impact bucket", value: money(totalLedgerBudget * 0.1) },
+    { key: "tax-reserve", label: "Tax/legal review reserve", helper: "Set aside for professional review", value: money(totalLedgerBudget * 0.4) },
+  ];
+  const reinvestmentBuckets = [
+    { key: "inventory-restock", label: "Inventory restock", helper: "Sealed, singles, and graded buys", value: money(totalLedgerBudget * 0.45) },
+    { key: "supplies", label: "Supplies", helper: "Sleeves, mailers, labels, top loaders", value: money(totalLedgerBudget * 0.18) },
+    { key: "events", label: "Event / card show", helper: "Tables, gas, parking, snacks", value: money(totalLedgerBudget * 0.22) },
+    { key: "shipping-buffer", label: "Shipping buffer", helper: "Returns, insurance, replacement supplies", value: money(totalLedgerBudget * 0.15) },
+  ];
+  const eventReportRows = [
+    { key: "event-money-in", label: "Money In", value: eventSalesRow ? money(eventSalesRow.grossSales) : money(240), helper: eventSalesRow ? eventSalesRow.label : "Planning example: local card show/event" },
+    { key: "event-money-out", label: "Money Out", value: money((yearEndTaxSummary.expenses.byCategory?.Events || 0) + (yearEndTaxSummary.expenses.byCategory?.Marketing || 0)), helper: "Tables, travel, supplies, giveaways" },
+    { key: "event-followup", label: "Follow-up", value: `${forgeReceiptsNeedingReviewCount || 0} review`, helper: "Receipts and sale references to confirm" },
+  ];
+  const exportPreviewRows = [
+    ["Section", "Example columns", "Status"],
+    ["Money In", "date, channel, item, gross, paid status", workspaceSales.length ? "Uses local sale records" : "Preview columns"],
+    ["Money Out", "date, vendor, category, amount, paid status", workspaceExpenses.length ? "Uses local expense records" : "Preview columns"],
+    ["Payouts", "person, role, reimbursements, suggested payout", payoutAssistRows.length ? "Uses local person ledger" : "Planning only"],
+    ["Buckets", "bucket, purpose, assigned amount, note", "Planning only"],
+  ];
+
+  const renderLedgerRows = (rows) => (
+    <div className="forge-ledger-row-list">
+      {rows.map((row) => (
+        <div className="forge-ledger-row" key={row.key || row.label}>
+          <span>
+            <strong>{row.label}</strong>
+            <small>{row.meta || row.helper}</small>
+          </span>
+          <b>{row.value}</b>
+          <em>{row.status}</em>
+        </div>
+      ))}
+    </div>
+  );
+
+  return (
+    <section className="panel forge-business-ledger-panel" aria-label="Forge Business Ledger planning tools">
+      <div className="forge-ledger-hero">
+        <div>
+          <span className="section-kicker">Forge Business Ledger</span>
+          <h2>Plan money, splits, payouts, and event records without moving real funds.</h2>
+          <p>Use this surface to review seller records, assign profit buckets, and prepare exports for a professional review. Everything here is front-end planning only.</p>
+        </div>
+        <div className="forge-ledger-hero-card">
+          <span>Current view</span>
+          <strong>{selectedTimeframe.label}</strong>
+          <small>{selectedTimeframe.helper}</small>
+        </div>
+      </div>
+
+      <div className="forge-ledger-disclaimer" role="note">
+        <strong>{FORGE_BUSINESS_LEDGER_DISCLAIMER}</strong>
+        <span>No payments, payroll, tax filing, checkout, live inventory, uploads, messaging, or financial integrations are connected.</span>
+      </div>
+
+      <div className="forge-ledger-timeframes" role="group" aria-label="Forge Ledger time frame filters">
+        {ledgerTimeframes.map((option) => (
+          <button
+            type="button"
+            key={option.key}
+            className={forgeLedgerTimeframe === option.key ? "forge-ledger-timeframe-button active" : "forge-ledger-timeframe-button"}
+            aria-pressed={forgeLedgerTimeframe === option.key}
+            onClick={() => setForgeLedgerTimeframe(option.key)}
+          >
+            <strong>{option.label}</strong>
+            <span>{option.helper}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="forge-ledger-overview-grid" aria-label="Forge ledger overview">
+        <div><span>Money In</span><strong>{money(forgeLedgerTimeframe === "month" ? totalSalesRevenue : yearEndTaxSummary.sales.revenue)}</strong><small>{workspaceSales.length || 0} sale record{workspaceSales.length === 1 ? "" : "s"}</small></div>
+        <div><span>Money Out</span><strong>{money(forgeLedgerTimeframe === "month" ? totalLedgerOutflow : yearEndTaxSummary.expenses.total + yearEndTaxSummary.mileage.totalValue)}</strong><small>{workspaceExpenses.length + workspaceMileageTrips.length} expense/travel record{workspaceExpenses.length + workspaceMileageTrips.length === 1 ? "" : "s"}</small></div>
+        <div><span>Paid / Unpaid status</span><strong>{paidCount} / {unpaidCount}</strong><small>Planning status only</small></div>
+        <div><span>Available to assign</span><strong>{money(totalLedgerBudget)}</strong><small>After known expenses and estimates</small></div>
+      </div>
+
+      <div className="forge-ledger-section-grid">
+        <article className="forge-ledger-section-card forge-ledger-section-card--money-in">
+          <div className="compact-card-header">
+            <div>
+              <h3>Money In</h3>
+              <p>Sales and incoming money signals, labeled as paid or unpaid planning rows.</p>
+            </div>
+            <button type="button" className="secondary-button" onClick={() => setActiveTab("sales")}>Open Sales</button>
+          </div>
+          {renderLedgerRows(ledgerMoneyInRows)}
+        </article>
+
+        <article className="forge-ledger-section-card forge-ledger-section-card--money-out">
+          <div className="compact-card-header">
+            <div>
+              <h3>Money Out</h3>
+              <p>Expenses, supplies, event costs, and mileage estimates that reduce planning profit.</p>
+            </div>
+            <button type="button" className="secondary-button" onClick={() => setActiveTab("expenses")}>Open Expenses</button>
+          </div>
+          {renderLedgerRows(ledgerMoneyOutRows)}
+        </article>
+
+        <article className="forge-ledger-section-card">
+          <div className="compact-card-header">
+            <div>
+              <h3>Paid / Unpaid status</h3>
+              <p>Quick review of settled records versus money still expected or owed.</p>
+            </div>
+          </div>
+          {renderLedgerRows([
+            { key: "paid", label: "Paid records", meta: "Sales, expenses, and planning rows marked paid", value: String(paidCount), status: "Paid" },
+            { key: "unpaid", label: "Unpaid / pending records", meta: "Review before assigning profit", value: String(unpaidCount), status: "Unpaid" },
+            { key: "receipts", label: "Receipts needing review", meta: "Proof review before exports", value: String(forgeReceiptsNeedingReviewCount || 0), status: forgeReceiptsNeedingReviewCount ? "Review" : "Clear" },
+          ])}
+        </article>
+
+        <article className="forge-ledger-section-card">
+          <div className="compact-card-header">
+            <div>
+              <h3>Helper or employee payout tracking</h3>
+              <p>Planning support for reimbursements and suggested payouts. This does not process payroll.</p>
+            </div>
+            <button type="button" className="secondary-button" onClick={() => setActiveTab("reports")}>Open Payout Assist</button>
+          </div>
+          {renderLedgerRows(helperPayoutRows)}
+        </article>
+
+        <article className="forge-ledger-section-card">
+          <div className="compact-card-header">
+            <div>
+              <h3>Partner split tracking</h3>
+              <p>Draft how profit could be split between owner, partner, and reserve buckets.</p>
+            </div>
+          </div>
+          {renderLedgerRows(partnerSplitRows)}
+        </article>
+
+        <article className="forge-ledger-section-card">
+          <div className="compact-card-header">
+            <div>
+              <h3>Profit assignment buckets</h3>
+              <p>Assign available profit into clear planning buckets before spending it.</p>
+            </div>
+          </div>
+          <div className="forge-ledger-bucket-grid">
+            {profitAssignmentBuckets.map((bucket) => (
+              <div className="forge-ledger-bucket" key={bucket.key}>
+                <span>{bucket.label}</span>
+                <strong>{bucket.value}</strong>
+                <small>{bucket.helper}</small>
+              </div>
+            ))}
+          </div>
+        </article>
+
+        <article className="forge-ledger-section-card">
+          <div className="compact-card-header">
+            <div>
+              <h3>Reinvestment buckets</h3>
+              <p>Plan how business money could return to inventory, supplies, and events.</p>
+            </div>
+          </div>
+          <div className="forge-ledger-bucket-grid">
+            {reinvestmentBuckets.map((bucket) => (
+              <div className="forge-ledger-bucket" key={bucket.key}>
+                <span>{bucket.label}</span>
+                <strong>{bucket.value}</strong>
+                <small>{bucket.helper}</small>
+              </div>
+            ))}
+          </div>
+        </article>
+
+        <article className="forge-ledger-section-card forge-ledger-section-card--event">
+          <div className="compact-card-header">
+            <div>
+              <h3>Event / card show report</h3>
+              <p>Summarize local event revenue, costs, follow-up, and receipts without creating a rush-sale feed.</p>
+            </div>
+          </div>
+          {renderLedgerRows(eventReportRows)}
+        </article>
+
+        <article className="forge-ledger-section-card forge-ledger-section-card--export">
+          <div className="compact-card-header">
+            <div>
+              <h3>Export preview</h3>
+              <p>Preview the sections an export would contain before using existing record exports.</p>
+            </div>
+            <button type="button" className="secondary-button" onClick={() => setActiveTab("reports")}>Open Exports</button>
+          </div>
+          <div className="forge-ledger-export-preview" aria-label="Forge Ledger export preview">
+            {exportPreviewRows.map((row, index) => (
+              <div className={index === 0 ? "is-heading" : ""} key={row.join("-")}>
+                <span>{row[0]}</span>
+                <strong>{row[1]}</strong>
+                <small>{row[2]}</small>
+              </div>
+            ))}
+          </div>
+        </article>
       </div>
     </section>
   );
@@ -62600,6 +62911,21 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
               />
               {renderMarketplaceSection()}
             </>
+          ) : forgeSubTab === "ledger" ? (
+            <>
+              <PageHeader
+                className={getHeaderCardClass("panel forge-command-center forge-ledger-page-heading")}
+                title="Forge > Business Ledger"
+                subtitle="Planning surface for money in, money out, payouts, partner splits, reinvestment, events, and export previews."
+                actions={(
+                  <>
+                    <button type="button" className="secondary-button" onClick={() => setForgeSubTab("overview")}>Back to Forge</button>
+                    <button type="button" onClick={() => openAddSaleFlow()}>Add Sale</button>
+                  </>
+                )}
+              />
+              {renderForgeBusinessLedgerPanel()}
+            </>
           ) : (
           <>
           <section id="forge-inventory-section" className="panel forge-home-inventory-section">
@@ -62626,6 +62952,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
               <button type="button" className="secondary-button" onClick={() => openAddSaleFlow()}>Add Sale</button>
               <button type="button" className="secondary-button" onClick={() => openBasicReceiptFlow("forge-action-strip")}>Add Receipt</button>
               <button type="button" className="secondary-button" onClick={() => openAddMileageFlow()}>Add Mileage</button>
+              <button type="button" className="secondary-button" onClick={openForgeBusinessLedgerSurface}>Business Ledger</button>
               <details className="forge-more-actions">
                 <summary>More</summary>
                 <div>
