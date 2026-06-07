@@ -82451,3 +82451,658 @@ html body #root .app.app-theme-dark :where(.quick-add-menu button, .public-beta-
     box-shadow: 0 18px 44px rgba(0, 0, 0, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.07) !important;
   }
 }
+
+/* Theme polish pass two: resolve remaining Light/Dark shell leftovers and mobile stacking. */
+html body #root .app.app-theme-light {
+  --theme-pass-2-ink: #102033;
+  --theme-pass-2-muted: rgba(16, 32, 51, 0.72);
+  --theme-pass-2-faint: rgba(16, 32, 51, 0.56);
+  --theme-pass-2-card: rgba(255, 252, 247, 0.94);
+  --theme-pass-2-card-strong: rgba(255, 255, 255, 0.96);
+  --theme-pass-2-border: rgba(176, 127, 72, 0.24);
+  --theme-pass-2-ember: #f57a50;
+  --theme-pass-2-gold: #d9a547;
+}
+
+html body #root .app.app-theme-light :where(
+  .web-command-sidebar,
+  .web-command-topbar,
+  .topbar,
+  .topbar-command-actions,
+  .command-desk-card,
+  .drawer-info-card,
+  .menu-panel,
+  .settings-panel,
+  .settings-preference-panel,
+  .membership-foundation-panel
+) {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(245, 122, 80, 0.08), transparent 13rem),
+    linear-gradient(145deg, rgba(255, 253, 248, 0.96), rgba(255, 246, 235, 0.9)) !important;
+  border-color: var(--theme-pass-2-border) !important;
+  color: var(--theme-pass-2-ink) !important;
+  box-shadow: 0 14px 34px rgba(70, 45, 24, 0.09), inset 0 1px 0 rgba(255, 255, 255, 0.72) !important;
+}
+
+html body #root .app.app-theme-light :where(
+  .web-command-nav-item,
+  .web-command-more > summary,
+  .web-command-more-item,
+  .topbar-profile-button,
+  .topbar-command-actions button,
+  .mobile-menu-button,
+  .mobile-menu-trigger,
+  .profile-menu-button,
+  .ask-ember-button,
+  .ember-assist-toggle,
+  .quick-add-button,
+  .topbar-workspace-chip,
+  .web-command-tool,
+  .drawer-link
+) {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(255, 243, 229, 0.82)) !important;
+  border-color: var(--theme-pass-2-border) !important;
+  color: var(--theme-pass-2-ink) !important;
+  box-shadow: 0 8px 20px rgba(70, 45, 24, 0.08) !important;
+}
+
+html body #root .app.app-theme-light :where(
+  .web-command-nav-item.active,
+  .web-command-more[open] > summary,
+  .web-command-more-item.active,
+  .topbar-command-actions button.active,
+  .drawer-link.active,
+  .mobile-menu-button.active,
+  .mobile-menu-trigger.active
+) {
+  background:
+    linear-gradient(90deg, rgba(245, 122, 80, 0.46), rgba(218, 165, 71, 0.24) 46%, transparent 90%) 0 0 / 100% 2px no-repeat,
+    linear-gradient(145deg, rgba(255, 235, 218, 0.96), rgba(255, 248, 237, 0.9)) !important;
+  border-color: rgba(245, 122, 80, 0.4) !important;
+  color: #7a2d1b !important;
+}
+
+html body #root .app.app-theme-light :where(
+  .web-command-nav-item small,
+  .web-command-more-item small,
+  .topbar-command-actions small,
+  .command-desk-card p,
+  .drawer-info-card p,
+  .settings-panel p,
+  .settings-preference-panel p
+) {
+  color: var(--theme-pass-2-muted) !important;
+}
+
+html body #root .app.app-theme-light :where(
+  .vault-empty-overview-card,
+  .vault-command-overview .vault-overview-card,
+  .vault-live-summary-grid > *,
+  .vault-live-controls-card,
+  .vault-view-strip,
+  .market-search-form,
+  .market-results-panel,
+  .catalog-result-card,
+  .market-search-helper-grid,
+  .market-search-options,
+  .market-home-category-row,
+  .scout-header-trust-row span,
+  .scout-safety-strip,
+  .spark-impact-dashboard,
+  .spark-impact-milestone-card,
+  .spark-impact-stat-card,
+  .spark-section-block,
+  .spark-section-card,
+  .spark-donation-tracking-panel,
+  .spark-participation-panel,
+  .tidepool-live-section-card,
+  .tidepool-preview-card,
+  .tidepool-moderation-card,
+  .tidepool-trust-card,
+  .live-onboarding-card,
+  .live-onboarding-mini-card,
+  .theme-choice-card,
+  .smart-setup-theme-panel,
+  .settings-appearance-card
+) {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(20, 184, 166, 0.06), transparent 10rem),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(255, 247, 237, 0.86)) !important;
+  border-color: var(--theme-pass-2-border) !important;
+  color: var(--theme-pass-2-ink) !important;
+  box-shadow: 0 12px 28px rgba(70, 45, 24, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.66) !important;
+}
+
+html body #root .app.app-theme-light :where(
+  .vault-empty-overview-card,
+  .vault-command-overview .vault-overview-card,
+  .vault-live-summary-grid > *,
+  .market-search-form,
+  .market-results-panel,
+  .catalog-result-card,
+  .market-search-helper-grid,
+  .market-search-options,
+  .scout-header-trust-row span,
+  .spark-impact-dashboard,
+  .spark-section-card,
+  .tidepool-live-section-card,
+  .tidepool-preview-card,
+  .tidepool-moderation-card,
+  .theme-choice-card,
+  .smart-setup-theme-panel
+) :where(h2, h3, strong, b, dt, dd, p, span, small, label) {
+  color: var(--theme-pass-2-ink) !important;
+  text-shadow: none !important;
+}
+
+html body #root .app.app-theme-light :where(
+  .vault-empty-overview-card,
+  .vault-command-overview .vault-overview-card,
+  .market-search-options,
+  .market-results-panel,
+  .catalog-result-card,
+  .spark-impact-dashboard,
+  .tidepool-live-section-card,
+  .theme-choice-card,
+  .smart-setup-theme-panel
+) :where(p, span:not(.status-badge):not(.trust-badge), small) {
+  color: var(--theme-pass-2-muted) !important;
+}
+
+html body #root .app.app-theme-light .vault-command-overview .vault-overview-card > span:not(.vault-overview-title) {
+  display: block !important;
+  background: transparent !important;
+  color: rgba(16, 32, 51, 0.62) !important;
+  overflow: visible !important;
+}
+
+html body #root .app.app-theme-light :where(.market-results-panel, .catalog-result-card, .market-fair-card) {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(20, 184, 166, 0.08), transparent 11rem),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(255, 247, 237, 0.9)) !important;
+  border-color: rgba(176, 127, 72, 0.24) !important;
+  color: var(--theme-pass-2-ink) !important;
+}
+
+html body #root .app.app-theme-light :where(.market-results-panel, .catalog-result-card, .market-fair-card)::before,
+html body #root .app.app-theme-light :where(.market-results-panel, .catalog-result-card, .market-fair-card)::after {
+  opacity: 0.18 !important;
+  pointer-events: none !important;
+}
+
+html body #root .app.app-theme-light :where(.market-results-panel, .catalog-result-card, .market-fair-card) :where(h2, h3, strong, p, span, small, label) {
+  color: var(--theme-pass-2-ink) !important;
+  text-shadow: none !important;
+}
+
+html body #root .app.app-theme-light :where(.market-results-panel, .catalog-result-card, .market-fair-card) :where(small, .compact-subtitle, .market-source-note) {
+  color: rgba(16, 32, 51, 0.66) !important;
+}
+
+html body #root .app.app-theme-light :where(
+  .catalog-results-toolbar,
+  .catalog-results-toolbar label,
+  .catalog-results-toolbar select,
+  .active-filter-chips,
+  .market-search-source-note,
+  .market-set-card
+) {
+  background: rgba(255, 252, 247, 0.9) !important;
+  border-color: rgba(176, 127, 72, 0.22) !important;
+  color: var(--theme-pass-2-ink) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.58) !important;
+}
+
+html body #root .app.app-theme-light :where(.catalog-results-toolbar select, .market-filter-button) {
+  min-height: 44px !important;
+  color: var(--theme-pass-2-ink) !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  border-color: rgba(176, 127, 72, 0.24) !important;
+}
+
+html body #root .app.app-theme-light :where(.catalog-results-toolbar .field-label-row, .catalog-results-toolbar .field-label-row span, .active-filter-chips > span:first-child) {
+  display: inline-flex !important;
+  background: transparent !important;
+  color: rgba(16, 32, 51, 0.66) !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-theme-light :where(
+  .standard-page-header,
+  .command-screen-hero,
+  .app-header-card,
+  .market-search-helper-grid,
+  .market-search-options,
+  .market-results-panel,
+  .catalog-result-card,
+  .spark-impact-stat-card,
+  .spark-section-card,
+  .theme-choice-card,
+  .smart-setup-theme-panel,
+  .tidepool-live-section-card,
+  .tidepool-preview-card,
+  .vault-overview-card
+) {
+  background-color: rgba(255, 252, 247, 0.96) !important;
+}
+
+html body #root .app.app-theme-light :where(
+  .market-search-form > button,
+  .spark-page-header .standard-page-header-actions button:not(.secondary-button),
+  .tidepool-community-header .standard-page-header-actions button:not(.secondary-button),
+  .vault-command-center .standard-page-header-actions button:not(.secondary-button),
+  .primary-button
+) {
+  background: linear-gradient(135deg, var(--theme-pass-2-ember), var(--theme-pass-2-gold)) !important;
+  border-color: rgba(245, 122, 80, 0.42) !important;
+  color: #1f1208 !important;
+  box-shadow: 0 12px 28px rgba(245, 122, 80, 0.16) !important;
+}
+
+html body #root .app.app-theme-light :where(
+  .market-search-form > button:disabled,
+  button:disabled,
+  .secondary-button:disabled
+) {
+  background: rgba(255, 252, 247, 0.62) !important;
+  border-color: rgba(176, 127, 72, 0.18) !important;
+  color: rgba(16, 32, 51, 0.46) !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-theme-dark :where(
+  .standard-page-header,
+  .panel,
+  .card,
+  .compact-card,
+  .spark-impact-dashboard,
+  .tidepool-community,
+  .vault-live-controls-card,
+  .market-search-options
+) {
+  border-color: rgba(122, 229, 255, 0.15) !important;
+  background-color: rgba(7, 18, 35, 0.82) !important;
+}
+
+@media (max-width: 780px) {
+  html body #root .app.app-command-shell {
+    --theme-pass-2-bottom-clearance: max(248px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 174px));
+  }
+
+  html body #root .app.app-command-shell > .main.app-shell-themed,
+  html body #root .app.app-command-shell > .main.app-shell-dark {
+    padding-bottom: var(--theme-pass-2-bottom-clearance) !important;
+    scroll-padding-bottom: var(--theme-pass-2-bottom-clearance) !important;
+  }
+
+  html body #root .app.app-command-shell :where(
+    .app-page,
+    .page-content,
+    .spark-program-layout,
+    .scout-dashboard-overview,
+    .vault-page,
+    .forge-page,
+    .market-page,
+    .tidepool-community,
+    .settings-page
+  ) {
+    padding-bottom: var(--theme-pass-2-bottom-clearance) !important;
+    scroll-padding-bottom: var(--theme-pass-2-bottom-clearance) !important;
+  }
+
+  html body #root .app.app-command-shell :where(.standard-page-header, .command-screen-hero) {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: hidden !important;
+  }
+
+  html body #root .app.app-command-shell :where(
+    .standard-page-header-main,
+    .standard-page-header-copy,
+    .standard-page-header-actions,
+    .standard-page-header-summary,
+    .standard-page-header-body,
+    .standard-page-header-tabs
+  ) {
+    position: static !important;
+    transform: none !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    z-index: auto !important;
+  }
+
+  html body #root .app.app-command-shell :where(.standard-page-header-main) {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  html body #root .app.app-command-shell :where(.standard-page-header-actions) {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 9px !important;
+    width: 100% !important;
+    margin-top: 0 !important;
+  }
+
+  html body #root .app.app-command-shell :where(.standard-page-header-actions button) {
+    width: 100% !important;
+    min-height: 42px !important;
+    white-space: normal !important;
+  }
+
+  html body #root .app.app-command-shell :where(.section-hero-art, .feature-hero-scene, .hero-orbit) {
+    display: none !important;
+  }
+
+  html body #root .app.app-command-shell :where(.standard-page-header-summary, .standard-page-header-body) {
+    display: grid !important;
+    gap: 11px !important;
+    margin-top: 4px !important;
+  }
+
+  html body #root .app.app-command-shell :where(.standard-page-header-tabs) {
+    display: flex !important;
+    gap: 8px !important;
+    overflow-x: auto !important;
+    padding: 4px 2px 2px !important;
+    scrollbar-width: none !important;
+  }
+
+  html body #root .app.app-command-shell :where(.standard-page-header-tabs::-webkit-scrollbar) {
+    display: none !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-page-header,
+  html body #root .app.app-command-shell.app-tidepool .tidepool-community-header,
+  html body #root .app.app-command-shell.app-vault .vault-command-center,
+  html body #root .app.app-command-shell.app-market .market-page-heading {
+    display: grid !important;
+    gap: 12px !important;
+    padding: 18px 14px !important;
+    margin-inline: 8px !important;
+    border-radius: 22px !important;
+    overflow: hidden !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-page-header .standard-page-header-actions,
+  html body #root .app.app-command-shell.app-tidepool .tidepool-community-header .standard-page-header-actions,
+  html body #root .app.app-command-shell.app-vault .vault-command-center .standard-page-header-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-page-header .standard-page-header-actions button:first-child,
+  html body #root .app.app-command-shell.app-vault .vault-command-center .standard-page-header-actions button:first-child {
+    grid-column: 1 / -1 !important;
+  }
+
+  html body #root .app.app-command-shell.app-tidepool .tidepool-community-header .standard-page-header-actions button:nth-child(n),
+  html body #root .app.app-command-shell.app-tidepool .tidepool-community-header .standard-page-header-actions button:nth-child(n+2) {
+    display: inline-grid !important;
+  }
+
+  html body #root .app.app-command-shell.app-tidepool .tidepool-community-header .standard-page-header-copy p {
+    display: block !important;
+    overflow: visible !important;
+    -webkit-line-clamp: initial !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-command-center .standard-page-header-summary,
+  html body #root .app.app-command-shell.app-vault .vault-command-center .vault-empty-overview-card,
+  html body #root .app.app-command-shell.app-vault .vault-command-center .vault-command-overview,
+  html body #root .app.app-command-shell.app-vault .vault-command-center .standard-page-header-tabs {
+    position: static !important;
+    transform: none !important;
+    inset: auto !important;
+    margin: 0 !important;
+    width: 100% !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-command-center .vault-empty-overview-card {
+    display: grid !important;
+    gap: 12px !important;
+    padding: 14px !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-command-center .vault-empty-overview-card dl,
+  html body #root .app.app-command-shell.app-vault .vault-command-center .vault-command-overview {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 9px !important;
+    overflow: visible !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-command-center .vault-overview-card,
+  html body #root .app.app-command-shell.app-vault .vault-command-center .vault-empty-overview-card dl > div {
+    min-height: 70px !important;
+    padding: 12px !important;
+    border-radius: 16px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-page-heading .standard-page-header-body,
+  html body #root .app.app-command-shell.app-market .market-search-form,
+  html body #root .app.app-command-shell.app-market .market-search-helper-grid,
+  html body #root .app.app-command-shell.app-market .market-search-options,
+  html body #root .app.app-command-shell.app-market .standard-page-header-tabs {
+    width: 100% !important;
+    margin: 0 !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-search-form {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    gap: 8px !important;
+    padding: 8px !important;
+    border-radius: 20px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-search-form input,
+  html body #root .app.app-command-shell.app-market .market-search-form .search-input {
+    min-width: 0 !important;
+    min-height: 48px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-search-helper-grid,
+  html body #root .app.app-command-shell.app-market .market-home-category-row {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-search-options {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-search-options > summary {
+    min-height: 42px !important;
+    white-space: normal !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram :where(
+    .spark-impact-dashboard,
+    .spark-section-block,
+    .spark-donation-tracking-panel,
+    .spark-participation-panel
+  ) {
+    position: static !important;
+    transform: none !important;
+    margin: 0 8px 14px !important;
+    overflow: visible !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-impact-stat-grid,
+  html body #root .app.app-command-shell.app-kidsprogram .spark-impact-milestone-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-section-grid,
+  html body #root .app.app-command-shell.app-kidsprogram .spark-support-examples,
+  html body #root .app.app-command-shell.app-tidepool .tidepool-live-section-grid,
+  html body #root .app.app-command-shell.app-tidepool .tidepool-moderation-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 9px !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-impact-meter,
+  html body #root .app.app-command-shell.app-kidsprogram .spark-impact-meter * {
+    position: static !important;
+    transform: none !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-impact-meter {
+    display: grid !important;
+    gap: 8px !important;
+    margin-top: 10px !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-impact-meter i {
+    display: block !important;
+    width: 100% !important;
+    height: 10px !important;
+    border-radius: 999px !important;
+    overflow: hidden !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-impact-meter em {
+    display: block !important;
+    height: 100% !important;
+    border-radius: inherit !important;
+  }
+
+  html body #root .app.app-command-shell .mobile-bottom-nav::before {
+    top: -72px !important;
+    height: 74px !important;
+  }
+
+  html body #root .app.app-command-shell .mobile-quick-add-fab {
+    bottom: calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 32px) !important;
+  }
+
+  html body #root .app.app-command-shell :where(.panel, .card, .compact-card, .standard-page-header, .command-screen-hero):last-child {
+    margin-bottom: calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 64px) !important;
+  }
+}
+
+@media (max-width: 430px) {
+  html body #root .app.app-command-shell :where(.standard-page-header-copy h2, .command-screen-hero h2) {
+    font-size: clamp(1.55rem, 8vw, 2rem) !important;
+    line-height: 1.08 !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-section-card,
+  html body #root .app.app-command-shell.app-tidepool .tidepool-live-section-card {
+    min-height: 128px !important;
+  }
+}
+
+@media (max-width: 780px) {
+  html body #root .app.app-command-shell.app-kidsprogram .spark-page-header {
+    min-height: 232px !important;
+    align-content: start !important;
+    margin-bottom: 14px !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-page-header .standard-page-header-main,
+  html body #root .app.app-command-shell.app-kidsprogram .spark-page-header .standard-page-header-summary {
+    min-height: 0 !important;
+    max-height: none !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-impact-dashboard {
+    margin-top: 0 !important;
+  }
+
+  html body #root .app.app-command-shell.app-tidepool .tidepool-community-header {
+    min-height: 238px !important;
+    align-content: start !important;
+    margin-bottom: 14px !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-command-center {
+    min-height: 650px !important;
+    align-content: start !important;
+    margin-bottom: 14px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-page-heading {
+    min-height: 426px !important;
+    align-content: start !important;
+    margin-bottom: 14px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-results-panel {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    margin-top: 0 !important;
+  }
+}
+
+@media (max-width: 430px) {
+  html body #root .app.app-command-shell.app-kidsprogram .spark-page-header {
+    min-height: 238px !important;
+  }
+
+  html body #root .app.app-command-shell.app-tidepool .tidepool-community-header {
+    min-height: 252px !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-command-center {
+    min-height: 670px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-page-heading {
+    min-height: 438px !important;
+  }
+}
+
+@media (min-width: 781px) {
+  html body #root .app.app-theme-light :where(.web-command-sidebar, .topbar, .web-command-topbar) {
+    background:
+      radial-gradient(circle at 0% 0%, rgba(245, 122, 80, 0.07), transparent 16rem),
+      linear-gradient(145deg, rgba(255, 252, 247, 0.98), rgba(255, 247, 237, 0.94)) !important;
+  }
+
+  html body #root .app.app-theme-light :where(.web-command-brand, .web-command-promise, .command-desk-card) {
+    background: linear-gradient(145deg, rgba(255, 249, 241, 0.94), rgba(255, 238, 220, 0.78)) !important;
+    border-color: rgba(245, 122, 80, 0.24) !important;
+    color: var(--theme-pass-2-ink) !important;
+  }
+
+  html body #root .app.app-theme-light :where(.topbar-profile-button, .topbar-command-actions button, .web-command-more > summary) {
+    color: var(--theme-pass-2-ink) !important;
+  }
+
+  html body #root .app.app-theme-light :where(.standard-page-header, .command-screen-hero) {
+    background:
+      linear-gradient(90deg, rgba(245, 122, 80, 0.5), rgba(218, 165, 71, 0.25) 36%, transparent 76%) 0 0 / 100% 2px no-repeat,
+      radial-gradient(circle at 8% 0%, rgba(245, 122, 80, 0.12), transparent 18rem),
+      radial-gradient(circle at 100% 8%, rgba(20, 184, 166, 0.08), transparent 18rem),
+      linear-gradient(145deg, rgba(255, 252, 247, 0.98), rgba(255, 244, 230, 0.92)) !important;
+  }
+
+  html body #root .app.app-theme-dark :where(.panel, .card, .compact-card) {
+    margin-bottom: 2px;
+  }
+}
+
+html body #root .app.app-theme-light :where(
+  .standard-page-header,
+  .command-screen-hero,
+  .app-header-card,
+  .scout-summary-card,
+  .vault-command-center,
+  .tidetradr-summary-card,
+  .tidepool-community-header,
+  .kids-spark-header,
+  .utility-page-header
+) {
+  background-color: rgba(255, 252, 247, 0.96) !important;
+}
