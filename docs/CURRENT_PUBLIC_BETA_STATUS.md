@@ -105,3 +105,12 @@ Forge Business Ledger deployment status: local only, not deployed. Production re
 ## Recommended Next Action
 
 Decide whether to deploy the already-committed local feature-improvement branch to production. If the feedback/waitlist flow is intended to be public now, production needs a normal release of `ui-100-preview-checkpoint` or a merge/push path that advances `main` beyond `46c0d2c`.
+
+## Local Theme Update
+
+- Local branch status after the theme pass: Light Mode is the default Ember & Tide theme for public beta UI.
+- Dark Mode remains available as a low-light option and uses the existing cozy dark command-shell styling.
+- Theme choice is offered during signed-out onboarding and Smart Setup, and can be changed later from Settings / Appearance.
+- Theme selection is stored locally on this device and mirrored into the existing beta-local preference snapshot when `betaLocalMode=true`.
+- Production status: not deployed. Public production remains on the live deployment listed above until a later approved release.
+- No backend, auth, billing, database schema, or RLS change was made for theme selection.

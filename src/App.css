@@ -81079,3 +81079,497 @@ button.et-live-action:focus-visible {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Public beta theming: Light is the default, Dark remains available and polished. */
+html[data-theme="light"],
+html[data-theme="light"] body,
+html[data-theme="light"] #root {
+  background: #fbf3e8 !important;
+  color: #102033 !important;
+  color-scheme: light;
+}
+
+html[data-theme="light"] body {
+  background:
+    radial-gradient(circle at 12% 8%, rgba(245, 122, 80, 0.18), transparent 24rem),
+    radial-gradient(circle at 88% 10%, rgba(32, 184, 178, 0.14), transparent 27rem),
+    radial-gradient(circle at 44% 96%, rgba(218, 165, 71, 0.12), transparent 28rem),
+    linear-gradient(145deg, #fff8ef 0%, #f7eadb 54%, #eef8f6 100%) !important;
+}
+
+html[data-theme="light"] body::before {
+  background:
+    linear-gradient(115deg, transparent 0 34%, rgba(20, 184, 166, 0.08) 45%, transparent 56%),
+    radial-gradient(circle at 50% 20%, rgba(245, 122, 80, 0.1), transparent 42rem) !important;
+  opacity: 0.88;
+}
+
+html[data-theme="dark"],
+html[data-theme="dark"] body,
+html[data-theme="dark"] #root {
+  color-scheme: dark;
+}
+
+.app-theme-light,
+.app-shell-light {
+  --et-ink: #102033;
+  --et-muted: rgba(16, 32, 51, 0.68);
+  --et-soft: rgba(16, 32, 51, 0.54);
+  --et-panel: rgba(255, 253, 248, 0.88);
+  --et-panel-strong: rgba(255, 255, 255, 0.94);
+  --et-border: rgba(176, 127, 72, 0.22);
+  --et-page-accent-rgb: 245, 122, 80;
+  --et-page-accent-2-rgb: 20, 184, 166;
+  --color-text: #102033;
+  --color-heading: #0d1b2f;
+  --color-text-muted: rgba(16, 32, 51, 0.66);
+  --color-surface: #fffdfa;
+  --color-surface-elevated: #fff7ed;
+  --color-border: rgba(176, 127, 72, 0.22);
+  color: #102033 !important;
+}
+
+.app-theme-dark,
+.app-shell-dark {
+  color-scheme: dark;
+}
+
+.main.app-shell-themed,
+.app-shell-themed {
+  width: min(100%, 1180px);
+  margin: 0 auto;
+  padding: 16px 14px calc(var(--bottom-nav-height, 62px) + env(safe-area-inset-bottom, 0px) + 22px) !important;
+}
+
+.app-theme-light :where(.main, .auth-main, .app-shell-themed) {
+  background: transparent !important;
+  color: #102033 !important;
+}
+
+.app-theme-light :where(.panel, .card, .section-card, .feature-card, .compact-card, .glass-card, .glass-panel, .standard-page-header, .location-modal, .flow-modal, .quick-add-sheet, .feature-dropdown, .beta-info-card, .beta-form-card, .beta-readiness-card, .empty-state, .small-empty-state, .store-map-card, .store-map-filters, .store-map-canvas, .store-map-detail-reports, .store-map-admin-box, .marketplace-listing-card, .catalog-result-card, .deal-session-card, .tidepool-post-card, .tidepool-rules-card, .home-list-row, .daily-check-card, .family-dashboard-card, .announcement-card, .membership-foundation-panel, .settings-panel, .menu-panel, .drawer-info-card, .settings-preference-panel, .settings-section-card, .live-onboarding-card, .live-onboarding-mini-card, .landing-feature-card, .forge-ledger-section-card, .forge-ledger-hero-card) {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(245, 122, 80, 0.08), transparent 13rem),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(255, 247, 237, 0.82)) !important;
+  border-color: rgba(176, 127, 72, 0.22) !important;
+  box-shadow: 0 16px 38px rgba(70, 45, 24, 0.11), inset 0 1px 0 rgba(255, 255, 255, 0.78) !important;
+  color: #102033 !important;
+}
+
+.app-theme-light.app-command-shell :where(.panel, .card, .section-card, .feature-card, .compact-card, .glass-card, .glass-panel, .standard-page-header, .location-modal, .flow-modal, .quick-add-sheet, .feature-dropdown, .beta-info-card, .beta-form-card, .beta-readiness-card, .empty-state, .small-empty-state, .store-map-card, .store-map-filters, .store-map-canvas, .store-map-detail-reports, .store-map-admin-box, .marketplace-listing-card, .catalog-result-card, .deal-session-card, .tidepool-post-card, .tidepool-rules-card, .home-list-row, .daily-check-card, .family-dashboard-card, .announcement-card, .membership-foundation-panel, .settings-panel, .menu-panel, .drawer-info-card, .settings-preference-panel, .settings-section-card, .live-onboarding-card, .live-onboarding-mini-card, .landing-feature-card, .forge-ledger-section-card, .forge-ledger-hero-card),
+.app-theme-light.app-command-shell.app-home :where(.hearth-northstar-header, .hearth-at-glance-panel, .hearth-today-sparks-panel, .command-hearth-actions-panel, .hearth-build-card, .hearth-recent-activity-panel, .hearth-activity-panel, .hearth-today-message, .hearth-snapshot-pill, .command-hearth-action) {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(245, 122, 80, 0.08), transparent 13rem),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(255, 247, 237, 0.84)) !important;
+  border-color: rgba(176, 127, 72, 0.24) !important;
+  box-shadow: 0 16px 38px rgba(70, 45, 24, 0.11), inset 0 1px 0 rgba(255, 255, 255, 0.78) !important;
+  color: #102033 !important;
+}
+
+.app-theme-light.app-command-shell.app-home .hearth-northstar-header {
+  background:
+    linear-gradient(90deg, rgba(245, 122, 80, 0.5), rgba(218, 165, 71, 0.24) 34%, transparent 74%) 0 0 / 100% 2px no-repeat,
+    radial-gradient(circle at 8% 0%, rgba(245, 122, 80, 0.16), transparent 14rem),
+    radial-gradient(circle at 100% 8%, rgba(20, 184, 166, 0.12), transparent 14rem),
+    linear-gradient(145deg, rgba(255, 252, 247, 0.98), rgba(255, 241, 224, 0.92)) !important;
+}
+
+.app-theme-light.app-command-shell :where(.et-live-panel, .et-live-stat, .et-live-action, .et-live-trust-note),
+.app-theme-light.app-command-shell.app-home :where(.hearth-foundation-journey-panel, .hearth-spark-mission-card, .hearth-points-badge, .hearth-mini-badge-row, .hearth-mode-chip) {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(245, 122, 80, 0.08), transparent 11rem),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(255, 247, 237, 0.82)) !important;
+  border-color: rgba(176, 127, 72, 0.24) !important;
+  color: #102033 !important;
+  box-shadow: 0 12px 26px rgba(70, 45, 24, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.72) !important;
+}
+
+.app-theme-light.app-command-shell.app-home .hearth-foundation-stat-grid .et-live-stat,
+.app-theme-light.app-command-shell.app-home .hearth-foundation-journey-grid .et-live-action,
+.app-theme-light.app-command-shell.app-home .hearth-foundation-quick-grid .et-live-action {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(245, 122, 80, 0.08), transparent 11rem),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(255, 247, 237, 0.82)) !important;
+  border-color: rgba(176, 127, 72, 0.24) !important;
+  color: #102033 !important;
+  box-shadow: 0 12px 26px rgba(70, 45, 24, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.72) !important;
+}
+
+html body #root .app.app-theme-light.app-command-shell.app-home .hearth-foundation-stat-grid button.et-live-stat,
+html body #root .app.app-theme-light.app-command-shell.app-home .hearth-foundation-journey-grid button.et-live-action,
+html body #root .app.app-theme-light.app-command-shell.app-home .hearth-foundation-quick-grid button.et-live-action {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(245, 122, 80, 0.08), transparent 11rem),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(255, 247, 237, 0.82)) !important;
+  border-color: rgba(176, 127, 72, 0.24) !important;
+  color: #102033 !important;
+  box-shadow: 0 12px 26px rgba(70, 45, 24, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.72) !important;
+}
+
+html body #root .app.app-theme-light.app-command-shell :where(.et-live-panel, .panel, .card) > .compact-card-header {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(245, 122, 80, 0.08), transparent 10rem),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.86), rgba(255, 244, 232, 0.76)) !important;
+  border-color: rgba(176, 127, 72, 0.2) !important;
+  color: #102033 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7) !important;
+}
+
+.app-theme-light.app-command-shell :where(.et-live-action-icon, .hearth-spark-mission-icon) {
+  background: rgba(255, 244, 232, 0.88) !important;
+  border-color: rgba(245, 122, 80, 0.24) !important;
+  color: #bf5a36 !important;
+}
+
+.app-theme-light.app-command-shell :where(.et-live-action b, .hearth-spark-mission-copy p, .hearth-spark-mission-card b) {
+  background: rgba(255, 246, 224, 0.9) !important;
+  border-color: rgba(218, 165, 71, 0.24) !important;
+  color: #7a4a13 !important;
+}
+
+.app-theme-light.app-command-shell :where(.standard-page-header, .app-header-card, .command-screen-hero),
+.app-theme-light :where(.hearth-command-hero, .live-onboarding-hero, .signed-out-landing) {
+  background:
+    linear-gradient(90deg, rgba(245, 122, 80, 0.55), rgba(218, 165, 71, 0.28) 34%, transparent 74%) 0 0 / 100% 2px no-repeat,
+    radial-gradient(circle at 8% 0%, rgba(245, 122, 80, 0.14), transparent 14rem),
+    radial-gradient(circle at 100% 8%, rgba(20, 184, 166, 0.1), transparent 14rem),
+    linear-gradient(145deg, rgba(255, 252, 247, 0.96), rgba(255, 241, 224, 0.9)) !important;
+  border-color: rgba(218, 165, 71, 0.28) !important;
+}
+
+.app-theme-light :where(h1, h2, h3, h4, h5, h6, strong, b, dt, .page-title, .standard-page-header-copy h2, .hearth-command-hero h2) {
+  color: #0d1b2f !important;
+  text-shadow: none !important;
+}
+
+.app-theme-light.app-command-shell :where(h1, h2, h3, h4, h5, h6, strong, b, dt, .page-title, .standard-page-header-copy h2, .hearth-command-hero h2),
+.app-theme-light.app-command-shell.app-home :where(.hearth-northstar-header h1, .hearth-northstar-header h2, .hearth-northstar-header h3, .hearth-at-glance-panel h2, .hearth-at-glance-panel strong, .hearth-today-sparks-panel h2, .hearth-today-sparks-panel h3, .hearth-today-sparks-panel strong, .command-hearth-action strong, .et-live-stat strong, .et-live-action strong, .hearth-spark-mission-copy h3, .hearth-foundation-journey-panel h2) {
+  color: #0d1b2f !important;
+  text-shadow: none !important;
+}
+
+.app-theme-light :where(p, small, span, dd, li, label, .compact-subtitle, .standard-page-header-copy p, .hearth-command-hero p) {
+  color: rgba(16, 32, 51, 0.72) !important;
+}
+
+.app-theme-light.app-command-shell :where(p, small, span, dd, li, label, .compact-subtitle, .standard-page-header-copy p, .hearth-command-hero p),
+.app-theme-light.app-command-shell.app-home :where(.hearth-northstar-header p, .hearth-northstar-header small, .hearth-northstar-header span, .hearth-at-glance-panel p, .hearth-at-glance-panel span, .hearth-at-glance-panel small, .hearth-today-sparks-panel p, .hearth-today-sparks-panel span, .hearth-today-sparks-panel small, .command-hearth-action span, .command-hearth-action small, .et-live-stat span, .et-live-stat small, .et-live-action span, .et-live-action small, .hearth-spark-mission-copy small, .hearth-foundation-journey-panel p) {
+  color: rgba(16, 32, 51, 0.72) !important;
+}
+
+.app-theme-light :where(.section-kicker, .eyebrow, .standard-page-header-label) {
+  color: #bf5a36 !important;
+  text-shadow: none !important;
+}
+
+.app-theme-light :where(input, textarea, select, .drawer-field) {
+  background: rgba(255, 255, 255, 0.92) !important;
+  border-color: rgba(16, 32, 51, 0.16) !important;
+  color: #102033 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7) !important;
+}
+
+.app-theme-light :where(input, textarea, select, .drawer-field)::placeholder {
+  color: rgba(16, 32, 51, 0.42) !important;
+}
+
+.app-theme-light :where(button:not(.secondary-button):not(.ghost-button):not(.auth-text-button):not(.inline-text-button):not(.mobile-tab):not(.main-tab):not(.theme-choice-card):not([disabled]), .ember-gradient-button, .drawer-link) {
+  border-color: rgba(245, 122, 80, 0.42) !important;
+  background: linear-gradient(135deg, #f57a50, #d9a547) !important;
+  color: #16110a !important;
+  box-shadow: 0 12px 28px rgba(245, 122, 80, 0.18) !important;
+}
+
+.app-theme-light :where(button:not(.secondary-button):not(.ghost-button):not(.auth-text-button):not(.inline-text-button):not(.mobile-tab):not(.main-tab):not(.theme-choice-card):not([disabled]), .ember-gradient-button, .drawer-link) :where(span, strong, small) {
+  color: #16110a !important;
+}
+
+.app-theme-light :where(.secondary-button, .ghost-button, .auth-text-button, .inline-text-button) {
+  border-color: rgba(16, 32, 51, 0.16) !important;
+  background: rgba(255, 255, 255, 0.74) !important;
+  color: #102033 !important;
+  box-shadow: none !important;
+}
+
+.app-theme-light :where(.standard-page-header-tabs button.active, .standard-page-header-tabs button[aria-selected="true"], .segmented-control button.active, .vault-view-strip button.active, .forge-section-tabs button.is-active, .market-tabs button.active, .filter-chip-row button.active, .chip-row button.active) {
+  border-color: rgba(245, 122, 80, 0.42) !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(245, 122, 80, 0.18), transparent 4rem),
+    rgba(255, 235, 214, 0.82) !important;
+  color: #7a2d1b !important;
+  box-shadow: 0 0 18px rgba(245, 122, 80, 0.12) !important;
+}
+
+.app-theme-light :where(.status-badge, .trust-badge, .source-badge, .mini-badge, .market-status-pill, .price-badge):not(.danger):not(.warning):not(.success):not(.verified):not(.approved):not(.denied):not(.error):not(.sold):not(.in-stock) {
+  border-color: rgba(218, 165, 71, 0.28) !important;
+  background: rgba(255, 246, 224, 0.88) !important;
+  color: #7a4a13 !important;
+}
+
+.app-theme-light .app-shell-header,
+.app-theme-light .topbar,
+.app-theme-light .main-tabs,
+.app-theme-light .drawer.open,
+.app-theme-light .menu-drawer,
+.app-theme-light .navigation-drawer {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(245, 122, 80, 0.1), transparent 10rem),
+    rgba(255, 252, 247, 0.92) !important;
+  border-color: rgba(176, 127, 72, 0.2) !important;
+  color: #102033 !important;
+  box-shadow: 0 14px 34px rgba(70, 45, 24, 0.1) !important;
+}
+
+html body #root .app.app-theme-light.app-command-shell {
+  background:
+    radial-gradient(circle at 14% -10%, rgba(245, 122, 80, 0.12), transparent 26rem),
+    radial-gradient(circle at 92% 0%, rgba(20, 184, 166, 0.1), transparent 24rem),
+    linear-gradient(180deg, rgba(255, 248, 239, 0.96), rgba(247, 234, 219, 0.94) 52%, rgba(238, 248, 246, 0.9)) !important;
+  color: #102033 !important;
+}
+
+html body #root .app.app-theme-light :where(.topbar, .main-tabs.app-main-tabs, .web-command-sidebar) {
+  background:
+    radial-gradient(circle at 8% 0%, rgba(245, 122, 80, 0.1), transparent 8rem),
+    radial-gradient(circle at 100% 0%, rgba(20, 184, 166, 0.08), transparent 8rem),
+    rgba(255, 252, 247, 0.92) !important;
+  border-color: rgba(176, 127, 72, 0.2) !important;
+  color: #102033 !important;
+  box-shadow: 0 14px 34px rgba(70, 45, 24, 0.1) !important;
+}
+
+.app-theme-light .mobile-bottom-nav {
+  border-color: rgba(176, 127, 72, 0.22) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 253, 248, 0.96), rgba(255, 245, 232, 0.94)) !important;
+  box-shadow: 0 14px 36px rgba(70, 45, 24, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.82) !important;
+}
+
+html body #root .app.app-theme-light .mobile-bottom-nav::before {
+  background:
+    linear-gradient(rgba(255, 248, 239, 0), rgba(255, 248, 239, 0.86) 58%, rgba(255, 245, 232, 0.96)) !important;
+}
+
+.app-theme-light .mobile-bottom-nav button {
+  color: rgba(16, 32, 51, 0.62) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.app-theme-light .mobile-bottom-nav button.active,
+.app-theme-light .mobile-bottom-nav button[aria-current="page"] {
+  color: #7a2d1b !important;
+  border-color: rgba(245, 122, 80, 0.42) !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(245, 122, 80, 0.18), transparent 3.25rem),
+    linear-gradient(180deg, rgba(255, 234, 214, 0.82), rgba(255, 248, 237, 0.9)) !important;
+  box-shadow: 0 0 18px rgba(245, 122, 80, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+}
+
+.app-theme-light .mobile-quick-add-fab,
+.app-theme-light .floating-assist-button {
+  border-color: rgba(245, 122, 80, 0.5) !important;
+  background: linear-gradient(135deg, #f57a50, #d9a547) !important;
+  color: #16110a !important;
+}
+
+.app-theme-light :where(.public-beta-intake-card, .public-beta-backend-note, .public-beta-submit-state, .public-beta-safety-note) {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(245, 122, 80, 0.08), transparent 12rem),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(255, 247, 237, 0.82)) !important;
+  border-color: rgba(218, 165, 71, 0.24) !important;
+  color: #102033 !important;
+}
+
+.app-theme-light :where(.public-beta-intake-card, .public-beta-backend-note, .public-beta-submit-state, .public-beta-safety-note) :where(strong, h3, p, span, small) {
+  color: #102033 !important;
+}
+
+html body #root .app.app-theme-light.app-command-shell :where(.settings-app-setup-card, .settings-app-setup-entry-card, .settings-preference-panel, .settings-section-card, .drawer-info-card, .menu-panel) :where(h2, h3, h4, strong, b, dt) {
+  color: #0d1b2f !important;
+  text-shadow: none !important;
+}
+
+html body #root .app.app-theme-light.app-command-shell :where(.settings-app-setup-card, .settings-app-setup-entry-card, .settings-preference-panel, .settings-section-card, .drawer-info-card, .menu-panel) :where(p, span, small, dd, li, label) {
+  color: rgba(16, 32, 51, 0.72) !important;
+  text-shadow: none !important;
+}
+
+html body #root .app.app-theme-light.app-command-shell :where(.settings-app-setup-card, .settings-app-setup-entry-card, .settings-preference-panel, .settings-section-card, .drawer-info-card, .menu-panel) :where(.section-kicker, .status-badge) {
+  color: #7a4a13 !important;
+}
+
+html body #root .app.app-theme-light.app-command-shell :where(.settings-app-setup-card, .settings-app-setup-entry-card, .settings-preference-panel, .settings-section-card, .drawer-info-card, .menu-panel) :where(button:not(.theme-choice-card), .drawer-link) {
+  border-color: rgba(16, 32, 51, 0.16) !important;
+  background: rgba(255, 255, 255, 0.78) !important;
+  color: #102033 !important;
+  box-shadow: 0 10px 22px rgba(70, 45, 24, 0.08) !important;
+}
+
+html body #root .app.app-theme-light.app-command-shell :where(.settings-app-setup-card, .settings-app-setup-entry-card, .settings-preference-panel, .settings-section-card, .drawer-info-card, .menu-panel) :where(button:not(.theme-choice-card), .drawer-link).active {
+  border-color: rgba(245, 122, 80, 0.42) !important;
+  background: linear-gradient(135deg, rgba(255, 234, 214, 0.94), rgba(255, 247, 237, 0.88)) !important;
+  color: #7a2d1b !important;
+}
+
+.app-theme-dark.app-forge .forge-business-ledger-panel,
+.app-theme-dark .forge-business-ledger-panel {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(245, 122, 80, 0.14), transparent 32%),
+    linear-gradient(180deg, rgba(9, 20, 38, 0.94), rgba(3, 9, 21, 0.96)) !important;
+  border-color: rgba(255, 202, 85, 0.18) !important;
+  color: #fff7ed !important;
+}
+
+.app-theme-dark .forge-business-ledger-panel :where(h2, h3, h4, strong, b) {
+  color: #fff7ed !important;
+}
+
+.app-theme-dark .forge-business-ledger-panel :where(p, small, span, dt, dd) {
+  color: rgba(255, 247, 237, 0.76) !important;
+}
+
+.theme-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+}
+
+.theme-choice-grid--compact {
+  gap: 8px;
+}
+
+.theme-choice-card {
+  display: grid !important;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 4px 10px;
+  align-items: center;
+  min-height: 64px;
+  padding: 10px !important;
+  border: 1px solid rgba(148, 163, 184, 0.24) !important;
+  border-radius: 16px !important;
+  background: rgba(255, 255, 255, 0.64) !important;
+  color: inherit !important;
+  box-shadow: none !important;
+  text-align: left;
+}
+
+.theme-choice-card strong,
+.theme-choice-card small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.theme-choice-card small {
+  grid-column: 2;
+  font-size: 0.76rem;
+  line-height: 1.25;
+}
+
+.theme-choice-card.is-selected {
+  border-color: rgba(245, 122, 80, 0.48) !important;
+  background: linear-gradient(145deg, rgba(255, 247, 237, 0.94), rgba(255, 234, 214, 0.76)) !important;
+  box-shadow: 0 12px 24px rgba(245, 122, 80, 0.12) !important;
+}
+
+.app-theme-dark .theme-choice-card {
+  background: rgba(8, 15, 30, 0.74) !important;
+  border-color: rgba(122, 229, 255, 0.18) !important;
+}
+
+.app-theme-dark .theme-choice-card.is-selected {
+  border-color: rgba(255, 202, 85, 0.48) !important;
+  background: linear-gradient(145deg, rgba(18, 31, 52, 0.94), rgba(7, 18, 35, 0.82)) !important;
+}
+
+.theme-choice-preview {
+  display: grid;
+  place-items: center;
+  grid-row: span 2;
+  width: 38px;
+  height: 38px;
+  border-radius: 14px;
+  border: 1px solid rgba(16, 32, 51, 0.14);
+}
+
+.theme-choice-preview i {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+}
+
+.theme-choice-preview--light {
+  background: linear-gradient(145deg, #fffaf3, #f3dcc4);
+}
+
+.theme-choice-preview--light i {
+  background: linear-gradient(135deg, #f57a50, #d9a547);
+  box-shadow: 0 0 16px rgba(245, 122, 80, 0.38);
+}
+
+.theme-choice-preview--dark {
+  background: linear-gradient(145deg, #06111f, #16263d);
+  border-color: rgba(122, 229, 255, 0.22);
+}
+
+.theme-choice-preview--dark i {
+  background: linear-gradient(135deg, #1ed6d0, #ffca55);
+  box-shadow: 0 0 16px rgba(30, 214, 208, 0.34);
+}
+
+.smart-setup-theme-panel,
+.live-onboarding-theme-choice {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid rgba(218, 165, 71, 0.22);
+  border-radius: 18px;
+  background: rgba(255, 248, 237, 0.72);
+}
+
+.app-theme-dark .smart-setup-theme-panel,
+.app-theme-dark .live-onboarding-theme-choice {
+  background: rgba(5, 15, 30, 0.62);
+  border-color: rgba(255, 202, 85, 0.18);
+}
+
+@media (max-width: 780px) {
+  .app.app-command-shell > .main.app-shell-themed {
+    min-height: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    padding-bottom: max(184px, calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 112px)) !important;
+    scroll-padding-bottom: max(196px, calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 124px)) !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .theme-choice-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .theme-choice-grid--compact {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .theme-choice-grid--compact .theme-choice-card {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: start;
+  }
+
+  .theme-choice-grid--compact .theme-choice-preview {
+    grid-row: auto;
+  }
+
+  .theme-choice-grid--compact .theme-choice-card small {
+    grid-column: 1;
+  }
+}
+
+@media (max-width: 430px) {
+  .theme-choice-grid--compact {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

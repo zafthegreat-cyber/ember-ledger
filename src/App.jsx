@@ -1092,6 +1092,11 @@ const QA_UNLOCK_PAID_FEATURES = runtimeParams?.get("qaUnlockPaid") === "true" ||
 const SUBSCRIPTIONS_LIVE = false;
 const FEATURE_GATES_ENABLED = true;
 const LOCAL_STORAGE_KEY = "et-tcg-beta-data";
+const APP_THEME_STORAGE_KEY = "et-tcg-app-theme";
+const APP_THEME_OPTIONS = [
+  { key: "light", label: "Light", helper: "Warm, bright, and easy on the eyes." },
+  { key: "dark", label: "Dark", helper: "Cozy, calm, and easy in low light." },
+];
 const SCOUT_STORAGE_KEY = "et-tcg-beta-scout";
 const TIDEPOOL_STORAGE_KEY = "et-tcg-beta-tidepool";
 const FEEDBACK_STORAGE_KEY = "et-tcg-beta-feedback";
@@ -1156,6 +1161,24 @@ const TOAST_ICON_LABELS = {
 };
 const SCOUT_VISIT_TIME_FUTURE_GRACE_MS = 15 * 60 * 1000;
 const SCOUT_BACKFILL_OLD_DAYS = 30;
+
+function normalizeAppThemeChoice(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  return normalized === "dark" ? "dark" : "light";
+}
+
+function loadStoredAppThemeChoice() {
+  if (typeof localStorage === "undefined") return "light";
+  try {
+    const directPreference = localStorage.getItem(APP_THEME_STORAGE_KEY);
+    if (directPreference) return normalizeAppThemeChoice(directPreference);
+    const saved = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || "{}");
+    return normalizeAppThemeChoice(saved.appThemeChoice || saved.themeChoice || saved.settings?.appThemeChoice);
+  } catch {
+    return "light";
+  }
+}
+
 function toastTypeFromMessage(message = "") {
   const text = String(message || "").toLowerCase();
   if (/\b(error|failed|failure|could not|couldn't|unable|denied|invalid|unavailable|not configured|not created|blocked|permission|try again)\b/.test(text)) return "error";
@@ -5654,6 +5677,8 @@ export default function App() {
   const [smartSetupOpen, setSmartSetupOpen] = useState(false);
   const [smartSetupStep, setSmartSetupStep] = useState(SMART_SETUP_STEPS[0]);
   const [smartSetupDraft, setSmartSetupDraft] = useState(() => normalizeSmartSetupPreferences());
+  const [appThemeChoice, setAppThemeChoice] = useState(() => loadStoredAppThemeChoice());
+  const resolvedAppTheme = normalizeAppThemeChoice(appThemeChoice);
   const [appSetupPanel, setAppSetupPanel] = useState("setup");
   const [appSetupPersonalization, setAppSetupPersonalization] = useState(() => normalizeAppPersonalizationPreferences());
   const [hearthStartHereExpanded, setHearthStartHereExpanded] = useState(false);
@@ -10688,6 +10713,7 @@ export default function App() {
     const recommendation = recommendSmartSetup(normalized, { adminAllowed: adaptiveAdminNavVisible });
     const nextSetup = {
       ...normalized,
+      themeChoice: resolvedAppTheme,
       recommendedPlanType: recommendation.planType,
       recommendedPlanLabel: recommendation.label,
       setupCompletedAt: complete ? now : normalized.setupCompletedAt,
@@ -15149,6 +15175,7 @@ export default function App() {
       setDashboardPreset(savedPreset);
       setDashboardLayout(normalizeDashboardLayout(saved.dashboardLayout, savedPreset));
       setDashboardCardStyle(normalizeDashboardCardStyle(saved.dashboardCardStyle));
+      setAppThemeChoice(normalizeAppThemeChoice(saved.appThemeChoice || saved.themeChoice || saved.settings?.appThemeChoice || loadStoredAppThemeChoice()));
       setAppSetupPersonalization(normalizeAppPersonalizationPreferences(saved.appSetupPersonalization || saved.settings?.appSetupPersonalization, {
         userType: savedUserType,
         dashboardPreset: savedPreset,
@@ -15533,6 +15560,16 @@ export default function App() {
   }, [forgeModeSettings]);
 
   useEffect(() => {
+    if (typeof document !== "undefined") {
+      document.documentElement.setAttribute("data-theme", resolvedAppTheme);
+      document.body?.setAttribute("data-theme", resolvedAppTheme);
+    }
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(APP_THEME_STORAGE_KEY, resolvedAppTheme);
+    }
+  }, [resolvedAppTheme]);
+
+  useEffect(() => {
     if (!BETA_LOCAL_MODE || !localDataLoaded) return;
     let persistedLocationSettings = null;
     try {
@@ -15579,6 +15616,7 @@ export default function App() {
         dashboardPreset,
         dashboardLayout,
         dashboardCardStyle,
+        appThemeChoice: resolvedAppTheme,
         appSetupPersonalization: normalizeAppPersonalizationPreferences(appSetupPersonalization, {
           userType,
           dashboardPreset,
@@ -15596,7 +15634,7 @@ export default function App() {
         },
       })
     );
-  }, [items, purchasers, catalogProducts, tideTradrWatchlist, marketplaceListings, marketplaceReports, marketplaceSavedIds, tideTradrLookupId, marketPriceCache, userSearchAliases, expenses, sales, tradeRecords, vehicles, mileageTrips, workspaces, workspaceMembers, workspaceInvites, activeWorkspaceId, forgeModeSettings, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, appSetupPersonalization, cloudSyncPreference, locationSettings, subscriptionProfile, currentUserProfile, adminModeStorageReady, adminViewMode, localDataLoaded]);
+  }, [items, purchasers, catalogProducts, tideTradrWatchlist, marketplaceListings, marketplaceReports, marketplaceSavedIds, tideTradrLookupId, marketPriceCache, userSearchAliases, expenses, sales, tradeRecords, vehicles, mileageTrips, workspaces, workspaceMembers, workspaceInvites, activeWorkspaceId, forgeModeSettings, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, resolvedAppTheme, appSetupPersonalization, cloudSyncPreference, locationSettings, subscriptionProfile, currentUserProfile, adminModeStorageReady, adminViewMode, localDataLoaded]);
 
   useEffect(() => {
     if (!BETA_LOCAL_MODE || !localDataLoaded) return;
@@ -39136,6 +39174,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <h3>What brings you to Ember & Tide?</h3>
                 <p>Select any that fit. This only changes what the app shows first.</p>
                 {renderChipGrid(SMART_SETUP_PURPOSE_OPTIONS, "purposes")}
+                <div className="smart-setup-theme-panel">
+                  <div>
+                    <strong>Choose your starting theme</strong>
+                    <p>Light is the public beta default. You can switch to Dark anytime in Settings.</p>
+                  </div>
+                  {renderThemeChoiceControl({ compact: true, syncSetupDraft: true })}
+                </div>
               </div>
             ) : null}
             {step === "tools" ? (
@@ -50286,7 +50331,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
   if (activeTab === "resetPassword") {
     return (
-      <div className="app app-reset-password">
+      <div className={`app app-reset-password app-theme-${resolvedAppTheme}`} data-theme={resolvedAppTheme}>
         <header className="header app-shell-header app-shell-header--full">
           <h1>E&amp;T TCG</h1>
           <p>Reset your Ember &amp; Tide password.</p>
@@ -50767,6 +50812,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </article>
 
           <aside className="live-onboarding-card live-onboarding-safety glass-card">
+            <div className="live-onboarding-theme-choice">
+              <strong>Choose your app look</strong>
+              <p className="compact-subtitle">Start in Light for a bright family setup, or switch to Dark for low-light collecting.</p>
+              {renderThemeChoiceControl({ compact: true })}
+            </div>
             <strong>Safety foundation</strong>
             <div className="settings-stacked-list">
               {[
@@ -50816,7 +50866,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     })();
 
     return (
-      <div className={`app app-${String(activeMainTab || activeTab || "home").toLowerCase()}`}>
+      <div className={`app app-${String(activeMainTab || activeTab || "home").toLowerCase()} app-theme-${resolvedAppTheme}`} data-theme={resolvedAppTheme}>
         <header className="header app-shell-header app-shell-header--full">
           <h1
   onClick={() => {
@@ -51057,7 +51107,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       ? "Ember & Tide is starting in Virginia. Your state waitlist request helps us decide where to expand next."
       : "We review beta access to keep the community safe and family-friendly.";
     return (
-      <div className="app app-shoreline-access">
+      <div className={`app app-shoreline-access app-theme-${resolvedAppTheme}`} data-theme={resolvedAppTheme}>
         <main className="main shoreline-access-main">
           <section className="shoreline-hero glass-panel">
             <div className="shoreline-brand-mark" aria-hidden="true">
@@ -53443,6 +53493,37 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     }, 40);
   }
 
+  function updateAppThemeChoice(nextTheme, { syncSetupDraft = false } = {}) {
+    const normalized = normalizeAppThemeChoice(nextTheme);
+    setAppThemeChoice(normalized);
+    if (syncSetupDraft) updateSmartSetupDraft({ themeChoice: normalized });
+  }
+
+  function renderThemeChoiceControl({ compact = false, syncSetupDraft = false } = {}) {
+    return (
+      <div className={compact ? "theme-choice-grid theme-choice-grid--compact" : "theme-choice-grid"} role="group" aria-label="Theme preference">
+        {APP_THEME_OPTIONS.map((option) => {
+          const selected = resolvedAppTheme === option.key;
+          return (
+            <button
+              key={option.key}
+              type="button"
+              className={selected ? "theme-choice-card is-selected" : "theme-choice-card"}
+              aria-pressed={selected}
+              onClick={() => updateAppThemeChoice(option.key, { syncSetupDraft })}
+            >
+              <span className={`theme-choice-preview theme-choice-preview--${option.key}`} aria-hidden="true">
+                <i />
+              </span>
+              <strong>{option.label}</strong>
+              <small>{option.helper}</small>
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
   function renderAppSetupProminentEntryCard() {
     return (
       <section className="drawer-info-card settings-app-setup-entry-card utility-card utility-card-wide">
@@ -53503,8 +53584,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <div className="settings-preference-grid">
           <article className="settings-preference-panel">
             <span>Appearance</span>
-            <strong>Dark premium shell</strong>
-            <p>Current density: {dashboardCardStyle}.</p>
+            <strong>{resolvedAppTheme === "dark" ? "Dark cozy shell" : "Light warm shell"}</strong>
+            <p>Light is the default for public beta. Dark stays available for low-light collecting.</p>
+            {renderThemeChoiceControl({ compact: true })}
+            <p className="compact-subtitle">Current density: {dashboardCardStyle}.</p>
             <div className="drawer-inline-actions">
               {DASHBOARD_CARD_STYLES.map((style) => (
                 <button key={style} type="button" className={dashboardCardStyle === style ? "drawer-link active" : "drawer-link"} onClick={() => updateDashboardCardStyle(style)}>
@@ -54587,7 +54670,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
   if (activeTab === "invite") {
     return (
-      <div className="app app-invite">
+      <div className={`app app-invite app-theme-${resolvedAppTheme}`} data-theme={resolvedAppTheme}>
         <header className="header app-shell-header app-shell-header--full">
           <h1>Ember &amp; Tide</h1>
           <p>Personal beta invite</p>
@@ -54603,7 +54686,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
   if (activeTab === "workspaceInvite") {
     return (
-      <div className="app app-invite">
+      <div className={`app app-invite app-theme-${resolvedAppTheme}`} data-theme={resolvedAppTheme}>
         <header className="header app-shell-header app-shell-header--full">
           <h1>Ember &amp; Tide</h1>
           <p>Workspace invite</p>
@@ -54637,7 +54720,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   );
 
   return (
-    <div className={`app app-command-shell app-${String(activeMainTab || activeTab || "home").toLowerCase()}${activeTab === "market" ? " app-market" : ""} app-adaptive-${adaptiveUiState.mode} app-header-${headerMode}${guestPreviewActive ? " guest-preview-mode" : ""}${adminViewingAsAdmin ? " admin-view-mode" : ""}${adminEditModeActive ? " admin-edit-mode" : ""}`}>
+    <div className={`app app-command-shell app-${String(activeMainTab || activeTab || "home").toLowerCase()}${activeTab === "market" ? " app-market" : ""} app-adaptive-${adaptiveUiState.mode} app-header-${headerMode} app-theme-${resolvedAppTheme}${guestPreviewActive ? " guest-preview-mode" : ""}${adminViewingAsAdmin ? " admin-view-mode" : ""}${adminEditModeActive ? " admin-edit-mode" : ""}`} data-theme={resolvedAppTheme}>
     <header className={`header app-shell-header app-shell-header--${headerMode}`}>
   <h1
     onClick={() => {
@@ -55702,6 +55785,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   </div>
                   <div className="drawer-info-card">
                     <strong>Appearance</strong>
+                    <p className="compact-subtitle">Theme: {resolvedAppTheme === "dark" ? "Dark" : "Light"}. Light is the default; Dark stays available for low light.</p>
+                    {renderThemeChoiceControl({ compact: true })}
                     <p className="compact-subtitle">Current density: {dashboardCardStyle}. Keep the beta compact on mobile, or switch to a roomier card style.</p>
                     <div className="drawer-inline-actions">
                       {DASHBOARD_CARD_STYLES.map((style) => (
@@ -59249,7 +59334,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         </div>
       ) : null}
 
-      <main className={`main app-shell-dark dashboard-card-style-${dashboardCardStyle}`}>
+      <main className={`main app-shell-themed app-shell-${resolvedAppTheme} dashboard-card-style-${dashboardCardStyle}`} data-theme={resolvedAppTheme}>
         {activeTabLocked ? (
           <UpgradeScreen featureKey={activeTabFeature} subscriptionsLive={SUBSCRIPTIONS_LIVE} onBack={() => setActiveTab("dashboard")} />
         ) : null}
