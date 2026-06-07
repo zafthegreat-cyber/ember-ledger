@@ -81607,6 +81607,7 @@ html body #root .app.app-theme-light :where(
   .scout-submit-primary,
   .vault-command-quick-add,
   .market-search-submit,
+  .market-search-form > button,
   .public-beta-submit-button
 ) {
   border-color: rgba(245, 122, 80, 0.48) !important;
@@ -81852,5 +81853,601 @@ html body #root .app.app-theme-light :where(.live-onboarding-hero, .live-onboard
 @media (max-width: 430px) {
   .theme-choice-grid--compact {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Theme polish pass one: shared shell, modal, and page-surface refinements. */
+html body #root .app.app-theme-light :where(
+  .location-modal,
+  .flow-modal,
+  .quick-add-sheet,
+  .quick-add-menu,
+  .public-beta-feedback-modal,
+  .ember-assist-panel
+) {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(245, 122, 80, 0.1), transparent 15rem),
+    radial-gradient(circle at 100% 8%, rgba(20, 184, 166, 0.08), transparent 16rem),
+    linear-gradient(145deg, rgba(255, 253, 248, 0.98), rgba(255, 246, 235, 0.96)) !important;
+  border-color: rgba(176, 127, 72, 0.28) !important;
+  color: #102033 !important;
+  box-shadow: 0 26px 70px rgba(70, 45, 24, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.82) !important;
+}
+
+html body #root .app.app-theme-light :where(
+  .location-modal,
+  .flow-modal,
+  .quick-add-sheet,
+  .quick-add-menu,
+  .public-beta-feedback-modal,
+  .ember-assist-panel
+) :where(h1, h2, h3, h4, strong, b, dt, .modal-title-row h2) {
+  color: #0d1b2f !important;
+  text-shadow: none !important;
+}
+
+html body #root .app.app-theme-light :where(
+  .location-modal,
+  .flow-modal,
+  .quick-add-sheet,
+  .quick-add-menu,
+  .public-beta-feedback-modal,
+  .ember-assist-panel
+) :where(p, span, small, label, dd, li, .compact-subtitle, .section-kicker) {
+  color: rgba(16, 32, 51, 0.72) !important;
+  text-shadow: none !important;
+}
+
+html body #root .app.app-theme-light .public-beta-feedback-modal :where(.field, label:not(.checkbox-row)) {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-theme-light .public-beta-feedback-modal .field > span,
+html body #root .app.app-theme-light .public-beta-feedback-modal .field > label,
+html body #root .app.app-theme-light .public-beta-feedback-modal .field-label-row,
+html body #root .app.app-theme-light .public-beta-feedback-modal .field-label-row > span,
+html body #root .app.app-theme-light .public-beta-feedback-modal :where(.field-label, .form-label) {
+  display: block !important;
+  width: fit-content !important;
+  margin: 0 0 6px !important;
+  padding: 0 !important;
+  background: transparent !important;
+  color: rgba(16, 32, 51, 0.72) !important;
+  font-size: 0.72rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0 !important;
+  line-height: 1.2 !important;
+  text-shadow: none !important;
+}
+
+html body #root .app.app-theme-light :where(
+  .modal-title-row,
+  .modal-sticky-header,
+  .modal-sticky-footer,
+  .quick-add-sheet-header,
+  .location-modal-actions,
+  .flow-modal-footer
+) {
+  background:
+    linear-gradient(180deg, rgba(255, 253, 248, 0.98), rgba(255, 247, 237, 0.94)) !important;
+  border-color: rgba(176, 127, 72, 0.2) !important;
+  color: #102033 !important;
+  box-shadow: 0 10px 24px rgba(70, 45, 24, 0.08) !important;
+}
+
+html body #root .app.app-theme-light :where(
+  .flow-modal-body,
+  .location-modal-content,
+  .location-modal-body,
+  .quick-add-sheet-body,
+  .public-beta-feedback-body,
+  .ember-assist-body
+) {
+  background: transparent !important;
+  color: #102033 !important;
+}
+
+html body #root .app.app-theme-light :where(
+  input,
+  textarea,
+  select,
+  .drawer-field,
+  .vault-search-input,
+  .vault-filter-select,
+  .search-input,
+  .scout-watch-picker-search,
+  .scout-watch-picker-search input
+) {
+  background: rgba(255, 255, 255, 0.94) !important;
+  border-color: rgba(16, 32, 51, 0.18) !important;
+  color: #102033 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82), 0 8px 18px rgba(70, 45, 24, 0.06) !important;
+}
+
+html body #root .app.app-theme-light :where(input, textarea, select, .search-input)::placeholder {
+  color: rgba(16, 32, 51, 0.44) !important;
+  opacity: 1 !important;
+}
+
+html body #root .app.app-theme-light :where(
+  .public-beta-intake-card,
+  .public-beta-backend-note,
+  .public-beta-submit-state,
+  .public-beta-safety-note,
+  .quick-add-group,
+  .quick-add-menu button,
+  .ember-assist-panel .panel,
+  .ember-assist-panel .card,
+  .ember-assist-panel .quick-actions button,
+  .flow-inline-message,
+  .validation-message,
+  .modal-footer-hint
+) {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(245, 122, 80, 0.08), transparent 10rem),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(255, 248, 239, 0.84)) !important;
+  border-color: rgba(176, 127, 72, 0.24) !important;
+  color: #102033 !important;
+  box-shadow: 0 10px 22px rgba(70, 45, 24, 0.08) !important;
+}
+
+html body #root .app.app-theme-light :where(
+  .public-beta-intake-card,
+  .public-beta-backend-note,
+  .public-beta-submit-state,
+  .public-beta-safety-note,
+  .quick-add-group,
+  .quick-add-menu button,
+  .ember-assist-panel .panel,
+  .ember-assist-panel .card,
+  .flow-inline-message,
+  .validation-message,
+  .modal-footer-hint
+) :where(h3, strong, b, p, span, small, label) {
+  color: inherit !important;
+  opacity: 1 !important;
+}
+
+html body #root .app.app-theme-light :where(
+  .add-anything-flow,
+  .add-anything-entry,
+  .add-anything-hero,
+  .add-anything-option,
+  .add-anything-option-grid,
+  .quick-add-missing-help
+) {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(20, 184, 166, 0.08), transparent 10rem),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(255, 248, 239, 0.86)) !important;
+  border-color: rgba(176, 127, 72, 0.24) !important;
+  color: #102033 !important;
+  box-shadow: 0 10px 22px rgba(70, 45, 24, 0.08) !important;
+}
+
+html body #root .app.app-theme-light :where(
+  .add-anything-flow,
+  .add-anything-entry,
+  .add-anything-hero,
+  .add-anything-option,
+  .add-anything-option-grid,
+  .quick-add-missing-help
+) :where(h2, h3, strong, b, p, span, small) {
+  color: #102033 !important;
+  text-shadow: none !important;
+  opacity: 1 !important;
+}
+
+html body #root .app.app-theme-light :where(.add-anything-option-icon, .add-anything-hero-icon) {
+  background: rgba(255, 244, 232, 0.92) !important;
+  border-color: rgba(245, 122, 80, 0.28) !important;
+  color: #bf5a36 !important;
+}
+
+html body #root .app.app-theme-light :where(
+  .checkbox-row,
+  .checkbox-grid,
+  .public-beta-followup-row,
+  .public-beta-interest-grid
+) {
+  background: rgba(255, 252, 247, 0.82) !important;
+  border-color: rgba(176, 127, 72, 0.22) !important;
+  color: #102033 !important;
+  box-shadow: 0 8px 18px rgba(70, 45, 24, 0.06) !important;
+}
+
+html body #root .app.app-theme-light :where(
+  .checkbox-row,
+  .checkbox-grid,
+  .public-beta-followup-row,
+  .public-beta-interest-grid
+) :where(label, span, strong, small) {
+  color: rgba(16, 32, 51, 0.72) !important;
+  opacity: 1 !important;
+}
+
+html body #root .app.app-theme-light :where(
+  .ember-assist-header,
+  .ember-assist-scroll,
+  .ember-assist-context-card,
+  .ember-assist-live-hero,
+  .ember-assist-guidance-strip,
+  .ember-assist-quick-action-grid button,
+  .ember-assist-safety-note,
+  .ember-assist-primary-prompts button,
+  .ember-assist-recent-help,
+  .ember-assist-recent-help article,
+  .ember-assist-empty,
+  .ember-assist-status,
+  .ember-assist-message,
+  .ember-assist-prompts button,
+  .ember-assist-helpful-links,
+  .ember-assist-form
+) {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(245, 122, 80, 0.08), transparent 11rem),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(255, 248, 239, 0.86)) !important;
+  border-color: rgba(176, 127, 72, 0.24) !important;
+  color: #102033 !important;
+  box-shadow: 0 10px 22px rgba(70, 45, 24, 0.08) !important;
+}
+
+html body #root .app.app-theme-light :where(
+  .ember-assist-header,
+  .ember-assist-context-card,
+  .ember-assist-live-hero,
+  .ember-assist-guidance-strip,
+  .ember-assist-quick-action-grid button,
+  .ember-assist-safety-note,
+  .ember-assist-primary-prompts button,
+  .ember-assist-recent-help,
+  .ember-assist-recent-help article,
+  .ember-assist-empty,
+  .ember-assist-status,
+  .ember-assist-message,
+  .ember-assist-prompts button,
+  .ember-assist-helpful-links,
+  .ember-assist-form
+) :where(h2, h3, strong, b, p, span, small, label) {
+  color: #102033 !important;
+  text-shadow: none !important;
+  opacity: 1 !important;
+}
+
+html body #root .app.app-theme-light :where(.ember-assist-hero-mark) {
+  background: linear-gradient(135deg, #f57a50, #d9a547) !important;
+  color: #16110a !important;
+  box-shadow: 0 14px 30px rgba(245, 122, 80, 0.18) !important;
+}
+
+html body #root .app.app-theme-light :where(.ember-assist-footer-actions button[type="submit"], .public-beta-feedback-modal button[type="submit"]) {
+  border-color: rgba(245, 122, 80, 0.48) !important;
+  background: linear-gradient(135deg, #f57a50, #d9a547) !important;
+  color: #16110a !important;
+}
+
+html body #root .app.app-theme-light :where(
+  .location-modal,
+  .flow-modal,
+  .quick-add-sheet,
+  .quick-add-menu,
+  .public-beta-feedback-modal,
+  .ember-assist-panel,
+  .standard-page-header,
+  .command-screen-hero,
+  .theme-choice-card,
+  .smart-setup-theme-panel,
+  .live-onboarding-theme-choice,
+  .add-anything-hero,
+  .add-anything-option,
+  .checkbox-row,
+  .checkbox-grid,
+  .store-map-filters,
+  .vault-live-controls-card,
+  .vault-view-strip,
+  .market-search-helper-grid,
+  .market-search-options,
+  .market-search-options > summary,
+  .market-home-category-row,
+  .spark-impact-stat-card,
+  .tidepool-post-card,
+  .ember-assist-context-card,
+  .ember-assist-live-hero,
+  .ember-assist-guidance-strip,
+  .ember-assist-quick-action-grid button,
+  .ember-assist-safety-note,
+  .ember-assist-form
+) {
+  background-color: #fffaf4 !important;
+}
+
+html body #root .app.app-theme-light :where(.modal-close-button, .modal-icon-close, .modal-close-icon) {
+  background: rgba(255, 255, 255, 0.8) !important;
+  border-color: rgba(16, 32, 51, 0.18) !important;
+  color: #102033 !important;
+  box-shadow: 0 10px 22px rgba(70, 45, 24, 0.08) !important;
+}
+
+html body #root .app.app-theme-light :where(
+  .theme-choice-card,
+  .smart-setup-theme-panel,
+  .live-onboarding-theme-choice
+) {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(245, 122, 80, 0.08), transparent 10rem),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(255, 246, 235, 0.86)) !important;
+  border-color: rgba(176, 127, 72, 0.24) !important;
+  color: #102033 !important;
+  box-shadow: 0 12px 26px rgba(70, 45, 24, 0.08) !important;
+}
+
+html body #root .app.app-theme-light :where(.theme-choice-card.is-selected) {
+  background:
+    linear-gradient(90deg, rgba(245, 122, 80, 0.52), rgba(218, 165, 71, 0.26) 44%, transparent 82%) 0 0 / 100% 2px no-repeat,
+    linear-gradient(145deg, rgba(255, 248, 237, 0.98), rgba(255, 233, 214, 0.9)) !important;
+  border-color: rgba(245, 122, 80, 0.44) !important;
+  box-shadow: 0 14px 30px rgba(245, 122, 80, 0.14) !important;
+}
+
+html body #root .app.app-theme-light :where(
+  .scout-summary-card,
+  .standard-page-header.scout-summary-card,
+  .vault-command-center,
+  .tidetradr-summary-card,
+  .forge-command-center,
+  .tidepool-community-header,
+  .kids-spark-header,
+  .kids-program-layout,
+  .command-screen-hero
+) {
+  background:
+    linear-gradient(90deg, rgba(245, 122, 80, 0.54), rgba(218, 165, 71, 0.28) 34%, transparent 74%) 0 0 / 100% 2px no-repeat,
+    radial-gradient(circle at 9% 0%, rgba(245, 122, 80, 0.14), transparent 14rem),
+    radial-gradient(circle at 100% 8%, rgba(20, 184, 166, 0.1), transparent 14rem),
+    linear-gradient(145deg, rgba(255, 252, 247, 0.97), rgba(255, 241, 224, 0.9)) !important;
+  border-color: rgba(218, 165, 71, 0.28) !important;
+  color: #102033 !important;
+  box-shadow: 0 16px 38px rgba(70, 45, 24, 0.11), inset 0 1px 0 rgba(255, 255, 255, 0.78) !important;
+}
+
+html body #root .app.app-theme-light :where(
+  .scout-summary-card,
+  .standard-page-header.scout-summary-card,
+  .vault-command-center,
+  .tidetradr-summary-card,
+  .forge-command-center,
+  .tidepool-community-header,
+  .kids-spark-header,
+  .kids-program-layout,
+  .command-screen-hero
+) :where(h1, h2, h3, strong, b, p, span, small, .section-kicker) {
+  color: #102033 !important;
+  text-shadow: none !important;
+}
+
+html body #root .app.app-theme-light :where(
+  .store-map-filters,
+  .vault-live-controls-card,
+  .vault-live-summary-grid,
+  .vault-view-strip,
+  .market-search-helper-grid,
+  .market-search-options,
+  .market-home-category-row,
+  .market-tabs,
+  .filter-grid,
+  .chip-row,
+  .scout-filter-grid,
+  .scout-safety-strip,
+  .spark-impact-dashboard,
+  .spark-impact-stat-card,
+  .tidepool-live-section-card,
+  .tidepool-post-card
+) {
+  background: rgba(255, 250, 244, 0.78) !important;
+  border-color: rgba(176, 127, 72, 0.2) !important;
+  color: #102033 !important;
+  box-shadow: 0 10px 24px rgba(70, 45, 24, 0.08) !important;
+}
+
+html body #root .app.app-theme-light :where(
+  .store-map-filters button,
+  .vault-view-strip button,
+  .market-search-helper-grid span,
+  .market-search-options > summary,
+  .market-search-options button,
+  .market-home-category-row button,
+  .market-tabs button,
+  .filter-grid button,
+  .chip-row button,
+  .scout-filter-grid button,
+  .standard-page-header-tabs button,
+  .status-badge,
+  .trust-badge,
+  .confidence-badge,
+  .source-badge,
+  .mini-badge,
+  .market-status-pill,
+  .price-badge
+) {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(255, 241, 224, 0.82)) !important;
+  border-color: rgba(218, 165, 71, 0.25) !important;
+  color: #102033 !important;
+  box-shadow: 0 8px 18px rgba(70, 45, 24, 0.07) !important;
+}
+
+html body #root .app.app-theme-light :where(
+  .store-map-filters button.active,
+  .vault-view-strip button.active,
+  .market-search-options button.active,
+  .market-search-options[open] > summary,
+  .market-home-category-row button.active,
+  .market-tabs button.active,
+  .filter-grid button.active,
+  .chip-row button.active,
+  .scout-filter-grid button.active,
+  .standard-page-header-tabs button.active,
+  .standard-page-header-tabs button[aria-selected="true"]
+) {
+  background: linear-gradient(145deg, rgba(255, 229, 209, 0.96), rgba(255, 246, 224, 0.9)) !important;
+  border-color: rgba(245, 122, 80, 0.42) !important;
+  color: #7a2d1b !important;
+}
+
+html body #root .app.app-theme-dark :where(.location-modal, .flow-modal, .quick-add-sheet, .quick-add-menu, .ember-assist-panel) {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(255, 122, 24, 0.12), transparent 16rem),
+    radial-gradient(circle at 100% 6%, rgba(30, 214, 208, 0.1), transparent 16rem),
+    linear-gradient(145deg, rgba(8, 18, 34, 0.98), rgba(3, 9, 21, 0.96)) !important;
+  border-color: rgba(122, 229, 255, 0.18) !important;
+  color: #fff7ed !important;
+}
+
+html body #root .app.app-theme-dark :where(.modal-sticky-header, .modal-sticky-footer, .location-modal-actions, .flow-modal-footer, .quick-add-sheet-header) {
+  background: linear-gradient(180deg, rgba(8, 18, 34, 0.98), rgba(3, 9, 21, 0.94)) !important;
+  border-color: rgba(122, 229, 255, 0.14) !important;
+}
+
+html body #root .app.app-theme-dark :where(.quick-add-menu button, .public-beta-intake-card, .public-beta-backend-note, .public-beta-submit-state, .public-beta-safety-note) {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 122, 24, 0.08), transparent 10rem),
+    linear-gradient(145deg, rgba(13, 27, 47, 0.92), rgba(7, 18, 35, 0.84)) !important;
+  border-color: rgba(255, 202, 85, 0.18) !important;
+}
+
+@media (max-width: 780px) {
+  html body #root .app.app-command-shell > .main.app-shell-themed {
+    padding-top: max(18px, calc(env(safe-area-inset-top, 0px) + 12px)) !important;
+    padding-bottom: max(226px, calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 154px)) !important;
+    scroll-padding-top: max(18px, calc(env(safe-area-inset-top, 0px) + 12px)) !important;
+    scroll-padding-bottom: max(238px, calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 166px)) !important;
+  }
+
+  html body #root .app.app-command-shell :where(.standard-page-header, .command-screen-hero) {
+    z-index: 2 !important;
+    overflow: visible !important;
+    padding: 18px 14px !important;
+    margin-top: 2px !important;
+  }
+
+  html body #root .app.app-command-shell :where(.standard-page-header-copy h2, .command-screen-hero h2) {
+    line-height: 1.12 !important;
+    padding-top: 2px !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .standard-page-header.scout-summary-card {
+    display: grid !important;
+    gap: 12px !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 300px !important;
+    overflow: hidden !important;
+    padding-top: 22px !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .standard-page-header.scout-summary-card .standard-page-header-main {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 14px !important;
+    position: relative !important;
+    z-index: 3 !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .standard-page-header.scout-summary-card .standard-page-header-copy {
+    display: grid !important;
+    gap: 8px !important;
+    min-width: 0 !important;
+    position: relative !important;
+    z-index: 3 !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .standard-page-header.scout-summary-card .standard-page-header-actions {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    width: 100% !important;
+    gap: 8px !important;
+    position: static !important;
+    z-index: 3 !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .standard-page-header.scout-summary-card .standard-page-header-actions button {
+    width: 100% !important;
+    min-height: 42px !important;
+    white-space: normal !important;
+  }
+
+  html body #root .app.app-command-shell :where(.flow-modal, .location-modal, .quick-add-sheet, .quick-add-menu, .public-beta-feedback-modal, .ember-assist-panel) {
+    max-height: calc(92dvh - env(safe-area-inset-top, 0px)) !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-shell.is-open .ember-assist-panel {
+    top: max(10px, calc(env(safe-area-inset-top, 0px) + 10px)) !important;
+    bottom: max(10px, calc(env(safe-area-inset-bottom, 0px) + 10px)) !important;
+    left: max(10px, env(safe-area-inset-left, 0px)) !important;
+    right: max(10px, env(safe-area-inset-right, 0px)) !important;
+    max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 20px) !important;
+    border-radius: 22px !important;
+    overflow: hidden !important;
+  }
+
+  html body #root .app.app-command-shell :where(.flow-modal-body, .location-modal-content, .public-beta-feedback-body, .quick-add-sheet-body) {
+    padding-bottom: calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 96px) !important;
+    scroll-padding-bottom: calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 116px) !important;
+  }
+
+  html body #root .app.app-command-shell :where(.location-modal-actions, .modal-sticky-footer, .flow-modal-footer) {
+    padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  html body #root .app.app-command-shell .mobile-bottom-nav {
+    bottom: max(10px, env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  html body #root .app.app-command-shell .mobile-bottom-nav::before {
+    top: -96px !important;
+    height: 98px !important;
+  }
+
+  html body #root .app.app-theme-light.app-command-shell .mobile-bottom-nav::before {
+    background: linear-gradient(180deg, rgba(255, 248, 239, 0), rgba(255, 248, 239, 0.78) 55%, rgba(255, 245, 232, 0.96)) !important;
+  }
+
+  html body #root .app.app-theme-dark.app-command-shell .mobile-bottom-nav::before {
+    background: linear-gradient(180deg, rgba(2, 7, 18, 0), rgba(2, 7, 18, 0.74) 55%, rgba(2, 7, 18, 0.98)) !important;
+  }
+
+  html body #root .app.app-command-shell .mobile-quick-add-fab {
+    bottom: calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 22px) !important;
+  }
+
+  html body #root .app.app-command-shell:has(.flow-modal-backdrop) .mobile-bottom-nav,
+  html body #root .app.app-command-shell:has(.location-modal-backdrop) .mobile-bottom-nav,
+  html body #root .app.app-command-shell:has(.quick-add-backdrop) .mobile-bottom-nav {
+    display: none !important;
+  }
+}
+
+@media (min-width: 781px) {
+  html body #root .app.app-theme-light :where(.web-command-sidebar, .topbar, .main-tabs.app-main-tabs) {
+    background:
+      radial-gradient(circle at 0% 0%, rgba(245, 122, 80, 0.08), transparent 14rem),
+      linear-gradient(145deg, rgba(255, 253, 248, 0.96), rgba(255, 247, 237, 0.9)) !important;
+    border-color: rgba(176, 127, 72, 0.22) !important;
+  }
+
+  html body #root .app.app-theme-light :where(.web-command-nav-item, .web-command-more-item, .web-command-tool, .topbar-workspace-chip, .topbar-brand) {
+    background: rgba(255, 255, 255, 0.76) !important;
+    border-color: rgba(176, 127, 72, 0.22) !important;
+    color: #102033 !important;
+  }
+
+  html body #root .app.app-theme-light :where(.web-command-nav-item.active, .web-command-more-item.active, .web-command-tool.active) {
+    background: linear-gradient(145deg, rgba(255, 229, 209, 0.94), rgba(255, 246, 224, 0.88)) !important;
+    border-color: rgba(245, 122, 80, 0.38) !important;
+    color: #7a2d1b !important;
+  }
+
+  html body #root .app.app-theme-dark :where(.standard-page-header, .panel, .card, .compact-card, .flow-modal, .location-modal, .quick-add-sheet) {
+    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.07) !important;
   }
 }
