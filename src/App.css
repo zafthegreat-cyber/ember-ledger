@@ -92242,3 +92242,439 @@ html body #root .app.app-command-shell :where(.coming-soon-hero, .coming-soon-su
     padding-bottom: calc(var(--bottom-nav-height, 88px) + env(safe-area-inset-bottom, 0px) + 54px) !important;
   }
 }
+
+/* Final visual QA cleanup: scoped CSS-only fixes for the five Good/Bad/Ugly findings. */
+@media (max-width: 780px) {
+  html body #root .app.app-command-shell.app-market .standard-page-header,
+  html body #root .app.app-command-shell.app-market .tidetradr-results-panel.market-results-panel {
+    margin-inline: 8px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .standard-page-header {
+    gap: 11px !important;
+    padding: 14px 13px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .standard-page-header-copy h2 {
+    font-size: clamp(2.35rem, 12vw, 3.05rem) !important;
+    line-height: 0.96 !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .catalog-search-form {
+    gap: 8px !important;
+    padding: 7px !important;
+    border-radius: 17px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .catalog-search-form .search-input,
+  html body #root .app.app-command-shell.app-market .catalog-search-form input {
+    min-height: 43px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .tidetradr-shortcut-grid,
+  html body #root .app.app-command-shell.app-market .standard-page-header-actions {
+    gap: 8px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .standard-page-header-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .standard-page-header-actions button,
+  html body #root .app.app-command-shell.app-market .tidetradr-shortcut-grid button {
+    min-height: 38px !important;
+    padding: 7px 8px !important;
+    border-radius: 14px !important;
+    font-size: 0.74rem !important;
+    line-height: 1.15 !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-search-helper-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-search-helper-grid > span {
+    min-height: 42px !important;
+    padding: 7px 5px !important;
+    border-radius: 14px !important;
+    gap: 2px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-search-helper-grid strong {
+    font-size: 0.72rem !important;
+    line-height: 1.08 !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-search-helper-grid small {
+    font-size: 0.61rem !important;
+    line-height: 1.08 !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-search-options {
+    padding: 7px 9px !important;
+    border-radius: 15px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-search-options summary {
+    min-height: 30px !important;
+    font-size: 0.76rem !important;
+    line-height: 1.1 !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-results-panel {
+    gap: 10px !important;
+    padding: 14px !important;
+    border-radius: 22px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-results-panel > .compact-card-header {
+    padding: 10px !important;
+    border-radius: 17px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-results-safety-note {
+    margin: 0 !important;
+    padding: 9px 11px !important;
+    border-radius: 999px !important;
+    font-size: 0.78rem !important;
+    line-height: 1.2 !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-results-toolbar {
+    gap: 8px !important;
+    align-items: end !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-results-toolbar .field {
+    min-width: min(100%, 170px) !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .active-filter-chips {
+    gap: 6px !important;
+    padding: 8px !important;
+    border-radius: 16px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .active-filter-chips .status-badge,
+  html body #root .app.app-command-shell.app-market .active-filter-chips .compact-action {
+    min-height: 30px !important;
+    padding: 6px 9px !important;
+    font-size: 0.72rem !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .catalog-results-list,
+  html body #root .app.app-command-shell.app-market .catalog-results-grid {
+    gap: 10px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .catalog-result-card,
+  html body #root .app.app-command-shell.app-market .catalog-result-main {
+    border-radius: 18px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .catalog-result-main {
+    gap: 10px !important;
+    padding: 10px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .catalog-result-actions,
+  html body #root .app.app-command-shell.app-market .catalog-card-actions {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market :where(.catalog-result-actions, .catalog-card-actions) > * {
+    min-width: 0 !important;
+    min-height: 38px !important;
+    padding-inline: 8px !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-shell.is-open {
+    inset: 10px 10px calc(env(safe-area-inset-bottom, 0px) + 10px) 10px !important;
+    align-items: stretch !important;
+    justify-content: center !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-shell.is-open .ember-assist-panel {
+    max-height: min(820px, calc(100dvh - 20px)) !important;
+    border-radius: 24px !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-panel {
+    display: grid !important;
+    grid-template-rows: auto minmax(0, 1fr) auto !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-header {
+    padding: 14px 14px 12px !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-header h2 {
+    font-size: 1.32rem !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-scroll {
+    gap: 10px !important;
+    padding: 12px 14px !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-live-hero,
+  html body #root .app.app-command-shell .ember-assist-guidance-strip,
+  html body #root .app.app-command-shell .ember-assist-safety-note,
+  html body #root .app.app-command-shell .ember-assist-recent-help,
+  html body #root .app.app-command-shell .ember-assist-context-card {
+    padding: 12px !important;
+    border-radius: 17px !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-live-hero h3 {
+    font-size: 1rem !important;
+    line-height: 1.18 !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-hero-mark {
+    width: 38px !important;
+    height: 38px !important;
+    font-size: 1rem !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-quick-action-grid {
+    gap: 8px !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-quick-action-grid button {
+    min-height: 64px !important;
+    padding: 10px !important;
+    border-radius: 16px !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-recent-help .compact-card-header {
+    margin-bottom: 6px !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-recent-help .compact-card-header p {
+    margin: 2px 0 0 !important;
+    font-size: 0.76rem !important;
+    line-height: 1.22 !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-recent-help article {
+    min-height: 0 !important;
+    padding: 9px !important;
+    border-radius: 14px !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-form {
+    gap: 9px !important;
+    padding: 10px 14px 14px !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-form textarea {
+    min-height: 58px !important;
+    max-height: 92px !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-footer-actions {
+    gap: 8px !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-footer-actions button {
+    min-height: 42px !important;
+  }
+
+  html body #root .app.app-command-shell .drawer.open.menu-drawer,
+  html body #root .app.app-command-shell .drawer.menu-drawer.navigation-drawer.open {
+    --menu-final-footer-clearance: calc(var(--bottom-nav-height, 88px) + env(safe-area-inset-bottom, 0px) + 214px);
+  }
+
+  html body #root .app.app-command-shell .drawer.open.menu-drawer .drawer-menu-stack {
+    padding-bottom: var(--menu-final-footer-clearance) !important;
+    scroll-padding-bottom: var(--menu-final-footer-clearance) !important;
+  }
+
+  html body #root .app.app-command-shell .menu-command-groups {
+    gap: 12px !important;
+  }
+
+  html body #root .app.app-command-shell .menu-command-section {
+    padding-bottom: 2px !important;
+  }
+
+  html body #root .app.app-command-shell .menu-command-section:last-child,
+  html body #root .app.app-command-shell .menu-command-section--support,
+  html body #root .app.app-command-shell .menu-command-section--roadmap {
+    margin-bottom: 18px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home {
+    --theme-final-bottom-clearance: max(256px, calc(var(--bottom-nav-height, 78px) + env(safe-area-inset-bottom, 0px) + 168px));
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-foundation-shell {
+    gap: 12px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-foundation-hero {
+    min-height: 0 !important;
+    padding: 14px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-foundation-hero .standard-page-header-copy h2,
+  html body #root .app.app-command-shell.app-home .hearth-command-hero h1 {
+    font-size: clamp(2.08rem, 10vw, 2.62rem) !important;
+    line-height: 0.98 !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-at-glance-panel,
+  html body #root .app.app-command-shell.app-home .hearth-foundation-journey-panel {
+    padding: 12px !important;
+    border-radius: 22px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-at-glance-panel > .compact-card-header,
+  html body #root .app.app-command-shell.app-home .hearth-foundation-journey-panel > .compact-card-header {
+    margin-bottom: 7px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-foundation-journey-grid {
+    display: flex !important;
+    gap: 9px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    padding: 2px 2px 6px !important;
+    scroll-snap-type: x proximity !important;
+    scrollbar-width: none !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-foundation-journey-grid::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-foundation-journey-grid > * {
+    flex: 0 0 min(76vw, 286px) !important;
+    min-height: 96px !important;
+    scroll-snap-align: start !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .standard-page-header.vault-command-center {
+    gap: 12px !important;
+    padding: 20px 16px !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-command-center .standard-page-header-main {
+    gap: 12px !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-command-center .standard-page-header-actions {
+    gap: 9px !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-command-quick-add {
+    min-width: min(100%, 170px) !important;
+    min-height: 50px !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-command-center .standard-page-header-tabs {
+    gap: 8px !important;
+    padding: 8px !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-command-center .standard-page-header-tabs button {
+    min-height: 40px !important;
+    padding: 8px 10px !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-command-center .vault-command-overview {
+    padding: 13px !important;
+    border-radius: 22px !important;
+    background:
+      radial-gradient(circle at 12% 6%, rgba(139, 92, 246, 0.14), transparent 8rem),
+      radial-gradient(circle at 100% 12%, rgba(218, 165, 71, 0.16), transparent 8rem),
+      rgba(255, 252, 247, 0.78) !important;
+  }
+
+  html body #root .app.app-theme-dark.app-command-shell.app-vault .vault-command-center .vault-command-overview,
+  html body #root .app.app-shell-dark.app-vault .vault-command-center .vault-command-overview {
+    background:
+      radial-gradient(circle at 12% 6%, rgba(169, 128, 255, 0.18), transparent 8rem),
+      radial-gradient(circle at 100% 12%, rgba(218, 165, 71, 0.16), transparent 8rem),
+      rgba(13, 23, 49, 0.82) !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-command-center .vault-overview-card {
+    min-height: 76px !important;
+    padding: 12px !important;
+    border-radius: 18px !important;
+    background:
+      linear-gradient(90deg, rgba(139, 92, 246, 0.18), rgba(218, 165, 71, 0.12) 48%, transparent 86%) 0 0 / 100% 2px no-repeat,
+      rgba(255, 250, 243, 0.84) !important;
+  }
+
+  html body #root .app.app-theme-dark.app-command-shell.app-vault .vault-command-center .vault-overview-card,
+  html body #root .app.app-shell-dark.app-vault .vault-command-center .vault-overview-card {
+    background:
+      linear-gradient(90deg, rgba(169, 128, 255, 0.35), rgba(218, 165, 71, 0.16) 48%, transparent 86%) 0 0 / 100% 2px no-repeat,
+      rgba(14, 27, 56, 0.9) !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-command-center .vault-overview-card.is-active {
+    box-shadow: 0 16px 34px rgba(139, 92, 246, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.62) !important;
+  }
+}
+
+@media (max-width: 430px) {
+  html body #root .app.app-command-shell.app-market .standard-page-header {
+    padding: 12px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .standard-page-header-copy h2 {
+    font-size: clamp(2.1rem, 11vw, 2.75rem) !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .catalog-search-form {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .catalog-search-form button {
+    min-width: 78px !important;
+    padding-inline: 12px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-results-toolbar {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-shell.is-open {
+    inset: 6px 6px calc(env(safe-area-inset-bottom, 0px) + 6px) 6px !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-header {
+    padding: 12px !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-scroll {
+    padding: 10px 12px !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-quick-action-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-footer-actions {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-foundation-hero {
+    padding: 12px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-foundation-journey-grid > * {
+    flex-basis: min(82vw, 292px) !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .standard-page-header.vault-command-center {
+    padding: 18px 14px !important;
+  }
+}
