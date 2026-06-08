@@ -86459,3 +86459,457 @@ html body #root .app.app-theme-light.app-command-shell.app-vault .master-card-gr
     flex: 1 1 104px !important;
   }
 }
+
+/* Scout-only structure polish: local hunt, current reports only. */
+html body #root .app.app-command-shell.app-scout {
+  --scout-hunt-border: color-mix(in srgb, var(--wc-accent, #f97316) 24%, var(--wc-border, rgba(154, 93, 38, 0.18)));
+  --scout-hunt-cyan: color-mix(in srgb, #38bdf8 72%, var(--wc-accent-2, #d9a441));
+  --scout-hunt-glow: color-mix(in srgb, var(--wc-accent, #f97316) 12%, transparent);
+}
+
+html body #root .app.app-command-shell.app-scout .main {
+  padding-bottom: max(172px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 118px)) !important;
+}
+
+html body #root .app.app-command-shell.app-scout .standard-page-header.scout-summary-card {
+  width: min(100%, 1120px) !important;
+  margin-inline: auto !important;
+  padding: clamp(17px, 3vw, 24px) !important;
+  gap: clamp(14px, 2.4vw, 20px) !important;
+  border: 1px solid var(--scout-hunt-border) !important;
+  border-radius: 26px !important;
+  background:
+    radial-gradient(circle at 8% 0%, var(--scout-hunt-glow), transparent 11rem),
+    radial-gradient(circle at 96% 12%, color-mix(in srgb, var(--scout-hunt-cyan) 16%, transparent), transparent 12rem),
+    color-mix(in srgb, var(--wc-panel-strong, #fffcf7) 94%, transparent) !important;
+  box-shadow: 0 20px 46px color-mix(in srgb, var(--wc-shadow, rgba(58, 35, 15, 0.18)) 78%, transparent) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-scout .standard-page-header.scout-summary-card {
+  background:
+    radial-gradient(circle at 8% 0%, color-mix(in srgb, var(--wc-accent, #f97316) 16%, transparent), transparent 11rem),
+    radial-gradient(circle at 96% 12%, color-mix(in srgb, var(--scout-hunt-cyan) 13%, transparent), transparent 12rem),
+    color-mix(in srgb, var(--wc-panel-strong, #10233d) 91%, #06101f 9%) !important;
+}
+
+html body #root .app.app-command-shell.app-scout .standard-page-header.scout-summary-card .standard-page-header-main {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.12fr) minmax(300px, 0.78fr) !important;
+  align-items: center !important;
+  gap: clamp(15px, 3vw, 26px) !important;
+}
+
+html body #root .app.app-command-shell.app-scout .standard-page-header.scout-summary-card .standard-page-header-copy h2 {
+  max-width: 13ch !important;
+  font-size: clamp(2rem, 6vw, 3.35rem) !important;
+  line-height: 0.98 !important;
+}
+
+html body #root .app.app-command-shell.app-scout .standard-page-header.scout-summary-card .standard-page-header-copy p {
+  max-width: 42ch !important;
+  margin-top: 9px !important;
+  padding: 10px 12px !important;
+  border-left: 4px solid var(--scout-hunt-cyan) !important;
+  border-radius: 15px !important;
+  background: color-mix(in srgb, var(--scout-hunt-cyan) 9%, var(--wc-card-soft, #fff7ea)) !important;
+  color: var(--wc-muted-strong, #4b3420) !important;
+  font-size: clamp(0.92rem, 2vw, 1.04rem) !important;
+  font-weight: 750 !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-scout .standard-page-header.scout-summary-card .standard-page-header-copy p {
+  background: color-mix(in srgb, var(--scout-hunt-cyan) 10%, var(--wc-card, #0d2039)) !important;
+  color: color-mix(in srgb, var(--wc-text, #f9fafb) 83%, var(--scout-hunt-cyan)) !important;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-summary-card .standard-page-header-actions {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+  align-self: stretch !important;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-summary-card .standard-page-header-actions > button {
+  min-width: 0 !important;
+  min-height: 52px !important;
+  justify-content: center !important;
+  border-radius: 17px !important;
+  font-size: 0.9rem !important;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-summary-card .standard-page-header-actions .scout-scan-screenshot-action {
+  border-color: color-mix(in srgb, var(--scout-hunt-cyan) 58%, var(--wc-border, rgba(154, 93, 38, 0.18))) !important;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--scout-hunt-cyan) 22%, var(--wc-panel-strong, #fffcf7)), color-mix(in srgb, var(--wc-accent-2, #d9a441) 12%, var(--wc-card-soft, #fff7ea))) !important;
+  color: var(--wc-text-strong, #221509) !important;
+  font-weight: 950 !important;
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--scout-hunt-cyan) 14%, transparent) !important;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-summary-card .standard-page-header-actions .scout-submit-primary {
+  border-color: color-mix(in srgb, var(--wc-accent, #f97316) 62%, var(--wc-accent-2, #d9a441)) !important;
+  background: linear-gradient(135deg, #ffb44f, #f97316 58%, #e05513) !important;
+  color: #241105 !important;
+  box-shadow: 0 14px 28px color-mix(in srgb, var(--wc-accent, #f97316) 23%, transparent) !important;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-summary-card .standard-page-header-actions .scout-stores-link {
+  grid-column: 1 / -1 !important;
+  border-color: color-mix(in srgb, var(--wc-accent-2, #d9a441) 34%, var(--wc-border, rgba(154, 93, 38, 0.18))) !important;
+  background: color-mix(in srgb, var(--wc-card-soft, #fff7ea) 88%, transparent) !important;
+  color: var(--wc-text-strong, #221509) !important;
+  font-weight: 850 !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-scout .scout-summary-card .standard-page-header-actions .scout-scan-screenshot-action,
+html body #root .app.app-theme-dark.app-command-shell.app-scout .scout-summary-card .standard-page-header-actions .scout-stores-link {
+  background: color-mix(in srgb, var(--wc-card, #0d2039) 82%, var(--scout-hunt-cyan) 9%) !important;
+  color: var(--wc-text, #f9fafb) !important;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-header-trust-row {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 9px !important;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-header-trust-row > span {
+  display: grid !important;
+  gap: 2px !important;
+  align-content: center !important;
+  min-height: 54px !important;
+  padding: 10px 12px !important;
+  border-radius: 18px !important;
+  border: 1px solid color-mix(in srgb, var(--wc-accent-2, #d9a441) 28%, var(--wc-border, rgba(154, 93, 38, 0.18))) !important;
+  background: color-mix(in srgb, var(--wc-accent-2, #d9a441) 9%, var(--wc-card-soft, #fff7ea)) !important;
+  color: var(--wc-text-strong, #221509) !important;
+  font-size: 0.82rem !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-scout .scout-header-trust-row > span {
+  background: color-mix(in srgb, var(--wc-card, #0d2039) 86%, var(--wc-accent-2, #d9a441) 7%) !important;
+  color: var(--wc-text, #f9fafb) !important;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-summary-card .standard-page-header-tabs {
+  padding: 7px !important;
+  border: 1px solid color-mix(in srgb, var(--scout-hunt-cyan) 18%, var(--wc-border, rgba(154, 93, 38, 0.18))) !important;
+  background: color-mix(in srgb, var(--wc-card-soft, #fff7ea) 86%, transparent) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-scout .scout-summary-card .standard-page-header-tabs {
+  background: color-mix(in srgb, var(--wc-card, #0d2039) 82%, transparent) !important;
+}
+
+html body #root .app.app-command-shell.app-scout .pokemon-watch-calendar-panel {
+  width: min(100%, 1120px) !important;
+  margin-inline: auto !important;
+  padding: clamp(17px, 3vw, 24px) !important;
+  gap: clamp(14px, 2.4vw, 20px) !important;
+  border: 1px solid color-mix(in srgb, var(--scout-hunt-cyan) 24%, var(--wc-border, rgba(154, 93, 38, 0.18))) !important;
+  border-radius: 26px !important;
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--scout-hunt-cyan) 11%, transparent), transparent 12rem),
+    color-mix(in srgb, var(--wc-panel-strong, #fffcf7) 94%, transparent) !important;
+  overflow: visible !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-scout .pokemon-watch-calendar-panel {
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--scout-hunt-cyan) 10%, transparent), transparent 12rem),
+    color-mix(in srgb, var(--wc-panel-strong, #10233d) 92%, #06101f 8%) !important;
+}
+
+html body #root .app.app-command-shell.app-scout .pokemon-watch-calendar-panel > .compact-card-header,
+html body #root .app.app-command-shell.app-scout .ember-watch-panel .ember-watch-header {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(128px, 0.24fr) minmax(172px, auto) !important;
+  align-items: center !important;
+  gap: clamp(12px, 2vw, 18px) !important;
+}
+
+html body #root .app.app-command-shell.app-scout .ember-watch-panel .ember-watch-header h2 {
+  font-size: clamp(1.42rem, 4vw, 2rem) !important;
+  line-height: 1.05 !important;
+}
+
+html body #root .app.app-command-shell.app-scout .ember-watch-panel .ember-watch-header p {
+  max-width: 58ch !important;
+}
+
+html body #root .app.app-command-shell.app-scout .ember-watch-panel .ember-watch-feature-art {
+  min-width: 0 !important;
+  max-width: 152px !important;
+  justify-self: center !important;
+  opacity: 0.9 !important;
+}
+
+html body #root .app.app-command-shell.app-scout .ember-watch-panel .summary-pill-row {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 9px !important;
+  justify-self: stretch !important;
+  min-width: 0 !important;
+}
+
+html body #root .app.app-command-shell.app-scout .ember-watch-panel .summary-pill-row > button {
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 48px !important;
+}
+
+html body #root .app.app-theme-light.app-command-shell.app-scout .ember-watch-panel .summary-pill-row > button,
+html body #root .app.app-theme-light.app-command-shell.app-scout .watch-calendar-summary-grid > div,
+html body #root .app.app-theme-light.app-command-shell.app-scout .watch-calendar-event-row {
+  background: #fff9ee !important;
+  color: #14213a !important;
+}
+
+html body #root .app.app-command-shell.app-scout .ember-watch-panel .summary-pill-row > button:not(.secondary-button) {
+  border-color: color-mix(in srgb, var(--wc-accent, #f97316) 56%, var(--wc-accent-2, #d9a441)) !important;
+  background: linear-gradient(135deg, #ffb44f, #f97316 58%, #e05513) !important;
+  color: #241105 !important;
+  font-weight: 950 !important;
+}
+
+html body #root .app.app-command-shell.app-scout .watch-calendar-summary-grid > div,
+html body #root .app.app-command-shell.app-scout .scout-alert-setup-card,
+html body #root .app.app-command-shell.app-scout .ember-watch-section,
+html body #root .app.app-command-shell.app-scout .watch-calendar-day-group {
+  border: 1px solid color-mix(in srgb, var(--scout-hunt-cyan) 18%, var(--wc-border, rgba(154, 93, 38, 0.18))) !important;
+  background: color-mix(in srgb, var(--wc-card-soft, #fff7ea) 90%, transparent) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-scout .watch-calendar-summary-grid > div,
+html body #root .app.app-theme-dark.app-command-shell.app-scout .scout-alert-setup-card,
+html body #root .app.app-theme-dark.app-command-shell.app-scout .ember-watch-section,
+html body #root .app.app-theme-dark.app-command-shell.app-scout .watch-calendar-day-group {
+  background: color-mix(in srgb, var(--wc-card, #0d2039) 88%, transparent) !important;
+}
+
+html body #root .app.app-command-shell.app-scout .watch-calendar-summary-grid > div {
+  min-height: 86px !important;
+}
+
+html body #root .app.app-command-shell.app-scout .watch-calendar-summary-grid span {
+  color: var(--wc-muted-strong, #5e4731) !important;
+  font-weight: 850 !important;
+}
+
+html body #root .app.app-command-shell.app-scout .watch-calendar-summary-grid strong {
+  color: var(--wc-text-strong, #221509) !important;
+  font-size: clamp(0.96rem, 2vw, 1.12rem) !important;
+  line-height: 1.15 !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-scout .watch-calendar-summary-grid span {
+  color: color-mix(in srgb, var(--wc-text, #f9fafb) 72%, var(--wc-muted, #9fb0c9)) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-scout .watch-calendar-summary-grid strong {
+  color: var(--wc-text, #f9fafb) !important;
+}
+
+html body #root .app.app-command-shell.app-scout .watch-calendar-toolbar {
+  padding: 10px !important;
+  border-radius: 20px !important;
+  border: 1px solid color-mix(in srgb, var(--wc-accent-2, #d9a441) 18%, var(--wc-border, rgba(154, 93, 38, 0.18))) !important;
+  background: color-mix(in srgb, var(--wc-card-soft, #fff7ea) 86%, transparent) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-scout .watch-calendar-toolbar {
+  background: color-mix(in srgb, var(--wc-card, #0d2039) 82%, transparent) !important;
+}
+
+html body #root .app.app-command-shell.app-scout .watch-calendar-toolbar .segmented-control {
+  border: 0 !important;
+  background: transparent !important;
+}
+
+html body #root .app.app-command-shell.app-scout .watch-calendar-toolbar .segmented-control button {
+  min-width: 0 !important;
+  min-height: 43px !important;
+  border-radius: 14px !important;
+  font-weight: 850 !important;
+}
+
+html body #root .app.app-command-shell.app-scout .watch-calendar-area-select {
+  display: grid !important;
+  gap: 6px !important;
+}
+
+html body #root .app.app-command-shell.app-scout .watch-calendar-area-select span {
+  font-weight: 850 !important;
+}
+
+html body #root .app.app-command-shell.app-scout .watch-calendar-layer-strip {
+  margin-inline: -2px !important;
+  padding: 2px 2px 10px !important;
+}
+
+html body #root .app.app-command-shell.app-scout .watch-layer-chip {
+  border: 1px solid color-mix(in srgb, var(--scout-hunt-cyan) 24%, var(--wc-border, rgba(154, 93, 38, 0.18))) !important;
+  background: color-mix(in srgb, var(--wc-card-soft, #fff7ea) 88%, transparent) !important;
+  color: var(--wc-text-strong, #221509) !important;
+  font-weight: 850 !important;
+}
+
+html body #root .app.app-command-shell.app-scout .watch-layer-chip.active {
+  border-color: color-mix(in srgb, var(--wc-accent, #f97316) 48%, var(--wc-accent-2, #d9a441)) !important;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--wc-accent, #f97316) 18%, var(--wc-card-soft, #fff7ea)), color-mix(in srgb, var(--wc-accent-2, #d9a441) 13%, var(--wc-card-soft, #fff7ea))) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-scout .watch-layer-chip {
+  background: color-mix(in srgb, var(--wc-card, #0d2039) 84%, transparent) !important;
+  color: var(--wc-text, #f9fafb) !important;
+}
+
+html body #root .app.app-command-shell.app-scout .ember-watch-privacy-note,
+html body #root .app.app-command-shell.app-scout .scout-alert-scope-note {
+  border-radius: 18px !important;
+  border: 1px solid color-mix(in srgb, var(--wc-accent-2, #d9a441) 24%, var(--wc-border, rgba(154, 93, 38, 0.18))) !important;
+  background: color-mix(in srgb, var(--wc-accent-2, #d9a441) 9%, var(--wc-card-soft, #fff7ea)) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-scout .ember-watch-privacy-note,
+html body #root .app.app-theme-dark.app-command-shell.app-scout .scout-alert-scope-note {
+  background: color-mix(in srgb, var(--wc-card, #0d2039) 86%, var(--wc-accent-2, #d9a441) 7%) !important;
+}
+
+html body #root .app.app-command-shell.app-scout .watch-calendar-event-row {
+  border: 1px solid color-mix(in srgb, var(--scout-hunt-cyan) 15%, var(--wc-border, rgba(154, 93, 38, 0.18))) !important;
+  background: color-mix(in srgb, var(--wc-panel-strong, #fffcf7) 88%, transparent) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-scout .watch-calendar-event-row {
+  background: color-mix(in srgb, var(--wc-card, #0d2039) 86%, transparent) !important;
+}
+
+@media (min-width: 900px) {
+  html body #root .app.app-command-shell.app-scout .standard-page-header.scout-summary-card .standard-page-header-actions {
+    align-content: center !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .pokemon-watch-calendar-panel > .compact-card-header,
+  html body #root .app.app-command-shell.app-scout .ember-watch-panel .ember-watch-header {
+    min-height: 148px !important;
+  }
+}
+
+@media (max-width: 780px) {
+  html body #root .app.app-command-shell.app-scout .standard-page-header.scout-summary-card {
+    margin-inline: 8px !important;
+    padding: 17px 14px !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .standard-page-header.scout-summary-card .standard-page-header-main {
+    grid-template-columns: 1fr !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-header-trust-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .pokemon-watch-calendar-panel {
+    margin-inline: 8px !important;
+    padding: 16px 14px !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .pokemon-watch-calendar-panel > .compact-card-header,
+  html body #root .app.app-command-shell.app-scout .ember-watch-panel .ember-watch-header {
+    grid-template-columns: 1fr !important;
+    align-items: start !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .ember-watch-panel .ember-watch-feature-art {
+    display: none !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .ember-watch-panel .summary-pill-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .watch-calendar-summary-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .watch-calendar-summary-grid > div {
+    min-height: 82px !important;
+    padding: 10px !important;
+  }
+}
+
+@media (max-width: 430px) {
+  html body #root .app.app-command-shell.app-scout .main {
+    padding-bottom: max(198px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 140px)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .standard-page-header.scout-summary-card {
+    gap: 11px !important;
+    padding: 14px 12px !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .standard-page-header.scout-summary-card .standard-page-header-copy h2 {
+    font-size: clamp(1.9rem, 10vw, 2.34rem) !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .standard-page-header.scout-summary-card .standard-page-header-copy p {
+    padding: 9px 10px !important;
+    font-size: 0.88rem !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-summary-card .standard-page-header-actions {
+    gap: 8px !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-summary-card .standard-page-header-actions > button {
+    min-height: 44px !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-header-trust-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-header-trust-row > span {
+    min-height: 0 !important;
+    padding: 8px 9px !important;
+    border-radius: 15px !important;
+    font-size: 0.76rem !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-summary-card .standard-page-header-tabs {
+    padding: 5px !important;
+    gap: 5px !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-summary-card .standard-page-header-tabs button {
+    min-height: 34px !important;
+    padding-inline: 9px !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .pokemon-watch-calendar-panel {
+    padding: 14px 12px !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .watch-calendar-summary-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .watch-calendar-summary-grid > div {
+    min-height: 0 !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .ember-watch-panel .summary-pill-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .watch-calendar-toolbar .segmented-control {
+    grid-template-columns: 1fr !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .watch-calendar-event-main {
+    grid-template-columns: 48px minmax(0, 1fr) !important;
+  }
+}
