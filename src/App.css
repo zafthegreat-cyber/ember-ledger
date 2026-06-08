@@ -85130,3 +85130,710 @@ html body #root .app.app-command-shell :where(.mobile-tab.active, .mobile-tab.is
     --theme-final-bottom-clearance: max(324px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 244px));
   }
 }
+
+/* Focused page-structure polish for core collector surfaces. */
+html body #root .app.app-command-shell.app-vault .vault-command-center,
+html body #root .app.app-command-shell.app-scout .pokemon-watch-calendar-panel,
+html body #root .app.app-command-shell.app-home .hearth-foundation-journey-panel,
+html body #root .app.app-command-shell.app-home .hearth-build-hearth-panel,
+html body #root .app.app-command-shell.app-home .hearth-recent-panel,
+html body #root .app.app-command-shell.app-market .market-page-heading,
+html body #root .app.app-command-shell.app-market .market-results-panel {
+  border-radius: 26px !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-command-center {
+  display: flex !important;
+  flex-direction: column !important;
+  align-content: start !important;
+  gap: 16px !important;
+  height: max-content !important;
+  min-height: max-content !important;
+  overflow: visible !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-command-center .standard-page-header-main,
+html body #root .app.app-command-shell.app-market .market-page-heading .standard-page-header-main {
+  gap: 14px !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-command-center .standard-page-header-actions,
+html body #root .app.app-command-shell.app-scout .scout-summary-card .standard-page-header-actions {
+  gap: 10px !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-command-center .standard-page-header-actions > button,
+html body #root .app.app-command-shell.app-scout .scout-summary-card .standard-page-header-actions > button {
+  min-height: 48px !important;
+  border-radius: 16px !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-command-center .standard-page-header-tabs,
+html body #root .app.app-command-shell.app-market .market-page-heading .standard-page-header-tabs {
+  padding: 5px !important;
+  border: 1px solid var(--wc-border, rgba(154, 93, 38, 0.18)) !important;
+  border-radius: 18px !important;
+  background: color-mix(in srgb, var(--wc-panel-strong, #fffcf7) 72%, transparent) !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-command-center .standard-page-header-tabs button,
+html body #root .app.app-command-shell.app-market .market-page-heading .standard-page-header-tabs button {
+  min-height: 40px !important;
+  border-radius: 13px !important;
+  white-space: nowrap !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-command-center .standard-page-header-summary {
+  padding: 0 !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-command-center .vault-command-overview {
+  gap: 10px !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-command-center .vault-overview-card {
+  position: relative !important;
+  display: grid !important;
+  align-content: start !important;
+  gap: 7px !important;
+  min-height: 94px !important;
+  padding: 14px 14px 14px 16px !important;
+  text-align: left !important;
+  overflow: hidden !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-command-center .vault-overview-card::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 12px auto 12px 8px !important;
+  width: 3px !important;
+  border-radius: 999px !important;
+  background: linear-gradient(180deg, var(--wc-accent, #8b5cf6), var(--wc-accent-2, #d9a441)) !important;
+  opacity: 0.82 !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-command-center .vault-overview-card strong {
+  font-size: clamp(1.18rem, 4.2vw, 1.55rem) !important;
+  line-height: 1.05 !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-command-center .vault-overview-title {
+  font-size: 0.72rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-command-center .vault-overview-card span:last-child {
+  font-size: 0.8rem !important;
+  line-height: 1.3 !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-empty-overview-card {
+  align-items: start !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-live-master-card,
+html body #root .app.app-command-shell.app-vault .vault-master-card-section {
+  padding: clamp(16px, 3vw, 22px) !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-live-master-stats {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-live-master-stats > div {
+  min-width: 0 !important;
+  padding: 12px !important;
+  border: 1px solid color-mix(in srgb, var(--wc-accent, #8b5cf6) 25%, var(--wc-border, rgba(154, 93, 38, 0.18))) !important;
+  border-radius: 16px !important;
+  background: color-mix(in srgb, var(--wc-card-soft, #fffbf5) 86%, transparent) !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-live-master-preview-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)) !important;
+  gap: 14px !important;
+}
+
+html body #root .app.app-command-shell.app-vault .master-card-group-preview {
+  display: grid !important;
+  grid-template-columns: 118px minmax(0, 1fr) !important;
+  align-items: start !important;
+  gap: 14px !important;
+  padding: 14px !important;
+  overflow: hidden !important;
+}
+
+html body #root .app.app-command-shell.app-vault .master-card-group-preview .premium-card-image {
+  width: 100% !important;
+  height: 164px !important;
+  min-height: 0 !important;
+  border-radius: 18px !important;
+}
+
+html body #root .app.app-command-shell.app-vault .master-card-group-preview .compact-card-header {
+  align-items: start !important;
+  gap: 10px !important;
+}
+
+html body #root .app.app-command-shell.app-vault .master-card-group-preview .compact-card-header h3 {
+  margin-top: 7px !important;
+  font-size: clamp(1rem, 3.4vw, 1.3rem) !important;
+  line-height: 1.12 !important;
+}
+
+html body #root .app.app-command-shell.app-vault .master-variant-rail {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+}
+
+html body #root .app.app-command-shell.app-vault .master-variant-pill {
+  flex: 1 1 118px !important;
+  min-width: 0 !important;
+  border-radius: 14px !important;
+  padding: 9px 10px !important;
+}
+
+html body #root .app.app-command-shell.app-vault .master-card-summary-row {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+}
+
+html body #root .app.app-command-shell.app-vault .master-card-summary-row > span {
+  flex: 1 1 118px !important;
+  min-width: 0 !important;
+  padding: 8px 10px !important;
+  border-radius: 999px !important;
+  background: color-mix(in srgb, var(--wc-accent, #8b5cf6) 9%, var(--wc-panel-strong, #fffcf7)) !important;
+  border: 1px solid var(--wc-border, rgba(154, 93, 38, 0.18)) !important;
+  font-size: 0.78rem !important;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-summary-card {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 15px !important;
+  height: max-content !important;
+  min-height: max-content !important;
+  overflow: visible !important;
+}
+
+html body #root .app.app-command-shell.app-scout .standard-page-header.scout-summary-card {
+  display: flex !important;
+  flex-direction: column !important;
+  align-content: start !important;
+  gap: 15px !important;
+  height: max-content !important;
+  min-height: max-content !important;
+  overflow: visible !important;
+}
+
+html body #root .app.app-command-shell.app-scout .standard-page-header.scout-summary-card > * {
+  position: static !important;
+  transform: none !important;
+  inset: auto !important;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-header-trust-row {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  position: static !important;
+  transform: none !important;
+  width: 100% !important;
+  margin: 4px 0 2px !important;
+  clear: both !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-header-trust-row > span {
+  flex: 1 1 132px !important;
+  min-width: 0 !important;
+  padding: 9px 10px !important;
+  border-radius: 999px !important;
+  background: color-mix(in srgb, var(--wc-accent-2, #c89638) 12%, var(--wc-panel-strong, #fffcf7)) !important;
+  border: 1px solid var(--wc-border, rgba(154, 93, 38, 0.18)) !important;
+}
+
+html body #root .app.app-command-shell.app-scout .pokemon-watch-calendar-panel {
+  display: grid !important;
+  gap: 15px !important;
+  padding: clamp(16px, 3vw, 22px) !important;
+}
+
+html body #root .app.app-command-shell.app-scout .pokemon-watch-calendar-panel > .compact-card-header {
+  align-items: start !important;
+  gap: 12px !important;
+}
+
+html body #root .app.app-command-shell.app-scout .pokemon-watch-calendar-panel > .compact-card-header button {
+  min-height: 46px !important;
+  border-radius: 15px !important;
+}
+
+html body #root .app.app-command-shell.app-scout .watch-calendar-summary-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+html body #root .app.app-command-shell.app-scout .watch-calendar-summary-grid > div {
+  min-width: 0 !important;
+  min-height: 92px !important;
+  display: grid !important;
+  align-content: center !important;
+  gap: 6px !important;
+  padding: 12px !important;
+  border-radius: 17px !important;
+}
+
+html body #root .app.app-command-shell.app-scout .watch-calendar-toolbar {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(140px, 0.42fr) !important;
+  align-items: end !important;
+  gap: 10px !important;
+}
+
+html body #root .app.app-command-shell.app-scout .watch-calendar-toolbar .segmented-control {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(78px, 1fr)) !important;
+  gap: 6px !important;
+  padding: 5px !important;
+}
+
+html body #root .app.app-command-shell.app-scout .watch-calendar-area-select {
+  min-width: 0 !important;
+}
+
+html body #root .app.app-command-shell.app-scout .watch-calendar-area-select select {
+  min-height: 44px !important;
+  width: 100% !important;
+}
+
+html body #root .app.app-command-shell.app-scout .watch-calendar-layer-strip {
+  display: flex !important;
+  gap: 8px !important;
+  overflow-x: auto !important;
+  padding: 2px 2px 8px !important;
+  scrollbar-width: none !important;
+}
+
+html body #root .app.app-command-shell.app-scout .watch-calendar-layer-strip::-webkit-scrollbar {
+  display: none !important;
+}
+
+html body #root .app.app-command-shell.app-scout .watch-layer-chip {
+  flex: 0 0 auto !important;
+  min-height: 38px !important;
+  border-radius: 999px !important;
+  padding-inline: 12px !important;
+}
+
+html body #root .app.app-command-shell.app-scout .watch-calendar-agenda {
+  display: grid !important;
+  gap: 14px !important;
+}
+
+html body #root .app.app-command-shell.app-scout .watch-calendar-day-group {
+  display: grid !important;
+  gap: 9px !important;
+}
+
+html body #root .app.app-command-shell.app-scout .watch-calendar-event-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  gap: 10px !important;
+  padding: 12px !important;
+  border-radius: 18px !important;
+}
+
+html body #root .app.app-command-shell.app-scout .watch-calendar-event-main {
+  display: grid !important;
+  grid-template-columns: 58px minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 11px !important;
+  min-width: 0 !important;
+  text-align: left !important;
+}
+
+html body #root .app.app-command-shell.app-scout .watch-calendar-event-main > span:last-child,
+html body #root .app.app-command-shell.app-scout .watch-calendar-event-main strong,
+html body #root .app.app-command-shell.app-scout .watch-calendar-event-main small,
+html body #root .app.app-command-shell.app-scout .watch-calendar-event-main em {
+  min-width: 0 !important;
+  overflow-wrap: anywhere !important;
+}
+
+html body #root .app.app-command-shell.app-scout .watch-calendar-event-meta {
+  min-width: 112px !important;
+  align-self: center !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-northstar {
+  gap: clamp(14px, 3vw, 22px) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-foundation-journey-panel,
+html body #root .app.app-command-shell.app-home .hearth-build-hearth-panel,
+html body #root .app.app-command-shell.app-home .hearth-recent-panel {
+  padding: clamp(16px, 3vw, 22px) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-foundation-journey-panel .compact-card-header,
+html body #root .app.app-command-shell.app-home .hearth-build-hearth-panel .compact-card-header,
+html body #root .app.app-command-shell.app-home .hearth-recent-panel .compact-card-header {
+  padding-bottom: 10px !important;
+  border-bottom: 1px solid var(--wc-border, rgba(154, 93, 38, 0.18)) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-foundation-journey-grid,
+html body #root .app.app-command-shell.app-home .hearth-feature-list,
+html body #root .app.app-command-shell.app-home .hearth-recent-list {
+  gap: 10px !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-feature-card,
+html body #root .app.app-command-shell.app-home .hearth-recent-row,
+html body #root .app.app-command-shell.app-home .hearth-empty-state,
+html body #root .app.app-command-shell.app-home .hearth-foundation-journey-panel .et-live-action {
+  border-radius: 18px !important;
+  padding: 13px !important;
+  border: 1px solid var(--wc-border, rgba(154, 93, 38, 0.18)) !important;
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--wc-accent, #f97316) 8%, transparent), transparent 10rem),
+    color-mix(in srgb, var(--wc-card-soft, #fffbf5) 86%, transparent) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-feature-card {
+  grid-template-columns: 42px minmax(0, 1fr) 18px !important;
+  align-items: center !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-feature-copy {
+  min-width: 0 !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-feature-copy :where(strong, span, small, em) {
+  overflow-wrap: anywhere !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-page-heading {
+  display: flex !important;
+  flex-direction: column !important;
+  align-content: start !important;
+  gap: 14px !important;
+  height: max-content !important;
+  min-height: max-content !important;
+  overflow: visible !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-search-form {
+  align-items: stretch !important;
+  border: 1px solid var(--wc-border, rgba(154, 93, 38, 0.18)) !important;
+  background: color-mix(in srgb, var(--wc-panel-strong, #fffcf7) 82%, transparent) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-search-helper-grid > span {
+  min-width: 0 !important;
+  padding: 10px !important;
+  border-radius: 15px !important;
+  border: 1px solid var(--wc-border, rgba(154, 93, 38, 0.18)) !important;
+  background: color-mix(in srgb, var(--wc-card-soft, #fffbf5) 88%, transparent) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-search-options {
+  border-radius: 16px !important;
+  border-color: var(--wc-border, rgba(154, 93, 38, 0.18)) !important;
+  background: color-mix(in srgb, var(--wc-card-soft, #fffbf5) 90%, transparent) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-search-options summary {
+  min-height: 42px !important;
+  align-content: center !important;
+  font-weight: 800 !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-results-panel {
+  display: grid !important;
+  gap: 14px !important;
+  padding: clamp(16px, 3vw, 22px) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-results-panel > .compact-card-header {
+  align-items: start !important;
+  padding-bottom: 10px !important;
+  border-bottom: 1px solid var(--wc-border, rgba(154, 93, 38, 0.18)) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-results-toolbar {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  gap: 10px !important;
+  align-items: end !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-filter-button {
+  min-height: 46px !important;
+}
+
+html body #root .app.app-command-shell.app-market .active-filter-chips {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  padding: 10px !important;
+  border-radius: 16px !important;
+  background: color-mix(in srgb, var(--wc-accent, #0f9f90) 8%, var(--wc-panel-strong, #fffcf7)) !important;
+}
+
+html body #root .app.app-command-shell.app-market .catalog-results-grid {
+  gap: 14px !important;
+}
+
+html body #root .app.app-command-shell.app-market .catalog-result-card.market-mobile-product-card {
+  padding: 0 !important;
+  overflow: hidden !important;
+  border-radius: 20px !important;
+}
+
+html body #root .app.app-command-shell.app-market .catalog-result-card.market-mobile-product-card .catalog-result-main {
+  display: grid !important;
+  grid-template-columns: 104px minmax(0, 1fr) !important;
+  gap: 13px !important;
+  align-items: start !important;
+  padding: 14px !important;
+}
+
+html body #root .app.app-command-shell.app-market .catalog-result-card.market-mobile-product-card .catalog-thumb {
+  width: 100% !important;
+  min-height: 144px !important;
+  border-radius: 17px !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-card-body {
+  min-width: 0 !important;
+  display: grid !important;
+  gap: 8px !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-card-title {
+  font-size: clamp(1rem, 3.4vw, 1.22rem) !important;
+  line-height: 1.14 !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-card-price-row,
+html body #root .app.app-command-shell.app-market .market-trust-badge-row,
+html body #root .app.app-command-shell.app-market .market-card-freshness-line {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  align-items: center !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-card-freshness-line {
+  padding: 8px 10px !important;
+  border-radius: 999px !important;
+  background: color-mix(in srgb, var(--wc-accent-3, #f97316) 8%, var(--wc-panel-strong, #fffcf7)) !important;
+  border: 1px solid var(--wc-border, rgba(154, 93, 38, 0.18)) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-result-add-actions {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.2fr) repeat(2, minmax(0, 0.8fr)) !important;
+  gap: 9px !important;
+  padding: 0 14px 14px !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-result-add-actions > button {
+  min-width: 0 !important;
+  min-height: 44px !important;
+  border-radius: 14px !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-vault .vault-live-master-stats > div,
+html body #root .app.app-theme-dark.app-command-shell.app-vault .master-card-summary-row > span,
+html body #root .app.app-theme-dark.app-command-shell.app-scout .scout-header-trust-row > span,
+html body #root .app.app-theme-dark.app-command-shell.app-market .market-search-helper-grid > span,
+html body #root .app.app-theme-dark.app-command-shell.app-market .market-search-options,
+html body #root .app.app-theme-dark.app-command-shell.app-market .active-filter-chips,
+html body #root .app.app-theme-dark.app-command-shell.app-market .market-card-freshness-line {
+  background: color-mix(in srgb, var(--wc-card, #0d2039) 82%, transparent) !important;
+}
+
+@media (min-width: 900px) {
+  html body #root .app.app-command-shell.app-home .hearth-northstar {
+    grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.78fr) !important;
+    align-items: start !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .pokemon-watch-calendar-panel .watch-calendar-event-row {
+    grid-template-columns: minmax(0, 1fr) minmax(150px, auto) !important;
+  }
+}
+
+@media (max-width: 780px) {
+  html body #root .app.app-command-shell.app-vault .vault-command-center,
+  html body #root .app.app-command-shell.app-market .market-page-heading {
+    min-height: max-content !important;
+    height: max-content !important;
+    padding: 17px 14px !important;
+    margin-inline: 8px !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-live-home-dashboard {
+    margin-top: 14px !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-command-center .standard-page-header-actions {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-command-center .standard-page-header-actions > button:first-child {
+    grid-column: 1 / -1 !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-command-center .vault-command-overview {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-live-master-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .master-card-group-preview {
+    grid-template-columns: 92px minmax(0, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .master-card-group-preview .premium-card-image {
+    height: 132px !important;
+    min-height: 0 !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-summary-card .standard-page-header-actions {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    margin-bottom: 6px !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-summary-card .standard-page-header-actions .scout-stores-link {
+    grid-column: 1 / -1 !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .watch-calendar-toolbar {
+    grid-template-columns: 1fr !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .watch-calendar-summary-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .watch-calendar-event-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .watch-calendar-event-meta {
+    min-width: 0 !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    align-items: stretch !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .watch-calendar-event-meta > button {
+    grid-column: 1 / -1 !important;
+    min-height: 42px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-side-column {
+    gap: 14px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-search-form {
+    grid-template-columns: 1fr !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-search-form > button {
+    min-height: 46px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-search-options {
+    display: block !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-results-toolbar {
+    grid-template-columns: 1fr !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .catalog-result-card.market-mobile-product-card .catalog-result-main {
+    grid-template-columns: 92px minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .catalog-result-card.market-mobile-product-card .catalog-thumb {
+    min-height: 130px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-result-add-actions {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-result-add-actions > button:first-child {
+    grid-column: 1 / -1 !important;
+  }
+}
+
+@media (max-width: 430px) {
+  html body #root .app.app-command-shell.app-vault .vault-command-center .vault-overview-card {
+    min-height: 90px !important;
+    padding: 13px 12px 13px 16px !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-live-master-stats {
+    grid-template-columns: 1fr !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .master-card-group-preview {
+    grid-template-columns: 82px minmax(0, 1fr) !important;
+    padding: 12px !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .master-card-group-preview .premium-card-image {
+    height: 122px !important;
+    min-height: 0 !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .master-variant-pill,
+  html body #root .app.app-command-shell.app-vault .master-card-summary-row > span {
+    flex-basis: 100% !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .watch-calendar-summary-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .watch-calendar-event-main {
+    grid-template-columns: 50px minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-search-helper-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .catalog-result-card.market-mobile-product-card .catalog-result-main {
+    grid-template-columns: 84px minmax(0, 1fr) !important;
+    gap: 11px !important;
+    padding: 12px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .catalog-result-card.market-mobile-product-card .catalog-thumb {
+    min-height: 118px !important;
+  }
+}
