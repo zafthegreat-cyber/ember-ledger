@@ -5525,9 +5525,9 @@ function EtMockupStatCard({ label, value, detail, tone = "", onClick }) {
   );
 }
 
-function EtMockupActionCard({ title, detail, meta, icon = "hearth", tone = "", onClick, index = null, className = "" }) {
+function EtMockupActionCard({ title, detail, meta, icon = "hearth", tone = "", onClick, index = null, className = "", ariaLabel = "" }) {
   const Component = onClick ? "button" : "article";
-  const props = onClick ? { type: "button", onClick } : {};
+  const props = onClick ? { type: "button", onClick, ...(ariaLabel ? { "aria-label": ariaLabel } : {}) } : {};
   return (
     <Component className={`et-mockup-action-card ${tone ? `et-mockup-tone-${tone}` : ""} ${className}`.trim()} {...props}>
       <EtMockupIcon icon={icon} tone={tone} />
@@ -5541,9 +5541,9 @@ function EtMockupActionCard({ title, detail, meta, icon = "hearth", tone = "", o
   );
 }
 
-function EtMockupRightRail({ title, detail, children }) {
+function EtMockupRightRail({ title, detail, children, className = "" }) {
   return (
-    <aside className="et-mockup-right-rail" aria-label={title}>
+    <aside className={`et-mockup-right-rail ${className}`.trim()} aria-label={title}>
       <div className="et-mockup-rail-heading">
         <h2>{title}</h2>
         {detail ? <p>{detail}</p> : null}
@@ -5573,9 +5573,10 @@ function EtMockupHero({
   pills = [],
   todayAction = null,
   adminAction = null,
+  ariaLabel = "",
 }) {
   return (
-    <section className="et-mockup-page-hero" aria-label="Hearth welcome">
+    <section className="et-mockup-page-hero" aria-label={ariaLabel || `${brand} welcome`}>
       <div className="et-mockup-hero-copy">
         <span className="et-mockup-brand-row">
           {mark ? <img src={mark} alt="" /> : null}
@@ -25170,7 +25171,7 @@ function renderScoutHeader() {
     { key: "online", label: "Online" },
     { key: "watchlist", label: "Watchlist" },
     { key: "reports", label: "Following" },
-    { key: "storeMap", label: "Map" },
+    { key: "storeMap", label: "Stores" },
     { key: "alerts", label: "Alerts" },
     { key: "myReports", label: "My Reports" },
     scoutReviewVisible ? { key: "review", label: "Review" } : null,
@@ -25204,40 +25205,102 @@ function renderScoutHeader() {
   };
 
   return (
-    <PageHeader
-      className={getHeaderCardClass("panel scout-summary-card")}
-      title="Scout"
-      subtitle="Current reports, not raw patterns."
-      tabs={scoutTabs}
-      activeTab={activeScoutPage === "reports" && scoutReportFilter === "My Reports" ? "myReports" : activeScoutPage === "stores" && scoutStoresMode === "map" ? "storeMap" : activeScoutPage === "predictions" || activeScoutPage === "guesses" ? "forecast" : activeScoutPage}
-      onTabChange={changeScoutPage}
-      actions={(
-        <>
-          <button type="button" className="secondary-button scout-scan-screenshot-action" onClick={() => {
-            openLiveScoutReportFlow("scanScreenshot");
-          }}>
-            Scan Screenshot
-          </button>
-          <button type="button" className="scout-submit-primary" onClick={() => {
-            openLiveScoutReportFlow("addReport");
-          }}>
-            Add Report
-          </button>
-          <button type="button" className="secondary-button scout-stores-link" onClick={() => {
-            setScoutSubTabTarget({ tab: "stores", id: Date.now() });
-            setScoutStoresMode("list");
-            setScoutView("stores");
-          }}>Stores</button>
-        </>
-      )}
-    >
-      <div className="scout-header-trust-row" aria-label="Scout trust summary">
-        <span>{scoutSlotLabel}</span>
-        <span>{scoutSwapLabel}</span>
-        <span>{scoutReportLabel}</span>
-        <span>{scoutTrustLabel}</span>
-      </div>
-    </PageHeader>
+    <div className="scout-mockup-header">
+      <EtMockupHero
+        brand="Ember Scout"
+        mark={BRAND_ASSETS.mark}
+        title="Today's Hunt"
+        detail="Current reports, not raw patterns. Scout keeps families focused on useful proof without exposing raw timing history or stock guarantees."
+        points={{ value: `${scoutWatchedStoreCount}/${scoutSlotLimit || 1}`, label: "Watched stores" }}
+        pills={[
+          { label: "Current reports", tone: "scout" },
+          { label: "Proof-first", tone: "collector" },
+          { label: "No raw patterns", tone: "beta" },
+        ]}
+        todayAction={{
+          label: "Scout today",
+          title: "Scan proof or add a current store report before making a trip.",
+          cta: "Review first",
+          onClick: () => openLiveScoutReportFlow("scanScreenshot"),
+        }}
+        ariaLabel="Scout local hunt"
+      />
+
+      <EtMockupSectionCard
+        title="Scout tools"
+        detail="Scan proof, report what you saw, or manage selected stores. Alerts are helpful reminders, never stock guarantees."
+        className="scout-mockup-navigation scout-summary-card"
+      >
+        <div className="et-mockup-action-grid scout-mockup-primary-actions" aria-label="Scout primary actions">
+          <EtMockupActionCard
+            title="Scan Screenshot"
+            detail="Review proof from a shelf photo, app screenshot, receipt, or shop post."
+            meta="Proof"
+            icon="scout"
+            tone="scout"
+            ariaLabel="Scan Screenshot"
+            className="scout-scan-screenshot-action"
+            onClick={() => openLiveScoutReportFlow("scanScreenshot")}
+          />
+          <EtMockupActionCard
+            title="Add Report"
+            detail="Share a current store signal with family-safe notes and review before submit."
+            meta="Current"
+            icon="scout"
+            tone="gold"
+            ariaLabel="Add Report"
+            className="scout-submit-primary"
+            onClick={() => openLiveScoutReportFlow("addReport")}
+          />
+          <EtMockupActionCard
+            title="Stores"
+            detail="Choose your watched store and keep selected-store context clear."
+            meta="Limit"
+            icon="scout"
+            tone="collector"
+            ariaLabel="Stores"
+            className="scout-stores-link"
+            onClick={() => {
+              setScoutSubTabTarget({ tab: "stores", id: Date.now() });
+              setScoutStoresMode("list");
+              setScoutView("stores");
+            }}
+          />
+        </div>
+
+        <div className="scout-header-trust-row scout-mockup-guardrails" aria-label="Scout trust summary">
+          <EtMockupPill tone="scout">{scoutSlotLabel}</EtMockupPill>
+          <EtMockupPill tone="collector">{scoutSwapLabel}</EtMockupPill>
+          <EtMockupPill tone="gold">{scoutReportLabel}</EtMockupPill>
+          <EtMockupPill tone="beta">{scoutTrustLabel}</EtMockupPill>
+          <EtMockupPill tone="scout">Current reports, not raw patterns.</EtMockupPill>
+          <EtMockupPill tone="collector">Exact quantities stay hidden unless shop-approved.</EtMockupPill>
+        </div>
+
+        <div className="standard-page-header-tabs scout-mockup-tabs" role="tablist" aria-label="Scout sections">
+          {scoutTabs.map((tab) => {
+            const activeKey = activeScoutPage === "reports" && scoutReportFilter === "My Reports"
+              ? "myReports"
+              : activeScoutPage === "stores" && scoutStoresMode === "map"
+                ? "storeMap"
+                : activeScoutPage === "predictions" || activeScoutPage === "guesses"
+                  ? "forecast"
+                  : activeScoutPage;
+            return (
+              <button
+                type="button"
+                key={tab.key}
+                className={activeKey === tab.key ? "active" : ""}
+                aria-selected={activeKey === tab.key}
+                onClick={() => changeScoutPage(tab.key)}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+      </EtMockupSectionCard>
+    </div>
   );
 }
 
@@ -35398,17 +35461,23 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const routeStores = watchedStoreRows.length ? watchedStoreRows.slice(0, 3) : storeRows.slice(0, 3);
     const kidAlertsDisabled = /kid|child/i.test(`${currentUserProfile?.accountType || currentUserProfile?.role || userType || ""}`);
     return (
-      <section className="panel pokemon-watch-calendar-panel ember-watch-panel">
-        <div className="compact-card-header ember-watch-header">
-          <div>
-            <p className="section-kicker">Ember Watch</p>
-            <h2>Scout Alerts &amp; Calendar</h2>
-            <p>Known drops, current store reports, and planned product releases for your selected Virginia area. Alerts are helpful reminders, never stock guarantees.</p>
+      <EtMockupSectionCard
+        title="Scout Alerts & Calendar"
+        detail="Known drops, current store reports, and planned product releases for your selected Virginia area. Alerts are helpful reminders, never stock guarantees."
+        className="pokemon-watch-calendar-panel ember-watch-panel scout-mockup-calendar"
+        action={(
+          <div className="summary-pill-row scout-mockup-calendar-actions">
+            <EtMockupButton variant="secondary" onClick={() => { setScoutView("stores"); setScoutStoresMode("map"); }}>Open Stores</EtMockupButton>
+            <EtMockupButton onClick={() => openScoutSubmitFlow({ source: "ember-watch-header" })}>Quick Report</EtMockupButton>
           </div>
+        )}
+      >
+        <div className="ember-watch-header scout-mockup-calendar-topline">
           <SectionHeroArt title="Ember Watch" className="ember-watch-feature-art" />
-          <div className="summary-pill-row">
-            <button type="button" className="secondary-button" onClick={() => { setScoutView("stores"); setScoutStoresMode("map"); }}>Open Stores</button>
-            <button type="button" onClick={() => openScoutSubmitFlow({ source: "ember-watch-header" })}>Quick Report</button>
+          <div className="scout-mockup-calendar-note">
+            <span className="section-kicker">Ember Watch</span>
+            <strong>Current reports only.</strong>
+            <p>Area filters, layers, and watchlist alerts stay framed as review-first planning signals.</p>
           </div>
         </div>
 
@@ -35533,7 +35602,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             )}
           </div>
         ) : null}
-      </section>
+      </EtMockupSectionCard>
     );
   }
 
@@ -36682,39 +36751,25 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       setScoutView("stores");
     };
     return (
-      <section className="scout-dashboard-overview scout-nearby-dashboard scout-home-foundation" aria-label="Scout Home">
-        <article className="panel scout-home-hero">
-          <div className="scout-home-hero-copy">
-            <span className="section-kicker">Richmond, VA</span>
-            <h2>Current reports, not raw patterns.</h2>
-            <p>Scout helps families read what is useful right now while keeping sensitive timing and network-wide history protected.</p>
-            <div className="scout-safety-strip" aria-label="Scout safety rules">
-              <span>Current reports, not raw patterns</span>
-              <span>Family-safe</span>
-              <span>Proof matters</span>
-              <span>Exact quantities stay hidden unless shop-approved</span>
-            </div>
-          </div>
-          <div className="scout-home-stat-grid" aria-label="Scout Home stats">
-            {scoutHomeStats.map((stat) => (
-              <button type="button" className="scout-home-stat-card" key={stat.key} onClick={stat.key === "watched" ? openScoutStoresList : () => setScoutView("reports")}>
-                <span>{stat.label}</span>
-                <strong>{stat.value}</strong>
-                <small>{stat.detail}</small>
-              </button>
-            ))}
-          </div>
-        </article>
-
-        <div className="scout-home-main-column">
-          <article className="panel scout-worth-trip-card">
-            <div className="compact-card-header">
-              <div>
-                <p className="section-kicker">Worth the Trip</p>
-                <h2>{scoutHomeReports[0].store} - {scoutHomeReports[0].area}</h2>
-                <p>{scoutHomeReports[0].familyNote}</p>
-              </div>
-              <span className="status-badge scout-confidence-badge scout-confidence-badge--verified">{scoutHomeReports[0].confidence}</span>
+      <section className="scout-dashboard-overview scout-nearby-dashboard scout-home-foundation scout-mockup-overview" aria-label="Scout Home">
+        <div className="scout-mockup-overview-main">
+          <EtMockupSectionCard
+            title="Worth the Trip"
+            detail={`${scoutHomeReports[0].store} - ${scoutHomeReports[0].area}. ${scoutHomeReports[0].familyNote}`}
+            className="scout-worth-trip-card"
+            action={<EtMockupPill tone="scout">{scoutHomeReports[0].confidence}</EtMockupPill>}
+          >
+            <div className="et-mockup-stat-grid scout-mockup-stat-grid" aria-label="Scout Home stats">
+              {scoutHomeStats.map((stat) => (
+                <EtMockupStatCard
+                  key={stat.key}
+                  label={stat.label}
+                  value={stat.value}
+                  detail={stat.detail}
+                  tone={stat.key === "watched" ? "scout" : stat.key === "proof" ? "gold" : "collector"}
+                  onClick={stat.key === "watched" ? openScoutStoresList : () => setScoutView("reports")}
+                />
+              ))}
             </div>
             <div className="scout-worth-trip-meta">
               <span>{scoutHomeReports[0].category}</span>
@@ -36724,22 +36779,20 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div className="scout-signal-decision-grid" aria-label="Worth the Trip decision guide">
               <span><strong>Trip guidance</strong>{scoutHomeReports[0].tripAdvice}</span>
               <span><strong>Proof</strong>{scoutHomeReports[0].proofStrength}</span>
-              <span><strong>Hidden</strong>{scoutHomeReports[0].hiddenDetail}</span>
+              <span><strong>Protected</strong>{scoutHomeReports[0].hiddenDetail}</span>
             </div>
-            <div className="quick-actions">
-              <button type="button" onClick={openScoutStoresList}>Choose watched store</button>
-              <button type="button" className="secondary-button" onClick={() => openLiveScoutReportFlow("addReport")}>Submit report</button>
+            <div className="scout-mockup-action-row">
+              <EtMockupButton onClick={openScoutStoresList}>Choose watched store</EtMockupButton>
+              <EtMockupButton variant="secondary" onClick={() => openLiveScoutReportFlow("addReport")}>Submit report</EtMockupButton>
             </div>
-          </article>
+          </EtMockupSectionCard>
 
-          <article className="panel scout-home-reports-panel">
-            <div className="compact-card-header">
-              <div>
-                <h2>Nearby Reports</h2>
-                <p>Mock current signals show store, proof, confidence, and family context without exploitable details.</p>
-              </div>
-              <button type="button" className="secondary-button" onClick={() => openLiveScoutReportFlow("reviewReport")}>Review report</button>
-            </div>
+          <EtMockupSectionCard
+            title="Nearby Reports"
+            detail="Mock current signals show store, proof, confidence, and family context without exploitable timing details."
+            className="scout-home-reports-panel"
+            action={<EtMockupButton variant="secondary" onClick={() => openLiveScoutReportFlow("reviewReport")}>Review report</EtMockupButton>}
+          >
             <div className="scout-home-report-grid">
               {scoutHomeReports.map((report) => (
                 <article className="scout-home-report-card" key={report.key}>
@@ -36764,71 +36817,61 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </article>
               ))}
             </div>
-          </article>
+          </EtMockupSectionCard>
         </div>
 
-        <aside className="scout-home-side-column">
-          <article className="panel scout-overview-card scout-watch-stores-card">
-            <div className="compact-card-header">
-              <div>
-                <p className="section-kicker">Scout limits</p>
-                <h2>Selected stores, not unlimited access.</h2>
-                <div className="scout-watch-rule-stack" aria-label="Scout watched store rule">
-                  <span>{watchedStorePlanLabel}</span>
-                  <span>{watchedStoreSwapLabel}</span>
-                  <small>{watchedStoreUsageLabel}</small>
-                </div>
-                <p>{watchedStoreSafetyCopy}</p>
-              </div>
-              <button type="button" className="secondary-button scout-store-manage-link" onClick={openScoutStoresList}>Manage</button>
+        <EtMockupRightRail
+          title="Selected store guardrails"
+          detail={watchedStoreSafetyCopy}
+          className="scout-watch-stores-card scout-mockup-watch-rail"
+        >
+          <div className="scout-watch-rule-stack" aria-label="Scout watched store rule">
+            <EtMockupPill tone="scout">{watchedStorePlanLabel}</EtMockupPill>
+            <EtMockupPill tone="collector">{watchedStoreSwapLabel}</EtMockupPill>
+            <EtMockupPill tone="gold">{watchedStoreUsageLabel}</EtMockupPill>
+          </div>
+          {watchedStoreRows.length ? (
+            <div className="scout-watch-store-list">
+              {watchedStoreRows.map((store, index) => {
+                const displayName = getScoutStoreDisplayName(store);
+                const retailer = getScoutQuickRetailer(store);
+                const region = getScoutQuickStoreRegion(store) || getScoutQuickStoreZip(store) || store.city || store.addressCity || store.address_city || "Selected store";
+                const key = getScoutQuickStoreId(store) || getStoreMapStoreId(store, index);
+                return (
+                  <button type="button" className="scout-watch-store-row" key={key} onClick={openScoutStoresList}>
+                    <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed="scout" /></span>
+                    <span>
+                      <strong>{displayName}</strong>
+                      <small>{retailer} - {region}</small>
+                    </span>
+                    <em>Current reports</em>
+                  </button>
+                );
+              })}
             </div>
-            {watchedStoreRows.length ? (
-              <div className="scout-watch-store-list">
-                {watchedStoreRows.map((store, index) => {
-                  const displayName = getScoutStoreDisplayName(store);
-                  const retailer = getScoutQuickRetailer(store);
-                  const region = getScoutQuickStoreRegion(store) || getScoutQuickStoreZip(store) || store.city || store.addressCity || store.address_city || "Selected store";
-                  const key = getScoutQuickStoreId(store) || getStoreMapStoreId(store, index);
-                  return (
-                    <button type="button" className="scout-watch-store-row" key={key} onClick={openScoutStoresList}>
-                      <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed="scout" /></span>
-                      <span>
-                        <strong>{displayName}</strong>
-                        <small>{retailer} - {region}</small>
-                      </span>
-                      <em>Current reports</em>
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="empty-state scout-watch-empty-state">
-                <h3>Choose your first watched store.</h3>
-                <p>{watchedStorePlanLabel}. {watchedStoreSwapLabel} Paid tiers add more selected stores, but Scout never sells unlimited raw access.</p>
-                <button type="button" className="secondary-button" onClick={openScoutStoresList}>Choose Store</button>
-              </div>
-            )}
-          </article>
+          ) : (
+            <EtMockupEmptyState
+              title="Choose your first watched store."
+              detail={`${watchedStorePlanLabel}. ${watchedStoreSwapLabel} Paid tiers add more selected stores, but Scout never sells unlimited raw access.`}
+              action={<EtMockupButton variant="secondary" onClick={openScoutStoresList}>Choose Store</EtMockupButton>}
+            />
+          )}
 
-          <article className="panel scout-home-safety-card">
-            <div className="compact-card-header">
-              <div>
-                <p className="section-kicker">Scout Access Foundation</p>
-                <h2>We show useful signals, not exploitable restock patterns.</h2>
-                <p>Current reports can help a family decide whether a stop is worth it. Sensitive timing, quantity, and pattern details stay protected.</p>
-              </div>
-            </div>
+          <div className="scout-mockup-safety-note">
+            <span className="section-kicker">Scout Access Foundation</span>
+            <strong>Useful proof, not exploitable patterns.</strong>
+            <p>Current reports help a family decide whether a stop is worth it. Sensitive timing, quantity, vendor schedules, and pattern details stay protected.</p>
             <div className="scout-safety-strip">
               <span>No buying shortcuts</span>
               <span>No exact patterns</span>
               <span>No vendor schedules</span>
               <span>Proof first</span>
             </div>
-            <button type="button" className="secondary-button" onClick={() => setScoutView("online")}>View online signals</button>
-          </article>
+            <EtMockupButton variant="secondary" onClick={() => setScoutView("online")}>View online signals</EtMockupButton>
+          </div>
 
           {renderScoutTierLockCard({ compact: true })}
-        </aside>
+        </EtMockupRightRail>
       </section>
     );
   }
@@ -61450,48 +61493,54 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         )}
 
         {activeTab === "scout" && (
-          <>
-            {renderScoutHeader()}
+          <EtMockupPageShell
+            accent="scout"
+            className="scout-mockup-rebuild"
+            ariaLabel="Scout local hunt"
+          >
+            <div className="et-mockup-main-column scout-mockup-main">
+              {renderScoutHeader()}
 
-            {normalizedScoutView === "submit" ? (
-              <>
-                <section className="embedded-page">
-                  <LazyToolBoundary label="Loading Scout report tools...">
-                    <Scout
-                      targetSubTab={{ ...scoutSubTabTarget, tab: "reports" }}
-                      compact
-                      adminMode={adminEditModeActive}
-                      supabase={supabase}
-                      isSupabaseConfigured={isSupabaseConfigured}
-                      mapCatalogRow={mapCatalog}
-                      money={money}
-                      onQuickReport={(options) => openScoutSubmitFlow({ ...options, source: "scout-embedded" })}
-                    />
-                  </LazyToolBoundary>
-                </section>
-              </>
-            ) : activeScoutPage === "reports" ? (
-              renderScoutReportsPanel()
-            ) : activeScoutPage === "online" ? (
-              renderScoutOnlinePanel()
-            ) : activeScoutPage === "watchlist" ? (
-              renderScoutWatchlistPanel()
-            ) : activeScoutPage === "alerts" ? (
-              renderEmberWatchPanel()
-            ) : activeScoutPage === "storeMap" || activeScoutPage === "stores" ? (
-              renderScoutStoresPanel()
-            ) : activeScoutPage === "guesses" || activeScoutPage === "predictions" || activeScoutPage === "forecast" ? (
-              renderScoutForecastPanel()
-            ) : activeScoutPage === "myReports" ? (
-              renderScoutReportsPanel()
-            ) : activeScoutPage === "review" ? (
-              renderScoutReviewPanel()
-            ) : normalizedScoutView === "addReport" || normalizedScoutView === "scanScreenshot" || normalizedScoutView === "reviewReport" ? (
-              renderLiveScoutReportFlowPage(normalizedScoutView)
-            ) : (
-              renderScoutOverviewPanel()
-            )}
-          </>
+              {normalizedScoutView === "submit" ? (
+                <>
+                  <section className="embedded-page">
+                    <LazyToolBoundary label="Loading Scout report tools...">
+                      <Scout
+                        targetSubTab={{ ...scoutSubTabTarget, tab: "reports" }}
+                        compact
+                        adminMode={adminEditModeActive}
+                        supabase={supabase}
+                        isSupabaseConfigured={isSupabaseConfigured}
+                        mapCatalogRow={mapCatalog}
+                        money={money}
+                        onQuickReport={(options) => openScoutSubmitFlow({ ...options, source: "scout-embedded" })}
+                      />
+                    </LazyToolBoundary>
+                  </section>
+                </>
+              ) : activeScoutPage === "reports" ? (
+                renderScoutReportsPanel()
+              ) : activeScoutPage === "online" ? (
+                renderScoutOnlinePanel()
+              ) : activeScoutPage === "watchlist" ? (
+                renderScoutWatchlistPanel()
+              ) : activeScoutPage === "alerts" ? (
+                renderEmberWatchPanel()
+              ) : activeScoutPage === "storeMap" || activeScoutPage === "stores" ? (
+                renderScoutStoresPanel()
+              ) : activeScoutPage === "guesses" || activeScoutPage === "predictions" || activeScoutPage === "forecast" ? (
+                renderScoutForecastPanel()
+              ) : activeScoutPage === "myReports" ? (
+                renderScoutReportsPanel()
+              ) : activeScoutPage === "review" ? (
+                renderScoutReviewPanel()
+              ) : normalizedScoutView === "addReport" || normalizedScoutView === "scanScreenshot" || normalizedScoutView === "reviewReport" ? (
+                renderLiveScoutReportFlowPage(normalizedScoutView)
+              ) : (
+                renderScoutOverviewPanel()
+              )}
+            </div>
+          </EtMockupPageShell>
         )}
 
         {activeTab === "menu" && renderSettingsPage()}

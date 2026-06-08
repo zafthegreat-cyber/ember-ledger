@@ -93515,3 +93515,561 @@ html body #root .app.app-command-shell.app-home .hearth-mockup-quick-grid .et-mo
     min-height: 64px;
   }
 }
+
+/* Scout mockup migration: local hunt page, current reports only. */
+html body #root .app.app-command-shell.app-scout .main {
+  padding-bottom: max(200px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 142px)) !important;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-rebuild {
+  --et-page-accent: var(--et-aqua);
+  --et-page-accent-2: var(--et-gold);
+  --scout-hunt-aqua: color-mix(in srgb, var(--et-aqua) 88%, #2c9bb5);
+  --scout-hunt-soft: color-mix(in srgb, var(--et-aqua) 12%, var(--et-panel-soft));
+  width: min(100%, 1180px);
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(14px, 1.8vw, 22px);
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-main {
+  grid-column: 1 / -1;
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-scout .scout-mockup-rebuild,
+html body #root .app.app-theme-light.app-command-shell.app-scout .scout-mockup-rebuild,
+html body #root .app.app-shell-light.app-command-shell.app-scout .scout-mockup-rebuild {
+  --et-ink: #132233 !important;
+  --et-muted: #5f655f !important;
+  --et-panel: #fffdf7 !important;
+  --et-panel-soft: #effcf7 !important;
+  --et-border: color-mix(in srgb, var(--et-aqua) 24%, rgba(93, 101, 95, 0.22)) !important;
+  color: var(--et-ink) !important;
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-scout .scout-mockup-rebuild :where(.et-mockup-page-hero, .et-mockup-section-card, .et-mockup-right-rail),
+html body #root .app.app-theme-light.app-command-shell.app-scout .scout-mockup-rebuild :where(.et-mockup-page-hero, .et-mockup-section-card, .et-mockup-right-rail),
+html body #root .app.app-shell-light.app-command-shell.app-scout .scout-mockup-rebuild :where(.et-mockup-page-hero, .et-mockup-section-card, .et-mockup-right-rail) {
+  border-color: color-mix(in srgb, #55d9ff 24%, rgba(93, 101, 95, 0.22)) !important;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, #55d9ff 70%, transparent), color-mix(in srgb, #d9a441 34%, transparent) 46%, transparent 88%) 0 0 / 100% 3px no-repeat,
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, #55d9ff 11%, transparent), transparent 13rem),
+    radial-gradient(circle at 100% 8%, color-mix(in srgb, #d9a441 8%, transparent), transparent 16rem),
+    #fffdf7 !important;
+  color: #132233 !important;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-rebuild :where(.et-mockup-hero-copy, .et-mockup-hero-status, .et-mockup-pill-row, .et-mockup-section-heading, .et-mockup-rail-heading, .et-mockup-action-copy) {
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-scout .scout-mockup-rebuild :where(.et-mockup-brand-row, .et-mockup-stat-card, .et-mockup-action-card, .et-mockup-empty-state, .et-mockup-today-action, .et-mockup-points-card, .et-mockup-pill),
+html body #root .app.app-theme-light.app-command-shell.app-scout .scout-mockup-rebuild :where(.et-mockup-brand-row, .et-mockup-stat-card, .et-mockup-action-card, .et-mockup-empty-state, .et-mockup-today-action, .et-mockup-points-card, .et-mockup-pill),
+html body #root .app.app-shell-light.app-command-shell.app-scout .scout-mockup-rebuild :where(.et-mockup-brand-row, .et-mockup-stat-card, .et-mockup-action-card, .et-mockup-empty-state, .et-mockup-today-action, .et-mockup-points-card, .et-mockup-pill) {
+  border-color: color-mix(in srgb, #55d9ff 22%, rgba(93, 101, 95, 0.22)) !important;
+  background: color-mix(in srgb, #effcf7 88%, #fffdf7) !important;
+  color: #132233 !important;
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-scout .scout-mockup-rebuild :where(h1, h2, h3, strong, b, .et-mockup-action-copy strong),
+html body #root .app.app-theme-light.app-command-shell.app-scout .scout-mockup-rebuild :where(h1, h2, h3, strong, b, .et-mockup-action-copy strong),
+html body #root .app.app-shell-light.app-command-shell.app-scout .scout-mockup-rebuild :where(h1, h2, h3, strong, b, .et-mockup-action-copy strong) {
+  color: #132233 !important;
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-scout .scout-mockup-rebuild :where(p, small, em, .et-mockup-section-heading p, .et-mockup-rail-heading p),
+html body #root .app.app-theme-light.app-command-shell.app-scout .scout-mockup-rebuild :where(p, small, em, .et-mockup-section-heading p, .et-mockup-rail-heading p),
+html body #root .app.app-shell-light.app-command-shell.app-scout .scout-mockup-rebuild :where(p, small, em, .et-mockup-section-heading p, .et-mockup-rail-heading p) {
+  color: #5f655f !important;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-header {
+  display: grid;
+  gap: clamp(13px, 1.7vw, 18px);
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-header .et-mockup-page-hero {
+  min-height: clamp(232px, 25vw, 312px);
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-header .et-mockup-hero-copy h1 {
+  max-width: 11ch;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-navigation {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  grid-auto-flow: row !important;
+  align-items: stretch !important;
+  gap: clamp(13px, 1.8vw, 18px);
+  width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-navigation > * {
+  grid-column: 1 / -1 !important;
+  width: 100%;
+  min-width: 0;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-primary-actions {
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.1fr) minmax(0, 0.9fr);
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-primary-actions .et-mockup-action-card {
+  min-height: 98px;
+  width: 100% !important;
+  min-width: 0 !important;
+  justify-self: stretch !important;
+  white-space: normal !important;
+  color: var(--et-ink) !important;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-rebuild :where(.et-mockup-hero-copy p, .et-mockup-action-copy, .et-mockup-action-copy small, .et-mockup-action-copy strong) {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-primary-actions .et-mockup-action-copy small {
+  display: block !important;
+  max-width: none !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  -webkit-line-clamp: unset !important;
+  -webkit-box-orient: initial !important;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-primary-actions .scout-scan-screenshot-action,
+html body #root .app.app-command-shell.app-scout .scout-mockup-primary-actions .scout-submit-primary {
+  border-color: color-mix(in srgb, var(--et-page-accent) 46%, var(--et-border));
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--et-page-accent) 14%, transparent), transparent 8rem),
+    color-mix(in srgb, var(--et-panel-soft) 88%, transparent);
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-primary-actions .scout-submit-primary {
+  border-color: color-mix(in srgb, var(--et-gold) 44%, var(--et-border));
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--et-gold) 14%, transparent), transparent 8rem),
+    color-mix(in srgb, var(--et-panel-soft) 88%, transparent);
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-guardrails {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 8px !important;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-guardrails .et-mockup-pill {
+  min-height: 34px;
+  justify-content: flex-start;
+  white-space: normal;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-tabs.standard-page-header-tabs {
+  display: flex !important;
+  gap: 8px !important;
+  width: 100%;
+  min-width: 0;
+  padding: 7px !important;
+  overflow-x: auto;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent) 20%, var(--et-border)) !important;
+  border-radius: 999px !important;
+  background: color-mix(in srgb, var(--et-panel-soft) 84%, transparent) !important;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-tabs.standard-page-header-tabs button {
+  flex: 0 0 auto;
+  min-height: 38px;
+  padding: 8px 13px;
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: transparent !important;
+  color: var(--et-muted) !important;
+  font-weight: 900;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-tabs.standard-page-header-tabs button.active,
+html body #root .app.app-command-shell.app-scout .scout-mockup-tabs.standard-page-header-tabs button[aria-selected="true"] {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--et-page-accent) 22%, var(--et-panel)), color-mix(in srgb, var(--et-page-accent-2) 14%, var(--et-panel-soft))) !important;
+  color: var(--et-ink) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38);
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-overview {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.65fr) !important;
+  gap: clamp(14px, 2vw, 22px) !important;
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-overview-main {
+  display: grid;
+  gap: clamp(13px, 1.7vw, 18px);
+  min-width: 0;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-stat-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+html body #root .app.app-command-shell.app-scout .scout-worth-trip-meta,
+html body #root .app.app-command-shell.app-scout .scout-home-report-status {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 8px !important;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-worth-trip-meta span,
+html body #root .app.app-command-shell.app-scout .scout-home-report-status span {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent) 18%, var(--et-border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--et-panel-soft) 82%, transparent);
+  color: var(--et-ink) !important;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-action-row .et-mockup-button {
+  flex: 1 1 180px;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-home-report-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-home-report-card {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent) 18%, var(--et-border));
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--et-page-accent) 8%, transparent), transparent 8rem),
+    color-mix(in srgb, var(--et-panel-soft) 88%, transparent);
+}
+
+html body #root .app.app-command-shell.app-scout .scout-home-report-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-home-report-top div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-home-report-top span,
+html body #root .app.app-command-shell.app-scout .scout-home-report-card p {
+  color: var(--et-muted) !important;
+  font-size: 0.82rem;
+  font-weight: 720;
+  line-height: 1.34;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-home-report-top b {
+  align-self: start;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--et-page-accent) 16%, var(--et-panel-soft));
+  color: var(--et-ink) !important;
+  font-size: 0.75rem;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-report-safety-dl {
+  display: grid;
+  gap: 7px;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-report-safety-dl div {
+  display: grid;
+  gap: 2px;
+  padding: 8px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--et-panel) 68%, transparent);
+}
+
+html body #root .app.app-command-shell.app-scout .scout-report-safety-dl dt {
+  color: var(--et-muted);
+  font-size: 0.66rem;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-report-safety-dl dd {
+  margin: 0;
+  color: var(--et-ink);
+  font-weight: 850;
+  line-height: 1.25;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-watch-rail {
+  position: static;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-watch-rail .scout-watch-rule-stack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-watch-rail .scout-watch-store-list {
+  display: grid;
+  gap: 9px;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-watch-rail .scout-watch-store-row {
+  min-height: 72px !important;
+  border-color: color-mix(in srgb, var(--et-page-accent) 18%, var(--et-border)) !important;
+  background: color-mix(in srgb, var(--et-panel-soft) 86%, transparent) !important;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-safety-note {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2) 22%, var(--et-border));
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--et-page-accent-2) 9%, var(--et-panel-soft));
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-safety-note strong {
+  color: var(--et-ink);
+  font-size: 1rem;
+  line-height: 1.16;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-safety-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-safety-strip span {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 9px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent) 18%, var(--et-border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--et-panel-soft) 82%, transparent);
+  color: var(--et-ink);
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
+html body #root .app.app-command-shell.app-scout .pokemon-watch-calendar-panel.scout-mockup-calendar {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: clamp(16px, 2.4vw, 24px) !important;
+  border-radius: var(--et-radius-xl) !important;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-calendar .et-mockup-section-heading {
+  align-items: center;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-calendar-actions {
+  display: flex !important;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 9px !important;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-calendar-actions .et-mockup-button {
+  min-width: 128px;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-calendar-topline {
+  display: grid !important;
+  grid-template-columns: minmax(150px, 0.28fr) minmax(0, 1fr) !important;
+  align-items: stretch !important;
+  gap: 12px !important;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-calendar-note {
+  display: grid;
+  align-content: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent) 16%, var(--et-border));
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--et-panel-soft) 86%, transparent);
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-calendar-note strong {
+  color: var(--et-ink);
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-calendar .ember-watch-feature-art {
+  max-width: none !important;
+  min-height: 126px;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-calendar .watch-calendar-summary-grid {
+  gap: 10px !important;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-calendar :where(.watch-calendar-summary-grid > div, .scout-alert-setup-card, .ember-watch-section, .watch-calendar-day-group, .watch-calendar-toolbar, .watch-calendar-event-row, .ember-watch-privacy-note, .scout-alert-scope-note) {
+  border-color: color-mix(in srgb, var(--et-page-accent) 18%, var(--et-border)) !important;
+  border-radius: 20px !important;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-calendar .watch-calendar-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(170px, auto);
+  align-items: end;
+  gap: 12px !important;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-calendar .watch-calendar-layer-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-bottom: 4px !important;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-calendar .watch-layer-chip {
+  white-space: normal;
+}
+
+@media (min-width: 960px) {
+  html body #root .app.app-command-shell.app-scout .scout-mockup-watch-rail {
+    position: sticky;
+    top: 16px;
+  }
+}
+
+@media (max-width: 920px) {
+  html body #root .app.app-command-shell.app-scout .scout-mockup-overview {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-home-report-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 620px) {
+  html body #root .app.app-command-shell.app-scout .main {
+    padding-bottom: max(224px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 162px)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-rebuild {
+    padding-inline: 7px;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-header .et-mockup-page-hero {
+    min-height: 0;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-primary-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-primary-actions .et-mockup-action-card {
+    min-height: 72px;
+    grid-template-columns: 38px minmax(0, 1fr);
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-primary-actions .et-mockup-action-card b {
+    grid-column: 2;
+    justify-self: start;
+    max-width: none;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-tabs.standard-page-header-tabs {
+    border-radius: 20px !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-stat-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-calendar .et-mockup-section-heading {
+    display: grid;
+    align-items: start;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-calendar-actions {
+    justify-content: stretch;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-calendar-actions .et-mockup-button {
+    flex: 1 1 130px;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-calendar-topline {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-calendar .ember-watch-feature-art {
+    display: none !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-calendar .watch-calendar-toolbar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 430px) {
+  html body #root .app.app-command-shell.app-scout .main {
+    padding-bottom: max(232px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 170px)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-rebuild {
+    padding-inline: 6px;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-header .et-mockup-hero-copy h1 {
+    font-size: clamp(1.72rem, 8.3vw, 2.18rem);
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-guardrails .et-mockup-pill {
+    min-height: 29px;
+    padding: 5px 8px;
+    font-size: 0.62rem;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-stat-grid {
+    gap: 6px;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-home-report-card,
+  html body #root .app.app-command-shell.app-scout .scout-mockup-safety-note {
+    border-radius: 17px;
+    padding: 11px;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-calendar .watch-calendar-summary-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
