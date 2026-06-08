@@ -92678,3 +92678,840 @@ html body #root .app.app-command-shell :where(.coming-soon-hero, .coming-soon-su
     padding: 18px 14px !important;
   }
 }
+
+/* Mockup-aligned Ember & Tide foundation: reusable page and card primitives. */
+html body #root .app.app-command-shell {
+  --et-cream: #fff6e8;
+  --et-ivory: #fffaf1;
+  --et-ivory-strong: #fffdf7;
+  --et-navy: #0b172c;
+  --et-navy-2: #10223d;
+  --et-coral: #f36a4f;
+  --et-ember: #f97316;
+  --et-gold: #d9a441;
+  --et-aqua: #16b8b1;
+  --et-mint: #16a37f;
+  --et-amethyst: #8b5cf6;
+  --et-copper: #c7672d;
+  --et-pink: #f47ca0;
+  --et-ink: #171a27;
+  --et-muted: #6f604e;
+  --et-panel: #fffdf7;
+  --et-panel-soft: #fff1dc;
+  --et-border: color-mix(in srgb, var(--et-gold) 28%, rgba(115, 79, 36, 0.2));
+  --et-shadow: 0 22px 54px color-mix(in srgb, var(--wc-shadow, rgba(65, 42, 22, 0.2)) 72%, transparent);
+  --et-radius-xl: 30px;
+  --et-radius-lg: 24px;
+  --et-radius-md: 18px;
+  --et-page-accent: var(--et-ember);
+  --et-page-accent-2: var(--et-gold);
+}
+
+html body #root .app.app-theme-dark.app-command-shell,
+html body #root .app.app-shell-dark.app-command-shell {
+  --et-cream: #08111f;
+  --et-ivory: #0d1b31;
+  --et-ivory-strong: #10243f;
+  --et-ink: #f9fafb;
+  --et-muted: color-mix(in srgb, #f9fafb 70%, #8da0be);
+  --et-panel: color-mix(in srgb, var(--wc-panel-strong, var(--et-navy-2)) 90%, #07101e 10%);
+  --et-panel-soft: color-mix(in srgb, var(--wc-card, #0d2039) 88%, transparent);
+  --et-border: color-mix(in srgb, var(--et-gold) 32%, rgba(255, 255, 255, 0.12));
+  --et-shadow: 0 24px 58px rgba(0, 0, 0, 0.34);
+}
+
+html body #root .app.app-command-shell .et-mockup-page[data-accent="hearth"] {
+  --et-page-accent: var(--et-ember);
+  --et-page-accent-2: var(--et-gold);
+}
+
+html body #root .app.app-command-shell .et-mockup-page[data-accent="scout"] {
+  --et-page-accent: var(--et-aqua);
+  --et-page-accent-2: var(--et-gold);
+}
+
+html body #root .app.app-command-shell .et-mockup-page[data-accent="vault"] {
+  --et-page-accent: var(--et-amethyst);
+  --et-page-accent-2: var(--et-gold);
+}
+
+html body #root .app.app-command-shell .et-mockup-page[data-accent="market"] {
+  --et-page-accent: var(--et-mint);
+  --et-page-accent-2: var(--et-gold);
+}
+
+html body #root .app.app-command-shell .et-mockup-page[data-accent="forge"] {
+  --et-page-accent: var(--et-copper);
+  --et-page-accent-2: var(--et-ember);
+}
+
+html body #root .app.app-command-shell .et-mockup-page[data-accent="spark"] {
+  --et-page-accent: var(--et-pink);
+  --et-page-accent-2: var(--et-gold);
+}
+
+html body #root .app.app-command-shell .et-mockup-page[data-accent="tidepool"] {
+  --et-page-accent: var(--et-aqua);
+  --et-page-accent-2: var(--et-coral);
+}
+
+html body #root .app.app-command-shell .et-mockup-page[data-accent="more"] {
+  --et-page-accent: var(--et-navy);
+  --et-page-accent-2: var(--et-gold);
+}
+
+html body #root .app.app-command-shell .et-mockup-page {
+  width: min(100%, 1200px);
+  margin-inline: auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1.48fr) minmax(310px, 0.74fr);
+  align-items: start;
+  gap: clamp(16px, 2.2vw, 26px);
+  padding: clamp(8px, 1.4vw, 16px);
+  padding-bottom: max(190px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 132px));
+  color: var(--et-ink);
+}
+
+html body #root .app.app-command-shell .et-mockup-main-column,
+html body #root .app.app-command-shell .et-mockup-right-rail,
+html body #root .app.app-command-shell .et-mockup-action-stack,
+html body #root .app.app-command-shell .et-mockup-action-grid {
+  display: grid;
+  min-width: 0;
+}
+
+html body #root .app.app-command-shell .et-mockup-main-column,
+html body #root .app.app-command-shell .et-mockup-action-stack {
+  gap: clamp(14px, 1.7vw, 20px);
+}
+
+html body #root .app.app-command-shell .et-mockup-page-hero,
+html body #root .app.app-command-shell .et-mockup-section-card,
+html body #root .app.app-command-shell .et-mockup-right-rail,
+html body #root .app.app-command-shell .et-mockup-modal-shell {
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2) 28%, var(--et-border));
+  border-radius: var(--et-radius-xl);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--et-page-accent-2) 76%, transparent), color-mix(in srgb, var(--et-page-accent) 32%, transparent) 42%, transparent 88%) 0 0 / 100% 3px no-repeat,
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--et-page-accent) 14%, transparent), transparent 13rem),
+    radial-gradient(circle at 100% 8%, color-mix(in srgb, var(--et-page-accent-2) 10%, transparent), transparent 16rem),
+    var(--et-panel);
+  box-shadow: var(--et-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.56);
+  color: var(--et-ink);
+}
+
+html body #root .app.app-theme-dark.app-command-shell .et-mockup-page-hero,
+html body #root .app.app-theme-dark.app-command-shell .et-mockup-section-card,
+html body #root .app.app-theme-dark.app-command-shell .et-mockup-right-rail,
+html body #root .app.app-theme-dark.app-command-shell .et-mockup-modal-shell,
+html body #root .app.app-shell-dark.app-command-shell .et-mockup-page-hero,
+html body #root .app.app-shell-dark.app-command-shell .et-mockup-section-card,
+html body #root .app.app-shell-dark.app-command-shell .et-mockup-right-rail,
+html body #root .app.app-shell-dark.app-command-shell .et-mockup-modal-shell {
+  box-shadow: var(--et-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+html body #root .app.app-command-shell .et-mockup-page-hero {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: clamp(14px, 2.2vw, 24px);
+  align-items: stretch;
+  min-height: clamp(260px, 28vw, 360px);
+  padding: clamp(20px, 3.2vw, 34px);
+}
+
+html body #root .app.app-command-shell .et-mockup-page-hero::after {
+  content: "";
+  position: absolute;
+  inset: auto -34px -44px auto;
+  width: 170px;
+  height: 170px;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle, color-mix(in srgb, var(--et-page-accent) 24%, transparent), transparent 62%),
+    radial-gradient(circle, color-mix(in srgb, var(--et-page-accent-2) 16%, transparent), transparent 70%);
+  pointer-events: none;
+}
+
+html body #root .app.app-command-shell .et-mockup-hero-copy {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  align-content: space-between;
+  gap: 14px;
+  min-width: 0;
+}
+
+html body #root .app.app-command-shell .et-mockup-brand-row {
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 10px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2) 34%, var(--et-border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--et-panel-soft) 78%, transparent);
+  color: var(--et-muted);
+  font-size: 0.76rem;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+html body #root .app.app-command-shell .et-mockup-brand-row img {
+  width: 22px;
+  height: 22px;
+  border-radius: 8px;
+}
+
+html body #root .app.app-command-shell .et-mockup-hero-copy h1 {
+  max-width: 13ch;
+  margin: 0;
+  color: var(--et-ink);
+  font-size: clamp(2.45rem, 6vw, 4.4rem);
+  line-height: 0.95;
+  letter-spacing: 0;
+}
+
+html body #root .app.app-command-shell .et-mockup-hero-copy p,
+html body #root .app.app-command-shell .et-mockup-section-heading p,
+html body #root .app.app-command-shell .et-mockup-rail-heading p {
+  margin: 0;
+  color: var(--et-muted);
+  font-weight: 700;
+  line-height: 1.42;
+}
+
+html body #root .app.app-theme-dark.app-command-shell .et-mockup-hero-copy p,
+html body #root .app.app-theme-dark.app-command-shell .et-mockup-section-heading p,
+html body #root .app.app-theme-dark.app-command-shell .et-mockup-rail-heading p,
+html body #root .app.app-shell-dark.app-command-shell .et-mockup-hero-copy p,
+html body #root .app.app-shell-dark.app-command-shell .et-mockup-section-heading p,
+html body #root .app.app-shell-dark.app-command-shell .et-mockup-rail-heading p {
+  color: color-mix(in srgb, var(--wc-text, #f9fafb) 74%, var(--wc-muted, #8fa3c3));
+}
+
+html body #root .app.app-command-shell .et-mockup-today-action {
+  width: min(100%, 560px);
+  display: grid;
+  gap: 6px;
+  min-height: 78px;
+  padding: 13px 15px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent) 38%, var(--et-border));
+  border-left: 5px solid var(--et-page-accent);
+  border-radius: var(--et-radius-md);
+  background: color-mix(in srgb, var(--et-page-accent-2) 10%, var(--et-panel-soft));
+  color: var(--et-ink);
+  text-align: left;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.52);
+}
+
+html body #root .app.app-command-shell .et-mockup-today-action span,
+html body #root .app.app-command-shell .et-mockup-today-action b,
+html body #root .app.app-command-shell .et-mockup-action-card em,
+html body #root .app.app-command-shell .et-mockup-stat-card span {
+  color: var(--et-muted);
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+html body #root .app.app-command-shell .et-mockup-today-action strong {
+  font-size: clamp(1rem, 1.8vw, 1.18rem);
+  line-height: 1.18;
+}
+
+html body #root .app.app-command-shell .et-mockup-hero-status {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  align-content: space-between;
+  justify-items: end;
+  gap: 12px;
+}
+
+html body #root .app.app-command-shell .et-mockup-points-card {
+  min-width: 118px;
+  display: grid;
+  place-items: center;
+  gap: 3px;
+  padding: 15px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2) 46%, var(--et-border));
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--et-page-accent-2) 14%, var(--et-panel));
+  color: var(--et-ink);
+}
+
+html body #root .app.app-command-shell .et-mockup-points-card strong {
+  font-size: 1.54rem;
+  line-height: 1;
+}
+
+html body #root .app.app-command-shell .et-mockup-points-card small,
+html body #root .app.app-command-shell .et-mockup-action-card small,
+html body #root .app.app-command-shell .et-mockup-empty-state p,
+html body #root .app.app-command-shell .hearth-mockup-best-action-body p {
+  color: var(--et-muted);
+  font-weight: 720;
+  line-height: 1.34;
+}
+
+html body #root .app.app-command-shell .et-mockup-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  max-width: 260px;
+}
+
+html body #root .app.app-command-shell .et-mockup-pill,
+html body #root .app.app-command-shell .et-mockup-chip,
+html body #root .app.app-command-shell .et-mockup-tab {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2) 34%, var(--et-border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--et-panel-soft) 88%, transparent);
+  color: var(--et-ink);
+  font-size: 0.76rem;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+html body #root .app.app-command-shell .et-mockup-section-card,
+html body #root .app.app-command-shell .et-mockup-right-rail {
+  display: grid;
+  gap: clamp(12px, 1.6vw, 18px);
+  padding: clamp(16px, 2.4vw, 24px);
+}
+
+html body #root .app.app-command-shell .et-mockup-section-heading,
+html body #root .app.app-command-shell .et-mockup-rail-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+
+html body #root .app.app-command-shell .et-mockup-section-heading h2,
+html body #root .app.app-command-shell .et-mockup-rail-heading h2 {
+  margin: 0;
+  color: var(--et-ink);
+  font-size: clamp(1.2rem, 2.1vw, 1.65rem);
+  line-height: 1.05;
+  letter-spacing: 0;
+}
+
+html body #root .app.app-command-shell .et-mockup-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 11px;
+}
+
+html body #root .app.app-command-shell .et-mockup-stat-card,
+html body #root .app.app-command-shell .et-mockup-action-card,
+html body #root .app.app-command-shell .et-mockup-empty-state {
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2) 22%, var(--et-border));
+  border-radius: var(--et-radius-md);
+  background: color-mix(in srgb, var(--et-panel-soft) 90%, transparent);
+  color: var(--et-ink);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+html body #root .app.app-theme-dark.app-command-shell .et-mockup-stat-card,
+html body #root .app.app-theme-dark.app-command-shell .et-mockup-action-card,
+html body #root .app.app-theme-dark.app-command-shell .et-mockup-empty-state,
+html body #root .app.app-shell-dark.app-command-shell .et-mockup-stat-card,
+html body #root .app.app-shell-dark.app-command-shell .et-mockup-action-card,
+html body #root .app.app-shell-dark.app-command-shell .et-mockup-empty-state {
+  background: color-mix(in srgb, var(--et-panel-soft) 92%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+html body #root .app.app-command-shell .et-mockup-stat-card {
+  min-height: 104px;
+  display: grid;
+  align-content: center;
+  gap: 5px;
+  padding: 15px;
+  text-align: left;
+}
+
+html body #root .app.app-command-shell button.et-mockup-stat-card {
+  cursor: pointer;
+}
+
+html body #root .app.app-command-shell .et-mockup-stat-card strong {
+  font-size: clamp(1.25rem, 2.6vw, 1.8rem);
+  line-height: 1;
+}
+
+html body #root .app.app-command-shell .et-mockup-action-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 11px;
+}
+
+html body #root .app.app-command-shell .et-mockup-action-card {
+  min-width: 0;
+  min-height: 92px;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  padding: 12px;
+  text-align: left;
+}
+
+html body #root .app.app-command-shell button.et-mockup-action-card {
+  cursor: pointer;
+}
+
+html body #root .app.app-command-shell .et-mockup-action-card:hover,
+html body #root .app.app-command-shell .et-mockup-stat-card:hover,
+html body #root .app.app-command-shell .et-mockup-button:hover {
+  transform: translateY(-1px);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html body #root .app.app-command-shell .et-mockup-action-card,
+  html body #root .app.app-command-shell .et-mockup-stat-card,
+  html body #root .app.app-command-shell .et-mockup-button {
+    transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+  }
+}
+
+html body #root .app.app-command-shell .et-mockup-icon {
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--et-page-accent) 13%, var(--et-panel));
+  color: var(--et-page-accent);
+}
+
+html body #root .app.app-command-shell .et-mockup-action-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+html body #root .app.app-command-shell .et-mockup-action-copy strong {
+  color: var(--et-ink);
+  font-size: 0.94rem;
+  font-weight: 950;
+  line-height: 1.16;
+}
+
+html body #root .app.app-command-shell .et-mockup-action-card b {
+  max-width: 92px;
+  justify-self: end;
+  padding: 5px 8px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2) 28%, var(--et-border));
+  border-radius: 999px;
+  color: var(--et-ink);
+  font-size: 0.68rem;
+  font-weight: 950;
+  line-height: 1.1;
+  text-align: center;
+}
+
+html body #root .app.app-command-shell .et-mockup-action-card i {
+  color: var(--et-page-accent);
+  font-style: normal;
+  font-weight: 950;
+}
+
+html body #root .app.app-command-shell .et-mockup-button {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 15px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent) 44%, var(--et-border));
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--et-page-accent), color-mix(in srgb, var(--et-page-accent-2) 58%, var(--et-page-accent)));
+  color: #fffdf7;
+  font-weight: 950;
+  line-height: 1;
+  box-shadow: 0 12px 26px color-mix(in srgb, var(--et-page-accent) 22%, transparent);
+}
+
+html body #root .app.app-command-shell .et-mockup-button-secondary,
+html body #root .app.app-command-shell .et-mockup-button-ghost {
+  background: color-mix(in srgb, var(--et-panel-soft) 88%, transparent);
+  color: var(--et-ink);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+html body #root .app.app-command-shell .et-mockup-right-rail {
+  position: sticky;
+  top: 16px;
+  align-self: start;
+}
+
+html body #root .app.app-command-shell .et-mockup-empty-state {
+  min-height: 154px;
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  padding: 20px;
+  text-align: center;
+}
+
+html body #root .app.app-command-shell .et-mockup-empty-state strong {
+  color: var(--et-ink);
+  font-size: 1.03rem;
+  line-height: 1.2;
+}
+
+html body #root .app.app-command-shell.app-home .main {
+  padding-bottom: max(190px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 132px)) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-mockup-rebuild {
+  --et-page-accent: var(--et-ember);
+  --et-page-accent-2: var(--et-gold);
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-home .hearth-mockup-rebuild,
+html body #root .app.app-theme-light.app-command-shell.app-home .hearth-mockup-rebuild,
+html body #root .app.app-shell-light.app-command-shell.app-home .hearth-mockup-rebuild {
+  --et-ink: #171a27 !important;
+  --et-muted: #6f604e !important;
+  --et-panel: #fffdf7 !important;
+  --et-panel-soft: #fff1dc !important;
+  --et-border: color-mix(in srgb, var(--et-gold) 28%, rgba(115, 79, 36, 0.2)) !important;
+  color: var(--et-ink) !important;
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-home .hearth-mockup-rebuild :where(.et-mockup-page-hero, .et-mockup-section-card, .et-mockup-right-rail),
+html body #root .app.app-theme-light.app-command-shell.app-home .hearth-mockup-rebuild :where(.et-mockup-page-hero, .et-mockup-section-card, .et-mockup-right-rail),
+html body #root .app.app-shell-light.app-command-shell.app-home .hearth-mockup-rebuild :where(.et-mockup-page-hero, .et-mockup-section-card, .et-mockup-right-rail) {
+  border-color: color-mix(in srgb, #d9a441 30%, rgba(115, 79, 36, 0.2)) !important;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, #d9a441 76%, transparent), color-mix(in srgb, #f97316 28%, transparent) 42%, transparent 88%) 0 0 / 100% 3px no-repeat,
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, #f97316 10%, transparent), transparent 13rem),
+    radial-gradient(circle at 100% 8%, color-mix(in srgb, #d9a441 9%, transparent), transparent 16rem),
+    #fffdf7 !important;
+  color: #171a27 !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-mockup-rebuild :where(.et-mockup-hero-copy, .et-mockup-hero-status, .et-mockup-pill-row, .et-mockup-section-heading, .et-mockup-rail-heading, .et-mockup-action-copy) {
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-home .hearth-mockup-rebuild :where(.et-mockup-brand-row, .et-mockup-stat-card, .et-mockup-action-card, .et-mockup-empty-state, .et-mockup-today-action, .et-mockup-points-card, .et-mockup-pill),
+html body #root .app.app-theme-light.app-command-shell.app-home .hearth-mockup-rebuild :where(.et-mockup-brand-row, .et-mockup-stat-card, .et-mockup-action-card, .et-mockup-empty-state, .et-mockup-today-action, .et-mockup-points-card, .et-mockup-pill),
+html body #root .app.app-shell-light.app-command-shell.app-home .hearth-mockup-rebuild :where(.et-mockup-brand-row, .et-mockup-stat-card, .et-mockup-action-card, .et-mockup-empty-state, .et-mockup-today-action, .et-mockup-points-card, .et-mockup-pill) {
+  border-color: color-mix(in srgb, #d9a441 24%, rgba(115, 79, 36, 0.2)) !important;
+  background: color-mix(in srgb, #fff1dc 88%, #fffdf7) !important;
+  color: #171a27 !important;
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-home .hearth-mockup-rebuild :where(h1, h2, h3, strong, b, .et-mockup-action-copy strong),
+html body #root .app.app-theme-light.app-command-shell.app-home .hearth-mockup-rebuild :where(h1, h2, h3, strong, b, .et-mockup-action-copy strong),
+html body #root .app.app-shell-light.app-command-shell.app-home .hearth-mockup-rebuild :where(h1, h2, h3, strong, b, .et-mockup-action-copy strong) {
+  color: #171a27 !important;
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-home .hearth-mockup-rebuild :where(p, small, em, .et-mockup-section-heading p, .et-mockup-rail-heading p),
+html body #root .app.app-theme-light.app-command-shell.app-home .hearth-mockup-rebuild :where(p, small, em, .et-mockup-section-heading p, .et-mockup-rail-heading p),
+html body #root .app.app-shell-light.app-command-shell.app-home .hearth-mockup-rebuild :where(p, small, em, .et-mockup-section-heading p, .et-mockup-rail-heading p) {
+  color: #6f604e !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-mockup-rebuild .hearth-today-sparks-panel,
+html body #root .app.app-command-shell.app-home .hearth-mockup-rebuild .hearth-state-card,
+html body #root .app.app-command-shell.app-home .hearth-mockup-rebuild .et-live-trust-note,
+html body #root .app.app-command-shell.app-home .hearth-mockup-rebuild .hearth-onboarding-slot > * {
+  border-radius: var(--et-radius-lg) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-mockup-rebuild .hearth-today-sparks-panel {
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2) 24%, var(--et-border)) !important;
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--et-page-accent) 10%, transparent), transparent 11rem),
+    var(--et-panel) !important;
+  box-shadow: var(--et-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.42) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-mockup-best-action-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-mockup-best-action-body h3 {
+  margin: 3px 0 4px;
+  color: var(--et-ink);
+  font-size: clamp(1.25rem, 2.4vw, 1.75rem);
+  line-height: 1.05;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-mockup-hero-stat-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(72px, 1fr));
+  gap: 8px;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-mockup-hero-stat-row .hearth-hero-stat {
+  min-width: 0 !important;
+  margin: 0 !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-mockup-quick-actions,
+html body #root .app.app-command-shell.app-home .hearth-mockup-recent {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-mockup-quick-grid,
+html body #root .app.app-command-shell.app-home .hearth-mockup-recent-list {
+  display: grid;
+  gap: 10px;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-mockup-quick-grid .et-mockup-action-card {
+  min-height: 78px;
+  grid-template-columns: 40px minmax(0, 1fr);
+}
+
+html body #root .app.app-command-shell.app-home .hearth-mockup-quick-grid .et-mockup-action-card b,
+html body #root .app.app-command-shell.app-home .hearth-mockup-quick-grid .et-mockup-action-card i {
+  display: none;
+}
+
+@media (max-width: 920px) {
+  html body #root .app.app-command-shell .et-mockup-page {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  html body #root .app.app-command-shell .et-mockup-right-rail {
+    position: static;
+  }
+}
+
+@media (max-width: 620px) {
+  html body #root .app.app-command-shell .et-mockup-page {
+    gap: 13px;
+    padding-inline: 8px;
+    padding-bottom: max(224px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 162px));
+  }
+
+  html body #root .app.app-command-shell .et-mockup-page-hero {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+    padding: 15px;
+    border-radius: 26px;
+  }
+
+  html body #root .app.app-command-shell .et-mockup-hero-copy {
+    align-content: start;
+    gap: 10px;
+  }
+
+  html body #root .app.app-command-shell .et-mockup-hero-copy h1 {
+    max-width: 14ch;
+    font-size: clamp(2rem, 9.2vw, 2.72rem);
+  }
+
+  html body #root .app.app-command-shell .et-mockup-hero-copy p {
+    font-size: 0.9rem;
+    line-height: 1.34;
+  }
+
+  html body #root .app.app-command-shell .et-mockup-today-action {
+    min-height: 64px;
+    padding: 10px 12px;
+  }
+
+  html body #root .app.app-command-shell .et-mockup-hero-status {
+    grid-template-columns: auto minmax(0, 1fr);
+    justify-items: start;
+    align-items: center;
+  }
+
+  html body #root .app.app-command-shell .et-mockup-points-card {
+    min-width: 92px;
+    padding: 10px;
+    border-radius: 19px;
+  }
+
+  html body #root .app.app-command-shell .et-mockup-points-card strong {
+    font-size: 1.15rem;
+  }
+
+  html body #root .app.app-command-shell .et-mockup-pill-row {
+    justify-content: flex-start;
+  }
+
+  html body #root .app.app-command-shell .et-mockup-section-card,
+  html body #root .app.app-command-shell .et-mockup-right-rail {
+    gap: 11px;
+    padding: 13px;
+    border-radius: 24px;
+  }
+
+  html body #root .app.app-command-shell .et-mockup-section-heading,
+  html body #root .app.app-command-shell .et-mockup-rail-heading {
+    display: grid;
+    gap: 7px;
+  }
+
+  html body #root .app.app-command-shell .et-mockup-section-heading h2,
+  html body #root .app.app-command-shell .et-mockup-rail-heading h2 {
+    font-size: 1.08rem;
+  }
+
+  html body #root .app.app-command-shell .et-mockup-section-heading p,
+  html body #root .app.app-command-shell .et-mockup-rail-heading p {
+    font-size: 0.82rem;
+    line-height: 1.28;
+  }
+
+  html body #root .app.app-command-shell .et-mockup-stat-grid {
+    gap: 7px;
+  }
+
+  html body #root .app.app-command-shell .et-mockup-stat-card {
+    min-height: 74px;
+    padding: 9px 7px;
+    border-radius: 16px;
+  }
+
+  html body #root .app.app-command-shell .et-mockup-stat-card span,
+  html body #root .app.app-command-shell .et-mockup-stat-card small {
+    font-size: 0.62rem;
+  }
+
+  html body #root .app.app-command-shell .et-mockup-stat-card strong {
+    font-size: 1rem;
+  }
+
+  html body #root .app.app-command-shell .et-mockup-action-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  html body #root .app.app-command-shell .et-mockup-action-card {
+    min-height: 70px;
+    grid-template-columns: 38px minmax(0, 1fr) auto;
+    gap: 9px;
+    padding: 9px;
+    border-radius: 16px;
+  }
+
+  html body #root .app.app-command-shell .et-mockup-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 13px;
+  }
+
+  html body #root .app.app-command-shell .et-mockup-action-copy strong {
+    font-size: 0.82rem;
+  }
+
+  html body #root .app.app-command-shell .et-mockup-action-card small {
+    font-size: 0.68rem;
+    line-height: 1.22;
+  }
+
+  html body #root .app.app-command-shell .et-mockup-action-card b {
+    max-width: 72px;
+    padding: 4px 6px;
+    font-size: 0.6rem;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-mockup-best-action-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-mockup-hero-stat-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-mockup-best-action-body .et-mockup-button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 430px) {
+  html body #root .app.app-command-shell.app-home .main {
+    padding-bottom: max(226px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 166px)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-mockup-rebuild {
+    padding-inline: 6px;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-mockup-rebuild .et-mockup-page-hero {
+    padding: 13px;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-mockup-rebuild .et-mockup-brand-row {
+    padding: 5px 8px;
+    font-size: 0.66rem;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-mockup-rebuild .et-mockup-brand-row img {
+    width: 19px;
+    height: 19px;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-mockup-rebuild .et-mockup-hero-copy h1 {
+    font-size: clamp(1.72rem, 8.5vw, 2.2rem);
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-mockup-rebuild .et-mockup-hero-copy p {
+    font-size: 0.8rem;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-mockup-rebuild .et-mockup-today-action {
+    min-height: 58px;
+    gap: 3px;
+    padding: 8px 10px;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-mockup-rebuild .et-mockup-today-action strong {
+    font-size: 0.86rem;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-mockup-rebuild .et-mockup-points-card {
+    min-width: 82px;
+    padding: 8px;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-mockup-rebuild .et-mockup-pill {
+    min-height: 27px;
+    padding: 5px 8px;
+    font-size: 0.62rem;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-mockup-rebuild .et-mockup-stat-card {
+    min-height: 63px;
+    padding: 7px 6px;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-mockup-rebuild .et-mockup-action-card {
+    min-height: 64px;
+  }
+}
