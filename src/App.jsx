@@ -39677,84 +39677,153 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       { title: "Thank helpers clearly", detail: "Sponsors and shops can express interest, then wait for review before anything goes public." },
     ];
     const renderSparkHero = () => (
-      <PageHeader
-        className={getHeaderCardClass("panel page-summary-card kids-spark-header spark-page-header")}
-        title="The Spark"
-        subtitle="Igniting the spark within kids and families."
-        actions={sparkFlowView === "home" ? (
-          <>
-            <button type="button" className="secondary-button" onClick={openSparkDonate}>Donate / support</button>
-            <button type="button" className="secondary-button" onClick={() => openPublicBetaFeedback({ page: "The Spark", role: "Sponsor / Donor", mainReason: "Sponsor / donate to The Spark", interests: ["The Spark kids program"] })}>Help The Spark</button>
-          </>
-        ) : (
-          <button type="button" className="secondary-button" onClick={openSparkHome}>Back to The Spark</button>
-        )}
-        summary={<p className="spark-header-mission-line">Helping families keep collecting fun, fair, and kid-friendly. Parent-safe requests. No private child messaging.</p>}
-      />
+      <div className="spark-mockup-header">
+        <EtMockupHero
+          brand="The Spark"
+          mark={BRAND_ASSETS.mark}
+          title="Igniting the spark within kids and families."
+          detail="Parent-managed support for kids packs, learning, safe events, and fair collecting help. No private child messaging."
+          points={{ value: "Preview", label: "Public Beta" }}
+          pills={[
+            { label: "Parent managed", tone: "collector" },
+            { label: "Admin reviewed", tone: "beta" },
+            { label: "No payment processed", tone: "gold" },
+          ]}
+          todayAction={{
+            label: sparkFlowView === "home" ? "Mission" : "Support preview",
+            title: sparkFlowView === "home" ? "Help a kid collect safely." : "Nothing is charged, posted, or processed here.",
+            cta: sparkFlowView === "home" ? "Help The Spark" : "Back to The Spark",
+            onClick: sparkFlowView === "home"
+              ? () => openPublicBetaFeedback({ page: "The Spark", role: "Sponsor / Donor", mainReason: "Sponsor / donate to The Spark", interests: ["The Spark kids program"] })
+              : openSparkHome,
+          }}
+          adminAction={sparkFlowView === "home" ? (
+            <EtMockupButton onClick={openSparkDonate}>Donate / support preview</EtMockupButton>
+          ) : (
+            <EtMockupButton variant="secondary" onClick={openSparkHome}>Back to The Spark</EtMockupButton>
+          )}
+          ariaLabel="The Spark mission"
+        />
+        <div className="spark-header-mission-line spark-mockup-mission-note">
+          Helping families keep collecting fun, fair, and kid-friendly. Parent-safe requests. No private child messaging.
+        </div>
+      </div>
     );
     const renderSparkDonatePage = () => (
-      <>
-        {renderSparkHero()}
-        <section className="panel spark-donate-panel">
-          <div className="compact-card-header">
-            <div>
-              <p className="section-kicker">Donate</p>
-              <h2>Donate to The Spark.</h2>
-              <p>This is a public beta support preview. No payment is processed, no checkout opens, and no donation backend is connected here.</p>
+      <EtMockupPageShell
+        accent="spark"
+        className="spark-mockup-rebuild spark-mockup-donate"
+        ariaLabel="The Spark support preview"
+      >
+        <div className="et-mockup-main-column spark-mockup-main">
+          {renderSparkHero()}
+          <EtMockupSectionCard
+            title="Donate to The Spark."
+            detail="This is a public beta support preview. No payment is processed, no checkout opens, and no donation backend is connected here."
+            className="spark-donate-panel spark-mockup-support-panel"
+            action={<EtMockupPill tone="beta">Preview only</EtMockupPill>}
+          >
+            <div className="spark-impact-meter" aria-label="The Spark impact progress">
+              <span><b>68%</b> toward this month&apos;s preview kid-pack goal</span>
+              <i><em style={{ width: "68%" }} /></i>
             </div>
-            <span className="trust-badge trust-badge--kid">Preview only</span>
-          </div>
-          <div className="spark-impact-meter" aria-label="The Spark impact progress">
-            <span><b>68%</b> toward this month&apos;s preview kid-pack goal</span>
-            <i><em style={{ width: "68%" }} /></i>
-          </div>
-          <div className="spark-donate-category-grid" aria-label="Donation categories">
-            {sparkDonationCategories.map((category) => <span key={category} className="spark-donate-category">{category}</span>)}
-          </div>
-          <div className="spark-sponsor-card">
-            <strong>Shop / sponsor support</strong>
-            <p>Trusted shops, sponsors, and volunteers can help with drop-off days, supplies, learning tables, shipping help, or service support after review.</p>
-            <button type="button" className="secondary-button" onClick={() => openPublicBetaFeedback({ page: "The Spark Donate", role: "Sponsor / Donor", mainReason: "Sponsor / donate to The Spark", interests: ["The Spark kids program", "Shop partnership"] })}>Share sponsor interest</button>
-          </div>
-          <div className="spark-flow-actions">
-            <button type="button" onClick={openSparkThanks}>Preview support review</button>
-            <button type="button" className="secondary-button" onClick={openSparkHome}>Back to The Spark</button>
-          </div>
-        </section>
-      </>
-    );
-    const renderSparkThankYouPage = () => (
-      <>
-        {renderSparkHero()}
-        <section className="panel spark-thank-you-panel">
-          <div className="spark-thank-you-orb" aria-hidden="true"><span /></div>
-          <div>
-            <p className="section-kicker">Thank You</p>
-            <h2>Thank you - support interest queued for preview review.</h2>
-            <p>Your support preview is queued for review before it would count toward The Spark impact. Nothing is charged, posted, or processed here.</p>
-          </div>
-          <div className="spark-impact-story-grid" aria-label="Spark impact story">
-            {sparkImpactStories.map((story) => (
-              <article className="spark-impact-story-card" key={story.title}>
-                <strong>{story.title}</strong>
-                <p>{story.body}</p>
-              </article>
+            <div className="spark-donate-category-grid" aria-label="Donation categories">
+              {sparkDonationCategories.map((category) => <span key={category} className="spark-donate-category">{category}</span>)}
+            </div>
+            <div className="spark-sponsor-card">
+              <strong>Shop / sponsor support</strong>
+              <p>Trusted shops, sponsors, and volunteers can help with drop-off days, supplies, learning tables, shipping help, or service support after review.</p>
+              <EtMockupButton variant="secondary" onClick={() => openPublicBetaFeedback({ page: "The Spark Donate", role: "Sponsor / Donor", mainReason: "Sponsor / donate to The Spark", interests: ["The Spark kids program", "Shop partnership"] })}>Share sponsor interest</EtMockupButton>
+            </div>
+            <div className="spark-flow-actions">
+              <EtMockupButton onClick={openSparkThanks}>Preview support review</EtMockupButton>
+              <EtMockupButton variant="secondary" onClick={openSparkHome}>Back to The Spark</EtMockupButton>
+            </div>
+          </EtMockupSectionCard>
+        </div>
+        <EtMockupRightRail
+          title="Parent-safe support"
+          detail="Support interest is reviewed before anything becomes public or counts toward impact."
+          className="spark-mockup-rail"
+        >
+          <div className="et-mockup-action-stack">
+            {sparkImpactMilestones.map((milestone) => (
+              <EtMockupActionCard
+                key={milestone.title}
+                title={milestone.title}
+                detail={milestone.detail}
+                icon="spark"
+                tone="gold"
+              />
             ))}
           </div>
-          <div className="spark-flow-actions">
-            <button type="button" onClick={openSparkHome}>View impact</button>
-            <button type="button" className="secondary-button" onClick={openSparkDonate}>Add another support preview</button>
+          <EtMockupEmptyState
+            title="No payment processed."
+            detail="The Spark support flow is preview-only until reviewed backend support exists."
+            action={<EtMockupButton variant="secondary" onClick={openSparkHome}>Return to mission</EtMockupButton>}
+          />
+        </EtMockupRightRail>
+      </EtMockupPageShell>
+    );
+    const renderSparkThankYouPage = () => (
+      <EtMockupPageShell
+        accent="spark"
+        className="spark-mockup-rebuild spark-mockup-thanks"
+        ariaLabel="The Spark thank you preview"
+      >
+        <div className="et-mockup-main-column spark-mockup-main">
+          {renderSparkHero()}
+          <EtMockupSectionCard
+            title="Thank you - support interest queued for preview review."
+            detail="Your support preview is queued for review before it would count toward The Spark impact. Nothing is charged, posted, or processed here."
+            className="spark-thank-you-panel"
+            action={<EtMockupPill tone="beta">Queued for review</EtMockupPill>}
+          >
+            <div className="spark-thank-you-orb" aria-hidden="true"><span /></div>
+            <div className="spark-impact-story-grid" aria-label="Spark impact story">
+              {sparkImpactStories.map((story) => (
+                <article className="spark-impact-story-card" key={story.title}>
+                  <strong>{story.title}</strong>
+                  <p>{story.body}</p>
+                </article>
+              ))}
+            </div>
+            <div className="spark-flow-actions">
+              <EtMockupButton onClick={openSparkHome}>View impact</EtMockupButton>
+              <EtMockupButton variant="secondary" onClick={openSparkDonate}>Add another support preview</EtMockupButton>
+            </div>
+          </EtMockupSectionCard>
+        </div>
+        <EtMockupRightRail
+          title="What stays safe"
+          detail="The Spark remains parent-managed, admin-reviewed, and preview-only."
+          className="spark-mockup-rail"
+        >
+          <div className="et-mockup-action-stack">
+            {["No payment processed", "No private child messaging", "Admin-reviewed requests"].map((point) => (
+              <EtMockupActionCard key={point} title={point} detail="Guardrail stays visible in public beta." icon="spark" tone="gold" />
+            ))}
           </div>
-        </section>
-      </>
+        </EtMockupRightRail>
+      </EtMockupPageShell>
     );
     if (sparkFlowView === "donate") return renderSparkDonatePage();
     if (sparkFlowView === "thank-you") return renderSparkThankYouPage();
     return (
-      <>
+      <EtMockupPageShell
+        accent="spark"
+        className="spark-mockup-rebuild"
+        ariaLabel="The Spark family support page"
+      >
+        <div className="et-mockup-main-column spark-mockup-main">
         {renderSparkHero()}
 
-        <section className="panel spark-mission-card">
+        <EtMockupSectionCard
+          title="Collecting support for kids and families."
+          detail="Igniting the spark within them through kids packs, giveaways, family-friendly events, learning, donations, and trusted community help that stays safe, fair, and parent-managed."
+          className="spark-mission-card spark-mockup-mission-card"
+          action={<EtMockupPill tone="collector">Mission centered</EtMockupPill>}
+        >
           <div className="spark-mission-orb" aria-hidden="true">
             <span />
           </div>
@@ -39776,24 +39845,18 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             {activeApplication ? "View status" : "Request access"}
           </button>
           <button type="button" className="secondary-button spark-secondary-cta" onClick={openSparkDonate}>Donate / support</button>
-        </section>
+        </EtMockupSectionCard>
 
-        <section className="panel spark-impact-dashboard" aria-label="The Spark impact preview">
-          <div className="compact-card-header">
-            <div>
-              <p className="section-kicker">Impact preview</p>
-              <h3>Small support can make collecting feel safer.</h3>
-              <p>Impact tracking is public-beta preview only. Child/family details stay private, and support is reviewed before anything counts.</p>
-            </div>
-            <span className="trust-badge trust-badge--kid">No payment processed</span>
-          </div>
-          <div className="spark-impact-stat-grid" aria-label="The Spark impact stats">
+        <EtMockupSectionCard
+          title="Small support can make collecting feel safer."
+          detail="Impact tracking is public-beta preview only. Child/family details stay private, and support is reviewed before anything counts."
+          className="spark-impact-dashboard spark-mockup-impact-card"
+          ariaLabel="The Spark impact preview"
+          action={<EtMockupPill tone="gold">No payment processed</EtMockupPill>}
+        >
+          <div className="et-mockup-stat-grid spark-impact-stat-grid" aria-label="The Spark impact stats">
             {sparkImpactStats.map((stat) => (
-              <article className="spark-impact-stat-card" key={stat.label}>
-                <span>{stat.label}</span>
-                <strong>{stat.value}</strong>
-                <p>{stat.detail}</p>
-              </article>
+              <EtMockupStatCard key={stat.label} label={stat.label} value={stat.value} detail={stat.detail} tone="gold" />
             ))}
           </div>
           <div className="spark-impact-meter" aria-label="The Spark monthly support goal">
@@ -39808,7 +39871,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </article>
             ))}
           </div>
-        </section>
+        </EtMockupSectionCard>
 
         {adminToolsVisible ? (
           <section className="panel spark-admin-shortcut">
@@ -39823,7 +39886,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </section>
         ) : null}
 
-        <section className="panel kids-program-layout spark-program-layout">
+        <section className="panel kids-program-layout spark-program-layout spark-mockup-program-layout">
           <section id="spark-program-sections" className="spark-section-block" aria-label="Kids Program sections">
             <div className="compact-card-header">
               <div>
@@ -40150,7 +40213,51 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </div>
           </form>
         </section>
-      </>
+        </div>
+
+        <EtMockupRightRail
+          title="Parent-safe support"
+          detail="Ways families, shops, and sponsors can help without private child messaging or payment processing."
+          className="spark-mockup-rail"
+        >
+          <EtMockupSectionCard
+            title="Help The Spark"
+            detail="Public beta interest only. Requests are reviewed before anything becomes public."
+            className="spark-mockup-rail-card"
+            action={<EtMockupPill tone="beta">Preview only</EtMockupPill>}
+          >
+            <div className="et-mockup-action-stack">
+              <EtMockupActionCard title="Donate / support preview" detail="Cards, sealed products, packs, supplies, events, time, or services." icon="spark" tone="gold" onClick={openSparkDonate} />
+              <EtMockupActionCard title="Sponsor or shop interest" detail="Share interest for drop-off days, learning tables, or fair access support." icon="market" tone="gold" onClick={() => openPublicBetaFeedback({ page: "The Spark", role: "Sponsor / Donor", mainReason: "Sponsor / donate to The Spark", interests: ["The Spark kids program", "Shop partnership"] })} />
+              <EtMockupActionCard title="Request family access" detail="Parent-managed and admin-reviewed. No private child messaging." icon="spark" tone="pink" onClick={activeApplication ? scrollToSparkDetails : scrollToSparkRequest} />
+            </div>
+          </EtMockupSectionCard>
+
+          <EtMockupSectionCard
+            title="Spark guardrails"
+            detail="The Spark is a safe support preview, not a public child directory or payment flow."
+            className="spark-mockup-rail-card"
+          >
+            <div className="spark-rule-grid compact">
+              {["No private child messaging.", "Parent-safe requests.", "No payment processed.", "Admin-reviewed requests."].map((rule) => (
+                <div className="spark-rule-card" key={rule}>
+                  <strong>{rule}</strong>
+                </div>
+              ))}
+            </div>
+          </EtMockupSectionCard>
+
+          <div className="spark-status-strip spark-mockup-status-rail" aria-label="The Spark status">
+            {sparkSections.map((section) => (
+              <article className="spark-status-card" key={section.key}>
+                <span>{section.title}</span>
+                <strong>{section.value}</strong>
+                <p>{section.detail}</p>
+              </article>
+            ))}
+          </div>
+        </EtMockupRightRail>
+      </EtMockupPageShell>
     );
   }
 

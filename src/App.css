@@ -95128,3 +95128,399 @@ html body #root .app.app-command-shell.app-market .market-mockup-results .market
     font-size: 1.08rem !important;
   }
 }
+
+/* Spark mockup migration: parent-safe support preview, no payments or private child messaging. */
+html body #root .app.app-command-shell.app-kidsprogram .main {
+  padding-bottom: max(214px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 152px)) !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-rebuild {
+  --et-page-accent: var(--et-pink);
+  --et-page-accent-2: var(--et-gold);
+  --spark-warm-coral: color-mix(in srgb, var(--et-coral) 78%, var(--et-pink));
+  --spark-warm-glow: color-mix(in srgb, var(--et-page-accent) 14%, var(--et-panel-soft));
+  width: min(100%, 1180px);
+  grid-template-columns: minmax(0, 1.42fr) minmax(292px, 0.78fr);
+  gap: clamp(14px, 2vw, 24px);
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-main {
+  gap: clamp(14px, 1.8vw, 20px);
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-kidsprogram .spark-mockup-rebuild,
+html body #root .app.app-theme-light.app-command-shell.app-kidsprogram .spark-mockup-rebuild,
+html body #root .app.app-shell-light.app-command-shell.app-kidsprogram .spark-mockup-rebuild {
+  --et-ink: #26172a !important;
+  --et-muted: #725d61 !important;
+  --et-panel: #fffdf8 !important;
+  --et-panel-soft: #fff0e8 !important;
+  --et-border: color-mix(in srgb, #f47ca0 24%, rgba(122, 74, 48, 0.2)) !important;
+  color: var(--et-ink) !important;
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-kidsprogram .spark-mockup-rebuild :where(.et-mockup-page-hero, .et-mockup-section-card, .et-mockup-right-rail),
+html body #root .app.app-theme-light.app-command-shell.app-kidsprogram .spark-mockup-rebuild :where(.et-mockup-page-hero, .et-mockup-section-card, .et-mockup-right-rail),
+html body #root .app.app-shell-light.app-command-shell.app-kidsprogram .spark-mockup-rebuild :where(.et-mockup-page-hero, .et-mockup-section-card, .et-mockup-right-rail) {
+  border-color: color-mix(in srgb, #f47ca0 26%, rgba(122, 74, 48, 0.2)) !important;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, #ffb453 58%, transparent), color-mix(in srgb, #f47ca0 36%, transparent) 46%, transparent 88%) 0 0 / 100% 3px no-repeat,
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, #f47ca0 13%, transparent), transparent 13rem),
+    radial-gradient(circle at 100% 10%, color-mix(in srgb, #d9a441 11%, transparent), transparent 16rem),
+    #fffdf8 !important;
+  color: #26172a !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-rebuild :where(.et-mockup-hero-copy, .et-mockup-hero-status, .et-mockup-pill-row, .et-mockup-section-heading, .et-mockup-rail-heading, .et-mockup-action-copy) {
+  min-width: 0;
+  background: transparent !important;
+  background-color: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-kidsprogram .spark-mockup-rebuild :where(.et-mockup-brand-row, .et-mockup-stat-card, .et-mockup-action-card, .et-mockup-empty-state, .et-mockup-today-action, .et-mockup-points-card, .et-mockup-pill),
+html body #root .app.app-theme-light.app-command-shell.app-kidsprogram .spark-mockup-rebuild :where(.et-mockup-brand-row, .et-mockup-stat-card, .et-mockup-action-card, .et-mockup-empty-state, .et-mockup-today-action, .et-mockup-points-card, .et-mockup-pill),
+html body #root .app.app-shell-light.app-command-shell.app-kidsprogram .spark-mockup-rebuild :where(.et-mockup-brand-row, .et-mockup-stat-card, .et-mockup-action-card, .et-mockup-empty-state, .et-mockup-today-action, .et-mockup-points-card, .et-mockup-pill) {
+  border-color: color-mix(in srgb, #f47ca0 22%, rgba(122, 74, 48, 0.2)) !important;
+  background: color-mix(in srgb, #fff0e8 88%, #fffdf8) !important;
+  color: #26172a !important;
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-kidsprogram .spark-mockup-rebuild :where(h1, h2, h3, h4, strong, b, .et-mockup-action-copy strong),
+html body #root .app.app-theme-light.app-command-shell.app-kidsprogram .spark-mockup-rebuild :where(h1, h2, h3, h4, strong, b, .et-mockup-action-copy strong),
+html body #root .app.app-shell-light.app-command-shell.app-kidsprogram .spark-mockup-rebuild :where(h1, h2, h3, h4, strong, b, .et-mockup-action-copy strong) {
+  color: #26172a !important;
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-kidsprogram .spark-mockup-rebuild :where(p, small, em, li, .et-mockup-section-heading p, .et-mockup-rail-heading p),
+html body #root .app.app-theme-light.app-command-shell.app-kidsprogram .spark-mockup-rebuild :where(p, small, em, li, .et-mockup-section-heading p, .et-mockup-rail-heading p),
+html body #root .app.app-shell-light.app-command-shell.app-kidsprogram .spark-mockup-rebuild :where(p, small, em, li, .et-mockup-section-heading p, .et-mockup-rail-heading p) {
+  color: #725d61 !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-header {
+  display: grid;
+  gap: 10px;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-header .et-mockup-page-hero {
+  min-height: clamp(244px, 27vw, 338px);
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-header .et-mockup-hero-copy h1 {
+  max-width: 15ch;
+  font-size: clamp(2.25rem, 5vw, 3.72rem);
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-mission-note {
+  display: block !important;
+  margin: 0 !important;
+  padding: 12px 14px !important;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2) 28%, var(--et-border)) !important;
+  border-radius: 20px !important;
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--et-page-accent) 12%, transparent), transparent 10rem),
+    color-mix(in srgb, var(--et-panel-soft) 90%, transparent) !important;
+  color: var(--et-ink) !important;
+  font-weight: 860 !important;
+  line-height: 1.42 !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-rebuild :where(.et-mockup-button-secondary, .secondary-button, .ghost-button) {
+  border-color: color-mix(in srgb, var(--et-page-accent) 30%, var(--et-border)) !important;
+  background: color-mix(in srgb, var(--et-panel-soft) 90%, transparent) !important;
+  color: var(--et-ink) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38) !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-rebuild .et-mockup-button-primary,
+html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-rebuild .et-mockup-button:not(.et-mockup-button-secondary):not(.et-mockup-button-ghost) {
+  border-color: color-mix(in srgb, var(--et-page-accent) 48%, var(--et-border)) !important;
+  background: linear-gradient(135deg, var(--et-page-accent), color-mix(in srgb, var(--et-page-accent-2) 62%, var(--et-page-accent))) !important;
+  color: #fffdf7 !important;
+  box-shadow: 0 14px 28px color-mix(in srgb, var(--et-page-accent) 22%, transparent) !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-mission-card {
+  position: relative;
+  overflow: hidden;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-mission-card .et-mockup-section-heading {
+  grid-column: 1 / -1;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-mission-card .spark-mission-copy {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-mission-card .spark-mission-copy h2,
+html body #root .app.app-command-shell.app-kidsprogram .spark-impact-dashboard .et-mockup-section-heading h2 {
+  font-size: clamp(1.35rem, 2.5vw, 2rem);
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-mission-facts,
+html body #root .app.app-command-shell.app-kidsprogram .spark-support-examples,
+html body #root .app.app-command-shell.app-kidsprogram .spark-donate-category-grid {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 8px !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-mission-facts span,
+html body #root .app.app-command-shell.app-kidsprogram .spark-support-examples span,
+html body #root .app.app-command-shell.app-kidsprogram .spark-donate-category,
+html body #root .app.app-command-shell.app-kidsprogram .spark-learning-grid span {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 11px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent) 22%, var(--et-border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--et-panel-soft) 88%, transparent);
+  color: var(--et-ink);
+  font-size: 0.76rem;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-impact-dashboard,
+html body #root .app.app-command-shell.app-kidsprogram .spark-donate-panel,
+html body #root .app.app-command-shell.app-kidsprogram .spark-thank-you-panel {
+  gap: clamp(13px, 1.7vw, 18px) !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-impact-stat-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-impact-meter {
+  padding: 12px !important;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2) 24%, var(--et-border)) !important;
+  border-radius: 18px !important;
+  background: color-mix(in srgb, var(--et-panel-soft) 86%, transparent) !important;
+  color: var(--et-ink) !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-impact-meter i {
+  height: 12px !important;
+  border-radius: 999px !important;
+  background: color-mix(in srgb, var(--et-ink) 8%, transparent) !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-impact-meter em {
+  background: linear-gradient(90deg, var(--et-gold), var(--et-coral), var(--et-pink)) !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram :where(.spark-impact-milestone-card, .spark-section-card, .spark-donation-group-card, .spark-participation-card, .spark-status-card, .spark-rule-card, .spark-impact-story-card, .spark-sponsor-card, .spark-private-request-card) {
+  border: 1px solid color-mix(in srgb, var(--et-page-accent) 18%, var(--et-border)) !important;
+  border-radius: 18px !important;
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--et-page-accent) 8%, transparent), transparent 9rem),
+    color-mix(in srgb, var(--et-panel-soft) 86%, transparent) !important;
+  color: var(--et-ink) !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-impact-milestone-grid,
+html body #root .app.app-command-shell.app-kidsprogram .spark-section-grid,
+html body #root .app.app-command-shell.app-kidsprogram .spark-donation-group-grid,
+html body #root .app.app-command-shell.app-kidsprogram .spark-participation-grid,
+html body #root .app.app-command-shell.app-kidsprogram .spark-impact-story-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-program-layout.spark-mockup-program-layout {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: clamp(13px, 1.7vw, 18px) !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-program-layout.spark-mockup-program-layout :where(.spark-section-block, .spark-donation-tracking-panel, .spark-participation-panel, .spark-safety-rules-panel, .spark-learning-panel, .spark-events-panel, .spark-request-flow, .spark-parent-safe-panel, .spark-empty-state, .spark-private-request-card) {
+  border-color: color-mix(in srgb, var(--et-page-accent) 20%, var(--et-border)) !important;
+  border-radius: var(--et-radius-lg) !important;
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--et-page-accent-2) 8%, transparent), transparent 10rem),
+    color-mix(in srgb, var(--et-panel) 92%, transparent) !important;
+  color: var(--et-ink) !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-program-layout.spark-mockup-program-layout .spark-request-flow {
+  display: grid !important;
+  gap: 14px !important;
+  padding: clamp(15px, 2.4vw, 22px) !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-stepper {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 8px !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-stepper button {
+  flex: 1 1 128px;
+  min-height: 42px;
+  border-radius: 16px !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-flow-actions {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 10px !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-flow-actions > *,
+html body #root .app.app-command-shell.app-kidsprogram .spark-primary-cta,
+html body #root .app.app-command-shell.app-kidsprogram .spark-secondary-cta {
+  min-height: 44px !important;
+  border-radius: 16px !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-rail {
+  gap: 14px !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-rail > .et-mockup-rail-heading {
+  display: grid !important;
+  justify-content: stretch !important;
+  gap: 7px !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-rail > .et-mockup-rail-heading h2 {
+  max-width: none !important;
+  font-size: clamp(1.35rem, 2.2vw, 1.92rem) !important;
+  line-height: 1.05 !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-rail .spark-mockup-rail-card {
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-rail .et-mockup-section-heading {
+  padding-bottom: 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--et-page-accent-2) 18%, var(--et-border));
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-status-rail {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 9px !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-status-rail .spark-status-card {
+  min-height: 88px;
+  padding: 12px;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-donate,
+html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-thanks {
+  grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.85fr);
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-support-panel .spark-sponsor-card {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+}
+
+@media (max-width: 980px) {
+  html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-rebuild,
+  html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-donate,
+  html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-thanks {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-impact-milestone-grid,
+  html body #root .app.app-command-shell.app-kidsprogram .spark-section-grid,
+  html body #root .app.app-command-shell.app-kidsprogram .spark-donation-group-grid,
+  html body #root .app.app-command-shell.app-kidsprogram .spark-participation-grid,
+  html body #root .app.app-command-shell.app-kidsprogram .spark-impact-story-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 620px) {
+  html body #root .app.app-command-shell.app-kidsprogram .main {
+    padding-bottom: max(242px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 182px)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-rebuild {
+    padding-inline: 7px;
+    gap: 13px;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-header .et-mockup-page-hero {
+    min-height: 0;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-header .et-mockup-hero-copy h1 {
+    max-width: 13ch;
+    font-size: clamp(1.78rem, 8.4vw, 2.2rem);
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-header .et-mockup-hero-copy p {
+    font-size: 0.82rem;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-mission-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-mission-orb {
+    display: none !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-primary-cta,
+  html body #root .app.app-command-shell.app-kidsprogram .spark-secondary-cta,
+  html body #root .app.app-command-shell.app-kidsprogram .spark-flow-actions > * {
+    width: 100%;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-impact-stat-grid,
+  html body #root .app.app-command-shell.app-kidsprogram .spark-impact-milestone-grid,
+  html body #root .app.app-command-shell.app-kidsprogram .spark-section-grid,
+  html body #root .app.app-command-shell.app-kidsprogram .spark-donation-group-grid,
+  html body #root .app.app-command-shell.app-kidsprogram .spark-participation-grid,
+  html body #root .app.app-command-shell.app-kidsprogram .spark-impact-story-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-donate-category,
+  html body #root .app.app-command-shell.app-kidsprogram .spark-support-examples span {
+    flex: 1 1 128px;
+  }
+}
+
+@media (max-width: 430px) {
+  html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-rebuild {
+    padding-inline: 6px;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-header .et-mockup-hero-copy h1 {
+    font-size: clamp(1.62rem, 7.8vw, 2rem);
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-mission-note {
+    font-size: 0.82rem !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-stepper button {
+    flex-basis: 108px;
+  }
+}
