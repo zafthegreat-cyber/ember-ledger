@@ -94073,3 +94073,442 @@ html body #root .app.app-command-shell.app-scout .scout-mockup-calendar .watch-l
     grid-template-columns: 1fr !important;
   }
 }
+
+/* Vault mockup migration: protected collection room. */
+html body #root .app.app-command-shell.app-vault .main {
+  padding-bottom: max(204px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 146px)) !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-mockup-rebuild {
+  --et-page-accent: var(--et-amethyst);
+  --et-page-accent-2: var(--et-gold);
+  --vault-room-violet: color-mix(in srgb, var(--et-amethyst) 90%, #7857ff);
+  --vault-room-soft: color-mix(in srgb, var(--et-amethyst) 12%, var(--et-panel-soft));
+  width: min(100%, 1180px);
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(14px, 1.8vw, 22px);
+}
+
+html body #root .app.app-command-shell.app-vault .vault-mockup-main {
+  grid-column: 1 / -1;
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-vault .vault-mockup-rebuild,
+html body #root .app.app-theme-light.app-command-shell.app-vault .vault-mockup-rebuild,
+html body #root .app.app-shell-light.app-command-shell.app-vault .vault-mockup-rebuild {
+  --et-ink: #17142a !important;
+  --et-muted: #665c72 !important;
+  --et-panel: #fffdf8 !important;
+  --et-panel-soft: #f6efff !important;
+  --et-border: color-mix(in srgb, var(--et-amethyst) 24%, rgba(111, 83, 143, 0.2)) !important;
+  color: var(--et-ink) !important;
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-vault .vault-mockup-rebuild :where(.et-mockup-page-hero, .et-mockup-section-card, .et-mockup-right-rail),
+html body #root .app.app-theme-light.app-command-shell.app-vault .vault-mockup-rebuild :where(.et-mockup-page-hero, .et-mockup-section-card, .et-mockup-right-rail),
+html body #root .app.app-shell-light.app-command-shell.app-vault .vault-mockup-rebuild :where(.et-mockup-page-hero, .et-mockup-section-card, .et-mockup-right-rail) {
+  border-color: color-mix(in srgb, #8b5cf6 26%, rgba(111, 83, 143, 0.2)) !important;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, #8b5cf6 58%, transparent), color-mix(in srgb, #d9a441 36%, transparent) 46%, transparent 88%) 0 0 / 100% 3px no-repeat,
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, #8b5cf6 12%, transparent), transparent 13rem),
+    radial-gradient(circle at 100% 8%, color-mix(in srgb, #d9a441 9%, transparent), transparent 16rem),
+    #fffdf8 !important;
+  color: #17142a !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-mockup-rebuild :where(.et-mockup-hero-copy, .et-mockup-hero-status, .et-mockup-pill-row, .et-mockup-section-heading, .et-mockup-rail-heading, .et-mockup-action-copy) {
+  min-width: 0;
+  background: transparent !important;
+  background-color: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-vault .vault-mockup-rebuild :where(.et-mockup-brand-row, .et-mockup-stat-card, .et-mockup-action-card, .et-mockup-empty-state, .et-mockup-today-action, .et-mockup-points-card, .et-mockup-pill),
+html body #root .app.app-theme-light.app-command-shell.app-vault .vault-mockup-rebuild :where(.et-mockup-brand-row, .et-mockup-stat-card, .et-mockup-action-card, .et-mockup-empty-state, .et-mockup-today-action, .et-mockup-points-card, .et-mockup-pill),
+html body #root .app.app-shell-light.app-command-shell.app-vault .vault-mockup-rebuild :where(.et-mockup-brand-row, .et-mockup-stat-card, .et-mockup-action-card, .et-mockup-empty-state, .et-mockup-today-action, .et-mockup-points-card, .et-mockup-pill) {
+  border-color: color-mix(in srgb, #8b5cf6 22%, rgba(111, 83, 143, 0.2)) !important;
+  background: color-mix(in srgb, #f6efff 88%, #fffdf8) !important;
+  color: #17142a !important;
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-vault .vault-mockup-rebuild :where(h1, h2, h3, strong, b, .et-mockup-action-copy strong),
+html body #root .app.app-theme-light.app-command-shell.app-vault .vault-mockup-rebuild :where(h1, h2, h3, strong, b, .et-mockup-action-copy strong),
+html body #root .app.app-shell-light.app-command-shell.app-vault .vault-mockup-rebuild :where(h1, h2, h3, strong, b, .et-mockup-action-copy strong) {
+  color: #17142a !important;
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-vault .vault-mockup-rebuild :where(p, small, em, .et-mockup-section-heading p, .et-mockup-rail-heading p),
+html body #root .app.app-theme-light.app-command-shell.app-vault .vault-mockup-rebuild :where(p, small, em, .et-mockup-section-heading p, .et-mockup-rail-heading p),
+html body #root .app.app-shell-light.app-command-shell.app-vault .vault-mockup-rebuild :where(p, small, em, .et-mockup-section-heading p, .et-mockup-rail-heading p) {
+  color: #665c72 !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-mockup-header {
+  display: grid;
+  gap: clamp(13px, 1.7vw, 18px);
+}
+
+html body #root .app.app-command-shell.app-vault .vault-mockup-header .et-mockup-page-hero {
+  min-height: clamp(236px, 25vw, 318px);
+}
+
+html body #root .app.app-command-shell.app-vault .vault-mockup-header .et-mockup-hero-copy h1 {
+  max-width: 12ch;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-mockup-controls.vault-command-center {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: clamp(13px, 1.8vw, 18px) !important;
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: clamp(16px, 2.4vw, 24px) !important;
+  border-radius: var(--et-radius-xl) !important;
+  color: var(--et-ink) !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-mockup-controls.vault-command-center > * {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-width: 0;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-mockup-primary-actions {
+  grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr) minmax(0, 0.95fr);
+}
+
+html body #root .app.app-command-shell.app-vault .vault-mockup-primary-actions .et-mockup-action-card {
+  min-height: 98px;
+  width: 100% !important;
+  min-width: 0 !important;
+  justify-self: stretch !important;
+  white-space: normal !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-mockup-primary-actions .vault-command-quick-add {
+  border-color: color-mix(in srgb, var(--et-page-accent) 50%, var(--et-page-accent-2)) !important;
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--et-page-accent) 16%, transparent), transparent 8rem),
+    color-mix(in srgb, var(--et-panel-soft) 88%, transparent) !important;
+  box-shadow: 0 16px 34px color-mix(in srgb, var(--et-page-accent) 18%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.38);
+}
+
+html body #root .app.app-command-shell.app-vault .vault-mockup-ai-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 9px;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-mockup-ai-actions .ai-assist-menu {
+  margin: 0 !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-mockup-ai-actions .ai-assist-menu summary {
+  min-height: 42px;
+  border-radius: 999px !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-mockup-overview-shell {
+  display: grid;
+  gap: 10px;
+  padding: clamp(12px, 1.5vw, 16px);
+  border: 1px solid color-mix(in srgb, var(--et-page-accent) 22%, var(--et-border));
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--et-page-accent) 9%, transparent), transparent 10rem),
+    color-mix(in srgb, var(--et-panel-soft) 84%, transparent);
+}
+
+html body #root .app.app-command-shell.app-vault .vault-mockup-overview-shell .section-kicker {
+  margin: 0;
+  color: color-mix(in srgb, var(--et-page-accent) 78%, var(--et-ink));
+}
+
+html body #root .app.app-command-shell.app-vault .vault-empty-overview-card {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(190px, 0.46fr) !important;
+  gap: 12px !important;
+  align-items: stretch !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-empty-overview-card .et-mockup-empty-state {
+  min-height: 148px;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-empty-overview-card .quick-actions {
+  display: flex !important;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 9px !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-empty-overview-card .quick-actions button {
+  flex: 1 1 132px;
+  min-height: 42px;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-empty-overview-card dl {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 9px !important;
+  margin: 0 !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-empty-overview-card dl > div {
+  display: grid;
+  align-content: center;
+  min-width: 0 !important;
+  min-height: 70px;
+  padding: 12px !important;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2) 24%, var(--et-border)) !important;
+  border-radius: 17px !important;
+  background: color-mix(in srgb, var(--et-panel) 78%, transparent) !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-command-overview.et-mockup-stat-grid {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important;
+  gap: 10px !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-command-overview .vault-overview-card {
+  min-height: 98px !important;
+  border-radius: 18px !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-command-overview .vault-overview-card.is-active {
+  border-color: color-mix(in srgb, var(--et-page-accent) 48%, var(--et-page-accent-2)) !important;
+  box-shadow: 0 14px 28px color-mix(in srgb, var(--et-page-accent) 18%, transparent) !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-mockup-tabs.standard-page-header-tabs {
+  display: flex !important;
+  gap: 8px !important;
+  width: 100%;
+  min-width: 0;
+  padding: 7px !important;
+  overflow-x: auto;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent) 20%, var(--et-border)) !important;
+  border-radius: 999px !important;
+  background: color-mix(in srgb, var(--et-panel-soft) 84%, transparent) !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-mockup-tabs.standard-page-header-tabs button {
+  flex: 1 0 min(132px, 30%);
+  min-height: 38px;
+  padding: 8px 13px;
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: transparent !important;
+  color: var(--et-muted) !important;
+  font-weight: 900;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-mockup-tabs.standard-page-header-tabs button.active,
+html body #root .app.app-command-shell.app-vault .vault-mockup-tabs.standard-page-header-tabs button[aria-selected="true"] {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--et-page-accent) 22%, var(--et-panel)), color-mix(in srgb, var(--et-page-accent-2) 14%, var(--et-panel-soft))) !important;
+  color: var(--et-ink) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38);
+}
+
+html body #root .app.app-command-shell.app-vault .vault-live-home-dashboard {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  display: grid;
+  gap: clamp(14px, 1.8vw, 20px) !important;
+  padding-bottom: 0 !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-live-home-dashboard > .et-mockup-section-card,
+html body #root .app.app-command-shell.app-vault .vault-live-main-grid > .et-mockup-section-card,
+html body #root .app.app-command-shell.app-vault .vault-live-main-grid > .et-mockup-right-rail {
+  width: 100%;
+  min-width: 0;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-live-home-hero {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-live-summary-grid,
+html body #root .app.app-command-shell.app-vault .vault-live-master-stats {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+html body #root .app.app-command-shell.app-vault .vault-live-master-stats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+html body #root .app.app-command-shell.app-vault .vault-live-search-row {
+  grid-template-columns: minmax(0, 1fr) minmax(240px, auto) !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-live-filter-row {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-live-main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr) minmax(250px, 0.54fr);
+  gap: clamp(14px, 2vw, 18px);
+}
+
+html body #root .app.app-command-shell.app-vault .vault-live-health-card.et-mockup-right-rail {
+  position: static;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-live-health-card > h2 {
+  margin: 0;
+  color: var(--et-ink);
+  font-size: clamp(1.8rem, 3vw, 2.5rem);
+  line-height: 1;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-live-folder-tile,
+html body #root .app.app-command-shell.app-vault .vault-live-recent-row {
+  border-color: color-mix(in srgb, var(--et-page-accent) 20%, var(--et-border)) !important;
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--et-page-accent) 8%, transparent), transparent 8rem),
+    color-mix(in srgb, var(--et-panel-soft) 84%, transparent) !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-live-action-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+html body #root .app.app-command-shell.app-vault .vault-live-action-grid .vault-live-action-tile {
+  min-height: 92px;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-collection-panel,
+html body #root .app.app-command-shell.app-vault .vault-wishlist-panel,
+html body #root .app.app-command-shell.app-vault .vault-sets-panel,
+html body #root .app.app-command-shell.app-vault .vault-activity-panel,
+html body #root .app.app-command-shell.app-vault .vault-master-card-section {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  border-radius: var(--et-radius-xl) !important;
+  border-color: color-mix(in srgb, var(--et-page-accent) 22%, var(--et-border)) !important;
+}
+
+@media (max-width: 920px) {
+  html body #root .app.app-command-shell.app-vault .vault-live-main-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 620px) {
+  html body #root .app.app-command-shell.app-vault .main {
+    padding-bottom: max(232px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 170px)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-mockup-rebuild {
+    padding-inline: 7px;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-mockup-header .et-mockup-page-hero {
+    min-height: 0;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-mockup-primary-actions,
+  html body #root .app.app-command-shell.app-vault .vault-live-action-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-mockup-primary-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-mockup-primary-actions .et-mockup-action-card {
+    min-height: 64px;
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    gap: 6px;
+    padding: 8px 6px;
+    text-align: center;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-mockup-primary-actions .et-mockup-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 12px;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-mockup-primary-actions .et-mockup-action-copy {
+    justify-items: center;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-mockup-primary-actions .et-mockup-action-copy small,
+  html body #root .app.app-command-shell.app-vault .vault-mockup-primary-actions .et-mockup-action-card b {
+    display: none;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-mockup-ai-actions {
+    justify-content: stretch;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-mockup-ai-actions .ai-assist-menu,
+  html body #root .app.app-command-shell.app-vault .vault-mockup-ai-actions .ai-assist-menu summary {
+    width: 100%;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-empty-overview-card,
+  html body #root .app.app-command-shell.app-vault .vault-live-search-row {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-command-overview.et-mockup-stat-grid,
+  html body #root .app.app-command-shell.app-vault .vault-live-summary-grid,
+  html body #root .app.app-command-shell.app-vault .vault-live-master-stats,
+  html body #root .app.app-command-shell.app-vault .vault-live-filter-row,
+  html body #root .app.app-command-shell.app-vault .vault-live-folder-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-mockup-tabs.standard-page-header-tabs {
+    border-radius: 20px !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-mockup-tabs.standard-page-header-tabs button {
+    flex-basis: auto;
+    min-width: max-content;
+  }
+}
+
+@media (max-width: 430px) {
+  html body #root .app.app-command-shell.app-vault .main {
+    padding-bottom: max(238px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 176px)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-mockup-rebuild {
+    padding-inline: 6px;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-mockup-header .et-mockup-hero-copy h1 {
+    font-size: clamp(1.68rem, 8.1vw, 2.14rem);
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-mockup-header .et-mockup-hero-copy p {
+    font-size: 0.8rem;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-live-summary-grid,
+  html body #root .app.app-command-shell.app-vault .vault-live-master-stats {
+    gap: 6px !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-live-filter-row {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}

@@ -25428,58 +25428,107 @@ function renderVaultHeader() {
   const visibleVaultOverviewCards = activeVaultItems.length
     ? vaultOverviewCards
     : vaultOverviewCards.filter((card) => ["portfolio", "total-quantity"].includes(card.key));
+  const vaultTabs = [
+    { key: "collection", label: "Collection" },
+    { key: "wishlist", label: "Wishlist" },
+    { key: "sets", label: "Sets" },
+    { key: "portfolio", label: "Portfolio" },
+  ];
+  const changeVaultPage = (nextTab) => {
+    if (nextTab === "sets" && !featureAllowed("set_completion")) {
+      openLockedFeatureNotice("set_completion");
+      return;
+    }
+    if (nextTab === "portfolio" && !featureAllowed("portfolio_value")) {
+      openLockedFeatureNotice("portfolio_value");
+      return;
+    }
+    setVaultSubTab(nextTab);
+    if (nextTab === "collection") {
+      setTimeout(() => document.getElementById("vault-items-section")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
+    }
+  };
   return (
-    <PageHeader
-      className={getHeaderCardClass("panel vault-command-center")}
-      title="Vault"
-      subtitle="Protected collection."
-      actions={(
-        <>
-        <button type="button" className="vault-command-quick-add" aria-label="Quick Add" onClick={openVaultQuickAddFlow}>
-          Add Item
-        </button>
-        <button type="button" className="secondary-button vault-command-scan" aria-label="Scan Product/Card" onClick={openVaultScanFlow}>
-          Scan
-        </button>
-        <button type="button" className="secondary-button vault-settings-link" aria-label="Collection Settings" onClick={() => setCollectionManagerOpen(true)}>
-          Settings
-        </button>
-        {renderAiAssistActions([
-          { label: "Summarize Vault", onClick: () => void runVaultAiSummary() },
-          { label: "Find missing details", onClick: () => void runVaultMissingDetailsAssist() },
-          { label: "Help identify variant", onClick: () => void runVariantAssist(vaultSearch) },
-        ])}
-        </>
-      )}
-      tabs={[
-        { key: "collection", label: "Collection" },
-        { key: "wishlist", label: "Wishlist" },
-        { key: "sets", label: "Sets" },
-        { key: "portfolio", label: "Portfolio" },
-      ]}
-      activeTab={activeVaultPage}
-      onTabChange={(nextTab) => {
-        if (nextTab === "sets" && !featureAllowed("set_completion")) {
-          openLockedFeatureNotice("set_completion");
-          return;
-        }
-        if (nextTab === "portfolio" && !featureAllowed("portfolio_value")) {
-          openLockedFeatureNotice("portfolio_value");
-          return;
-        }
-        setVaultSubTab(nextTab);
-        if (nextTab === "collection") {
-          setTimeout(() => document.getElementById("vault-items-section")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
-        }
-      }}
-      summaryLabel="Vault Overview"
-      summary={(
+    <div className="vault-mockup-header">
+      <EtMockupHero
+        brand="Protected collection room"
+        title="Vault"
+        detail="Cards, sealed products, slabs, variants, wishlist gaps, and set progress stay organized before anything moves to Forge."
+        mark={BRAND_ASSETS.mark}
+        points={{ value: totalOwnedQuantity || "0", label: "items protected" }}
+        pills={[
+          { label: "Cards + sealed", tone: "vault" },
+          { label: "Review before saving", tone: "gold" },
+          { label: "Known values only", tone: "collector" },
+        ]}
+        todayAction={{
+          label: "Vault today",
+          title: "Add or scan one item, then confirm the exact variant before saving.",
+          cta: "Add Item",
+          onClick: openVaultQuickAddFlow,
+        }}
+        ariaLabel="Vault protected collection room"
+      />
+
+      <EtMockupSectionCard
+        className="vault-mockup-controls vault-command-center"
+        title="Vault Overview"
+        detail="Add items, scan product/card, manage settings, and jump between protected collection sections."
+      >
+        <div className="et-mockup-action-grid vault-mockup-primary-actions" aria-label="Vault primary actions">
+          <EtMockupActionCard
+            title="Add Item"
+            detail="Cards, sealed, graded, duplicates, or wishlist wants with review before saving."
+            meta="Primary"
+            icon="vault"
+            tone="vault"
+            className="vault-command-quick-add"
+            ariaLabel="Quick Add"
+            onClick={openVaultQuickAddFlow}
+          />
+          <EtMockupActionCard
+            title="Scan"
+            detail="Start a product/card review flow. Nothing saves until you confirm."
+            meta="Review"
+            icon="search"
+            tone="gold"
+            className="vault-command-scan"
+            ariaLabel="Scan Product/Card"
+            onClick={openVaultScanFlow}
+          />
+          <EtMockupActionCard
+            title="Settings"
+            detail="Manage collection setup, folders, family context, and safe organization."
+            meta="Private"
+            icon="settings"
+            tone="collector"
+            className="vault-settings-link"
+            ariaLabel="Collection Settings"
+            onClick={() => setCollectionManagerOpen(true)}
+          />
+        </div>
+        <div className="vault-mockup-ai-actions" aria-label="Vault helper actions">
+          {renderAiAssistActions([
+            { label: "Summarize Vault", onClick: () => void runVaultAiSummary() },
+            { label: "Find missing details", onClick: () => void runVaultMissingDetailsAssist() },
+            { label: "Help identify variant", onClick: () => void runVariantAssist(vaultSearch) },
+          ])}
+        </div>
+        <div className="vault-mockup-overview-shell">
+          <span className="section-kicker">Vault Overview</span>
+          {(
         vaultIsEmpty ? (
           <div className="vault-empty-overview-card" aria-label="Vault empty overview">
-            <div>
-              <strong>Your Vault is ready.</strong>
-              <span>Add your first item and keep your collection protected.</span>
-            </div>
+            <EtMockupEmptyState
+              title="Your Vault is ready."
+              detail="Add your first item and keep your collection protected."
+              action={(
+                <div className="quick-actions">
+                  <button type="button" onClick={openVaultQuickAddFlow}>Add to Vault</button>
+                  <button type="button" className="secondary-button" onClick={() => openQuickAddAction("scanVault")}>Scan</button>
+                </div>
+              )}
+            />
             <dl>
               <div>
                 <dt>Value</dt>
@@ -25490,18 +25539,14 @@ function renderVaultHeader() {
                 <dd>0</dd>
               </div>
             </dl>
-            <div className="quick-actions">
-              <button type="button" onClick={openVaultQuickAddFlow}>Add to Vault</button>
-              <button type="button" className="secondary-button" onClick={() => openQuickAddAction("scanVault")}>Scan</button>
-            </div>
           </div>
         ) : (
-          <div className="vault-command-overview" aria-label="Vault Collection Overview">
+          <div className="et-mockup-stat-grid vault-command-overview" aria-label="Vault Collection Overview">
           {visibleVaultOverviewCards.map((card) => (
             <button
               key={card.key}
               type="button"
-              className={`vault-overview-card${card.active ? " is-active" : ""}`}
+              className={`et-mockup-stat-card vault-overview-card${card.active ? " is-active" : ""}`}
               onClick={card.onClick}
             >
               <span className="vault-overview-title">{card.title}</span>
@@ -25511,8 +25556,23 @@ function renderVaultHeader() {
           ))}
         </div>
         )
-      )}
-    />
+          )}
+        </div>
+        <div className="standard-page-header-tabs vault-mockup-tabs" role="tablist" aria-label="Vault sections">
+          {vaultTabs.map((tab) => (
+            <button
+              type="button"
+              key={tab.key}
+              className={activeVaultPage === tab.key ? "active" : ""}
+              aria-selected={activeVaultPage === tab.key}
+              onClick={() => changeVaultPage(tab.key)}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </EtMockupSectionCard>
+    </div>
   );
 }
 
@@ -37170,28 +37230,25 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
     return (
       <section className="vault-live-home-dashboard" aria-label="Vault Home dashboard">
-        <article className="panel vault-live-home-hero">
-          <div>
-            <p className="section-kicker">Vault Home</p>
-            <h2>Your collection room, organized and protected.</h2>
-            <p>Track cards, sealed products, wishlist gaps, and set progress without mixing owned items with wants or Forge inventory.</p>
+        <EtMockupSectionCard
+          className="vault-live-home-hero vault-mockup-home-hero"
+          title="Vault Home"
+          detail="Your protected collection room for cards, sealed products, variants, wishlist gaps, and set progress."
+        >
+          <div className="et-mockup-stat-grid vault-live-summary-grid" aria-label="Vault collection summary">
+            <EtMockupStatCard label="Cards" value={cardQuantity} detail="Owned quantity" tone="vault" />
+            <EtMockupStatCard label="Sealed" value={sealedQuantity} detail="Separate from sets" tone="gold" />
+            <EtMockupStatCard label="Est. value" value={estimatedValue} detail="Known values only" tone="collector" />
+            <EtMockupStatCard label="Completion" value={topSet ? topSet.completionLabel : "Ready"} detail={topSet ? topSet.name : "Add set details"} tone="vault" />
           </div>
-          <div className="vault-live-summary-grid" aria-label="Vault collection summary">
-            <div><span>Cards</span><strong>{cardQuantity}</strong><small>Owned quantity</small></div>
-            <div><span>Sealed</span><strong>{sealedQuantity}</strong><small>Separate from sets</small></div>
-            <div><span>Est. value</span><strong>{estimatedValue}</strong><small>Known values only</small></div>
-            <div><span>Completion</span><strong>{topSet ? topSet.completionLabel : "Ready"}</strong><small>{topSet ? topSet.name : "Add set details"}</small></div>
-          </div>
-        </article>
+        </EtMockupSectionCard>
 
-        <article className="panel vault-live-controls-card">
-          <div className="compact-card-header">
-            <div>
-              <h2>Find anything in Vault</h2>
-              <p>Search locally, filter by folder, or jump into a protected review flow.</p>
-            </div>
-            <button type="button" className="secondary-button" onClick={() => document.getElementById("vault-items-section")?.scrollIntoView({ behavior: "smooth", block: "start" })}>Open collection</button>
-          </div>
+        <EtMockupSectionCard
+          className="vault-live-controls-card vault-mockup-search-card"
+          title="Find anything in Vault"
+          detail="Search locally, filter by collection type, or jump into a protected review flow."
+          action={<EtMockupButton variant="secondary" onClick={() => document.getElementById("vault-items-section")?.scrollIntoView({ behavior: "smooth", block: "start" })}>Open collection</EtMockupButton>}
+        >
           <div className="vault-live-search-row">
             <label className="vault-filter-field vault-search-field">
               <span>Search Vault</span>
@@ -37228,32 +37285,18 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               ))}
             </div>
           </div>
-        </article>
+        </EtMockupSectionCard>
 
-        <article className="panel vault-live-master-card">
-          <div className="compact-card-header">
-            <div>
-              <span className="trust-badge trust-badge--secure">Master-card view</span>
-              <h2>One card identity, all exact copies.</h2>
-              <p>Vault groups cards by normalized name, set, and card number first. Normal, reverse holo, graded, promo, duplicates, and wishlist wants stay inside the same master card.</p>
-            </div>
-          </div>
-          <div className="vault-live-master-stats" aria-label="Master card grouping summary">
-            <div>
-              <span>Identities</span>
-              <strong>{visibleVaultMasterCards.length || "Preview"}</strong>
-              <small>Same card, set, number</small>
-            </div>
-            <div>
-              <span>Variants</span>
-              <strong>{groupedVariantCount || masterPreviewCards.reduce((sum, card) => sum + Number(card.variantCount || card.variants?.length || 0), 0)}</strong>
-              <small>Copies live below identity</small>
-            </div>
-            <div>
-              <span>Wishlist</span>
-              <strong>{wishlistItems.length}</strong>
-              <small>Wanted copies stay separate</small>
-            </div>
+        <EtMockupSectionCard
+          className="vault-live-master-card vault-mockup-master-card"
+          title="One card identity, all exact copies."
+          detail="Vault groups cards by normalized name, set, and card number first. Normal, reverse holo, graded, promo, duplicates, and wishlist wants stay inside the same master card."
+          action={<span className="trust-badge trust-badge--secure">Master-card view</span>}
+        >
+          <div className="et-mockup-stat-grid vault-live-master-stats" aria-label="Master card grouping summary">
+            <EtMockupStatCard label="Identities" value={visibleVaultMasterCards.length || "Preview"} detail="Same card, set, number" tone="vault" />
+            <EtMockupStatCard label="Variants" value={groupedVariantCount || masterPreviewCards.reduce((sum, card) => sum + Number(card.variantCount || card.variants?.length || 0), 0)} detail="Copies live below identity" tone="gold" />
+            <EtMockupStatCard label="Wishlist" value={wishlistItems.length} detail="Wanted copies stay separate" tone="collector" />
           </div>
           {masterPreviewCards.length ? (
             <div className="vault-live-master-preview-grid">
@@ -37268,17 +37311,15 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               ))}
             </div>
           ) : null}
-        </article>
+        </EtMockupSectionCard>
 
         <div className="vault-live-main-grid">
-          <article className="panel vault-live-folder-card">
-            <div className="compact-card-header">
-              <div>
-                <h2>Folders</h2>
-                <p>Mock folder labels keep this home organized while real folder data is reviewed later.</p>
-              </div>
-              <span className="status-badge">{folderCards.length} folders</span>
-            </div>
+          <EtMockupSectionCard
+            className="vault-live-folder-card"
+            title="Folders"
+            detail="Mock folder labels keep this home organized while real folder data is reviewed later."
+            action={<span className="status-badge">{folderCards.length} folders</span>}
+          >
             <div className="vault-live-folder-grid">
               {folderCards.map((folder) => (
                 <button type="button" className="vault-live-folder-tile" key={folder.key} onClick={folder.action}>
@@ -37288,16 +37329,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </button>
               ))}
             </div>
-          </article>
+          </EtMockupSectionCard>
 
-          <article className="panel vault-live-recent-card">
-            <div className="compact-card-header">
-              <div>
-                <h2>Recent additions</h2>
-                <p>Recent items stay reviewable before trades, sales, or set completion.</p>
-              </div>
-              <button type="button" className="secondary-button" onClick={() => openVaultItems("all")}>See all</button>
-            </div>
+          <EtMockupSectionCard
+            className="vault-live-recent-card"
+            title="Recent additions"
+            detail="Recent items stay reviewable before trades, sales, or set completion."
+            action={<EtMockupButton variant="secondary" onClick={() => openVaultItems("all")}>See all</EtMockupButton>}
+          >
             <div className="vault-live-recent-list">
               {recentRows.length ? recentRows.map((item) => (
                 <button type="button" className="vault-live-recent-row" key={item.id} onClick={() => setSelectedVaultDetailId(item.id)}>
@@ -37314,40 +37353,45 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </div>
               )}
             </div>
-          </article>
+          </EtMockupSectionCard>
 
-          <aside className="panel vault-live-health-card">
-            <p className="section-kicker">Collection Health</p>
+          <EtMockupRightRail
+            className="vault-live-health-card"
+            title="Collection Health"
+            detail={activeVaultItems.length ? `${knownValueCount} of ${activeVaultItems.length} grouped items have known value context.` : "Start with one reviewed item to build health signals."}
+          >
             <h2>{collectionHealthPercent || "Ready"}{collectionHealthPercent ? "%" : ""}</h2>
             <div className="vault-progress-track" aria-label="Vault collection health">
               <i style={{ width: `${collectionHealthPercent || 8}%` }} />
             </div>
-            <p>{activeVaultItems.length ? `${knownValueCount} of ${activeVaultItems.length} grouped items have known value context.` : "Start with one reviewed item to build health signals."}</p>
             <div className="scout-safety-strip">
               <span>Review before saving</span>
               <span>Variants grouped</span>
               <span>Sealed separate</span>
               <span>Wishlist separate</span>
             </div>
-          </aside>
+          </EtMockupRightRail>
         </div>
 
-        <article className="panel vault-live-actions-card">
-          <div className="compact-card-header">
-            <div>
-              <h2>Quick actions</h2>
-              <p>Every add path stays review-first. No card scanning service or upload backend is added in this section.</p>
-            </div>
-          </div>
-          <div className="vault-live-action-grid">
+        <EtMockupSectionCard
+          className="vault-live-actions-card"
+          title="Quick actions"
+          detail="Every add path stays review-first. No card scanning service or upload backend is added in this section."
+        >
+          <div className="et-mockup-action-grid vault-live-action-grid">
             {quickActions.map((action) => (
-              <button type="button" className="vault-live-action-tile" key={action.key} onClick={action.onClick}>
-                <strong>{action.title}</strong>
-                <span>{action.detail}</span>
-              </button>
+              <EtMockupActionCard
+                key={action.key}
+                title={action.title}
+                detail={action.detail}
+                icon={action.key.includes("scan") ? "search" : "vault"}
+                tone={action.key === "manual" ? "vault" : action.key === "import" ? "collector" : "gold"}
+                className="vault-live-action-tile"
+                onClick={action.onClick}
+              />
             ))}
           </div>
-        </article>
+        </EtMockupSectionCard>
       </section>
     );
   }
@@ -60545,7 +60589,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         )}
 
         {activeTab === "vault" && (
-          <>
+          <EtMockupPageShell
+            accent="vault"
+            className="vault-mockup-rebuild"
+            ariaLabel="Vault protected collection room"
+          >
+            <div className="et-mockup-main-column vault-mockup-main">
             {renderVaultHeader()}
 
             {(vaultSubTab === "overview" || vaultSubTab === "collection") ? (
@@ -61489,7 +61538,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </div>
               </section>
             ) : null}
-          </>
+            </div>
+          </EtMockupPageShell>
         )}
 
         {activeTab === "scout" && (
