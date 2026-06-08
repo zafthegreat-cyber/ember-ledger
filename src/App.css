@@ -96666,3 +96666,701 @@ html body #root .app.app-shell-dark.app-membership .membership-mockup-rebuild :w
     font-size: clamp(1.56rem, 7.5vw, 1.95rem);
   }
 }
+
+/* Final mockup-system shell and modal alignment: menu, settings, onboarding, Quick Add, Ask Ember, and feedback. */
+html body #root .app.app-command-shell {
+  --et-shell-ink: #192233;
+  --et-shell-muted: #6b6256;
+  --et-shell-panel: #fffaf1;
+  --et-shell-soft: #fff0dc;
+  --et-shell-soft-2: #f8dfba;
+  --et-shell-border: rgba(177, 128, 62, 0.24);
+  --et-shell-accent: #f97316;
+  --et-shell-gold: #d9a441;
+  --et-shell-tide: #5fbfc5;
+  --et-shell-shadow: 0 24px 60px rgba(112, 76, 35, 0.16);
+}
+
+html body #root .app.app-theme-dark.app-command-shell,
+html body #root .app.app-shell-dark {
+  --et-shell-ink: #fff2df;
+  --et-shell-muted: rgba(232, 221, 203, 0.76);
+  --et-shell-panel: rgba(10, 21, 40, 0.96);
+  --et-shell-soft: rgba(17, 29, 50, 0.9);
+  --et-shell-soft-2: rgba(24, 40, 64, 0.86);
+  --et-shell-border: rgba(241, 173, 92, 0.24);
+  --et-shell-shadow: 0 30px 80px rgba(0, 0, 0, 0.42);
+}
+
+html body #root .app.app-command-shell :where(.drawer.menu-drawer.navigation-drawer.open, .settings-utility-page, .live-onboarding-page, .smart-setup-modal, .flow-modal[data-flow="addActionSheet"], .ember-assist-panel, .feedback-modal) {
+  color: var(--et-shell-ink) !important;
+}
+
+html body #root .app.app-command-shell :where(.drawer.menu-drawer.navigation-drawer.open, .settings-utility-page, .live-onboarding-page, .smart-setup-modal, .flow-modal[data-flow="addActionSheet"], .ember-assist-panel, .feedback-modal) :where(h1, h2, h3, h4, strong, b, label, dt) {
+  color: var(--et-shell-ink) !important;
+}
+
+html body #root .app.app-command-shell :where(.drawer.menu-drawer.navigation-drawer.open, .settings-utility-page, .live-onboarding-page, .smart-setup-modal, .flow-modal[data-flow="addActionSheet"], .ember-assist-panel, .feedback-modal) :where(p, small, span, dd, li, .compact-subtitle) {
+  color: var(--et-shell-muted) !important;
+}
+
+html body #root .app.app-command-shell :where(.drawer.menu-drawer.navigation-drawer.open, .settings-utility-page, .live-onboarding-page, .smart-setup-modal, .flow-modal[data-flow="addActionSheet"], .ember-assist-panel, .feedback-modal) :where(input, select, textarea, .drawer-field) {
+  min-height: 44px;
+  border-color: color-mix(in srgb, var(--et-shell-gold) 28%, var(--et-shell-border)) !important;
+  background: color-mix(in srgb, var(--et-shell-panel) 86%, white 14%) !important;
+  color: var(--et-shell-ink) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell :where(.drawer.menu-drawer.navigation-drawer.open, .settings-utility-page, .live-onboarding-page, .smart-setup-modal, .flow-modal[data-flow="addActionSheet"], .ember-assist-panel, .feedback-modal) :where(input, select, textarea, .drawer-field),
+html body #root .app.app-shell-dark :where(.drawer.menu-drawer.navigation-drawer.open, .settings-utility-page, .live-onboarding-page, .smart-setup-modal, .flow-modal[data-flow="addActionSheet"], .ember-assist-panel, .feedback-modal) :where(input, select, textarea, .drawer-field) {
+  border-color: rgba(241, 173, 92, 0.26) !important;
+  background: rgba(7, 15, 29, 0.9) !important;
+  color: var(--et-shell-ink) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+}
+
+html body #root .app.app-command-shell :where(.drawer.menu-drawer.navigation-drawer.open, .settings-utility-page, .live-onboarding-page, .smart-setup-modal, .flow-modal[data-flow="addActionSheet"], .ember-assist-panel, .feedback-modal) :where(input::placeholder, textarea::placeholder) {
+  color: color-mix(in srgb, var(--et-shell-muted) 78%, transparent) !important;
+}
+
+html body #root .app.app-command-shell :where(.drawer.menu-drawer.navigation-drawer.open, .settings-utility-page, .live-onboarding-page, .smart-setup-modal, .flow-modal[data-flow="addActionSheet"], .ember-assist-panel, .feedback-modal) :where(button:not(.modal-close-button), .secondary-button, .drawer-link, .ghost-button) {
+  min-height: 44px;
+  border-color: color-mix(in srgb, var(--et-shell-gold) 30%, var(--et-shell-border)) !important;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0.08)),
+    var(--et-shell-soft) !important;
+  color: var(--et-shell-ink) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42) !important;
+}
+
+html body #root .app.app-command-shell :where(.drawer.menu-drawer.navigation-drawer.open, .settings-utility-page, .live-onboarding-page, .smart-setup-modal, .flow-modal[data-flow="addActionSheet"], .ember-assist-panel, .feedback-modal) :where(button:not(.secondary-button):not(.ghost-button):not(.drawer-link):not(.modal-close-button):not([disabled])) {
+  border-color: color-mix(in srgb, var(--et-shell-accent) 54%, var(--et-shell-gold)) !important;
+  background: linear-gradient(135deg, var(--et-shell-accent), var(--et-shell-gold)) !important;
+  color: #261607 !important;
+  box-shadow: 0 14px 32px color-mix(in srgb, var(--et-shell-accent) 24%, transparent) !important;
+}
+
+html body #root .app.app-command-shell :where(.modal-close-button, .drawer-close-button) {
+  width: 40px !important;
+  min-width: 40px !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  padding: 0 !important;
+  display: inline-grid !important;
+  place-items: center !important;
+  border-radius: 14px !important;
+  border-color: color-mix(in srgb, var(--et-shell-gold) 28%, var(--et-shell-border)) !important;
+  background: var(--et-shell-soft) !important;
+  color: var(--et-shell-ink) !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell .drawer-backdrop,
+html body #root .app.app-command-shell .location-modal-backdrop,
+html body #root .app.app-command-shell .flow-modal-backdrop,
+html body #root .app.app-command-shell .smart-setup-backdrop,
+html body #root .app.app-command-shell .ember-assist-backdrop {
+  background:
+    radial-gradient(circle at 18% 12%, rgba(249, 115, 22, 0.18), transparent 28rem),
+    radial-gradient(circle at 86% 20%, rgba(95, 191, 197, 0.18), transparent 30rem),
+    rgba(19, 24, 38, 0.42) !important;
+  backdrop-filter: blur(18px) saturate(1.12);
+}
+
+html body #root .app.app-command-shell .drawer.menu-drawer.navigation-drawer.open {
+  top: max(10px, env(safe-area-inset-top, 0px)) !important;
+  right: max(10px, env(safe-area-inset-right, 0px)) !important;
+  bottom: max(10px, env(safe-area-inset-bottom, 0px)) !important;
+  width: min(1040px, calc(100vw - 20px)) !important;
+  max-width: 1040px !important;
+  max-height: calc(100dvh - 20px) !important;
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) !important;
+  overflow: hidden !important;
+  border-radius: 30px !important;
+  border: 1px solid var(--et-shell-border) !important;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--et-shell-accent) 52%, transparent), color-mix(in srgb, var(--et-shell-gold) 38%, transparent) 48%, transparent 86%) 0 0 / 100% 3px no-repeat,
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--et-shell-accent) 12%, transparent), transparent 18rem),
+    radial-gradient(circle at 100% 4%, color-mix(in srgb, var(--et-shell-tide) 12%, transparent), transparent 22rem),
+    var(--et-shell-panel) !important;
+  box-shadow: var(--et-shell-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.48) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell .drawer.menu-drawer.navigation-drawer.open,
+html body #root .app.app-shell-dark .drawer.menu-drawer.navigation-drawer.open {
+  box-shadow: var(--et-shell-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.07) !important;
+}
+
+html body #root .app.app-command-shell .drawer.open.menu-drawer .drawer-header {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 4 !important;
+  padding: 16px 18px !important;
+  border-bottom: 1px solid var(--et-shell-border) !important;
+  background: color-mix(in srgb, var(--et-shell-panel) 88%, transparent) !important;
+  backdrop-filter: blur(16px);
+}
+
+html body #root .app.app-command-shell .drawer.open.menu-drawer .drawer-header h3 {
+  font-size: clamp(1.35rem, 2.6vw, 1.8rem) !important;
+  line-height: 1 !important;
+}
+
+html body #root .app.app-command-shell .drawer.open.menu-drawer .drawer-menu-stack {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.08fr) minmax(280px, 0.72fr) !important;
+  gap: 14px !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  padding: 16px 16px calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 148px) !important;
+  scroll-padding-bottom: calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 148px) !important;
+  scrollbar-color: color-mix(in srgb, var(--et-shell-gold) 52%, var(--et-shell-border)) transparent;
+  scrollbar-width: thin;
+}
+
+html body #root .app.app-command-shell .drawer.open.menu-drawer .drawer-menu-stack::-webkit-scrollbar {
+  width: 8px;
+}
+
+html body #root .app.app-command-shell .drawer.open.menu-drawer .drawer-menu-stack::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html body #root .app.app-command-shell .drawer.open.menu-drawer .drawer-menu-stack::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+  background-color: color-mix(in srgb, var(--et-shell-gold) 48%, var(--et-shell-border));
+}
+
+html body #root .app.app-command-shell .menu-command-links,
+html body #root .app.app-command-shell .drawer.open.menu-drawer :where(.drawer-info-card, .drawer-collapsible, .drawer-links, .menu-toggle-list, form) {
+  border: 1px solid var(--et-shell-border) !important;
+  border-radius: 24px !important;
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--et-shell-gold) 10%, transparent), transparent 14rem),
+    var(--et-shell-soft) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
+}
+
+html body #root .app.app-command-shell .menu-command-links {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  padding: 14px !important;
+}
+
+html body #root .app.app-command-shell .menu-command-links-header {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 12px !important;
+  padding: 14px !important;
+  border: 1px solid color-mix(in srgb, var(--et-shell-accent) 24%, var(--et-shell-border)) !important;
+  border-radius: 20px !important;
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--et-shell-accent) 12%, transparent), transparent 12rem),
+    color-mix(in srgb, var(--et-shell-panel) 74%, var(--et-shell-soft)) !important;
+}
+
+html body #root .app.app-command-shell .menu-command-groups {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)) !important;
+  gap: 12px !important;
+}
+
+html body #root .app.app-command-shell .menu-command-section {
+  padding: 12px !important;
+  border: 1px solid color-mix(in srgb, var(--et-shell-gold) 20%, transparent) !important;
+  border-radius: 20px !important;
+  background: color-mix(in srgb, var(--et-shell-panel) 66%, transparent) !important;
+}
+
+html body #root .app.app-command-shell .menu-command-section h4 {
+  margin: 0 0 10px !important;
+  color: var(--et-shell-ink) !important;
+  font-size: 0.78rem !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+}
+
+html body #root .app.app-command-shell .menu-command-grid {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 9px !important;
+}
+
+html body #root .app.app-command-shell .menu-command-link {
+  min-height: 72px !important;
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 11px !important;
+  text-align: left !important;
+  border: 1px solid color-mix(in srgb, var(--et-shell-gold) 20%, var(--et-shell-border)) !important;
+  border-radius: 18px !important;
+  background: color-mix(in srgb, var(--et-shell-panel) 78%, var(--et-shell-soft)) !important;
+  color: var(--et-shell-ink) !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell .menu-command-link.active {
+  border-color: color-mix(in srgb, var(--et-shell-accent) 50%, var(--et-shell-gold)) !important;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--et-shell-accent) 24%, transparent), transparent 72%),
+    color-mix(in srgb, var(--et-shell-gold) 12%, var(--et-shell-panel)) !important;
+}
+
+html body #root .app.app-command-shell .menu-command-icon {
+  width: 38px !important;
+  height: 38px !important;
+  border-color: color-mix(in srgb, var(--et-shell-accent) 24%, var(--et-shell-border)) !important;
+  background:
+    radial-gradient(circle at 30% 18%, rgba(255, 255, 255, 0.38), transparent 30%),
+    color-mix(in srgb, var(--et-shell-accent) 14%, var(--et-shell-soft)) !important;
+  color: var(--et-shell-ink) !important;
+}
+
+html body #root .app.app-command-shell .utility-page.settings-utility-page,
+html body #root .app .live-onboarding-page {
+  width: min(100%, 1180px);
+  margin-inline: auto;
+  display: grid;
+  gap: clamp(14px, 2vw, 22px);
+  padding: clamp(8px, 1.5vw, 16px);
+  border: 1px solid color-mix(in srgb, var(--et-shell-gold) 18%, transparent);
+  border-radius: 30px;
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--et-shell-accent, #f97316) 8%, transparent), transparent 18rem),
+    radial-gradient(circle at 100% 10%, color-mix(in srgb, var(--et-shell-tide, #5fbfc5) 8%, transparent), transparent 20rem),
+    color-mix(in srgb, var(--et-shell-panel, #fffaf1) 80%, transparent) !important;
+}
+
+html body #root .app.app-command-shell .settings-utility-page .utility-page-header,
+html body #root .app .live-onboarding-hero,
+html body #root .app .live-onboarding-card,
+html body #root .app .live-onboarding-actions {
+  border: 1px solid var(--et-shell-border) !important;
+  border-radius: 26px !important;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--et-shell-accent) 42%, transparent), color-mix(in srgb, var(--et-shell-gold) 30%, transparent) 46%, transparent 86%) 0 0 / 100% 3px no-repeat,
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--et-shell-accent) 10%, transparent), transparent 12rem),
+    var(--et-shell-panel) !important;
+  box-shadow: var(--et-shell-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.48) !important;
+}
+
+html body #root .app.app-command-shell .settings-utility-page .utility-page-layout {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 14px !important;
+  align-items: start !important;
+}
+
+html body #root .app.app-command-shell .settings-utility-page :where(.utility-card, .settings-section-card, .settings-mode-card, .settings-list-row, .account-setup-mini-card, .app-setup-custom-group, .theme-choice-card),
+html body #root .app .live-onboarding-page :where(.live-onboarding-step, .live-onboarding-mini-card, .settings-list-row, .theme-choice-card) {
+  border: 1px solid color-mix(in srgb, var(--et-shell-gold) 22%, var(--et-shell-border)) !important;
+  border-radius: 20px !important;
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--et-shell-gold) 8%, transparent), transparent 10rem),
+    var(--et-shell-soft) !important;
+  color: var(--et-shell-ink) !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell .settings-utility-page .utility-card-wide {
+  grid-column: 1 / -1;
+}
+
+html body #root .app.app-command-shell .settings-utility-page :where(.settings-mode-card.active, .theme-choice-card.is-selected),
+html body #root .app .live-onboarding-page :where(.live-onboarding-step.is-active, .theme-choice-card.is-selected) {
+  border-color: color-mix(in srgb, var(--et-shell-accent) 48%, var(--et-shell-gold)) !important;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--et-shell-accent) 18%, transparent), transparent 74%),
+    var(--et-shell-panel) !important;
+}
+
+html body #root .app .live-onboarding-step-nav {
+  display: flex !important;
+  gap: 9px !important;
+  overflow-x: auto !important;
+  padding-bottom: 4px !important;
+  scroll-padding-inline: 12px;
+}
+
+html body #root .app .live-onboarding-step {
+  flex: 0 0 min(44vw, 184px) !important;
+  min-height: 62px !important;
+  text-align: left !important;
+}
+
+html body #root .app .live-onboarding-grid {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.18fr) minmax(280px, 0.82fr) !important;
+  gap: 14px !important;
+  align-items: stretch !important;
+}
+
+html body #root .app .live-onboarding-card-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+html body #root .app.app-command-shell .smart-setup-backdrop {
+  align-items: center !important;
+  justify-content: center !important;
+  padding: max(12px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px)) !important;
+}
+
+html body #root .app.app-command-shell .smart-setup-modal {
+  width: min(760px, calc(100vw - 24px)) !important;
+  max-height: min(88dvh, 780px) !important;
+  border-radius: 28px !important;
+  border: 1px solid var(--et-shell-border) !important;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--et-shell-accent) 44%, transparent), color-mix(in srgb, var(--et-shell-gold) 36%, transparent) 44%, transparent 86%) 0 0 / 100% 3px no-repeat,
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--et-shell-accent) 12%, transparent), transparent 14rem),
+    var(--et-shell-panel) !important;
+  box-shadow: var(--et-shell-shadow) !important;
+}
+
+html body #root .app.app-command-shell .smart-setup-modal .modal-title-row,
+html body #root .app.app-command-shell .flow-modal[data-flow="addActionSheet"] .modal-title-row,
+html body #root .app.app-command-shell .feedback-modal .modal-title-row {
+  padding: 16px 18px !important;
+  border-bottom: 1px solid var(--et-shell-border) !important;
+  background: color-mix(in srgb, var(--et-shell-panel) 90%, transparent) !important;
+  backdrop-filter: blur(14px);
+}
+
+html body #root .app.app-command-shell .smart-setup-body {
+  gap: 14px !important;
+  padding: 14px 18px calc(28px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+html body #root .app.app-command-shell .smart-setup-step {
+  padding: 14px !important;
+  border: 1px solid color-mix(in srgb, var(--et-shell-gold) 20%, var(--et-shell-border)) !important;
+  border-radius: 22px !important;
+  background: var(--et-shell-soft) !important;
+}
+
+html body #root .app.app-command-shell :where(.smart-setup-chip, .smart-setup-choice, .smart-setup-theme-panel, .smart-setup-summary-grid article, .smart-setup-recommendation) {
+  border-color: color-mix(in srgb, var(--et-shell-gold) 24%, var(--et-shell-border)) !important;
+  background: color-mix(in srgb, var(--et-shell-panel) 74%, var(--et-shell-soft)) !important;
+  color: var(--et-shell-ink) !important;
+}
+
+html body #root .app.app-command-shell :where(.smart-setup-chip.selected, .smart-setup-choice.selected) {
+  border-color: color-mix(in srgb, var(--et-shell-accent) 52%, var(--et-shell-gold)) !important;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--et-shell-accent) 18%, transparent), transparent 72%),
+    var(--et-shell-panel) !important;
+}
+
+html body #root .app.app-command-shell .flow-modal-backdrop:has(.flow-modal[data-flow="addActionSheet"]) {
+  align-items: center !important;
+  justify-content: center !important;
+  padding: max(12px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px)) !important;
+}
+
+html body #root .app.app-command-shell .flow-modal[data-flow="addActionSheet"] {
+  position: relative !important;
+  inset: auto !important;
+  width: min(860px, calc(100vw - 24px)) !important;
+  max-width: 860px !important;
+  height: auto !important;
+  max-height: min(88dvh, 760px) !important;
+  margin: auto !important;
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) auto !important;
+  border-radius: 30px !important;
+  border: 1px solid var(--et-shell-border) !important;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--et-shell-accent) 44%, transparent), color-mix(in srgb, var(--et-shell-gold) 32%, transparent) 46%, transparent 86%) 0 0 / 100% 3px no-repeat,
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--et-shell-accent) 12%, transparent), transparent 14rem),
+    var(--et-shell-panel) !important;
+  box-shadow: var(--et-shell-shadow) !important;
+  transform: none !important;
+  overflow: hidden !important;
+}
+
+html body #root .app.app-command-shell .flow-modal[data-flow="addActionSheet"] .flow-modal-body {
+  max-height: none !important;
+  padding: 14px 16px calc(22px + env(safe-area-inset-bottom, 0px)) !important;
+  overflow: auto !important;
+}
+
+html body #root .app.app-command-shell .flow-modal[data-flow="addActionSheet"] :where(.add-anything-flow, .command-quick-add, .quick-add-results-panel, .quick-add-empty-result, .add-anything-scan-foundation, .add-anything-manual-panel, .add-anything-option, .quick-add-result-card, .small-empty-state) {
+  border-color: color-mix(in srgb, var(--et-shell-gold) 22%, var(--et-shell-border)) !important;
+  background: color-mix(in srgb, var(--et-shell-soft) 88%, transparent) !important;
+  color: var(--et-shell-ink) !important;
+}
+
+html body #root .app.app-command-shell .flow-modal[data-flow="addActionSheet"] :where(.add-anything-option-grid, .scan-anything-coming-soon-grid) {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+html body #root .app.app-command-shell .flow-modal[data-flow="addActionSheet"] :where(.quick-add-inline-actions, .quick-add-result-actions) {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-shell.is-open {
+  z-index: 2600 !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-panel {
+  right: max(14px, env(safe-area-inset-right, 0px)) !important;
+  bottom: max(14px, env(safe-area-inset-bottom, 0px)) !important;
+  width: min(560px, calc(100vw - 28px)) !important;
+  max-height: min(86dvh, 760px) !important;
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) auto !important;
+  border-radius: 30px !important;
+  border: 1px solid var(--et-shell-border) !important;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--et-shell-accent) 42%, transparent), color-mix(in srgb, var(--et-shell-gold) 30%, transparent) 46%, transparent 86%) 0 0 / 100% 3px no-repeat,
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--et-shell-accent) 12%, transparent), transparent 16rem),
+    var(--et-shell-panel) !important;
+  box-shadow: var(--et-shell-shadow) !important;
+  overflow: hidden !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-header {
+  padding: 16px 18px !important;
+  border-bottom: 1px solid var(--et-shell-border) !important;
+  background: color-mix(in srgb, var(--et-shell-panel) 90%, transparent) !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-scroll {
+  display: grid !important;
+  gap: 12px !important;
+  min-height: 0 !important;
+  padding: 14px 16px !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  scrollbar-color: color-mix(in srgb, var(--et-shell-gold) 52%, var(--et-shell-border)) transparent;
+}
+
+html body #root .app.app-command-shell .ember-assist-panel :where(.ember-assist-context-card, .ember-assist-live-hero, .ember-assist-guidance-strip, .ember-assist-quick-action-grid button, .ember-assist-safety-note, .ember-assist-recent-help article, .ember-assist-empty, .ember-assist-status, .ember-assist-message, .ember-assist-escalation-form) {
+  border: 1px solid color-mix(in srgb, var(--et-shell-gold) 22%, var(--et-shell-border)) !important;
+  border-radius: 20px !important;
+  background: color-mix(in srgb, var(--et-shell-soft) 88%, transparent) !important;
+  color: var(--et-shell-ink) !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-quick-action-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 9px !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-form {
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+  border-top: 1px solid var(--et-shell-border) !important;
+  background: color-mix(in srgb, var(--et-shell-panel) 90%, transparent) !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-footer-actions {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-footer-actions button {
+  flex: 1 1 132px !important;
+}
+
+html body #root .app.app-command-shell .location-modal-backdrop:has(.feedback-modal) {
+  align-items: center !important;
+  justify-content: center !important;
+  padding: max(12px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px)) !important;
+}
+
+html body #root .app.app-command-shell .feedback-modal {
+  width: min(780px, calc(100vw - 24px)) !important;
+  max-width: 780px !important;
+  max-height: min(88dvh, 790px) !important;
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) auto auto !important;
+  border-radius: 30px !important;
+  border: 1px solid var(--et-shell-border) !important;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--et-shell-accent) 42%, transparent), color-mix(in srgb, var(--et-shell-gold) 30%, transparent) 46%, transparent 86%) 0 0 / 100% 3px no-repeat,
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--et-shell-accent) 12%, transparent), transparent 16rem),
+    var(--et-shell-panel) !important;
+  box-shadow: var(--et-shell-shadow) !important;
+  overflow: hidden !important;
+}
+
+html body #root .app.app-command-shell .public-beta-feedback-body,
+html body #root .app.app-command-shell .feedback-modal > :not(.modal-title-row):not(.location-modal-actions):not(.feedback-metadata) {
+  min-height: 0 !important;
+}
+
+html body #root .app.app-command-shell .public-beta-feedback-body {
+  display: grid !important;
+  gap: 12px !important;
+  padding: 14px 18px !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+}
+
+html body #root .app.app-command-shell .feedback-modal:not(.public-beta-feedback-modal) > .field,
+html body #root .app.app-command-shell .feedback-modal:not(.public-beta-feedback-modal) > .small-empty-state {
+  margin-inline: 18px !important;
+}
+
+html body #root .app.app-command-shell .public-beta-feedback-modal :where(.public-beta-intake-card, .public-beta-backend-note, .public-beta-submit-state, .public-beta-safety-note, .public-beta-followup-row, .public-beta-interest-grid label),
+html body #root .app.app-command-shell .feedback-modal :where(.small-empty-state, .feedback-metadata > div) {
+  border-color: color-mix(in srgb, var(--et-shell-gold) 22%, var(--et-shell-border)) !important;
+  background: color-mix(in srgb, var(--et-shell-soft) 88%, transparent) !important;
+  color: var(--et-shell-ink) !important;
+}
+
+html body #root .app.app-command-shell .public-beta-interest-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 9px !important;
+}
+
+html body #root .app.app-command-shell .feedback-modal .feedback-metadata {
+  margin: 0 18px !important;
+  padding: 10px 0 0 !important;
+  border-top: 1px solid var(--et-shell-border) !important;
+}
+
+html body #root .app.app-command-shell .feedback-modal .location-modal-actions {
+  padding: 12px 18px calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+  border-top: 1px solid var(--et-shell-border) !important;
+  background: color-mix(in srgb, var(--et-shell-panel) 90%, transparent) !important;
+}
+
+html body #root .app.app-command-shell .feedback-modal .location-modal-actions button {
+  flex: 1 1 168px !important;
+}
+
+@media (min-width: 900px) {
+  html body #root .app.app-command-shell .settings-utility-page .utility-page-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 0.74fr) !important;
+  }
+
+  html body #root .app.app-command-shell .settings-utility-page :where(.settings-app-setup-card, .experience-mode-settings-card, .settings-preferences-card, .settings-privacy-safety-card, .settings-account-actions-card) {
+    grid-column: 1 / -1;
+  }
+
+  html body #root .app.app-command-shell .flow-modal[data-flow="addActionSheet"] .flow-modal-body {
+    padding-inline: 18px !important;
+  }
+}
+
+@media (max-width: 760px) {
+  html body #root .app.app-command-shell .drawer.menu-drawer.navigation-drawer.open {
+    inset: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+  }
+
+  html body #root .app.app-command-shell .drawer.open.menu-drawer .drawer-menu-stack {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 12px !important;
+    padding: 12px 12px calc(var(--bottom-nav-height, 76px) + env(safe-area-inset-bottom, 0px) + 160px) !important;
+  }
+
+  html body #root .app.app-command-shell .menu-command-grid,
+  html body #root .app.app-command-shell .settings-utility-page .utility-page-layout,
+  html body #root .app .live-onboarding-grid,
+  html body #root .app .live-onboarding-card-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell .menu-command-links-header {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell .utility-page.settings-utility-page,
+  html body #root .app .live-onboarding-page {
+    padding: 6px !important;
+    border-radius: 24px !important;
+  }
+
+  html body #root .app .live-onboarding-step {
+    flex-basis: min(62vw, 216px) !important;
+  }
+
+  html body #root .app.app-command-shell .smart-setup-modal,
+  html body #root .app.app-command-shell .flow-modal[data-flow="addActionSheet"],
+  html body #root .app.app-command-shell .feedback-modal {
+    width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px) !important;
+    max-height: calc(100dvh - 16px) !important;
+    border-radius: 24px !important;
+  }
+
+  html body #root .app.app-command-shell .smart-setup-chip-grid,
+  html body #root .app.app-command-shell .smart-setup-card-grid,
+  html body #root .app.app-command-shell .flow-modal[data-flow="addActionSheet"] :where(.add-anything-option-grid, .scan-anything-coming-soon-grid),
+  html body #root .app.app-command-shell .ember-assist-quick-action-grid,
+  html body #root .app.app-command-shell .public-beta-interest-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-panel {
+    left: 8px !important;
+    right: 8px !important;
+    bottom: max(8px, env(safe-area-inset-bottom, 0px)) !important;
+    width: auto !important;
+    max-height: calc(100dvh - 18px) !important;
+    border-radius: 24px !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-scroll {
+    padding: 12px !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-form,
+  html body #root .app.app-command-shell .feedback-modal .location-modal-actions {
+    padding-inline: 12px !important;
+  }
+}
+
+@media (max-width: 430px) {
+  html body #root .app.app-command-shell .drawer.open.menu-drawer .drawer-header,
+  html body #root .app.app-command-shell .smart-setup-modal .modal-title-row,
+  html body #root .app.app-command-shell .flow-modal[data-flow="addActionSheet"] .modal-title-row,
+  html body #root .app.app-command-shell .feedback-modal .modal-title-row,
+  html body #root .app.app-command-shell .ember-assist-header {
+    padding: 13px 14px !important;
+  }
+
+  html body #root .app.app-command-shell .drawer.open.menu-drawer .drawer-menu-stack,
+  html body #root .app.app-command-shell .smart-setup-body,
+  html body #root .app.app-command-shell .flow-modal[data-flow="addActionSheet"] .flow-modal-body,
+  html body #root .app.app-command-shell .public-beta-feedback-body {
+    padding-inline: 12px !important;
+  }
+
+  html body #root .app.app-command-shell .menu-command-link {
+    min-height: 66px !important;
+    padding: 10px !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-panel :where(.ember-assist-live-hero, .ember-assist-context-card, .ember-assist-guidance-strip, .ember-assist-safety-note) {
+    padding: 12px !important;
+  }
+
+  html body #root .app.app-command-shell .feedback-modal .feedback-metadata,
+  html body #root .app.app-command-shell .feedback-modal:not(.public-beta-feedback-modal) > .field,
+  html body #root .app.app-command-shell .feedback-modal:not(.public-beta-feedback-modal) > .small-empty-state {
+    margin-inline: 12px !important;
+  }
+}
