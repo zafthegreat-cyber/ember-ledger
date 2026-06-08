@@ -25712,38 +25712,61 @@ function renderForgeHeader() {
     },
   ];
   return (
-    <PageHeader
-      className={getHeaderCardClass("panel forge-hero-panel forge-command-center")}
-      title="Forge"
-      subtitle="Seller Tools."
-      summaryLabel={`${forgeWorkspaceContextLabel} | Private seller space`}
-      summary={(
-        <div className="forge-command-summary" aria-label="Forge command summary">
-          <div className="forge-top-summary" aria-label="Forge top summary">
-            {forgeSummaryCards.map((card) => (
-              <div className="forge-summary-card" key={card.key}>
-                <span>{card.title}</span>
-                <strong>{card.value}</strong>
-                <small>{card.helper}</small>
-              </div>
-            ))}
-          </div>
-          <div className="forge-command-overview forge-section-tabs" aria-label="Forge sections">
-            {forgeSectionTabs.map((card) => (
-              <button
-                key={card.key}
-                type="button"
-                className={`forge-overview-card forge-section-tab${card.active ? " is-active" : ""}`}
-                onClick={card.onClick}
-              >
-                <span className="forge-overview-title">{card.title}</span>
-                <small>{card.helper}</small>
-              </button>
-            ))}
-          </div>
-      </div>
-      )}
-    />
+    <div className="forge-mockup-header">
+      <EtMockupHero
+        brand="Forge"
+        mark={BRAND_ASSETS.mark}
+        title="Private Forge."
+        detail="Seller and business tools for inventory, exact copy tracking, receipts, mileage, sales records, and trade value. Separate from Vault."
+        points={{ value: forgeTotalProductQuantity || 0, label: "Sellable items" }}
+        pills={[
+          { label: "Private Forge", tone: "collector" },
+          { label: "No checkout", tone: "gold" },
+          { label: "Separate from Vault", tone: "beta" },
+        ]}
+        todayAction={{
+          label: "Review first",
+          title: activeForgeWorkspace ? "Add inventory privately." : "Choose Forge workspace.",
+          cta: activeForgeWorkspace ? "Add inventory" : "Open settings",
+          onClick: activeForgeWorkspace
+            ? () => openProductAddFlow({ source: "forge-hero", destinations: { forge: true } })
+            : () => setActiveTab("menu"),
+        }}
+        adminAction={<EtMockupButton variant="secondary" onClick={openForgeBusinessLedgerSurface}>Business Ledger</EtMockupButton>}
+        ariaLabel="Forge private seller command desk"
+      />
+      <EtMockupSectionCard
+        title="Private seller command desk"
+        detail={`${forgeWorkspaceContextLabel}. Business tools are private, review-first, and do not post listings or process checkout.`}
+        className="forge-mockup-navigation"
+        action={<EtMockupPill tone="gold">No posting behavior</EtMockupPill>}
+      >
+        <div className="et-mockup-stat-grid forge-mockup-summary-grid" aria-label="Forge command summary">
+          {forgeSummaryCards.map((card) => (
+            <EtMockupStatCard key={card.key} label={card.title} value={card.value} detail={card.helper} tone="forge" />
+          ))}
+        </div>
+        <div className="forge-command-overview forge-section-tabs forge-mockup-section-tabs" aria-label="Forge sections">
+          {forgeSectionTabs.map((card) => (
+            <button
+              key={card.key}
+              type="button"
+              className={`forge-overview-card forge-section-tab${card.active ? " is-active" : ""}`}
+              onClick={card.onClick}
+            >
+              <span className="forge-overview-title">{card.title}</span>
+              <small>{card.helper}</small>
+            </button>
+          ))}
+        </div>
+        <div className="forge-mockup-guardrail-strip" aria-label="Forge business guardrails">
+          <span>Business tools are private</span>
+          <span>No checkout/posting behavior</span>
+          <span>Exact variant/copy before sale</span>
+          <span>Review-first records</span>
+        </div>
+      </EtMockupSectionCard>
+    </div>
   );
 }
 
@@ -25759,45 +25782,85 @@ function renderForgeAccessState() {
     { title: "Sales Ledger", body: "Review revenue, cost basis, fees, receipt needs, and exact copy sold for recordkeeping." },
   ];
   return (
-    <section className="panel empty-state forge-workspace-unavailable adaptive-forge-intro" aria-label="Forge access required">
-      <div className="forge-access-heading">
-        <span className="trust-badge trust-badge--secure">Private Forge</span>
-        <h2>Seller tools are off</h2>
-        <p>{forgeAccessMessage || "Turn on seller tools to use inventory, receipts, mileage, and sales."}</p>
-      </div>
-      <div className="forge-intro-benefits" aria-label="Forge seller tools">
-        {[
-          "Track inventory",
-          "Choose exact copy",
-          "Record sales",
-          "Save expenses and receipts",
-          "Prepare tax summaries",
-        ].map((label) => <span key={label}>{label}</span>)}
-      </div>
-      <div className="quick-actions">
-        <button type="button" onClick={() => openMenuDrawer("settings")}>Turn on seller tools</button>
-        <button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Return to Hearth</button>
-      </div>
-      <div className="forge-access-preview-grid" aria-label="Forge overview">
-        {forgePreviewCards.map((card) => (
-          <article key={card.title} className="forge-access-preview-card">
-            <strong>{card.title}</strong>
-            <span>{card.body}</span>
-          </article>
-        ))}
-      </div>
-      <div className="forge-master-preview-panel" aria-label="Forge master card grouping preview">
-        <div className="compact-card-header">
-          <div>
-            <span className="trust-badge trust-badge--secure">Preview model</span>
-            <h3>Master card grouping</h3>
-            <p>Forge can select a card identity first, then choose the exact raw, graded, or special variant for a draft listing or trade review.</p>
+    <EtMockupPageShell
+      accent="forge"
+      className="forge-mockup-rebuild forge-mockup-access"
+      ariaLabel="Forge seller tools off"
+    >
+      <div className="et-mockup-main-column forge-mockup-main">
+        <EtMockupHero
+          brand="Forge"
+          mark={BRAND_ASSETS.mark}
+          title="Seller tools are off."
+          detail={forgeAccessMessage || "Turn on seller tools to use inventory, receipts, mileage, sales records, and private business planning."}
+          points={{ value: "Off", label: "Seller tools" }}
+          pills={[
+            { label: "Private Forge", tone: "collector" },
+            { label: "Review-first", tone: "gold" },
+            { label: "No checkout", tone: "beta" },
+          ]}
+          todayAction={{
+            label: "Private Forge",
+            title: "Turn on seller tools.",
+            cta: "Open settings",
+            onClick: () => openMenuDrawer("settings"),
+          }}
+          adminAction={<EtMockupButton variant="secondary" onClick={() => setActiveTab("dashboard")}>Return to Hearth</EtMockupButton>}
+          ariaLabel="Forge seller tools off state"
+        />
+
+        <EtMockupSectionCard
+          title="Private seller tools preview"
+          detail="Business tools are private and separate from Vault. No checkout/posting behavior is connected."
+          className="forge-access-preview-panel"
+          action={<EtMockupPill tone="gold">Seller tools are off</EtMockupPill>}
+        >
+          <div className="forge-intro-benefits" aria-label="Forge seller tools">
+            {[
+              "Track inventory",
+              "Choose exact copy",
+              "Record sales",
+              "Save expenses and receipts",
+              "Prepare tax summaries",
+            ].map((label) => <span key={label}>{label}</span>)}
           </div>
-        </div>
-        <MasterCardGroupPreview masterCard={MASTER_CARD_GROUPING_PREVIEW_CARDS[0]} compact />
+          <div className="forge-access-preview-grid" aria-label="Forge overview">
+            {forgePreviewCards.map((card) => (
+              <EtMockupActionCard key={card.title} title={card.title} detail={card.body} icon="forge" tone="forge" />
+            ))}
+          </div>
+        </EtMockupSectionCard>
+
+        <EtMockupSectionCard
+          title="Master card grouping"
+          detail="Forge selects the card identity first, then the exact raw, graded, sealed-related, promo, or duplicate copy for trade, listing, or sale review."
+          className="forge-master-preview-panel"
+          action={<EtMockupPill tone="collector">Preview model</EtMockupPill>}
+        >
+          <MasterCardGroupPreview masterCard={MASTER_CARD_GROUPING_PREVIEW_CARDS[0]} compact />
+        </EtMockupSectionCard>
       </div>
-      <p className="forge-access-note">Forge is optional and private. For recordkeeping, confirm summaries with your tax professional.</p>
-    </section>
+
+      <EtMockupRightRail
+        title="Business tools stay private"
+        detail="Forge is optional and private. For recordkeeping, confirm summaries with your tax professional."
+        className="forge-mockup-rail"
+      >
+        <div className="forge-mockup-rail-rules" aria-label="Forge access guardrails">
+          <span>Seller tools are off</span>
+          <span>Private Forge</span>
+          <span>Turn on seller tools</span>
+          <span>Return to Hearth</span>
+          <span>No checkout/posting behavior</span>
+          <span>Business tools are private</span>
+        </div>
+        <EtMockupEmptyState
+          title="Separate from Vault."
+          detail="Vault stays your protected collection. Forge is where optional seller records, receipts, mileage, and sales planning live."
+          action={<EtMockupButton variant="secondary" onClick={() => setActiveTab("dashboard")}>Return to Hearth</EtMockupButton>}
+        />
+      </EtMockupRightRail>
+    </EtMockupPageShell>
   );
 }
 
@@ -25907,15 +25970,13 @@ function renderForgeBusinessCommandPanel() {
   };
 
   return (
-    <section className="forge-main-command-panel" aria-label="Forge business dashboard">
-      <div className="compact-card-header forge-main-command-heading">
-        <div>
-          <span className="section-kicker">Business ledger</span>
-          <h3>Inventory, sales, and profit in one workspace.</h3>
-          <p>Forge keeps sellable inventory separate from Vault, groups same items, and keeps cost basis, sale records, and item history easy to review.</p>
-        </div>
-        <span className="trust-badge trust-badge--secure">Owner-safe tools</span>
-      </div>
+    <EtMockupSectionCard
+      title="Inventory, sales, and profit in one workspace."
+      detail="Forge keeps sellable inventory separate from Vault, groups same items, and keeps cost basis, sale records, receipts, mileage, and item history easy to review."
+      className="forge-main-command-panel forge-mockup-command-panel"
+      ariaLabel="Forge business dashboard"
+      action={<EtMockupPill tone="collector">Owner-safe tools</EtMockupPill>}
+    >
 
       <div className="forge-ledger-card-grid" aria-label="Forge ledger summary">
         {forgeLedgerCards.map((card) => (
@@ -26050,7 +26111,52 @@ function renderForgeBusinessCommandPanel() {
           )}
         </div>
       </div>
-    </section>
+    </EtMockupSectionCard>
+  );
+}
+
+function renderForgeMockupRail() {
+  return (
+    <EtMockupRightRail
+      title="Private business desk"
+      detail="Forge stays separate from Vault and does not post listings, process checkout, or move inventory without the existing review-first flows."
+      className="forge-mockup-rail"
+    >
+      <EtMockupSectionCard
+        title="Business tools are private"
+        detail="Use Forge for seller records, not public marketplace behavior."
+        className="forge-mockup-rail-card"
+        action={<EtMockupPill tone="gold">Private Forge</EtMockupPill>}
+      >
+        <div className="et-mockup-action-stack">
+          <EtMockupActionCard title="Inventory groups" detail="Grouped seller inventory stays separate from Vault collection records." icon="forge" tone="forge" />
+          <EtMockupActionCard title="Exact variant / copy" detail="Choose the exact raw, graded, sealed-related, promo, or duplicate copy before seller review." icon="vault" tone="forge" />
+          <EtMockupActionCard title="Sales records" detail="Track sale, fee, receipt, and cost basis records for review-first planning." icon="market" tone="gold" onClick={() => setActiveTab("sales")} />
+          <EtMockupActionCard title="Receipts and mileage" detail="Recordkeeping surfaces stay private and do not process payroll, taxes, or payments." icon="forge" tone="collector" />
+        </div>
+      </EtMockupSectionCard>
+
+      <EtMockupSectionCard
+        title="What Forge avoids"
+        detail="Seller tools stay private and planning-oriented."
+        className="forge-mockup-rail-card"
+      >
+        <div className="forge-mockup-rail-rules" aria-label="Forge business guardrails">
+          <span>No checkout</span>
+          <span>No payment processing</span>
+          <span>No marketplace posting</span>
+          <span>No Vault data behavior change</span>
+          <span>Review before sale</span>
+          <span>Business tools are private</span>
+        </div>
+      </EtMockupSectionCard>
+
+      <EtMockupEmptyState
+        title="Planning first."
+        detail="Use Business Ledger, Trade Analyzer, Listing Builder, and Sales Ledger as private planning surfaces. Nothing posts or checks out here."
+        action={<EtMockupButton variant="secondary" onClick={openForgeBusinessLedgerSurface}>Open Business Ledger</EtMockupButton>}
+      />
+    </EtMockupRightRail>
   );
 }
 
@@ -63307,7 +63413,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
           </>
         )}
 
-        {forgeTabActive && commandDeskSellerAccess ? renderForgeHeader() : null}
+        {forgeTabActive && commandDeskSellerAccess && activeTab !== "inventory" ? renderForgeHeader() : null}
         {!activeTabLocked && forgeTabActive && !commandDeskSellerAccess ? renderForgeAccessState() : null}
 
         {commandDeskSellerAccess && activeTab === "addInventory" && (
@@ -63438,7 +63544,14 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
 )}
 
         {commandDeskSellerAccess && activeTab === "inventory" && (
-          forgeSubTab === "marketplace" ? (
+          <EtMockupPageShell
+            accent="forge"
+            className="forge-mockup-rebuild"
+            ariaLabel="Forge private seller command desk"
+          >
+            <div className="et-mockup-main-column forge-mockup-main">
+              {renderForgeHeader()}
+          {forgeSubTab === "marketplace" ? (
             <>
               <PageHeader
                 className={getHeaderCardClass("panel marketplace-page-heading")}
@@ -63836,6 +63949,10 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
           </section>
           </>
           )
+          }
+            </div>
+            {renderForgeMockupRail()}
+          </EtMockupPageShell>
         )}
 
         {activeTab === "addSale" && (
