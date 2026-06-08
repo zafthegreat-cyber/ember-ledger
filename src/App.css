@@ -86913,3 +86913,675 @@ html body #root .app.app-theme-dark.app-command-shell.app-scout .watch-calendar-
     grid-template-columns: 48px minmax(0, 1fr) !important;
   }
 }
+
+/* Hearth-only structure polish: daily command center. */
+html body #root .app.app-command-shell.app-home {
+  --hearth-room-border: color-mix(in srgb, var(--wc-accent, #f97316) 28%, var(--wc-border, rgba(154, 93, 38, 0.18)));
+  --hearth-room-gold: color-mix(in srgb, var(--wc-accent-2, #d9a441) 78%, var(--wc-accent, #f97316));
+  --hearth-room-glow: color-mix(in srgb, var(--wc-accent, #f97316) 13%, transparent);
+}
+
+html body #root .app.app-command-shell.app-home .main {
+  padding-bottom: max(170px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 116px)) !important;
+}
+
+html body #root .app.app-command-shell.app-home .dashboard-layout.hearth-command-view.hearth-northstar {
+  width: min(100%, 1180px) !important;
+  margin-inline: auto !important;
+  gap: clamp(15px, 2.4vw, 24px) !important;
+  padding-inline: clamp(10px, 2vw, 18px) !important;
+  padding-bottom: max(174px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 118px)) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-primary-column,
+html body #root .app.app-command-shell.app-home .hearth-side-column {
+  display: grid !important;
+  align-content: start !important;
+  gap: clamp(14px, 2vw, 18px) !important;
+  min-width: 0 !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-northstar-header,
+html body #root .app.app-command-shell.app-home .hearth-at-glance-panel,
+html body #root .app.app-command-shell.app-home .hearth-foundation-journey-panel,
+html body #root .app.app-command-shell.app-home .hearth-build-hearth-panel,
+html body #root .app.app-command-shell.app-home .hearth-recent-panel,
+html body #root .app.app-command-shell.app-home .hearth-best-action-card,
+html body #root .app.app-command-shell.app-home .hearth-quick-actions-panel,
+html body #root .app.app-command-shell.app-home .hearth-start-here-panel {
+  border: 1px solid var(--hearth-room-border) !important;
+  border-radius: 26px !important;
+  background:
+    linear-gradient(90deg, var(--hearth-room-gold), color-mix(in srgb, var(--wc-accent, #f97316) 28%, transparent) 44%, transparent 90%) 0 0 / 100% 3px no-repeat,
+    radial-gradient(circle at 0% 0%, var(--hearth-room-glow), transparent 12rem),
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--wc-accent-2, #d9a441) 8%, transparent), transparent 14rem),
+    color-mix(in srgb, var(--wc-panel-strong, #fffcf7) 94%, transparent) !important;
+  box-shadow: 0 20px 44px color-mix(in srgb, var(--wc-shadow, rgba(58, 35, 15, 0.18)) 70%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.58) !important;
+  color: var(--wc-text, #14213a) !important;
+  overflow: hidden !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-northstar-header,
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-at-glance-panel,
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-foundation-journey-panel,
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-build-hearth-panel,
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-recent-panel,
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-best-action-card,
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-quick-actions-panel,
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-start-here-panel {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--wc-accent-2, #d9a441) 82%, transparent), color-mix(in srgb, var(--wc-accent, #f97316) 24%, transparent) 44%, transparent 90%) 0 0 / 100% 3px no-repeat,
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--wc-accent, #f97316) 13%, transparent), transparent 12rem),
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--wc-accent-2, #d9a441) 8%, transparent), transparent 14rem),
+    color-mix(in srgb, var(--wc-panel-strong, #10233d) 91%, #06101f 9%) !important;
+  box-shadow: 0 22px 48px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-northstar-header {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: clamp(14px, 2.4vw, 22px) !important;
+  min-height: 0 !important;
+  padding: clamp(18px, 3vw, 28px) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-greeting-block {
+  display: grid !important;
+  grid-template-columns: 54px minmax(0, 1fr) !important;
+  gap: 14px !important;
+  align-items: start !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-logo-mark {
+  width: 54px !important;
+  height: 54px !important;
+  border-radius: 18px !important;
+  box-shadow: 0 14px 30px color-mix(in srgb, var(--wc-accent, #f97316) 18%, transparent) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-greeting-block h1 {
+  max-width: 13ch !important;
+  margin: 2px 0 0 !important;
+  font-size: clamp(2.15rem, 5vw, 3.6rem) !important;
+  line-height: 0.96 !important;
+  letter-spacing: 0 !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-greeting-block p {
+  display: block !important;
+  max-width: 48ch !important;
+  margin-top: 10px !important;
+  color: var(--wc-muted-strong, #5e4731) !important;
+  font-size: clamp(0.95rem, 1.5vw, 1.05rem) !important;
+  line-height: 1.45 !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-greeting-block p {
+  color: color-mix(in srgb, var(--wc-text, #f9fafb) 78%, var(--wc-muted, #9fb0c9)) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-today-message {
+  width: min(100%, 520px) !important;
+  margin-top: 14px !important;
+  padding: 10px 12px !important;
+  border: 1px solid color-mix(in srgb, var(--wc-accent-2, #d9a441) 34%, var(--wc-border, rgba(154, 93, 38, 0.18))) !important;
+  border-left: 4px solid var(--wc-accent, #f97316) !important;
+  border-radius: 18px !important;
+  background: color-mix(in srgb, var(--wc-accent-2, #d9a441) 10%, var(--wc-card-soft, #fff7ea)) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-today-message {
+  background: color-mix(in srgb, var(--wc-card, #0d2039) 82%, var(--wc-accent-2, #d9a441) 8%) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-today-message span,
+html body #root .app.app-command-shell.app-home .hearth-foundation-brand {
+  color: var(--wc-muted-strong, #5e4731) !important;
+  font-weight: 950 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-today-message strong {
+  color: var(--wc-text-strong, #221509) !important;
+  font-size: 0.86rem !important;
+  line-height: 1.25 !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-today-message span,
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-foundation-brand {
+  color: color-mix(in srgb, var(--wc-accent-2, #d9a441) 74%, var(--wc-text, #f9fafb)) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-today-message strong {
+  color: var(--wc-text, #f9fafb) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-header-actions {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  justify-items: end !important;
+  gap: 10px !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-points-badge {
+  min-width: 96px !important;
+  min-height: 62px !important;
+  padding: 10px 13px !important;
+  border: 1px solid color-mix(in srgb, var(--wc-accent-2, #d9a441) 42%, var(--wc-border, rgba(154, 93, 38, 0.18))) !important;
+  border-radius: 19px !important;
+  background: color-mix(in srgb, var(--wc-panel-strong, #fffcf7) 76%, var(--wc-accent-2, #d9a441) 12%) !important;
+  color: var(--wc-text-strong, #221509) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-points-badge {
+  background: color-mix(in srgb, var(--wc-card, #0d2039) 84%, var(--wc-accent-2, #d9a441) 8%) !important;
+  color: var(--wc-text, #f9fafb) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-points-badge strong {
+  font-size: 1.16rem !important;
+  line-height: 1 !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-mini-badge-row {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  justify-content: flex-end !important;
+  gap: 8px !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-beta-badge,
+html body #root .app.app-command-shell.app-home .hearth-mode-chip,
+html body #root .app.app-command-shell.app-home .hearth-admin-badge {
+  min-height: 32px !important;
+  border-radius: 999px !important;
+  border-color: color-mix(in srgb, var(--wc-accent-2, #d9a441) 34%, var(--wc-border, rgba(154, 93, 38, 0.18))) !important;
+  background: color-mix(in srgb, var(--wc-card-soft, #fff7ea) 88%, transparent) !important;
+  color: var(--wc-text-strong, #221509) !important;
+  font-weight: 900 !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-beta-badge,
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-mode-chip,
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-admin-badge {
+  background: color-mix(in srgb, var(--wc-card, #0d2039) 84%, transparent) !important;
+  color: var(--wc-text, #f9fafb) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-at-glance-panel,
+html body #root .app.app-command-shell.app-home .hearth-foundation-journey-panel,
+html body #root .app.app-command-shell.app-home .hearth-build-hearth-panel,
+html body #root .app.app-command-shell.app-home .hearth-recent-panel {
+  padding: clamp(16px, 2.6vw, 22px) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-at-glance-panel .compact-card-header,
+html body #root .app.app-command-shell.app-home .hearth-foundation-journey-panel .compact-card-header,
+html body #root .app.app-command-shell.app-home .hearth-build-hearth-panel .compact-card-header,
+html body #root .app.app-command-shell.app-home .hearth-recent-panel .compact-card-header {
+  padding: 0 0 12px !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--wc-accent-2, #d9a441) 24%, var(--wc-border, rgba(154, 93, 38, 0.18))) !important;
+  background: transparent !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-at-glance-panel .compact-card-header h2,
+html body #root .app.app-command-shell.app-home .hearth-foundation-journey-panel .compact-card-header h2,
+html body #root .app.app-command-shell.app-home .hearth-build-hearth-panel .compact-card-header h2,
+html body #root .app.app-command-shell.app-home .hearth-recent-panel .compact-card-header h2 {
+  font-size: clamp(1.1rem, 2vw, 1.38rem) !important;
+  line-height: 1.08 !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-foundation-stat-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-foundation-stat-grid .et-live-stat,
+html body #root .app.app-command-shell.app-home .hearth-foundation-journey-grid .et-live-action,
+html body #root .app.app-command-shell.app-home .hearth-feature-card,
+html body #root .app.app-command-shell.app-home .hearth-recent-row,
+html body #root .app.app-command-shell.app-home .hearth-empty-state {
+  border: 1px solid color-mix(in srgb, var(--wc-accent-2, #d9a441) 22%, var(--wc-border, rgba(154, 93, 38, 0.18))) !important;
+  border-radius: 19px !important;
+  background: color-mix(in srgb, var(--wc-card-soft, #fff7ea) 88%, transparent) !important;
+  color: var(--wc-text-strong, #221509) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.52) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-foundation-stat-grid .et-live-stat,
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-foundation-journey-grid .et-live-action,
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-feature-card,
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-recent-row,
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-empty-state {
+  background: color-mix(in srgb, var(--wc-card, #0d2039) 86%, transparent) !important;
+  color: var(--wc-text, #f9fafb) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-foundation-stat-grid .et-live-stat {
+  min-height: 104px !important;
+  padding: 15px !important;
+  align-content: center !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-foundation-stat-grid .et-live-stat strong {
+  font-size: clamp(1.35rem, 3vw, 1.72rem) !important;
+  line-height: 1 !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-foundation-journey-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-foundation-journey-grid .et-live-action {
+  min-height: 92px !important;
+  grid-template-columns: 44px minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  padding: 13px !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-foundation-journey-grid .et-live-action-copy strong,
+html body #root .app.app-command-shell.app-home .hearth-feature-copy strong,
+html body #root .app.app-command-shell.app-home .hearth-recent-row strong,
+html body #root .app.app-command-shell.app-home .hearth-empty-state strong {
+  color: var(--wc-text-strong, #221509) !important;
+  font-weight: 950 !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-foundation-journey-grid .et-live-action-copy strong,
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-feature-copy strong,
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-recent-row strong,
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-empty-state strong {
+  color: var(--wc-text, #f9fafb) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-foundation-journey-grid .et-live-action-copy small,
+html body #root .app.app-command-shell.app-home .hearth-feature-copy small,
+html body #root .app.app-command-shell.app-home .hearth-recent-row small,
+html body #root .app.app-command-shell.app-home .hearth-empty-state p {
+  color: var(--wc-muted-strong, #5e4731) !important;
+  line-height: 1.35 !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-foundation-journey-grid .et-live-action-copy small,
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-feature-copy small,
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-recent-row small,
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-empty-state p {
+  color: color-mix(in srgb, var(--wc-text, #f9fafb) 72%, var(--wc-muted, #9fb0c9)) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-build-hearth-panel {
+  position: sticky !important;
+  top: 18px !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-feature-list,
+html body #root .app.app-command-shell.app-home .hearth-recent-list {
+  display: grid !important;
+  gap: 11px !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-feature-card {
+  min-height: 118px !important;
+  grid-template-columns: 52px minmax(0, 1fr) 18px !important;
+  padding: 15px !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-feature-card:first-child {
+  border-color: color-mix(in srgb, var(--wc-accent, #f97316) 38%, var(--wc-accent-2, #d9a441)) !important;
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--wc-accent, #f97316) 12%, transparent), transparent 9rem),
+    color-mix(in srgb, var(--wc-card-soft, #fff7ea) 90%, transparent) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-feature-card:first-child {
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--wc-accent, #f97316) 12%, transparent), transparent 9rem),
+    color-mix(in srgb, var(--wc-card, #0d2039) 88%, transparent) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-feature-copy {
+  gap: 3px !important;
+  min-width: 0 !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-feature-copy span {
+  color: var(--wc-text-strong, #221509) !important;
+  font-size: 1.03rem !important;
+  font-weight: 950 !important;
+  line-height: 1.14 !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-feature-copy em {
+  width: fit-content !important;
+  margin-top: 4px !important;
+  padding: 4px 8px !important;
+  border-radius: 999px !important;
+  border: 1px solid color-mix(in srgb, var(--wc-accent-2, #d9a441) 34%, var(--wc-border, rgba(154, 93, 38, 0.18))) !important;
+  background: color-mix(in srgb, var(--wc-accent-2, #d9a441) 10%, var(--wc-card-soft, #fff7ea)) !important;
+  color: color-mix(in srgb, var(--wc-text-strong, #221509) 86%, var(--wc-accent-2, #d9a441)) !important;
+  font-style: normal !important;
+  font-weight: 900 !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-feature-copy span {
+  color: var(--wc-text, #f9fafb) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-feature-copy em {
+  background: color-mix(in srgb, var(--wc-card, #0d2039) 84%, var(--wc-accent-2, #d9a441) 9%) !important;
+  color: color-mix(in srgb, var(--wc-text, #f9fafb) 84%, var(--wc-accent-2, #d9a441)) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-recent-panel {
+  position: relative !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-empty-state {
+  display: grid !important;
+  justify-items: center !important;
+  align-content: center !important;
+  gap: 12px !important;
+  min-height: 188px !important;
+  padding: 24px !important;
+  text-align: center !important;
+  border-style: dashed !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-empty-state .secondary-button {
+  min-height: 42px !important;
+  padding-inline: 18px !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-start-here-panel {
+  padding: clamp(15px, 2vw, 20px) !important;
+}
+
+@media (min-width: 1040px) {
+  html body #root .app.app-command-shell.app-home .dashboard-layout.hearth-command-view.hearth-northstar {
+    grid-template-columns: minmax(0, 1.55fr) minmax(340px, 0.78fr) !important;
+    align-items: start !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-side-column {
+    gap: 18px !important;
+  }
+}
+
+@media (max-width: 780px) {
+  html body #root .app.app-command-shell.app-home .dashboard-layout.hearth-command-view.hearth-northstar {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+    padding-inline: 8px !important;
+    padding-bottom: max(210px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 150px)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-primary-column,
+  html body #root .app.app-command-shell.app-home .hearth-side-column {
+    gap: 12px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-northstar-header {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+    padding: 16px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-greeting-block {
+    grid-template-columns: 46px minmax(0, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-logo-mark {
+    width: 46px !important;
+    height: 46px !important;
+    border-radius: 16px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-greeting-block h1 {
+    font-size: clamp(1.72rem, 8.5vw, 2.22rem) !important;
+    line-height: 1 !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-greeting-block p {
+    max-width: 34ch !important;
+    margin-top: 6px !important;
+    font-size: 0.84rem !important;
+    line-height: 1.34 !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-today-message {
+    margin-top: 9px !important;
+    padding: 8px 10px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-header-actions {
+    grid-template-columns: auto minmax(0, 1fr) !important;
+    align-items: center !important;
+    justify-items: start !important;
+    gap: 9px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-points-badge {
+    min-width: 86px !important;
+    min-height: 48px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-mini-badge-row {
+    justify-content: start !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-foundation-stat-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-foundation-stat-grid .et-live-stat {
+    min-height: 82px !important;
+    padding: 10px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-foundation-journey-grid {
+    display: flex !important;
+    grid-template-columns: none !important;
+    gap: 9px !important;
+    overflow-x: auto !important;
+    overscroll-behavior-inline: contain !important;
+    scroll-snap-type: x proximity !important;
+    scrollbar-width: none !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-foundation-journey-grid::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-foundation-journey-grid .et-live-action {
+    flex: 0 0 min(86%, 340px) !important;
+    min-height: 74px !important;
+    grid-template-columns: 38px minmax(0, 1fr) auto !important;
+    padding: 10px !important;
+    scroll-snap-align: start !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-build-hearth-panel {
+    position: static !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-feature-card {
+    min-height: 88px !important;
+    grid-template-columns: 42px minmax(0, 1fr) 16px !important;
+    padding: 12px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-empty-state {
+    min-height: 146px !important;
+    padding: 18px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .mobile-quick-add-fab,
+  html body #root .app.app-command-shell.app-home .quick-add-floating-button,
+  html body #root .app.app-command-shell.app-home .floating-quick-add {
+    bottom: calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 60px) !important;
+  }
+}
+
+@media (max-width: 430px) {
+  html body #root .app.app-command-shell.app-home .dashboard-layout.hearth-command-view.hearth-northstar {
+    padding-bottom: max(232px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 170px)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-northstar-header {
+    padding: 13px !important;
+    border-radius: 24px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-greeting-block {
+    grid-template-columns: 42px minmax(0, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-logo-mark {
+    width: 42px !important;
+    height: 42px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-greeting-block h1 {
+    font-size: clamp(1.42rem, 8vw, 1.86rem) !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-greeting-block p {
+    font-size: 0.78rem !important;
+    line-height: 1.28 !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-today-message {
+    grid-template-columns: 1fr !important;
+    gap: 3px !important;
+    margin-top: 8px !important;
+    padding: 7px 9px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-header-actions {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 7px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-points-badge {
+    min-width: 78px !important;
+    min-height: 42px !important;
+    padding: 7px 9px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-points-badge strong {
+    font-size: 0.96rem !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-points-badge small {
+    font-size: 0.58rem !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-mini-badge-row {
+    flex: 1 1 auto !important;
+    gap: 6px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-beta-badge,
+  html body #root .app.app-command-shell.app-home .hearth-mode-chip,
+  html body #root .app.app-command-shell.app-home .hearth-admin-badge {
+    min-height: 27px !important;
+    padding-inline: 8px !important;
+    font-size: 0.62rem !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-foundation-stat-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-foundation-stat-grid .et-live-stat {
+    min-height: 74px !important;
+    padding: 8px 7px !important;
+    border-radius: 16px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-foundation-stat-grid .et-live-stat span {
+    font-size: 0.58rem !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-foundation-stat-grid .et-live-stat strong {
+    font-size: 1rem !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-foundation-stat-grid .et-live-stat small {
+    font-size: 0.6rem !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-at-glance-panel,
+  html body #root .app.app-command-shell.app-home .hearth-foundation-journey-panel,
+  html body #root .app.app-command-shell.app-home .hearth-build-hearth-panel,
+  html body #root .app.app-command-shell.app-home .hearth-recent-panel {
+    padding: 12px !important;
+    border-radius: 23px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-at-glance-panel .compact-card-header,
+  html body #root .app.app-command-shell.app-home .hearth-foundation-journey-panel .compact-card-header {
+    padding-bottom: 8px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-at-glance-panel .compact-card-header h2,
+  html body #root .app.app-command-shell.app-home .hearth-foundation-journey-panel .compact-card-header h2 {
+    font-size: 1rem !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-at-glance-panel .compact-card-header p,
+  html body #root .app.app-command-shell.app-home .hearth-foundation-journey-panel .compact-card-header p {
+    font-size: 0.76rem !important;
+    line-height: 1.25 !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-foundation-stat-grid .et-live-stat {
+    min-height: 62px !important;
+    padding: 7px 6px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-foundation-journey-grid .et-live-action {
+    min-height: 66px !important;
+    grid-template-columns: 34px minmax(0, 1fr) auto !important;
+    padding: 8px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-foundation-journey-grid .et-live-action-icon {
+    width: 34px !important;
+    height: 34px !important;
+    border-radius: 13px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-foundation-journey-grid .et-live-action-copy strong {
+    font-size: 0.78rem !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-foundation-journey-grid .et-live-action-copy small {
+    font-size: 0.66rem !important;
+    line-height: 1.22 !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-foundation-journey-grid .et-live-action b {
+    font-size: 0.62rem !important;
+    padding: 4px 7px !important;
+  }
+}
+
+@media (max-width: 400px) {
+  html body #root .app.app-command-shell.app-home .hearth-onboarding-slot-primary {
+    margin-top: 116px !important;
+  }
+}
