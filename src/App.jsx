@@ -5490,9 +5490,9 @@ function EtMockupButton({ children, onClick, variant = "primary", className = ""
   );
 }
 
-function EtMockupSectionCard({ title, detail, action = null, className = "", children, ariaLabel = "" }) {
+function EtMockupSectionCard({ title, detail, action = null, className = "", children, ariaLabel = "", sectionRef = null }) {
   return (
-    <section className={`et-mockup-section-card ${className}`.trim()} aria-label={ariaLabel || title}>
+    <section ref={sectionRef} className={`et-mockup-section-card ${className}`.trim()} aria-label={ariaLabel || title}>
       <div className="et-mockup-section-heading">
         <div>
           <h2>{title}</h2>
@@ -24959,86 +24959,120 @@ function renderTideTradrHeader() {
     setTideTradrSubTab(nextTab);
   };
   return (
-    <PageHeader
-      className={getHeaderCardClass("panel tidetradr-summary-card market-page-heading")}
-      title="Market Watch"
-      subtitle="Prices, watchlist, fair value, and honest data freshness."
-      tabs={marketTabs}
-      activeTab={activeMarketTab}
-      onTabChange={changeMarketTab}
-      actions={(
-        <button type="button" className="secondary-button market-deal-shortcut" onClick={() => openDealFinderModal()}>Check Deal</button>
-      )}
-    >
-      <form className="catalog-search-form market-search-form" onSubmit={submitCatalogSearch}>
-        <LazySmartCatalogSearchBox
-          value={catalogSearch}
-          onChange={updateCatalogSearchInput}
-          onSearch={submitCatalogSearch}
-          onSelectSuggestion={selectCatalogRecommendation}
-          supabase={supabase}
-          isSupabaseConfigured={isSupabaseConfigured}
-          mapRow={mapCatalog}
-          productGroup={currentCatalogProductGroup()}
-          dataFilter={catalogDataFilter}
-          inputClassName="search-input"
-          placeholder="Search Market Watch"
-          closeSignal={catalogSuggestionCloseSignal}
-          maxSuggestions={6}
-          localCatalogProducts={catalogProducts}
-          includeScopeSuggestions
-          searchCategories={MARKET_SEARCH_CATEGORIES}
-          scopeSets={POKEMON_SETS}
-          scopeProductTypes={MARKET_SEARCH_TYPE_SCOPES}
-          className="market-smart-search"
-          money={money}
-          suppressSuggestions={catalogSearchHasRun || supabaseCatalogStatus.loading}
-          timingStatusLabel="Suggestions refreshed. Pick a scope or search to compare values."
-        />
-        <button type="submit">Search</button>
-      </form>
-      <div className="market-search-helper-grid" aria-label="Market search guidance">
-        <span><strong>Cards</strong><small>name, set, or number</small></span>
-        <span><strong>Sealed</strong><small>ETB, bundle, box, tins</small></span>
-        <span><strong>UPC/SKU</strong><small>exact lookup</small></span>
-        <span><strong>Freshness</strong><small>labeled when known</small></span>
-      </div>
-      <details className="market-search-options market-upc-disclosure" open={Boolean(catalogBarcodeSearch || submittedCatalogBarcodeSearch)}>
-        <summary>UPC / SKU lookup</summary>
-        <form className="market-barcode-search" onSubmit={submitCatalogBarcodeSearch} aria-label="Market UPC and SKU lookup">
-          <label htmlFor="market-upc-search">UPC / SKU</label>
-          <input
-            id="market-upc-search"
-            value={catalogBarcodeSearch}
-            onChange={(event) => {
-              setCatalogBarcodeSearch(event.target.value);
-              setSubmittedCatalogBarcodeSearch("");
-              setCatalogSearchHasRun(false);
-            }}
-            placeholder="Paste UPC, barcode, or SKU"
-            inputMode="search"
-            autoComplete="off"
+    <div className="market-mockup-header">
+      <EtMockupHero
+        brand="Market Watch"
+        mark={BRAND_ASSETS.mark}
+        title="Fair price discovery."
+        detail="Research cards, sealed products, sets, UPC/SKU, and freshness labels before deciding. Market never promises checkout, live stock, or guaranteed availability."
+        points={{ value: workspaceWatchlist.length || "0", label: "watched items" }}
+        pills={[
+          { label: "No checkout", tone: "market" },
+          { label: "No stock guarantee", tone: "collector" },
+          { label: "Freshness labeled", tone: "gold" },
+        ]}
+        todayAction={{
+          label: "Market today",
+          title: "Search a card, sealed product, set, UPC, or SKU before buying.",
+          cta: "Search",
+          onClick: () => {
+            if (typeof document !== "undefined") {
+              document.querySelector(".market-smart-search input, .market-search-form input")?.focus?.();
+            }
+          },
+        }}
+        ariaLabel="Market Watch fair price discovery"
+      />
+
+      <EtMockupSectionCard
+        className="market-mockup-search tidetradr-summary-card market-page-heading"
+        title="Search Market Watch"
+        detail="Fair price discovery only. No checkout or stock guarantee."
+        action={<EtMockupButton variant="secondary" className="market-deal-shortcut" onClick={() => openDealFinderModal()}>Check Deal</EtMockupButton>}
+      >
+        <form className="catalog-search-form market-search-form" onSubmit={submitCatalogSearch}>
+          <LazySmartCatalogSearchBox
+            value={catalogSearch}
+            onChange={updateCatalogSearchInput}
+            onSearch={submitCatalogSearch}
+            onSelectSuggestion={selectCatalogRecommendation}
+            supabase={supabase}
+            isSupabaseConfigured={isSupabaseConfigured}
+            mapRow={mapCatalog}
+            productGroup={currentCatalogProductGroup()}
+            dataFilter={catalogDataFilter}
+            inputClassName="search-input"
+            placeholder="Search Market Watch"
+            closeSignal={catalogSuggestionCloseSignal}
+            maxSuggestions={6}
+            localCatalogProducts={catalogProducts}
+            includeScopeSuggestions
+            searchCategories={MARKET_SEARCH_CATEGORIES}
+            scopeSets={POKEMON_SETS}
+            scopeProductTypes={MARKET_SEARCH_TYPE_SCOPES}
+            className="market-smart-search"
+            money={money}
+            suppressSuggestions={catalogSearchHasRun || supabaseCatalogStatus.loading}
+            timingStatusLabel="Suggestions refreshed. Pick a scope or search to compare values."
           />
-          <button type="submit" className="secondary-button">Lookup</button>
+          <button type="submit">Search</button>
         </form>
-      </details>
-      <details className="market-search-options market-extra-options">
-        <summary>Search options</summary>
-        <div className="market-data-refresh-strip" aria-label="Market data freshness">
-          <span>{marketRefreshLabel}</span>
-          <p>
-            {adminEditModeActive ? `${marketDailyRefreshCommand} refreshes public TCGCSV catalog and price cache data.` : "Daily catalog refresh checks public price data when available."}
-            {" "}No live price is shown unless data has a saved timestamp.
-          </p>
+        <div className="market-search-helper-grid" aria-label="Market search guidance">
+          <EtMockupActionCard title="Cards" detail="Name, set, or number" meta="TCG" icon="market" tone="market" />
+          <EtMockupActionCard title="Sealed" detail="ETB, bundle, box, tins" meta="Product" icon="market" tone="collector" />
+          <EtMockupActionCard title="UPC/SKU" detail="Exact lookup" meta="Code" icon="search" tone="gold" />
+          <EtMockupActionCard title="Freshness" detail="Labeled when known" meta="Source" icon="market" tone="market" />
         </div>
-        <div className="market-mode-strip" aria-label="Market guidance">
-          <span>{adaptiveSellerToolsVisible ? "Seller comps" : "Collector values"}</span>
-          <span>{adaptiveSellerToolsVisible ? "Forge ready" : "Vault ready"}</span>
-          <span>Honest labels</span>
-          <button type="button" className="secondary-button" onClick={() => openDealFinderModal()}>Check Deal</button>
+        <details className="market-search-options market-upc-disclosure" open={Boolean(catalogBarcodeSearch || submittedCatalogBarcodeSearch)}>
+          <summary>UPC / SKU lookup</summary>
+          <form className="market-barcode-search" onSubmit={submitCatalogBarcodeSearch} aria-label="Market UPC and SKU lookup">
+            <label htmlFor="market-upc-search">UPC / SKU</label>
+            <input
+              id="market-upc-search"
+              value={catalogBarcodeSearch}
+              onChange={(event) => {
+                setCatalogBarcodeSearch(event.target.value);
+                setSubmittedCatalogBarcodeSearch("");
+                setCatalogSearchHasRun(false);
+              }}
+              placeholder="Paste UPC, barcode, or SKU"
+              inputMode="search"
+              autoComplete="off"
+            />
+            <button type="submit" className="secondary-button">Lookup</button>
+          </form>
+        </details>
+        <details className="market-search-options market-extra-options">
+          <summary>Search options</summary>
+          <div className="market-data-refresh-strip" aria-label="Market data freshness">
+            <span>{marketRefreshLabel}</span>
+            <p>
+              {adminEditModeActive ? `${marketDailyRefreshCommand} refreshes public TCGCSV catalog and price cache data.` : "Daily catalog refresh checks public price data when available."}
+              {" "}No live price is shown unless data has a saved timestamp.
+            </p>
+          </div>
+          <div className="market-mode-strip" aria-label="Market guidance">
+            <span>{adaptiveSellerToolsVisible ? "Seller comps" : "Collector values"}</span>
+            <span>{adaptiveSellerToolsVisible ? "Forge ready" : "Vault ready"}</span>
+            <span>Honest labels</span>
+            <button type="button" className="secondary-button" onClick={() => openDealFinderModal()}>Check Deal</button>
+          </div>
+        </details>
+        <div className="standard-page-header-tabs market-mockup-tabs" role="tablist" aria-label="Market Watch sections">
+          {marketTabs.map((tab) => (
+            <button
+              type="button"
+              key={tab.key}
+              className={activeMarketTab === tab.key ? "active" : ""}
+              aria-selected={activeMarketTab === tab.key}
+              onClick={() => changeMarketTab(tab.key)}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
-      </details>
-    </PageHeader>
+      </EtMockupSectionCard>
+    </div>
   );
 }
 
@@ -25077,68 +25111,83 @@ function renderMarketHomeFoundation() {
   ];
 
   return (
-    <section className="market-home-foundation" aria-label="Market discovery home">
-      <article className="market-fair-search-card">
-        <span className="trust-badge trust-badge--secure">Fair search</span>
-        <div>
-          <h2>Find a fair range before you buy.</h2>
-          <p>Market compares fair value with source and freshness labels. It is not an auto-buy dashboard and does not guarantee stock.</p>
-        </div>
+    <section className="market-home-foundation market-mockup-foundation" aria-label="Market discovery home">
+      <EtMockupSectionCard
+        className="market-fair-search-card"
+        title="Find a fair range before you buy."
+        detail="Market compares fair value with source and freshness labels. It is not an auto-buy dashboard and does not guarantee stock."
+        action={<EtMockupPill tone="market">Fair search</EtMockupPill>}
+      >
         <div className="market-home-category-row" aria-label="Market categories">
-          {categories.map((category) => (
-            <button
-              key={category}
-              type="button"
-              className={catalogKindFilter === category.toLowerCase() ? "active" : ""}
-              onClick={() => {
-                if (category === "Singles") switchCatalogKindFilter("card");
-                else if (category === "Sealed") switchCatalogKindFilter("sealed");
-                else switchCatalogKindFilter("All");
-              }}
-            >
-              {category}
-            </button>
+          {categories.map((category) => {
+            const filterKey = category === "Singles" ? "card" : category === "Sealed" ? "sealed" : "All";
+            return (
+              <button
+                key={category}
+                type="button"
+                className={catalogKindFilter === filterKey ? "active" : ""}
+                onClick={() => switchCatalogKindFilter(filterKey)}
+              >
+                {category}
+              </button>
+            );
+          })}
+        </div>
+      </EtMockupSectionCard>
+
+      <div className="market-mockup-foundation-grid">
+        <div className="market-home-grid">
+          {discoveryCards.map((card) => (
+            <article className="market-home-product-card" key={card.name}>
+              <div className="market-home-product-top">
+                {card.masterCard ? (
+                  <PremiumCardImage
+                    image={card.masterCard.imageUrl}
+                    title={card.masterCard.name}
+                    subtitle={card.masterCard.setName}
+                    variantType={card.masterCard.variants?.[0]?.variantType || "normal"}
+                    className="market-home-master-art"
+                  />
+                ) : (
+                  <div className="market-home-product-art" aria-hidden="true">{card.accent}</div>
+                )}
+                <div>
+                  <span className="market-status-pill">{card.type}</span>
+                  <h3>{card.name}</h3>
+                  <p>{card.note}</p>
+                </div>
+              </div>
+              {card.masterCard ? <MasterVariantRail masterCard={card.masterCard} compact /> : null}
+              <div className="market-home-product-meta">
+                <span><strong>{card.fairRange}</strong><small>Fair range</small></span>
+                <span><strong>{card.source}</strong><small>Source</small></span>
+                <span><strong>{card.freshness}</strong><small>Data label</small></span>
+              </div>
+              <div className="market-card-actions">
+                <button type="button" onClick={() => {
+                  setCatalogSearch(card.name);
+                  setSubmittedCatalogSearch("");
+                  setCatalogSearchHasRun(false);
+                }}>Use in search</button>
+                <button type="button" className="secondary-button" onClick={() => setTideTradrSubTab("watch")}>Watch</button>
+              </div>
+            </article>
           ))}
         </div>
-      </article>
-
-      <div className="market-home-grid">
-        {discoveryCards.map((card) => (
-          <article className="market-home-product-card" key={card.name}>
-            <div className="market-home-product-top">
-              {card.masterCard ? (
-                <PremiumCardImage
-                  image={card.masterCard.imageUrl}
-                  title={card.masterCard.name}
-                  subtitle={card.masterCard.setName}
-                  variantType={card.masterCard.variants?.[0]?.variantType || "normal"}
-                  className="market-home-master-art"
-                />
-              ) : (
-                <div className="market-home-product-art" aria-hidden="true">{card.accent}</div>
-              )}
-              <div>
-                <span className="market-status-pill">{card.type}</span>
-                <h3>{card.name}</h3>
-                <p>{card.note}</p>
-              </div>
-            </div>
-            {card.masterCard ? <MasterVariantRail masterCard={card.masterCard} compact /> : null}
-            <div className="market-home-product-meta">
-              <span><strong>{card.fairRange}</strong><small>Fair range</small></span>
-              <span><strong>{card.source}</strong><small>Source</small></span>
-              <span><strong>{card.freshness}</strong><small>Data label</small></span>
-            </div>
-            <div className="market-card-actions">
-              <button type="button" onClick={() => {
-                setCatalogSearch(card.name);
-                setSubmittedCatalogSearch("");
-                setCatalogSearchHasRun(false);
-              }}>Use in search</button>
-              <button type="button" className="secondary-button" onClick={() => setTideTradrSubTab("watch")}>Watch</button>
-            </div>
-          </article>
-        ))}
+        <EtMockupRightRail
+          className="market-mockup-guardrail-rail"
+          title="Fair discovery rules"
+          detail="Use values as research context, never as checkout, live stock, or availability proof."
+        >
+          <div className="market-mockup-rule-list">
+            {[
+              "No checkout or payment flow.",
+              "No live inventory or stock guarantee.",
+              "Freshness/source labels stay visible.",
+              "Weak data is labeled before action.",
+            ].map((rule) => <EtMockupPill tone="market" key={rule}>{rule}</EtMockupPill>)}
+          </div>
+        </EtMockupRightRail>
       </div>
 
       <article className="market-watchlist-prompt">
@@ -61596,7 +61645,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         {activeTab === "menu" && renderSettingsPage()}
 
         {activeTab === "market" && (
-          <>
+          <EtMockupPageShell
+            accent="market"
+            className="market-mockup-rebuild"
+            ariaLabel="Market Watch fair price discovery"
+          >
+            <div className="et-mockup-main-column market-mockup-main">
             {renderTideTradrHeader()}
             {tideTradrSubTab === "deal" ? (
               <section className="panel">
@@ -61855,18 +61909,16 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </section>
                 ) : null}
 
-                <section ref={catalogResultsRef} className={`panel tidetradr-results-panel market-results-panel ${!catalogSearchHasRun && !supabaseCatalogStatus.loading ? "tidetradr-results-panel--prompt" : ""}`}>
-                  <div className="compact-card-header">
-                    <div>
-                  <h2>{catalogSearchHasRun ? "Market Watch Results" : "Search Market Watch"}</h2>
-                  <p>
-                    {catalogSearchHasRun
-                      ? `Page ${supabaseCatalogStatus.page || 1} of ${tideTradrCatalogPageCount || (supabaseCatalogStatus.hasMore ? (supabaseCatalogStatus.page || 1) + 1 : 1)}`
-                          : "Compare catalog values, retail context, and saved watches."}
-                      </p>
-                    </div>
-                    <span className="status-badge">{supabaseCatalogStatus.loading && tideTradrCatalogResults.length === 0 && marketSetSearchResults.length === 0 ? "Searching..." : catalogSearchHasRun ? `${supabaseCatalogStatus.totalCount ?? tideTradrCatalogResults.length} results` : "Search first"}</span>
-                  </div>
+                <EtMockupSectionCard
+                  sectionRef={catalogResultsRef}
+                  className={`tidetradr-results-panel market-results-panel market-mockup-results ${!catalogSearchHasRun && !supabaseCatalogStatus.loading ? "tidetradr-results-panel--prompt" : ""}`}
+                  title={catalogSearchHasRun ? "Market Watch Results" : "Search Market Watch"}
+                  detail={catalogSearchHasRun
+                    ? `Page ${supabaseCatalogStatus.page || 1} of ${tideTradrCatalogPageCount || (supabaseCatalogStatus.hasMore ? (supabaseCatalogStatus.page || 1) + 1 : 1)}`
+                    : "Compare catalog values, retail context, and saved watches."}
+                  action={<span className="status-badge">{supabaseCatalogStatus.loading && tideTradrCatalogResults.length === 0 && marketSetSearchResults.length === 0 ? "Searching..." : catalogSearchHasRun ? `${supabaseCatalogStatus.totalCount ?? tideTradrCatalogResults.length} results` : "Search first"}</span>}
+                  ariaLabel="Market Watch Results"
+                >
 
                   {catalogSearchHasRun ? (
                     <p className="market-results-safety-note">Fair price discovery only. No checkout or stock guarantee.</p>
@@ -62104,8 +62156,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
                   {!catalogSearchHasRun && !supabaseCatalogStatus.loading ? (
                     <div className="small-empty-state tidetradr-search-prompt market-empty-state">
-                      <strong>Search cards, sets, or sealed products.</strong>
-                      <span>Market shows known values and labels weak data honestly.</span>
+                      <EtMockupEmptyState
+                        title="Search cards, sets, or sealed products."
+                        detail="Market shows known values and labels weak data honestly."
+                      />
                       <div className="market-empty-examples" aria-label="Market search examples">
                         <span>Card names</span>
                         <span>Set names</span>
@@ -62266,7 +62320,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                       compact
                     />
                   ) : null}
-                </section>
+                </EtMockupSectionCard>
 
                 <section className="feature-dropdown-stack">
                   {false ? (
@@ -62379,7 +62433,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </section>
               </>
             )}
-          </>
+            </div>
+          </EtMockupPageShell>
         )}
 
         {false && activeTab === "market" && (

@@ -94512,3 +94512,619 @@ html body #root .app.app-command-shell.app-vault .vault-master-card-section {
     grid-template-columns: minmax(0, 1fr) !important;
   }
 }
+
+/* Market mockup migration: fair price discovery only, no checkout or stock guarantees. */
+html body #root .app.app-command-shell.app-market .main {
+  padding-bottom: max(210px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 150px)) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-rebuild {
+  --et-page-accent: var(--et-mint);
+  --et-page-accent-2: var(--et-gold);
+  --market-research-teal: color-mix(in srgb, var(--et-mint) 86%, #0c9b84);
+  --market-research-soft: color-mix(in srgb, var(--et-mint) 12%, var(--et-panel-soft));
+  width: min(100%, 1180px);
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(14px, 1.8vw, 22px);
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-main {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  gap: clamp(14px, 1.8vw, 20px);
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-market .market-mockup-rebuild,
+html body #root .app.app-theme-light.app-command-shell.app-market .market-mockup-rebuild,
+html body #root .app.app-shell-light.app-command-shell.app-market .market-mockup-rebuild {
+  --et-ink: #0d2a2d !important;
+  --et-muted: #53696a !important;
+  --et-panel: #fffdf8 !important;
+  --et-panel-soft: #eefaf3 !important;
+  --et-border: color-mix(in srgb, #2dbb9b 24%, rgba(83, 105, 106, 0.18)) !important;
+  color: var(--et-ink) !important;
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-market .market-mockup-rebuild :where(.et-mockup-page-hero, .et-mockup-section-card, .et-mockup-right-rail),
+html body #root .app.app-theme-light.app-command-shell.app-market .market-mockup-rebuild :where(.et-mockup-page-hero, .et-mockup-section-card, .et-mockup-right-rail),
+html body #root .app.app-shell-light.app-command-shell.app-market .market-mockup-rebuild :where(.et-mockup-page-hero, .et-mockup-section-card, .et-mockup-right-rail) {
+  border-color: color-mix(in srgb, #2dbb9b 26%, rgba(83, 105, 106, 0.18)) !important;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, #2dbb9b 54%, transparent), color-mix(in srgb, #d9a441 36%, transparent) 46%, transparent 88%) 0 0 / 100% 3px no-repeat,
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, #2dbb9b 12%, transparent), transparent 13rem),
+    radial-gradient(circle at 100% 8%, color-mix(in srgb, #d9a441 9%, transparent), transparent 16rem),
+    #fffdf8 !important;
+  color: #0d2a2d !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-rebuild :where(.et-mockup-hero-copy, .et-mockup-hero-status, .et-mockup-pill-row, .et-mockup-section-heading, .et-mockup-rail-heading, .et-mockup-action-copy) {
+  min-width: 0;
+  background: transparent !important;
+  background-color: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-market .market-mockup-rebuild :where(.et-mockup-brand-row, .et-mockup-stat-card, .et-mockup-action-card, .et-mockup-empty-state, .et-mockup-today-action, .et-mockup-points-card, .et-mockup-pill),
+html body #root .app.app-theme-light.app-command-shell.app-market .market-mockup-rebuild :where(.et-mockup-brand-row, .et-mockup-stat-card, .et-mockup-action-card, .et-mockup-empty-state, .et-mockup-today-action, .et-mockup-points-card, .et-mockup-pill),
+html body #root .app.app-shell-light.app-command-shell.app-market .market-mockup-rebuild :where(.et-mockup-brand-row, .et-mockup-stat-card, .et-mockup-action-card, .et-mockup-empty-state, .et-mockup-today-action, .et-mockup-points-card, .et-mockup-pill) {
+  border-color: color-mix(in srgb, #2dbb9b 22%, rgba(83, 105, 106, 0.18)) !important;
+  background: color-mix(in srgb, #eefaf3 88%, #fffdf8) !important;
+  color: #0d2a2d !important;
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-market .market-mockup-rebuild :where(h1, h2, h3, strong, b, .et-mockup-action-copy strong),
+html body #root .app.app-theme-light.app-command-shell.app-market .market-mockup-rebuild :where(h1, h2, h3, strong, b, .et-mockup-action-copy strong),
+html body #root .app.app-shell-light.app-command-shell.app-market .market-mockup-rebuild :where(h1, h2, h3, strong, b, .et-mockup-action-copy strong) {
+  color: #0d2a2d !important;
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-market .market-mockup-rebuild :where(p, small, em, .et-mockup-section-heading p, .et-mockup-rail-heading p),
+html body #root .app.app-theme-light.app-command-shell.app-market .market-mockup-rebuild :where(p, small, em, .et-mockup-section-heading p, .et-mockup-rail-heading p),
+html body #root .app.app-shell-light.app-command-shell.app-market .market-mockup-rebuild :where(p, small, em, .et-mockup-section-heading p, .et-mockup-rail-heading p) {
+  color: #53696a !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-header {
+  display: grid;
+  gap: clamp(13px, 1.7vw, 18px);
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-header .et-mockup-page-hero {
+  min-height: clamp(232px, 25vw, 312px);
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-header .et-mockup-hero-copy h1 {
+  max-width: 12ch;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-search.market-page-heading {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  display: grid !important;
+  gap: clamp(12px, 1.8vw, 16px) !important;
+  padding: clamp(16px, 2.4vw, 24px) !important;
+  border-radius: var(--et-radius-xl) !important;
+  color: var(--et-ink) !important;
+  overflow: visible !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-search .et-mockup-section-heading {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-search .market-search-form {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(96px, auto) !important;
+  gap: 10px !important;
+  align-items: stretch !important;
+  padding: 9px !important;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent) 28%, var(--et-border)) !important;
+  border-radius: 22px !important;
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--et-page-accent) 9%, transparent), transparent 8rem),
+    color-mix(in srgb, var(--et-panel-soft) 88%, transparent) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-search .market-search-form input,
+html body #root .app.app-command-shell.app-market .market-mockup-search .market-search-form .search-input {
+  min-height: 50px !important;
+  border-radius: 16px !important;
+  color: var(--et-ink) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-search .market-search-form > button {
+  min-height: 50px !important;
+  min-width: 96px !important;
+  border-radius: 16px !important;
+  font-weight: 950 !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-search .market-search-helper-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 9px !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-search .market-search-helper-grid > .et-mockup-action-card {
+  min-height: 74px !important;
+  padding: 10px !important;
+  border-radius: 18px !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-search .market-search-options {
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2) 20%, var(--et-border)) !important;
+  border-radius: 18px !important;
+  background: color-mix(in srgb, var(--et-panel-soft) 84%, transparent) !important;
+  color: var(--et-ink) !important;
+  overflow: hidden !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-search .market-search-options > summary {
+  display: grid !important;
+  align-content: center !important;
+  min-height: 50px !important;
+  padding: 10px 13px !important;
+  color: var(--et-ink) !important;
+  font-weight: 950 !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-search .market-barcode-search,
+html body #root .app.app-command-shell.app-market .market-mockup-search .market-data-refresh-strip,
+html body #root .app.app-command-shell.app-market .market-mockup-search .market-mode-strip {
+  border-color: color-mix(in srgb, var(--et-page-accent) 18%, var(--et-border)) !important;
+  background: color-mix(in srgb, var(--et-panel) 78%, transparent) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-tabs.standard-page-header-tabs {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 8px !important;
+  width: 100%;
+  padding: 7px !important;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent) 20%, var(--et-border)) !important;
+  border-radius: 999px !important;
+  background: color-mix(in srgb, var(--et-panel-soft) 84%, transparent) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-tabs.standard-page-header-tabs button {
+  flex: 1 1 132px;
+  min-height: 38px;
+  padding: 8px 13px;
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: transparent !important;
+  color: var(--et-muted) !important;
+  font-weight: 900;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-tabs.standard-page-header-tabs button.active,
+html body #root .app.app-command-shell.app-market .market-mockup-tabs.standard-page-header-tabs button[aria-selected="true"] {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--et-page-accent) 22%, var(--et-panel)), color-mix(in srgb, var(--et-page-accent-2) 14%, var(--et-panel-soft))) !important;
+  color: var(--et-ink) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38);
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-foundation {
+  width: 100% !important;
+  max-width: none !important;
+  display: grid;
+  gap: clamp(13px, 1.8vw, 18px);
+  padding-bottom: 0 !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-foundation .market-fair-search-card {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-home-category-row {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-home-category-row button {
+  flex: 1 1 112px;
+  min-height: 38px;
+  border-radius: 999px !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-foundation-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 0.38fr);
+  gap: clamp(13px, 1.8vw, 18px);
+  align-items: start;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-foundation-grid .market-home-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-foundation .market-home-product-card,
+html body #root .app.app-command-shell.app-market .market-watchlist-prompt {
+  border-color: color-mix(in srgb, var(--et-page-accent) 22%, var(--et-border)) !important;
+  border-radius: 22px !important;
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--et-page-accent) 9%, transparent), transparent 9rem),
+    color-mix(in srgb, var(--et-panel-soft) 86%, transparent) !important;
+  color: var(--et-ink) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-guardrail-rail {
+  position: static !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-rule-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-results.market-results-panel {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  display: grid !important;
+  gap: clamp(12px, 1.7vw, 16px) !important;
+  padding: clamp(16px, 2.4vw, 24px) !important;
+  border-radius: var(--et-radius-xl) !important;
+  color: var(--et-ink) !important;
+  min-height: 0 !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-results .et-mockup-section-heading {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  padding-bottom: 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--et-page-accent-2) 18%, var(--et-border));
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-results .status-badge {
+  min-height: 34px !important;
+  border-radius: 999px !important;
+  background: color-mix(in srgb, var(--et-page-accent) 13%, var(--et-panel-soft)) !important;
+  color: var(--et-ink) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-results .market-results-safety-note {
+  width: fit-content !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 8px 12px !important;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2) 28%, var(--et-border)) !important;
+  border-radius: 999px !important;
+  background: color-mix(in srgb, var(--et-page-accent-2) 12%, var(--et-panel)) !important;
+  color: var(--et-ink) !important;
+  font-weight: 950 !important;
+  line-height: 1.25 !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-results .market-results-toolbar {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  gap: 12px !important;
+  padding: 12px !important;
+  border-color: color-mix(in srgb, var(--et-page-accent) 18%, var(--et-border)) !important;
+  border-radius: 18px !important;
+  background: color-mix(in srgb, var(--et-panel-soft) 84%, transparent) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-results .active-filter-chips,
+html body #root .app.app-command-shell.app-market .market-mockup-results .market-search-source-note,
+html body #root .app.app-command-shell.app-market .market-mockup-results .market-set-card {
+  border-color: color-mix(in srgb, var(--et-page-accent) 18%, var(--et-border)) !important;
+  border-radius: 18px !important;
+  background: color-mix(in srgb, var(--et-panel-soft) 84%, transparent) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-results .market-search-source-note {
+  display: grid !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-results .market-search-source-note summary {
+  min-height: 38px !important;
+  padding: 9px 12px !important;
+  border-radius: 17px !important;
+  background: color-mix(in srgb, var(--et-page-accent) 10%, var(--et-panel-soft)) !important;
+  color: var(--et-ink) !important;
+  font-weight: 950 !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-results .market-search-source-note p {
+  padding: 0 12px 12px !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-results .catalog-results-list.catalog-results-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 15px !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-results .catalog-result-card.market-mobile-product-card {
+  border-color: color-mix(in srgb, var(--et-page-accent) 24%, var(--et-border)) !important;
+  border-radius: 24px !important;
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--et-page-accent) 10%, transparent), transparent 12rem),
+    color-mix(in srgb, var(--et-panel) 92%, transparent) !important;
+  color: var(--et-ink) !important;
+  box-shadow: 0 18px 38px color-mix(in srgb, #0c9b84 11%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.26) !important;
+  overflow: hidden !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-results .catalog-result-card.market-mobile-product-card .catalog-result-main {
+  display: grid !important;
+  grid-template-columns: 112px minmax(0, 1fr) !important;
+  gap: 14px !important;
+  align-items: start !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  padding: 15px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: inherit !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-results .catalog-result-card.market-mobile-product-card .catalog-thumb {
+  width: 100% !important;
+  min-height: 146px !important;
+  border-radius: 18px !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-results :where(.market-card-body, .market-card-title, .market-card-context, .market-card-reference-line, .market-price-stack, .market-card-price-row) {
+  min-width: 0 !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-results .market-card-title {
+  color: var(--et-ink) !important;
+  font-size: clamp(1.02rem, 2vw, 1.22rem) !important;
+  line-height: 1.12 !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-results .market-card-context,
+html body #root .app.app-command-shell.app-market .market-mockup-results .market-card-reference-line,
+html body #root .app.app-command-shell.app-market .market-mockup-results .market-price-stack span {
+  color: var(--et-muted) !important;
+  line-height: 1.28 !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-results .market-price-stack strong {
+  color: var(--et-ink) !important;
+  font-size: clamp(1.22rem, 3.2vw, 1.52rem) !important;
+  line-height: 1 !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-results .market-card-freshness-line,
+html body #root .app.app-command-shell.app-market .market-mockup-results .market-trust-badge-row {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 7px !important;
+  align-items: center !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-results .market-card-freshness-line {
+  width: fit-content !important;
+  max-width: 100% !important;
+  padding: 7px 9px !important;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent) 18%, var(--et-border)) !important;
+  border-radius: 16px !important;
+  background: color-mix(in srgb, var(--et-page-accent) 8%, var(--et-panel-soft)) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-results .market-card-freshness-line span {
+  color: var(--et-ink) !important;
+  font-weight: 900 !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-results .market-result-add-actions {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.32fr) repeat(2, minmax(78px, 0.72fr)) !important;
+  gap: 10px !important;
+  padding: 0 15px 15px !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-results .market-result-add-actions > button {
+  min-width: 0 !important;
+  min-height: 46px !important;
+  border-radius: 15px !important;
+  font-weight: 950 !important;
+  white-space: normal !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-results .small-empty-state.market-empty-state {
+  display: grid !important;
+  gap: 12px !important;
+  justify-items: stretch !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-results .market-empty-examples {
+  justify-content: center;
+}
+
+@media (max-width: 980px) {
+  html body #root .app.app-command-shell.app-market .market-mockup-foundation-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  html body #root .app.app-command-shell.app-market .market-mockup-foundation-grid .market-home-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 780px) {
+  html body #root .app.app-command-shell.app-market .main {
+    padding-bottom: max(236px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 174px)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-mockup-rebuild {
+    padding-inline: 7px;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-mockup-header .et-mockup-page-hero {
+    min-height: 0;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-mockup-header .et-mockup-hero-copy h1 {
+    max-width: none;
+    font-size: clamp(1.92rem, 8.7vw, 2.46rem);
+  }
+
+  html body #root .app.app-command-shell.app-market .market-mockup-search.market-page-heading,
+  html body #root .app.app-command-shell.app-market .market-mockup-results.market-results-panel {
+    padding: 14px !important;
+    border-radius: 24px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-mockup-search .et-mockup-section-heading,
+  html body #root .app.app-command-shell.app-market .market-mockup-results .et-mockup-section-heading {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  html body #root .app.app-command-shell.app-market .market-mockup-search .et-mockup-section-heading .et-mockup-button,
+  html body #root .app.app-command-shell.app-market .market-mockup-results .et-mockup-section-heading .status-badge {
+    justify-self: start;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-mockup-search .market-search-form {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    gap: 8px !important;
+    padding: 8px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-mockup-search .market-search-form input,
+  html body #root .app.app-command-shell.app-market .market-mockup-search .market-search-form .search-input,
+  html body #root .app.app-command-shell.app-market .market-mockup-search .market-search-form > button {
+    min-height: 46px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-mockup-search .market-search-helper-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-mockup-search .market-search-helper-grid > .et-mockup-action-card {
+    min-height: 62px !important;
+    padding: 8px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-mockup-tabs.standard-page-header-tabs {
+    border-radius: 20px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-mockup-tabs.standard-page-header-tabs button {
+    min-width: max-content;
+    flex-basis: auto;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-mockup-foundation-grid .market-home-grid,
+  html body #root .app.app-command-shell.app-market .market-mockup-results .catalog-results-list.catalog-results-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-mockup-results .market-results-toolbar {
+    grid-template-columns: minmax(0, 1fr) !important;
+    padding: 10px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-mockup-results .catalog-result-card.market-mobile-product-card .catalog-result-main {
+    grid-template-columns: 92px minmax(0, 1fr) !important;
+    gap: 12px !important;
+    padding: 13px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-mockup-results .catalog-result-card.market-mobile-product-card .catalog-thumb {
+    min-height: 126px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-mockup-results .market-result-add-actions {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    padding: 0 13px 13px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-mockup-results .market-result-add-actions > button:first-child {
+    grid-column: 1 / -1 !important;
+  }
+}
+
+@media (max-width: 430px) {
+  html body #root .app.app-command-shell.app-market .main {
+    padding-bottom: max(242px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 180px)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-mockup-rebuild {
+    padding-inline: 6px;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-mockup-header .et-mockup-hero-copy h1 {
+    font-size: clamp(1.72rem, 8.2vw, 2.15rem);
+  }
+
+  html body #root .app.app-command-shell.app-market .market-mockup-header .et-mockup-hero-copy p {
+    font-size: 0.8rem;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-mockup-search .market-search-form {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-mockup-search .market-search-form > button {
+    width: 100% !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-mockup-search .market-search-helper-grid {
+    gap: 6px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-mockup-search .market-search-helper-grid > .et-mockup-action-card {
+    min-height: 54px !important;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 5px;
+    text-align: center;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-mockup-search .market-search-helper-grid .et-mockup-icon,
+  html body #root .app.app-command-shell.app-market .market-mockup-search .market-search-helper-grid b {
+    display: none;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-mockup-results .catalog-result-card.market-mobile-product-card .catalog-result-main {
+    grid-template-columns: 82px minmax(0, 1fr) !important;
+    gap: 10px !important;
+    padding: 11px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-mockup-results .catalog-result-card.market-mobile-product-card .catalog-thumb {
+    min-height: 112px !important;
+    border-radius: 16px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-mockup-results .market-card-title {
+    font-size: 0.96rem !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-mockup-results .market-card-context,
+  html body #root .app.app-command-shell.app-market .market-mockup-results .market-card-reference-line,
+  html body #root .app.app-command-shell.app-market .market-mockup-results .market-card-freshness-line span {
+    font-size: 0.68rem !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-mockup-results .market-price-stack strong {
+    font-size: 1.08rem !important;
+  }
+}
