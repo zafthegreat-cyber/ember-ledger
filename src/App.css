@@ -95524,3 +95524,421 @@ html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-support-pan
     flex-basis: 108px;
   }
 }
+
+/* Tidepool mockup migration: moderated, proof-based community, not rush alerts. */
+html body #root .app.app-command-shell.app-tidepool .main {
+  padding-bottom: max(214px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 152px)) !important;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-rebuild {
+  --et-page-accent: var(--et-aqua);
+  --et-page-accent-2: var(--et-coral);
+  width: min(100%, 1180px);
+  grid-template-columns: minmax(0, 1.43fr) minmax(292px, 0.77fr);
+  gap: clamp(14px, 2vw, 24px);
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-main,
+html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-rail {
+  gap: clamp(14px, 1.8vw, 20px);
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-tidepool .tidepool-mockup-rebuild,
+html body #root .app.app-theme-light.app-command-shell.app-tidepool .tidepool-mockup-rebuild,
+html body #root .app.app-shell-light.app-command-shell.app-tidepool .tidepool-mockup-rebuild {
+  --et-ink: #102033 !important;
+  --et-muted: #53647a !important;
+  --et-panel: #fffdf8 !important;
+  --et-panel-soft: #eefbf7 !important;
+  --et-border: color-mix(in srgb, #29cfff 24%, rgba(57, 92, 119, 0.2)) !important;
+  color: var(--et-ink) !important;
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-tidepool .tidepool-mockup-rebuild :where(.et-mockup-page-hero, .et-mockup-section-card, .et-mockup-right-rail),
+html body #root .app.app-theme-light.app-command-shell.app-tidepool .tidepool-mockup-rebuild :where(.et-mockup-page-hero, .et-mockup-section-card, .et-mockup-right-rail),
+html body #root .app.app-shell-light.app-command-shell.app-tidepool .tidepool-mockup-rebuild :where(.et-mockup-page-hero, .et-mockup-section-card, .et-mockup-right-rail) {
+  border-color: color-mix(in srgb, #29cfff 24%, rgba(57, 92, 119, 0.2)) !important;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, #29cfff 48%, transparent), color-mix(in srgb, #ff7a5f 26%, transparent) 46%, transparent 88%) 0 0 / 100% 3px no-repeat,
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, #29cfff 12%, transparent), transparent 13rem),
+    radial-gradient(circle at 100% 10%, color-mix(in srgb, #7cf7d4 10%, transparent), transparent 16rem),
+    #fffdf8 !important;
+  color: #102033 !important;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-rebuild :where(.et-mockup-hero-copy, .et-mockup-hero-status, .et-mockup-pill-row, .et-mockup-section-heading, .et-mockup-rail-heading, .et-mockup-action-copy) {
+  min-width: 0;
+  background: transparent !important;
+  background-color: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-tidepool .tidepool-mockup-rebuild :where(.et-mockup-brand-row, .et-mockup-stat-card, .et-mockup-action-card, .et-mockup-empty-state, .et-mockup-today-action, .et-mockup-points-card, .et-mockup-pill),
+html body #root .app.app-theme-light.app-command-shell.app-tidepool .tidepool-mockup-rebuild :where(.et-mockup-brand-row, .et-mockup-stat-card, .et-mockup-action-card, .et-mockup-empty-state, .et-mockup-today-action, .et-mockup-points-card, .et-mockup-pill),
+html body #root .app.app-shell-light.app-command-shell.app-tidepool .tidepool-mockup-rebuild :where(.et-mockup-brand-row, .et-mockup-stat-card, .et-mockup-action-card, .et-mockup-empty-state, .et-mockup-today-action, .et-mockup-points-card, .et-mockup-pill) {
+  border-color: color-mix(in srgb, #29cfff 22%, rgba(57, 92, 119, 0.2)) !important;
+  background: color-mix(in srgb, #eefbf7 88%, #fffdf8) !important;
+  color: #102033 !important;
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-tidepool .tidepool-mockup-rebuild :where(h1, h2, h3, h4, strong, b, .et-mockup-action-copy strong),
+html body #root .app.app-theme-light.app-command-shell.app-tidepool .tidepool-mockup-rebuild :where(h1, h2, h3, h4, strong, b, .et-mockup-action-copy strong),
+html body #root .app.app-shell-light.app-command-shell.app-tidepool .tidepool-mockup-rebuild :where(h1, h2, h3, h4, strong, b, .et-mockup-action-copy strong) {
+  color: #102033 !important;
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-tidepool .tidepool-mockup-rebuild :where(p, small, em, li, .et-mockup-section-heading p, .et-mockup-rail-heading p),
+html body #root .app.app-theme-light.app-command-shell.app-tidepool .tidepool-mockup-rebuild :where(p, small, em, li, .et-mockup-section-heading p, .et-mockup-rail-heading p),
+html body #root .app.app-shell-light.app-command-shell.app-tidepool .tidepool-mockup-rebuild :where(p, small, em, li, .et-mockup-section-heading p, .et-mockup-rail-heading p) {
+  color: #53647a !important;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-header {
+  display: grid;
+  gap: 10px;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-header .et-mockup-page-hero {
+  min-height: clamp(236px, 26vw, 330px);
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-header .et-mockup-hero-copy h1 {
+  max-width: 14ch;
+  font-size: clamp(2.24rem, 5vw, 3.68rem);
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-guardrail-strip,
+html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-rail-rules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-guardrail-strip span,
+html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-rail-rules span {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent) 24%, var(--et-border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--et-panel-soft) 88%, transparent);
+  color: var(--et-ink);
+  font-size: 0.74rem;
+  font-weight: 900;
+  line-height: 1.12;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-pulse,
+html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-feed {
+  gap: clamp(13px, 1.7vw, 18px) !important;
+  overflow: hidden;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-stat-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-action-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) repeat(2, minmax(130px, 0.7fr));
+  gap: 10px;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-action-row > * {
+  min-width: 0;
+  min-height: 44px;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-start-post:disabled,
+html body #root .app.app-command-shell.app-tidepool .tidepool-empty-state button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-access-note {
+  margin: 0;
+  padding: 11px 13px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2) 24%, var(--et-border));
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--et-panel-soft) 90%, transparent);
+  color: var(--et-muted);
+  font-weight: 800;
+  line-height: 1.36;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-trust-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-tabs {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  gap: 9px !important;
+  overflow-x: auto !important;
+  margin: 0 !important;
+  padding: 8px !important;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2) 22%, var(--et-border)) !important;
+  border-radius: 22px !important;
+  background: color-mix(in srgb, var(--et-panel-soft) 82%, transparent) !important;
+  scrollbar-width: thin;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-tabs button {
+  flex: 0 0 auto !important;
+  min-height: 40px !important;
+  border-radius: 999px !important;
+  white-space: nowrap;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-tabs button.active {
+  border-color: color-mix(in srgb, var(--et-page-accent-2) 54%, var(--et-page-accent)) !important;
+  background: color-mix(in srgb, var(--et-page-accent-2) 18%, var(--et-panel-soft)) !important;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-live-section-grid,
+html body #root .app.app-command-shell.app-tidepool .tidepool-moderation-grid,
+html body #root .app.app-command-shell.app-tidepool .tidepool-preview-feed {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-live-section-card,
+html body #root .app.app-command-shell.app-tidepool .tidepool-moderation-card,
+html body #root .app.app-command-shell.app-tidepool .tidepool-preview-card,
+html body #root .app.app-command-shell.app-tidepool .tidepool-rules-card,
+html body #root .app.app-command-shell.app-tidepool .tidepool-post-card,
+html body #root .app.app-command-shell.app-tidepool .tidepool-empty-state,
+html body #root .app.app-command-shell.app-tidepool .tidepool-support-strip {
+  border: 1px solid color-mix(in srgb, var(--et-page-accent) 18%, var(--et-border)) !important;
+  border-radius: 20px !important;
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--et-page-accent) 8%, transparent), transparent 10rem),
+    color-mix(in srgb, var(--et-panel-soft) 86%, transparent) !important;
+  color: var(--et-ink) !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-live-section-card,
+html body #root .app.app-command-shell.app-tidepool .tidepool-moderation-card,
+html body #root .app.app-command-shell.app-tidepool .tidepool-preview-card,
+html body #root .app.app-command-shell.app-tidepool .tidepool-rules-card,
+html body #root .app.app-command-shell.app-tidepool .tidepool-empty-state,
+html body #root .app.app-command-shell.app-tidepool .tidepool-support-strip {
+  display: grid;
+  gap: 9px;
+  padding: 13px;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-preview-card {
+  align-content: start;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-preview-card .secondary-button,
+html body #root .app.app-command-shell.app-tidepool .tidepool-support-actions button,
+html body #root .app.app-command-shell.app-tidepool .tidepool-post-actions button,
+html body #root .app.app-command-shell.app-tidepool .tidepool-empty-state button {
+  min-height: 40px !important;
+  border-radius: 14px !important;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-support-strip {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-support-actions,
+html body #root .app.app-command-shell.app-tidepool .tidepool-post-actions {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-feed-grid {
+  display: grid;
+  gap: 12px;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-post-card {
+  display: grid;
+  gap: 12px;
+  padding: clamp(13px, 2vw, 16px) !important;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-post-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-author-block {
+  min-width: 0;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-badge-row,
+html body #root .app.app-command-shell.app-tidepool .tidepool-post-counts,
+html body #root .app.app-command-shell.app-tidepool .tidepool-proof-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  min-width: 0;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-proof-row span,
+html body #root .app.app-command-shell.app-tidepool .tidepool-post-counts span,
+html body #root .app.app-command-shell.app-tidepool .tidepool-badge-row span {
+  border-radius: 999px !important;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-comment-box {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-comment-box input {
+  min-width: 0;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-rail > .et-mockup-rail-heading {
+  display: grid !important;
+  justify-content: stretch !important;
+  gap: 7px !important;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-rail-card {
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-rail-card .et-mockup-section-heading {
+  padding-bottom: 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--et-page-accent-2) 18%, var(--et-border));
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-tidepool .tidepool-mockup-rebuild :where(.tidepool-live-section-card, .tidepool-moderation-card, .tidepool-preview-card, .tidepool-rules-card, .tidepool-post-card, .tidepool-empty-state, .tidepool-support-strip),
+html body #root .app.app-shell-dark.app-command-shell.app-tidepool .tidepool-mockup-rebuild :where(.tidepool-live-section-card, .tidepool-moderation-card, .tidepool-preview-card, .tidepool-rules-card, .tidepool-post-card, .tidepool-empty-state, .tidepool-support-strip) {
+  border-color: color-mix(in srgb, var(--et-page-accent) 18%, rgba(255, 255, 255, 0.12)) !important;
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--et-page-accent) 10%, transparent), transparent 12rem),
+    rgba(6, 18, 36, 0.9) !important;
+  color: #f8fbff !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-tidepool .tidepool-mockup-rebuild :where(h1, h2, h3, h4, strong, b, .et-mockup-action-copy strong),
+html body #root .app.app-shell-dark.app-command-shell.app-tidepool .tidepool-mockup-rebuild :where(h1, h2, h3, h4, strong, b, .et-mockup-action-copy strong) {
+  color: #fff7ed !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-tidepool .tidepool-mockup-rebuild :where(p, small, em, li, .tidepool-post-meta, .compact-subtitle),
+html body #root .app.app-shell-dark.app-command-shell.app-tidepool .tidepool-mockup-rebuild :where(p, small, em, li, .tidepool-post-meta, .compact-subtitle) {
+  color: rgba(232, 246, 255, 0.78) !important;
+}
+
+@media (max-width: 980px) {
+  html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-rebuild {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-trust-grid,
+  html body #root .app.app-command-shell.app-tidepool .tidepool-live-section-grid,
+  html body #root .app.app-command-shell.app-tidepool .tidepool-moderation-grid,
+  html body #root .app.app-command-shell.app-tidepool .tidepool-preview-feed {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 620px) {
+  html body #root .app.app-command-shell.app-tidepool .main {
+    padding-bottom: max(242px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 182px)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-rebuild {
+    padding-inline: 7px;
+    gap: 13px;
+  }
+
+  html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-header .et-mockup-page-hero {
+    min-height: 0;
+    padding: 18px;
+  }
+
+  html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-header .et-mockup-hero-status {
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    justify-content: flex-start;
+    justify-items: start;
+    gap: 9px;
+  }
+
+  html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-header .et-mockup-points-card {
+    min-width: 88px;
+    padding: 10px;
+    border-radius: 18px;
+  }
+
+  html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-header .et-mockup-pill-row {
+    flex: 1 1 172px;
+    justify-content: flex-start;
+    max-width: none;
+  }
+
+  html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-header .et-mockup-hero-status .et-mockup-button {
+    flex: 1 1 164px;
+    min-height: 40px;
+  }
+
+  html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-header .et-mockup-hero-copy h1 {
+    max-width: 13ch;
+    font-size: clamp(1.78rem, 8.4vw, 2.18rem);
+  }
+
+  html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-header .et-mockup-hero-copy p {
+    font-size: 0.82rem;
+  }
+
+  html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-action-row,
+  html body #root .app.app-command-shell.app-tidepool .tidepool-support-strip,
+  html body #root .app.app-command-shell.app-tidepool .tidepool-comment-box {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-action-row > *,
+  html body #root .app.app-command-shell.app-tidepool .tidepool-support-actions > *,
+  html body #root .app.app-command-shell.app-tidepool .tidepool-empty-state .quick-actions > * {
+    width: 100%;
+  }
+
+  html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-stat-grid,
+  html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-trust-grid,
+  html body #root .app.app-command-shell.app-tidepool .tidepool-live-section-grid,
+  html body #root .app.app-command-shell.app-tidepool .tidepool-moderation-grid,
+  html body #root .app.app-command-shell.app-tidepool .tidepool-preview-feed {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+@media (max-width: 430px) {
+  html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-rebuild {
+    padding-inline: 6px;
+  }
+
+  html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-header .et-mockup-hero-copy h1 {
+    font-size: clamp(1.62rem, 7.8vw, 2rem);
+  }
+
+  html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-guardrail-strip span {
+    flex: 1 1 134px;
+  }
+}

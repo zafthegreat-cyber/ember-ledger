@@ -45078,53 +45078,84 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     ];
 
     return (
-      <>
-        <PageHeader
-          className={getHeaderCardClass("panel tidepool-community-header")}
-          title="Tidepool"
-          subtitle="Safe community posts, proof-based confirmations, and local collecting help."
-          actions={(
-            <>
-              <button type="button" onClick={openTidepoolCreatePostFlow} disabled={!canCreateTidepoolPost}>Start a Post</button>
-              <button type="button" className="secondary-button" onClick={() => setActiveTab("scout")}>Scout Signals</button>
-            </>
-          )}
-          summary={(
-            <div className="tidepool-header-summary">
-              <div className="tidepool-stat-grid" aria-label="Tidepool stats">
-                {tidepoolStats.map((stat) => (
-                  <div className="tidepool-stat-card" key={stat.label}>
-                    <span>{stat.label}</span>
-                    <strong>{stat.value}</strong>
-                  </div>
-                ))}
-              </div>
-              <p>Keep it kind, helpful, and family-friendly. Posts use general areas only.</p>
-              <p>Tidepool is for trusted collecting activity, not rush alerts.</p>
-              <p>No private child data, vendor schedules, exact restock patterns, or guaranteed-stock claims.</p>
-              {!canCreateTidepoolPost ? <p>Tidepool posting opens after beta access is approved. Published posts remain visible when allowed.</p> : null}
-              <div className="tidepool-trust-grid" aria-label="Tidepool trust and safety">
-                {tidepoolTrustCards.map((card) => (
-                  <div className="tidepool-trust-card" key={card.title}>
-                    <strong>{card.title}</strong>
-                    <span>{card.detail}</span>
-                  </div>
-                ))}
-              </div>
+      <EtMockupPageShell
+        accent="tidepool"
+        className="tidepool-mockup-rebuild"
+        ariaLabel="Tidepool safe collecting community"
+      >
+        <div className="et-mockup-main-column tidepool-mockup-main">
+          <div className="tidepool-mockup-header">
+            <EtMockupHero
+              brand="Tidepool"
+              mark={BRAND_ASSETS.mark}
+              title="Safe collecting community."
+              detail="Family-friendly posts, proof-based confirmations, and local collecting help. General areas only."
+              points={{ value: visiblePosts, label: "Visible posts" }}
+              pills={[
+                { label: "Moderated", tone: "collector" },
+                { label: "Proof-based", tone: "beta" },
+                { label: "No private child data", tone: "gold" },
+              ]}
+              todayAction={{
+                label: "Safe post",
+                title: "Start a Post with review.",
+                cta: "Open composer",
+                onClick: openTidepoolCreatePostFlow,
+              }}
+              adminAction={<EtMockupButton variant="secondary" onClick={() => setActiveTab("scout")}>Scout Signals</EtMockupButton>}
+              ariaLabel="Tidepool community hub"
+            />
+            <div className="tidepool-mockup-guardrail-strip" aria-label="Tidepool guardrails">
+              <span>Safe community posts</span>
+              <span>Proof-based confirmations</span>
+              <span>General areas only</span>
+              <span>No vendor schedules</span>
+              <span>No exact restock patterns</span>
+              <span>No guaranteed stock</span>
             </div>
-          )}
-          tabs={visibleTidepoolFilters.map((filter) => ({ key: filter, label: filter }))}
-          activeTab={tidepoolFilter}
-          onTabChange={setTidepoolFilter}
-        />
+          </div>
 
-        <section className="panel tidepool-community">
-          <div className="compact-card-header">
-            <div>
-              <h2>{tidepoolFilter === "Feed" ? "Community feed" : tidepoolFilter}</h2>
-              <p>Helpful local posts, questions, events, proof-backed confirmations, and family-safe collector updates.</p>
+          <EtMockupSectionCard
+            title="Community pulse"
+            detail="Tidepool is for trusted collecting activity, not rush alerts. Posts stay helpful, moderated, and family-friendly."
+            className="tidepool-mockup-pulse"
+            action={<EtMockupPill tone="beta">Public beta</EtMockupPill>}
+          >
+            <div className="et-mockup-stat-grid tidepool-mockup-stat-grid" aria-label="Tidepool stats">
+              {tidepoolStats.map((stat) => (
+                <EtMockupStatCard key={stat.label} label={stat.label} value={stat.value} detail={stat.label === "Local" ? "General areas" : stat.label === "Replies" ? "Reviewed replies" : "Safe posts"} tone="collector" />
+              ))}
             </div>
-            <span className="status-badge">{visiblePosts} visible</span>
+            <div className="tidepool-mockup-action-row">
+              <button type="button" className="et-mockup-button et-mockup-button-primary tidepool-mockup-start-post" onClick={openTidepoolCreatePostFlow} disabled={!canCreateTidepoolPost}>Start a Post</button>
+              <EtMockupButton variant="secondary" onClick={() => setActiveTab("scout")}>Scout Signals</EtMockupButton>
+              <EtMockupButton variant="ghost" onClick={() => openFeedbackDialog("bug", { page: "Tidepool Community" })}>Report an issue</EtMockupButton>
+            </div>
+            {!canCreateTidepoolPost ? <p className="tidepool-mockup-access-note">Tidepool posting opens after beta access is approved. Published posts remain visible when allowed.</p> : null}
+            <div className="tidepool-mockup-trust-grid" aria-label="Tidepool trust and safety">
+              {tidepoolTrustCards.map((card) => (
+                <EtMockupActionCard key={card.title} title={card.title} detail={card.detail} icon="pool" tone="collector" />
+              ))}
+            </div>
+          </EtMockupSectionCard>
+
+          <EtMockupSectionCard
+            title={tidepoolFilter === "Feed" ? "Community feed" : tidepoolFilter}
+            detail="Helpful local posts, questions, events, proof-backed confirmations, and family-safe collector updates."
+            className="tidepool-community tidepool-mockup-feed"
+            action={<EtMockupPill tone="collector">{visiblePosts} visible</EtMockupPill>}
+          >
+          <div className="standard-page-header-tabs tidepool-mockup-tabs" aria-label="Tidepool navigation">
+            {visibleTidepoolFilters.map((filter) => (
+              <button
+                key={filter}
+                type="button"
+                className={tidepoolFilter === filter ? "active" : ""}
+                onClick={() => setTidepoolFilter(filter)}
+              >
+                {filter}
+              </button>
+            ))}
           </div>
 
           <div className="tidepool-live-section-grid" aria-label="Tidepool safe community sections">
@@ -45341,8 +45372,52 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               {TIDEPOOL_FAMILY_SAFE_RULES.slice(0, 3).map((guideline) => <span key={guideline}>{guideline}</span>)}
             </div>
           </div>
-        </section>
-      </>
+          </EtMockupSectionCard>
+        </div>
+
+        <EtMockupRightRail
+          title="Safety stays visible"
+          detail="Tidepool is moderated, proof-based, and designed for family-safe collecting help."
+          className="tidepool-mockup-rail"
+        >
+          <EtMockupSectionCard
+            title="Moderation framing"
+            detail="Read, report, and review controls are visible before community activity can feel risky."
+            className="tidepool-mockup-rail-card"
+            action={<EtMockupPill tone="beta">Reviewed</EtMockupPill>}
+          >
+            <div className="et-mockup-action-stack">
+              {tidepoolModerationCards.map((card) => (
+                <EtMockupActionCard key={card.title} title={card.title} detail={card.detail} icon="pool" tone="collector" />
+              ))}
+            </div>
+          </EtMockupSectionCard>
+
+          <EtMockupSectionCard
+            title="What Tidepool avoids"
+            detail="Community help without scalper-friendly or child-sensitive details."
+            className="tidepool-mockup-rail-card"
+          >
+            <div className="tidepool-mockup-rail-rules" aria-label="Tidepool safety guardrails">
+              {[
+                "No private child data.",
+                "No vendor schedules.",
+                "No exact restock patterns.",
+                "No guaranteed-stock claims.",
+                "Report/review unsafe posts.",
+              ].map((rule) => (
+                <span key={rule}>{rule}</span>
+              ))}
+            </div>
+          </EtMockupSectionCard>
+
+          <EtMockupEmptyState
+            title="Current help, not rush alerts."
+            detail="Tidepool keeps Scout-adjacent community discussion proof-based, moderated, and general-area only."
+            action={<EtMockupButton variant="secondary" onClick={() => setActiveTab("scout")}>View Scout Signals</EtMockupButton>}
+          />
+        </EtMockupRightRail>
+      </EtMockupPageShell>
     );
   }
 
