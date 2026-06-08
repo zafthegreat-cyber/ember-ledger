@@ -85837,3 +85837,625 @@ html body #root .app.app-theme-dark.app-command-shell.app-market .market-card-fr
     min-height: 118px !important;
   }
 }
+
+/* Vault-only structure polish: protected collection room. */
+html body #root .app.app-command-shell.app-vault {
+  --vault-room-border: color-mix(in srgb, var(--wc-accent, #8b5cf6) 28%, var(--wc-border, rgba(154, 93, 38, 0.18)));
+  --vault-room-gold: color-mix(in srgb, var(--wc-accent-2, #d9a441) 72%, var(--wc-accent, #8b5cf6));
+  --vault-room-glow: color-mix(in srgb, var(--wc-accent, #8b5cf6) 14%, transparent);
+}
+
+html body #root .app.app-command-shell.app-vault .main {
+  padding-bottom: max(172px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 118px)) !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-command-center {
+  width: min(100%, 1120px) !important;
+  margin-inline: auto !important;
+  padding: clamp(18px, 2.6vw, 28px) !important;
+  gap: clamp(14px, 2vw, 20px) !important;
+  border-color: var(--vault-room-border) !important;
+  background:
+    radial-gradient(circle at 10% -10%, color-mix(in srgb, var(--wc-accent, #8b5cf6) 16%, transparent), transparent 22rem),
+    radial-gradient(circle at 92% 0%, color-mix(in srgb, var(--wc-accent-2, #d9a441) 14%, transparent), transparent 18rem),
+    linear-gradient(145deg, color-mix(in srgb, var(--wc-panel-strong, #fffcf7) 92%, var(--wc-accent, #8b5cf6) 8%), var(--wc-panel, #fff8ef)) !important;
+  box-shadow:
+    0 22px 54px color-mix(in srgb, var(--wc-shadow, rgba(70, 45, 24, 0.16)) 74%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--wc-accent-2, #d9a441) 14%, transparent) inset !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-command-center .standard-page-header-main {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(92px, 0.18fr) minmax(290px, auto) !important;
+  align-items: center !important;
+  gap: clamp(14px, 2vw, 24px) !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-command-center .standard-page-header-copy {
+  display: grid !important;
+  gap: 6px !important;
+  min-width: 0 !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-command-center .standard-page-header-copy h2 {
+  font-size: clamp(2rem, 4.2vw, 3.12rem) !important;
+  line-height: 0.95 !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-command-center .standard-page-header-copy p {
+  max-width: 48ch !important;
+  font-size: clamp(0.98rem, 1.2vw, 1.08rem) !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-command-center .section-hero-art {
+  width: clamp(96px, 8vw, 132px) !important;
+  min-width: 96px !important;
+  min-height: clamp(92px, 8vw, 124px) !important;
+  justify-self: center !important;
+  opacity: 0.82 !important;
+  filter: saturate(1.08) contrast(1.02) !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-command-center .standard-page-header-actions {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.15fr) repeat(3, minmax(92px, auto)) !important;
+  justify-content: end !important;
+  align-items: stretch !important;
+  gap: 10px !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-command-center .standard-page-header-actions > :where(button, details) {
+  min-width: 0 !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-command-center .standard-page-header-actions > button,
+html body #root .app.app-command-shell.app-vault .vault-command-center .standard-page-header-actions .ai-assist-menu summary {
+  min-height: 48px !important;
+  border-radius: 16px !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-command-center .standard-page-header-summary {
+  position: relative !important;
+  padding: clamp(12px, 1.5vw, 16px) !important;
+  border: 1px solid var(--vault-room-border) !important;
+  border-radius: 22px !important;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--wc-accent, #8b5cf6) 5%, transparent), transparent 38%),
+    color-mix(in srgb, var(--wc-card-soft, #fffbf5) 88%, transparent) !important;
+  overflow: hidden !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-command-center .standard-page-header-summary::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 auto 0 0 !important;
+  width: 5px !important;
+  background: linear-gradient(180deg, var(--wc-accent, #8b5cf6), var(--vault-room-gold)) !important;
+  opacity: 0.9 !important;
+  pointer-events: none !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-command-center .standard-page-header-label {
+  margin: 0 0 10px !important;
+  padding-left: 3px !important;
+  color: color-mix(in srgb, var(--wc-accent, #8b5cf6) 74%, var(--wc-ink, #112238)) !important;
+  font-size: 0.78rem !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-empty-overview-card {
+  display: grid !important;
+  grid-template-columns: minmax(0, 0.86fr) minmax(210px, 0.72fr) !important;
+  gap: clamp(12px, 1.6vw, 18px) !important;
+  align-items: stretch !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-empty-overview-card > div:first-child {
+  display: grid !important;
+  align-content: center !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+  padding: clamp(10px, 1.4vw, 14px) !important;
+  border: 1px solid color-mix(in srgb, var(--wc-accent, #8b5cf6) 18%, var(--wc-border, rgba(154, 93, 38, 0.18))) !important;
+  border-radius: 18px !important;
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--wc-accent, #8b5cf6) 9%, transparent), transparent 9rem),
+    color-mix(in srgb, var(--wc-panel-strong, #fffcf7) 82%, transparent) !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-empty-overview-card > div:first-child strong {
+  font-size: clamp(1.02rem, 2vw, 1.28rem) !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-empty-overview-card dl {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+  margin: 0 !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-empty-overview-card dl > div {
+  min-width: 0 !important;
+  padding: 12px !important;
+  border-radius: 17px !important;
+  border: 1px solid color-mix(in srgb, var(--wc-accent-2, #d9a441) 24%, var(--wc-border, rgba(154, 93, 38, 0.18))) !important;
+  background: color-mix(in srgb, var(--wc-panel-strong, #fffcf7) 86%, transparent) !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-empty-overview-card .quick-actions {
+  grid-column: 1 / -1 !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr) !important;
+  gap: 10px !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-command-center .vault-command-overview {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-command-center .vault-overview-card {
+  min-height: 108px !important;
+  border-radius: 18px !important;
+  border-color: color-mix(in srgb, var(--wc-accent, #8b5cf6) 22%, var(--wc-border, rgba(154, 93, 38, 0.18))) !important;
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--wc-accent-2, #d9a441) 10%, transparent), transparent 8rem),
+    color-mix(in srgb, var(--wc-card-soft, #fffbf5) 86%, transparent) !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-command-center .vault-overview-card.is-active {
+  border-color: color-mix(in srgb, var(--wc-accent, #8b5cf6) 48%, var(--wc-accent-2, #d9a441)) !important;
+  box-shadow: 0 14px 28px var(--vault-room-glow) !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-command-center .standard-page-header-tabs {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  padding: 7px !important;
+  border-radius: 22px !important;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--wc-panel-strong, #fffcf7) 80%, transparent), color-mix(in srgb, var(--wc-card-soft, #fffbf5) 86%, transparent)) !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-command-center .standard-page-header-tabs button {
+  min-width: 0 !important;
+  min-height: 46px !important;
+  border-radius: 16px !important;
+  font-weight: 850 !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-live-home-dashboard {
+  width: min(100%, 1120px) !important;
+  gap: clamp(16px, 2.2vw, 22px) !important;
+  padding-bottom: max(32px, env(safe-area-inset-bottom, 0px)) !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-live-home-hero {
+  grid-template-columns: minmax(0, 1.05fr) minmax(340px, 0.95fr) !important;
+  gap: clamp(16px, 2.2vw, 24px) !important;
+  padding: clamp(18px, 2.5vw, 26px) !important;
+  border-radius: 26px !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-live-home-hero .section-kicker,
+html body #root .app.app-command-shell.app-vault .vault-live-master-card .section-kicker {
+  color: color-mix(in srgb, var(--wc-accent, #8b5cf6) 76%, var(--wc-ink, #112238)) !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-live-summary-grid {
+  gap: 10px !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-live-summary-grid > div {
+  min-height: 106px !important;
+  padding: 14px !important;
+  border-radius: 18px !important;
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--wc-accent, #8b5cf6) 8%, transparent), transparent 7rem),
+    color-mix(in srgb, var(--wc-panel-strong, #fffcf7) 82%, transparent) !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-live-summary-grid strong {
+  font-size: clamp(1.12rem, 1.6vw, 1.42rem) !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-live-controls-card,
+html body #root .app.app-command-shell.app-vault .vault-live-folder-card,
+html body #root .app.app-command-shell.app-vault .vault-live-recent-card,
+html body #root .app.app-command-shell.app-vault .vault-live-health-card,
+html body #root .app.app-command-shell.app-vault .vault-live-actions-card {
+  border-radius: 24px !important;
+  padding: clamp(16px, 2vw, 22px) !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-live-search-row {
+  grid-template-columns: minmax(0, 1fr) minmax(240px, auto) !important;
+  gap: 12px !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-live-filter-row {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  min-width: min(100%, 340px) !important;
+  padding: 5px !important;
+  border: 1px solid var(--vault-room-border) !important;
+  border-radius: 17px !important;
+  background: color-mix(in srgb, var(--wc-panel-strong, #fffcf7) 72%, transparent) !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-live-filter-row button {
+  min-height: 40px !important;
+  border-radius: 13px !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-live-master-card {
+  gap: clamp(14px, 2vw, 20px) !important;
+  padding: clamp(18px, 2.5vw, 26px) !important;
+  border-radius: 26px !important;
+  border-color: color-mix(in srgb, var(--wc-accent, #8b5cf6) 26%, var(--wc-accent-2, #d9a441)) !important;
+  background:
+    radial-gradient(circle at 8% -8%, color-mix(in srgb, var(--wc-accent, #8b5cf6) 16%, transparent), transparent 18rem),
+    radial-gradient(circle at 94% 4%, color-mix(in srgb, var(--wc-accent-2, #d9a441) 14%, transparent), transparent 16rem),
+    linear-gradient(145deg, color-mix(in srgb, var(--wc-panel-strong, #fffcf7) 90%, var(--wc-accent, #8b5cf6) 10%), var(--wc-panel, #fff8ef)) !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-live-master-card > .compact-card-header {
+  padding-bottom: 12px !important;
+  border-bottom: 1px solid var(--vault-room-border) !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-live-master-stats {
+  gap: 12px !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-live-master-stats > div {
+  min-height: 94px !important;
+  padding: 14px !important;
+  border-radius: 18px !important;
+  border-color: color-mix(in srgb, var(--wc-accent-2, #d9a441) 26%, var(--wc-border, rgba(154, 93, 38, 0.18))) !important;
+  background: color-mix(in srgb, var(--wc-card-soft, #fffbf5) 84%, transparent) !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-live-master-preview-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 410px), 1fr)) !important;
+  gap: clamp(14px, 2vw, 18px) !important;
+}
+
+html body #root .app.app-command-shell.app-vault .master-card-group-preview {
+  position: relative !important;
+  grid-template-columns: minmax(118px, 0.36fr) minmax(0, 1fr) !important;
+  gap: clamp(14px, 2vw, 18px) !important;
+  padding: clamp(14px, 2vw, 18px) !important;
+  border-radius: 22px !important;
+  border-color: color-mix(in srgb, var(--wc-accent, #8b5cf6) 24%, var(--wc-border, rgba(154, 93, 38, 0.18))) !important;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--wc-card, #ffffff) 86%, transparent), color-mix(in srgb, var(--wc-card-soft, #fffbf5) 90%, transparent)) !important;
+  box-shadow:
+    0 14px 30px color-mix(in srgb, var(--wc-shadow, rgba(70, 45, 24, 0.15)) 58%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 54%, transparent) !important;
+}
+
+html body #root .app.app-command-shell.app-vault .master-card-group-preview::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 12px auto 12px 10px !important;
+  width: 3px !important;
+  border-radius: 999px !important;
+  background: linear-gradient(180deg, var(--wc-accent, #8b5cf6), var(--vault-room-gold)) !important;
+  opacity: 0.75 !important;
+}
+
+html body #root .app.app-command-shell.app-vault .master-card-group-preview .premium-card-image {
+  width: 100% !important;
+  height: auto !important;
+  min-height: 172px !important;
+  aspect-ratio: 0.72 / 1 !important;
+  align-self: stretch !important;
+  border-radius: 18px !important;
+  box-shadow:
+    0 16px 32px color-mix(in srgb, var(--wc-shadow, rgba(70, 45, 24, 0.16)) 72%, transparent),
+    0 0 24px color-mix(in srgb, var(--wc-accent, #8b5cf6) 10%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 18%, transparent) !important;
+}
+
+html body #root .app.app-command-shell.app-vault .master-card-group-body {
+  gap: 10px !important;
+}
+
+html body #root .app.app-command-shell.app-vault .master-card-group-body .compact-card-header {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  gap: 10px !important;
+}
+
+html body #root .app.app-command-shell.app-vault .master-card-group-body .compact-card-header h3 {
+  margin-top: 8px !important;
+  font-size: clamp(1.12rem, 2.2vw, 1.38rem) !important;
+  line-height: 1.08 !important;
+}
+
+html body #root .app.app-command-shell.app-vault .master-card-status {
+  justify-self: start !important;
+  padding: 6px 10px !important;
+}
+
+html body #root .app.app-command-shell.app-vault .master-card-summary-row {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+}
+
+html body #root .app.app-command-shell.app-vault .master-card-summary-row > span {
+  display: grid !important;
+  align-content: center !important;
+  min-height: 38px !important;
+  border-radius: 13px !important;
+  text-align: center !important;
+}
+
+html body #root .app.app-command-shell.app-vault .master-variant-rail {
+  gap: 8px !important;
+}
+
+html body #root .app.app-command-shell.app-vault .master-variant-pill {
+  flex: 1 1 120px !important;
+  padding: 9px 10px !important;
+  border-radius: 14px !important;
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--wc-accent, #8b5cf6) 9%, transparent), transparent 6rem),
+    color-mix(in srgb, var(--wc-panel-strong, #fffcf7) 74%, transparent) !important;
+}
+
+html body #root .app.app-command-shell.app-vault .master-card-preview-note {
+  padding: 10px 12px !important;
+  border: 1px solid color-mix(in srgb, var(--wc-accent-2, #d9a441) 22%, var(--wc-border, rgba(154, 93, 38, 0.18))) !important;
+  border-radius: 15px !important;
+  background: color-mix(in srgb, var(--wc-accent-2, #d9a441) 8%, var(--wc-panel-strong, #fffcf7)) !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-live-folder-grid,
+html body #root .app.app-command-shell.app-vault .vault-live-action-grid {
+  gap: 12px !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-live-folder-tile,
+html body #root .app.app-command-shell.app-vault .vault-live-action-tile,
+html body #root .app.app-command-shell.app-vault .vault-live-recent-row {
+  border-radius: 18px !important;
+  border-color: color-mix(in srgb, var(--wc-accent, #8b5cf6) 20%, var(--wc-border, rgba(154, 93, 38, 0.18))) !important;
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--wc-accent, #8b5cf6) 8%, transparent), transparent 8rem),
+    color-mix(in srgb, var(--wc-card-soft, #fffbf5) 82%, transparent) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-vault .vault-command-center,
+html body #root .app.app-theme-dark.app-command-shell.app-vault .vault-live-home-hero,
+html body #root .app.app-theme-dark.app-command-shell.app-vault .vault-live-controls-card,
+html body #root .app.app-theme-dark.app-command-shell.app-vault .vault-live-folder-card,
+html body #root .app.app-theme-dark.app-command-shell.app-vault .vault-live-recent-card,
+html body #root .app.app-theme-dark.app-command-shell.app-vault .vault-live-health-card,
+html body #root .app.app-theme-dark.app-command-shell.app-vault .vault-live-actions-card,
+html body #root .app.app-theme-dark.app-command-shell.app-vault .vault-live-master-card {
+  background:
+    radial-gradient(circle at 8% -8%, color-mix(in srgb, var(--wc-accent, #8b5cf6) 18%, transparent), transparent 20rem),
+    radial-gradient(circle at 96% 0%, color-mix(in srgb, var(--wc-accent-2, #d9a441) 12%, transparent), transparent 18rem),
+    linear-gradient(145deg, #101c34, #071123 78%) !important;
+  border-color: color-mix(in srgb, var(--wc-accent, #8b5cf6) 34%, #1e3357) !important;
+  box-shadow:
+    0 22px 54px rgba(0, 0, 0, 0.38),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-vault .vault-command-center .standard-page-header-summary,
+html body #root .app.app-theme-dark.app-command-shell.app-vault .vault-empty-overview-card > div:first-child,
+html body #root .app.app-theme-dark.app-command-shell.app-vault .vault-empty-overview-card dl > div,
+html body #root .app.app-theme-dark.app-command-shell.app-vault .vault-command-center .vault-overview-card,
+html body #root .app.app-theme-dark.app-command-shell.app-vault .vault-command-center .standard-page-header-tabs,
+html body #root .app.app-theme-dark.app-command-shell.app-vault .vault-live-summary-grid > div,
+html body #root .app.app-theme-dark.app-command-shell.app-vault .vault-live-filter-row,
+html body #root .app.app-theme-dark.app-command-shell.app-vault .vault-live-master-stats > div,
+html body #root .app.app-theme-dark.app-command-shell.app-vault .master-card-group-preview,
+html body #root .app.app-theme-dark.app-command-shell.app-vault .master-variant-pill,
+html body #root .app.app-theme-dark.app-command-shell.app-vault .master-card-preview-note,
+html body #root .app.app-theme-dark.app-command-shell.app-vault .vault-live-folder-tile,
+html body #root .app.app-theme-dark.app-command-shell.app-vault .vault-live-action-tile,
+html body #root .app.app-theme-dark.app-command-shell.app-vault .vault-live-recent-row {
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--wc-accent, #8b5cf6) 12%, transparent), transparent 10rem),
+    color-mix(in srgb, #10203b 86%, transparent) !important;
+  border-color: color-mix(in srgb, var(--wc-accent, #8b5cf6) 30%, #29415f) !important;
+}
+
+html body #root .app.app-theme-light.app-command-shell.app-vault .premium-card-placeholder-art {
+  color: #fff8ed !important;
+}
+
+html body #root .app.app-theme-light.app-command-shell.app-vault .master-card-group-preview .premium-card-image {
+  background:
+    radial-gradient(circle at 20% 12%, rgba(217, 164, 65, 0.24), transparent 32%),
+    radial-gradient(circle at 82% 8%, rgba(139, 92, 246, 0.16), transparent 30%),
+    linear-gradient(145deg, #24344f, #0f1c31) !important;
+}
+
+@media (min-width: 980px) {
+  html body #root .app.app-command-shell.app-vault .vault-live-main-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr) minmax(250px, 0.54fr) !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-live-actions-card {
+    margin-bottom: 24px !important;
+  }
+}
+
+@media (max-width: 880px) {
+  html body #root .app.app-command-shell.app-vault .vault-command-center .standard-page-header-main {
+    grid-template-columns: minmax(0, 1fr) !important;
+    text-align: left !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-command-center .section-hero-art {
+    display: none !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-command-center .standard-page-header-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-command-center .standard-page-header-actions > button:first-child {
+    grid-column: 1 / -1 !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-empty-overview-card {
+    grid-template-columns: 1fr !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-live-home-hero,
+  html body #root .app.app-command-shell.app-vault .vault-live-search-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-live-filter-row {
+    min-width: 0 !important;
+  }
+}
+
+@media (max-width: 780px) {
+  html body #root .app.app-command-shell.app-vault .vault-command-center {
+    margin-inline: 8px !important;
+    padding: 18px 15px !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-command-center .standard-page-header-copy {
+    justify-items: center !important;
+    text-align: center !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-command-center .standard-page-header-copy h2 {
+    font-size: clamp(2.15rem, 9vw, 2.58rem) !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-command-center .standard-page-header-actions {
+    gap: 10px !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-command-center .standard-page-header-actions > button,
+  html body #root .app.app-command-shell.app-vault .vault-command-center .standard-page-header-actions .ai-assist-menu summary {
+    min-height: 50px !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-command-center .standard-page-header-summary {
+    padding: 13px !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-empty-overview-card .quick-actions {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-command-center .standard-page-header-tabs {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    overflow: visible !important;
+    scrollbar-width: none !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-command-center .standard-page-header-tabs::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-command-center .standard-page-header-tabs button {
+    min-width: 0 !important;
+    min-height: 42px !important;
+    padding-inline: 6px !important;
+    font-size: 0.78rem !important;
+    white-space: nowrap !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-live-home-dashboard {
+    margin-top: 16px !important;
+    padding-bottom: 150px !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-live-home-hero,
+  html body #root .app.app-command-shell.app-vault .vault-live-master-card,
+  html body #root .app.app-command-shell.app-vault .vault-live-controls-card,
+  html body #root .app.app-command-shell.app-vault .vault-live-folder-card,
+  html body #root .app.app-command-shell.app-vault .vault-live-recent-card,
+  html body #root .app.app-command-shell.app-vault .vault-live-health-card,
+  html body #root .app.app-command-shell.app-vault .vault-live-actions-card {
+    border-radius: 22px !important;
+    padding: 16px !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-live-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-live-folder-grid,
+  html body #root .app.app-command-shell.app-vault .vault-live-action-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-live-main-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .master-card-group-preview {
+    grid-template-columns: 108px minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .master-card-group-preview .premium-card-image {
+    min-height: 150px !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .master-card-summary-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 430px) {
+  html body #root .app.app-command-shell.app-vault .vault-command-center .vault-command-overview {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-command-center .vault-overview-card {
+    min-height: 98px !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-live-summary-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-live-summary-grid > div {
+    min-height: 92px !important;
+    padding: 12px !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-live-master-stats {
+    grid-template-columns: 1fr !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .master-card-group-preview {
+    grid-template-columns: 104px minmax(0, 1fr) !important;
+    gap: 12px !important;
+    padding: 13px !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .master-card-group-preview .premium-card-image {
+    min-height: 142px !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .master-card-group-body .compact-card-header {
+    grid-template-columns: 1fr !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .master-card-summary-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .master-variant-pill {
+    flex: 1 1 104px !important;
+  }
+}
