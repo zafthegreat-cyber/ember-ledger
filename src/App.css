@@ -83329,6 +83329,7 @@ html body #root .app.app-theme-dark :where(
   }
 }
 
+
 /* Readability rescue last-wins patch for active cards that still inherit dark preview treatments in Light Mode. */
 html body #root .app.app-theme-light.app-command-shell {
   --readability-rescue-tail-card: rgba(255, 252, 247, 0.98);
@@ -84993,5 +84994,139 @@ html body #root .app.app-theme-light :where(
   html body #root .app.app-command-shell.app-settings .utility-page-header .standard-page-header-actions > *,
   html body #root .app.app-command-shell.app-settings .utility-page-header-actions > * {
     white-space: normal !important;
+  }
+}
+
+/* Warm Collector Style page accent tokens. */
+html body #root .app.app-command-shell,
+html body #root .app.app-shoreline-access {
+  --wc-accent: #f97316;
+  --wc-accent-2: #d9a441;
+  --wc-accent-3: #14b8a6;
+  --wc-page-top: #fbf2e6;
+  --wc-page-mid: #f7ebdc;
+  --wc-page-bottom: #eef3e8;
+  --wc-panel: rgba(255, 250, 242, 0.96);
+  --wc-panel-strong: rgba(255, 252, 247, 0.99);
+  --wc-card: rgba(255, 246, 235, 0.94);
+  --wc-card-soft: rgba(255, 251, 245, 0.88);
+  --wc-border: rgba(154, 93, 38, 0.18);
+  --wc-border-strong: rgba(217, 164, 65, 0.34);
+  --wc-ink: #112238;
+  --wc-muted: rgba(17, 34, 56, 0.72);
+  --wc-soft-shadow: 0 18px 48px rgba(73, 44, 17, 0.1), 0 4px 14px rgba(73, 44, 17, 0.06);
+  --wc-hero-shadow: 0 22px 58px rgba(73, 44, 17, 0.13), 0 0 0 1px rgba(255, 255, 255, 0.46) inset;
+}
+
+html body #root .app.app-theme-dark.app-command-shell,
+html body #root .app.app-theme-dark.app-shoreline-access {
+  --wc-page-top: #071523;
+  --wc-page-mid: #091728;
+  --wc-page-bottom: #040b15;
+  --wc-panel: rgba(10, 25, 45, 0.94);
+  --wc-panel-strong: rgba(12, 30, 54, 0.98);
+  --wc-card: rgba(13, 32, 57, 0.92);
+  --wc-card-soft: rgba(16, 39, 68, 0.78);
+  --wc-border: rgba(148, 177, 207, 0.2);
+  --wc-border-strong: color-mix(in srgb, var(--wc-accent-2) 38%, rgba(148, 177, 207, 0.22));
+  --wc-ink: #fff4df;
+  --wc-muted: rgba(255, 244, 223, 0.74);
+  --wc-soft-shadow: 0 18px 52px rgba(0, 0, 0, 0.3), 0 0 26px color-mix(in srgb, var(--wc-accent) 10%, transparent);
+  --wc-hero-shadow: 0 24px 62px rgba(0, 0, 0, 0.38), 0 0 34px color-mix(in srgb, var(--wc-accent) 13%, transparent);
+}
+
+html body #root .app.app-command-shell.app-scout { --wc-accent: #f97316; --wc-accent-2: #c89638; --wc-accent-3: #38bdf8; }
+html body #root .app.app-command-shell.app-vault { --wc-accent: #8b5cf6; --wc-accent-2: #d9a441; --wc-accent-3: #14b8a6; }
+html body #root .app.app-command-shell.app-inventory,
+html body #root .app.app-command-shell.app-forge { --wc-accent: #b65d24; --wc-accent-2: #f97316; --wc-accent-3: #d9a441; }
+html body #root .app.app-command-shell.app-market,
+html body #root .app.app-command-shell.app-tidetradr { --wc-accent: #0f9f90; --wc-accent-2: #d9a441; --wc-accent-3: #f97316; }
+html body #root .app.app-command-shell.app-kidsprogram { --wc-accent: #f4b83f; --wc-accent-2: #fb7a59; --wc-accent-3: #f97316; }
+html body #root .app.app-command-shell.app-tidepool { --wc-accent: #f87171; --wc-accent-2: #0f2740; --wc-accent-3: #38bdf8; }
+html body #root .app.app-command-shell.app-settings,
+html body #root .app.app-command-shell.app-membership,
+html body #root .app.app-command-shell.app-menu,
+html body #root .app.app-command-shell.app-more { --wc-accent: #12304b; --wc-accent-2: #d9a441; --wc-accent-3: #f97316; }
+html body #root .app.app-shoreline-access,
+html body #root .app.app-command-shell.app-onboarding,
+html body #root .app.app-command-shell.app-smartsetup,
+html body #root .app.app-command-shell.app-family { --wc-accent: #8b5cf6; --wc-accent-2: #12304b; --wc-accent-3: #d9a441; }
+
+/* Warm Collector Style visual layer. Keep after readability rescue cleanup. */
+html body #root .app.app-command-shell,
+html body #root .app.app-shoreline-access {
+  background:
+    radial-gradient(circle at 8% -4%, color-mix(in srgb, var(--wc-accent, #f97316) 16%, transparent), transparent 25rem),
+    radial-gradient(circle at 92% 8%, color-mix(in srgb, var(--wc-accent-3, #14b8a6) 12%, transparent), transparent 24rem),
+    linear-gradient(180deg, var(--wc-page-top, #fbf2e6), var(--wc-page-mid, #f7ebdc) 48%, var(--wc-page-bottom, #eef3e8)) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell,
+html body #root .app.app-theme-dark.app-shoreline-access {
+  background:
+    radial-gradient(circle at 8% -4%, color-mix(in srgb, var(--wc-accent, #f97316) 14%, transparent), transparent 25rem),
+    radial-gradient(circle at 92% 8%, color-mix(in srgb, var(--wc-accent-3, #38bdf8) 10%, transparent), transparent 24rem),
+    linear-gradient(180deg, var(--wc-page-top, #071523), var(--wc-page-mid, #091728) 48%, var(--wc-page-bottom, #040b15)) !important;
+}
+
+html body #root .app.app-command-shell :where(.standard-page-header, .command-screen-hero, .app-header-card, .utility-page-header, .settings-hero, .kids-spark-header, .spark-page-header, .tidepool-community-header, .vault-command-center, .market-page-heading, .tidetradr-summary-card),
+html body #root .app.app-shoreline-access :where(.shoreline-hero, .shoreline-form, .account-setup-overview-card, .account-setup-rule-card, .live-onboarding-hero) {
+  background:
+    linear-gradient(90deg, var(--wc-accent, #f97316), color-mix(in srgb, var(--wc-accent-2, #d9a441) 72%, transparent), transparent 78%) 0 0 / 100% 3px no-repeat,
+    radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--wc-accent, #f97316) 14%, transparent), transparent 18rem),
+    radial-gradient(circle at 98% 8%, color-mix(in srgb, var(--wc-accent-3, #14b8a6) 10%, transparent), transparent 18rem),
+    linear-gradient(145deg, var(--wc-panel-strong, rgba(255, 252, 247, 0.99)), var(--wc-card, rgba(255, 246, 235, 0.94))) !important;
+  border-color: var(--wc-border-strong, rgba(217, 164, 65, 0.34)) !important;
+  color: var(--wc-ink, #112238) !important;
+  box-shadow: var(--wc-hero-shadow, 0 22px 58px rgba(73, 44, 17, 0.13)) !important;
+}
+
+html body #root .app.app-command-shell :where(.panel, .card, .compact-card, .section-card, .feature-card, .metric-card, .stat-card, .vault-overview-card, .master-card-group-preview, .master-card-section, .inventory-card, .market-results-panel, .market-result-card, .membership-tier-card, .settings-card, .menu-section, .menu-card, .tool-card, .quick-add-result-card, .quick-add-photo-panel, .ember-assist-context-card, .ember-assist-recent-help-card, .spark-section-card, .tidepool-live-section-card, .coming-soon-roadmap-card, .forge-ledger-section-card, .forge-ledger-hero-card),
+html body #root .app.app-shoreline-access :where(.shoreline-access-note, .account-setup-mini-card, .theme-choice-card, .smart-setup-theme-panel, .live-onboarding-theme-choice, .et-smart-setup-card) {
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--wc-accent, #f97316) 7%, transparent), transparent 13rem),
+    linear-gradient(145deg, var(--wc-panel, rgba(255, 250, 242, 0.96)), var(--wc-card-soft, rgba(255, 251, 245, 0.88))) !important;
+  border-color: var(--wc-border, rgba(154, 93, 38, 0.18)) !important;
+  color: var(--wc-ink, #112238) !important;
+  box-shadow: var(--wc-soft-shadow, 0 18px 48px rgba(73, 44, 17, 0.1)) !important;
+}
+
+html body #root .app.app-command-shell :where(.standard-page-header-copy p, .command-screen-hero p, .card p, .panel p, .compact-card p, .settings-card p, .menu-card p, .tool-card p, .helper-text, .muted, .meta, .eyebrow, .small-copy),
+html body #root .app.app-shoreline-access :where(p, span, small, li, label) {
+  color: var(--wc-muted, rgba(17, 34, 56, 0.72)) !important;
+}
+
+html body #root .app.app-command-shell :where(h1, h2, h3, h4, .standard-page-header-copy h2, .command-screen-hero h2, .section-title, .card-title, .menu-card-title, .tool-card-title),
+html body #root .app.app-shoreline-access :where(h1, h2, h3, h4, strong, b) {
+  color: var(--wc-ink, #112238) !important;
+  letter-spacing: 0 !important;
+}
+
+html body #root .app.app-command-shell :where(.badge, .chip, .status-chip, .trust-badge, .pill, .tag, .variant-chip, .master-card-variant-chip, .standard-page-header-label, .active-filter-chip),
+html body #root .app.app-shoreline-access :where(.status-badge, .onboarding-goal-pill, .theme-choice-card.is-selected) {
+  background: color-mix(in srgb, var(--wc-accent-2, #d9a441) 16%, var(--wc-panel-strong, rgba(255, 252, 247, 0.99))) !important;
+  border-color: color-mix(in srgb, var(--wc-accent-2, #d9a441) 48%, var(--wc-border, rgba(154, 93, 38, 0.18))) !important;
+  color: var(--wc-ink, #112238) !important;
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--wc-accent-2, #d9a441) 12%, transparent) !important;
+}
+
+html body #root .app.app-command-shell :where(.topbar, .web-command-topbar, .web-command-sidebar, .mobile-bottom-nav, .mobile-menu-drawer, .location-modal, .flow-modal, .quick-add-sheet, .guided-quick-add, .ember-assist-panel) {
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--wc-accent, #f97316) 10%, transparent), transparent 14rem),
+    linear-gradient(145deg, var(--wc-panel-strong, rgba(255, 252, 247, 0.99)), var(--wc-panel, rgba(255, 250, 242, 0.96))) !important;
+  border-color: var(--wc-border-strong, rgba(217, 164, 65, 0.34)) !important;
+  color: var(--wc-ink, #112238) !important;
+}
+
+html body #root .app.app-command-shell :where(.mobile-tab.active, .mobile-tab.is-active, .main-tab.active, .main-tab.is-active, .web-command-nav-item.active, .web-command-nav-item.is-active, .mobile-menu-item.active, .mobile-menu-item.is-active) {
+  background: color-mix(in srgb, var(--wc-accent, #f97316) 15%, var(--wc-panel-strong, rgba(255, 252, 247, 0.99))) !important;
+  border-color: color-mix(in srgb, var(--wc-accent, #f97316) 46%, var(--wc-border, rgba(154, 93, 38, 0.18))) !important;
+  color: var(--wc-ink, #112238) !important;
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--wc-accent, #f97316) 16%, transparent) !important;
+}
+
+@media (max-width: 780px) {
+  html body #root .app.app-command-shell {
+    --theme-final-bottom-clearance: max(324px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 244px));
   }
 }
