@@ -41114,128 +41114,234 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const lockPreviewKeys = ["restock_predictions", "seller_tools", "kid_profiles", "shop_profile_tools"];
     const lockPreviews = lockPreviewKeys.map((featureKey) => getLockedFeatureDetails(featureKey));
     return (
-      <section className="panel membership-foundation-panel tier-foundation-panel" data-qa="tier-pricing-explainer">
-        <div className="compact-card-header">
-          <div>
-            <p className="section-kicker">Plans &amp; Feature Gates</p>
-            <h2>Membership Foundation</h2>
-            <p>Clear tiers, friendly locks, and Scout guardrails. Checkout is not live; upgrades are admin-managed during beta.</p>
-          </div>
-          <span className="status-badge">{planLabel}</span>
-        </div>
-        <div className="tier-status-panel" aria-label="Current membership status">
-          <div className="tier-current-plan-card">
-            <span>Current plan</span>
-            <strong>{planLabel}</strong>
-            <p>{trialActive ? "Trial is active." : "No active trial on this profile."}</p>
-          </div>
-          <div className="tier-status-grid">
-            <article><span>Scout watch stores</span><strong>{String(tierAccess.scoutStoreSlots)}</strong><small>{tierAccess.scoutStoreSwapDays ? `Change once every ${tierAccess.scoutStoreSwapDays} days` : "Admin moderation access"}</small></article>
-            <article><span>Current Scout details</span><strong>{planScoutDetailsAllowed ? "Selected stores" : "Limited"}</strong><small>Selected-store current details only.</small></article>
-            <article><span>Raw Scout history</span><strong>{tierAccess.canViewRawScoutHistory ? "Admin" : "Protected"}</strong><small>No hidden history behind paid locks.</small></article>
-            <article><span>Pattern tools</span><strong>{tierAccess.canViewPatternTools ? "Admin" : "Protected"}</strong><small>Protected from non-admin users.</small></article>
-          </div>
-        </div>
-        <div className="tier-foundation-note">
-          <strong>Scout fairness guardrail</strong>
-          <p>Free users can still submit and confirm Scout reports. Paid tiers unlock deeper current details for selected stores, not raw restock history, pattern tools, or all-store exact access.</p>
-        </div>
-        <section className="tier-lock-preview-panel" aria-label="Free core collector tools">
-          <div className="compact-card-header">
-            <div>
-              <h3>Free is the core collector app</h3>
-              <p>Paid plans add scale, convenience, family seats, seller workflows, or shop tools. Core collecting and safety basics stay included.</p>
+      <EtMockupPageShell
+        accent="membership"
+        className="membership-mockup-rebuild"
+        ariaLabel="Membership Foundation"
+      >
+        <div className="et-mockup-main-column membership-mockup-main" data-qa="tier-pricing-explainer">
+          <EtMockupHero
+            brand="Membership Foundation"
+            mark={BRAND_ASSETS.mark}
+            title="Free is the core collector app."
+            detail="Clear tiers, friendly locks, and Scout guardrails. Checkout is not live; upgrades are admin-managed during beta."
+            points={{ value: planLabel, label: "Current plan" }}
+            pills={[
+              { label: "Current plan: Free", tone: "gold" },
+              { label: `${tierAccess.scoutStoreSlots} Scout watch store${Number(tierAccess.scoutStoreSlots) === 1 ? "" : "s"}`, tone: "collector" },
+              { label: "Checkout not live", tone: "beta" },
+            ]}
+            todayAction={{
+              label: "Scout fairness guardrail",
+              title: "Current reports stay fair.",
+              cta: "Review guardrails",
+              onClick: () => document.getElementById("membership-scout-guardrails")?.scrollIntoView({ behavior: "smooth", block: "start" }),
+            }}
+            adminAction={<EtMockupButton variant="secondary" onClick={() => requestLockedFeatureAccess("seller_tools")}>Ask admin to upgrade during beta</EtMockupButton>}
+            ariaLabel="Membership Foundation hero"
+          />
+
+          <EtMockupSectionCard
+            title="Current plan and Scout limits"
+            detail="Free access remains a complete collector app. Paid tiers add scale and convenience without exposing raw Scout history."
+            className="membership-mockup-status"
+            action={<EtMockupPill tone="gold">Current plan: Free</EtMockupPill>}
+          >
+            <div className="et-mockup-stat-grid membership-mockup-status-grid" aria-label="Current membership status">
+              <EtMockupStatCard label="Current plan" value={planLabel} detail={trialActive ? "Trial is active." : "No active trial on this profile."} tone="gold" />
+              <EtMockupStatCard
+                label="Scout watch stores"
+                value={String(tierAccess.scoutStoreSlots)}
+                detail={tierAccess.scoutStoreSwapDays ? `1 Scout watch store. Change once every ${tierAccess.scoutStoreSwapDays} days.` : "Admin moderation access."}
+                tone="scout"
+              />
+              <EtMockupStatCard
+                label="Current Scout details"
+                value={planScoutDetailsAllowed ? "Selected stores" : "Limited"}
+                detail={planScoutDetailsAllowed ? "Selected-store current details only." : "Current Scout details limited to keep Scout fair."}
+                tone="scout"
+              />
+              <EtMockupStatCard
+                label="Raw Scout history"
+                value={tierAccess.canViewRawScoutHistory ? "Admin" : "Protected"}
+                detail="Raw Scout history protected. No hidden history behind paid locks."
+                tone="collector"
+              />
+              <EtMockupStatCard
+                label="Pattern tools"
+                value={tierAccess.canViewPatternTools ? "Admin" : "Protected"}
+                detail="Pattern tools protected from non-admin users."
+                tone="collector"
+              />
             </div>
-            <span className="status-badge">Included</span>
-          </div>
-          <div className="tier-lock-preview-grid">
-            {freeCoreFeatures.map((feature) => (
-              <article className="tier-lock-preview-card" key={feature}>
-                <span>Free</span>
-                <strong>{feature}</strong>
-                <p>Available as part of the beta core experience.</p>
-              </article>
-            ))}
-          </div>
-        </section>
-        <div className="tier-plan-grid" aria-label="Ember & Tide public plans">
-          {tierCards.map((tier) => (
-            <article className={`tier-plan-card${tier.id === plan ? " current" : ""}`} key={tier.id} data-tier-plan={tier.id}>
-              <div className="tier-plan-card-top">
-                <span>{tier.id === plan ? "Current" : tier.display.status || "Beta preview"}</span>
-                <strong>{tier.label}</strong>
+          </EtMockupSectionCard>
+
+          <EtMockupSectionCard
+            title="Scout fairness guardrail"
+            detail="Free users can still submit and confirm Scout reports. Paid tiers unlock deeper current details for selected stores, not raw restock history, pattern tools, or all-store exact access."
+            className="membership-mockup-guardrail"
+            ariaLabel="Scout fairness guardrail"
+            action={<EtMockupPill tone="collector">Fair access</EtMockupPill>}
+          >
+            <div id="membership-scout-guardrails" className="membership-mockup-rule-row" aria-label="Scout membership guardrails">
+              <span>1 Scout watch store</span>
+              <span>Change once every 30 days</span>
+              <span>Current Scout details limited</span>
+              <span>Raw Scout history protected</span>
+              <span>Pattern tools protected</span>
+              <span>No raw all-store access</span>
+            </div>
+          </EtMockupSectionCard>
+
+          <EtMockupSectionCard
+            title="Free is the core collector app"
+            detail="Paid plans add scale, convenience, family seats, seller workflows, or shop tools. Core collecting and safety basics stay included."
+            className="membership-mockup-free-core"
+            action={<EtMockupPill tone="gold">Included</EtMockupPill>}
+            ariaLabel="Free core collector tools"
+          >
+            <div className="et-mockup-action-grid membership-mockup-free-grid">
+              {freeCoreFeatures.map((feature) => (
+                <EtMockupActionCard
+                  key={feature}
+                  title={feature}
+                  detail="Available as part of the beta core experience."
+                  meta="Free"
+                  icon="vault"
+                  tone="gold"
+                />
+              ))}
+            </div>
+          </EtMockupSectionCard>
+
+          <EtMockupSectionCard
+            title="Plans add scale, not basic collecting"
+            detail="Plan cards are beta preview copy. Checkout is not live, and upgrades are admin-managed during beta."
+            className="membership-mockup-plans"
+            ariaLabel="Ember & Tide public plans"
+            action={<EtMockupPill tone="beta">No checkout</EtMockupPill>}
+          >
+            <div id="membership-plan-grid" className="tier-plan-grid membership-mockup-plan-grid">
+              {tierCards.map((tier) => (
+                <article className={`tier-plan-card membership-mockup-plan-card${tier.id === plan ? " current" : ""}`} key={tier.id} data-tier-plan={tier.id}>
+                  <div className="tier-plan-card-top">
+                    <span>{tier.id === plan ? "Current" : tier.display.status || "Beta preview"}</span>
+                    <strong>{tier.label}</strong>
+                  </div>
+                  {tier.display.audience ? <p className="tier-plan-audience">{tier.display.audience}</p> : null}
+                  <h3>{tier.price}</h3>
+                  <p>{tier.summary}</p>
+                  {tier.display.benefit ? <p className="tier-plan-benefit">{tier.display.benefit}</p> : null}
+                  {tier.display.gateCopy ? <p className="tier-plan-gate-copy">{tier.display.gateCopy}</p> : null}
+                  <div className="tier-plan-rule-row">
+                    <span>{tier.access.scoutStoreSlots} Scout store{Number(tier.access.scoutStoreSlots) === 1 ? "" : "s"}</span>
+                    <span>{tier.access.scoutStoreSwapDays ? `${tier.access.scoutStoreSwapDays}-day changes` : "Admin changes"}</span>
+                    <span>{tier.access.canViewPatternTools ? "Admin patterns" : "Raw patterns protected"}</span>
+                  </div>
+                  {tier.trialCopy ? <p className="tier-trial-copy">{tier.trialCopy}</p> : null}
+                  {tier.futurePrice ? <p className="compact-subtitle">{tier.futurePrice}</p> : null}
+                  <ul>
+                    {tier.features.map((feature) => <li key={`${tier.id}-${feature}`}>{feature}</li>)}
+                  </ul>
+                  <button type="button" className="secondary-button" disabled>{tier.cta}</button>
+                </article>
+              ))}
+            </div>
+          </EtMockupSectionCard>
+
+          <EtMockupSectionCard
+            title="Locked states explain the value"
+            detail="Locks explain the benefit and next step without revealing hidden data."
+            className="membership-mockup-locks"
+            ariaLabel="Locked state examples"
+            action={<EtMockupPill tone="collector">Clear gates</EtMockupPill>}
+          >
+            <div className="et-mockup-action-grid membership-mockup-lock-grid">
+              {lockPreviews.map((lock) => (
+                <EtMockupActionCard
+                  key={lock.label}
+                  title={lock.label}
+                  detail={`${lock.benefit} ${lock.guardrail}`}
+                  meta={lock.statusLabel}
+                  icon="plan"
+                  tone="collector"
+                />
+              ))}
+            </div>
+          </EtMockupSectionCard>
+
+          <EtMockupSectionCard
+            title="Add-ons are beta preview only"
+            detail="Coming soon as beta preview copy. No add-on checkout is connected."
+            className="membership-mockup-addons"
+            ariaLabel="Membership add-ons"
+            action={<EtMockupPill tone="beta">Coming soon</EtMockupPill>}
+          >
+            <div className="tier-add-on-grid membership-mockup-add-on-grid">
+              {addOns.map((addOn) => (
+                <article className="tier-add-on-card membership-mockup-add-on-card" key={addOn.id}>
+                  <span>{addOn.status}</span>
+                  <strong>{addOn.label}</strong>
+                  <b>{addOn.price}</b>
+                  <p>{addOn.appliesTo}</p>
+                </article>
+              ))}
+            </div>
+          </EtMockupSectionCard>
+        </div>
+
+        <EtMockupRightRail
+          title="Beta access is admin-managed"
+          detail="Checkout is not live. Upgrades are admin-managed during beta. Billing and payment tools are not connected."
+          className="membership-mockup-rail"
+        >
+          <EtMockupSectionCard
+            title="Foundation status"
+            detail="Current access stays clear without turning pricing preview into checkout."
+            className="membership-mockup-rail-card"
+            action={<EtMockupPill tone="gold">{planLabel}</EtMockupPill>}
+          >
+            <div className="et-mockup-action-stack membership-mockup-status-stack" aria-label="Beta and admin status">
+              {accessStatusRows.map((row) => (
+                <EtMockupActionCard
+                  key={row.label}
+                  title={row.label}
+                  detail={row.helper}
+                  meta={row.value}
+                  icon="plan"
+                  tone={row.label === "Checkout" ? "gold" : "collector"}
+                />
+              ))}
+            </div>
+          </EtMockupSectionCard>
+
+          <EtMockupSectionCard
+            title="Protected from paywall confusion"
+            detail="Free stays useful. Paid tiers add scale, seats, seller support, shop tools, and convenience."
+            className="membership-mockup-rail-card"
+          >
+            <div className="membership-mockup-rule-row is-rail" aria-label="Membership protected basics">
+              <span>Free is the core collector app</span>
+              <span>Basic collection tracking included</span>
+              <span>Basic fair range included</span>
+              <span>Manual Scout reports included</span>
+              <span>Scout pattern tools protected</span>
+              <span>Raw Scout history protected</span>
+            </div>
+          </EtMockupSectionCard>
+
+          <EtMockupEmptyState
+            title="No checkout connected."
+            detail="Membership is modeled for public beta review. Admins handle access changes until billing is approved."
+            action={(
+              <div className="membership-mockup-rail-actions">
+                <button type="button" className="et-mockup-button et-mockup-button-secondary membership-mockup-disabled" disabled>Checkout coming soon</button>
+                <EtMockupButton variant="secondary" onClick={() => requestLockedFeatureAccess("seller_tools")}>Ask admin to upgrade during beta</EtMockupButton>
               </div>
-              {tier.display.audience ? <p className="tier-plan-audience">{tier.display.audience}</p> : null}
-              <h3>{tier.price}</h3>
-              <p>{tier.summary}</p>
-              {tier.display.benefit ? <p className="tier-plan-benefit">{tier.display.benefit}</p> : null}
-              {tier.display.gateCopy ? <p className="tier-plan-gate-copy">{tier.display.gateCopy}</p> : null}
-              <div className="tier-plan-rule-row">
-                <span>{tier.access.scoutStoreSlots} Scout store{Number(tier.access.scoutStoreSlots) === 1 ? "" : "s"}</span>
-                <span>{tier.access.scoutStoreSwapDays ? `${tier.access.scoutStoreSwapDays}-day changes` : "Admin changes"}</span>
-                <span>{tier.access.canViewPatternTools ? "Admin patterns" : "Raw patterns protected"}</span>
-              </div>
-              {tier.trialCopy ? <p className="tier-trial-copy">{tier.trialCopy}</p> : null}
-              {tier.futurePrice ? <p className="compact-subtitle">{tier.futurePrice}</p> : null}
-              <ul>
-                {tier.features.map((feature) => <li key={`${tier.id}-${feature}`}>{feature}</li>)}
-              </ul>
-              <button type="button" className="secondary-button" disabled>{tier.cta}</button>
-            </article>
-          ))}
-        </div>
-        <section className="tier-lock-preview-panel" aria-label="Locked state examples">
-          <div className="compact-card-header">
-            <div>
-              <h3>Locked states</h3>
-              <p>Locks explain the benefit and next step without revealing hidden data.</p>
-            </div>
-            <span className="status-badge">Clear gates</span>
-          </div>
-          <div className="tier-lock-preview-grid">
-            {lockPreviews.map((lock) => (
-              <article className="tier-lock-preview-card" key={lock.label}>
-                <span>{lock.statusLabel}</span>
-                <strong>{lock.label}</strong>
-                <p>{lock.benefit}</p>
-                <small>{lock.guardrail}</small>
-              </article>
-            ))}
-          </div>
-        </section>
-        <section className="tier-add-on-panel" aria-label="Membership add-ons">
-          <div className="compact-card-header">
-            <div>
-              <h3>Add-ons</h3>
-              <p>Coming soon as beta preview copy. No add-on checkout is connected.</p>
-            </div>
-            <span className="status-badge">Coming soon</span>
-          </div>
-          <div className="tier-add-on-grid">
-            {addOns.map((addOn) => (
-              <article className="tier-add-on-card" key={addOn.id}>
-                <span>{addOn.status}</span>
-                <strong>{addOn.label}</strong>
-                <b>{addOn.price}</b>
-                <p>{addOn.appliesTo}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-        <div className="tier-beta-flags" aria-label="Beta and admin status">
-          {accessStatusRows.map((row) => (
-            <article key={row.label}>
-              <span className="status-badge">{row.value}</span>
-              <strong>{row.label}</strong>
-              <p>{row.helper}</p>
-            </article>
-          ))}
-        </div>
-        <div className="quick-actions">
-          <button type="button" className="secondary-button" disabled>Checkout coming soon</button>
-          <button type="button" className="secondary-button" onClick={() => requestLockedFeatureAccess("seller_tools")}>Ask admin to upgrade during beta</button>
-        </div>
-      </section>
+            )}
+          />
+        </EtMockupRightRail>
+      </EtMockupPageShell>
     );
   }
 

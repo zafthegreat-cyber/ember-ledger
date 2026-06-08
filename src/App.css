@@ -92760,6 +92760,11 @@ html body #root .app.app-command-shell .et-mockup-page[data-accent="more"] {
   --et-page-accent-2: var(--et-gold);
 }
 
+html body #root .app.app-command-shell .et-mockup-page[data-accent="membership"] {
+  --et-page-accent: var(--et-gold);
+  --et-page-accent-2: var(--et-ember);
+}
+
 html body #root .app.app-command-shell .et-mockup-page {
   width: min(100%, 1200px);
   margin-inline: auto;
@@ -96348,5 +96353,316 @@ html body #root .app.app-shell-dark.app-forge .forge-mockup-rebuild :where(p, sm
 
   html body #root .app.app-command-shell.app-forge .forge-mockup-section-tabs > button {
     flex-basis: min(58vw, 160px) !important;
+  }
+}
+
+/* Membership mockup migration: fair beta plans, no checkout, Scout guardrails protected. */
+html body #root .app.app-command-shell.app-membership .main {
+  padding-bottom: max(224px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 166px)) !important;
+}
+
+html body #root .app.app-command-shell.app-membership .membership-mockup-rebuild {
+  --membership-mockup-ink: #172033;
+  --membership-mockup-muted: #665d50;
+  --membership-mockup-panel: #fffaf1;
+  --membership-mockup-soft: #fff0da;
+  --membership-mockup-border: color-mix(in srgb, #d9a441 30%, rgba(115, 79, 36, 0.2));
+  --et-page-accent: var(--et-gold);
+  --et-page-accent-2: var(--et-ember);
+  width: min(100%, 1190px);
+  grid-template-columns: minmax(0, 1.4fr) minmax(292px, 0.78fr);
+  gap: clamp(14px, 2vw, 24px);
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--et-page-accent-2) 8%, transparent), transparent 18rem),
+    #fff6e8 !important;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent) 20%, transparent) !important;
+  border-radius: 32px !important;
+}
+
+html body #root .app.app-command-shell.app-membership .membership-mockup-main,
+html body #root .app.app-command-shell.app-membership .membership-mockup-rail {
+  gap: clamp(14px, 1.8vw, 20px);
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-membership .membership-mockup-rebuild,
+html body #root .app.app-theme-light.app-command-shell.app-membership .membership-mockup-rebuild,
+html body #root .app.app-shell-light.app-command-shell.app-membership .membership-mockup-rebuild {
+  --et-ink: var(--membership-mockup-ink) !important;
+  --et-muted: var(--membership-mockup-muted) !important;
+  --et-panel: var(--membership-mockup-panel) !important;
+  --et-panel-soft: var(--membership-mockup-soft) !important;
+  --et-border: var(--membership-mockup-border) !important;
+  color: var(--membership-mockup-ink) !important;
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-membership .membership-mockup-rebuild :where(.et-mockup-page-hero, .et-mockup-section-card, .et-mockup-right-rail),
+html body #root .app.app-theme-light.app-command-shell.app-membership .membership-mockup-rebuild :where(.et-mockup-page-hero, .et-mockup-section-card, .et-mockup-right-rail),
+html body #root .app.app-shell-light.app-command-shell.app-membership .membership-mockup-rebuild :where(.et-mockup-page-hero, .et-mockup-section-card, .et-mockup-right-rail) {
+  border-color: color-mix(in srgb, #d9a441 34%, rgba(115, 79, 36, 0.2)) !important;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, #f97316 64%, transparent), color-mix(in srgb, #d9a441 42%, transparent) 46%, transparent 88%) 0 0 / 100% 3px no-repeat,
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, #f97316 11%, transparent), transparent 13rem),
+    radial-gradient(circle at 100% 6%, color-mix(in srgb, #d9a441 12%, transparent), transparent 16rem),
+    #fffaf1 !important;
+  color: #172033 !important;
+}
+
+html body #root .app.app-command-shell.app-membership .membership-mockup-rebuild :where(.et-mockup-hero-copy, .et-mockup-hero-status, .et-mockup-pill-row, .et-mockup-section-heading, .et-mockup-rail-heading, .et-mockup-action-copy) {
+  min-width: 0;
+  background: transparent !important;
+  background-color: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  overflow-wrap: anywhere;
+}
+
+html body #root .app.app-command-shell.app-membership .membership-mockup-rebuild .et-mockup-page-hero {
+  min-height: clamp(252px, 27vw, 338px);
+}
+
+html body #root .app.app-command-shell.app-membership .membership-mockup-rebuild :where(.et-mockup-page-hero, .et-mockup-section-card, .et-mockup-right-rail) {
+  border-radius: var(--et-radius-xl) !important;
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-membership .membership-mockup-rebuild :where(.et-mockup-page-hero, .et-mockup-section-card, .et-mockup-right-rail),
+html body #root .app.app-theme-light.app-command-shell.app-membership .membership-mockup-rebuild :where(.et-mockup-page-hero, .et-mockup-section-card, .et-mockup-right-rail),
+html body #root .app.app-shell-light.app-command-shell.app-membership .membership-mockup-rebuild :where(.et-mockup-page-hero, .et-mockup-section-card, .et-mockup-right-rail) {
+  box-shadow: 0 18px 42px rgba(121, 88, 46, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.58) !important;
+}
+
+html body #root .app.app-command-shell.app-membership .membership-mockup-rebuild .et-mockup-hero-copy h1 {
+  max-width: 14ch;
+  font-size: clamp(2.24rem, 5.2vw, 3.9rem);
+}
+
+html body #root .app.app-command-shell.app-membership .membership-mockup-rebuild .et-mockup-today-action {
+  border-color: color-mix(in srgb, var(--et-page-accent-2) 40%, var(--et-page-accent)) !important;
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--et-page-accent-2) 14%, transparent), transparent 9rem),
+    color-mix(in srgb, var(--et-page-accent) 12%, var(--et-panel-soft)) !important;
+  color: var(--et-ink) !important;
+}
+
+html body #root .app.app-command-shell.app-membership .membership-mockup-rebuild .et-mockup-button,
+html body #root .app.app-command-shell.app-membership .membership-mockup-rebuild .secondary-button,
+html body #root .app.app-command-shell.app-membership .membership-mockup-rebuild button[disabled] {
+  border-color: color-mix(in srgb, var(--et-page-accent-2) 34%, var(--et-border)) !important;
+  background: color-mix(in srgb, var(--et-panel-soft) 84%, transparent) !important;
+  color: var(--et-ink) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42) !important;
+}
+
+html body #root .app.app-command-shell.app-membership .membership-mockup-rebuild .et-mockup-button-primary {
+  border-color: color-mix(in srgb, var(--et-page-accent-2) 62%, var(--et-page-accent)) !important;
+  background: linear-gradient(135deg, var(--et-page-accent-2), var(--et-page-accent)) !important;
+  color: #241506 !important;
+}
+
+html body #root .app.app-command-shell.app-membership .membership-mockup-status-grid {
+  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)) !important;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent) 16%, var(--et-border)) !important;
+  border-radius: 24px;
+  background: #fff2dc !important;
+  color: var(--et-ink) !important;
+}
+
+html body #root .app.app-command-shell.app-membership .membership-mockup-status-grid .et-mockup-stat-card {
+  min-height: 152px;
+}
+
+html body #root .app.app-command-shell.app-membership .membership-mockup-status-grid .et-mockup-stat-card :where(strong, b) {
+  overflow-wrap: anywhere;
+}
+
+html body #root .app.app-command-shell.app-membership .membership-mockup-free-grid,
+html body #root .app.app-command-shell.app-membership .membership-mockup-lock-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+html body #root .app.app-command-shell.app-membership .membership-mockup-plan-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+}
+
+html body #root .app.app-command-shell.app-membership .membership-mockup-plan-card,
+html body #root .app.app-command-shell.app-membership .membership-mockup-add-on-card,
+html body #root .app.app-command-shell.app-membership .membership-mockup-rebuild :where(.et-mockup-stat-card, .et-mockup-action-card, .et-mockup-empty-state) {
+  border-color: color-mix(in srgb, var(--et-page-accent-2) 22%, var(--et-border)) !important;
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--et-page-accent) 8%, transparent), transparent 9rem),
+    color-mix(in srgb, var(--et-panel-soft) 88%, transparent) !important;
+  color: var(--et-ink) !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell.app-membership .membership-mockup-plan-card.current {
+  border-color: color-mix(in srgb, var(--et-page-accent-2) 54%, var(--et-page-accent)) !important;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--et-page-accent-2) 54%, transparent), transparent 72%) 0 0 / 100% 3px no-repeat,
+    color-mix(in srgb, var(--et-page-accent) 12%, var(--et-panel-soft)) !important;
+}
+
+html body #root .app.app-command-shell.app-membership .membership-mockup-plan-card h3 {
+  font-size: clamp(1.34rem, 2.6vw, 1.9rem) !important;
+}
+
+html body #root .app.app-command-shell.app-membership .membership-mockup-rule-row,
+html body #root .app.app-command-shell.app-membership .membership-mockup-rail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+html body #root .app.app-command-shell.app-membership .membership-mockup-rule-row span {
+  min-height: 33px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 10px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2) 26%, var(--et-border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--et-panel-soft) 88%, transparent);
+  color: var(--et-ink) !important;
+  font-size: 0.74rem;
+  font-weight: 900;
+  line-height: 1.12;
+}
+
+html body #root .app.app-command-shell.app-membership .membership-mockup-rule-row.is-rail span {
+  flex: 1 1 130px;
+}
+
+html body #root .app.app-command-shell.app-membership .membership-mockup-status-stack {
+  gap: 10px;
+}
+
+html body #root .app.app-command-shell.app-membership .membership-mockup-rail-card {
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell.app-membership .membership-mockup-rail-card .et-mockup-section-heading {
+  padding-bottom: 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--et-page-accent) 18%, var(--et-border));
+}
+
+html body #root .app.app-command-shell.app-membership .membership-mockup-disabled {
+  opacity: 0.78;
+  cursor: not-allowed;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-membership .membership-mockup-rebuild,
+html body #root .app.app-shell-dark.app-membership .membership-mockup-rebuild {
+  --et-ink: #fff3dc !important;
+  --et-muted: rgba(236, 224, 205, 0.78) !important;
+  --et-panel: rgba(12, 22, 40, 0.96) !important;
+  --et-panel-soft: rgba(18, 28, 48, 0.92) !important;
+  --et-border: color-mix(in srgb, var(--et-page-accent-2) 26%, rgba(255, 255, 255, 0.12)) !important;
+  background: rgba(8, 15, 30, 0.78) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-membership .membership-mockup-rebuild :where(.membership-mockup-plan-card, .membership-mockup-add-on-card, .et-mockup-stat-card, .et-mockup-action-card, .et-mockup-empty-state),
+html body #root .app.app-shell-dark.app-membership .membership-mockup-rebuild :where(.membership-mockup-plan-card, .membership-mockup-add-on-card, .et-mockup-stat-card, .et-mockup-action-card, .et-mockup-empty-state) {
+  border-color: color-mix(in srgb, var(--et-page-accent-2) 20%, rgba(255, 255, 255, 0.12)) !important;
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--et-page-accent) 10%, transparent), transparent 12rem),
+    rgba(7, 16, 31, 0.82) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-membership .membership-mockup-status-grid,
+html body #root .app.app-shell-dark.app-membership .membership-mockup-status-grid {
+  border-color: color-mix(in srgb, var(--et-page-accent-2) 20%, rgba(255, 255, 255, 0.12)) !important;
+  background: rgba(7, 16, 31, 0.5) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-membership .membership-mockup-rebuild :where(h1, h2, h3, h4, strong, b, .et-mockup-action-copy strong),
+html body #root .app.app-shell-dark.app-membership .membership-mockup-rebuild :where(h1, h2, h3, h4, strong, b, .et-mockup-action-copy strong) {
+  color: #fff3dc !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-membership .membership-mockup-rebuild :where(p, small, em, li),
+html body #root .app.app-shell-dark.app-membership .membership-mockup-rebuild :where(p, small, em, li) {
+  color: rgba(236, 224, 205, 0.78) !important;
+}
+
+@media (max-width: 980px) {
+  html body #root .app.app-command-shell.app-membership .membership-mockup-rebuild {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  html body #root .app.app-command-shell.app-membership .membership-mockup-status-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-membership .membership-mockup-plan-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 620px) {
+  html body #root .app.app-command-shell.app-membership .main {
+    padding-bottom: max(258px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 192px)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-membership .membership-mockup-rebuild {
+    padding-inline: 7px;
+    gap: 13px;
+  }
+
+  html body #root .app.app-command-shell.app-membership .membership-mockup-rebuild .et-mockup-page-hero {
+    min-height: 0;
+    padding: 18px;
+  }
+
+  html body #root .app.app-command-shell.app-membership .membership-mockup-rebuild .et-mockup-hero-copy h1 {
+    font-size: clamp(1.7rem, 8vw, 2.14rem);
+  }
+
+  html body #root .app.app-command-shell.app-membership .membership-mockup-rebuild .et-mockup-hero-status {
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    justify-content: flex-start;
+    justify-items: start;
+    gap: 9px;
+  }
+
+  html body #root .app.app-command-shell.app-membership .membership-mockup-rebuild .et-mockup-points-card {
+    min-width: 94px;
+    padding: 10px;
+    border-radius: 18px;
+  }
+
+  html body #root .app.app-command-shell.app-membership .membership-mockup-rebuild .et-mockup-pill-row {
+    flex: 1 1 172px;
+    justify-content: flex-start;
+    max-width: none;
+  }
+
+  html body #root .app.app-command-shell.app-membership .membership-mockup-status-grid,
+  html body #root .app.app-command-shell.app-membership .membership-mockup-free-grid,
+  html body #root .app.app-command-shell.app-membership .membership-mockup-lock-grid,
+  html body #root .app.app-command-shell.app-membership .membership-mockup-plan-grid,
+  html body #root .app.app-command-shell.app-membership .membership-mockup-add-on-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell.app-membership .membership-mockup-rule-row span {
+    flex: 1 1 142px;
+  }
+}
+
+@media (max-width: 430px) {
+  html body #root .app.app-command-shell.app-membership .membership-mockup-rebuild {
+    padding-inline: 6px;
+  }
+
+  html body #root .app.app-command-shell.app-membership .membership-mockup-rebuild .et-mockup-hero-copy h1 {
+    font-size: clamp(1.56rem, 7.5vw, 1.95rem);
   }
 }
