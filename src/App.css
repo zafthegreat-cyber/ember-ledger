@@ -87585,3 +87585,682 @@ html body #root .app.app-command-shell.app-home .hearth-start-here-panel {
     margin-top: 116px !important;
   }
 }
+
+/* Market-only structure polish: fair price discovery, not checkout. */
+html body #root .app.app-command-shell.app-market {
+  --market-room-border: color-mix(in srgb, var(--wc-accent, #0f9f90) 34%, var(--wc-border, rgba(154, 93, 38, 0.18)));
+  --market-room-gold: color-mix(in srgb, var(--wc-accent-2, #d9a441) 76%, var(--wc-accent, #0f9f90));
+  --market-room-glow: color-mix(in srgb, var(--wc-accent, #0f9f90) 13%, transparent);
+  --market-room-ember: color-mix(in srgb, var(--wc-accent-3, #f97316) 18%, transparent);
+}
+
+html body #root .app.app-command-shell.app-market .main,
+html body #root .app.app-command-shell.app-market .market-page {
+  padding-bottom: max(180px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 126px)) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-page {
+  width: min(100%, 1180px) !important;
+  margin-inline: auto !important;
+  display: grid !important;
+  gap: clamp(15px, 2vw, 22px) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-page-heading,
+html body #root .app.app-command-shell.app-market .market-results-panel {
+  border: 1px solid var(--market-room-border) !important;
+  border-radius: 26px !important;
+  background:
+    linear-gradient(90deg, var(--market-room-gold), color-mix(in srgb, var(--wc-accent, #0f9f90) 24%, transparent) 44%, transparent 90%) 0 0 / 100% 3px no-repeat,
+    radial-gradient(circle at 0% 0%, var(--market-room-glow), transparent 13rem),
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--wc-accent-2, #d9a441) 8%, transparent), transparent 14rem),
+    color-mix(in srgb, var(--wc-panel-strong, #fffcf7) 94%, transparent) !important;
+  box-shadow: 0 20px 44px color-mix(in srgb, var(--wc-shadow, rgba(58, 35, 15, 0.18)) 68%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.58) !important;
+  color: var(--wc-text, #14213a) !important;
+  overflow: visible !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-market .market-page-heading,
+html body #root .app.app-theme-dark.app-command-shell.app-market .market-results-panel {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--wc-accent-2, #d9a441) 72%, transparent), color-mix(in srgb, var(--wc-accent, #0f9f90) 24%, transparent) 44%, transparent 90%) 0 0 / 100% 3px no-repeat,
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--wc-accent, #0f9f90) 14%, transparent), transparent 13rem),
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--wc-accent-2, #d9a441) 8%, transparent), transparent 14rem),
+    color-mix(in srgb, var(--wc-panel-strong, #10233d) 90%, #06101f 10%) !important;
+  box-shadow: 0 22px 48px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-page-heading {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: clamp(12px, 2vw, 16px) !important;
+  min-height: max-content !important;
+  height: max-content !important;
+  max-height: none !important;
+  padding: clamp(18px, 2.6vw, 26px) !important;
+  align-content: start !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-page-heading .standard-page-header-main,
+html body #root .app.app-command-shell.app-market .market-page-heading .standard-page-header-body,
+html body #root .app.app-command-shell.app-market .market-page-heading .standard-page-header-tabs {
+  position: static !important;
+  transform: none !important;
+  inset: auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-page-heading .standard-page-header-copy h2 {
+  max-width: 12ch !important;
+  font-size: clamp(2.2rem, 4.8vw, 3.4rem) !important;
+  line-height: 0.98 !important;
+  letter-spacing: 0 !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-page-heading .standard-page-header-copy p {
+  max-width: 54ch !important;
+  color: var(--wc-muted-strong, #5e4731) !important;
+  font-weight: 760 !important;
+  line-height: 1.45 !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-market .market-page-heading .standard-page-header-copy p {
+  color: color-mix(in srgb, var(--wc-text, #f9fafb) 76%, var(--wc-muted, #9fb0c9)) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-search-form {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  gap: 10px !important;
+  align-items: stretch !important;
+  padding: 10px !important;
+  border: 1px solid color-mix(in srgb, var(--wc-accent, #0f9f90) 30%, var(--wc-border, rgba(154, 93, 38, 0.18))) !important;
+  border-radius: 24px !important;
+  background: color-mix(in srgb, var(--wc-panel-strong, #fffcf7) 84%, var(--wc-accent, #0f9f90) 5%) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-market .market-search-form {
+  background: color-mix(in srgb, var(--wc-card, #0d2039) 86%, var(--wc-accent, #0f9f90) 8%) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-search-form input,
+html body #root .app.app-command-shell.app-market .market-search-form .search-input {
+  min-width: 0 !important;
+  min-height: 52px !important;
+  border-radius: 17px !important;
+  color: var(--wc-text-strong, #221509) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-market .market-search-form input,
+html body #root .app.app-theme-dark.app-command-shell.app-market .market-search-form .search-input {
+  color: var(--wc-text, #f9fafb) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-search-form > button {
+  min-height: 52px !important;
+  min-width: 98px !important;
+  border-radius: 17px !important;
+  font-weight: 950 !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-search-helper-grid,
+html body #root .app.app-command-shell.app-market .market-search-options {
+  position: static !important;
+  transform: none !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-search-helper-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 9px !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-search-helper-grid > span,
+html body #root .app.app-command-shell.app-market .market-search-options {
+  min-height: 62px !important;
+  border: 1px solid color-mix(in srgb, var(--wc-accent-2, #d9a441) 26%, var(--market-room-border)) !important;
+  border-radius: 18px !important;
+  background: color-mix(in srgb, var(--wc-card-soft, #fff7ea) 90%, transparent) !important;
+  color: var(--wc-text-strong, #221509) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.54) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-market .market-search-helper-grid > span,
+html body #root .app.app-theme-dark.app-command-shell.app-market .market-search-options {
+  background: color-mix(in srgb, var(--wc-card, #0d2039) 87%, transparent) !important;
+  color: var(--wc-text, #f9fafb) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-search-helper-grid > span {
+  display: grid !important;
+  align-content: center !important;
+  gap: 3px !important;
+  padding: 11px !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-search-helper-grid strong,
+html body #root .app.app-command-shell.app-market .market-search-options summary {
+  color: var(--wc-text-strong, #221509) !important;
+  font-weight: 950 !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-market .market-search-helper-grid strong,
+html body #root .app.app-theme-dark.app-command-shell.app-market .market-search-options summary {
+  color: var(--wc-text, #f9fafb) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-search-helper-grid small {
+  color: var(--wc-muted-strong, #5e4731) !important;
+  line-height: 1.22 !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-market .market-search-helper-grid small {
+  color: color-mix(in srgb, var(--wc-text, #f9fafb) 70%, var(--wc-muted, #9fb0c9)) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-search-options {
+  padding: 0 !important;
+  overflow: visible !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-search-options > summary {
+  display: grid !important;
+  align-content: center !important;
+  min-height: 58px !important;
+  padding: 11px 13px !important;
+  white-space: normal !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-results-panel {
+  width: min(100%, 980px) !important;
+  margin-inline: auto !important;
+  display: grid !important;
+  gap: 15px !important;
+  padding: clamp(16px, 2.8vw, 24px) !important;
+  min-height: max-content !important;
+  height: max-content !important;
+  max-height: none !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-results-panel > .compact-card-header {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: start !important;
+  gap: 12px !important;
+  padding: 0 0 13px !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--wc-accent-2, #d9a441) 24%, var(--wc-border, rgba(154, 93, 38, 0.18))) !important;
+  background: transparent !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-results-panel > .compact-card-header h2 {
+  font-size: clamp(1.28rem, 2.2vw, 1.72rem) !important;
+  line-height: 1.06 !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-results-panel > .compact-card-header .status-badge {
+  min-height: 34px !important;
+  align-content: center !important;
+  border-radius: 999px !important;
+  background: color-mix(in srgb, var(--wc-accent-2, #d9a441) 12%, var(--wc-card-soft, #fff7ea)) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-market .market-results-panel > .compact-card-header .status-badge {
+  background: color-mix(in srgb, var(--wc-accent, #0f9f90) 18%, var(--wc-card, #0d2039)) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-results-safety-note {
+  width: fit-content !important;
+  max-width: 100% !important;
+  margin: -2px 0 0 !important;
+  padding: 8px 11px !important;
+  border: 1px solid color-mix(in srgb, var(--wc-accent-2, #d9a441) 26%, var(--wc-border, rgba(154, 93, 38, 0.18))) !important;
+  border-radius: 999px !important;
+  background: color-mix(in srgb, var(--wc-accent-2, #d9a441) 10%, var(--wc-panel-strong, #fffcf7)) !important;
+  color: var(--wc-muted-strong, #5e4731) !important;
+  font-size: 0.8rem !important;
+  font-weight: 900 !important;
+  line-height: 1.25 !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-market .market-results-safety-note {
+  background: color-mix(in srgb, var(--wc-accent-2, #d9a441) 12%, var(--wc-card, #0d2039)) !important;
+  color: color-mix(in srgb, var(--wc-text, #f9fafb) 76%, var(--wc-muted, #9fb0c9)) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-results-toolbar {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: end !important;
+  gap: 12px !important;
+  padding: 12px !important;
+  border: 1px solid color-mix(in srgb, var(--wc-accent-2, #d9a441) 18%, var(--wc-border, rgba(154, 93, 38, 0.18))) !important;
+  border-radius: 18px !important;
+  background: color-mix(in srgb, var(--wc-panel-strong, #fffcf7) 88%, transparent) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-market .market-results-toolbar {
+  background: color-mix(in srgb, var(--wc-card, #0d2039) 88%, transparent) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-results-toolbar select,
+html body #root .app.app-command-shell.app-market .market-filter-button {
+  min-height: 48px !important;
+  border-radius: 15px !important;
+}
+
+html body #root .app.app-command-shell.app-market .active-filter-chips {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  align-items: center !important;
+  padding: 11px !important;
+  border: 1px solid color-mix(in srgb, var(--wc-accent, #0f9f90) 20%, var(--wc-border, rgba(154, 93, 38, 0.18))) !important;
+  border-radius: 18px !important;
+  background: color-mix(in srgb, var(--wc-accent, #0f9f90) 8%, var(--wc-panel-strong, #fffcf7)) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-market .active-filter-chips {
+  background: color-mix(in srgb, var(--wc-accent, #0f9f90) 12%, var(--wc-card, #0d2039)) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-search-source-note,
+html body #root .app.app-command-shell.app-market .market-set-card {
+  border-radius: 17px !important;
+  border-color: color-mix(in srgb, var(--wc-accent-2, #d9a441) 20%, var(--wc-border, rgba(154, 93, 38, 0.18))) !important;
+  background: color-mix(in srgb, var(--wc-card-soft, #fff7ea) 90%, transparent) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-market .market-search-source-note,
+html body #root .app.app-theme-dark.app-command-shell.app-market .market-set-card {
+  background: color-mix(in srgb, var(--wc-card, #0d2039) 88%, transparent) !important;
+}
+
+html body #root .app.app-command-shell.app-market .catalog-result-group-header {
+  padding: 12px 0 10px !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--wc-accent-2, #d9a441) 18%, var(--wc-border, rgba(154, 93, 38, 0.18))) !important;
+}
+
+html body #root .app.app-command-shell.app-market .catalog-result-groups,
+html body #root .app.app-command-shell.app-market .catalog-result-group,
+html body #root .app.app-command-shell.app-market .catalog-results-list {
+  min-width: 0 !important;
+}
+
+html body #root .app.app-command-shell.app-market .catalog-results-list.catalog-results-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 15px !important;
+}
+
+html body #root .app.app-command-shell.app-market .catalog-result-card.market-mobile-product-card {
+  position: relative !important;
+  display: grid !important;
+  gap: 0 !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  border: 1px solid color-mix(in srgb, var(--wc-accent, #0f9f90) 24%, var(--wc-border, rgba(154, 93, 38, 0.18))) !important;
+  border-radius: 22px !important;
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--wc-accent, #0f9f90) 10%, transparent), transparent 12rem),
+    color-mix(in srgb, var(--wc-panel-strong, #fffcf7) 92%, transparent) !important;
+  box-shadow: 0 14px 32px color-mix(in srgb, var(--wc-shadow, rgba(58, 35, 15, 0.18)) 48%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.55) !important;
+  overflow: hidden !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-market .catalog-result-card.market-mobile-product-card {
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--wc-accent, #0f9f90) 12%, transparent), transparent 12rem),
+    color-mix(in srgb, var(--wc-card, #0d2039) 90%, transparent) !important;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.07) !important;
+}
+
+html body #root .app.app-command-shell.app-market .catalog-result-card.market-mobile-product-card .catalog-result-main {
+  display: grid !important;
+  grid-template-columns: 112px minmax(0, 1fr) !important;
+  gap: 14px !important;
+  align-items: start !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  padding: 15px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: inherit !important;
+  text-align: left !important;
+}
+
+html body #root .app.app-command-shell.app-market .catalog-result-card.market-mobile-product-card .catalog-thumb {
+  width: 100% !important;
+  min-height: 146px !important;
+  border-radius: 18px !important;
+  background: color-mix(in srgb, var(--wc-card, #0d2039) 90%, #000 10%) !important;
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--wc-shadow, rgba(58, 35, 15, 0.18)) 50%, transparent) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-card-body {
+  min-width: 0 !important;
+  display: grid !important;
+  gap: 8px !important;
+  color: var(--wc-text, #14213a) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-market .market-card-body {
+  color: var(--wc-text, #f9fafb) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-card-title {
+  color: var(--wc-text-strong, #221509) !important;
+  font-size: clamp(1.02rem, 2vw, 1.22rem) !important;
+  line-height: 1.1 !important;
+  letter-spacing: 0 !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-market .market-card-title {
+  color: var(--wc-text, #f9fafb) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-card-context,
+html body #root .app.app-command-shell.app-market .market-card-reference-line {
+  color: var(--wc-muted-strong, #5e4731) !important;
+  font-size: 0.82rem !important;
+  line-height: 1.25 !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-market .market-card-context,
+html body #root .app.app-theme-dark.app-command-shell.app-market .market-card-reference-line {
+  color: color-mix(in srgb, var(--wc-text, #f9fafb) 70%, var(--wc-muted, #9fb0c9)) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-card-price-row {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  align-items: center !important;
+  padding-top: 3px !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-price-stack strong {
+  display: block !important;
+  color: var(--wc-text-strong, #221509) !important;
+  font-size: clamp(1.22rem, 3.2vw, 1.52rem) !important;
+  line-height: 1 !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-market .market-price-stack strong {
+  color: var(--wc-text, #f9fafb) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-price-stack span {
+  color: var(--wc-muted-strong, #5e4731) !important;
+  font-weight: 900 !important;
+  line-height: 1.2 !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-market .market-price-stack span {
+  color: color-mix(in srgb, var(--wc-text, #f9fafb) 72%, var(--wc-muted, #9fb0c9)) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-trust-badge-row,
+html body #root .app.app-command-shell.app-market .market-card-freshness-line {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 7px !important;
+  align-items: center !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-trust-badge-row {
+  width: fit-content !important;
+  max-width: 100% !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-trust-badge-row .market-status-pill {
+  border: 1px solid color-mix(in srgb, var(--wc-accent-2, #d9a441) 22%, var(--wc-border, rgba(154, 93, 38, 0.18))) !important;
+  background: color-mix(in srgb, var(--wc-card-soft, #fff7ea) 86%, var(--wc-accent, #0f9f90) 5%) !important;
+  color: var(--wc-muted-strong, #5e4731) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-market .market-trust-badge-row .market-status-pill {
+  background: color-mix(in srgb, var(--wc-card, #0d2039) 84%, var(--wc-accent, #0f9f90) 10%) !important;
+  color: color-mix(in srgb, var(--wc-text, #f9fafb) 76%, var(--wc-muted, #9fb0c9)) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-card-freshness-line {
+  width: fit-content !important;
+  max-width: 100% !important;
+  padding: 7px 9px !important;
+  border: 1px solid color-mix(in srgb, var(--wc-accent, #0f9f90) 18%, var(--wc-border, rgba(154, 93, 38, 0.18))) !important;
+  border-radius: 16px !important;
+  background: color-mix(in srgb, var(--wc-accent, #0f9f90) 7%, var(--wc-panel-strong, #fffcf7)) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-market .market-card-freshness-line {
+  background: color-mix(in srgb, var(--wc-accent, #0f9f90) 12%, var(--wc-card, #0d2039)) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-card-freshness-line span {
+  color: var(--wc-text-strong, #221509) !important;
+  font-size: 0.74rem !important;
+  font-weight: 900 !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-market .market-card-freshness-line span {
+  color: var(--wc-text, #f9fafb) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-status-pill,
+html body #root .app.app-command-shell.app-market .price-badge {
+  max-width: 100% !important;
+  min-height: 26px !important;
+  align-content: center !important;
+  border-radius: 999px !important;
+  white-space: normal !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-result-add-actions {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.32fr) repeat(2, minmax(78px, 0.72fr)) !important;
+  gap: 10px !important;
+  padding: 0 15px 15px !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-result-add-actions > button {
+  min-width: 0 !important;
+  min-height: 46px !important;
+  border-radius: 15px !important;
+  font-weight: 950 !important;
+  white-space: normal !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-result-add-button {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--wc-accent, #0f9f90) 78%, #fff 4%), var(--wc-accent-2, #d9a441)) !important;
+  border-color: color-mix(in srgb, var(--wc-accent, #0f9f90) 45%, var(--wc-accent-2, #d9a441)) !important;
+  color: #06101f !important;
+}
+
+@media (min-width: 1180px) {
+  html body #root .app.app-command-shell.app-market .market-page {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-page-heading,
+  html body #root .app.app-command-shell.app-market .market-results-panel {
+    width: min(100%, 980px) !important;
+  }
+}
+
+@media (max-width: 780px) {
+  html body #root .app.app-command-shell.app-market .main,
+  html body #root .app.app-command-shell.app-market .market-page {
+    padding-bottom: max(234px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 172px)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-page {
+    gap: 13px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-page-heading {
+    min-height: max-content !important;
+    height: max-content !important;
+    max-height: none !important;
+    padding: 16px !important;
+    margin-inline: 8px !important;
+    overflow: visible !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-page-heading .standard-page-header-copy h2 {
+    max-width: none !important;
+    font-size: clamp(2rem, 9vw, 2.55rem) !important;
+    line-height: 1.02 !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-page-heading .standard-page-header-copy p {
+    font-size: 0.92rem !important;
+    line-height: 1.38 !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-search-form {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    gap: 8px !important;
+    padding: 8px !important;
+    border-radius: 21px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-search-form input,
+  html body #root .app.app-command-shell.app-market .market-search-form .search-input,
+  html body #root .app.app-command-shell.app-market .market-search-form > button {
+    min-height: 48px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-search-form > button {
+    min-width: 82px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-search-helper-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-search-helper-grid > span {
+    min-height: 55px !important;
+    padding: 9px 10px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-search-options {
+    min-height: 52px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-search-options > summary {
+    min-height: 52px !important;
+    padding: 9px 11px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-results-panel {
+    margin-inline: 8px !important;
+    padding: 14px !important;
+    border-radius: 24px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-results-toolbar {
+    grid-template-columns: 1fr !important;
+    padding: 10px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .catalog-results-list.catalog-results-grid {
+    grid-template-columns: 1fr !important;
+    gap: 13px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .catalog-result-card.market-mobile-product-card .catalog-result-main {
+    grid-template-columns: 92px minmax(0, 1fr) !important;
+    gap: 12px !important;
+    padding: 13px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .catalog-result-card.market-mobile-product-card .catalog-thumb {
+    min-height: 128px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-result-add-actions {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    gap: 9px !important;
+    padding: 0 13px 13px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-result-add-actions > button:first-child {
+    grid-column: 1 / -1 !important;
+  }
+}
+
+@media (max-width: 430px) {
+  html body #root .app.app-command-shell.app-market .market-page-heading {
+    padding: 14px !important;
+    border-radius: 23px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-page-heading .standard-page-header-copy h2 {
+    font-size: clamp(1.82rem, 8.5vw, 2.3rem) !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-search-form {
+    grid-template-columns: 1fr !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-search-form > button {
+    width: 100% !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-search-helper-grid strong,
+  html body #root .app.app-command-shell.app-market .market-search-options summary {
+    font-size: 0.78rem !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-search-helper-grid small {
+    font-size: 0.66rem !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-results-panel > .compact-card-header {
+    grid-template-columns: 1fr !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-results-panel > .compact-card-header .status-badge {
+    justify-self: start !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .catalog-result-card.market-mobile-product-card .catalog-result-main {
+    grid-template-columns: 82px minmax(0, 1fr) !important;
+    gap: 10px !important;
+    padding: 11px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .catalog-result-card.market-mobile-product-card .catalog-thumb {
+    min-height: 112px !important;
+    border-radius: 16px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-card-title {
+    font-size: 0.96rem !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-card-context,
+  html body #root .app.app-command-shell.app-market .market-card-reference-line,
+  html body #root .app.app-command-shell.app-market .market-card-freshness-line span {
+    font-size: 0.68rem !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-price-stack strong {
+    font-size: 1.08rem !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-status-pill,
+  html body #root .app.app-command-shell.app-market .price-badge {
+    font-size: 0.64rem !important;
+    padding-inline: 7px !important;
+  }
+}

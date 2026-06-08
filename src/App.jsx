@@ -61653,6 +61653,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   </div>
 
                   {catalogSearchHasRun ? (
+                    <p className="market-results-safety-note">Fair price discovery only. No checkout or stock guarantee.</p>
+                  ) : null}
+
+                  {catalogSearchHasRun ? (
                   <div className="catalog-results-toolbar market-results-toolbar">
                     <Field label="Sort">
                       <select value={catalogSort} onChange={(e) => setCatalogSort(e.target.value)}>
