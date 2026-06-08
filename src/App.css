@@ -90134,3 +90134,583 @@ html body #root .app.app-command-shell.app-tidepool .tidepool-comments summary s
     border-radius: 16px !important;
   }
 }
+
+/* Membership structure polish: clear plans, friendly locks, protected Scout value. */
+html body #root .app.app-command-shell.app-membership {
+  --membership-room-ink: #102038;
+  --membership-room-muted: rgba(16, 32, 56, 0.72);
+  --membership-room-border: rgba(176, 127, 72, 0.26);
+  --membership-room-panel: rgba(255, 252, 246, 0.94);
+  --membership-room-card: rgba(255, 248, 238, 0.9);
+  --membership-room-chip: rgba(255, 242, 221, 0.9);
+  --membership-room-lock: rgba(34, 58, 93, 0.08);
+  --membership-room-accent: #d98636;
+  --membership-room-scout: #1e8aa0;
+}
+
+html body #root .app.app-command-shell.app-theme-dark.app-membership,
+html body #root .app.app-shell-dark.app-membership {
+  --membership-room-ink: #fff2dc;
+  --membership-room-muted: rgba(225, 238, 247, 0.76);
+  --membership-room-border: rgba(221, 168, 88, 0.2);
+  --membership-room-panel: rgba(9, 23, 43, 0.92);
+  --membership-room-card: rgba(13, 29, 51, 0.88);
+  --membership-room-chip: rgba(43, 32, 43, 0.82);
+  --membership-room-lock: rgba(2, 10, 24, 0.48);
+}
+
+html body #root .app.app-command-shell.app-membership .main {
+  grid-template-rows: none !important;
+  grid-auto-rows: max-content !important;
+  align-content: start !important;
+  gap: clamp(16px, 2.2vw, 22px) !important;
+}
+
+html body #root .app.app-command-shell.app-membership .membership-foundation-panel.tier-foundation-panel {
+  display: grid !important;
+  grid-template-rows: none !important;
+  grid-auto-rows: max-content !important;
+  align-content: start !important;
+  gap: clamp(14px, 2vw, 18px) !important;
+  width: min(100%, 1120px) !important;
+  max-width: min(100%, 1120px) !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  margin-inline: auto !important;
+  padding: clamp(16px, 2.2vw, 22px) !important;
+  border: 1px solid var(--membership-room-border) !important;
+  border-radius: 28px !important;
+  overflow: visible !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(217, 134, 54, 0.11), transparent 14rem),
+    radial-gradient(circle at 100% 0%, rgba(30, 138, 160, 0.08), transparent 16rem),
+    linear-gradient(145deg, rgba(255, 253, 248, 0.98), rgba(255, 245, 232, 0.88)) !important;
+  color: var(--membership-room-ink) !important;
+  box-shadow: 0 18px 44px rgba(72, 45, 20, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.72) !important;
+}
+
+html body #root .app.app-command-shell.app-theme-dark.app-membership .membership-foundation-panel.tier-foundation-panel,
+html body #root .app.app-shell-dark.app-membership .membership-foundation-panel.tier-foundation-panel {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(217, 134, 54, 0.1), transparent 14rem),
+    radial-gradient(circle at 100% 0%, rgba(30, 138, 160, 0.12), transparent 16rem),
+    linear-gradient(145deg, rgba(10, 24, 45, 0.96), rgba(5, 14, 31, 0.94)) !important;
+  box-shadow: 0 20px 52px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+}
+
+html body #root .app.app-command-shell.app-membership .membership-foundation-panel > .compact-card-header {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  padding: clamp(14px, 2.2vw, 18px) !important;
+  border: 1px solid rgba(217, 134, 54, 0.24) !important;
+  border-radius: 22px !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(30, 138, 160, 0.08), transparent 12rem),
+    rgba(255, 250, 242, 0.72) !important;
+  color: var(--membership-room-ink) !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell.app-theme-dark.app-membership .membership-foundation-panel > .compact-card-header,
+html body #root .app.app-shell-dark.app-membership .membership-foundation-panel > .compact-card-header {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(30, 138, 160, 0.12), transparent 12rem),
+    rgba(6, 18, 36, 0.72) !important;
+}
+
+html body #root .app.app-command-shell.app-membership .membership-foundation-panel > .compact-card-header > div {
+  display: grid !important;
+  gap: 6px !important;
+  min-width: min(100%, 34rem) !important;
+}
+
+html body #root .app.app-command-shell.app-membership .membership-foundation-panel > .compact-card-header :where(.section-kicker, h2, p, span, strong),
+html body #root .app.app-command-shell.app-membership .tier-status-panel :where(span, strong, small, p),
+html body #root .app.app-command-shell.app-membership .tier-foundation-note :where(strong, p),
+html body #root .app.app-command-shell.app-membership .tier-lock-preview-panel :where(h3, p, strong, span, small),
+html body #root .app.app-command-shell.app-membership .tier-plan-card :where(strong, h3, p, span, li, small),
+html body #root .app.app-command-shell.app-membership .tier-add-on-card :where(strong, b, p, span),
+html body #root .app.app-command-shell.app-membership .tier-beta-flags article :where(strong, p, span) {
+  text-shadow: none !important;
+}
+
+html body #root .app.app-command-shell.app-membership .membership-foundation-panel > .compact-card-header h2 {
+  color: var(--membership-room-ink) !important;
+  font-size: clamp(1.85rem, 3.8vw, 2.75rem) !important;
+  line-height: 1.06 !important;
+}
+
+html body #root .app.app-command-shell.app-membership .membership-foundation-panel > .compact-card-header p {
+  color: var(--membership-room-muted) !important;
+  font-size: clamp(0.9rem, 1.4vw, 1rem) !important;
+  line-height: 1.44 !important;
+}
+
+html body #root .app.app-command-shell.app-membership .membership-foundation-panel > .compact-card-header .status-badge {
+  min-height: 34px !important;
+  padding: 8px 12px !important;
+  border-color: rgba(217, 134, 54, 0.34) !important;
+  background: rgba(255, 239, 218, 0.9) !important;
+  color: #7a3d12 !important;
+  font-weight: 850 !important;
+}
+
+html body #root .app.app-command-shell.app-theme-dark.app-membership .membership-foundation-panel > .compact-card-header .status-badge,
+html body #root .app.app-shell-dark.app-membership .membership-foundation-panel > .compact-card-header .status-badge {
+  background: rgba(60, 39, 40, 0.9) !important;
+  color: #ffdfb5 !important;
+}
+
+html body #root .app.app-command-shell.app-membership .tier-status-panel {
+  display: grid !important;
+  grid-template-columns: minmax(210px, 0.82fr) minmax(0, 1.9fr) !important;
+  gap: 12px !important;
+  height: auto !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell.app-membership .tier-current-plan-card,
+html body #root .app.app-command-shell.app-membership .tier-status-grid article,
+html body #root .app.app-command-shell.app-membership .tier-plan-card,
+html body #root .app.app-command-shell.app-membership .tier-lock-preview-card,
+html body #root .app.app-command-shell.app-membership .tier-add-on-card,
+html body #root .app.app-command-shell.app-membership .tier-beta-flags article {
+  border: 1px solid var(--membership-room-border) !important;
+  border-radius: 20px !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(30, 138, 160, 0.07), transparent 10rem),
+    var(--membership-room-card) !important;
+  color: var(--membership-room-ink) !important;
+  box-shadow: 0 14px 32px rgba(72, 45, 20, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.54) !important;
+}
+
+html body #root .app.app-command-shell.app-theme-dark.app-membership :where(.tier-current-plan-card, .tier-status-grid article, .tier-plan-card, .tier-lock-preview-card, .tier-add-on-card, .tier-beta-flags article),
+html body #root .app.app-shell-dark.app-membership :where(.tier-current-plan-card, .tier-status-grid article, .tier-plan-card, .tier-lock-preview-card, .tier-add-on-card, .tier-beta-flags article) {
+  box-shadow: 0 15px 34px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+}
+
+html body #root .app.app-command-shell.app-membership .tier-current-plan-card {
+  min-height: 132px !important;
+  align-content: center !important;
+  padding: 18px !important;
+  border-color: rgba(217, 134, 54, 0.34) !important;
+}
+
+html body #root .app.app-command-shell.app-membership .tier-current-plan-card span,
+html body #root .app.app-command-shell.app-membership .tier-status-grid span,
+html body #root .app.app-command-shell.app-membership .tier-lock-preview-card span,
+html body #root .app.app-command-shell.app-membership .tier-plan-card-top span,
+html body #root .app.app-command-shell.app-membership .tier-add-on-card span {
+  color: var(--membership-room-scout) !important;
+  font-size: 0.72rem !important;
+  font-weight: 850 !important;
+  letter-spacing: 0.05em !important;
+  text-transform: uppercase !important;
+}
+
+html body #root .app.app-command-shell.app-theme-dark.app-membership :where(.tier-current-plan-card span, .tier-status-grid span, .tier-lock-preview-card span, .tier-plan-card-top span, .tier-add-on-card span),
+html body #root .app.app-shell-dark.app-membership :where(.tier-current-plan-card span, .tier-status-grid span, .tier-lock-preview-card span, .tier-plan-card-top span, .tier-add-on-card span) {
+  color: #7dd3fc !important;
+}
+
+html body #root .app.app-command-shell.app-membership .tier-current-plan-card strong {
+  color: var(--membership-room-ink) !important;
+  font-size: clamp(2rem, 4vw, 2.85rem) !important;
+}
+
+html body #root .app.app-command-shell.app-membership .tier-current-plan-card p,
+html body #root .app.app-command-shell.app-membership .tier-status-grid small,
+html body #root .app.app-command-shell.app-membership .tier-lock-preview-card p,
+html body #root .app.app-command-shell.app-membership .tier-lock-preview-card small,
+html body #root .app.app-command-shell.app-membership .tier-plan-card p,
+html body #root .app.app-command-shell.app-membership .tier-plan-card li,
+html body #root .app.app-command-shell.app-membership .tier-add-on-card p,
+html body #root .app.app-command-shell.app-membership .tier-beta-flags p {
+  color: var(--membership-room-muted) !important;
+  line-height: 1.4 !important;
+}
+
+html body #root .app.app-command-shell.app-membership .tier-status-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell.app-membership .tier-status-grid article {
+  min-height: 132px !important;
+  align-content: center !important;
+  padding: 14px !important;
+}
+
+html body #root .app.app-command-shell.app-membership .tier-status-grid strong,
+html body #root .app.app-command-shell.app-membership .tier-plan-card h3,
+html body #root .app.app-command-shell.app-membership .tier-plan-card-top strong,
+html body #root .app.app-command-shell.app-membership .tier-lock-preview-card strong,
+html body #root .app.app-command-shell.app-membership .tier-add-on-card strong,
+html body #root .app.app-command-shell.app-membership .tier-add-on-card b,
+html body #root .app.app-command-shell.app-membership .tier-beta-flags strong {
+  color: var(--membership-room-ink) !important;
+}
+
+html body #root .app.app-command-shell.app-membership .tier-foundation-note {
+  display: grid !important;
+  gap: 8px !important;
+  margin: 0 !important;
+  padding: 16px !important;
+  border: 1px solid rgba(217, 134, 54, 0.32) !important;
+  border-radius: 22px !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(217, 134, 54, 0.16), transparent 11rem),
+    linear-gradient(145deg, rgba(255, 241, 220, 0.92), rgba(250, 255, 252, 0.82)) !important;
+  color: var(--membership-room-ink) !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell.app-theme-dark.app-membership .tier-foundation-note,
+html body #root .app.app-shell-dark.app-membership .tier-foundation-note {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(217, 134, 54, 0.16), transparent 11rem),
+    rgba(38, 20, 12, 0.72) !important;
+}
+
+html body #root .app.app-command-shell.app-membership .tier-foundation-note strong {
+  color: var(--membership-room-ink) !important;
+  font-size: clamp(1rem, 1.7vw, 1.12rem) !important;
+}
+
+html body #root .app.app-command-shell.app-membership .tier-foundation-note p {
+  color: var(--membership-room-muted) !important;
+  margin: 0 !important;
+}
+
+html body #root .app.app-command-shell.app-membership .tier-lock-preview-panel,
+html body #root .app.app-command-shell.app-membership .tier-add-on-panel {
+  display: grid !important;
+  gap: 12px !important;
+  margin: 0 !important;
+  padding: 14px !important;
+  border: 1px solid var(--membership-room-border) !important;
+  border-radius: 24px !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(30, 138, 160, 0.08), transparent 12rem),
+    var(--membership-room-panel) !important;
+  color: var(--membership-room-ink) !important;
+}
+
+html body #root .app.app-command-shell.app-membership .tier-lock-preview-panel > .compact-card-header,
+html body #root .app.app-command-shell.app-membership .tier-add-on-panel > .compact-card-header {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell.app-membership .tier-lock-preview-panel > .compact-card-header h3,
+html body #root .app.app-command-shell.app-membership .tier-add-on-panel > .compact-card-header h3 {
+  color: var(--membership-room-ink) !important;
+  font-size: clamp(1.08rem, 1.9vw, 1.32rem) !important;
+}
+
+html body #root .app.app-command-shell.app-membership .tier-lock-preview-panel > .compact-card-header p,
+html body #root .app.app-command-shell.app-membership .tier-add-on-panel > .compact-card-header p {
+  color: var(--membership-room-muted) !important;
+}
+
+html body #root .app.app-command-shell.app-membership .tier-lock-preview-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) !important;
+  gap: 10px !important;
+}
+
+html body #root .app.app-command-shell.app-membership .tier-lock-preview-card {
+  align-content: start !important;
+  min-height: 146px !important;
+  padding: 14px !important;
+}
+
+html body #root .app.app-command-shell.app-membership .tier-lock-preview-card small {
+  color: var(--membership-room-scout) !important;
+  font-weight: 760 !important;
+}
+
+html body #root .app.app-command-shell.app-membership .tier-plan-grid {
+  grid-template-columns: repeat(auto-fit, minmax(235px, 1fr)) !important;
+  gap: 12px !important;
+  margin: 0 !important;
+}
+
+html body #root .app.app-command-shell.app-membership .tier-plan-card {
+  gap: 11px !important;
+  min-height: 0 !important;
+  padding: 16px !important;
+}
+
+html body #root .app.app-command-shell.app-membership .tier-plan-card.current {
+  border-color: rgba(217, 134, 54, 0.46) !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(217, 134, 54, 0.16), transparent 12rem),
+    var(--membership-room-card) !important;
+}
+
+html body #root .app.app-command-shell.app-membership .tier-plan-card-top {
+  align-items: flex-start !important;
+}
+
+html body #root .app.app-command-shell.app-membership .tier-plan-card h3 {
+  font-size: clamp(1.18rem, 2.2vw, 1.45rem) !important;
+}
+
+html body #root .app.app-command-shell.app-membership .tier-plan-audience,
+html body #root .app.app-command-shell.app-membership .tier-plan-benefit {
+  color: var(--membership-room-ink) !important;
+  font-weight: 780 !important;
+}
+
+html body #root .app.app-command-shell.app-membership .tier-plan-gate-copy {
+  border: 1px solid rgba(30, 138, 160, 0.22) !important;
+  border-radius: 15px !important;
+  background: rgba(232, 252, 249, 0.68) !important;
+  color: #105568 !important;
+}
+
+html body #root .app.app-command-shell.app-theme-dark.app-membership .tier-plan-gate-copy,
+html body #root .app.app-shell-dark.app-membership .tier-plan-gate-copy {
+  background: rgba(3, 29, 48, 0.72) !important;
+  color: #b7f2ff !important;
+}
+
+html body #root .app.app-command-shell.app-membership .tier-plan-rule-row {
+  gap: 8px !important;
+}
+
+html body #root .app.app-command-shell.app-membership .tier-plan-rule-row span,
+html body #root .app.app-command-shell.app-membership .tier-lock-preview-panel .status-badge,
+html body #root .app.app-command-shell.app-membership .tier-add-on-panel .status-badge,
+html body #root .app.app-command-shell.app-membership .tier-beta-flags .status-badge {
+  min-height: 30px !important;
+  border-color: rgba(30, 138, 160, 0.24) !important;
+  background: var(--membership-room-chip) !important;
+  color: var(--membership-room-ink) !important;
+  font-weight: 800 !important;
+}
+
+html body #root .app.app-command-shell.app-membership .tier-plan-card ul {
+  gap: 7px !important;
+  padding-left: 18px !important;
+}
+
+html body #root .app.app-command-shell.app-membership .tier-plan-card button[disabled],
+html body #root .app.app-command-shell.app-membership > .quick-actions button,
+html body #root .app.app-command-shell.app-membership .membership-foundation-panel > .quick-actions button {
+  min-height: 42px !important;
+  border-radius: 15px !important;
+  border-color: rgba(16, 32, 56, 0.14) !important;
+  background: rgba(255, 255, 255, 0.72) !important;
+  color: rgba(16, 32, 56, 0.62) !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell.app-theme-dark.app-membership :where(.tier-plan-card button[disabled], .membership-foundation-panel > .quick-actions button),
+html body #root .app.app-shell-dark.app-membership :where(.tier-plan-card button[disabled], .membership-foundation-panel > .quick-actions button) {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  background: rgba(8, 20, 38, 0.74) !important;
+  color: rgba(225, 238, 247, 0.68) !important;
+}
+
+html body #root .app.app-command-shell.app-membership .tier-add-on-grid,
+html body #root .app.app-command-shell.app-membership .tier-beta-flags {
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)) !important;
+  gap: 10px !important;
+}
+
+html body #root .app.app-command-shell.app-membership .tier-add-on-card,
+html body #root .app.app-command-shell.app-membership .tier-beta-flags article {
+  padding: 14px !important;
+}
+
+html body #root .app.app-command-shell.app-membership .membership-foundation-panel > .quick-actions {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  justify-content: flex-start !important;
+  gap: 10px !important;
+  margin-top: 0 !important;
+}
+
+@media (min-width: 1180px) {
+  html body #root .app.app-command-shell.app-membership .tier-status-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-membership .tier-lock-preview-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 980px) {
+  html body #root .app.app-command-shell.app-membership .tier-status-panel {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell.app-membership .tier-status-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-membership .tier-plan-grid,
+  html body #root .app.app-command-shell.app-membership .tier-lock-preview-grid,
+  html body #root .app.app-command-shell.app-membership .tier-add-on-grid,
+  html body #root .app.app-command-shell.app-membership .tier-beta-flags {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 780px) {
+  html body #root .app.app-command-shell.app-membership {
+    --theme-final-bottom-clearance: max(300px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 220px));
+  }
+
+  html body #root .app.app-command-shell.app-membership .main {
+    padding-bottom: var(--theme-final-bottom-clearance) !important;
+    scroll-padding-bottom: var(--theme-final-bottom-clearance) !important;
+  }
+
+  html body #root .app.app-command-shell.app-membership .membership-foundation-panel.tier-foundation-panel {
+    margin: 0 8px 16px !important;
+    padding: 12px !important;
+    border-radius: 24px !important;
+    gap: 11px !important;
+  }
+
+  html body #root .app.app-command-shell.app-membership .membership-foundation-panel > .compact-card-header {
+    padding: 12px !important;
+    border-radius: 19px !important;
+  }
+
+  html body #root .app.app-command-shell.app-membership .membership-foundation-panel > .compact-card-header h2 {
+    font-size: clamp(1.5rem, 7.6vw, 2rem) !important;
+  }
+
+  html body #root .app.app-command-shell.app-membership .membership-foundation-panel > .compact-card-header p {
+    font-size: 0.8rem !important;
+    line-height: 1.34 !important;
+  }
+
+  html body #root .app.app-command-shell.app-membership .membership-foundation-panel > .compact-card-header .section-kicker {
+    font-size: 0.68rem !important;
+  }
+
+  html body #root .app.app-command-shell.app-membership .tier-current-plan-card {
+    min-height: 92px !important;
+    padding: 13px !important;
+  }
+
+  html body #root .app.app-command-shell.app-membership .tier-current-plan-card strong {
+    font-size: 1.85rem !important;
+  }
+
+  html body #root .app.app-command-shell.app-membership .tier-status-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  html body #root .app.app-command-shell.app-membership .tier-status-grid article {
+    min-height: 94px !important;
+    padding: 10px !important;
+    border-radius: 16px !important;
+  }
+
+  html body #root .app.app-command-shell.app-membership .tier-status-grid span,
+  html body #root .app.app-command-shell.app-membership .tier-current-plan-card span,
+  html body #root .app.app-command-shell.app-membership .tier-lock-preview-card span,
+  html body #root .app.app-command-shell.app-membership .tier-plan-card-top span,
+  html body #root .app.app-command-shell.app-membership .tier-add-on-card span {
+    font-size: 0.62rem !important;
+    letter-spacing: 0.04em !important;
+  }
+
+  html body #root .app.app-command-shell.app-membership .tier-status-grid strong {
+    font-size: 0.92rem !important;
+  }
+
+  html body #root .app.app-command-shell.app-membership .tier-status-grid small,
+  html body #root .app.app-command-shell.app-membership .tier-current-plan-card p {
+    font-size: 0.72rem !important;
+    line-height: 1.28 !important;
+  }
+
+  html body #root .app.app-command-shell.app-membership .tier-foundation-note {
+    padding: 12px !important;
+    border-radius: 18px !important;
+  }
+
+  html body #root .app.app-command-shell.app-membership .tier-foundation-note p {
+    font-size: 0.78rem !important;
+    line-height: 1.34 !important;
+  }
+
+  html body #root .app.app-command-shell.app-membership .tier-lock-preview-panel,
+  html body #root .app.app-command-shell.app-membership .tier-add-on-panel {
+    padding: 12px !important;
+    border-radius: 20px !important;
+  }
+
+  html body #root .app.app-command-shell.app-membership .tier-plan-grid,
+  html body #root .app.app-command-shell.app-membership .tier-lock-preview-grid,
+  html body #root .app.app-command-shell.app-membership .tier-add-on-grid,
+  html body #root .app.app-command-shell.app-membership .tier-beta-flags {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell.app-membership .tier-lock-preview-card {
+    min-height: 0 !important;
+    padding: 12px !important;
+  }
+
+  html body #root .app.app-command-shell.app-membership .tier-plan-card {
+    padding: 13px !important;
+    border-radius: 18px !important;
+  }
+
+  html body #root .app.app-command-shell.app-membership .tier-plan-card ul {
+    max-height: none !important;
+  }
+
+  html body #root .app.app-command-shell.app-membership .membership-foundation-panel > .quick-actions {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+  }
+
+  html body #root .app.app-command-shell.app-membership .membership-foundation-panel > .quick-actions button {
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 430px) {
+  html body #root .app.app-command-shell.app-membership .membership-foundation-panel > .compact-card-header {
+    gap: 8px !important;
+  }
+
+  html body #root .app.app-command-shell.app-membership .tier-status-grid article {
+    min-height: 88px !important;
+    padding: 9px !important;
+  }
+
+  html body #root .app.app-command-shell.app-membership .tier-plan-rule-row span {
+    font-size: 0.68rem !important;
+  }
+}
