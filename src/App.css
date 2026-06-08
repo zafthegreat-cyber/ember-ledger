@@ -88264,3 +88264,718 @@ html body #root .app.app-command-shell.app-market .market-result-add-button {
     padding-inline: 7px !important;
   }
 }
+
+/* Forge structure polish: fair trade table hierarchy. */
+html body #root .app.app-command-shell.app-forge {
+  --forge-table-border: rgba(142, 91, 45, 0.24);
+  --forge-table-border-strong: rgba(206, 124, 61, 0.38);
+  --forge-table-panel: rgba(255, 250, 239, 0.9);
+  --forge-table-panel-strong: rgba(255, 244, 225, 0.96);
+  --forge-table-ink: #1f2430;
+  --forge-table-muted: rgba(74, 64, 55, 0.76);
+  --forge-table-copper: #c9663f;
+  --forge-table-gold: #b8791d;
+  --forge-table-fair: #27775e;
+  --forge-table-shadow: 0 18px 42px rgba(82, 51, 22, 0.12);
+}
+
+html body #root .app.app-command-shell.app-theme-dark.app-forge,
+html body #root .app.app-shell-dark.app-forge {
+  --forge-table-border: rgba(255, 184, 77, 0.2);
+  --forge-table-border-strong: rgba(255, 122, 77, 0.42);
+  --forge-table-panel: rgba(8, 18, 35, 0.86);
+  --forge-table-panel-strong: rgba(14, 25, 45, 0.94);
+  --forge-table-ink: #fff7ed;
+  --forge-table-muted: rgba(230, 238, 248, 0.76);
+  --forge-table-copper: #ff8b5e;
+  --forge-table-gold: #ffbd63;
+  --forge-table-fair: #7dd3b0;
+  --forge-table-shadow: 0 22px 56px rgba(0, 0, 0, 0.34);
+}
+
+html body #root .app.app-command-shell.app-forge .main {
+  padding-bottom: calc(130px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+html body #root .app.app-command-shell.app-forge .forge-hero-panel.forge-command-center,
+html body #root .app.app-command-shell.app-forge .forge-home-inventory-section {
+  border: 1px solid var(--forge-table-border-strong) !important;
+  border-radius: 30px !important;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(255, 132, 76, 0.14), transparent 28%),
+    radial-gradient(circle at 94% 10%, rgba(255, 192, 96, 0.14), transparent 26%),
+    linear-gradient(145deg, var(--forge-table-panel-strong), var(--forge-table-panel)) !important;
+  box-shadow: var(--forge-table-shadow) !important;
+  overflow: visible !important;
+}
+
+html body #root .app.app-command-shell.app-theme-dark.app-forge .forge-hero-panel.forge-command-center,
+html body #root .app.app-shell-dark.app-forge .forge-hero-panel.forge-command-center,
+html body #root .app.app-command-shell.app-theme-dark.app-forge .forge-home-inventory-section,
+html body #root .app.app-shell-dark.app-forge .forge-home-inventory-section {
+  background:
+    radial-gradient(circle at 8% 0%, rgba(255, 111, 78, 0.18), transparent 30%),
+    radial-gradient(circle at 94% 12%, rgba(255, 184, 77, 0.13), transparent 28%),
+    linear-gradient(145deg, rgba(17, 28, 50, 0.98), rgba(6, 15, 31, 0.94)) !important;
+}
+
+html body #root .app.app-forge .forge-hero-panel.forge-command-center::before,
+html body #root .app.app-forge .forge-hero-panel.forge-command-center::after,
+html body #root .app.app-forge .forge-command-center::before,
+html body #root .app.app-forge .forge-command-center::after,
+html body #root .app.app-forge .standard-page-header.panel.forge-command-center::before,
+html body #root .app.app-forge .standard-page-header.panel.forge-command-center::after,
+html body #root .app.app-forge .forge-command-center .standard-page-header-copy h2::after,
+html body #root .app.app-command-shell.app-forge .forge-hero-panel.forge-command-center::before,
+html body #root .app.app-command-shell.app-forge .forge-hero-panel.forge-command-center::after,
+html body #root .app.app-command-shell.app-forge .forge-command-center::before,
+html body #root .app.app-command-shell.app-forge .forge-command-center::after,
+html body #root .app.app-command-shell.app-forge .standard-page-header.panel.forge-command-center::before,
+html body #root .app.app-command-shell.app-forge .standard-page-header.panel.forge-command-center::after,
+html body #root .app.app-command-shell.app-forge .forge-command-center .standard-page-header-copy h2::after {
+  content: none !important;
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell.app-forge .forge-command-summary,
+html body #root .app.app-command-shell.app-forge .forge-main-command-panel {
+  display: grid !important;
+  gap: clamp(13px, 2vw, 18px) !important;
+}
+
+html body #root .app.app-command-shell.app-forge .forge-command-summary,
+html body #root .app.app-command-shell.app-forge .forge-main-command-heading,
+html body #root .app.app-command-shell.app-forge .forge-main-command-card > .compact-card-header,
+html body #root .app.app-command-shell.app-forge .forge-toolbar,
+html body #root .app.app-command-shell.app-forge .forge-business-dashboard-heading,
+html body #root .app.app-command-shell.app-forge .forge-activity-command-card > .compact-card-header {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-forge .forge-command-center .standard-page-header-main,
+html body #root .app.app-forge .forge-command-center .standard-page-header-copy,
+html body #root .app.app-command-shell.app-forge .forge-command-center .standard-page-header-main,
+html body #root .app.app-command-shell.app-forge .forge-command-center .standard-page-header-copy {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell.app-forge .forge-top-summary,
+html body #root .app.app-command-shell.app-forge .forge-command-overview.forge-section-tabs,
+html body #root .app.app-command-shell.app-forge .forge-identity-pill-row,
+html body #root .app.app-command-shell.app-forge .summary-pill-row.forge-identity-pill-row {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell.app-forge .forge-command-center .standard-page-header-summary {
+  display: grid !important;
+  gap: 12px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell.app-forge .forge-command-summary > span,
+html body #root .app.app-command-shell.app-forge .forge-command-center .standard-page-header-summary > span {
+  display: block !important;
+  width: 100% !important;
+  padding: 7px 10px !important;
+  border: 1px solid rgba(201, 102, 63, 0.16) !important;
+  border-radius: 0 !important;
+  background: rgba(255, 235, 215, 0.62) !important;
+  color: var(--forge-table-ink) !important;
+  box-shadow: none !important;
+  font-size: 0.77rem !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.02em !important;
+  text-transform: uppercase !important;
+}
+
+html body #root .app.app-command-shell.app-theme-dark.app-forge .forge-command-summary > span,
+html body #root .app.app-shell-dark.app-forge .forge-command-summary > span,
+html body #root .app.app-command-shell.app-theme-dark.app-forge .forge-command-center .standard-page-header-summary > span,
+html body #root .app.app-shell-dark.app-forge .forge-command-center .standard-page-header-summary > span {
+  border-color: rgba(255, 184, 77, 0.14) !important;
+  background: rgba(255, 111, 78, 0.1) !important;
+  color: var(--forge-table-ink) !important;
+}
+
+html body #root .app.app-command-shell.app-forge .forge-top-summary {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+html body #root .app.app-command-shell.app-forge .forge-summary-card,
+html body #root .app.app-command-shell.app-forge .forge-ledger-card,
+html body #root .app.app-command-shell.app-forge .forge-overview-card {
+  min-width: 0 !important;
+  border: 1px solid var(--forge-table-border) !important;
+  border-radius: 20px !important;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.42), rgba(255, 244, 225, 0.26)),
+    rgba(255, 249, 238, 0.76) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.58) !important;
+}
+
+html body #root .app.app-command-shell.app-theme-dark.app-forge .forge-summary-card,
+html body #root .app.app-shell-dark.app-forge .forge-summary-card,
+html body #root .app.app-command-shell.app-theme-dark.app-forge .forge-ledger-card,
+html body #root .app.app-shell-dark.app-forge .forge-ledger-card,
+html body #root .app.app-command-shell.app-theme-dark.app-forge .forge-overview-card,
+html body #root .app.app-shell-dark.app-forge .forge-overview-card {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.06), rgba(255, 184, 77, 0.035)),
+    rgba(8, 18, 36, 0.82) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+}
+
+html body #root .app.app-command-shell.app-forge .forge-summary-card span,
+html body #root .app.app-command-shell.app-forge .forge-ledger-card span,
+html body #root .app.app-command-shell.app-forge .forge-preview-kicker,
+html body #root .app.app-command-shell.app-forge .forge-overview-title,
+html body #root .app.app-command-shell.app-forge .forge-command-group-preview dt,
+html body #root .app.app-command-shell.app-forge .forge-sale-preview-row dt {
+  color: var(--forge-table-gold) !important;
+  font-size: 0.72rem !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.02em !important;
+  text-transform: uppercase !important;
+}
+
+html body #root .app.app-command-shell.app-forge .forge-summary-card span,
+html body #root .app.app-command-shell.app-forge .forge-ledger-card span,
+html body #root .app.app-command-shell.app-forge .forge-preview-kicker,
+html body #root .app.app-command-shell.app-forge .forge-overview-title,
+html body #root .app.app-command-shell.app-forge .forge-command-group-preview dt,
+html body #root .app.app-command-shell.app-forge .forge-sale-preview-row dt {
+  display: inline !important;
+  width: auto !important;
+  max-width: 100% !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell.app-forge .forge-summary-card strong,
+html body #root .app.app-command-shell.app-forge .forge-ledger-card strong,
+html body #root .app.app-command-shell.app-forge .forge-main-command-heading h3,
+html body #root .app.app-command-shell.app-forge .forge-main-command-card h4,
+html body #root .app.app-command-shell.app-forge .forge-command-group-preview h4,
+html body #root .app.app-command-shell.app-forge .forge-command-group-preview dd,
+html body #root .app.app-command-shell.app-forge .forge-sale-preview-row strong,
+html body #root .app.app-command-shell.app-forge .forge-sale-preview-row dd,
+html body #root .app.app-command-shell.app-forge .forge-activity-preview-row strong {
+  color: var(--forge-table-ink) !important;
+}
+
+html body #root .app.app-command-shell.app-forge .forge-summary-card small,
+html body #root .app.app-command-shell.app-forge .forge-ledger-card small,
+html body #root .app.app-command-shell.app-forge .forge-main-command-heading p,
+html body #root .app.app-command-shell.app-forge .forge-main-command-card p,
+html body #root .app.app-command-shell.app-forge .forge-command-group-preview p,
+html body #root .app.app-command-shell.app-forge .forge-sale-preview-row span,
+html body #root .app.app-command-shell.app-forge .forge-activity-preview-row small,
+html body #root .app.app-command-shell.app-forge .forge-activity-preview-row time {
+  color: var(--forge-table-muted) !important;
+}
+
+html body #root .app.app-command-shell.app-forge .forge-section-tabs {
+  display: grid !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  gap: 9px !important;
+}
+
+html body #root .app.app-command-shell.app-forge .forge-overview-card {
+  display: grid !important;
+  gap: 4px !important;
+  min-height: 76px !important;
+  padding: 12px !important;
+  text-align: left !important;
+}
+
+html body #root .app.app-command-shell.app-forge .forge-overview-card.is-active {
+  border-color: var(--forge-table-border-strong) !important;
+  background:
+    radial-gradient(circle at 15% 0%, rgba(255, 132, 76, 0.2), transparent 48%),
+    linear-gradient(145deg, rgba(255, 240, 210, 0.98), rgba(255, 248, 235, 0.88)) !important;
+}
+
+html body #root .app.app-command-shell.app-theme-dark.app-forge .forge-overview-card.is-active,
+html body #root .app.app-shell-dark.app-forge .forge-overview-card.is-active {
+  background:
+    radial-gradient(circle at 15% 0%, rgba(255, 132, 76, 0.2), transparent 48%),
+    rgba(20, 28, 48, 0.96) !important;
+}
+
+html body #root .app.app-command-shell.app-forge .forge-main-command-panel {
+  border: 1px solid var(--forge-table-border-strong) !important;
+  border-radius: 26px !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 132, 76, 0.14), transparent 26%),
+    linear-gradient(145deg, rgba(255, 250, 240, 0.96), rgba(255, 242, 222, 0.72)) !important;
+  box-shadow: 0 18px 40px rgba(82, 51, 22, 0.12) !important;
+}
+
+html body #root .app.app-command-shell.app-theme-dark.app-forge .forge-main-command-panel,
+html body #root .app.app-shell-dark.app-forge .forge-main-command-panel {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 111, 78, 0.17), transparent 28%),
+    radial-gradient(circle at 100% 0%, rgba(255, 184, 77, 0.11), transparent 24%),
+    linear-gradient(145deg, rgba(14, 24, 45, 0.98), rgba(5, 14, 30, 0.92)) !important;
+}
+
+html body #root .app.app-command-shell.app-forge .forge-ledger-card-grid,
+html body #root .app.app-command-shell.app-forge .forge-workspace-flow-grid,
+html body #root .app.app-command-shell.app-forge .forge-exact-copy-strip {
+  gap: 12px !important;
+}
+
+html body #root .app.app-command-shell.app-forge .forge-workspace-flow-card,
+html body #root .app.app-command-shell.app-forge .forge-exact-copy-strip article,
+html body #root .app.app-command-shell.app-forge .forge-main-command-card,
+html body #root .app.app-command-shell.app-forge .forge-command-group-preview,
+html body #root .app.app-command-shell.app-forge .forge-sale-preview-row,
+html body #root .app.app-command-shell.app-forge .forge-activity-preview-row {
+  border: 1px solid var(--forge-table-border) !important;
+  border-radius: 20px !important;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.48), rgba(255, 244, 225, 0.22)),
+    rgba(255, 250, 242, 0.78) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.58) !important;
+}
+
+html body #root .app.app-command-shell.app-theme-dark.app-forge .forge-workspace-flow-card,
+html body #root .app.app-shell-dark.app-forge .forge-workspace-flow-card,
+html body #root .app.app-command-shell.app-theme-dark.app-forge .forge-exact-copy-strip article,
+html body #root .app.app-shell-dark.app-forge .forge-exact-copy-strip article,
+html body #root .app.app-command-shell.app-theme-dark.app-forge .forge-main-command-card,
+html body #root .app.app-shell-dark.app-forge .forge-main-command-card,
+html body #root .app.app-command-shell.app-theme-dark.app-forge .forge-command-group-preview,
+html body #root .app.app-shell-dark.app-forge .forge-command-group-preview,
+html body #root .app.app-command-shell.app-theme-dark.app-forge .forge-sale-preview-row,
+html body #root .app.app-shell-dark.app-forge .forge-sale-preview-row,
+html body #root .app.app-command-shell.app-theme-dark.app-forge .forge-activity-preview-row,
+html body #root .app.app-shell-dark.app-forge .forge-activity-preview-row {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.06), rgba(255, 184, 77, 0.026)),
+    rgba(6, 16, 34, 0.78) !important;
+}
+
+html body #root .app.app-command-shell.app-forge .forge-workspace-flow-card {
+  display: grid !important;
+  align-content: space-between !important;
+  min-height: 205px !important;
+  padding: 15px !important;
+}
+
+html body #root .app.app-command-shell.app-forge .forge-workspace-flow-card.is-trade-analyzer {
+  border-color: rgba(39, 119, 94, 0.42) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.58),
+    0 16px 34px rgba(39, 119, 94, 0.1) !important;
+}
+
+html body #root .app.app-command-shell.app-theme-dark.app-forge .forge-workspace-flow-card.is-trade-analyzer,
+html body #root .app.app-shell-dark.app-forge .forge-workspace-flow-card.is-trade-analyzer {
+  border-color: rgba(125, 211, 176, 0.44) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 16px 34px rgba(16, 185, 129, 0.11) !important;
+}
+
+html body #root .app.app-command-shell.app-forge .forge-workspace-flow-card h4 {
+  color: var(--forge-table-ink) !important;
+  font-size: 1.08rem !important;
+  line-height: 1.18 !important;
+}
+
+html body #root .app.app-command-shell.app-forge .forge-workspace-flow-card p,
+html body #root .app.app-command-shell.app-forge .forge-workspace-flow-card small,
+html body #root .app.app-command-shell.app-forge .forge-exact-copy-strip small {
+  color: var(--forge-table-muted) !important;
+  line-height: 1.42 !important;
+}
+
+html body #root .app.app-command-shell.app-forge .forge-workspace-flow-card dl,
+html body #root .app.app-command-shell.app-forge .forge-command-group-preview dl,
+html body #root .app.app-command-shell.app-forge .forge-sale-preview-row dl {
+  gap: 8px !important;
+}
+
+html body #root .app.app-command-shell.app-forge .forge-workspace-flow-card dl div,
+html body #root .app.app-command-shell.app-forge .forge-command-group-preview dl div,
+html body #root .app.app-command-shell.app-forge .forge-sale-preview-row dl div {
+  border: 1px solid rgba(180, 123, 68, 0.16) !important;
+  background: rgba(255, 247, 235, 0.74) !important;
+}
+
+html body #root .app.app-command-shell.app-theme-dark.app-forge .forge-workspace-flow-card dl div,
+html body #root .app.app-shell-dark.app-forge .forge-workspace-flow-card dl div,
+html body #root .app.app-command-shell.app-theme-dark.app-forge .forge-command-group-preview dl div,
+html body #root .app.app-shell-dark.app-forge .forge-command-group-preview dl div,
+html body #root .app.app-command-shell.app-theme-dark.app-forge .forge-sale-preview-row dl div,
+html body #root .app.app-shell-dark.app-forge .forge-sale-preview-row dl div {
+  border-color: rgba(255, 184, 77, 0.14) !important;
+  background: rgba(4, 12, 26, 0.64) !important;
+}
+
+html body #root .app.app-command-shell.app-forge .forge-workspace-flow-card dt,
+html body #root .app.app-command-shell.app-forge .forge-workspace-flow-card dd {
+  color: var(--forge-table-ink) !important;
+}
+
+html body #root .app.app-command-shell.app-forge .forge-workspace-flow-card dt {
+  color: var(--forge-table-gold) !important;
+}
+
+html body #root .app.app-command-shell.app-forge .forge-workspace-flow-footer {
+  display: grid !important;
+  gap: 10px !important;
+  align-items: end !important;
+}
+
+html body #root .app.app-command-shell.app-forge .forge-workspace-flow-footer .status-badge {
+  justify-self: start !important;
+  border-color: rgba(201, 102, 63, 0.28) !important;
+  color: var(--forge-table-copper) !important;
+  background: rgba(255, 235, 215, 0.82) !important;
+}
+
+html body #root .app.app-command-shell.app-theme-dark.app-forge .forge-workspace-flow-footer .status-badge,
+html body #root .app.app-shell-dark.app-forge .forge-workspace-flow-footer .status-badge {
+  color: #ffd8b0 !important;
+  background: rgba(255, 111, 78, 0.14) !important;
+}
+
+html body #root .app.app-command-shell.app-forge .forge-action-strip {
+  display: grid !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) auto !important;
+  gap: 10px !important;
+  align-items: stretch !important;
+  padding: 12px !important;
+  border: 1px solid var(--forge-table-border) !important;
+  border-radius: 24px !important;
+  background: rgba(255, 249, 238, 0.74) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.54) !important;
+}
+
+html body #root .app.app-command-shell.app-theme-dark.app-forge .forge-action-strip,
+html body #root .app.app-shell-dark.app-forge .forge-action-strip {
+  background: rgba(5, 14, 30, 0.78) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+}
+
+html body #root .app.app-command-shell.app-forge .forge-action-strip > button,
+html body #root .app.app-command-shell.app-forge .forge-more-actions > summary {
+  min-height: 48px !important;
+  border-radius: 16px !important;
+  white-space: normal !important;
+}
+
+html body #root .app.app-command-shell.app-forge .forge-action-strip > button:first-child {
+  border-color: rgba(201, 102, 63, 0.46) !important;
+  background:
+    linear-gradient(135deg, #f26f43, #f6b95e) !important;
+  color: #211005 !important;
+  box-shadow: 0 12px 26px rgba(201, 102, 63, 0.18) !important;
+}
+
+html body #root .app.app-command-shell.app-forge .forge-more-actions > div {
+  border-color: var(--forge-table-border) !important;
+  border-radius: 18px !important;
+  background: var(--forge-table-panel-strong) !important;
+  box-shadow: var(--forge-table-shadow) !important;
+}
+
+html body #root .app.app-command-shell.app-theme-dark.app-forge .forge-more-actions > div,
+html body #root .app.app-shell-dark.app-forge .forge-more-actions > div {
+  background: rgba(9, 19, 38, 0.98) !important;
+}
+
+html body #root .app.app-command-shell.app-forge .forge-main-command-columns {
+  grid-template-columns: minmax(0, 1.12fr) minmax(280px, 0.88fr) !important;
+  gap: 14px !important;
+}
+
+html body #root .app.app-command-shell.app-forge .forge-command-group-preview {
+  grid-template-columns: minmax(0, 1fr) minmax(210px, 0.88fr) minmax(116px, auto) !important;
+  gap: 12px !important;
+  padding: 13px !important;
+}
+
+html body #root .app.app-command-shell.app-forge .forge-command-group-preview > button {
+  min-height: 44px !important;
+  align-self: stretch !important;
+}
+
+html body #root .app.app-command-shell.app-forge .forge-activity-preview-row {
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr) auto !important;
+  padding: 11px !important;
+}
+
+html body #root .app.app-command-shell.app-forge .trade-value-flow {
+  gap: 16px !important;
+}
+
+html body #root .app.app-command-shell.app-forge .trade-value-hero-card,
+html body #root .app.app-command-shell.app-forge .trade-side-card,
+html body #root .app.app-command-shell.app-forge .trade-review-card,
+html body #root .app.app-command-shell.app-forge .trade-history-panel,
+html body #root .app.app-command-shell.app-forge .trade-value-success-card {
+  border: 1px solid var(--forge-table-border) !important;
+  border-radius: 24px !important;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(255, 132, 76, 0.12), transparent 30%),
+    linear-gradient(145deg, rgba(255, 251, 243, 0.96), rgba(255, 242, 223, 0.78)) !important;
+  color: var(--forge-table-ink) !important;
+}
+
+html body #root .app.app-command-shell.app-theme-dark.app-forge .trade-value-hero-card,
+html body #root .app.app-shell-dark.app-forge .trade-value-hero-card,
+html body #root .app.app-command-shell.app-theme-dark.app-forge .trade-side-card,
+html body #root .app.app-shell-dark.app-forge .trade-side-card,
+html body #root .app.app-command-shell.app-theme-dark.app-forge .trade-review-card,
+html body #root .app.app-shell-dark.app-forge .trade-review-card,
+html body #root .app.app-command-shell.app-theme-dark.app-forge .trade-history-panel,
+html body #root .app.app-shell-dark.app-forge .trade-history-panel,
+html body #root .app.app-command-shell.app-theme-dark.app-forge .trade-value-success-card,
+html body #root .app.app-shell-dark.app-forge .trade-value-success-card {
+  background:
+    radial-gradient(circle at 8% 0%, rgba(255, 111, 78, 0.16), transparent 30%),
+    linear-gradient(145deg, rgba(13, 25, 48, 0.98), rgba(5, 14, 31, 0.9)) !important;
+}
+
+html body #root .app.app-command-shell.app-forge .trade-builder-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  gap: 14px !important;
+}
+
+html body #root .app.app-command-shell.app-forge .trade-side-card--outgoing {
+  border-color: rgba(201, 102, 63, 0.44) !important;
+}
+
+html body #root .app.app-command-shell.app-forge .trade-side-card--incoming {
+  border-color: rgba(39, 119, 94, 0.4) !important;
+}
+
+html body #root .app.app-command-shell.app-forge .trade-value-hero-card h3,
+html body #root .app.app-command-shell.app-forge .trade-side-card .compact-card-header h4,
+html body #root .app.app-command-shell.app-forge .trade-review-card h4,
+html body #root .app.app-command-shell.app-forge .trade-history-panel h4,
+html body #root .app.app-command-shell.app-forge .trade-item-preview strong,
+html body #root .app.app-command-shell.app-forge .trade-comparison-grid strong,
+html body #root .app.app-command-shell.app-forge .trade-history-list strong {
+  color: var(--forge-table-ink) !important;
+}
+
+html body #root .app.app-command-shell.app-forge .trade-value-hero-card p,
+html body #root .app.app-command-shell.app-forge .trade-side-card p,
+html body #root .app.app-command-shell.app-forge .trade-item-preview span,
+html body #root .app.app-command-shell.app-forge .trade-item-preview small,
+html body #root .app.app-command-shell.app-forge .trade-comparison-grid small,
+html body #root .app.app-command-shell.app-forge .trade-history-list span,
+html body #root .app.app-command-shell.app-forge .trade-history-list small {
+  color: var(--forge-table-muted) !important;
+}
+
+html body #root .app.app-command-shell.app-forge .trade-safety-strip span,
+html body #root .app.app-command-shell.app-forge .trade-item-preview,
+html body #root .app.app-command-shell.app-forge .trade-exact-copy-note,
+html body #root .app.app-command-shell.app-forge .trade-comparison-grid > div,
+html body #root .app.app-command-shell.app-forge .trade-history-list article {
+  border: 1px solid var(--forge-table-border) !important;
+  background: rgba(255, 248, 236, 0.74) !important;
+  color: var(--forge-table-ink) !important;
+}
+
+html body #root .app.app-command-shell.app-theme-dark.app-forge .trade-safety-strip span,
+html body #root .app.app-shell-dark.app-forge .trade-safety-strip span,
+html body #root .app.app-command-shell.app-theme-dark.app-forge .trade-item-preview,
+html body #root .app.app-shell-dark.app-forge .trade-item-preview,
+html body #root .app.app-command-shell.app-theme-dark.app-forge .trade-exact-copy-note,
+html body #root .app.app-shell-dark.app-forge .trade-exact-copy-note,
+html body #root .app.app-command-shell.app-theme-dark.app-forge .trade-comparison-grid > div,
+html body #root .app.app-shell-dark.app-forge .trade-comparison-grid > div,
+html body #root .app.app-command-shell.app-theme-dark.app-forge .trade-history-list article,
+html body #root .app.app-shell-dark.app-forge .trade-history-list article {
+  background: rgba(4, 12, 27, 0.68) !important;
+}
+
+html body #root .app.app-command-shell.app-forge .trade-review-card.fair {
+  border-color: rgba(39, 119, 94, 0.54) !important;
+  box-shadow: 0 14px 32px rgba(39, 119, 94, 0.1) !important;
+}
+
+html body #root .app.app-command-shell.app-forge .trade-review-card .compact-card-header > strong {
+  color: var(--forge-table-fair) !important;
+  font-size: clamp(1.15rem, 2.2vw, 1.55rem) !important;
+}
+
+html body #root .app.app-command-shell.app-forge .trade-value-actions {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  gap: 10px !important;
+  padding-top: 2px !important;
+}
+
+@media (max-width: 960px) {
+  html body #root .app.app-command-shell.app-forge .forge-top-summary,
+  html body #root .app.app-command-shell.app-forge .forge-section-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-forge .forge-section-tabs .forge-overview-card:last-child {
+    grid-column: 1 / -1 !important;
+  }
+
+  html body #root .app.app-command-shell.app-forge .forge-main-command-columns,
+  html body #root .app.app-command-shell.app-forge .trade-builder-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+@media (max-width: 720px) {
+  html body #root .app.app-command-shell.app-forge .main {
+    padding-bottom: calc(150px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-forge .forge-hero-panel.forge-command-center,
+  html body #root .app.app-command-shell.app-forge .forge-home-inventory-section,
+  html body #root .app.app-command-shell.app-forge .forge-main-command-panel {
+    border-radius: 24px !important;
+    padding: 14px !important;
+  }
+
+  html body #root .app.app-command-shell.app-forge .forge-hero-panel.forge-command-center {
+    padding-bottom: 22px !important;
+    margin-bottom: 285px !important;
+  }
+
+  html body #root .app.app-command-shell.app-forge .forge-top-summary {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    grid-template-columns: none !important;
+    grid-auto-flow: column !important;
+    gap: 8px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    padding: 0 0 2px !important;
+    scrollbar-width: none !important;
+  }
+
+  html body #root .app.app-command-shell.app-forge .forge-top-summary > .forge-summary-card {
+    flex: 0 0 min(44vw, 156px) !important;
+    min-width: min(44vw, 156px) !important;
+    width: auto !important;
+    min-height: 86px !important;
+  }
+
+  html body #root .app.app-command-shell.app-forge .forge-command-overview.forge-section-tabs {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    grid-template-columns: none !important;
+    grid-auto-flow: column !important;
+    gap: 8px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    padding: 0 0 2px !important;
+    scrollbar-width: none !important;
+  }
+
+  html body #root .app.app-command-shell.app-forge .forge-command-overview.forge-section-tabs > button.forge-overview-card.forge-section-tab {
+    flex: 0 0 min(42vw, 144px) !important;
+    min-width: min(42vw, 144px) !important;
+    width: auto !important;
+  }
+
+  html body #root .app.app-command-shell.app-forge .forge-ledger-card-grid,
+  html body #root .app.app-command-shell.app-forge .forge-workspace-flow-grid,
+  html body #root .app.app-command-shell.app-forge .forge-exact-copy-strip,
+  html body #root .app.app-command-shell.app-forge .trade-comparison-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell.app-forge .forge-action-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    padding: 10px !important;
+  }
+
+  html body #root .app.app-command-shell.app-forge .forge-action-strip > button:first-child,
+  html body #root .app.app-command-shell.app-forge .forge-action-strip > .forge-more-actions {
+    grid-column: 1 / -1 !important;
+  }
+
+  html body #root .app.app-command-shell.app-forge .forge-command-group-preview,
+  html body #root .app.app-command-shell.app-forge .forge-sale-preview-row,
+  html body #root .app.app-command-shell.app-forge .forge-activity-preview-row {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell.app-forge .forge-command-group-preview dl,
+  html body #root .app.app-command-shell.app-forge .forge-sale-preview-row dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-forge .forge-command-group-preview > button,
+  html body #root .app.app-command-shell.app-forge .forge-sale-preview-row button {
+    width: 100% !important;
+  }
+
+  html body #root .app.app-command-shell.app-forge .trade-value-actions {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+@media (max-width: 430px) {
+  html body #root .app.app-command-shell.app-forge .forge-top-summary {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    grid-template-columns: none !important;
+    overflow-x: auto !important;
+  }
+
+  html body #root .app.app-command-shell.app-forge .forge-section-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-forge .forge-summary-card,
+  html body #root .app.app-command-shell.app-forge .forge-ledger-card,
+  html body #root .app.app-command-shell.app-forge .forge-overview-card,
+  html body #root .app.app-command-shell.app-forge .forge-workspace-flow-card,
+  html body #root .app.app-command-shell.app-forge .forge-main-command-card,
+  html body #root .app.app-command-shell.app-forge .trade-side-card,
+  html body #root .app.app-command-shell.app-forge .trade-review-card {
+    border-radius: 18px !important;
+    padding: 11px !important;
+  }
+
+  html body #root .app.app-command-shell.app-forge .forge-action-strip {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell.app-forge .forge-command-group-preview dl,
+  html body #root .app.app-command-shell.app-forge .forge-sale-preview-row dl {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell.app-forge .forge-workspace-flow-card {
+    min-height: 0 !important;
+  }
+}
