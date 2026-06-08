@@ -88979,3 +88979,433 @@ html body #root .app.app-command-shell.app-forge .trade-value-actions {
     min-height: 0 !important;
   }
 }
+
+/* Spark structure polish: warmer, clearer support preview without changing behavior. */
+html body #root .app.app-command-shell.app-kidsprogram {
+  --spark-room-ink: #102033;
+  --spark-room-muted: rgba(16, 32, 51, 0.7);
+  --spark-room-border: rgba(214, 146, 74, 0.3);
+  --spark-room-card: rgba(255, 251, 244, 0.94);
+  --spark-room-chip: rgba(255, 244, 226, 0.92);
+  --spark-room-warm: #f58a45;
+  --spark-room-gold: #f4be4c;
+  --spark-room-peach: #ffb38a;
+}
+
+html body #root .app.app-command-shell.app-theme-dark.app-kidsprogram,
+html body #root .app.app-shell-dark.app-kidsprogram {
+  --spark-room-ink: #fff4dc;
+  --spark-room-muted: rgba(247, 231, 205, 0.76);
+  --spark-room-border: rgba(255, 195, 93, 0.28);
+  --spark-room-card: rgba(8, 20, 39, 0.88);
+  --spark-room-chip: rgba(18, 34, 57, 0.92);
+  --spark-room-warm: #ff8a4c;
+  --spark-room-gold: #ffd36a;
+  --spark-room-peach: #ffac7f;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-page-header {
+  display: grid !important;
+  align-content: start !important;
+  gap: clamp(12px, 2vw, 18px) !important;
+  min-height: 0 !important;
+  max-width: min(100%, 880px) !important;
+  margin-inline: auto !important;
+  padding: clamp(18px, 3vw, 26px) !important;
+  border: 1px solid var(--spark-room-border) !important;
+  border-radius: 28px !important;
+  background:
+    radial-gradient(circle at 82% 16%, rgba(255, 210, 106, 0.28), transparent 11rem),
+    radial-gradient(circle at 8% 0%, rgba(255, 134, 82, 0.2), transparent 13rem),
+    linear-gradient(145deg, rgba(255, 252, 246, 0.98), rgba(255, 241, 221, 0.9)) !important;
+  color: var(--spark-room-ink) !important;
+  box-shadow: 0 18px 44px rgba(88, 47, 18, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.74) !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram > .main {
+  grid-template-rows: none !important;
+  grid-auto-rows: max-content !important;
+  align-content: start !important;
+  gap: clamp(14px, 2.2vw, 20px) !important;
+}
+
+html body #root .app.app-command-shell.app-theme-dark.app-kidsprogram .spark-page-header,
+html body #root .app.app-shell-dark.app-kidsprogram .spark-page-header {
+  background:
+    radial-gradient(circle at 82% 16%, rgba(255, 194, 80, 0.16), transparent 12rem),
+    radial-gradient(circle at 8% 0%, rgba(255, 128, 74, 0.13), transparent 14rem),
+    linear-gradient(145deg, rgba(10, 25, 48, 0.98), rgba(4, 13, 30, 0.94)) !important;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-page-header :where(.standard-page-header-main, .standard-page-header-copy, .standard-page-header-actions, .standard-page-header-summary) {
+  position: static !important;
+  transform: none !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-page-header .standard-page-header-main {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  gap: clamp(12px, 2.5vw, 22px) !important;
+  align-items: start !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-page-header .standard-page-header-copy {
+  display: grid !important;
+  gap: 7px !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-page-header .standard-page-header-copy h2 {
+  color: var(--spark-room-ink) !important;
+  font-size: clamp(2rem, 4.8vw, 3.1rem) !important;
+  letter-spacing: 0 !important;
+  text-shadow: none !important;
+}
+
+html body #root .app.app-command-shell.app-theme-dark.app-kidsprogram .spark-page-header .standard-page-header-copy h2,
+html body #root .app.app-shell-dark.app-kidsprogram .spark-page-header .standard-page-header-copy h2 {
+  color: #fff1d3 !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-page-header .standard-page-header-copy p,
+html body #root .app.app-command-shell.app-kidsprogram .spark-header-mission-line {
+  color: var(--spark-room-muted) !important;
+  font-size: clamp(0.9rem, 1.6vw, 1rem) !important;
+  line-height: 1.45 !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-page-header .standard-page-header-actions {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 10px !important;
+  align-self: start !important;
+  justify-content: flex-end !important;
+  width: auto !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-page-header .standard-page-header-actions button {
+  min-height: 42px !important;
+  border-radius: 15px !important;
+  border-color: var(--spark-room-border) !important;
+  background: rgba(255, 249, 240, 0.82) !important;
+  color: var(--spark-room-ink) !important;
+  box-shadow: 0 10px 24px rgba(88, 47, 18, 0.08) !important;
+}
+
+html body #root .app.app-command-shell.app-theme-dark.app-kidsprogram .spark-page-header .standard-page-header-actions button,
+html body #root .app.app-shell-dark.app-kidsprogram .spark-page-header .standard-page-header-actions button {
+  background: rgba(9, 22, 43, 0.78) !important;
+  color: #fff1d3 !important;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2) !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-page-header .standard-page-header-summary {
+  display: block !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  margin-top: 0 !important;
+  padding: 0 !important;
+  border-top: 1px solid var(--spark-room-border) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-page-header .spark-header-mission-line {
+  display: block !important;
+  width: auto !important;
+  height: auto !important;
+  max-width: none !important;
+  margin: 12px 0 0 !important;
+  padding: 10px 12px !important;
+  border: 1px solid rgba(214, 146, 74, 0.24) !important;
+  border-radius: 15px !important;
+  background: rgba(255, 250, 242, 0.72) !important;
+  color: var(--spark-room-muted) !important;
+}
+
+html body #root .app.app-command-shell.app-theme-dark.app-kidsprogram .spark-page-header .spark-header-mission-line,
+html body #root .app.app-shell-dark.app-kidsprogram .spark-page-header .spark-header-mission-line {
+  background: rgba(6, 18, 36, 0.68) !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-donate-panel,
+html body #root .app.app-command-shell.app-kidsprogram .spark-thank-you-panel,
+html body #root .app.app-command-shell.app-kidsprogram .spark-impact-dashboard,
+html body #root .app.app-command-shell.app-kidsprogram .spark-section-block,
+html body #root .app.app-command-shell.app-kidsprogram .spark-donation-tracking-panel,
+html body #root .app.app-command-shell.app-kidsprogram .spark-participation-panel {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  max-width: min(100%, 930px) !important;
+  margin-inline: auto !important;
+  border: 1px solid var(--spark-room-border) !important;
+  border-radius: 26px !important;
+  background:
+    radial-gradient(circle at 88% 0%, rgba(255, 200, 92, 0.15), transparent 14rem),
+    linear-gradient(145deg, rgba(255, 253, 248, 0.97), rgba(255, 242, 224, 0.86)) !important;
+  color: var(--spark-room-ink) !important;
+  box-shadow: 0 16px 38px rgba(88, 47, 18, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.72) !important;
+}
+
+html body #root .app.app-command-shell.app-theme-dark.app-kidsprogram :where(.spark-donate-panel, .spark-thank-you-panel, .spark-impact-dashboard, .spark-section-block, .spark-donation-tracking-panel, .spark-participation-panel),
+html body #root .app.app-shell-dark.app-kidsprogram :where(.spark-donate-panel, .spark-thank-you-panel, .spark-impact-dashboard, .spark-section-block, .spark-donation-tracking-panel, .spark-participation-panel) {
+  background:
+    radial-gradient(circle at 88% 0%, rgba(255, 200, 92, 0.11), transparent 14rem),
+    linear-gradient(145deg, rgba(10, 24, 45, 0.96), rgba(5, 14, 31, 0.92)) !important;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-donate-panel {
+  gap: 16px !important;
+  padding: clamp(14px, 2.4vw, 20px) !important;
+  grid-template-rows: none !important;
+  grid-auto-rows: max-content !important;
+  align-content: start !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-donate-panel > .compact-card-header {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  padding: 14px !important;
+  border: 1px solid rgba(245, 138, 69, 0.24) !important;
+  border-radius: 20px !important;
+  grid-template-rows: none !important;
+  grid-auto-rows: max-content !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 190, 112, 0.16), transparent 10rem),
+    rgba(255, 250, 242, 0.72) !important;
+}
+
+html body #root .app.app-command-shell.app-theme-dark.app-kidsprogram .spark-donate-panel > .compact-card-header,
+html body #root .app.app-shell-dark.app-kidsprogram .spark-donate-panel > .compact-card-header {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 171, 97, 0.12), transparent 10rem),
+    rgba(7, 19, 37, 0.72) !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-donate-panel > .compact-card-header > div {
+  display: grid !important;
+  height: auto !important;
+  max-height: none !important;
+  min-width: min(100%, 28rem) !important;
+  gap: 6px !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-donate-panel .compact-card-header :where(h2, h3, p, span, strong),
+html body #root .app.app-command-shell.app-kidsprogram .spark-impact-dashboard .compact-card-header :where(h2, h3, p, span, strong),
+html body #root .app.app-command-shell.app-kidsprogram .spark-sponsor-card :where(strong, p) {
+  color: var(--spark-room-ink) !important;
+  text-shadow: none !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-donate-panel .compact-card-header p,
+html body #root .app.app-command-shell.app-kidsprogram .spark-impact-dashboard .compact-card-header p,
+html body #root .app.app-command-shell.app-kidsprogram .spark-sponsor-card p {
+  color: var(--spark-room-muted) !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-donate-panel .trust-badge,
+html body #root .app.app-command-shell.app-kidsprogram .spark-impact-dashboard .trust-badge {
+  width: auto !important;
+  min-height: 32px !important;
+  justify-self: start !important;
+  padding: 7px 11px !important;
+  border-radius: 999px !important;
+  border-color: rgba(245, 138, 69, 0.42) !important;
+  background: rgba(255, 244, 230, 0.84) !important;
+  color: #7a2d1b !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell.app-theme-dark.app-kidsprogram .spark-donate-panel .trust-badge,
+html body #root .app.app-shell-dark.app-kidsprogram .spark-donate-panel .trust-badge,
+html body #root .app.app-command-shell.app-theme-dark.app-kidsprogram .spark-impact-dashboard .trust-badge,
+html body #root .app.app-shell-dark.app-kidsprogram .spark-impact-dashboard .trust-badge {
+  background: rgba(56, 31, 37, 0.92) !important;
+  color: #ffe3bd !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-impact-meter {
+  padding: 14px !important;
+  border-color: rgba(244, 190, 76, 0.34) !important;
+  border-radius: 20px !important;
+  background:
+    linear-gradient(145deg, rgba(255, 252, 247, 0.92), rgba(255, 241, 221, 0.82)) !important;
+  color: var(--spark-room-ink) !important;
+}
+
+html body #root .app.app-command-shell.app-theme-dark.app-kidsprogram .spark-impact-meter,
+html body #root .app.app-shell-dark.app-kidsprogram .spark-impact-meter {
+  background: rgba(5, 14, 29, 0.72) !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-impact-meter span {
+  color: var(--spark-room-muted) !important;
+  line-height: 1.35 !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-impact-meter b {
+  color: var(--spark-room-ink) !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-impact-meter i {
+  height: 12px !important;
+  background: rgba(119, 74, 36, 0.1) !important;
+}
+
+html body #root .app.app-command-shell.app-theme-dark.app-kidsprogram .spark-impact-meter i,
+html body #root .app.app-shell-dark.app-kidsprogram .spark-impact-meter i {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-donate-category-grid,
+html body #root .app.app-command-shell.app-kidsprogram .spark-support-examples {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(142px, 1fr)) !important;
+  gap: 10px !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-donate-category,
+html body #root .app.app-command-shell.app-kidsprogram .spark-support-examples span {
+  display: inline-flex !important;
+  align-items: center !important;
+  min-height: 44px !important;
+  padding: 10px 12px !important;
+  border: 1px solid rgba(214, 146, 74, 0.24) !important;
+  border-radius: 16px !important;
+  background: var(--spark-room-chip) !important;
+  color: var(--spark-room-ink) !important;
+  font-size: 0.86rem !important;
+  font-weight: 760 !important;
+  line-height: 1.2 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.52) !important;
+}
+
+html body #root .app.app-command-shell.app-theme-dark.app-kidsprogram .spark-donate-category,
+html body #root .app.app-shell-dark.app-kidsprogram .spark-donate-category,
+html body #root .app.app-command-shell.app-theme-dark.app-kidsprogram .spark-support-examples span,
+html body #root .app.app-shell-dark.app-kidsprogram .spark-support-examples span {
+  border-color: rgba(255, 211, 106, 0.18) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-sponsor-card {
+  gap: 8px !important;
+  padding: 15px !important;
+  border-color: rgba(39, 119, 94, 0.28) !important;
+  border-radius: 20px !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(45, 212, 191, 0.1), transparent 10rem),
+    rgba(250, 255, 249, 0.78) !important;
+}
+
+html body #root .app.app-command-shell.app-theme-dark.app-kidsprogram .spark-sponsor-card,
+html body #root .app.app-shell-dark.app-kidsprogram .spark-sponsor-card {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(45, 212, 191, 0.12), transparent 10rem),
+    rgba(4, 19, 32, 0.78) !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-flow-actions {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr) !important;
+  gap: 10px !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-flow-actions button,
+html body #root .app.app-command-shell.app-kidsprogram .spark-sponsor-card button {
+  min-height: 44px !important;
+  border-radius: 15px !important;
+}
+
+@media (min-width: 960px) {
+  html body #root .app.app-command-shell.app-kidsprogram .spark-donate-panel {
+    padding: 20px !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-donate-category-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 780px) {
+  html body #root .app.app-command-shell.app-kidsprogram {
+    --theme-final-bottom-clearance: max(332px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 252px));
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-page-header {
+    min-height: 0 !important;
+    margin: 0 8px 16px !important;
+    padding: 18px 14px !important;
+    border-radius: 24px !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-page-header .standard-page-header-main {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-page-header .standard-page-header-actions {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    justify-content: stretch !important;
+    width: 100% !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-page-header .standard-page-header-actions button {
+    width: 100% !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-donate-panel,
+  html body #root .app.app-command-shell.app-kidsprogram .spark-impact-dashboard,
+  html body #root .app.app-command-shell.app-kidsprogram .spark-section-block,
+  html body #root .app.app-command-shell.app-kidsprogram .spark-donation-tracking-panel,
+  html body #root .app.app-command-shell.app-kidsprogram .spark-participation-panel {
+    margin: 0 8px 16px !important;
+    border-radius: 24px !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-donate-panel {
+    padding: 14px !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-donate-panel > .compact-card-header {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-donate-panel .trust-badge {
+    width: fit-content !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-donate-category-grid,
+  html body #root .app.app-command-shell.app-kidsprogram .spark-support-examples {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-flow-actions {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+@media (max-width: 430px) {
+  html body #root .app.app-command-shell.app-kidsprogram .spark-page-header .standard-page-header-copy h2 {
+    font-size: clamp(1.85rem, 9vw, 2.35rem) !important;
+  }
+
+  html body #root .app.app-command-shell.app-kidsprogram .spark-donate-category,
+  html body #root .app.app-command-shell.app-kidsprogram .spark-support-examples span {
+    min-height: 42px !important;
+    padding: 9px 10px !important;
+    font-size: 0.8rem !important;
+  }
+}
