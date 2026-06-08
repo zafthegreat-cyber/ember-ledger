@@ -90714,3 +90714,708 @@ html body #root .app.app-command-shell.app-membership .membership-foundation-pan
     font-size: 0.68rem !important;
   }
 }
+
+/* Helper modal structure polish: Ask Ember + Quick Add only. */
+html body #root .app.app-command-shell {
+  --helper-modal-ink: #102038;
+  --helper-modal-muted: rgba(16, 32, 56, 0.72);
+  --helper-modal-soft: rgba(255, 252, 246, 0.98);
+  --helper-modal-panel: rgba(255, 248, 238, 0.94);
+  --helper-modal-card: rgba(255, 252, 246, 0.9);
+  --helper-modal-card-strong: rgba(255, 244, 224, 0.96);
+  --helper-modal-line: rgba(179, 127, 69, 0.24);
+  --helper-modal-line-strong: rgba(218, 139, 55, 0.4);
+  --helper-modal-chip: rgba(255, 240, 218, 0.9);
+  --helper-modal-input: rgba(255, 255, 255, 0.94);
+  --helper-modal-shadow: 0 24px 72px rgba(65, 42, 20, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  --helper-modal-accent: #d98732;
+  --helper-modal-accent-strong: #f47a43;
+  --helper-modal-cyan: #218ea2;
+}
+
+html body #root .app.app-command-shell.app-theme-dark,
+html body #root .app.app-shell-dark {
+  --helper-modal-ink: #fff2dc;
+  --helper-modal-muted: rgba(225, 238, 247, 0.76);
+  --helper-modal-soft: rgba(6, 15, 30, 0.98);
+  --helper-modal-panel: rgba(9, 23, 43, 0.94);
+  --helper-modal-card: rgba(13, 29, 51, 0.88);
+  --helper-modal-card-strong: rgba(17, 36, 63, 0.96);
+  --helper-modal-line: rgba(221, 168, 88, 0.2);
+  --helper-modal-line-strong: rgba(249, 166, 74, 0.38);
+  --helper-modal-chip: rgba(42, 35, 45, 0.88);
+  --helper-modal-input: rgba(2, 8, 18, 0.84);
+  --helper-modal-shadow: 0 28px 84px rgba(0, 0, 0, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --helper-modal-accent: #f0a247;
+  --helper-modal-accent-strong: #ff7a43;
+  --helper-modal-cyan: #7dd3fc;
+}
+
+html body #root .app.app-command-shell .ember-assist-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  background:
+    radial-gradient(circle at 22% 18%, rgba(244, 122, 67, 0.12), transparent 18rem),
+    radial-gradient(circle at 82% 14%, rgba(33, 142, 162, 0.1), transparent 18rem),
+    rgba(17, 24, 39, 0.52) !important;
+  backdrop-filter: blur(16px) saturate(0.94) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(0.94) !important;
+  pointer-events: auto !important;
+}
+
+html body #root .app.app-command-shell.app-theme-dark .ember-assist-backdrop,
+html body #root .app.app-shell-dark .ember-assist-backdrop {
+  background:
+    radial-gradient(circle at 22% 18%, rgba(249, 115, 22, 0.12), transparent 18rem),
+    radial-gradient(circle at 82% 14%, rgba(125, 211, 252, 0.1), transparent 18rem),
+    rgba(0, 5, 14, 0.66) !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-panel {
+  width: min(456px, calc(100vw - 22px)) !important;
+  max-height: min(82dvh, 760px) !important;
+  border-color: var(--helper-modal-line-strong) !important;
+  border-radius: 24px !important;
+  overflow: hidden !important;
+  background:
+    radial-gradient(circle at 94% 0%, rgba(244, 122, 67, 0.12), transparent 15rem),
+    linear-gradient(180deg, var(--helper-modal-soft), var(--helper-modal-panel)) !important;
+  color: var(--helper-modal-ink) !important;
+  box-shadow: var(--helper-modal-shadow) !important;
+}
+
+html body #root .app.app-command-shell.app-theme-dark .ember-assist-panel,
+html body #root .app.app-shell-dark .ember-assist-panel {
+  background:
+    radial-gradient(circle at 94% 0%, rgba(249, 115, 22, 0.13), transparent 15rem),
+    radial-gradient(circle at 0% 16%, rgba(125, 211, 252, 0.08), transparent 14rem),
+    linear-gradient(180deg, var(--helper-modal-soft), rgba(3, 10, 22, 0.98)) !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-header,
+html body #root .app.app-command-shell .ember-assist-form {
+  background: rgba(255, 252, 246, 0.78) !important;
+  border-color: var(--helper-modal-line) !important;
+  color: var(--helper-modal-ink) !important;
+}
+
+html body #root .app.app-command-shell.app-theme-dark .ember-assist-header,
+html body #root .app.app-command-shell.app-theme-dark .ember-assist-form,
+html body #root .app.app-shell-dark .ember-assist-header,
+html body #root .app.app-shell-dark .ember-assist-form {
+  background: rgba(3, 11, 24, 0.78) !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-header {
+  padding: 18px 18px 15px !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-header h2,
+html body #root .app.app-command-shell .ember-assist-header p,
+html body #root .app.app-command-shell .ember-assist-live-hero h3,
+html body #root .app.app-command-shell .ember-assist-live-hero p,
+html body #root .app.app-command-shell .ember-assist-guidance-strip strong,
+html body #root .app.app-command-shell .ember-assist-guidance-strip span,
+html body #root .app.app-command-shell .ember-assist-safety-note strong,
+html body #root .app.app-command-shell .ember-assist-safety-note span,
+html body #root .app.app-command-shell .ember-assist-recent-help strong,
+html body #root .app.app-command-shell .ember-assist-recent-help span,
+html body #root .app.app-command-shell .ember-assist-empty strong,
+html body #root .app.app-command-shell .ember-assist-empty span,
+html body #root .app.app-command-shell .ember-assist-message p,
+html body #root .app.app-command-shell .ember-assist-message span,
+html body #root .app.app-command-shell .ember-assist-status,
+html body #root .app.app-command-shell .ember-assist-status :where(strong, span, summary),
+html body #root .app.app-command-shell .ember-assist-escalation-form :where(h3, p, label, strong, span) {
+  color: inherit !important;
+  text-shadow: none !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-header p,
+html body #root .app.app-command-shell .ember-assist-live-hero p,
+html body #root .app.app-command-shell .ember-assist-guidance-strip span,
+html body #root .app.app-command-shell .ember-assist-safety-note span,
+html body #root .app.app-command-shell .ember-assist-recent-help span,
+html body #root .app.app-command-shell .ember-assist-empty span,
+html body #root .app.app-command-shell .ember-assist-message span,
+html body #root .app.app-command-shell .ember-assist-status span,
+html body #root .app.app-command-shell .ember-assist-escalation-form p {
+  color: var(--helper-modal-muted) !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-scroll {
+  display: grid !important;
+  gap: 12px !important;
+  padding: 14px 16px 16px !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  scrollbar-color: rgba(218, 139, 55, 0.42) transparent !important;
+  scrollbar-gutter: stable both-edges !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-scroll::-webkit-scrollbar {
+  width: 8px !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-scroll::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px !important;
+  background: rgba(218, 139, 55, 0.36) !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-live-hero,
+html body #root .app.app-command-shell .ember-assist-guidance-strip,
+html body #root .app.app-command-shell .ember-assist-safety-note,
+html body #root .app.app-command-shell .ember-assist-recent-help,
+html body #root .app.app-command-shell .ember-assist-empty,
+html body #root .app.app-command-shell .ember-assist-status,
+html body #root .app.app-command-shell .ember-assist-escalation-form {
+  margin: 0 !important;
+  border: 1px solid var(--helper-modal-line) !important;
+  border-radius: 18px !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(244, 122, 67, 0.08), transparent 10rem),
+    var(--helper-modal-card) !important;
+  color: var(--helper-modal-ink) !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-live-hero {
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  gap: 14px !important;
+  padding: 16px !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-guidance-strip,
+html body #root .app.app-command-shell .ember-assist-safety-note,
+html body #root .app.app-command-shell .ember-assist-empty,
+html body #root .app.app-command-shell .ember-assist-status {
+  padding: 13px 14px !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-recent-help {
+  padding: 14px !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-hero-mark {
+  width: 48px !important;
+  height: 48px !important;
+  border-radius: 17px !important;
+  background: linear-gradient(135deg, #f47a43, #e8ab3d) !important;
+  color: #2b1504 !important;
+  box-shadow: 0 12px 28px rgba(218, 139, 55, 0.24) !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-quick-action-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-quick-action-grid button,
+html body #root .app.app-command-shell .ember-assist-primary-prompts button,
+html body #root .app.app-command-shell .ember-assist-prompts button,
+html body #root .app.app-command-shell .ember-assist-actions button,
+html body #root .app.app-command-shell .ember-assist-helpful-links button {
+  min-height: 46px !important;
+  border: 1px solid var(--helper-modal-line) !important;
+  border-radius: 16px !important;
+  background: var(--helper-modal-card-strong) !important;
+  color: var(--helper-modal-ink) !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-quick-action-grid button {
+  align-content: start !important;
+  gap: 5px !important;
+  min-height: 96px !important;
+  padding: 13px !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-quick-action-grid button strong,
+html body #root .app.app-command-shell .ember-assist-primary-prompts button,
+html body #root .app.app-command-shell .ember-assist-prompts button {
+  color: var(--helper-modal-ink) !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-quick-action-grid button span {
+  color: var(--helper-modal-muted) !important;
+  line-height: 1.28 !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-primary-prompts,
+html body #root .app.app-command-shell .ember-assist-prompts,
+html body #root .app.app-command-shell .ember-assist-footer-actions {
+  gap: 9px !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-form {
+  display: grid !important;
+  gap: 10px !important;
+  padding: 14px 16px 16px !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-form textarea,
+html body #root .app.app-command-shell .ember-assist-escalation-form textarea,
+html body #root .app.app-command-shell .ember-assist-escalation-form select {
+  min-height: 66px !important;
+  border: 1px solid var(--helper-modal-line) !important;
+  border-radius: 17px !important;
+  background: var(--helper-modal-input) !important;
+  color: var(--helper-modal-ink) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32) !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-form textarea::placeholder {
+  color: rgba(16, 32, 56, 0.48) !important;
+}
+
+html body #root .app.app-command-shell.app-theme-dark .ember-assist-form textarea::placeholder,
+html body #root .app.app-shell-dark .ember-assist-form textarea::placeholder {
+  color: rgba(225, 238, 247, 0.48) !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-footer-actions {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) minmax(0, 0.75fr) !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-footer-actions button {
+  min-height: 46px !important;
+  border-radius: 15px !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-footer-actions button[type="submit"] {
+  background: linear-gradient(135deg, #f47a43, #e8ab3d) !important;
+  color: #261204 !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-message {
+  border-color: var(--helper-modal-line) !important;
+  border-radius: 17px !important;
+  background: var(--helper-modal-card) !important;
+  color: var(--helper-modal-ink) !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-message.is-user {
+  border-color: rgba(33, 142, 162, 0.32) !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-escalation-form {
+  position: absolute !important;
+  inset: auto 14px 14px !important;
+  z-index: 3 !important;
+  display: grid !important;
+  gap: 10px !important;
+  padding: 14px !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.22) !important;
+}
+
+html body #root .app.app-command-shell .quick-add-backdrop,
+html body #root .app.app-command-shell .flow-modal-backdrop:has(.flow-modal[data-flow="addActionSheet"]),
+html body #root .app.app-command-shell .flow-modal-backdrop:has(.flow-modal[data-flow="multiDestinationAdd"]) {
+  background:
+    radial-gradient(circle at 20% 16%, rgba(244, 122, 67, 0.13), transparent 20rem),
+    radial-gradient(circle at 84% 18%, rgba(33, 142, 162, 0.1), transparent 18rem),
+    rgba(16, 22, 31, 0.58) !important;
+  backdrop-filter: blur(18px) saturate(0.94) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(0.94) !important;
+}
+
+html body #root .app.app-command-shell.app-theme-dark .quick-add-backdrop,
+html body #root .app.app-shell-dark .quick-add-backdrop,
+html body #root .app.app-command-shell.app-theme-dark .flow-modal-backdrop:has(.flow-modal[data-flow="addActionSheet"]),
+html body #root .app.app-command-shell.app-theme-dark .flow-modal-backdrop:has(.flow-modal[data-flow="multiDestinationAdd"]),
+html body #root .app.app-shell-dark .flow-modal-backdrop:has(.flow-modal[data-flow="addActionSheet"]),
+html body #root .app.app-shell-dark .flow-modal-backdrop:has(.flow-modal[data-flow="multiDestinationAdd"]) {
+  background:
+    radial-gradient(circle at 20% 16%, rgba(249, 115, 22, 0.12), transparent 20rem),
+    radial-gradient(circle at 84% 18%, rgba(125, 211, 252, 0.1), transparent 18rem),
+    rgba(0, 5, 14, 0.72) !important;
+}
+
+html body #root .app.app-command-shell .flow-modal[data-flow="addActionSheet"],
+html body #root .app.app-command-shell .flow-modal[data-flow="multiDestinationAdd"] {
+  width: min(760px, calc(100vw - 22px)) !important;
+  max-width: min(760px, calc(100vw - 22px)) !important;
+  max-height: min(86dvh, 780px) !important;
+  border: 1px solid var(--helper-modal-line-strong) !important;
+  border-radius: 26px !important;
+  overflow: hidden !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(244, 122, 67, 0.1), transparent 16rem),
+    linear-gradient(180deg, var(--helper-modal-soft), rgba(255, 246, 232, 0.96)) !important;
+  color: var(--helper-modal-ink) !important;
+  box-shadow: var(--helper-modal-shadow) !important;
+}
+
+html body #root .app.app-command-shell.app-theme-dark .flow-modal[data-flow="addActionSheet"],
+html body #root .app.app-command-shell.app-theme-dark .flow-modal[data-flow="multiDestinationAdd"],
+html body #root .app.app-shell-dark .flow-modal[data-flow="addActionSheet"],
+html body #root .app.app-shell-dark .flow-modal[data-flow="multiDestinationAdd"] {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(249, 115, 22, 0.11), transparent 16rem),
+    radial-gradient(circle at 0% 20%, rgba(125, 211, 252, 0.08), transparent 14rem),
+    linear-gradient(180deg, var(--helper-modal-soft), rgba(3, 10, 22, 0.98)) !important;
+}
+
+html body #root .app.app-command-shell .flow-modal[data-flow="addActionSheet"] .flow-modal-header,
+html body #root .app.app-command-shell .flow-modal[data-flow="addActionSheet"] .flow-modal-footer,
+html body #root .app.app-command-shell .flow-modal[data-flow="multiDestinationAdd"] .flow-modal-header,
+html body #root .app.app-command-shell .flow-modal[data-flow="multiDestinationAdd"] .flow-modal-footer,
+html body #root .app.app-command-shell .flow-modal[data-flow="addActionSheet"] .modal-sticky-header,
+html body #root .app.app-command-shell .flow-modal[data-flow="addActionSheet"] .modal-title-row,
+html body #root .app.app-command-shell .flow-modal[data-flow="multiDestinationAdd"] .modal-title-row,
+html body #root .app.app-command-shell .flow-modal[data-flow="multiDestinationAdd"] .modal-sticky-header {
+  border-color: var(--helper-modal-line) !important;
+  background: rgba(255, 252, 246, 0.78) !important;
+  color: var(--helper-modal-ink) !important;
+}
+
+html body #root .app.app-command-shell.app-theme-dark .flow-modal[data-flow="addActionSheet"] .flow-modal-header,
+html body #root .app.app-command-shell.app-theme-dark .flow-modal[data-flow="addActionSheet"] .flow-modal-footer,
+html body #root .app.app-command-shell.app-theme-dark .flow-modal[data-flow="multiDestinationAdd"] .flow-modal-header,
+html body #root .app.app-command-shell.app-theme-dark .flow-modal[data-flow="multiDestinationAdd"] .flow-modal-footer,
+html body #root .app.app-command-shell.app-theme-dark .flow-modal[data-flow="addActionSheet"] .modal-title-row,
+html body #root .app.app-command-shell.app-theme-dark .flow-modal[data-flow="multiDestinationAdd"] .modal-title-row,
+html body #root .app.app-shell-dark .flow-modal[data-flow="addActionSheet"] .flow-modal-header,
+html body #root .app.app-shell-dark .flow-modal[data-flow="addActionSheet"] .flow-modal-footer,
+html body #root .app.app-shell-dark .flow-modal[data-flow="multiDestinationAdd"] .flow-modal-header,
+html body #root .app.app-shell-dark .flow-modal[data-flow="multiDestinationAdd"] .flow-modal-footer,
+html body #root .app.app-shell-dark .flow-modal[data-flow="addActionSheet"] .modal-title-row,
+html body #root .app.app-shell-dark .flow-modal[data-flow="multiDestinationAdd"] .modal-title-row {
+  background: rgba(3, 11, 24, 0.78) !important;
+}
+
+html body #root .app.app-command-shell .flow-modal[data-flow="addActionSheet"] .flow-modal-body,
+html body #root .app.app-command-shell .flow-modal[data-flow="multiDestinationAdd"] .flow-modal-body {
+  display: grid !important;
+  gap: 14px !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(33, 142, 162, 0.07), transparent 14rem),
+    rgba(255, 250, 243, 0.76) !important;
+  color: var(--helper-modal-ink) !important;
+  scrollbar-color: rgba(218, 139, 55, 0.42) transparent !important;
+  scrollbar-gutter: stable both-edges !important;
+}
+
+html body #root .app.app-command-shell.app-theme-dark .flow-modal[data-flow="addActionSheet"] .flow-modal-body,
+html body #root .app.app-command-shell.app-theme-dark .flow-modal[data-flow="multiDestinationAdd"] .flow-modal-body,
+html body #root .app.app-shell-dark .flow-modal[data-flow="addActionSheet"] .flow-modal-body,
+html body #root .app.app-shell-dark .flow-modal[data-flow="multiDestinationAdd"] .flow-modal-body {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(125, 211, 252, 0.07), transparent 14rem),
+    rgba(3, 11, 24, 0.74) !important;
+}
+
+html body #root .app.app-command-shell .flow-modal[data-flow="addActionSheet"] :where(h1, h2, h3, h4, p, span, strong, small, label, em),
+html body #root .app.app-command-shell .flow-modal[data-flow="multiDestinationAdd"] :where(h1, h2, h3, h4, p, span, strong, small, label, em),
+html body #root .app.app-command-shell .add-anything-flow :where(h1, h2, h3, h4, p, span, strong, small, label, em),
+html body #root .app.app-command-shell .guided-quick-add :where(h1, h2, h3, h4, p, span, strong, small, label, em) {
+  color: inherit !important;
+  text-shadow: none !important;
+}
+
+html body #root .app.app-command-shell .add-anything-flow,
+html body #root .app.app-command-shell .guided-quick-add {
+  gap: 14px !important;
+  color: var(--helper-modal-ink) !important;
+}
+
+html body #root .app.app-command-shell .add-anything-hero,
+html body #root .app.app-command-shell .add-anything-path-header,
+html body #root .app.app-command-shell .guided-quick-add-hero,
+html body #root .app.app-command-shell .scan-anything-principle-card,
+html body #root .app.app-command-shell .scan-anything-review-note,
+html body #root .app.app-command-shell .quick-add-photo-panel,
+html body #root .app.app-command-shell .quick-add-flow-summary,
+html body #root .app.app-command-shell .universal-review-banner,
+html body #root .app.app-command-shell .quick-add-empty-result {
+  border: 1px solid var(--helper-modal-line) !important;
+  border-radius: 19px !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(244, 122, 67, 0.08), transparent 10rem),
+    var(--helper-modal-card) !important;
+  color: var(--helper-modal-ink) !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell .guided-quick-add-hero,
+html body #root .app.app-command-shell .add-anything-hero {
+  padding: 16px !important;
+}
+
+html body #root .app.app-command-shell .add-anything-path-header {
+  align-items: center !important;
+  padding: 12px !important;
+}
+
+html body #root .app.app-command-shell .add-anything-option-grid,
+html body #root .app.app-command-shell .guided-quick-choice-grid,
+html body #root .app.app-command-shell .guided-option-grid {
+  gap: 11px !important;
+}
+
+html body #root .app.app-command-shell .add-anything-option,
+html body #root .app.app-command-shell .guided-quick-choice,
+html body #root .app.app-command-shell .guided-option-card,
+html body #root .app.app-command-shell .destination-checkbox,
+html body #root .app.app-command-shell .quick-add-result-card {
+  min-width: 0 !important;
+  border: 1px solid var(--helper-modal-line) !important;
+  border-radius: 18px !important;
+  background: var(--helper-modal-card-strong) !important;
+  color: var(--helper-modal-ink) !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell .add-anything-option,
+html body #root .app.app-command-shell .guided-quick-choice,
+html body #root .app.app-command-shell .guided-option-card {
+  min-height: 104px !important;
+  padding: 13px !important;
+}
+
+html body #root .app.app-command-shell .add-anything-option:hover,
+html body #root .app.app-command-shell .add-anything-option:focus-visible,
+html body #root .app.app-command-shell .guided-quick-choice:hover,
+html body #root .app.app-command-shell .guided-quick-choice:focus-visible,
+html body #root .app.app-command-shell .guided-option-card:hover,
+html body #root .app.app-command-shell .guided-option-card:focus-visible,
+html body #root .app.app-command-shell .quick-add-result-card:hover,
+html body #root .app.app-command-shell .quick-add-result-card:focus-visible {
+  border-color: var(--helper-modal-line-strong) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(244, 122, 67, 0.1), transparent 9rem),
+    var(--helper-modal-card-strong) !important;
+  transform: translateY(-1px) !important;
+}
+
+html body #root .app.app-command-shell .add-anything-option small,
+html body #root .app.app-command-shell .guided-quick-choice small,
+html body #root .app.app-command-shell .guided-option-card small,
+html body #root .app.app-command-shell .scan-anything-principle-card p,
+html body #root .app.app-command-shell .scan-anything-review-note p,
+html body #root .app.app-command-shell .quick-add-results-heading,
+html body #root .app.app-command-shell .quick-add-result-copy small,
+html body #root .app.app-command-shell .quick-add-missing-help,
+html body #root .app.app-command-shell .quick-add-flow-summary span,
+html body #root .app.app-command-shell .universal-review-banner span {
+  color: var(--helper-modal-muted) !important;
+  line-height: 1.34 !important;
+}
+
+html body #root .app.app-command-shell .add-anything-option strong,
+html body #root .app.app-command-shell .guided-quick-choice strong,
+html body #root .app.app-command-shell .guided-option-card strong,
+html body #root .app.app-command-shell .scan-anything-principle-card strong,
+html body #root .app.app-command-shell .scan-anything-review-note strong,
+html body #root .app.app-command-shell .quick-add-results-heading strong,
+html body #root .app.app-command-shell .quick-add-result-copy strong,
+html body #root .app.app-command-shell .quick-add-flow-summary strong,
+html body #root .app.app-command-shell .universal-review-banner strong {
+  color: var(--helper-modal-ink) !important;
+}
+
+html body #root .app.app-command-shell .add-anything-option .command-icon,
+html body #root .app.app-command-shell .guided-quick-choice .command-icon,
+html body #root .app.app-command-shell .guided-option-card .command-icon,
+html body #root .app.app-command-shell .guided-quick-add-hero > span,
+html body #root .app.app-command-shell .add-anything-hero > span {
+  border-color: rgba(218, 139, 55, 0.3) !important;
+  background: var(--helper-modal-chip) !important;
+  color: var(--helper-modal-accent) !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell .quick-add-inline-actions,
+html body #root .app.app-command-shell .quick-add-search-starter,
+html body #root .app.app-command-shell .guided-quick-customize-row {
+  gap: 10px !important;
+}
+
+html body #root .app.app-command-shell .quick-add-inline-actions button,
+html body #root .app.app-command-shell .quick-add-search-starter button,
+html body #root .app.app-command-shell .guided-quick-customize-row button,
+html body #root .app.app-command-shell .guided-quick-more-toggle,
+html body #root .app.app-command-shell .guided-quick-add-footer button {
+  min-height: 44px !important;
+  border-radius: 15px !important;
+}
+
+html body #root .app.app-command-shell .quick-add-search-starter button,
+html body #root .app.app-command-shell .quick-add-inline-actions .secondary-button,
+html body #root .app.app-command-shell .quick-add-inline-actions .ghost-button,
+html body #root .app.app-command-shell .guided-quick-customize-row .secondary-button,
+html body #root .app.app-command-shell .guided-quick-customize-row .ghost-button,
+html body #root .app.app-command-shell .guided-quick-more-toggle {
+  border-color: var(--helper-modal-line) !important;
+  background: var(--helper-modal-card) !important;
+  color: var(--helper-modal-ink) !important;
+}
+
+html body #root .app.app-command-shell .flow-modal[data-flow="addActionSheet"] input,
+html body #root .app.app-command-shell .flow-modal[data-flow="addActionSheet"] select,
+html body #root .app.app-command-shell .flow-modal[data-flow="addActionSheet"] textarea,
+html body #root .app.app-command-shell .flow-modal[data-flow="multiDestinationAdd"] input,
+html body #root .app.app-command-shell .flow-modal[data-flow="multiDestinationAdd"] select,
+html body #root .app.app-command-shell .flow-modal[data-flow="multiDestinationAdd"] textarea {
+  border: 1px solid var(--helper-modal-line) !important;
+  border-radius: 16px !important;
+  background: var(--helper-modal-input) !important;
+  color: var(--helper-modal-ink) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28) !important;
+}
+
+html body #root .app.app-command-shell .flow-modal[data-flow="addActionSheet"] input::placeholder,
+html body #root .app.app-command-shell .flow-modal[data-flow="addActionSheet"] textarea::placeholder,
+html body #root .app.app-command-shell .flow-modal[data-flow="multiDestinationAdd"] input::placeholder,
+html body #root .app.app-command-shell .flow-modal[data-flow="multiDestinationAdd"] textarea::placeholder {
+  color: rgba(16, 32, 56, 0.48) !important;
+}
+
+html body #root .app.app-command-shell.app-theme-dark .flow-modal[data-flow="addActionSheet"] input::placeholder,
+html body #root .app.app-command-shell.app-theme-dark .flow-modal[data-flow="addActionSheet"] textarea::placeholder,
+html body #root .app.app-command-shell.app-theme-dark .flow-modal[data-flow="multiDestinationAdd"] input::placeholder,
+html body #root .app.app-command-shell.app-theme-dark .flow-modal[data-flow="multiDestinationAdd"] textarea::placeholder,
+html body #root .app.app-shell-dark .flow-modal[data-flow="addActionSheet"] input::placeholder,
+html body #root .app.app-shell-dark .flow-modal[data-flow="addActionSheet"] textarea::placeholder,
+html body #root .app.app-shell-dark .flow-modal[data-flow="multiDestinationAdd"] input::placeholder,
+html body #root .app.app-shell-dark .flow-modal[data-flow="multiDestinationAdd"] textarea::placeholder {
+  color: rgba(225, 238, 247, 0.48) !important;
+}
+
+html body #root .app.app-command-shell .guided-quick-add-footer {
+  background: linear-gradient(180deg, transparent, rgba(255, 248, 238, 0.96) 34%) !important;
+}
+
+html body #root .app.app-command-shell.app-theme-dark .guided-quick-add-footer,
+html body #root .app.app-shell-dark .guided-quick-add-footer {
+  background: linear-gradient(180deg, transparent, rgba(3, 10, 22, 0.96) 34%) !important;
+}
+
+html body #root .app.app-command-shell .flow-inline-message {
+  border-color: var(--helper-modal-line) !important;
+  background: var(--helper-modal-chip) !important;
+  color: var(--helper-modal-ink) !important;
+}
+
+@media (min-width: 900px) {
+  html body #root .app.app-command-shell .ember-assist-panel {
+    right: max(18px, env(safe-area-inset-right, 0px)) !important;
+  }
+}
+
+@media (max-width: 720px) {
+  html body #root .app.app-command-shell .ember-assist-shell {
+    inset: auto 10px calc(10px + env(safe-area-inset-bottom, 0px)) 10px !important;
+    right: 10px !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-panel {
+    inset: auto 0 0 0 !important;
+    width: auto !important;
+    max-height: min(86dvh, 760px) !important;
+    border-radius: 24px !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-header {
+    padding: 15px 14px 12px !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-scroll {
+    padding: 12px !important;
+    gap: 10px !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-live-hero {
+    grid-template-columns: minmax(0, 1fr) !important;
+    padding: 13px !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-hero-mark {
+    display: none !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-quick-action-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-quick-action-grid button {
+    min-height: 88px !important;
+    padding: 10px !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-form {
+    padding: 12px !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-footer-actions {
+    grid-template-columns: 1fr !important;
+  }
+
+  html body #root .app.app-command-shell .flow-modal[data-flow="addActionSheet"],
+  html body #root .app.app-command-shell .flow-modal[data-flow="multiDestinationAdd"] {
+    width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px) !important;
+    max-height: calc(100dvh - 18px) !important;
+    border-radius: 24px !important;
+  }
+
+  html body #root .app.app-command-shell .flow-modal[data-flow="addActionSheet"] .flow-modal-body,
+  html body #root .app.app-command-shell .flow-modal[data-flow="multiDestinationAdd"] .flow-modal-body {
+    padding: 12px !important;
+    padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  html body #root .app.app-command-shell .add-anything-option-grid,
+  html body #root .app.app-command-shell .guided-quick-choice-grid,
+  html body #root .app.app-command-shell .guided-option-grid,
+  html body #root .app.app-command-shell .destination-checkbox-grid,
+  html body #root .app.app-command-shell .quick-add-flow-summary {
+    grid-template-columns: 1fr !important;
+  }
+
+  html body #root .app.app-command-shell .guided-quick-progress {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  html body #root .app.app-command-shell .quick-add-inline-actions,
+  html body #root .app.app-command-shell .quick-add-search-starter,
+  html body #root .app.app-command-shell .guided-quick-customize-row {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+  }
+
+  html body #root .app.app-command-shell .quick-add-inline-actions button,
+  html body #root .app.app-command-shell .quick-add-search-starter button,
+  html body #root .app.app-command-shell .guided-quick-customize-row button,
+  html body #root .app.app-command-shell .guided-quick-more-toggle,
+  html body #root .app.app-command-shell .guided-quick-add-footer button {
+    width: 100% !important;
+  }
+
+  html body #root .app.app-command-shell .quick-add-result-card {
+    grid-template-columns: 58px minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell .quick-add-result-action {
+    grid-column: 1 / -1 !important;
+    justify-self: stretch !important;
+  }
+}
+
+@media (max-width: 430px) {
+  html body #root .app.app-command-shell .ember-assist-quick-action-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-quick-action-grid button {
+    min-height: 72px !important;
+  }
+}
