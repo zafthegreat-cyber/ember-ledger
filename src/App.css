@@ -97788,7 +97788,7 @@ html body #root .app.app-shell-light.app-command-shell.app-membership .membershi
 /* Dream UI mobile app feel: touch rhythm, safe areas, and modal ergonomics. */
 @media (max-width: 760px) {
   html body #root .app.app-command-shell {
-    --et-mobile-app-safe-bottom: max(236px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 176px));
+    --et-mobile-app-safe-bottom: max(258px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 198px));
     --et-mobile-sheet-pad: 12px;
   }
 
@@ -97886,6 +97886,8 @@ html body #root .app.app-shell-light.app-command-shell.app-membership .membershi
 
   html body #root .app.app-command-shell .mobile-quick-add-fab {
     bottom: calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 20px);
+    min-width: 48px !important;
+    min-height: 48px !important;
   }
 
   html body #root .app.app-command-shell .drawer.menu-drawer.navigation-drawer.open {
@@ -97893,13 +97895,18 @@ html body #root .app.app-shell-light.app-command-shell.app-membership .membershi
   }
 
   html body #root .app.app-command-shell .drawer.open.menu-drawer .drawer-menu-stack {
-    padding-bottom: calc(var(--bottom-nav-height, 76px) + env(safe-area-inset-bottom, 0px) + 188px) !important;
-    scroll-padding-bottom: calc(var(--bottom-nav-height, 76px) + env(safe-area-inset-bottom, 0px) + 188px) !important;
+    padding-bottom: calc(var(--bottom-nav-height, 76px) + env(safe-area-inset-bottom, 0px) + 222px) !important;
+    scroll-padding-bottom: calc(var(--bottom-nav-height, 76px) + env(safe-area-inset-bottom, 0px) + 222px) !important;
   }
 
   html body #root .app.app-command-shell .drawer.open.menu-drawer .drawer-footer-card {
-    margin-bottom: calc(18px + env(safe-area-inset-bottom, 0px)) !important;
+    margin-bottom: calc(26px + env(safe-area-inset-bottom, 0px)) !important;
     border-radius: 18px !important;
+  }
+
+  html body #root .app.app-command-shell .drawer.open.menu-drawer .drawer-footer-card button {
+    min-height: 44px !important;
+    padding: 10px 14px !important;
   }
 
   html body #root .app.app-command-shell .flow-modal-backdrop:has(.flow-modal[data-flow="addActionSheet"]),
@@ -97949,13 +97956,20 @@ html body #root .app.app-shell-light.app-command-shell.app-membership .membershi
     bottom: max(8px, env(safe-area-inset-bottom, 0px)) !important;
     width: auto !important;
     max-height: calc(100dvh - 16px) !important;
+    display: grid !important;
+    grid-template-rows: auto minmax(0, 1fr) auto !important;
+    overflow: hidden !important;
     border-radius: 26px 26px 22px 22px !important;
   }
 
   html body #root .app.app-command-shell .ember-assist-scroll {
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow-y: auto !important;
     gap: 10px !important;
     padding: 12px !important;
-    scroll-padding-bottom: 124px;
+    padding-bottom: 24px !important;
+    scroll-padding-bottom: 136px;
   }
 
   html body #root .app.app-command-shell .ember-assist-panel :where(.ember-assist-live-hero, .ember-assist-context-card, .ember-assist-guidance-strip, .ember-assist-safety-note, .ember-assist-recent-help article, .ember-assist-empty) {
@@ -97968,19 +97982,20 @@ html body #root .app.app-shell-light.app-command-shell.app-membership .membershi
   }
 
   html body #root .app.app-command-shell .ember-assist-form textarea {
-    min-height: 72px;
+    min-height: 58px;
   }
 
   html body #root .app.app-command-shell .ember-assist-footer-actions button,
   html body #root .app.app-command-shell .feedback-modal .location-modal-actions button {
-    min-height: 52px;
+    min-height: 48px;
   }
 
   html body #root .app.app-command-shell .feedback-modal:not(.public-beta-feedback-modal) {
     display: flex !important;
     flex-direction: column !important;
     gap: 0 !important;
-    overflow: hidden !important;
+    overflow-y: auto !important;
+    scroll-padding-bottom: 96px !important;
   }
 
   html body #root .app.app-command-shell .feedback-modal:not(.public-beta-feedback-modal) > .field,
@@ -98006,7 +98021,7 @@ html body #root .app.app-shell-light.app-command-shell.app-membership .membershi
 
   html body #root .app.app-command-shell .feedback-modal:not(.public-beta-feedback-modal) > .field textarea,
   html body #root .app.app-command-shell .feedback-modal:not(.public-beta-feedback-modal) > label textarea {
-    min-height: 82px;
+    min-height: 64px;
   }
 
   html body #root .app.app-command-shell .feedback-modal:not(.public-beta-feedback-modal) > .field input,
@@ -98015,7 +98030,8 @@ html body #root .app.app-shell-light.app-command-shell.app-membership .membershi
   }
 
   html body #root .app.app-command-shell .feedback-modal:not(.public-beta-feedback-modal) .small-empty-state {
-    min-height: 126px;
+    min-height: 92px;
+    max-height: 132px;
     align-content: center;
     text-align: center;
   }
@@ -98023,11 +98039,17 @@ html body #root .app.app-shell-light.app-command-shell.app-membership .membershi
   html body #root .app.app-command-shell .feedback-modal:not(.public-beta-feedback-modal) .feedback-metadata {
     flex: 0 0 auto !important;
     margin: 0 12px 10px !important;
+    font-size: 0.76rem !important;
   }
 
   html body #root .app.app-command-shell .feedback-modal:not(.public-beta-feedback-modal) .location-modal-actions {
     flex: 0 0 auto !important;
     margin-top: auto !important;
+    position: sticky !important;
+    bottom: 0 !important;
+    z-index: 2 !important;
+    background: color-mix(in srgb, var(--et-shell-panel, #fffaf1) 92%, transparent) !important;
+    backdrop-filter: blur(14px);
   }
 }
 
