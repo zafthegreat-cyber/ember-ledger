@@ -98054,3 +98054,235 @@ html body #root .app.app-shell-light.app-command-shell.app-membership .membershi
     gap: 9px !important;
   }
 }
+
+/* Dream UI cards and empty states: collector-specific surfaces without new behavior. */
+html body #root .app.app-command-shell :where(
+  .et-mockup-action-card,
+  .et-mockup-stat-card,
+  .et-mockup-empty-state,
+  .small-empty-state,
+  .empty-state,
+  .catalog-result-card,
+  .market-home-product-card,
+  .market-set-card,
+  .scout-home-report-card,
+  .scout-report-compact-card,
+  .vault-live-folder-tile,
+  .vault-live-recent-row,
+  .vault-empty-overview-card,
+  .vault-empty-summary-card,
+  .spark-section-card,
+  .spark-donation-group-card,
+  .spark-impact-milestone-card,
+  .spark-participation-card,
+  .tidepool-live-section-card,
+  .tidepool-moderation-card,
+  .tidepool-preview-card,
+  .membership-mockup-plan-card,
+  .membership-mockup-add-on-card,
+  .coming-soon-card
+) {
+  position: relative;
+  overflow: hidden;
+  border-color: color-mix(in srgb, var(--wc-border, rgba(118, 76, 31, 0.18)) 78%, var(--page-accent, #d9903d) 22%) !important;
+  background-image:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.28), rgba(255, 247, 230, 0.06)),
+    radial-gradient(circle at 14% 8%, color-mix(in srgb, var(--page-accent, #d9903d) 13%, transparent), transparent 36%) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell :where(
+  .et-mockup-action-card,
+  .et-mockup-stat-card,
+  .et-mockup-empty-state,
+  .small-empty-state,
+  .empty-state,
+  .catalog-result-card,
+  .market-home-product-card,
+  .market-set-card,
+  .scout-home-report-card,
+  .scout-report-compact-card,
+  .vault-live-folder-tile,
+  .vault-live-recent-row,
+  .vault-empty-overview-card,
+  .vault-empty-summary-card,
+  .spark-section-card,
+  .spark-donation-group-card,
+  .spark-impact-milestone-card,
+  .spark-participation-card,
+  .tidepool-live-section-card,
+  .tidepool-moderation-card,
+  .tidepool-preview-card,
+  .membership-mockup-plan-card,
+  .membership-mockup-add-on-card,
+  .coming-soon-card
+),
+html body #root .app.app-shell-dark.app-command-shell :where(
+  .et-mockup-action-card,
+  .et-mockup-stat-card,
+  .et-mockup-empty-state,
+  .small-empty-state,
+  .empty-state,
+  .catalog-result-card,
+  .market-home-product-card,
+  .market-set-card,
+  .scout-home-report-card,
+  .scout-report-compact-card,
+  .vault-live-folder-tile,
+  .vault-live-recent-row,
+  .vault-empty-overview-card,
+  .vault-empty-summary-card,
+  .spark-section-card,
+  .spark-donation-group-card,
+  .spark-impact-milestone-card,
+  .spark-participation-card,
+  .tidepool-live-section-card,
+  .tidepool-moderation-card,
+  .tidepool-preview-card,
+  .membership-mockup-plan-card,
+  .membership-mockup-add-on-card,
+  .coming-soon-card
+) {
+  background-image:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.015)),
+    radial-gradient(circle at 12% 6%, color-mix(in srgb, var(--page-accent, #f0a642) 18%, transparent), transparent 38%) !important;
+  border-color: color-mix(in srgb, var(--page-accent, #f0a642) 28%, rgba(255, 255, 255, 0.14)) !important;
+}
+
+html body #root .app.app-command-shell :where(
+  .et-mockup-action-card,
+  .catalog-result-card,
+  .market-home-product-card,
+  .scout-home-report-card,
+  .vault-live-folder-tile,
+  .spark-section-card,
+  .spark-donation-group-card,
+  .tidepool-preview-card,
+  .membership-mockup-plan-card,
+  .coming-soon-card
+)::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 54px;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--page-accent, #d9903d), transparent);
+  opacity: 0.74;
+  pointer-events: none;
+}
+
+html body #root .app.app-command-shell :where(.et-mockup-action-copy strong, .catalog-result-card h3, .market-home-product-card h3, .scout-home-report-card strong, .vault-live-folder-tile span, .spark-section-card strong, .spark-donation-group-card strong, .tidepool-preview-card strong, .membership-mockup-plan-card strong, .coming-soon-card h3) {
+  letter-spacing: 0;
+}
+
+html body #root .app.app-command-shell :where(.et-mockup-action-copy small, .catalog-result-card p, .market-home-product-card p, .scout-home-report-card p, .vault-live-folder-tile small, .vault-live-recent-row small, .spark-section-card p, .spark-donation-group-card span, .tidepool-preview-card p, .membership-mockup-plan-card p, .coming-soon-card p) {
+  line-height: 1.48;
+}
+
+html body #root .app.app-command-shell :where(.et-mockup-empty-state, .small-empty-state, .empty-state) {
+  align-items: start;
+  gap: 10px;
+}
+
+html body #root .app.app-command-shell :where(.et-mockup-empty-state strong, .small-empty-state h3, .empty-state h3) {
+  color: var(--wc-text, #2e2417);
+}
+
+html body #root .app.app-theme-dark.app-command-shell :where(.et-mockup-empty-state strong, .small-empty-state h3, .empty-state h3),
+html body #root .app.app-shell-dark.app-command-shell :where(.et-mockup-empty-state strong, .small-empty-state h3, .empty-state h3) {
+  color: var(--wc-heading, #fff7df);
+}
+
+html body #root .app.app-command-shell .market-card-freshness-line,
+html body #root .app.app-command-shell .market-results-safety-note,
+html body #root .app.app-command-shell .scout-report-safety-dl,
+html body #root .app.app-command-shell .tidepool-mockup-guardrail-strip,
+html body #root .app.app-command-shell .forge-mockup-guardrail-strip,
+html body #root .app.app-command-shell .spark-mission-facts,
+html body #root .app.app-command-shell .membership-mockup-rule-row,
+html body #root .app.app-command-shell .coming-soon-unavailable {
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--page-accent, #d9903d) 9%, rgba(255, 255, 255, 0.62));
+  border: 1px solid color-mix(in srgb, var(--page-accent, #d9903d) 18%, transparent);
+}
+
+html body #root .app.app-theme-dark.app-command-shell :where(.market-card-freshness-line, .market-results-safety-note, .scout-report-safety-dl, .tidepool-mockup-guardrail-strip, .forge-mockup-guardrail-strip, .spark-mission-facts, .membership-mockup-rule-row, .coming-soon-unavailable),
+html body #root .app.app-shell-dark.app-command-shell :where(.market-card-freshness-line, .market-results-safety-note, .scout-report-safety-dl, .tidepool-mockup-guardrail-strip, .forge-mockup-guardrail-strip, .spark-mission-facts, .membership-mockup-rule-row, .coming-soon-unavailable) {
+  background: color-mix(in srgb, var(--page-accent, #f0a642) 13%, rgba(7, 13, 28, 0.76));
+  border-color: color-mix(in srgb, var(--page-accent, #f0a642) 22%, rgba(255, 255, 255, 0.12));
+}
+
+html body #root .app.app-command-shell .catalog-result-card .catalog-thumb,
+html body #root .app.app-command-shell .market-home-product-art,
+html body #root .app.app-command-shell .vault-live-item-thumb,
+html body #root .app.app-command-shell .spark-section-icon,
+html body #root .app.app-command-shell .hearth-spark-mission-icon {
+  box-shadow:
+    0 10px 22px color-mix(in srgb, var(--page-accent, #d9903d) 18%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.34);
+}
+
+html body #root .app.app-command-shell .catalog-result-actions,
+html body #root .app.app-command-shell .market-card-actions,
+html body #root .app.app-command-shell .market-empty-actions,
+html body #root .app.app-command-shell .spark-flow-actions,
+html body #root .app.app-command-shell .tidepool-support-actions {
+  gap: 9px;
+}
+
+html body #root .app.app-command-shell .catalog-result-actions button,
+html body #root .app.app-command-shell .market-card-actions button,
+html body #root .app.app-command-shell .market-empty-actions button,
+html body #root .app.app-command-shell .spark-flow-actions button,
+html body #root .app.app-command-shell .tidepool-support-actions button {
+  border-radius: 16px;
+}
+
+html body #root .app.app-command-shell .coming-soon-card-meta {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+html body #root .app.app-command-shell .coming-soon-card-meta .status-badge {
+  display: inline-flex;
+  width: auto;
+  min-width: 0;
+  min-height: 28px;
+  max-width: 100%;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  line-height: 1;
+}
+
+html body #root .app.app-command-shell .coming-soon-card-meta small {
+  flex: 1 1 8rem;
+}
+
+@media (max-width: 760px) {
+  html body #root .app.app-command-shell :where(.catalog-result-card, .market-home-product-card, .scout-home-report-card, .spark-section-card, .spark-donation-group-card, .tidepool-preview-card, .membership-mockup-plan-card, .coming-soon-card) {
+    border-radius: 22px;
+  }
+
+  html body #root .app.app-command-shell .coming-soon-card {
+    min-height: 0;
+  }
+
+  html body #root .app.app-command-shell .coming-soon-card-meta .status-badge {
+    font-size: 0.68rem;
+  }
+
+  html body #root .app.app-command-shell :where(.et-mockup-empty-state, .small-empty-state, .empty-state) {
+    min-height: 128px;
+    justify-content: center;
+  }
+
+  html body #root .app.app-command-shell .catalog-result-actions,
+  html body #root .app.app-command-shell .market-card-actions,
+  html body #root .app.app-command-shell .market-empty-actions,
+  html body #root .app.app-command-shell .spark-flow-actions,
+  html body #root .app.app-command-shell .tidepool-support-actions {
+    align-items: stretch;
+  }
+}

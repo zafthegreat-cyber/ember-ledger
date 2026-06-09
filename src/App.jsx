@@ -25577,8 +25577,8 @@ function renderVaultHeader() {
         vaultIsEmpty ? (
           <div className="vault-empty-overview-card" aria-label="Vault empty overview">
             <EtMockupEmptyState
-              title="Your Vault is ready."
-              detail="Add your first item and keep your collection protected."
+              title="Your collection room is ready."
+              detail="Start with one card, slab, binder page, sealed product, or wishlist want. Vault keeps owned, sealed, and wanted items clearly separated."
               action={(
                 <div className="quick-actions">
                   <button type="button" onClick={openVaultQuickAddFlow}>Add to Vault</button>
@@ -25829,7 +25829,7 @@ function renderForgeAccessState() {
               "Choose exact copy",
               "Record sales",
               "Save expenses and receipts",
-              "Prepare tax summaries",
+              "Prepare review summaries",
             ].map((label) => <span key={label}>{label}</span>)}
           </div>
           <div className="forge-access-preview-grid" aria-label="Forge overview">
@@ -37511,8 +37511,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </button>
               )) : (
                 <div className="empty-state small-empty-state">
-                  <h3>No recent additions yet.</h3>
-                  <p>Add a card, sealed product, or import a list to start your Vault trail.</p>
+                  <h3>No recent Vault movement yet.</h3>
+                  <p>Add a card, sealed product, slab, binder page, or wishlist want to start a protected collection trail.</p>
                 </div>
               )}
             </div>
@@ -40866,7 +40866,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                         <h3>{feature.name}</h3>
                         <p>{feature.description}</p>
                         <small className="coming-soon-unavailable">
-                          {disabled ? "Not planned." : group.tone === "delayed" ? "Delayed - not upcoming soon." : "Not available yet."}
+                          {disabled ? "Not planned." : group.tone === "delayed" ? "Delayed - not upcoming soon." : "Interest can be shared, but this is not live yet."}
                         </small>
                         <button
                           type="button"
@@ -41093,12 +41093,41 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const betaStatusLabel = tierAccess.isBeta || BETA_LOCAL_MODE ? "Active beta access" : "Approval required";
     const adminStatusVisible = Boolean(actualAdminUser || adminViewingAsAdmin);
     const freeCoreFeatures = [
-      "Manual card, sealed, and graded tracking",
-      "Folders, tags, wishlist, favorites, missing cards, and set progress",
-      "Basic fair range, collection value, card search, and product search",
-      "Basic trade analyzer, deck/list builder, and Forge ledger",
-      "Manual Scout reports, screenshot scan UI, proof review, and 1 watched store",
-      "Tidepool read/report, The Spark view, Ember Assist prompts, and safety basics",
+      {
+        title: "Protected Vault",
+        detail: "Manual card, sealed, graded, wishlist, folder, and set tracking stay in the core collector app.",
+        meta: "Collector",
+        icon: "vault",
+        tone: "vault",
+      },
+      {
+        title: "Fair value basics",
+        detail: "Basic fair range, collection value, card search, and product search stay available without checkout.",
+        meta: "Market",
+        icon: "market",
+        tone: "market",
+      },
+      {
+        title: "Trade review",
+        detail: "Basic trade analyzer, deck/list builder, and review-first Forge planning stay available.",
+        meta: "Forge",
+        icon: "forge",
+        tone: "forge",
+      },
+      {
+        title: "Scout starter access",
+        detail: "Manual Scout reports, screenshot scan UI, proof review, and 1 watched store stay included.",
+        meta: "Scout",
+        icon: "scout",
+        tone: "scout",
+      },
+      {
+        title: "Family and community",
+        detail: "Tidepool read/report, The Spark view, Ember Assist prompts, and safety basics stay included.",
+        meta: "Safe",
+        icon: "spark",
+        tone: "gold",
+      },
     ];
     const accessStatusRows = [
       {
@@ -41211,12 +41240,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div className="et-mockup-action-grid membership-mockup-free-grid">
               {freeCoreFeatures.map((feature) => (
                 <EtMockupActionCard
-                  key={feature}
-                  title={feature}
-                  detail="Available as part of the beta core experience."
-                  meta="Free"
-                  icon="vault"
-                  tone="gold"
+                  key={feature.title}
+                  title={feature.title}
+                  detail={`${feature.detail} Available as part of the beta core experience.`}
+                  meta={feature.meta}
+                  icon={feature.icon}
+                  tone={feature.tone}
                 />
               ))}
             </div>
@@ -45428,8 +45457,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <div className="tidepool-feed-grid">
             {filteredTidepoolPosts.length === 0 ? (
               <div className="empty-state tidepool-empty-state">
-                <h3>Community posts and confirmations will appear here.</h3>
-                <p>Start a family-friendly question, local collecting tip, event note, or proof-backed Scout confirmation. Tidepool is for trusted collecting activity, not rush alerts.</p>
+                <h3>The community table is ready.</h3>
+                <p>Start a family-friendly question, local collecting tip, event note, or proof-backed Scout confirmation. Keep it general, kind, and useful. Tidepool is for trusted collecting activity, not rush alerts.</p>
                 <div className="quick-actions">
                   <button type="button" onClick={openTidepoolCreatePostFlow} disabled={!canCreateTidepoolPost}>Start a Post</button>
                   <button type="button" className="secondary-button" onClick={() => setActiveTab("scout")}>View Scout Signals</button>
@@ -52519,8 +52548,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const hearthFoundationJourneyCards = [
       {
         key: "foundation-restock",
-        title: foundationJourneyItems[0]?.title || "Scout nearby restocks",
-        detail: foundationJourneyItems[0]?.detail || "3 useful Richmond signals",
+        title: foundationJourneyItems[0]?.title || "Scout current signals",
+        detail: foundationJourneyItems[0]?.detail || "Proof-first store notes, not raw patterns.",
         meta: foundationJourneyItems[0]?.status || "Worth checking",
         icon: "scout",
         tone: "scout",
@@ -52529,7 +52558,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       {
         key: "foundation-forge",
         title: foundationJourneyItems[1]?.title || "Review a pending trade",
-        detail: foundationJourneyItems[1]?.detail || "Parent approval recommended",
+        detail: foundationJourneyItems[1]?.detail || "Compare exact copies before anyone commits.",
         meta: foundationJourneyItems[1]?.meta || "+50 pts",
         icon: "forge",
         tone: "forge",
@@ -52538,7 +52567,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       {
         key: "foundation-event",
         title: foundationJourneyItems[2]?.title || "Kids Trade Night",
-        detail: foundationJourneyItems[2]?.detail || "Fri, May 24 - Richmond, VA",
+        detail: foundationJourneyItems[2]?.detail || "Parent-managed Spark planning.",
         meta: foundationJourneyItems[2]?.status || "Family friendly",
         icon: "calendar",
         tone: "spark",
@@ -52546,8 +52575,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       },
       {
         key: "foundation-vault-reminder",
-        title: "Vault reminder",
-        detail: "Add one card or sealed product, then review before saving.",
+        title: "Sleeve one Vault item",
+        detail: "Add a card, slab, binder page, or sealed product after review.",
         meta: "Protected",
         icon: "vault",
         tone: "vault",
@@ -52558,7 +52587,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       {
         key: "foundation-scan-card",
         title: foundationQuickActionItems[0]?.title || "Scan card",
-        detail: foundationQuickActionItems[0]?.detail || "Identify and review before saving",
+        detail: foundationQuickActionItems[0]?.detail || "Card identity + variant reviewed before saving.",
         icon: "scan",
         tone: "vault",
         onClick: () => openQuickAddAction("scanProduct"),
@@ -52566,7 +52595,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       {
         key: "foundation-scan-restock",
         title: foundationQuickActionItems[1]?.title || "Scan restock screenshot",
-        detail: foundationQuickActionItems[1]?.detail || "Extract store, item, and time",
+        detail: foundationQuickActionItems[1]?.detail || "Turn proof into a current report, not a pattern feed.",
         icon: "scout",
         tone: "scout",
         onClick: () => openQuickAddPathFromHearth("scoutScreenshotReview", {}, "hearth-foundation-screenshot"),
@@ -52590,7 +52619,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       {
         key: "foundation-donate-spark",
         title: "Donate to The Spark",
-        detail: "Track kid-safe family support.",
+        detail: "Preview kid-safe family support. No payment processed.",
         icon: "spark",
         tone: "spark",
         onClick: () => openSparkManualSeed("donation"),
@@ -53310,8 +53339,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 />
               )) : (
                 <EtMockupEmptyState
-                  title="No saved activity yet on this device."
-                  detail="Complete a Hearth action to start your activity trail."
+                  title="No collector trail yet."
+                  detail="Add a Vault item, Scout proof note, Market watch, or Spark support preview to start a reviewable activity trail."
                   action={<EtMockupButton variant="secondary" onClick={() => openAddActionSheet("hearth-empty")}>Quick Add</EtMockupButton>}
                 />
               )}
@@ -62557,8 +62586,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   {!catalogSearchHasRun && !supabaseCatalogStatus.loading ? (
                     <div className="small-empty-state tidetradr-search-prompt market-empty-state">
                       <EtMockupEmptyState
-                        title="Search cards, sets, or sealed products."
-                        detail="Market shows known values and labels weak data honestly."
+                        title="Search a card, set, sealed product, UPC, or SKU."
+                        detail="Market Watch shows fair-value context and labels weak data honestly. No checkout or stock guarantee is connected."
                       />
                       <div className="market-empty-examples" aria-label="Market search examples">
                         <span>Card names</span>
@@ -62597,7 +62626,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                           ? "No match yet. You can add this product to the catalog or try a name search."
                           : catalogAlternateKindLabels.length
                           ? `Matches exist in ${catalogAlternateKindLabels.join(" / ")}. Switch modes or clear active filters to see them.`
-                          : "No matches yet. Try a set name, product name, UPC, or card name."}
+                          : "No matches yet. Try an exact card name, set name, sealed product, UPC, SKU, or simpler collector term."}
                       </p>
                       <div className="quick-actions market-empty-actions">
                         <button type="button" className="secondary-button" onClick={() => {
