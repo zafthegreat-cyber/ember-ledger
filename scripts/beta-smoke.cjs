@@ -2042,16 +2042,30 @@ async function main() {
       await overflowAction(forgeDeleteCard, "Delete Forge item");
     });
     assert.match(acceptedForgeDelete.join("\n"), /Delete Forge inventory item\?/);
-    await assertVisibleText("Ready to track your first sale?");
+    await page.waitForFunction(
+      () => !document.body.innerText.includes("Smoke Forge ETB Edited"),
+      null,
+      { timeout: 7000 }
+    );
+    await assertVisibleText("Start tracking sales and trades.");
+    await assertVisibleText("Your workshop is ready. Add inventory, a receipt, mileage, or a sale when you are ready.");
   });
 
   await step("Receipt: draft/verify/submit expense-only report", async () => {
     await nav("Vault");
     await page.locator(".vault-command-center").getByRole("button", { name: "Quick Add", exact: true }).click();
-    await page.locator(".flow-modal").getByRole("button", { name: /Scan \/ Review Item|Scan to Vault/ }).click();
-    await page.locator(".flow-modal").getByRole("button", { name: /Open Scanner/ }).click();
-    await page.getByRole("button", { name: "Scan Receipt" }).click();
     const receiptModal = page.locator(".receipt-scan-modal").first();
+    const quickAddModal = page.locator(".flow-modal").first();
+    const directReceiptAction = quickAddModal.getByRole("button", { name: /Upload Receipt|Add Receipt|Open receipt review|Continue to Receipt Review/i }).first();
+    if (await directReceiptAction.isVisible().catch(() => false)) {
+      await directReceiptAction.click();
+    } else {
+      await quickAddModal.getByRole("button", { name: /Scan Product\/Card|Search \/ Scan Item/i }).first().click();
+      const scanModal = page.locator(".scan-product-modal").first();
+      await scanModal.getByRole("tab", { name: "Receipt" }).click();
+      await scanModal.locator(".scan-product-mode-panel--receipt").getByRole("button", { name: "Continue" }).click();
+    }
+    await receiptModal.waitFor({ state: "visible", timeout: 7000 });
     await fillByLabel(receiptModal, "Receipt OCR / visible text", "Smoke Receipt Pack 11.35");
     await fillByLabel(receiptModal, "Store", "Smoke Receipt Target");
     await fillByLabel(receiptModal, "Store location", "Smoke City, VA");
@@ -2623,16 +2637,16 @@ async function main() {
     assert.equal(Boolean(wishlistRecord.businessInventory), false);
     assert.equal(wishlistRecord.workspaceId, "workspace-personal-local-beta");
     assert.equal(await page.locator(".compact-card").filter({ hasText: "Smoke Wishlist Box" }).count(), 0);
-    await page.getByRole("button", { name: "Wishlist", exact: true }).click();
+    await page.getByLabel("Vault sections").getByRole("button", { name: "Wishlist", exact: true }).click();
     await assertVisibleText("Smoke Wishlist Box");
     await nav("Forge");
     assert.equal(await page.locator(".compact-card").filter({ hasText: "Smoke Wishlist Box" }).count(), 0);
     await page.reload({ waitUntil: "domcontentloaded" });
     await page.waitForTimeout(500);
     await nav("Vault");
-    await page.getByRole("button", { name: "Collection", exact: true }).click();
+    await page.getByLabel("Vault sections").getByRole("button", { name: "Collection", exact: true }).click();
     assert.equal(await page.locator(".compact-card").filter({ hasText: "Smoke Wishlist Box" }).count(), 0);
-    await page.getByRole("button", { name: "Wishlist", exact: true }).click();
+    await page.getByLabel("Vault sections").getByRole("button", { name: "Wishlist", exact: true }).click();
     await assertVisibleText("Smoke Wishlist Box");
     await nav("Forge");
     assert.equal(await page.locator(".compact-card").filter({ hasText: "Smoke Wishlist Box" }).count(), 0);

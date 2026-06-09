@@ -98363,3 +98363,20 @@ html body #root .app.app-command-shell .coming-soon-card-meta small {
     align-items: stretch;
   }
 }
+
+@media (max-width: 640px) {
+  html body #root .app.app-command-shell .flow-modal[data-flow="addActionSheet"],
+  html body #root .app.app-command-shell .flow-modal[data-flow="multiDestinationAdd"],
+  html body #root .app.app-shell-dark .flow-modal[data-flow="addActionSheet"],
+  html body #root .app.app-shell-dark .flow-modal[data-flow="multiDestinationAdd"] {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    transform: none !important;
+  }
+}
