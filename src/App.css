@@ -97373,3 +97373,218 @@ html body #root .app.app-command-shell .feedback-modal .location-modal-actions b
     margin-inline: 12px !important;
   }
 }
+
+/* Dream UI foundation refinement: shared EtMockup rhythm, surfaces, and controls. */
+html body #root .app.app-command-shell {
+  --et-dream-page-gap: clamp(16px, 2vw, 24px);
+  --et-dream-stack-gap: clamp(14px, 1.7vw, 20px);
+  --et-dream-inner-gap: clamp(12px, 1.45vw, 17px);
+  --et-dream-mobile-safe: max(220px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 162px));
+  --et-dream-surface: color-mix(in srgb, var(--et-panel, #fffdf7) 94%, var(--et-page-accent-2, #d9a441) 6%);
+  --et-dream-surface-soft: color-mix(in srgb, var(--et-panel-soft, #fff1dc) 88%, var(--et-panel, #fffdf7) 12%);
+  --et-dream-border: color-mix(in srgb, var(--et-page-accent-2, #d9a441) 26%, rgba(118, 84, 42, 0.18));
+  --et-dream-border-strong: color-mix(in srgb, var(--et-page-accent, #f97316) 28%, var(--et-dream-border));
+  --et-dream-radius-outer: clamp(26px, 2vw, 34px);
+  --et-dream-radius-card: clamp(18px, 1.4vw, 24px);
+  --et-dream-radius-control: 999px;
+  --et-dream-shadow-float: 0 20px 46px color-mix(in srgb, var(--wc-shadow, rgba(88, 56, 26, 0.18)) 66%, transparent);
+  --et-dream-shadow-card: 0 12px 28px color-mix(in srgb, var(--wc-shadow, rgba(88, 56, 26, 0.13)) 46%, transparent);
+  --et-dream-glow: 0 0 0 1px color-mix(in srgb, var(--et-page-accent-2, #d9a441) 18%, transparent), 0 18px 44px color-mix(in srgb, var(--et-page-accent, #f97316) 10%, transparent);
+}
+
+html body #root .app.app-theme-dark.app-command-shell,
+html body #root .app.app-shell-dark.app-command-shell {
+  --et-dream-surface: color-mix(in srgb, var(--et-panel, #0d1b31) 88%, #182845 12%);
+  --et-dream-surface-soft: color-mix(in srgb, var(--et-panel-soft, #10243f) 86%, #0a1424 14%);
+  --et-dream-border: color-mix(in srgb, var(--et-page-accent-2, #d9a441) 24%, rgba(255, 255, 255, 0.13));
+  --et-dream-border-strong: color-mix(in srgb, var(--et-page-accent, #f97316) 34%, rgba(255, 255, 255, 0.16));
+  --et-dream-shadow-float: 0 24px 54px rgba(0, 0, 0, 0.34);
+  --et-dream-shadow-card: 0 14px 32px rgba(0, 0, 0, 0.22);
+  --et-dream-glow: 0 0 0 1px color-mix(in srgb, var(--et-page-accent-2, #d9a441) 20%, transparent), 0 18px 44px color-mix(in srgb, var(--et-page-accent, #f97316) 13%, transparent);
+}
+
+html body #root .app.app-command-shell .et-mockup-page {
+  gap: var(--et-dream-page-gap);
+  padding: clamp(10px, 1.5vw, 18px);
+  padding-bottom: max(196px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 138px));
+}
+
+html body #root .app.app-command-shell .et-mockup-main-column,
+html body #root .app.app-command-shell .et-mockup-action-stack {
+  gap: var(--et-dream-stack-gap);
+}
+
+html body #root .app.app-command-shell .et-mockup-page-hero,
+html body #root .app.app-command-shell .et-mockup-section-card,
+html body #root .app.app-command-shell .et-mockup-right-rail,
+html body #root .app.app-command-shell .et-mockup-modal-shell {
+  border-color: var(--et-dream-border);
+  border-radius: var(--et-dream-radius-outer);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--et-page-accent-2) 64%, transparent), color-mix(in srgb, var(--et-page-accent) 34%, transparent) 42%, transparent 90%) 0 0 / 100% 3px no-repeat,
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--et-page-accent) 10%, transparent), transparent 13.5rem),
+    radial-gradient(circle at 100% 10%, color-mix(in srgb, var(--et-page-accent-2) 9%, transparent), transparent 16rem),
+    linear-gradient(150deg, var(--et-dream-surface), color-mix(in srgb, var(--et-dream-surface-soft) 78%, var(--et-panel) 22%));
+  box-shadow: var(--et-dream-shadow-float), inset 0 1px 0 rgba(255, 255, 255, 0.54);
+}
+
+html body #root .app.app-theme-dark.app-command-shell .et-mockup-page-hero,
+html body #root .app.app-theme-dark.app-command-shell .et-mockup-section-card,
+html body #root .app.app-theme-dark.app-command-shell .et-mockup-right-rail,
+html body #root .app.app-theme-dark.app-command-shell .et-mockup-modal-shell,
+html body #root .app.app-shell-dark.app-command-shell .et-mockup-page-hero,
+html body #root .app.app-shell-dark.app-command-shell .et-mockup-section-card,
+html body #root .app.app-shell-dark.app-command-shell .et-mockup-right-rail,
+html body #root .app.app-shell-dark.app-command-shell .et-mockup-modal-shell {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--et-page-accent-2) 44%, transparent), color-mix(in srgb, var(--et-page-accent) 30%, transparent) 42%, transparent 90%) 0 0 / 100% 3px no-repeat,
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--et-page-accent) 13%, transparent), transparent 13.5rem),
+    radial-gradient(circle at 100% 10%, color-mix(in srgb, var(--et-page-accent-2) 10%, transparent), transparent 16rem),
+    linear-gradient(150deg, var(--et-dream-surface), color-mix(in srgb, var(--et-dream-surface-soft) 82%, #07101e 18%));
+  box-shadow: var(--et-dream-shadow-float), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+html body #root .app.app-command-shell .et-mockup-page-hero {
+  gap: clamp(16px, 2.3vw, 26px);
+  padding: clamp(21px, 3vw, 34px);
+}
+
+html body #root .app.app-command-shell .et-mockup-section-card,
+html body #root .app.app-command-shell .et-mockup-right-rail {
+  gap: var(--et-dream-inner-gap);
+  padding: clamp(17px, 2.15vw, 24px);
+}
+
+html body #root .app.app-command-shell .et-mockup-stat-card,
+html body #root .app.app-command-shell .et-mockup-action-card,
+html body #root .app.app-command-shell .et-mockup-empty-state {
+  border-color: color-mix(in srgb, var(--et-page-accent-2) 20%, var(--et-dream-border));
+  border-radius: var(--et-dream-radius-card);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--et-page-accent-2) 7%, transparent), transparent 48%),
+    color-mix(in srgb, var(--et-dream-surface-soft) 88%, transparent);
+  box-shadow: var(--et-dream-shadow-card), inset 0 1px 0 rgba(255, 255, 255, 0.48);
+}
+
+html body #root .app.app-theme-dark.app-command-shell .et-mockup-stat-card,
+html body #root .app.app-theme-dark.app-command-shell .et-mockup-action-card,
+html body #root .app.app-theme-dark.app-command-shell .et-mockup-empty-state,
+html body #root .app.app-shell-dark.app-command-shell .et-mockup-stat-card,
+html body #root .app.app-shell-dark.app-command-shell .et-mockup-action-card,
+html body #root .app.app-shell-dark.app-command-shell .et-mockup-empty-state {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--et-page-accent-2) 7%, transparent), transparent 50%),
+    color-mix(in srgb, var(--et-dream-surface-soft) 90%, transparent);
+  box-shadow: var(--et-dream-shadow-card), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+html body #root .app.app-command-shell .et-mockup-action-card {
+  min-height: 96px;
+  gap: 12px;
+}
+
+html body #root .app.app-command-shell .et-mockup-action-card:hover,
+html body #root .app.app-command-shell .et-mockup-stat-card:hover,
+html body #root .app.app-command-shell .et-mockup-button:hover {
+  border-color: var(--et-dream-border-strong);
+  box-shadow: var(--et-dream-glow);
+}
+
+html body #root .app.app-command-shell .et-mockup-icon {
+  border: 1px solid color-mix(in srgb, var(--et-page-accent) 24%, var(--et-dream-border));
+  background:
+    radial-gradient(circle at 35% 20%, color-mix(in srgb, var(--et-page-accent-2) 24%, transparent), transparent 60%),
+    color-mix(in srgb, var(--et-page-accent) 12%, var(--et-dream-surface));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42);
+}
+
+html body #root .app.app-command-shell .et-mockup-pill,
+html body #root .app.app-command-shell .et-mockup-chip,
+html body #root .app.app-command-shell .et-mockup-tab {
+  min-height: 34px;
+  border-color: color-mix(in srgb, var(--et-page-accent-2) 28%, var(--et-dream-border));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, #ffffff 24%, transparent), transparent),
+    color-mix(in srgb, var(--et-dream-surface-soft) 82%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42);
+}
+
+html body #root .app.app-theme-dark.app-command-shell .et-mockup-pill,
+html body #root .app.app-theme-dark.app-command-shell .et-mockup-chip,
+html body #root .app.app-theme-dark.app-command-shell .et-mockup-tab,
+html body #root .app.app-shell-dark.app-command-shell .et-mockup-pill,
+html body #root .app.app-shell-dark.app-command-shell .et-mockup-chip,
+html body #root .app.app-shell-dark.app-command-shell .et-mockup-tab {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent),
+    color-mix(in srgb, var(--et-dream-surface-soft) 82%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+html body #root .app.app-command-shell .et-mockup-button {
+  min-height: 46px;
+  border-radius: var(--et-dream-radius-control);
+  border-color: color-mix(in srgb, var(--et-page-accent) 52%, var(--et-dream-border));
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--et-page-accent) 94%, #ffffff 6%), color-mix(in srgb, var(--et-page-accent-2) 64%, var(--et-page-accent)));
+  box-shadow: 0 14px 30px color-mix(in srgb, var(--et-page-accent) 18%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.34);
+}
+
+html body #root .app.app-command-shell .et-mockup-button-secondary,
+html body #root .app.app-command-shell .et-mockup-button-ghost {
+  border-color: color-mix(in srgb, var(--et-page-accent-2) 28%, var(--et-dream-border));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--et-page-accent-2) 7%, transparent), transparent),
+    color-mix(in srgb, var(--et-dream-surface-soft) 86%, transparent);
+  color: var(--et-ink);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42);
+}
+
+html body #root .app.app-theme-dark.app-command-shell .et-mockup-button-secondary,
+html body #root .app.app-theme-dark.app-command-shell .et-mockup-button-ghost,
+html body #root .app.app-shell-dark.app-command-shell .et-mockup-button-secondary,
+html body #root .app.app-shell-dark.app-command-shell .et-mockup-button-ghost {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+html body #root .app.app-command-shell .et-mockup-button:focus-visible,
+html body #root .app.app-command-shell .et-mockup-action-card:focus-visible,
+html body #root .app.app-command-shell .et-mockup-stat-card:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--et-page-accent-2) 54%, transparent);
+  outline-offset: 3px;
+}
+
+@media (max-width: 620px) {
+  html body #root .app.app-command-shell {
+    --et-dream-stack-gap: 12px;
+    --et-dream-inner-gap: 11px;
+    --et-dream-radius-outer: 25px;
+    --et-dream-radius-card: 17px;
+  }
+
+  html body #root .app.app-command-shell .et-mockup-page {
+    gap: 12px;
+    padding-inline: 8px;
+    padding-bottom: var(--et-dream-mobile-safe);
+  }
+
+  html body #root .app.app-command-shell .et-mockup-page-hero {
+    padding: 15px;
+  }
+
+  html body #root .app.app-command-shell .et-mockup-section-card,
+  html body #root .app.app-command-shell .et-mockup-right-rail {
+    padding: 13px;
+  }
+
+  html body #root .app.app-command-shell .et-mockup-pill,
+  html body #root .app.app-command-shell .et-mockup-chip,
+  html body #root .app.app-command-shell .et-mockup-tab {
+    min-height: 31px;
+    white-space: normal;
+  }
+
+  html body #root .app.app-command-shell .et-mockup-action-card {
+    min-height: 74px;
+  }
+}
