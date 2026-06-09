@@ -5592,7 +5592,7 @@ function EtMockupHero({
           </button>
         ) : null}
       </div>
-      <div className="et-mockup-hero-status" aria-label="Hearth status">
+      <div className="et-mockup-hero-status" aria-label={`${brand} status`}>
         {points ? (
           <span className="et-mockup-points-card">
             <strong>{points.value}</strong>
@@ -11824,7 +11824,7 @@ export default function App() {
       aiAssistEvents: [event, ...(current.aiAssistEvents || [])].slice(0, 50),
     }));
     const result = await saveAiAssistEvent(phase2Context(), event);
-    updatePhase2Status(result, "AI suggestion logged locally.");
+    updatePhase2Status(result, "Guided suggestion logged locally.");
     return result;
   }
   function getLocalFeedbackRecords() {
@@ -11842,7 +11842,7 @@ export default function App() {
     setAiAssistReview({
       id: reviewId,
       featureArea,
-      title: suggestion?.title || "AI Assist suggestion",
+      title: suggestion?.title || "Guided suggestion",
       inputSummary: suggestion?.inputSummary || "",
       outputSummary: output,
       editableOutput: output,
@@ -11875,11 +11875,11 @@ export default function App() {
       status: status === "accepted" && edited ? "edited" : status,
       accepted: status === "accepted",
     });
-    setVaultToast(status === "accepted" ? "AI suggestion marked reviewed. Make any final form changes before saving." : "AI suggestion dismissed.");
+    setVaultToast(status === "accepted" ? "Guided suggestion marked reviewed. Make any final form changes before saving." : "Guided suggestion dismissed.");
     setAiAssistReview(null);
   }
 
-  function renderAiAssistActions(actions = [], { label = "AI Assist", compact = true } = {}) {
+  function renderAiAssistActions(actions = [], { label = "Guided suggestions", compact = true } = {}) {
     const visibleActions = actions.filter(Boolean).slice(0, 6);
     if (!visibleActions.length) return null;
     return (
@@ -59637,7 +59637,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <span className={`status-badge ${receiptScanDraft.status === "duplicate_possible" ? "danger" : ""}`}>{receiptScanDraft.status}</span>
                 </div>
                 <div className="small-empty-state ai-helper-note">
-                  <strong>AI found these possible receipt items. Please review before saving.</strong>
+                  <strong>Suggestions found possible receipt items. Please review before saving.</strong>
                   <span>{receiptScanDraft.aiSummary || AI_REVIEW_DISCLAIMER}</span>
                 </div>
 
@@ -59823,7 +59823,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <h2 id="ai-assist-review-title">{aiAssistReview.title || "Review suggestion"}</h2>
                 <p>{AI_REVIEW_DISCLAIMER}</p>
               </div>
-              <button type="button" className="modal-close-button" aria-label="Close AI Assist review" onClick={() => setAiAssistReview(null)}>
+              <button type="button" className="modal-close-button" aria-label="Close guided suggestion review" onClick={() => setAiAssistReview(null)}>
                 X
               </button>
             </div>
