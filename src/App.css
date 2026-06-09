@@ -97784,3 +97784,273 @@ html body #root .app.app-shell-light.app-command-shell.app-membership .membershi
     margin-top: 2px;
   }
 }
+
+/* Dream UI mobile app feel: touch rhythm, safe areas, and modal ergonomics. */
+@media (max-width: 760px) {
+  html body #root .app.app-command-shell {
+    --et-mobile-app-safe-bottom: max(236px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 176px));
+    --et-mobile-sheet-pad: 12px;
+  }
+
+  html body #root .app.app-command-shell :where(main, .main) {
+    scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 86px);
+    scroll-padding-bottom: var(--et-mobile-app-safe-bottom);
+  }
+
+  html body #root .app.app-command-shell .et-mockup-page {
+    gap: 14px;
+    padding-inline: 10px;
+    padding-bottom: var(--et-mobile-app-safe-bottom);
+  }
+
+  html body #root .app.app-command-shell .et-mockup-main-column,
+  html body #root .app.app-command-shell .et-mockup-action-stack,
+  html body #root .app.app-command-shell :where(.et-mockup-section-card, .et-mockup-right-rail) {
+    gap: 12px;
+  }
+
+  html body #root .app.app-command-shell :where(.et-mockup-section-card, .et-mockup-right-rail, .et-mockup-stat-card, .et-mockup-action-card, .et-mockup-empty-state) {
+    box-shadow:
+      0 10px 24px color-mix(in srgb, var(--wc-shadow, rgba(77, 48, 20, 0.14)) 36%, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.42);
+  }
+
+  html body #root .app.app-theme-dark.app-command-shell :where(.et-mockup-section-card, .et-mockup-right-rail, .et-mockup-stat-card, .et-mockup-action-card, .et-mockup-empty-state),
+  html body #root .app.app-shell-dark.app-command-shell :where(.et-mockup-section-card, .et-mockup-right-rail, .et-mockup-stat-card, .et-mockup-action-card, .et-mockup-empty-state) {
+    box-shadow:
+      0 12px 26px rgba(0, 0, 0, 0.24),
+      inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  }
+
+  html body #root .app.app-command-shell :where(.et-mockup-button, .et-mockup-action-card, .menu-command-link, .drawer-link, .quick-add-menu button, .add-anything-option, .ember-assist-quick-action-grid button, .public-beta-interest-grid label, .theme-choice-card, .settings-list-row, .live-onboarding-step) {
+    min-height: 48px;
+    touch-action: manipulation;
+  }
+
+  html body #root .app.app-command-shell :where(.et-mockup-pill, .et-mockup-chip, .et-mockup-tab, .status-badge, .market-filter-chip, .catalog-chip-row button, .vault-view-strip button) {
+    min-height: 34px;
+    padding-inline: 10px;
+    white-space: normal;
+    touch-action: manipulation;
+  }
+
+  html body #root .app.app-command-shell :where(.et-mockup-pill-row, .catalog-chip-row, .vault-view-strip, .market-search-options, .market-filter-row, .smart-setup-chip-grid, .quick-add-inline-actions, .ember-assist-footer-actions) {
+    gap: 8px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  html body #root .app.app-command-shell .topbar {
+    min-height: 64px;
+    margin: 8px 8px 0;
+    padding: 8px;
+    gap: 8px;
+    border-radius: 24px;
+    box-shadow:
+      0 10px 26px rgba(67, 43, 20, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.54);
+  }
+
+  html body #root .app.app-theme-dark.app-command-shell .topbar,
+  html body #root .app.app-shell-dark .topbar {
+    box-shadow:
+      0 12px 28px rgba(0, 0, 0, 0.28),
+      inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  }
+
+  html body #root .app.app-command-shell .topbar :where(button, .secondary-button, .topbar-market-link, .topbar-scan-button) {
+    min-height: 44px;
+    border-radius: 18px;
+  }
+
+  html body #root .app.app-command-shell .mobile-bottom-nav {
+    left: 8px;
+    right: 8px;
+    bottom: max(8px, env(safe-area-inset-bottom, 0px));
+    width: auto;
+    min-height: 72px;
+    padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px));
+    border-radius: 26px;
+    backdrop-filter: blur(18px) saturate(1.08);
+  }
+
+  html body #root .app.app-command-shell .mobile-bottom-nav button {
+    min-height: 56px;
+    border-radius: 18px;
+    padding: 6px 4px;
+  }
+
+  html body #root .app.app-command-shell .mobile-bottom-nav button span {
+    font-size: 0.66rem;
+    line-height: 1.1;
+  }
+
+  html body #root .app.app-command-shell .mobile-quick-add-fab {
+    bottom: calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 20px);
+  }
+
+  html body #root .app.app-command-shell .drawer.menu-drawer.navigation-drawer.open {
+    scroll-padding-bottom: calc(var(--bottom-nav-height, 76px) + env(safe-area-inset-bottom, 0px) + 164px);
+  }
+
+  html body #root .app.app-command-shell .drawer.open.menu-drawer .drawer-menu-stack {
+    padding-bottom: calc(var(--bottom-nav-height, 76px) + env(safe-area-inset-bottom, 0px) + 188px) !important;
+    scroll-padding-bottom: calc(var(--bottom-nav-height, 76px) + env(safe-area-inset-bottom, 0px) + 188px) !important;
+  }
+
+  html body #root .app.app-command-shell .drawer.open.menu-drawer .drawer-footer-card {
+    margin-bottom: calc(18px + env(safe-area-inset-bottom, 0px)) !important;
+    border-radius: 18px !important;
+  }
+
+  html body #root .app.app-command-shell .flow-modal-backdrop:has(.flow-modal[data-flow="addActionSheet"]),
+  html body #root .app.app-command-shell .location-modal-backdrop:has(.feedback-modal),
+  html body #root .app.app-command-shell .smart-setup-backdrop {
+    align-items: end !important;
+    padding: 10px 8px max(10px, env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  html body #root .app.app-command-shell :where(.flow-modal[data-flow="addActionSheet"], .feedback-modal, .smart-setup-modal) {
+    width: min(100%, calc(100vw - 16px)) !important;
+    max-width: calc(100vw - 16px) !important;
+    max-height: calc(100dvh - 20px) !important;
+    border-radius: 26px 26px 22px 22px !important;
+  }
+
+  html body #root .app.app-command-shell .flow-modal[data-flow="addActionSheet"] .modal-title-row,
+  html body #root .app.app-command-shell .feedback-modal .modal-title-row,
+  html body #root .app.app-command-shell .smart-setup-modal .modal-title-row,
+  html body #root .app.app-command-shell .ember-assist-header {
+    min-height: 68px;
+    padding: 12px 14px !important;
+  }
+
+  html body #root .app.app-command-shell .flow-modal[data-flow="addActionSheet"] .flow-modal-body,
+  html body #root .app.app-command-shell .smart-setup-body,
+  html body #root .app.app-command-shell .public-beta-feedback-body {
+    padding: var(--et-mobile-sheet-pad) !important;
+    padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  html body #root .app.app-command-shell .flow-modal[data-flow="addActionSheet"] :where(.add-anything-option, .quick-add-empty-result, .small-empty-state) {
+    min-height: 82px;
+    padding: 12px !important;
+    border-radius: 20px !important;
+  }
+
+  html body #root .app.app-command-shell .flow-modal[data-flow="addActionSheet"] .flow-modal-footer,
+  html body #root .app.app-command-shell .feedback-modal .location-modal-actions,
+  html body #root .app.app-command-shell .ember-assist-form {
+    padding: 10px 12px calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-panel {
+    left: 8px !important;
+    right: 8px !important;
+    bottom: max(8px, env(safe-area-inset-bottom, 0px)) !important;
+    width: auto !important;
+    max-height: calc(100dvh - 16px) !important;
+    border-radius: 26px 26px 22px 22px !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-scroll {
+    gap: 10px !important;
+    padding: 12px !important;
+    scroll-padding-bottom: 124px;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-panel :where(.ember-assist-live-hero, .ember-assist-context-card, .ember-assist-guidance-strip, .ember-assist-safety-note, .ember-assist-recent-help article, .ember-assist-empty) {
+    padding: 12px !important;
+    border-radius: 19px !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-quick-action-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-form textarea {
+    min-height: 72px;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-footer-actions button,
+  html body #root .app.app-command-shell .feedback-modal .location-modal-actions button {
+    min-height: 52px;
+  }
+
+  html body #root .app.app-command-shell .feedback-modal:not(.public-beta-feedback-modal) {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0 !important;
+    overflow: hidden !important;
+  }
+
+  html body #root .app.app-command-shell .feedback-modal:not(.public-beta-feedback-modal) > .field,
+  html body #root .app.app-command-shell .feedback-modal:not(.public-beta-feedback-modal) > label,
+  html body #root .app.app-command-shell .feedback-modal:not(.public-beta-feedback-modal) > .small-empty-state {
+    flex: 0 0 auto !important;
+    margin: 0 12px 10px !important;
+  }
+
+  html body #root .app.app-command-shell .feedback-modal:not(.public-beta-feedback-modal) > label {
+    display: grid !important;
+    gap: 7px !important;
+    min-width: 0 !important;
+  }
+
+  html body #root .app.app-command-shell .feedback-modal:not(.public-beta-feedback-modal) > .field:first-of-type {
+    margin-top: 12px !important;
+  }
+
+  html body #root .app.app-command-shell .feedback-modal:not(.public-beta-feedback-modal) > label:first-of-type {
+    margin-top: 12px !important;
+  }
+
+  html body #root .app.app-command-shell .feedback-modal:not(.public-beta-feedback-modal) > .field textarea,
+  html body #root .app.app-command-shell .feedback-modal:not(.public-beta-feedback-modal) > label textarea {
+    min-height: 82px;
+  }
+
+  html body #root .app.app-command-shell .feedback-modal:not(.public-beta-feedback-modal) > .field input,
+  html body #root .app.app-command-shell .feedback-modal:not(.public-beta-feedback-modal) > label input {
+    min-height: 48px;
+  }
+
+  html body #root .app.app-command-shell .feedback-modal:not(.public-beta-feedback-modal) .small-empty-state {
+    min-height: 126px;
+    align-content: center;
+    text-align: center;
+  }
+
+  html body #root .app.app-command-shell .feedback-modal:not(.public-beta-feedback-modal) .feedback-metadata {
+    flex: 0 0 auto !important;
+    margin: 0 12px 10px !important;
+  }
+
+  html body #root .app.app-command-shell .feedback-modal:not(.public-beta-feedback-modal) .location-modal-actions {
+    flex: 0 0 auto !important;
+    margin-top: auto !important;
+  }
+}
+
+@media (max-width: 430px) {
+  html body #root .app.app-command-shell .et-mockup-page {
+    padding-inline: 8px;
+  }
+
+  html body #root .app.app-command-shell .et-mockup-page-hero {
+    border-radius: 24px;
+  }
+
+  html body #root .app.app-command-shell :where(.et-mockup-section-card, .et-mockup-right-rail) {
+    border-radius: 22px;
+  }
+
+  html body #root .app.app-command-shell :where(.flow-modal[data-flow="addActionSheet"], .feedback-modal, .smart-setup-modal, .ember-assist-panel) {
+    border-radius: 24px 24px 20px 20px !important;
+  }
+
+  html body #root .app.app-command-shell .flow-modal[data-flow="addActionSheet"] :where(.add-anything-option-grid, .scan-anything-coming-soon-grid),
+  html body #root .app.app-command-shell .public-beta-interest-grid,
+  html body #root .app.app-command-shell .smart-setup-card-grid {
+    gap: 9px !important;
+  }
+}
