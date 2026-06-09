@@ -28986,10 +28986,23 @@ textarea::placeholder {
 }
 
 .concept-tide-card button,
-.concept-post-card button {
+.concept-post-card button,
+.concept-action-chip {
   min-height: 30px !important;
   padding: 5px 10px !important;
   font-size: 0.72rem !important;
+}
+
+.concept-action-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(122, 229, 255, 0.22);
+  background: rgba(5, 12, 28, 0.72);
+  color: rgba(247, 251, 255, 0.82);
+  font-weight: 900;
+  white-space: nowrap;
 }
 
 .concept-value-card strong,

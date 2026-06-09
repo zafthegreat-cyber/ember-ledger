@@ -5354,8 +5354,8 @@ function SectionStatusDeck({ title, className }) {
   if (kind === "market") {
     return (
       <div className="concept-deck concept-deck--exchange concept-deck--empty">
-        <div className="concept-search">Search cards, products, sellers...</div>
-        <div className="concept-tabs"><span className="active">For You</span><span>Near Retail</span><span>Local</span><span>Shipping</span></div>
+        <div className="concept-search">Search cards, sealed, UPC, or SKU...</div>
+        <div className="concept-tabs"><span className="active">For You</span><span>Near Retail</span><span>Watchlist</span><span>Freshness</span></div>
         {[
           ["No watched deals yet", "Add products to your watchlist."],
           ["Search Market to compare", "Results use live catalog/search data."],
@@ -5386,7 +5386,7 @@ function SectionStatusDeck({ title, className }) {
       <div className="concept-deck concept-deck--community concept-deck--empty">
         <div className="concept-tabs"><span className="active">For You</span><span>Recent</span><span>Following</span><span>Local</span></div>
         {["No posts yet", "Create the first private beta post"].map((post) => (
-          <div className="concept-post-card" key={post}><span className="concept-avatar" /><span><strong>{post}</strong><small>Community activity appears here.</small></span><button type="button">Open</button></div>
+          <div className="concept-post-card" key={post}><span className="concept-avatar" /><span><strong>{post}</strong><small>Community activity appears here.</small></span><span className="concept-action-chip">Preview</span></div>
         ))}
       </div>
     );
@@ -5414,7 +5414,7 @@ function SectionStatusDeck({ title, className }) {
   }
   return (
     <div className="concept-deck concept-deck--hearth concept-deck--empty">
-      <div className="concept-tide-card"><strong>Today's Tide</strong><small>Your daily flow.</small><button type="button">View</button></div>
+      <div className="concept-tide-card"><strong>Today's Tide</strong><small>Your daily flow.</small><span className="concept-action-chip">Preview</span></div>
       <div className="concept-mini-grid">
         {["Scout", "Vault", "Market", "Forge"].map((label) => <span key={label}><b>0</b>{label}</span>)}
       </div>
@@ -25086,7 +25086,12 @@ function renderTideTradrHeader() {
 
 function renderMarketHomeFoundation() {
   // TODO: Replace these mock cards with a read-only market discovery contract when approved.
-  const categories = ["Singles", "Sealed", "Supplies", "Graded", "Local Pickup"];
+  const categories = [
+    { label: "All", filter: "All" },
+    { label: "Cards", filter: "card" },
+    { label: "Sealed", filter: "sealed" },
+    { label: "Other", filter: "other" },
+  ];
   const discoveryCards = [
     {
       name: "Scarlet chase single",
@@ -25128,15 +25133,15 @@ function renderMarketHomeFoundation() {
       >
         <div className="market-home-category-row" aria-label="Market categories">
           {categories.map((category) => {
-            const filterKey = category === "Singles" ? "card" : category === "Sealed" ? "sealed" : "All";
+            const filterKey = category.filter;
             return (
               <button
-                key={category}
+                key={category.label}
                 type="button"
                 className={catalogKindFilter === filterKey ? "active" : ""}
                 onClick={() => switchCatalogKindFilter(filterKey)}
               >
-                {category}
+                {category.label}
               </button>
             );
           })}
@@ -37694,7 +37699,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </div>
               <div className="scout-live-summary-list">
                 {summaryRows.map((row) => (
-                  <button type="button" className="scout-live-summary-row is-editable" key={row.label}>
+                  <button
+                    type="button"
+                    className="scout-live-summary-row is-editable"
+                    key={row.label}
+                    aria-label={`Edit ${row.label} in Scout report flow`}
+                    onClick={() => openLiveScoutReportFlow("addReport")}
+                  >
                     <span>{row.label}</span>
                     <strong>{row.value}</strong>
                     <em>Edit</em>
@@ -37762,7 +37773,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </div>
             <div className="scout-live-option-grid">
               {reportTypes.map((type, index) => (
-                <button type="button" className={index === 0 ? "is-selected" : ""} key={type}>
+                <button
+                  type="button"
+                  className={index === 0 ? "is-selected" : ""}
+                  key={type}
+                  onClick={() => setVaultToast(`${type} is a preview report type. Use Review report to continue the mock flow.`)}
+                >
                   <strong>{type}</strong>
                   <span>{index === 0 ? "Worth the Trip context" : "Review-first signal"}</span>
                 </button>
@@ -51606,7 +51622,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </div>
             </div>
             <figure className="landing-promo-art">
-              <img src={BRAND_ASSETS.promoHero} alt="Ember & Tide app preview showing Scout, Vault, Forge, and AI Assistant dashboard." loading="eager" />
+              <img src={BRAND_ASSETS.promoHero} alt="Ember & Tide app preview showing Scout, Vault, Forge, and Ember Assist helper dashboard." loading="eager" />
             </figure>
             <div className="landing-feature-grid">
               {[
@@ -59819,7 +59835,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <section className="location-modal ai-assist-review-modal" role="dialog" aria-modal="true" aria-labelledby="ai-assist-review-title" onClick={(event) => event.stopPropagation()}>
             <div className="modal-title-row modal-sticky-header">
               <div>
-                <p className="section-kicker">AI Assist</p>
+                <p className="section-kicker">Guided suggestion</p>
                 <h2 id="ai-assist-review-title">{aiAssistReview.title || "Review suggestion"}</h2>
                 <p>{AI_REVIEW_DISCLAIMER}</p>
               </div>

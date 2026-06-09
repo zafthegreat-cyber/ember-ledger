@@ -1150,7 +1150,7 @@ async function main() {
     await nav("Forge");
     await page.getByRole("button", { name: "Add Inventory", exact: true }).first().click();
     const form = page.locator("form#multi-destination-add-form").first();
-    const searchInput = form.getByPlaceholder("Search Pokemon product, set, UPC, or card name");
+    const searchInput = form.getByPlaceholder(/Search product, set, UPC, or SKU/i);
     await searchInput.fill("mini portfolio");
     await form.locator(".catalog-picker-card").filter({ hasText: /Mini Portfolio|Portfolio/i }).first().waitFor({ state: "visible", timeout: 7000 });
     await searchInput.fill("collector chest");
@@ -1402,11 +1402,33 @@ async function main() {
       }
     }
     if (await page.locator("form.scout-report-flow").count() === 0) {
-      await page.getByRole("button", { name: /^Add Report$|^Submit Report$/ }).first().click();
+      let submitReportButton = page.getByRole("button", { name: /^Submit Report$/ }).first();
+      if (!(await submitReportButton.isVisible().catch(() => false))) {
+        const followingTab = page.getByRole("button", { name: /^Following$/ }).first();
+        if (await followingTab.isVisible().catch(() => false)) {
+          await followingTab.click();
+          await page.waitForTimeout(250);
+        }
+        submitReportButton = page.getByRole("button", { name: /^Submit Report$/ }).first();
+      }
+      if (await submitReportButton.isVisible().catch(() => false)) {
+        await submitReportButton.click();
+      } else {
+        await page.getByRole("button", { name: /^Add Report$/ }).first().click();
+      }
     }
     const form = page.locator("form.scout-report-flow").first();
     await form.waitFor({ state: "visible", timeout: 10000 });
     return form;
+  }
+
+  async function openScoutReportsPage() {
+    await nav("Scout");
+    const followingTab = page.getByRole("button", { name: /^Following$/ }).first();
+    if (await followingTab.isVisible().catch(() => false)) {
+      await followingTab.click();
+      await page.waitForTimeout(250);
+    }
   }
 
   async function assertNotVisibleText(text) {
@@ -1616,12 +1638,13 @@ async function main() {
     if (await page.getByRole("button", { name: /Target/i }).count()) {
       await page.getByRole("button", { name: /Target/i }).first().click();
     }
+    const targetStoreName = "Greenbrier Target";
     const storeSearch = page.getByPlaceholder(/Search .*city, ZIP, nickname, or address|Search store, city, ZIP/i).first();
     if (await storeSearch.count()) {
-      await storeSearch.fill("Smoke Shared Target");
+      await storeSearch.fill(targetStoreName);
     }
-    await assert.match(await page.locator("body").innerText(), /Smoke Shared Target/);
-    const smokeStoreCard = page.locator(".scout-store-card").filter({ hasText: "Smoke Shared Target" }).first();
+    await assert.match(await page.locator("body").innerText(), /Greenbrier Target/);
+    const smokeStoreCard = page.locator(".scout-store-card").filter({ hasText: targetStoreName }).first();
     await smokeStoreCard.getByRole("button", { name: /Open Store|Open|View/i }).click();
     await assertVisibleText(/Add Report|Submit Report/);
   });
@@ -1701,7 +1724,7 @@ async function main() {
       assert.notEqual(report.storeName, "Suffolk Walmart");
     }
 
-    await nav("Scout");
+    await openScoutReportsPage();
     for (const store of exactStores) {
       await assertVisibleText(store.nickname);
     }
@@ -1715,7 +1738,7 @@ async function main() {
     }
 
     await page.reload({ waitUntil: "domcontentloaded" });
-    await nav("Scout");
+    await openScoutReportsPage();
     for (const store of exactStores) {
       await assertVisibleText(store.nickname);
     }
@@ -1728,13 +1751,7 @@ async function main() {
 
   await step("Scout: add/edit restock report without user delete", async () => {
     async function openReportWizard() {
-      await nav("Scout");
-      if (await page.locator("form.scout-report-flow").count() === 0) {
-        await page.getByRole("button", { name: /^Add Report$|^Submit Report$/ }).first().click();
-      }
-      const form = page.locator("form.scout-report-flow").first();
-      await form.waitFor({ state: "visible", timeout: 10000 });
-      return form;
+      return openScoutReportWizard();
     }
 
     async function closeReportSuccess() {
@@ -1796,6 +1813,7 @@ async function main() {
   });
 
   await step("Scout: add/edit/delete tracked item", async () => {
+    const targetStoreName = "Greenbrier Target";
     await nav("Scout");
     const scoutStoresTab = page.locator(".standard-page-header-tabs").getByRole("button", { name: "Stores", exact: true }).first();
     if (await scoutStoresTab.isVisible().catch(() => false)) {
@@ -1831,19 +1849,19 @@ async function main() {
     if (await page.getByRole("button", { name: "Back to Retailers" }).count()) {
       await page.getByRole("button", { name: "Back to Retailers" }).click();
     }
-    if (!(await page.locator(".scout-store-card").filter({ hasText: "Smoke Shared Target" }).count())) {
+    if (!(await page.locator(".scout-store-card").filter({ hasText: targetStoreName }).count())) {
       await clickFirstVisible(page.getByRole("button", { name: /Target/i }), "Target retailer button");
     }
     const storeSearch = page.getByPlaceholder(/Search .*city, ZIP, nickname, or address|Search store, city, ZIP/i).first();
     if (await storeSearch.count()) {
-      await storeSearch.fill("Smoke Shared Target");
+      await storeSearch.fill(targetStoreName);
     }
-    const smokeStoreCard = page.locator(".scout-store-card").filter({ hasText: "Smoke Shared Target" }).first();
+    const smokeStoreCard = page.locator(".scout-store-card").filter({ hasText: targetStoreName }).first();
     try {
       await smokeStoreCard.waitFor({ state: "visible", timeout: 10000 });
     } catch (error) {
       const pageText = (await page.locator("body").innerText()).slice(0, 2000);
-      throw new Error(`Smoke Shared Target store card was not visible. Current Scout view: ${pageText}`);
+      throw new Error(`${targetStoreName} store card was not visible. Current Scout view: ${pageText}`);
     }
     const openButton = smokeStoreCard.getByRole("button", { name: /Open Store|Open|View/i });
     if (await openButton.count()) {
@@ -1879,10 +1897,7 @@ async function main() {
   });
 
   await step("Scout: Screenshot upload/manual save", async () => {
-    await nav("Scout");
-    await page.getByRole("button", { name: /^Add Report$|^Submit Report$/ }).first().click();
-    const reportForm = page.locator("form.scout-report-flow").first();
-    await reportForm.waitFor({ state: "visible", timeout: 10000 });
+    const reportForm = await openScoutReportWizard();
     const png = Buffer.from(
       "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADElEQVR42mP8z8BQDwAFgwJ/lw2nWQAAAABJRU5ErkJggg==",
       "base64"
@@ -1950,7 +1965,7 @@ async function main() {
     await nav("Forge");
     await page.getByRole("button", { name: "Add Inventory", exact: true }).first().click();
     const form = page.locator("form#multi-destination-add-form").first();
-    await form.getByPlaceholder("Search Pokemon product, set, UPC, or card name").fill("Prismatic Evolutions Elite Trainer Box");
+    await form.getByPlaceholder(/Search product, set, UPC, or SKU/i).fill("Prismatic Evolutions Elite Trainer Box");
     const smokeCatalogResult = form.locator(".catalog-picker-card").filter({ hasText: "Prismatic Evolutions Elite Trainer Box", hasNotText: "Code Card" }).first();
     await smokeCatalogResult.waitFor({ state: "visible", timeout: 5000 });
     await smokeCatalogResult.click();
