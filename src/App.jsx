@@ -8729,6 +8729,14 @@ export default function App() {
     setMenuOpen(false);
   }
 
+  function openEmberAssistPanel(eventContext = "ember_assist") {
+    setQuickAddMenuOpen(false);
+    setSearchExpanded(false);
+    setMenuOpen(false);
+    setEmberAssistOpen(true);
+    void trackBetaActivity("opened_ask_ember", { eventContext });
+  }
+
   function openLockedFeatureNotice(featureKey) {
     setLockedFeatureKey(featureKey);
     setQuickAddMenuOpen(false);
@@ -29500,7 +29508,7 @@ function renderForgeBusinessLedgerPanel() {
     activeTabLocked,
     activeTab,
     appAccessAllowed: betaAccessAllowed(),
-  });
+  }) || Boolean(guestPreviewActive && !activeTabLocked && activeTab !== "resetPassword");
 
   useEffect(() => {
     saveEmberAssistThread(emberAssistMessages);
@@ -52318,7 +52326,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       vault: { key: "vault", label: "View Vault", helper: "Review your collection.", icon: "vault", onClick: () => setActiveTab("vault") },
       market: { key: "market", label: "Search Market", helper: "Check fair prices.", icon: "market", onClick: () => setActiveTab("market") },
       spark: { key: "spark", label: "The Spark", helper: "Family support.", icon: "spark", onClick: () => setActiveTab("kidsProgram") },
-      emberAssist: { key: "ember-assist", label: "Ask Ember", helper: "Get a guided next step.", icon: "spark", onClick: () => setEmberAssistOpen(true) },
+      emberAssist: { key: "ember-assist", label: "Ask Ember", helper: "Get a guided next step.", icon: "spark", onClick: () => openEmberAssistPanel("hearth_quick_action") },
       betaFeedback: { key: "beta-feedback", label: "Join / Feedback", helper: "Request a state or share beta feedback.", icon: "bell", onClick: () => openPublicBetaFeedback({ page: "Hearth" }) },
       forge: { key: "forge", label: "Open Forge", helper: "My business.", icon: "forge", onClick: () => setActiveTab("inventory") },
       addSale: { key: "add-sale", label: "Add Sale", helper: "Record revenue.", icon: "forge", onClick: () => openQuickAddAction("sale") },
@@ -55526,13 +55534,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       aria-label="Ask Ember"
       aria-expanded={emberAssistOpen}
       onClick={() => {
-        setQuickAddMenuOpen(false);
-        setSearchExpanded(false);
-        setMenuOpen(false);
-        setEmberAssistOpen((open) => !open);
-        void trackBetaActivity("opened_ask_ember", {
-          eventContext: "topbar_ember_assist",
-        });
+        if (emberAssistOpen) {
+          setEmberAssistOpen(false);
+          return;
+        }
+        openEmberAssistPanel("topbar_ember_assist");
       }}
     >
       <span className="action-icon" aria-hidden="true">E</span>
