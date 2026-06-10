@@ -99757,6 +99757,8 @@ html body #root .app.app-command-shell.app-market .market-price-memory-inline-he
 
 .market-price-memory-safety-strip,
 .market-price-memory-stats,
+.market-price-memory-compare,
+.market-price-memory-comparison-grid,
 .market-price-memory-list,
 .market-price-memory-flow {
   display: grid;
@@ -99787,6 +99789,7 @@ html body #root .app.app-command-shell.app-market .market-price-memory-inline-he
 }
 
 .market-price-memory-stats > div,
+.market-price-memory-comparison-grid > div,
 .market-price-memory-row {
   min-width: 0;
   padding: 13px;
@@ -99795,7 +99798,33 @@ html body #root .app.app-command-shell.app-market .market-price-memory-inline-he
   background: color-mix(in srgb, var(--et-panel-soft, rgba(255, 255, 255, 0.06)) 80%, transparent);
 }
 
+.market-price-memory-compare {
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2, #ffca55) 22%, var(--et-border, rgba(255, 255, 255, 0.12)));
+  border-radius: 20px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--et-page-accent, #65d978) 10%, transparent), transparent 42%),
+    color-mix(in srgb, var(--et-panel-soft, rgba(255, 255, 255, 0.06)) 86%, transparent);
+}
+
+.market-price-memory-compare h3 {
+  margin: 4px 0;
+  color: var(--et-ink, #fff7ed);
+}
+
+.market-price-memory-compare p,
+.market-price-memory-compare-helper {
+  color: var(--et-muted, rgba(232, 238, 246, 0.74));
+  line-height: 1.45;
+}
+
+.market-price-memory-comparison-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .market-price-memory-stats span,
+.market-price-memory-comparison-grid span,
+.market-price-memory-meta dt,
 .market-price-memory-value span {
   color: var(--et-muted, rgba(232, 238, 246, 0.74));
   font-size: 0.75rem;
@@ -99804,13 +99833,16 @@ html body #root .app.app-command-shell.app-market .market-price-memory-inline-he
 }
 
 .market-price-memory-stats strong,
+.market-price-memory-comparison-grid strong,
 .market-price-memory-value strong {
   color: var(--et-ink, #fff7ed);
   font-size: clamp(1.05rem, 2vw, 1.35rem);
   overflow-wrap: anywhere;
 }
 
-.market-price-memory-stats small {
+.market-price-memory-stats small,
+.market-price-memory-comparison-grid small,
+.market-price-memory-meta dd {
   color: var(--et-muted, rgba(232, 238, 246, 0.68));
 }
 
@@ -99825,6 +99857,32 @@ html body #root .app.app-command-shell.app-market .market-price-memory-inline-he
   margin: 4px 0;
   color: var(--et-ink, #fff7ed);
   overflow-wrap: anywhere;
+}
+
+.market-price-memory-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.market-price-memory-meta div {
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent, #65d978) 12%, var(--et-border, rgba(255, 255, 255, 0.12)));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--et-panel-soft, rgba(255, 255, 255, 0.06)) 66%, transparent);
+}
+
+.market-price-memory-meta dt,
+.market-price-memory-meta dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.market-price-memory-meta dd {
+  margin-top: 3px;
+  font-size: 0.86rem;
 }
 
 .market-price-memory-value {
@@ -99856,6 +99914,8 @@ html body #root .app.app-shell-dark.app-market .market-mockup-results .market-re
   }
 
   .market-price-memory-stats,
+  .market-price-memory-comparison-grid,
+  .market-price-memory-meta,
   .market-price-memory-form-grid {
     grid-template-columns: minmax(0, 1fr);
   }

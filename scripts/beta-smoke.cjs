@@ -880,7 +880,12 @@ async function main() {
     await assertVisibleText(/Market|TideTradr/i);
     await assertVisibleText("Price Memory");
     await assertVisibleText("Not Live Pricing");
+    await assertVisibleText("Use this as a memory/checklist, not a guaranteed live price.");
+    await assertVisibleText("Market Memory Comparison");
+    await assertVisibleText("No selected item yet");
     await assertVisibleText("Market upgrade preview");
+    const marketText = await page.locator("body").innerText();
+    assert.doesNotMatch(marketText, /price accuracy guaranteed|automated market sync|live market average/i);
     const priceMemorySection = page.locator(".market-price-memory-card").first();
     await expectVisible(priceMemorySection.getByRole("button", { name: /^Save Price$/ }).first(), "Market Price Memory Save Price action");
     await priceMemorySection.getByRole("button", { name: /^Save Price$/ }).first().click();
@@ -907,6 +912,10 @@ async function main() {
     await priceMemoryModal.getByRole("button", { name: /^Close$/ }).click();
     await priceMemoryModal.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
     await expectVisible(page.locator(".market-price-memory-row").filter({ hasText: "Smoke Price Memory ETB" }).first(), "Market saved Price Memory row");
+    await assertVisibleText("Lowest saved");
+    await assertVisibleText("Highest saved");
+    await assertVisibleText("Average saved");
+    await assertVisibleText("Compare Later");
     const searchForm = page.locator(".catalog-search-form").first();
     await expectVisible(searchForm, "Market catalog search form");
     await searchForm.locator("input").first().fill("Prismatic Evolutions Booster Bundle");

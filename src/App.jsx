@@ -26424,6 +26424,21 @@ function renderMarketPriceMemorySection() {
   const recentMemories = marketPriceMemories.slice(0, 4);
   const memoriesWithValue = marketPriceMemories.filter((entry) => entry.price !== "" && Number(entry.price || 0) > 0);
   const latestMemory = [...marketPriceMemories].sort((a, b) => String(b.dateSeen || b.createdAt || "").localeCompare(String(a.dateSeen || a.createdAt || "")))[0] || null;
+  const selectedMemoryName = latestMemory?.itemName || "";
+  const normalizedSelectedMemoryName = selectedMemoryName.trim().toLowerCase();
+  const comparisonEntries = normalizedSelectedMemoryName
+    ? marketPriceMemories.filter((entry) => (
+      String(entry.itemName || "").trim().toLowerCase() === normalizedSelectedMemoryName &&
+      entry.price !== "" &&
+      Number(entry.price || 0) > 0
+    ))
+    : [];
+  const comparisonPrices = comparisonEntries.map((entry) => Number(entry.price || 0)).filter((price) => price > 0);
+  const lowestSavedPrice = comparisonPrices.length ? Math.min(...comparisonPrices) : null;
+  const highestSavedPrice = comparisonPrices.length ? Math.max(...comparisonPrices) : null;
+  const averageSavedPrice = comparisonPrices.length
+    ? comparisonPrices.reduce((sum, price) => sum + price, 0) / comparisonPrices.length
+    : null;
   return (
     <EtMockupSectionCard
       className="market-price-memory-card"
@@ -26434,7 +26449,7 @@ function renderMarketPriceMemorySection() {
     >
       <div className="market-price-memory-helper-card market-price-memory-inline-helper">
         <strong>Not Live Pricing</strong>
-        <span>Saved prices are manual snapshots. They help you remember what you saw, but they are not live pricing or a guarantee of value.</span>
+        <span>Use this as a memory/checklist, not a guaranteed live price. Compare condition, sealed status, shipping, fees, and seller reputation. Save prices you want to remember.</span>
       </div>
       <div className="market-price-memory-stats" aria-label="Market Memory summary">
         <div>
@@ -26453,6 +26468,34 @@ function renderMarketPriceMemorySection() {
           <small>Latest Price Snapshot</small>
         </div>
       </div>
+      <section className="market-price-memory-compare" aria-label="Price Memory comparison preview">
+        <div className="compact-card-header">
+          <div>
+            <span className="trust-badge trust-badge--secure">Local-only comparison</span>
+            <h3>Market Memory Comparison</h3>
+            <p>Selected item: {selectedMemoryName || "No selected item yet"}. These are remembered prices only, not an external market average.</p>
+          </div>
+          <EtMockupPill tone="market">{comparisonEntries.length ? `${comparisonEntries.length} remembered` : "Unknown"}</EtMockupPill>
+        </div>
+        <div className="market-price-memory-comparison-grid">
+          <div>
+            <span>Lowest saved</span>
+            <strong>{lowestSavedPrice !== null ? money(lowestSavedPrice) : "Unknown"}</strong>
+            <small>{comparisonEntries.length ? "From your saved snapshots" : "Save a price first"}</small>
+          </div>
+          <div>
+            <span>Highest saved</span>
+            <strong>{highestSavedPrice !== null ? money(highestSavedPrice) : "Unknown"}</strong>
+            <small>{comparisonEntries.length ? "Manual memory only" : "No remembered prices yet"}</small>
+          </div>
+          <div>
+            <span>Average saved</span>
+            <strong>{averageSavedPrice !== null ? money(averageSavedPrice) : "Unknown"}</strong>
+            <small>Local snapshots, not an external market average</small>
+          </div>
+        </div>
+        <p className="market-price-memory-compare-helper">Compare later by saving the same item from a shop, show, listing, or personal research note. Check again before buying, selling, or trading.</p>
+      </section>
       {recentMemories.length ? (
         <div className="market-price-memory-list">
           {recentMemories.map((entry) => (
@@ -26460,12 +26503,26 @@ function renderMarketPriceMemorySection() {
               <div>
                 <span className="market-status-pill market-status-pill--catalog">{entry.priceType || "Saved Price"}</span>
                 <h3>{entry.itemName || "Saved Price"}</h3>
-                <p>{[entry.sourcePlace || "Where You Saw It not saved", entry.condition || "Condition not saved"].filter(Boolean).join(" | ")}</p>
+                <dl className="market-price-memory-meta">
+                  <div>
+                    <dt>Where You Saw It</dt>
+                    <dd>{entry.sourcePlace || "Source/store not saved"}</dd>
+                  </div>
+                  <div>
+                    <dt>Observed condition</dt>
+                    <dd>{entry.condition || "Condition not saved"}</dd>
+                  </div>
+                  <div>
+                    <dt>Date saved</dt>
+                    <dd>{entry.dateSeen ? shortDate(entry.dateSeen) : entry.createdAt ? shortDate(entry.createdAt) : "Date not saved"}</dd>
+                  </div>
+                </dl>
                 {entry.notes ? <small>{entry.notes}</small> : <small>Price Note can be added next time you check this item.</small>}
               </div>
               <div className="market-price-memory-value">
+                <span>{entry.priceType || "Saved Price"}</span>
                 <strong>{entry.price !== "" ? money(entry.price) : "Manual Estimate"}</strong>
-                <span>{entry.dateSeen ? shortDate(entry.dateSeen) : "Date not saved"}</span>
+                <small>Compare Later</small>
               </div>
             </article>
           ))}
@@ -49004,7 +49061,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
         <section className="market-price-memory-helper-card" aria-label="Not Live Pricing helper">
           <strong>Not Live Pricing</strong>
-          <span>Prices can shift with condition, demand, timing, and seller trust. Check again before buying, selling, or trading.</span>
+          <span>Use this as a memory/checklist, not a guaranteed live price. Compare condition, sealed status, shipping, fees, and seller reputation. Prices can shift with condition, demand, timing, and seller trust.</span>
         </section>
 
         {marketPriceMemoryMessage ? <p className="field-error trade-value-message" role="status">{marketPriceMemoryMessage}</p> : null}
