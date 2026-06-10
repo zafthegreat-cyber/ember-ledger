@@ -271,6 +271,7 @@ import {
   TRADE_RECEIVED_ITEM_TYPES,
   buildTradeComparison,
   buildTradeHistoryRecord,
+  estimateTradeItemValue,
   normalizeTradeDraft,
   validateTradeDraft,
 } from "./utils/tradeValueUtils";
@@ -2149,6 +2150,78 @@ const BLANK_TRADE_DRAFT = {
   tradeDate: "",
   notes: "",
 };
+const BLANK_TRADE_COMPASS_DRAFT = {
+  sourceItemId: "",
+  yourSide: "",
+  theirSide: "",
+  yourValue: "",
+  theirValue: "",
+  conditionNotes: "",
+  demandNotes: "",
+  personalImportanceNotes: "",
+};
+
+function normalizeTradeCompassDraft(draft = {}) {
+  const yourValue = Number.parseFloat(String(draft.yourValue || "").trim());
+  const theirValue = Number.parseFloat(String(draft.theirValue || "").trim());
+  return {
+    sourceItemId: String(draft.sourceItemId || ""),
+    yourSide: String(draft.yourSide || "").trim(),
+    theirSide: String(draft.theirSide || "").trim(),
+    yourValue: Number.isFinite(yourValue) && yourValue >= 0 ? yourValue : "",
+    theirValue: Number.isFinite(theirValue) && theirValue >= 0 ? theirValue : "",
+    conditionNotes: String(draft.conditionNotes || "").trim(),
+    demandNotes: String(draft.demandNotes || "").trim(),
+    personalImportanceNotes: String(draft.personalImportanceNotes || "").trim(),
+  };
+}
+
+function buildTradeCompassReading(draft = {}, sourceItem = null, options = {}) {
+  const normalized = normalizeTradeCompassDraft(draft);
+  const moneyFormatter = options.moneyFormatter || ((value) => `$${Number(value || 0).toFixed(2)}`);
+  const sourceEstimate = sourceItem && normalized.yourValue === "" ? estimateTradeItemValue(sourceItem, 1) : null;
+  const hasYourValue = normalized.yourValue !== "" || Number(sourceEstimate?.totalValue || 0) > 0;
+  const hasTheirValue = normalized.theirValue !== "";
+  const yourValue = normalized.yourValue !== "" ? Number(normalized.yourValue) : Number(sourceEstimate?.totalValue || 0);
+  const theirValue = normalized.theirValue !== "" ? Number(normalized.theirValue) : 0;
+  const difference = theirValue - yourValue;
+  const closeRange = Math.max(2, Math.max(yourValue, theirValue) * 0.05);
+  let label = "Unknown Reading";
+  let tone = "needs-review";
+  let guidance = "Add estimated values for both sides to see a Compass Reading.";
+
+  if (hasYourValue && hasTheirValue) {
+    if (Math.abs(difference) <= closeRange) {
+      label = "Fair Trade";
+      tone = "fair";
+      guidance = "The values are close. Still compare condition, demand, timing, and personal meaning.";
+    } else if (difference > 0) {
+      label = "Strong Offer";
+      tone = "favorable";
+      guidance = "Their Side estimates higher. Confirm condition and why the trade matters before accepting.";
+    } else {
+      label = "Use Caution";
+      tone = "caution";
+      guidance = "Your Side estimates higher. Slow down, compare condition, and make sure the trade still feels right.";
+    }
+  }
+
+  return {
+    difference,
+    differenceLabel: hasYourValue && hasTheirValue ? `${difference >= 0 ? "+" : "-"}${moneyFormatter(Math.abs(difference))}` : "Unknown Reading",
+    guidance,
+    hasTheirValue,
+    hasYourValue,
+    label,
+    normalized,
+    sourceConfidence: sourceEstimate?.confidence || (normalized.yourValue !== "" ? "Manual estimate" : "Value needed"),
+    theirLabel: hasTheirValue ? moneyFormatter(theirValue) : "Value needed",
+    theirValue,
+    tone,
+    yourLabel: hasYourValue ? moneyFormatter(yourValue) : "Value needed",
+    yourValue,
+  };
+}
 
 function createQuickAddWizardState(overrides = {}) {
   const today = new Date().toISOString().slice(0, 10);
@@ -6651,6 +6724,9 @@ export default function App() {
   const [tradeStep, setTradeStep] = useState("details");
   const [tradeMessage, setTradeMessage] = useState("");
   const [tradeSaving, setTradeSaving] = useState(false);
+  const [tradeCompassDraft, setTradeCompassDraft] = useState(BLANK_TRADE_COMPASS_DRAFT);
+  const [tradeCompassMessage, setTradeCompassMessage] = useState("");
+  const [tradeCompassSaving, setTradeCompassSaving] = useState(false);
   const [quickFindForm, setQuickFindForm] = useState(BLANK_QUICK_FIND_FORM);
   const [multiDestinationForm, setMultiDestinationForm] = useState(BLANK_MULTI_DESTINATION_FORM);
   const [multiDestinationStep, setMultiDestinationStep] = useState("item");
@@ -18861,6 +18937,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (type === "tidepoolCreatePost") return formsDiffer(tidepoolPostForm, BLANK_TIDEPOOL_POST_FORM);
     if (type === "multiDestinationAdd") return formsDiffer(multiDestinationForm, flowModalBaselineRef.current.multiDestinationAdd || BLANK_MULTI_DESTINATION_FORM);
     if (type === "tradeValue") return tradeStep !== "saved" && formsDiffer(tradeDraft, flowModalBaselineRef.current.tradeValue || BLANK_TRADE_DRAFT);
+    if (type === "tradeCompass") return formsDiffer(tradeCompassDraft, flowModalBaselineRef.current.tradeCompass || BLANK_TRADE_COMPASS_DRAFT);
     return false;
   }
 
@@ -18929,6 +19006,11 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       setTradeStep("details");
       setTradeMessage("");
       setTradeSaving(false);
+    }
+    if (type === "tradeCompass") {
+      setTradeCompassDraft(BLANK_TRADE_COMPASS_DRAFT);
+      setTradeCompassMessage("");
+      setTradeCompassSaving(false);
     }
   }
 
@@ -23630,9 +23712,49 @@ function mapCatalog(row) {
     openFlowModal("tradeValue", { size: "medium", source: options.source || "forge-add-trade" });
   }
 
+  function openTradeCompassFlow(options = {}) {
+    const sourceEntry = options.item
+      ? inventoryGroupEntries(options.item).find((entry) => Number(entry.quantity || 0) > 0) || options.item
+      : null;
+    const sourceEstimate = sourceEntry ? estimateTradeItemValue(sourceEntry, 1) : null;
+    const draft = normalizeTradeCompassDraft({
+      ...BLANK_TRADE_COMPASS_DRAFT,
+      sourceItemId: sourceEntry?.id || "",
+      yourSide: sourceEntry?.name || sourceEntry?.itemName || "",
+      yourValue: Number(sourceEstimate?.totalValue || 0) > 0 ? sourceEstimate.totalValue : "",
+      ...options.seed,
+    });
+    setTradeCompassDraft(draft);
+    setTradeCompassMessage("");
+    setTradeCompassSaving(false);
+    flowModalBaselineRef.current.tradeCompass = draft;
+    openFlowModal("tradeCompass", { size: "medium", source: options.source || "forge-trade-compass" });
+  }
+
   function updateTradeDraftField(field, value) {
     setTradeDraft((current) => normalizeTradeDraft({ ...current, [field]: value }));
     setTradeMessage("");
+  }
+
+  function updateTradeCompassDraftField(field, value) {
+    setTradeCompassDraft((current) => normalizeTradeCompassDraft({ ...current, [field]: value }));
+    setTradeCompassMessage("");
+  }
+
+  function selectedTradeCompassSourceItem() {
+    return tradeSourceOptions.find((option) => String(option.id) === String(tradeCompassDraft.sourceItemId))?.item || null;
+  }
+
+  function selectTradeCompassSourceItem(sourceItemId) {
+    const option = tradeSourceOptions.find((entry) => String(entry.id) === String(sourceItemId));
+    const estimate = option?.item ? estimateTradeItemValue(option.item, 1) : null;
+    setTradeCompassDraft((current) => normalizeTradeCompassDraft({
+      ...current,
+      sourceItemId,
+      yourSide: option?.label || current.yourSide,
+      yourValue: Number(estimate?.totalValue || 0) > 0 ? estimate.totalValue : current.yourValue,
+    }));
+    setTradeCompassMessage("");
   }
 
   function selectedTradeSourceItem() {
@@ -23685,6 +23807,79 @@ function mapCatalog(row) {
     setTradeMessage("Trade saved to local history. Inventory counts were not changed.");
     setTradeSaving(false);
     setVaultToast("Trade saved to history.");
+  }
+
+  function saveTradeCompassToLedger(event) {
+    event?.preventDefault?.();
+    if (tradeCompassSaving) return;
+    const sourceItem = selectedTradeCompassSourceItem();
+    const reading = buildTradeCompassReading(tradeCompassDraft, sourceItem, { moneyFormatter: money });
+    const draft = reading.normalized;
+    if (!sourceItem && !draft.yourSide) {
+      setTradeCompassMessage("Add Your Side before saving to Trade Ledger.");
+      return;
+    }
+    if (!draft.theirSide) {
+      setTradeCompassMessage("Add Their Side before saving to Trade Ledger.");
+      return;
+    }
+    setTradeCompassSaving(true);
+    const now = new Date().toISOString();
+    const tradeWorkspace = sourceItem?.workspaceId || sourceItem?.workspace_id
+      ? {
+        id: sourceItem.workspaceId || sourceItem.workspace_id,
+        name: sourceItem.workspaceName || sourceItem.workspace_name || activeWorkspace?.name || activeForgeWorkspace?.name || "",
+        type: sourceItem.workspaceType || activeWorkspace?.type || activeForgeWorkspace?.type || "personal",
+      }
+      : activeForgeWorkspace || activeWorkspace || { id: activeWorkspaceId || DEFAULT_PERSONAL_WORKSPACE_ID, name: "My Personal Space", type: "personal" };
+    const compassNotes = [
+      draft.conditionNotes ? `Condition notes: ${draft.conditionNotes}` : "",
+      draft.demandNotes ? `Demand notes: ${draft.demandNotes}` : "",
+      draft.personalImportanceNotes ? `Personal importance notes: ${draft.personalImportanceNotes}` : "",
+      "Trade Compass is a guide, not a guarantee.",
+    ].filter(Boolean).join("\n");
+    const ledgerDraft = normalizeTradeDraft({
+      sourceItemId: draft.sourceItemId,
+      sourceKind: sourceItem ? tradeSourceKindForItem(sourceItem) : "manual",
+      outgoingName: draft.yourSide,
+      outgoingQuantity: 1,
+      outgoingValue: reading.hasYourValue ? reading.yourValue : "",
+      outgoingCondition: draft.conditionNotes,
+      receivedName: draft.theirSide,
+      receivedType: "Card",
+      receivedQuantity: 1,
+      receivedValue: reading.hasTheirValue ? reading.theirValue : "",
+      receivedCondition: draft.conditionNotes,
+      tradeDate: now.slice(0, 10),
+      notes: compassNotes,
+    });
+    const record = applyWorkspaceToRecord({
+      ...buildTradeHistoryRecord(ledgerDraft, sourceItem, {
+        id: makeId("trade-compass"),
+        now,
+      }),
+      sourceItemName: sourceItem?.name || sourceItem?.itemName || draft.yourSide,
+      receivedName: draft.theirSide,
+      guidance: reading.label,
+      guidanceTone: reading.tone,
+      resultLabel: reading.label,
+      difference: reading.hasYourValue && reading.hasTheirValue ? reading.difference : "",
+      tradeCompass: true,
+      tradeCompassReading: reading.label,
+      conditionNotes: draft.conditionNotes,
+      demandNotes: draft.demandNotes,
+      personalImportanceNotes: draft.personalImportanceNotes,
+      workspaceId: tradeWorkspace.id || activeWorkspaceId,
+      workspace_id: tradeWorkspace.id || activeWorkspaceId,
+      workspaceName: tradeWorkspace.name || "",
+      savedBy: user?.id || "local-beta",
+      inventoryMutation: "none",
+    }, tradeWorkspace);
+    setTradeRecords((current) => [record, ...current]);
+    setTradeCompassMessage("Saved to Trade Ledger. Inventory counts were not changed.");
+    setTradeCompassSaving(false);
+    flowModalBaselineRef.current.tradeCompass = normalizeTradeCompassDraft(tradeCompassDraft);
+    setVaultToast("Trade Compass saved to ledger.");
   }
 
   function vaultForgeTransferEntries(transfer = vaultForgeTransfer) {
@@ -25873,6 +26068,13 @@ function renderForgeAccessState() {
               <EtMockupActionCard key={card.title} title={card.title} detail={card.body} icon="forge" tone="forge" />
             ))}
           </div>
+          <div className="forge-access-action-row" aria-label="Forge trade compass preview">
+            <div>
+              <strong>Trade Compass</strong>
+              <span>Check a possible trade with estimated values before any recordkeeping. No inventory changes, checkout, or live pricing.</span>
+            </div>
+            <EtMockupButton variant="secondary" onClick={() => openTradeCompassFlow({ source: "forge-access-preview" })}>Trade Compass</EtMockupButton>
+          </div>
         </EtMockupSectionCard>
 
         <EtMockupSectionCard
@@ -25974,8 +26176,8 @@ function renderForgeBusinessCommandPanel() {
       detail: "Give: NM foil copy + sealed item | Receive: binder lot",
       value: "+$18 fair range",
       note: "Parent approval recommended for kid-owned items.",
-      cta: "Log a Trade",
-      onClick: () => openAddTradeFlow({ source: "forge-trade-analyzer" }),
+      cta: "Trade Compass",
+      onClick: () => openTradeCompassFlow({ source: "forge-trade-analyzer" }),
     },
     {
       key: "listing-builder",
@@ -46287,6 +46489,164 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     );
   }
 
+  function renderTradeCompassFlowContent() {
+    const sourceItem = selectedTradeCompassSourceItem();
+    const reading = buildTradeCompassReading(tradeCompassDraft, sourceItem, { moneyFormatter: money });
+    const selectedOption = tradeSourceOptions.find((option) => String(option.id) === String(tradeCompassDraft.sourceItemId));
+    const vaultOptions = tradeSourceOptions.filter((option) => option.sourceKind === "vault");
+    const sourceTitle = sourceItem?.name || sourceItem?.itemName || tradeCompassDraft.yourSide || "Manual item";
+    const sourceSubtitle = selectedOption?.subtitle
+      || (sourceItem ? [sourceItem.productType, sourceItem.expansion || sourceItem.setName].filter(Boolean).join(" - ") : "")
+      || "Manual pre-trade check. Inventory stays unchanged.";
+
+    return (
+      <form className="trade-value-flow trade-compass-flow" onSubmit={saveTradeCompassToLedger}>
+        <section className="trade-value-hero-card trade-compass-hero-card">
+          <span className="section-kicker">Before You Trade</span>
+          <h3>Is This Trade Worth It?</h3>
+          <p>Use Trade Compass as a guide, not a guarantee. Condition, timing, demand, and personal meaning can change what a trade is worth.</p>
+          <div className="trade-safety-strip">
+            <span>Estimated values only</span>
+            <span>No live pricing guarantee</span>
+            <span>Review condition</span>
+            <span>Family-safe guidance</span>
+          </div>
+        </section>
+
+        <section className={`trade-compass-reading-card ${reading.tone}`} aria-label="Compass Reading">
+          <div>
+            <span className="section-kicker">Compass Reading</span>
+            <h4>{reading.label}</h4>
+            <p>{reading.guidance}</p>
+          </div>
+          <strong>{reading.differenceLabel}</strong>
+        </section>
+
+        <section className="trade-builder-grid trade-compass-grid">
+          <div className="trade-side-card trade-side-card--outgoing">
+            <div className="compact-card-header">
+              <div>
+                <span className="trust-badge trust-badge--secure">Your Side</span>
+                <h4>Your Side</h4>
+              </div>
+              <strong>{reading.yourLabel}</strong>
+            </div>
+            <Field label="Choose a Vault item" help="Optional. Pick one of your Vault items to prefill Your Side with saved item context.">
+              <select
+                value={tradeCompassDraft.sourceItemId}
+                onChange={(event) => selectTradeCompassSourceItem(event.target.value)}
+              >
+                <option value="">Manual item / choose Vault item</option>
+                {vaultOptions.map((option) => (
+                  <option key={`compass-vault-${option.id}`} value={option.id}>
+                    {option.label} - Vault - {option.valueLabel}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Your Side">
+              <input
+                value={tradeCompassDraft.yourSide}
+                onChange={(event) => updateTradeCompassDraftField("yourSide", event.target.value)}
+                placeholder="Card, sealed product, slab, binder lot..."
+              />
+            </Field>
+            <Field label="Estimated value for Your Side">
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={tradeCompassDraft.yourValue}
+                onChange={(event) => updateTradeCompassDraftField("yourValue", event.target.value)}
+                placeholder={sourceItem ? "Saved estimate if known" : "0.00"}
+              />
+            </Field>
+            <Field label="Condition notes">
+              <textarea
+                value={tradeCompassDraft.conditionNotes}
+                onChange={(event) => updateTradeCompassDraftField("conditionNotes", event.target.value)}
+                placeholder="Condition, missing pieces, sealed wear, slab details, or anything to inspect."
+                rows={3}
+              />
+            </Field>
+            <div className="trade-item-preview">
+              <strong>{sourceTitle}</strong>
+              <span>{sourceSubtitle}</span>
+              <small>{reading.sourceConfidence}</small>
+            </div>
+          </div>
+
+          <div className="trade-side-card trade-side-card--incoming">
+            <div className="compact-card-header">
+              <div>
+                <span className="trust-badge trust-badge--verified">Their Side</span>
+                <h4>Their Side</h4>
+              </div>
+              <strong>{reading.theirLabel}</strong>
+            </div>
+            <Field label="Their Side">
+              <input
+                value={tradeCompassDraft.theirSide}
+                onChange={(event) => updateTradeCompassDraftField("theirSide", event.target.value)}
+                placeholder="What they are offering"
+              />
+            </Field>
+            <Field label="Estimated value for Their Side">
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={tradeCompassDraft.theirValue}
+                onChange={(event) => updateTradeCompassDraftField("theirValue", event.target.value)}
+                placeholder="0.00"
+              />
+            </Field>
+            <Field label="Demand notes">
+              <textarea
+                value={tradeCompassDraft.demandNotes}
+                onChange={(event) => updateTradeCompassDraftField("demandNotes", event.target.value)}
+                placeholder="Is it wanted locally? Hard to find? Easy to replace? Useful for your set?"
+                rows={3}
+              />
+            </Field>
+            <Field label="Personal importance notes">
+              <textarea
+                value={tradeCompassDraft.personalImportanceNotes}
+                onChange={(event) => updateTradeCompassDraftField("personalImportanceNotes", event.target.value)}
+                placeholder="Does one side matter more to your collection, family, or long-term goal?"
+                rows={3}
+              />
+            </Field>
+          </div>
+        </section>
+
+        <section className="trade-signals-card" aria-label="Trade Signals">
+          <div className="compact-card-header">
+            <div>
+              <span className="section-kicker">Trade Signals</span>
+              <h4>Look beyond the number.</h4>
+              <p>A trade can be fair because of value, usefulness, rarity, or how much the item matters to your collection.</p>
+            </div>
+            <span className="trust-badge trust-badge--secure">Estimated</span>
+          </div>
+          <div className="trade-safety-strip">
+            <span>Condition changes value</span>
+            <span>Demand can shift</span>
+            <span>Personal meaning matters</span>
+            <span>Pause if pressured</span>
+          </div>
+        </section>
+
+        {tradeCompassMessage ? <p className="field-error trade-value-message" role="status">{tradeCompassMessage}</p> : null}
+
+        <div className="quick-actions trade-value-actions">
+          <button type="submit" disabled={tradeCompassSaving}>{tradeCompassSaving ? "Saving..." : "Save to Trade Ledger"}</button>
+          <button type="button" className="secondary-button" onClick={() => closeFlowModal()}>Close</button>
+        </div>
+      </form>
+    );
+  }
+
   function flowModalMeta() {
     if (activeFlowModal?.type === "forgeQuickAdd") {
       return {
@@ -46390,6 +46750,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       return {
         title: "Trade Ledger",
         description: "Log what you gave, what you got, and the trade balance. Review first; inventory is not changed.",
+        size: "medium",
+      };
+    }
+    if (activeFlowModal?.type === "tradeCompass") {
+      return {
+        title: "Trade Compass",
+        description: "Check whether a trade feels fair before you make it. Estimated values only; no live pricing guarantee.",
         size: "medium",
       };
     }
@@ -50935,6 +51302,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     if (activeFlowModal?.type === "vaultScan") return renderVaultScanFlowContent();
     if (activeFlowModal?.type === "vaultImportCollection") return renderVaultImportCollectionFlowContent();
     if (activeFlowModal?.type === "tradeValue") return renderTradeValueFlowContent();
+    if (activeFlowModal?.type === "tradeCompass") return renderTradeCompassFlowContent();
     if (activeFlowModal?.type === "quickFind") return renderQuickFindFlowContent();
     if (activeFlowModal?.type === "multiDestinationAdd") return renderMultiDestinationAddFlowContent();
     if (activeFlowModal?.type === "vaultMoveToForge") return renderVaultMoveToForgeFlowContent();
@@ -63877,6 +64245,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
             <div className="quick-actions forge-action-strip" aria-label="Forge quick actions">
               <button type="button" onClick={() => openProductAddFlow({ source: "forge-action-strip", destinations: { forge: true } })}>Add Inventory</button>
               <button type="button" className="secondary-button" onClick={() => openAddSaleFlow()}>Add Sale</button>
+              <button type="button" className="secondary-button" onClick={() => openTradeCompassFlow({ source: "forge-action-strip" })}>Trade Compass</button>
               <button type="button" className="secondary-button" onClick={() => openAddTradeFlow({ source: "forge-action-strip" })}>Log a Trade</button>
               <button type="button" className="secondary-button" onClick={() => openBasicReceiptFlow("forge-action-strip")}>Add Receipt</button>
               <button type="button" className="secondary-button" onClick={() => openAddMileageFlow()}>Add Mileage</button>
