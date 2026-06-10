@@ -122,6 +122,29 @@ assert.match(tierAnswer.answer, /Shop Basic at \$19\/month and Shop Plus at \$39
 assert.match(tierAnswer.answer, /checkout is not live/i);
 assert.match(tierAnswer.answer, /not raw Scout history or restock pattern tools/i);
 
+const appSource = fs.readFileSync("src/App.jsx", "utf8");
+assert.match(appSource, /Upgrade Value Preview/, "upgrade preview label should render in app source");
+assert.match(appSource, /What upgrading unlocks next/, "Hearth should explain upgrade value");
+assert.match(appSource, /Local beta/, "upgrade previews should be honest about local beta status");
+assert.match(appSource, /Available in upgraded plans when enabled/, "upgrade previews should avoid live entitlement promises");
+assert.match(appSource, /Coming with connected accounts/, "connected-account-dependent value should be labeled as future backend work");
+assert.match(appSource, /No payment flow is connected/, "plan comparison should state that payment is not connected");
+
+const unsafeUpgradeClaimPatterns = [
+  /Live alerts are enabled/i,
+  /Guaranteed restock notifications/i,
+  /Verified sellers are enabled/i,
+  /official tax receipt/i,
+  /AI automatically/i,
+  /Start checkout/i,
+  /Pay now/i,
+  /guaranteed availability is enabled/i,
+  /we guarantee availability/i,
+];
+for (const pattern of unsafeUpgradeClaimPatterns) {
+  assert.doesNotMatch(appSource, pattern, `upgrade preview copy should not include unsafe claim: ${pattern}`);
+}
+
 const publicCopyFiles = [
   "src/App.jsx",
   "src/services/featureGates.js",

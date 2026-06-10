@@ -2804,6 +2804,99 @@ const EMBER_ASSIST_COLLECTOR_GUIDE_TOPICS = [
     actionKey: "membership",
   },
 ];
+
+const UPGRADE_VALUE_PREVIEW_LABEL = "Upgrade Value Preview";
+const UPGRADE_SAFE_STATUS_COPY = "Current beta | Local beta | Available in upgraded plans when enabled | Coming with connected accounts";
+const UPGRADE_VALUE_PREVIEWS = {
+  hearth: {
+    title: "What upgrading unlocks next",
+    detail: "A beta-safe preview of how higher plans add more tracking capacity and planning room without changing today's local-first tools.",
+    now: "Free keeps Hearth, Vault, Scout basics, Market search, The Spark, and helper guidance useful now.",
+    upgrade: "Collector and Family plans add more saved planning depth when enabled.",
+    status: "Local beta preview. Coming with connected accounts for account-wide limits later.",
+    bullets: ["More cross-page reminders", "Deeper saved history", "Family planning context"],
+  },
+  scout: {
+    title: "Scout upgrade preview",
+    detail: "Upgrade unlocks more tracking capacity while Scout keeps sensitive restock timing and raw patterns protected.",
+    now: "Free Watch includes 1 watched store and nearby public signals where available.",
+    upgrade: "Collector, Family, Seller, and Shop previews can support more watched stores when enabled.",
+    status: "Available in upgraded plans when enabled. No stock guarantees or push notifications are promised.",
+    bullets: ["More watched stores", "Broader current-signal coverage", "Pattern Protected stays on"],
+  },
+  vault: {
+    title: "Vault upgrade preview",
+    detail: "Collection organization can grow beyond the starter Vault without implying live pricing or backend inventory changes.",
+    now: "Free keeps item profiles, collection sets, wishlist, sealed product, and review-first adds.",
+    upgrade: "Upgraded plans can expand sets, profile depth, and family organization when enabled.",
+    status: "Local beta preview. Connected-account expansion comes later.",
+    bullets: ["More set planning", "Deeper item profiles", "Family collection organization"],
+  },
+  forge: {
+    title: "Forge upgrade preview",
+    detail: "Trade and seller planning can scale while staying private, review-first, and separate from checkout.",
+    now: "Free/local beta keeps Trade Ledger, Trade Compass, and safe manual trade review.",
+    upgrade: "Seller and Collector previews can expand trade history, value comparison history, and private business planning when enabled.",
+    status: "Available in upgraded plans when enabled. No posting, payroll, checkout, or payment processing.",
+    bullets: ["More trade history", "Saved comparison context", "Private seller planning"],
+  },
+  market: {
+    title: "Market upgrade preview",
+    detail: "Market can remember more manual price snapshots without claiming live pricing or availability.",
+    now: "Free keeps fair price discovery, search, freshness copy, and manual Price Memory.",
+    upgrade: "Collector and Seller previews can add more saved price memories and comparison slots when enabled.",
+    status: "Local beta preview. Not Live Pricing and no checkout or stock guarantee.",
+    bullets: ["More saved prices", "More comparison slots", "Cleaner research history"],
+  },
+  spark: {
+    title: "Spark upgrade preview",
+    detail: "Family and Spark planning can expand while gifts, kid packs, and support records remain preview/local-only.",
+    now: "Free keeps The Spark, Kid Packs, Giving Ledger, and parent-safe support framing.",
+    upgrade: "Family/Spark previews can expand kid-pack planning, giving history, and event support tools when enabled.",
+    status: "Local beta preview. No payment processing, tax receipt, or private child messaging.",
+    bullets: ["More kid-pack planning", "More support history", "Event support planning"],
+  },
+  tidepool: {
+    title: "Tidepool upgrade preview",
+    detail: "Community tools can become more useful while staying moderation-framed and private-data safe.",
+    now: "Free keeps safe community browsing, reporting, and private Trusted Circle notes.",
+    upgrade: "Family, Shop, and Partner previews can expand Trusted Circle capacity and future reviewed community tools when enabled.",
+    status: "Coming with connected accounts. No verification, invites, messaging, or background checks are live.",
+    bullets: ["More private circle entries", "Future reviewed community tools", "Spark partner planning"],
+  },
+  assist: {
+    title: "Ember Assist upgrade preview",
+    detail: "Guided help can grow into deeper walkthroughs without promising a live AI backend.",
+    now: "Free keeps Collector Guide topics and review-first helper prompts.",
+    upgrade: "Upgraded plans can add more guided topics and app walkthrough depth when enabled.",
+    status: "Local beta helper preview. No live AI promise or private-data search.",
+    bullets: ["More guide topics", "Deeper walkthroughs", "Family and seller guidance"],
+  },
+};
+
+const UPGRADE_PLAN_COMPARISON_PREVIEW = [
+  {
+    plan: "Free / Foundation",
+    status: "Current beta",
+    detail: "Core collector app, 1 Scout watched store, Vault basics, Market search, The Spark, and helper guidance.",
+  },
+  {
+    plan: "Collector",
+    status: "Available in upgraded plans when enabled",
+    detail: "More watched stores, more price and trade memory, and deeper collection planning capacity.",
+  },
+  {
+    plan: "Family / Spark",
+    status: "Planned parent-managed tools",
+    detail: "Family setup, kid-pack planning, Spark support history, and parent-safe collection organization.",
+  },
+  {
+    plan: "Shop / Partner",
+    status: "Requires connected backend later",
+    detail: "Shop and partner previews stay review-based. No seller verification, checkout, or posting is connected here.",
+  },
+];
+
 const MARKETPLACE_LISTING_TYPES = ["For Sale", "For Trade", "Looking For", "Free / Donation", "Kid-friendly deal"];
 const MARKETPLACE_STATUSES = TIDETRADR_LISTING_STATUSES;
 const MARKETPLACE_REPORT_REASONS = TIDETRADR_REPORT_REASONS;
@@ -26269,10 +26362,11 @@ function renderMarketPriceMemorySection() {
       ) : (
         <EtMockupEmptyState
           title="Price Memory is quiet for now."
-          detail="Save a price when you see one worth remembering."
+          detail="Save a price when you see one worth remembering. Upgraded plans can expand saved comparison slots when enabled."
           action={<EtMockupButton onClick={() => openMarketPriceMemoryFlow()}>Save Price</EtMockupButton>}
         />
       )}
+      {renderUpgradeValuePreview("market")}
     </EtMockupSectionCard>
   );
 }
@@ -27044,6 +27138,8 @@ function renderForgeAccessState() {
           </div>
         </EtMockupSectionCard>
 
+        {renderUpgradeValuePreview("forge")}
+
         <EtMockupSectionCard
           title="Master card grouping"
           detail="Forge selects the card identity first, then the exact raw, graded, sealed-related, promo, or duplicate copy for trade, listing, or sale review."
@@ -27330,7 +27426,7 @@ function renderForgeBusinessCommandPanel() {
             )) : (
               <div className="small-empty-state forge-start-empty-state">
                 <strong>No trades logged yet.</strong>
-                <span>Your Trade Ledger is quiet for now. Log your first trade to remember what you gave, what you got, and how the balance felt.</span>
+                <span>Your Trade Ledger is quiet for now. Log your first trade to remember what you gave, what you got, and how the balance felt. Upgraded plans can expand saved trade history when enabled.</span>
                 <button type="button" className="secondary-button" onClick={() => openAddTradeFlow({ source: "forge-trade-history-empty" })}>Log a Trade</button>
               </div>
             )}
@@ -27363,6 +27459,7 @@ function renderForgeBusinessCommandPanel() {
           )}
         </div>
       </div>
+      {renderUpgradeValuePreview("forge")}
     </EtMockupSectionCard>
   );
 }
@@ -29919,6 +30016,74 @@ function renderForgeBusinessLedgerPanel() {
     admin: adminViewingAsAdmin && roleAdminUser,
     betaTester: featureGateOptions.betaTester,
   });
+  const currentTierLabel = tierAccess.tierLabel || TIER_LABELS[currentTier] || TIER_LABELS[PLAN_TYPES.FREE] || "Free";
+  const openPlanComparisonPreview = () => setActiveTab("membership");
+  const renderUpgradeValuePreview = (previewKey, options = {}) => {
+    const preview = UPGRADE_VALUE_PREVIEWS[previewKey];
+    if (!preview) return null;
+    const bullets = Array.isArray(preview.bullets) ? preview.bullets : [];
+    return (
+      <EtMockupSectionCard
+        className={`upgrade-value-preview-card upgrade-value-preview-card-${previewKey} ${options.className || ""}`.trim()}
+        title={options.title || preview.title || UPGRADE_VALUE_PREVIEW_LABEL}
+        detail={options.detail || preview.detail}
+        action={<EtMockupPill tone="gold">Preview</EtMockupPill>}
+        ariaLabel={`${UPGRADE_VALUE_PREVIEW_LABEL}: ${preview.title || previewKey}`}
+      >
+        <div className="upgrade-value-preview-status-row" aria-label="Upgrade value preview status">
+          <EtMockupPill tone="collector">{currentTierLabel}</EtMockupPill>
+          <EtMockupPill tone="beta">Local beta</EtMockupPill>
+          <EtMockupPill tone="gold">No billing connected</EtMockupPill>
+        </div>
+        <div className="upgrade-value-preview-grid">
+          <article>
+            <span>What works now</span>
+            <p>{preview.now}</p>
+          </article>
+          <article>
+            <span>Upgrade value</span>
+            <p>{preview.upgrade}</p>
+          </article>
+          <article>
+            <span>Beta status</span>
+            <p>{preview.status}</p>
+          </article>
+        </div>
+        {bullets.length ? (
+          <div className="upgrade-value-preview-list" aria-label="Upgrade preview highlights">
+            {bullets.map((item) => <span key={`${previewKey}-${item}`}>{item}</span>)}
+          </div>
+        ) : null}
+        <div className="upgrade-value-preview-footer">
+          <small>{UPGRADE_SAFE_STATUS_COPY}</small>
+          <EtMockupButton variant="secondary" onClick={openPlanComparisonPreview}>Compare Plans</EtMockupButton>
+        </div>
+      </EtMockupSectionCard>
+    );
+  };
+  const renderUpgradePlanComparisonPreview = () => (
+    <EtMockupSectionCard
+      title={UPGRADE_VALUE_PREVIEW_LABEL}
+      detail="A lightweight plan comparison preview for the current beta. It explains value without connecting checkout, billing, alert automation, or backend-only promises."
+      className="upgrade-plan-comparison-preview"
+      ariaLabel="Upgrade plan comparison preview"
+      action={<EtMockupPill tone="beta">Current beta</EtMockupPill>}
+    >
+      <div className="upgrade-plan-comparison-grid">
+        {UPGRADE_PLAN_COMPARISON_PREVIEW.map((plan) => (
+          <article className="upgrade-plan-comparison-card" key={plan.plan}>
+            <span>{plan.status}</span>
+            <strong>{plan.plan}</strong>
+            <p>{plan.detail}</p>
+          </article>
+        ))}
+      </div>
+      <div className="upgrade-plan-comparison-note" role="note">
+        <strong>No payment flow is connected.</strong>
+        <span>Upgrades are admin-managed during beta. Connected-account expansion is planned later and will require real backend support before it can be treated as live.</span>
+      </div>
+    </EtMockupSectionCard>
+  );
   const signedInWithSupabase = Boolean(user?.id && user.id !== "local-beta");
   const accountStatusTitle = guestPreviewActive ? "Guest Preview" : signedInWithSupabase ? "Signed In" : BETA_LOCAL_MODE ? "Private Beta Mode" : "Supabase Sign-In Required";
   const accountStatusDescription = signedInWithSupabase
@@ -31369,6 +31534,7 @@ function renderForgeBusinessLedgerPanel() {
                 })}
               </div>
             </section>
+            {renderUpgradeValuePreview("assist")}
             <div className="ember-assist-quick-action-grid" aria-label="Ember Assist quick actions">
               {emberAssistQuickActions.map((action) => (
                 <button type="button" key={action.label} onClick={action.action}>
@@ -38518,7 +38684,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           ) : (
             <EtMockupEmptyState
               title="Choose your first watched store."
-              detail={`Pick your first watched store so Scout knows where to keep an eye out. ${watchedStorePlanLabel}. ${watchedStoreSwapLabel}`}
+              detail={`Pick your first watched store so Scout knows where to keep an eye out. ${watchedStorePlanLabel}. ${watchedStoreSwapLabel}. Upgrade unlocks more tracking capacity when enabled.`}
               action={<EtMockupButton variant="secondary" onClick={openScoutStoresList}>Choose Store</EtMockupButton>}
             />
           )}
@@ -38552,6 +38718,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </div>
             <EtMockupButton variant="secondary" onClick={() => setScoutView("online")}>View online signals</EtMockupButton>
           </div>
+
+          {renderUpgradeValuePreview("scout")}
 
           {renderScoutTierLockCard({ compact: true })}
         </EtMockupRightRail>
@@ -39083,7 +39251,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           ) : (
             <EtMockupEmptyState
               title="Your Set Shelf is waiting."
-              detail="Your Set Shelf is waiting. Create a set for favorites, sealed product, slabs, kid collections, trade binders, or master set goals."
+              detail="Your Set Shelf is waiting. Create a set for favorites, sealed product, slabs, kid collections, trade binders, or master set goals. Upgraded plans can expand deeper organization tools when enabled."
               action={<EtMockupButton variant="secondary" onClick={() => openVaultCollectionSetFlow({ source: "vault-set-shelf-empty" })}>Create Set</EtMockupButton>}
             />
           )}
@@ -39093,6 +39261,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <span>Soon you{"\u2019"}ll be able to tuck Vault items directly into this set.</span>
           </div>
         </EtMockupSectionCard>
+
+        {renderUpgradeValuePreview("vault")}
       </section>
     );
   }
@@ -41612,7 +41782,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           ) : (
             <EtMockupEmptyState
               title="No Kid Packs built yet."
-              detail="Kid Packs are where little sparks begin. Build packs for new collectors, birthdays, events, thank-yous, or families who need support."
+              detail="Kid Packs are where little sparks begin. Build packs for new collectors, birthdays, events, thank-yous, or families who need support. Family/Spark upgrades can expand pack and event planning when enabled."
               action={<EtMockupButton variant="secondary" onClick={() => openSparkKidPackFlow({ source: "spark-kid-packs-empty" })}>Build a Kid Pack</EtMockupButton>}
             />
           )}
@@ -41645,11 +41815,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           ) : (
             <EtMockupEmptyState
               title="No Spark Gifts logged yet."
-              detail="The Giving Ledger is ready for its first spark. Log cards, packs, supplies, event help, snacks, sponsorships, or anything that helps kids and families enjoy collecting."
+              detail="The Giving Ledger is ready for its first spark. Log cards, packs, supplies, event help, snacks, sponsorships, or anything that helps kids and families enjoy collecting. Upgraded plans can expand family and event support history when enabled."
               action={<EtMockupButton variant="secondary" onClick={() => openSparkGiftFlow({ source: "spark-giving-ledger-empty" })}>Log a Gift</EtMockupButton>}
             />
           )}
         </EtMockupSectionCard>
+
+        {renderUpgradeValuePreview("spark")}
 
         {adminToolsVisible ? (
           <section className="panel spark-admin-shortcut">
@@ -42893,6 +43065,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <span>No raw all-store access</span>
             </div>
           </EtMockupSectionCard>
+
+          {renderUpgradePlanComparisonPreview()}
 
           <EtMockupSectionCard
             title="Free is the core collector app"
@@ -47093,7 +47267,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             ) : (
               <EtMockupEmptyState
                 title="Your Trusted Circle is waiting for its first helper."
-                detail="Add family friends, trusted shops, sellers, sponsors, or community helpers you may want to remember."
+                detail="Add family friends, trusted shops, sellers, sponsors, or community helpers you may want to remember. Upgraded plans can expand private circle capacity and reviewed community tools when enabled."
                 action={<EtMockupButton onClick={openTidepoolTrustedCircleFlow}>Add to Circle</EtMockupButton>}
               />
             )}
@@ -47104,6 +47278,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <span>Invite Later is a placeholder only</span>
             </div>
           </EtMockupSectionCard>
+
+          {renderUpgradeValuePreview("tidepool")}
 
           <EtMockupSectionCard
             title={tidepoolFilter === "Feed" ? "Community feed" : tidepoolFilter}
@@ -55830,6 +56006,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </div>
           </EtMockupSectionCard>
 
+          {renderUpgradeValuePreview("hearth")}
+
           <EtMockupSectionCard
             title="At a glance"
             detail="Vault, Scout, Market, and Spark signals for your current collecting day."
@@ -59420,8 +59598,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <div className="drawer-info-card">
                     <strong>Beta launch pricing preview.</strong>
                     <p className="compact-subtitle">Current plan: {TIER_LABELS[currentTier] || currentPlan}. Beta is a status flag, Admin is internal, and no payment processing or checkout is connected.</p>
+                    <p className="compact-subtitle">Upgrade Value Preview: current beta, local beta, and upgraded-plan capacity are explained without connecting billing.</p>
                   </div>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("dashboard"))}>Open Settings / Billing</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("dashboard"))}>Open Settings / Plans</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("membership"))}>Compare Plans Preview</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("membership"))}>Membership Foundation</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => requestLockedFeatureAccess("seller_tools"))}>Ask admin to upgrade during beta</button>
                   <button type="button" className="drawer-link disabled-link" disabled>Stripe Not Connected</button>

@@ -35,6 +35,8 @@ assert.match(appSource, /openTradeCompassFlow\(\{ source: "ember-assist-collecto
 assert.match(appSource, /openTradeCompassFlow\(\{ source: "ember-assist-quick-action-trade-fairness" \}\)/, "Trade fairness quick action should open the existing Trade Compass flow");
 assert.match(appSource, /openMarketPriceMemoryFlow\(null, \{ source: "ember-assist-collector-guide-price-memory" \}\)/, "Save a Price should use the existing Price Memory flow");
 assert.match(appSource, /Guided suggestions\. No live AI promises\./, "Ember Assist should keep no-live-AI framing visible");
+assert.match(appSource, /Ember Assist upgrade preview/, "Ember Assist should include an upgrade value preview");
+assert.match(appSource, /No live AI promise or private-data search/, "Assist upgrade preview should stay beta-safe");
 assert.doesNotMatch(appSource, /fake AI backend|backend assistant exists/i, "Collector Guide must not claim a fake backend assistant");
 
 const scoutPrompts = getEmberAssistStarterPrompts({ activeTab: "scout" });

@@ -561,6 +561,12 @@ async function main() {
     await assertVisibleText("Keep Building");
     await assertVisibleText("Open Next");
     await assertVisibleText("Start by adding something to your Vault.");
+    await assertVisibleText("Upgrade Value Preview");
+    await assertVisibleText("What upgrading unlocks next");
+    await page.locator(".upgrade-value-preview-card-hearth").getByRole("button", { name: /^Compare Plans$/ }).first().click();
+    await assertVisibleText("Membership Foundation");
+    await assertVisibleText("No payment flow is connected.");
+    await nav("Hearth");
     const hearthCommandRoutes = [
       { button: "Open Vault", expected: "Vault", label: "Collection Pulse" },
       { button: "Open Scout", expected: "Scout", label: "Scout Watch" },
@@ -600,6 +606,7 @@ async function main() {
     await assertVisibleText("Scout Access");
     await assertVisibleText("Pattern Protected");
     await assertVisibleText("Free plan includes 1 watched store. You can change it once every 30 days.");
+    await assertVisibleText("Upgrade unlocks more tracking capacity");
     await expectVisible(page.locator(".scout-watch-stores-card").first(), "My Watch Stores section");
     await assertVisibleText("Nearby Reports");
     const scanScreenshotButton = page.getByRole("button", { name: /^Scan Screenshot$/ }).first();
@@ -685,6 +692,7 @@ async function main() {
     await assertVisibleText("Focused Vault Smoke Card");
     await assertVisibleText("Collection Sets");
     await assertVisibleText("Set Shelf");
+    await assertVisibleText("Vault upgrade preview");
     await assertVisibleText("Your Set Shelf is waiting. Create a set for favorites, sealed product, slabs, kid collections, trade binders, or master set goals.");
     await page.getByRole("button", { name: /^Create Set$/ }).first().click();
     const collectionSetModal = page.locator('.flow-modal[data-flow="vaultCollectionSet"]').first();
@@ -740,6 +748,7 @@ async function main() {
     await assertVisibleText(/Market|TideTradr/i);
     await assertVisibleText("Price Memory");
     await assertVisibleText("Not Live Pricing");
+    await assertVisibleText("Market upgrade preview");
     const priceMemorySection = page.locator(".market-price-memory-card").first();
     await expectVisible(priceMemorySection.getByRole("button", { name: /^Save Price$/ }).first(), "Market Price Memory Save Price action");
     await priceMemorySection.getByRole("button", { name: /^Save Price$/ }).first().click();
@@ -841,6 +850,7 @@ async function main() {
     await nav("Forge");
     await assertVisibleText("Forge");
     await assertVisibleText("Focused Forge Smoke ETB");
+    await assertVisibleText("Forge upgrade preview");
     await expectVisible(page.getByRole("button", { name: "Add Inventory", exact: true }).first(), "Forge Add Inventory action");
     const tradeCompassAction = page.getByRole("button", { name: "Trade Compass", exact: true }).first();
     await expectVisible(tradeCompassAction, "Forge Trade Compass action");
@@ -968,6 +978,7 @@ async function main() {
     );
     await assertVisibleText("Giving Ledger");
     await assertVisibleText("Kid Packs");
+    await assertVisibleText("Spark upgrade preview");
     await assertVisibleText("Keep child details private. Use initials, group names, or simple notes when needed.");
     const buildKidPackAction = page.getByRole("button", { name: "Build a Kid Pack", exact: true }).first();
     await expectVisible(buildKidPackAction, "The Spark Build a Kid Pack action");
@@ -1020,6 +1031,7 @@ async function main() {
     await nav("Tidepool");
     await assertVisibleText("Trusted Circle");
     await assertVisibleText("Trusted Circle is your private note space. It does not verify people, run background checks, or replace your own safety judgment.");
+    await assertVisibleText("Tidepool upgrade preview");
     const addToCircleButton = page.getByRole("button", { name: "Add to Circle", exact: true }).first();
     await expectVisible(addToCircleButton, "Tidepool Add to Circle action");
     await addToCircleButton.click();

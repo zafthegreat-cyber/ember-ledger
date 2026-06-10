@@ -99614,3 +99614,136 @@ html body #root .app.app-command-shell .ember-assist-guide-card button.is-disabl
     padding: 12px;
   }
 }
+
+/* Upgrade Value Preview: honest beta value framing, no checkout or backend promise. */
+html body #root .app.app-command-shell .upgrade-value-preview-card,
+html body #root .app.app-shell-dark .upgrade-value-preview-card,
+html body #root .app.app-command-shell .upgrade-plan-comparison-preview,
+html body #root .app.app-shell-dark .upgrade-plan-comparison-preview {
+  border-color: color-mix(in srgb, var(--et-page-accent-2, var(--et-shell-gold)) 30%, var(--et-border, rgba(255, 255, 255, 0.12)));
+  background:
+    radial-gradient(circle at 96% 0%, color-mix(in srgb, var(--et-page-accent-2, var(--et-shell-gold)) 14%, transparent), transparent 11rem),
+    linear-gradient(180deg, color-mix(in srgb, var(--et-panel, var(--et-shell-panel)) 92%, transparent), color-mix(in srgb, var(--et-panel-soft, var(--et-shell-soft)) 96%, transparent));
+  box-shadow:
+    0 18px 42px color-mix(in srgb, var(--et-page-accent, var(--et-shell-accent)) 10%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 18%, transparent);
+}
+
+.upgrade-value-preview-status-row,
+.upgrade-value-preview-list,
+.upgrade-value-preview-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.upgrade-value-preview-grid,
+.upgrade-plan-comparison-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+
+.upgrade-value-preview-grid article,
+.upgrade-plan-comparison-card,
+.upgrade-plan-comparison-note {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent, var(--et-shell-accent)) 18%, var(--et-border, rgba(255, 255, 255, 0.12)));
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--et-panel-soft, var(--et-shell-soft)) 82%, transparent);
+}
+
+.upgrade-value-preview-grid span,
+.upgrade-plan-comparison-card span {
+  color: color-mix(in srgb, var(--et-page-accent-2, var(--et-shell-gold)) 76%, var(--et-ink, var(--et-shell-ink)));
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.upgrade-value-preview-grid p,
+.upgrade-plan-comparison-card p,
+.upgrade-plan-comparison-note span {
+  margin: 0;
+  color: var(--et-muted, var(--et-shell-muted));
+  line-height: 1.45;
+}
+
+.upgrade-plan-comparison-card strong,
+.upgrade-plan-comparison-note strong {
+  color: var(--et-ink, var(--et-shell-ink));
+  font-size: 1rem;
+}
+
+.upgrade-value-preview-list span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2, var(--et-shell-gold)) 22%, var(--et-border, rgba(255, 255, 255, 0.12)));
+  background: color-mix(in srgb, var(--et-page-accent-2, var(--et-shell-gold)) 10%, var(--et-panel-soft, var(--et-shell-soft)));
+  color: var(--et-ink, var(--et-shell-ink));
+  font-size: 0.76rem;
+  font-weight: 850;
+}
+
+.upgrade-value-preview-footer {
+  justify-content: space-between;
+  padding-top: 2px;
+}
+
+.upgrade-value-preview-footer small {
+  max-width: 48rem;
+  color: var(--et-muted, var(--et-shell-muted));
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.upgrade-plan-comparison-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.upgrade-plan-comparison-note {
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  align-items: center;
+}
+
+@media (max-width: 900px) {
+  .upgrade-value-preview-grid,
+  .upgrade-plan-comparison-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .upgrade-plan-comparison-note {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  html body #root .app.app-command-shell .upgrade-value-preview-card,
+  html body #root .app.app-shell-dark .upgrade-value-preview-card,
+  html body #root .app.app-command-shell .upgrade-plan-comparison-preview,
+  html body #root .app.app-shell-dark .upgrade-plan-comparison-preview {
+    border-radius: 20px;
+  }
+
+  .upgrade-value-preview-grid,
+  .upgrade-plan-comparison-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .upgrade-value-preview-footer {
+    align-items: stretch;
+  }
+
+  .upgrade-value-preview-footer .et-mockup-button {
+    width: 100%;
+  }
+}
