@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
 
 import {
   buildEmberAssistContext,
@@ -9,6 +10,31 @@ import {
   shouldShowEmberAssistEntry,
   shouldOfferAdminEscalation,
 } from "../src/utils/emberAssist.js";
+
+const appSource = fs.readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
+
+assert.match(appSource, /Collector Guide/, "Ember Assist should include the Collector Guide section");
+assert.match(appSource, /Quick Help for Ember & Tide/, "Collector Guide should frame quick help clearly");
+assert.match(appSource, /Gentle Guidance/, "Collector Guide should use safe guidance language");
+[
+  "Add to Vault",
+  "Log a Trade",
+  "Check a Trade",
+  "Save a Price",
+  "Watch a Store",
+  "Support The Spark",
+  "Manage Family Collecting",
+  "Understand Tiers",
+  "Suggested Next Step",
+  "Help Topic",
+].forEach((label) => {
+  assert.ok(appSource.includes(label), `Collector Guide should include ${label}`);
+});
+assert.match(appSource, /openAddTradeFlow\(\{ source: "ember-assist-collector-guide-log-trade" \}\)/, "Log a Trade should use the existing Trade Ledger flow");
+assert.match(appSource, /openTradeCompassFlow\(\{ source: "ember-assist-collector-guide-trade-compass" \}\)/, "Check a Trade should use the existing Trade Compass flow");
+assert.match(appSource, /openMarketPriceMemoryFlow\(null, \{ source: "ember-assist-collector-guide-price-memory" \}\)/, "Save a Price should use the existing Price Memory flow");
+assert.match(appSource, /Guided suggestions\. No live AI promises\./, "Ember Assist should keep no-live-AI framing visible");
+assert.doesNotMatch(appSource, /fake AI backend|backend assistant exists/i, "Collector Guide must not claim a fake backend assistant");
 
 const scoutPrompts = getEmberAssistStarterPrompts({ activeTab: "scout" });
 assert.ok(scoutPrompts.includes("How do I add proof?"), "Scout should show Scout-aware starter prompts");

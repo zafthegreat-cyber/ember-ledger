@@ -2625,6 +2625,88 @@ const EMBER_ASSIST_PRIMARY_PROMPTS = [
   "Scanner not working",
   "What should I collect?",
 ];
+const EMBER_ASSIST_COLLECTOR_GUIDE_TOPICS = [
+  {
+    key: "add-vault",
+    title: "Add to Vault",
+    category: "Collection Help",
+    description: "Track a card, sealed product, slab, accessory, or memory in your protected collection room.",
+    where: "Vault",
+    nextStep: "Open Vault to add or review collection items.",
+    actionLabel: "Open Vault",
+    actionKey: "vault",
+  },
+  {
+    key: "log-trade",
+    title: "Log a Trade",
+    category: "Trade Help",
+    description: "Record what you gave, what you got, and how the trade balance felt after the swap.",
+    where: "Forge",
+    nextStep: "Open Forge to log a completed trade in Trade Ledger.",
+    actionLabel: "Log a Trade",
+    actionKey: "trade-ledger",
+  },
+  {
+    key: "check-trade",
+    title: "Check a Trade",
+    category: "Trade Help",
+    description: "Compare estimated values before you decide, with condition and personal meaning still in view.",
+    where: "Forge",
+    nextStep: "Open Forge when you want to compare a trade.",
+    actionLabel: "Trade Compass",
+    actionKey: "trade-compass",
+  },
+  {
+    key: "save-price",
+    title: "Save a Price",
+    category: "Market Help",
+    description: "Keep a manual price snapshot so you can remember what you saw without treating it as live pricing.",
+    where: "Market",
+    nextStep: "Open Market to search or save a price memory.",
+    actionLabel: "Save Price",
+    actionKey: "price-memory",
+  },
+  {
+    key: "watch-store",
+    title: "Watch a Store",
+    category: "Scout Help",
+    description: "Choose where Scout should watch for useful current signals while keeping raw patterns protected.",
+    where: "Scout",
+    nextStep: "Open Scout to manage watched stores.",
+    actionLabel: "Open Scout Stores",
+    actionKey: "scout-stores",
+  },
+  {
+    key: "support-spark",
+    title: "Support The Spark",
+    category: "Spark Help",
+    description: "Review kid and family support paths, gift tracking, and parent-safe Spark program notes.",
+    where: "The Spark",
+    nextStep: "Open The Spark to track gifts and family support.",
+    actionLabel: "Open The Spark",
+    actionKey: "spark",
+  },
+  {
+    key: "family-collecting",
+    title: "Manage Family Collecting",
+    category: "Family Help",
+    description: "Find family setup, kid-safe defaults, and parent-guided collecting controls.",
+    where: "Parent Center",
+    nextStep: "Open Parent Center to review family collecting settings.",
+    actionLabel: "Open Parent Center",
+    actionKey: "parent-center",
+  },
+  {
+    key: "understand-tiers",
+    title: "Understand Tiers",
+    category: "Family Help",
+    description: "See what Free includes, why Scout limits exist, and how beta upgrades are handled.",
+    where: "Plans & Features",
+    nextStep: "Open Plans & Features to understand tiers and Scout guardrails.",
+    actionLabel: "Open Plans",
+    actionKey: "membership",
+  },
+];
 const MARKETPLACE_LISTING_TYPES = ["For Sale", "For Trade", "Looking For", "Free / Donation", "Kid-friendly deal"];
 const MARKETPLACE_STATUSES = TIDETRADR_LISTING_STATUSES;
 const MARKETPLACE_REPORT_REASONS = TIDETRADR_REPORT_REASONS;
@@ -30629,6 +30711,48 @@ function renderForgeBusinessLedgerPanel() {
       { title: "Restock screenshot review", detail: "Points to proof review and safety warnings while hiding pattern, schedule, and quantity details." },
       { title: "Bug or safety report", detail: "Routes concerns to beta feedback or admin review without exposing private child or admin data." },
     ];
+    const runCollectorGuideAction = (topic) => {
+      setEmberAssistOpen(false);
+      if (topic.actionKey === "vault") {
+        setActiveTab("vault");
+        return;
+      }
+      if (topic.actionKey === "trade-ledger") {
+        setActiveTab("inventory");
+        openAddTradeFlow({ source: "ember-assist-collector-guide-log-trade" });
+        return;
+      }
+      if (topic.actionKey === "trade-compass") {
+        setActiveTab("inventory");
+        openTradeCompassFlow({ source: "ember-assist-collector-guide-trade-compass" });
+        return;
+      }
+      if (topic.actionKey === "price-memory") {
+        setActiveTab("market");
+        openMarketPriceMemoryFlow(null, { source: "ember-assist-collector-guide-price-memory" });
+        return;
+      }
+      if (topic.actionKey === "scout-stores") {
+        setActiveTab("scout");
+        setScoutView("stores");
+        setScoutStoresMode("map");
+        setScoutSubTabTarget({ tab: "stores", id: Date.now() });
+        return;
+      }
+      if (topic.actionKey === "spark") {
+        setActiveTab("kidsProgram");
+        return;
+      }
+      if (topic.actionKey === "parent-center") {
+        setActiveTab("parentCenter");
+        return;
+      }
+      if (topic.actionKey === "membership") {
+        setActiveTab("membership");
+        return;
+      }
+      setActiveTab("comingSoon");
+    };
     const assistIntroCopy = emberAssistPermissionDenied
       ? "You may not have access to this area yet. Admin or moderator role may be required. If this looks wrong, message an admin or return to Hearth."
       : emberAssistPageIntro[emberAssistContext.page] || "Helper preview: ask about this page, a next step, or a confusing status.";
@@ -30698,6 +30822,48 @@ function renderForgeBusinessLedgerPanel() {
               <strong>Public beta helper preview</strong>
               <span>Guidance stays local and review-first here. No live AI call is required for these suggestions.</span>
             </div>
+            <section className="ember-assist-collector-guide" aria-label="Collector Guide">
+              <div className="compact-card-header">
+                <div>
+                  <p className="section-kicker">Collector Guide</p>
+                  <h3>Quick Help for Ember & Tide</h3>
+                  <p>Ember Assist helps you find the next right step - adding items, checking trades, saving prices, watching stores, or supporting The Spark.</p>
+                </div>
+                <span className="ember-assist-guide-pill">Gentle Guidance</span>
+              </div>
+              <div className="ember-assist-guide-grid">
+                {EMBER_ASSIST_COLLECTOR_GUIDE_TOPICS.map((topic) => {
+                  const comingSoon = topic.actionKey === "coming-soon";
+                  return (
+                    <article className="ember-assist-guide-card" key={topic.key}>
+                      <div>
+                        <span className="ember-assist-guide-topic">Help Topic | {topic.category}</span>
+                        <h4>{topic.title}</h4>
+                        <p>{topic.description}</p>
+                      </div>
+                      <dl className="ember-assist-guide-meta">
+                        <div>
+                          <dt>Where to go</dt>
+                          <dd>{topic.where}</dd>
+                        </div>
+                        <div>
+                          <dt>Suggested Next Step</dt>
+                          <dd>{topic.nextStep}</dd>
+                        </div>
+                      </dl>
+                      <button
+                        type="button"
+                        className={comingSoon ? "secondary-button is-disabled" : "secondary-button"}
+                        onClick={() => (comingSoon ? undefined : runCollectorGuideAction(topic))}
+                        disabled={comingSoon}
+                      >
+                        {comingSoon ? "Coming Soon" : topic.actionLabel}
+                      </button>
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
             <div className="ember-assist-quick-action-grid" aria-label="Ember Assist quick actions">
               {emberAssistQuickActions.map((action) => (
                 <button type="button" key={action.label} onClick={action.action}>

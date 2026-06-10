@@ -99087,3 +99087,129 @@ html body #root .app.app-shell-dark.app-market .market-mockup-results .market-re
     padding: 12px;
   }
 }
+
+/* Ember Assist Collector Guide: local guided help, no live AI/backend behavior. */
+html body #root .app.app-command-shell .ember-assist-collector-guide {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--et-shell-gold) 24%, var(--et-shell-border));
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--et-shell-gold) 14%, transparent), transparent 12rem),
+    radial-gradient(circle at 0% 100%, color-mix(in srgb, var(--et-shell-accent) 10%, transparent), transparent 12rem),
+    color-mix(in srgb, var(--et-shell-soft) 90%, transparent);
+  color: var(--et-shell-ink);
+}
+
+html body #root .app.app-command-shell .ember-assist-collector-guide .compact-card-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  min-width: 0;
+}
+
+html body #root .app.app-command-shell .ember-assist-collector-guide h3,
+html body #root .app.app-command-shell .ember-assist-guide-card h4 {
+  margin: 0;
+  color: var(--et-shell-ink);
+  line-height: 1.12;
+}
+
+html body #root .app.app-command-shell .ember-assist-collector-guide p,
+html body #root .app.app-command-shell .ember-assist-guide-card p,
+html body #root .app.app-command-shell .ember-assist-guide-card dd {
+  margin: 0;
+  color: var(--et-shell-muted);
+  line-height: 1.42;
+}
+
+html body #root .app.app-command-shell .ember-assist-guide-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 6px 10px;
+  border: 1px solid color-mix(in srgb, var(--et-shell-gold) 30%, var(--et-shell-border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--et-shell-gold) 16%, var(--et-shell-panel));
+  color: var(--et-shell-ink);
+  font-size: 0.72rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+html body #root .app.app-command-shell .ember-assist-guide-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+html body #root .app.app-command-shell .ember-assist-guide-card {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid color-mix(in srgb, var(--et-shell-gold) 18%, var(--et-shell-border));
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--et-shell-panel) 86%, transparent), color-mix(in srgb, var(--et-shell-soft) 92%, transparent));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 26%, transparent);
+}
+
+html body #root .app.app-command-shell .ember-assist-guide-topic,
+html body #root .app.app-command-shell .ember-assist-guide-card dt {
+  color: color-mix(in srgb, var(--et-shell-gold) 78%, var(--et-shell-ink));
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+html body #root .app.app-command-shell .ember-assist-guide-meta {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 10px;
+  border-radius: 15px;
+  background: color-mix(in srgb, var(--et-shell-panel) 72%, transparent);
+}
+
+html body #root .app.app-command-shell .ember-assist-guide-meta div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+html body #root .app.app-command-shell .ember-assist-guide-card button {
+  justify-self: start;
+  min-height: 38px;
+  border-radius: 14px !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-guide-card button.is-disabled {
+  opacity: 0.64;
+  cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  html body #root .app.app-command-shell .ember-assist-collector-guide {
+    padding: 12px;
+    border-radius: 19px;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-collector-guide .compact-card-header,
+  html body #root .app.app-command-shell .ember-assist-guide-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  html body #root .app.app-command-shell .ember-assist-guide-pill {
+    justify-self: start;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-guide-card {
+    padding: 12px;
+  }
+}
