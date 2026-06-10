@@ -93709,6 +93709,96 @@ html body #root .app.app-command-shell.app-home .hearth-mockup-rebuild .hearth-t
   box-shadow: var(--et-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.42) !important;
 }
 
+html body #root .app.app-command-shell.app-home .hearth-daily-command-center {
+  gap: 14px;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-daily-tide-summary,
+html body #root .app.app-command-shell.app-home .hearth-next-best-step,
+html body #root .app.app-command-shell.app-home .hearth-daily-command-card {
+  min-width: 0;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2) 22%, var(--et-border));
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--et-page-accent-2) 12%, transparent), transparent 9rem),
+    color-mix(in srgb, var(--et-panel-soft) 86%, var(--et-panel));
+  color: var(--et-ink);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38);
+}
+
+html body #root .app.app-command-shell.app-home .hearth-daily-tide-summary {
+  display: grid;
+  gap: 5px;
+  padding: 14px;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-daily-tide-summary span,
+html body #root .app.app-command-shell.app-home .hearth-next-best-step span,
+html body #root .app.app-command-shell.app-home .hearth-daily-command-card span {
+  color: color-mix(in srgb, var(--et-page-accent-2) 78%, var(--et-ink));
+  font-size: 0.72rem;
+  font-weight: 950;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-daily-tide-summary strong {
+  color: var(--et-ink);
+  font-size: clamp(1rem, 1.8vw, 1.22rem);
+  line-height: 1.15;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-daily-tide-summary p,
+html body #root .app.app-command-shell.app-home .hearth-next-best-step p,
+html body #root .app.app-command-shell.app-home .hearth-daily-command-card p,
+html body #root .app.app-command-shell.app-home .hearth-daily-command-card small {
+  margin: 0;
+  color: var(--et-muted);
+  line-height: 1.38;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-next-best-step {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 16px;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--et-page-accent) 18%, transparent), color-mix(in srgb, var(--et-page-accent-2) 12%, transparent) 48%, transparent 86%) 0 0 / 100% 3px no-repeat,
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--et-page-accent) 13%, transparent), transparent 11rem),
+    color-mix(in srgb, var(--et-panel-soft) 88%, var(--et-panel));
+}
+
+html body #root .app.app-command-shell.app-home .hearth-next-best-step h3,
+html body #root .app.app-command-shell.app-home .hearth-daily-command-card h3 {
+  margin: 4px 0 5px;
+  color: var(--et-ink);
+  line-height: 1.12;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-daily-command-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-daily-command-card {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 11px;
+  align-items: start;
+  padding: 13px;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-daily-command-card .secondary-button {
+  grid-column: 2;
+  justify-self: start;
+  min-height: 36px;
+  margin-top: 2px;
+  padding: 7px 12px;
+  border-radius: 14px;
+}
+
 html body #root .app.app-command-shell.app-home .hearth-mockup-best-action-body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -93903,6 +93993,15 @@ html body #root .app.app-command-shell.app-home .hearth-mockup-quick-grid .et-mo
     grid-template-columns: minmax(0, 1fr);
   }
 
+  html body #root .app.app-command-shell.app-home .hearth-next-best-step,
+  html body #root .app.app-command-shell.app-home .hearth-daily-command-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-next-best-step .et-mockup-button {
+    width: 100%;
+  }
+
   html body #root .app.app-command-shell.app-home .hearth-mockup-hero-stat-row {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -93971,6 +94070,28 @@ html body #root .app.app-command-shell.app-home .hearth-mockup-quick-grid .et-mo
 
   html body #root .app.app-command-shell.app-home .hearth-mockup-rebuild .et-mockup-action-card {
     min-height: 64px;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-daily-command-center {
+    gap: 10px;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-daily-tide-summary,
+  html body #root .app.app-command-shell.app-home .hearth-next-best-step,
+  html body #root .app.app-command-shell.app-home .hearth-daily-command-card {
+    border-radius: 17px;
+    padding: 11px;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-daily-command-card {
+    grid-template-columns: 36px minmax(0, 1fr);
+    gap: 9px;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-daily-command-card .secondary-button {
+    grid-column: 1 / -1;
+    width: 100%;
+    min-height: 38px;
   }
 }
 

@@ -54550,6 +54550,84 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         visible: hearthSellerRelevant,
       },
     ].filter((card) => card.visible);
+    const hearthDailyNextStep = !activeVaultItems.length
+      ? {
+        label: "Next Best Step",
+        title: "Start by adding something to your Vault.",
+        detail: "Add your first item to Vault so Ember & Tide can start helping you track, trade, and remember your collection.",
+        actionLabel: "Open Next",
+        onClick: () => setActiveTab("vault"),
+        tone: "vault",
+      }
+      : {
+        label: "Next Best Step",
+        title: bestAction.title || "Keep building your collection.",
+        detail: bestAction.reason || "Open the next useful Ember & Tide area when you are ready.",
+        actionLabel: "Open Next",
+        onClick: bestAction.onPrimary || (() => setActiveTab("vault")),
+        tone: "hearth",
+      };
+    const hearthDailyCommandCards = [
+      {
+        key: "collection-pulse",
+        label: "Collection Pulse",
+        reminder: "Vault Reminder",
+        title: activeVaultItems.length ? `${activeVaultItems.length} Vault item${activeVaultItems.length === 1 ? "" : "s"}` : "Start your Vault",
+        detail: activeVaultItems.length
+          ? `Review what you own, what matters, and what may be ready for Forge. ${hearthVaultValueLabel}.`
+          : "Review what you own, what matters, and what may be ready for Forge.",
+        icon: "vault",
+        tone: "vault",
+        actionLabel: "Open Vault",
+        onClick: () => setActiveTab("vault"),
+      },
+      {
+        key: "scout-watch",
+        label: "Scout Watch",
+        reminder: "Current reports only",
+        title: latestScoutReport ? latestScoutStoreName : followedStores.length ? `${followedStores.length} watched store${followedStores.length === 1 ? "" : "s"}` : "Choose a watched store",
+        detail: latestScoutReport
+          ? `Check ${latestScoutItem}${latestScoutTime ? ` from ${latestScoutTime}` : ""} without exposing full patterns.`
+          : "Check watched stores and Scout signals without exposing full patterns.",
+        icon: "scout",
+        tone: "scout",
+        actionLabel: "Open Scout",
+        onClick: () => setActiveTab("scout"),
+      },
+      {
+        key: "forge-reminder",
+        label: "Forge Reminder",
+        reminder: tradeRecords.length ? `${tradeRecords.length} Trade Ledger record${tradeRecords.length === 1 ? "" : "s"}` : "Trade value workspace",
+        title: forgeReviewCount ? `${forgeReviewCount} Forge review item${forgeReviewCount === 1 ? "" : "s"}` : "Compare before you trade",
+        detail: "Compare trades, save trade memories, and protect your collection value.",
+        icon: "forge",
+        tone: "forge",
+        actionLabel: "Open Forge",
+        onClick: () => setActiveTab("inventory"),
+      },
+      {
+        key: "market-reminder",
+        label: "Market Reminder",
+        reminder: marketPriceMemories.length ? `${marketPriceMemories.length} Price Memory snapshot${marketPriceMemories.length === 1 ? "" : "s"}` : "Manual estimates",
+        title: bestMarketMover?.name || bestMarketMover?.productName || "Check before buying",
+        detail: "Search, save price memories, and check again before buying or trading.",
+        icon: "market",
+        tone: "market",
+        actionLabel: "Open Market",
+        onClick: () => setActiveTab("market"),
+      },
+      {
+        key: "spark-moment",
+        label: "Spark Moment",
+        reminder: sparkGifts.length ? `${sparkGifts.length} Giving Ledger gift${sparkGifts.length === 1 ? "" : "s"}` : "Family support",
+        title: kidsApplication ? "Spark request tracked" : "Family side of collecting",
+        detail: "Track gifts, kid packs, support, and the family side of collecting.",
+        icon: "spark",
+        tone: "spark",
+        actionLabel: "Open The Spark",
+        onClick: () => setActiveTab("kidsProgram"),
+      },
+    ];
     const hearthSnapshotCards = [
       {
         key: "snapshot-vault",
@@ -54813,6 +54891,41 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <EtMockupButton variant="ghost" className="hearth-mockup-admin-button" onClick={() => setActiveTab("adminReview")}>Admin</EtMockupButton>
             ) : null}
           />
+
+          <EtMockupSectionCard
+            title="Daily Command Center"
+            detail="Your collection, trades, watch stores, and Spark moments all start here."
+            className="hearth-daily-command-center"
+            action={<EtMockupPill tone="gold">Keep Building</EtMockupPill>}
+          >
+            <div className="hearth-daily-tide-summary" aria-label="Today&apos;s Tide">
+              <span>Today&apos;s Tide</span>
+              <strong>Your warm home base for what matters today.</strong>
+              <p>Your collection, trades, watch stores, and Spark moments all start here.</p>
+            </div>
+            <article className={`hearth-next-best-step et-mockup-tone-${hearthDailyNextStep.tone}`}>
+              <div>
+                <span>{hearthDailyNextStep.label}</span>
+                <h3>{hearthDailyNextStep.title}</h3>
+                <p>{hearthDailyNextStep.detail}</p>
+              </div>
+              <EtMockupButton onClick={hearthDailyNextStep.onClick}>{hearthDailyNextStep.actionLabel}</EtMockupButton>
+            </article>
+            <div className="hearth-daily-command-grid" aria-label="Daily Command Center reminders">
+              {hearthDailyCommandCards.map((card) => (
+                <article className={`hearth-daily-command-card et-mockup-tone-${card.tone}`} key={card.key}>
+                  <EtMockupIcon icon={card.icon} tone={card.tone} />
+                  <div>
+                    <span>{card.label}</span>
+                    <h3>{card.title}</h3>
+                    <p>{card.detail}</p>
+                    <small>{card.reminder}</small>
+                  </div>
+                  <button type="button" className="secondary-button" onClick={card.onClick}>{card.actionLabel}</button>
+                </article>
+              ))}
+            </div>
+          </EtMockupSectionCard>
 
           <EtMockupSectionCard
             title="At a glance"

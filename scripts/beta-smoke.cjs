@@ -548,6 +548,34 @@ async function main() {
   async function focusedHearthTest() {
     await page.setViewportSize({ width: 390, height: 844 });
     await nav("Hearth");
+    const dailyCommandCenter = page.locator(".hearth-daily-command-center").first();
+    await expectVisible(dailyCommandCenter, "Hearth Daily Command Center");
+    await assertVisibleText("Daily Command Center");
+    await assertVisibleText("Today's Tide");
+    await assertVisibleText("Next Best Step");
+    await assertVisibleText("Collection Pulse");
+    await assertVisibleText("Scout Watch");
+    await assertVisibleText("Forge Reminder");
+    await assertVisibleText("Market Reminder");
+    await assertVisibleText("Spark Moment");
+    await assertVisibleText("Keep Building");
+    await assertVisibleText("Open Next");
+    await assertVisibleText("Start by adding something to your Vault.");
+    const hearthCommandRoutes = [
+      { button: "Open Vault", expected: "Vault", label: "Collection Pulse" },
+      { button: "Open Scout", expected: "Scout", label: "Scout Watch" },
+      { button: "Open Forge", expected: "Forge", label: "Forge Reminder" },
+      { button: "Open Market", expected: "Market", label: "Market Reminder" },
+      { button: "Open The Spark", expected: "The Spark", label: "Spark Moment" },
+    ];
+    for (const route of hearthCommandRoutes) {
+      await nav("Hearth");
+      const commandSection = page.locator(".hearth-daily-command-center").first();
+      await expectVisible(commandSection.getByText(route.label).first(), `Hearth ${route.label} card`);
+      await commandSection.getByRole("button", { name: route.button, exact: true }).first().click();
+      await assertVisibleText(route.expected);
+    }
+    await nav("Hearth");
     const sparksPanel = page.locator(".hearth-today-sparks-panel").first();
     await expectVisible(sparksPanel, "Today’s Sparks panel");
     await assertVisibleText("Today's Sparks");
