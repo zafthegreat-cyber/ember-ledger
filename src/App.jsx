@@ -71750,6 +71750,10 @@ function VaultItemDetail({ item, masterCard, setSummary, linkedTrades = [], coll
     ["Certification", item.certNumber || item.cert_number || item.certificationNumber || item.certification_number],
   ].filter(([, value]) => hasValue(value));
   const gradeAssistReadiness = deriveGradeAssistReadiness(gradeAssistDraft);
+  const gradeAssistCheckedCount = GRADE_ASSIST_CHECK_FIELDS.filter((field) => (
+    (gradeAssistDraft.checks?.[field.key] || "not_checked") !== "not_checked"
+  )).length;
+  const gradeAssistEmpty = gradeAssistCheckedCount === 0 && !String(gradeAssistDraft.notes || "").trim();
   const gradeAssistValue = gradeAssistValueComparison(item, money);
   const linkedTradePreview = Array.isArray(linkedTrades) ? linkedTrades.slice(0, 3) : [];
   const collectionSetCount = Array.isArray(collectionSets) ? collectionSets.length : 0;
@@ -72137,8 +72141,21 @@ function VaultItemDetail({ item, masterCard, setSummary, linkedTrades = [], coll
                 <span>Grade readiness</span>
                 <strong>{gradeAssistReadiness.label}</strong>
                 <p>{gradeAssistReadiness.helper}</p>
+                <small>{gradeAssistCheckedCount} of {GRADE_ASSIST_CHECK_FIELDS.length} manual checks filled</small>
               </div>
             </div>
+            <div className="grade-assist-safety-strip" aria-label="Grade Assist safety limits">
+              <span>Manual checklist</span>
+              <span>Local-only storage</span>
+              <span>No AI, camera, OCR, authentication, or grading-company guarantee</span>
+            </div>
+            {gradeAssistEmpty ? (
+              <div className="grade-assist-empty-guide" aria-label="Grade Assist starter guide">
+                <span>Before you start</span>
+                <strong>Use Grade Assist as a manual review checklist.</strong>
+                <p>Check the card under good light, look at the front and back if you have photos, then mark only what you personally reviewed.</p>
+              </div>
+            ) : null}
             <div className="grade-assist-photo-grid" aria-label="Grade Assist photo references">
               <div className={detailImage ? "grade-assist-photo-card has-image" : "grade-assist-photo-card"}>
                 <span>Front/reference photo</span>
