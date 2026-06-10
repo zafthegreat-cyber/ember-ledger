@@ -967,6 +967,33 @@ async function main() {
       "The Spark should expose a primary family-safe action"
     );
     await assertVisibleText("Giving Ledger");
+    await assertVisibleText("Kid Packs");
+    await assertVisibleText("Keep child details private. Use initials, group names, or simple notes when needed.");
+    const buildKidPackAction = page.getByRole("button", { name: "Build a Kid Pack", exact: true }).first();
+    await expectVisible(buildKidPackAction, "The Spark Build a Kid Pack action");
+    await buildKidPackAction.click();
+    const kidPackModal = page.locator('.flow-modal[data-flow="sparkKidPack"]').first();
+    await expectVisible(kidPackModal, "The Spark Kid Pack modal");
+    await expectVisible(kidPackModal.getByText("Pack Builder").first(), "Kid Pack Pack Builder title");
+    await expectVisible(kidPackModal.getByText("Keep child details private. Use initials, group names, or simple notes when needed.").first(), "Kid Pack privacy helper");
+    await kidPackModal.getByLabel("Kid Packs").fill("Focused Spark Starter Pack");
+    await kidPackModal.getByLabel("Pack Theme").fill("First binder day");
+    await kidPackModal.getByLabel("Pack Type").selectOption("Starter Pack");
+    await kidPackModal.getByLabel("Pack Status").selectOption("Ready to Gift");
+    await kidPackModal.getByLabel("Intended recipient or group optional").fill("Family table");
+    await kidPackModal.getByLabel("Pack Contents").fill("Cards, sleeves, binder pages, deck box, and welcome note.");
+    await kidPackModal.getByLabel("Estimated Value").fill("28");
+    await kidPackModal.getByLabel("Pack Notes").fill("Use group notes only. No private child details.");
+    await kidPackModal.getByRole("button", { name: "Save Kid Pack", exact: true }).click();
+    await expectVisible(kidPackModal.getByText("Kid Pack saved locally.").first(), "The Spark Kid Pack saved message");
+    await kidPackModal.getByRole("button", { name: "Close", exact: true }).first().click();
+    await kidPackModal.waitFor({ state: "hidden", timeout: 5000 });
+    await expectVisible(page.locator(".spark-kid-pack-row").filter({ hasText: "Focused Spark Starter Pack" }).first(), "The Spark saved Kid Pack row");
+    await expectVisible(page.locator(".spark-kid-pack-row").filter({ hasText: "Ready to Gift" }).first(), "The Spark Kid Pack status row");
+    await page.waitForFunction(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      return (data.sparkKidPacks || []).some((pack) => pack.packName === "Focused Spark Starter Pack" && pack.packStatus === "Ready to Gift" && pack.inventoryMutation === "none");
+    }, null, { timeout: 5000 });
     const logGiftAction = page.getByRole("button", { name: "Log a Gift", exact: true }).first();
     await expectVisible(logGiftAction, "The Spark Log a Gift action");
     await logGiftAction.click();

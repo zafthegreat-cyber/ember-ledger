@@ -80561,7 +80561,10 @@ button.et-live-action:focus-visible {
 
 .app-kidsprogram .spark-giving-ledger-card,
 .app-command-shell.app-kidsprogram .spark-giving-ledger-card,
-.app-shell-dark.app-kidsprogram .spark-giving-ledger-card {
+.app-shell-dark.app-kidsprogram .spark-giving-ledger-card,
+.app-kidsprogram .spark-kid-packs-card,
+.app-command-shell.app-kidsprogram .spark-kid-packs-card,
+.app-shell-dark.app-kidsprogram .spark-kid-packs-card {
   display: grid;
   gap: 14px;
   border-color: color-mix(in srgb, var(--et-page-accent-2, #ffcf5c) 24%, var(--et-border, rgba(255, 207, 92, 0.22))) !important;
@@ -80572,7 +80575,10 @@ button.et-live-action:focus-visible {
 }
 
 .spark-giving-helper-card,
-.spark-gift-disclaimer-card {
+.spark-gift-disclaimer-card,
+.spark-kid-pack-helper-card,
+.spark-kid-pack-meaning-card,
+.spark-kid-pack-ledger-link {
   display: grid;
   gap: 5px;
   padding: 13px;
@@ -80583,7 +80589,11 @@ button.et-live-action:focus-visible {
 
 .spark-giving-helper-card span,
 .spark-giving-helper-card small,
-.spark-gift-disclaimer-card span {
+.spark-gift-disclaimer-card span,
+.spark-kid-pack-helper-card span,
+.spark-kid-pack-helper-card small,
+.spark-kid-pack-meaning-card span,
+.spark-kid-pack-ledger-link span {
   color: var(--et-muted, rgba(255, 248, 225, 0.74));
   line-height: 1.45;
 }
@@ -80591,6 +80601,9 @@ button.et-live-action:focus-visible {
 .app-kidsprogram .spark-giving-impact-grid,
 .app-command-shell.app-kidsprogram .spark-giving-impact-grid,
 .app-shell-dark.app-kidsprogram .spark-giving-impact-grid,
+.app-kidsprogram .spark-kid-pack-impact-grid,
+.app-command-shell.app-kidsprogram .spark-kid-pack-impact-grid,
+.app-shell-dark.app-kidsprogram .spark-kid-pack-impact-grid,
 .spark-gift-form-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -80617,12 +80630,15 @@ button.et-live-action:focus-visible {
 }
 
 .spark-gift-ledger-list,
-.spark-gift-flow {
+.spark-gift-flow,
+.spark-kid-pack-list,
+.spark-kid-pack-flow {
   display: grid;
   gap: 12px;
 }
 
 .spark-gift-ledger-row,
+.spark-kid-pack-row,
 .spark-gift-form-card,
 .spark-gift-hero-card {
   display: grid;
@@ -80640,12 +80656,27 @@ button.et-live-action:focus-visible {
   align-items: center;
 }
 
-.spark-gift-ledger-row > div {
+.spark-kid-pack-row {
+  grid-template-columns: minmax(0, 1fr) minmax(130px, auto);
+  align-items: center;
+}
+
+.spark-kid-pack-row.status-ready-to-gift {
+  border-color: color-mix(in srgb, #ffcf5c 34%, var(--et-border, rgba(255, 255, 255, 0.12)));
+}
+
+.spark-kid-pack-row.status-gifted {
+  border-color: color-mix(in srgb, #ff8aa1 34%, var(--et-border, rgba(255, 255, 255, 0.12)));
+}
+
+.spark-gift-ledger-row > div,
+.spark-kid-pack-row > div {
   display: grid;
   gap: 3px;
 }
 
 .spark-gift-ledger-row small,
+.spark-kid-pack-row small,
 .spark-gift-hero-card p {
   color: var(--et-muted, rgba(255, 248, 225, 0.74));
   line-height: 1.45;
@@ -80843,7 +80874,10 @@ button.et-live-action:focus-visible {
   .app-shell-dark.app-kidsprogram .spark-impact-dashboard,
   .app-kidsprogram .spark-giving-ledger-card,
   .app-command-shell.app-kidsprogram .spark-giving-ledger-card,
-  .app-shell-dark.app-kidsprogram .spark-giving-ledger-card {
+  .app-shell-dark.app-kidsprogram .spark-giving-ledger-card,
+  .app-kidsprogram .spark-kid-packs-card,
+  .app-command-shell.app-kidsprogram .spark-kid-packs-card,
+  .app-shell-dark.app-kidsprogram .spark-kid-packs-card {
     margin-bottom: calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 52px);
     padding-bottom: calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 34px) !important;
   }
@@ -80854,12 +80888,16 @@ button.et-live-action:focus-visible {
   .app-kidsprogram .spark-giving-impact-grid,
   .app-command-shell.app-kidsprogram .spark-giving-impact-grid,
   .app-shell-dark.app-kidsprogram .spark-giving-impact-grid,
+  .app-kidsprogram .spark-kid-pack-impact-grid,
+  .app-command-shell.app-kidsprogram .spark-kid-pack-impact-grid,
+  .app-shell-dark.app-kidsprogram .spark-kid-pack-impact-grid,
   .app-kidsprogram .spark-impact-milestone-grid,
   .app-command-shell.app-kidsprogram .spark-impact-milestone-grid,
   .app-shell-dark.app-kidsprogram .spark-impact-milestone-grid,
   .spark-gift-form-grid,
   .spark-gift-inline-grid,
-  .spark-gift-ledger-row {
+  .spark-gift-ledger-row,
+  .spark-kid-pack-row {
     grid-template-columns: 1fr;
   }
 

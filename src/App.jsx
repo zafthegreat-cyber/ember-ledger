@@ -2165,6 +2165,20 @@ const BLANK_SPARK_GIFT_DRAFT = {
   thankYouNote: "",
   giftDate: "",
 };
+const SPARK_KID_PACK_TYPES = ["Starter Pack", "Family Pack", "Event Pack", "Birthday Pack", "Thank You Pack", "Spark Pack", "Other"];
+const SPARK_KID_PACK_STATUSES = ["Planning", "Ready to Gift", "Gifted"];
+const BLANK_SPARK_KID_PACK_DRAFT = {
+  packName: "",
+  packTheme: "",
+  packType: "Starter Pack",
+  intendedRecipientGroup: "",
+  packContents: "",
+  estimatedValue: "",
+  packStatus: "Planning",
+  dateCreated: "",
+  giftedDate: "",
+  packNotes: "",
+};
 const BLANK_TRADE_DRAFT = {
   id: "",
   sourceItemId: "",
@@ -2219,6 +2233,44 @@ function summarizeSparkGivingLedger(gifts = [], options = {}) {
     totalValueLabel: valueRows.length ? moneyFormatter(totalValue) : "No values yet",
     recentSupportLabel: latestGift ? `${donationTypeLabel(latestGift.donationType)} - ${latestGift.whoItHelps || "Spark Impact"}` : "No gifts logged yet",
     latestGift,
+  };
+}
+
+function normalizeSparkKidPackDraft(draft = {}) {
+  const estimatedValue = Number.parseFloat(String(draft.estimatedValue || "").trim());
+  const packType = SPARK_KID_PACK_TYPES.includes(draft.packType) ? draft.packType : "Starter Pack";
+  const packStatus = SPARK_KID_PACK_STATUSES.includes(draft.packStatus) ? draft.packStatus : "Planning";
+  return {
+    packName: String(draft.packName || draft.name || "").trim(),
+    packTheme: String(draft.packTheme || draft.theme || "").trim(),
+    packType,
+    intendedRecipientGroup: String(draft.intendedRecipientGroup || draft.recipientGroup || "").trim(),
+    packContents: String(draft.packContents || draft.contents || "").trim(),
+    estimatedValue: Number.isFinite(estimatedValue) && estimatedValue >= 0 ? estimatedValue : "",
+    packStatus,
+    dateCreated: String(draft.dateCreated || draft.createdDate || draft.createdAt || "").slice(0, 10),
+    giftedDate: String(draft.giftedDate || "").slice(0, 10),
+    packNotes: String(draft.packNotes || draft.notes || "").trim(),
+  };
+}
+
+function summarizeSparkKidPacks(packs = [], options = {}) {
+  const moneyFormatter = options.moneyFormatter || ((value) => `$${Number(value || 0).toFixed(2)}`);
+  const safePacks = Array.isArray(packs) ? packs.map(normalizeSparkKidPackDraft) : [];
+  const valueRows = safePacks.filter((pack) => Number(pack.estimatedValue || 0) > 0);
+  const totalValue = valueRows.reduce((sum, pack) => sum + Number(pack.estimatedValue || 0), 0);
+  const statusCounts = safePacks.reduce((acc, pack) => {
+    acc[pack.packStatus] = Number(acc[pack.packStatus] || 0) + 1;
+    return acc;
+  }, {});
+  const latestPack = [...safePacks].sort((a, b) => String(b.dateCreated || b.giftedDate || "").localeCompare(String(a.dateCreated || a.giftedDate || "")))[0] || null;
+  return {
+    totalPacks: safePacks.length,
+    planning: Number(statusCounts.Planning || 0),
+    readyToGift: Number(statusCounts["Ready to Gift"] || 0),
+    gifted: Number(statusCounts.Gifted || 0),
+    totalValueLabel: valueRows.length ? moneyFormatter(totalValue) : "No values yet",
+    latestPack,
   };
 }
 
@@ -6168,6 +6220,10 @@ export default function App() {
   const [sparkGiftDraft, setSparkGiftDraft] = useState(BLANK_SPARK_GIFT_DRAFT);
   const [sparkGiftMessage, setSparkGiftMessage] = useState("");
   const [sparkGiftSaving, setSparkGiftSaving] = useState(false);
+  const [sparkKidPacks, setSparkKidPacks] = useState([]);
+  const [sparkKidPackDraft, setSparkKidPackDraft] = useState(BLANK_SPARK_KID_PACK_DRAFT);
+  const [sparkKidPackMessage, setSparkKidPackMessage] = useState("");
+  const [sparkKidPackSaving, setSparkKidPackSaving] = useState(false);
   const [sponsorForm, setSponsorForm] = useState({
     name: "",
     businessName: "",
@@ -15778,6 +15834,7 @@ export default function App() {
       setSales(migrateRecordsToWorkspace(saved.sales || [], personalWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID, workspaceState.workspaces));
       setTradeRecords(migrateRecordsToWorkspace(saved.tradeRecords || saved.trades || [], personalWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID, workspaceState.workspaces));
       setSparkGifts(Array.isArray(saved.sparkGifts) ? saved.sparkGifts.map((gift) => ({ ...gift, ...normalizeSparkGiftDraft(gift) })) : []);
+      setSparkKidPacks(Array.isArray(saved.sparkKidPacks) ? saved.sparkKidPacks.map((pack) => ({ ...pack, ...normalizeSparkKidPackDraft(pack) })) : []);
       setVehicles(saved.vehicles || []);
       setMileageTrips(migrateRecordsToWorkspace(saved.mileageTrips || [], personalWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID, workspaceState.workspaces));
       setDealForm({
@@ -15827,6 +15884,7 @@ export default function App() {
         setSales([]);
         setTradeRecords([]);
         setSparkGifts([]);
+        setSparkKidPacks([]);
         setVaultCollectionSets([]);
         setVehicles([]);
         setMileageTrips([]);
@@ -15841,6 +15899,7 @@ export default function App() {
       setSales([]);
       setTradeRecords([]);
       setSparkGifts([]);
+      setSparkKidPacks([]);
       setVaultCollectionSets([]);
       setVehicles([]);
       setMileageTrips([]);
@@ -16180,6 +16239,7 @@ export default function App() {
         sales,
         tradeRecords,
         sparkGifts,
+        sparkKidPacks,
         vehicles,
         mileageTrips,
         workspaces,
@@ -16211,7 +16271,7 @@ export default function App() {
         },
       })
     );
-  }, [items, purchasers, catalogProducts, tideTradrWatchlist, marketplaceListings, marketplaceReports, marketplaceSavedIds, tideTradrLookupId, marketPriceCache, marketPriceMemories, vaultCollectionSets, userSearchAliases, expenses, sales, tradeRecords, sparkGifts, vehicles, mileageTrips, workspaces, workspaceMembers, workspaceInvites, activeWorkspaceId, forgeModeSettings, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, resolvedAppTheme, appSetupPersonalization, cloudSyncPreference, locationSettings, subscriptionProfile, currentUserProfile, adminModeStorageReady, adminViewMode, localDataLoaded]);
+  }, [items, purchasers, catalogProducts, tideTradrWatchlist, marketplaceListings, marketplaceReports, marketplaceSavedIds, tideTradrLookupId, marketPriceCache, marketPriceMemories, vaultCollectionSets, userSearchAliases, expenses, sales, tradeRecords, sparkGifts, sparkKidPacks, vehicles, mileageTrips, workspaces, workspaceMembers, workspaceInvites, activeWorkspaceId, forgeModeSettings, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, resolvedAppTheme, appSetupPersonalization, cloudSyncPreference, locationSettings, subscriptionProfile, currentUserProfile, adminModeStorageReady, adminViewMode, localDataLoaded]);
 
   useEffect(() => {
     if (!BETA_LOCAL_MODE || !localDataLoaded) return;
@@ -16565,6 +16625,7 @@ export default function App() {
     setSales([]);
     setTradeRecords([]);
     setSparkGifts([]);
+    setSparkKidPacks([]);
     setVehicles([]);
     setMileageTrips([]);
     setTideTradrWatchlist([]);
@@ -17497,6 +17558,7 @@ export default function App() {
     setSales([]);
     setTradeRecords([]);
     setSparkGifts([]);
+    setSparkKidPacks([]);
     setVehicles([]);
     setMileageTrips([]);
     setDealForm({
@@ -19348,6 +19410,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (type === "tradeValue") return tradeStep !== "saved" && formsDiffer(tradeDraft, flowModalBaselineRef.current.tradeValue || BLANK_TRADE_DRAFT);
     if (type === "tradeCompass") return formsDiffer(tradeCompassDraft, flowModalBaselineRef.current.tradeCompass || BLANK_TRADE_COMPASS_DRAFT);
     if (type === "sparkGift") return formsDiffer(sparkGiftDraft, flowModalBaselineRef.current.sparkGift || BLANK_SPARK_GIFT_DRAFT);
+    if (type === "sparkKidPack") return formsDiffer(sparkKidPackDraft, flowModalBaselineRef.current.sparkKidPack || BLANK_SPARK_KID_PACK_DRAFT);
     return false;
   }
 
@@ -19441,6 +19504,11 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       setSparkGiftDraft(BLANK_SPARK_GIFT_DRAFT);
       setSparkGiftMessage("");
       setSparkGiftSaving(false);
+    }
+    if (type === "sparkKidPack") {
+      setSparkKidPackDraft(BLANK_SPARK_KID_PACK_DRAFT);
+      setSparkKidPackMessage("");
+      setSparkKidPackSaving(false);
     }
   }
 
@@ -24606,6 +24674,54 @@ function mapCatalog(row) {
     setSparkGiftMessage("Spark Gift saved to Giving Ledger. Giving Ledger is for program tracking only. It is not a tax receipt.");
     setSparkGiftSaving(false);
     setVaultToast("Spark Gift saved to Giving Ledger.");
+  }
+
+  function openSparkKidPackFlow(options = {}) {
+    const draft = normalizeSparkKidPackDraft({
+      ...BLANK_SPARK_KID_PACK_DRAFT,
+      dateCreated: new Date().toISOString().slice(0, 10),
+      ...options.seed,
+    });
+    setSparkKidPackDraft(draft);
+    setSparkKidPackMessage("");
+    setSparkKidPackSaving(false);
+    flowModalBaselineRef.current.sparkKidPack = draft;
+    openFlowModal("sparkKidPack", { size: "medium", source: options.source || "spark-kid-packs" });
+  }
+
+  function updateSparkKidPackDraftField(field, value) {
+    setSparkKidPackDraft((current) => normalizeSparkKidPackDraft({ ...current, [field]: value }));
+    setSparkKidPackMessage("");
+  }
+
+  function saveSparkKidPack(event) {
+    event?.preventDefault?.();
+    if (sparkKidPackSaving) return;
+    const draft = normalizeSparkKidPackDraft(sparkKidPackDraft);
+    if (!draft.packName) {
+      setSparkKidPackMessage("Add a pack name before saving this Kid Pack.");
+      return;
+    }
+    setSparkKidPackSaving(true);
+    const now = new Date().toISOString();
+    const record = {
+      id: makeId("spark-pack"),
+      ...draft,
+      dateCreated: draft.dateCreated || now.slice(0, 10),
+      createdAt: now,
+      updatedAt: now,
+      savedBy: user?.id || "local-beta",
+      source: "local-spark-kid-pack",
+      privacyStatus: "private_local_notes",
+      inventoryMutation: "none",
+      givingLedgerLink: sparkGifts.length ? "Giving Ledger support can be reviewed separately." : "Giving Ledger support can be added separately.",
+    };
+    setSparkKidPacks((current) => [record, ...current]);
+    setSparkKidPackDraft(draft);
+    flowModalBaselineRef.current.sparkKidPack = draft;
+    setSparkKidPackMessage("Kid Pack saved locally. No inventory was depleted and no private child details were shared.");
+    setSparkKidPackSaving(false);
+    setVaultToast("Kid Pack saved locally.");
   }
 
   function vaultForgeTransferEntries(transfer = vaultForgeTransfer) {
@@ -41227,6 +41343,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const recentSparkGifts = [...sparkGifts]
       .sort((a, b) => String(b.giftDate || b.createdAt || "").localeCompare(String(a.giftDate || a.createdAt || "")))
       .slice(0, 4);
+    const sparkKidPackSummary = summarizeSparkKidPacks(sparkKidPacks, { moneyFormatter: money });
+    const recentSparkKidPacks = [...sparkKidPacks]
+      .sort((a, b) => String(b.dateCreated || b.giftedDate || b.createdAt || "").localeCompare(String(a.dateCreated || a.giftedDate || a.createdAt || "")))
+      .slice(0, 4);
     const renderSparkGiftRow = (gift) => (
       <article className="spark-gift-ledger-row" key={gift.id || `${gift.giftName}-${gift.createdAt}`}>
         <div>
@@ -41241,6 +41361,23 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         </div>
       </article>
     );
+    const renderSparkKidPackRow = (pack) => {
+      const normalizedPack = normalizeSparkKidPackDraft(pack);
+      return (
+        <article className={`spark-kid-pack-row status-${normalizedPack.packStatus.toLowerCase().replace(/\s+/g, "-")}`} key={pack.id || `${normalizedPack.packName}-${pack.createdAt}`}>
+          <div>
+            <span className="section-kicker">Kid Packs</span>
+            <strong>{normalizedPack.packName || "Kid Pack"}</strong>
+            <small>{[normalizedPack.packType, normalizedPack.packTheme, normalizedPack.intendedRecipientGroup].filter(Boolean).join(" | ")}</small>
+          </div>
+          <div>
+            <span>{normalizedPack.giftedDate ? `Gifted ${shortDate(normalizedPack.giftedDate)}` : normalizedPack.dateCreated ? shortDate(normalizedPack.dateCreated) : "Date saved"}</span>
+            <strong>{normalizedPack.packStatus}</strong>
+            <small>{Number(normalizedPack.estimatedValue || 0) > 0 ? money(normalizedPack.estimatedValue) : "No value saved"}</small>
+          </div>
+        </article>
+      );
+    };
     const renderSparkHero = () => (
       <div className="spark-mockup-header">
         <EtMockupHero
@@ -41436,6 +41573,49 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </article>
             ))}
           </div>
+        </EtMockupSectionCard>
+
+        <EtMockupSectionCard
+          title="Kid Packs"
+          detail="Kid Packs are where little sparks begin. Build packs for new collectors, birthdays, events, thank-yous, or families who need support."
+          className="spark-kid-packs-card"
+          ariaLabel="The Spark Kid Packs"
+          action={<EtMockupButton onClick={() => openSparkKidPackFlow({ source: "spark-kid-packs" })}>Build a Kid Pack</EtMockupButton>}
+        >
+          <div className="spark-kid-pack-helper-card">
+            <strong>Pack Builder</strong>
+            <span>Plan what goes inside, who it may help, and when it is ready to gift.</span>
+            <small>Keep child details private. Use initials, group names, or simple notes when needed.</small>
+          </div>
+          <div className="spark-kid-pack-meaning-card">
+            <strong>The Spark is about helping kids feel welcomed, included, and excited to collect.</strong>
+            <span>Kid Packs are local planning records. They do not deplete Vault inventory, Giving Ledger gifts, or any backend supply.</span>
+          </div>
+          <div className="et-mockup-stat-grid spark-kid-pack-impact-grid" aria-label="Kid Packs status">
+            <EtMockupStatCard label="Kid Packs" value={sparkKidPackSummary.totalPacks} detail="packs planned locally" tone="gold" />
+            <EtMockupStatCard label="Ready to Gift" value={sparkKidPackSummary.readyToGift} detail="packs ready for review or gifting" tone="pink" />
+            <EtMockupStatCard label="Gifted" value={sparkKidPackSummary.gifted} detail="packs marked gifted locally" tone="gold" />
+          </div>
+          <div className="spark-gift-type-cloud spark-kid-pack-type-cloud" aria-label="Pack Type options">
+            {SPARK_KID_PACK_TYPES.map((option) => <span key={option}>{option}</span>)}
+          </div>
+          {sparkGifts.length ? (
+            <div className="spark-kid-pack-ledger-link">
+              <strong>Giving Ledger connection</strong>
+              <span>{sparkGivingImpact.totalGifts} gift{sparkGivingImpact.totalGifts === 1 ? "" : "s"} logged locally. Review Giving Ledger support separately before building packs.</span>
+            </div>
+          ) : null}
+          {recentSparkKidPacks.length ? (
+            <div className="spark-kid-pack-list" aria-label="Kid Packs saved packs">
+              {recentSparkKidPacks.map(renderSparkKidPackRow)}
+            </div>
+          ) : (
+            <EtMockupEmptyState
+              title="No Kid Packs built yet."
+              detail="Kid Packs are where little sparks begin. Build packs for new collectors, birthdays, events, thank-yous, or families who need support."
+              action={<EtMockupButton variant="secondary" onClick={() => openSparkKidPackFlow({ source: "spark-kid-packs-empty" })}>Build a Kid Pack</EtMockupButton>}
+            />
+          )}
         </EtMockupSectionCard>
 
         <EtMockupSectionCard
@@ -48065,6 +48245,125 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     );
   }
 
+  function renderSparkKidPackFlowContent() {
+    return (
+      <form className="spark-kid-pack-flow" onSubmit={saveSparkKidPack}>
+        <section className="spark-gift-hero-card spark-kid-pack-hero-card">
+          <span className="section-kicker">Pack Builder</span>
+          <h3>Build a Kid Pack</h3>
+          <p>Plan what goes inside, who it may help, and when it is ready to gift.</p>
+          <div className="spark-gift-safety-strip">
+            <span>Kid Packs</span>
+            <span>No inventory depletion</span>
+            <span>Private notes only</span>
+            <span>Family-centered</span>
+          </div>
+        </section>
+
+        <section className="spark-gift-form-grid spark-kid-pack-form-grid">
+          <div className="spark-gift-form-card spark-kid-pack-form-card">
+            <div className="compact-card-header">
+              <div>
+                <span className="trust-badge trust-badge--kid">Kid Packs</span>
+                <h4>Pack Builder</h4>
+              </div>
+              <strong>{sparkKidPackDraft.packType}</strong>
+            </div>
+            <Field label="Kid Packs">
+              <input
+                value={sparkKidPackDraft.packName}
+                onChange={(event) => updateSparkKidPackDraftField("packName", event.target.value)}
+                placeholder="Beginner binder kit, birthday thank-you pack..."
+              />
+            </Field>
+            <Field label="Pack Theme">
+              <input
+                value={sparkKidPackDraft.packTheme}
+                onChange={(event) => updateSparkKidPackDraftField("packTheme", event.target.value)}
+                placeholder="Starter binder, fire types, family game night..."
+              />
+            </Field>
+            <div className="spark-gift-inline-grid">
+              <Field label="Pack Type">
+                <select value={sparkKidPackDraft.packType} onChange={(event) => updateSparkKidPackDraftField("packType", event.target.value)}>
+                  {SPARK_KID_PACK_TYPES.map((option) => <option key={option} value={option}>{option}</option>)}
+                </select>
+              </Field>
+              <Field label="Pack Status">
+                <select value={sparkKidPackDraft.packStatus} onChange={(event) => updateSparkKidPackDraftField("packStatus", event.target.value)}>
+                  {SPARK_KID_PACK_STATUSES.map((option) => <option key={option} value={option}>{option}</option>)}
+                </select>
+              </Field>
+            </div>
+            <Field label="Ready to Gift">
+              <input type="date" value={sparkKidPackDraft.dateCreated} onChange={(event) => updateSparkKidPackDraftField("dateCreated", event.target.value)} />
+            </Field>
+          </div>
+
+          <div className="spark-gift-form-card spark-kid-pack-form-card">
+            <div className="compact-card-header">
+              <div>
+                <span className="trust-badge trust-badge--verified">Pack Contents</span>
+                <h4>Pack Contents</h4>
+              </div>
+              <strong>{sparkKidPackDraft.packStatus}</strong>
+            </div>
+            <Field label="Intended recipient or group optional">
+              <input
+                value={sparkKidPackDraft.intendedRecipientGroup}
+                onChange={(event) => updateSparkKidPackDraftField("intendedRecipientGroup", event.target.value)}
+                placeholder="Initials, family group, event table..."
+              />
+            </Field>
+            <Field label="Pack Contents">
+              <textarea
+                value={sparkKidPackDraft.packContents}
+                onChange={(event) => updateSparkKidPackDraftField("packContents", event.target.value)}
+                placeholder="Cards, packs, sleeves, binder pages, deck box, snacks..."
+                rows={3}
+              />
+            </Field>
+            <div className="spark-gift-inline-grid">
+              <Field label="Estimated Value">
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={sparkKidPackDraft.estimatedValue}
+                  onChange={(event) => updateSparkKidPackDraftField("estimatedValue", event.target.value)}
+                  placeholder="Optional"
+                />
+              </Field>
+              <Field label="Gifted">
+                <input type="date" value={sparkKidPackDraft.giftedDate} onChange={(event) => updateSparkKidPackDraftField("giftedDate", event.target.value)} />
+              </Field>
+            </div>
+            <Field label="Pack Notes">
+              <textarea
+                value={sparkKidPackDraft.packNotes}
+                onChange={(event) => updateSparkKidPackDraftField("packNotes", event.target.value)}
+                placeholder="Keep child details private. Use initials, group names, or simple notes when needed."
+                rows={3}
+              />
+            </Field>
+          </div>
+        </section>
+
+        <section className="spark-gift-disclaimer-card spark-kid-pack-privacy-card" aria-label="Kid Pack privacy helper">
+          <strong>Keep child details private. Use initials, group names, or simple notes when needed.</strong>
+          <span>The Spark is about helping kids feel welcomed, included, and excited to collect. Kid Packs are local planning records and do not deplete Vault or Giving Ledger inventory.</span>
+        </section>
+
+        {sparkKidPackMessage ? <p className="field-error trade-value-message" role="status">{sparkKidPackMessage}</p> : null}
+
+        <div className="quick-actions trade-value-actions spark-gift-actions">
+          <button type="submit" disabled={sparkKidPackSaving}>{sparkKidPackSaving ? "Saving..." : "Save Kid Pack"}</button>
+          <button type="button" className="secondary-button" onClick={() => closeFlowModal()}>Close</button>
+        </div>
+      </form>
+    );
+  }
+
   function renderMarketPriceMemoryFlowContent() {
     const normalizedDraft = normalizeMarketPriceMemoryDraft(marketPriceMemoryDraft);
     const savedPriceLabel = normalizedDraft.price !== "" ? money(normalizedDraft.price) : "Manual Estimate";
@@ -48368,6 +48667,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       return {
         title: "Log a Gift",
         description: "Save a local Spark Gift for program tracking only. This is not a tax receipt.",
+        size: "medium",
+      };
+    }
+    if (activeFlowModal?.type === "sparkKidPack") {
+      return {
+        title: "Build a Kid Pack",
+        description: "Plan a local Kid Pack with private notes. No inventory is depleted and no child details are public.",
         size: "medium",
       };
     }
@@ -53016,6 +53322,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     if (activeFlowModal?.type === "tradeValue") return renderTradeValueFlowContent();
     if (activeFlowModal?.type === "tradeCompass") return renderTradeCompassFlowContent();
     if (activeFlowModal?.type === "sparkGift") return renderSparkGiftFlowContent();
+    if (activeFlowModal?.type === "sparkKidPack") return renderSparkKidPackFlowContent();
     if (activeFlowModal?.type === "marketPriceMemory") return renderMarketPriceMemoryFlowContent();
     if (activeFlowModal?.type === "vaultCollectionSet") return renderVaultCollectionSetFlowContent();
     if (activeFlowModal?.type === "quickFind") return renderQuickFindFlowContent();
