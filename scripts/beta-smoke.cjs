@@ -709,6 +709,37 @@ async function main() {
     await assertVisibleText("Forge");
     await assertVisibleText("Focused Forge Smoke ETB");
     await expectVisible(page.getByRole("button", { name: "Add Inventory", exact: true }).first(), "Forge Add Inventory action");
+    const addTradeAction = page.getByRole("button", { name: "Add Trade", exact: true }).first();
+    await expectVisible(addTradeAction, "Forge Add Trade action");
+    await addTradeAction.click();
+    const tradeModal = page.locator('.flow-modal[data-flow="tradeValue"]').first();
+    await expectVisible(tradeModal, "Forge Add Trade modal");
+    await tradeModal.getByLabel("Item traded away").fill("Focused Smoke Binder Lot");
+    await tradeModal.getByLabel("Estimated value given").fill("35");
+    await tradeModal.getByLabel("Item received").fill("Focused Smoke Booster Bundle");
+    await tradeModal.getByLabel(/^Estimated value$/).fill("44");
+    await tradeModal.getByLabel("Condition / notes").fill("Mixed binder condition");
+    await tradeModal.getByLabel("Trade date").fill("2026-06-09");
+    await tradeModal.getByRole("button", { name: "Review Trade" }).click();
+    await expectVisible(tradeModal.getByText("Value Gained").first(), "Forge trade result");
+    await tradeModal.getByRole("button", { name: "Save Trade" }).click();
+    await expectVisible(tradeModal.getByText("Trade saved to history.").first(), "Forge trade saved state");
+    await tradeModal.getByRole("button", { name: "Close", exact: true }).click();
+    await tradeModal.waitFor({ state: "hidden", timeout: 5000 });
+    await expectVisible(page.locator(".forge-trade-history-card").filter({ hasText: "Focused Smoke Binder Lot" }).first(), "Forge Trade History saved record");
+    await page.waitForFunction(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      return (data.tradeRecords || []).some((record) => record.sourceItemName === "Focused Smoke Binder Lot");
+    }, null, { timeout: 5000 });
+    const savedTradeState = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      const trade = (data.tradeRecords || []).find((record) => record.sourceItemName === "Focused Smoke Binder Lot");
+      const item = (data.items || []).find((record) => record.id === "focused-forge-smoke-item");
+      return { trade, itemQuantity: item?.quantity };
+    });
+    assert.equal(savedTradeState.trade?.resultLabel, "Value Gained");
+    assert.equal(savedTradeState.trade?.inventoryMutation, "none");
+    assert.equal(savedTradeState.itemQuantity, 2, "Saving trade history should not change Forge inventory quantity");
   }
 
   async function focusedAdminTest() {
