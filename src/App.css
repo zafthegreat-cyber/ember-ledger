@@ -100785,6 +100785,7 @@ html body #root .app.app-command-shell .collector-showcase-card {
   overflow: hidden;
   isolation: isolate;
   text-align: left;
+  contain: layout paint style;
 }
 
 html body #root .app.app-theme-dark.app-command-shell .collector-showcase-card,
@@ -100824,6 +100825,7 @@ html body #root .app.app-command-shell .collector-showcase-stage {
   min-width: 0;
   perspective: 900px;
   transform-style: preserve-3d;
+  contain: layout paint;
 }
 
 html body #root .app.app-command-shell .collector-showcase-shadow {
@@ -100845,6 +100847,7 @@ html body #root .app.app-command-shell .collector-showcase-object {
   transform: rotateX(9deg) rotateY(-12deg) translateZ(0);
   transform-style: preserve-3d;
   transition: transform 180ms ease, filter 180ms ease;
+  backface-visibility: hidden;
 }
 
 html body #root .app.app-command-shell button.collector-showcase-card:hover .collector-showcase-object,
@@ -100869,6 +100872,7 @@ html body #root .app.app-command-shell .collector-showcase-face {
     0 16px 28px rgba(48, 31, 18, 0.18),
     inset 0 1px 0 rgba(255, 255, 255, 0.74);
   overflow: hidden;
+  backface-visibility: hidden;
 }
 
 html body #root .app.app-theme-dark.app-command-shell .collector-showcase-face,
@@ -101077,10 +101081,18 @@ html body #root .app.app-command-shell .collector-showcase-mini {
   gap: 10px;
   padding: 9px;
   border-radius: 18px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 
 html body #root .app.app-command-shell .collector-showcase-mini .collector-showcase-object {
   width: min(100%, 76px);
+  transform: none;
+  transition: none;
+}
+
+html body #root .app.app-command-shell .collector-showcase-mini .collector-showcase-shadow,
+html body #root .app.app-command-shell .collector-showcase-mini .collector-showcase-shine {
+  display: none;
 }
 
 html body #root .app.app-command-shell .collector-showcase-mini .collector-showcase-copy strong {
@@ -101160,6 +101172,9 @@ html body #root .app.app-command-shell .vault-showcase-panel {
   background:
     radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--et-page-accent, #8b5cf6) 12%, transparent), transparent 14rem),
     color-mix(in srgb, var(--et-panel, #fffdf7) 88%, var(--et-page-accent-2, #d9a441) 6%);
+  contain: layout paint style;
+  content-visibility: auto;
+  contain-intrinsic-size: 640px;
 }
 
 html body #root .app.app-theme-dark.app-command-shell .vault-showcase-panel,
@@ -101174,6 +101189,7 @@ html body #root .app.app-command-shell .collector-showcase-grid {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   gap: clamp(12px, 1.8vw, 18px);
   min-width: 0;
+  contain: layout style;
 }
 
 html body #root .app.app-command-shell .collector-showcase-note {
@@ -101207,6 +101223,7 @@ html body #root .app.app-command-shell .sealed-product-shelf-card {
     0 18px 36px color-mix(in srgb, var(--et-page-accent, #8b5cf6) 10%, transparent),
     inset 0 1px 0 rgba(255, 255, 255, 0.62);
   overflow: hidden;
+  contain: layout paint style;
 }
 
 html body #root .app.app-theme-dark.app-command-shell .sealed-product-shelf-card,
@@ -101257,6 +101274,7 @@ html body #root .app.app-command-shell .sealed-product-shelf-object {
     inset 0 1px 0 rgba(255, 255, 255, 0.7);
   transform: rotateX(8deg) rotateY(-12deg);
   overflow: hidden;
+  backface-visibility: hidden;
 }
 
 html body #root .app.app-command-shell .sealed-shelf-pack .sealed-product-shelf-object {
@@ -101340,6 +101358,9 @@ html body #root .app.app-command-shell .vault-gallery-panel {
   background:
     radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--et-page-accent, #8b5cf6) 14%, transparent), transparent 18rem),
     color-mix(in srgb, var(--et-panel, #fffdf7) 90%, var(--et-page-accent-2, #d9a441) 5%);
+  contain: layout paint style;
+  content-visibility: auto;
+  contain-intrinsic-size: 620px;
 }
 
 html body #root .app.app-theme-dark.app-command-shell .vault-gallery-panel,
@@ -101394,6 +101415,7 @@ html body #root .app.app-command-shell .vault-gallery-tile {
     inset 0 1px 0 rgba(255, 255, 255, 0.58);
   text-align: left;
   cursor: pointer;
+  contain: layout paint style;
 }
 
 html body #root .app.app-theme-dark.app-command-shell .vault-gallery-tile,
@@ -101480,6 +101502,9 @@ html body #root .app.app-command-shell .vault-display-case-panel {
   box-shadow:
     0 24px 54px color-mix(in srgb, var(--et-page-accent, #8b5cf6) 12%, transparent),
     inset 0 1px 0 rgba(255, 255, 255, 0.66);
+  contain: layout paint style;
+  content-visibility: auto;
+  contain-intrinsic-size: 560px;
 }
 
 html body #root .app.app-command-shell .vault-display-case-panel::before {
@@ -101557,6 +101582,7 @@ html body #root .app.app-command-shell .vault-display-case-grid {
   gap: clamp(12px, 1.8vw, 18px);
   min-width: 0;
   perspective: 1200px;
+  contain: layout style;
 }
 
 html body #root .app.app-command-shell .vault-display-case-card {
@@ -101572,6 +101598,7 @@ html body #root .app.app-command-shell .vault-display-case-card {
   box-shadow:
     0 18px 40px color-mix(in srgb, var(--et-page-accent, #8b5cf6) 12%, transparent),
     inset 0 1px 0 rgba(255, 255, 255, 0.62);
+  contain: layout paint style;
 }
 
 html body #root .app.app-theme-dark.app-command-shell .vault-display-case-card,
@@ -101716,6 +101743,7 @@ html body #root .app.app-command-shell .collector-flip-card {
   gap: 10px;
   min-width: 0;
   perspective: 1100px;
+  contain: layout paint style;
 }
 
 html body #root .app.app-command-shell .collector-flip-card > summary {
@@ -101741,6 +101769,7 @@ html body #root .app.app-command-shell .collector-flip-front {
   pointer-events: none;
   transform-origin: center;
   transition: transform 220ms ease, filter 220ms ease;
+  backface-visibility: hidden;
 }
 
 html body #root .app.app-command-shell .collector-flip-card[open] .collector-flip-front {
@@ -101781,6 +101810,8 @@ html body #root .app.app-command-shell .collector-flip-back {
     inset 0 1px 0 rgba(255, 255, 255, 0.58);
   transform: rotateX(-5deg) translateY(-2px);
   transform-origin: top center;
+  contain: layout paint style;
+  backface-visibility: hidden;
 }
 
 html body #root .app.app-theme-dark.app-command-shell .collector-flip-back,
@@ -101883,6 +101914,7 @@ html body #root .app.app-command-shell .market-showcase-preview {
   min-height: 142px;
   grid-template-columns: minmax(0, 1fr);
   padding: 10px;
+  contain-intrinsic-size: 142px;
 }
 
 html body #root .app.app-command-shell .market-showcase-preview .collector-showcase-copy,
@@ -101904,6 +101936,7 @@ html body #root .app.app-command-shell .quick-add-showcase-preview {
   min-height: 118px;
   grid-template-columns: minmax(0, 1fr);
   padding: 9px;
+  contain-intrinsic-size: 118px;
 }
 
 html body #root .app.app-command-shell .quick-add-showcase-preview .collector-showcase-copy,
@@ -101934,6 +101967,23 @@ html body #root .app.app-command-shell .quick-add-result-card .quick-add-result-
   html body #root .app.app-command-shell .collector-showcase-card {
     grid-template-columns: minmax(82px, 104px) minmax(0, 1fr);
     padding: 10px;
+  }
+
+  html body #root .app.app-command-shell .collector-showcase-object,
+  html body #root .app.app-command-shell .sealed-product-shelf-object {
+    transform: none;
+    transition: none;
+  }
+
+  html body #root .app.app-command-shell .collector-showcase-shadow,
+  html body #root .app.app-command-shell .collector-showcase-shine {
+    display: none;
+  }
+
+  html body #root .app.app-command-shell .vault-showcase-panel,
+  html body #root .app.app-command-shell .vault-gallery-panel,
+  html body #root .app.app-command-shell .vault-display-case-panel {
+    contain-intrinsic-size: 520px;
   }
 
   html body #root .app.app-command-shell .collector-showcase-display,
@@ -102006,7 +102056,8 @@ html body #root .app.app-command-shell .quick-add-result-card .quick-add-result-
   }
 
   html body #root .app.app-command-shell .collector-showcase-shine {
-    opacity: 0.22;
+    display: none;
+    opacity: 0;
     transform: none;
   }
 }

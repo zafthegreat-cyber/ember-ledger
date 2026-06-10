@@ -106,6 +106,14 @@ assert.ok(
     cssSource.includes("transform: none"),
   "Collector Showcase and flip details should provide a reduced-motion CSS fallback."
 );
+assert.ok(
+  cssSource.includes("contain: layout paint style") &&
+    cssSource.includes("content-visibility: auto") &&
+    cssSource.includes("contain-intrinsic-size") &&
+    cssSource.includes(".collector-showcase-mini .collector-showcase-shine") &&
+    cssSource.includes("backface-visibility: hidden"),
+  "Collector Showcase surfaces should use lightweight containment, compact list previews, and GPU-safe transforms."
+);
 assert.equal(
   /(showcase|flip)[^.]{0,100}(authenticat|grade verified|product verified|live market|guaranteed price|official scan)/i.test(appSource),
   false,
