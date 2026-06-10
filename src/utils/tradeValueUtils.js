@@ -102,31 +102,30 @@ export function buildTradeComparison(draft = {}, sourceItem = {}, options = {}) 
     : estimateTradeItemValue(sourceItem, normalized.outgoingQuantity);
   const receivedUnitValue = Number(normalized.receivedValue || 0);
   const receivedTotalValue = receivedUnitValue * normalized.receivedQuantity;
-  const hasOutgoingValue = outgoing.totalValue > 0;
-  const hasReceivedValue = receivedTotalValue > 0;
+  const hasOutgoingValue = hasManualOutgoingValue || outgoing.totalValue > 0;
+  const hasReceivedValue = normalized.receivedValue !== "";
   const difference = receivedTotalValue - outgoing.totalValue;
-  const tolerance = Math.max(5, outgoing.totalValue * 0.1);
   let tone = "needs-review";
-  let label = "Needs value review";
-  let resultLabel = "Unknown value";
-  let guidance = "Add estimated values before deciding whether the trade feels fair.";
+  let label = "Unknown Balance";
+  let resultLabel = "Unknown Balance";
+  let guidance = "Add estimated values later to compare what you gave with what you got.";
 
   if (hasOutgoingValue && hasReceivedValue) {
-    if (Math.abs(difference) <= tolerance) {
-      tone = "fair";
-      label = "Looks roughly fair";
-      resultLabel = "Even Trade";
-      guidance = "Values are close. Still review condition, demand, and whether both people understand the trade.";
-    } else if (difference > 0) {
+    if (difference > 0) {
       tone = "favorable";
-      label = "You may receive more value";
+      label = "Value Gained";
       resultLabel = "Value Gained";
       guidance = "The received side estimates higher. Confirm condition and source data before saving.";
-    } else {
+    } else if (difference < 0) {
       tone = "caution";
-      label = "Review carefully";
-      resultLabel = "Value Lost";
+      label = "Value Drift";
+      resultLabel = "Value Drift";
       guidance = "You may be giving more estimated value. Confirm condition, demand, and family rules before accepting.";
+    } else {
+      tone = "fair";
+      label = "Fair Trade";
+      resultLabel = "Fair Trade";
+      guidance = "The values you entered are even. Still review condition, demand, timing, and personal meaning.";
     }
   }
 
@@ -134,7 +133,7 @@ export function buildTradeComparison(draft = {}, sourceItem = {}, options = {}) 
     difference,
     differenceLabel: hasOutgoingValue && hasReceivedValue
       ? `${difference >= 0 ? "+" : "-"}${moneyFormatter(Math.abs(difference))}`
-      : "Needs value",
+      : "Unknown Balance",
     guidance,
     hasOutgoingValue,
     hasReceivedValue,

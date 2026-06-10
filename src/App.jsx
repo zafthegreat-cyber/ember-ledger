@@ -25937,7 +25937,7 @@ function renderForgeBusinessCommandPanel() {
     },
     {
       key: "trades",
-      label: "Trade history",
+      label: "Trade Ledger",
       value: workspaceTradeRecords.length || 0,
       helper: workspaceTradeRecords.length ? "Saved local trade reviews" : "No trades saved yet",
     },
@@ -25974,7 +25974,7 @@ function renderForgeBusinessCommandPanel() {
       detail: "Give: NM foil copy + sealed item | Receive: binder lot",
       value: "+$18 fair range",
       note: "Parent approval recommended for kid-owned items.",
-      cta: "Add Trade",
+      cta: "Log a Trade",
       onClick: () => openAddTradeFlow({ source: "forge-trade-analyzer" }),
     },
     {
@@ -26142,23 +26142,23 @@ function renderForgeBusinessCommandPanel() {
         <div className="forge-main-command-card forge-trade-history-card">
           <div className="compact-card-header">
             <div>
-              <h4>Trade History</h4>
-              <p>Record what you gave, what you got, estimated values, and notes. Saving a trade never changes Vault or Forge inventory counts.</p>
+              <h4>Trade Ledger</h4>
+              <p>Record what you gave, what you got, estimated values, and the story behind the trade. Saving a trade never changes Vault or Forge inventory counts.</p>
             </div>
-            <button type="button" className="secondary-button" onClick={() => openAddTradeFlow({ source: "forge-trade-history-card" })}>Add Trade</button>
+            <button type="button" className="secondary-button" onClick={() => openAddTradeFlow({ source: "forge-trade-history-card" })}>Log a Trade</button>
           </div>
           <div className="trade-history-list forge-trade-history-list">
             {recentForgeTrades.length ? recentForgeTrades.map((record) => (
               <article key={record.id}>
                 <span>{record.tradeDate ? shortDate(record.tradeDate) : shortDate(record.createdAt)}</span>
                 <strong>{record.sourceItemName || "Item traded"} for {record.receivedName || "received item"}</strong>
-                <small>{record.resultLabel || record.guidance || "Trade saved"} | {record.difference || record.difference === 0 ? money(Math.abs(Number(record.difference || 0))) : "Unknown value"} | Inventory unchanged</small>
+                <small>{record.resultLabel || record.guidance || "Trade saved"} | {record.difference || record.difference === 0 ? money(Math.abs(Number(record.difference || 0))) : "Unknown Balance"} | Inventory unchanged</small>
               </article>
             )) : (
               <div className="small-empty-state forge-start-empty-state">
-                <strong>No trade history yet.</strong>
-                <span>Add a manual trade or choose a saved Vault/Forge item to compare estimated value before updating inventory records.</span>
-                <button type="button" className="secondary-button" onClick={() => openAddTradeFlow({ source: "forge-trade-history-empty" })}>Add Trade</button>
+                <strong>No trades logged yet.</strong>
+                <span>Your Trade Ledger is quiet for now. Log your first trade to remember what you gave, what you got, and how the balance felt.</span>
+                <button type="button" className="secondary-button" onClick={() => openAddTradeFlow({ source: "forge-trade-history-empty" })}>Log a Trade</button>
               </div>
             )}
           </div>
@@ -46018,21 +46018,21 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <div className="trade-value-flow trade-value-flow--saved">
           <section className="trade-value-success-card">
             <span className="trust-badge trust-badge--verified">Saved locally</span>
-            <h3>Trade saved to history.</h3>
+            <h3>Trade saved to your Trade Ledger.</h3>
             <p>No Vault or Forge inventory counts were changed. Update item records separately after the trade is complete.</p>
             <div className="trade-comparison-grid">
               <div>
-                <span>You traded away</span>
+                <span>What You Gave</span>
                 <strong>{sourceTitle}</strong>
                 <small>{comparison.outgoingLabel}</small>
               </div>
               <div>
-                <span>You received</span>
+                <span>What You Got</span>
                 <strong>{tradeDraft.receivedName || "Received item"}</strong>
                 <small>{comparison.receivedLabel}</small>
               </div>
               <div className={`trade-guidance-card ${comparison.tone}`}>
-                <span>Trade Result</span>
+                <span>Trade Balance</span>
                 <strong>{comparison.resultLabel}</strong>
                 <small>{comparison.differenceLabel}</small>
               </div>
@@ -46046,7 +46046,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               setTradeStep("details");
               setTradeMessage("");
             }}>
-              Start another trade
+              Log another trade
             </button>
             <button type="button" className="secondary-button" onClick={() => closeFlowModal({ force: true })}>Close</button>
           </div>
@@ -46057,9 +46057,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     return (
       <form className="trade-value-flow" onSubmit={tradeStep === "review" ? saveTradeHistory : reviewTradeDraft}>
         <section className="trade-value-hero-card">
-          <span className="section-kicker">Trade review</span>
-          <h3>Is this trade worth it?</h3>
-          <p>Use estimates as a sanity check, then review the exact variant or copy, condition, demand, and family rules before saving anything.</p>
+          <span className="section-kicker">Before You Trade</span>
+          <h3>Log a Trade</h3>
+          <p>Use estimated values as a guide, not a promise. Condition, demand, timing, and personal meaning can change what a trade is worth.</p>
           <div className="trade-safety-strip">
             <span>Exact variant/copy</span>
             <span>Review before saving</span>
@@ -46100,7 +46100,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 ))}
               </select>
             </Field>
-            <Field label="Item traded away" error={tradeMessage && validation.errors.sourceItemId ? validation.errors.sourceItemId : ""}>
+            <Field label="What You Gave" error={tradeMessage && validation.errors.sourceItemId ? validation.errors.sourceItemId : ""}>
               <input
                 value={tradeDraft.outgoingName}
                 onChange={(event) => updateTradeDraftField("outgoingName", event.target.value)}
@@ -46127,7 +46127,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   placeholder={sourceItem ? "Use saved value" : "0.00"}
                 />
               </Field>
-              <Field label="Condition / notes">
+              <Field label="Condition or notes">
                 <input
                   value={tradeDraft.outgoingCondition}
                   onChange={(event) => updateTradeDraftField("outgoingCondition", event.target.value)}
@@ -46162,7 +46162,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </div>
               <strong>{comparison.receivedLabel}</strong>
             </div>
-            <Field label="Item received" error={tradeMessage && validation.errors.receivedName ? validation.errors.receivedName : ""}>
+            <Field label="What You Got" error={tradeMessage && validation.errors.receivedName ? validation.errors.receivedName : ""}>
               <input
                 value={tradeDraft.receivedName}
                 onChange={(event) => updateTradeDraftField("receivedName", event.target.value)}
@@ -46184,7 +46184,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   onChange={(event) => updateTradeDraftField("receivedQuantity", event.target.value)}
                 />
               </Field>
-              <Field label="Estimated value">
+              <Field label="Estimated value received">
                 <input
                   type="number"
                   min="0"
@@ -46209,11 +46209,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 placeholder="Prismatic Evolutions, Crown Zenith..."
               />
             </Field>
-            <Field label="Trade notes">
+            <Field label="Trade Story">
               <textarea
                 value={tradeDraft.notes}
                 onChange={(event) => updateTradeDraftField("notes", event.target.value)}
-                placeholder="Condition notes, who checked values, or family approval notes."
+                placeholder="Optional: where it happened, why it mattered, who checked values, or family approval notes."
                 rows={3}
               />
             </Field>
@@ -46223,9 +46223,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <section className={`trade-review-card ${comparison.tone}`}>
           <div className="compact-card-header">
             <div>
-              <span className="section-kicker">Guidance</span>
+              <span className="section-kicker">Trade Balance</span>
               <h4>{comparison.resultLabel}</h4>
-              <p>{comparison.guidance}</p>
+              <p>Forge compares the values you entered so you can see whether the tide moved in your favor. {comparison.guidance}</p>
             </div>
             <strong>{comparison.differenceLabel}</strong>
           </div>
@@ -46241,7 +46241,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <small>{[tradeDraft.receivedName, receivedSummary].filter(Boolean).join(" - ") || "Add item details"}</small>
             </div>
             <div>
-              <span>Trade Result</span>
+              <span>Trade Balance</span>
               <strong>{comparison.resultLabel}</strong>
               <small>Saving history does not edit Vault or Forge records.</small>
             </div>
@@ -46253,7 +46253,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div className="compact-card-header">
               <div>
                 <h4>Recent trade history</h4>
-                <p>Local beta records only. Edit inventory separately after a real trade is complete.</p>
+                <p>Local Trade Ledger records only. Edit inventory separately after a real trade is complete.</p>
               </div>
             </div>
             <div className="trade-history-list">
@@ -46278,7 +46278,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </>
           ) : (
             <>
-              <button type="submit">Review Trade</button>
+              <button type="submit">Review Trade Balance</button>
               <button type="button" className="secondary-button" onClick={() => closeFlowModal()}>Cancel</button>
             </>
           )}
@@ -46388,8 +46388,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     }
     if (activeFlowModal?.type === "tradeValue") {
       return {
-        title: "Trade Value",
-        description: "Compare what leaves your collection with what comes in. Review first; inventory is not changed.",
+        title: "Trade Ledger",
+        description: "Log what you gave, what you got, and the trade balance. Review first; inventory is not changed.",
         size: "medium",
       };
     }
@@ -63876,7 +63876,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
             <div className="quick-actions forge-action-strip" aria-label="Forge quick actions">
               <button type="button" onClick={() => openProductAddFlow({ source: "forge-action-strip", destinations: { forge: true } })}>Add Inventory</button>
               <button type="button" className="secondary-button" onClick={() => openAddSaleFlow()}>Add Sale</button>
-              <button type="button" className="secondary-button" onClick={() => openAddTradeFlow({ source: "forge-action-strip" })}>Add Trade</button>
+              <button type="button" className="secondary-button" onClick={() => openAddTradeFlow({ source: "forge-action-strip" })}>Log a Trade</button>
               <button type="button" className="secondary-button" onClick={() => openBasicReceiptFlow("forge-action-strip")}>Add Receipt</button>
               <button type="button" className="secondary-button" onClick={() => openAddMileageFlow()}>Add Mileage</button>
               <button type="button" className="secondary-button" onClick={openForgeBusinessLedgerSurface}>Business Ledger</button>

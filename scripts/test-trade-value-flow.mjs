@@ -52,14 +52,19 @@ const validManual = validateTradeDraft(manualTrade, null);
 assert.equal(validManual.ok, true, "manual trade should not require a saved Vault/Forge item");
 
 const favorable = buildTradeComparison(normalized, vaultItem, { moneyFormatter: (value) => `$${Number(value).toFixed(2)}` });
-assert.equal(favorable.tone, "fair");
-assert.equal(favorable.resultLabel, "Even Trade");
+assert.equal(favorable.tone, "favorable");
+assert.equal(favorable.resultLabel, "Value Gained");
 assert.equal(favorable.outgoingLabel, "$120.00");
 assert.equal(favorable.receivedLabel, "$125.00");
 
 const caution = buildTradeComparison({ ...normalized, receivedValue: "45" }, vaultItem);
 assert.equal(caution.tone, "caution");
-assert.equal(caution.resultLabel, "Value Lost");
+assert.equal(caution.resultLabel, "Value Drift");
+
+const fairTrade = buildTradeComparison({ ...normalized, receivedValue: "60" }, vaultItem);
+assert.equal(fairTrade.tone, "fair");
+assert.equal(fairTrade.resultLabel, "Fair Trade");
+assert.equal(fairTrade.differenceLabel, "+$0.00");
 
 const manualGain = buildTradeComparison(manualTrade, null, { moneyFormatter: (value) => `$${Number(value).toFixed(2)}` });
 assert.equal(manualGain.tone, "favorable");
@@ -69,8 +74,8 @@ assert.equal(manualGain.receivedLabel, "$44.00");
 
 const missingValue = buildTradeComparison({ outgoingName: "Mystery lot", receivedName: "Unknown card" }, null);
 assert.equal(missingValue.tone, "needs-review");
-assert.equal(missingValue.resultLabel, "Unknown value");
-assert.equal(missingValue.differenceLabel, "Needs value");
+assert.equal(missingValue.resultLabel, "Unknown Balance");
+assert.equal(missingValue.differenceLabel, "Unknown Balance");
 
 const record = buildTradeHistoryRecord(normalized, vaultItem, { id: "trade-test", now: "2026-05-31T12:00:00.000Z" });
 assert.equal(record.id, "trade-test");
@@ -79,7 +84,7 @@ assert.equal(record.receivedName, "Prismatic Evolutions Booster Bundle");
 assert.equal(record.inventoryMutation, "none", "trade history must not mutate inventory records");
 assert.equal(record.outgoingValue, 120);
 assert.equal(record.receivedValue, 125);
-assert.equal(record.resultLabel, "Even Trade");
+assert.equal(record.resultLabel, "Value Gained");
 
 const manualRecord = buildTradeHistoryRecord(manualTrade, null, { id: "manual-trade-test", now: "2026-06-09T12:00:00.000Z" });
 assert.equal(manualRecord.sourceKind, "manual");
