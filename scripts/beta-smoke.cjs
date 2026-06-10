@@ -683,6 +683,34 @@ async function main() {
     await nav("Vault");
     await assertVisibleText("Vault");
     await assertVisibleText("Focused Vault Smoke Card");
+    await assertVisibleText("Collection Sets");
+    await assertVisibleText("Set Shelf");
+    await assertVisibleText("Your Set Shelf is waiting. Create a set for favorites, sealed product, slabs, kid collections, trade binders, or master set goals.");
+    await page.getByRole("button", { name: /^Create Set$/ }).first().click();
+    const collectionSetModal = page.locator('.flow-modal[data-flow="vaultCollectionSet"]').first();
+    await expectVisible(collectionSetModal, "Vault Collection Sets modal");
+    await fillByLabel(collectionSetModal, "Set name", "Smoke Trade Binder Shelf");
+    await collectionSetModal.locator("label").filter({ hasText: /^Set type/ }).locator("select").selectOption({ label: "Trade Binder" });
+    await fillByLabel(collectionSetModal, "Optional goal", "Keep trades easy to review");
+    await fillByLabel(collectionSetModal, "Family / kid label", "Family trade night");
+    await fillByLabel(collectionSetModal, "Date created", "2026-06-09");
+    await fillByLabel(collectionSetModal, "Set Notes", "Smoke coverage for local Collection Sets.");
+    await assertVisibleText("Soon you’ll be able to tuck Vault items directly into this set.");
+    await collectionSetModal.getByRole("button", { name: /^Create Set$/ }).click();
+    await assertVisibleText(/Collection Set saved locally/i);
+    await page.waitForFunction(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      return (data.vaultCollectionSets || []).some((entry) => entry.setName === "Smoke Trade Binder Shelf" && entry.setType === "Trade Binder");
+    }, null, { timeout: 5000 });
+    const savedCollectionSets = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      return data.vaultCollectionSets || [];
+    });
+    assert.ok(savedCollectionSets.some((entry) => entry.setName === "Smoke Trade Binder Shelf" && entry.setType === "Trade Binder"), "Vault Collection Sets should persist saved set shelves locally");
+    await collectionSetModal.getByRole("button", { name: /^Close$/ }).first().click();
+    await collectionSetModal.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+    await expectVisible(page.locator(".vault-collection-set-card").filter({ hasText: "Smoke Trade Binder Shelf" }).first(), "Vault saved Collection Set card");
+    await assertVisibleText("Add to Set");
     const focusedVaultCard = page.locator(".vault-item-card").filter({ hasText: "Focused Vault Smoke Card" }).first();
     await expectVisible(focusedVaultCard, "focused Vault item card");
     await focusedVaultCard.getByRole("button", { name: /Item Profile/i }).first().click();

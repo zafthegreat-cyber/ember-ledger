@@ -94969,6 +94969,112 @@ html body #root .app.app-command-shell.app-vault .vault-live-action-grid .vault-
   min-height: 92px;
 }
 
+html body #root .app.app-command-shell.app-vault .vault-collection-sets-card {
+  overflow: hidden;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-collection-set-summary-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 14px;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-collection-set-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-collection-set-card {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: clamp(14px, 2vw, 18px);
+  border: 1px solid color-mix(in srgb, var(--et-page-accent) 24%, var(--et-border));
+  border-radius: var(--et-radius-lg);
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--et-page-accent) 12%, transparent), transparent 8rem),
+    color-mix(in srgb, var(--et-panel-soft) 88%, transparent);
+  box-shadow: var(--et-shadow-soft);
+}
+
+html body #root .app.app-command-shell.app-vault .vault-collection-set-card h3,
+html body #root .app.app-command-shell.app-vault .vault-collection-set-card p {
+  margin: 0;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-collection-set-card p,
+html body #root .app.app-command-shell.app-vault .vault-collection-set-card small {
+  color: var(--et-muted);
+}
+
+html body #root .app.app-command-shell.app-vault .vault-collection-set-actions {
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-collection-set-coming-soon,
+.vault-collection-set-helper-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent) 22%, var(--et-border));
+  border-radius: var(--et-radius-md);
+  background: color-mix(in srgb, var(--et-page-accent) 8%, var(--et-panel-soft));
+  color: var(--et-ink);
+}
+
+.vault-collection-set-flow {
+  display: grid;
+  gap: 14px;
+}
+
+.vault-collection-set-hero-card,
+.vault-collection-set-form-card {
+  display: grid;
+  gap: 12px;
+  padding: clamp(14px, 2vw, 18px);
+  border: 1px solid color-mix(in srgb, var(--et-page-accent, #8c5cf6) 22%, var(--et-border));
+  border-radius: var(--et-radius-lg, 22px);
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--et-page-accent, #8c5cf6) 12%, transparent), transparent 8rem),
+    color-mix(in srgb, var(--et-panel-soft, #fff7ed) 92%, transparent);
+}
+
+.vault-collection-set-hero-card h3,
+.vault-collection-set-hero-card p {
+  margin: 0;
+}
+
+.vault-collection-set-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.vault-collection-set-pill-row span {
+  padding: 7px 10px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent, #8c5cf6) 24%, var(--et-border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--et-page-accent, #8c5cf6) 9%, transparent);
+  color: var(--et-ink);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.vault-collection-set-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.vault-collection-set-actions {
+  flex-wrap: wrap;
+}
+
 html body #root .app.app-command-shell.app-vault .vault-collection-panel,
 html body #root .app.app-command-shell.app-vault .vault-wishlist-panel,
 html body #root .app.app-command-shell.app-vault .vault-sets-panel,
@@ -95050,9 +95156,21 @@ html body #root .app.app-command-shell.app-vault .vault-master-card-section {
   html body #root .app.app-command-shell.app-vault .vault-command-overview.et-mockup-stat-grid,
   html body #root .app.app-command-shell.app-vault .vault-live-summary-grid,
   html body #root .app.app-command-shell.app-vault .vault-live-master-stats,
+  html body #root .app.app-command-shell.app-vault .vault-collection-set-summary-grid,
   html body #root .app.app-command-shell.app-vault .vault-live-filter-row,
   html body #root .app.app-command-shell.app-vault .vault-live-folder-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-collection-set-grid,
+  .vault-collection-set-form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  html body #root .app.app-command-shell.app-vault .vault-collection-set-coming-soon,
+  .vault-collection-set-helper-card {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   html body #root .app.app-command-shell.app-vault .vault-mockup-tabs.standard-page-header-tabs {

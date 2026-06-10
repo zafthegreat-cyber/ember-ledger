@@ -2598,6 +2598,24 @@ const TIDEPOOL_CIRCLE_STATUS_OPTIONS = [
   "Spark Supporter",
   "Invite Later",
 ];
+const VAULT_COLLECTION_SET_TYPES = [
+  "Favorite Set",
+  "Kid Set",
+  "Sealed Set",
+  "Slab Set",
+  "Trade Binder",
+  "Master Set",
+  "Family Set",
+  "Other",
+];
+const BLANK_VAULT_COLLECTION_SET_FORM = {
+  setName: "",
+  setType: "Favorite Set",
+  setNotes: "",
+  setGoal: "",
+  familyKidLabel: "",
+  dateCreated: "",
+};
 const BLANK_TIDEPOOL_POST_FORM = {
   postType: "Community Update",
   title: "",
@@ -2618,6 +2636,33 @@ const BLANK_TIDEPOOL_CIRCLE_FORM = {
   safetyNotes: "",
   dateAdded: "",
 };
+
+function normalizeVaultCollectionSetDraft(draft = {}) {
+  const setType = VAULT_COLLECTION_SET_TYPES.includes(draft.setType || draft.type)
+    ? (draft.setType || draft.type)
+    : "Favorite Set";
+  return {
+    setName: String(draft.setName || draft.name || "").trim(),
+    setType,
+    setNotes: String(draft.setNotes || draft.notes || "").trim(),
+    setGoal: String(draft.setGoal || draft.goal || "").trim(),
+    familyKidLabel: String(draft.familyKidLabel || draft.kidLabel || draft.familyLabel || "").trim(),
+    dateCreated: String(draft.dateCreated || draft.createdDate || draft.date || "").slice(0, 10),
+  };
+}
+
+function normalizeVaultCollectionSetEntry(entry = {}) {
+  return {
+    ...entry,
+    ...normalizeVaultCollectionSetDraft(entry),
+    id: entry.id || "",
+    createdAt: entry.createdAt || entry.created_at || "",
+    updatedAt: entry.updatedAt || entry.updated_at || "",
+    savedBy: entry.savedBy || entry.saved_by || "",
+    source: entry.source || "local-vault-collection-set",
+    itemAssignmentStatus: entry.itemAssignmentStatus || "coming_soon",
+  };
+}
 const EMBER_ASSIST_PRIMARY_PROMPTS = [
   "Identify this card",
   "Is this a good deal?",
@@ -6512,6 +6557,10 @@ export default function App() {
   const [marketPriceMemoryDraft, setMarketPriceMemoryDraft] = useState(BLANK_MARKET_PRICE_MEMORY_FORM);
   const [marketPriceMemoryMessage, setMarketPriceMemoryMessage] = useState("");
   const [marketPriceMemorySaving, setMarketPriceMemorySaving] = useState(false);
+  const [vaultCollectionSets, setVaultCollectionSets] = useState([]);
+  const [vaultCollectionSetDraft, setVaultCollectionSetDraft] = useState(BLANK_VAULT_COLLECTION_SET_FORM);
+  const [vaultCollectionSetMessage, setVaultCollectionSetMessage] = useState("");
+  const [vaultCollectionSetSaving, setVaultCollectionSetSaving] = useState(false);
   const [marketSyncMessage, setMarketSyncMessage] = useState("");
   const [manualMarketForm, setManualMarketForm] = useState({
     catalogItemId: "",
@@ -15722,6 +15771,7 @@ export default function App() {
       setTideTradrLookupId(saved.tideTradrLookupId || "");
       setMarketPriceCache(saved.marketPriceCache || loadPriceCache());
       setMarketPriceMemories(Array.isArray(saved.marketPriceMemories) ? saved.marketPriceMemories.map(normalizeMarketPriceMemoryEntry) : []);
+      setVaultCollectionSets(migrateRecordsToWorkspace(saved.vaultCollectionSets || [], personalWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID, workspaceState.workspaces).map(normalizeVaultCollectionSetEntry));
       setUserSearchAliases(Array.isArray(saved.userSearchAliases) ? saved.userSearchAliases : []);
       setExpenses(migrateRecordsToWorkspace(saved.expenses || [], personalWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID, workspaceState.workspaces).map(mapExpense));
       setSales(migrateRecordsToWorkspace(saved.sales || [], personalWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID, workspaceState.workspaces));
@@ -15776,6 +15826,7 @@ export default function App() {
         setSales([]);
         setTradeRecords([]);
         setSparkGifts([]);
+        setVaultCollectionSets([]);
         setVehicles([]);
         setMileageTrips([]);
         return;
@@ -15789,6 +15840,7 @@ export default function App() {
       setSales([]);
       setTradeRecords([]);
       setSparkGifts([]);
+      setVaultCollectionSets([]);
       setVehicles([]);
       setMileageTrips([]);
     }
@@ -16121,6 +16173,7 @@ export default function App() {
         tideTradrLookupId,
         marketPriceCache,
         marketPriceMemories,
+        vaultCollectionSets,
         userSearchAliases,
         expenses,
         sales,
@@ -16157,7 +16210,7 @@ export default function App() {
         },
       })
     );
-  }, [items, purchasers, catalogProducts, tideTradrWatchlist, marketplaceListings, marketplaceReports, marketplaceSavedIds, tideTradrLookupId, marketPriceCache, marketPriceMemories, userSearchAliases, expenses, sales, tradeRecords, sparkGifts, vehicles, mileageTrips, workspaces, workspaceMembers, workspaceInvites, activeWorkspaceId, forgeModeSettings, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, resolvedAppTheme, appSetupPersonalization, cloudSyncPreference, locationSettings, subscriptionProfile, currentUserProfile, adminModeStorageReady, adminViewMode, localDataLoaded]);
+  }, [items, purchasers, catalogProducts, tideTradrWatchlist, marketplaceListings, marketplaceReports, marketplaceSavedIds, tideTradrLookupId, marketPriceCache, marketPriceMemories, vaultCollectionSets, userSearchAliases, expenses, sales, tradeRecords, sparkGifts, vehicles, mileageTrips, workspaces, workspaceMembers, workspaceInvites, activeWorkspaceId, forgeModeSettings, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, resolvedAppTheme, appSetupPersonalization, cloudSyncPreference, locationSettings, subscriptionProfile, currentUserProfile, adminModeStorageReady, adminViewMode, localDataLoaded]);
 
   useEffect(() => {
     if (!BETA_LOCAL_MODE || !localDataLoaded) return;
@@ -19218,6 +19271,59 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (!stayInContext) setActiveTab("vault");
   }
 
+  function createVaultCollectionSetDraft(overrides = {}) {
+    return normalizeVaultCollectionSetDraft({
+      ...BLANK_VAULT_COLLECTION_SET_FORM,
+      dateCreated: new Date().toISOString().slice(0, 10),
+      ...overrides,
+    });
+  }
+
+  function openVaultCollectionSetFlow(options = {}) {
+    setActiveTab("vault");
+    const draft = createVaultCollectionSetDraft(options.seed || {});
+    setVaultCollectionSetDraft(draft);
+    setVaultCollectionSetMessage("");
+    setVaultCollectionSetSaving(false);
+    flowModalBaselineRef.current.vaultCollectionSet = draft;
+    openFlowModal("vaultCollectionSet", { size: "medium", source: options.source || "vault-collection-sets" });
+  }
+
+  function updateVaultCollectionSetDraftField(field, value) {
+    setVaultCollectionSetDraft((current) => normalizeVaultCollectionSetDraft({ ...current, [field]: value }));
+    setVaultCollectionSetMessage("");
+  }
+
+  function saveVaultCollectionSet(event) {
+    event?.preventDefault?.();
+    if (vaultCollectionSetSaving) return;
+    if (blockGuestSave()) return;
+    const draft = normalizeVaultCollectionSetDraft(vaultCollectionSetDraft);
+    if (!draft.setName) {
+      setVaultCollectionSetMessage("Add a set name before saving this Collection Set.");
+      return;
+    }
+    setVaultCollectionSetSaving(true);
+    const now = new Date().toISOString();
+    const setWorkspace = activeWorkspace || { id: activeWorkspaceId || DEFAULT_PERSONAL_WORKSPACE_ID, name: "My Personal Space", type: "personal" };
+    const record = applyWorkspaceToRecord(normalizeVaultCollectionSetEntry({
+      id: makeId("vault-set-shelf"),
+      ...draft,
+      dateCreated: draft.dateCreated || now.slice(0, 10),
+      createdAt: now,
+      updatedAt: now,
+      savedBy: currentUserProfile.userId || user?.id || "local-beta",
+      source: "local-vault-collection-set",
+      itemAssignmentStatus: "coming_soon",
+    }), setWorkspace);
+    setVaultCollectionSets((current) => [record, ...current]);
+    setVaultCollectionSetDraft(draft);
+    flowModalBaselineRef.current.vaultCollectionSet = draft;
+    setVaultCollectionSetMessage("Collection Set saved locally. Soon you\u2019ll be able to tuck Vault items directly into this set.");
+    setVaultCollectionSetSaving(false);
+    setVaultToast("Collection Set saved to your Set Shelf.");
+  }
+
   function formsDiffer(current, blank) {
     const keys = new Set([...Object.keys(current || {}), ...Object.keys(blank || {})]);
     return [...keys].some((key) => JSON.stringify((current || {})[key] ?? "") !== JSON.stringify((blank || {})[key] ?? ""));
@@ -19236,6 +19342,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (type === "tidepoolCreatePost") return formsDiffer(tidepoolPostForm, BLANK_TIDEPOOL_POST_FORM);
     if (type === "tidepoolTrustedCircle") return formsDiffer(tidepoolCircleForm, BLANK_TIDEPOOL_CIRCLE_FORM);
     if (type === "marketPriceMemory") return formsDiffer(marketPriceMemoryDraft, flowModalBaselineRef.current.marketPriceMemory || BLANK_MARKET_PRICE_MEMORY_FORM);
+    if (type === "vaultCollectionSet") return formsDiffer(vaultCollectionSetDraft, flowModalBaselineRef.current.vaultCollectionSet || BLANK_VAULT_COLLECTION_SET_FORM);
     if (type === "multiDestinationAdd") return formsDiffer(multiDestinationForm, flowModalBaselineRef.current.multiDestinationAdd || BLANK_MULTI_DESTINATION_FORM);
     if (type === "tradeValue") return tradeStep !== "saved" && formsDiffer(tradeDraft, flowModalBaselineRef.current.tradeValue || BLANK_TRADE_DRAFT);
     if (type === "tradeCompass") return formsDiffer(tradeCompassDraft, flowModalBaselineRef.current.tradeCompass || BLANK_TRADE_COMPASS_DRAFT);
@@ -19291,6 +19398,11 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       setMarketPriceMemoryDraft(BLANK_MARKET_PRICE_MEMORY_FORM);
       setMarketPriceMemoryMessage("");
       setMarketPriceMemorySaving(false);
+    }
+    if (type === "vaultCollectionSet") {
+      setVaultCollectionSetDraft(BLANK_VAULT_COLLECTION_SET_FORM);
+      setVaultCollectionSetMessage("");
+      setVaultCollectionSetSaving(false);
     }
     if (type === "scoutSubmit") {
       const draft = createQuickScoutReportDraft();
@@ -29044,6 +29156,27 @@ function renderForgeBusinessLedgerPanel() {
   const activeVaultItems = useMemo(() => vaultItems.filter(isActiveVaultItem), [vaultItems]);
   const activeVaultCardItems = useMemo(() => activeVaultItems.filter(isInventoryCardProduct), [activeVaultItems]);
   const activeVaultSealedItems = useMemo(() => activeVaultItems.filter(isInventorySealedProduct), [activeVaultItems]);
+  const visibleVaultCollectionSets = useMemo(() => {
+    const activeId = activeWorkspace?.id || activeWorkspaceId || "";
+    return (Array.isArray(vaultCollectionSets) ? vaultCollectionSets : [])
+      .map(normalizeVaultCollectionSetEntry)
+      .filter((entry) => !activeId || (!entry.workspaceId && !entry.workspace_id) || recordBelongsToWorkspace(entry, activeId));
+  }, [vaultCollectionSets, activeWorkspace?.id, activeWorkspaceId]);
+  const vaultCollectionSetSummary = useMemo(() => {
+    const typeCounts = visibleVaultCollectionSets.reduce((acc, entry) => {
+      const type = entry.setType || "Other";
+      acc[type] = Number(acc[type] || 0) + 1;
+      return acc;
+    }, {});
+    return {
+      total: visibleVaultCollectionSets.length,
+      favorites: Number(typeCounts["Favorite Set"] || 0),
+      kids: Number(typeCounts["Kid Set"] || 0) + Number(typeCounts["Family Set"] || 0),
+      sealed: Number(typeCounts["Sealed Set"] || 0),
+      tradeBinders: Number(typeCounts["Trade Binder"] || 0),
+      masterSets: Number(typeCounts["Master Set"] || 0),
+    };
+  }, [visibleVaultCollectionSets]);
   const vaultMasterCards = useMemo(
     () => {
       const groupedCards = buildMasterCardsFromItems([...activeVaultItems, ...wishlistItems]);
@@ -38540,6 +38673,54 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             ))}
           </div>
         </EtMockupSectionCard>
+
+        <EtMockupSectionCard
+          className="vault-collection-sets-card"
+          title="Collection Sets"
+          detail="Set Shelf keeps favorites, kids' collections, sealed product, slabs, trade binders, and family goals together without changing your Vault items yet."
+          action={<EtMockupButton onClick={() => openVaultCollectionSetFlow({ source: "vault-set-shelf" })}>Create Set</EtMockupButton>}
+        >
+          <div className="et-mockup-stat-grid vault-collection-set-summary-grid" aria-label="Collection Sets summary">
+            <EtMockupStatCard label="Set Shelf" value={vaultCollectionSetSummary.total} detail="Local collection groups" tone="vault" />
+            <EtMockupStatCard label="Family Set" value={vaultCollectionSetSummary.kids} detail="Kid and family labels" tone="collector" />
+            <EtMockupStatCard label="Sealed Set" value={vaultCollectionSetSummary.sealed} detail="Sealed product shelves" tone="gold" />
+            <EtMockupStatCard label="Trade Binder" value={vaultCollectionSetSummary.tradeBinders} detail="Trade review groups" tone="vault" />
+          </div>
+
+          {visibleVaultCollectionSets.length ? (
+            <div className="vault-collection-set-grid" aria-label="Saved Collection Sets">
+              {visibleVaultCollectionSets.slice(0, 6).map((set) => (
+                <article className="vault-collection-set-card" key={set.id || `${set.setName}-${set.createdAt}`}>
+                  <div className="compact-card-header">
+                    <div>
+                      <span className="trust-badge trust-badge--secure">{set.setType || "Collection Set"}</span>
+                      <h3>{set.setName || "Untitled set"}</h3>
+                      <p>{set.familyKidLabel || set.setGoal || "Personal Set Shelf group"}</p>
+                    </div>
+                    <span className="status-badge">{set.dateCreated ? shortDate(set.dateCreated) : "Local"}</span>
+                  </div>
+                  <p>{set.setNotes || "No Set Notes yet. Add why this set matters, what belongs here, or who it helps."}</p>
+                  {set.setGoal ? <small>Goal: {set.setGoal}</small> : null}
+                  <div className="compact-actions vault-collection-set-actions">
+                    <button type="button" className="secondary-button" onClick={() => setVaultToast("Set Shelf details are saved locally. Soon you\u2019ll be able to tuck Vault items directly into this set.")}>View Set</button>
+                    <button type="button" className="secondary-button" disabled title="Item assignment is coming soon.">Add to Set</button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <EtMockupEmptyState
+              title="Your Set Shelf is waiting."
+              detail="Your Set Shelf is waiting. Create a set for favorites, sealed product, slabs, kid collections, trade binders, or master set goals."
+              action={<EtMockupButton variant="secondary" onClick={() => openVaultCollectionSetFlow({ source: "vault-set-shelf-empty" })}>Create Set</EtMockupButton>}
+            />
+          )}
+
+          <div className="vault-collection-set-coming-soon" aria-label="Collection Sets item assignment status">
+            <strong>Add to Set</strong>
+            <span>Soon you{"\u2019"}ll be able to tuck Vault items directly into this set.</span>
+          </div>
+        </EtMockupSectionCard>
       </section>
     );
   }
@@ -47663,6 +47844,93 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     );
   }
 
+  function renderVaultCollectionSetFlowContent() {
+    return (
+      <form className="vault-collection-set-flow" onSubmit={saveVaultCollectionSet}>
+        <section className="vault-collection-set-hero-card">
+          <span className="section-kicker">Collection Sets</span>
+          <h3>Create Set</h3>
+          <p>Group your collection in a way that matches how your family collects.</p>
+          <div className="vault-collection-set-pill-row">
+            <span>Set Shelf</span>
+            <span>Family Set</span>
+            <span>Kid Set</span>
+            <span>Trade Binder</span>
+          </div>
+        </section>
+
+        <section className="vault-collection-set-form-card">
+          <div className="compact-card-header">
+            <div>
+              <span className="trust-badge trust-badge--secure">Vault Item groups</span>
+              <h4>Set Shelf details</h4>
+              <p>Create simple personal sets for favorites, sealed product, slabs, kids' collections, trade binders, or master set goals.</p>
+            </div>
+            <strong>{vaultCollectionSetDraft.setType || "Favorite Set"}</strong>
+          </div>
+          <div className="vault-collection-set-form-grid">
+            <Field label="Set name">
+              <input
+                value={vaultCollectionSetDraft.setName}
+                onChange={(event) => updateVaultCollectionSetDraftField("setName", event.target.value)}
+                placeholder="Family favorites, Trade binder, Scarlet & Violet master set..."
+              />
+            </Field>
+            <Field label="Set type">
+              <select
+                value={vaultCollectionSetDraft.setType}
+                onChange={(event) => updateVaultCollectionSetDraftField("setType", event.target.value)}
+              >
+                {VAULT_COLLECTION_SET_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+              </select>
+            </Field>
+            <Field label="Optional goal">
+              <input
+                value={vaultCollectionSetDraft.setGoal}
+                onChange={(event) => updateVaultCollectionSetDraftField("setGoal", event.target.value)}
+                placeholder="Complete 25 favorites, build a kid-safe binder, finish a master set..."
+              />
+            </Field>
+            <Field label="Family / kid label">
+              <input
+                value={vaultCollectionSetDraft.familyKidLabel}
+                onChange={(event) => updateVaultCollectionSetDraftField("familyKidLabel", event.target.value)}
+                placeholder="Alex's binder, family shelf, trade night box..."
+              />
+            </Field>
+            <Field label="Date created">
+              <input
+                type="date"
+                value={vaultCollectionSetDraft.dateCreated}
+                onChange={(event) => updateVaultCollectionSetDraftField("dateCreated", event.target.value)}
+              />
+            </Field>
+          </div>
+          <Field label="Set Notes">
+            <textarea
+              value={vaultCollectionSetDraft.setNotes}
+              onChange={(event) => updateVaultCollectionSetDraftField("setNotes", event.target.value)}
+              placeholder="What belongs here, why this set matters, and how your family wants to use it."
+              rows={3}
+            />
+          </Field>
+        </section>
+
+        <section className="vault-collection-set-helper-card" aria-label="Add to Set coming soon">
+          <strong>Add to Set</strong>
+          <span>Soon you{"\u2019"}ll be able to tuck Vault items directly into this set.</span>
+        </section>
+
+        {vaultCollectionSetMessage ? <p className="field-error trade-value-message" role="status">{vaultCollectionSetMessage}</p> : null}
+
+        <div className="quick-actions trade-value-actions vault-collection-set-actions">
+          <button type="submit" disabled={vaultCollectionSetSaving}>{vaultCollectionSetSaving ? "Saving..." : "Create Set"}</button>
+          <button type="button" className="secondary-button" onClick={() => closeFlowModal()}>Close</button>
+        </div>
+      </form>
+    );
+  }
+
   function flowModalMeta() {
     if (activeFlowModal?.type === "forgeQuickAdd") {
       return {
@@ -47787,6 +48055,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       return {
         title: "Save Price",
         description: "Save a manual Price Snapshot. Not live pricing and not a guarantee of value.",
+        size: "medium",
+      };
+    }
+    if (activeFlowModal?.type === "vaultCollectionSet") {
+      return {
+        title: "Create Set",
+        description: "Save a local Collection Set for favorites, kids, sealed product, slabs, trade binders, and family goals.",
         size: "medium",
       };
     }
@@ -52422,6 +52697,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     if (activeFlowModal?.type === "tradeCompass") return renderTradeCompassFlowContent();
     if (activeFlowModal?.type === "sparkGift") return renderSparkGiftFlowContent();
     if (activeFlowModal?.type === "marketPriceMemory") return renderMarketPriceMemoryFlowContent();
+    if (activeFlowModal?.type === "vaultCollectionSet") return renderVaultCollectionSetFlowContent();
     if (activeFlowModal?.type === "quickFind") return renderQuickFindFlowContent();
     if (activeFlowModal?.type === "multiDestinationAdd") return renderMultiDestinationAddFlowContent();
     if (activeFlowModal?.type === "vaultMoveToForge") return renderVaultMoveToForgeFlowContent();
