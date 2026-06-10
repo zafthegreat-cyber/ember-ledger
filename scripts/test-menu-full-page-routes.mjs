@@ -145,6 +145,20 @@ assert.equal(
   "Compare Table should not claim live pricing, guaranteed value, grading, authentication, or investment advice."
 );
 assert.ok(
+  appSource.includes("Manual collector note") &&
+    appSource.includes("Not a professional grade") &&
+    appSource.includes("Condition can affect price; verify before trading or buying.") &&
+    appSource.includes("storageCareNotes") &&
+    appSource.includes("conditionCheckedAt") &&
+    cssSource.includes(".vault-manual-condition-panel"),
+  "Vault condition notes should be saved and displayed as manual collector notes, not grading."
+);
+assert.equal(
+  /condition scan verified|condition scan is live|professional condition assessment|official condition grade|grade verified|grading verified|authenticated condition|authentication verified|condition verification complete|automatic condition detection|condition detected by scan/i.test(appSource),
+  false,
+  "Vault condition notes should not claim scanning, authentication, verification, or professional grading."
+);
+assert.ok(
   cssSource.includes('.flow-modal[data-flow="addActionSheet"]') &&
     cssSource.includes('.flow-modal[data-flow="multiDestinationAdd"]') &&
     cssSource.includes("height: 100dvh"),

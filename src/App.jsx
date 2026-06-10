@@ -2014,7 +2014,7 @@ const IMPORT_DUPLICATE_ACTIONS = [
 ];
 const ACTIVE_VAULT_STATUSES = new Set(["personal_collection", "at_home", "at_store", "listed", "trade_pile", "gift_donation", "held", "sealed", "ripped_opened", "ready_for_forge"]);
 const VAULT_STORAGE_LOCATIONS = ["", "Binder", "ETB", "Shelf", "Box", "Display case", "Closet", "Other"];
-const VAULT_CONDITIONS = ["", "Mint", "Near Mint", "Lightly Played", "Damaged", "Sealed", "Box damage", "Missing wrap", "Unknown"];
+const VAULT_CONDITIONS = ["", "Unknown", "Poor", "Played", "Light Play", "Lightly Played", "Near Mint", "Mint", "Sealed", "Box damage", "Missing wrap", "Other", "Damaged"];
 const VAULT_SOURCE_OPTIONS = ["Manual", "TideTradr", "Barcode scan", "Receipt/photo", "Import", "Forge copy"];
 const FORGE_PHYSICAL_LOCATION_OPTIONS = ["At Home", "At Store", "In Transit", "Storage", "Event / Pop-Up", "With Partner", "Other"];
 const DEFAULT_FORGE_PHYSICAL_LOCATION = "At Home";
@@ -2041,6 +2041,8 @@ const BLANK_VAULT_FORM = {
   finish: "",
   printing: "",
   conditionNotes: "",
+  storageCareNotes: "",
+  conditionCheckedAt: "",
   sourceType: "Manual",
   upc: "",
   sku: "",
@@ -7652,6 +7654,8 @@ export default function App() {
   printing: "",
   sealedCondition: "",
   conditionNotes: "",
+  storageCareNotes: "",
+  conditionCheckedAt: "",
   notes: "",
   tags: "",
   sourceType: "Manual",
@@ -23427,6 +23431,10 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       printing: row.printing || "",
       sealedCondition: row.sealedCondition || row.sealed_condition || "",
       conditionNotes: row.conditionNotes || row.condition_notes || "",
+      storageCareNotes: row.storageCareNotes || row.storage_care_notes || "",
+      conditionCheckedAt: row.conditionCheckedAt || row.condition_checked_at || "",
+      conditionMode: row.conditionMode || row.condition_mode || "",
+      gradingMode: row.gradingMode || row.grading_mode || "",
       sourceType: row.sourceType || row.source_type || row.source || "",
       source: row.source || row.sourceType || row.source_type || "",
       destinationScope: normalizeDestinationScopes(row.destinationScope || row.destination_scope || row.destinations || row.destination),
@@ -24318,6 +24326,10 @@ function mapCatalog(row) {
         printing: itemForm.printing || "",
         sealedCondition: itemForm.sealedCondition || "",
         conditionNotes: itemForm.conditionNotes || "",
+        storageCareNotes: itemForm.storageCareNotes || "",
+        conditionCheckedAt: itemForm.conditionCheckedAt || "",
+        conditionMode: "manual_collector_note",
+        gradingMode: "not_professional_grade",
         tags: itemForm.tags || "",
         sourceType: itemForm.sourceType || "Manual",
         status: itemForm.status,
@@ -24579,6 +24591,10 @@ function mapCatalog(row) {
         printing: itemForm.printing || "",
         sealedCondition: itemForm.sealedCondition || "",
         conditionNotes: itemForm.conditionNotes || "",
+        storageCareNotes: itemForm.storageCareNotes || "",
+        conditionCheckedAt: itemForm.conditionCheckedAt || "",
+        conditionMode: "manual_collector_note",
+        gradingMode: "not_professional_grade",
         tags: itemForm.tags || "",
         sourceType: itemForm.sourceType || itemForm.source || "",
         source: itemForm.source || itemForm.sourceType || "",
@@ -24703,6 +24719,10 @@ function mapCatalog(row) {
       printing: item.printing || "",
       sealedCondition: item.sealedCondition || "",
       conditionNotes: item.conditionNotes || "",
+      storageCareNotes: item.storageCareNotes || item.storage_care_notes || "",
+      conditionCheckedAt: item.conditionCheckedAt || item.condition_checked_at || "",
+      conditionMode: item.conditionMode || item.condition_mode || "",
+      gradingMode: item.gradingMode || item.grading_mode || "",
       sourceType: item.sourceType || item.source || "",
       status: item.status,
       listingPlatform: item.listingPlatform,
@@ -71465,6 +71485,9 @@ function VaultItemDetail({ item, masterCard, setSummary, linkedTrades = [], coll
   const itemType = vaultItemTypeLabel(item);
   const locationLabel = item.locationSummary || vaultItemLocationLabel(item) || "No location assigned";
   const conditionLabel = item.conditionName || item.condition || item.grade || "";
+  const manualConditionNotes = item.conditionNotes || item.condition_notes || "";
+  const storageCareNotes = item.storageCareNotes || item.storage_care_notes || "";
+  const conditionCheckedAt = item.conditionCheckedAt || item.condition_checked_at || "";
   const proofStatus = item.receiptImage || item.receiptUrl || item.proofUrl || item.photoProofUrl ? "Proof attached" : "No proof attached";
   const purchaserSummaryLabel = friendlyInventoryLabel(item.purchaserSummary, "No purchaser assigned");
   const showPurchaserSummary = Boolean(purchaserSummaryLabel && purchaserSummaryLabel !== "No purchaser assigned");
@@ -71497,7 +71520,7 @@ function VaultItemDetail({ item, masterCard, setSummary, linkedTrades = [], coll
   const profileQuickDetails = [
     ["Vault Item", item.name],
     ["Type", itemProfileKind],
-    ["Condition Notes", conditionLabel || "Condition not set yet."],
+    ["Condition Notes", manualConditionNotes || conditionLabel || "Condition not set yet."],
     ["Estimated Value", profileEstimatedValue || "No value saved yet. Add an estimate when you are ready."],
     ["Quantity", item.quantity || 1],
     ["Date Added", profileDateAdded ? shortDate(profileDateAdded) : "Date added not saved yet."],
@@ -71580,7 +71603,12 @@ function VaultItemDetail({ item, masterCard, setSummary, linkedTrades = [], coll
     ["Last Updated", vaultItemLastUpdatedLabel(item)],
   ].filter(([, value]) => hasValue(value));
   const conditionDetails = [
-    ["Condition", conditionLabel || "Not set"],
+    ["Manual condition", conditionLabel || "Not set"],
+    ["Condition Notes", manualConditionNotes || "No condition notes yet."],
+    ["Sleeve / toploader / storage notes", storageCareNotes || "No storage care notes yet."],
+    ["Date checked", conditionCheckedAt ? shortDate(conditionCheckedAt) : "Not checked yet."],
+    ["Condition mode", item.conditionMode === "manual_collector_note" ? "Manual collector note" : "Manual collector note"],
+    ["Grade disclaimer", "Not a professional grade"],
     ["Grade Company", item.gradingCompany || item.grading_company],
     ["Grade", item.grade],
     ["Certification", item.certNumber || item.cert_number || item.certificationNumber || item.certification_number],
@@ -71590,7 +71618,9 @@ function VaultItemDetail({ item, masterCard, setSummary, linkedTrades = [], coll
   const linkedTradePreview = Array.isArray(linkedTrades) ? linkedTrades.slice(0, 3) : [];
   const collectionSetCount = Array.isArray(collectionSets) ? collectionSets.length : 0;
   const profileConditionVariantRows = [
-    ["Condition Notes", conditionLabel || "Condition not set yet."],
+    ["Condition Notes", manualConditionNotes || conditionLabel || "Condition not set yet."],
+    ["Storage care", storageCareNotes || "No storage care note yet."],
+    ["Date checked", conditionCheckedAt ? shortDate(conditionCheckedAt) : "Not checked yet."],
     ["Language", languageLabel],
     ["Variant", itemVariantLabel || "Variant unknown"],
     ["Card Number", itemCardNumber || "Card number not set"],
@@ -71721,6 +71751,21 @@ function VaultItemDetail({ item, masterCard, setSummary, linkedTrades = [], coll
           {profileQuickDetails.map(([label, value]) => (
             <DetailItem key={label} label={label} value={value} />
           ))}
+        </div>
+        <div className="vault-manual-condition-panel" aria-label="Manual condition note">
+          <div>
+            <span className="trust-badge trust-badge--secure">Manual collector note</span>
+            <h4>{conditionLabel || "Condition unknown"}</h4>
+            <p>{manualConditionNotes || "No condition notes yet. Add corner, edge, wrap, storage, or handling details when you review this item."}</p>
+          </div>
+          <div className="vault-manual-condition-chip-row">
+            <span>Not a professional grade</span>
+            <span>Condition can affect price</span>
+            <span>Verify before trading or buying</span>
+          </div>
+          {storageCareNotes || conditionCheckedAt ? (
+            <small>{[storageCareNotes, conditionCheckedAt ? `Checked ${shortDate(conditionCheckedAt)}` : ""].filter(Boolean).join(" | ")}</small>
+          ) : null}
         </div>
       </section>
       <section className="vault-profile-usefulness-grid" aria-label="Vault Item usefulness">
@@ -72522,20 +72567,33 @@ function VaultEditForm({
 
         {renderSection("notes", "Notes", (
           <div className="form vault-form-grid">
+            <div className="vault-condition-helper-card">
+              <strong>Manual collector note</strong>
+              <span>Not a professional grade. Condition can affect price; verify before trading or buying.</span>
+            </div>
             <Field label="Personal Notes">
               <textarea value={form.notes || ""} onChange={(event) => setForm("notes", event.target.value)} />
             </Field>
+            <Field label="Manual condition">
+              <select value={form.conditionName || form.condition || "Unknown"} onChange={(event) => {
+                setForm("conditionName", event.target.value);
+                setForm("condition", event.target.value);
+              }}>
+                {VAULT_CONDITIONS.map((condition) => <option key={condition || "blank"} value={condition}>{condition || "Not set"}</option>)}
+              </select>
+            </Field>
             <Field label="Condition Notes">
-              <textarea value={form.conditionNotes || ""} onChange={(event) => setForm("conditionNotes", event.target.value)} />
+              <textarea value={form.conditionNotes || ""} onChange={(event) => setForm("conditionNotes", event.target.value)} placeholder="Corner wear, box dents, whitening, wrap condition, or anything to review manually." />
+            </Field>
+            <Field label="Sleeve / toploader / storage notes">
+              <textarea value={form.storageCareNotes || ""} onChange={(event) => setForm("storageCareNotes", event.target.value)} placeholder="Sleeved, top loaded, binder page, team bag, shelf location, or storage care note." />
+            </Field>
+            <Field label="Date checked">
+              <input type="date" value={form.conditionCheckedAt || ""} onChange={(event) => setForm("conditionCheckedAt", event.target.value)} />
             </Field>
             <Field label="Storage Location">
               <select value={form.storageLocation || ""} onChange={(event) => setForm("storageLocation", event.target.value)}>
                 {VAULT_STORAGE_LOCATIONS.map((location) => <option key={location || "blank"} value={location}>{location || "Not set"}</option>)}
-              </select>
-            </Field>
-            <Field label="Condition">
-              <select value={form.condition || ""} onChange={(event) => setForm("condition", event.target.value)}>
-                {VAULT_CONDITIONS.map((condition) => <option key={condition || "blank"} value={condition}>{condition || "Not set"}</option>)}
               </select>
             </Field>
             <Field label="Sealed Condition">

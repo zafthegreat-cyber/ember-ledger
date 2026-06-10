@@ -781,6 +781,11 @@ async function main() {
           unitCost: 5,
           actionNotes: "Smoke note for collection intelligence.",
           conditionName: "Near Mint",
+          conditionNotes: "Smoke original corner note.",
+          storageCareNotes: "Sleeved in a smoke test binder.",
+          conditionCheckedAt: "2026-06-08",
+          conditionMode: "manual_collector_note",
+          gradingMode: "not_professional_grade",
           language: "English",
           variantLabel: "Holo",
           rarity: "Rare Holo",
@@ -939,6 +944,11 @@ async function main() {
     await assertVisibleText("Vault Item");
     await assertVisibleText("Collector Notes");
     await assertVisibleText("Condition Notes");
+    await assertVisibleText("Manual collector note");
+    await assertVisibleText("Not a professional grade");
+    await assertVisibleText("Condition can affect price");
+    await assertVisibleText("Smoke original corner note.");
+    await assertVisibleText("Sleeved in a smoke test binder.");
     await assertVisibleText("Estimated Value");
     await assertVisibleText("Memory / Story");
     await assertVisibleText("Family View");
@@ -1012,6 +1022,31 @@ async function main() {
     await expectVisible(vaultCompareModal.getByText("Not live market pricing").first(), "Vault Compare safety copy");
     await vaultCompareModal.getByRole("button", { name: /^Close$/ }).first().click();
     await vaultCompareModal.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+    await page.getByRole("button", { name: /^Edit Profile$/ }).first().click();
+    const profileEditForm = page.locator("form.vault-edit-form").first();
+    await expectVisible(profileEditForm, "Vault Item Profile edit form");
+    const profileNotesSection = profileEditForm.locator(".vault-form-section").filter({ hasText: /^Notes/ }).first();
+    await profileNotesSection.getByRole("button").first().click();
+    await profileNotesSection.locator("label").filter({ hasText: /^Manual condition/ }).locator("select").selectOption("Light Play");
+    await profileNotesSection.locator("label").filter({ hasText: /^Condition Notes/ }).locator("textarea").fill("Smoke updated edge whitening note.");
+    await profileNotesSection.locator("label").filter({ hasText: /^Sleeve \/ toploader \/ storage notes/ }).locator("textarea").fill("Toploaded after smoke review.");
+    await profileNotesSection.locator("label").filter({ hasText: /^Date checked/ }).locator("input").fill("2026-06-10");
+    await profileEditForm.getByRole("button", { name: /^Save Changes$/ }).click();
+    await page.waitForFunction(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      const item = (data.items || []).find((entry) => entry.id === "focused-vault-smoke-item");
+      return item &&
+        item.conditionName === "Light Play" &&
+        item.conditionNotes === "Smoke updated edge whitening note." &&
+        item.storageCareNotes === "Toploaded after smoke review." &&
+        item.conditionCheckedAt === "2026-06-10" &&
+        item.conditionMode === "manual_collector_note" &&
+        item.gradingMode === "not_professional_grade";
+    }, null, { timeout: 5000 });
+    await assertVisibleText("Smoke updated edge whitening note.");
+    await assertVisibleText("Toploaded after smoke review.");
+    await assertVisibleText("Manual collector note");
+    await assertVisibleText("Not a professional grade");
     assert.ok(
       await page.getByRole("button", { name: /Quick Add|Add Item|Search \/ Scan Item/i }).count() > 0,
       "Vault should expose a primary add/search action"

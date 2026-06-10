@@ -101627,6 +101627,76 @@ html body #root .app.app-command-shell .vault-display-case-form-grid label:first
   grid-column: 1 / -1;
 }
 
+html body #root .app.app-command-shell .vault-condition-helper-card,
+html body #root .app.app-command-shell .vault-manual-condition-panel {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent, #8b5cf6) 22%, var(--et-page-accent-2, #d9a441) 18%);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 12%, transparent), transparent 9rem),
+    color-mix(in srgb, var(--et-panel-soft, #fff1dc) 78%, transparent);
+}
+
+html body #root .app.app-theme-dark.app-command-shell .vault-condition-helper-card,
+html body #root .app.app-shell-dark.app-command-shell .vault-condition-helper-card,
+html body #root .app.app-theme-dark.app-command-shell .vault-manual-condition-panel,
+html body #root .app.app-shell-dark.app-command-shell .vault-manual-condition-panel {
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 12%, transparent), transparent 9rem),
+    color-mix(in srgb, var(--et-panel-soft, #14233b) 82%, transparent);
+}
+
+html body #root .app.app-command-shell .vault-condition-helper-card strong,
+html body #root .app.app-command-shell .vault-manual-condition-panel h4 {
+  margin: 0;
+  color: var(--et-ink, #172033);
+}
+
+html body #root .app.app-theme-dark.app-command-shell .vault-condition-helper-card strong,
+html body #root .app.app-shell-dark.app-command-shell .vault-condition-helper-card strong,
+html body #root .app.app-theme-dark.app-command-shell .vault-manual-condition-panel h4,
+html body #root .app.app-shell-dark.app-command-shell .vault-manual-condition-panel h4 {
+  color: var(--et-ink, #f7f0df);
+}
+
+html body #root .app.app-command-shell .vault-condition-helper-card span,
+html body #root .app.app-command-shell .vault-manual-condition-panel p,
+html body #root .app.app-command-shell .vault-manual-condition-panel small {
+  color: color-mix(in srgb, var(--et-muted, #675d52) 88%, var(--et-ink, #172033));
+  line-height: 1.42;
+}
+
+html body #root .app.app-theme-dark.app-command-shell .vault-condition-helper-card span,
+html body #root .app.app-shell-dark.app-command-shell .vault-condition-helper-card span,
+html body #root .app.app-theme-dark.app-command-shell .vault-manual-condition-panel p,
+html body #root .app.app-shell-dark.app-command-shell .vault-manual-condition-panel p,
+html body #root .app.app-theme-dark.app-command-shell .vault-manual-condition-panel small,
+html body #root .app.app-shell-dark.app-command-shell .vault-manual-condition-panel small {
+  color: color-mix(in srgb, var(--et-muted, #c9d7ea) 86%, var(--et-ink, #f7f0df));
+}
+
+html body #root .app.app-command-shell .vault-manual-condition-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+html body #root .app.app-command-shell .vault-manual-condition-chip-row span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2, #d9a441) 26%, var(--et-border, rgba(118, 84, 42, 0.18)));
+  background: color-mix(in srgb, var(--et-panel, #fffdf7) 76%, transparent);
+  color: var(--et-ink, #172033);
+  font-size: 0.76rem;
+  font-weight: 850;
+}
+
 html body #root .app.app-command-shell .collector-flip-card {
   display: grid;
   gap: 10px;
