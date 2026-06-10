@@ -103,7 +103,7 @@ function filterDemoArray(value) {
 }
 
 export function emptyTidepoolData() {
-  return { posts: [], comments: [], reactions: [] };
+  return { posts: [], comments: [], reactions: [], trustedCircle: [] };
 }
 
 export function sanitizeTidepoolLocalData(value = {}) {
@@ -111,6 +111,7 @@ export function sanitizeTidepoolLocalData(value = {}) {
     posts: filterDemoArray(value.posts),
     comments: filterDemoArray(value.comments),
     reactions: filterDemoArray(value.reactions),
+    trustedCircle: filterDemoArray(value.trustedCircle),
   };
 }
 

@@ -10,7 +10,7 @@ const AREA_FLAG_INDEX = CLI_ARGS.indexOf("--area");
 const REQUESTED_AREA = String(
   AREA_FLAG_INDEX >= 0 ? CLI_ARGS[AREA_FLAG_INDEX + 1] || "" : process.env.BETA_SMOKE_AREA || ""
 ).trim().toLowerCase();
-const VALID_AREAS = new Set(["hearth", "scout", "vault", "market", "forge", "admin", "spark"]);
+const VALID_AREAS = new Set(["hearth", "scout", "vault", "market", "forge", "admin", "spark", "tidepool"]);
 if (REQUESTED_AREA && !VALID_AREAS.has(REQUESTED_AREA)) {
   throw new Error(`Unknown beta smoke area "${REQUESTED_AREA}". Expected one of: ${[...VALID_AREAS].join(", ")}`);
 }
@@ -845,6 +845,43 @@ async function main() {
     await expectVisible(page.locator(".spark-gift-ledger-row").filter({ hasText: "Focused Spark Kid Pack Supplies" }).first(), "The Spark saved gift row");
   }
 
+  async function focusedTidepoolTest() {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await nav("Tidepool");
+    await assertVisibleText("Trusted Circle");
+    await assertVisibleText("Trusted Circle is your private note space. It does not verify people, run background checks, or replace your own safety judgment.");
+    const addToCircleButton = page.getByRole("button", { name: "Add to Circle", exact: true }).first();
+    await expectVisible(addToCircleButton, "Tidepool Add to Circle action");
+    await addToCircleButton.click();
+    const circleModal = page.locator('.flow-modal[data-flow="tidepoolTrustedCircle"]').first();
+    await expectVisible(circleModal, "Tidepool Trusted Circle modal");
+    await expectVisible(circleModal.getByText("Invite Later is a placeholder only. No messages or invites are sent.").first(), "Trusted Circle invite safety copy");
+    await circleModal.getByLabel("Name").fill("Focused Friendly Shop");
+    await circleModal.getByLabel("Role / type").selectOption("Trusted Shop");
+    await circleModal.getByLabel("Circle Status").selectOption("Shop/Seller Contact");
+    await circleModal.getByLabel("Circle Note").fill("Private phone 757-555-0199");
+    await circleModal.getByLabel("Relationship note").fill("Family-friendly shop that hosts trading tables.");
+    await circleModal.getByLabel("Safety / comfort notes").fill("Parent should review event details before visiting.");
+    await circleModal.getByLabel("Date added").fill("2026-06-09");
+    await circleModal.getByRole("button", { name: "Add to Circle", exact: true }).click();
+    await expectVisible(circleModal.getByText("Trusted Circle entry saved locally. This does not verify people or send invitations.").first(), "Trusted Circle saved message");
+    const circleState = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-tidepool") || "{}");
+      return (data.trustedCircle || []).find((entry) => entry.name === "Focused Friendly Shop") || null;
+    });
+    assert.equal(circleState?.roleType, "Trusted Shop");
+    assert.equal(circleState?.circleStatus, "Shop/Seller Contact");
+    assert.equal(circleState?.verificationClaim, "not_verified");
+    await circleModal.getByRole("button", { name: "Close", exact: true }).click();
+    await circleModal.waitFor({ state: "hidden", timeout: 5000 });
+    await assertVisibleText("Focused Friendly Shop");
+    await assertVisibleText("Shop/Seller Contact");
+    await assertVisibleText("No invites sent");
+    await assertNotVisibleText("757-555-0199");
+    await assertNoHorizontalOverflow("Tidepool Trusted Circle mobile");
+    await page.setViewportSize({ width: 1366, height: 1600 });
+  }
+
   const focusedAreaTests = {
     hearth: focusedHearthTest,
     scout: focusedScoutTest,
@@ -853,6 +890,7 @@ async function main() {
     forge: focusedForgeTest,
     admin: focusedAdminTest,
     spark: focusedSparkTest,
+    tidepool: focusedTidepoolTest,
   };
 
   if (BETA_SMOKE_MODE.startsWith("area:")) {

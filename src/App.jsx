@@ -2582,6 +2582,22 @@ const TIDEPOOL_FEED_FILTERS = [
   "Needs Review",
 ];
 const TIDEPOOL_PRIMARY_TABS = ["Feed", "Local", "Events", "Following", "My Posts"];
+const TIDEPOOL_TRUSTED_CIRCLE_TYPES = [
+  "Family Friend",
+  "Trusted Shop",
+  "Trusted Seller",
+  "Spark Partner",
+  "Community Helper",
+  "Safe Trade Contact",
+  "Other",
+];
+const TIDEPOOL_CIRCLE_STATUS_OPTIONS = [
+  "Not Verified Yet",
+  "Known Personally",
+  "Shop/Seller Contact",
+  "Spark Supporter",
+  "Invite Later",
+];
 const BLANK_TIDEPOOL_POST_FORM = {
   postType: "Community Update",
   title: "",
@@ -2592,6 +2608,15 @@ const BLANK_TIDEPOOL_POST_FORM = {
   state: "VA",
   zip: "",
   photoUrl: "",
+};
+const BLANK_TIDEPOOL_CIRCLE_FORM = {
+  name: "",
+  roleType: "Family Friend",
+  contactNote: "",
+  relationshipNote: "",
+  circleStatus: "Not Verified Yet",
+  safetyNotes: "",
+  dateAdded: "",
 };
 const EMBER_ASSIST_PRIMARY_PROMPTS = [
   "Identify this card",
@@ -4043,6 +4068,22 @@ function makeTidepoolPost(overrides = {}) {
 
 function createDefaultTidepoolData() {
   return emptyTidepoolData();
+}
+
+function normalizeTidepoolCircleEntry(entry = {}) {
+  const roleType = TIDEPOOL_TRUSTED_CIRCLE_TYPES.includes(entry.roleType) ? entry.roleType : "Other";
+  const circleStatus = TIDEPOOL_CIRCLE_STATUS_OPTIONS.includes(entry.circleStatus) ? entry.circleStatus : "Not Verified Yet";
+  return {
+    ...entry,
+    name: String(entry.name || "").trim(),
+    roleType,
+    contactNote: String(entry.contactNote || "").trim(),
+    relationshipNote: String(entry.relationshipNote || "").trim(),
+    circleStatus,
+    safetyNotes: String(entry.safetyNotes || "").trim(),
+    dateAdded: entry.dateAdded || getLocalDateKey(),
+    verificationClaim: "not_verified",
+  };
 }
 
 function getCatalogImage(product = {}) {
@@ -5985,7 +6026,10 @@ export default function App() {
   const [tidepoolPosts, setTidepoolPosts] = useState([]);
   const [tidepoolComments, setTidepoolComments] = useState([]);
   const [tidepoolReactions, setTidepoolReactions] = useState([]);
+  const [tidepoolTrustedCircle, setTidepoolTrustedCircle] = useState([]);
   const [tidepoolPostForm, setTidepoolPostForm] = useState(BLANK_TIDEPOOL_POST_FORM);
+  const [tidepoolCircleForm, setTidepoolCircleForm] = useState(BLANK_TIDEPOOL_CIRCLE_FORM);
+  const [tidepoolCircleMessage, setTidepoolCircleMessage] = useState("");
   const [tidepoolCommentDrafts, setTidepoolCommentDrafts] = useState({});
   const [tidepoolFlagTarget, setTidepoolFlagTarget] = useState(null);
   const [tidepoolFlagReason, setTidepoolFlagReason] = useState(TIDEPOOL_FLAG_REASONS[0]);
@@ -8775,6 +8819,41 @@ export default function App() {
     setActiveTab("tidepool");
     setTidepoolOpen(true);
     openFlowModal("tidepoolCreatePost", { size: "medium", source: "tidepool" });
+  }
+
+  function openTidepoolTrustedCircleFlow() {
+    setActiveTab("tidepool");
+    setTidepoolOpen(true);
+    setTidepoolCircleMessage("");
+    openFlowModal("tidepoolTrustedCircle", { size: "medium", source: "tidepool" });
+  }
+
+  function updateTidepoolCircleField(field, value) {
+    setTidepoolCircleForm((current) => ({ ...current, [field]: value }));
+    setTidepoolCircleMessage("");
+  }
+
+  function saveTidepoolCircleEntry(event) {
+    event?.preventDefault?.();
+    const draft = normalizeTidepoolCircleEntry(tidepoolCircleForm);
+    if (!draft.name) {
+      setTidepoolCircleMessage("Add a name before saving to Trusted Circle.");
+      return false;
+    }
+    const now = new Date().toISOString();
+    const entry = {
+      ...draft,
+      id: makeId("trusted-circle"),
+      createdAt: now,
+      updatedAt: now,
+      savedBy: currentUserProfile.userId || "local-beta",
+      source: "local-beta",
+    };
+    saveTidepoolCommunity({ trustedCircle: [entry, ...tidepoolTrustedCircle] });
+    setTidepoolCircleForm(BLANK_TIDEPOOL_CIRCLE_FORM);
+    setTidepoolCircleMessage("Trusted Circle entry saved locally. This does not verify people or send invitations.");
+    setVaultToast("Trusted Circle entry saved locally.");
+    return true;
   }
 
   function viewSearchResult(result) {
@@ -15028,11 +15107,13 @@ export default function App() {
       posts: next.posts ?? tidepoolPosts,
       comments: next.comments ?? tidepoolComments,
       reactions: next.reactions ?? tidepoolReactions,
+      trustedCircle: next.trustedCircle ?? tidepoolTrustedCircle,
     };
     localStorage.setItem(TIDEPOOL_STORAGE_KEY, JSON.stringify(payload));
     setTidepoolPosts(payload.posts);
     setTidepoolComments(payload.comments);
     setTidepoolReactions(payload.reactions);
+    setTidepoolTrustedCircle(payload.trustedCircle);
   }
 
   function submitTidepoolPost(event) {
@@ -15261,6 +15342,7 @@ export default function App() {
     setTidepoolPosts(savedTidepool.posts || []);
     setTidepoolComments(savedTidepool.comments || []);
     setTidepoolReactions(savedTidepool.reactions || []);
+    setTidepoolTrustedCircle((savedTidepool.trustedCircle || []).map(normalizeTidepoolCircleEntry));
   }, []);
 
   useEffect(() => {
@@ -19017,6 +19099,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (type === "batchIntake") return Boolean(importText.trim() || importRows.length || importFileName || importLink.trim());
     if (type === "scoutSubmit") return quickScoutReportStep !== "submitted" && formsDiffer(quickScoutReportForm, flowModalBaselineRef.current.scoutSubmit || createQuickScoutReportDraft());
     if (type === "tidepoolCreatePost") return formsDiffer(tidepoolPostForm, BLANK_TIDEPOOL_POST_FORM);
+    if (type === "tidepoolTrustedCircle") return formsDiffer(tidepoolCircleForm, BLANK_TIDEPOOL_CIRCLE_FORM);
     if (type === "multiDestinationAdd") return formsDiffer(multiDestinationForm, flowModalBaselineRef.current.multiDestinationAdd || BLANK_MULTI_DESTINATION_FORM);
     if (type === "tradeValue") return tradeStep !== "saved" && formsDiffer(tradeDraft, flowModalBaselineRef.current.tradeValue || BLANK_TRADE_DRAFT);
     if (type === "tradeCompass") return formsDiffer(tradeCompassDraft, flowModalBaselineRef.current.tradeCompass || BLANK_TRADE_COMPASS_DRAFT);
@@ -19063,6 +19146,10 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     }
     if (type === "tidepoolCreatePost") {
       setTidepoolPostForm(BLANK_TIDEPOOL_POST_FORM);
+    }
+    if (type === "tidepoolTrustedCircle") {
+      setTidepoolCircleForm(BLANK_TIDEPOOL_CIRCLE_FORM);
+      setTidepoolCircleMessage("");
     }
     if (type === "scoutSubmit") {
       const draft = createQuickScoutReportDraft();
@@ -45896,6 +45983,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       { title: "Not a rush feed", detail: "No vendor schedules, raw restock pattern history, or guaranteed-stock language belongs here." },
       { title: "Adult-guided community", detail: "No unmoderated kid messaging, public child profiles, or private family details." },
     ];
+    const tidepoolCircleEntries = tidepoolTrustedCircle.map(normalizeTidepoolCircleEntry);
+    const tidepoolCirclePreview = tidepoolCircleEntries.slice(0, 4);
+    const tidepoolCircleRoleCounts = TIDEPOOL_TRUSTED_CIRCLE_TYPES.map((type) => ({
+      type,
+      count: tidepoolCircleEntries.filter((entry) => entry.roleType === type).length,
+    })).filter((entry) => entry.count > 0);
     const tidepoolPreviewCards = [
       {
         type: "Trusted shop update",
@@ -45986,6 +46079,53 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               {tidepoolTrustCards.map((card) => (
                 <EtMockupActionCard key={card.title} title={card.title} detail={card.detail} icon="pool" tone="collector" />
               ))}
+            </div>
+          </EtMockupSectionCard>
+
+          <EtMockupSectionCard
+            title="Trusted Circle"
+            detail="Private notes for family friends, trusted shops, sellers, Spark partners, and community helpers you may want to remember."
+            className="tidepool-trusted-circle-card"
+            action={<EtMockupButton onClick={openTidepoolTrustedCircleFlow}>Add to Circle</EtMockupButton>}
+          >
+            <div className="tidepool-circle-safety-note">
+              <strong>Safety helper</strong>
+              <span>Trusted Circle is your private note space. It does not verify people, run background checks, or replace your own safety judgment.</span>
+            </div>
+            <div className="tidepool-circle-role-row" aria-label="Trusted Circle roles">
+              {TIDEPOOL_TRUSTED_CIRCLE_TYPES.slice(0, 6).map((type) => (
+                <span key={type}>{type}</span>
+              ))}
+            </div>
+            {tidepoolCirclePreview.length ? (
+              <div className="tidepool-circle-list" aria-label="Trusted Circle saved entries">
+                {tidepoolCirclePreview.map((entry) => (
+                  <article className="tidepool-circle-entry" key={entry.id || `${entry.name}-${entry.dateAdded}`}>
+                    <div className="compact-card-header">
+                      <div>
+                        <span className="section-kicker">{entry.roleType}</span>
+                        <strong>{entry.name}</strong>
+                      </div>
+                      <span className="status-badge">{entry.circleStatus}</span>
+                    </div>
+                    <p>{entry.relationshipNote || entry.safetyNotes || "Private circle note saved locally for your own review."}</p>
+                    <small>{entry.dateAdded || "Date not saved"} | Not Verified Yet | No invites sent</small>
+                    {entry.contactNote ? <small>Private Circle Note saved locally. Contact details are not shown publicly.</small> : null}
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <EtMockupEmptyState
+                title="Your Trusted Circle is waiting for its first helper."
+                detail="Add family friends, trusted shops, sellers, sponsors, or community helpers you may want to remember."
+                action={<EtMockupButton onClick={openTidepoolTrustedCircleFlow}>Add to Circle</EtMockupButton>}
+              />
+            )}
+            <div className="tidepool-circle-status-row" aria-label="Trusted Circle status summary">
+              {(tidepoolCircleRoleCounts.length ? tidepoolCircleRoleCounts : [{ type: "Not Verified Yet", count: tidepoolCircleEntries.length }]).map((entry) => (
+                <span key={entry.type}>{entry.type}: {entry.count}</span>
+              ))}
+              <span>Invite Later is a placeholder only</span>
             </div>
           </EtMockupSectionCard>
 
@@ -47189,6 +47329,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       return {
         title: "Create Tidepool Post",
         description: "Share a helpful update for review.",
+        size: "medium",
+      };
+    }
+    if (activeFlowModal?.type === "tidepoolTrustedCircle") {
+      return {
+        title: "Add to Circle",
+        description: "Save a private local Trusted Circle note. This does not verify people or send invitations.",
         size: "medium",
       };
     }
@@ -49212,6 +49359,83 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         </Field>
         <div className="flow-form-footer">
           <button type="submit" disabled={(!tidepoolPostForm.body.trim() && !tidepoolPostForm.title.trim()) || !canCreateTidepoolPost}>Submit for Review</button>
+        </div>
+      </form>
+    );
+  }
+
+  function renderTidepoolTrustedCircleFlowContent() {
+    return (
+      <form className="form flow-form-grid tidepool-circle-form" onSubmit={saveTidepoolCircleEntry}>
+        <section className="tidepool-circle-form-card" aria-label="Trusted Circle safety guidance">
+          <strong>Trusted Circle</strong>
+          <p>Trusted Circle is your private note space. It does not verify people, run background checks, or replace your own safety judgment.</p>
+          <p>Spark Partner can mark shops, sellers, or helpers who may want to support The Spark through gifts, events, or family-friendly collecting.</p>
+        </section>
+
+        <div className="tidepool-circle-form-grid">
+          <Field label="Name">
+            <input
+              value={tidepoolCircleForm.name}
+              onChange={(event) => updateTidepoolCircleField("name", event.target.value)}
+              placeholder="Family friend, shop, seller, sponsor, or helper"
+              required
+            />
+          </Field>
+          <Field label="Role / type">
+            <select value={tidepoolCircleForm.roleType} onChange={(event) => updateTidepoolCircleField("roleType", event.target.value)}>
+              {TIDEPOOL_TRUSTED_CIRCLE_TYPES.map((type) => <option key={type}>{type}</option>)}
+            </select>
+          </Field>
+          <Field label="Circle Status">
+            <select value={tidepoolCircleForm.circleStatus} onChange={(event) => updateTidepoolCircleField("circleStatus", event.target.value)}>
+              {TIDEPOOL_CIRCLE_STATUS_OPTIONS.map((status) => <option key={status}>{status}</option>)}
+            </select>
+          </Field>
+          <Field label="Date added">
+            <input
+              type="date"
+              value={tidepoolCircleForm.dateAdded}
+              onChange={(event) => updateTidepoolCircleField("dateAdded", event.target.value)}
+            />
+          </Field>
+        </div>
+
+        <Field label="Circle Note">
+          <textarea
+            value={tidepoolCircleForm.contactNote}
+            onChange={(event) => updateTidepoolCircleField("contactNote", event.target.value)}
+            placeholder="Optional private note. Avoid sensitive contact details or private child information."
+            rows={2}
+          />
+        </Field>
+        <Field label="Relationship note">
+          <textarea
+            value={tidepoolCircleForm.relationshipNote}
+            onChange={(event) => updateTidepoolCircleField("relationshipNote", event.target.value)}
+            placeholder="How do you know this person, shop, seller, or helper?"
+            rows={2}
+          />
+        </Field>
+        <Field label="Safety / comfort notes">
+          <textarea
+            value={tidepoolCircleForm.safetyNotes}
+            onChange={(event) => updateTidepoolCircleField("safetyNotes", event.target.value)}
+            placeholder="What makes this feel comfortable, or what should be checked later?"
+            rows={3}
+          />
+        </Field>
+
+        <section className="tidepool-circle-safety-strip" aria-label="Trusted Circle safety limits">
+          <strong>Not Verified Yet</strong>
+          <span>Invite Later is a placeholder only. No messages or invites are sent. Do not store private child details, passwords, payment details, or sensitive contact information.</span>
+        </section>
+
+        {tidepoolCircleMessage ? <p className="field-error trade-value-message" role="status">{tidepoolCircleMessage}</p> : null}
+
+        <div className="flow-form-footer">
+          <button type="submit">Add to Circle</button>
+          <button type="button" className="secondary-button" onClick={() => closeFlowModal()}>Close</button>
         </div>
       </form>
     );
@@ -51741,6 +51965,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     if (activeFlowModal?.type === "addMileage") return renderAddMileageFlowContent();
     if (activeFlowModal?.type === "createListing") return renderMarketplaceCreateFlowContent();
     if (activeFlowModal?.type === "tidepoolCreatePost") return renderTidepoolCreatePostFlowContent();
+    if (activeFlowModal?.type === "tidepoolTrustedCircle") return renderTidepoolTrustedCircleFlowContent();
     if (activeFlowModal?.type === "scoutSubmit") return renderScoutSubmitFlowContent();
     return null;
   }
@@ -58411,7 +58636,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 )
               ) : activeFlowModal?.type === "multiDestinationAdd" && multiDestinationStep === "success" ? null : (
                 <button type="button" className="secondary-button" onClick={() => closeFlowModal()}>
-                  {["addInventory", "addSale", "addExpense", "addMileage", "createListing", "forgeImport", "batchIntake", "tidepoolCreatePost", "multiDestinationAdd"].includes(activeFlowModal?.type) || isFlowModalDirty() ? "Cancel" : "Close"}
+                  {["addInventory", "addSale", "addExpense", "addMileage", "createListing", "forgeImport", "batchIntake", "tidepoolCreatePost", "tidepoolTrustedCircle", "multiDestinationAdd"].includes(activeFlowModal?.type) || isFlowModalDirty() ? "Cancel" : "Close"}
                 </button>
               )}
               {activeFlowModal?.type === "multiDestinationAdd" ? (
