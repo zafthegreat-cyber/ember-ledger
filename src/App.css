@@ -98919,3 +98919,171 @@ html body #root .app.app-command-shell .coming-soon-card-meta small {
     transform: none !important;
   }
 }
+
+/* Market Price Memory: manual collector snapshots, not live pricing. */
+html body #root .app.app-command-shell.app-market .market-price-memory-card {
+  display: grid !important;
+  gap: 14px !important;
+  border-color: color-mix(in srgb, var(--et-page-accent, #65d978) 24%, var(--et-border, rgba(255, 255, 255, 0.12))) !important;
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--et-page-accent, #65d978) 13%, transparent), transparent 14rem),
+    radial-gradient(circle at 0% 100%, color-mix(in srgb, var(--et-page-accent-2, #ffca55) 10%, transparent), transparent 16rem),
+    color-mix(in srgb, var(--et-panel, rgba(8, 18, 32, 0.92)) 94%, transparent) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-price-memory-inline-helper,
+.market-price-memory-helper-card,
+.market-price-memory-hero-card,
+.market-price-memory-form-card {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent, #65d978) 20%, var(--et-border, rgba(255, 255, 255, 0.12)));
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--et-page-accent-2, #ffca55) 12%, transparent), transparent 9rem),
+    color-mix(in srgb, var(--et-panel-soft, rgba(255, 255, 255, 0.06)) 88%, transparent);
+  color: var(--et-ink, #fff7ed);
+}
+
+.market-price-memory-helper-card span,
+.market-price-memory-helper-card p,
+.market-price-memory-hero-card p,
+.market-price-memory-form-card p,
+.market-price-memory-row p,
+.market-price-memory-row small {
+  color: var(--et-muted, rgba(232, 238, 246, 0.74));
+  line-height: 1.45;
+}
+
+.market-price-memory-safety-strip,
+.market-price-memory-stats,
+.market-price-memory-list,
+.market-price-memory-flow {
+  display: grid;
+  gap: 12px;
+}
+
+.market-price-memory-safety-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.market-price-memory-safety-strip span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2, #ffca55) 22%, var(--et-border, rgba(255, 255, 255, 0.12)));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--et-panel-soft, rgba(255, 255, 255, 0.06)) 78%, transparent);
+  color: var(--et-ink, #fff7ed);
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.market-price-memory-stats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.market-price-memory-stats > div,
+.market-price-memory-row {
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent, #65d978) 18%, var(--et-border, rgba(255, 255, 255, 0.12)));
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--et-panel-soft, rgba(255, 255, 255, 0.06)) 80%, transparent);
+}
+
+.market-price-memory-stats span,
+.market-price-memory-value span {
+  color: var(--et-muted, rgba(232, 238, 246, 0.74));
+  font-size: 0.75rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.market-price-memory-stats strong,
+.market-price-memory-value strong {
+  color: var(--et-ink, #fff7ed);
+  font-size: clamp(1.05rem, 2vw, 1.35rem);
+  overflow-wrap: anywhere;
+}
+
+.market-price-memory-stats small {
+  color: var(--et-muted, rgba(232, 238, 246, 0.68));
+}
+
+.market-price-memory-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(112px, auto);
+  gap: 12px;
+  align-items: center;
+}
+
+.market-price-memory-row h3 {
+  margin: 4px 0;
+  color: var(--et-ink, #fff7ed);
+  overflow-wrap: anywhere;
+}
+
+.market-price-memory-value {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+  text-align: right;
+}
+
+.market-price-memory-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.flow-modal[data-flow="marketPriceMemory"] .flow-modal-footer {
+  display: none !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-results .market-result-add-actions,
+html body #root .app.app-shell-dark.app-market .market-mockup-results .market-result-add-actions {
+  grid-template-columns: minmax(0, 1.35fr) repeat(3, minmax(76px, 0.72fr)) !important;
+}
+
+@media (max-width: 780px) {
+  html body #root .app.app-command-shell.app-market .market-mockup-results .market-result-add-actions,
+  html body #root .app.app-shell-dark.app-market .market-mockup-results .market-result-add-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .market-price-memory-stats,
+  .market-price-memory-form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .market-price-memory-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .market-price-memory-value {
+    justify-items: start;
+    text-align: left;
+  }
+}
+
+@media (max-width: 430px) {
+  html body #root .app.app-command-shell.app-market .market-mockup-results .market-result-add-actions > button:first-child,
+  html body #root .app.app-shell-dark.app-market .market-mockup-results .market-result-add-actions > button:first-child {
+    grid-column: 1 / -1 !important;
+  }
+
+  .market-price-memory-helper-card,
+  .market-price-memory-hero-card,
+  .market-price-memory-form-card,
+  .market-price-memory-row,
+  .market-price-memory-stats > div {
+    border-radius: 17px;
+    padding: 12px;
+  }
+}

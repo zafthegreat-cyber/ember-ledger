@@ -682,15 +682,45 @@ async function main() {
   async function focusedMarketTest() {
     await nav("Market");
     await assertVisibleText(/Market|TideTradr/i);
+    await assertVisibleText("Price Memory");
+    await assertVisibleText("Not Live Pricing");
+    const priceMemorySection = page.locator(".market-price-memory-card").first();
+    await expectVisible(priceMemorySection.getByRole("button", { name: /^Save Price$/ }).first(), "Market Price Memory Save Price action");
+    await priceMemorySection.getByRole("button", { name: /^Save Price$/ }).first().click();
+    const priceMemoryModal = page.locator('.flow-modal[data-flow="marketPriceMemory"]').first();
+    await expectVisible(priceMemoryModal, "Market Price Memory modal");
+    await fillByLabel(priceMemoryModal, "Item name", "Smoke Price Memory ETB");
+    await fillByLabel(priceMemoryModal, "Price", "42.50");
+    await priceMemoryModal.locator("select").first().selectOption({ label: "Sold Price" });
+    await fillByLabel(priceMemoryModal, "Where You Saw It", "Local shop shelf");
+    await fillByLabel(priceMemoryModal, "Condition", "Sealed");
+    await fillByLabel(priceMemoryModal, "Date seen", "2026-06-09");
+    await fillByLabel(priceMemoryModal, "Price Note", "Manual local snapshot for smoke coverage.");
+    await priceMemoryModal.getByRole("button", { name: /^Save Price$/ }).click();
+    await assertVisibleText(/Saved Price added to Price Memory/i);
+    await page.waitForFunction(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      return (data.marketPriceMemories || []).some((entry) => entry.itemName === "Smoke Price Memory ETB" && entry.priceType === "Sold Price");
+    }, null, { timeout: 5000 });
+    const savedPriceMemory = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      return data.marketPriceMemories || [];
+    });
+    assert.ok(savedPriceMemory.some((entry) => entry.itemName === "Smoke Price Memory ETB" && entry.priceType === "Sold Price"), "Market Price Memory should persist saved price snapshots locally");
+    await priceMemoryModal.getByRole("button", { name: /^Close$/ }).click();
+    await priceMemoryModal.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+    await expectVisible(page.locator(".market-price-memory-row").filter({ hasText: "Smoke Price Memory ETB" }).first(), "Market saved Price Memory row");
     const searchForm = page.locator(".catalog-search-form").first();
     await expectVisible(searchForm, "Market catalog search form");
     await searchForm.locator("input").first().fill("Prismatic Evolutions Booster Bundle");
     await searchForm.getByRole("button", { name: /Search Catalog|Search Market Watch|Search/i }).first().click();
+    const focusedMarketCard = page.locator(".catalog-result-card").filter({ hasText: "Prismatic Evolutions Booster Bundle", hasNotText: "Code Card" }).first();
     await expectVisible(
-      page.locator(".catalog-result-card").filter({ hasText: "Prismatic Evolutions Booster Bundle", hasNotText: "Code Card" }).first(),
+      focusedMarketCard,
       "Market focused search result",
       20000
     );
+    await expectVisible(focusedMarketCard.getByRole("button", { name: /^Save Price$/ }).first(), "Market result Save Price action");
   }
 
   async function focusedForgeTest() {

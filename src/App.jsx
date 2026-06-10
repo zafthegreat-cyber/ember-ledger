@@ -2645,6 +2645,51 @@ const MARKET_CATALOG_DEAL_FILTERS = [
   { value: "sealed", label: "Sealed" },
   { value: "singles", label: "Singles" },
 ];
+const MARKET_PRICE_MEMORY_TYPES = [
+  "Asking Price",
+  "Sold Price",
+  "Trade Estimate",
+  "Personal Estimate",
+  "Shop Price",
+  "Other",
+];
+const BLANK_MARKET_PRICE_MEMORY_FORM = {
+  itemName: "",
+  price: "",
+  priceType: "Asking Price",
+  sourcePlace: "",
+  condition: "",
+  notes: "",
+  dateSeen: "",
+};
+
+function normalizeMarketPriceMemoryDraft(draft = {}) {
+  const price = Number.parseFloat(String(draft.price ?? draft.askingPrice ?? draft.soldPrice ?? "").trim());
+  const priceType = MARKET_PRICE_MEMORY_TYPES.includes(draft.priceType) ? draft.priceType : "Asking Price";
+  return {
+    itemName: String(draft.itemName || draft.name || draft.productName || "").trim(),
+    price: Number.isFinite(price) && price >= 0 ? price : "",
+    priceType,
+    sourcePlace: String(draft.sourcePlace || draft.whereYouSawIt || draft.source || "").trim(),
+    condition: String(draft.condition || "").trim(),
+    notes: String(draft.notes || draft.priceNote || "").trim(),
+    dateSeen: String(draft.dateSeen || draft.seenDate || "").slice(0, 10),
+  };
+}
+
+function normalizeMarketPriceMemoryEntry(entry = {}) {
+  return {
+    ...entry,
+    ...normalizeMarketPriceMemoryDraft(entry),
+    id: entry.id || "",
+    createdAt: entry.createdAt || entry.created_at || "",
+    updatedAt: entry.updatedAt || entry.updated_at || "",
+    savedBy: entry.savedBy || entry.saved_by || "",
+    source: entry.source || "local_price_memory",
+    sourceKind: entry.sourceKind || "manual_snapshot",
+    catalogProductId: entry.catalogProductId || entry.catalog_product_id || "",
+  };
+}
 const MARKET_SEARCH_CATEGORIES = [
   { value: "Pokemon", label: "Pokémon", description: "Cards, sealed products, and catalog records" },
 ];
@@ -6381,6 +6426,10 @@ export default function App() {
   const [catalogVariantSelection, setCatalogVariantSelection] = useState({});
   const [catalogConditionSelection, setCatalogConditionSelection] = useState({});
   const [marketPriceCache, setMarketPriceCache] = useState(() => loadPriceCache());
+  const [marketPriceMemories, setMarketPriceMemories] = useState([]);
+  const [marketPriceMemoryDraft, setMarketPriceMemoryDraft] = useState(BLANK_MARKET_PRICE_MEMORY_FORM);
+  const [marketPriceMemoryMessage, setMarketPriceMemoryMessage] = useState("");
+  const [marketPriceMemorySaving, setMarketPriceMemorySaving] = useState(false);
   const [marketSyncMessage, setMarketSyncMessage] = useState("");
   const [manualMarketForm, setManualMarketForm] = useState({
     catalogItemId: "",
@@ -15590,6 +15639,7 @@ export default function App() {
       setMarketplaceSavedIds(Array.isArray(saved.marketplaceSavedIds) ? saved.marketplaceSavedIds : []);
       setTideTradrLookupId(saved.tideTradrLookupId || "");
       setMarketPriceCache(saved.marketPriceCache || loadPriceCache());
+      setMarketPriceMemories(Array.isArray(saved.marketPriceMemories) ? saved.marketPriceMemories.map(normalizeMarketPriceMemoryEntry) : []);
       setUserSearchAliases(Array.isArray(saved.userSearchAliases) ? saved.userSearchAliases : []);
       setExpenses(migrateRecordsToWorkspace(saved.expenses || [], personalWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID, workspaceState.workspaces).map(mapExpense));
       setSales(migrateRecordsToWorkspace(saved.sales || [], personalWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID, workspaceState.workspaces));
@@ -15988,6 +16038,7 @@ export default function App() {
         marketplaceSavedIds,
         tideTradrLookupId,
         marketPriceCache,
+        marketPriceMemories,
         userSearchAliases,
         expenses,
         sales,
@@ -16024,7 +16075,7 @@ export default function App() {
         },
       })
     );
-  }, [items, purchasers, catalogProducts, tideTradrWatchlist, marketplaceListings, marketplaceReports, marketplaceSavedIds, tideTradrLookupId, marketPriceCache, userSearchAliases, expenses, sales, tradeRecords, sparkGifts, vehicles, mileageTrips, workspaces, workspaceMembers, workspaceInvites, activeWorkspaceId, forgeModeSettings, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, resolvedAppTheme, appSetupPersonalization, cloudSyncPreference, locationSettings, subscriptionProfile, currentUserProfile, adminModeStorageReady, adminViewMode, localDataLoaded]);
+  }, [items, purchasers, catalogProducts, tideTradrWatchlist, marketplaceListings, marketplaceReports, marketplaceSavedIds, tideTradrLookupId, marketPriceCache, marketPriceMemories, userSearchAliases, expenses, sales, tradeRecords, sparkGifts, vehicles, mileageTrips, workspaces, workspaceMembers, workspaceInvites, activeWorkspaceId, forgeModeSettings, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, resolvedAppTheme, appSetupPersonalization, cloudSyncPreference, locationSettings, subscriptionProfile, currentUserProfile, adminModeStorageReady, adminViewMode, localDataLoaded]);
 
   useEffect(() => {
     if (!BETA_LOCAL_MODE || !localDataLoaded) return;
@@ -16384,6 +16435,7 @@ export default function App() {
     setMarketplaceListings([]);
     setMarketplaceReports([]);
     setMarketplaceSavedIds([]);
+    setMarketPriceMemories([]);
     setTidepoolPosts([]);
     setTidepoolComments([]);
     setTidepoolReactions([]);
@@ -17299,6 +17351,7 @@ export default function App() {
     setSuggestions([]);
     setTideTradrLookupId("");
     setMarketPriceCache({ prices: [], lastSync: "", failedMatches: [] });
+    setMarketPriceMemories([]);
     setUserSearchAliases([]);
     const defaultTidepool = emptyTidepoolData();
     setTidepoolPosts(defaultTidepool.posts);
@@ -19100,6 +19153,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (type === "scoutSubmit") return quickScoutReportStep !== "submitted" && formsDiffer(quickScoutReportForm, flowModalBaselineRef.current.scoutSubmit || createQuickScoutReportDraft());
     if (type === "tidepoolCreatePost") return formsDiffer(tidepoolPostForm, BLANK_TIDEPOOL_POST_FORM);
     if (type === "tidepoolTrustedCircle") return formsDiffer(tidepoolCircleForm, BLANK_TIDEPOOL_CIRCLE_FORM);
+    if (type === "marketPriceMemory") return formsDiffer(marketPriceMemoryDraft, flowModalBaselineRef.current.marketPriceMemory || BLANK_MARKET_PRICE_MEMORY_FORM);
     if (type === "multiDestinationAdd") return formsDiffer(multiDestinationForm, flowModalBaselineRef.current.multiDestinationAdd || BLANK_MULTI_DESTINATION_FORM);
     if (type === "tradeValue") return tradeStep !== "saved" && formsDiffer(tradeDraft, flowModalBaselineRef.current.tradeValue || BLANK_TRADE_DRAFT);
     if (type === "tradeCompass") return formsDiffer(tradeCompassDraft, flowModalBaselineRef.current.tradeCompass || BLANK_TRADE_COMPASS_DRAFT);
@@ -19150,6 +19204,11 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (type === "tidepoolTrustedCircle") {
       setTidepoolCircleForm(BLANK_TIDEPOOL_CIRCLE_FORM);
       setTidepoolCircleMessage("");
+    }
+    if (type === "marketPriceMemory") {
+      setMarketPriceMemoryDraft(BLANK_MARKET_PRICE_MEMORY_FORM);
+      setMarketPriceMemoryMessage("");
+      setMarketPriceMemorySaving(false);
     }
     if (type === "scoutSubmit") {
       const draft = createQuickScoutReportDraft();
@@ -24991,6 +25050,70 @@ function saveManualMarketPrice(event) {
   setMarketSyncMessage(`Manual market price saved for ${product.name || product.productName || product.cardName}.`);
 }
 
+function buildMarketPriceMemoryDraft(product = null, overrides = {}) {
+  const marketInfo = product ? getTideTradrMarketInfo(product) : {};
+  const price = Number(marketInfo.currentMarketValue || product?.marketPrice || product?.marketValue || 0);
+  return normalizeMarketPriceMemoryDraft({
+    ...BLANK_MARKET_PRICE_MEMORY_FORM,
+    itemName: product ? catalogTitle(product) : "",
+    price: price > 0 ? price : "",
+    priceType: product ? "Personal Estimate" : "Asking Price",
+    sourcePlace: product ? marketInfo.sourceName || "Market Watch result" : "",
+    condition: product ? catalogProductTypeLabel(product) || getCatalogKindLabel(product) || "" : "",
+    notes: product ? "Price Snapshot saved from Market Watch. Check again before buying, selling, or trading." : "",
+    dateSeen: getLocalDateKey(),
+    ...overrides,
+  });
+}
+
+function openMarketPriceMemoryFlow(product = null, options = {}) {
+  const draft = buildMarketPriceMemoryDraft(product, options.seed || {});
+  setMarketPriceMemoryDraft(draft);
+  setMarketPriceMemoryMessage("");
+  setMarketPriceMemorySaving(false);
+  flowModalBaselineRef.current.marketPriceMemory = draft;
+  openFlowModal("marketPriceMemory", { size: "medium", source: options.source || (product ? "market-result" : "market-price-memory") });
+}
+
+function updateMarketPriceMemoryDraftField(field, value) {
+  setMarketPriceMemoryDraft((current) => normalizeMarketPriceMemoryDraft({ ...current, [field]: value }));
+  setMarketPriceMemoryMessage("");
+}
+
+function saveMarketPriceMemory(event) {
+  event?.preventDefault?.();
+  if (marketPriceMemorySaving) return;
+  if (blockGuestSave()) return;
+  const draft = normalizeMarketPriceMemoryDraft(marketPriceMemoryDraft);
+  const rawPrice = String(marketPriceMemoryDraft.price ?? "").trim();
+  if (!draft.itemName) {
+    setMarketPriceMemoryMessage("Add an item name before saving this Price Snapshot.");
+    return;
+  }
+  if (rawPrice && draft.price === "") {
+    setMarketPriceMemoryMessage("Enter a valid price, or leave it blank as a Manual Estimate to check later.");
+    return;
+  }
+  setMarketPriceMemorySaving(true);
+  const now = new Date().toISOString();
+  const record = normalizeMarketPriceMemoryEntry({
+    id: makeId("price-memory"),
+    ...draft,
+    dateSeen: draft.dateSeen || now.slice(0, 10),
+    createdAt: now,
+    updatedAt: now,
+    savedBy: user?.id || "local-beta",
+    source: "local_price_memory",
+    sourceKind: "manual_snapshot",
+  });
+  setMarketPriceMemories((current) => [record, ...current]);
+  setMarketPriceMemoryDraft(draft);
+  flowModalBaselineRef.current.marketPriceMemory = draft;
+  setMarketPriceMemoryMessage("Saved Price added to Price Memory. Not Live Pricing; check again before buying, selling, or trading.");
+  setMarketPriceMemorySaving(false);
+  setVaultToast("Saved Price added to Price Memory.");
+}
+
 function applyCatalogProductToVault(productId, options = {}) {
   const product = typeof productId === "object"
     ? productId
@@ -25528,6 +25651,67 @@ function renderTideTradrHeader() {
         </div>
       </EtMockupSectionCard>
     </div>
+  );
+}
+
+function renderMarketPriceMemorySection() {
+  const recentMemories = marketPriceMemories.slice(0, 4);
+  const memoriesWithValue = marketPriceMemories.filter((entry) => entry.price !== "" && Number(entry.price || 0) > 0);
+  const latestMemory = [...marketPriceMemories].sort((a, b) => String(b.dateSeen || b.createdAt || "").localeCompare(String(a.dateSeen || a.createdAt || "")))[0] || null;
+  return (
+    <EtMockupSectionCard
+      className="market-price-memory-card"
+      title="Price Memory"
+      detail="Manual snapshots for prices you want to remember. Not Live Pricing."
+      action={<EtMockupButton onClick={() => openMarketPriceMemoryFlow()}>Save Price</EtMockupButton>}
+      ariaLabel="Market Price Memory"
+    >
+      <div className="market-price-memory-helper-card market-price-memory-inline-helper">
+        <strong>Not Live Pricing</strong>
+        <span>Saved prices are manual snapshots. They help you remember what you saw, but they are not live pricing or a guarantee of value.</span>
+      </div>
+      <div className="market-price-memory-stats" aria-label="Market Memory summary">
+        <div>
+          <span>Market Memory</span>
+          <strong>{marketPriceMemories.length}</strong>
+          <small>Saved Price snapshot{marketPriceMemories.length === 1 ? "" : "s"}</small>
+        </div>
+        <div>
+          <span>Manual Estimate</span>
+          <strong>{memoriesWithValue.length ? money(memoriesWithValue.reduce((sum, entry) => sum + Number(entry.price || 0), 0) / memoriesWithValue.length) : "No values yet"}</strong>
+          <small>Average entered price</small>
+        </div>
+        <div>
+          <span>Check Again Later</span>
+          <strong>{latestMemory ? shortDate(latestMemory.dateSeen || latestMemory.createdAt) : "Ready"}</strong>
+          <small>Latest Price Snapshot</small>
+        </div>
+      </div>
+      {recentMemories.length ? (
+        <div className="market-price-memory-list">
+          {recentMemories.map((entry) => (
+            <article className="market-price-memory-row" key={entry.id || `${entry.itemName}-${entry.createdAt}`}>
+              <div>
+                <span className="market-status-pill market-status-pill--catalog">{entry.priceType || "Saved Price"}</span>
+                <h3>{entry.itemName || "Saved Price"}</h3>
+                <p>{[entry.sourcePlace || "Where You Saw It not saved", entry.condition || "Condition not saved"].filter(Boolean).join(" | ")}</p>
+                {entry.notes ? <small>{entry.notes}</small> : <small>Price Note can be added next time you check this item.</small>}
+              </div>
+              <div className="market-price-memory-value">
+                <strong>{entry.price !== "" ? money(entry.price) : "Manual Estimate"}</strong>
+                <span>{entry.dateSeen ? shortDate(entry.dateSeen) : "Date not saved"}</span>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <EtMockupEmptyState
+          title="Price Memory is quiet for now."
+          detail="Save a price when you see one worth remembering."
+          action={<EtMockupButton onClick={() => openMarketPriceMemoryFlow()}>Save Price</EtMockupButton>}
+        />
+      )}
+    </EtMockupSectionCard>
   );
 }
 
@@ -27905,6 +28089,7 @@ function renderForgeBusinessLedgerPanel() {
       marketplaceReports: Array.isArray(data.marketplaceReports) ? data.marketplaceReports : [],
       marketplaceSavedIds: Array.isArray(data.marketplaceSavedIds) ? data.marketplaceSavedIds : [],
       marketPriceCache: data.marketPriceCache || {},
+      marketPriceMemories: Array.isArray(data.marketPriceMemories) ? data.marketPriceMemories.map(normalizeMarketPriceMemoryEntry) : [],
       settings: {
         ...settings,
         forgeModeSettings: settings.forgeModeSettings || data.forgeModeSettings || {},
@@ -27925,6 +28110,7 @@ function renderForgeBusinessLedgerPanel() {
       { label: "Shared data suggestions", value: countBackupItems(data.suggestions) },
       { label: "Tidepool posts", value: countBackupItems(data.tidepoolCommunity.posts) },
       { label: "Market Watch watchlist", value: countBackupItems(data.tideTradrWatchlist) },
+      { label: "Price Memory", value: countBackupItems(data.marketPriceMemories) },
       { label: "Marketplace listings", value: countBackupItems(data.marketplaceListings) },
       { label: "Search aliases", value: countBackupItems(data.settings.userSearchAliases) },
     ];
@@ -28011,6 +28197,9 @@ function renderForgeBusinessLedgerPanel() {
     const nextMarketplaceSavedIds = mode === "replace"
       ? data.marketplaceSavedIds || []
       : [...new Set([...marketplaceSavedIds, ...(data.marketplaceSavedIds || [])])];
+    const nextMarketPriceMemories = mode === "replace"
+      ? data.marketPriceMemories || []
+      : mergeById(marketPriceMemories, data.marketPriceMemories || []);
     const nextScout = mode === "replace"
       ? {
           stores: scoutImport.stores || [],
@@ -28061,6 +28250,7 @@ function renderForgeBusinessLedgerPanel() {
     setMarketplaceReports(migrateRecordsToWorkspace(nextMarketplaceReports, nextActiveWorkspaceId || personalWorkspaceId, nextWorkspaces));
     setMarketplaceSavedIds(nextMarketplaceSavedIds);
     setMarketPriceCache({ ...loadPriceCache(), ...(data.marketPriceCache || {}) });
+    setMarketPriceMemories(nextMarketPriceMemories.map(normalizeMarketPriceMemoryEntry));
     setSuggestions(nextSuggestions);
     saveSuggestions(nextSuggestions);
     setScoutSnapshot(nextScout);
@@ -34356,6 +34546,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </button>
           <button type="button" className="secondary-button" onClick={() => addProductToTideTradrWatchlist(product.id)}>
             {watched ? "Watched" : "Watch"}
+          </button>
+          <button type="button" className="secondary-button" onClick={() => openMarketPriceMemoryFlow(product, { source: "market-result-save-price" })}>
+            Save Price
           </button>
           <button type="button" className="secondary-button market-result-view-button" onClick={() => openCatalogDetails(product)}>
             Details
@@ -47205,6 +47398,105 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     );
   }
 
+  function renderMarketPriceMemoryFlowContent() {
+    const normalizedDraft = normalizeMarketPriceMemoryDraft(marketPriceMemoryDraft);
+    const savedPriceLabel = normalizedDraft.price !== "" ? money(normalizedDraft.price) : "Manual Estimate";
+    return (
+      <form className="market-price-memory-flow" onSubmit={saveMarketPriceMemory}>
+        <section className="market-price-memory-hero-card">
+          <span className="section-kicker">Price Memory</span>
+          <h3>Save Price</h3>
+          <p>Save a manual Price Snapshot from a search, shop, listing, or personal research note so you can compare it later.</p>
+          <div className="market-price-memory-safety-strip">
+            <span>Not Live Pricing</span>
+            <span>Manual Estimate</span>
+            <span>Check Again Later</span>
+            <span>No value guarantee</span>
+          </div>
+        </section>
+
+        <section className="market-price-memory-form-card">
+          <div className="compact-card-header">
+            <div>
+              <span className="trust-badge trust-badge--secure">Price Snapshot</span>
+              <h4>Saved Price</h4>
+              <p>Saved prices are manual snapshots. They help you remember what you saw, but they are not live pricing or a guarantee of value.</p>
+            </div>
+            <strong>{savedPriceLabel}</strong>
+          </div>
+          <div className="market-price-memory-form-grid">
+            <Field label="Item name">
+              <input
+                value={marketPriceMemoryDraft.itemName}
+                onChange={(event) => updateMarketPriceMemoryDraftField("itemName", event.target.value)}
+                placeholder="Card, sealed product, slab, binder, or accessory"
+              />
+            </Field>
+            <Field label="Price">
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={marketPriceMemoryDraft.price}
+                onChange={(event) => updateMarketPriceMemoryDraftField("price", event.target.value)}
+                placeholder="0.00"
+              />
+            </Field>
+            <Field label="Price type">
+              <select
+                value={marketPriceMemoryDraft.priceType}
+                onChange={(event) => updateMarketPriceMemoryDraftField("priceType", event.target.value)}
+              >
+                {MARKET_PRICE_MEMORY_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+              </select>
+            </Field>
+            <Field label="Where You Saw It">
+              <input
+                value={marketPriceMemoryDraft.sourcePlace}
+                onChange={(event) => updateMarketPriceMemoryDraftField("sourcePlace", event.target.value)}
+                placeholder="Shop, show, listing, group, friend, or search"
+              />
+            </Field>
+            <Field label="Condition">
+              <input
+                value={marketPriceMemoryDraft.condition}
+                onChange={(event) => updateMarketPriceMemoryDraftField("condition", event.target.value)}
+                placeholder="Sealed, NM, LP, slab grade, unknown..."
+              />
+            </Field>
+            <Field label="Date seen">
+              <input
+                type="date"
+                value={marketPriceMemoryDraft.dateSeen}
+                onChange={(event) => updateMarketPriceMemoryDraftField("dateSeen", event.target.value)}
+              />
+            </Field>
+          </div>
+          <Field label="Price Note">
+            <textarea
+              value={marketPriceMemoryDraft.notes}
+              onChange={(event) => updateMarketPriceMemoryDraftField("notes", event.target.value)}
+              placeholder="Why this price matters, source trust, condition details, or what to check again later."
+              rows={3}
+            />
+          </Field>
+        </section>
+
+        <section className="market-price-memory-helper-card" aria-label="Not Live Pricing helper">
+          <strong>Not Live Pricing</strong>
+          <span>Prices can shift with condition, demand, timing, and seller trust. Check again before buying, selling, or trading.</span>
+        </section>
+
+        {marketPriceMemoryMessage ? <p className="field-error trade-value-message" role="status">{marketPriceMemoryMessage}</p> : null}
+
+        <div className="quick-actions trade-value-actions market-price-memory-actions">
+          <button type="submit" disabled={marketPriceMemorySaving}>{marketPriceMemorySaving ? "Saving..." : "Save Price"}</button>
+          <button type="button" className="secondary-button" onClick={() => closeFlowModal()}>Close</button>
+        </div>
+      </form>
+    );
+  }
+
   function flowModalMeta() {
     if (activeFlowModal?.type === "forgeQuickAdd") {
       return {
@@ -47322,6 +47614,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       return {
         title: "Log a Gift",
         description: "Save a local Spark Gift for program tracking only. This is not a tax receipt.",
+        size: "medium",
+      };
+    }
+    if (activeFlowModal?.type === "marketPriceMemory") {
+      return {
+        title: "Save Price",
+        description: "Save a manual Price Snapshot. Not live pricing and not a guarantee of value.",
         size: "medium",
       };
     }
@@ -51956,6 +52255,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     if (activeFlowModal?.type === "tradeValue") return renderTradeValueFlowContent();
     if (activeFlowModal?.type === "tradeCompass") return renderTradeCompassFlowContent();
     if (activeFlowModal?.type === "sparkGift") return renderSparkGiftFlowContent();
+    if (activeFlowModal?.type === "marketPriceMemory") return renderMarketPriceMemoryFlowContent();
     if (activeFlowModal?.type === "quickFind") return renderQuickFindFlowContent();
     if (activeFlowModal?.type === "multiDestinationAdd") return renderMultiDestinationAddFlowContent();
     if (activeFlowModal?.type === "vaultMoveToForge") return renderVaultMoveToForgeFlowContent();
@@ -63384,6 +63684,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             ) : (
               <>
                 {!catalogSearchHasRun && !supabaseCatalogStatus.loading ? renderMarketHomeFoundation() : null}
+
+                {renderMarketPriceMemorySection()}
 
                 {false ? (
                 <section className={getHeaderCardClass("tab-summary panel tidetradr-summary-card")}>
