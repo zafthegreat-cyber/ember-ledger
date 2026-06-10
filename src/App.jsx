@@ -2133,6 +2133,38 @@ const MULTI_DESTINATION_STEP_INDEX = MULTI_DESTINATION_STEPS.reduce((acc, step, 
   acc[step] = index;
   return acc;
 }, {});
+const SPARK_GIVING_DONATION_TYPES = [
+  { value: "cards", label: "Cards" },
+  { value: "sealed_product", label: "Sealed product" },
+  { value: "packs", label: "Packs" },
+  { value: "supplies", label: "Supplies" },
+  { value: "binders", label: "Binders" },
+  { value: "sleeves", label: "Sleeves" },
+  { value: "deck_boxes", label: "Deck boxes" },
+  { value: "storage", label: "Storage" },
+  { value: "playmats", label: "Playmats" },
+  { value: "toys_prizes", label: "Toys/prizes" },
+  { value: "gift_cards", label: "Gift cards" },
+  { value: "event_support", label: "Event support" },
+  { value: "money_sponsorship", label: "Money/sponsorship" },
+  { value: "services", label: "Services" },
+  { value: "volunteer_time", label: "Volunteer time" },
+  { value: "food_snacks", label: "Food/snacks" },
+  { value: "shipping_help", label: "Shipping help" },
+  { value: "other", label: "Other" },
+];
+const SPARK_GIVING_WHO_IT_HELPS = ["Family Support", "Kid Pack", "Event Support", "Spark Impact", "Other"];
+const BLANK_SPARK_GIFT_DRAFT = {
+  giftName: "",
+  donationType: "cards",
+  quantityAmount: "",
+  estimatedValue: "",
+  donorSponsorName: "",
+  whoItHelps: "Kid Pack",
+  sponsorNote: "",
+  thankYouNote: "",
+  giftDate: "",
+};
 const BLANK_TRADE_DRAFT = {
   id: "",
   sourceItemId: "",
@@ -2150,6 +2182,46 @@ const BLANK_TRADE_DRAFT = {
   tradeDate: "",
   notes: "",
 };
+
+function normalizeSparkGiftDraft(draft = {}) {
+  const donationType = SPARK_GIVING_DONATION_TYPES.some((option) => option.value === draft.donationType)
+    ? draft.donationType
+    : "cards";
+  const whoItHelps = SPARK_GIVING_WHO_IT_HELPS.includes(draft.whoItHelps) ? draft.whoItHelps : "Kid Pack";
+  const estimatedValue = Number.parseFloat(String(draft.estimatedValue || "").trim());
+  return {
+    giftName: String(draft.giftName || draft.name || "").trim(),
+    donationType,
+    quantityAmount: String(draft.quantityAmount || draft.quantity || draft.amount || "").trim(),
+    estimatedValue: Number.isFinite(estimatedValue) && estimatedValue >= 0 ? estimatedValue : "",
+    donorSponsorName: String(draft.donorSponsorName || draft.donorName || draft.sponsorName || "").trim(),
+    whoItHelps,
+    sponsorNote: String(draft.sponsorNote || draft.notes || "").trim(),
+    thankYouNote: String(draft.thankYouNote || "").trim(),
+    giftDate: String(draft.giftDate || draft.date || "").slice(0, 10),
+  };
+}
+
+function donationTypeLabel(value = "") {
+  return SPARK_GIVING_DONATION_TYPES.find((option) => option.value === value)?.label || "Other";
+}
+
+function summarizeSparkGivingLedger(gifts = [], options = {}) {
+  const moneyFormatter = options.moneyFormatter || ((value) => `$${Number(value || 0).toFixed(2)}`);
+  const safeGifts = Array.isArray(gifts) ? gifts : [];
+  const valueRows = safeGifts.filter((gift) => Number(gift.estimatedValue || 0) > 0);
+  const totalValue = valueRows.reduce((sum, gift) => sum + Number(gift.estimatedValue || 0), 0);
+  const latestGift = [...safeGifts].sort((a, b) => String(b.giftDate || b.createdAt || "").localeCompare(String(a.giftDate || a.createdAt || "")))[0] || null;
+  return {
+    totalGifts: safeGifts.length,
+    valueCount: valueRows.length,
+    totalValue,
+    totalValueLabel: valueRows.length ? moneyFormatter(totalValue) : "No values yet",
+    recentSupportLabel: latestGift ? `${donationTypeLabel(latestGift.donationType)} - ${latestGift.whoItHelps || "Spark Impact"}` : "No gifts logged yet",
+    latestGift,
+  };
+}
+
 const BLANK_TRADE_COMPASS_DRAFT = {
   sourceItemId: "",
   yourSide: "",
@@ -5879,6 +5951,10 @@ export default function App() {
   });
   const [kidsProgramRequestStep, setKidsProgramRequestStep] = useState(1);
   const [sparkFlowView, setSparkFlowView] = useState(initialRouteState.sparkFlowView || "home");
+  const [sparkGifts, setSparkGifts] = useState([]);
+  const [sparkGiftDraft, setSparkGiftDraft] = useState(BLANK_SPARK_GIFT_DRAFT);
+  const [sparkGiftMessage, setSparkGiftMessage] = useState("");
+  const [sparkGiftSaving, setSparkGiftSaving] = useState(false);
   const [sponsorForm, setSponsorForm] = useState({
     name: "",
     businessName: "",
@@ -15436,6 +15512,7 @@ export default function App() {
       setExpenses(migrateRecordsToWorkspace(saved.expenses || [], personalWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID, workspaceState.workspaces).map(mapExpense));
       setSales(migrateRecordsToWorkspace(saved.sales || [], personalWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID, workspaceState.workspaces));
       setTradeRecords(migrateRecordsToWorkspace(saved.tradeRecords || saved.trades || [], personalWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID, workspaceState.workspaces));
+      setSparkGifts(Array.isArray(saved.sparkGifts) ? saved.sparkGifts.map((gift) => ({ ...gift, ...normalizeSparkGiftDraft(gift) })) : []);
       setVehicles(saved.vehicles || []);
       setMileageTrips(migrateRecordsToWorkspace(saved.mileageTrips || [], personalWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID, workspaceState.workspaces));
       setDealForm({
@@ -15484,6 +15561,7 @@ export default function App() {
         setExpenses([]);
         setSales([]);
         setTradeRecords([]);
+        setSparkGifts([]);
         setVehicles([]);
         setMileageTrips([]);
         return;
@@ -15496,6 +15574,7 @@ export default function App() {
       setExpenses([]);
       setSales([]);
       setTradeRecords([]);
+      setSparkGifts([]);
       setVehicles([]);
       setMileageTrips([]);
     }
@@ -15831,6 +15910,7 @@ export default function App() {
         expenses,
         sales,
         tradeRecords,
+        sparkGifts,
         vehicles,
         mileageTrips,
         workspaces,
@@ -15862,7 +15942,7 @@ export default function App() {
         },
       })
     );
-  }, [items, purchasers, catalogProducts, tideTradrWatchlist, marketplaceListings, marketplaceReports, marketplaceSavedIds, tideTradrLookupId, marketPriceCache, userSearchAliases, expenses, sales, tradeRecords, vehicles, mileageTrips, workspaces, workspaceMembers, workspaceInvites, activeWorkspaceId, forgeModeSettings, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, resolvedAppTheme, appSetupPersonalization, cloudSyncPreference, locationSettings, subscriptionProfile, currentUserProfile, adminModeStorageReady, adminViewMode, localDataLoaded]);
+  }, [items, purchasers, catalogProducts, tideTradrWatchlist, marketplaceListings, marketplaceReports, marketplaceSavedIds, tideTradrLookupId, marketPriceCache, userSearchAliases, expenses, sales, tradeRecords, sparkGifts, vehicles, mileageTrips, workspaces, workspaceMembers, workspaceInvites, activeWorkspaceId, forgeModeSettings, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, resolvedAppTheme, appSetupPersonalization, cloudSyncPreference, locationSettings, subscriptionProfile, currentUserProfile, adminModeStorageReady, adminViewMode, localDataLoaded]);
 
   useEffect(() => {
     if (!BETA_LOCAL_MODE || !localDataLoaded) return;
@@ -16215,6 +16295,7 @@ export default function App() {
     setExpenses([]);
     setSales([]);
     setTradeRecords([]);
+    setSparkGifts([]);
     setVehicles([]);
     setMileageTrips([]);
     setTideTradrWatchlist([]);
@@ -17144,6 +17225,7 @@ export default function App() {
     setExpenses([]);
     setSales([]);
     setTradeRecords([]);
+    setSparkGifts([]);
     setVehicles([]);
     setMileageTrips([]);
     setDealForm({
@@ -18938,6 +19020,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (type === "multiDestinationAdd") return formsDiffer(multiDestinationForm, flowModalBaselineRef.current.multiDestinationAdd || BLANK_MULTI_DESTINATION_FORM);
     if (type === "tradeValue") return tradeStep !== "saved" && formsDiffer(tradeDraft, flowModalBaselineRef.current.tradeValue || BLANK_TRADE_DRAFT);
     if (type === "tradeCompass") return formsDiffer(tradeCompassDraft, flowModalBaselineRef.current.tradeCompass || BLANK_TRADE_COMPASS_DRAFT);
+    if (type === "sparkGift") return formsDiffer(sparkGiftDraft, flowModalBaselineRef.current.sparkGift || BLANK_SPARK_GIFT_DRAFT);
     return false;
   }
 
@@ -19011,6 +19094,11 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       setTradeCompassDraft(BLANK_TRADE_COMPASS_DRAFT);
       setTradeCompassMessage("");
       setTradeCompassSaving(false);
+    }
+    if (type === "sparkGift") {
+      setSparkGiftDraft(BLANK_SPARK_GIFT_DRAFT);
+      setSparkGiftMessage("");
+      setSparkGiftSaving(false);
     }
   }
 
@@ -23880,6 +23968,52 @@ function mapCatalog(row) {
     setTradeCompassSaving(false);
     flowModalBaselineRef.current.tradeCompass = normalizeTradeCompassDraft(tradeCompassDraft);
     setVaultToast("Trade Compass saved to ledger.");
+  }
+
+  function openSparkGiftFlow(options = {}) {
+    const draft = normalizeSparkGiftDraft({
+      ...BLANK_SPARK_GIFT_DRAFT,
+      giftDate: new Date().toISOString().slice(0, 10),
+      ...options.seed,
+    });
+    setSparkGiftDraft(draft);
+    setSparkGiftMessage("");
+    setSparkGiftSaving(false);
+    flowModalBaselineRef.current.sparkGift = draft;
+    openFlowModal("sparkGift", { size: "medium", source: options.source || "spark-giving-ledger" });
+  }
+
+  function updateSparkGiftDraftField(field, value) {
+    setSparkGiftDraft((current) => normalizeSparkGiftDraft({ ...current, [field]: value }));
+    setSparkGiftMessage("");
+  }
+
+  function saveSparkGift(event) {
+    event?.preventDefault?.();
+    if (sparkGiftSaving) return;
+    const draft = normalizeSparkGiftDraft(sparkGiftDraft);
+    if (!draft.giftName) {
+      setSparkGiftMessage("Add a Spark Gift name before saving.");
+      return;
+    }
+    setSparkGiftSaving(true);
+    const now = new Date().toISOString();
+    const record = {
+      id: makeId("spark-gift"),
+      ...draft,
+      giftDate: draft.giftDate || now.slice(0, 10),
+      createdAt: now,
+      updatedAt: now,
+      savedBy: user?.id || "local-beta",
+      source: "local-beta",
+      legalStatus: "program_tracking_only",
+    };
+    setSparkGifts((current) => [record, ...current]);
+    setSparkGiftDraft(draft);
+    flowModalBaselineRef.current.sparkGift = draft;
+    setSparkGiftMessage("Spark Gift saved to Giving Ledger. Giving Ledger is for program tracking only. It is not a tax receipt.");
+    setSparkGiftSaving(false);
+    setVaultToast("Spark Gift saved to Giving Ledger.");
   }
 
   function vaultForgeTransferEntries(transfer = vaultForgeTransfer) {
@@ -40087,6 +40221,24 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       { title: "Support local family days", detail: "Event help stays general-area only and avoids private child or home details." },
       { title: "Thank helpers clearly", detail: "Sponsors and shops can express interest, then wait for review before anything goes public." },
     ];
+    const sparkGivingImpact = summarizeSparkGivingLedger(sparkGifts, { moneyFormatter: money });
+    const recentSparkGifts = [...sparkGifts]
+      .sort((a, b) => String(b.giftDate || b.createdAt || "").localeCompare(String(a.giftDate || a.createdAt || "")))
+      .slice(0, 4);
+    const renderSparkGiftRow = (gift) => (
+      <article className="spark-gift-ledger-row" key={gift.id || `${gift.giftName}-${gift.createdAt}`}>
+        <div>
+          <span className="section-kicker">Spark Gift</span>
+          <strong>{gift.giftName || "Spark Gift"}</strong>
+          <small>{[donationTypeLabel(gift.donationType), gift.quantityAmount, gift.whoItHelps].filter(Boolean).join(" | ")}</small>
+        </div>
+        <div>
+          <span>{gift.giftDate ? shortDate(gift.giftDate) : "Date saved"}</span>
+          <strong>{Number(gift.estimatedValue || 0) > 0 ? money(gift.estimatedValue) : "No value saved"}</strong>
+          <small>{gift.donorSponsorName || "Supporter optional"}</small>
+        </div>
+      </article>
+    );
     const renderSparkHero = () => (
       <div className="spark-mockup-header">
         <EtMockupHero
@@ -40282,6 +40434,39 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </article>
             ))}
           </div>
+        </EtMockupSectionCard>
+
+        <EtMockupSectionCard
+          title="Giving Ledger"
+          detail="The Giving Ledger is ready for its first spark. Log cards, packs, supplies, event help, snacks, sponsorships, or anything that helps kids and families enjoy collecting."
+          className="spark-giving-ledger-card"
+          ariaLabel="The Spark Giving Ledger"
+          action={<EtMockupButton onClick={() => openSparkGiftFlow({ source: "spark-giving-ledger" })}>Log a Gift</EtMockupButton>}
+        >
+          <div className="spark-giving-helper-card">
+            <strong>Donation helper</strong>
+            <span>Track what was given, who it may help, and the story behind the support.</span>
+            <small>Giving Ledger is for program tracking only. It is not a tax receipt.</small>
+          </div>
+          <div className="et-mockup-stat-grid spark-giving-impact-grid" aria-label="Spark Impact">
+            <EtMockupStatCard label="Spark Impact" value={sparkGivingImpact.totalGifts} detail="total gifts logged locally" tone="gold" />
+            <EtMockupStatCard label="Estimated Value" value={sparkGivingImpact.totalValueLabel} detail={sparkGivingImpact.valueCount ? `${sparkGivingImpact.valueCount} gift${sparkGivingImpact.valueCount === 1 ? "" : "s"} with values` : "Add values when applicable"} tone="pink" />
+            <EtMockupStatCard label="Recent support" value={sparkGivingImpact.recentSupportLabel} detail="Latest local Giving Ledger entry" tone="gold" />
+          </div>
+          <div className="spark-gift-type-cloud" aria-label="Donation Type options">
+            {SPARK_GIVING_DONATION_TYPES.map((option) => <span key={option.value}>{option.label}</span>)}
+          </div>
+          {recentSparkGifts.length ? (
+            <div className="spark-gift-ledger-list" aria-label="Giving Ledger saved gifts">
+              {recentSparkGifts.map(renderSparkGiftRow)}
+            </div>
+          ) : (
+            <EtMockupEmptyState
+              title="No Spark Gifts logged yet."
+              detail="The Giving Ledger is ready for its first spark. Log cards, packs, supplies, event help, snacks, sponsorships, or anything that helps kids and families enjoy collecting."
+              action={<EtMockupButton variant="secondary" onClick={() => openSparkGiftFlow({ source: "spark-giving-ledger-empty" })}>Log a Gift</EtMockupButton>}
+            />
+          )}
         </EtMockupSectionCard>
 
         {adminToolsVisible ? (
@@ -46647,6 +46832,120 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     );
   }
 
+  function renderSparkGiftFlowContent() {
+    return (
+      <form className="spark-gift-flow" onSubmit={saveSparkGift}>
+        <section className="spark-gift-hero-card">
+          <span className="section-kicker">Giving Ledger</span>
+          <h3>Log a Gift</h3>
+          <p>Track what was given, who it may help, and the story behind the support.</p>
+          <div className="spark-gift-safety-strip">
+            <span>Program tracking only</span>
+            <span>Not a tax receipt</span>
+            <span>No payment processed</span>
+            <span>No private child messaging</span>
+          </div>
+        </section>
+
+        <section className="spark-gift-form-grid">
+          <div className="spark-gift-form-card">
+            <div className="compact-card-header">
+              <div>
+                <span className="trust-badge trust-badge--kid">Spark Gift</span>
+                <h4>Spark Gift</h4>
+              </div>
+              <strong>{donationTypeLabel(sparkGiftDraft.donationType)}</strong>
+            </div>
+            <Field label="Spark Gift">
+              <input
+                value={sparkGiftDraft.giftName}
+                onChange={(event) => updateSparkGiftDraftField("giftName", event.target.value)}
+                placeholder="Cards, snacks, sleeves, volunteer time..."
+              />
+            </Field>
+            <Field label="Donation Type">
+              <select value={sparkGiftDraft.donationType} onChange={(event) => updateSparkGiftDraftField("donationType", event.target.value)}>
+                {SPARK_GIVING_DONATION_TYPES.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </Field>
+            <div className="spark-gift-inline-grid">
+              <Field label="Quantity or amount">
+                <input
+                  value={sparkGiftDraft.quantityAmount}
+                  onChange={(event) => updateSparkGiftDraftField("quantityAmount", event.target.value)}
+                  placeholder="12 packs, 2 hours, $25 card..."
+                />
+              </Field>
+              <Field label="Estimated Value">
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={sparkGiftDraft.estimatedValue}
+                  onChange={(event) => updateSparkGiftDraftField("estimatedValue", event.target.value)}
+                  placeholder="Optional"
+                />
+              </Field>
+            </div>
+            <Field label="Date">
+              <input type="date" value={sparkGiftDraft.giftDate} onChange={(event) => updateSparkGiftDraftField("giftDate", event.target.value)} />
+            </Field>
+          </div>
+
+          <div className="spark-gift-form-card">
+            <div className="compact-card-header">
+              <div>
+                <span className="trust-badge trust-badge--verified">Who It Helps</span>
+                <h4>Who It Helps</h4>
+              </div>
+              <strong>{sparkGiftDraft.whoItHelps}</strong>
+            </div>
+            <Field label="Who It Helps">
+              <select value={sparkGiftDraft.whoItHelps} onChange={(event) => updateSparkGiftDraftField("whoItHelps", event.target.value)}>
+                {SPARK_GIVING_WHO_IT_HELPS.map((option) => <option key={option} value={option}>{option}</option>)}
+              </select>
+            </Field>
+            <Field label="Donor or sponsor name optional">
+              <input
+                value={sparkGiftDraft.donorSponsorName}
+                onChange={(event) => updateSparkGiftDraftField("donorSponsorName", event.target.value)}
+                placeholder="Family, shop, sponsor, volunteer..."
+              />
+            </Field>
+            <Field label="Sponsor Note">
+              <textarea
+                value={sparkGiftDraft.sponsorNote}
+                onChange={(event) => updateSparkGiftDraftField("sponsorNote", event.target.value)}
+                placeholder="What was given, who checked it, where it may help, or any review notes."
+                rows={3}
+              />
+            </Field>
+            <Field label="Thank You Note">
+              <textarea
+                value={sparkGiftDraft.thankYouNote}
+                onChange={(event) => updateSparkGiftDraftField("thankYouNote", event.target.value)}
+                placeholder="Optional thank-you wording for internal follow-up."
+                rows={3}
+              />
+            </Field>
+          </div>
+        </section>
+
+        <section className="spark-gift-disclaimer-card" aria-label="Giving Ledger legal reminder">
+          <strong>Giving Ledger is for program tracking only. It is not a tax receipt.</strong>
+          <span>Nothing here processes a payment, claims nonprofit status, creates a tax document, or shares private child/family details.</span>
+        </section>
+
+        {sparkGiftMessage ? <p className="field-error trade-value-message" role="status">{sparkGiftMessage}</p> : null}
+
+        <div className="quick-actions trade-value-actions spark-gift-actions">
+          <button type="submit" disabled={sparkGiftSaving}>{sparkGiftSaving ? "Saving..." : "Save Spark Gift"}</button>
+          <button type="button" className="secondary-button" onClick={() => closeFlowModal()}>Close</button>
+        </div>
+      </form>
+    );
+  }
+
   function flowModalMeta() {
     if (activeFlowModal?.type === "forgeQuickAdd") {
       return {
@@ -46757,6 +47056,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       return {
         title: "Trade Compass",
         description: "Check whether a trade feels fair before you make it. Estimated values only; no live pricing guarantee.",
+        size: "medium",
+      };
+    }
+    if (activeFlowModal?.type === "sparkGift") {
+      return {
+        title: "Log a Gift",
+        description: "Save a local Spark Gift for program tracking only. This is not a tax receipt.",
         size: "medium",
       };
     }
@@ -51303,6 +51609,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     if (activeFlowModal?.type === "vaultImportCollection") return renderVaultImportCollectionFlowContent();
     if (activeFlowModal?.type === "tradeValue") return renderTradeValueFlowContent();
     if (activeFlowModal?.type === "tradeCompass") return renderTradeCompassFlowContent();
+    if (activeFlowModal?.type === "sparkGift") return renderSparkGiftFlowContent();
     if (activeFlowModal?.type === "quickFind") return renderQuickFindFlowContent();
     if (activeFlowModal?.type === "multiDestinationAdd") return renderMultiDestinationAddFlowContent();
     if (activeFlowModal?.type === "vaultMoveToForge") return renderVaultMoveToForgeFlowContent();

@@ -818,6 +818,26 @@ async function main() {
       await page.getByRole("button", { name: /Apply|Request|Learn|Rules|Kids Program/i }).count() > 0,
       "The Spark should expose a primary family-safe action"
     );
+    await assertVisibleText("Giving Ledger");
+    const logGiftAction = page.getByRole("button", { name: "Log a Gift", exact: true }).first();
+    await expectVisible(logGiftAction, "The Spark Log a Gift action");
+    await logGiftAction.click();
+    const giftModal = page.locator('.flow-modal[data-flow="sparkGift"]').first();
+    await expectVisible(giftModal, "The Spark Giving Ledger modal");
+    await expectVisible(giftModal.getByText("Giving Ledger is for program tracking only. It is not a tax receipt.").first(), "Giving Ledger tax disclaimer");
+    await giftModal.getByLabel("Spark Gift").fill("Focused Spark Kid Pack Supplies");
+    await giftModal.getByLabel("Donation Type").selectOption("supplies");
+    await giftModal.getByLabel("Quantity or amount").fill("12 sleeves and deck boxes");
+    await giftModal.getByLabel("Estimated Value").fill("36");
+    await giftModal.getByLabel("Who It Helps").selectOption("Kid Pack");
+    await giftModal.getByLabel("Donor or sponsor name optional").fill("Smoke Test Sponsor");
+    await giftModal.getByLabel("Sponsor Note").fill("Supplies for reviewed kid packs.");
+    await giftModal.getByLabel("Thank You Note").fill("Thank you for helping families collect safely.");
+    await giftModal.getByRole("button", { name: "Save Spark Gift", exact: true }).click();
+    await expectVisible(giftModal.getByText("Spark Gift saved to Giving Ledger.").first(), "The Spark Gift saved message");
+    await giftModal.getByRole("button", { name: "Close", exact: true }).first().click();
+    await giftModal.waitFor({ state: "hidden", timeout: 5000 });
+    await expectVisible(page.locator(".spark-gift-ledger-row").filter({ hasText: "Focused Spark Kid Pack Supplies" }).first(), "The Spark saved gift row");
   }
 
   const focusedAreaTests = {

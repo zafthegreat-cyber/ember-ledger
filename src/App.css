@@ -80343,6 +80343,123 @@ button.et-live-action:focus-visible {
   gap: 10px;
 }
 
+.app-kidsprogram .spark-giving-ledger-card,
+.app-command-shell.app-kidsprogram .spark-giving-ledger-card,
+.app-shell-dark.app-kidsprogram .spark-giving-ledger-card {
+  display: grid;
+  gap: 14px;
+  border-color: color-mix(in srgb, var(--et-page-accent-2, #ffcf5c) 24%, var(--et-border, rgba(255, 207, 92, 0.22))) !important;
+  background:
+    radial-gradient(circle at 92% 0%, color-mix(in srgb, var(--et-page-accent-2, #ffcf5c) 18%, transparent), transparent 15rem),
+    radial-gradient(circle at 0% 100%, color-mix(in srgb, var(--et-page-accent, #ff6b4a) 14%, transparent), transparent 16rem),
+    color-mix(in srgb, var(--et-panel, rgba(37, 19, 7, 0.88)) 94%, transparent) !important;
+}
+
+.spark-giving-helper-card,
+.spark-gift-disclaimer-card {
+  display: grid;
+  gap: 5px;
+  padding: 13px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2, #ffcf5c) 22%, var(--et-border, rgba(255, 207, 92, 0.22)));
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--et-panel-soft, rgba(255, 255, 255, 0.06)) 84%, transparent);
+}
+
+.spark-giving-helper-card span,
+.spark-giving-helper-card small,
+.spark-gift-disclaimer-card span {
+  color: var(--et-muted, rgba(255, 248, 225, 0.74));
+  line-height: 1.45;
+}
+
+.app-kidsprogram .spark-giving-impact-grid,
+.app-command-shell.app-kidsprogram .spark-giving-impact-grid,
+.app-shell-dark.app-kidsprogram .spark-giving-impact-grid,
+.spark-gift-form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.spark-gift-type-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.spark-gift-type-cloud span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 7px 10px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2, #ffcf5c) 20%, var(--et-border, rgba(255, 255, 255, 0.12)));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--et-panel-soft, rgba(255, 255, 255, 0.06)) 84%, transparent);
+  color: var(--et-ink, #fff7ed);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.spark-gift-ledger-list,
+.spark-gift-flow {
+  display: grid;
+  gap: 12px;
+}
+
+.spark-gift-ledger-row,
+.spark-gift-form-card,
+.spark-gift-hero-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2, #ffcf5c) 20%, var(--et-border, rgba(255, 255, 255, 0.12)));
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--et-page-accent-2, #ffcf5c) 12%, transparent), transparent 9rem),
+    color-mix(in srgb, var(--et-panel-soft, rgba(255, 255, 255, 0.06)) 88%, transparent);
+}
+
+.spark-gift-ledger-row {
+  grid-template-columns: minmax(0, 1fr) minmax(118px, auto);
+  align-items: center;
+}
+
+.spark-gift-ledger-row > div {
+  display: grid;
+  gap: 3px;
+}
+
+.spark-gift-ledger-row small,
+.spark-gift-hero-card p {
+  color: var(--et-muted, rgba(255, 248, 225, 0.74));
+  line-height: 1.45;
+}
+
+.spark-gift-safety-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.spark-gift-safety-strip span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 6px 9px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2, #ffcf5c) 18%, var(--et-border, rgba(255, 255, 255, 0.12)));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--et-panel-soft, rgba(255, 255, 255, 0.06)) 80%, transparent);
+  color: var(--et-ink, #fff7ed);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.spark-gift-inline-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
 .app-kidsprogram .spark-donate-panel,
 .app-command-shell.app-kidsprogram .spark-donate-panel,
 .app-shell-dark.app-kidsprogram .spark-donate-panel,
@@ -80507,7 +80624,10 @@ button.et-live-action:focus-visible {
   .app-shell-dark.app-kidsprogram .spark-thank-you-panel,
   .app-kidsprogram .spark-impact-dashboard,
   .app-command-shell.app-kidsprogram .spark-impact-dashboard,
-  .app-shell-dark.app-kidsprogram .spark-impact-dashboard {
+  .app-shell-dark.app-kidsprogram .spark-impact-dashboard,
+  .app-kidsprogram .spark-giving-ledger-card,
+  .app-command-shell.app-kidsprogram .spark-giving-ledger-card,
+  .app-shell-dark.app-kidsprogram .spark-giving-ledger-card {
     margin-bottom: calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 52px);
     padding-bottom: calc(var(--bottom-nav-height, 66px) + env(safe-area-inset-bottom, 0px) + 34px) !important;
   }
@@ -80515,9 +80635,15 @@ button.et-live-action:focus-visible {
   .app-kidsprogram .spark-impact-stat-grid,
   .app-command-shell.app-kidsprogram .spark-impact-stat-grid,
   .app-shell-dark.app-kidsprogram .spark-impact-stat-grid,
+  .app-kidsprogram .spark-giving-impact-grid,
+  .app-command-shell.app-kidsprogram .spark-giving-impact-grid,
+  .app-shell-dark.app-kidsprogram .spark-giving-impact-grid,
   .app-kidsprogram .spark-impact-milestone-grid,
   .app-command-shell.app-kidsprogram .spark-impact-milestone-grid,
-  .app-shell-dark.app-kidsprogram .spark-impact-milestone-grid {
+  .app-shell-dark.app-kidsprogram .spark-impact-milestone-grid,
+  .spark-gift-form-grid,
+  .spark-gift-inline-grid,
+  .spark-gift-ledger-row {
     grid-template-columns: 1fr;
   }
 
