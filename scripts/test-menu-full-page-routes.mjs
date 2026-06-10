@@ -136,9 +136,25 @@ assert.ok(
   cssSource.includes(".collector-showcase-edge") &&
     cssSource.includes(".collector-showcase-fallback") &&
     cssSource.includes(".collector-showcase-card.is-fallback .collector-showcase-face") &&
+    appSource.includes("function sealedProductFrameMeta") &&
+    appSource.includes("Unknown sealed product") &&
+    appSource.includes("Booster Pack") &&
+    appSource.includes("Booster Box") &&
+    appSource.includes("ETB") &&
+    appSource.includes("Collection Box") &&
+    cssSource.includes(".collector-sealed-frame-booster-pack") &&
+    cssSource.includes(".collector-sealed-frame-booster-box") &&
+    cssSource.includes(".collector-sealed-frame-etb") &&
+    cssSource.includes(".collector-sealed-frame-tin") &&
+    cssSource.includes(".collector-sealed-frame-bundle") &&
+    cssSource.includes(".collector-sealed-frame-collection-box") &&
+    cssSource.includes(".collector-sealed-frame-unknown") &&
+    cssSource.includes(".collector-sealed-chip") &&
     cssSource.includes(".sealed-product-shelf-object::before") &&
     cssSource.includes(".sealed-product-shelf-object::after") &&
-    cssSource.includes(".sealed-shelf-pack .sealed-product-shelf-object") &&
+    cssSource.includes(".sealed-shelf-booster-pack .sealed-product-shelf-object") &&
+    cssSource.includes(".sealed-shelf-booster-box .sealed-product-shelf-object") &&
+    cssSource.includes(".sealed-shelf-etb .sealed-product-shelf-object") &&
     cssSource.includes(".sealed-shelf-tin .sealed-product-shelf-object"),
   "Collector Showcase should provide intentional depth, fallback art, and distinct sealed product geometry."
 );
@@ -180,9 +196,9 @@ assert.equal(
   "Product type detection should stay a visual helper, not a verification, scanning, live stock, or marketplace claim."
 );
 assert.equal(
-  /sealed product shelf[^.]{0,140}(live stock|in stock|guaranteed availability|product verified|official verification|live price)/i.test(appSource),
+  /sealed product shelf[^.]{0,180}(live stock|in stock|guaranteed availability|product verified|official verification|live price|checkout connected|fulfillment connected|ready to ship)/i.test(appSource),
   false,
-  "Sealed Product Shelf should not claim stock status, live prices, or product verification."
+  "Sealed Product Shelf should not claim stock status, live prices, checkout, fulfillment, or product verification."
 );
 assert.ok(
   appSource.includes("Display Case") &&

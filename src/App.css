@@ -100933,12 +100933,124 @@ html body #root .app.app-command-shell .collector-showcase-sealed .collector-sho
     color-mix(in srgb, var(--et-panel, #fffdf7) 90%, transparent);
 }
 
+html body #root .app.app-command-shell .collector-showcase-sealed .collector-showcase-object {
+  width: min(100%, 148px);
+}
+
+html body #root .app.app-command-shell .collector-showcase-sealed .collector-showcase-edge {
+  top: 12%;
+  right: -10px;
+  width: 16px;
+  height: 76%;
+  border-radius: 0 14px 14px 0;
+}
+
+html body #root .app.app-command-shell .collector-showcase-sealed .collector-showcase-face::before,
+html body #root .app.app-command-shell .collector-showcase-sealed .collector-showcase-face::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  z-index: 2;
+}
+
+html body #root .app.app-command-shell .collector-showcase-sealed .collector-showcase-face::before {
+  inset: 0 auto 0 0;
+  width: 14%;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 22%, rgba(255, 255, 255, 0.22)), color-mix(in srgb, var(--et-page-accent, #8b5cf6) 18%, rgba(70, 43, 22, 0.18)));
+  border-right: 1px solid color-mix(in srgb, var(--et-page-accent-2, #d9a441) 22%, transparent);
+}
+
+html body #root .app.app-command-shell .collector-showcase-sealed .collector-showcase-face::after {
+  inset: 10% 9% auto auto;
+  width: 30%;
+  height: 15%;
+  border-radius: 999px;
+  background: color-mix(in srgb, rgba(255, 255, 255, 0.56) 70%, var(--et-page-accent-2, #d9a441) 18%);
+  opacity: 0.78;
+}
+
+html body #root .app.app-command-shell .collector-showcase-sealed .collector-showcase-face img,
+html body #root .app.app-command-shell .collector-showcase-sealed .collector-showcase-fallback {
+  position: relative;
+  z-index: 1;
+}
+
+html body #root .app.app-command-shell .collector-sealed-frame-booster-pack .collector-showcase-object {
+  width: min(100%, 112px);
+}
+
+html body #root .app.app-command-shell .collector-sealed-frame-booster-pack .collector-showcase-face {
+  aspect-ratio: 0.68 / 1;
+  border-radius: 15px;
+}
+
+html body #root .app.app-command-shell .collector-sealed-frame-booster-pack .collector-showcase-face::before {
+  inset: auto 0 0 0;
+  width: 100%;
+  height: 14%;
+  border-top: 1px solid color-mix(in srgb, var(--et-page-accent-2, #d9a441) 26%, transparent);
+  border-right: 0;
+}
+
+html body #root .app.app-command-shell .collector-sealed-frame-booster-pack .collector-showcase-face::after {
+  inset: 12% 12% auto 12%;
+  width: auto;
+  height: 9%;
+}
+
+html body #root .app.app-command-shell .collector-sealed-frame-booster-box .collector-showcase-face {
+  aspect-ratio: 1.22 / 1;
+}
+
+html body #root .app.app-command-shell .collector-sealed-frame-etb .collector-showcase-face {
+  aspect-ratio: 1.03 / 1;
+  border-radius: 18px;
+}
+
+html body #root .app.app-command-shell .collector-sealed-frame-tin .collector-showcase-face {
+  aspect-ratio: 1 / 1;
+  border-radius: 28px;
+}
+
+html body #root .app.app-command-shell .collector-sealed-frame-tin .collector-showcase-face::before {
+  inset: 0 0 auto 0;
+  width: 100%;
+  height: 22%;
+  border-right: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--et-page-accent-2, #d9a441) 26%, transparent);
+}
+
+html body #root .app.app-command-shell .collector-sealed-frame-bundle .collector-showcase-face {
+  aspect-ratio: 1.3 / 1;
+  border-radius: 18px;
+}
+
+html body #root .app.app-command-shell .collector-sealed-frame-collection-box .collector-showcase-face {
+  aspect-ratio: 1.42 / 1;
+  border-radius: 20px;
+}
+
+html body #root .app.app-command-shell .collector-sealed-frame-unknown .collector-showcase-face {
+  aspect-ratio: 1.12 / 1;
+  border-style: dashed;
+}
+
 html body #root .app.app-theme-dark.app-command-shell .collector-showcase-sealed .collector-showcase-face,
 html body #root .app.app-shell-dark.app-command-shell .collector-showcase-sealed .collector-showcase-face {
   background:
     linear-gradient(90deg, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 18%, rgba(255, 255, 255, 0.08)) 0 13%, transparent 13%),
     linear-gradient(145deg, color-mix(in srgb, var(--et-page-accent, #8b5cf6) 16%, rgba(255, 255, 255, 0.08)), color-mix(in srgb, var(--et-page-accent-2, #d9a441) 12%, rgba(255, 255, 255, 0.05))),
     color-mix(in srgb, var(--et-panel-soft, #10243f) 88%, transparent);
+}
+
+html body #root .app.app-theme-dark.app-command-shell .collector-showcase-sealed .collector-showcase-face::before,
+html body #root .app.app-shell-dark.app-command-shell .collector-showcase-sealed .collector-showcase-face::before {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 18%, rgba(255, 255, 255, 0.08)), color-mix(in srgb, var(--et-page-accent, #8b5cf6) 20%, rgba(0, 0, 0, 0.28)));
+}
+
+html body #root .app.app-theme-dark.app-command-shell .collector-showcase-sealed .collector-showcase-face::after,
+html body #root .app.app-shell-dark.app-command-shell .collector-showcase-sealed .collector-showcase-face::after {
+  background: color-mix(in srgb, rgba(255, 255, 255, 0.18) 64%, var(--et-page-accent-2, #d9a441) 22%);
 }
 
 html body #root .app.app-command-shell .collector-showcase-slab .collector-showcase-face {
@@ -101188,6 +101300,29 @@ html body #root .app.app-command-shell .collector-showcase-chip-row .collector-r
   background: color-mix(in srgb, var(--et-panel, #fffdf7) 72%, var(--et-page-accent-2, #d9a441) 16%);
 }
 
+html body #root .app.app-command-shell .collector-showcase-chip-row .collector-sealed-chip {
+  border-color: color-mix(in srgb, var(--et-page-accent-2, #d9a441) 42%, transparent);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--et-page-accent, #8b5cf6) 16%, var(--et-panel, #fffdf7)), color-mix(in srgb, var(--et-page-accent-2, #d9a441) 22%, var(--et-panel, #fffdf7)));
+  color: color-mix(in srgb, var(--et-ink, #172033) 88%, var(--et-page-accent, #8b5cf6));
+}
+
+html body #root .app.app-command-shell .collector-showcase-chip-row .collector-sealed-chip-booster-pack,
+html body #root .app.app-command-shell .collector-showcase-chip-row .collector-sealed-chip-booster-box {
+  border-color: color-mix(in srgb, var(--et-page-accent-2, #d9a441) 52%, transparent);
+}
+
+html body #root .app.app-command-shell .collector-showcase-chip-row .collector-sealed-chip-tin,
+html body #root .app.app-command-shell .collector-showcase-chip-row .collector-sealed-chip-etb {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, #7dd3fc 16%, var(--et-panel, #fffdf7)), color-mix(in srgb, var(--et-page-accent-2, #d9a441) 20%, var(--et-panel, #fffdf7)));
+}
+
+html body #root .app.app-command-shell .collector-showcase-chip-row .collector-sealed-chip-unknown {
+  border-style: dashed;
+  background: color-mix(in srgb, var(--et-panel, #fffdf7) 82%, var(--et-muted, #675d52) 8%);
+}
+
 html body #root .app.app-command-shell .collector-showcase-chip-row .collector-rarity-chip-common,
 html body #root .app.app-command-shell .collector-showcase-chip-row .collector-rarity-chip-neutral {
   border-color: color-mix(in srgb, var(--et-border, rgba(118, 84, 42, 0.18)) 70%, transparent);
@@ -101217,7 +101352,12 @@ html body #root .app.app-command-shell .collector-showcase-chip-row .collector-r
 }
 
 html body #root .app.app-theme-dark.app-command-shell .collector-showcase-chip-row .collector-rarity-chip,
+html body #root .app.app-theme-dark.app-command-shell .collector-showcase-chip-row .collector-sealed-chip,
 html body #root .app.app-shell-dark.app-command-shell .collector-showcase-chip-row .collector-rarity-chip {
+  background: color-mix(in srgb, var(--et-panel-soft, #10243f) 72%, var(--et-page-accent-2, #d9a441) 12%);
+}
+
+html body #root .app.app-shell-dark.app-command-shell .collector-showcase-chip-row .collector-sealed-chip {
   background: color-mix(in srgb, var(--et-panel-soft, #10243f) 72%, var(--et-page-accent-2, #d9a441) 12%);
 }
 
@@ -101470,12 +101610,14 @@ html body #root .app.app-shell-dark.app-command-shell .sealed-product-shelf-obje
   background: color-mix(in srgb, rgba(255, 255, 255, 0.18) 64%, var(--et-page-accent-2, #d9a441) 22%);
 }
 
+html body #root .app.app-command-shell .sealed-shelf-booster-pack .sealed-product-shelf-object,
 html body #root .app.app-command-shell .sealed-shelf-pack .sealed-product-shelf-object {
   width: min(54%, 118px);
   aspect-ratio: 0.68 / 1;
   border-radius: 16px;
 }
 
+html body #root .app.app-command-shell .sealed-shelf-booster-pack .sealed-product-shelf-object::before,
 html body #root .app.app-command-shell .sealed-shelf-pack .sealed-product-shelf-object::before {
   width: 100%;
   height: 14%;
@@ -101484,10 +101626,23 @@ html body #root .app.app-command-shell .sealed-shelf-pack .sealed-product-shelf-
   border-right: 0;
 }
 
+html body #root .app.app-command-shell .sealed-shelf-booster-pack .sealed-product-shelf-object::after,
 html body #root .app.app-command-shell .sealed-shelf-pack .sealed-product-shelf-object::after {
   inset: 12% 12% auto 12%;
   width: auto;
   height: 9%;
+}
+
+html body #root .app.app-command-shell .sealed-shelf-booster-box .sealed-product-shelf-object {
+  width: min(76%, 174px);
+  aspect-ratio: 1.24 / 1;
+  border-radius: 18px;
+}
+
+html body #root .app.app-command-shell .sealed-shelf-etb .sealed-product-shelf-object {
+  width: min(68%, 154px);
+  aspect-ratio: 1.03 / 1;
+  border-radius: 18px;
 }
 
 html body #root .app.app-command-shell .sealed-shelf-tin .sealed-product-shelf-object {
@@ -101502,6 +101657,23 @@ html body #root .app.app-command-shell .sealed-shelf-tin .sealed-product-shelf-o
   inset: 0 0 auto 0;
   border-right: 0;
   border-bottom: 1px solid color-mix(in srgb, var(--et-page-accent-2, #d9a441) 28%, transparent);
+}
+
+html body #root .app.app-command-shell .sealed-shelf-bundle .sealed-product-shelf-object {
+  width: min(78%, 178px);
+  aspect-ratio: 1.32 / 1;
+  border-radius: 18px;
+}
+
+html body #root .app.app-command-shell .sealed-shelf-collection-box .sealed-product-shelf-object {
+  width: min(82%, 188px);
+  aspect-ratio: 1.42 / 1;
+  border-radius: 20px;
+}
+
+html body #root .app.app-command-shell .sealed-shelf-unknown .sealed-product-shelf-object {
+  width: min(70%, 160px);
+  border-style: dashed;
 }
 
 html body #root .app.app-command-shell .sealed-product-shelf-object img {
@@ -102137,9 +102309,9 @@ html body #root .app.app-command-shell .market-showcase-preview {
 }
 
 html body #root .app.app-command-shell .market-showcase-preview .collector-showcase-copy > :not(.collector-showcase-chip-row),
-html body #root .app.app-command-shell .market-showcase-preview .collector-showcase-chip-row b:not(.collector-rarity-chip),
+html body #root .app.app-command-shell .market-showcase-preview .collector-showcase-chip-row b:not(.collector-rarity-chip):not(.collector-sealed-chip),
 html body #root .app.app-command-shell .quick-add-showcase-preview .collector-showcase-copy > :not(.collector-showcase-chip-row),
-html body #root .app.app-command-shell .quick-add-showcase-preview .collector-showcase-chip-row b:not(.collector-rarity-chip) {
+html body #root .app.app-command-shell .quick-add-showcase-preview .collector-showcase-chip-row b:not(.collector-rarity-chip):not(.collector-sealed-chip) {
   display: none;
 }
 
@@ -102161,7 +102333,15 @@ html body #root .app.app-command-shell .quick-add-showcase-preview .collector-sh
 }
 
 html body #root .app.app-command-shell .market-showcase-preview .collector-rarity-chip,
+html body #root .app.app-command-shell .market-showcase-preview .collector-sealed-chip,
 html body #root .app.app-command-shell .quick-add-showcase-preview .collector-rarity-chip {
+  max-width: 100%;
+  min-height: 23px;
+  padding: 3px 7px;
+  box-shadow: 0 8px 16px rgba(31, 21, 12, 0.14);
+}
+
+html body #root .app.app-command-shell .quick-add-showcase-preview .collector-sealed-chip {
   max-width: 100%;
   min-height: 23px;
   padding: 3px 7px;

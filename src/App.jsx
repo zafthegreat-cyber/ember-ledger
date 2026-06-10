@@ -6497,9 +6497,35 @@ const COLLECTOR_SHOWCASE_KIND_LABELS = {
   item: "Vault Item",
 };
 
+function sealedProductFrameMeta(value = {}) {
+  const source = typeof value === "string" ? { name: value } : (value || {});
+  const text = normalizeSearchText([
+    source.name,
+    source.title,
+    source.productName,
+    source.product_name,
+    source.productType,
+    source.product_type,
+    source.sealedProductType,
+    source.category,
+    source.kind,
+    source.displayKind,
+    source.setName,
+    source.franchise,
+    source.meta,
+  ].filter(Boolean).join(" "));
+  if (/\bbooster\s+(box|display)\b|\bdisplay\s+box\b|\bdisplay\s+case\b/.test(text)) return { key: "booster-box", label: "Booster Box" };
+  if (/\betb\b|\belite\s+trainer\s+box\b/.test(text)) return { key: "etb", label: "ETB" };
+  if (/\btin\b|\bcollector'?s?\s+chest\b|\bpok[e\u00e9]?\s*ball\b/.test(text)) return { key: "tin", label: "Tin" };
+  if (/\bbundle\b|\bbuild\s*&?\s*battle\b|\bstadium\b/.test(text)) return { key: "bundle", label: "Bundle" };
+  if (/\b(collection|premium|special|ex|vmax|vstar|box)\s+box\b|\bultra[-\s]?premium\b|\bupc\b|\bcollection\b/.test(text)) return { key: "collection-box", label: "Collection Box" };
+  if (/\bsleeved\s+booster\b|\bbooster\s+pack\b|\bpack\b|\bblister\b/.test(text)) return { key: "booster-pack", label: "Booster Pack" };
+  return { key: "unknown", label: "Unknown sealed product" };
+}
+
 function normalizeCollectorShowcaseKind(kind = "") {
   const value = String(kind || "").toLowerCase();
-  if (value.includes("sealed") || value.includes("box") || value.includes("bundle") || value.includes("tin") || value.includes("pack")) return "sealed";
+  if (value.includes("sealed") || value.includes("box") || value.includes("bundle") || value.includes("tin") || value.includes("pack") || value.includes("etb") || value.includes("elite trainer") || value.includes("booster")) return "sealed";
   if (value.includes("wishlist") || value.includes("iso") || value.includes("want")) return "wishlist";
   if (value.includes("slab") || value.includes("graded")) return "slab";
   if (value.includes("supply") || value.includes("sleeve") || value.includes("binder") || value.includes("deck box") || value.includes("storage")) return "supply";
@@ -6566,6 +6592,12 @@ function CollectorShowcaseCard({
   const normalizedKind = normalizeCollectorShowcaseKind(kind);
   const kindLabel = COLLECTOR_SHOWCASE_KIND_LABELS[normalizedKind] || COLLECTOR_SHOWCASE_KIND_LABELS.item;
   const metaList = (Array.isArray(meta) ? meta : [meta]).filter(Boolean);
+  const sealedFrame = normalizedKind === "sealed" ? sealedProductFrameMeta({
+    name: title,
+    productType: subtitle,
+    kind,
+    meta: metaList.join(" "),
+  }) : null;
   const rarityLabel = normalizedKind === "card" ? collectorShowcaseRarityLabel(rarity, metaList) : "";
   const rarityTone = normalizedKind === "card" ? collectorShowcaseRarityTone(rarity, metaList) : "neutral";
   const Component = onClick ? "button" : "article";
@@ -6575,10 +6607,13 @@ function CollectorShowcaseCard({
   const screenReaderHint = onClick
     ? "Visual display mode. Open item profile."
     : "Visual display mode. Card details are shown as text.";
-  const metaItems = [...new Set([kindLabel, ...metaList])].slice(0, 3);
+  const metaItems = [...new Set([
+    ...(sealedFrame ? ["Sealed"] : [kindLabel]),
+    ...metaList,
+  ])].slice(0, sealedFrame ? 4 : 3);
   return (
     <Component
-      className={`collector-showcase-card collector-showcase-${normalizedKind} collector-showcase-${mode} collector-rarity-${rarityTone} ${image ? "has-image" : "is-fallback"} ${className}`.trim()}
+      className={`collector-showcase-card collector-showcase-${normalizedKind} collector-showcase-${mode} collector-rarity-${rarityTone} ${sealedFrame ? `collector-sealed-frame-${sealedFrame.key}` : ""} ${image ? "has-image" : "is-fallback"} ${className}`.trim()}
       {...componentProps}
     >
       <span className="collector-showcase-stage" aria-hidden="true">
@@ -6600,7 +6635,7 @@ function CollectorShowcaseCard({
             ) : null}
             <span className="collector-showcase-fallback" hidden={Boolean(image)}>
               <strong>{collectorShowcaseInitials(title)}</strong>
-              <small>{kindLabel}</small>
+              <small>{sealedFrame?.label || kindLabel}</small>
             </span>
             <span className="collector-showcase-shine" />
           </span>
@@ -6619,6 +6654,11 @@ function CollectorShowcaseCard({
               title={COLLECTOR_SHOWCASE_RARITY_HELPER}
             >
               {rarityLabel}
+            </b>
+          ) : null}
+          {sealedFrame ? (
+            <b className={`collector-sealed-chip collector-sealed-chip-${sealedFrame.key}`}>
+              {sealedFrame.label}
             </b>
           ) : null}
           {metaItems.map((item) => <b key={item}>{item}</b>)}
@@ -6739,8 +6779,9 @@ function SealedProductShelfCard({
   actions = [],
   className = "",
 }) {
-  const shelf = sealedProductShelfMeta({ name: title, productType: subtitle, category: meta.join(" ") });
-  const metaItems = [...new Set([shelf.label, "Sealed", ...(Array.isArray(meta) ? meta : [meta]).filter(Boolean)])].slice(0, 4);
+  const shelfMetaList = (Array.isArray(meta) ? meta : [meta]).filter(Boolean);
+  const shelf = sealedProductFrameMeta({ name: title, productType: subtitle, category: shelfMetaList.join(" ") });
+  const metaItems = [...new Set([shelf.label, "Sealed", ...shelfMetaList])].slice(0, 4);
   return (
     <article
       className={`sealed-product-shelf-card sealed-shelf-${shelf.key} ${image ? "has-image" : "is-fallback"} ${className}`.trim()}
