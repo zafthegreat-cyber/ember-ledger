@@ -153,6 +153,7 @@ export function sanitizeAppLocalData(value = {}) {
     marketplaceListings: filterDemoArray(value.marketplaceListings),
     marketplaceReports: filterDemoArray(value.marketplaceReports),
     marketPriceMemories: filterDemoArray(value.marketPriceMemories),
+    itemComparisons: filterDemoArray(value.itemComparisons),
     vaultCollectionSets: filterDemoArray(value.vaultCollectionSets),
     vaultDisplayCase: filterDemoArray(value.vaultDisplayCase),
     tradeRecords: filterDemoArray(value.tradeRecords || value.trades),

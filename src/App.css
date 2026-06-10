@@ -99996,9 +99996,146 @@ html body #root .app.app-command-shell.app-market .market-price-memory-inline-he
   display: none !important;
 }
 
+/* Item Compare Table: local saved/manual research, not live pricing. */
+html body #root .app.app-command-shell .item-compare-table-card,
+.item-comparison-form-card {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  border-color: color-mix(in srgb, var(--et-page-accent, #65d978) 24%, var(--et-page-accent-2, #ffca55) 18%);
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--et-page-accent, #65d978) 12%, transparent), transparent 13rem),
+    radial-gradient(circle at 100% 100%, color-mix(in srgb, var(--et-page-accent-2, #ffca55) 12%, transparent), transparent 15rem),
+    color-mix(in srgb, var(--et-panel, #fffdf7) 92%, transparent);
+}
+
+html body #root .app.app-theme-dark.app-command-shell .item-compare-table-card,
+html body #root .app.app-shell-dark.app-command-shell .item-compare-table-card,
+html body #root .app.app-theme-dark.app-command-shell .item-comparison-form-card,
+html body #root .app.app-shell-dark.app-command-shell .item-comparison-form-card {
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--et-page-accent, #65d978) 16%, transparent), transparent 13rem),
+    color-mix(in srgb, var(--et-panel, #0d1b31) 92%, transparent);
+}
+
+.item-compare-safety-card,
+.item-comparison-flow {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.item-compare-safety-card {
+  padding: 13px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2, #ffca55) 24%, var(--et-border, rgba(118, 84, 42, 0.18)));
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--et-panel-soft, #fff1dc) 78%, transparent);
+}
+
+.item-compare-safety-card strong {
+  color: var(--et-ink, #172033);
+}
+
+.item-compare-safety-card span,
+.item-compare-safety-card small {
+  color: color-mix(in srgb, var(--et-muted, #675d52) 88%, var(--et-ink, #172033));
+  line-height: 1.42;
+}
+
+html body #root .app.app-theme-dark.app-command-shell .item-compare-safety-card,
+html body #root .app.app-shell-dark.app-command-shell .item-compare-safety-card {
+  background: color-mix(in srgb, var(--et-panel-soft, #14233b) 82%, transparent);
+}
+
+html body #root .app.app-theme-dark.app-command-shell .item-compare-safety-card strong,
+html body #root .app.app-shell-dark.app-command-shell .item-compare-safety-card strong {
+  color: var(--et-ink, #f7f0df);
+}
+
+html body #root .app.app-theme-dark.app-command-shell .item-compare-safety-card span,
+html body #root .app.app-shell-dark.app-command-shell .item-compare-safety-card span,
+html body #root .app.app-theme-dark.app-command-shell .item-compare-safety-card small,
+html body #root .app.app-shell-dark.app-command-shell .item-compare-safety-card small {
+  color: color-mix(in srgb, var(--et-muted, #c9d7ea) 86%, var(--et-ink, #f7f0df));
+}
+
+.item-compare-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+  gap: clamp(12px, 1.8vw, 18px);
+  min-width: 0;
+}
+
+.item-compare-card {
+  display: grid;
+  gap: 11px;
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent, #65d978) 20%, var(--et-border, rgba(118, 84, 42, 0.18)));
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--et-panel, #fffdf7) 90%, transparent);
+}
+
+html body #root .app.app-theme-dark.app-command-shell .item-compare-card,
+html body #root .app.app-shell-dark.app-command-shell .item-compare-card {
+  background: color-mix(in srgb, var(--et-panel, #0d1b31) 90%, transparent);
+}
+
+.item-compare-table-values {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.item-compare-table-values div {
+  min-width: 0;
+  padding: 8px;
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--et-panel-soft, #fff1dc) 70%, transparent);
+}
+
+.item-compare-table-values dt,
+.item-compare-table-values dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.item-compare-table-values dt {
+  color: color-mix(in srgb, var(--et-muted, #675d52) 86%, var(--et-ink, #172033));
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.item-compare-table-values dd {
+  color: var(--et-ink, #172033);
+  font-weight: 850;
+}
+
+.item-compare-warning {
+  margin: 0;
+  color: color-mix(in srgb, var(--et-coral, #f26a4f) 88%, var(--et-ink, #172033));
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+.item-comparison-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.item-comparison-form-grid label:first-child {
+  grid-column: 1 / -1;
+}
+
+.flow-modal[data-flow="itemComparison"] .flow-modal-footer {
+  display: none !important;
+}
+
 html body #root .app.app-command-shell.app-market .market-mockup-results .market-result-add-actions,
 html body #root .app.app-shell-dark.app-market .market-mockup-results .market-result-add-actions {
-  grid-template-columns: minmax(0, 1.35fr) repeat(3, minmax(76px, 0.72fr)) !important;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 96px), 1fr)) !important;
 }
 
 @media (max-width: 780px) {
@@ -100010,7 +100147,8 @@ html body #root .app.app-shell-dark.app-market .market-mockup-results .market-re
   .market-price-memory-stats,
   .market-price-memory-comparison-grid,
   .market-price-memory-meta,
-  .market-price-memory-form-grid {
+  .market-price-memory-form-grid,
+  .item-comparison-form-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 

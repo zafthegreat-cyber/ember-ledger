@@ -132,6 +132,19 @@ assert.equal(
   "Display Case should not claim public sharing, seller listing, checkout, or payment behavior."
 );
 assert.ok(
+  appSource.includes("Compare Table") &&
+    appSource.includes("itemComparison") &&
+    appSource.includes("Comparison uses saved/local data.") &&
+    appSource.includes("Not live market pricing") &&
+    cssSource.includes(".item-compare-table-card"),
+  "Card/Product Compare Table should be wired as a local saved/manual research surface."
+);
+assert.equal(
+  /compare table[^.]{0,240}(live market pricing is active|live market pricing is connected|value is guaranteed|guaranteed returns|grade verified|grading verified|authentication verified|official price feed|live price feed)/i.test(appSource),
+  false,
+  "Compare Table should not claim live pricing, guaranteed value, grading, authentication, or investment advice."
+);
+assert.ok(
   cssSource.includes('.flow-modal[data-flow="addActionSheet"]') &&
     cssSource.includes('.flow-modal[data-flow="multiDestinationAdd"]') &&
     cssSource.includes("height: 100dvh"),

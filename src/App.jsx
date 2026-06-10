@@ -3124,6 +3124,68 @@ function normalizeMarketPriceMemoryEntry(entry = {}) {
     catalogProductId: entry.catalogProductId || entry.catalog_product_id || "",
   };
 }
+const ITEM_COMPARE_TYPES = [
+  "card",
+  "sealed product",
+  "pack",
+  "booster box",
+  "supply",
+  "set",
+  "wishlist",
+  "unknown",
+];
+const BLANK_ITEM_COMPARE_FORM = {
+  itemName: "",
+  itemType: "unknown",
+  setOrProduct: "",
+  rememberedPrice: "",
+  conditionText: "",
+  status: "",
+  notes: "",
+  sourceId: "",
+  sourceKind: "manual",
+};
+
+function normalizeItemCompareType(value = "") {
+  const normalized = String(value || "").trim().toLowerCase().replace(/[_-]+/g, " ");
+  if (ITEM_COMPARE_TYPES.includes(normalized)) return normalized;
+  if (/booster\s*box|box/.test(normalized)) return "booster box";
+  if (/sealed|etb|elite trainer|bundle|tin|collection box/.test(normalized)) return "sealed product";
+  if (/pack|booster/.test(normalized)) return "pack";
+  if (/sleeve|binder|toploader|top loader|deck box|storage|playmat|supply/.test(normalized)) return "supply";
+  if (/wishlist|iso|want/.test(normalized)) return "wishlist";
+  if (/card|single|slab|graded/.test(normalized)) return "card";
+  return "unknown";
+}
+
+function normalizeItemComparisonDraft(draft = {}) {
+  const price = Number.parseFloat(String(draft.rememberedPrice ?? draft.price ?? draft.marketPrice ?? draft.marketValue ?? "").replace(/[^0-9.]/g, ""));
+  return {
+    itemName: String(draft.itemName || draft.name || draft.productName || draft.cardName || "").trim(),
+    itemType: normalizeItemCompareType(draft.itemType || draft.type || draft.category || draft.productType || ""),
+    setOrProduct: String(draft.setOrProduct || draft.setName || draft.expansion || draft.productLine || "").trim(),
+    rememberedPrice: Number.isFinite(price) && price >= 0 ? price : "",
+    conditionText: String(draft.conditionText || draft.condition || draft.conditionName || "").trim(),
+    status: String(draft.status || draft.priceType || draft.vaultStatus || "").trim(),
+    notes: String(draft.notes || draft.priceNote || draft.actionNotes || "").trim(),
+    sourceId: String(draft.sourceId || draft.id || draft.catalogProductId || "").trim(),
+    sourceKind: String(draft.sourceKind || "manual").trim(),
+  };
+}
+
+function normalizeItemComparisonEntry(entry = {}) {
+  return {
+    ...entry,
+    ...normalizeItemComparisonDraft(entry),
+    id: entry.id || "",
+    imageUrl: entry.imageUrl || entry.image || entry.imageSrc || "",
+    createdAt: entry.createdAt || entry.created_at || "",
+    updatedAt: entry.updatedAt || entry.updated_at || "",
+    compareMode: "local_only",
+    pricingMode: "saved_or_manual",
+    livePricing: false,
+  };
+}
 const WISHLIST_ISO_CATEGORIES = [
   { value: "card", label: "card" },
   { value: "sealed", label: "sealed" },
@@ -7216,6 +7278,10 @@ export default function App() {
   const [marketPriceMemoryDraft, setMarketPriceMemoryDraft] = useState(BLANK_MARKET_PRICE_MEMORY_FORM);
   const [marketPriceMemoryMessage, setMarketPriceMemoryMessage] = useState("");
   const [marketPriceMemorySaving, setMarketPriceMemorySaving] = useState(false);
+  const [itemComparisons, setItemComparisons] = useState([]);
+  const [itemComparisonDraft, setItemComparisonDraft] = useState(BLANK_ITEM_COMPARE_FORM);
+  const [itemComparisonMessage, setItemComparisonMessage] = useState("");
+  const [itemComparisonSaving, setItemComparisonSaving] = useState(false);
   const [wishlistIsoDraft, setWishlistIsoDraft] = useState(BLANK_WISHLIST_ISO_FORM);
   const [wishlistIsoMessage, setWishlistIsoMessage] = useState("");
   const [wishlistIsoSaving, setWishlistIsoSaving] = useState(false);
@@ -16444,6 +16510,7 @@ export default function App() {
       setTideTradrLookupId(saved.tideTradrLookupId || "");
       setMarketPriceCache(saved.marketPriceCache || loadPriceCache());
       setMarketPriceMemories(Array.isArray(saved.marketPriceMemories) ? saved.marketPriceMemories.map(normalizeMarketPriceMemoryEntry) : []);
+      setItemComparisons(Array.isArray(saved.itemComparisons) ? saved.itemComparisons.map(normalizeItemComparisonEntry) : []);
       setVaultCollectionSets(migrateRecordsToWorkspace(saved.vaultCollectionSets || [], personalWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID, workspaceState.workspaces).map(normalizeVaultCollectionSetEntry));
       setVaultDisplayCase(migrateRecordsToWorkspace(saved.vaultDisplayCase || [], personalWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID, workspaceState.workspaces).map(normalizeVaultDisplayCaseEntry));
       setUserSearchAliases(Array.isArray(saved.userSearchAliases) ? saved.userSearchAliases : []);
@@ -16854,6 +16921,7 @@ export default function App() {
         tideTradrLookupId,
         marketPriceCache,
         marketPriceMemories,
+        itemComparisons,
         vaultCollectionSets,
         vaultDisplayCase,
         userSearchAliases,
@@ -16895,7 +16963,7 @@ export default function App() {
         },
       })
     );
-  }, [items, purchasers, catalogProducts, tideTradrWatchlist, marketplaceListings, marketplaceReports, marketplaceSavedIds, tideTradrLookupId, marketPriceCache, marketPriceMemories, vaultCollectionSets, vaultDisplayCase, userSearchAliases, expenses, sales, tradeRecords, sparkGifts, sparkKidPacks, sparkEventPlans, collectorEventPlans, vehicles, mileageTrips, workspaces, workspaceMembers, workspaceInvites, activeWorkspaceId, forgeModeSettings, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, resolvedAppTheme, appSetupPersonalization, cloudSyncPreference, locationSettings, subscriptionProfile, currentUserProfile, adminModeStorageReady, adminViewMode, localDataLoaded]);
+  }, [items, purchasers, catalogProducts, tideTradrWatchlist, marketplaceListings, marketplaceReports, marketplaceSavedIds, tideTradrLookupId, marketPriceCache, marketPriceMemories, itemComparisons, vaultCollectionSets, vaultDisplayCase, userSearchAliases, expenses, sales, tradeRecords, sparkGifts, sparkKidPacks, sparkEventPlans, collectorEventPlans, vehicles, mileageTrips, workspaces, workspaceMembers, workspaceInvites, activeWorkspaceId, forgeModeSettings, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, resolvedAppTheme, appSetupPersonalization, cloudSyncPreference, locationSettings, subscriptionProfile, currentUserProfile, adminModeStorageReady, adminViewMode, localDataLoaded]);
 
   useEffect(() => {
     if (!BETA_LOCAL_MODE || !localDataLoaded) return;
@@ -20112,6 +20180,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (type === "tidepoolCreatePost") return formsDiffer(tidepoolPostForm, BLANK_TIDEPOOL_POST_FORM);
     if (type === "tidepoolTrustedCircle") return formsDiffer(tidepoolCircleForm, BLANK_TIDEPOOL_CIRCLE_FORM);
     if (type === "marketPriceMemory") return formsDiffer(marketPriceMemoryDraft, flowModalBaselineRef.current.marketPriceMemory || BLANK_MARKET_PRICE_MEMORY_FORM);
+    if (type === "itemComparison") return formsDiffer(itemComparisonDraft, flowModalBaselineRef.current.itemComparison || BLANK_ITEM_COMPARE_FORM);
     if (type === "wishlistIso") return formsDiffer(wishlistIsoDraft, flowModalBaselineRef.current.wishlistIso || BLANK_WISHLIST_ISO_FORM);
     if (type === "vaultCollectionSet") return formsDiffer(vaultCollectionSetDraft, flowModalBaselineRef.current.vaultCollectionSet || BLANK_VAULT_COLLECTION_SET_FORM);
     if (type === "vaultDisplayCase") return formsDiffer(vaultDisplayCaseDraft, flowModalBaselineRef.current.vaultDisplayCase || BLANK_VAULT_DISPLAY_CASE_FORM);
@@ -20173,6 +20242,11 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       setMarketPriceMemoryDraft(BLANK_MARKET_PRICE_MEMORY_FORM);
       setMarketPriceMemoryMessage("");
       setMarketPriceMemorySaving(false);
+    }
+    if (type === "itemComparison") {
+      setItemComparisonDraft(BLANK_ITEM_COMPARE_FORM);
+      setItemComparisonMessage("");
+      setItemComparisonSaving(false);
     }
     if (type === "wishlistIso") {
       setWishlistIsoDraft(BLANK_WISHLIST_ISO_FORM);
@@ -26512,6 +26586,95 @@ function saveMarketPriceMemory(event) {
   setVaultToast("Saved Price added to Price Memory.");
 }
 
+function buildItemComparisonDraft(source = null, overrides = {}) {
+  const marketInfo = source ? getTideTradrMarketInfo(source) : {};
+  const sourcePrice = Number(marketInfo.currentMarketValue || source?.marketPrice || source?.marketValue || source?.price || 0);
+  const title = source ? catalogTitle(source) || source.name || source.itemName || source.productName || "" : "";
+  const kind = source
+    ? normalizeItemCompareType(source.itemType || source.category || source.productType || getCatalogKindLabel(source) || vaultItemTypeLabel(source))
+    : "unknown";
+  return normalizeItemComparisonDraft({
+    ...BLANK_ITEM_COMPARE_FORM,
+    itemName: title,
+    itemType: kind,
+    setOrProduct: source?.setName || source?.expansion || source?.productLine || "",
+    rememberedPrice: sourcePrice > 0 ? sourcePrice : "",
+    conditionText: source?.conditionName || source?.condition || "",
+    status: source?.priceType || source?.vaultStatus || source?.status || "",
+    notes: source ? "Comparison uses saved/local data. Not live market pricing." : "",
+    sourceId: source?.id || source?.catalogProductId || "",
+    sourceKind: source?.recordType || source?.sourceKind || source?.source || "manual",
+    ...overrides,
+  });
+}
+
+function openItemComparisonFlow(source = null, options = {}) {
+  const draft = buildItemComparisonDraft(source, options.seed || {});
+  setItemComparisonDraft(draft);
+  setItemComparisonMessage("");
+  setItemComparisonSaving(false);
+  flowModalBaselineRef.current.itemComparison = draft;
+  openFlowModal("itemComparison", { size: "medium", source: options.source || "item-comparison" });
+}
+
+function updateItemComparisonDraftField(field, value) {
+  setItemComparisonDraft((current) => normalizeItemComparisonDraft({ ...current, [field]: value }));
+  setItemComparisonMessage("");
+}
+
+function saveItemComparison(event) {
+  event?.preventDefault?.();
+  if (itemComparisonSaving) return;
+  if (blockGuestSave()) return;
+  const draft = normalizeItemComparisonDraft(itemComparisonDraft);
+  if (!draft.itemName) {
+    setItemComparisonMessage("Add an item name before adding it to the Compare Table.");
+    return;
+  }
+  setItemComparisonSaving(true);
+  const now = new Date().toISOString();
+  const existingKey = draft.sourceId || draft.itemName.toLowerCase();
+  const existingEntry = itemComparisons.find((entry) => (entry.sourceId || entry.itemName.toLowerCase()) === existingKey);
+  if (!existingEntry && itemComparisons.length >= 4) {
+    setItemComparisonSaving(false);
+    setItemComparisonMessage("Compare Table holds up to 4 local items. Remove one before adding another.");
+    return;
+  }
+  const record = normalizeItemComparisonEntry({
+    id: existingEntry?.id || makeId("compare-item"),
+    ...draft,
+    createdAt: existingEntry?.createdAt || now,
+    updatedAt: now,
+    savedBy: user?.id || "local-beta",
+    imageUrl: sourceImageForComparison(draft.sourceId) || "",
+  });
+  setItemComparisons((current) => [record, ...(Array.isArray(current) ? current.filter((entry) => String(entry.id || "") !== String(record.id || "")) : [])].slice(0, 4));
+  setItemComparisonDraft(draft);
+  flowModalBaselineRef.current.itemComparison = draft;
+  setItemComparisonMessage("Added to Compare Table. Comparison uses saved/local data and is not live market pricing.");
+  setItemComparisonSaving(false);
+  setVaultToast("Added to Compare Table.");
+}
+
+function sourceImageForComparison(sourceId = "") {
+  if (!sourceId) return "";
+  const source = [...vaultItems, ...catalogProducts, ...marketPriceMemories].find((entry) => String(entry.id || entry.catalogProductId || "") === String(sourceId));
+  if (!source) return "";
+  return vaultItemDisplayImage(source) || catalogImage(source) || "";
+}
+
+function removeItemComparison(entryId) {
+  setItemComparisons((current) => (Array.isArray(current) ? current.filter((entry) => String(entry.id || "") !== String(entryId || "")) : []));
+  setVaultToast("Removed from Compare Table. Source items and saved prices were not changed.");
+}
+
+function openItemComparisonSurface() {
+  setActiveTab("market");
+  if (typeof window !== "undefined") {
+    window.setTimeout(() => document.getElementById("item-compare-table-section")?.scrollIntoView?.({ block: "start", behavior: "smooth" }), 80);
+  }
+}
+
 function buildWishlistIsoDraft(seed = {}) {
   return normalizeWishlistIsoDraft({
     ...BLANK_WISHLIST_ISO_FORM,
@@ -27226,6 +27389,23 @@ function renderMarketPriceMemorySection() {
                 <span>{entry.priceType || "Saved Price"}</span>
                 <strong>{entry.price !== "" ? money(entry.price) : "Manual Estimate"}</strong>
                 <small>Compare Later</small>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => openItemComparisonFlow(entry, {
+                    source: "price-memory-compare",
+                    seed: {
+                      itemName: entry.itemName,
+                      rememberedPrice: entry.price,
+                      conditionText: entry.condition,
+                      status: entry.priceType,
+                      notes: entry.notes || "Added from Price Memory for local comparison.",
+                      sourceKind: "price_memory",
+                    },
+                  })}
+                >
+                  Add to Compare
+                </button>
               </div>
             </article>
           ))}
@@ -27238,6 +27418,83 @@ function renderMarketPriceMemorySection() {
         />
       )}
       {renderUpgradeValuePreview("market")}
+    </EtMockupSectionCard>
+  );
+}
+
+function renderItemCompareTableSection() {
+  const compareEntries = itemComparisons.slice(0, 4);
+  const compareValueForEntry = (entry) => {
+    const normalizedName = String(entry.itemName || "").trim().toLowerCase();
+    const savedPrices = marketPriceMemories
+      .filter((memory) => String(memory.itemName || "").trim().toLowerCase() === normalizedName)
+      .map((memory) => Number(memory.price || 0))
+      .filter((price) => price > 0);
+    const manualPrice = Number(entry.rememberedPrice || 0);
+    const allPrices = [...savedPrices, ...(manualPrice > 0 ? [manualPrice] : [])];
+    return {
+      lowest: allPrices.length ? Math.min(...allPrices) : null,
+      highest: allPrices.length ? Math.max(...allPrices) : null,
+      count: allPrices.length,
+    };
+  };
+  return (
+    <EtMockupSectionCard
+      id="item-compare-table-section"
+      className="item-compare-table-card"
+      title="Compare Table"
+      detail="Compare cards and sealed products side by side using saved or manual notes. Local-only research, not live market pricing."
+      action={<EtMockupButton onClick={() => openItemComparisonFlow(null, { source: "market-compare-table" })}>Add Item to Compare</EtMockupButton>}
+      ariaLabel="Card and product Compare Table"
+    >
+      <div className="item-compare-safety-card" aria-label="Compare Table safety">
+        <strong>Comparison uses saved/local data.</strong>
+        <span>Not live market pricing. No guaranteed value, grading, authentication, verification, or investment advice.</span>
+      </div>
+      {compareEntries.length ? (
+        <div className="item-compare-grid" role="table" aria-label="Local card and product comparison">
+          {compareEntries.map((entry) => {
+            const valueRange = compareValueForEntry(entry);
+            const missingValue = valueRange.count === 0;
+            return (
+              <article className={`item-compare-card item-compare-card--${normalizeItemCompareType(entry.itemType).replace(/\s+/g, "-")}`} key={entry.id || `${entry.itemName}-${entry.createdAt}`}>
+                <CollectorShowcaseCard
+                  title={entry.itemName || "Compare item"}
+                  subtitle={entry.setOrProduct || "Set or product not saved"}
+                  image={entry.imageUrl}
+                  kind={normalizeItemCompareType(entry.itemType)}
+                  mode="mini"
+                  valueLabel={entry.rememberedPrice !== "" ? money(entry.rememberedPrice) : "Missing value"}
+                  meta={[entry.conditionText || "Condition not saved", entry.status || "Status not saved"]}
+                  helper={entry.notes || "Add notes about why this item belongs in the comparison."}
+                />
+                <dl className="item-compare-table-values">
+                  <div>
+                    <dt>Type</dt>
+                    <dd>{normalizeItemCompareType(entry.itemType)}</dd>
+                  </div>
+                  <div>
+                    <dt>Lowest saved manual price</dt>
+                    <dd>{valueRange.lowest !== null ? money(valueRange.lowest) : "Missing value"}</dd>
+                  </div>
+                  <div>
+                    <dt>Highest saved manual price</dt>
+                    <dd>{valueRange.highest !== null ? money(valueRange.highest) : "Missing value"}</dd>
+                  </div>
+                </dl>
+                {missingValue ? <p className="item-compare-warning">Missing value warning: add a remembered price or Price Memory snapshot before comparing value.</p> : null}
+                <button type="button" className="secondary-button" onClick={() => removeItemComparison(entry.id)}>Remove from Compare Table</button>
+              </article>
+            );
+          })}
+        </div>
+      ) : (
+        <EtMockupEmptyState
+          title="Your Compare Table is empty."
+          detail="Add 2 to 4 cards or sealed products from Market, Vault, Price Memory, or a manual note. Missing values stay unknown instead of becoming fake prices."
+          action={<EtMockupButton onClick={() => openItemComparisonFlow(null, { source: "market-compare-empty" })}>Add Item to Compare</EtMockupButton>}
+        />
+      )}
     </EtMockupSectionCard>
   );
 }
@@ -29661,6 +29918,8 @@ function renderForgeBusinessLedgerPanel() {
         pinnedMarketItems: tideTradrWatchlist.filter((item) => item.pinned),
         tideTradrLookupId,
         marketPriceCache,
+        marketPriceMemories,
+        itemComparisons,
         settings: {
           userType,
           homeStatsEnabled,
@@ -29721,6 +29980,7 @@ function renderForgeBusinessLedgerPanel() {
       marketplaceSavedIds: Array.isArray(data.marketplaceSavedIds) ? data.marketplaceSavedIds : [],
       marketPriceCache: data.marketPriceCache || {},
       marketPriceMemories: Array.isArray(data.marketPriceMemories) ? data.marketPriceMemories.map(normalizeMarketPriceMemoryEntry) : [],
+      itemComparisons: Array.isArray(data.itemComparisons) ? data.itemComparisons.map(normalizeItemComparisonEntry) : [],
       settings: {
         ...settings,
         forgeModeSettings: settings.forgeModeSettings || data.forgeModeSettings || {},
@@ -29742,6 +30002,7 @@ function renderForgeBusinessLedgerPanel() {
       { label: "Tidepool posts", value: countBackupItems(data.tidepoolCommunity.posts) },
       { label: "Market Watch watchlist", value: countBackupItems(data.tideTradrWatchlist) },
       { label: "Price Memory", value: countBackupItems(data.marketPriceMemories) },
+      { label: "Compare Table", value: countBackupItems(data.itemComparisons) },
       { label: "Marketplace listings", value: countBackupItems(data.marketplaceListings) },
       { label: "Search aliases", value: countBackupItems(data.settings.userSearchAliases) },
     ];
@@ -29831,6 +30092,9 @@ function renderForgeBusinessLedgerPanel() {
     const nextMarketPriceMemories = mode === "replace"
       ? data.marketPriceMemories || []
       : mergeById(marketPriceMemories, data.marketPriceMemories || []);
+    const nextItemComparisons = mode === "replace"
+      ? data.itemComparisons || []
+      : mergeById(itemComparisons, data.itemComparisons || []);
     const nextScout = mode === "replace"
       ? {
           stores: scoutImport.stores || [],
@@ -29882,6 +30146,7 @@ function renderForgeBusinessLedgerPanel() {
     setMarketplaceSavedIds(nextMarketplaceSavedIds);
     setMarketPriceCache({ ...loadPriceCache(), ...(data.marketPriceCache || {}) });
     setMarketPriceMemories(nextMarketPriceMemories.map(normalizeMarketPriceMemoryEntry));
+    setItemComparisons(nextItemComparisons.map(normalizeItemComparisonEntry));
     setSuggestions(nextSuggestions);
     saveSuggestions(nextSuggestions);
     setScoutSnapshot(nextScout);
@@ -36467,6 +36732,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </button>
           <button type="button" className="secondary-button" onClick={() => openMarketPriceMemoryFlow(product, { source: "market-result-save-price" })}>
             Save Price
+          </button>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => openItemComparisonFlow(product, { source: "market-result-compare" })}
+          >
+            Compare
           </button>
           <button
             type="button"
@@ -50200,6 +50472,91 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     );
   }
 
+  function renderItemComparisonFlowContent() {
+    const normalizedDraft = normalizeItemComparisonDraft(itemComparisonDraft);
+    return (
+      <form className="item-comparison-flow" onSubmit={saveItemComparison}>
+        <section className="item-comparison-form-card">
+          <div className="compact-card-header">
+            <div>
+              <span className="trust-badge trust-badge--secure">Compare Table</span>
+              <h3>Add Item to Compare</h3>
+              <p>Compare cards and sealed products with saved/local data only. Keep values manual and easy to review.</p>
+            </div>
+            <EtMockupPill tone="market">{itemComparisons.length}/4 saved</EtMockupPill>
+          </div>
+          <div className="item-comparison-form-grid">
+            <Field label="Item name">
+              <input
+                value={itemComparisonDraft.itemName}
+                onChange={(event) => updateItemComparisonDraftField("itemName", event.target.value)}
+                placeholder="Card or sealed product name"
+              />
+            </Field>
+            <Field label="Item type">
+              <select
+                value={normalizeItemCompareType(itemComparisonDraft.itemType)}
+                onChange={(event) => updateItemComparisonDraftField("itemType", event.target.value)}
+              >
+                {ITEM_COMPARE_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+              </select>
+            </Field>
+            <Field label="Set / product">
+              <input
+                value={itemComparisonDraft.setOrProduct}
+                onChange={(event) => updateItemComparisonDraftField("setOrProduct", event.target.value)}
+                placeholder="Set, product line, or release"
+              />
+            </Field>
+            <Field label="Remembered price">
+              <input
+                inputMode="decimal"
+                value={itemComparisonDraft.rememberedPrice}
+                onChange={(event) => updateItemComparisonDraftField("rememberedPrice", event.target.value)}
+                placeholder="Optional saved/manual price"
+              />
+            </Field>
+            <Field label="Condition text">
+              <input
+                value={itemComparisonDraft.conditionText}
+                onChange={(event) => updateItemComparisonDraftField("conditionText", event.target.value)}
+                placeholder="Near mint, sealed, played..."
+              />
+            </Field>
+            <Field label="Status">
+              <input
+                value={itemComparisonDraft.status}
+                onChange={(event) => updateItemComparisonDraftField("status", event.target.value)}
+                placeholder="Owned, wishlist, saved price..."
+              />
+            </Field>
+          </div>
+          <Field label="Notes">
+            <textarea
+              value={itemComparisonDraft.notes}
+              onChange={(event) => updateItemComparisonDraftField("notes", event.target.value)}
+              placeholder="What should you remember when comparing these items?"
+              rows={3}
+            />
+          </Field>
+        </section>
+
+        <section className="item-compare-safety-card" aria-label="Compare Table helper">
+          <strong>Comparison uses saved/local data.</strong>
+          <span>Not live market pricing. No guaranteed value, grading, authentication, verification, or investment advice.</span>
+          {normalizedDraft.rememberedPrice === "" ? <small>Missing value warning: this item can still be compared, but value fields will stay unknown.</small> : null}
+        </section>
+
+        {itemComparisonMessage ? <p className="field-error trade-value-message" role="status">{itemComparisonMessage}</p> : null}
+
+        <div className="quick-actions trade-value-actions item-comparison-actions">
+          <button type="submit" disabled={itemComparisonSaving}>{itemComparisonSaving ? "Saving..." : "Add to Compare"}</button>
+          <button type="button" className="secondary-button" onClick={() => closeFlowModal()}>Close</button>
+        </div>
+      </form>
+    );
+  }
+
   function renderVaultDisplayCaseFlowContent() {
     const normalizedDraft = normalizeVaultDisplayCaseDraft(vaultDisplayCaseDraft);
     return (
@@ -50682,6 +51039,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       return {
         title: "Save Price",
         description: "Save a manual Price Snapshot. Not live pricing and not a guarantee of value.",
+        size: "medium",
+      };
+    }
+    if (activeFlowModal?.type === "itemComparison") {
+      return {
+        title: "Compare Table",
+        description: "Compare cards and sealed products using saved/local data only. Not live market pricing.",
         size: "medium",
       };
     }
@@ -55375,6 +55739,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     if (activeFlowModal?.type === "sparkEventSupport") return renderSparkEventSupportFlowContent();
     if (activeFlowModal?.type === "collectorEventPlanner") return renderCollectorEventPlannerFlowContent();
     if (activeFlowModal?.type === "marketPriceMemory") return renderMarketPriceMemoryFlowContent();
+    if (activeFlowModal?.type === "itemComparison") return renderItemComparisonFlowContent();
     if (activeFlowModal?.type === "wishlistIso") return renderWishlistIsoFlowContent();
     if (activeFlowModal?.type === "vaultCollectionSet") return renderVaultCollectionSetFlowContent();
     if (activeFlowModal?.type === "vaultDisplayCase") return renderVaultDisplayCaseFlowContent();
@@ -66599,6 +66964,18 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   onCheckMarket={openMarketWatchForVaultItem}
                   onSavePriceMemory={(item) => openMarketPriceMemoryFlow(item, { source: "vault-profile-save-price", seed: { itemName: item.name, price: vaultItemTotalMarketValue(item) || "", condition: item.conditionName || item.condition || "" } })}
                   onAddToDisplayCase={(item) => openVaultDisplayCaseFlow(item, { source: "vault-item-profile" })}
+                  onAddToCompare={(item) => openItemComparisonFlow(item, {
+                    source: "vault-item-profile-compare",
+                    seed: {
+                      itemName: item.name,
+                      rememberedPrice: vaultItemTotalMarketValue(item) || "",
+                      conditionText: item.conditionName || item.condition || "",
+                      itemType: vaultItemTypeLabel(item),
+                      setOrProduct: vaultItemSetLabel(item),
+                      status: normalizeVaultStatus(item),
+                      notes: "Added from Vault Item Profile for local comparison.",
+                    },
+                  })}
                   onRefreshMarket={refreshVaultMarket}
                   onQuickUpdateMarketValue={quickUpdateMarketValue}
                   onQuickUpdateSalePrice={quickUpdatePlannedSalePrice}
@@ -67432,6 +67809,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 {!catalogSearchHasRun && !supabaseCatalogStatus.loading ? renderMarketHomeFoundation() : null}
 
                 {renderMarketPriceMemorySection()}
+                {renderItemCompareTableSection()}
                 {renderWishlistIsoPlanningSection({ surface: "market", compact: true })}
 
                 {false ? (
@@ -71069,7 +71447,7 @@ function gradeAssistValueComparison(item = {}, moneyFormatter = money) {
   };
 }
 
-function VaultItemDetail({ item, masterCard, setSummary, linkedTrades = [], collectionSets = [], onClose, onEdit, onDelete, onViewSet, onMarkOwned, onMoveToForge, onCopyToForge, onCreateListing, onDuplicate, onAttachReceipt, onCheckMarket, onSavePriceMemory, onAddToDisplayCase, onRefreshMarket, onQuickUpdateMarketValue, onQuickUpdateSalePrice, onStartTrade, showSellerTools = false }) {
+function VaultItemDetail({ item, masterCard, setSummary, linkedTrades = [], collectionSets = [], onClose, onEdit, onDelete, onViewSet, onMarkOwned, onMoveToForge, onCopyToForge, onCreateListing, onDuplicate, onAttachReceipt, onCheckMarket, onSavePriceMemory, onAddToDisplayCase, onAddToCompare, onRefreshMarket, onQuickUpdateMarketValue, onQuickUpdateSalePrice, onStartTrade, showSellerTools = false }) {
   const gradeAssistKey = gradeAssistRecordKey(item || {});
   const [gradeAssistDraft, setGradeAssistDraft] = useState(() => loadGradeAssistDraft(item || {}));
   const [gradeAssistMessage, setGradeAssistMessage] = useState("");
@@ -71294,6 +71672,7 @@ function VaultItemDetail({ item, masterCard, setSummary, linkedTrades = [], coll
             { label: "Add to Display Case", onClick: () => onAddToDisplayCase?.(item) },
             !itemIsWishlist ? { label: "Add to Trade Binder", onClick: () => onStartTrade?.(item) } : null,
             { label: "Save Price", onClick: () => onSavePriceMemory?.(item) },
+            { label: "Compare", onClick: () => onAddToCompare?.(item) },
             { label: "Add to Set", disabled: true, title: "Add to Set is coming soon." },
           ]}
         />
@@ -71417,6 +71796,7 @@ function VaultItemDetail({ item, masterCard, setSummary, linkedTrades = [], coll
           {!itemIsWishlist ? <button type="button" className="secondary-button" onClick={() => onStartTrade?.(item)}>Add to trade</button> : null}
           {!itemIsWishlist ? <button type="button" className="secondary-button" onClick={() => onStartTrade?.(item)}>Use in Forge</button> : null}
           <button type="button" className="secondary-button" onClick={() => onCheckMarket?.(item)}>Check in Market</button>
+          <button type="button" className="secondary-button" onClick={() => onAddToCompare?.(item)}>Compare</button>
           <button type="button" className="secondary-button" disabled title="Add to Set is coming soon.">Add to set</button>
           {itemIsWishlist ? <button type="button" onClick={() => onMarkOwned?.(item)}>Mark owned</button> : null}
           {setSummary ? <button type="button" className="secondary-button" onClick={() => onViewSet?.(setSummary)}>View Set</button> : null}

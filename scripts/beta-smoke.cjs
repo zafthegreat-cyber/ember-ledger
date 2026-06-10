@@ -1004,6 +1004,14 @@ async function main() {
     const focusedVaultCardAfterDisplayCase = page.locator(".vault-item-card").filter({ hasText: "Focused Vault Smoke Card" }).first();
     await expectVisible(focusedVaultCardAfterDisplayCase, "focused Vault item card after Display Case removal");
     await focusedVaultCardAfterDisplayCase.getByRole("button", { name: /Item Profile/i }).first().click();
+    await expectVisible(page.getByRole("button", { name: /^Compare$/ }).first(), "Vault Item Profile Compare action");
+    await page.getByRole("button", { name: /^Compare$/ }).first().click();
+    const vaultCompareModal = page.locator('.flow-modal[data-flow="itemComparison"]').first();
+    await expectVisible(vaultCompareModal, "Vault Item Profile Compare modal");
+    assert.equal(await vaultCompareModal.getByLabel("Item name").inputValue(), "Focused Vault Smoke Card", "Vault Compare should seed item name");
+    await expectVisible(vaultCompareModal.getByText("Not live market pricing").first(), "Vault Compare safety copy");
+    await vaultCompareModal.getByRole("button", { name: /^Close$/ }).first().click();
+    await vaultCompareModal.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
     assert.ok(
       await page.getByRole("button", { name: /Quick Add|Add Item|Search \/ Scan Item/i }).count() > 0,
       "Vault should expose a primary add/search action"
@@ -1013,6 +1021,14 @@ async function main() {
   }
 
   async function focusedMarketTest() {
+    const marketData = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      const smokeNames = new Set(["Smoke Compare Mystery Card", "Smoke Price Memory ETB"]);
+      data.marketPriceMemories = (data.marketPriceMemories || []).filter((entry) => !smokeNames.has(entry.itemName));
+      data.itemComparisons = (data.itemComparisons || []).filter((entry) => !smokeNames.has(entry.itemName));
+      return data;
+    });
+    await reloadWithAppData(marketData);
     await nav("Market");
     await assertVisibleText(/Market|TideTradr/i);
     await assertVisibleText("Price Memory");
@@ -1020,11 +1036,36 @@ async function main() {
     await assertVisibleText("Use this as a memory/checklist, not a guaranteed live price.");
     await assertVisibleText("Market Memory Comparison");
     await assertVisibleText("No selected item yet");
+    await assertVisibleText("Compare Table");
+    await assertVisibleText("Your Compare Table is empty.");
+    await assertVisibleText("Comparison uses saved/local data.");
     await assertVisibleText("Market upgrade preview");
     await assertVisibleText("Wishlist / ISO");
     await assertVisibleText("No automatic matching. No live seller offers.");
     const marketText = await page.locator("body").innerText();
-    assert.doesNotMatch(marketText, /price accuracy guaranteed|automated market sync|live market average|matched with sellers|seller offers are live|automatic matching is live/i);
+    assert.doesNotMatch(marketText, /price accuracy guaranteed|automated market sync|live market average|matched with sellers|seller offers are live|automatic matching is live|grading verified|authentication verified|investment advice is provided/i);
+    const compareSection = page.locator(".item-compare-table-card").first();
+    await expectVisible(compareSection.getByRole("button", { name: /^Add Item to Compare$/ }).first(), "Compare Table add action");
+    await compareSection.getByRole("button", { name: /^Add Item to Compare$/ }).first().click();
+    const compareModal = page.locator('.flow-modal[data-flow="itemComparison"]').first();
+    await expectVisible(compareModal, "Compare Table modal");
+    await fillByLabel(compareModal, "Item name", "Smoke Compare Mystery Card");
+    await compareModal.getByLabel("Item type").selectOption("card");
+    await fillByLabel(compareModal, "Set / product", "Smoke Set");
+    await fillByLabel(compareModal, "Condition text", "Unknown");
+    await fillByLabel(compareModal, "Status", "Manual compare");
+    await fillByLabel(compareModal, "Notes", "Missing value should stay unknown.");
+    await expectVisible(compareModal.getByText("Missing value warning").first(), "Compare Table missing value helper");
+    await compareModal.getByRole("button", { name: /^Add to Compare$/ }).click();
+    await expectVisible(compareModal.getByText("Added to Compare Table.").first(), "Compare Table saved message");
+    await page.waitForFunction(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      return (data.itemComparisons || []).some((entry) => entry.itemName === "Smoke Compare Mystery Card" && entry.compareMode === "local_only" && entry.pricingMode === "saved_or_manual" && entry.livePricing === false);
+    }, null, { timeout: 5000 });
+    await compareModal.getByRole("button", { name: /^Close$/ }).click();
+    await compareModal.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+    await expectVisible(page.locator(".item-compare-card").filter({ hasText: "Smoke Compare Mystery Card" }).first(), "Compare Table saved manual missing-value card");
+    await assertVisibleText("Missing value warning");
     const priceMemorySection = page.locator(".market-price-memory-card").first();
     await expectVisible(priceMemorySection.getByRole("button", { name: /^Save Price$/ }).first(), "Market Price Memory Save Price action");
     await priceMemorySection.getByRole("button", { name: /^Save Price$/ }).first().click();
@@ -1050,7 +1091,21 @@ async function main() {
     assert.ok(savedPriceMemory.some((entry) => entry.itemName === "Smoke Price Memory ETB" && entry.priceType === "Sold Price"), "Market Price Memory should persist saved price snapshots locally");
     await priceMemoryModal.getByRole("button", { name: /^Close$/ }).click();
     await priceMemoryModal.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
-    await expectVisible(page.locator(".market-price-memory-row").filter({ hasText: "Smoke Price Memory ETB" }).first(), "Market saved Price Memory row");
+    const savedPriceMemoryRow = page.locator(".market-price-memory-row").filter({ hasText: "Smoke Price Memory ETB" }).first();
+    await expectVisible(savedPriceMemoryRow, "Market saved Price Memory row");
+    await savedPriceMemoryRow.getByRole("button", { name: /^Add to Compare$/ }).click();
+    const priceCompareModal = page.locator('.flow-modal[data-flow="itemComparison"]').first();
+    await expectVisible(priceCompareModal, "Price Memory Compare modal");
+    assert.equal(await priceCompareModal.getByLabel("Item name").inputValue(), "Smoke Price Memory ETB", "Price Memory Compare should seed item name");
+    await priceCompareModal.getByRole("button", { name: /^Add to Compare$/ }).click();
+    await expectVisible(priceCompareModal.getByText("Added to Compare Table.").first(), "Price Memory Compare saved message");
+    await page.waitForFunction(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      return (data.itemComparisons || []).some((entry) => entry.itemName === "Smoke Price Memory ETB" && Number(entry.rememberedPrice) === 42.5);
+    }, null, { timeout: 5000 });
+    await priceCompareModal.getByRole("button", { name: /^Close$/ }).click();
+    await priceCompareModal.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+    await expectVisible(page.locator(".item-compare-card").filter({ hasText: "Smoke Price Memory ETB" }).first(), "Compare Table saved Price Memory card");
     await assertVisibleText("Lowest saved");
     await assertVisibleText("Highest saved");
     await assertVisibleText("Average saved");
@@ -1067,6 +1122,13 @@ async function main() {
     );
     await expectVisible(focusedMarketCard.locator(".market-showcase-preview").first(), "Market compact 3D showcase preview");
     await expectVisible(focusedMarketCard.getByRole("button", { name: /^Save Price$/ }).first(), "Market result Save Price action");
+    await expectVisible(focusedMarketCard.getByRole("button", { name: /^Compare$/ }).first(), "Market result Compare action");
+    await focusedMarketCard.getByRole("button", { name: /^Compare$/ }).first().click();
+    const resultCompareModal = page.locator('.flow-modal[data-flow="itemComparison"]').first();
+    await expectVisible(resultCompareModal, "Market result Compare modal");
+    assert.match(await resultCompareModal.getByLabel("Item name").inputValue(), /Prismatic Evolutions Booster Bundle/i, "Market result Compare should seed item name");
+    await resultCompareModal.getByRole("button", { name: /^Close$/ }).first().click();
+    await resultCompareModal.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
     await expectVisible(focusedMarketCard.getByRole("button", { name: /^Add to Wishlist \/ ISO$/ }).first(), "Market result Add to Wishlist / ISO action");
     await focusedMarketCard.getByRole("button", { name: /^Add to Wishlist \/ ISO$/ }).first().click();
     const marketWishlistModal = page.locator('.flow-modal[data-flow="wishlistIso"]').first();
