@@ -6436,9 +6436,9 @@ function EtMockupPill({ children, tone = "" }) {
   return <span className={`et-mockup-pill ${tone ? `et-mockup-pill-${tone}` : ""}`.trim()}>{children}</span>;
 }
 
-function EtMockupButton({ children, onClick, variant = "primary", className = "" }) {
+function EtMockupButton({ children, onClick, variant = "primary", className = "", disabled = false }) {
   return (
-    <button type="button" className={`et-mockup-button et-mockup-button-${variant} ${className}`.trim()} onClick={onClick}>
+    <button type="button" className={`et-mockup-button et-mockup-button-${variant} ${className}`.trim()} onClick={onClick} disabled={disabled}>
       {children}
     </button>
   );
@@ -6515,6 +6515,33 @@ function EtMockupEmptyState({ title, detail, action = null }) {
       {detail ? <p>{detail}</p> : null}
       {action}
     </div>
+  );
+}
+
+function FlowNextActionCard({ eyebrow = "Next action", title, detail, tone = "gold", actions = [] }) {
+  return (
+    <section className={`flow-next-action-card et-mockup-tone-${tone}`} aria-label={eyebrow}>
+      <div>
+        <span>{eyebrow}</span>
+        <strong>{title}</strong>
+        {detail ? <p>{detail}</p> : null}
+      </div>
+      {actions.length ? (
+        <div className="flow-next-action-buttons">
+          {actions.filter(Boolean).map((action) => (
+            <EtMockupButton
+              key={action.label}
+              variant={action.variant || "secondary"}
+              className={action.disabled ? "is-disabled" : ""}
+              disabled={Boolean(action.disabled)}
+              onClick={action.disabled ? undefined : action.onClick}
+            >
+              {action.label}
+            </EtMockupButton>
+          ))}
+        </div>
+      ) : null}
+    </section>
   );
 }
 
@@ -27674,6 +27701,17 @@ function renderMarketPriceMemorySection() {
           action={<EtMockupButton onClick={() => openMarketPriceMemoryFlow()}>Save Price</EtMockupButton>}
         />
       )}
+      <FlowNextActionCard
+        eyebrow="After Price Memory"
+        title="Compare later or connect it to your collection."
+        detail="Saved prices are manual research notes. Use them to compare cards and sealed products, then check again before buying, selling, or trading."
+        tone="market"
+        actions={[
+          { label: "Open Compare Table", onClick: () => openItemComparisonFlow(null, { source: "price-memory-next-action" }) },
+          { label: "Open Vault", onClick: () => setActiveTab("vault") },
+          { label: "Save Price", onClick: () => openMarketPriceMemoryFlow(null, { source: "price-memory-next-action" }) },
+        ]}
+      />
       {renderUpgradeValuePreview("market")}
     </EtMockupSectionCard>
   );
@@ -28915,6 +28953,18 @@ function renderForgeBusinessCommandPanel() {
             )}
           </div>
         </div>
+
+        <FlowNextActionCard
+          eyebrow="After Trade Compass"
+          title="Keep the trade decision connected."
+          detail="Use estimated values as guidance, then either save a Trade Memory, review the Vault item, or pause. Forge does not edit Vault unless you choose a separate Vault action."
+          tone="forge"
+          actions={[
+            { label: "Trade Compass", onClick: () => openTradeCompassFlow({ source: "forge-next-action" }) },
+            { label: "Log a Trade", onClick: () => openAddTradeFlow({ source: "forge-next-action" }) },
+            { label: "Open Vault", onClick: () => setActiveTab("vault") },
+          ]}
+        />
 
         <div className="forge-main-command-card forge-activity-command-card">
           <div className="compact-card-header">
@@ -40742,6 +40792,23 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </div>
         </EtMockupSectionCard>
 
+        <FlowNextActionCard
+          eyebrow="Vault next action"
+          title={activeVaultItems.length ? "Clean up one item profile." : "Start with one reviewed Vault item."}
+          detail={activeVaultItems.length
+            ? "Add a condition note, save a manual value, or check a trade before moving anything through Forge."
+            : "Add one card, sealed product, slab, supply, or wishlist want. Nothing saves until you review it."}
+          tone="vault"
+          actions={[
+            { label: activeVaultItems.length ? "Open first profile" : "Add to Vault", onClick: () => {
+              if (activeVaultItems[0]?.id) setSelectedVaultDetailId(activeVaultItems[0].id);
+              else openVaultQuickAddFlow();
+            } },
+            { label: "Check Market", onClick: () => setActiveTab("market") },
+            { label: "Trade Compass", onClick: () => openTradeCompassFlow({ source: "vault-next-action" }) },
+          ]}
+        />
+
         <EtMockupSectionCard
           id="vault-display-case-section"
           className="vault-display-case-panel"
@@ -43594,6 +43661,18 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             ))}
           </div>
         </EtMockupSectionCard>
+
+        <FlowNextActionCard
+          eyebrow="Next Spark action"
+          title="Pick one safe family-support step."
+          detail="The Spark stays local beta here: planning, notes, and support memories only. No payment, fulfillment, shipping, or private child messaging is connected."
+          tone="spark"
+          actions={[
+            { label: "Build a Kid Pack", onClick: () => openSparkKidPackFlow({ source: "spark-next-action" }) },
+            { label: "Log a Gift", onClick: () => openSparkGiftFlow({ source: "spark-next-action" }) },
+            { label: "Plan Event Support", onClick: () => openSparkEventSupportFlow({ source: "spark-next-action" }) },
+          ]}
+        />
 
         <EtMockupSectionCard
           title="Kid Packs"
@@ -58248,10 +58327,25 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       .sort((a, b) => String(b.tradeDate || b.createdAt || "").localeCompare(String(a.tradeDate || a.createdAt || "")))[0] || null;
     const latestMarketMemoryForHearth = [...marketPriceMemories]
       .sort((a, b) => String(b.dateSeen || b.createdAt || "").localeCompare(String(a.dateSeen || a.createdAt || "")))[0] || null;
+    const hearthGradeAssistChecklistCount = (() => {
+      if (typeof localStorage === "undefined") return 0;
+      try {
+        const saved = JSON.parse(localStorage.getItem(GRADE_ASSIST_LOCAL_STORAGE_KEY) || "{}");
+        return Object.values(saved || {}).filter((entry) => {
+          if (!entry || typeof entry !== "object") return false;
+          const checks = entry.checks || {};
+          const hasCheck = Object.values(checks).some((value) => value && value !== "not_checked");
+          return hasCheck || Boolean(String(entry.notes || "").trim());
+        }).length;
+      } catch {
+        return 0;
+      }
+    })();
     const trustedCircleCount = tidepoolTrustedCircle.length;
     const hasHearthLocalSignals = Boolean(
       activeVaultItems.length ||
       visibleVaultDisplayCase.length ||
+      hearthGradeAssistChecklistCount ||
       workspaceTradeRecords.length ||
       marketPriceMemories.length ||
       sparkKidPacks.length ||
@@ -58305,6 +58399,18 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         icon: "scout",
         tone: "scout",
         visible: hearthCanUseScout && (!followedStores.length || Boolean(latestScoutReport) || scoutReportRows.length > 0),
+      },
+      {
+        key: "grade-assist-follow-up",
+        eyebrow: "Vault Reminder",
+        title: "Grade Assist checklist saved",
+        detail: `${hearthGradeAssistChecklistCount} manual Grade Assist checklist${hearthGradeAssistChecklistCount === 1 ? "" : "s"} saved locally. Review value, condition notes, or Forge only when you are ready.`,
+        meta: "Not a professional grade",
+        actionLabel: "Open Vault",
+        onClick: () => setActiveTab("vault"),
+        icon: "vault",
+        tone: "vault",
+        visible: hearthGradeAssistChecklistCount > 0,
       },
       {
         key: "market-memory",
@@ -58391,8 +58497,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       {
         key: "organize-item",
         title: "Organize one item",
-        detail: activeVaultItems.length ? "Review a Vault item, profile, or Collection Set." : "Add one card, sealed product, slab, or accessory to Vault.",
-        status: activeVaultItems.length ? "Ready" : "Start",
+        detail: activeVaultItems.length ? "Review a Vault item, condition note, Grade Assist checklist, or Collection Set." : "Add one card, sealed product, slab, or accessory to Vault.",
+        status: hearthGradeAssistChecklistCount ? "Checklist saved" : activeVaultItems.length ? "Ready" : "Start",
         actionLabel: activeVaultItems.length ? "Open Vault" : "Add Item",
         onClick: () => activeVaultItems.length ? setActiveTab("vault") : openQuickAddAction("vaultItem"),
         tone: "vault",
@@ -72309,6 +72415,17 @@ function VaultItemDetail({ item, masterCard, setSummary, linkedTrades = [], coll
             </p>
           </section>
         </details>
+        <FlowNextActionCard
+          eyebrow="After Grade Assist"
+          title="Choose the next safe collector step."
+          detail="Use the manual checklist as a prompt, not a grade. Then review value, notes, or trade context before making a decision."
+          tone="vault"
+          actions={[
+            { label: "Check in Market", onClick: () => onCheckMarket?.(item) },
+            !itemIsWishlist ? { label: "Use in Forge", onClick: () => onStartTrade?.(item) } : null,
+            { label: "Add note", onClick: () => onEdit(item) },
+          ]}
+        />
         <details className="vault-detail-disclosure">
           <summary>Identifiers</summary>
           <div className="catalog-detail-grid">

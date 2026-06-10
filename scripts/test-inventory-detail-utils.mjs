@@ -41,6 +41,10 @@ assert.deepEqual(patch.plannedSalePriceHistory[1], {
 
 assert.equal(GRADE_ASSIST_DISCLAIMER, "Grade Assist is an estimate, not a guaranteed grade.");
 assert.match(appSource, /Manual collector note, not a professional grade\./);
+assert.match(appSource, /After Grade Assist/);
+assert.match(appSource, /Use the manual checklist as a prompt, not a grade\./);
+assert.match(appSource, /Check in Market/);
+assert.match(appSource, /Use in Forge/);
 assert.match(appSource, /vault-card-condition-note/);
 assert.match(appSource, /"booster box",\s*\n\s*"tin",\s*\n\s*"bundle"/);
 assert.match(appSource, /return "tin";/);

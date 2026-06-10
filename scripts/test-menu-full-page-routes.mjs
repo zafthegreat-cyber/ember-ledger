@@ -255,5 +255,30 @@ assert.ok(
     cssSource.includes("height: 100dvh"),
   "Mobile Scan Anything and Review/Add flows should receive full-page modal treatment."
 );
+assert.ok(
+  appSource.includes("function FlowNextActionCard") &&
+    appSource.includes('eyebrow="Vault next action"') &&
+    appSource.includes('eyebrow="After Price Memory"') &&
+    appSource.includes('eyebrow="After Trade Compass"') &&
+    appSource.includes('eyebrow="Next Spark action"') &&
+    appSource.includes('eyebrow="After Grade Assist"') &&
+    appSource.includes("Grade Assist checklist saved") &&
+    appSource.includes("Use the manual checklist as a prompt, not a grade.") &&
+    appSource.includes("Saved prices are manual research notes.") &&
+    appSource.includes("Forge does not edit Vault unless you choose a separate Vault action.") &&
+    appSource.includes("No payment, fulfillment, shipping, or private child messaging is connected."),
+  "Flow cleanup should add safe next-action handoffs for Vault, Market, Forge, Spark, Grade Assist, and Hearth."
+);
+assert.ok(
+  cssSource.includes(".flow-next-action-card") &&
+    cssSource.includes(".flow-next-action-buttons") &&
+    cssSource.includes(".et-mockup-button:disabled"),
+  "Flow next-action cards should have shared EtMockup styling and disabled-button support."
+);
+assert.equal(
+  /next action[^.]{0,240}(live alert|automatic notification|AI automation|guaranteed price|professional grade|authentication verified|checkout connected|payment processed|tax receipt generated)/i.test(appSource),
+  false,
+  "Next-action guidance must not imply automation, live alerts, guaranteed value, grading, authentication, checkout, payment, or tax receipt behavior."
+);
 
 console.log("Menu full-page route tests passed.");
