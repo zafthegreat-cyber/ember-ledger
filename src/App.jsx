@@ -6888,8 +6888,9 @@ export default function App() {
   const [vaultDisplayMode, setVaultDisplayMode] = useState(() => {
     if (typeof localStorage === "undefined") return "standard";
     const savedMode = localStorage.getItem(VAULT_SHOWCASE_VIEW_STORAGE_KEY);
-    return ["showcase", "shelf"].includes(savedMode) ? savedMode : "standard";
+    return ["showcase", "shelf", "gallery"].includes(savedMode) ? savedMode : "standard";
   });
+  const [vaultGalleryFilter, setVaultGalleryFilter] = useState("all");
   const [vaultPage, setVaultPage] = useState(1);
   const [selectedVaultDetailId, setSelectedVaultDetailId] = useState(initialRouteState.selectedVaultDetailId || "");
   const [selectedForgeDetailId, setSelectedForgeDetailId] = useState(initialRouteState.selectedForgeDetailId || "");
@@ -12535,7 +12536,7 @@ export default function App() {
 
   useEffect(() => {
     if (typeof localStorage === "undefined") return undefined;
-    localStorage.setItem(VAULT_SHOWCASE_VIEW_STORAGE_KEY, ["showcase", "shelf"].includes(vaultDisplayMode) ? vaultDisplayMode : "standard");
+    localStorage.setItem(VAULT_SHOWCASE_VIEW_STORAGE_KEY, ["showcase", "shelf", "gallery"].includes(vaultDisplayMode) ? vaultDisplayMode : "standard");
     return undefined;
   }, [vaultDisplayMode]);
 
@@ -30589,6 +30590,54 @@ function renderForgeBusinessLedgerPanel() {
       if (vaultSort === "quantity") return Number(b.quantity || 0) - Number(a.quantity || 0);
       return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
     }), [vaultItems, vaultFilter, deferredVaultSearch, vaultSort, vaultTypeFilter, vaultSetFilter, vaultLocationFilter, vaultOwnerFilter, vaultValueFilter]);
+  const vaultGalleryItems = useMemo(() => {
+    const ownedEntries = visibleVaultItems.map((item) => {
+      const kind = isInventorySealedProduct(item)
+        ? "sealed"
+        : isInventoryCardProduct(item)
+          ? "card"
+          : "unknown";
+      return {
+        id: `vault-${item.id}`,
+        kind,
+        item,
+        title: item.name || "Vault item",
+        subtitle: vaultItemSetLabel(item) || vaultItemTypeLabel(item) || "Vault item",
+        image: vaultItemDisplayImage(item),
+        status: vaultStatusLabel(normalizeVaultStatus(item)),
+        valueLabel: vaultItemTotalMarketValue(item) ? `${money(vaultItemTotalMarketValue(item))} saved estimate` : "No value saved yet",
+        detail: [vaultItemTypeLabel(item), `Qty ${item.quantity || 1}`].filter(Boolean).join(" | "),
+      };
+    });
+    const wishlistEntries = wishlistItems.slice(0, 8).map((item) => ({
+      id: `wishlist-${item.id}`,
+      kind: "wishlist",
+      item,
+      title: item.name || item.wantedItemName || "Wishlist item",
+      subtitle: vaultItemSetLabel(item) || "Wishlist / ISO",
+      image: vaultItemDisplayImage(item),
+      status: "Wishlist",
+      valueLabel: item.targetPrice || item.targetPriceText || item.marketPrice ? `Target ${item.targetPrice || item.targetPriceText || money(item.marketPrice)}` : "No target saved yet",
+      detail: "Wanted item planning",
+    }));
+    const setEntries = visibleVaultCollectionSets.slice(0, 8).map((set) => ({
+      id: `set-${set.id}`,
+      kind: "set",
+      set,
+      title: set.setName || "Collection Set",
+      subtitle: set.setType || "Set Shelf",
+      image: "",
+      status: "Set Shelf",
+      valueLabel: set.goal || "Add items later",
+      detail: set.notes || "Collection Set planning",
+    }));
+    return [...ownedEntries, ...wishlistEntries, ...setEntries];
+  }, [visibleVaultItems, wishlistItems, visibleVaultCollectionSets]);
+  const filteredVaultGalleryItems = useMemo(() => (
+    vaultGalleryFilter === "all"
+      ? vaultGalleryItems
+      : vaultGalleryItems.filter((entry) => entry.kind === vaultGalleryFilter)
+  ), [vaultGalleryFilter, vaultGalleryItems]);
   const vaultValue = vaultValuationSummary.estimatedMarketValue;
   const homeStatsProfile = { userType, homeStatsEnabled };
   const wishlistValue = useMemo(() => wishlistItems.reduce(
@@ -65685,6 +65734,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                       ["standard", "Standard"],
                       ["showcase", "Showcase"],
                       ["shelf", "Shelf"],
+                      ["gallery", "Gallery"],
                     ].map(([mode, label]) => (
                       <button
                         key={mode}
@@ -66061,6 +66111,85 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                       title="No sealed products on this shelf yet."
                       detail="Add ETBs, booster boxes, bundles, packs, tins, or other sealed items to see them in Shelf Mode. Card items still stay available in Standard and Showcase views."
                       action={<EtMockupButton variant="secondary" onClick={openVaultQuickAddFlow}>Add sealed item</EtMockupButton>}
+                    />
+                  )}
+                </section>
+              ) : null}
+              {(vaultItems.length > 0 || wishlistItems.length > 0 || visibleVaultCollectionSets.length > 0) && vaultDisplayMode === "gallery" ? (
+                <section className="vault-gallery-panel" aria-label="Vault Collection Gallery">
+                  <div className="compact-card-header">
+                    <div>
+                      <span className="trust-badge trust-badge--secure">Collection Gallery</span>
+                      <h3>Collector wall</h3>
+                      <p>Browse cards, sealed products, wishlist wants, fallback items, and Set Shelf groups as a visual gallery. Standard Vault remains the source of truth.</p>
+                    </div>
+                    <button type="button" className="secondary-button" onClick={() => setVaultDisplayMode("standard")}>Standard view</button>
+                  </div>
+                  <div className="vault-gallery-filter-row" role="group" aria-label="Vault Gallery filters">
+                    {[
+                      ["all", "All"],
+                      ["card", "Cards"],
+                      ["sealed", "Sealed"],
+                      ["wishlist", "Wishlist"],
+                      ["set", "Sets"],
+                      ["unknown", "Unknown"],
+                    ].map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        className={vaultGalleryFilter === value ? "active" : ""}
+                        aria-pressed={vaultGalleryFilter === value}
+                        onClick={() => setVaultGalleryFilter(value)}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  {filteredVaultGalleryItems.length ? (
+                    <div className="vault-gallery-grid">
+                      {filteredVaultGalleryItems.slice(0, 18).map((entry) => {
+                        const kindLabel = entry.kind === "card"
+                          ? "Card"
+                          : entry.kind === "sealed"
+                            ? "Sealed"
+                            : entry.kind === "wishlist"
+                              ? "Wishlist"
+                              : entry.kind === "set"
+                                ? "Set"
+                                : "Unknown";
+                        const openEntry = () => {
+                          if (entry.item?.id) {
+                            setSelectedVaultDetailId(entry.item.id);
+                            return;
+                          }
+                          if (entry.set) openVaultSetSummary(entry.set);
+                        };
+                        return (
+                          <button
+                            key={entry.id}
+                            type="button"
+                            className={`vault-gallery-tile vault-gallery-${entry.kind}`}
+                            onClick={openEntry}
+                            aria-label={`Open ${entry.title} from Collection Gallery`}
+                          >
+                            <span className="vault-gallery-media" aria-hidden="true">
+                              {entry.image ? <img src={entry.image} alt="" loading="lazy" /> : <b>{collectorShowcaseInitials(entry.title)}</b>}
+                            </span>
+                            <span className="vault-gallery-copy">
+                              <b>{entry.title}</b>
+                              <small>{entry.subtitle}</small>
+                              <span>{kindLabel} | {entry.status}</span>
+                              <em>{entry.valueLabel}</em>
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <EtMockupEmptyState
+                      title="Add items to build your collection gallery."
+                      detail="This filter has no gallery items yet. Add cards, sealed products, wishlist wants, or Set Shelf groups to fill the wall."
+                      action={<EtMockupButton variant="secondary" onClick={() => setVaultGalleryFilter("all")}>Show all gallery items</EtMockupButton>}
                     />
                   )}
                 </section>

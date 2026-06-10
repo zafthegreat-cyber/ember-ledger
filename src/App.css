@@ -101143,6 +101143,146 @@ html body #root .app.app-command-shell .sealed-product-shelf-actions {
   gap: 8px;
 }
 
+html body #root .app.app-command-shell .vault-gallery-panel {
+  display: grid;
+  gap: 14px;
+  padding: clamp(14px, 2vw, 18px);
+  margin-top: 6px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent, #8b5cf6) 28%, var(--et-border, rgba(118, 84, 42, 0.18)));
+  border-radius: clamp(20px, 1.8vw, 28px);
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--et-page-accent, #8b5cf6) 14%, transparent), transparent 18rem),
+    color-mix(in srgb, var(--et-panel, #fffdf7) 90%, var(--et-page-accent-2, #d9a441) 5%);
+}
+
+html body #root .app.app-theme-dark.app-command-shell .vault-gallery-panel,
+html body #root .app.app-shell-dark.app-command-shell .vault-gallery-panel {
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--et-page-accent, #8b5cf6) 18%, transparent), transparent 18rem),
+    color-mix(in srgb, var(--et-panel, #0d1b31) 88%, #141f38 12%);
+}
+
+html body #root .app.app-command-shell .vault-gallery-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+html body #root .app.app-command-shell .vault-gallery-filter-row button {
+  min-height: 38px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2, #d9a441) 28%, var(--et-border, rgba(118, 84, 42, 0.18)));
+  background: color-mix(in srgb, var(--et-panel-soft, #fff1dc) 80%, transparent);
+  color: var(--et-ink, #172033);
+  font-weight: 850;
+}
+
+html body #root .app.app-command-shell .vault-gallery-filter-row button.active {
+  color: #fffaf0;
+  background: linear-gradient(135deg, var(--et-page-accent, #8b5cf6), color-mix(in srgb, var(--et-page-accent-2, #d9a441) 70%, var(--et-page-accent)));
+}
+
+html body #root .app.app-command-shell .vault-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 168px), 1fr));
+  gap: clamp(10px, 1.5vw, 16px);
+  min-width: 0;
+}
+
+html body #root .app.app-command-shell .vault-gallery-tile {
+  display: grid;
+  gap: 9px;
+  min-width: 0;
+  min-height: 224px;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2, #d9a441) 28%, var(--et-border, rgba(118, 84, 42, 0.18)));
+  border-radius: 20px;
+  color: var(--et-ink, #172033);
+  background:
+    radial-gradient(circle at 18% 12%, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 14%, transparent), transparent 8rem),
+    color-mix(in srgb, var(--et-panel, #fffdf7) 92%, transparent);
+  box-shadow:
+    0 14px 28px color-mix(in srgb, var(--et-page-accent, #8b5cf6) 9%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.58);
+  text-align: left;
+  cursor: pointer;
+}
+
+html body #root .app.app-theme-dark.app-command-shell .vault-gallery-tile,
+html body #root .app.app-shell-dark.app-command-shell .vault-gallery-tile {
+  color: var(--et-ink, #f7f0df);
+  background:
+    radial-gradient(circle at 18% 12%, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 12%, transparent), transparent 8rem),
+    color-mix(in srgb, var(--et-panel, #0d1b31) 90%, #141f38 10%);
+}
+
+html body #root .app.app-command-shell .vault-gallery-tile:hover,
+html body #root .app.app-command-shell .vault-gallery-tile:focus-visible {
+  border-color: color-mix(in srgb, var(--et-page-accent, #8b5cf6) 44%, var(--et-page-accent-2, #d9a441));
+  transform: translateY(-2px);
+}
+
+html body #root .app.app-command-shell .vault-gallery-tile:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--et-page-accent-2, #d9a441) 58%, transparent);
+  outline-offset: 3px;
+}
+
+html body #root .app.app-command-shell .vault-gallery-media {
+  display: grid;
+  place-items: center;
+  min-height: 132px;
+  border-radius: 16px;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--et-page-accent, #8b5cf6) 18%, rgba(255, 255, 255, 0.55)), color-mix(in srgb, var(--et-page-accent-2, #d9a441) 16%, rgba(255, 255, 255, 0.36)));
+  overflow: hidden;
+}
+
+html body #root .app.app-command-shell .vault-gallery-media img {
+  width: 100%;
+  height: 100%;
+  min-height: 132px;
+  object-fit: cover;
+}
+
+html body #root .app.app-command-shell .vault-gallery-media b {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 18px;
+  color: #fffaf0;
+  background: linear-gradient(135deg, var(--et-page-accent, #8b5cf6), var(--et-page-accent-2, #d9a441));
+}
+
+html body #root .app.app-command-shell .vault-gallery-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+html body #root .app.app-command-shell .vault-gallery-copy b {
+  overflow-wrap: anywhere;
+}
+
+html body #root .app.app-command-shell .vault-gallery-copy small,
+html body #root .app.app-command-shell .vault-gallery-copy span,
+html body #root .app.app-command-shell .vault-gallery-copy em {
+  color: color-mix(in srgb, var(--et-muted, #675d52) 88%, var(--et-ink, #172033));
+  font-size: 0.78rem;
+  line-height: 1.32;
+  font-style: normal;
+}
+
+html body #root .app.app-theme-dark.app-command-shell .vault-gallery-copy small,
+html body #root .app.app-theme-dark.app-command-shell .vault-gallery-copy span,
+html body #root .app.app-theme-dark.app-command-shell .vault-gallery-copy em,
+html body #root .app.app-shell-dark.app-command-shell .vault-gallery-copy small,
+html body #root .app.app-shell-dark.app-command-shell .vault-gallery-copy span,
+html body #root .app.app-shell-dark.app-command-shell .vault-gallery-copy em {
+  color: color-mix(in srgb, var(--et-muted, #c9d7ea) 86%, var(--et-ink, #f7f0df));
+}
+
 html body #root .app.app-command-shell .collector-flip-card {
   display: grid;
   gap: 10px;
@@ -101403,7 +101543,7 @@ html body #root .app.app-command-shell .quick-add-result-card .quick-add-result-
   html body #root .app.app-command-shell .vault-showcase-toggle {
     display: grid;
     grid-column: 1 / -1;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     width: 100%;
   }
 
@@ -101419,6 +101559,8 @@ html body #root .app.app-command-shell .quick-add-result-card .quick-add-result-
   html body #root .app.app-command-shell button.collector-showcase-card:hover .collector-showcase-object,
   html body #root .app.app-command-shell button.collector-showcase-card:focus-visible .collector-showcase-object,
   html body #root .app.app-command-shell .sealed-product-shelf-object,
+  html body #root .app.app-command-shell .vault-gallery-tile:hover,
+  html body #root .app.app-command-shell .vault-gallery-tile:focus-visible,
   html body #root .app.app-command-shell .collector-flip-front,
   html body #root .app.app-command-shell .collector-flip-card[open] .collector-flip-front,
   html body #root .app.app-command-shell .collector-flip-back {

@@ -87,6 +87,7 @@ assert.ok(
     appSource.includes("function SealedProductShelfCard") &&
     appSource.includes("3D Collector Showcase") &&
     appSource.includes("Sealed Product Shelf") &&
+    appSource.includes("Collection Gallery") &&
     appSource.includes("Back-side details") &&
     appSource.includes("vaultDisplayMode") &&
     appSource.includes("market-showcase-preview") &&
@@ -97,6 +98,7 @@ assert.ok(
     cssSource.includes(".collector-showcase-card") &&
     cssSource.includes(".collector-flip-card") &&
     cssSource.includes(".sealed-product-shelf-card") &&
+    cssSource.includes(".vault-gallery-tile") &&
     cssSource.includes("@media (prefers-reduced-motion: reduce)") &&
     cssSource.includes("transform: none"),
   "Collector Showcase and flip details should provide a reduced-motion CSS fallback."

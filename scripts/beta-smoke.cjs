@@ -916,6 +916,14 @@ async function main() {
       page.locator(".sealed-product-shelf-card").filter({ hasText: "Focused Vault Smoke Sealed Box" }).first(),
       "Vault sealed shelf card"
     );
+    await page.getByRole("button", { name: /^Gallery$/ }).first().click();
+    await assertVisibleText("Collection Gallery");
+    await assertVisibleText("Collector wall");
+    const focusedGalleryTile = page.locator(".vault-gallery-tile").filter({ hasText: "Focused Vault Smoke Card" }).first();
+    await expectVisible(focusedGalleryTile, "Vault Gallery item tile");
+    await focusedGalleryTile.click();
+    await assertVisibleText("Item Profile");
+    await page.locator(".vault-detail-card").getByRole("button", { name: /^Close$/ }).first().click();
     await page.getByRole("button", { name: /^Standard view$/ }).first().click();
     const focusedVaultCard = page.locator(".vault-item-card").filter({ hasText: "Focused Vault Smoke Card" }).first();
     await expectVisible(focusedVaultCard, "focused Vault item card");
