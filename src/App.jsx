@@ -6468,6 +6468,79 @@ function CollectorFlipDetailCard({
   );
 }
 
+function sealedProductShelfMeta(value = {}) {
+  const text = normalizeSearchText([
+    value.name,
+    value.productName,
+    value.product_name,
+    value.productType,
+    value.product_type,
+    value.sealedProductType,
+    value.category,
+    value.setName,
+  ].filter(Boolean).join(" "));
+  if (/\bbooster\s+(box|display)\b|\bdisplay\s+case\b/.test(text)) return { key: "booster-box", label: "Box" };
+  if (/\bpack\b|\bblister\b|\bsleeved\s+booster\b/.test(text)) return { key: "pack", label: "Pack" };
+  if (/\btin\b|\bcollector'?s?\s+chest\b|\bpok[eé]?\s*ball\b/.test(text)) return { key: "tin", label: "Tin / Box" };
+  if (/\betb\b|\belite\s+trainer\s+box\b|\bbundle\b|\bcollection\s+box\b|\bultra[-\s]?premium\b|\bupc\b/.test(text)) return { key: "box", label: "Box" };
+  return { key: "generic", label: "Sealed" };
+}
+
+function SealedProductShelfCard({
+  title = "Sealed product",
+  subtitle = "",
+  image = "",
+  valueLabel = "",
+  meta = [],
+  helper = "Visual display only. Images may be representative. Check condition and sealed status manually.",
+  actions = [],
+  className = "",
+}) {
+  const shelf = sealedProductShelfMeta({ name: title, productType: subtitle, category: meta.join(" ") });
+  const metaItems = [...new Set([shelf.label, "Sealed", ...(Array.isArray(meta) ? meta : [meta]).filter(Boolean)])].slice(0, 4);
+  return (
+    <article className={`sealed-product-shelf-card sealed-shelf-${shelf.key} ${image ? "has-image" : "is-fallback"} ${className}`.trim()}>
+      <div className="sealed-product-shelf-visual" aria-hidden="true">
+        <span className="sealed-product-shelf-board" />
+        <span className="sealed-product-shelf-object">
+          {image ? <img src={image} alt="" loading="lazy" /> : (
+            <span className="sealed-product-shelf-fallback">
+              <strong>{collectorShowcaseInitials(title)}</strong>
+              <small>{shelf.label}</small>
+            </span>
+          )}
+        </span>
+      </div>
+      <div className="sealed-product-shelf-copy">
+        <span className="collector-showcase-kicker">Sealed Product Shelf</span>
+        <h4>{title}</h4>
+        {subtitle ? <p>{subtitle}</p> : null}
+        {valueLabel ? <strong>{valueLabel}</strong> : null}
+        <div className="collector-showcase-chip-row">
+          {metaItems.map((item) => <b key={item}>{item}</b>)}
+        </div>
+        <small>{helper}</small>
+        {actions.length ? (
+          <div className="sealed-product-shelf-actions">
+            {actions.filter(Boolean).map((action) => (
+              <button
+                key={action.label}
+                type="button"
+                className={action.variant === "primary" ? "" : "secondary-button"}
+                disabled={Boolean(action.disabled)}
+                title={action.title || ""}
+                onClick={action.onClick}
+              >
+                {action.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    </article>
+  );
+}
+
 function CollapsibleFeatureSection({ title, summary, open, onToggle, children }) {
   return (
     <section className="feature-dropdown">
@@ -6814,7 +6887,8 @@ export default function App() {
   const [vaultSort, setVaultSort] = useState(initialRouteState.vaultSort || "newest");
   const [vaultDisplayMode, setVaultDisplayMode] = useState(() => {
     if (typeof localStorage === "undefined") return "standard";
-    return localStorage.getItem(VAULT_SHOWCASE_VIEW_STORAGE_KEY) === "showcase" ? "showcase" : "standard";
+    const savedMode = localStorage.getItem(VAULT_SHOWCASE_VIEW_STORAGE_KEY);
+    return ["showcase", "shelf"].includes(savedMode) ? savedMode : "standard";
   });
   const [vaultPage, setVaultPage] = useState(1);
   const [selectedVaultDetailId, setSelectedVaultDetailId] = useState(initialRouteState.selectedVaultDetailId || "");
@@ -12461,7 +12535,7 @@ export default function App() {
 
   useEffect(() => {
     if (typeof localStorage === "undefined") return undefined;
-    localStorage.setItem(VAULT_SHOWCASE_VIEW_STORAGE_KEY, vaultDisplayMode === "showcase" ? "showcase" : "standard");
+    localStorage.setItem(VAULT_SHOWCASE_VIEW_STORAGE_KEY, ["showcase", "shelf"].includes(vaultDisplayMode) ? vaultDisplayMode : "standard");
     return undefined;
   }, [vaultDisplayMode]);
 
@@ -65610,6 +65684,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     {[
                       ["standard", "Standard"],
                       ["showcase", "Showcase"],
+                      ["shelf", "Shelf"],
                     ].map(([mode, label]) => (
                       <button
                         key={mode}
@@ -65947,6 +66022,47 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                       action={<EtMockupButton variant="secondary" onClick={clearVaultFilters}>Reset Filters</EtMockupButton>}
                     />
                   ) : null}
+                </section>
+              ) : null}
+              {vaultItems.length > 0 && vaultDisplayMode === "shelf" ? (
+                <section className="vault-showcase-panel sealed-product-shelf-panel" aria-label="Vault Sealed Product Shelf">
+                  <div className="compact-card-header">
+                    <div>
+                      <span className="trust-badge trust-badge--secure">Sealed Product Shelf</span>
+                      <h3>Sealed products on display</h3>
+                      <p>Visual display only. Images may be representative. Check condition and sealed status manually before buying, selling, trading, or gifting.</p>
+                    </div>
+                    <button type="button" className="secondary-button" onClick={() => setVaultDisplayMode("standard")}>Standard view</button>
+                  </div>
+                  {visibleVaultItems.filter(isInventorySealedProduct).length ? (
+                    <div className="sealed-product-shelf-grid">
+                      {visibleVaultItems.filter(isInventorySealedProduct).slice(0, 8).map((item) => {
+                        const totalValue = vaultItemTotalMarketValue(item);
+                        const conditionLabel = item.conditionName || item.condition || "Sealed status to check";
+                        return (
+                          <SealedProductShelfCard
+                            key={item.id}
+                            title={item.name}
+                            subtitle={vaultItemSetLabel(item) || vaultItemTypeLabel(item) || "Sealed Product"}
+                            image={vaultItemDisplayImage(item)}
+                            valueLabel={totalValue ? `${money(totalValue)} saved estimate` : "No value saved yet"}
+                            meta={[vaultItemTypeLabel(item), `Qty ${item.quantity || 1}`, conditionLabel]}
+                            actions={[
+                              { label: "Open Profile", variant: "primary", onClick: () => setSelectedVaultDetailId(item.id) },
+                              { label: "Save Price", onClick: () => openMarketPriceMemoryFlow(item, { source: "vault-sealed-shelf-save-price", seed: { itemName: item.name, price: totalValue || "", condition: conditionLabel } }) },
+                              !isWishlistLikeVaultItem(item) ? { label: "Add to Forge", onClick: () => openTradeValueFlow(item, { source: "vault-sealed-shelf", sourceKind: "vault" }) } : null,
+                            ]}
+                          />
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <EtMockupEmptyState
+                      title="No sealed products on this shelf yet."
+                      detail="Add ETBs, booster boxes, bundles, packs, tins, or other sealed items to see them in Shelf Mode. Card items still stay available in Standard and Showcase views."
+                      action={<EtMockupButton variant="secondary" onClick={openVaultQuickAddFlow}>Add sealed item</EtMockupButton>}
+                    />
+                  )}
                 </section>
               ) : null}
               {editingItemId && rawVaultItems.some((item) => item.id === editingItemId) && (

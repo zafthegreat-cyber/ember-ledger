@@ -768,7 +768,7 @@ async function main() {
       const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
       const now = new Date().toISOString();
       data.items = [
-        ...(data.items || []).filter((item) => item.id !== "focused-vault-smoke-item" && item.id !== "focused-vault-wishlist-iso" && !item.wishlistIso && item.recordType !== "wishlist_item"),
+        ...(data.items || []).filter((item) => item.id !== "focused-vault-smoke-item" && item.id !== "focused-vault-smoke-sealed" && item.id !== "focused-vault-wishlist-iso" && !item.wishlistIso && item.recordType !== "wishlist_item"),
         {
           id: "focused-vault-smoke-item",
           name: "Focused Vault Smoke Card",
@@ -784,6 +784,24 @@ async function main() {
           language: "English",
           variantLabel: "Holo",
           cardNumber: "ET-001",
+          setName: "Smoke Set",
+          workspaceId: "workspace-personal-local-beta",
+          workspaceName: "My Personal Space",
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: "focused-vault-smoke-sealed",
+          name: "Focused Vault Smoke Sealed Box",
+          destinationScope: ["vault"],
+          recordType: "vault_item",
+          businessInventory: false,
+          vaultStatus: "sealed",
+          status: "Sealed / Holding",
+          productType: "Booster Box",
+          quantity: 1,
+          marketPrice: 42,
+          conditionName: "Sealed",
           setName: "Smoke Set",
           workspaceId: "workspace-personal-local-beta",
           workspaceName: "My Personal Space",
@@ -890,6 +908,14 @@ async function main() {
     await focusedFlipCard.locator("summary").click();
     await expectVisible(focusedFlipCard.locator(".collector-flip-back").filter({ hasText: "Back-side details" }).first(), "Vault flip back-side details");
     await expectVisible(focusedFlipCard.getByRole("button", { name: /^Open Profile$/ }).first(), "Vault flip Open Profile action");
+    await page.getByRole("button", { name: /^Shelf$/ }).first().click();
+    await assertVisibleText("Sealed Product Shelf");
+    await assertVisibleText("Sealed products on display");
+    await assertVisibleText("Visual display only");
+    await expectVisible(
+      page.locator(".sealed-product-shelf-card").filter({ hasText: "Focused Vault Smoke Sealed Box" }).first(),
+      "Vault sealed shelf card"
+    );
     await page.getByRole("button", { name: /^Standard view$/ }).first().click();
     const focusedVaultCard = page.locator(".vault-item-card").filter({ hasText: "Focused Vault Smoke Card" }).first();
     await expectVisible(focusedVaultCard, "focused Vault item card");

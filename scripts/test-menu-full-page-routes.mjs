@@ -84,7 +84,9 @@ assert.equal(
 assert.ok(
   appSource.includes("function CollectorShowcaseCard") &&
     appSource.includes("function CollectorFlipDetailCard") &&
+    appSource.includes("function SealedProductShelfCard") &&
     appSource.includes("3D Collector Showcase") &&
+    appSource.includes("Sealed Product Shelf") &&
     appSource.includes("Back-side details") &&
     appSource.includes("vaultDisplayMode") &&
     appSource.includes("market-showcase-preview") &&
@@ -92,8 +94,9 @@ assert.ok(
   "Collector Showcase and flip details should be wired into shared UI, Vault, Market, and Quick Add."
 );
 assert.ok(
-  cssSource.includes(".collector-showcase-card") &&
+    cssSource.includes(".collector-showcase-card") &&
     cssSource.includes(".collector-flip-card") &&
+    cssSource.includes(".sealed-product-shelf-card") &&
     cssSource.includes("@media (prefers-reduced-motion: reduce)") &&
     cssSource.includes("transform: none"),
   "Collector Showcase and flip details should provide a reduced-motion CSS fallback."
@@ -102,6 +105,11 @@ assert.equal(
   /(showcase|flip)[^.]{0,100}(authenticat|grade verified|product verified|live market|guaranteed price|official scan)/i.test(appSource),
   false,
   "Collector Showcase and flip detail copy should not claim grading, authentication, live market pricing, or product verification."
+);
+assert.equal(
+  /sealed product shelf[^.]{0,140}(live stock|in stock|guaranteed availability|product verified|official verification|live price)/i.test(appSource),
+  false,
+  "Sealed Product Shelf should not claim stock status, live prices, or product verification."
 );
 assert.ok(
   cssSource.includes('.flow-modal[data-flow="addActionSheet"]') &&
