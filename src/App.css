@@ -100786,6 +100786,7 @@ html body #root .app.app-command-shell .collector-showcase-card {
   isolation: isolate;
   text-align: left;
   contain: layout paint style;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
 }
 
 html body #root .app.app-theme-dark.app-command-shell .collector-showcase-card,
@@ -100808,8 +100809,8 @@ button.collector-showcase-card:hover,
 button.collector-showcase-card:focus-visible {
   border-color: color-mix(in srgb, var(--et-page-accent, #f97316) 44%, var(--et-page-accent-2, #d9a441));
   box-shadow:
-    0 22px 46px color-mix(in srgb, var(--et-page-accent, #f97316) 16%, transparent),
-    0 0 0 1px color-mix(in srgb, var(--et-page-accent-2, #d9a441) 24%, transparent),
+    0 18px 36px color-mix(in srgb, var(--et-page-accent, #f97316) 13%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--et-page-accent-2, #d9a441) 22%, transparent),
     inset 0 1px 0 rgba(255, 255, 255, 0.58);
 }
 
@@ -100852,8 +100853,32 @@ html body #root .app.app-command-shell .collector-showcase-object {
 
 html body #root .app.app-command-shell button.collector-showcase-card:hover .collector-showcase-object,
 html body #root .app.app-command-shell button.collector-showcase-card:focus-visible .collector-showcase-object {
-  transform: rotateX(5deg) rotateY(-7deg) translateY(-3px) translateZ(10px);
+  transform: rotateX(6deg) rotateY(-8deg) translateY(-2px) translateZ(6px);
   filter: saturate(1.06);
+}
+
+html body #root .app.app-command-shell .collector-showcase-edge {
+  position: absolute;
+  top: 7%;
+  right: -8px;
+  z-index: 0;
+  width: 14px;
+  height: 86%;
+  border-radius: 0 12px 12px 0;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 34%, rgba(255, 255, 255, 0.4)), color-mix(in srgb, var(--et-page-accent, #f97316) 24%, rgba(91, 55, 25, 0.36))),
+    color-mix(in srgb, var(--et-panel-soft, #fff1dc) 78%, var(--et-page-accent-2, #d9a441) 12%);
+  box-shadow: 7px 9px 18px color-mix(in srgb, var(--et-page-accent, #f97316) 14%, transparent);
+  transform: skewY(11deg) translateZ(-1px);
+  backface-visibility: hidden;
+}
+
+html body #root .app.app-theme-dark.app-command-shell .collector-showcase-edge,
+html body #root .app.app-shell-dark.app-command-shell .collector-showcase-edge {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 24%, rgba(255, 255, 255, 0.08)), color-mix(in srgb, var(--et-page-accent, #f97316) 24%, rgba(0, 0, 0, 0.46))),
+    color-mix(in srgb, var(--et-panel-soft, #10243f) 84%, #06101e 16%);
+  box-shadow: 8px 10px 20px rgba(0, 0, 0, 0.28);
 }
 
 html body #root .app.app-command-shell .collector-showcase-face {
@@ -100873,6 +100898,7 @@ html body #root .app.app-command-shell .collector-showcase-face {
     inset 0 1px 0 rgba(255, 255, 255, 0.74);
   overflow: hidden;
   backface-visibility: hidden;
+  z-index: 1;
 }
 
 html body #root .app.app-theme-dark.app-command-shell .collector-showcase-face,
@@ -100896,6 +100922,23 @@ html body #root .app.app-command-shell .collector-showcase-set .collector-showca
     12px 12px 0 color-mix(in srgb, var(--et-page-accent, #f97316) 18%, rgba(78, 46, 22, 0.32)),
     0 16px 28px rgba(48, 31, 18, 0.18),
     inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+html body #root .app.app-command-shell .collector-showcase-sealed .collector-showcase-face {
+  aspect-ratio: 1.12 / 1;
+  border-radius: 20px;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 18%, rgba(255, 255, 255, 0.72)) 0 13%, transparent 13%),
+    linear-gradient(145deg, color-mix(in srgb, var(--et-page-accent, #8b5cf6) 16%, rgba(255, 255, 255, 0.72)), color-mix(in srgb, var(--et-page-accent-2, #d9a441) 14%, rgba(255, 248, 232, 0.88))),
+    color-mix(in srgb, var(--et-panel, #fffdf7) 90%, transparent);
+}
+
+html body #root .app.app-theme-dark.app-command-shell .collector-showcase-sealed .collector-showcase-face,
+html body #root .app.app-shell-dark.app-command-shell .collector-showcase-sealed .collector-showcase-face {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 18%, rgba(255, 255, 255, 0.08)) 0 13%, transparent 13%),
+    linear-gradient(145deg, color-mix(in srgb, var(--et-page-accent, #8b5cf6) 16%, rgba(255, 255, 255, 0.08)), color-mix(in srgb, var(--et-page-accent-2, #d9a441) 12%, rgba(255, 255, 255, 0.05))),
+    color-mix(in srgb, var(--et-panel-soft, #10243f) 88%, transparent);
 }
 
 html body #root .app.app-command-shell .collector-showcase-slab .collector-showcase-face {
@@ -100923,6 +100966,22 @@ html body #root .app.app-command-shell .collector-showcase-face img {
   display: block;
 }
 
+html body #root .app.app-command-shell .collector-showcase-card.is-fallback .collector-showcase-face {
+  border-style: solid;
+  background:
+    radial-gradient(circle at 22% 18%, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 26%, transparent), transparent 32%),
+    radial-gradient(circle at 84% 80%, color-mix(in srgb, var(--et-page-accent, #f97316) 18%, transparent), transparent 34%),
+    linear-gradient(145deg, color-mix(in srgb, var(--et-panel, #fffdf7) 72%, var(--et-page-accent-2, #d9a441) 12%), color-mix(in srgb, var(--et-panel-soft, #fff1dc) 76%, var(--et-page-accent, #f97316) 10%));
+}
+
+html body #root .app.app-theme-dark.app-command-shell .collector-showcase-card.is-fallback .collector-showcase-face,
+html body #root .app.app-shell-dark.app-command-shell .collector-showcase-card.is-fallback .collector-showcase-face {
+  background:
+    radial-gradient(circle at 22% 18%, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 18%, transparent), transparent 32%),
+    radial-gradient(circle at 84% 80%, color-mix(in srgb, var(--et-page-accent, #f97316) 18%, transparent), transparent 34%),
+    linear-gradient(145deg, color-mix(in srgb, var(--et-panel, #0d1b31) 84%, var(--et-page-accent-2, #d9a441) 8%), color-mix(in srgb, var(--et-panel-soft, #10243f) 84%, var(--et-page-accent, #f97316) 8%));
+}
+
 html body #root .app.app-command-shell .collector-showcase-fallback {
   display: grid;
   gap: 4px;
@@ -100930,6 +100989,10 @@ html body #root .app.app-command-shell .collector-showcase-fallback {
   min-height: 100%;
   padding: 14px;
   text-align: center;
+  background:
+    radial-gradient(circle at 22% 18%, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 22%, transparent), transparent 30%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.18), transparent 44%),
+    repeating-linear-gradient(135deg, transparent 0 10px, color-mix(in srgb, var(--et-page-accent, #f97316) 7%, transparent) 10px 12px);
 }
 
 html body #root .app.app-command-shell .collector-showcase-fallback strong {
@@ -100946,6 +101009,11 @@ html body #root .app.app-command-shell .collector-showcase-fallback strong {
 html body #root .app.app-command-shell .collector-showcase-fallback small {
   color: color-mix(in srgb, var(--et-muted, #675d52) 88%, var(--et-ink, #172033));
   font-weight: 800;
+}
+
+html body #root .app.app-theme-dark.app-command-shell .collector-showcase-fallback small,
+html body #root .app.app-shell-dark.app-command-shell .collector-showcase-fallback small {
+  color: color-mix(in srgb, var(--et-ink, #f7f0df) 86%, var(--et-page-accent-2, #d9a441));
 }
 
 html body #root .app.app-command-shell .collector-showcase-shine {
@@ -101003,9 +101071,15 @@ html body #root .app.app-command-shell .collector-showcase-copy {
 }
 
 html body #root .app.app-command-shell .collector-showcase-copy strong {
+  color: var(--et-ink, #172033);
   font-size: clamp(1rem, 2vw, 1.24rem);
   line-height: 1.08;
   overflow-wrap: anywhere;
+}
+
+html body #root .app.app-theme-dark.app-command-shell .collector-showcase-copy strong,
+html body #root .app.app-shell-dark.app-command-shell .collector-showcase-copy strong {
+  color: var(--et-ink, #f7f0df);
 }
 
 html body #root .app.app-command-shell .collector-showcase-copy small,
@@ -101088,6 +101162,10 @@ html body #root .app.app-command-shell .collector-showcase-mini .collector-showc
   width: min(100%, 76px);
   transform: none;
   transition: none;
+}
+
+html body #root .app.app-command-shell .collector-showcase-mini .collector-showcase-edge {
+  display: none;
 }
 
 html body #root .app.app-command-shell .collector-showcase-mini .collector-showcase-shadow,
@@ -101277,10 +101355,58 @@ html body #root .app.app-command-shell .sealed-product-shelf-object {
   backface-visibility: hidden;
 }
 
+html body #root .app.app-command-shell .sealed-product-shelf-object::before,
+html body #root .app.app-command-shell .sealed-product-shelf-object::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  backface-visibility: hidden;
+}
+
+html body #root .app.app-command-shell .sealed-product-shelf-object::before {
+  inset: 0 auto 0 0;
+  width: 16%;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 22%, rgba(255, 255, 255, 0.26)), color-mix(in srgb, var(--et-page-accent, #8b5cf6) 18%, rgba(62, 39, 22, 0.18)));
+  border-right: 1px solid color-mix(in srgb, var(--et-page-accent-2, #d9a441) 28%, transparent);
+}
+
+html body #root .app.app-command-shell .sealed-product-shelf-object::after {
+  inset: 10% 10% auto auto;
+  width: 32%;
+  height: 16%;
+  border-radius: 999px;
+  background: color-mix(in srgb, rgba(255, 255, 255, 0.58) 70%, var(--et-page-accent-2, #d9a441) 16%);
+  opacity: 0.78;
+}
+
+html body #root .app.app-theme-dark.app-command-shell .sealed-product-shelf-object::before,
+html body #root .app.app-shell-dark.app-command-shell .sealed-product-shelf-object::before {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 18%, rgba(255, 255, 255, 0.08)), color-mix(in srgb, var(--et-page-accent, #8b5cf6) 20%, rgba(0, 0, 0, 0.28)));
+}
+
+html body #root .app.app-theme-dark.app-command-shell .sealed-product-shelf-object::after,
+html body #root .app.app-shell-dark.app-command-shell .sealed-product-shelf-object::after {
+  background: color-mix(in srgb, rgba(255, 255, 255, 0.18) 64%, var(--et-page-accent-2, #d9a441) 22%);
+}
+
 html body #root .app.app-command-shell .sealed-shelf-pack .sealed-product-shelf-object {
   width: min(54%, 118px);
   aspect-ratio: 0.68 / 1;
   border-radius: 16px;
+}
+
+html body #root .app.app-command-shell .sealed-shelf-pack .sealed-product-shelf-object::before {
+  width: 100%;
+  height: 14%;
+  inset: auto 0 0 0;
+  border-top: 1px solid color-mix(in srgb, var(--et-page-accent-2, #d9a441) 28%, transparent);
+  border-right: 0;
+}
+
+html body #root .app.app-command-shell .sealed-shelf-pack .sealed-product-shelf-object::after {
+  inset: 12% 12% auto 12%;
+  width: auto;
+  height: 9%;
 }
 
 html body #root .app.app-command-shell .sealed-shelf-tin .sealed-product-shelf-object {
@@ -101289,10 +101415,20 @@ html body #root .app.app-command-shell .sealed-shelf-tin .sealed-product-shelf-o
   border-radius: 28px;
 }
 
+html body #root .app.app-command-shell .sealed-shelf-tin .sealed-product-shelf-object::before {
+  width: 100%;
+  height: 22%;
+  inset: 0 0 auto 0;
+  border-right: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--et-page-accent-2, #d9a441) 28%, transparent);
+}
+
 html body #root .app.app-command-shell .sealed-product-shelf-object img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  position: relative;
+  z-index: 1;
 }
 
 html body #root .app.app-command-shell .sealed-product-shelf-fallback {
@@ -101303,6 +101439,8 @@ html body #root .app.app-command-shell .sealed-product-shelf-fallback {
   padding: 14px;
   text-align: center;
   color: #fffaf0;
+  position: relative;
+  z-index: 1;
 }
 
 html body #root .app.app-command-shell .sealed-product-shelf-fallback strong {
@@ -101967,12 +102105,21 @@ html body #root .app.app-command-shell .quick-add-result-card .quick-add-result-
   html body #root .app.app-command-shell .collector-showcase-card {
     grid-template-columns: minmax(82px, 104px) minmax(0, 1fr);
     padding: 10px;
+    box-shadow:
+      0 12px 24px color-mix(in srgb, var(--et-page-accent, #f97316) 10%, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.52);
   }
 
   html body #root .app.app-command-shell .collector-showcase-object,
   html body #root .app.app-command-shell .sealed-product-shelf-object {
     transform: none;
     transition: none;
+  }
+
+  html body #root .app.app-command-shell .collector-showcase-edge {
+    right: -5px;
+    width: 9px;
+    transform: none;
   }
 
   html body #root .app.app-command-shell .collector-showcase-shadow,
@@ -102033,6 +102180,12 @@ html body #root .app.app-command-shell .quick-add-result-card .quick-add-result-
 }
 
 @media (prefers-reduced-motion: reduce) {
+  html body #root .app.app-command-shell .collector-showcase-card,
+  html body #root .app.app-command-shell .collector-showcase-face,
+  html body #root .app.app-command-shell .collector-showcase-edge,
+  html body #root .app.app-command-shell .sealed-product-shelf-card,
+  html body #root .app.app-command-shell .sealed-product-shelf-object::before,
+  html body #root .app.app-command-shell .sealed-product-shelf-object::after,
   html body #root .app.app-command-shell .collector-showcase-object,
   html body #root .app.app-command-shell button.collector-showcase-card:hover .collector-showcase-object,
   html body #root .app.app-command-shell button.collector-showcase-card:focus-visible .collector-showcase-object,

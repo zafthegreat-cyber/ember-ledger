@@ -115,6 +115,16 @@ assert.ok(
   "Collector Showcase surfaces should use lightweight containment, compact list previews, and GPU-safe transforms."
 );
 assert.ok(
+  cssSource.includes(".collector-showcase-edge") &&
+    cssSource.includes(".collector-showcase-fallback") &&
+    cssSource.includes(".collector-showcase-card.is-fallback .collector-showcase-face") &&
+    cssSource.includes(".sealed-product-shelf-object::before") &&
+    cssSource.includes(".sealed-product-shelf-object::after") &&
+    cssSource.includes(".sealed-shelf-pack .sealed-product-shelf-object") &&
+    cssSource.includes(".sealed-shelf-tin .sealed-product-shelf-object"),
+  "Collector Showcase should provide intentional depth, fallback art, and distinct sealed product geometry."
+);
+assert.ok(
   appSource.includes("Visual display mode. Open item profile.") &&
     appSource.includes("Visual display mode. Card details are shown as text.") &&
     appSource.includes("Visual display mode. Open item profile details.") &&
