@@ -1110,6 +1110,14 @@ async function main() {
     );
     await assertVisibleText("Giving Ledger");
     await assertVisibleText("Kid Packs");
+    await assertVisibleText("Spark Family Program Summary");
+    await assertVisibleText("Kid packs planned");
+    await assertVisibleText("Gifts/support logged");
+    await assertVisibleText("Supplies tracked");
+    await assertVisibleText("Event support notes");
+    await assertVisibleText("Family impact preview");
+    await assertVisibleText("Items still needed");
+    await assertVisibleText("Event Support Planner");
     await assertVisibleText("Spark upgrade preview");
     await assertVisibleText("Keep child details private. Use initials, group names, or simple notes when needed.");
     const buildKidPackAction = page.getByRole("button", { name: "Build a Kid Pack", exact: true }).first();
@@ -1121,10 +1129,13 @@ async function main() {
     await expectVisible(kidPackModal.getByText("Keep child details private. Use initials, group names, or simple notes when needed.").first(), "Kid Pack privacy helper");
     await kidPackModal.getByLabel("Kid Packs").fill("Focused Spark Starter Pack");
     await kidPackModal.getByLabel("Pack Theme").fill("First binder day");
+    await kidPackModal.getByLabel("Child age range").fill("9-12");
+    await kidPackModal.getByLabel("Theme / interests").fill("Starter binder and favorite art cards");
     await kidPackModal.getByLabel("Pack Type").selectOption("Starter Pack");
     await kidPackModal.getByLabel("Pack Status").selectOption("Ready to Gift");
     await kidPackModal.getByLabel("Intended recipient or group optional").fill("Family table");
     await kidPackModal.getByLabel("Pack Contents").fill("Cards, sleeves, binder pages, deck box, and welcome note.");
+    await kidPackModal.getByLabel("Items planned").fill("Sleeves, binder pages, deck box, snacks, and welcome note.");
     await kidPackModal.getByLabel("Estimated Value").fill("28");
     await kidPackModal.getByLabel("Pack Notes").fill("Use group notes only. No private child details.");
     await kidPackModal.getByRole("button", { name: "Save Kid Pack", exact: true }).click();
@@ -1156,6 +1167,30 @@ async function main() {
     await giftModal.getByRole("button", { name: "Close", exact: true }).first().click();
     await giftModal.waitFor({ state: "hidden", timeout: 5000 });
     await expectVisible(page.locator(".spark-gift-ledger-row").filter({ hasText: "Focused Spark Kid Pack Supplies" }).first(), "The Spark saved gift row");
+    const planEventAction = page.getByRole("button", { name: "Plan Event Support", exact: true }).first();
+    await expectVisible(planEventAction, "The Spark Plan Event Support action");
+    await planEventAction.click();
+    const eventModal = page.locator('.flow-modal[data-flow="sparkEventSupport"]').first();
+    await expectVisible(eventModal, "The Spark Event Support Planner modal");
+    await expectVisible(eventModal.getByText("Local beta planning tool").first(), "Event Support local beta helper");
+    await expectVisible(eventModal.getByText("It does not process payments, create tax receipts, verify sponsors, fulfill gifts, ship items, or expose private child/family details.").first(), "Event Support safety disclaimer");
+    await eventModal.getByLabel("Event name").fill("Focused Spark Family Day");
+    await eventModal.getByLabel("Date text").fill("Saturday TBD");
+    await eventModal.getByLabel("Expected kids/families").fill("8 kids and 4 families");
+    await eventModal.getByLabel("Status").selectOption("Collecting");
+    await eventModal.getByLabel("Supplies needed").fill("Packs, sleeves, snacks, and table signs.");
+    await eventModal.getByLabel("Volunteer notes").fill("Two parent helpers for setup and cleanup.");
+    await eventModal.getByLabel("Sponsor / shop notes").fill("Local shop may offer table space after review.");
+    await eventModal.getByLabel("Event notes").fill("General area only. No private child details or shipping promises.");
+    await eventModal.getByRole("button", { name: "Save Event Plan", exact: true }).click();
+    await expectVisible(eventModal.getByText("Event Support plan saved locally.").first(), "The Spark Event Support saved message");
+    await page.waitForFunction(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      return (data.sparkEventPlans || []).some((plan) => plan.eventName === "Focused Spark Family Day" && plan.eventStatus === "Collecting" && plan.paymentProcessing === "none");
+    }, null, { timeout: 5000 });
+    await eventModal.getByRole("button", { name: "Close", exact: true }).first().click();
+    await eventModal.waitFor({ state: "hidden", timeout: 5000 });
+    await expectVisible(page.locator(".spark-event-support-row").filter({ hasText: "Focused Spark Family Day" }).first(), "The Spark saved Event Support row");
   }
 
   async function focusedTidepoolTest() {

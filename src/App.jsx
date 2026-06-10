@@ -2170,14 +2170,28 @@ const SPARK_KID_PACK_STATUSES = ["Planning", "Ready to Gift", "Gifted"];
 const BLANK_SPARK_KID_PACK_DRAFT = {
   packName: "",
   packTheme: "",
+  childAgeRange: "",
+  themeInterests: "",
   packType: "Starter Pack",
   intendedRecipientGroup: "",
+  itemsPlanned: "",
   packContents: "",
   estimatedValue: "",
   packStatus: "Planning",
   dateCreated: "",
   giftedDate: "",
   packNotes: "",
+};
+const SPARK_EVENT_SUPPORT_STATUSES = ["Planning", "Collecting", "Packed", "Complete"];
+const BLANK_SPARK_EVENT_SUPPORT_DRAFT = {
+  eventName: "",
+  eventDateText: "",
+  expectedKidsFamilies: "",
+  suppliesNeeded: "",
+  volunteerNotes: "",
+  sponsorShopNotes: "",
+  eventStatus: "Planning",
+  eventNotes: "",
 };
 const BLANK_TRADE_DRAFT = {
   id: "",
@@ -2243,8 +2257,11 @@ function normalizeSparkKidPackDraft(draft = {}) {
   return {
     packName: String(draft.packName || draft.name || "").trim(),
     packTheme: String(draft.packTheme || draft.theme || "").trim(),
+    childAgeRange: String(draft.childAgeRange || draft.ageRange || "").trim(),
+    themeInterests: String(draft.themeInterests || draft.interests || "").trim(),
     packType,
     intendedRecipientGroup: String(draft.intendedRecipientGroup || draft.recipientGroup || "").trim(),
+    itemsPlanned: String(draft.itemsPlanned || draft.plannedItems || "").trim(),
     packContents: String(draft.packContents || draft.contents || "").trim(),
     estimatedValue: Number.isFinite(estimatedValue) && estimatedValue >= 0 ? estimatedValue : "",
     packStatus,
@@ -2271,6 +2288,37 @@ function summarizeSparkKidPacks(packs = [], options = {}) {
     gifted: Number(statusCounts.Gifted || 0),
     totalValueLabel: valueRows.length ? moneyFormatter(totalValue) : "No values yet",
     latestPack,
+  };
+}
+
+function normalizeSparkEventSupportDraft(draft = {}) {
+  const eventStatus = SPARK_EVENT_SUPPORT_STATUSES.includes(draft.eventStatus) ? draft.eventStatus : "Planning";
+  return {
+    eventName: String(draft.eventName || draft.name || "").trim(),
+    eventDateText: String(draft.eventDateText || draft.eventDate || draft.date || "").trim(),
+    expectedKidsFamilies: String(draft.expectedKidsFamilies || draft.expectedCount || draft.expectedFamilies || "").trim(),
+    suppliesNeeded: String(draft.suppliesNeeded || draft.supplies || "").trim(),
+    volunteerNotes: String(draft.volunteerNotes || draft.volunteers || "").trim(),
+    sponsorShopNotes: String(draft.sponsorShopNotes || draft.sponsorNotes || draft.shopNotes || "").trim(),
+    eventStatus,
+    eventNotes: String(draft.eventNotes || draft.notes || "").trim(),
+  };
+}
+
+function summarizeSparkEventSupportPlans(plans = {}) {
+  const safePlans = Array.isArray(plans) ? plans.map(normalizeSparkEventSupportDraft) : [];
+  const statusCounts = safePlans.reduce((acc, plan) => {
+    acc[plan.eventStatus] = Number(acc[plan.eventStatus] || 0) + 1;
+    return acc;
+  }, {});
+  const latestPlan = [...safePlans].sort((a, b) => String(b.eventDateText || b.createdAt || "").localeCompare(String(a.eventDateText || a.createdAt || "")))[0] || null;
+  return {
+    totalEvents: safePlans.length,
+    planning: Number(statusCounts.Planning || 0),
+    collecting: Number(statusCounts.Collecting || 0),
+    packed: Number(statusCounts.Packed || 0),
+    complete: Number(statusCounts.Complete || 0),
+    latestPlan,
   };
 }
 
@@ -6317,6 +6365,10 @@ export default function App() {
   const [sparkKidPackDraft, setSparkKidPackDraft] = useState(BLANK_SPARK_KID_PACK_DRAFT);
   const [sparkKidPackMessage, setSparkKidPackMessage] = useState("");
   const [sparkKidPackSaving, setSparkKidPackSaving] = useState(false);
+  const [sparkEventPlans, setSparkEventPlans] = useState([]);
+  const [sparkEventSupportDraft, setSparkEventSupportDraft] = useState(BLANK_SPARK_EVENT_SUPPORT_DRAFT);
+  const [sparkEventSupportMessage, setSparkEventSupportMessage] = useState("");
+  const [sparkEventSupportSaving, setSparkEventSupportSaving] = useState(false);
   const [sponsorForm, setSponsorForm] = useState({
     name: "",
     businessName: "",
@@ -15928,6 +15980,7 @@ export default function App() {
       setTradeRecords(migrateRecordsToWorkspace(saved.tradeRecords || saved.trades || [], personalWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID, workspaceState.workspaces));
       setSparkGifts(Array.isArray(saved.sparkGifts) ? saved.sparkGifts.map((gift) => ({ ...gift, ...normalizeSparkGiftDraft(gift) })) : []);
       setSparkKidPacks(Array.isArray(saved.sparkKidPacks) ? saved.sparkKidPacks.map((pack) => ({ ...pack, ...normalizeSparkKidPackDraft(pack) })) : []);
+      setSparkEventPlans(Array.isArray(saved.sparkEventPlans) ? saved.sparkEventPlans.map((plan) => ({ ...plan, ...normalizeSparkEventSupportDraft(plan) })) : []);
       setVehicles(saved.vehicles || []);
       setMileageTrips(migrateRecordsToWorkspace(saved.mileageTrips || [], personalWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID, workspaceState.workspaces));
       setDealForm({
@@ -15978,6 +16031,7 @@ export default function App() {
         setTradeRecords([]);
         setSparkGifts([]);
         setSparkKidPacks([]);
+        setSparkEventPlans([]);
         setVaultCollectionSets([]);
         setVehicles([]);
         setMileageTrips([]);
@@ -15993,6 +16047,7 @@ export default function App() {
       setTradeRecords([]);
       setSparkGifts([]);
       setSparkKidPacks([]);
+      setSparkEventPlans([]);
       setVaultCollectionSets([]);
       setVehicles([]);
       setMileageTrips([]);
@@ -16333,6 +16388,7 @@ export default function App() {
         tradeRecords,
         sparkGifts,
         sparkKidPacks,
+        sparkEventPlans,
         vehicles,
         mileageTrips,
         workspaces,
@@ -16364,7 +16420,7 @@ export default function App() {
         },
       })
     );
-  }, [items, purchasers, catalogProducts, tideTradrWatchlist, marketplaceListings, marketplaceReports, marketplaceSavedIds, tideTradrLookupId, marketPriceCache, marketPriceMemories, vaultCollectionSets, userSearchAliases, expenses, sales, tradeRecords, sparkGifts, sparkKidPacks, vehicles, mileageTrips, workspaces, workspaceMembers, workspaceInvites, activeWorkspaceId, forgeModeSettings, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, resolvedAppTheme, appSetupPersonalization, cloudSyncPreference, locationSettings, subscriptionProfile, currentUserProfile, adminModeStorageReady, adminViewMode, localDataLoaded]);
+  }, [items, purchasers, catalogProducts, tideTradrWatchlist, marketplaceListings, marketplaceReports, marketplaceSavedIds, tideTradrLookupId, marketPriceCache, marketPriceMemories, vaultCollectionSets, userSearchAliases, expenses, sales, tradeRecords, sparkGifts, sparkKidPacks, sparkEventPlans, vehicles, mileageTrips, workspaces, workspaceMembers, workspaceInvites, activeWorkspaceId, forgeModeSettings, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, resolvedAppTheme, appSetupPersonalization, cloudSyncPreference, locationSettings, subscriptionProfile, currentUserProfile, adminModeStorageReady, adminViewMode, localDataLoaded]);
 
   useEffect(() => {
     if (!BETA_LOCAL_MODE || !localDataLoaded) return;
@@ -16719,6 +16775,7 @@ export default function App() {
     setTradeRecords([]);
     setSparkGifts([]);
     setSparkKidPacks([]);
+    setSparkEventPlans([]);
     setVehicles([]);
     setMileageTrips([]);
     setTideTradrWatchlist([]);
@@ -17652,6 +17709,7 @@ export default function App() {
     setTradeRecords([]);
     setSparkGifts([]);
     setSparkKidPacks([]);
+    setSparkEventPlans([]);
     setVehicles([]);
     setMileageTrips([]);
     setDealForm({
@@ -19504,6 +19562,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (type === "tradeCompass") return formsDiffer(tradeCompassDraft, flowModalBaselineRef.current.tradeCompass || BLANK_TRADE_COMPASS_DRAFT);
     if (type === "sparkGift") return formsDiffer(sparkGiftDraft, flowModalBaselineRef.current.sparkGift || BLANK_SPARK_GIFT_DRAFT);
     if (type === "sparkKidPack") return formsDiffer(sparkKidPackDraft, flowModalBaselineRef.current.sparkKidPack || BLANK_SPARK_KID_PACK_DRAFT);
+    if (type === "sparkEventSupport") return formsDiffer(sparkEventSupportDraft, flowModalBaselineRef.current.sparkEventSupport || BLANK_SPARK_EVENT_SUPPORT_DRAFT);
     return false;
   }
 
@@ -19602,6 +19661,11 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       setSparkKidPackDraft(BLANK_SPARK_KID_PACK_DRAFT);
       setSparkKidPackMessage("");
       setSparkKidPackSaving(false);
+    }
+    if (type === "sparkEventSupport") {
+      setSparkEventSupportDraft(BLANK_SPARK_EVENT_SUPPORT_DRAFT);
+      setSparkEventSupportMessage("");
+      setSparkEventSupportSaving(false);
     }
   }
 
@@ -24815,6 +24879,53 @@ function mapCatalog(row) {
     setSparkKidPackMessage("Kid Pack saved locally. No inventory was depleted and no private child details were shared.");
     setSparkKidPackSaving(false);
     setVaultToast("Kid Pack saved locally.");
+  }
+
+  function openSparkEventSupportFlow(options = {}) {
+    const draft = normalizeSparkEventSupportDraft({
+      ...BLANK_SPARK_EVENT_SUPPORT_DRAFT,
+      ...options.seed,
+    });
+    setSparkEventSupportDraft(draft);
+    setSparkEventSupportMessage("");
+    setSparkEventSupportSaving(false);
+    flowModalBaselineRef.current.sparkEventSupport = draft;
+    openFlowModal("sparkEventSupport", { size: "medium", source: options.source || "spark-event-support" });
+  }
+
+  function updateSparkEventSupportDraftField(field, value) {
+    setSparkEventSupportDraft((current) => normalizeSparkEventSupportDraft({ ...current, [field]: value }));
+    setSparkEventSupportMessage("");
+  }
+
+  function saveSparkEventSupportPlan(event) {
+    event?.preventDefault?.();
+    if (sparkEventSupportSaving) return;
+    const draft = normalizeSparkEventSupportDraft(sparkEventSupportDraft);
+    if (!draft.eventName) {
+      setSparkEventSupportMessage("Add an event name before saving this Event Support plan.");
+      return;
+    }
+    setSparkEventSupportSaving(true);
+    const now = new Date().toISOString();
+    const record = {
+      id: makeId("spark-event"),
+      ...draft,
+      createdAt: now,
+      updatedAt: now,
+      savedBy: user?.id || "local-beta",
+      source: "local-spark-event-support",
+      planningMode: "local_beta_only",
+      paymentProcessing: "none",
+      fulfillmentStatus: "not_connected",
+      taxReceiptStatus: "not_a_tax_receipt",
+    };
+    setSparkEventPlans((current) => [record, ...current]);
+    setSparkEventSupportDraft(draft);
+    flowModalBaselineRef.current.sparkEventSupport = draft;
+    setSparkEventSupportMessage("Event Support plan saved locally. This is not payment processing, fulfillment, shipping, or a tax receipt.");
+    setSparkEventSupportSaving(false);
+    setVaultToast("Event Support plan saved locally.");
   }
 
   function vaultForgeTransferEntries(transfer = vaultForgeTransfer) {
@@ -41477,7 +41588,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       "Toys/prizes",
       "Gift cards",
       "Event support",
-      "Sponsorship interest",
+      "Money/sponsorship pledges",
       "Services",
       "Volunteer time",
       "Food/snacks",
@@ -41497,7 +41608,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       { title: "Cards and products", items: ["Cards", "Sealed products", "Packs"] },
       { title: "Collecting supplies", items: ["Binders", "Sleeves", "Deck boxes", "Storage", "Playmats"] },
       { title: "Event support", items: ["Toys/prizes", "Gift cards", "Food/snacks", "Event support"] },
-      { title: "Mission support", items: ["Sponsorship interest", "Services", "Volunteer time", "Shipping help", "Other family collecting support"] },
+      { title: "Mission support", items: ["Money/sponsorship pledges", "Services", "Volunteer time", "Shipping help", "Other family collecting support"] },
     ];
     const sparkParticipationCards = [
       {
@@ -41540,11 +41651,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const openSparkDonate = () => setSparkFlowView("donate");
     const openSparkThanks = () => setSparkFlowView("thank-you");
     const openSparkHome = () => setSparkFlowView("home");
-    const sparkImpactStats = [
-      { label: "Kids helped", value: "12", detail: "Preview impact count" },
-      { label: "Packs planned", value: "320", detail: "Starter support goal" },
-      { label: "Events supported", value: "4", detail: "Family-friendly days" },
-    ];
+    const sparkSupplyDonationTypes = new Set(["supplies", "binders", "sleeves", "deck_boxes", "storage", "playmats", "food_snacks", "shipping_help"]);
     const sparkImpactStories = [
       { title: "Starter packs for new collectors", body: "Preview story: kid-safe packs help families start without rush alerts, pressure, or resale-first energy." },
       { title: "Learning table support", body: "Sleeves, deck boxes, snacks, and volunteers can make family events calmer and easier to join." },
@@ -41560,13 +41667,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       "Playmats",
       "Toys/prizes",
       "Gift cards",
-      "Sponsorship interest",
+      "Money/sponsorship pledges",
       "Event support",
       "Food/snacks",
       "Shipping help",
       "Volunteer time",
       "Services",
-      "Other",
+      "Other family collecting support",
     ];
     const sparkImpactMilestones = [
       { title: "Build safe starter packs", detail: "Cards, sleeves, and deck boxes are reviewed before they count toward impact." },
@@ -41581,6 +41688,25 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const recentSparkKidPacks = [...sparkKidPacks]
       .sort((a, b) => String(b.dateCreated || b.giftedDate || b.createdAt || "").localeCompare(String(a.dateCreated || a.giftedDate || a.createdAt || "")))
       .slice(0, 4);
+    const sparkEventSupportSummary = summarizeSparkEventSupportPlans(sparkEventPlans);
+    const recentSparkEventPlans = [...sparkEventPlans]
+      .map((plan) => ({ ...plan, ...normalizeSparkEventSupportDraft(plan) }))
+      .sort((a, b) => String(b.eventDateText || b.createdAt || "").localeCompare(String(a.eventDateText || a.createdAt || "")))
+      .slice(0, 4);
+    const sparkSuppliesTracked = sparkGifts.filter((gift) => sparkSupplyDonationTypes.has(gift.donationType)).length;
+    const sparkNeedsDetailsCount = [
+      ...sparkKidPacks.filter((pack) => !String(pack.itemsPlanned || pack.packContents || "").trim()),
+      ...sparkEventPlans.filter((plan) => !String(plan.suppliesNeeded || "").trim()),
+    ].length;
+    const sparkLocalActivityTotal = sparkKidPackSummary.totalPacks + sparkGivingImpact.totalGifts + sparkEventSupportSummary.totalEvents;
+    const sparkDashboardSummaryCards = [
+      { label: "Kid packs planned", value: sparkKidPackSummary.totalPacks, detail: sparkKidPackSummary.totalPacks ? "Local Kid Pack plans" : "Build a pack when ready", tone: "gold" },
+      { label: "Gifts/support logged", value: sparkGivingImpact.totalGifts, detail: "Giving Ledger local entries", tone: "pink" },
+      { label: "Supplies tracked", value: sparkSuppliesTracked, detail: "Sleeves, binders, storage, snacks, shipping help", tone: "gold" },
+      { label: "Event support notes", value: sparkEventSupportSummary.totalEvents, detail: "Local beta event plans", tone: "pink" },
+      { label: "Family impact preview", value: sparkLocalActivityTotal || "Ready", detail: sparkLocalActivityTotal ? "Local planning records only" : "No support fulfilled yet", tone: "gold" },
+      { label: "Items still needed", value: sparkNeedsDetailsCount, detail: sparkNeedsDetailsCount ? "Add supplies or pack details" : "Planning details look filled in", tone: "pink" },
+    ];
     const renderSparkGiftRow = (gift) => (
       <article className="spark-gift-ledger-row" key={gift.id || `${gift.giftName}-${gift.createdAt}`}>
         <div>
@@ -41602,12 +41728,31 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <div>
             <span className="section-kicker">Kid Packs</span>
             <strong>{normalizedPack.packName || "Kid Pack"}</strong>
-            <small>{[normalizedPack.packType, normalizedPack.packTheme, normalizedPack.intendedRecipientGroup].filter(Boolean).join(" | ")}</small>
+            <small>{[normalizedPack.packType, normalizedPack.packTheme, normalizedPack.childAgeRange, normalizedPack.themeInterests, normalizedPack.intendedRecipientGroup].filter(Boolean).join(" | ")}</small>
+            {normalizedPack.itemsPlanned ? <small>Items planned: {normalizedPack.itemsPlanned}</small> : <small>Items planned can be added later.</small>}
           </div>
           <div>
             <span>{normalizedPack.giftedDate ? `Gifted ${shortDate(normalizedPack.giftedDate)}` : normalizedPack.dateCreated ? shortDate(normalizedPack.dateCreated) : "Date saved"}</span>
             <strong>{normalizedPack.packStatus}</strong>
             <small>{Number(normalizedPack.estimatedValue || 0) > 0 ? money(normalizedPack.estimatedValue) : "No value saved"}</small>
+          </div>
+        </article>
+      );
+    };
+    const renderSparkEventSupportRow = (plan) => {
+      const normalizedPlan = normalizeSparkEventSupportDraft(plan);
+      return (
+        <article className={`spark-event-support-row status-${normalizedPlan.eventStatus.toLowerCase()}`} key={plan.id || `${normalizedPlan.eventName}-${plan.createdAt}`}>
+          <div>
+            <span className="section-kicker">Event Support Planner</span>
+            <strong>{normalizedPlan.eventName || "Spark event plan"}</strong>
+            <small>{[normalizedPlan.eventDateText, normalizedPlan.expectedKidsFamilies].filter(Boolean).join(" | ") || "Date and group can be added later"}</small>
+            <small>{normalizedPlan.suppliesNeeded ? `Supplies: ${normalizedPlan.suppliesNeeded}` : "Supplies needed can be added later."}</small>
+          </div>
+          <div>
+            <span>Local beta</span>
+            <strong>{normalizedPlan.eventStatus}</strong>
+            <small>No payment, fulfillment, shipping, or tax receipt</small>
           </div>
         </article>
       );
@@ -41784,20 +41929,19 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         </EtMockupSectionCard>
 
         <EtMockupSectionCard
-          title="Small support can make collecting feel safer."
-          detail="Impact tracking is public-beta preview only. Child/family details stay private, and support is reviewed before anything counts."
+          title="Spark Family Program Summary"
+          detail="Local-only planning signals for Kid Packs, Giving Ledger support, supplies, event notes, and family impact preview. Nothing here processes payment, fulfillment, shipping, or tax receipts."
           className="spark-impact-dashboard spark-mockup-impact-card"
           ariaLabel="The Spark impact preview"
-          action={<EtMockupPill tone="gold">No payment processed</EtMockupPill>}
+          action={<EtMockupPill tone="gold">Local beta only</EtMockupPill>}
         >
           <div className="et-mockup-stat-grid spark-impact-stat-grid" aria-label="The Spark impact stats">
-            {sparkImpactStats.map((stat) => (
-              <EtMockupStatCard key={stat.label} label={stat.label} value={stat.value} detail={stat.detail} tone="gold" />
+            {sparkDashboardSummaryCards.map((stat) => (
+              <EtMockupStatCard key={stat.label} label={stat.label} value={stat.value} detail={stat.detail} tone={stat.tone} />
             ))}
           </div>
-          <div className="spark-impact-meter" aria-label="The Spark monthly support goal">
-            <span><b>68%</b> toward this month&apos;s preview kid-pack goal</span>
-            <i><em style={{ width: "68%" }} /></i>
+          <div className="spark-gift-type-cloud spark-program-support-cloud" aria-label="The Spark support categories">
+            {sparkSupportExamples.map((category) => <span key={category}>{category}</span>)}
           </div>
           <div className="spark-impact-milestone-grid">
             {sparkImpactMilestones.map((milestone) => (
@@ -41848,6 +41992,36 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               title="No Kid Packs built yet."
               detail="Kid Packs are where little sparks begin. Build packs for new collectors, birthdays, events, thank-yous, or families who need support. Family/Spark upgrades can expand pack and event planning when enabled."
               action={<EtMockupButton variant="secondary" onClick={() => openSparkKidPackFlow({ source: "spark-kid-packs-empty" })}>Build a Kid Pack</EtMockupButton>}
+            />
+          )}
+        </EtMockupSectionCard>
+
+        <EtMockupSectionCard
+          title="Event Support Planner"
+          detail="Plan family collecting days, learning tables, kid-pack prep, volunteer help, sponsor/shop notes, and supplies needed. Local beta planning only."
+          className="spark-event-support-card"
+          ariaLabel="The Spark Event Support Planner"
+          action={<EtMockupButton onClick={() => openSparkEventSupportFlow({ source: "spark-event-support" })}>Plan Event Support</EtMockupButton>}
+        >
+          <div className="spark-event-support-helper-card">
+            <strong>Local beta planning tool</strong>
+            <span>Use this for event support notes, supplies, volunteers, and sponsor/shop ideas. It is not payment processing, fulfillment, shipping, or a tax receipt.</span>
+            <small>Keep child and family details private. Use general areas, group names, or internal notes only.</small>
+          </div>
+          <div className="et-mockup-stat-grid spark-event-support-impact-grid" aria-label="Event Support Planner status">
+            <EtMockupStatCard label="Event support notes" value={sparkEventSupportSummary.totalEvents} detail="local event plans" tone="gold" />
+            <EtMockupStatCard label="Collecting" value={sparkEventSupportSummary.collecting} detail="supplies or support being gathered" tone="pink" />
+            <EtMockupStatCard label="Packed / complete" value={sparkEventSupportSummary.packed + sparkEventSupportSummary.complete} detail="marked packed or complete locally" tone="gold" />
+          </div>
+          {recentSparkEventPlans.length ? (
+            <div className="spark-event-support-list" aria-label="Event Support saved plans">
+              {recentSparkEventPlans.map(renderSparkEventSupportRow)}
+            </div>
+          ) : (
+            <EtMockupEmptyState
+              title="No Event Support plans yet."
+              detail="Plan supplies, volunteers, sponsors, shops, snacks, shipping help, and family-safe support before a Spark event. Nothing is processed or fulfilled from this preview."
+              action={<EtMockupButton variant="secondary" onClick={() => openSparkEventSupportFlow({ source: "spark-event-support-empty" })}>Plan Event Support</EtMockupButton>}
             />
           )}
         </EtMockupSectionCard>
@@ -42242,6 +42416,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           >
             <div className="et-mockup-action-stack">
               <EtMockupActionCard title="Donate / support preview" detail="Cards, sealed products, packs, supplies, events, time, or services." icon="spark" tone="gold" onClick={openSparkDonate} />
+              <EtMockupActionCard title="Plan event support" detail="Local-only support notes for supplies, volunteers, sponsors, and shops." icon="spark" tone="gold" onClick={() => openSparkEventSupportFlow({ source: "spark-rail-event-support" })} />
               <EtMockupActionCard title="Sponsor or shop interest" detail="Share interest for drop-off days, learning tables, or fair access support." icon="market" tone="gold" onClick={() => openPublicBetaFeedback({ page: "The Spark", role: "Sponsor / Donor", mainReason: "Sponsor / donate to The Spark", interests: ["The Spark kids program", "Shop partnership"] })} />
               <EtMockupActionCard title="Request family access" detail="Parent-managed and admin-reviewed. No private child messaging." icon="spark" tone="pink" onClick={activeApplication ? scrollToSparkDetails : scrollToSparkRequest} />
             </div>
@@ -48524,6 +48699,22 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               />
             </Field>
             <div className="spark-gift-inline-grid">
+              <Field label="Child age range">
+                <input
+                  value={sparkKidPackDraft.childAgeRange}
+                  onChange={(event) => updateSparkKidPackDraftField("childAgeRange", event.target.value)}
+                  placeholder="6-8, 9-12, teen, mixed group..."
+                />
+              </Field>
+              <Field label="Theme / interests">
+                <input
+                  value={sparkKidPackDraft.themeInterests}
+                  onChange={(event) => updateSparkKidPackDraftField("themeInterests", event.target.value)}
+                  placeholder="Dragons, Eevee, art cards, beginner play..."
+                />
+              </Field>
+            </div>
+            <div className="spark-gift-inline-grid">
               <Field label="Pack Type">
                 <select value={sparkKidPackDraft.packType} onChange={(event) => updateSparkKidPackDraftField("packType", event.target.value)}>
                   {SPARK_KID_PACK_TYPES.map((option) => <option key={option} value={option}>{option}</option>)}
@@ -48563,6 +48754,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 rows={3}
               />
             </Field>
+            <Field label="Items planned">
+              <textarea
+                value={sparkKidPackDraft.itemsPlanned}
+                onChange={(event) => updateSparkKidPackDraftField("itemsPlanned", event.target.value)}
+                placeholder="Cards, sealed packs, sleeves, deck box, stickers, snacks, note..."
+                rows={3}
+              />
+            </Field>
             <div className="spark-gift-inline-grid">
               <Field label="Estimated Value">
                 <input
@@ -48591,13 +48790,128 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
         <section className="spark-gift-disclaimer-card spark-kid-pack-privacy-card" aria-label="Kid Pack privacy helper">
           <strong>Keep child details private. Use initials, group names, or simple notes when needed.</strong>
-          <span>The Spark is about helping kids feel welcomed, included, and excited to collect. Kid Packs are local planning records and do not deplete Vault or Giving Ledger inventory.</span>
+          <span>The Spark is about helping kids feel welcomed, included, and excited to collect. Kid Packs are local planning records and do not deplete Vault, Giving Ledger gifts, shipping, or any backend supply in beta.</span>
         </section>
 
         {sparkKidPackMessage ? <p className="field-error trade-value-message" role="status">{sparkKidPackMessage}</p> : null}
 
         <div className="quick-actions trade-value-actions spark-gift-actions">
           <button type="submit" disabled={sparkKidPackSaving}>{sparkKidPackSaving ? "Saving..." : "Save Kid Pack"}</button>
+          <button type="button" className="secondary-button" onClick={() => closeFlowModal()}>Close</button>
+        </div>
+      </form>
+    );
+  }
+
+  function renderSparkEventSupportFlowContent() {
+    return (
+      <form className="spark-event-support-flow" onSubmit={saveSparkEventSupportPlan}>
+        <section className="spark-gift-hero-card spark-event-support-hero-card">
+          <span className="section-kicker">Event Support Planner</span>
+          <h3>Plan Spark event support</h3>
+          <p>Keep a local beta planning note for family days, learning tables, kid-pack prep, volunteers, supplies, sponsors, or shop support.</p>
+          <div className="spark-gift-safety-strip">
+            <span>Local beta planning tool</span>
+            <span>Not payment processing</span>
+            <span>Not fulfillment</span>
+            <span>Not a tax receipt</span>
+          </div>
+        </section>
+
+        <section className="spark-gift-form-grid spark-event-support-form-grid">
+          <div className="spark-gift-form-card spark-event-support-form-card">
+            <div className="compact-card-header">
+              <div>
+                <span className="trust-badge trust-badge--kid">Event Support</span>
+                <h4>Event details</h4>
+              </div>
+              <strong>{sparkEventSupportDraft.eventStatus}</strong>
+            </div>
+            <Field label="Event name">
+              <input
+                value={sparkEventSupportDraft.eventName}
+                onChange={(event) => updateSparkEventSupportDraftField("eventName", event.target.value)}
+                placeholder="Family trade night, learning table, birthday pack day..."
+              />
+            </Field>
+            <div className="spark-gift-inline-grid">
+              <Field label="Date text">
+                <input
+                  value={sparkEventSupportDraft.eventDateText}
+                  onChange={(event) => updateSparkEventSupportDraftField("eventDateText", event.target.value)}
+                  placeholder="June, Saturday TBD, after school..."
+                />
+              </Field>
+              <Field label="Expected kids/families">
+                <input
+                  value={sparkEventSupportDraft.expectedKidsFamilies}
+                  onChange={(event) => updateSparkEventSupportDraftField("expectedKidsFamilies", event.target.value)}
+                  placeholder="10 kids, 4 families, small table..."
+                />
+              </Field>
+            </div>
+            <Field label="Status">
+              <select
+                value={sparkEventSupportDraft.eventStatus}
+                onChange={(event) => updateSparkEventSupportDraftField("eventStatus", event.target.value)}
+              >
+                {SPARK_EVENT_SUPPORT_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}
+              </select>
+            </Field>
+            <Field label="Supplies needed">
+              <textarea
+                value={sparkEventSupportDraft.suppliesNeeded}
+                onChange={(event) => updateSparkEventSupportDraftField("suppliesNeeded", event.target.value)}
+                placeholder="Cards, packs, sleeves, binders, snacks, tables, shipping help..."
+                rows={3}
+              />
+            </Field>
+          </div>
+
+          <div className="spark-gift-form-card spark-event-support-form-card">
+            <div className="compact-card-header">
+              <div>
+                <span className="trust-badge trust-badge--verified">Support notes</span>
+                <h4>People and partners</h4>
+              </div>
+              <strong>Preview only</strong>
+            </div>
+            <Field label="Volunteer notes">
+              <textarea
+                value={sparkEventSupportDraft.volunteerNotes}
+                onChange={(event) => updateSparkEventSupportDraftField("volunteerNotes", event.target.value)}
+                placeholder="Who may help, setup needs, supervision notes, service support..."
+                rows={3}
+              />
+            </Field>
+            <Field label="Sponsor / shop notes">
+              <textarea
+                value={sparkEventSupportDraft.sponsorShopNotes}
+                onChange={(event) => updateSparkEventSupportDraftField("sponsorShopNotes", event.target.value)}
+                placeholder="Potential shop support, sponsor pledges, drop-off interest, reviewed helpers..."
+                rows={3}
+              />
+            </Field>
+            <Field label="Event notes">
+              <textarea
+                value={sparkEventSupportDraft.eventNotes}
+                onChange={(event) => updateSparkEventSupportDraftField("eventNotes", event.target.value)}
+                placeholder="General-area notes only. Do not include private child details, addresses, payment info, or shipping promises."
+                rows={3}
+              />
+            </Field>
+          </div>
+        </section>
+
+        <section className="spark-gift-disclaimer-card spark-event-support-disclaimer-card" aria-label="Event Support Planner safety helper">
+          <strong>Event Support Planner is local beta planning only.</strong>
+          <span>It does not process payments, create tax receipts, verify sponsors, fulfill gifts, ship items, or expose private child/family details.</span>
+        </section>
+
+        {sparkEventSupportMessage ? <p className="field-error trade-value-message" role="status">{sparkEventSupportMessage}</p> : null}
+
+        <div className="quick-actions trade-value-actions spark-gift-actions">
+          <button type="submit" disabled={sparkEventSupportSaving}>{sparkEventSupportSaving ? "Saving..." : "Save Event Plan"}</button>
           <button type="button" className="secondary-button" onClick={() => closeFlowModal()}>Close</button>
         </div>
       </form>
@@ -48914,6 +49228,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       return {
         title: "Build a Kid Pack",
         description: "Plan a local Kid Pack with private notes. No inventory is depleted and no child details are public.",
+        size: "medium",
+      };
+    }
+    if (activeFlowModal?.type === "sparkEventSupport") {
+      return {
+        title: "Event Support Planner",
+        description: "Plan local Spark event support. No payment, fulfillment, shipping, or tax receipt is connected.",
         size: "medium",
       };
     }
@@ -53563,6 +53884,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     if (activeFlowModal?.type === "tradeCompass") return renderTradeCompassFlowContent();
     if (activeFlowModal?.type === "sparkGift") return renderSparkGiftFlowContent();
     if (activeFlowModal?.type === "sparkKidPack") return renderSparkKidPackFlowContent();
+    if (activeFlowModal?.type === "sparkEventSupport") return renderSparkEventSupportFlowContent();
     if (activeFlowModal?.type === "marketPriceMemory") return renderMarketPriceMemoryFlowContent();
     if (activeFlowModal?.type === "vaultCollectionSet") return renderVaultCollectionSetFlowContent();
     if (activeFlowModal?.type === "quickFind") return renderQuickFindFlowContent();
