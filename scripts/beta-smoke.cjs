@@ -557,6 +557,7 @@ async function main() {
     await assertVisibleText("Scout Watch");
     await assertVisibleText("Forge Reminder");
     await assertVisibleText("Market Reminder");
+    await assertVisibleText("Wishlist / ISO");
     await assertVisibleText("Spark Moment");
     await assertVisibleText("Keep Building");
     await assertVisibleText("Open Next");
@@ -585,6 +586,7 @@ async function main() {
       { button: "Open Scout", expected: "Scout", label: "Scout Watch" },
       { button: "Open Forge", expected: "Forge", label: "Forge Reminder" },
       { button: "Open Market", expected: "Market", label: "Market Reminder" },
+      { button: "Open Wishlist", expected: "Wishlist / ISO", label: "Wishlist / ISO" },
       { button: "Open The Spark", expected: "The Spark", label: "Spark Moment" },
     ];
     for (const route of hearthCommandRoutes) {
@@ -756,7 +758,7 @@ async function main() {
       const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
       const now = new Date().toISOString();
       data.items = [
-        ...(data.items || []).filter((item) => item.id !== "focused-vault-smoke-item"),
+        ...(data.items || []).filter((item) => item.id !== "focused-vault-smoke-item" && item.id !== "focused-vault-wishlist-iso" && !item.wishlistIso && item.recordType !== "wishlist_item"),
         {
           id: "focused-vault-smoke-item",
           name: "Focused Vault Smoke Card",
@@ -842,6 +844,30 @@ async function main() {
     await assertVisibleText("0 items assigned");
     await assertVisibleText("Add items later. Vault items are not assigned automatically in this local beta.");
     await assertVisibleText("Add to Set");
+    await page.getByRole("button", { name: /^Wishlist$/ }).first().click();
+    const wishlistPanel = page.locator("#wishlist-items-section").first();
+    await expectVisible(wishlistPanel, "Vault Wishlist / ISO panel");
+    await expectVisible(wishlistPanel.getByText("Your Wishlist / ISO planner is quiet.").first(), "Wishlist / ISO empty state");
+    await assertVisibleText("No automatic matching. No live seller offers.");
+    await wishlistPanel.getByRole("button", { name: /^Add Wishlist \/ ISO$/ }).first().click();
+    const wishlistModal = page.locator('.flow-modal[data-flow="wishlistIso"]').first();
+    await expectVisible(wishlistModal, "Wishlist / ISO modal");
+    await fillByLabel(wishlistModal, "Wanted item name", "Focused ISO Chase Card");
+    await wishlistModal.getByLabel("Category").selectOption("card");
+    await wishlistModal.getByLabel("Priority").selectOption("high");
+    await fillByLabel(wishlistModal, "Target price text", "under $30");
+    await wishlistModal.getByLabel("Status").selectOption("looking");
+    await fillByLabel(wishlistModal, "Notes", "Smoke coverage for local Wishlist / ISO planning.");
+    await wishlistModal.getByRole("button", { name: /^Save Wishlist \/ ISO$/ }).click();
+    await expectVisible(wishlistModal.getByText("Wishlist / ISO item saved locally.").first(), "Wishlist / ISO saved message");
+    await page.waitForFunction(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      return (data.items || []).some((item) => item.name === "Focused ISO Chase Card" && item.wishlistIso === true && item.planningMode === "local_only" && item.matchingMode === "none" && item.sellerOfferMode === "none");
+    }, null, { timeout: 5000 });
+    await wishlistModal.getByRole("button", { name: /^Close$/ }).first().click();
+    await wishlistModal.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+    await expectVisible(wishlistPanel.locator(".wishlist-iso-row").filter({ hasText: "Focused ISO Chase Card" }).first(), "Saved Wishlist / ISO row");
+    await page.getByRole("button", { name: /^Collection$/ }).first().click();
     const focusedVaultCard = page.locator(".vault-item-card").filter({ hasText: "Focused Vault Smoke Card" }).first();
     await expectVisible(focusedVaultCard, "focused Vault item card");
     await focusedVaultCard.getByRole("button", { name: /Item Profile/i }).first().click();
@@ -884,8 +910,10 @@ async function main() {
     await assertVisibleText("Market Memory Comparison");
     await assertVisibleText("No selected item yet");
     await assertVisibleText("Market upgrade preview");
+    await assertVisibleText("Wishlist / ISO");
+    await assertVisibleText("No automatic matching. No live seller offers.");
     const marketText = await page.locator("body").innerText();
-    assert.doesNotMatch(marketText, /price accuracy guaranteed|automated market sync|live market average/i);
+    assert.doesNotMatch(marketText, /price accuracy guaranteed|automated market sync|live market average|matched with sellers|seller offers are live|automatic matching is live/i);
     const priceMemorySection = page.locator(".market-price-memory-card").first();
     await expectVisible(priceMemorySection.getByRole("button", { name: /^Save Price$/ }).first(), "Market Price Memory Save Price action");
     await priceMemorySection.getByRole("button", { name: /^Save Price$/ }).first().click();
@@ -927,6 +955,18 @@ async function main() {
       20000
     );
     await expectVisible(focusedMarketCard.getByRole("button", { name: /^Save Price$/ }).first(), "Market result Save Price action");
+    await expectVisible(focusedMarketCard.getByRole("button", { name: /^Add to Wishlist \/ ISO$/ }).first(), "Market result Add to Wishlist / ISO action");
+    await focusedMarketCard.getByRole("button", { name: /^Add to Wishlist \/ ISO$/ }).first().click();
+    const marketWishlistModal = page.locator('.flow-modal[data-flow="wishlistIso"]').first();
+    await expectVisible(marketWishlistModal, "Market seeded Wishlist / ISO modal");
+    assert.match(
+      await marketWishlistModal.getByLabel("Wanted item name").inputValue(),
+      /Prismatic Evolutions Booster Bundle/i,
+      "Market result should seed Wishlist / ISO item name"
+    );
+    await expectVisible(marketWishlistModal.getByText("No automatic matching").first(), "Wishlist / ISO safety copy from Market");
+    await marketWishlistModal.getByRole("button", { name: /^Close$/ }).first().click();
+    await marketWishlistModal.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
   }
 
   async function focusedForgeTest() {
@@ -992,6 +1032,16 @@ async function main() {
     await assertVisibleText("Forge");
     await assertVisibleText("Focused Forge Smoke ETB");
     await assertVisibleText("Forge upgrade preview");
+    await assertVisibleText("Wishlist / ISO");
+    await assertVisibleText("no automatic matching and no live seller offers");
+    const forgeWishlistCard = page.locator(".forge-wishlist-iso-card").first();
+    await expectVisible(forgeWishlistCard, "Forge Wishlist / ISO card");
+    await forgeWishlistCard.getByRole("button", { name: /^Add Wishlist \/ ISO$/ }).click();
+    const forgeWishlistModal = page.locator('.flow-modal[data-flow="wishlistIso"]').first();
+    await expectVisible(forgeWishlistModal, "Forge Wishlist / ISO modal");
+    await expectVisible(forgeWishlistModal.getByText("No matching or seller offers").first(), "Forge Wishlist / ISO safety copy");
+    await forgeWishlistModal.getByRole("button", { name: /^Close$/ }).first().click();
+    await forgeWishlistModal.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
     await expectVisible(page.getByRole("button", { name: "Add Inventory", exact: true }).first(), "Forge Add Inventory action");
     const tradeCompassAction = page.getByRole("button", { name: "Trade Compass", exact: true }).first();
     await expectVisible(tradeCompassAction, "Forge Trade Compass action");

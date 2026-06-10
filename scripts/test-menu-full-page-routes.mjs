@@ -60,6 +60,17 @@ assert.ok(
   "Mobile menu drawer stack should scroll independently."
 );
 assert.ok(
+  appSource.includes("<strong>Wishlist / ISO</strong>") &&
+    appSource.includes("runMenuAction(openWishlistIsoSurface)") &&
+    appSource.includes("No automatic matching or seller offers."),
+  "Menu should expose a safe Wishlist / ISO shortcut into the local planning surface."
+);
+assert.equal(
+  /matched with sellers|seller offers are live|automatic matching is live|guaranteed seller offers/i.test(appSource),
+  false,
+  "Wishlist / ISO should not claim live matching or seller offers."
+);
+assert.ok(
   cssSource.includes('.flow-modal[data-flow="addActionSheet"]') &&
     cssSource.includes('.flow-modal[data-flow="multiDestinationAdd"]') &&
     cssSource.includes("height: 100dvh"),

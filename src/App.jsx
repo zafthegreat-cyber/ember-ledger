@@ -3017,6 +3017,78 @@ function normalizeMarketPriceMemoryEntry(entry = {}) {
     catalogProductId: entry.catalogProductId || entry.catalog_product_id || "",
   };
 }
+const WISHLIST_ISO_CATEGORIES = [
+  { value: "card", label: "card" },
+  { value: "sealed", label: "sealed" },
+  { value: "supply", label: "supply" },
+  { value: "set", label: "set" },
+  { value: "kid_pack_item", label: "kid pack item" },
+  { value: "other", label: "other" },
+];
+const WISHLIST_ISO_PRIORITIES = [
+  { value: "low", label: "low" },
+  { value: "medium", label: "medium" },
+  { value: "high", label: "high" },
+];
+const WISHLIST_ISO_STATUSES = [
+  { value: "looking", label: "looking" },
+  { value: "found", label: "found" },
+  { value: "paused", label: "paused" },
+];
+const BLANK_WISHLIST_ISO_FORM = {
+  wantedItemName: "",
+  category: "card",
+  priority: "medium",
+  targetPriceText: "",
+  notes: "",
+  status: "looking",
+};
+
+function normalizeWishlistIsoDraft(draft = {}) {
+  const categoryValues = new Set(WISHLIST_ISO_CATEGORIES.map((option) => option.value));
+  const priorityValues = new Set(WISHLIST_ISO_PRIORITIES.map((option) => option.value));
+  const statusValues = new Set(WISHLIST_ISO_STATUSES.map((option) => option.value));
+  const normalizedCategory = String(draft.isoCategory || draft.wishlistCategory || draft.productType || draft.category || "card").toLowerCase().replace(/[\s-]+/g, "_");
+  const normalizedPriority = String(draft.priority || draft.isoPriority || "medium").toLowerCase();
+  const normalizedStatus = String(draft.status || draft.isoStatus || "looking").toLowerCase();
+  return {
+    wantedItemName: String(draft.wantedItemName || draft.itemName || draft.name || "").trim(),
+    category: categoryValues.has(normalizedCategory) ? normalizedCategory : "other",
+    priority: priorityValues.has(normalizedPriority) ? normalizedPriority : "medium",
+    targetPriceText: String(draft.targetPriceText || draft.targetPrice || draft.target_price || "").trim().slice(0, 80),
+    notes: String(draft.notes || draft.isoNotes || draft.wishlistNotes || "").trim().slice(0, 500),
+    status: statusValues.has(normalizedStatus) ? normalizedStatus : "looking",
+  };
+}
+
+function wishlistIsoLabel(value = "", options = []) {
+  return options.find((option) => option.value === value)?.label || String(value || "").replace(/_/g, " ");
+}
+
+function normalizeWishlistIsoEntry(entry = {}) {
+  const draft = normalizeWishlistIsoDraft(entry);
+  return {
+    ...entry,
+    ...draft,
+    id: entry.id || "",
+    name: draft.wantedItemName,
+    itemName: draft.wantedItemName,
+    wishlistIso: entry.wishlistIso !== false,
+    isoCategory: draft.category,
+    isoPriority: draft.priority,
+    isoStatus: draft.status,
+    targetPriceText: draft.targetPriceText,
+    wishlistNotes: draft.notes,
+    status: "Wishlist",
+    vaultStatus: "wishlist",
+    destinationScope: ["wishlist"],
+    recordType: "wishlist_item",
+    isWishlist: true,
+    businessInventory: false,
+    quantity: Number(entry.quantity || entry.quantityWanted || 1) || 1,
+    quantityWanted: Number(entry.quantityWanted || entry.wantedQuantity || entry.quantity || 1) || 1,
+  };
+}
 const MARKET_SEARCH_CATEGORIES = [
   { value: "Pokemon", label: "Pokémon", description: "Cards, sealed products, and catalog records" },
 ];
@@ -6770,6 +6842,9 @@ export default function App() {
   const [marketPriceMemoryDraft, setMarketPriceMemoryDraft] = useState(BLANK_MARKET_PRICE_MEMORY_FORM);
   const [marketPriceMemoryMessage, setMarketPriceMemoryMessage] = useState("");
   const [marketPriceMemorySaving, setMarketPriceMemorySaving] = useState(false);
+  const [wishlistIsoDraft, setWishlistIsoDraft] = useState(BLANK_WISHLIST_ISO_FORM);
+  const [wishlistIsoMessage, setWishlistIsoMessage] = useState("");
+  const [wishlistIsoSaving, setWishlistIsoSaving] = useState(false);
   const [vaultCollectionSets, setVaultCollectionSets] = useState([]);
   const [vaultCollectionSetDraft, setVaultCollectionSetDraft] = useState(BLANK_VAULT_COLLECTION_SET_FORM);
   const [vaultCollectionSetMessage, setVaultCollectionSetMessage] = useState("");
@@ -19568,6 +19643,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (type === "tidepoolCreatePost") return formsDiffer(tidepoolPostForm, BLANK_TIDEPOOL_POST_FORM);
     if (type === "tidepoolTrustedCircle") return formsDiffer(tidepoolCircleForm, BLANK_TIDEPOOL_CIRCLE_FORM);
     if (type === "marketPriceMemory") return formsDiffer(marketPriceMemoryDraft, flowModalBaselineRef.current.marketPriceMemory || BLANK_MARKET_PRICE_MEMORY_FORM);
+    if (type === "wishlistIso") return formsDiffer(wishlistIsoDraft, flowModalBaselineRef.current.wishlistIso || BLANK_WISHLIST_ISO_FORM);
     if (type === "vaultCollectionSet") return formsDiffer(vaultCollectionSetDraft, flowModalBaselineRef.current.vaultCollectionSet || BLANK_VAULT_COLLECTION_SET_FORM);
     if (type === "multiDestinationAdd") return formsDiffer(multiDestinationForm, flowModalBaselineRef.current.multiDestinationAdd || BLANK_MULTI_DESTINATION_FORM);
     if (type === "tradeValue") return tradeStep !== "saved" && formsDiffer(tradeDraft, flowModalBaselineRef.current.tradeValue || BLANK_TRADE_DRAFT);
@@ -19626,6 +19702,11 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       setMarketPriceMemoryDraft(BLANK_MARKET_PRICE_MEMORY_FORM);
       setMarketPriceMemoryMessage("");
       setMarketPriceMemorySaving(false);
+    }
+    if (type === "wishlistIso") {
+      setWishlistIsoDraft(BLANK_WISHLIST_ISO_FORM);
+      setWishlistIsoMessage("");
+      setWishlistIsoSaving(false);
     }
     if (type === "vaultCollectionSet") {
       setVaultCollectionSetDraft(BLANK_VAULT_COLLECTION_SET_FORM);
@@ -25892,6 +25973,77 @@ function saveMarketPriceMemory(event) {
   setVaultToast("Saved Price added to Price Memory.");
 }
 
+function buildWishlistIsoDraft(seed = {}) {
+  return normalizeWishlistIsoDraft({
+    ...BLANK_WISHLIST_ISO_FORM,
+    ...seed,
+  });
+}
+
+function openWishlistIsoFlow(seed = {}, options = {}) {
+  const draft = buildWishlistIsoDraft(seed);
+  setWishlistIsoDraft(draft);
+  setWishlistIsoMessage("");
+  setWishlistIsoSaving(false);
+  flowModalBaselineRef.current.wishlistIso = draft;
+  openFlowModal("wishlistIso", { size: "medium", source: options.source || "wishlist-iso" });
+}
+
+function openWishlistIsoSurface() {
+  setActiveTab("vault");
+  setVaultSubTab("wishlist");
+  if (typeof window !== "undefined") {
+    window.setTimeout(() => document.getElementById("wishlist-items-section")?.scrollIntoView?.({ block: "start", behavior: "smooth" }), 80);
+  }
+}
+
+function updateWishlistIsoDraftField(field, value) {
+  setWishlistIsoDraft((current) => normalizeWishlistIsoDraft({ ...current, [field]: value }));
+  setWishlistIsoMessage("");
+}
+
+function saveWishlistIsoItem(event) {
+  event?.preventDefault?.();
+  if (wishlistIsoSaving) return;
+  if (blockGuestSave()) return;
+  const draft = normalizeWishlistIsoDraft(wishlistIsoDraft);
+  if (!draft.wantedItemName) {
+    setWishlistIsoMessage("Add a wanted item name before saving this Wishlist / ISO plan.");
+    return;
+  }
+  setWishlistIsoSaving(true);
+  const now = new Date().toISOString();
+  const workspace = activeWorkspace || { id: activeWorkspaceId || DEFAULT_PERSONAL_WORKSPACE_ID, name: "My Personal Space", type: "personal" };
+  const numericTarget = Number.parseFloat(String(draft.targetPriceText || "").replace(/[^0-9.]/g, ""));
+  const record = applyWorkspaceToRecord(normalizeWishlistIsoEntry({
+    id: makeId("wishlist-iso"),
+    ...draft,
+    productType: wishlistIsoLabel(draft.category, WISHLIST_ISO_CATEGORIES),
+    tcgCategory: "Pokemon",
+    targetPrice: Number.isFinite(numericTarget) && numericTarget >= 0 ? numericTarget : "",
+    marketPrice: "",
+    actionNotes: [
+      `Wishlist / ISO status: ${wishlistIsoLabel(draft.status, WISHLIST_ISO_STATUSES)}`,
+      draft.notes,
+      "Local planning only. No automatic matching. No live seller offers.",
+    ].filter(Boolean).join(" "),
+    planningMode: "local_only",
+    matchingMode: "none",
+    sellerOfferMode: "none",
+    notificationMode: "none",
+    createdAt: now,
+    updatedAt: now,
+    savedBy: user?.id || "local-beta",
+    source: "local-wishlist-iso",
+  }), workspace);
+  setItems((current) => [record, ...current]);
+  setWishlistIsoDraft(draft);
+  flowModalBaselineRef.current.wishlistIso = draft;
+  setWishlistIsoMessage("Wishlist / ISO item saved locally. This is local planning only with no automatic matching or live seller offers.");
+  setWishlistIsoSaving(false);
+  setVaultToast("Wishlist / ISO item saved locally.");
+}
+
 function applyCatalogProductToVault(productId, options = {}) {
   const product = typeof productId === "object"
     ? productId
@@ -26547,6 +26699,87 @@ function renderMarketPriceMemorySection() {
         />
       )}
       {renderUpgradeValuePreview("market")}
+    </EtMockupSectionCard>
+  );
+}
+
+function renderWishlistIsoPlanningSection({ compact = false, surface = "vault" } = {}) {
+  const recentWishlistIsoItems = wishlistIsoPlannerItems.slice(0, compact ? 3 : 5);
+  const surfaceHelper = surface === "market"
+    ? "Save wants from Market research without creating seller offers or automatic matches."
+    : surface === "forge"
+      ? "Keep trade wants visible before comparing values in Forge."
+      : "Plan wanted cards, sealed products, supplies, set goals, and Kid Pack items separately from owned Vault records.";
+  return (
+    <EtMockupSectionCard
+      className={`wishlist-iso-planning-card wishlist-iso-planning-card--${surface}${compact ? " is-compact" : ""}`}
+      title="Wishlist / ISO"
+      detail={`${surfaceHelper} Local planning only.`}
+      action={<EtMockupButton onClick={() => openWishlistIsoFlow({}, { source: `${surface}-wishlist-iso` })}>Add Wishlist / ISO</EtMockupButton>}
+      ariaLabel="Wishlist and ISO planning"
+    >
+      <div className="wishlist-iso-helper-card" aria-label="Wishlist ISO safety helper">
+        <strong>Local planning only</strong>
+        <span>No automatic matching. No live seller offers. No notifications. Use Wishlist / ISO to remember what your collection is looking for.</span>
+      </div>
+
+      <div className="wishlist-iso-summary-grid" aria-label="Wishlist ISO summary">
+        <div>
+          <span>High-priority wants</span>
+          <strong>{wishlistIsoHighPriority.length}</strong>
+          <small>{wishlistIsoHighPriority.length ? "Looking now" : "None marked high"}</small>
+        </div>
+        <div>
+          <span>Target-price wants</span>
+          <strong>{wishlistIsoTargetPriceItems.length}</strong>
+          <small>{wishlistIsoTargetPriceItems.length ? "Price notes saved" : "Add target price text"}</small>
+        </div>
+        <div>
+          <span>Recently found/paused</span>
+          <strong>{wishlistIsoRecentlyClosed.length}</strong>
+          <small>{wishlistIsoRecentlyClosed.length ? "Review status later" : "No closed wants"}</small>
+        </div>
+        <div>
+          <span>Missing details</span>
+          <strong>{wishlistIsoMissingDetails.length}</strong>
+          <small>{wishlistIsoMissingDetails.length ? "Add notes or targets" : "Details look clear"}</small>
+        </div>
+      </div>
+
+      {recentWishlistIsoItems.length ? (
+        <div className="wishlist-iso-list">
+          {recentWishlistIsoItems.map((item) => (
+            <article className="wishlist-iso-row" key={item.id || item.name}>
+              <div>
+                <div className="wishlist-iso-meta">
+                  <span>{wishlistIsoLabel(item.isoCategory, WISHLIST_ISO_CATEGORIES)}</span>
+                  <span>{wishlistIsoLabel(item.isoPriority, WISHLIST_ISO_PRIORITIES)} priority</span>
+                  <span>{wishlistIsoLabel(item.isoStatus, WISHLIST_ISO_STATUSES)}</span>
+                </div>
+                <h3>{item.name || item.itemName || "Wishlist / ISO item"}</h3>
+                <p>{item.notes || item.wishlistNotes || item.actionNotes || "Add notes about condition, set, personal meaning, or where you hope to find it."}</p>
+              </div>
+              <div className="wishlist-iso-target">
+                <span>Target price</span>
+                <strong>{item.targetPriceText || (item.targetPrice ? formatPriceDisplay(item.targetPrice, { moneyFormatter: money, missingLabel: "No target saved" }) : "No target saved")}</strong>
+                <small>Manual note only</small>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <EtMockupEmptyState
+          title="Your Wishlist / ISO planner is quiet."
+          detail="Add wanted cards, sealed products, supplies, set goals, or Kid Pack items without automatic matching or live seller offers."
+          action={<EtMockupButton onClick={() => openWishlistIsoFlow({}, { source: `${surface}-wishlist-iso-empty` })}>Add Wishlist / ISO</EtMockupButton>}
+        />
+      )}
+
+      <div className="wishlist-iso-route-row" aria-label="Wishlist ISO routes">
+        {surface !== "vault" ? <EtMockupButton variant="secondary" onClick={openWishlistIsoSurface}>Open Vault Wishlist</EtMockupButton> : null}
+        {surface !== "market" ? <EtMockupButton variant="secondary" onClick={() => setActiveTab("market")}>Check Market</EtMockupButton> : null}
+        {surface !== "forge" ? <EtMockupButton variant="secondary" onClick={() => setActiveTab("inventory")}>Review in Forge</EtMockupButton> : null}
+      </div>
     </EtMockupSectionCard>
   );
 }
@@ -27533,6 +27766,22 @@ function renderForgeBusinessCommandPanel() {
           <span>Add sellable inventory, record a sale, or save a receipt when you are ready.</span>
         </div>
       ) : null}
+
+      <div className="forge-main-command-card forge-wishlist-iso-card">
+        <div className="compact-card-header">
+          <div>
+            <h4>Wishlist / ISO</h4>
+            <p>Keep wanted cards, sealed products, supplies, and set goals close before checking a trade. Local planning only: no automatic matching and no live seller offers.</p>
+          </div>
+          <span className="forge-command-count-badge">{wishlistIsoPlannerItems.length} want{wishlistIsoPlannerItems.length === 1 ? "" : "s"}</span>
+        </div>
+        <div className="wishlist-iso-route-row">
+          <button type="button" onClick={() => openWishlistIsoFlow({}, { source: "forge-wishlist-iso-card" })}>Add Wishlist / ISO</button>
+          <button type="button" className="secondary-button" onClick={openWishlistIsoSurface}>Open Vault Wishlist</button>
+          <button type="button" className="secondary-button" onClick={() => openTradeCompassFlow({ source: "forge-wishlist-iso" })}>Trade Compass</button>
+        </div>
+        <p className="compact-subtitle">{wishlistIsoHighPriority.length ? `${wishlistIsoHighPriority.length} high-priority want${wishlistIsoHighPriority.length === 1 ? "" : "s"} can guide your next Trade Compass check.` : "Mark high-priority wants when you know what your collection is hunting for."}</p>
+      </div>
 
       <div className="forge-main-command-columns">
         <div className="forge-main-command-card">
@@ -29801,6 +30050,36 @@ function renderForgeBusinessLedgerPanel() {
   const wishlistItems = useMemo(
     () => rawWishlistItems.map((item) => enrichVaultItemWithCatalogData(item, resolveCatalogProductForItem(item, vaultCatalogLookup))),
     [rawWishlistItems, vaultCatalogLookup]
+  );
+  const wishlistIsoPlannerItems = useMemo(
+    () => wishlistItems.map((item) => normalizeWishlistIsoEntry({
+      ...item,
+      wantedItemName: item.wantedItemName || item.itemName || item.name,
+      category: item.isoCategory || item.wishlistCategory || item.productType || "card",
+      priority: item.isoPriority || item.priority || "medium",
+      targetPriceText: item.targetPriceText || item.targetPrice || "",
+      notes: item.isoNotes || item.wishlistNotes || item.notes || "",
+      status: item.isoStatus || item.wishlistStatus || "looking",
+    })),
+    [wishlistItems]
+  );
+  const wishlistIsoHighPriority = useMemo(
+    () => wishlistIsoPlannerItems.filter((item) => item.isoPriority === "high" && item.isoStatus !== "found"),
+    [wishlistIsoPlannerItems]
+  );
+  const wishlistIsoTargetPriceItems = useMemo(
+    () => wishlistIsoPlannerItems.filter((item) => String(item.targetPriceText || item.targetPrice || "").trim()),
+    [wishlistIsoPlannerItems]
+  );
+  const wishlistIsoRecentlyClosed = useMemo(
+    () => wishlistIsoPlannerItems
+      .filter((item) => ["found", "paused"].includes(item.isoStatus))
+      .sort((a, b) => String(b.updatedAt || b.createdAt || "").localeCompare(String(a.updatedAt || a.createdAt || ""))),
+    [wishlistIsoPlannerItems]
+  );
+  const wishlistIsoMissingDetails = useMemo(
+    () => wishlistIsoPlannerItems.filter((item) => !String(item.notes || item.wishlistNotes || "").trim() || !String(item.targetPriceText || item.targetPrice || "").trim()),
+    [wishlistIsoPlannerItems]
   );
   const activeVaultItems = useMemo(() => vaultItems.filter(isActiveVaultItem), [vaultItems]);
   const activeVaultCardItems = useMemo(() => activeVaultItems.filter(isInventoryCardProduct), [activeVaultItems]);
@@ -35566,6 +35845,20 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </button>
           <button type="button" className="secondary-button" onClick={() => openMarketPriceMemoryFlow(product, { source: "market-result-save-price" })}>
             Save Price
+          </button>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => openWishlistIsoFlow({
+              wantedItemName: catalogTitle(product),
+              category: isSealed ? "sealed" : isCard ? "card" : "other",
+              priority: "medium",
+              targetPriceText: productHasMarketPrice ? productMarketLabel : "",
+              notes: "Saved from Market Watch for local Wishlist / ISO planning.",
+              status: "looking",
+            }, { source: "market-result-wishlist-iso" })}
+          >
+            Add to Wishlist / ISO
           </button>
           <button type="button" className="secondary-button market-result-view-button" onClick={() => openCatalogDetails(product)}>
             Details
@@ -49155,6 +49448,96 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     );
   }
 
+  function renderWishlistIsoFlowContent() {
+    const normalizedDraft = normalizeWishlistIsoDraft(wishlistIsoDraft);
+    return (
+      <form className="wishlist-iso-flow" onSubmit={saveWishlistIsoItem}>
+        <section className="wishlist-iso-flow-card wishlist-iso-hero-card">
+          <span className="section-kicker">Wishlist / ISO</span>
+          <h3>Add Wishlist / ISO</h3>
+          <p>Plan wanted cards, sealed products, supplies, set goals, or Kid Pack items without turning this into automatic matching or seller offers.</p>
+          <div className="wishlist-iso-safety-strip">
+            <span>Local planning only</span>
+            <span>No automatic matching</span>
+            <span>No live seller offers</span>
+            <span>No notifications</span>
+          </div>
+        </section>
+
+        <section className="wishlist-iso-flow-card wishlist-iso-form-card">
+          <div className="compact-card-header">
+            <div>
+              <span className="trust-badge trust-badge--secure">Collector planning</span>
+              <h4>Wanted item details</h4>
+              <p>Keep ISO notes short and useful: target price, priority, category, and why this item matters.</p>
+            </div>
+            <strong>{wishlistIsoLabel(normalizedDraft.priority, WISHLIST_ISO_PRIORITIES)} priority</strong>
+          </div>
+          <div className="wishlist-iso-form-grid">
+            <Field label="Wanted item name">
+              <input
+                value={wishlistIsoDraft.wantedItemName}
+                onChange={(event) => updateWishlistIsoDraftField("wantedItemName", event.target.value)}
+                placeholder="Card, sealed product, set goal, supply, or Kid Pack item"
+              />
+            </Field>
+            <Field label="Category">
+              <select
+                value={wishlistIsoDraft.category}
+                onChange={(event) => updateWishlistIsoDraftField("category", event.target.value)}
+              >
+                {WISHLIST_ISO_CATEGORIES.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </Field>
+            <Field label="Priority">
+              <select
+                value={wishlistIsoDraft.priority}
+                onChange={(event) => updateWishlistIsoDraftField("priority", event.target.value)}
+              >
+                {WISHLIST_ISO_PRIORITIES.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </Field>
+            <Field label="Target price text">
+              <input
+                value={wishlistIsoDraft.targetPriceText}
+                onChange={(event) => updateWishlistIsoDraftField("targetPriceText", event.target.value)}
+                placeholder="Under $25, trade-only, retail if sealed..."
+              />
+            </Field>
+            <Field label="Status">
+              <select
+                value={wishlistIsoDraft.status}
+                onChange={(event) => updateWishlistIsoDraftField("status", event.target.value)}
+              >
+                {WISHLIST_ISO_STATUSES.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </Field>
+          </div>
+          <Field label="Notes">
+            <textarea
+              value={wishlistIsoDraft.notes}
+              onChange={(event) => updateWishlistIsoDraftField("notes", event.target.value)}
+              placeholder="Condition, set, variant, who it is for, or why you want to remember it."
+              rows={3}
+            />
+          </Field>
+        </section>
+
+        <section className="wishlist-iso-helper-card wishlist-iso-flow-helper" aria-label="Wishlist ISO planning limits">
+          <strong>No matching or seller offers</strong>
+          <span>Wishlist / ISO is a local planner. Ember & Tide will not message sellers, match offers, send alerts, or claim live availability from this entry.</span>
+        </section>
+
+        {wishlistIsoMessage ? <p className="field-error trade-value-message" role="status">{wishlistIsoMessage}</p> : null}
+
+        <div className="quick-actions trade-value-actions wishlist-iso-actions">
+          <button type="submit" disabled={wishlistIsoSaving}>{wishlistIsoSaving ? "Saving..." : "Save Wishlist / ISO"}</button>
+          <button type="button" className="secondary-button" onClick={() => closeFlowModal()}>Close</button>
+        </div>
+      </form>
+    );
+  }
+
   function renderVaultCollectionSetFlowContent() {
     return (
       <form className="vault-collection-set-flow" onSubmit={saveVaultCollectionSet}>
@@ -49380,6 +49763,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       return {
         title: "Save Price",
         description: "Save a manual Price Snapshot. Not live pricing and not a guarantee of value.",
+        size: "medium",
+      };
+    }
+    if (activeFlowModal?.type === "wishlistIso") {
+      return {
+        title: "Wishlist / ISO",
+        description: "Save a local wanted-item plan. No automatic matching, live seller offers, or notifications.",
         size: "medium",
       };
     }
@@ -54041,6 +54431,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     if (activeFlowModal?.type === "sparkKidPack") return renderSparkKidPackFlowContent();
     if (activeFlowModal?.type === "sparkEventSupport") return renderSparkEventSupportFlowContent();
     if (activeFlowModal?.type === "marketPriceMemory") return renderMarketPriceMemoryFlowContent();
+    if (activeFlowModal?.type === "wishlistIso") return renderWishlistIsoFlowContent();
     if (activeFlowModal?.type === "vaultCollectionSet") return renderVaultCollectionSetFlowContent();
     if (activeFlowModal?.type === "quickFind") return renderQuickFindFlowContent();
     if (activeFlowModal?.type === "multiDestinationAdd") return renderMultiDestinationAddFlowContent();
@@ -56235,6 +56626,17 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         tone: "market",
         actionLabel: "Open Market",
         onClick: () => setActiveTab("market"),
+      },
+      {
+        key: "wishlist-iso-reminder",
+        label: "Wishlist / ISO",
+        reminder: wishlistIsoHighPriority.length ? `${wishlistIsoHighPriority.length} high-priority want${wishlistIsoHighPriority.length === 1 ? "" : "s"}` : "Local planning only",
+        title: wishlistIsoPlannerItems.length ? "Review your wanted list" : "Plan what you are hunting for",
+        detail: "Track wanted cards, sealed products, supplies, set goals, and Kid Pack items with no automatic matching or live seller offers.",
+        icon: "vault",
+        tone: "gold",
+        actionLabel: "Open Wishlist",
+        onClick: openWishlistIsoSurface,
       },
       {
         key: "spark-moment",
@@ -60001,6 +60403,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                           <small>{link.description}</small>
                         </button>
                       ))}
+                      <button type="button" className="drawer-link" onClick={() => runMenuAction(openWishlistIsoSurface)}>
+                        <strong>Wishlist / ISO</strong>
+                        <small>Local wanted-item planning. No automatic matching or seller offers.</small>
+                      </button>
                     </div>
                   </div>
                   <div className="drawer-info-card">
@@ -65079,17 +65485,26 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <section id="wishlist-items-section" className="panel">
                 <div className="compact-card-header">
                   <div>
-                    <h2>Wishlist</h2>
-                    <p>Wanted items stay separate from owned Vault records and Forge business inventory.</p>
+                    <h2>Wishlist / ISO</h2>
+                    <p>Wanted items stay separate from owned Vault records and Forge business inventory. This is local planning only with no automatic matching or live seller offers.</p>
                   </div>
-                  <button
-                    type="button"
-                    className="secondary-button"
-                    onClick={() => openProductAddFlow({ source: "vault-wishlist", destinations: { wishlist: true } })}
-                  >
-                    Add Wishlist Item
-                  </button>
+                  <div className="quick-actions">
+                    <button
+                      type="button"
+                      onClick={() => openWishlistIsoFlow({}, { source: "vault-wishlist-header" })}
+                    >
+                      Add Wishlist / ISO
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={() => openProductAddFlow({ source: "vault-wishlist", destinations: { wishlist: true } })}
+                    >
+                      Add Wishlist Item
+                    </button>
+                  </div>
                 </div>
+                {renderWishlistIsoPlanningSection({ surface: "vault" })}
                 {wishlistMasterCards.length ? (
                   <section className="master-card-section vault-master-card-section vault-wishlist-master-section" aria-label="Wishlist master card groups">
                     <div className="compact-card-header">
@@ -65116,10 +65531,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <div className="inventory-list compact-inventory-list vault-wishlist-list">
                   {wishlistItems.length === 0 ? (
                     <div className="empty-state vault-empty-state">
-                      <h3>No wishlist items yet.</h3>
-                      <p>Add wants here without counting them as owned collection or sellable inventory.</p>
+                      <h3>No wishlist or ISO items yet.</h3>
+                      <p>Add wants here without counting them as owned collection or sellable inventory. No automatic matching or live seller offers are connected.</p>
                       <div className="quick-actions">
-                        <button type="button" onClick={() => openProductAddFlow({ source: "vault-wishlist-empty", destinations: { wishlist: true } })}>Add to wishlist</button>
+                        <button type="button" onClick={() => openWishlistIsoFlow({}, { source: "vault-wishlist-empty" })}>Add Wishlist / ISO</button>
                         <button type="button" className="secondary-button" onClick={() => setVaultSubTab("sets")}>Browse Set Mastery</button>
                       </div>
                     </div>
@@ -65836,6 +66251,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 {!catalogSearchHasRun && !supabaseCatalogStatus.loading ? renderMarketHomeFoundation() : null}
 
                 {renderMarketPriceMemorySection()}
+                {renderWishlistIsoPlanningSection({ surface: "market", compact: true })}
 
                 {false ? (
                 <section className={getHeaderCardClass("tab-summary panel tidetradr-summary-card")}>
