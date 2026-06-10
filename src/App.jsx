@@ -71897,8 +71897,10 @@ function VaultItemDetail({ item, masterCard, setSummary, linkedTrades = [], coll
             <span className="trust-badge trust-badge--secure">Manual collector note</span>
             <h4>{conditionLabel || "Condition unknown"}</h4>
             <p>{manualConditionNotes || "No condition notes yet. Add corner, edge, wrap, storage, or handling details when you review this item."}</p>
+            <small className="vault-manual-condition-helper">Manual collector note, not a professional grade. Use Grade Assist below for centering, corners, edges, surface, and print-quality checks.</small>
           </div>
           <div className="vault-manual-condition-chip-row">
+            <span>Manual collector note</span>
             <span>Not a professional grade</span>
             <span>Condition can affect price</span>
             <span>Verify before trading or buying</span>
@@ -72276,8 +72278,11 @@ function CompactInventoryCard({
     const totalMarket = valuation.estimatedMarketValue || 0;
     const statusLabel = vaultStatusLabel(normalizeVaultStatus(item));
     const conditionLabel = item.conditionName || item.condition || item.grade || "";
+    const manualConditionNotes = item.conditionNotes || item.condition_notes || item.conditionNote || item.condition_note || "";
+    const conditionCheckedAt = item.conditionCheckedAt || item.condition_checked_at || "";
     const ownerLabel = item.purchaserSummary || itemPurchaserName(item);
     const showOwnerLabel = ownerLabel && !/no purchaser assigned/i.test(String(ownerLabel));
+    const showManualConditionCard = Boolean(manualConditionNotes || conditionCheckedAt);
     const vaultFactRows = [
       ["Qty", quantity || 1],
       ["Value", valuation.marketKnownQuantity ? money(totalMarket) : "Value unavailable"],
@@ -72324,6 +72329,14 @@ function CompactInventoryCard({
             ))}
           </div>
         </div>
+        {showManualConditionCard ? (
+          <div className="vault-card-condition-note" aria-label="Manual condition note">
+            <span>Manual collector note</span>
+            <strong>{conditionLabel || "Condition pending"}</strong>
+            <small>{manualConditionNotes || "Review notes saved locally."}</small>
+            {conditionCheckedAt ? <em>Checked {shortDate(conditionCheckedAt)}</em> : null}
+          </div>
+        ) : null}
         <MasterVariantRail masterCard={masterCard} compact />
 
         {showVaultSellerTools && valuationPrompts.length ? (

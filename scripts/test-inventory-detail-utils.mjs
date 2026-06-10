@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import {
   buildPlannedSalePricePatch,
   deriveGradeAssistReadiness,
@@ -8,6 +9,8 @@ import {
   inventoryProductIdentityGroupKey,
   plannedSalePriceUpdateSummary,
 } from "../src/utils/inventoryDetailUtils.js";
+
+const appSource = fs.readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
 
 const groupedItem = {
   id: "group-primary",
@@ -37,6 +40,8 @@ assert.deepEqual(patch.plannedSalePriceHistory[1], {
 });
 
 assert.equal(GRADE_ASSIST_DISCLAIMER, "Grade Assist is an estimate, not a guaranteed grade.");
+assert.match(appSource, /Manual collector note, not a professional grade\./);
+assert.match(appSource, /vault-card-condition-note/);
 
 const emptyChecklist = normalizeGradeAssistChecklist({});
 assert.equal(emptyChecklist.checks.centering, "not_checked");

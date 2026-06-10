@@ -102151,6 +102151,12 @@ html body #root .app.app-command-shell .vault-manual-condition-panel small {
   line-height: 1.42;
 }
 
+html body #root .app.app-command-shell .vault-manual-condition-helper {
+  display: block;
+  margin-top: 7px;
+  font-weight: 800;
+}
+
 html body #root .app.app-theme-dark.app-command-shell .vault-condition-helper-card span,
 html body #root .app.app-shell-dark.app-command-shell .vault-condition-helper-card span,
 html body #root .app.app-theme-dark.app-command-shell .vault-manual-condition-panel p,
@@ -102177,6 +102183,74 @@ html body #root .app.app-command-shell .vault-manual-condition-chip-row span {
   color: var(--et-ink, #172033);
   font-size: 0.76rem;
   font-weight: 850;
+}
+
+html body #root .app.app-command-shell .vault-card-condition-note {
+  display: grid;
+  gap: 4px;
+  padding: 9px 10px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2, #d9a441) 24%, var(--et-border, rgba(118, 84, 42, 0.18)));
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 12%, transparent), color-mix(in srgb, var(--et-page-accent, #8b5cf6) 8%, transparent)),
+    color-mix(in srgb, var(--et-panel-soft, #fff1dc) 78%, transparent);
+}
+
+html body #root .app.app-command-shell .vault-card-condition-note span {
+  color: color-mix(in srgb, var(--et-page-accent, #8b5cf6) 72%, var(--et-ink, #172033));
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+html body #root .app.app-command-shell .vault-card-condition-note strong {
+  color: var(--et-ink, #172033);
+  font-size: 0.9rem;
+}
+
+html body #root .app.app-command-shell .vault-card-condition-note small,
+html body #root .app.app-command-shell .vault-card-condition-note em {
+  color: color-mix(in srgb, var(--et-muted, #675d52) 88%, var(--et-ink, #172033));
+  font-size: 0.78rem;
+  line-height: 1.32;
+}
+
+html body #root .app.app-command-shell .vault-card-condition-note small {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+html body #root .app.app-command-shell .vault-card-condition-note em {
+  font-style: normal;
+  font-weight: 800;
+}
+
+html body #root .app.app-theme-dark.app-command-shell .vault-card-condition-note,
+html body #root .app.app-shell-dark.app-command-shell .vault-card-condition-note {
+  border-color: color-mix(in srgb, var(--et-page-accent-2, #d9a441) 28%, var(--et-border, rgba(197, 220, 255, 0.16)));
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 13%, transparent), color-mix(in srgb, var(--et-page-accent, #8b5cf6) 10%, transparent)),
+    color-mix(in srgb, var(--et-panel-soft, #14233b) 82%, transparent);
+}
+
+html body #root .app.app-theme-dark.app-command-shell .vault-card-condition-note span,
+html body #root .app.app-shell-dark.app-command-shell .vault-card-condition-note span {
+  color: color-mix(in srgb, var(--et-page-accent-2, #d9a441) 82%, var(--et-ink, #f7f0df));
+}
+
+html body #root .app.app-theme-dark.app-command-shell .vault-card-condition-note strong,
+html body #root .app.app-shell-dark.app-command-shell .vault-card-condition-note strong {
+  color: var(--et-ink, #f7f0df);
+}
+
+html body #root .app.app-theme-dark.app-command-shell .vault-card-condition-note small,
+html body #root .app.app-theme-dark.app-command-shell .vault-card-condition-note em,
+html body #root .app.app-shell-dark.app-command-shell .vault-card-condition-note small,
+html body #root .app.app-shell-dark.app-command-shell .vault-card-condition-note em {
+  color: color-mix(in srgb, var(--et-muted, #c9d7ea) 86%, var(--et-ink, #f7f0df));
 }
 
 html body #root .app.app-command-shell .collector-flip-card {
