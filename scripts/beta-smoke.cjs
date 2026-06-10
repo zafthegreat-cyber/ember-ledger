@@ -568,6 +568,10 @@ async function main() {
     await nav("Scout");
     await assertVisibleText("Scout");
     await assertVisibleText("Current reports, not raw patterns.");
+    await assertVisibleText("Watchlist Rules");
+    await assertVisibleText("Scout Access");
+    await assertVisibleText("Pattern Protected");
+    await assertVisibleText("Free plan includes 1 watched store. You can change it once every 30 days.");
     await expectVisible(page.locator(".scout-watch-stores-card").first(), "My Watch Stores section");
     await assertVisibleText("Nearby Reports");
     const scanScreenshotButton = page.getByRole("button", { name: /^Scan Screenshot$/ }).first();
@@ -595,7 +599,8 @@ async function main() {
     await assertVisibleText("Choose the stores you want Scout to watch for current signals.");
     await expectVisible(page.locator(".scout-watch-tier-summary").first(), "watched store slot summary");
     await expectVisible(page.locator(".scout-watch-store-page").first(), "My Watch Stores management page");
-    await assertVisibleText(/Slots|Change rule|Tier-safe Scout/i);
+    await assertVisibleText(/Slots|Change rule|Watchlist Rules|Pattern Protected/i);
+    await assertVisibleText(/Upgrade for More Watches|Choose your first watched store|Choose another store|Watched store slots are full/i);
     await assertVisibleText(/Choose your first watched store|Choose another store|Watched store slots are full|Choose from nearby stores/i);
     await clickFirstVisible(page.getByRole("button", { name: /^Choose Store$|^Change Store$/ }), "watched store picker action");
     await assertVisibleText(/Choose watched store|Change watched store/i);

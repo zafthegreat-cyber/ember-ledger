@@ -36476,6 +36476,64 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     return `${watchedCount}/${limit} watched store${limit === 1 ? "" : "s"}`;
   }
 
+  function scoutWatchChangeWindowStatus(rowOrStore = {}) {
+    const store = rowOrStore.store || rowOrStore;
+    const days = Number(tierAccess.scoutStoreSwapDays || 0);
+    if (!days || tierAccess.isAdmin) {
+      return {
+        blocked: false,
+        label: "Change Window open",
+        helper: tierAccess.isAdmin ? "Admin moderation is not rate-limited in this beta UI." : "Store changes are managed by your current access level.",
+      };
+    }
+    const explicit = store.nextWatchChangeAt || store.next_watch_change_at || store.nextChangeAt || store.next_change_at;
+    const changedAt = store.watchChangedAt || store.watch_changed_at || store.updatedAt || store.updated_at;
+    const readyAt = explicit
+      ? new Date(explicit)
+      : changedAt
+        ? new Date(changedAt)
+        : null;
+    if (readyAt && !Number.isNaN(readyAt.getTime()) && !explicit) readyAt.setDate(readyAt.getDate() + days);
+    const readyLabel = readyAt && !Number.isNaN(readyAt.getTime())
+      ? readyAt.toLocaleDateString(undefined, { month: "short", day: "numeric" })
+      : "";
+    const blocked = Boolean(readyAt && !Number.isNaN(readyAt.getTime()) && readyAt.getTime() > Date.now());
+    return {
+      blocked,
+      readyAt,
+      label: blocked ? `Change Window opens ${readyLabel}` : "Change Window open",
+      helper: blocked
+        ? `This watched store can be changed again on ${readyLabel}.`
+        : `Free plan includes 1 watched store. You can change it once every ${days} days.`,
+    };
+  }
+
+  function scoutWatchGlobalChangeWindowStatus(savedScout = null) {
+    const saved = savedScout || sanitizeScoutLocalData(JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}"));
+    return scoutWatchChangeWindowStatus({
+      watchChangedAt: saved.lastScoutWatchChangeAt || saved.lastWatchStoreChangeAt || saved.watchChangedAt || "",
+      nextWatchChangeAt: saved.nextScoutWatchChangeAt || saved.nextWatchStoreChangeAt || "",
+    });
+  }
+
+  function scoutWatchAccessRows() {
+    return [
+      { tier: PLAN_TYPES.FREE, label: "Free Watch", helper: "1 watched store and one change every 30 days." },
+      { tier: PLAN_TYPES.COLLECTOR, label: "Collector Watch", helper: "More selected stores and deeper current context." },
+      { tier: PLAN_TYPES.FAMILY, label: "Family Watch", helper: "Family setup uses the existing Collector watch limit." },
+      { tier: PLAN_TYPES.SELLER, label: "Seller Watch", helper: "Seller tools do not unlock raw Scout history." },
+      { tier: PLAN_TYPES.SHOP, label: "Shop Watch", helper: "Shop tools stay approval-based and pattern-safe." },
+    ].map((row) => {
+      const access = getTierAccess({ tier: row.tier });
+      return {
+        ...row,
+        slots: Number(access.scoutStoreSlots || 1),
+        swapDays: Number(access.scoutStoreSwapDays || 0),
+        protected: !access.canViewRawScoutHistory && !access.canViewPatternTools,
+      };
+    });
+  }
+
   function getWatchedStoreRows(rows = buildStoreMapRows({ unfiltered: true })) {
     return rows.filter((row) => row.watchlisted || isWatchedEmberStore(row.store));
   }
@@ -36614,9 +36672,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const saved = sanitizeScoutLocalData(JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}"));
     const savedStores = saved.stores?.length ? saved.stores : scoutSnapshot.stores || [];
     const exists = savedStores.some((store) => getStoreMapStoreId(store) === targetId);
+    const nowIso = new Date().toISOString();
     const patchStore = (store, watched) => {
       const patched = setStoreFavoriteState(store, watched);
-      return watched ? { ...patched, watchChangedAt: new Date().toISOString() } : patched;
+      return { ...patched, watchChangedAt: nowIso };
     };
     let nextStores = savedStores.map((store) => {
       const storeId = getStoreMapStoreId(store);
@@ -36625,7 +36684,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       return store;
     });
     if (!exists && nextWatchlisted) nextStores = [patchStore({ ...row.store, id: row.store.id || targetId }, true), ...nextStores];
-    const nextScout = { ...saved, stores: nextStores };
+    const nextScout = { ...saved, stores: nextStores, lastScoutWatchChangeAt: nowIso };
     localStorage.setItem(SCOUT_STORAGE_KEY, JSON.stringify(nextScout));
     setScoutSnapshot((current) => ({ ...current, stores: nextStores }));
     setSelectedStoreMapStore((current) => {
@@ -36666,8 +36725,20 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       setVaultToast(`${row.name || getScoutQuickStoreName(row.store)} is already in My Watch Stores.`);
       return;
     }
+    if (!alreadyWatched && !replaceStoreId && watchedRows.length === 0) {
+      const globalChangeWindow = scoutWatchGlobalChangeWindowStatus();
+      if (globalChangeWindow.blocked && !tierAccess.isAdmin) {
+        setVaultToast(`Change Window active. ${globalChangeWindow.helper}`);
+        return;
+      }
+    }
     if (replaceStoreId && replaceStoreId !== targetId) {
       const replacedRow = watchedRows.find((candidate) => getStoreMapStoreId(candidate.store) === replaceStoreId);
+      const changeWindow = scoutWatchChangeWindowStatus(replacedRow || {});
+      if (changeWindow.blocked && !tierAccess.isAdmin) {
+        setVaultToast(`Change Window active. ${changeWindow.helper}`);
+        return;
+      }
       const nextChangeLabel = scoutWatchNextChangeLabel(replacedRow || {});
       const nextChangeMessage = nextChangeLabel.startsWith("Next change:")
         ? `until ${nextChangeLabel.replace(/^Next change:\s*/i, "")}`
@@ -37388,6 +37459,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       ? "Admin moderation can view protected history."
       : "Selected-store current details only; sensitive history stays protected.";
     const watchedStoreRows = watchedStores.slice(0, Math.min(3, scoutSlotLimit >= 99 ? 3 : Math.max(1, scoutSlotLimit || 1)));
+    const watchAccessRows = scoutWatchAccessRows();
     const openScoutStoresList = () => {
       setScoutSubTabTarget({ tab: "stores", id: Date.now() });
       setScoutStoresMode("list");
@@ -37495,10 +37567,27 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           ) : (
             <EtMockupEmptyState
               title="Choose your first watched store."
-              detail={`${watchedStorePlanLabel}. ${watchedStoreSwapLabel} Paid tiers add more selected stores, but Scout never sells unlimited raw access.`}
+              detail={`Pick your first watched store so Scout knows where to keep an eye out. ${watchedStorePlanLabel}. ${watchedStoreSwapLabel}`}
               action={<EtMockupButton variant="secondary" onClick={openScoutStoresList}>Choose Store</EtMockupButton>}
             />
           )}
+
+          <div className="scout-watchlist-rules-card" aria-label="Watchlist Rules">
+            <span className="section-kicker">Watchlist Rules</span>
+            <h3>Scout Access</h3>
+            <p><strong>Pattern Protected</strong> Scout watches for useful signals without exposing full restock patterns. That keeps the community fair and helps prevent hoarding.</p>
+            <p><strong>Free Watch</strong> Free plan includes 1 watched store. You can change it once every 30 days.</p>
+            <p><strong>Upgrade for More Watches</strong> Upgrade when you are ready to watch more stores and get broader Scout coverage.</p>
+            <div className="scout-watch-access-grid">
+              {watchAccessRows.map((row) => (
+                <span className={row.label.toLowerCase().startsWith(watchedStorePlanName.toLowerCase()) ? "active" : ""} key={row.label}>
+                  <strong>{row.label}</strong>
+                  <small>{row.slots >= 99 ? "Admin moderation" : `${row.slots} watched store${row.slots === 1 ? "" : "s"}`} | {row.swapDays ? `${row.swapDays}-day Change Window` : "Admin Change Window"}</small>
+                  <em>{row.protected ? "Pattern Protected" : "Admin review only"}</em>
+                </span>
+              ))}
+            </div>
+          </div>
 
           <div className="scout-mockup-safety-note">
             <span className="section-kicker">Scout Access Foundation</span>
@@ -37642,6 +37731,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const watchedStores = getWatchedStoreRows(buildStoreMapRows({ unfiltered: true }));
     const slotLimit = scoutWatchSlotLimit();
     const watchedStoreRows = watchedStores.slice(0, Math.max(1, Math.min(3, slotLimit >= 99 ? 3 : slotLimit)));
+    const watchAccessRows = scoutWatchAccessRows();
     const watchedProducts = [
       {
         key: "prismatic-bundle",
@@ -37681,9 +37771,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       <section className="scout-watchlist-page" aria-label="Scout Watchlist">
         <article className="panel scout-watchlist-hero">
           <div>
-            <p className="section-kicker">Scout Watchlist</p>
+            <p className="section-kicker">Scout Watchlist | Watchlist Rules</p>
             <h2>Selected stores and products, with limits that stay fair.</h2>
-            <p>Keep current signals close without turning Scout into unlimited all-store access or a raw restock pattern feed.</p>
+            <p>Keep current signals close without turning Scout into unlimited all-store access or a raw restock pattern feed. Pattern Protected rules keep sensitive history tucked away.</p>
           </div>
           <div className="scout-watch-tier-summary" aria-label="Scout watchlist limits">
             <div>
@@ -37695,13 +37785,38 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <strong>{scoutWatchSlotSummary(watchedStores.length)}</strong>
             </div>
             <div>
-              <span>Cooldown</span>
+              <span>Change Window</span>
               <strong>{scoutWatchSwapWindowLabel()}</strong>
             </div>
           </div>
         </article>
 
         <div className="scout-watchlist-layout">
+          <article className="panel scout-watchlist-rules-panel">
+            <div className="compact-card-header">
+              <div>
+                <p className="section-kicker">Watchlist Rules</p>
+                <h2>Scout Access</h2>
+                <p>Scout watches for useful signals without exposing full restock patterns. That keeps the community fair and helps prevent hoarding.</p>
+              </div>
+              <span className="status-badge">Pattern Protected</span>
+            </div>
+            <div className="scout-watch-access-grid scout-watch-access-grid--wide">
+              {watchAccessRows.map((row) => (
+                <div className={row.label.toLowerCase().startsWith(scoutWatchPlanLabel().toLowerCase()) ? "active" : ""} key={`watchlist-${row.label}`}>
+                  <strong>{row.label}</strong>
+                  <span>{row.slots >= 99 ? "Admin moderation" : `${row.slots} watched store${row.slots === 1 ? "" : "s"}`}</span>
+                  <small>{row.swapDays ? `${row.swapDays}-day Change Window` : "Admin Change Window"} | {row.protected ? "Pattern Protected" : "Admin only"}</small>
+                </div>
+              ))}
+            </div>
+            <div className="scout-watch-helper-grid">
+              <span><strong>Free Watch</strong> Free plan includes 1 watched store. You can change it once every 30 days.</span>
+              <span><strong>Upgrade for More Watches</strong> Upgrade when you are ready to watch more stores and get broader Scout coverage.</span>
+              <span><strong>Store Alert</strong> Alerts are limited current signals, not guaranteed stock or push-notification promises.</span>
+            </div>
+          </article>
+
           <article className="panel scout-watchlist-store-card">
             <div className="compact-card-header">
               <div>
@@ -37723,7 +37838,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               )) : (
                 <div className="empty-state scout-watch-empty-state">
                   <h3>Choose your first watched store.</h3>
-                  <p>{scoutWatchPlanLabel()} plan: {slotLimit >= 99 ? "admin store review" : `${slotLimit} watched store${slotLimit === 1 ? "" : "s"}`}. {scoutWatchSwapWindowLabel()}</p>
+                  <p>Pick your first watched store so Scout knows where to keep an eye out. {scoutWatchPlanLabel()} plan: {slotLimit >= 99 ? "admin store review" : `${slotLimit} watched store${slotLimit === 1 ? "" : "s"}`}. {scoutWatchSwapWindowLabel()}</p>
                   <button type="button" className="secondary-button" onClick={() => setScoutView("stores")}>Choose Store</button>
                 </div>
               )}
@@ -37757,7 +37872,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </article>
 
           <aside className="panel scout-watchlist-alert-card">
-            <p className="section-kicker">Alert settings</p>
+            <p className="section-kicker">Store Alert settings</p>
             <h2>Helpful, quiet, and tier-safe.</h2>
             <div className="scout-alert-preference-grid">
               {alertSettings.map((setting) => (
@@ -37777,6 +37892,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div className="scout-watchlist-free-note">
               <strong>Free stays useful.</strong>
               <span>One watched store, manual Scout reports, screenshot review UI, and Worth the Trip context remain part of the core collector experience.</span>
+            </div>
+            <div className="scout-watchlist-upgrade-note">
+              <strong>Upgrade for More Watches</strong>
+              <span>Upgrade when you are ready to watch more stores and get broader Scout coverage. Billing and checkout stay admin-managed during beta.</span>
             </div>
           </aside>
         </div>
@@ -48501,12 +48620,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </div>
           </div>
           <div className="scout-watch-rule-card">
-            <strong>{watchRuleTitle}</strong>
+            <strong>Watchlist Rules | {watchRuleTitle}</strong>
             <span>{watchRuleHelper}</span>
-            <small>Current reports only. Sensitive history stays protected.</small>
+            <small>Pattern Protected. Current reports only. Sensitive history stays protected.</small>
           </div>
           <div className="scout-store-retailer-note">
-            <strong>Tier-safe Scout</strong>
+            <strong>Pattern Protected</strong>
             <span>{slotLimit >= 99 ? "Admin tools can review broader store coverage for moderation. Sensitive history stays protected from public access." : `Your plan watches ${slotLimit} selected store${slotLimit === 1 ? "" : "s"} for current signals. Higher tiers can add selected stores. Sensitive history stays protected.`}</span>
           </div>
           <div className="scout-store-retailer-chips" aria-label="Retailer filters">
@@ -48533,9 +48652,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               {visibleSlotCards.map(renderEmptySlotCard)}
               {atSlotLimit ? (
                 <article className="scout-watch-empty-slot scout-watch-empty-slot--limit">
-                  <strong>Watched store slots are full</strong>
-                  <p>Change an existing watched store, or ask admin about the Extra Scout store add-on during beta.</p>
-                  <button type="button" className="secondary-button" onClick={() => watchedStoreRows[0] ? openWatchStorePicker({ replaceStoreId: getStoreMapStoreId(watchedStoreRows[0].store) }) : openWatchStorePicker()}>Change Store</button>
+                  <strong>Upgrade for More Watches</strong>
+                  <p>Watched store slots are full. Change an existing watched store inside the Change Window, or ask admin about the Extra Scout store add-on during beta.</p>
+                  <div className="scout-watch-management-actions">
+                    <button type="button" className="secondary-button" onClick={() => watchedStoreRows[0] ? openWatchStorePicker({ replaceStoreId: getStoreMapStoreId(watchedStoreRows[0].store) }) : openWatchStorePicker()}>Change Store</button>
+                    <button type="button" className="ghost-button" onClick={() => setActiveTab("membership")}>Scout Access</button>
+                  </div>
                 </article>
               ) : null}
             </div>

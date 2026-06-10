@@ -71086,6 +71086,106 @@ body:has(.catalog-detail-drawer) :where(.mobile-bottom-nav, .bottom-nav, .bottom
   line-height: 1;
 }
 
+.scout-watchlist-rules-card,
+.scout-watchlist-rules-panel,
+.scout-watch-helper-grid span,
+.scout-watch-access-grid > span,
+.scout-watch-access-grid > div,
+.scout-watchlist-upgrade-note {
+  min-width: 0;
+}
+
+.scout-watchlist-rules-card,
+.scout-watchlist-rules-panel {
+  display: grid;
+  gap: 11px;
+  border-color: rgba(255, 184, 77, 0.24) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(43, 217, 255, 0.12), transparent 12rem),
+    radial-gradient(circle at 0% 100%, rgba(255, 184, 77, 0.12), transparent 12rem),
+    rgba(4, 15, 30, 0.82) !important;
+}
+
+.scout-watchlist-rules-card h3,
+.scout-watchlist-rules-panel h2 {
+  margin: 0;
+  color: #f8fbff;
+}
+
+.scout-watchlist-rules-card p,
+.scout-watchlist-rules-panel p,
+.scout-watch-helper-grid span {
+  margin: 0;
+  color: rgba(232, 246, 255, 0.76);
+  font-size: 0.84rem;
+  line-height: 1.42;
+}
+
+.scout-watchlist-rules-card p strong,
+.scout-watchlist-rules-panel p strong,
+.scout-watch-helper-grid strong {
+  color: #fff3c7;
+}
+
+.scout-watch-access-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  gap: 8px;
+}
+
+.scout-watch-access-grid > span,
+.scout-watch-access-grid > div {
+  display: grid;
+  gap: 4px;
+  padding: 9px;
+  border: 1px solid rgba(43, 217, 255, 0.16);
+  border-radius: 14px;
+  background: rgba(2, 13, 28, 0.54);
+}
+
+.scout-watch-access-grid > .active,
+.scout-watch-access-grid > span.active,
+.scout-watch-access-grid > div.active {
+  border-color: rgba(255, 184, 77, 0.46);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 184, 77, 0.12), transparent 7rem),
+    rgba(34, 22, 8, 0.56);
+}
+
+.scout-watch-access-grid strong {
+  color: #eaffff;
+  font-size: 0.82rem;
+  line-height: 1.2;
+}
+
+.scout-watch-access-grid small,
+.scout-watch-access-grid span span {
+  color: rgba(232, 246, 255, 0.7);
+  font-size: 0.7rem;
+  line-height: 1.28;
+}
+
+.scout-watch-access-grid em {
+  color: #ffe8a3;
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.scout-watch-helper-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.scout-watch-helper-grid span,
+.scout-watchlist-upgrade-note {
+  padding: 10px;
+  border: 1px solid rgba(255, 184, 77, 0.18);
+  border-radius: 14px;
+  background: rgba(34, 22, 8, 0.5);
+}
+
 .app-scout .scout-watch-empty-state,
 .app-command-shell.app-scout .scout-watch-empty-state,
 .app-shell-dark.app-scout .scout-watch-empty-state {
@@ -76315,6 +76415,10 @@ button.et-live-action:focus-visible {
   align-items: start;
 }
 
+.scout-watchlist-rules-panel {
+  grid-column: 1 / -1;
+}
+
 .scout-online-signal-list,
 .scout-watchlist-products-card {
   display: grid;
@@ -76420,7 +76524,7 @@ button.et-live-action:focus-visible {
 
 .scout-watchlist-alert-card {
   grid-column: 2 / 3;
-  grid-row: 1 / span 2;
+  grid-row: 2 / span 2;
 }
 
 .scout-watchlist-product-card dl {
@@ -76468,6 +76572,14 @@ button.et-live-action:focus-visible {
     grid-column: auto;
     grid-row: auto;
   }
+
+  .scout-watchlist-rules-panel {
+    grid-column: auto;
+  }
+
+  .scout-watch-helper-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 520px) {
@@ -76484,6 +76596,10 @@ button.et-live-action:focus-visible {
   .scout-online-stat-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
+  }
+
+  .scout-watch-access-grid {
+    grid-template-columns: 1fr;
   }
 
   .scout-online-stat-grid > div {
