@@ -86,7 +86,9 @@ assert.ok(
     appSource.includes("function CollectorFlipDetailCard") &&
     appSource.includes("function SealedProductShelfCard") &&
     appSource.includes("collectorShowcaseRarityTone") &&
-    appSource.includes("Rarity unknown") &&
+    appSource.includes("collectorShowcaseRarityLabel") &&
+    appSource.includes("Rarity from catalog data when available.") &&
+    appSource.includes('return "Unknown"') &&
     appSource.includes("3D Collector Showcase") &&
     appSource.includes("Sealed Product Shelf") &&
     appSource.includes("Collection Gallery") &&
@@ -101,10 +103,26 @@ assert.ok(
     cssSource.includes(".collector-flip-card") &&
     cssSource.includes(".sealed-product-shelf-card") &&
     cssSource.includes(".vault-gallery-tile") &&
+    cssSource.includes(".collector-rarity-common") &&
+    cssSource.includes(".collector-rarity-uncommon") &&
+    cssSource.includes(".collector-rarity-holo") &&
+    cssSource.includes(".collector-rarity-reverse") &&
+    cssSource.includes(".collector-rarity-promo") &&
     cssSource.includes(".collector-rarity-secret") &&
+    cssSource.includes(".collector-rarity-chip") &&
     cssSource.includes("@media (prefers-reduced-motion: reduce)") &&
     cssSource.includes("transform: none"),
   "Collector Showcase and flip details should provide a reduced-motion CSS fallback."
+);
+assert.ok(
+  appSource.includes("collectorShowcaseRarityTone(rarity, metaList)") &&
+    appSource.includes("collectorShowcaseRarityLabel(rarity, metaList)") &&
+    appSource.includes("collector-rarity-chip-${rarityTone}") &&
+    appSource.includes("Unknown") &&
+    cssSource.includes(".market-showcase-preview .collector-rarity-chip") &&
+    cssSource.includes(".quick-add-showcase-preview .collector-rarity-chip") &&
+    cssSource.includes(".collector-rarity-chip-neutral"),
+  "Collector Showcase should render known rarity chips and an Unknown fallback from existing catalog or Vault metadata."
 );
 assert.ok(
   cssSource.includes("contain: layout paint style") &&

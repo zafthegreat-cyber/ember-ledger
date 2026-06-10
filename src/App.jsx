@@ -6513,19 +6513,39 @@ function collectorShowcaseInitials(title = "") {
   return words.slice(0, 2).map((word) => word[0]).join("").toUpperCase() || "ET";
 }
 
-function collectorShowcaseRarityTone(value = "") {
-  const text = normalizeSearchText(value);
+const COLLECTOR_SHOWCASE_RARITY_HELPER = "Rarity from catalog data when available.";
+
+function collectorShowcaseRaritySource(value = "", meta = []) {
+  return [
+    value,
+    ...(Array.isArray(meta) ? meta : [meta]),
+  ].filter(Boolean).join(" ");
+}
+
+function collectorShowcaseRarityTone(value = "", meta = []) {
+  const text = normalizeSearchText(collectorShowcaseRaritySource(value, meta));
   if (!text) return "neutral";
+  if (text.includes("promo") || text.includes("stamp") || text.includes("prerelease")) return "promo";
   if (text.includes("secret") || text.includes("hyper") || text.includes("rainbow") || text.includes("gold")) return "secret";
   if (text.includes("special illustration") || text.includes("illustration rare") || text.includes("alt art")) return "illustration";
-  if (text.includes("ultra") || text.includes("full art") || text.includes("ex") || text.includes("vmax") || text.includes("vstar")) return "ultra";
-  if (text.includes("rare") || text.includes("holo") || text.includes("foil")) return "rare";
+  if (text.includes("ultra") || text.includes("full art") || text.includes("ex") || text.includes("vmax") || text.includes("vstar") || text.includes("tera")) return "ultra";
+  if (text.includes("reverse holo") || text.includes("reverse foil") || text.includes("reverse")) return "reverse";
+  if (text.includes("holo") || text.includes("foil") || text.includes("shiny")) return "holo";
+  if (text.includes("rare")) return "rare";
+  if (text.includes("uncommon")) return "uncommon";
+  if (text.includes("common")) return "common";
   return "neutral";
 }
 
-function collectorShowcaseRarityLabel(value = "") {
+function collectorShowcaseRarityLabel(value = "", meta = []) {
   const label = String(value || "").trim();
-  return label || "Rarity unknown";
+  if (label) return label;
+  const text = normalizeSearchText(collectorShowcaseRaritySource("", meta));
+  if (text.includes("promo")) return "Promo";
+  if (text.includes("reverse holo") || text.includes("reverse foil") || text.includes("reverse")) return "Reverse Holo";
+  if (text.includes("holo")) return "Holo";
+  if (text.includes("foil")) return "Foil";
+  return "Unknown";
 }
 
 function CollectorShowcaseCard({
@@ -6545,8 +6565,9 @@ function CollectorShowcaseCard({
 }) {
   const normalizedKind = normalizeCollectorShowcaseKind(kind);
   const kindLabel = COLLECTOR_SHOWCASE_KIND_LABELS[normalizedKind] || COLLECTOR_SHOWCASE_KIND_LABELS.item;
-  const rarityLabel = normalizedKind === "card" ? collectorShowcaseRarityLabel(rarity) : "";
-  const rarityTone = normalizedKind === "card" ? collectorShowcaseRarityTone(rarity) : "neutral";
+  const metaList = (Array.isArray(meta) ? meta : [meta]).filter(Boolean);
+  const rarityLabel = normalizedKind === "card" ? collectorShowcaseRarityLabel(rarity, metaList) : "";
+  const rarityTone = normalizedKind === "card" ? collectorShowcaseRarityTone(rarity, metaList) : "neutral";
   const Component = onClick ? "button" : "article";
   const componentProps = onClick
     ? { type: "button", onClick, "aria-label": ariaLabel || `Open ${title}` }
@@ -6554,7 +6575,7 @@ function CollectorShowcaseCard({
   const screenReaderHint = onClick
     ? "Visual display mode. Open item profile."
     : "Visual display mode. Card details are shown as text.";
-  const metaItems = [...new Set([kindLabel, rarityLabel, ...(Array.isArray(meta) ? meta : [meta]).filter(Boolean)])].slice(0, 4);
+  const metaItems = [...new Set([kindLabel, ...metaList])].slice(0, 3);
   return (
     <Component
       className={`collector-showcase-card collector-showcase-${normalizedKind} collector-showcase-${mode} collector-rarity-${rarityTone} ${image ? "has-image" : "is-fallback"} ${className}`.trim()}
@@ -6592,8 +6613,17 @@ function CollectorShowcaseCard({
         {subtitle ? <small>{subtitle}</small> : null}
         {valueLabel ? <em>{valueLabel}</em> : null}
         <span className="collector-showcase-chip-row">
+          {rarityLabel ? (
+            <b
+              className={`collector-rarity-chip collector-rarity-chip-${rarityTone}`}
+              title={COLLECTOR_SHOWCASE_RARITY_HELPER}
+            >
+              {rarityLabel}
+            </b>
+          ) : null}
           {metaItems.map((item) => <b key={item}>{item}</b>)}
         </span>
+        {rarityLabel ? <small className="collector-showcase-rarity-note">{COLLECTOR_SHOWCASE_RARITY_HELPER}</small> : null}
         {helper ? <small className="collector-showcase-helper">{helper}</small> : null}
         {actionLabel ? <span className="collector-showcase-action">{actionLabel}</span> : null}
       </span>

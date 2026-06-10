@@ -101028,11 +101028,28 @@ html body #root .app.app-command-shell .collector-showcase-shine {
   transform: translateX(-12%);
 }
 
+html body #root .app.app-command-shell .collector-showcase-card.collector-rarity-common .collector-showcase-face {
+  border-color: color-mix(in srgb, var(--et-border, rgba(118, 84, 42, 0.18)) 70%, var(--et-panel, #fffdf7));
+}
+
+html body #root .app.app-command-shell .collector-showcase-card.collector-rarity-uncommon .collector-showcase-face {
+  border-color: color-mix(in srgb, #79a36d 42%, var(--et-page-accent-2, #d9a441) 18%);
+}
+
 html body #root .app.app-command-shell .collector-showcase-card.collector-rarity-rare .collector-showcase-face,
+html body #root .app.app-command-shell .collector-showcase-card.collector-rarity-holo .collector-showcase-face,
+html body #root .app.app-command-shell .collector-showcase-card.collector-rarity-reverse .collector-showcase-face,
 html body #root .app.app-command-shell .collector-showcase-card.collector-rarity-ultra .collector-showcase-face,
 html body #root .app.app-command-shell .collector-showcase-card.collector-rarity-illustration .collector-showcase-face,
+html body #root .app.app-command-shell .collector-showcase-card.collector-rarity-promo .collector-showcase-face,
 html body #root .app.app-command-shell .collector-showcase-card.collector-rarity-secret .collector-showcase-face {
   border-color: color-mix(in srgb, var(--et-page-accent-2, #d9a441) 58%, rgba(255, 255, 255, 0.36));
+}
+
+html body #root .app.app-command-shell .collector-showcase-card.collector-rarity-uncommon .collector-showcase-shine {
+  background:
+    linear-gradient(112deg, transparent 0 32%, rgba(255, 255, 255, 0.22) 44%, transparent 58%),
+    radial-gradient(circle at 18% 18%, color-mix(in srgb, #79a36d 18%, rgba(255, 255, 255, 0.18)), transparent 30%);
 }
 
 html body #root .app.app-command-shell .collector-showcase-card.collector-rarity-rare .collector-showcase-shine {
@@ -101041,12 +101058,32 @@ html body #root .app.app-command-shell .collector-showcase-card.collector-rarity
     radial-gradient(circle at 20% 18%, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 28%, rgba(255, 255, 255, 0.18)), transparent 30%);
 }
 
+html body #root .app.app-command-shell .collector-showcase-card.collector-rarity-holo .collector-showcase-shine {
+  background:
+    linear-gradient(112deg, transparent 0 22%, rgba(255, 255, 255, 0.48) 34%, transparent 48%, rgba(138, 214, 255, 0.28) 58%, transparent 72%),
+    radial-gradient(circle at 18% 20%, rgba(255, 237, 172, 0.3), transparent 28%),
+    radial-gradient(circle at 78% 12%, rgba(155, 117, 255, 0.24), transparent 26%);
+}
+
+html body #root .app.app-command-shell .collector-showcase-card.collector-rarity-reverse .collector-showcase-shine {
+  background:
+    linear-gradient(72deg, rgba(255, 255, 255, 0.24) 0 10%, transparent 10% 20%, rgba(145, 211, 255, 0.2) 20% 30%, transparent 30% 40%, rgba(255, 232, 153, 0.2) 40% 50%, transparent 50% 100%),
+    linear-gradient(112deg, transparent 0 26%, rgba(255, 255, 255, 0.42) 42%, transparent 58%);
+}
+
 html body #root .app.app-command-shell .collector-showcase-card.collector-rarity-ultra .collector-showcase-shine,
 html body #root .app.app-command-shell .collector-showcase-card.collector-rarity-illustration .collector-showcase-shine {
   background:
     linear-gradient(112deg, transparent 0 24%, rgba(255, 255, 255, 0.42) 38%, transparent 56%),
     radial-gradient(circle at 16% 20%, color-mix(in srgb, var(--et-page-accent, #8b5cf6) 30%, rgba(255, 255, 255, 0.18)), transparent 32%),
     radial-gradient(circle at 82% 8%, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 36%, transparent), transparent 24%);
+}
+
+html body #root .app.app-command-shell .collector-showcase-card.collector-rarity-promo .collector-showcase-shine {
+  background:
+    linear-gradient(112deg, transparent 0 28%, rgba(255, 255, 255, 0.44) 42%, transparent 58%),
+    radial-gradient(circle at 16% 20%, color-mix(in srgb, #ff7a7a 30%, rgba(255, 255, 255, 0.18)), transparent 30%),
+    radial-gradient(circle at 78% 14%, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 34%, transparent), transparent 24%);
 }
 
 html body #root .app.app-command-shell .collector-showcase-card.collector-rarity-secret .collector-showcase-shine {
@@ -101146,8 +101183,51 @@ html body #root .app.app-shell-dark.app-command-shell .collector-showcase-chip-r
   color: color-mix(in srgb, var(--et-ink, #f7f0df) 88%, var(--et-page-accent-2, #d9a441));
 }
 
+html body #root .app.app-command-shell .collector-showcase-chip-row .collector-rarity-chip {
+  border-color: color-mix(in srgb, var(--et-page-accent-2, #d9a441) 30%, transparent);
+  background: color-mix(in srgb, var(--et-panel, #fffdf7) 72%, var(--et-page-accent-2, #d9a441) 16%);
+}
+
+html body #root .app.app-command-shell .collector-showcase-chip-row .collector-rarity-chip-common,
+html body #root .app.app-command-shell .collector-showcase-chip-row .collector-rarity-chip-neutral {
+  border-color: color-mix(in srgb, var(--et-border, rgba(118, 84, 42, 0.18)) 70%, transparent);
+  background: color-mix(in srgb, var(--et-panel, #fffdf7) 82%, var(--et-muted, #675d52) 8%);
+}
+
+html body #root .app.app-command-shell .collector-showcase-chip-row .collector-rarity-chip-uncommon {
+  border-color: color-mix(in srgb, #79a36d 48%, transparent);
+  background: color-mix(in srgb, #79a36d 16%, var(--et-panel, #fffdf7));
+}
+
+html body #root .app.app-command-shell .collector-showcase-chip-row .collector-rarity-chip-rare,
+html body #root .app.app-command-shell .collector-showcase-chip-row .collector-rarity-chip-holo,
+html body #root .app.app-command-shell .collector-showcase-chip-row .collector-rarity-chip-reverse {
+  border-color: color-mix(in srgb, var(--et-page-accent-2, #d9a441) 46%, transparent);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 26%, var(--et-panel, #fffdf7)), color-mix(in srgb, #9bdcff 12%, var(--et-panel, #fffdf7)));
+}
+
+html body #root .app.app-command-shell .collector-showcase-chip-row .collector-rarity-chip-ultra,
+html body #root .app.app-command-shell .collector-showcase-chip-row .collector-rarity-chip-illustration,
+html body #root .app.app-command-shell .collector-showcase-chip-row .collector-rarity-chip-secret,
+html body #root .app.app-command-shell .collector-showcase-chip-row .collector-rarity-chip-promo {
+  border-color: color-mix(in srgb, var(--et-page-accent-2, #d9a441) 52%, transparent);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--et-page-accent, #8b5cf6) 20%, var(--et-panel, #fffdf7)), color-mix(in srgb, var(--et-page-accent-2, #d9a441) 28%, var(--et-panel, #fffdf7)));
+}
+
+html body #root .app.app-theme-dark.app-command-shell .collector-showcase-chip-row .collector-rarity-chip,
+html body #root .app.app-shell-dark.app-command-shell .collector-showcase-chip-row .collector-rarity-chip {
+  background: color-mix(in srgb, var(--et-panel-soft, #10243f) 72%, var(--et-page-accent-2, #d9a441) 12%);
+}
+
 html body #root .app.app-command-shell .collector-showcase-helper {
   max-width: 36ch;
+}
+
+html body #root .app.app-command-shell .collector-showcase-rarity-note {
+  max-width: 34ch;
+  font-size: 0.72rem;
 }
 
 html body #root .app.app-command-shell .collector-showcase-mini {
@@ -101178,6 +101258,7 @@ html body #root .app.app-command-shell .collector-showcase-mini .collector-showc
 }
 
 html body #root .app.app-command-shell .collector-showcase-mini .collector-showcase-helper,
+html body #root .app.app-command-shell .collector-showcase-mini .collector-showcase-rarity-note,
 html body #root .app.app-command-shell .collector-showcase-mini .collector-showcase-kicker {
   display: none;
 }
@@ -102055,10 +102136,36 @@ html body #root .app.app-command-shell .market-showcase-preview {
   contain-intrinsic-size: 142px;
 }
 
-html body #root .app.app-command-shell .market-showcase-preview .collector-showcase-copy,
-html body #root .app.app-command-shell .market-showcase-preview .collector-showcase-chip-row b:nth-child(n + 3),
-html body #root .app.app-command-shell .quick-add-showcase-preview .collector-showcase-chip-row b:nth-child(n + 3) {
+html body #root .app.app-command-shell .market-showcase-preview .collector-showcase-copy > :not(.collector-showcase-chip-row),
+html body #root .app.app-command-shell .market-showcase-preview .collector-showcase-chip-row b:not(.collector-rarity-chip),
+html body #root .app.app-command-shell .quick-add-showcase-preview .collector-showcase-copy > :not(.collector-showcase-chip-row),
+html body #root .app.app-command-shell .quick-add-showcase-preview .collector-showcase-chip-row b:not(.collector-rarity-chip) {
   display: none;
+}
+
+html body #root .app.app-command-shell .market-showcase-preview .collector-showcase-copy,
+html body #root .app.app-command-shell .quick-add-showcase-preview .collector-showcase-copy {
+  position: absolute;
+  right: 7px;
+  bottom: 7px;
+  left: 7px;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+html body #root .app.app-command-shell .market-showcase-preview .collector-showcase-chip-row,
+html body #root .app.app-command-shell .quick-add-showcase-preview .collector-showcase-chip-row {
+  justify-content: center;
+}
+
+html body #root .app.app-command-shell .market-showcase-preview .collector-rarity-chip,
+html body #root .app.app-command-shell .quick-add-showcase-preview .collector-rarity-chip {
+  max-width: 100%;
+  min-height: 23px;
+  padding: 3px 7px;
+  box-shadow: 0 8px 16px rgba(31, 21, 12, 0.14);
 }
 
 html body #root .app.app-command-shell .market-mockup-results .catalog-result-card .catalog-thumb {
@@ -102077,7 +102184,6 @@ html body #root .app.app-command-shell .quick-add-showcase-preview {
   contain-intrinsic-size: 118px;
 }
 
-html body #root .app.app-command-shell .quick-add-showcase-preview .collector-showcase-copy,
 html body #root .app.app-command-shell .quick-add-result-card .quick-add-result-thumb {
   display: none;
 }
