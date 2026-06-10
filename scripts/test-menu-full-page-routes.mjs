@@ -117,6 +117,21 @@ assert.equal(
   "Sealed Product Shelf should not claim stock status, live prices, or product verification."
 );
 assert.ok(
+  appSource.includes("Display Case") &&
+    appSource.includes("vaultDisplayCase") &&
+    appSource.includes("Local display only") &&
+    appSource.includes("not public sharing") &&
+    appSource.includes("not a listing") &&
+    appSource.includes("not a sale") &&
+    cssSource.includes(".vault-display-case-panel"),
+  "Vault Display Case should be wired as a local-only collection-room surface."
+);
+assert.equal(
+  /display case[^.]{0,180}(public profile is live|public sharing is live|listing is live|marketplace post is live|checkout is connected|payment is connected|seller listing is live)/i.test(appSource),
+  false,
+  "Display Case should not claim public sharing, seller listing, checkout, or payment behavior."
+);
+assert.ok(
   cssSource.includes('.flow-modal[data-flow="addActionSheet"]') &&
     cssSource.includes('.flow-modal[data-flow="multiDestinationAdd"]') &&
     cssSource.includes("height: 100dvh"),

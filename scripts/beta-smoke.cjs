@@ -810,6 +810,7 @@ async function main() {
           updatedAt: now,
         },
       ];
+      data.vaultDisplayCase = (data.vaultDisplayCase || []).filter((entry) => entry.itemId !== "focused-vault-smoke-item" && entry.itemName !== "Focused Vault Smoke Card");
       data.tradeRecords = [
         ...(data.tradeRecords || []).filter((record) => record.id !== "focused-vault-linked-trade"),
         {
@@ -841,6 +842,9 @@ async function main() {
     await assertVisibleText("Sets created");
     await assertVisibleText("Recently added");
     await assertVisibleText("Needs profile details");
+    await assertVisibleText("Display Case");
+    await assertVisibleText("Your Display Case is waiting.");
+    await assertVisibleText("Local display only");
     await assertVisibleText("Collection Sets");
     await assertVisibleText("Set Shelf");
     await assertVisibleText("Vault upgrade preview");
@@ -953,6 +957,53 @@ async function main() {
     await expectVisible(page.getByRole("button", { name: /^Use in Forge$/ }).first(), "Vault Item Profile Forge action");
     await expectVisible(page.getByRole("button", { name: /^Check in Market$/ }).first(), "Vault Item Profile Market action");
     await expectVisible(page.getByRole("button", { name: /^Add to set$/ }).first(), "Vault Item Profile add to set coming soon action");
+    await expectVisible(page.getByRole("button", { name: /^Add to Display Case$/ }).first(), "Vault Item Profile Display Case action");
+    await page.getByRole("button", { name: /^Add to Display Case$/ }).first().click();
+    const displayCaseModal = page.locator('.flow-modal[data-flow="vaultDisplayCase"]').first();
+    await expectVisible(displayCaseModal, "Vault Display Case modal");
+    await fillByLabel(displayCaseModal, "Position / order", "1");
+    await displayCaseModal.locator("label").filter({ hasText: /^Display category/ }).locator("select").selectOption("grail");
+    await fillByLabel(displayCaseModal, "Display note", "Smoke favorite display note.");
+    await expectVisible(displayCaseModal.getByText("Display Case does not remove items from Vault.").first(), "Display Case local safety copy");
+    await displayCaseModal.getByRole("button", { name: /^Add to Display Case$/ }).click();
+    await expectVisible(displayCaseModal.getByText("Added to Display Case.").first(), "Display Case saved message");
+    await page.waitForFunction(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      return (data.vaultDisplayCase || []).some((entry) => (
+        entry.itemId === "focused-vault-smoke-item" &&
+        entry.itemName === "Focused Vault Smoke Card" &&
+        entry.displayCategory === "grail" &&
+        entry.displayMode === "local_only" &&
+        entry.publicSharing === "not_connected" &&
+        entry.listingMode === "none"
+      ));
+    }, null, { timeout: 5000 });
+    await displayCaseModal.getByRole("button", { name: /^Close$/ }).first().click();
+    await displayCaseModal.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+    await page.locator(".vault-detail-card").getByRole("button", { name: /^Close$/ }).first().click();
+    await expectVisible(page.locator(".vault-display-case-card").filter({ hasText: "Focused Vault Smoke Card" }).first(), "Vault Display Case filled card");
+    await nav("Hearth");
+    await assertVisibleText("Featured in your Display Case");
+    await page.getByRole("button", { name: /^Open Display Case$/ }).first().click();
+    await assertVisibleText("Display Case");
+    await expectVisible(page.locator(".vault-display-case-card").filter({ hasText: "Focused Vault Smoke Card" }).first(), "Hearth Display Case link target");
+    await page.locator(".vault-display-case-card").filter({ hasText: "Focused Vault Smoke Card" }).first().getByRole("button", { name: /^Remove from Display Case$/ }).click();
+    await page.waitForFunction(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      return !(data.vaultDisplayCase || []).some((entry) => entry.itemId === "focused-vault-smoke-item");
+    }, null, { timeout: 5000 });
+    const displayCaseRemovalState = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      return {
+        displayCaseCount: (data.vaultDisplayCase || []).filter((entry) => entry.itemId === "focused-vault-smoke-item").length,
+        itemStillInVault: (data.items || []).some((item) => item.id === "focused-vault-smoke-item" && (item.destinationScope || []).includes("vault")),
+      };
+    });
+    assert.equal(displayCaseRemovalState.displayCaseCount, 0, "Display Case entry should be removable");
+    assert.equal(displayCaseRemovalState.itemStillInVault, true, "Removing from Display Case should not delete the Vault item");
+    const focusedVaultCardAfterDisplayCase = page.locator(".vault-item-card").filter({ hasText: "Focused Vault Smoke Card" }).first();
+    await expectVisible(focusedVaultCardAfterDisplayCase, "focused Vault item card after Display Case removal");
+    await focusedVaultCardAfterDisplayCase.getByRole("button", { name: /Item Profile/i }).first().click();
     assert.ok(
       await page.getByRole("button", { name: /Quick Add|Add Item|Search \/ Scan Item/i }).count() > 0,
       "Vault should expose a primary add/search action"

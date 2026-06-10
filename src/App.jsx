@@ -2776,6 +2776,58 @@ const BLANK_VAULT_COLLECTION_SET_FORM = {
   familyKidLabel: "",
   dateCreated: "",
 };
+const VAULT_DISPLAY_CASE_CATEGORIES = [
+  { value: "favorite", label: "favorite" },
+  { value: "grail", label: "grail" },
+  { value: "sealed", label: "sealed" },
+  { value: "trade_bait", label: "trade bait" },
+  { value: "kid_favorite", label: "kid favorite" },
+  { value: "other", label: "other" },
+];
+const BLANK_VAULT_DISPLAY_CASE_FORM = {
+  itemId: "",
+  itemName: "",
+  displayNote: "",
+  displayCategory: "favorite",
+  displayOrder: "",
+};
+
+function vaultDisplayCaseCategoryLabel(value = "") {
+  return VAULT_DISPLAY_CASE_CATEGORIES.find((option) => option.value === value)?.label || "favorite";
+}
+
+function normalizeVaultDisplayCaseDraft(draft = {}) {
+  const categoryValues = new Set(VAULT_DISPLAY_CASE_CATEGORIES.map((option) => option.value));
+  const normalizedCategory = String(draft.displayCategory || draft.category || "favorite").toLowerCase().replace(/[\s-]+/g, "_");
+  const order = Number.parseInt(String(draft.displayOrder ?? draft.position ?? draft.order ?? "").trim(), 10);
+  return {
+    itemId: String(draft.itemId || draft.item_id || draft.featuredItemId || "").trim(),
+    itemName: String(draft.itemName || draft.item_name || draft.featuredItemName || draft.name || "").trim(),
+    displayNote: String(draft.displayNote || draft.note || draft.notes || "").trim().slice(0, 280),
+    displayCategory: categoryValues.has(normalizedCategory) ? normalizedCategory : "other",
+    displayOrder: Number.isFinite(order) && order > 0 ? String(order) : "",
+  };
+}
+
+function normalizeVaultDisplayCaseEntry(entry = {}) {
+  const draft = normalizeVaultDisplayCaseDraft(entry);
+  return {
+    ...entry,
+    ...draft,
+    id: entry.id || "",
+    itemId: draft.itemId,
+    itemName: draft.itemName,
+    featuredItemId: draft.itemId,
+    featuredItemName: draft.itemName,
+    createdAt: entry.createdAt || entry.created_at || "",
+    updatedAt: entry.updatedAt || entry.updated_at || "",
+    savedBy: entry.savedBy || entry.saved_by || "",
+    source: entry.source || "local-vault-display-case",
+    displayMode: "local_only",
+    publicSharing: "not_connected",
+    listingMode: "none",
+  };
+}
 const BLANK_TIDEPOOL_POST_FORM = {
   postType: "Community Update",
   title: "",
@@ -7171,6 +7223,10 @@ export default function App() {
   const [vaultCollectionSetDraft, setVaultCollectionSetDraft] = useState(BLANK_VAULT_COLLECTION_SET_FORM);
   const [vaultCollectionSetMessage, setVaultCollectionSetMessage] = useState("");
   const [vaultCollectionSetSaving, setVaultCollectionSetSaving] = useState(false);
+  const [vaultDisplayCase, setVaultDisplayCase] = useState([]);
+  const [vaultDisplayCaseDraft, setVaultDisplayCaseDraft] = useState(BLANK_VAULT_DISPLAY_CASE_FORM);
+  const [vaultDisplayCaseMessage, setVaultDisplayCaseMessage] = useState("");
+  const [vaultDisplayCaseSaving, setVaultDisplayCaseSaving] = useState(false);
   const [marketSyncMessage, setMarketSyncMessage] = useState("");
   const [manualMarketForm, setManualMarketForm] = useState({
     catalogItemId: "",
@@ -16389,6 +16445,7 @@ export default function App() {
       setMarketPriceCache(saved.marketPriceCache || loadPriceCache());
       setMarketPriceMemories(Array.isArray(saved.marketPriceMemories) ? saved.marketPriceMemories.map(normalizeMarketPriceMemoryEntry) : []);
       setVaultCollectionSets(migrateRecordsToWorkspace(saved.vaultCollectionSets || [], personalWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID, workspaceState.workspaces).map(normalizeVaultCollectionSetEntry));
+      setVaultDisplayCase(migrateRecordsToWorkspace(saved.vaultDisplayCase || [], personalWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID, workspaceState.workspaces).map(normalizeVaultDisplayCaseEntry));
       setUserSearchAliases(Array.isArray(saved.userSearchAliases) ? saved.userSearchAliases : []);
       setExpenses(migrateRecordsToWorkspace(saved.expenses || [], personalWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID, workspaceState.workspaces).map(mapExpense));
       setSales(migrateRecordsToWorkspace(saved.sales || [], personalWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID, workspaceState.workspaces));
@@ -16798,6 +16855,7 @@ export default function App() {
         marketPriceCache,
         marketPriceMemories,
         vaultCollectionSets,
+        vaultDisplayCase,
         userSearchAliases,
         expenses,
         sales,
@@ -16837,7 +16895,7 @@ export default function App() {
         },
       })
     );
-  }, [items, purchasers, catalogProducts, tideTradrWatchlist, marketplaceListings, marketplaceReports, marketplaceSavedIds, tideTradrLookupId, marketPriceCache, marketPriceMemories, vaultCollectionSets, userSearchAliases, expenses, sales, tradeRecords, sparkGifts, sparkKidPacks, sparkEventPlans, collectorEventPlans, vehicles, mileageTrips, workspaces, workspaceMembers, workspaceInvites, activeWorkspaceId, forgeModeSettings, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, resolvedAppTheme, appSetupPersonalization, cloudSyncPreference, locationSettings, subscriptionProfile, currentUserProfile, adminModeStorageReady, adminViewMode, localDataLoaded]);
+  }, [items, purchasers, catalogProducts, tideTradrWatchlist, marketplaceListings, marketplaceReports, marketplaceSavedIds, tideTradrLookupId, marketPriceCache, marketPriceMemories, vaultCollectionSets, vaultDisplayCase, userSearchAliases, expenses, sales, tradeRecords, sparkGifts, sparkKidPacks, sparkEventPlans, collectorEventPlans, vehicles, mileageTrips, workspaces, workspaceMembers, workspaceInvites, activeWorkspaceId, forgeModeSettings, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, resolvedAppTheme, appSetupPersonalization, cloudSyncPreference, locationSettings, subscriptionProfile, currentUserProfile, adminModeStorageReady, adminViewMode, localDataLoaded]);
 
   useEffect(() => {
     if (!BETA_LOCAL_MODE || !localDataLoaded) return;
@@ -19955,6 +20013,87 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     setVaultToast("Collection Set saved to your Set Shelf.");
   }
 
+  function buildVaultDisplayCaseDraft(item = {}, seed = {}) {
+    return normalizeVaultDisplayCaseDraft({
+      ...BLANK_VAULT_DISPLAY_CASE_FORM,
+      itemId: item.id || seed.itemId || "",
+      itemName: item.name || item.itemName || seed.itemName || "",
+      displayCategory: isInventorySealedProduct(item) ? "sealed" : "favorite",
+      displayOrder: String((Array.isArray(vaultDisplayCase) ? vaultDisplayCase.length : 0) + 1),
+      ...seed,
+    });
+  }
+
+  function openVaultDisplayCaseFlow(item = {}, options = {}) {
+    if (!item?.id && !options.seed?.itemId) {
+      setVaultToast("Open a Vault Item Profile first, then add it to Display Case.");
+      return;
+    }
+    const draft = buildVaultDisplayCaseDraft(item, options.seed || {});
+    setVaultDisplayCaseDraft(draft);
+    setVaultDisplayCaseMessage("");
+    setVaultDisplayCaseSaving(false);
+    flowModalBaselineRef.current.vaultDisplayCase = draft;
+    openFlowModal("vaultDisplayCase", { size: "medium", source: options.source || "vault-item-profile" });
+  }
+
+  function updateVaultDisplayCaseDraftField(field, value) {
+    setVaultDisplayCaseDraft((current) => normalizeVaultDisplayCaseDraft({ ...current, [field]: value }));
+    setVaultDisplayCaseMessage("");
+  }
+
+  function saveVaultDisplayCaseEntry(event) {
+    event?.preventDefault?.();
+    if (vaultDisplayCaseSaving) return;
+    if (blockGuestSave()) return;
+    const draft = normalizeVaultDisplayCaseDraft(vaultDisplayCaseDraft);
+    if (!draft.itemName && !draft.itemId) {
+      setVaultDisplayCaseMessage("Open a Vault item before adding it to Display Case.");
+      return;
+    }
+    setVaultDisplayCaseSaving(true);
+    const now = new Date().toISOString();
+    const displayItem = vaultItems.find((item) => String(item.id || "") === String(draft.itemId || "")) || {};
+    const displayWorkspace = activeWorkspace || { id: activeWorkspaceId || DEFAULT_PERSONAL_WORKSPACE_ID, name: "My Personal Space", type: "personal" };
+    const record = applyWorkspaceToRecord(normalizeVaultDisplayCaseEntry({
+      id: makeId("display-case"),
+      ...draft,
+      itemName: draft.itemName || displayItem.name || "Vault item",
+      itemSnapshot: {
+        name: displayItem.name || draft.itemName,
+        productType: vaultItemTypeLabel(displayItem) || displayItem.productType || "",
+        setName: vaultItemSetLabel(displayItem) || displayItem.setName || "",
+        imageUrl: vaultItemDisplayImage(displayItem),
+        vaultStatus: normalizeVaultStatus(displayItem),
+        rarity: displayItem.rarity || displayItem.finish || "",
+      },
+      createdAt: now,
+      updatedAt: now,
+      savedBy: user?.id || "local-beta",
+      source: "local-vault-display-case",
+    }), displayWorkspace);
+    setVaultDisplayCase((current) => [record, ...(Array.isArray(current) ? current.filter((entry) => String(entry.itemId || "") !== String(record.itemId || "")) : [])]);
+    setVaultDisplayCaseDraft(draft);
+    flowModalBaselineRef.current.vaultDisplayCase = draft;
+    setVaultDisplayCaseMessage("Added to Display Case. This is local display only, not public sharing, a listing, or a sale.");
+    setVaultDisplayCaseSaving(false);
+    setVaultToast("Added to Display Case.");
+  }
+
+  function removeVaultDisplayCaseEntry(entryId) {
+    setVaultDisplayCase((current) => (Array.isArray(current) ? current.filter((entry) => String(entry.id || "") !== String(entryId || "")) : []));
+    setVaultToast("Removed from Display Case. The Vault item was not deleted.");
+  }
+
+  function openVaultDisplayCaseSurface() {
+    setActiveTab("vault");
+    setVaultSubTab("collection");
+    setVaultDisplayMode("standard");
+    if (typeof window !== "undefined") {
+      window.setTimeout(() => document.getElementById("vault-display-case-section")?.scrollIntoView?.({ block: "start", behavior: "smooth" }), 80);
+    }
+  }
+
   function formsDiffer(current, blank) {
     const keys = new Set([...Object.keys(current || {}), ...Object.keys(blank || {})]);
     return [...keys].some((key) => JSON.stringify((current || {})[key] ?? "") !== JSON.stringify((blank || {})[key] ?? ""));
@@ -19975,6 +20114,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (type === "marketPriceMemory") return formsDiffer(marketPriceMemoryDraft, flowModalBaselineRef.current.marketPriceMemory || BLANK_MARKET_PRICE_MEMORY_FORM);
     if (type === "wishlistIso") return formsDiffer(wishlistIsoDraft, flowModalBaselineRef.current.wishlistIso || BLANK_WISHLIST_ISO_FORM);
     if (type === "vaultCollectionSet") return formsDiffer(vaultCollectionSetDraft, flowModalBaselineRef.current.vaultCollectionSet || BLANK_VAULT_COLLECTION_SET_FORM);
+    if (type === "vaultDisplayCase") return formsDiffer(vaultDisplayCaseDraft, flowModalBaselineRef.current.vaultDisplayCase || BLANK_VAULT_DISPLAY_CASE_FORM);
     if (type === "multiDestinationAdd") return formsDiffer(multiDestinationForm, flowModalBaselineRef.current.multiDestinationAdd || BLANK_MULTI_DESTINATION_FORM);
     if (type === "tradeValue") return tradeStep !== "saved" && formsDiffer(tradeDraft, flowModalBaselineRef.current.tradeValue || BLANK_TRADE_DRAFT);
     if (type === "tradeCompass") return formsDiffer(tradeCompassDraft, flowModalBaselineRef.current.tradeCompass || BLANK_TRADE_COMPASS_DRAFT);
@@ -20043,6 +20183,11 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       setVaultCollectionSetDraft(BLANK_VAULT_COLLECTION_SET_FORM);
       setVaultCollectionSetMessage("");
       setVaultCollectionSetSaving(false);
+    }
+    if (type === "vaultDisplayCase") {
+      setVaultDisplayCaseDraft(BLANK_VAULT_DISPLAY_CASE_FORM);
+      setVaultDisplayCaseMessage("");
+      setVaultDisplayCaseSaving(false);
     }
     if (type === "scoutSubmit") {
       const draft = createQuickScoutReportDraft();
@@ -30484,6 +30629,29 @@ function renderForgeBusinessLedgerPanel() {
       .map(normalizeVaultCollectionSetEntry)
       .filter((entry) => !activeId || (!entry.workspaceId && !entry.workspace_id) || recordBelongsToWorkspace(entry, activeId));
   }, [vaultCollectionSets, activeWorkspace?.id, activeWorkspaceId]);
+  const visibleVaultDisplayCase = useMemo(() => {
+    const activeId = activeWorkspace?.id || activeWorkspaceId || "";
+    const itemLookup = new Map([...vaultItems, ...wishlistItems].map((item) => [String(item.id || ""), item]));
+    return (Array.isArray(vaultDisplayCase) ? vaultDisplayCase : [])
+      .map(normalizeVaultDisplayCaseEntry)
+      .filter((entry) => !activeId || (!entry.workspaceId && !entry.workspace_id) || recordBelongsToWorkspace(entry, activeId))
+      .map((entry) => {
+        const item = itemLookup.get(String(entry.itemId || "")) || null;
+        const snapshot = entry.itemSnapshot || {};
+        const fallbackKind = entry.displayCategory === "sealed" ? "sealed" : snapshot.productType || "card";
+        return {
+          ...entry,
+          item,
+          displayTitle: item?.name || entry.itemName || snapshot.name || "Display Case item",
+          displaySubtitle: item ? (vaultItemSetLabel(item) || vaultItemTypeLabel(item) || "Vault item") : (snapshot.setName || snapshot.productType || "Vault item"),
+          displayImage: item ? vaultItemDisplayImage(item) : snapshot.imageUrl || "",
+          displayKind: item ? vaultItemTypeLabel(item) : fallbackKind,
+          displayValue: item && vaultItemTotalMarketValue(item) ? `${money(vaultItemTotalMarketValue(item))} saved estimate` : "Local display only",
+          displayRarity: item?.rarity || item?.finish || snapshot.rarity || "",
+        };
+      })
+      .sort((a, b) => Number(a.displayOrder || 999) - Number(b.displayOrder || 999) || String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+  }, [vaultDisplayCase, activeWorkspace?.id, activeWorkspaceId, vaultItems, wishlistItems]);
   const vaultCollectionSetSummary = useMemo(() => {
     const typeCounts = visibleVaultCollectionSets.reduce((acc, entry) => {
       const type = entry.setType || "Other";
@@ -40040,6 +40208,65 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               />
             ))}
           </div>
+        </EtMockupSectionCard>
+
+        <EtMockupSectionCard
+          id="vault-display-case-section"
+          className="vault-display-case-panel"
+          title="Display Case"
+          detail="Feature favorite cards and sealed products in a local collection-room showcase. Local display only; not public sharing, not a listing, and not a sale."
+          action={<EtMockupButton variant="secondary" onClick={() => {
+            if (activeVaultItems[0]?.id) setSelectedVaultDetailId(activeVaultItems[0].id);
+            else openVaultQuickAddFlow();
+          }}>{activeVaultItems.length ? "Open Item Profile" : "Add to Vault"}</EtMockupButton>}
+          ariaLabel="Vault Display Case"
+        >
+          <div className="vault-display-case-safety" aria-label="Display Case safety">
+            <strong>Local display only</strong>
+            <span>Display Case is private to this browser. It does not create public sharing, seller listings, marketplace posts, checkout, or sales.</span>
+          </div>
+          {visibleVaultDisplayCase.length ? (
+            <div className="vault-display-case-grid" aria-label="Featured Display Case items">
+              {visibleVaultDisplayCase.slice(0, 8).map((entry) => (
+                <article className={`vault-display-case-card vault-display-case-${entry.displayCategory}`} key={entry.id || entry.itemId}>
+                  <CollectorShowcaseCard
+                    title={entry.displayTitle}
+                    subtitle={entry.displaySubtitle}
+                    image={entry.displayImage}
+                    kind={entry.displayKind}
+                    mode="display"
+                    rarity={entry.displayRarity}
+                    valueLabel={entry.displayValue}
+                    meta={[vaultDisplayCaseCategoryLabel(entry.displayCategory), entry.displayOrder ? `Position ${entry.displayOrder}` : "Display Case"]}
+                    helper={entry.displayNote || "Featured locally in your Display Case."}
+                  />
+                  <div className="vault-display-case-card-actions">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (entry.item?.id) setSelectedVaultDetailId(entry.item.id);
+                        else setVaultToast("This Display Case memory is local, but the original Vault item was not found.");
+                      }}
+                    >
+                      Open Profile
+                    </button>
+                    <button type="button" className="secondary-button" onClick={() => removeVaultDisplayCaseEntry(entry.id)}>
+                      Remove from Display Case
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <EtMockupEmptyState
+              title="Your Display Case is waiting."
+              detail="Open a Vault Item Profile and choose Add to Display Case to feature a favorite, grail, sealed product, trade bait, or kid favorite. Items stay in Vault."
+              action={<EtMockupButton variant="secondary" onClick={() => {
+                if (activeVaultItems[0]?.id) setSelectedVaultDetailId(activeVaultItems[0].id);
+                else openVaultQuickAddFlow();
+              }}>{activeVaultItems.length ? "Choose first item" : "Add first Vault item"}</EtMockupButton>}
+            />
+          )}
         </EtMockupSectionCard>
 
         <EtMockupSectionCard
@@ -49973,6 +50200,65 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     );
   }
 
+  function renderVaultDisplayCaseFlowContent() {
+    const normalizedDraft = normalizeVaultDisplayCaseDraft(vaultDisplayCaseDraft);
+    return (
+      <form className="vault-display-case-flow" onSubmit={saveVaultDisplayCaseEntry}>
+        <section className="vault-display-case-form-card">
+          <div className="compact-card-header">
+            <div>
+              <span className="trust-badge trust-badge--secure">Display Case</span>
+              <h3>Add to Display Case</h3>
+              <p>Choose how this Vault item should sit in your local collection-room showcase.</p>
+            </div>
+            <strong>{vaultDisplayCaseCategoryLabel(normalizedDraft.displayCategory)}</strong>
+          </div>
+          <div className="vault-display-case-form-grid">
+            <Field label="Featured item">
+              <input value={vaultDisplayCaseDraft.itemName} readOnly />
+            </Field>
+            <Field label="Display category">
+              <select
+                value={vaultDisplayCaseDraft.displayCategory}
+                onChange={(event) => updateVaultDisplayCaseDraftField("displayCategory", event.target.value)}
+              >
+                {VAULT_DISPLAY_CASE_CATEGORIES.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </Field>
+            <Field label="Position / order">
+              <input
+                inputMode="numeric"
+                value={vaultDisplayCaseDraft.displayOrder}
+                onChange={(event) => updateVaultDisplayCaseDraftField("displayOrder", event.target.value)}
+                placeholder="1"
+              />
+            </Field>
+          </div>
+          <Field label="Display note">
+            <textarea
+              value={vaultDisplayCaseDraft.displayNote}
+              onChange={(event) => updateVaultDisplayCaseDraftField("displayNote", event.target.value)}
+              placeholder="Why this belongs in the case: favorite pull, grail, kid favorite, sealed piece, or trade bait."
+              rows={3}
+            />
+          </Field>
+        </section>
+
+        <section className="vault-display-case-helper-card" aria-label="Display Case safety helper">
+          <strong>Local display only</strong>
+          <span>Display Case does not remove items from Vault. It is not public sharing yet, not a listing, and not a sale.</span>
+        </section>
+
+        {vaultDisplayCaseMessage ? <p className="field-error trade-value-message" role="status">{vaultDisplayCaseMessage}</p> : null}
+
+        <div className="quick-actions trade-value-actions vault-display-case-actions">
+          <button type="submit" disabled={vaultDisplayCaseSaving}>{vaultDisplayCaseSaving ? "Saving..." : "Add to Display Case"}</button>
+          <button type="button" className="secondary-button" onClick={() => closeFlowModal()}>Close</button>
+        </div>
+      </form>
+    );
+  }
+
   function renderCollectorEventPlannerFlowContent() {
     const normalizedDraft = normalizeCollectorEventPlanDraft(collectorEventDraft);
     return (
@@ -50410,6 +50696,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       return {
         title: "Create Set",
         description: "Save a local Collection Set for favorites, kids, sealed product, slabs, trade binders, and family goals.",
+        size: "medium",
+      };
+    }
+    if (activeFlowModal?.type === "vaultDisplayCase") {
+      return {
+        title: "Add to Display Case",
+        description: "Feature a Vault item locally. This does not create public sharing, a listing, or a sale.",
         size: "medium",
       };
     }
@@ -55084,6 +55377,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     if (activeFlowModal?.type === "marketPriceMemory") return renderMarketPriceMemoryFlowContent();
     if (activeFlowModal?.type === "wishlistIso") return renderWishlistIsoFlowContent();
     if (activeFlowModal?.type === "vaultCollectionSet") return renderVaultCollectionSetFlowContent();
+    if (activeFlowModal?.type === "vaultDisplayCase") return renderVaultDisplayCaseFlowContent();
     if (activeFlowModal?.type === "quickFind") return renderQuickFindFlowContent();
     if (activeFlowModal?.type === "multiDestinationAdd") return renderMultiDestinationAddFlowContent();
     if (activeFlowModal?.type === "vaultMoveToForge") return renderVaultMoveToForgeFlowContent();
@@ -57330,6 +57624,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const trustedCircleCount = tidepoolTrustedCircle.length;
     const hasHearthLocalSignals = Boolean(
       activeVaultItems.length ||
+      visibleVaultDisplayCase.length ||
       workspaceTradeRecords.length ||
       marketPriceMemories.length ||
       sparkKidPacks.length ||
@@ -57397,6 +57692,20 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         icon: "market",
         tone: "market",
         visible: !marketPriceMemories.length || needsMarketCheckItems.length > 0 || workspaceWatchlist.length > 0 || Boolean(latestMarketMemoryForHearth),
+      },
+      {
+        key: "display-case",
+        eyebrow: "Vault Reminder",
+        title: visibleVaultDisplayCase.length ? "Featured in your Display Case" : "Choose a favorite for Display Case",
+        detail: visibleVaultDisplayCase.length
+          ? `${visibleVaultDisplayCase[0].displayTitle || "A favorite item"} is featured locally. Display Case is not public sharing, a listing, or a sale.`
+          : "Open an Item Profile and feature a favorite card or sealed product in a local display-only case.",
+        meta: visibleVaultDisplayCase.length ? `${visibleVaultDisplayCase.length} featured` : "Local display only",
+        actionLabel: "Open Display Case",
+        onClick: openVaultDisplayCaseSurface,
+        icon: "vault",
+        tone: "vault",
+        visible: Boolean(visibleVaultDisplayCase.length || activeVaultItems.length),
       },
       {
         key: "spark-pack",
@@ -66289,6 +66598,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   onAttachReceipt={(item) => openReceiptForItem(item, "vault-item")}
                   onCheckMarket={openMarketWatchForVaultItem}
                   onSavePriceMemory={(item) => openMarketPriceMemoryFlow(item, { source: "vault-profile-save-price", seed: { itemName: item.name, price: vaultItemTotalMarketValue(item) || "", condition: item.conditionName || item.condition || "" } })}
+                  onAddToDisplayCase={(item) => openVaultDisplayCaseFlow(item, { source: "vault-item-profile" })}
                   onRefreshMarket={refreshVaultMarket}
                   onQuickUpdateMarketValue={quickUpdateMarketValue}
                   onQuickUpdateSalePrice={quickUpdatePlannedSalePrice}
@@ -70759,7 +71069,7 @@ function gradeAssistValueComparison(item = {}, moneyFormatter = money) {
   };
 }
 
-function VaultItemDetail({ item, masterCard, setSummary, linkedTrades = [], collectionSets = [], onClose, onEdit, onDelete, onViewSet, onMarkOwned, onMoveToForge, onCopyToForge, onCreateListing, onDuplicate, onAttachReceipt, onCheckMarket, onSavePriceMemory, onRefreshMarket, onQuickUpdateMarketValue, onQuickUpdateSalePrice, onStartTrade, showSellerTools = false }) {
+function VaultItemDetail({ item, masterCard, setSummary, linkedTrades = [], collectionSets = [], onClose, onEdit, onDelete, onViewSet, onMarkOwned, onMoveToForge, onCopyToForge, onCreateListing, onDuplicate, onAttachReceipt, onCheckMarket, onSavePriceMemory, onAddToDisplayCase, onRefreshMarket, onQuickUpdateMarketValue, onQuickUpdateSalePrice, onStartTrade, showSellerTools = false }) {
   const gradeAssistKey = gradeAssistRecordKey(item || {});
   const [gradeAssistDraft, setGradeAssistDraft] = useState(() => loadGradeAssistDraft(item || {}));
   const [gradeAssistMessage, setGradeAssistMessage] = useState("");
@@ -70981,6 +71291,7 @@ function VaultItemDetail({ item, masterCard, setSummary, linkedTrades = [], coll
           ]}
           actions={[
             { label: "Open Profile", variant: "primary", onClick: () => document.querySelector(".vault-item-profile-panel")?.scrollIntoView?.({ block: "start", behavior: "smooth" }) },
+            { label: "Add to Display Case", onClick: () => onAddToDisplayCase?.(item) },
             !itemIsWishlist ? { label: "Add to Trade Binder", onClick: () => onStartTrade?.(item) } : null,
             { label: "Save Price", onClick: () => onSavePriceMemory?.(item) },
             { label: "Add to Set", disabled: true, title: "Add to Set is coming soon." },
@@ -71101,6 +71412,7 @@ function VaultItemDetail({ item, masterCard, setSummary, linkedTrades = [], coll
         </div>
         <div className="vault-detail-primary-actions">
           <button type="button" onClick={() => onEdit(item)}>Edit Profile</button>
+          <button type="button" className="secondary-button" onClick={() => onAddToDisplayCase?.(item)}>Add to Display Case</button>
           <button type="button" className="secondary-button" onClick={() => onEdit(item)}>Add note</button>
           {!itemIsWishlist ? <button type="button" className="secondary-button" onClick={() => onStartTrade?.(item)}>Add to trade</button> : null}
           {!itemIsWishlist ? <button type="button" className="secondary-button" onClick={() => onStartTrade?.(item)}>Use in Forge</button> : null}
