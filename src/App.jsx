@@ -39028,6 +39028,29 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const sealedQuantity = activeVaultSealedItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
     const topSet = vaultSetCompletionRows.find((row) => row.ownedCount > 0 && (row.totalCards > 0 || row.catalogCards.length));
     const knownValueCount = activeVaultItems.filter((item) => Number(vaultItemTotalMarketValue(item) || item.marketPrice || item.marketValue || 0) > 0).length;
+    const vaultItemHasNotes = (item) => [
+      item.collectorNotes,
+      item.collector_notes,
+      item.notes,
+      item.note,
+      item.memoryStory,
+      item.memory_story,
+      item.story,
+      item.actionNotes,
+      item.action_notes,
+    ].some(hasValue);
+    const vaultItemHasProfileDetails = (item) => {
+      const value = Number(vaultItemTotalMarketValue(item) || item.marketPrice || item.marketValue || item.currentValue || 0);
+      return Boolean(
+        vaultItemHasNotes(item) &&
+        (item.conditionName || item.condition || item.grade) &&
+        (value > 0) &&
+        (vaultItemSetLabel(item) || item.productType || item.category)
+      );
+    };
+    const itemsWithNotesCount = activeVaultItems.filter(vaultItemHasNotes).length;
+    const itemsWithoutValueCount = activeVaultItems.filter((item) => Number(vaultItemTotalMarketValue(item) || item.marketPrice || item.marketValue || item.currentValue || 0) <= 0).length;
+    const needsProfileDetailsCount = activeVaultItems.filter((item) => !vaultItemHasProfileDetails(item)).length;
     const collectionHealthPercent = activeVaultItems.length ? Math.round((knownValueCount / activeVaultItems.length) * 100) : 0;
     const estimatedValue = vaultMarketValueDisplay === "Price data unavailable" ? "Value pending" : vaultMarketValueDisplay;
     const folderCards = [
@@ -39048,6 +39071,15 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       ? visibleVaultMasterCards.slice(0, 2)
       : MASTER_CARD_GROUPING_PREVIEW_CARDS.slice(0, 2);
     const groupedVariantCount = visibleVaultMasterCards.reduce((sum, card) => sum + Number(card.variantCount || card.variants?.length || 0), 0);
+    const vaultCollectionSummaryCards = [
+      { key: "total-items", label: "Total items", value: activeVaultItems.length, detail: activeVaultItems.length ? "Owned Vault records" : "Add one item to begin", tone: "vault" },
+      { key: "wishlist-count", label: "Wishlist count", value: wishlistItems.length, detail: wishlistItems.length ? "Wanted, not owned" : "No wishlist wants yet", tone: "collector" },
+      { key: "items-with-notes", label: "Items with notes", value: itemsWithNotesCount, detail: itemsWithNotesCount ? "Collector context saved" : "Add stories or notes", tone: "gold" },
+      { key: "items-without-value", label: "Items without value", value: itemsWithoutValueCount, detail: itemsWithoutValueCount ? "No saved estimate yet" : "Known values only", tone: "vault" },
+      { key: "sets-created", label: "Sets created", value: vaultCollectionSetSummary.total, detail: vaultCollectionSetSummary.total ? "Local Set Shelf groups" : "Create a Set Shelf", tone: "collector" },
+      { key: "recently-added", label: "Recently added", value: recentRows.length, detail: recentRows.length ? recentRows[0]?.name || "Recent Vault item" : "No recent movement", tone: "gold" },
+      { key: "needs-profile-details", label: "Needs profile details", value: needsProfileDetailsCount, detail: needsProfileDetailsCount ? "Notes, condition, or value missing" : "Profiles look filled in", tone: "vault" },
+    ];
 
     return (
       <section className="vault-live-home-dashboard" aria-label="Vault Home dashboard">
@@ -39061,6 +39093,25 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <EtMockupStatCard label="Sealed" value={sealedQuantity} detail="Separate from sets" tone="gold" />
             <EtMockupStatCard label="Est. value" value={estimatedValue} detail="Known values only" tone="collector" />
             <EtMockupStatCard label="Completion" value={topSet ? topSet.completionLabel : "Ready"} detail={topSet ? topSet.name : "Add set details"} tone="vault" />
+          </div>
+        </EtMockupSectionCard>
+
+        <EtMockupSectionCard
+          className="vault-collection-intelligence-card"
+          title="Collection Summary"
+          detail="Local-only collection signals for organization, notes, values, sets, and profile cleanup."
+          action={<EtMockupPill tone="vault">Vault local data</EtMockupPill>}
+        >
+          <div className="et-mockup-stat-grid vault-collection-intelligence-grid" aria-label="Vault collection intelligence summary">
+            {vaultCollectionSummaryCards.map((card) => (
+              <EtMockupStatCard
+                key={card.key}
+                label={card.label}
+                value={card.value}
+                detail={card.detail}
+                tone={card.tone}
+              />
+            ))}
           </div>
         </EtMockupSectionCard>
 
@@ -39229,24 +39280,37 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
           {visibleVaultCollectionSets.length ? (
             <div className="vault-collection-set-grid" aria-label="Saved Collection Sets">
-              {visibleVaultCollectionSets.slice(0, 6).map((set) => (
-                <article className="vault-collection-set-card" key={set.id || `${set.setName}-${set.createdAt}`}>
-                  <div className="compact-card-header">
-                    <div>
-                      <span className="trust-badge trust-badge--secure">{set.setType || "Collection Set"}</span>
-                      <h3>{set.setName || "Untitled set"}</h3>
-                      <p>{set.familyKidLabel || set.setGoal || "Personal Set Shelf group"}</p>
+              {visibleVaultCollectionSets.slice(0, 6).map((set) => {
+                const setType = set.setType || "Collection Set";
+                const setProgressLabel = "0 items assigned";
+                const setProgressCopy = "Add items later. Vault items are not assigned automatically in this local beta.";
+                return (
+                  <article className="vault-collection-set-card" key={set.id || `${set.setName}-${set.createdAt}`}>
+                    <div className="compact-card-header">
+                      <div>
+                        <span className="trust-badge trust-badge--secure">{setType}</span>
+                        <h3>{set.setName || "Untitled set"}</h3>
+                        <p>{set.familyKidLabel || set.setGoal || "Personal Set Shelf group"}</p>
+                      </div>
+                      <span className="status-badge">{set.dateCreated ? shortDate(set.dateCreated) : "Local"}</span>
                     </div>
-                    <span className="status-badge">{set.dateCreated ? shortDate(set.dateCreated) : "Local"}</span>
-                  </div>
-                  <p>{set.setNotes || "No Set Notes yet. Add why this set matters, what belongs here, or who it helps."}</p>
-                  {set.setGoal ? <small>Goal: {set.setGoal}</small> : null}
-                  <div className="compact-actions vault-collection-set-actions">
-                    <button type="button" className="secondary-button" onClick={() => setVaultToast("Set Shelf details are saved locally. Soon you\u2019ll be able to tuck Vault items directly into this set.")}>View Set</button>
-                    <button type="button" className="secondary-button" disabled title="Item assignment is coming soon.">Add to Set</button>
-                  </div>
-                </article>
-              ))}
+                    <div className="vault-collection-set-progress" aria-label={`${set.setName || "Collection Set"} progress`}>
+                      <div>
+                        <span>Set progress</span>
+                        <strong>{setProgressLabel}</strong>
+                        <small>{setProgressCopy}</small>
+                      </div>
+                      <div className="vault-progress-track"><i style={{ width: "8%" }} /></div>
+                    </div>
+                    <p>{set.setNotes || "No Set Notes yet. Add why this set matters, what belongs here, or who it helps."}</p>
+                    {set.setGoal ? <small>Goal: {set.setGoal}</small> : <small>Goal: Add a collecting goal when this set is ready.</small>}
+                    <div className="compact-actions vault-collection-set-actions">
+                      <button type="button" className="secondary-button" onClick={() => setVaultToast("Set Shelf details are saved locally. Add items later is still coming soon.")}>View Set</button>
+                      <button type="button" className="secondary-button" disabled title="Item assignment is coming soon.">Add to Set</button>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           ) : (
             <EtMockupEmptyState
@@ -64446,6 +64510,20 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   item={selectedVaultDetailItem}
                   masterCard={selectedVaultDetailMasterCard}
                   setSummary={selectedVaultDetailSetSummary}
+                  linkedTrades={workspaceTradeRecords.filter((record) => {
+                    const itemId = String(selectedVaultDetailItem?.id || "");
+                    if (!itemId) return false;
+                    return [
+                      record.vaultLinkedSourceItemId,
+                      record.sourceItemId,
+                      record.originalVaultItemId,
+                      record.receivedVaultItemId,
+                      record.givenVaultItemId,
+                    ].some((value) => String(value || "") === itemId) ||
+                      String(record.sourceItemName || "").trim().toLowerCase() === String(selectedVaultDetailItem?.name || "").trim().toLowerCase() ||
+                      String(record.receivedName || record.receivedItemName || "").trim().toLowerCase() === String(selectedVaultDetailItem?.name || "").trim().toLowerCase();
+                  })}
+                  collectionSets={visibleVaultCollectionSets}
                   onClose={() => setSelectedVaultDetailId("")}
                   onEdit={startEditingVaultItem}
                   onDelete={async (item) => { const deleted = await deleteItem(item.id); if (deleted) setSelectedVaultDetailId(""); }}
@@ -68890,7 +68968,7 @@ function gradeAssistValueComparison(item = {}, moneyFormatter = money) {
   };
 }
 
-function VaultItemDetail({ item, masterCard, setSummary, onClose, onEdit, onDelete, onViewSet, onMarkOwned, onMoveToForge, onCopyToForge, onCreateListing, onDuplicate, onAttachReceipt, onCheckMarket, onRefreshMarket, onQuickUpdateMarketValue, onQuickUpdateSalePrice, onStartTrade, showSellerTools = false }) {
+function VaultItemDetail({ item, masterCard, setSummary, linkedTrades = [], collectionSets = [], onClose, onEdit, onDelete, onViewSet, onMarkOwned, onMoveToForge, onCopyToForge, onCreateListing, onDuplicate, onAttachReceipt, onCheckMarket, onRefreshMarket, onQuickUpdateMarketValue, onQuickUpdateSalePrice, onStartTrade, showSellerTools = false }) {
   const gradeAssistKey = gradeAssistRecordKey(item || {});
   const [gradeAssistDraft, setGradeAssistDraft] = useState(() => loadGradeAssistDraft(item || {}));
   const [gradeAssistMessage, setGradeAssistMessage] = useState("");
@@ -68928,6 +69006,11 @@ function VaultItemDetail({ item, masterCard, setSummary, onClose, onEdit, onDele
   const itemSetKnown = Boolean(setSummary && !setSummary.unknownSet && itemSetName !== "Set unknown");
   const itemProfileKind = itemType || (isInventorySealedProduct(item) ? "Sealed product" : "Vault item");
   const profileEstimatedValue = valuation.marketKnownQuantity ? money(totalMarket) : "";
+  const profileValueSource = item.marketSource || item.market_source || item.externalProductSource || item.sourceType || item.source || "";
+  const profileValueSourceCopy = valuation.marketKnownQuantity
+    ? `Estimated Value uses saved local item fields${profileValueSource ? ` from ${profileValueSource}` : ""}. It is not live pricing or a guarantee.`
+    : "No value saved yet. Add a manual estimate or check Market when you are ready.";
+  const languageLabel = item.language || item.cardLanguage || item.card_language || item.printLanguage || item.print_language || "Language not set yet.";
   const collectorNotes = item.collectorNotes || item.collector_notes || item.notes || item.note || "";
   const memoryStory = item.memoryStory || item.memory_story || item.story || item.memory || item.actionNotes || item.action_notes || "";
   const kidSafeNotes = item.kidSafeNotes || item.kid_safe_notes || item.familyNotes || item.family_notes || "";
@@ -69025,6 +69108,16 @@ function VaultItemDetail({ item, masterCard, setSummary, onClose, onEdit, onDele
   ].filter(([, value]) => hasValue(value));
   const gradeAssistReadiness = deriveGradeAssistReadiness(gradeAssistDraft);
   const gradeAssistValue = gradeAssistValueComparison(item, money);
+  const linkedTradePreview = Array.isArray(linkedTrades) ? linkedTrades.slice(0, 3) : [];
+  const collectionSetCount = Array.isArray(collectionSets) ? collectionSets.length : 0;
+  const profileConditionVariantRows = [
+    ["Condition Notes", conditionLabel || "Condition not set yet."],
+    ["Language", languageLabel],
+    ["Variant", itemVariantLabel || "Variant unknown"],
+    ["Card Number", itemCardNumber || "Card number not set"],
+    ["Type", itemProfileKind],
+    ["Set", itemSetName],
+  ];
   const updateGradeAssistField = (fieldKey, value) => {
     setGradeAssistDraft((current) => normalizeGradeAssistChecklist({
       ...current,
@@ -69125,6 +69218,41 @@ function VaultItemDetail({ item, masterCard, setSummary, onClose, onEdit, onDele
           ))}
         </div>
       </section>
+      <section className="vault-profile-usefulness-grid" aria-label="Vault Item usefulness">
+        <article className="vault-profile-usefulness-card">
+          <span>Profile details</span>
+          <h4>Condition / language / variant</h4>
+          <div className="vault-profile-mini-list">
+            {profileConditionVariantRows.map(([label, value]) => (
+              <div key={label}>
+                <small>{label}</small>
+                <strong>{value}</strong>
+              </div>
+            ))}
+          </div>
+        </article>
+        <article className="vault-profile-usefulness-card">
+          <span>Value source</span>
+          <h4>{profileEstimatedValue || "No value saved yet"}</h4>
+          <p>{profileValueSourceCopy}</p>
+          <button type="button" className="secondary-button" onClick={() => onCheckMarket?.(item)}>Check in Market</button>
+        </article>
+        <article className="vault-profile-usefulness-card vault-profile-trade-preview">
+          <span>Linked trade history preview</span>
+          <h4>{linkedTradePreview.length ? `${linkedTradePreview.length} linked trade${linkedTradePreview.length === 1 ? "" : "s"}` : "No linked trades yet"}</h4>
+          <p>{linkedTradePreview.length ? "Trade Ledger memories linked to this Vault item appear here." : "Choose this Vault item as Trade Source in Forge to link a future Trade Memory. Vault items are never deleted automatically."}</p>
+          {linkedTradePreview.length ? (
+            <div className="vault-profile-linked-trade-list">
+              {linkedTradePreview.map((trade) => (
+                <div key={trade.id || `${trade.sourceItemName}-${trade.receivedName}`}>
+                  <strong>{trade.sourceItemName || "What You Gave"} for {trade.receivedName || trade.receivedItemName || "What You Got"}</strong>
+                  <small>{trade.resultLabel || trade.guidance || "Trade saved locally"} | {trade.tradeDate ? shortDate(trade.tradeDate) : "No date"}</small>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </article>
+      </section>
       <section className="vault-profile-story-grid" aria-label="Collector notes and story">
         <article className="vault-profile-story-card">
           <span>Collector Notes</span>
@@ -69150,19 +69278,27 @@ function VaultItemDetail({ item, masterCard, setSummary, onClose, onEdit, onDele
           <span>{masterCard.ownedTotal || 0} owned across {masterCard.variantCount || masterCard.variants?.length || 0} grouped variant{(masterCard.variantCount || masterCard.variants?.length || 0) === 1 ? "" : "s"}.</span>
         </div>
       ) : null}
-      <div className="vault-detail-primary-actions">
-        <button type="button" onClick={() => onEdit(item)}>Edit Profile</button>
-        {!itemIsWishlist ? <button type="button" className="secondary-button" onClick={() => onStartTrade?.(item)}>Use in Forge</button> : null}
-        <button type="button" className="secondary-button" onClick={() => onCheckMarket?.(item)}>Check in Market</button>
-        {itemIsWishlist ? <button type="button" onClick={() => onMarkOwned?.(item)}>Mark owned</button> : null}
-        {setSummary ? <button type="button" className="secondary-button" onClick={() => onViewSet?.(setSummary)}>View Set</button> : null}
-        <button type="button" className="secondary-button" onClick={() => onAttachReceipt?.(item)}>Attach receipt</button>
-        <button type="button" className="secondary-button" onClick={() => onQuickUpdateMarketValue?.(item)}>Review value</button>
-        {showVaultSellerTools ? <button type="button" className="secondary-button" disabled={Number(item.quantity || 0) < 1} onClick={() => onMoveToForge(item)}>Move to Forge</button> : null}
-      </div>
-      <p className="vault-detail-action-note vault-profile-forge-helper">
-        Bring this item into Forge when you want to compare, trade, or think through its value.
-      </p>
+      <section className="vault-profile-actions-panel" aria-label="Vault Item actions">
+        <div>
+          <span className="trust-badge trust-badge--secure">Actions</span>
+          <h4>Next safe actions</h4>
+          <p>Bring this item into Forge when you want to compare, trade, or think through its value. Set assignment is still local-preview planning and will not change this item automatically.</p>
+        </div>
+        <div className="vault-detail-primary-actions">
+          <button type="button" onClick={() => onEdit(item)}>Edit Profile</button>
+          <button type="button" className="secondary-button" onClick={() => onEdit(item)}>Add note</button>
+          {!itemIsWishlist ? <button type="button" className="secondary-button" onClick={() => onStartTrade?.(item)}>Add to trade</button> : null}
+          {!itemIsWishlist ? <button type="button" className="secondary-button" onClick={() => onStartTrade?.(item)}>Use in Forge</button> : null}
+          <button type="button" className="secondary-button" onClick={() => onCheckMarket?.(item)}>Check in Market</button>
+          <button type="button" className="secondary-button" disabled title="Add to Set is coming soon.">Add to set</button>
+          {itemIsWishlist ? <button type="button" onClick={() => onMarkOwned?.(item)}>Mark owned</button> : null}
+          {setSummary ? <button type="button" className="secondary-button" onClick={() => onViewSet?.(setSummary)}>View Set</button> : null}
+          <button type="button" className="secondary-button" onClick={() => onAttachReceipt?.(item)}>Attach receipt</button>
+          <button type="button" className="secondary-button" onClick={() => onQuickUpdateMarketValue?.(item)}>Review value</button>
+          {showVaultSellerTools ? <button type="button" className="secondary-button" disabled={Number(item.quantity || 0) < 1} onClick={() => onMoveToForge(item)}>Move to Forge</button> : null}
+        </div>
+        <small>{collectionSetCount ? `${collectionSetCount} Set Shelf group${collectionSetCount === 1 ? "" : "s"} available. Add to set is Coming Soon.` : "Create a Set Shelf first, then add items later when assignment is enabled."}</small>
+      </section>
       {purchaserDetailRows.length ? (
         <div className="vault-detail-group-summary" aria-label="Grouped inventory details">
           <strong>Grouped inventory details</strong>

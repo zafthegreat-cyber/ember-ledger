@@ -767,6 +767,29 @@ async function main() {
           status: "Personal Collection",
           quantity: 1,
           unitCost: 5,
+          actionNotes: "Smoke note for collection intelligence.",
+          conditionName: "Near Mint",
+          language: "English",
+          variantLabel: "Holo",
+          cardNumber: "ET-001",
+          setName: "Smoke Set",
+          workspaceId: "workspace-personal-local-beta",
+          workspaceName: "My Personal Space",
+          createdAt: now,
+          updatedAt: now,
+        },
+      ];
+      data.tradeRecords = [
+        ...(data.tradeRecords || []).filter((record) => record.id !== "focused-vault-linked-trade"),
+        {
+          id: "focused-vault-linked-trade",
+          sourceItemName: "Focused Vault Smoke Card",
+          receivedName: "Focused Vault Trade Memory",
+          resultLabel: "Fair Trade",
+          tradeDate: "2026-06-10",
+          vaultLinkedSourceItemId: "focused-vault-smoke-item",
+          vaultLinkedSourceName: "Focused Vault Smoke Card",
+          inventoryMutation: "none",
           workspaceId: "workspace-personal-local-beta",
           workspaceName: "My Personal Space",
           createdAt: now,
@@ -779,6 +802,14 @@ async function main() {
     await nav("Vault");
     await assertVisibleText("Vault");
     await assertVisibleText("Focused Vault Smoke Card");
+    await assertVisibleText("Collection Summary");
+    await assertVisibleText("Total items");
+    await assertVisibleText("Wishlist count");
+    await assertVisibleText("Items with notes");
+    await assertVisibleText("Items without value");
+    await assertVisibleText("Sets created");
+    await assertVisibleText("Recently added");
+    await assertVisibleText("Needs profile details");
     await assertVisibleText("Collection Sets");
     await assertVisibleText("Set Shelf");
     await assertVisibleText("Vault upgrade preview");
@@ -807,6 +838,9 @@ async function main() {
     await collectionSetModal.getByRole("button", { name: /^Close$/ }).first().click();
     await collectionSetModal.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
     await expectVisible(page.locator(".vault-collection-set-card").filter({ hasText: "Smoke Trade Binder Shelf" }).first(), "Vault saved Collection Set card");
+    await assertVisibleText("Set progress");
+    await assertVisibleText("0 items assigned");
+    await assertVisibleText("Add items later. Vault items are not assigned automatically in this local beta.");
     await assertVisibleText("Add to Set");
     const focusedVaultCard = page.locator(".vault-item-card").filter({ hasText: "Focused Vault Smoke Card" }).first();
     await expectVisible(focusedVaultCard, "focused Vault item card");
@@ -821,9 +855,18 @@ async function main() {
     await assertVisibleText("Kid Safe Notes");
     await assertVisibleText("No value saved yet. Add an estimate when you are ready.");
     await assertVisibleText("No collector notes yet. Add why this item matters, where it came from, or what makes it special.");
+    await assertVisibleText("Profile details");
+    await assertVisibleText("Condition / language / variant");
+    await assertVisibleText("Value source");
+    await assertVisibleText("Linked trade history preview");
+    await assertVisibleText("Focused Vault Smoke Card for Focused Vault Trade Memory");
+    await assertVisibleText("Actions");
     await expectVisible(page.getByRole("button", { name: /^Edit Profile$/ }).first(), "Vault Item Profile edit action");
+    await expectVisible(page.getByRole("button", { name: /^Add note$/ }).first(), "Vault Item Profile add note action");
+    await expectVisible(page.getByRole("button", { name: /^Add to trade$/ }).first(), "Vault Item Profile add trade action");
     await expectVisible(page.getByRole("button", { name: /^Use in Forge$/ }).first(), "Vault Item Profile Forge action");
     await expectVisible(page.getByRole("button", { name: /^Check in Market$/ }).first(), "Vault Item Profile Market action");
+    await expectVisible(page.getByRole("button", { name: /^Add to set$/ }).first(), "Vault Item Profile add to set coming soon action");
     assert.ok(
       await page.getByRole("button", { name: /Quick Add|Add Item|Search \/ Scan Item/i }).count() > 0,
       "Vault should expose a primary add/search action"
