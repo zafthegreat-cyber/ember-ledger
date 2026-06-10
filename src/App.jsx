@@ -6394,6 +6394,80 @@ function CollectorShowcaseCard({
   );
 }
 
+function CollectorFlipDetailCard({
+  title = "Collection item",
+  subtitle = "",
+  image = "",
+  kind = "item",
+  mode = "compact",
+  valueLabel = "",
+  meta = [],
+  helper = "Visual display only. Images may be representative, and values are manual or saved estimates when shown.",
+  noteRows = [],
+  actions = [],
+  className = "",
+  ariaLabel = "",
+}) {
+  const normalizedKind = normalizeCollectorShowcaseKind(kind);
+  const safeNoteRows = noteRows
+    .filter(Boolean)
+    .map((row) => Array.isArray(row) ? { label: row[0], value: row[1] } : row)
+    .filter((row) => row?.label);
+  const safeActions = actions.filter(Boolean);
+  return (
+    <details className={`collector-flip-card collector-flip-${normalizedKind} collector-flip-${mode} ${className}`.trim()}>
+      <summary aria-label={ariaLabel || `Flip details for ${title}`}>
+        <CollectorShowcaseCard
+          title={title}
+          subtitle={subtitle}
+          image={image}
+          kind={normalizedKind}
+          mode={mode}
+          valueLabel={valueLabel}
+          meta={meta}
+          helper={helper}
+          className="collector-flip-front"
+        />
+        <span className="collector-flip-summary-cue">Flip details</span>
+      </summary>
+      <div className="collector-flip-back" aria-label={`${title} back-side details`}>
+        <span className="collector-flip-back-kicker">Back-side details</span>
+        <h4>{title}</h4>
+        <p>{helper}</p>
+        {safeNoteRows.length ? (
+          <dl className="collector-flip-detail-list">
+            {safeNoteRows.slice(0, 4).map((row) => (
+              <div key={row.label}>
+                <dt>{row.label}</dt>
+                <dd>{row.value || "Not saved yet"}</dd>
+              </div>
+            ))}
+          </dl>
+        ) : null}
+        {safeActions.length ? (
+          <div className="collector-flip-actions">
+            {safeActions.map((action) => (
+              <button
+                key={action.label}
+                type="button"
+                className={action.variant === "primary" ? "" : "secondary-button"}
+                disabled={Boolean(action.disabled)}
+                title={action.title || ""}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  action.onClick?.(event);
+                }}
+              >
+                {action.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    </details>
+  );
+}
+
 function CollapsibleFeatureSection({ title, summary, open, onToggle, children }) {
   return (
     <section className="feature-dropdown">
@@ -65833,18 +65907,32 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                         : item.grade || item.gradingCompany || item.grading_company
                           ? "slab"
                           : vaultItemTypeLabel(item);
+                      const statusLabel = vaultStatusLabel(normalizeVaultStatus(item));
+                      const conditionLabel = item.conditionName || item.condition || (isInventorySealedProduct(item) ? "Sealed status to check" : "Condition pending");
+                      const notesLabel = item.collectorNotes || item.notes || item.actionNotes || "No collector notes yet.";
+                      const valueLabel = totalValue ? `${money(totalValue)} saved estimate` : "No value saved yet";
                       return (
-                        <CollectorShowcaseCard
+                        <CollectorFlipDetailCard
                           key={item.id}
                           title={item.name}
                           subtitle={vaultItemSetLabel(item) || vaultItemTypeLabel(item) || "Vault item"}
                           image={vaultItemDisplayImage(item)}
                           kind={itemKind}
                           mode="display"
-                          valueLabel={totalValue ? `${money(totalValue)} saved estimate` : "No value saved yet"}
-                          meta={[vaultStatusLabel(normalizeVaultStatus(item)), `Qty ${item.quantity || 1}`]}
-                          actionLabel="Open Item Profile"
-                          onClick={() => setSelectedVaultDetailId(item.id)}
+                          valueLabel={valueLabel}
+                          meta={[statusLabel, `Qty ${item.quantity || 1}`]}
+                          helper="Visual display only. Images may be representative. Check condition, sealed status, and saved values manually."
+                          noteRows={[
+                            ["Collector notes", notesLabel],
+                            ["Source / value", valueLabel],
+                            ["Condition / status", `${conditionLabel} | ${statusLabel}`],
+                          ]}
+                          actions={[
+                            { label: "Open Profile", variant: "primary", onClick: () => setSelectedVaultDetailId(item.id) },
+                            !isWishlistLikeVaultItem(item) ? { label: "Add to Trade Binder", onClick: () => openTradeValueFlow(item, { source: "vault-showcase-flip", sourceKind: "vault" }) } : null,
+                            { label: "Save Price", onClick: () => openMarketPriceMemoryFlow(item, { source: "vault-showcase-save-price", seed: { itemName: item.name, price: totalValue || "", condition: conditionLabel } }) },
+                            { label: "Add to Set", disabled: true, title: "Add to Set is coming soon." },
+                          ]}
                         />
                       );
                     })}
@@ -65932,6 +66020,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   onDuplicate={openVaultDuplicateItem}
                   onAttachReceipt={(item) => openReceiptForItem(item, "vault-item")}
                   onCheckMarket={openMarketWatchForVaultItem}
+                  onSavePriceMemory={(item) => openMarketPriceMemoryFlow(item, { source: "vault-profile-save-price", seed: { itemName: item.name, price: vaultItemTotalMarketValue(item) || "", condition: item.conditionName || item.condition || "" } })}
                   onRefreshMarket={refreshVaultMarket}
                   onQuickUpdateMarketValue={quickUpdateMarketValue}
                   onQuickUpdateSalePrice={quickUpdatePlannedSalePrice}
@@ -69394,6 +69483,32 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
               <div className="catalog-detail-body">
                 <section className="catalog-detail-hero">
                   <div className="catalog-detail-media-panel">
+                    <CollectorFlipDetailCard
+                      title={catalogTitle(selectedCatalogDetailProduct)}
+                      subtitle={catalogExpansionName(selectedCatalogDetailProduct) || catalogProductTypeLabel(selectedCatalogDetailProduct)}
+                      image={catalogImage(selectedCatalogDetailPricingProduct)}
+                      kind={selectedCatalogDetailIsSealed ? "sealed" : selectedCatalogDetailIsCard ? "card" : catalogProductTypeLabel(selectedCatalogDetailProduct)}
+                      mode="display"
+                      valueLabel={hasCatalogMarketPrice(selectedCatalogDetailPricingProduct) ? `${money(selectedCatalogDetailMarketInfo?.currentMarketValue)} saved estimate` : "Market data unavailable"}
+                      meta={[
+                        getCatalogKindLabel(selectedCatalogDetailProduct),
+                        selectedCatalogDetailIsCard && selectedCatalogDetailProduct.rarity ? selectedCatalogDetailProduct.rarity : "",
+                        selectedCatalogDetailMarketInfo?.marketDataLabel || "Not Live Pricing",
+                      ].filter(Boolean)}
+                      helper="Market display only. Not Live Pricing, checkout, stock status, grading, authentication, or product verification."
+                      className="catalog-detail-flip-showcase"
+                      noteRows={[
+                        ["Collector notes", selectedCatalogDetailProduct.notes || "No collector notes saved from Market yet."],
+                        ["Source / value", hasCatalogMarketPrice(selectedCatalogDetailPricingProduct) ? `${getCatalogMarketSourceLabel(selectedCatalogDetailPricingProduct)} | ${selectedCatalogDetailMarketInfo?.marketDataLabel || "Data limit unknown"}` : "Market data unavailable. Save a Manual Estimate if you want to remember this."],
+                        ["Condition / status", selectedCatalogDetailIsSealed ? "Check condition and sealed status manually." : selectedCatalogDetailCondition || "Condition not selected yet."],
+                      ]}
+                      actions={[
+                        { label: "Open Profile", variant: "primary", onClick: () => document.querySelector(".catalog-detail-core-panel")?.scrollIntoView?.({ block: "start", behavior: "smooth" }) },
+                        { label: "Save Price", onClick: () => openMarketPriceMemoryFlow(selectedCatalogDetailPricingProduct || selectedCatalogDetailProduct, { source: "market-detail-flip-save-price" }) },
+                        { label: adaptiveSellerToolsVisible && activeForgeWorkspace ? "Add to Forge" : "Add to Vault", onClick: () => openMarketProductAddFlow(selectedCatalogDetailPricingProduct || selectedCatalogDetailProduct, "market-detail-flip", { defaultDestination: adaptiveSellerToolsVisible && activeForgeWorkspace ? "forge" : "vault" }) },
+                        { label: "Add to Set", disabled: true, title: "Add to Set is coming soon from Market details." },
+                      ]}
+                    />
                     {catalogImage(selectedCatalogDetailPricingProduct) ? (
                       <>
                         <img
@@ -70375,7 +70490,7 @@ function gradeAssistValueComparison(item = {}, moneyFormatter = money) {
   };
 }
 
-function VaultItemDetail({ item, masterCard, setSummary, linkedTrades = [], collectionSets = [], onClose, onEdit, onDelete, onViewSet, onMarkOwned, onMoveToForge, onCopyToForge, onCreateListing, onDuplicate, onAttachReceipt, onCheckMarket, onRefreshMarket, onQuickUpdateMarketValue, onQuickUpdateSalePrice, onStartTrade, showSellerTools = false }) {
+function VaultItemDetail({ item, masterCard, setSummary, linkedTrades = [], collectionSets = [], onClose, onEdit, onDelete, onViewSet, onMarkOwned, onMoveToForge, onCopyToForge, onCreateListing, onDuplicate, onAttachReceipt, onCheckMarket, onSavePriceMemory, onRefreshMarket, onQuickUpdateMarketValue, onQuickUpdateSalePrice, onStartTrade, showSellerTools = false }) {
   const gradeAssistKey = gradeAssistRecordKey(item || {});
   const [gradeAssistDraft, setGradeAssistDraft] = useState(() => loadGradeAssistDraft(item || {}));
   const [gradeAssistMessage, setGradeAssistMessage] = useState("");
@@ -70578,7 +70693,7 @@ function VaultItemDetail({ item, masterCard, setSummary, linkedTrades = [], coll
         <button type="button" className="secondary-button" onClick={onClose}>Close</button>
       </div>
       <div className="inventory-detail-hero">
-        <CollectorShowcaseCard
+        <CollectorFlipDetailCard
           title={masterCard?.name || item.name}
           subtitle={masterCard?.setName || setLabel || itemType || "Vault item"}
           image={detailImage}
@@ -70586,8 +70701,20 @@ function VaultItemDetail({ item, masterCard, setSummary, linkedTrades = [], coll
           mode="hero"
           valueLabel={profileEstimatedValue ? `${profileEstimatedValue} saved estimate` : "No value saved yet"}
           meta={[itemIsWishlist ? "Wishlist" : "Owned", itemVariantLabel || "Variant pending", conditionLabel || "Condition pending"]}
-          helper="Showcase view uses saved item details only. It does not grade, authenticate, or verify products."
+          helper="Visual treatment is based on available app metadata. Not a grading or authenticity claim."
           className="vault-item-profile-showcase"
+          noteRows={[
+            ["Collector notes", collectorNotes || "No collector notes yet."],
+            ["Source / value", profileEstimatedValue ? `${profileEstimatedValue} saved estimate. ${profileValueSourceCopy}` : "No value saved yet. Add an estimate when you are ready."],
+            ["Condition / status", [conditionLabel || "Condition pending", itemIsWishlist ? "Wishlist" : "Owned"].join(" | ")],
+            ["Memory / Story", memoryStory || "Story waiting"],
+          ]}
+          actions={[
+            { label: "Open Profile", variant: "primary", onClick: () => document.querySelector(".vault-item-profile-panel")?.scrollIntoView?.({ block: "start", behavior: "smooth" }) },
+            !itemIsWishlist ? { label: "Add to Trade Binder", onClick: () => onStartTrade?.(item) } : null,
+            { label: "Save Price", onClick: () => onSavePriceMemory?.(item) },
+            { label: "Add to Set", disabled: true, title: "Add to Set is coming soon." },
+          ]}
         />
         <PremiumCardImage
           image={detailImage}

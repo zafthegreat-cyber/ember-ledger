@@ -885,6 +885,11 @@ async function main() {
       page.locator(".vault-showcase-grid .collector-showcase-card").filter({ hasText: "Focused Vault Smoke Card" }).first(),
       "Vault Showcase card"
     );
+    const focusedFlipCard = page.locator(".vault-showcase-grid .collector-flip-card").filter({ hasText: "Focused Vault Smoke Card" }).first();
+    await expectVisible(focusedFlipCard, "Vault flip detail card");
+    await focusedFlipCard.locator("summary").click();
+    await expectVisible(focusedFlipCard.locator(".collector-flip-back").filter({ hasText: "Back-side details" }).first(), "Vault flip back-side details");
+    await expectVisible(focusedFlipCard.getByRole("button", { name: /^Open Profile$/ }).first(), "Vault flip Open Profile action");
     await page.getByRole("button", { name: /^Standard view$/ }).first().click();
     const focusedVaultCard = page.locator(".vault-item-card").filter({ hasText: "Focused Vault Smoke Card" }).first();
     await expectVisible(focusedVaultCard, "focused Vault item card");

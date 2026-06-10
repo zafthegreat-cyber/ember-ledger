@@ -100993,6 +100993,160 @@ html body #root .app.app-command-shell .collector-showcase-note {
   margin: 0;
 }
 
+html body #root .app.app-command-shell .collector-flip-card {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  perspective: 1100px;
+}
+
+html body #root .app.app-command-shell .collector-flip-card > summary {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  list-style: none;
+  cursor: pointer;
+  outline: none;
+}
+
+html body #root .app.app-command-shell .collector-flip-card > summary::-webkit-details-marker {
+  display: none;
+}
+
+html body #root .app.app-command-shell .collector-flip-card > summary:focus-visible {
+  border-radius: 22px;
+  outline: 3px solid color-mix(in srgb, var(--et-page-accent-2, #d9a441) 58%, transparent);
+  outline-offset: 4px;
+}
+
+html body #root .app.app-command-shell .collector-flip-front {
+  pointer-events: none;
+  transform-origin: center;
+  transition: transform 220ms ease, filter 220ms ease;
+}
+
+html body #root .app.app-command-shell .collector-flip-card[open] .collector-flip-front {
+  transform: rotateX(0deg) rotateY(-3deg) translateY(-2px);
+  filter: saturate(1.04);
+}
+
+html body #root .app.app-command-shell .collector-flip-summary-cue,
+html body #root .app.app-command-shell .collector-flip-back-kicker {
+  display: inline-flex;
+  width: max-content;
+  max-width: 100%;
+  align-items: center;
+  min-height: 28px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2, #d9a441) 30%, transparent);
+  background: color-mix(in srgb, var(--et-page-accent-2, #d9a441) 12%, transparent);
+  color: color-mix(in srgb, var(--et-ink, #172033) 84%, var(--et-page-accent, #f97316));
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+html body #root .app.app-command-shell .collector-flip-back {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: clamp(12px, 1.8vw, 16px);
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2, #d9a441) 28%, var(--et-border, rgba(118, 84, 42, 0.18)));
+  border-radius: clamp(18px, 1.6vw, 24px);
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--et-page-accent, #f97316) 10%, transparent), transparent 12rem),
+    color-mix(in srgb, var(--et-panel, #fffdf7) 90%, var(--et-page-accent-2, #d9a441) 5%);
+  box-shadow:
+    0 16px 30px color-mix(in srgb, var(--et-page-accent, #f97316) 10%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.58);
+  transform: rotateX(-5deg) translateY(-2px);
+  transform-origin: top center;
+}
+
+html body #root .app.app-theme-dark.app-command-shell .collector-flip-back,
+html body #root .app.app-shell-dark.app-command-shell .collector-flip-back {
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--et-page-accent, #f97316) 14%, transparent), transparent 12rem),
+    color-mix(in srgb, var(--et-panel, #0d1b31) 88%, #141f38 12%);
+  box-shadow:
+    0 18px 34px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+html body #root .app.app-command-shell .collector-flip-back h4,
+html body #root .app.app-command-shell .collector-flip-back p {
+  margin: 0;
+}
+
+html body #root .app.app-command-shell .collector-flip-back p {
+  color: color-mix(in srgb, var(--et-muted, #675d52) 88%, var(--et-ink, #172033));
+  line-height: 1.42;
+}
+
+html body #root .app.app-theme-dark.app-command-shell .collector-flip-back p,
+html body #root .app.app-shell-dark.app-command-shell .collector-flip-back p {
+  color: color-mix(in srgb, var(--et-muted, #c9d7ea) 86%, var(--et-ink, #f7f0df));
+}
+
+html body #root .app.app-command-shell .collector-flip-detail-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+html body #root .app.app-command-shell .collector-flip-detail-list div {
+  display: grid;
+  gap: 2px;
+  padding: 9px 10px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--et-panel-soft, #fff1dc) 74%, transparent);
+}
+
+html body #root .app.app-theme-dark.app-command-shell .collector-flip-detail-list div,
+html body #root .app.app-shell-dark.app-command-shell .collector-flip-detail-list div {
+  background: color-mix(in srgb, var(--et-panel-soft, #10243f) 78%, transparent);
+}
+
+html body #root .app.app-command-shell .collector-flip-detail-list dt,
+html body #root .app.app-command-shell .collector-flip-detail-list dd {
+  margin: 0;
+}
+
+html body #root .app.app-command-shell .collector-flip-detail-list dt {
+  color: color-mix(in srgb, var(--et-muted, #675d52) 88%, var(--et-ink, #172033));
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+html body #root .app.app-command-shell .collector-flip-detail-list dd {
+  color: var(--et-ink, #172033);
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+html body #root .app.app-theme-dark.app-command-shell .collector-flip-detail-list dd,
+html body #root .app.app-shell-dark.app-command-shell .collector-flip-detail-list dd {
+  color: var(--et-ink, #f7f0df);
+}
+
+html body #root .app.app-command-shell .collector-flip-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+html body #root .app.app-command-shell .collector-flip-actions button {
+  min-height: 40px;
+}
+
+html body #root .app.app-command-shell .catalog-detail-flip-showcase {
+  width: 100%;
+}
+
 html body #root .app.app-command-shell .inventory-detail-hero {
   grid-template-columns: minmax(220px, 1fr) minmax(154px, 0.62fr) minmax(0, 1.05fr);
 }
@@ -101081,6 +101235,11 @@ html body #root .app.app-command-shell .quick-add-result-card .quick-add-result-
     width: min(70vw, 170px);
   }
 
+  html body #root .app.app-command-shell .collector-flip-actions,
+  html body #root .app.app-command-shell .collector-flip-actions button {
+    width: 100%;
+  }
+
   html body #root .app.app-command-shell .vault-heading-actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -101106,13 +101265,20 @@ html body #root .app.app-command-shell .quick-add-result-card .quick-add-result-
 @media (prefers-reduced-motion: reduce) {
   html body #root .app.app-command-shell .collector-showcase-object,
   html body #root .app.app-command-shell button.collector-showcase-card:hover .collector-showcase-object,
-  html body #root .app.app-command-shell button.collector-showcase-card:focus-visible .collector-showcase-object {
+  html body #root .app.app-command-shell button.collector-showcase-card:focus-visible .collector-showcase-object,
+  html body #root .app.app-command-shell .collector-flip-front,
+  html body #root .app.app-command-shell .collector-flip-card[open] .collector-flip-front,
+  html body #root .app.app-command-shell .collector-flip-back {
     transform: none;
     transition: none;
     filter: none;
   }
 
   html body #root .app.app-command-shell .collector-showcase-stage {
+    perspective: none;
+  }
+
+  html body #root .app.app-command-shell .collector-flip-card {
     perspective: none;
   }
 

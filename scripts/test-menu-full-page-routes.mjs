@@ -83,22 +83,25 @@ assert.equal(
 );
 assert.ok(
   appSource.includes("function CollectorShowcaseCard") &&
+    appSource.includes("function CollectorFlipDetailCard") &&
     appSource.includes("3D Collector Showcase") &&
+    appSource.includes("Back-side details") &&
     appSource.includes("vaultDisplayMode") &&
     appSource.includes("market-showcase-preview") &&
     appSource.includes("quick-add-showcase-preview"),
-  "Collector Showcase should be wired into shared UI, Vault, Market, and Quick Add."
+  "Collector Showcase and flip details should be wired into shared UI, Vault, Market, and Quick Add."
 );
 assert.ok(
   cssSource.includes(".collector-showcase-card") &&
+    cssSource.includes(".collector-flip-card") &&
     cssSource.includes("@media (prefers-reduced-motion: reduce)") &&
     cssSource.includes("transform: none"),
-  "Collector Showcase should provide a reduced-motion CSS fallback."
+  "Collector Showcase and flip details should provide a reduced-motion CSS fallback."
 );
 assert.equal(
-  /showcase[^.]{0,80}(authenticat|grade verified|product verified|live market|guaranteed price|official scan)/i.test(appSource),
+  /(showcase|flip)[^.]{0,100}(authenticat|grade verified|product verified|live market|guaranteed price|official scan)/i.test(appSource),
   false,
-  "Collector Showcase copy should not claim grading, authentication, live market pricing, or product verification."
+  "Collector Showcase and flip detail copy should not claim grading, authentication, live market pricing, or product verification."
 );
 assert.ok(
   cssSource.includes('.flow-modal[data-flow="addActionSheet"]') &&
