@@ -111,6 +111,26 @@ assert.equal(
   false,
   "Collector Showcase and flip detail copy should not claim grading, authentication, live market pricing, or product verification."
 );
+assert.ok(
+  appSource.includes("function detectCollectorItemVisualType") &&
+    appSource.includes("function collectorVisualTypeLabel") &&
+    appSource.includes('"booster box"') &&
+    appSource.includes('"sealed product"') &&
+    appSource.includes('"wishlist"') &&
+    appSource.includes("visualType: detectCollectorItemVisualType(displayItem)") &&
+    appSource.includes("displayKind: item ? detectCollectorItemVisualType(item)") &&
+    appSource.includes("const kind = detectCollectorItemVisualType(item)") &&
+    appSource.includes("kind={detectCollectorItemVisualType(product)}") &&
+    appSource.includes("kind={detectCollectorItemVisualType(selectedCatalogDetailProduct)}") &&
+    appSource.includes("const productKind = detectCollectorItemVisualType(product)") &&
+    cssSource.includes(".collector-showcase-wishlist"),
+  "Shared product visual type detection should drive Vault, Market, Quick Add, Item Profile, Gallery, and Display Case surfaces."
+);
+assert.equal(
+  /type detection verified|scan-detected type|automatic type verification|verified product type|authenticated product type|official product classification|live stock type|marketplace listing type verified/i.test(appSource),
+  false,
+  "Product type detection should stay a visual helper, not a verification, scanning, live stock, or marketplace claim."
+);
 assert.equal(
   /sealed product shelf[^.]{0,140}(live stock|in stock|guaranteed availability|product verified|official verification|live price)/i.test(appSource),
   false,

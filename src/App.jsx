@@ -3164,7 +3164,7 @@ function normalizeItemComparisonDraft(draft = {}) {
   const price = Number.parseFloat(String(draft.rememberedPrice ?? draft.price ?? draft.marketPrice ?? draft.marketValue ?? "").replace(/[^0-9.]/g, ""));
   return {
     itemName: String(draft.itemName || draft.name || draft.productName || draft.cardName || "").trim(),
-    itemType: normalizeItemCompareType(draft.itemType || draft.type || draft.category || draft.productType || ""),
+    itemType: detectCollectorItemVisualType(draft),
     setOrProduct: String(draft.setOrProduct || draft.setName || draft.expansion || draft.productLine || "").trim(),
     rememberedPrice: Number.isFinite(price) && price >= 0 ? price : "",
     conditionText: String(draft.conditionText || draft.condition || draft.conditionName || "").trim(),
@@ -3855,6 +3855,73 @@ function isInventoryCardProduct(value = {}) {
     catalogHasStrongCardIndicators(value) ||
     /\bsingle[_\s-]?card\b|\bindividual\s+card\b|\bpromo\s+card\b|\bgraded\s+card\b|\bslab\b/.test(text)
   );
+}
+
+function detectCollectorItemVisualType(source = {}) {
+  const value = source || {};
+  const recordType = normalizeSearchText(value.recordType || value.record_type || value.destination || value.vaultStatus || value.vault_status || "");
+  const explicitTypeText = normalizeSearchText([
+    value.itemType,
+    value.item_type,
+    value.productType,
+    value.product_type,
+    value.category,
+    value.catalogType,
+    value.catalog_type,
+    value.catalogDisplayKind,
+    value.displayKind,
+    value.kind,
+    value.setType,
+    value.set_type,
+    value.status,
+  ].filter(Boolean).join(" "));
+  const broadText = normalizeSearchText([
+    explicitTypeText,
+    value.name,
+    value.itemName,
+    value.productName,
+    value.cardName,
+    value.title,
+    value.notes,
+  ].filter(Boolean).join(" "));
+
+  if (
+    value.wishlistIso ||
+    value.isWishlist ||
+    value.is_wishlist ||
+    recordType === "wishlist_item" ||
+    recordType === "wishlist" ||
+    /\bwishlist\b|\biso\b|\bwant(ed)?\b/.test(explicitTypeText)
+  ) return "wishlist";
+  if (
+    recordType === "collection_set" ||
+    /\b(set shelf|collection set|favorite set|kid set|sealed set|slab set|trade binder|master set|family set)\b/.test(explicitTypeText)
+  ) return "set";
+  if (/\b(sleeves?|binder|top\s*loader|toploader|deck\s*box|storage|playmat|supply|supplies|shipping material)\b/.test(broadText)) return "supply";
+  if (/\bbooster\s+(box|display)\b|\bdisplay\s+box\b/.test(broadText)) return "booster box";
+  if (/\b(sleeved\s+booster|booster\s+pack|pack|blister)\b/.test(broadText)) return "pack";
+  if (catalogSourceSuggestsSealed(value) || /\bsealed\b|\betb\b|\belite\s+trainer\b|\bcollection\s+box\b|\bbundle\b|\btin\b|\bultra[-\s]?premium\b|\bupc\b/.test(broadText)) return "sealed product";
+  if (
+    getCatalogDisplayKind(value) === "card" ||
+    getCatalogDisplayKind(value) === "code_card" ||
+    isInventoryCardProduct(value) ||
+    /\b(card|single|slab|graded|promo)\b/.test(explicitTypeText)
+  ) return "card";
+  return "unknown";
+}
+
+function collectorVisualTypeLabel(value = "") {
+  const normalized = normalizeItemCompareType(value);
+  return ({
+    card: "Card",
+    "sealed product": "Sealed Product",
+    pack: "Pack",
+    "booster box": "Booster Box",
+    supply: "Supply",
+    set: "Set",
+    wishlist: "Wishlist",
+    unknown: "Unknown",
+  })[normalized] || "Unknown";
 }
 
 function vaultItemDisplayImage(item = {}) {
@@ -6423,6 +6490,7 @@ function EtMockupHero({
 const COLLECTOR_SHOWCASE_KIND_LABELS = {
   card: "Card",
   sealed: "Sealed Product",
+  wishlist: "Wishlist",
   slab: "Slab",
   supply: "Supply",
   set: "Set",
@@ -6432,6 +6500,7 @@ const COLLECTOR_SHOWCASE_KIND_LABELS = {
 function normalizeCollectorShowcaseKind(kind = "") {
   const value = String(kind || "").toLowerCase();
   if (value.includes("sealed") || value.includes("box") || value.includes("bundle") || value.includes("tin") || value.includes("pack")) return "sealed";
+  if (value.includes("wishlist") || value.includes("iso") || value.includes("want")) return "wishlist";
   if (value.includes("slab") || value.includes("graded")) return "slab";
   if (value.includes("supply") || value.includes("sleeve") || value.includes("binder") || value.includes("deck box") || value.includes("storage")) return "supply";
   if (value.includes("set")) return "set";
@@ -20134,6 +20203,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       itemSnapshot: {
         name: displayItem.name || draft.itemName,
         productType: vaultItemTypeLabel(displayItem) || displayItem.productType || "",
+        visualType: detectCollectorItemVisualType(displayItem),
         setName: vaultItemSetLabel(displayItem) || displayItem.setName || "",
         imageUrl: vaultItemDisplayImage(displayItem),
         vaultStatus: normalizeVaultStatus(displayItem),
@@ -26610,9 +26680,7 @@ function buildItemComparisonDraft(source = null, overrides = {}) {
   const marketInfo = source ? getTideTradrMarketInfo(source) : {};
   const sourcePrice = Number(marketInfo.currentMarketValue || source?.marketPrice || source?.marketValue || source?.price || 0);
   const title = source ? catalogTitle(source) || source.name || source.itemName || source.productName || "" : "";
-  const kind = source
-    ? normalizeItemCompareType(source.itemType || source.category || source.productType || getCatalogKindLabel(source) || vaultItemTypeLabel(source))
-    : "unknown";
+  const kind = source ? detectCollectorItemVisualType(source) : "unknown";
   return normalizeItemComparisonDraft({
     ...BLANK_ITEM_COMPARE_FORM,
     itemName: title,
@@ -27476,13 +27544,14 @@ function renderItemCompareTableSection() {
           {compareEntries.map((entry) => {
             const valueRange = compareValueForEntry(entry);
             const missingValue = valueRange.count === 0;
+            const compareType = normalizeItemCompareType(entry.itemType);
             return (
-              <article className={`item-compare-card item-compare-card--${normalizeItemCompareType(entry.itemType).replace(/\s+/g, "-")}`} key={entry.id || `${entry.itemName}-${entry.createdAt}`}>
+              <article className={`item-compare-card item-compare-card--${compareType.replace(/\s+/g, "-")}`} key={entry.id || `${entry.itemName}-${entry.createdAt}`}>
                 <CollectorShowcaseCard
                   title={entry.itemName || "Compare item"}
                   subtitle={entry.setOrProduct || "Set or product not saved"}
                   image={entry.imageUrl}
-                  kind={normalizeItemCompareType(entry.itemType)}
+                  kind={compareType}
                   mode="mini"
                   valueLabel={entry.rememberedPrice !== "" ? money(entry.rememberedPrice) : "Missing value"}
                   meta={[entry.conditionText || "Condition not saved", entry.status || "Status not saved"]}
@@ -27491,7 +27560,7 @@ function renderItemCompareTableSection() {
                 <dl className="item-compare-table-values">
                   <div>
                     <dt>Type</dt>
-                    <dd>{normalizeItemCompareType(entry.itemType)}</dd>
+                    <dd>{collectorVisualTypeLabel(compareType)}</dd>
                   </div>
                   <div>
                     <dt>Lowest saved manual price</dt>
@@ -30930,7 +30999,7 @@ function renderForgeBusinessLedgerPanel() {
           displayTitle: item?.name || entry.itemName || snapshot.name || "Display Case item",
           displaySubtitle: item ? (vaultItemSetLabel(item) || vaultItemTypeLabel(item) || "Vault item") : (snapshot.setName || snapshot.productType || "Vault item"),
           displayImage: item ? vaultItemDisplayImage(item) : snapshot.imageUrl || "",
-          displayKind: item ? vaultItemTypeLabel(item) : fallbackKind,
+          displayKind: item ? detectCollectorItemVisualType(item) : (snapshot.visualType || detectCollectorItemVisualType({ ...snapshot, displayKind: fallbackKind })),
           displayValue: item && vaultItemTotalMarketValue(item) ? `${money(vaultItemTotalMarketValue(item))} saved estimate` : "Local display only",
           displayRarity: item?.rarity || item?.finish || snapshot.rarity || "",
         };
@@ -31065,11 +31134,7 @@ function renderForgeBusinessLedgerPanel() {
     }), [vaultItems, vaultFilter, deferredVaultSearch, vaultSort, vaultTypeFilter, vaultSetFilter, vaultLocationFilter, vaultOwnerFilter, vaultValueFilter]);
   const vaultGalleryItems = useMemo(() => {
     const ownedEntries = visibleVaultItems.map((item) => {
-      const kind = isInventorySealedProduct(item)
-        ? "sealed"
-        : isInventoryCardProduct(item)
-          ? "card"
-          : "unknown";
+      const kind = detectCollectorItemVisualType(item);
       return {
         id: `vault-${item.id}`,
         kind,
@@ -36648,7 +36713,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             title={catalogTitle(product)}
             subtitle={productSetName}
             image={productImageSrc}
-            kind={isSealed ? "sealed" : isCard ? "card" : productTypeLabel}
+            kind={detectCollectorItemVisualType(product)}
             mode="mini"
             valueLabel={productHasMarketPrice ? `${productMarketLabel} saved estimate` : "Market data unavailable"}
             rarity={product.rarity || product.variant || product.priceSubtype || ""}
@@ -51231,11 +51296,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         .map((identifier) => `${identifier.label}: ${identifier.value}`);
       const cardNumberText = product.cardNumber ? `#${product.cardNumber}` : "";
       const sourceText = product._matchReason || product.marketSource || product.sourceType || "Market Watch catalog";
-      const productKind = isCatalogSealedProduct(product) && !isCatalogCardProduct(product)
-        ? "sealed"
-        : isCatalogCardProduct(product)
-          ? "card"
-          : catalogProductTypeLabel(product);
+      const productKind = detectCollectorItemVisualType(product);
       return (
         <button
           type="button"
@@ -66743,11 +66804,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <div className="collector-showcase-grid vault-showcase-grid">
                     {visibleVaultItems.slice(0, 8).map((item) => {
                       const totalValue = vaultItemTotalMarketValue(item);
-                      const itemKind = isInventorySealedProduct(item)
-                        ? "sealed"
-                        : item.grade || item.gradingCompany || item.grading_company
-                          ? "slab"
-                          : vaultItemTypeLabel(item);
+                      const itemKind = detectCollectorItemVisualType(item);
                       const statusLabel = vaultStatusLabel(normalizeVaultStatus(item));
                       const conditionLabel = item.conditionName || item.condition || (isInventorySealedProduct(item) ? "Sealed status to check" : "Condition pending");
                       const notesLabel = item.collectorNotes || item.notes || item.actionNotes || "No collector notes yet.";
@@ -66846,7 +66903,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     {[
                       ["all", "All"],
                       ["card", "Cards"],
-                      ["sealed", "Sealed"],
+                      ["sealed product", "Sealed"],
+                      ["booster box", "Boxes"],
+                      ["pack", "Packs"],
+                      ["supply", "Supplies"],
                       ["wishlist", "Wishlist"],
                       ["set", "Sets"],
                       ["unknown", "Unknown"],
@@ -66865,15 +66925,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   {filteredVaultGalleryItems.length ? (
                     <div className="vault-gallery-grid">
                       {filteredVaultGalleryItems.slice(0, 18).map((entry) => {
-                        const kindLabel = entry.kind === "card"
-                          ? "Card"
-                          : entry.kind === "sealed"
-                            ? "Sealed"
-                            : entry.kind === "wishlist"
-                              ? "Wishlist"
-                              : entry.kind === "set"
-                                ? "Set"
-                                : "Unknown";
+                        const kindLabel = collectorVisualTypeLabel(entry.kind);
+                        const kindClass = normalizeItemCompareType(entry.kind).replace(/\s+/g, "-");
                         const openEntry = () => {
                           if (entry.item?.id) {
                             setSelectedVaultDetailId(entry.item.id);
@@ -66885,7 +66938,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                           <button
                             key={entry.id}
                             type="button"
-                            className={`vault-gallery-tile vault-gallery-${entry.kind}`}
+                            className={`vault-gallery-tile vault-gallery-${kindClass}`}
                             onClick={openEntry}
                             aria-label={`Open ${entry.title} from Collection Gallery`}
                           >
@@ -70463,7 +70516,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                       title={catalogTitle(selectedCatalogDetailProduct)}
                       subtitle={catalogExpansionName(selectedCatalogDetailProduct) || catalogProductTypeLabel(selectedCatalogDetailProduct)}
                       image={catalogImage(selectedCatalogDetailPricingProduct)}
-                      kind={selectedCatalogDetailIsSealed ? "sealed" : selectedCatalogDetailIsCard ? "card" : catalogProductTypeLabel(selectedCatalogDetailProduct)}
+                      kind={detectCollectorItemVisualType(selectedCatalogDetailProduct)}
                       mode="display"
                       valueLabel={hasCatalogMarketPrice(selectedCatalogDetailPricingProduct) ? `${money(selectedCatalogDetailMarketInfo?.currentMarketValue)} saved estimate` : "Market data unavailable"}
                       rarity={selectedCatalogDetailProduct.rarity || selectedCatalogDetailVariant?.variantName || selectedCatalogDetailProduct.priceSubtype || ""}
@@ -71506,7 +71559,7 @@ function VaultItemDetail({ item, masterCard, setSummary, linkedTrades = [], coll
   const itemVariantLabel = vaultVariantLabel(item);
   const itemSetName = setSummary?.name || setLabel || "Set unknown";
   const itemSetKnown = Boolean(setSummary && !setSummary.unknownSet && itemSetName !== "Set unknown");
-  const itemProfileKind = itemType || (isInventorySealedProduct(item) ? "Sealed product" : "Vault item");
+  const itemProfileKind = collectorVisualTypeLabel(detectCollectorItemVisualType(item));
   const profileEstimatedValue = valuation.marketKnownQuantity ? money(totalMarket) : "";
   const profileValueSource = item.marketSource || item.market_source || item.externalProductSource || item.sourceType || item.source || "";
   const profileValueSourceCopy = valuation.marketKnownQuantity

@@ -100884,6 +100884,7 @@ html body #root .app.app-shell-dark.app-command-shell .collector-showcase-face {
 
 html body #root .app.app-command-shell .collector-showcase-sealed .collector-showcase-face,
 html body #root .app.app-command-shell .collector-showcase-supply .collector-showcase-face,
+html body #root .app.app-command-shell .collector-showcase-wishlist .collector-showcase-face,
 html body #root .app.app-command-shell .collector-showcase-set .collector-showcase-face {
   aspect-ratio: 1 / 1;
   border-radius: 18px;
@@ -100896,6 +100897,19 @@ html body #root .app.app-command-shell .collector-showcase-set .collector-showca
 html body #root .app.app-command-shell .collector-showcase-slab .collector-showcase-face {
   aspect-ratio: 4 / 5.8;
   border-radius: 20px;
+}
+
+html body #root .app.app-command-shell .collector-showcase-wishlist .collector-showcase-face {
+  background:
+    linear-gradient(145deg, color-mix(in srgb, #f8b4d9 22%, rgba(255, 255, 255, 0.68)), color-mix(in srgb, var(--et-page-accent-2, #d9a441) 18%, rgba(255, 248, 232, 0.9))),
+    color-mix(in srgb, var(--et-panel, #fffdf7) 90%, transparent);
+}
+
+html body #root .app.app-theme-dark.app-command-shell .collector-showcase-wishlist .collector-showcase-face,
+html body #root .app.app-shell-dark.app-command-shell .collector-showcase-wishlist .collector-showcase-face {
+  background:
+    linear-gradient(145deg, color-mix(in srgb, #f8b4d9 18%, rgba(255, 255, 255, 0.08)), color-mix(in srgb, var(--et-page-accent-2, #d9a441) 14%, rgba(255, 255, 255, 0.05))),
+    color-mix(in srgb, var(--et-panel-soft, #10243f) 88%, transparent);
 }
 
 html body #root .app.app-command-shell .collector-showcase-face img {
