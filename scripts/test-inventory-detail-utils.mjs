@@ -42,6 +42,20 @@ assert.deepEqual(patch.plannedSalePriceHistory[1], {
 assert.equal(GRADE_ASSIST_DISCLAIMER, "Grade Assist is an estimate, not a guaranteed grade.");
 assert.match(appSource, /Manual collector note, not a professional grade\./);
 assert.match(appSource, /vault-card-condition-note/);
+assert.match(appSource, /"booster box",\s*\n\s*"tin",\s*\n\s*"bundle"/);
+assert.match(appSource, /return "tin";/);
+assert.match(appSource, /return "bundle";/);
+assert.match(appSource, /return "supply";/);
+assert.match(appSource, /return "unknown";/);
+assert.match(appSource, /tin: "Tin"/);
+assert.match(appSource, /bundle: "Bundle"/);
+assert.match(appSource, /source\.catalogItemType/);
+assert.match(appSource, /source\.wishlistCategory/);
+assert.match(appSource, /source\.supplyCategory/);
+assert.match(appSource, /Missing image|No image|collector-showcase-card--fallback/);
+assert.doesNotMatch(appSource, /\bguaranteed\s+live\s+pricing\b/i);
+assert.doesNotMatch(appSource, /\bofficial\s+grade\s+guarantee\b/i);
+assert.doesNotMatch(appSource, /\bguaranteed\s+authentication\b/i);
 
 const emptyChecklist = normalizeGradeAssistChecklist({});
 assert.equal(emptyChecklist.checks.centering, "not_checked");

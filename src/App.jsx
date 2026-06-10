@@ -3131,6 +3131,8 @@ const ITEM_COMPARE_TYPES = [
   "sealed product",
   "pack",
   "booster box",
+  "tin",
+  "bundle",
   "supply",
   "set",
   "wishlist",
@@ -3151,8 +3153,10 @@ const BLANK_ITEM_COMPARE_FORM = {
 function normalizeItemCompareType(value = "") {
   const normalized = String(value || "").trim().toLowerCase().replace(/[_-]+/g, " ");
   if (ITEM_COMPARE_TYPES.includes(normalized)) return normalized;
-  if (/booster\s*box|box/.test(normalized)) return "booster box";
-  if (/sealed|etb|elite trainer|bundle|tin|collection box/.test(normalized)) return "sealed product";
+  if (/booster\s*box|booster\s*display|display\s*box/.test(normalized)) return "booster box";
+  if (/\btin\b|collector'?s?\s+chest|pok[e\u00e9]?\s*ball/.test(normalized)) return "tin";
+  if (/\bbundle\b|build\s*&?\s*battle|stadium/.test(normalized)) return "bundle";
+  if (/sealed|etb|elite trainer|collection box|premium collection|ultra premium|upc/.test(normalized)) return "sealed product";
   if (/pack|booster/.test(normalized)) return "pack";
   if (/sleeve|binder|toploader|top loader|deck box|storage|playmat|supply/.test(normalized)) return "supply";
   if (/wishlist|iso|want/.test(normalized)) return "wishlist";
@@ -3727,8 +3731,33 @@ function catalogClassificationText(value = {}) {
     source.product_kind,
     source.cardSubtype,
     source.card_subtype,
+    source.category,
+    source.displayCategory,
+    source.display_category,
+    source.catalogDisplayKind,
+    source.catalog_display_kind,
+    source.displayKind,
+    source.display_kind,
+    source.kind,
+    source.itemType,
+    source.item_type,
     source.catalogItemType,
     source.catalog_item_type,
+    source.recordType,
+    source.record_type,
+    source.destination,
+    source.destinationScope,
+    source.destination_scope,
+    source.sourceCollection,
+    source.source_collection,
+    source.wishlistCategory,
+    source.wishlist_category,
+    source.isoCategory,
+    source.iso_category,
+    source.supplyCategory,
+    source.supply_category,
+    source.setType,
+    source.set_type,
     source.priceSubtype,
     source.price_subtype,
     source.setName,
@@ -3742,6 +3771,7 @@ function catalogClassificationText(value = {}) {
     source.market_url,
     source.identifierSearch,
     source.identifier_search,
+    source.description,
     source.notes,
   ].filter(Boolean).join(" "));
 }
@@ -3859,7 +3889,17 @@ function isInventoryCardProduct(value = {}) {
 
 function detectCollectorItemVisualType(source = {}) {
   const value = source || {};
-  const recordType = normalizeSearchText(value.recordType || value.record_type || value.destination || value.vaultStatus || value.vault_status || "");
+  const recordType = normalizeSearchText([
+    value.recordType,
+    value.record_type,
+    value.destination,
+    value.destinationScope,
+    value.destination_scope,
+    value.sourceCollection,
+    value.source_collection,
+    value.vaultStatus,
+    value.vault_status,
+  ].filter(Boolean).join(" "));
   const explicitTypeText = normalizeSearchText([
     value.itemType,
     value.item_type,
@@ -3870,9 +3910,25 @@ function detectCollectorItemVisualType(source = {}) {
     value.catalog_type,
     value.catalogDisplayKind,
     value.displayKind,
+    value.displayCategory,
+    value.display_category,
     value.kind,
+    value.productKind,
+    value.product_kind,
+    value.catalogItemType,
+    value.catalog_item_type,
+    value.sealedProductType,
+    value.sealed_product_type,
+    value.wishlistCategory,
+    value.wishlist_category,
+    value.isoCategory,
+    value.iso_category,
+    value.supplyCategory,
+    value.supply_category,
     value.setType,
     value.set_type,
+    value.recordType,
+    value.record_type,
     value.status,
   ].filter(Boolean).join(" "));
   const broadText = normalizeSearchText([
@@ -3882,24 +3938,37 @@ function detectCollectorItemVisualType(source = {}) {
     value.productName,
     value.cardName,
     value.title,
+    value.description,
     value.notes,
+  ].filter(Boolean).join(" "));
+  const supplyText = normalizeSearchText([
+    explicitTypeText,
+    value.supplyCategory,
+    value.supply_category,
+    value.storageType,
+    value.storage_type,
   ].filter(Boolean).join(" "));
 
   if (
     value.wishlistIso ||
     value.isWishlist ||
     value.is_wishlist ||
-    recordType === "wishlist_item" ||
-    recordType === "wishlist" ||
+    /\bwishlist[_\s-]?item\b|\bwishlist\b|\biso\b/.test(recordType) ||
     /\bwishlist\b|\biso\b|\bwant(ed)?\b/.test(explicitTypeText)
   ) return "wishlist";
   if (
-    recordType === "collection_set" ||
+    /\bcollection[_\s-]?set\b|\bset[_\s-]?shelf\b/.test(recordType) ||
     /\b(set shelf|collection set|favorite set|kid set|sealed set|slab set|trade binder|master set|family set)\b/.test(explicitTypeText)
   ) return "set";
-  if (/\b(sleeves?|binder|top\s*loader|toploader|deck\s*box|storage|playmat|supply|supplies|shipping material)\b/.test(broadText)) return "supply";
+  if (
+    /\b(sleeves?|binder|top\s*loader|toploader|deck\s*box|storage|playmat|supply|supplies|shipping material|shipping supplies?)\b/.test(supplyText) ||
+    (/\b(sleeves?|top\s*loader|toploader|deck\s*box|storage|playmat|supply|supplies|shipping material|shipping supplies?)\b/.test(broadText)) ||
+    (/\bbinder\b/.test(broadText) && !/\bbinder\s+collection\b|\bbinder\s+bundle\b/.test(broadText))
+  ) return "supply";
   if (/\bbooster\s+(box|display)\b|\bdisplay\s+box\b/.test(broadText)) return "booster box";
-  if (/\b(sleeved\s+booster|booster\s+pack|pack|blister)\b/.test(broadText)) return "pack";
+  if (/\b(tin|mini\s+tin|collector'?s?\s+chest|pok[e\u00e9]?\s*ball)\b/.test(broadText)) return "tin";
+  if (/\b(bundle|build\s*&?\s*battle|stadium)\b/.test(broadText)) return "bundle";
+  if (/\b(sleeved\s+booster|booster\s+pack|checklane\s+blister|3[-\s]?pack\s+blister|blister)\b/.test(broadText) || /\bpack\b/.test(explicitTypeText)) return "pack";
   if (catalogSourceSuggestsSealed(value) || /\bsealed\b|\betb\b|\belite\s+trainer\b|\bcollection\s+box\b|\bbundle\b|\btin\b|\bultra[-\s]?premium\b|\bupc\b/.test(broadText)) return "sealed product";
   if (
     getCatalogDisplayKind(value) === "card" ||
@@ -3917,6 +3986,8 @@ function collectorVisualTypeLabel(value = "") {
     "sealed product": "Sealed Product",
     pack: "Pack",
     "booster box": "Booster Box",
+    tin: "Tin",
+    bundle: "Bundle",
     supply: "Supply",
     set: "Set",
     wishlist: "Wishlist",
@@ -4339,9 +4410,15 @@ function MasterCardFamilyNote({ masterCard }) {
 
 function vaultItemTypeLabel(item = {}) {
   if (item.graded || item.grade || item.gradingCompany || item.grading_company) return "Graded card";
+  const visualType = detectCollectorItemVisualType(item);
+  const visualLabel = collectorVisualTypeLabel(visualType);
+  const savedType = String(item.productType || item.product_type || item.category || "").trim();
+  const savedTypeIsGeneric = !savedType || /^(item|product|other|unknown|sealed|sealed product)$/i.test(savedType);
+  if (!savedTypeIsGeneric) return savedType;
+  if (["wishlist", "set", "supply", "tin", "bundle", "pack", "booster box"].includes(visualType)) return visualLabel;
   if (isInventorySealedProduct(item)) return item.productType || item.product_type || "Sealed product";
   if (isInventoryCardProduct(item)) return item.productType || item.product_type || "Single card";
-  return item.productType || item.product_type || item.category || "Other";
+  return savedType || "Other";
 }
 
 function vaultItemSetLabel(item = {}) {
@@ -6507,10 +6584,17 @@ function sealedProductFrameMeta(value = {}) {
     source.productType,
     source.product_type,
     source.sealedProductType,
+    source.sealed_product_type,
     source.category,
     source.kind,
+    source.itemType,
+    source.item_type,
+    source.catalogItemType,
+    source.catalog_item_type,
     source.displayKind,
+    source.display_kind,
     source.setName,
+    source.set_name,
     source.franchise,
     source.meta,
   ].filter(Boolean).join(" "));
