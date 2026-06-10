@@ -561,8 +561,21 @@ async function main() {
     await assertVisibleText("Keep Building");
     await assertVisibleText("Open Next");
     await assertVisibleText("Start by adding something to your Vault.");
-    await assertVisibleText("Upgrade Value Preview");
+    await assertVisibleText("Smart Daily Cards");
+    await assertVisibleText("Today's Collector Path");
+    await assertVisibleText("Organize one item");
+    await assertVisibleText("Check one Market Memory");
+    await assertVisibleText("Review one trade");
+    await assertVisibleText("Help one kid/family Spark action");
+    await assertVisibleText("Explore one upgrade preview");
+    await expectVisible(page.locator(".upgrade-value-preview-card-hearth").first(), "Hearth Upgrade Value Preview card");
     await assertVisibleText("What upgrading unlocks next");
+    const hearthInitialText = await page.locator(".hearth-mockup-rebuild").first().innerText();
+    assert.equal(
+      /guaranteed restock notifications|live alerts are enabled|AI automatically|verified sellers are enabled/i.test(hearthInitialText),
+      false,
+      "Hearth should not show fake live-alert, AI, or verification claims"
+    );
     await page.locator(".upgrade-value-preview-card-hearth").getByRole("button", { name: /^Compare Plans$/ }).first().click();
     await assertVisibleText("Membership Foundation");
     await assertVisibleText("No payment flow is connected.");
@@ -594,6 +607,82 @@ async function main() {
     assert.equal(/Open Scout|Open Vault|Open Forge|Open The Spark/i.test(featureText), false, "Phone feature cards should not show redundant Open buttons");
     await expectVisible(page.locator(".mobile-bottom-nav").first(), "mobile bottom nav");
     await assertNoHorizontalOverflow("Hearth mobile");
+    const hearthSampleData = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      const now = new Date().toISOString();
+      data.items = [
+        ...(data.items || []).filter((item) => item.id !== "hearth-smart-vault-item"),
+        {
+          id: "hearth-smart-vault-item",
+          name: "Hearth Smart Vault Card",
+          destinationScope: ["vault"],
+          recordType: "vault_item",
+          businessInventory: false,
+          vaultStatus: "personal_collection",
+          status: "Personal Collection",
+          quantity: 1,
+          workspaceId: "workspace-personal-local-beta",
+          workspaceName: "My Personal Space",
+          createdAt: now,
+          updatedAt: now,
+        },
+      ];
+      data.tradeRecords = [
+        ...(data.tradeRecords || []).filter((record) => record.id !== "hearth-smart-trade"),
+        {
+          id: "hearth-smart-trade",
+          sourceItemName: "Hearth Binder Card",
+          receivedItemName: "Hearth Sealed Pack",
+          valueGiven: 12,
+          valueReceived: 18,
+          tradeDate: "2026-06-10",
+          balanceLabel: "Value Gained",
+          workspaceId: "workspace-personal-local-beta",
+          workspaceName: "My Personal Space",
+          createdAt: now,
+          updatedAt: now,
+        },
+      ];
+      data.marketPriceMemories = [
+        ...(data.marketPriceMemories || []).filter((entry) => entry.id !== "hearth-smart-price-memory"),
+        {
+          id: "hearth-smart-price-memory",
+          itemName: "Hearth ETB",
+          price: 42,
+          priceType: "Shop Price",
+          sourcePlace: "Smoke local shop",
+          condition: "Sealed",
+          dateSeen: "2026-06-10",
+          notes: "Manual smoke snapshot.",
+          createdAt: now,
+          updatedAt: now,
+        },
+      ];
+      data.sparkKidPacks = [
+        ...(data.sparkKidPacks || []).filter((pack) => pack.id !== "hearth-smart-kid-pack"),
+        {
+          id: "hearth-smart-kid-pack",
+          packName: "Hearth Starter Pack",
+          packTheme: "First binder day",
+          packType: "Starter Pack",
+          packStatus: "Planning",
+          dateCreated: "2026-06-10",
+          packContents: "Sleeves, starter cards, and a small binder.",
+          createdAt: now,
+          updatedAt: now,
+        },
+      ];
+      return data;
+    });
+    await reloadWithAppData(hearthSampleData);
+    await nav("Hearth");
+    await assertVisibleText("Smart Daily Cards");
+    await assertVisibleText("Collection needs attention");
+    await assertVisibleText("Trade to review");
+    await assertVisibleText("Check saved Price Memory");
+    await assertVisibleText("Spark pack in progress");
+    await assertVisibleText("Today's Collector Path");
+    await assertNoHorizontalOverflow("Hearth smart daily cards mobile");
     await page.setViewportSize({ width: 1366, height: 1600 });
   }
 

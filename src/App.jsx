@@ -55707,6 +55707,187 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         onClick: () => setActiveTab("kidsProgram"),
       },
     ];
+    const vaultItemsMissingEstimate = activeVaultItems.filter((item) => {
+      const estimate = Number(item.estimatedValue || item.marketValue || item.marketPrice || item.currentValue || item.unitCost || 0);
+      return !Number.isFinite(estimate) || estimate <= 0;
+    });
+    const activeSparkKidPack = [...sparkKidPacks]
+      .sort((a, b) => String(b.dateCreated || b.createdAt || "").localeCompare(String(a.dateCreated || a.createdAt || "")))
+      .find((pack) => !/gifted/i.test(String(pack.packStatus || pack.status || ""))) || null;
+    const latestTradeForHearth = [...workspaceTradeRecords]
+      .sort((a, b) => String(b.tradeDate || b.createdAt || "").localeCompare(String(a.tradeDate || a.createdAt || "")))[0] || null;
+    const latestMarketMemoryForHearth = [...marketPriceMemories]
+      .sort((a, b) => String(b.dateSeen || b.createdAt || "").localeCompare(String(a.dateSeen || a.createdAt || "")))[0] || null;
+    const trustedCircleCount = tidepoolTrustedCircle.length;
+    const hasHearthLocalSignals = Boolean(
+      activeVaultItems.length ||
+      workspaceTradeRecords.length ||
+      marketPriceMemories.length ||
+      sparkKidPacks.length ||
+      sparkGifts.length ||
+      followedStores.length ||
+      scoutReportRows.length ||
+      trustedCircleCount
+    );
+    const hearthSmartDailyCards = [
+      {
+        key: "collection-attention",
+        eyebrow: "Vault Reminder",
+        title: activeVaultItems.length ? "Collection needs attention" : "Finish setting up your collector space",
+        detail: activeVaultItems.length
+          ? vaultItemsMissingEstimate.length
+            ? `${vaultItemsMissingEstimate.length} Vault item${vaultItemsMissingEstimate.length === 1 ? "" : "s"} could use an estimate, note, or next action.`
+            : "Your Vault is started. Organize one item or create a Collection Set when you are ready."
+          : "Add one card, sealed product, slab, or accessory so Hearth can guide your next step.",
+        meta: activeVaultItems.length ? "Local Vault data" : "Safe starter step",
+        actionLabel: activeVaultItems.length ? "Open Vault" : "Add to Vault",
+        onClick: () => activeVaultItems.length ? setActiveTab("vault") : openQuickAddAction("vaultItem"),
+        icon: "vault",
+        tone: "vault",
+        visible: !activeVaultItems.length || vaultItemsMissingEstimate.length > 0 || !vaultCollectionSets.length,
+      },
+      {
+        key: "trade-review",
+        eyebrow: "Forge Reminder",
+        title: latestTradeForHearth ? "Trade to review" : "Try one trade check",
+        detail: latestTradeForHearth
+          ? `Last Trade Ledger memory: ${latestTradeForHearth.sourceItemName || latestTradeForHearth.itemGiven || "what you gave"} for ${latestTradeForHearth.receivedItemName || latestTradeForHearth.itemReceived || "what you got"}.`
+          : "Use Trade Compass before a real trade so the values, condition, and meaning are easier to compare.",
+        meta: latestTradeForHearth ? "Saved locally" : "Planning only",
+        actionLabel: latestTradeForHearth ? "Open Forge" : "Trade Compass",
+        onClick: () => latestTradeForHearth ? setActiveTab("inventory") : openTradeCompassFlow({ source: "hearth-smart-trade-check" }),
+        icon: "forge",
+        tone: "forge",
+        visible: Boolean(latestTradeForHearth || activeVaultItems.length > 0),
+      },
+      {
+        key: "scout-watch-reminder",
+        eyebrow: "Scout Watch",
+        title: followedStores.length ? "Scout watch reminder" : "Choose your first watch store",
+        detail: latestScoutReport
+          ? `Check the latest current report near ${latestScoutStoreName}. Scout keeps raw patterns protected.`
+          : "Free Scout keeps one watched store and nearby public signals without exposing full restock history.",
+        meta: followedStores.length ? `${followedStores.length} watched` : "Free Watch",
+        actionLabel: "Open Scout",
+        onClick: () => setActiveTab("scout"),
+        icon: "scout",
+        tone: "scout",
+        visible: hearthCanUseScout && (!followedStores.length || Boolean(latestScoutReport) || scoutReportRows.length > 0),
+      },
+      {
+        key: "market-memory",
+        eyebrow: "Market Reminder",
+        title: latestMarketMemoryForHearth ? "Check saved Price Memory" : "Market price memory prompt",
+        detail: latestMarketMemoryForHearth
+          ? `${latestMarketMemoryForHearth.itemName || "Saved Price"} is a manual snapshot. Check again before buying, selling, or trading.`
+          : "Save one manual Price Memory when you see a card or sealed product worth remembering.",
+        meta: latestMarketMemoryForHearth ? "Manual snapshot" : "Not live pricing",
+        actionLabel: latestMarketMemoryForHearth ? "Open Market" : "Save Price",
+        onClick: () => latestMarketMemoryForHearth ? setActiveTab("market") : openMarketPriceMemoryFlow(null, { source: "hearth-smart-price-memory" }),
+        icon: "market",
+        tone: "market",
+        visible: !marketPriceMemories.length || needsMarketCheckItems.length > 0 || workspaceWatchlist.length > 0 || Boolean(latestMarketMemoryForHearth),
+      },
+      {
+        key: "spark-pack",
+        eyebrow: "Spark Moment",
+        title: activeSparkKidPack ? "Spark pack in progress" : "Help one kid or family",
+        detail: activeSparkKidPack
+          ? `${activeSparkKidPack.packName || "Kid Pack"} is ${activeSparkKidPack.packStatus || "in planning"}. Keep child details private and review before gifting.`
+          : "Build a Kid Pack or log a family support gift when there is a real Spark action to remember.",
+        meta: activeSparkKidPack ? "Local Kid Pack" : "Parent-safe",
+        actionLabel: activeSparkKidPack ? "Open The Spark" : "Build Kid Pack",
+        onClick: () => activeSparkKidPack ? setActiveTab("kidsProgram") : openSparkKidPackFlow({ source: "hearth-smart-spark-pack" }),
+        icon: "spark",
+        tone: "spark",
+        visible: hearthSparkRelevant || sparkKidPacks.length > 0 || sparkGifts.length > 0,
+      },
+      {
+        key: "trusted-circle",
+        eyebrow: "Tidepool",
+        title: trustedCircleCount ? "Trusted Circle reminder" : "Remember safe helpers",
+        detail: trustedCircleCount
+          ? `${trustedCircleCount} private Trusted Circle note${trustedCircleCount === 1 ? "" : "s"} saved. This does not verify people or send invites.`
+          : "Use Tidepool to keep private notes about trusted shops, helpers, and family-safe contacts.",
+        meta: trustedCircleCount ? "Private notes" : "No verification claims",
+        actionLabel: "Open Tidepool",
+        onClick: () => setActiveTab("tidepool"),
+        icon: "pool",
+        tone: "tidepool",
+        visible: Boolean(trustedCircleCount || adaptiveUiState.familyMode),
+      },
+      {
+        key: "upgrade-next",
+        eyebrow: "Upgrade Preview",
+        title: "Explore one upgrade preview",
+        detail: "See how upgraded plans can expand tracking capacity later without connecting billing in this beta.",
+        meta: "No payment flow",
+        actionLabel: "Compare Plans",
+        onClick: () => setActiveTab("membership"),
+        icon: "plan",
+        tone: "gold",
+        visible: !hasHearthLocalSignals || Boolean(subscriptionProfile?.plan === "free" || subscriptionProfile?.tier === "free" || !subscriptionProfile?.plan),
+      },
+    ].filter((card) => card.visible).slice(0, 5);
+    const hearthSmartDailyFallback = {
+      key: "try-one-next-step",
+      eyebrow: "Next Best Step",
+      title: "Try one next step",
+      detail: "Start by adding something to Vault, then Hearth can personalize the day with local collection signals.",
+      meta: "Local beta",
+      actionLabel: "Add to Vault",
+      onClick: () => openQuickAddAction("vaultItem"),
+      icon: "hearth",
+      tone: "hearth",
+    };
+    const visibleHearthSmartDailyCards = hearthSmartDailyCards.length ? hearthSmartDailyCards : [hearthSmartDailyFallback];
+    const hearthCollectorPathSteps = [
+      {
+        key: "organize-item",
+        title: "Organize one item",
+        detail: activeVaultItems.length ? "Review a Vault item, profile, or Collection Set." : "Add one card, sealed product, slab, or accessory to Vault.",
+        status: activeVaultItems.length ? "Ready" : "Start",
+        actionLabel: activeVaultItems.length ? "Open Vault" : "Add Item",
+        onClick: () => activeVaultItems.length ? setActiveTab("vault") : openQuickAddAction("vaultItem"),
+        tone: "vault",
+      },
+      {
+        key: "market-memory",
+        title: "Check one Market Memory",
+        detail: marketPriceMemories.length ? "Review a manual snapshot before buying, selling, or trading." : "Save a manual price snapshot when you see one worth remembering.",
+        status: marketPriceMemories.length ? `${marketPriceMemories.length} saved` : "Manual",
+        actionLabel: "Open Market",
+        onClick: () => setActiveTab("market"),
+        tone: "market",
+      },
+      {
+        key: "review-trade",
+        title: "Review one trade",
+        detail: workspaceTradeRecords.length ? "Look back at your latest Trade Ledger memory." : "Use Trade Compass before a real trade.",
+        status: workspaceTradeRecords.length ? `${workspaceTradeRecords.length} logged` : "Guide",
+        actionLabel: workspaceTradeRecords.length ? "Open Forge" : "Trade Compass",
+        onClick: () => workspaceTradeRecords.length ? setActiveTab("inventory") : openTradeCompassFlow({ source: "hearth-collector-path" }),
+        tone: "forge",
+      },
+      {
+        key: "spark-action",
+        title: "Help one kid/family Spark action",
+        detail: sparkKidPacks.length || sparkGifts.length ? "Review Kid Packs or Giving Ledger support." : "Plan one Kid Pack or family support note.",
+        status: sparkKidPacks.length ? `${sparkKidPacks.length} pack${sparkKidPacks.length === 1 ? "" : "s"}` : "Parent-safe",
+        actionLabel: "Open The Spark",
+        onClick: () => setActiveTab("kidsProgram"),
+        tone: "spark",
+      },
+      {
+        key: "upgrade-preview",
+        title: "Explore one upgrade preview",
+        detail: "Compare local beta plan value without starting checkout or billing.",
+        status: "Preview",
+        actionLabel: "Compare Plans",
+        onClick: () => setActiveTab("membership"),
+        tone: "gold",
+      },
+    ];
     const hearthSnapshotCards = [
       {
         key: "snapshot-vault",
@@ -56002,6 +56183,58 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   </div>
                   <button type="button" className="secondary-button" onClick={card.onClick}>{card.actionLabel}</button>
                 </article>
+              ))}
+            </div>
+          </EtMockupSectionCard>
+
+          <EtMockupSectionCard
+            title="Smart Daily Cards"
+            detail="Adaptive local prompts from your Vault, Forge, Scout, Market, Spark, and Tidepool records."
+            className="hearth-smart-daily-section"
+            action={<EtMockupPill tone="collector">Local beta</EtMockupPill>}
+          >
+            <div className="hearth-smart-card-grid" aria-label="Smart daily cards">
+              {visibleHearthSmartDailyCards.map((card) => (
+                <article className={`hearth-smart-card et-mockup-tone-${card.tone}`} key={card.key}>
+                  <EtMockupIcon icon={card.icon} tone={card.tone} />
+                  <div className="hearth-smart-card-main">
+                    <div className="hearth-smart-card-heading">
+                      <span>{card.eyebrow}</span>
+                      <small>{card.meta}</small>
+                    </div>
+                    <h3>{card.title}</h3>
+                    <p>{card.detail}</p>
+                    <EtMockupButton variant="secondary" onClick={card.onClick}>{card.actionLabel}</EtMockupButton>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </EtMockupSectionCard>
+
+          <EtMockupSectionCard
+            title="Today's Collector Path"
+            detail="Five small steps for organizing, checking, reviewing, helping, and planning."
+            className="hearth-collector-path-section"
+            action={<EtMockupPill tone="gold">Guided path</EtMockupPill>}
+          >
+            <div className="hearth-collector-path-list" aria-label="Today's Collector Path">
+              {hearthCollectorPathSteps.map((step, index) => (
+                <button
+                  type="button"
+                  className={`hearth-collector-path-step et-mockup-tone-${step.tone}`}
+                  key={step.key}
+                  onClick={step.onClick}
+                >
+                  <span className="hearth-collector-path-index">{index + 1}</span>
+                  <span className="hearth-collector-path-copy">
+                    <strong>{step.title}</strong>
+                    <small>{step.detail}</small>
+                  </span>
+                  <span className="hearth-collector-path-status">
+                    <em>{step.status}</em>
+                    <b>{step.actionLabel}</b>
+                  </span>
+                </button>
               ))}
             </div>
           </EtMockupSectionCard>

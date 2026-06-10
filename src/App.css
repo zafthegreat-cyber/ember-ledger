@@ -93961,6 +93961,164 @@ html body #root .app.app-command-shell.app-home .hearth-daily-command-card .seco
   border-radius: 14px;
 }
 
+html body #root .app.app-command-shell.app-home .hearth-smart-daily-section,
+html body #root .app.app-command-shell.app-home .hearth-collector-path-section {
+  gap: 12px;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-smart-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-smart-card {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 11px;
+  min-width: 0;
+  min-height: 142px;
+  padding: 13px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2) 20%, var(--et-border));
+  border-radius: 20px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--et-page-accent) 8%, transparent), transparent 42%),
+    color-mix(in srgb, var(--et-panel-soft) 88%, var(--et-panel));
+  color: var(--et-ink);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.36);
+}
+
+html body #root .app.app-command-shell.app-home .hearth-smart-card-main {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-width: 0;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-smart-card-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-smart-card-heading span,
+html body #root .app.app-command-shell.app-home .hearth-collector-path-status em {
+  color: color-mix(in srgb, var(--et-page-accent-2) 76%, var(--et-ink));
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-smart-card-heading small {
+  max-width: 100%;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--et-page-accent) 10%, transparent);
+  color: var(--et-muted);
+  font-size: 0.66rem;
+  font-weight: 850;
+  line-height: 1.1;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-smart-card h3 {
+  margin: 0;
+  color: var(--et-ink);
+  font-size: clamp(1rem, 1.6vw, 1.18rem);
+  line-height: 1.12;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-smart-card p {
+  margin: 0;
+  color: var(--et-muted);
+  font-size: 0.84rem;
+  line-height: 1.35;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-smart-card .et-mockup-button {
+  justify-self: start;
+  min-height: 36px;
+  margin-top: 2px;
+  padding: 7px 12px;
+  border-radius: 14px;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-collector-path-list {
+  display: grid;
+  gap: 8px;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-collector-path-step {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  min-height: 66px;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2) 18%, var(--et-border));
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--et-page-accent) 9%, transparent), transparent 8rem),
+    color-mix(in srgb, var(--et-panel-soft) 90%, var(--et-panel));
+  color: var(--et-ink);
+  text-align: left;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.34);
+  cursor: pointer;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-collector-path-step:hover,
+html body #root .app.app-command-shell.app-home .hearth-collector-path-step:focus-visible {
+  border-color: color-mix(in srgb, var(--et-page-accent) 36%, var(--et-border));
+  transform: translateY(-1px);
+}
+
+html body #root .app.app-command-shell.app-home .hearth-collector-path-index {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--et-page-accent) 18%, transparent);
+  color: color-mix(in srgb, var(--et-page-accent-2) 80%, var(--et-ink));
+  font-weight: 950;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-collector-path-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-collector-path-copy strong {
+  color: var(--et-ink);
+  line-height: 1.15;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-collector-path-copy small {
+  color: var(--et-muted);
+  line-height: 1.28;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-collector-path-status {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+  min-width: 86px;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-collector-path-status b {
+  color: var(--et-ink);
+  font-size: 0.74rem;
+  font-weight: 950;
+  line-height: 1.1;
+}
+
 html body #root .app.app-command-shell.app-home .hearth-mockup-best-action-body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -94156,7 +94314,8 @@ html body #root .app.app-command-shell.app-home .hearth-mockup-quick-grid .et-mo
   }
 
   html body #root .app.app-command-shell.app-home .hearth-next-best-step,
-  html body #root .app.app-command-shell.app-home .hearth-daily-command-grid {
+  html body #root .app.app-command-shell.app-home .hearth-daily-command-grid,
+  html body #root .app.app-command-shell.app-home .hearth-smart-card-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -94170,6 +94329,23 @@ html body #root .app.app-command-shell.app-home .hearth-mockup-quick-grid .et-mo
 
   html body #root .app.app-command-shell.app-home .hearth-mockup-best-action-body .et-mockup-button {
     width: 100%;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-smart-card {
+    min-height: 0;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-collector-path-step {
+    grid-template-columns: 32px minmax(0, 1fr);
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-collector-path-status {
+    grid-column: 2;
+    display: flex;
+    justify-content: space-between;
+    justify-items: stretch;
+    width: 100%;
+    min-width: 0;
   }
 }
 
@@ -94254,6 +94430,37 @@ html body #root .app.app-command-shell.app-home .hearth-mockup-quick-grid .et-mo
     grid-column: 1 / -1;
     width: 100%;
     min-height: 38px;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-smart-card {
+    grid-template-columns: 36px minmax(0, 1fr);
+    gap: 9px;
+    padding: 11px;
+    border-radius: 17px;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-smart-card p {
+    font-size: 0.8rem;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-smart-card .et-mockup-button {
+    width: 100%;
+    min-height: 38px;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-collector-path-step {
+    min-height: 62px;
+    gap: 8px;
+    padding: 9px;
+    border-radius: 16px;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-collector-path-copy small {
+    font-size: 0.72rem;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-collector-path-status b {
+    font-size: 0.7rem;
   }
 }
 
