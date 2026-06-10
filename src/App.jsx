@@ -6328,6 +6328,21 @@ function collectorShowcaseInitials(title = "") {
   return words.slice(0, 2).map((word) => word[0]).join("").toUpperCase() || "ET";
 }
 
+function collectorShowcaseRarityTone(value = "") {
+  const text = normalizeSearchText(value);
+  if (!text) return "neutral";
+  if (text.includes("secret") || text.includes("hyper") || text.includes("rainbow") || text.includes("gold")) return "secret";
+  if (text.includes("special illustration") || text.includes("illustration rare") || text.includes("alt art")) return "illustration";
+  if (text.includes("ultra") || text.includes("full art") || text.includes("ex") || text.includes("vmax") || text.includes("vstar")) return "ultra";
+  if (text.includes("rare") || text.includes("holo") || text.includes("foil")) return "rare";
+  return "neutral";
+}
+
+function collectorShowcaseRarityLabel(value = "") {
+  const label = String(value || "").trim();
+  return label || "Rarity unknown";
+}
+
 function CollectorShowcaseCard({
   title = "Collection item",
   subtitle = "",
@@ -6335,6 +6350,7 @@ function CollectorShowcaseCard({
   kind = "item",
   mode = "compact",
   valueLabel = "",
+  rarity = "",
   meta = [],
   helper = "Image may be representative. Values stay manual or estimated when shown.",
   actionLabel = "",
@@ -6344,14 +6360,16 @@ function CollectorShowcaseCard({
 }) {
   const normalizedKind = normalizeCollectorShowcaseKind(kind);
   const kindLabel = COLLECTOR_SHOWCASE_KIND_LABELS[normalizedKind] || COLLECTOR_SHOWCASE_KIND_LABELS.item;
+  const rarityLabel = normalizedKind === "card" ? collectorShowcaseRarityLabel(rarity) : "";
+  const rarityTone = normalizedKind === "card" ? collectorShowcaseRarityTone(rarity) : "neutral";
   const Component = onClick ? "button" : "article";
   const componentProps = onClick
     ? { type: "button", onClick, "aria-label": ariaLabel || `Open ${title}` }
     : { "aria-label": ariaLabel || `${title} collector showcase` };
-  const metaItems = [...new Set([kindLabel, ...(Array.isArray(meta) ? meta : [meta]).filter(Boolean)])].slice(0, 4);
+  const metaItems = [...new Set([kindLabel, rarityLabel, ...(Array.isArray(meta) ? meta : [meta]).filter(Boolean)])].slice(0, 4);
   return (
     <Component
-      className={`collector-showcase-card collector-showcase-${normalizedKind} collector-showcase-${mode} ${image ? "has-image" : "is-fallback"} ${className}`.trim()}
+      className={`collector-showcase-card collector-showcase-${normalizedKind} collector-showcase-${mode} collector-rarity-${rarityTone} ${image ? "has-image" : "is-fallback"} ${className}`.trim()}
       {...componentProps}
     >
       <span className="collector-showcase-stage" aria-hidden="true">
@@ -6401,6 +6419,7 @@ function CollectorFlipDetailCard({
   kind = "item",
   mode = "compact",
   valueLabel = "",
+  rarity = "",
   meta = [],
   helper = "Visual display only. Images may be representative, and values are manual or saved estimates when shown.",
   noteRows = [],
@@ -6422,9 +6441,10 @@ function CollectorFlipDetailCard({
           subtitle={subtitle}
           image={image}
           kind={normalizedKind}
-          mode={mode}
-          valueLabel={valueLabel}
-          meta={meta}
+        mode={mode}
+        valueLabel={valueLabel}
+        rarity={rarity}
+        meta={meta}
           helper={helper}
           className="collector-flip-front"
         />
@@ -36178,6 +36198,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             kind={isSealed ? "sealed" : isCard ? "card" : productTypeLabel}
             mode="mini"
             valueLabel={productHasMarketPrice ? `${productMarketLabel} saved estimate` : "Market data unavailable"}
+            rarity={product.rarity || product.variant || product.priceSubtype || ""}
             meta={[productTypeLabel, marketFreshnessLabel]}
             helper="Market preview only. Not live pricing, checkout, or a stock guarantee."
             className="market-showcase-preview"
@@ -50552,6 +50573,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             kind={productKind}
             mode="mini"
             valueLabel={hasCatalogMarketPrice(product) ? `${money(priceInfo.currentMarketValue)} saved estimate` : "Market data unavailable"}
+            rarity={product.rarity || product.variant || product.priceSubtype || ""}
             meta={[catalogProductTypeLabel(product), sourceText]}
             helper="Preview only. Review destination and details before anything is saved."
             className="quick-add-showcase-preview"
@@ -66045,6 +66067,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                           kind={itemKind}
                           mode="display"
                           valueLabel={valueLabel}
+                          rarity={item.rarity || item.variantLabel || item.variant || item.finish || ""}
                           meta={[statusLabel, `Qty ${item.quantity || 1}`]}
                           helper="Visual display only. Images may be representative. Check condition, sealed status, and saved values manually."
                           noteRows={[
@@ -69735,6 +69758,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                       kind={selectedCatalogDetailIsSealed ? "sealed" : selectedCatalogDetailIsCard ? "card" : catalogProductTypeLabel(selectedCatalogDetailProduct)}
                       mode="display"
                       valueLabel={hasCatalogMarketPrice(selectedCatalogDetailPricingProduct) ? `${money(selectedCatalogDetailMarketInfo?.currentMarketValue)} saved estimate` : "Market data unavailable"}
+                      rarity={selectedCatalogDetailProduct.rarity || selectedCatalogDetailVariant?.variantName || selectedCatalogDetailProduct.priceSubtype || ""}
                       meta={[
                         getCatalogKindLabel(selectedCatalogDetailProduct),
                         selectedCatalogDetailIsCard && selectedCatalogDetailProduct.rarity ? selectedCatalogDetailProduct.rarity : "",
@@ -70945,6 +70969,7 @@ function VaultItemDetail({ item, masterCard, setSummary, linkedTrades = [], coll
           kind={itemProfileKind}
           mode="hero"
           valueLabel={profileEstimatedValue ? `${profileEstimatedValue} saved estimate` : "No value saved yet"}
+          rarity={item.rarity || itemVariantLabel || item.finish || ""}
           meta={[itemIsWishlist ? "Wishlist" : "Owned", itemVariantLabel || "Variant pending", conditionLabel || "Condition pending"]}
           helper="Visual treatment is based on available app metadata. Not a grading or authenticity claim."
           className="vault-item-profile-showcase"

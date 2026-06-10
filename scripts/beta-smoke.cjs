@@ -783,6 +783,7 @@ async function main() {
           conditionName: "Near Mint",
           language: "English",
           variantLabel: "Holo",
+          rarity: "Rare Holo",
           cardNumber: "ET-001",
           setName: "Smoke Set",
           workspaceId: "workspace-personal-local-beta",
@@ -899,6 +900,7 @@ async function main() {
     await page.getByRole("button", { name: /^Showcase$/ }).first().click();
     await assertVisibleText("3D Collector Showcase");
     await assertVisibleText("Collection pieces with depth");
+    await assertVisibleText("Rare Holo");
     await expectVisible(
       page.locator(".vault-showcase-grid .collector-showcase-card").filter({ hasText: "Focused Vault Smoke Card" }).first(),
       "Vault Showcase card"

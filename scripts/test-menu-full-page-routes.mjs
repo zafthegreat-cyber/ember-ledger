@@ -82,9 +82,11 @@ assert.equal(
   "Event Planner should not claim live RSVPs, ticketing, payments, public listings, shop verification, calendar sync, or notifications."
 );
 assert.ok(
-  appSource.includes("function CollectorShowcaseCard") &&
+    appSource.includes("function CollectorShowcaseCard") &&
     appSource.includes("function CollectorFlipDetailCard") &&
     appSource.includes("function SealedProductShelfCard") &&
+    appSource.includes("collectorShowcaseRarityTone") &&
+    appSource.includes("Rarity unknown") &&
     appSource.includes("3D Collector Showcase") &&
     appSource.includes("Sealed Product Shelf") &&
     appSource.includes("Collection Gallery") &&
@@ -99,6 +101,7 @@ assert.ok(
     cssSource.includes(".collector-flip-card") &&
     cssSource.includes(".sealed-product-shelf-card") &&
     cssSource.includes(".vault-gallery-tile") &&
+    cssSource.includes(".collector-rarity-secret") &&
     cssSource.includes("@media (prefers-reduced-motion: reduce)") &&
     cssSource.includes("transform: none"),
   "Collector Showcase and flip details should provide a reduced-motion CSS fallback."

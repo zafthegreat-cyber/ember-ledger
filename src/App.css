@@ -100804,6 +100804,41 @@ html body #root .app.app-command-shell .collector-showcase-shine {
   transform: translateX(-12%);
 }
 
+html body #root .app.app-command-shell .collector-showcase-card.collector-rarity-rare .collector-showcase-face,
+html body #root .app.app-command-shell .collector-showcase-card.collector-rarity-ultra .collector-showcase-face,
+html body #root .app.app-command-shell .collector-showcase-card.collector-rarity-illustration .collector-showcase-face,
+html body #root .app.app-command-shell .collector-showcase-card.collector-rarity-secret .collector-showcase-face {
+  border-color: color-mix(in srgb, var(--et-page-accent-2, #d9a441) 58%, rgba(255, 255, 255, 0.36));
+}
+
+html body #root .app.app-command-shell .collector-showcase-card.collector-rarity-rare .collector-showcase-shine {
+  background:
+    linear-gradient(112deg, transparent 0 28%, rgba(255, 255, 255, 0.38) 43%, transparent 58%),
+    radial-gradient(circle at 20% 18%, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 28%, rgba(255, 255, 255, 0.18)), transparent 30%);
+}
+
+html body #root .app.app-command-shell .collector-showcase-card.collector-rarity-ultra .collector-showcase-shine,
+html body #root .app.app-command-shell .collector-showcase-card.collector-rarity-illustration .collector-showcase-shine {
+  background:
+    linear-gradient(112deg, transparent 0 24%, rgba(255, 255, 255, 0.42) 38%, transparent 56%),
+    radial-gradient(circle at 16% 20%, color-mix(in srgb, var(--et-page-accent, #8b5cf6) 30%, rgba(255, 255, 255, 0.18)), transparent 32%),
+    radial-gradient(circle at 82% 8%, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 36%, transparent), transparent 24%);
+}
+
+html body #root .app.app-command-shell .collector-showcase-card.collector-rarity-secret .collector-showcase-shine {
+  background:
+    linear-gradient(115deg, transparent 0 20%, rgba(255, 255, 255, 0.48) 32%, transparent 44%, rgba(255, 236, 180, 0.28) 54%, transparent 68%),
+    radial-gradient(circle at 18% 18%, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 42%, transparent), transparent 30%),
+    radial-gradient(circle at 78% 12%, color-mix(in srgb, var(--et-page-accent, #8b5cf6) 30%, transparent), transparent 24%);
+}
+
+html body #root .app.app-command-shell .collector-showcase-card.collector-rarity-secret .collector-showcase-face {
+  box-shadow:
+    9px 10px 0 color-mix(in srgb, var(--et-page-accent-2, #d9a441) 24%, rgba(78, 46, 22, 0.34)),
+    0 18px 34px color-mix(in srgb, var(--et-page-accent, #8b5cf6) 18%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78);
+}
+
 html body #root .app.app-command-shell .collector-showcase-copy {
   display: grid;
   gap: 6px;
