@@ -61539,6 +61539,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   onCreateListing={openVaultMarketplaceDecision}
                   onDuplicate={openVaultDuplicateItem}
                   onAttachReceipt={(item) => openReceiptForItem(item, "vault-item")}
+                  onCheckMarket={openMarketWatchForVaultItem}
                   onRefreshMarket={refreshVaultMarket}
                   onQuickUpdateMarketValue={quickUpdateMarketValue}
                   onQuickUpdateSalePrice={quickUpdatePlannedSalePrice}
@@ -61694,7 +61695,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                           <OverflowMenu
                             buttonLabel="More"
                             actions={[
-                              { label: "View details", onClick: () => setSelectedVaultDetailId(item.id) },
+                              { label: "Item Profile", onClick: () => setSelectedVaultDetailId(item.id) },
                               { label: "View Set", onClick: () => setSummary ? openVaultSetSummary(setSummary) : openVaultSetForItem(item) },
                               { label: "Open Market Watch", onClick: () => openMarketWatchForVaultItem(item) },
                             ]}
@@ -62003,7 +62004,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                             <span>{product.productType || product.product_type || "Sealed Product"}</span>
                             <span>{product.__vaultOwnedSealed ? [itemPurchaserName(product), `Qty ${product.quantity || 1}`, vaultItemTotalMarketValue(product) ? money(vaultItemTotalMarketValue(product)) : "Value unavailable"].filter(Boolean).join(" - ") : "Catalog sealed product"}</span>
                             {product.__vaultOwnedSealed ? (
-                              <button type="button" className="secondary-button" onClick={() => setSelectedVaultDetailId(product.id)}>View details</button>
+                              <button type="button" className="secondary-button" onClick={() => setSelectedVaultDetailId(product.id)}>Item Profile</button>
                             ) : (
                               <button type="button" className="secondary-button" onClick={() => openProductAddFlow({ product, source: "vault-set-sealed", destinations: { vault: true } })}>Add Item</button>
                             )}
@@ -62088,7 +62089,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                             <p><span>Owner</span><strong>{itemPurchaserName(item)}</strong></p>
                           </div>
                           <div className="compact-actions vault-card-actions">
-                            <button type="button" className="secondary-button" onClick={() => setSelectedVaultDetailId(item.id)}>View details</button>
+                            <button type="button" className="secondary-button" onClick={() => setSelectedVaultDetailId(item.id)}>Item Profile</button>
                             {setSummary && !setSummary.unknownSet ? <button type="button" className="secondary-button" onClick={() => openVaultSetSummary(setSummary)}>View Set</button> : null}
                           </div>
                         </article>
@@ -65969,7 +65970,7 @@ function gradeAssistValueComparison(item = {}, moneyFormatter = money) {
   };
 }
 
-function VaultItemDetail({ item, masterCard, setSummary, onClose, onEdit, onDelete, onViewSet, onMarkOwned, onMoveToForge, onCopyToForge, onCreateListing, onDuplicate, onAttachReceipt, onRefreshMarket, onQuickUpdateMarketValue, onQuickUpdateSalePrice, onStartTrade, showSellerTools = false }) {
+function VaultItemDetail({ item, masterCard, setSummary, onClose, onEdit, onDelete, onViewSet, onMarkOwned, onMoveToForge, onCopyToForge, onCreateListing, onDuplicate, onAttachReceipt, onCheckMarket, onRefreshMarket, onQuickUpdateMarketValue, onQuickUpdateSalePrice, onStartTrade, showSellerTools = false }) {
   const gradeAssistKey = gradeAssistRecordKey(item || {});
   const [gradeAssistDraft, setGradeAssistDraft] = useState(() => loadGradeAssistDraft(item || {}));
   const [gradeAssistMessage, setGradeAssistMessage] = useState("");
@@ -66005,6 +66006,20 @@ function VaultItemDetail({ item, masterCard, setSummary, onClose, onEdit, onDele
   const itemVariantLabel = vaultVariantLabel(item);
   const itemSetName = setSummary?.name || setLabel || "Set unknown";
   const itemSetKnown = Boolean(setSummary && !setSummary.unknownSet && itemSetName !== "Set unknown");
+  const itemProfileKind = itemType || (isInventorySealedProduct(item) ? "Sealed product" : "Vault item");
+  const profileEstimatedValue = valuation.marketKnownQuantity ? money(totalMarket) : "";
+  const collectorNotes = item.collectorNotes || item.collector_notes || item.notes || item.note || "";
+  const memoryStory = item.memoryStory || item.memory_story || item.story || item.memory || item.actionNotes || item.action_notes || "";
+  const kidSafeNotes = item.kidSafeNotes || item.kid_safe_notes || item.familyNotes || item.family_notes || "";
+  const profileDateAdded = item.dateAdded || item.addedAt || item.createdAt || item.created_at || "";
+  const profileQuickDetails = [
+    ["Vault Item", item.name],
+    ["Type", itemProfileKind],
+    ["Condition Notes", conditionLabel || "Condition not set yet."],
+    ["Estimated Value", profileEstimatedValue || "No value saved yet. Add an estimate when you are ready."],
+    ["Quantity", item.quantity || 1],
+    ["Date Added", profileDateAdded ? shortDate(profileDateAdded) : "Date added not saved yet."],
+  ];
   const setMasteryCopy = setSummary
     ? setSummary.checklistAvailable
       ? setSummary.progressCopy
@@ -66066,7 +66081,9 @@ function VaultItemDetail({ item, masterCard, setSummary, onClose, onEdit, onDele
     ["Photo Proof", item.photoProofUrl || item.photo_proof_url || item.proofUrl || item.proof_url],
   ].filter(([, value]) => hasValue(value));
   const noteDetails = [
-    ["Notes", item.notes],
+    ["Collector Notes", collectorNotes],
+    ["Memory / Story", memoryStory],
+    ["Kid Safe Notes", kidSafeNotes],
     ["Action Notes", item.actionNotes || item.action_notes],
     ["Source", item.sourceType || item.source || item.sourceLocation || item.externalProductSource],
   ].filter(([, value]) => hasValue(value));
@@ -66130,6 +66147,7 @@ function VaultItemDetail({ item, masterCard, setSummary, onClose, onEdit, onDele
     <div className="vault-detail-card">
       <div className="compact-card-header">
         <div>
+          <span className="section-kicker">Item Profile</span>
           <h3>{item.name}</h3>
           <p className="compact-subtitle">
             {showVaultSellerTools
@@ -66168,6 +66186,42 @@ function VaultItemDetail({ item, masterCard, setSummary, onClose, onEdit, onDele
           ) : null}
         </div>
       </div>
+      <section className="vault-item-profile-panel" aria-label="Vault Item Profile">
+        <div className="vault-item-profile-heading">
+          <div>
+            <span className="trust-badge trust-badge--secure">Vault Item</span>
+            <h4>Item Profile</h4>
+            <p>Family View keeps the item details, notes, and next actions in one safe collector record.</p>
+          </div>
+          <div className="summary-pill-row">
+            <span className="neon-chip">{itemProfileKind}</span>
+            <span className="neon-chip">{itemIsWishlist ? "Wishlist" : "Owned"}</span>
+            <span className="neon-chip">{itemVariantLabel || "Variant pending"}</span>
+          </div>
+        </div>
+        <div className="catalog-detail-grid vault-item-profile-grid">
+          {profileQuickDetails.map(([label, value]) => (
+            <DetailItem key={label} label={label} value={value} />
+          ))}
+        </div>
+      </section>
+      <section className="vault-profile-story-grid" aria-label="Collector notes and story">
+        <article className="vault-profile-story-card">
+          <span>Collector Notes</span>
+          <strong>{collectorNotes || "No collector notes yet."}</strong>
+          <p>{collectorNotes ? "Keep the collection context close to the item." : "No collector notes yet. Add why this item matters, where it came from, or what makes it special."}</p>
+        </article>
+        <article className="vault-profile-story-card">
+          <span>Memory / Story</span>
+          <strong>{memoryStory || "Story waiting"}</strong>
+          <p>{memoryStory ? "A saved memory helps this feel like part of the collection, not just inventory." : "Add the pull, trade, gift, event, or family memory when you are ready."}</p>
+        </article>
+        <article className="vault-profile-story-card">
+          <span>Kid Safe Notes</span>
+          <strong>{kidSafeNotes || "Family View"}</strong>
+          <p>{kidSafeNotes ? "Keep notes simple, safe, and parent-friendly." : "Use Kid Safe Notes for simple, non-private context a family member can understand."}</p>
+        </article>
+      </section>
       <MasterCardFamilyNote masterCard={masterCard} />
       {masterCard ? (
         <div className="vault-master-detail-note vault-master-detail-note--copy">
@@ -66177,14 +66231,18 @@ function VaultItemDetail({ item, masterCard, setSummary, onClose, onEdit, onDele
         </div>
       ) : null}
       <div className="vault-detail-primary-actions">
-        <button type="button" onClick={() => onEdit(item)}>Edit / Add details</button>
-        {!itemIsWishlist ? <button type="button" className="secondary-button" onClick={() => onStartTrade?.(item)}>Start Trade</button> : null}
+        <button type="button" onClick={() => onEdit(item)}>Edit Profile</button>
+        {!itemIsWishlist ? <button type="button" className="secondary-button" onClick={() => onStartTrade?.(item)}>Use in Forge</button> : null}
+        <button type="button" className="secondary-button" onClick={() => onCheckMarket?.(item)}>Check in Market</button>
         {itemIsWishlist ? <button type="button" onClick={() => onMarkOwned?.(item)}>Mark owned</button> : null}
         {setSummary ? <button type="button" className="secondary-button" onClick={() => onViewSet?.(setSummary)}>View Set</button> : null}
         <button type="button" className="secondary-button" onClick={() => onAttachReceipt?.(item)}>Attach receipt</button>
         <button type="button" className="secondary-button" onClick={() => onQuickUpdateMarketValue?.(item)}>Review value</button>
         {showVaultSellerTools ? <button type="button" className="secondary-button" disabled={Number(item.quantity || 0) < 1} onClick={() => onMoveToForge(item)}>Move to Forge</button> : null}
       </div>
+      <p className="vault-detail-action-note vault-profile-forge-helper">
+        Bring this item into Forge when you want to compare, trade, or think through its value.
+      </p>
       {purchaserDetailRows.length ? (
         <div className="vault-detail-group-summary" aria-label="Grouped inventory details">
           <strong>Grouped inventory details</strong>
@@ -66303,7 +66361,7 @@ function VaultItemDetail({ item, masterCard, setSummary, onClose, onEdit, onDele
               ))}
             </div>
           ) : (
-            <p className="vault-detail-action-note">No notes added yet.</p>
+            <p className="vault-detail-action-note">No collector notes yet. Add why this item matters, where it came from, or what makes it special.</p>
           )}
         </details>
         <details className="vault-detail-disclosure">
@@ -66518,7 +66576,7 @@ function CompactInventoryCard({
         ) : null}
 
         <div className="compact-actions vault-card-actions">
-          <button type="button" className="secondary-button" aria-label={`View details for ${item.name}`} onClick={() => onViewDetails?.(item)}>View details</button>
+          <button type="button" className="secondary-button" aria-label={`Open Item Profile for ${item.name}`} onClick={() => onViewDetails?.(item)}>Item Profile</button>
           <button type="button" className="secondary-button trade-card-action" onClick={() => onStartTrade?.(item)} disabled={quantity < 1}>Trade</button>
           <OverflowMenu
             buttonLabel="More"

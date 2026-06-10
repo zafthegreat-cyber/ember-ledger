@@ -638,7 +638,6 @@ async function main() {
           status: "Personal Collection",
           quantity: 1,
           unitCost: 5,
-          marketPrice: 8,
           workspaceId: "workspace-personal-local-beta",
           workspaceName: "My Personal Space",
           createdAt: now,
@@ -651,10 +650,28 @@ async function main() {
     await nav("Vault");
     await assertVisibleText("Vault");
     await assertVisibleText("Focused Vault Smoke Card");
+    const focusedVaultCard = page.locator(".vault-item-card").filter({ hasText: "Focused Vault Smoke Card" }).first();
+    await expectVisible(focusedVaultCard, "focused Vault item card");
+    await focusedVaultCard.getByRole("button", { name: /Item Profile/i }).first().click();
+    await assertVisibleText("Item Profile");
+    await assertVisibleText("Vault Item");
+    await assertVisibleText("Collector Notes");
+    await assertVisibleText("Condition Notes");
+    await assertVisibleText("Estimated Value");
+    await assertVisibleText("Memory / Story");
+    await assertVisibleText("Family View");
+    await assertVisibleText("Kid Safe Notes");
+    await assertVisibleText("No value saved yet. Add an estimate when you are ready.");
+    await assertVisibleText("No collector notes yet. Add why this item matters, where it came from, or what makes it special.");
+    await expectVisible(page.getByRole("button", { name: /^Edit Profile$/ }).first(), "Vault Item Profile edit action");
+    await expectVisible(page.getByRole("button", { name: /^Use in Forge$/ }).first(), "Vault Item Profile Forge action");
+    await expectVisible(page.getByRole("button", { name: /^Check in Market$/ }).first(), "Vault Item Profile Market action");
     assert.ok(
       await page.getByRole("button", { name: /Quick Add|Add Item|Search \/ Scan Item/i }).count() > 0,
       "Vault should expose a primary add/search action"
     );
+    await page.getByRole("button", { name: /^Check in Market$/ }).first().click();
+    await assertVisibleText(/Market|Market Watch|Fair price discovery/i);
   }
 
   async function focusedMarketTest() {
