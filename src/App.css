@@ -102624,3 +102624,50 @@ html body #root .app.app-command-shell .quick-add-result-card .quick-add-result-
     transform: none;
   }
 }
+
+/* Post-deploy collector polish: distinguish unknown/manual visual records without implying verification. */
+html body #root .app.app-command-shell .collector-showcase-unknown .collector-showcase-face {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--et-page-accent-2, #d9a441) 34%, var(--et-border, rgba(118, 84, 42, 0.18)));
+  background:
+    radial-gradient(circle at 22% 16%, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 18%, transparent), transparent 34%),
+    linear-gradient(145deg, color-mix(in srgb, var(--et-panel, #fffdf7) 82%, var(--et-muted, #675d52) 7%), color-mix(in srgb, var(--et-panel-soft, #fff1dc) 84%, var(--et-page-accent, #f97316) 7%));
+}
+
+html body #root .app.app-theme-dark.app-command-shell .collector-showcase-unknown .collector-showcase-face,
+html body #root .app.app-shell-dark.app-command-shell .collector-showcase-unknown .collector-showcase-face {
+  background:
+    radial-gradient(circle at 22% 16%, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 14%, transparent), transparent 34%),
+    linear-gradient(145deg, color-mix(in srgb, var(--et-panel, #0d1b31) 88%, var(--et-muted, #c9d7ea) 6%), color-mix(in srgb, var(--et-panel-soft, #10243f) 88%, var(--et-page-accent, #f97316) 7%));
+}
+
+html body #root .app.app-command-shell .collector-showcase-unknown .collector-showcase-fallback strong {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--et-muted, #675d52) 42%, var(--et-page-accent, #f97316)), color-mix(in srgb, var(--et-page-accent-2, #d9a441) 62%, var(--et-panel, #fffdf7)));
+}
+
+html body #root .app.app-command-shell .collector-showcase-card.is-fallback .collector-showcase-kicker::after,
+html body #root .app.app-command-shell .collector-showcase-unknown .collector-showcase-kicker::after {
+  content: "Manual visual";
+  margin-left: 6px;
+  padding-left: 6px;
+  border-left: 1px solid currentColor;
+  opacity: 0.72;
+}
+
+html body #root .app.app-command-shell .market-showcase-preview.collector-showcase-unknown,
+html body #root .app.app-command-shell .quick-add-showcase-preview.collector-showcase-unknown {
+  border-color: color-mix(in srgb, var(--et-page-accent-2, #d9a441) 28%, var(--et-border, rgba(118, 84, 42, 0.18)));
+}
+
+html body #root .app.app-command-shell .market-card-reference-line,
+html body #root .app.app-command-shell .quick-add-result-copy small {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 520px) {
+  html body #root .app.app-command-shell .collector-showcase-card.is-fallback .collector-showcase-kicker::after,
+  html body #root .app.app-command-shell .collector-showcase-unknown .collector-showcase-kicker::after {
+    content: "Manual";
+  }
+}

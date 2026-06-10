@@ -92,6 +92,7 @@ assert.ok(
     appSource.includes("3D Collector Showcase") &&
     appSource.includes("Sealed Product Shelf") &&
     appSource.includes("Collection Gallery") &&
+    appSource.includes('unknown: "Unknown"') &&
     appSource.includes("Back-side details") &&
     appSource.includes("vaultDisplayMode") &&
     appSource.includes("market-showcase-preview") &&
@@ -109,6 +110,7 @@ assert.ok(
     cssSource.includes(".collector-rarity-reverse") &&
     cssSource.includes(".collector-rarity-promo") &&
     cssSource.includes(".collector-rarity-secret") &&
+    cssSource.includes(".collector-showcase-unknown") &&
     cssSource.includes(".collector-rarity-chip") &&
     cssSource.includes("@media (prefers-reduced-motion: reduce)") &&
     cssSource.includes("transform: none"),
@@ -136,6 +138,7 @@ assert.ok(
   cssSource.includes(".collector-showcase-edge") &&
     cssSource.includes(".collector-showcase-fallback") &&
     cssSource.includes(".collector-showcase-card.is-fallback .collector-showcase-face") &&
+    cssSource.includes("Manual visual") &&
     appSource.includes("function sealedProductFrameMeta") &&
     appSource.includes("Unknown sealed product") &&
     appSource.includes("Booster Pack") &&
@@ -179,12 +182,16 @@ assert.ok(
   appSource.includes("function detectCollectorItemVisualType") &&
     appSource.includes("function collectorVisualTypeLabel") &&
     appSource.includes('"booster box"') &&
+    appSource.includes('"tin"') &&
+    appSource.includes('"bundle"') &&
     appSource.includes('"sealed product"') &&
     appSource.includes('"wishlist"') &&
+    appSource.includes("sealedFrame?.label || kindLabel") &&
     appSource.includes("visualType: detectCollectorItemVisualType(displayItem)") &&
     appSource.includes("displayKind: item ? detectCollectorItemVisualType(item)") &&
     appSource.includes("const kind = detectCollectorItemVisualType(item)") &&
-    appSource.includes("kind={detectCollectorItemVisualType(product)}") &&
+    appSource.includes("const productVisualType = detectCollectorItemVisualType(product)") &&
+    appSource.includes("kind={productVisualType}") &&
     appSource.includes("kind={detectCollectorItemVisualType(selectedCatalogDetailProduct)}") &&
     appSource.includes("const productKind = detectCollectorItemVisualType(product)") &&
     cssSource.includes(".collector-showcase-wishlist"),

@@ -6571,6 +6571,7 @@ const COLLECTOR_SHOWCASE_KIND_LABELS = {
   slab: "Slab",
   supply: "Supply",
   set: "Set",
+  unknown: "Unknown",
   item: "Vault Item",
 };
 
@@ -6615,6 +6616,7 @@ function normalizeCollectorShowcaseKind(kind = "") {
   if (value.includes("supply") || value.includes("sleeve") || value.includes("binder") || value.includes("deck box") || value.includes("storage")) return "supply";
   if (value.includes("set")) return "set";
   if (value.includes("card") || value.includes("single") || value.includes("promo")) return "card";
+  if (value.includes("unknown")) return "unknown";
   return "item";
 }
 
@@ -6692,7 +6694,7 @@ function CollectorShowcaseCard({
     ? "Visual display mode. Open item profile."
     : "Visual display mode. Card details are shown as text.";
   const metaItems = [...new Set([
-    ...(sealedFrame ? ["Sealed"] : [kindLabel]),
+    sealedFrame?.label || kindLabel,
     ...metaList,
   ])].slice(0, sealedFrame ? 4 : 3);
   return (
@@ -36854,6 +36856,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const productImageSrc = catalogImage(product);
     const productSetName = catalogExpansionName(product) || "Set unavailable";
     const productTypeLabel = catalogProductTypeLabel(product);
+    const productVisualType = detectCollectorItemVisualType(product);
+    const productVisualLabel = collectorVisualTypeLabel(productVisualType);
+    const productTypeLabels = [...new Set([
+      productVisualLabel,
+      productTypeLabel,
+    ].filter((label) => label && label !== "Unknown"))];
     const productMasterCard = buildMarketMasterCardFromCatalogProduct(product);
     const marketSourceLabel = productHasMarketPrice ? getCatalogMarketSourceLabel(product) : "Market data unavailable";
     const marketFreshnessTimestamp = marketInfo.lastUpdated || product.lastPriceChecked || product.marketLastUpdated || product.market_last_updated || product.updatedAt || product.updated_at || "";
@@ -36880,11 +36888,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             title={catalogTitle(product)}
             subtitle={productSetName}
             image={productImageSrc}
-            kind={detectCollectorItemVisualType(product)}
+            kind={productVisualType}
             mode="mini"
             valueLabel={productHasMarketPrice ? `${productMarketLabel} saved estimate` : "Market data unavailable"}
             rarity={product.rarity || product.variant || product.priceSubtype || ""}
-            meta={[productTypeLabel, marketFreshnessLabel]}
+            meta={[...productTypeLabels, marketFreshnessLabel]}
             helper="Market preview only. Not live pricing, checkout, or a stock guarantee."
             className="market-showcase-preview"
           />
@@ -36921,7 +36929,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <h3 className="market-card-title">{catalogTitle(product)}</h3>
             <p className="market-card-context">{productSetName}</p>
             <p className="market-card-reference-line">
-              {[productTypeLabel, isCard && product.cardNumber ? `#${product.cardNumber}` : "", isCard && product.rarity ? product.rarity : ""].filter(Boolean).join(" | ")}
+              {[...productTypeLabels, isCard && product.cardNumber ? `#${product.cardNumber}` : "", isCard && product.rarity ? product.rarity : ""].filter(Boolean).join(" | ")}
             </p>
             <MasterVariantRail masterCard={productMasterCard} compact />
             <div className="market-card-price-row">
@@ -51464,6 +51472,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       const cardNumberText = product.cardNumber ? `#${product.cardNumber}` : "";
       const sourceText = product._matchReason || product.marketSource || product.sourceType || "Market Watch catalog";
       const productKind = detectCollectorItemVisualType(product);
+      const productKindLabel = collectorVisualTypeLabel(productKind);
+      const productTypeLabel = catalogProductTypeLabel(product);
+      const productTypeLabels = [...new Set([
+        productKindLabel,
+        productTypeLabel,
+      ].filter((label) => label && label !== "Unknown"))];
       return (
         <button
           type="button"
@@ -51479,7 +51493,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             mode="mini"
             valueLabel={hasCatalogMarketPrice(product) ? `${money(priceInfo.currentMarketValue)} saved estimate` : "Market data unavailable"}
             rarity={product.rarity || product.variant || product.priceSubtype || ""}
-            meta={[catalogProductTypeLabel(product), sourceText]}
+            meta={[...productTypeLabels, sourceText]}
             helper="Preview only. Review destination and details before anything is saved."
             className="quick-add-showcase-preview"
           />
@@ -51498,7 +51512,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </span>
           <span className="quick-add-result-copy">
             <strong>{catalogTitle(product)}</strong>
-            <small>{[catalogExpansionName(product), cardNumberText, catalogProductTypeLabel(product)].filter(Boolean).join(" | ") || "Catalog product"}</small>
+            <small>{[catalogExpansionName(product), cardNumberText, ...productTypeLabels].filter(Boolean).join(" | ") || "Catalog product"}</small>
             <small>{[sourceText, ...identifiers].filter(Boolean).join(" | ")}</small>
             <small>{hasCatalogMarketPrice(product) ? `Market ${money(priceInfo.currentMarketValue)}` : "Market data unavailable"}</small>
           </span>
