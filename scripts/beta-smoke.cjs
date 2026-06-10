@@ -1205,9 +1205,25 @@ async function main() {
   async function focusedTidepoolTest() {
     await page.setViewportSize({ width: 390, height: 844 });
     await nav("Tidepool");
+    await assertVisibleText("Tidepool trust dashboard");
+    await assertVisibleText("Trusted Circle entries");
+    await assertVisibleText("Shop/family notes");
+    await assertVisibleText("People to follow up with");
+    await assertVisibleText("Future community preview");
+    await assertVisibleText("Community Safety Checklist");
+    await assertVisibleText("Meet in public.");
+    await assertVisibleText("Verify prices independently.");
+    await assertVisibleText("Protect kids' info.");
     await assertVisibleText("Trusted Circle");
     await assertVisibleText("Trusted Circle is your private note space. It does not verify people, run background checks, or replace your own safety judgment.");
+    await assertVisibleText("Your Trusted Circle is waiting for its first helper.");
     await assertVisibleText("Tidepool upgrade preview");
+    const tidepoolInitialText = await page.locator("body").innerText();
+    assert.doesNotMatch(
+      tidepoolInitialText,
+      /users are verified|background checks complete|background-checked by Ember|invites? sent automatically|officially verified/i,
+      "Tidepool should not show fake verification, invite, or background-check claims"
+    );
     const addToCircleButton = page.getByRole("button", { name: "Add to Circle", exact: true }).first();
     await expectVisible(addToCircleButton, "Tidepool Add to Circle action");
     await addToCircleButton.click();
@@ -1215,10 +1231,12 @@ async function main() {
     await expectVisible(circleModal, "Tidepool Trusted Circle modal");
     await expectVisible(circleModal.getByText("Invite Later is a placeholder only. No messages or invites are sent.").first(), "Trusted Circle invite safety copy");
     await circleModal.getByLabel("Name").fill("Focused Friendly Shop");
-    await circleModal.getByLabel("Role / type").selectOption("Trusted Shop");
+    await circleModal.getByLabel("Relationship / type").selectOption("Trusted Shop");
     await circleModal.getByLabel("Circle Status").selectOption("Shop/Seller Contact");
+    await circleModal.getByLabel("Contact method").fill("Ask at the front counter");
     await circleModal.getByLabel("Circle Note").fill("Private phone 757-555-0199");
-    await circleModal.getByLabel("Relationship note").fill("Family-friendly shop that hosts trading tables.");
+    await circleModal.getByLabel("Trust notes").fill("Family-friendly shop that hosts trading tables.");
+    await circleModal.getByLabel("Reminder notes").fill("Follow up before the next family trade night.");
     await circleModal.getByLabel("Safety / comfort notes").fill("Parent should review event details before visiting.");
     await circleModal.getByLabel("Date added").fill("2026-06-09");
     await circleModal.getByRole("button", { name: "Add to Circle", exact: true }).click();
@@ -1228,14 +1246,26 @@ async function main() {
       return (data.trustedCircle || []).find((entry) => entry.name === "Focused Friendly Shop") || null;
     });
     assert.equal(circleState?.roleType, "Trusted Shop");
+    assert.equal(circleState?.relationshipType, "Trusted Shop");
     assert.equal(circleState?.circleStatus, "Shop/Seller Contact");
+    assert.equal(circleState?.contactMethod, "Ask at the front counter");
+    assert.equal(circleState?.reminderNotes, "Follow up before the next family trade night.");
     assert.equal(circleState?.verificationClaim, "not_verified");
+    assert.equal(circleState?.invitationStatus, "not_sent");
     await circleModal.getByRole("button", { name: "Close", exact: true }).click();
     await circleModal.waitFor({ state: "hidden", timeout: 5000 });
     await assertVisibleText("Focused Friendly Shop");
     await assertVisibleText("Shop/Seller Contact");
+    await assertVisibleText("Follow up before the next family trade night.");
+    await assertVisibleText("Private contact method/Circle Note saved locally.");
     await assertVisibleText("No invites sent");
     await assertNotVisibleText("757-555-0199");
+    const tidepoolSavedText = await page.locator("body").innerText();
+    assert.doesNotMatch(
+      tidepoolSavedText,
+      /users are verified|background checks complete|background-checked by Ember|invites? sent automatically|officially verified/i,
+      "Saved Tidepool state should not show fake verification, invite, or background-check claims"
+    );
     await assertNoHorizontalOverflow("Tidepool Trusted Circle mobile");
     await page.setViewportSize({ width: 1366, height: 1600 });
   }

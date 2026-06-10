@@ -96933,6 +96933,89 @@ html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-trust-grid 
   gap: 10px !important;
 }
 
+html body #root .app.app-command-shell.app-tidepool .tidepool-trust-dashboard-card {
+  gap: clamp(12px, 1.8vw, 18px) !important;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-trust-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-trust-dashboard-item {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent) 18%, var(--et-border));
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--et-page-accent) 9%, transparent), transparent 9rem),
+    color-mix(in srgb, var(--et-panel-soft) 86%, transparent);
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-trust-dashboard-item span {
+  color: var(--et-muted);
+  font-size: 0.73rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-trust-dashboard-item strong {
+  color: var(--et-ink);
+  font-size: clamp(1.18rem, 2vw, 1.6rem);
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-trust-dashboard-item p {
+  margin: 0;
+  color: var(--et-muted);
+  font-size: 0.84rem;
+  line-height: 1.38;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-community-safety-checklist {
+  display: grid;
+  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+  gap: 12px;
+  align-items: start;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2) 22%, var(--et-border));
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--et-page-accent-2) 12%, transparent), transparent 11rem),
+    color-mix(in srgb, var(--et-panel-soft) 88%, transparent);
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-community-safety-checklist strong {
+  display: block;
+  margin-top: 3px;
+  color: var(--et-ink);
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-community-safety-checklist p {
+  margin: 6px 0 0;
+  color: var(--et-muted);
+  line-height: 1.4;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-community-safety-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-community-safety-list span {
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent) 18%, var(--et-border));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--et-panel-soft) 80%, transparent);
+  color: var(--et-ink);
+  font-size: 0.84rem;
+  font-weight: 850;
+}
+
 html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-tabs {
   display: flex !important;
   flex-wrap: nowrap !important;
@@ -97174,8 +97257,8 @@ html body #root .app.app-shell-dark.app-command-shell.app-tidepool .tidepool-moc
   color: #f8fbff !important;
 }
 
-html body #root .app.app-theme-dark.app-command-shell.app-tidepool .tidepool-mockup-rebuild :where(.tidepool-circle-safety-note, .tidepool-circle-form-card, .tidepool-circle-safety-strip, .tidepool-circle-entry),
-html body #root .app.app-shell-dark.app-command-shell.app-tidepool .tidepool-mockup-rebuild :where(.tidepool-circle-safety-note, .tidepool-circle-form-card, .tidepool-circle-safety-strip, .tidepool-circle-entry) {
+html body #root .app.app-theme-dark.app-command-shell.app-tidepool .tidepool-mockup-rebuild :where(.tidepool-circle-safety-note, .tidepool-circle-form-card, .tidepool-circle-safety-strip, .tidepool-circle-entry, .tidepool-trust-dashboard-item, .tidepool-community-safety-checklist, .tidepool-community-safety-list span),
+html body #root .app.app-shell-dark.app-command-shell.app-tidepool .tidepool-mockup-rebuild :where(.tidepool-circle-safety-note, .tidepool-circle-form-card, .tidepool-circle-safety-strip, .tidepool-circle-entry, .tidepool-trust-dashboard-item, .tidepool-community-safety-checklist, .tidepool-community-safety-list span) {
   border-color: color-mix(in srgb, var(--et-page-accent-2) 18%, rgba(255, 255, 255, 0.13)) !important;
   background:
     radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--et-page-accent-2) 10%, transparent), transparent 11rem),
@@ -97200,8 +97283,8 @@ html body #root .app.app-shell-dark.app-command-shell.app-tidepool .tidepool-moc
   color: rgba(232, 246, 255, 0.78) !important;
 }
 
-html body #root .app.app-theme-dark.app-command-shell.app-tidepool .tidepool-mockup-rebuild :where(.tidepool-circle-safety-note span, .tidepool-circle-safety-strip span, .tidepool-circle-form-card p, .tidepool-circle-entry small),
-html body #root .app.app-shell-dark.app-command-shell.app-tidepool .tidepool-mockup-rebuild :where(.tidepool-circle-safety-note span, .tidepool-circle-safety-strip span, .tidepool-circle-form-card p, .tidepool-circle-entry small) {
+html body #root .app.app-theme-dark.app-command-shell.app-tidepool .tidepool-mockup-rebuild :where(.tidepool-circle-safety-note span, .tidepool-circle-safety-strip span, .tidepool-circle-form-card p, .tidepool-circle-entry small, .tidepool-trust-dashboard-item p, .tidepool-community-safety-checklist p),
+html body #root .app.app-shell-dark.app-command-shell.app-tidepool .tidepool-mockup-rebuild :where(.tidepool-circle-safety-note span, .tidepool-circle-safety-strip span, .tidepool-circle-form-card p, .tidepool-circle-entry small, .tidepool-trust-dashboard-item p, .tidepool-community-safety-checklist p) {
   color: rgba(232, 246, 255, 0.78) !important;
 }
 
@@ -97211,10 +97294,15 @@ html body #root .app.app-shell-dark.app-command-shell.app-tidepool .tidepool-moc
   }
 
   html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-trust-grid,
+  html body #root .app.app-command-shell.app-tidepool .tidepool-trust-dashboard-grid,
   html body #root .app.app-command-shell.app-tidepool .tidepool-live-section-grid,
   html body #root .app.app-command-shell.app-tidepool .tidepool-moderation-grid,
   html body #root .app.app-command-shell.app-tidepool .tidepool-preview-feed {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-tidepool .tidepool-community-safety-checklist {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -97282,12 +97370,18 @@ html body #root .app.app-shell-dark.app-command-shell.app-tidepool .tidepool-moc
 
   html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-stat-grid,
   html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-trust-grid,
+  html body #root .app.app-command-shell.app-tidepool .tidepool-trust-dashboard-grid,
+  html body #root .app.app-command-shell.app-tidepool .tidepool-community-safety-checklist,
   html body #root .app.app-command-shell.app-tidepool .tidepool-live-section-grid,
   html body #root .app.app-command-shell.app-tidepool .tidepool-moderation-grid,
   html body #root .app.app-command-shell.app-tidepool .tidepool-preview-feed,
   html body #root .app.app-command-shell.app-tidepool .tidepool-circle-list,
   html body #root .app.app-command-shell.app-tidepool .tidepool-circle-form-grid {
     grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell.app-tidepool .tidepool-community-safety-list {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   html body #root .app.app-command-shell.app-tidepool .tidepool-circle-role-row span,

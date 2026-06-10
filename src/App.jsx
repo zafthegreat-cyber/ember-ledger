@@ -2683,6 +2683,11 @@ const TIDEPOOL_FEED_FILTERS = [
 ];
 const TIDEPOOL_PRIMARY_TABS = ["Feed", "Local", "Events", "Following", "My Posts"];
 const TIDEPOOL_TRUSTED_CIRCLE_TYPES = [
+  "Friend",
+  "Shop",
+  "Seller",
+  "Parent",
+  "Event Helper",
   "Family Friend",
   "Trusted Shop",
   "Trusted Seller",
@@ -2731,7 +2736,9 @@ const BLANK_TIDEPOOL_CIRCLE_FORM = {
   name: "",
   roleType: "Family Friend",
   contactNote: "",
+  contactMethod: "",
   relationshipNote: "",
+  reminderNotes: "",
   circleStatus: "Not Verified Yet",
   safetyNotes: "",
   dateAdded: "",
@@ -4436,18 +4443,23 @@ function createDefaultTidepoolData() {
 }
 
 function normalizeTidepoolCircleEntry(entry = {}) {
-  const roleType = TIDEPOOL_TRUSTED_CIRCLE_TYPES.includes(entry.roleType) ? entry.roleType : "Other";
+  const rawRoleType = entry.roleType || entry.relationshipType || entry.type || "";
+  const roleType = TIDEPOOL_TRUSTED_CIRCLE_TYPES.includes(rawRoleType) ? rawRoleType : "Other";
   const circleStatus = TIDEPOOL_CIRCLE_STATUS_OPTIONS.includes(entry.circleStatus) ? entry.circleStatus : "Not Verified Yet";
   return {
     ...entry,
     name: String(entry.name || "").trim(),
     roleType,
-    contactNote: String(entry.contactNote || "").trim(),
-    relationshipNote: String(entry.relationshipNote || "").trim(),
+    relationshipType: roleType,
+    contactNote: String(entry.contactNote || entry.circleNote || "").trim(),
+    contactMethod: String(entry.contactMethod || entry.contact_method || "").trim(),
+    relationshipNote: String(entry.relationshipNote || entry.trustNotes || "").trim(),
+    reminderNotes: String(entry.reminderNotes || entry.reminder_notes || "").trim(),
     circleStatus,
     safetyNotes: String(entry.safetyNotes || "").trim(),
     dateAdded: entry.dateAdded || getLocalDateKey(),
     verificationClaim: "not_verified",
+    invitationStatus: "not_sent",
   };
 }
 
@@ -47435,6 +47447,47 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       type,
       count: tidepoolCircleEntries.filter((entry) => entry.roleType === type).length,
     })).filter((entry) => entry.count > 0);
+    const tidepoolShopFamilyNoteCount = tidepoolCircleEntries.filter((entry) => (
+      /shop|seller|family|friend|parent|spark/i.test(`${entry.roleType || ""} ${entry.relationshipNote || ""}`)
+    )).length;
+    const tidepoolFollowUpCount = tidepoolCircleEntries.filter((entry) => (
+      entry.reminderNotes || entry.circleStatus === "Invite Later"
+    )).length;
+    const tidepoolTrustDashboardCards = [
+      {
+        title: "Trusted Circle entries",
+        value: tidepoolCircleEntries.length,
+        detail: tidepoolCircleEntries.length ? "Private local notes saved for your own review." : "Add a private circle note when someone feels worth remembering.",
+      },
+      {
+        title: "Shop/family notes",
+        value: tidepoolShopFamilyNoteCount,
+        detail: "Shops, parents, helpers, friends, and Spark supporters stay local-only here.",
+      },
+      {
+        title: "People to follow up with",
+        value: tidepoolFollowUpCount,
+        detail: "Reminder notes help you remember who to check with later. No invites are sent.",
+      },
+      {
+        title: "Trade/community safety reminders",
+        value: 6,
+        detail: "Use the checklist before meeting, trading, buying, or sharing details.",
+      },
+      {
+        title: "Future community preview",
+        value: "Preview",
+        detail: "Future tools may add reviewed community workflows, but this beta does not verify people.",
+      },
+    ];
+    const tidepoolCommunitySafetyChecklist = [
+      "Meet in public.",
+      "Check references.",
+      "Avoid pressure.",
+      "Verify prices independently.",
+      "Protect kids' info.",
+      "No guarantee or verification language.",
+    ];
     const tidepoolPreviewCards = [
       {
         type: "Trusted shop update",
@@ -47529,6 +47582,33 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </EtMockupSectionCard>
 
           <EtMockupSectionCard
+            title="Tidepool trust dashboard"
+            detail="Local trust notes, follow-ups, and safety reminders for community collecting. Planning only; no verification or invitations are connected."
+            className="tidepool-trust-dashboard-card"
+            action={<EtMockupPill tone="beta">Local beta</EtMockupPill>}
+          >
+            <div className="tidepool-trust-dashboard-grid" aria-label="Tidepool trust dashboard cards">
+              {tidepoolTrustDashboardCards.map((card) => (
+                <article className="tidepool-trust-dashboard-item" key={card.title}>
+                  <span>{card.title}</span>
+                  <strong>{card.value}</strong>
+                  <p>{card.detail}</p>
+                </article>
+              ))}
+            </div>
+            <div className="tidepool-community-safety-checklist" aria-label="Community Safety Checklist">
+              <div>
+                <span className="section-kicker">Community Safety Checklist</span>
+                <strong>Before meeting, trading, or following up</strong>
+                <p>These reminders are local guidance only. Ember &amp; Tide does not guarantee, verify, invite, or background-check anyone.</p>
+              </div>
+              <div className="tidepool-community-safety-list">
+                {tidepoolCommunitySafetyChecklist.map((item) => <span key={item}>{item}</span>)}
+              </div>
+            </div>
+          </EtMockupSectionCard>
+
+          <EtMockupSectionCard
             title="Trusted Circle"
             detail="Private notes for family friends, trusted shops, sellers, Spark partners, and community helpers you may want to remember."
             className="tidepool-trusted-circle-card"
@@ -47549,21 +47629,22 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <article className="tidepool-circle-entry" key={entry.id || `${entry.name}-${entry.dateAdded}`}>
                     <div className="compact-card-header">
                       <div>
-                        <span className="section-kicker">{entry.roleType}</span>
+                        <span className="section-kicker">{entry.relationshipType || entry.roleType}</span>
                         <strong>{entry.name}</strong>
                       </div>
                       <span className="status-badge">{entry.circleStatus}</span>
                     </div>
-                    <p>{entry.relationshipNote || entry.safetyNotes || "Private circle note saved locally for your own review."}</p>
+                    <p>{entry.relationshipNote || entry.safetyNotes || "Private trust note saved locally for your own review."}</p>
+                    {entry.reminderNotes ? <small>Reminder notes: {entry.reminderNotes}</small> : <small>Reminder notes can be added when you want to follow up later.</small>}
                     <small>{entry.dateAdded || "Date not saved"} | Not Verified Yet | No invites sent</small>
-                    {entry.contactNote ? <small>Private Circle Note saved locally. Contact details are not shown publicly.</small> : null}
+                    {entry.contactMethod || entry.contactNote ? <small>Private contact method/Circle Note saved locally. Contact details are not shown publicly.</small> : null}
                   </article>
                 ))}
               </div>
             ) : (
               <EtMockupEmptyState
                 title="Your Trusted Circle is waiting for its first helper."
-                detail="Add family friends, trusted shops, sellers, sponsors, or community helpers you may want to remember. Upgraded plans can expand private circle capacity and reviewed community tools when enabled."
+                detail="Add family friends, shops, sellers, parents, event helpers, sponsors, or community helpers you may want to remember now. Future community tools are preview-only and will not verify people from this local note."
                 action={<EtMockupButton onClick={openTidepoolTrustedCircleFlow}>Add to Circle</EtMockupButton>}
               />
             )}
@@ -51355,6 +51436,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <strong>Trusted Circle</strong>
           <p>Trusted Circle is your private note space. It does not verify people, run background checks, or replace your own safety judgment.</p>
           <p>Spark Partner can mark shops, sellers, or helpers who may want to support The Spark through gifts, events, or family-friendly collecting.</p>
+          <p>Privacy helper: use general contact methods or reminders only. Do not store private child details, passwords, payment details, or sensitive account information.</p>
         </section>
 
         <div className="tidepool-circle-form-grid">
@@ -51366,7 +51448,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               required
             />
           </Field>
-          <Field label="Role / type">
+          <Field label="Relationship / type">
             <select value={tidepoolCircleForm.roleType} onChange={(event) => updateTidepoolCircleField("roleType", event.target.value)}>
               {TIDEPOOL_TRUSTED_CIRCLE_TYPES.map((type) => <option key={type}>{type}</option>)}
             </select>
@@ -51385,6 +51467,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </Field>
         </div>
 
+        <Field label="Contact method">
+          <input
+            value={tidepoolCircleForm.contactMethod}
+            onChange={(event) => updateTidepoolCircleField("contactMethod", event.target.value)}
+            placeholder="Optional private text: shop counter, parent chat, event table, ask in person..."
+          />
+        </Field>
+
         <Field label="Circle Note">
           <textarea
             value={tidepoolCircleForm.contactNote}
@@ -51393,11 +51483,19 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             rows={2}
           />
         </Field>
-        <Field label="Relationship note">
+        <Field label="Trust notes">
           <textarea
             value={tidepoolCircleForm.relationshipNote}
             onChange={(event) => updateTidepoolCircleField("relationshipNote", event.target.value)}
             placeholder="How do you know this person, shop, seller, or helper?"
+            rows={2}
+          />
+        </Field>
+        <Field label="Reminder notes">
+          <textarea
+            value={tidepoolCircleForm.reminderNotes}
+            onChange={(event) => updateTidepoolCircleField("reminderNotes", event.target.value)}
+            placeholder="What should you follow up on later? No messages or invitations are sent."
             rows={2}
           />
         </Field>
@@ -51412,7 +51510,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
         <section className="tidepool-circle-safety-strip" aria-label="Trusted Circle safety limits">
           <strong>Not Verified Yet</strong>
-          <span>Invite Later is a placeholder only. No messages or invites are sent. Do not store private child details, passwords, payment details, or sensitive contact information.</span>
+          <span>Invite Later is a placeholder only. No messages or invites are sent. Ember &amp; Tide does not verify people, background-check anyone, guarantee safety, or publish this local note.</span>
         </section>
 
         {tidepoolCircleMessage ? <p className="field-error trade-value-message" role="status">{tidepoolCircleMessage}</p> : null}
