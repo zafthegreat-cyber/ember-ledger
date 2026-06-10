@@ -114,6 +114,18 @@ assert.ok(
     cssSource.includes("backface-visibility: hidden"),
   "Collector Showcase surfaces should use lightweight containment, compact list previews, and GPU-safe transforms."
 );
+assert.ok(
+  appSource.includes("Visual display mode. Open item profile.") &&
+    appSource.includes("Visual display mode. Card details are shown as text.") &&
+    appSource.includes("Visual display mode. Open item profile details.") &&
+    appSource.includes("Visual display mode. Check sealed condition manually.") &&
+    appSource.includes("sealed product shelf card") &&
+    cssSource.includes("button.collector-showcase-card:focus-visible") &&
+    cssSource.includes(".collector-flip-card > summary:focus-visible") &&
+    cssSource.includes(".vault-gallery-tile:focus-visible") &&
+    cssSource.includes("@media (prefers-reduced-motion: reduce)"),
+  "Collector Showcase surfaces should expose keyboard focus states, reduced-motion fallback, and screen-reader helper text."
+);
 assert.equal(
   /(showcase|flip)[^.]{0,100}(authenticat|grade verified|product verified|live market|guaranteed price|official scan)/i.test(appSource),
   false,

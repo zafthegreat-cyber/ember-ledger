@@ -6551,6 +6551,9 @@ function CollectorShowcaseCard({
   const componentProps = onClick
     ? { type: "button", onClick, "aria-label": ariaLabel || `Open ${title}` }
     : { "aria-label": ariaLabel || `${title} collector showcase` };
+  const screenReaderHint = onClick
+    ? "Visual display mode. Open item profile."
+    : "Visual display mode. Card details are shown as text.";
   const metaItems = [...new Set([kindLabel, rarityLabel, ...(Array.isArray(meta) ? meta : [meta]).filter(Boolean)])].slice(0, 4);
   return (
     <Component
@@ -6583,6 +6586,7 @@ function CollectorShowcaseCard({
         </span>
       </span>
       <span className="collector-showcase-copy">
+        <span className="sr-only">{screenReaderHint}</span>
         <span className="collector-showcase-kicker">3D Collector Showcase</span>
         <strong>{title}</strong>
         {subtitle ? <small>{subtitle}</small> : null}
@@ -6619,8 +6623,12 @@ function CollectorFlipDetailCard({
     .filter((row) => row?.label);
   const safeActions = actions.filter(Boolean);
   return (
-    <details className={`collector-flip-card collector-flip-${normalizedKind} collector-flip-${mode} ${className}`.trim()}>
+    <details
+      className={`collector-flip-card collector-flip-${normalizedKind} collector-flip-${mode} ${className}`.trim()}
+      aria-label={ariaLabel || `${title} visual detail card`}
+    >
       <summary aria-label={ariaLabel || `Flip details for ${title}`}>
+        <span className="sr-only">Visual display mode. Open item profile details.</span>
         <CollectorShowcaseCard
           title={title}
           subtitle={subtitle}
@@ -6704,7 +6712,10 @@ function SealedProductShelfCard({
   const shelf = sealedProductShelfMeta({ name: title, productType: subtitle, category: meta.join(" ") });
   const metaItems = [...new Set([shelf.label, "Sealed", ...(Array.isArray(meta) ? meta : [meta]).filter(Boolean)])].slice(0, 4);
   return (
-    <article className={`sealed-product-shelf-card sealed-shelf-${shelf.key} ${image ? "has-image" : "is-fallback"} ${className}`.trim()}>
+    <article
+      className={`sealed-product-shelf-card sealed-shelf-${shelf.key} ${image ? "has-image" : "is-fallback"} ${className}`.trim()}
+      aria-label={`${title} sealed product shelf card`}
+    >
       <div className="sealed-product-shelf-visual" aria-hidden="true">
         <span className="sealed-product-shelf-board" />
         <span className="sealed-product-shelf-object">
@@ -6717,6 +6728,7 @@ function SealedProductShelfCard({
         </span>
       </div>
       <div className="sealed-product-shelf-copy">
+        <span className="sr-only">Visual display mode. Check sealed condition manually.</span>
         <span className="collector-showcase-kicker">Sealed Product Shelf</span>
         <h4>{title}</h4>
         {subtitle ? <p>{subtitle}</p> : null}
