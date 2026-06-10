@@ -100299,6 +100299,160 @@ html body #root .app.app-shell-dark .upgrade-plan-comparison-preview {
   }
 }
 
+/* Collector Event Planner: local beta only, no RSVP/ticketing/payment/public listing. */
+html body #root .app.app-command-shell .collector-event-planner-card,
+html body #root .app.app-shell-dark .collector-event-planner-card,
+.collector-event-flow {
+  border-color: color-mix(in srgb, var(--et-page-accent-2, var(--et-shell-gold)) 26%, var(--et-border, rgba(255, 255, 255, 0.12)));
+  background:
+    radial-gradient(circle at 96% 0%, color-mix(in srgb, var(--et-page-accent-2, var(--et-shell-gold)) 14%, transparent), transparent 11rem),
+    radial-gradient(circle at 2% 100%, color-mix(in srgb, var(--et-page-accent, var(--et-shell-accent)) 10%, transparent), transparent 14rem),
+    linear-gradient(180deg, color-mix(in srgb, var(--et-panel, var(--et-shell-panel)) 92%, transparent), color-mix(in srgb, var(--et-panel-soft, var(--et-shell-soft)) 96%, transparent));
+  box-shadow:
+    0 14px 34px color-mix(in srgb, var(--et-page-accent, var(--et-shell-accent)) 9%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 16%, transparent);
+}
+
+.collector-event-helper-card,
+.collector-event-form-card,
+.collector-event-hero-card {
+  display: grid;
+  gap: 9px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2, var(--et-shell-gold)) 24%, var(--et-border, rgba(255, 255, 255, 0.12)));
+  border-radius: 19px;
+  background: color-mix(in srgb, var(--et-panel-soft, var(--et-shell-soft)) 86%, transparent);
+}
+
+.collector-event-helper-card strong,
+.collector-event-form-card h4,
+.collector-event-hero-card h3,
+.collector-event-row strong {
+  margin: 0;
+  color: var(--et-ink, var(--et-shell-ink));
+}
+
+.collector-event-helper-card span,
+.collector-event-helper-card small,
+.collector-event-form-card p,
+.collector-event-hero-card p,
+.collector-event-row small {
+  margin: 0;
+  color: var(--et-muted, var(--et-shell-muted));
+  line-height: 1.42;
+}
+
+.collector-event-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.collector-event-type-cloud,
+.collector-event-safety-strip,
+.collector-event-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.collector-event-type-cloud span,
+.collector-event-safety-strip span,
+.collector-event-row > div:last-child span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 6px 9px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2, var(--et-shell-gold)) 22%, var(--et-border, rgba(255, 255, 255, 0.12)));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--et-page-accent-2, var(--et-shell-gold)) 9%, var(--et-panel-soft, var(--et-shell-soft)));
+  color: var(--et-ink, var(--et-shell-ink));
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.collector-event-list,
+.collector-event-flow {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.collector-event-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(11rem, auto);
+  gap: 10px;
+  align-items: start;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2, var(--et-shell-gold)) 20%, var(--et-border, rgba(255, 255, 255, 0.12)));
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--et-page-accent-2, var(--et-shell-gold)) 10%, transparent), transparent 9rem),
+    color-mix(in srgb, var(--et-panel-soft, var(--et-shell-soft)) 88%, transparent);
+}
+
+.collector-event-row > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.collector-event-row > div:last-child {
+  justify-items: end;
+  text-align: right;
+}
+
+.collector-event-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.collector-event-form-card textarea {
+  min-height: 94px;
+}
+
+.flow-modal[data-flow="collectorEventPlanner"] .flow-modal-footer {
+  align-items: stretch;
+}
+
+@media (max-width: 760px) {
+  .collector-event-summary-grid,
+  .collector-event-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .collector-event-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .collector-event-row > div:last-child {
+    justify-items: start;
+    text-align: left;
+  }
+}
+
+@media (max-width: 520px) {
+  .collector-event-summary-grid,
+  .collector-event-form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .collector-event-helper-card,
+  .collector-event-form-card,
+  .collector-event-hero-card {
+    padding: 12px;
+    border-radius: 17px;
+  }
+
+  .collector-event-actions button {
+    width: 100%;
+  }
+}
+
 /* Wishlist / ISO: local collector planning only, no matching or seller offers. */
 html body #root .app.app-command-shell .wishlist-iso-planning-card,
 html body #root .app.app-shell-dark .wishlist-iso-planning-card,

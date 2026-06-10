@@ -65,10 +65,21 @@ assert.ok(
     appSource.includes("No automatic matching or seller offers."),
   "Menu should expose a safe Wishlist / ISO shortcut into the local planning surface."
 );
+assert.ok(
+  appSource.includes("<strong>Event Planner</strong>") &&
+    appSource.includes("runMenuAction(openCollectorEventPlannerSurface)") &&
+    appSource.includes("No RSVP, tickets, payments, or public listings."),
+  "Menu should expose a safe Event Planner shortcut into the local collector planning surface."
+);
 assert.equal(
   /matched with sellers|seller offers are live|automatic matching is live|guaranteed seller offers/i.test(appSource),
   false,
   "Wishlist / ISO should not claim live matching or seller offers."
+);
+assert.equal(
+  /RSVPs are live|ticketing is live|payments are live|public event listing is live|shops are verified|calendar sync is live|notifications are sent/i.test(appSource),
+  false,
+  "Event Planner should not claim live RSVPs, ticketing, payments, public listings, shop verification, calendar sync, or notifications."
 );
 assert.ok(
   cssSource.includes('.flow-modal[data-flow="addActionSheet"]') &&

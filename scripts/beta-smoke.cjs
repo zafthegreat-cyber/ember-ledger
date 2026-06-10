@@ -558,6 +558,7 @@ async function main() {
     await assertVisibleText("Forge Reminder");
     await assertVisibleText("Market Reminder");
     await assertVisibleText("Wishlist / ISO");
+    await assertVisibleText("Event Planner");
     await assertVisibleText("Spark Moment");
     await assertVisibleText("Keep Building");
     await assertVisibleText("Open Next");
@@ -580,6 +581,15 @@ async function main() {
     await page.locator(".upgrade-value-preview-card-hearth").getByRole("button", { name: /^Compare Plans$/ }).first().click();
     await assertVisibleText("Membership Foundation");
     await assertVisibleText("No payment flow is connected.");
+    await nav("Hearth");
+    const hearthEventCard = page.locator(".hearth-daily-command-card").filter({ hasText: "Event Planner" }).first();
+    await expectVisible(hearthEventCard, "Hearth Event Planner card");
+    await hearthEventCard.getByRole("button", { name: "Plan Event", exact: true }).click();
+    const hearthEventModal = page.locator('.flow-modal[data-flow="collectorEventPlanner"]').first();
+    await expectVisible(hearthEventModal, "Hearth Event Planner modal");
+    await expectVisible(hearthEventModal.getByText("Event Planner is local beta planning only.").first(), "Event Planner local-only copy");
+    await hearthEventModal.getByRole("button", { name: "Close", exact: true }).first().click();
+    await hearthEventModal.waitFor({ state: "hidden", timeout: 5000 });
     await nav("Hearth");
     const hearthCommandRoutes = [
       { button: "Open Vault", expected: "Vault", label: "Collection Pulse" },
@@ -1250,6 +1260,48 @@ async function main() {
     await eventModal.getByRole("button", { name: "Close", exact: true }).first().click();
     await eventModal.waitFor({ state: "hidden", timeout: 5000 });
     await expectVisible(page.locator(".spark-event-support-row").filter({ hasText: "Focused Spark Family Day" }).first(), "The Spark saved Event Support row");
+    await assertVisibleText("Event Planner");
+    await assertVisibleText("Plan trade nights, shop visits, kid pack events, release days, giveaways, and family collecting activities. Local beta planning only.");
+    await assertVisibleText("No RSVP, ticketing, payment, public listing, calendar sync, notification, or shop verification is connected.");
+    const planCollectorEventAction = page.getByRole("button", { name: "Plan Event", exact: true }).first();
+    await expectVisible(planCollectorEventAction, "The Spark Event Planner action");
+    await planCollectorEventAction.click();
+    const collectorEventModal = page.locator('.flow-modal[data-flow="collectorEventPlanner"]').first();
+    await expectVisible(collectorEventModal, "Collector Event Planner modal");
+    await expectVisible(collectorEventModal.getByText("Event Planner is local beta planning only.").first(), "Collector Event Planner local-only disclaimer");
+    await collectorEventModal.getByLabel("Event name").fill("Focused Collector Trade Night");
+    await collectorEventModal.getByLabel("Event Type").selectOption("trade night");
+    await collectorEventModal.getByLabel("Date / time text").fill("Friday 6 PM");
+    await collectorEventModal.getByLabel("Location text").fill("Local shop table");
+    await collectorEventModal.getByLabel("People / shops involved").fill("Focused Friendly Shop and family collectors");
+    await collectorEventModal.getByLabel("Status").selectOption("planning");
+    await collectorEventModal.getByLabel("Supplies needed").fill("Trade binders, sleeves, snacks");
+    await collectorEventModal.getByLabel("Notes").fill("Local planner only. No public listing.");
+    await collectorEventModal.getByRole("button", { name: "Save Event", exact: true }).click();
+    await expectVisible(collectorEventModal.getByText("Collector event saved locally.").first(), "Collector Event Planner saved message");
+    await page.waitForFunction(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      return (data.collectorEventPlans || []).some((plan) => (
+        plan.eventName === "Focused Collector Trade Night" &&
+        plan.eventType === "trade night" &&
+        plan.status === "planning" &&
+        plan.rsvpStatus === "not_connected" &&
+        plan.ticketingStatus === "not_connected" &&
+        plan.paymentStatus === "not_connected" &&
+        plan.publicListingStatus === "not_listed" &&
+        plan.verificationStatus === "not_verified" &&
+        plan.calendarIntegration === "none"
+      ));
+    }, null, { timeout: 5000 });
+    await collectorEventModal.getByRole("button", { name: "Close", exact: true }).first().click();
+    await collectorEventModal.waitFor({ state: "hidden", timeout: 5000 });
+    await expectVisible(page.locator(".collector-event-row").filter({ hasText: "Focused Collector Trade Night" }).first(), "The Spark saved Collector Event row");
+    const sparkEventPlannerText = await page.locator("body").innerText();
+    assert.doesNotMatch(
+      sparkEventPlannerText,
+      /RSVPs are live|ticketing is live|payments are live|public event listing is live|shops are verified|calendar sync is live|notifications are sent/i,
+      "Event Planner should not claim RSVP, ticketing, payment, public listing, calendar sync, notifications, or shop verification"
+    );
   }
 
   async function focusedTidepoolTest() {
@@ -1267,12 +1319,15 @@ async function main() {
     await assertVisibleText("Trusted Circle");
     await assertVisibleText("Trusted Circle is your private note space. It does not verify people, run background checks, or replace your own safety judgment.");
     await assertVisibleText("Your Trusted Circle is waiting for its first helper.");
+    await assertVisibleText("Event Planner");
+    await assertVisibleText("Tidepool notes can help remember trusted contacts and community context. This planner does not publish events or verify shops.");
+    await assertVisibleText("No RSVP, ticketing, payment, public listing, calendar sync, notification, or shop verification is connected.");
     await assertVisibleText("Tidepool upgrade preview");
     const tidepoolInitialText = await page.locator("body").innerText();
     assert.doesNotMatch(
       tidepoolInitialText,
-      /users are verified|background checks complete|background-checked by Ember|invites? sent automatically|officially verified/i,
-      "Tidepool should not show fake verification, invite, or background-check claims"
+      /users are verified|background checks complete|background-checked by Ember|invites? sent automatically|officially verified|RSVPs are live|ticketing is live|payments are live|public event listing is live|shops are verified|calendar sync is live|notifications are sent/i,
+      "Tidepool should not show fake verification, invite, background-check, event listing, RSVP, ticketing, payment, calendar sync, or notification claims"
     );
     const addToCircleButton = page.getByRole("button", { name: "Add to Circle", exact: true }).first();
     await expectVisible(addToCircleButton, "Tidepool Add to Circle action");
@@ -1313,8 +1368,8 @@ async function main() {
     const tidepoolSavedText = await page.locator("body").innerText();
     assert.doesNotMatch(
       tidepoolSavedText,
-      /users are verified|background checks complete|background-checked by Ember|invites? sent automatically|officially verified/i,
-      "Saved Tidepool state should not show fake verification, invite, or background-check claims"
+      /users are verified|background checks complete|background-checked by Ember|invites? sent automatically|officially verified|RSVPs are live|ticketing is live|payments are live|public event listing is live|shops are verified|calendar sync is live|notifications are sent/i,
+      "Saved Tidepool state should not show fake verification, invite, background-check, event listing, RSVP, ticketing, payment, calendar sync, or notification claims"
     );
     await assertNoHorizontalOverflow("Tidepool Trusted Circle mobile");
     await page.setViewportSize({ width: 1366, height: 1600 });

@@ -2193,6 +2193,26 @@ const BLANK_SPARK_EVENT_SUPPORT_DRAFT = {
   eventStatus: "Planning",
   eventNotes: "",
 };
+const COLLECTOR_EVENT_TYPES = [
+  "trade night",
+  "shop visit",
+  "kid pack event",
+  "release day",
+  "family collecting",
+  "giveaway",
+  "other",
+];
+const COLLECTOR_EVENT_STATUSES = ["idea", "planning", "ready", "complete"];
+const BLANK_COLLECTOR_EVENT_PLAN = {
+  eventName: "",
+  eventType: "trade night",
+  dateTimeText: "",
+  locationText: "",
+  peopleShopsInvolved: "",
+  suppliesNeeded: "",
+  notes: "",
+  status: "idea",
+};
 const BLANK_TRADE_DRAFT = {
   id: "",
   sourceItemId: "",
@@ -2319,6 +2339,40 @@ function summarizeSparkEventSupportPlans(plans = {}) {
     packed: Number(statusCounts.Packed || 0),
     complete: Number(statusCounts.Complete || 0),
     latestPlan,
+  };
+}
+
+function normalizeCollectorEventPlanDraft(draft = {}) {
+  const normalizedType = String(draft.eventType || draft.type || "trade night").trim().toLowerCase();
+  const normalizedStatus = String(draft.status || draft.eventStatus || "idea").trim().toLowerCase();
+  return {
+    eventName: String(draft.eventName || draft.name || "").trim(),
+    eventType: COLLECTOR_EVENT_TYPES.includes(normalizedType) ? normalizedType : "other",
+    dateTimeText: String(draft.dateTimeText || draft.eventDateText || draft.dateText || draft.date || "").trim().slice(0, 120),
+    locationText: String(draft.locationText || draft.location || "").trim().slice(0, 160),
+    peopleShopsInvolved: String(draft.peopleShopsInvolved || draft.people || draft.shops || draft.partners || "").trim().slice(0, 240),
+    suppliesNeeded: String(draft.suppliesNeeded || draft.supplies || "").trim().slice(0, 400),
+    notes: String(draft.notes || draft.eventNotes || "").trim().slice(0, 500),
+    status: COLLECTOR_EVENT_STATUSES.includes(normalizedStatus) ? normalizedStatus : "idea",
+  };
+}
+
+function summarizeCollectorEventPlans(plans = []) {
+  const safePlans = Array.isArray(plans) ? plans.map((plan) => ({ ...plan, ...normalizeCollectorEventPlanDraft(plan) })) : [];
+  const statusCounts = safePlans.reduce((acc, plan) => {
+    acc[plan.status] = Number(acc[plan.status] || 0) + 1;
+    return acc;
+  }, {});
+  const latestPlan = [...safePlans].sort((a, b) => String(b.dateTimeText || b.createdAt || "").localeCompare(String(a.dateTimeText || a.createdAt || "")))[0] || null;
+  const upcomingPlans = safePlans.filter((plan) => !["complete"].includes(plan.status));
+  return {
+    totalEvents: safePlans.length,
+    idea: Number(statusCounts.idea || 0),
+    planning: Number(statusCounts.planning || 0),
+    ready: Number(statusCounts.ready || 0),
+    complete: Number(statusCounts.complete || 0),
+    latestPlan,
+    upcomingPlans,
   };
 }
 
@@ -6129,9 +6183,9 @@ function EtMockupButton({ children, onClick, variant = "primary", className = ""
   );
 }
 
-function EtMockupSectionCard({ title, detail, action = null, className = "", children, ariaLabel = "", sectionRef = null }) {
+function EtMockupSectionCard({ title, detail, action = null, className = "", children, ariaLabel = "", sectionRef = null, id = "" }) {
   return (
-    <section ref={sectionRef} className={`et-mockup-section-card ${className}`.trim()} aria-label={ariaLabel || title}>
+    <section id={id || undefined} ref={sectionRef} className={`et-mockup-section-card ${className}`.trim()} aria-label={ariaLabel || title}>
       <div className="et-mockup-section-heading">
         <div>
           <h2>{title}</h2>
@@ -6453,6 +6507,10 @@ export default function App() {
   const [sparkEventSupportDraft, setSparkEventSupportDraft] = useState(BLANK_SPARK_EVENT_SUPPORT_DRAFT);
   const [sparkEventSupportMessage, setSparkEventSupportMessage] = useState("");
   const [sparkEventSupportSaving, setSparkEventSupportSaving] = useState(false);
+  const [collectorEventPlans, setCollectorEventPlans] = useState([]);
+  const [collectorEventDraft, setCollectorEventDraft] = useState(BLANK_COLLECTOR_EVENT_PLAN);
+  const [collectorEventMessage, setCollectorEventMessage] = useState("");
+  const [collectorEventSaving, setCollectorEventSaving] = useState(false);
   const [sponsorForm, setSponsorForm] = useState({
     name: "",
     businessName: "",
@@ -16068,6 +16126,7 @@ export default function App() {
       setSparkGifts(Array.isArray(saved.sparkGifts) ? saved.sparkGifts.map((gift) => ({ ...gift, ...normalizeSparkGiftDraft(gift) })) : []);
       setSparkKidPacks(Array.isArray(saved.sparkKidPacks) ? saved.sparkKidPacks.map((pack) => ({ ...pack, ...normalizeSparkKidPackDraft(pack) })) : []);
       setSparkEventPlans(Array.isArray(saved.sparkEventPlans) ? saved.sparkEventPlans.map((plan) => ({ ...plan, ...normalizeSparkEventSupportDraft(plan) })) : []);
+      setCollectorEventPlans(Array.isArray(saved.collectorEventPlans) ? saved.collectorEventPlans.map((plan) => ({ ...plan, ...normalizeCollectorEventPlanDraft(plan) })) : []);
       setVehicles(saved.vehicles || []);
       setMileageTrips(migrateRecordsToWorkspace(saved.mileageTrips || [], personalWorkspace?.id || DEFAULT_PERSONAL_WORKSPACE_ID, workspaceState.workspaces));
       setDealForm({
@@ -16476,6 +16535,7 @@ export default function App() {
         sparkGifts,
         sparkKidPacks,
         sparkEventPlans,
+        collectorEventPlans,
         vehicles,
         mileageTrips,
         workspaces,
@@ -16507,7 +16567,7 @@ export default function App() {
         },
       })
     );
-  }, [items, purchasers, catalogProducts, tideTradrWatchlist, marketplaceListings, marketplaceReports, marketplaceSavedIds, tideTradrLookupId, marketPriceCache, marketPriceMemories, vaultCollectionSets, userSearchAliases, expenses, sales, tradeRecords, sparkGifts, sparkKidPacks, sparkEventPlans, vehicles, mileageTrips, workspaces, workspaceMembers, workspaceInvites, activeWorkspaceId, forgeModeSettings, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, resolvedAppTheme, appSetupPersonalization, cloudSyncPreference, locationSettings, subscriptionProfile, currentUserProfile, adminModeStorageReady, adminViewMode, localDataLoaded]);
+  }, [items, purchasers, catalogProducts, tideTradrWatchlist, marketplaceListings, marketplaceReports, marketplaceSavedIds, tideTradrLookupId, marketPriceCache, marketPriceMemories, vaultCollectionSets, userSearchAliases, expenses, sales, tradeRecords, sparkGifts, sparkKidPacks, sparkEventPlans, collectorEventPlans, vehicles, mileageTrips, workspaces, workspaceMembers, workspaceInvites, activeWorkspaceId, forgeModeSettings, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, resolvedAppTheme, appSetupPersonalization, cloudSyncPreference, locationSettings, subscriptionProfile, currentUserProfile, adminModeStorageReady, adminViewMode, localDataLoaded]);
 
   useEffect(() => {
     if (!BETA_LOCAL_MODE || !localDataLoaded) return;
@@ -19651,6 +19711,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (type === "sparkGift") return formsDiffer(sparkGiftDraft, flowModalBaselineRef.current.sparkGift || BLANK_SPARK_GIFT_DRAFT);
     if (type === "sparkKidPack") return formsDiffer(sparkKidPackDraft, flowModalBaselineRef.current.sparkKidPack || BLANK_SPARK_KID_PACK_DRAFT);
     if (type === "sparkEventSupport") return formsDiffer(sparkEventSupportDraft, flowModalBaselineRef.current.sparkEventSupport || BLANK_SPARK_EVENT_SUPPORT_DRAFT);
+    if (type === "collectorEventPlanner") return formsDiffer(collectorEventDraft, flowModalBaselineRef.current.collectorEventPlanner || BLANK_COLLECTOR_EVENT_PLAN);
     return false;
   }
 
@@ -19759,6 +19820,11 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       setSparkEventSupportDraft(BLANK_SPARK_EVENT_SUPPORT_DRAFT);
       setSparkEventSupportMessage("");
       setSparkEventSupportSaving(false);
+    }
+    if (type === "collectorEventPlanner") {
+      setCollectorEventDraft(BLANK_COLLECTOR_EVENT_PLAN);
+      setCollectorEventMessage("");
+      setCollectorEventSaving(false);
     }
   }
 
@@ -25019,6 +25085,64 @@ function mapCatalog(row) {
     setSparkEventSupportMessage("Event Support plan saved locally. This is not payment processing, fulfillment, shipping, or a tax receipt.");
     setSparkEventSupportSaving(false);
     setVaultToast("Event Support plan saved locally.");
+  }
+
+  function openCollectorEventPlannerFlow(options = {}) {
+    const draft = normalizeCollectorEventPlanDraft({
+      ...BLANK_COLLECTOR_EVENT_PLAN,
+      ...options.seed,
+    });
+    setCollectorEventDraft(draft);
+    setCollectorEventMessage("");
+    setCollectorEventSaving(false);
+    flowModalBaselineRef.current.collectorEventPlanner = draft;
+    openFlowModal("collectorEventPlanner", { size: "medium", source: options.source || "collector-event-planner" });
+  }
+
+  function openCollectorEventPlannerSurface() {
+    setActiveTab("kidsProgram");
+    setSparkFlowView("home");
+    if (typeof window !== "undefined") {
+      window.setTimeout(() => document.getElementById("collector-event-planner-section")?.scrollIntoView?.({ block: "start", behavior: "smooth" }), 80);
+    }
+  }
+
+  function updateCollectorEventDraftField(field, value) {
+    setCollectorEventDraft((current) => normalizeCollectorEventPlanDraft({ ...current, [field]: value }));
+    setCollectorEventMessage("");
+  }
+
+  function saveCollectorEventPlan(event) {
+    event?.preventDefault?.();
+    if (collectorEventSaving) return;
+    const draft = normalizeCollectorEventPlanDraft(collectorEventDraft);
+    if (!draft.eventName) {
+      setCollectorEventMessage("Add an event name before saving this collector event.");
+      return;
+    }
+    setCollectorEventSaving(true);
+    const now = new Date().toISOString();
+    const record = {
+      id: makeId("collector-event"),
+      ...draft,
+      createdAt: now,
+      updatedAt: now,
+      savedBy: user?.id || "local-beta",
+      source: "local-collector-event-planner",
+      planningMode: "local_beta_only",
+      rsvpStatus: "not_connected",
+      ticketingStatus: "not_connected",
+      paymentStatus: "not_connected",
+      publicListingStatus: "not_listed",
+      verificationStatus: "not_verified",
+      calendarIntegration: "none",
+    };
+    setCollectorEventPlans((current) => [record, ...current]);
+    setCollectorEventDraft(draft);
+    flowModalBaselineRef.current.collectorEventPlanner = draft;
+    setCollectorEventMessage("Collector event saved locally. This is a local beta planning tool with no RSVP, ticketing, payment, public listing, or shop verification.");
+    setCollectorEventSaving(false);
+    setVaultToast("Collector event saved locally.");
   }
 
   function vaultForgeTransferEntries(transfer = vaultForgeTransfer) {
@@ -41904,6 +42028,73 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     );
   }
 
+  function renderCollectorEventRow(plan) {
+    const normalizedPlan = normalizeCollectorEventPlanDraft(plan);
+    return (
+      <article className={`collector-event-row status-${normalizedPlan.status}`} key={plan.id || `${normalizedPlan.eventName}-${plan.createdAt}`}>
+        <div>
+          <span className="section-kicker">Collector Event</span>
+          <strong>{normalizedPlan.eventName || "Collector event"}</strong>
+          <small>{[normalizedPlan.eventType, normalizedPlan.dateTimeText || "Date/time TBD", normalizedPlan.locationText || "Location TBD"].filter(Boolean).join(" | ")}</small>
+          <small>{normalizedPlan.suppliesNeeded ? `Supplies: ${normalizedPlan.suppliesNeeded}` : "Supplies can be added later."}</small>
+        </div>
+        <div>
+          <span>Local planner only</span>
+          <strong>{normalizedPlan.status}</strong>
+          <small>No RSVP, ticketing, payment, public listing, calendar sync, or shop verification</small>
+        </div>
+      </article>
+    );
+  }
+
+  function renderCollectorEventPlannerSection({ surface = "spark", compact = false } = {}) {
+    const collectorEventSummary = summarizeCollectorEventPlans(collectorEventPlans);
+    const recentCollectorEvents = [...collectorEventPlans]
+      .map((plan) => ({ ...plan, ...normalizeCollectorEventPlanDraft(plan) }))
+      .sort((a, b) => String(b.dateTimeText || b.createdAt || "").localeCompare(String(a.dateTimeText || a.createdAt || "")))
+      .slice(0, compact ? 3 : 4);
+    const surfaceHelper = surface === "tidepool"
+      ? "Tidepool notes can help remember trusted contacts and community context. This planner does not publish events or verify shops."
+      : "Use this next to Spark event support when a kid pack event or family collecting day needs supplies.";
+    const sectionId = surface === "spark" ? "collector-event-planner-section" : undefined;
+
+    return (
+      <EtMockupSectionCard
+        id={sectionId}
+        title="Event Planner"
+        detail="Plan trade nights, shop visits, kid pack events, release days, giveaways, and family collecting activities. Local beta planning only."
+        className={`collector-event-planner-card collector-event-planner-card--${surface}`}
+        ariaLabel="Event Planner local collector planning"
+        action={<EtMockupButton onClick={() => openCollectorEventPlannerFlow({ source: `${surface}-collector-event-planner` })}>Plan Event</EtMockupButton>}
+      >
+        <div className="collector-event-helper-card">
+          <strong>Local planner only</strong>
+          <span>No RSVP, ticketing, payment, public listing, calendar sync, notification, or shop verification is connected.</span>
+          <small>{surfaceHelper}</small>
+        </div>
+        <div className="et-mockup-stat-grid collector-event-summary-grid" aria-label="Event Planner summary">
+          <EtMockupStatCard label="Events" value={collectorEventSummary.totalEvents} detail="local collector plans" tone="gold" />
+          <EtMockupStatCard label="Planning / ready" value={collectorEventSummary.planning + collectorEventSummary.ready} detail="events in motion" tone={surface === "tidepool" ? "collector" : "pink"} />
+          <EtMockupStatCard label="Complete" value={collectorEventSummary.complete} detail="finished local plans" tone="gold" />
+        </div>
+        <div className="collector-event-type-cloud" aria-label="Event type options">
+          {COLLECTOR_EVENT_TYPES.map((type) => <span key={type}>{type}</span>)}
+        </div>
+        {recentCollectorEvents.length ? (
+          <div className="collector-event-list" aria-label="Saved collector events">
+            {recentCollectorEvents.map(renderCollectorEventRow)}
+          </div>
+        ) : (
+          <EtMockupEmptyState
+            title="No collector events planned yet."
+            detail="Plan a trade night, shop visit, kid pack event, release day, giveaway, or family collecting activity. This stays local and does not create public listings, RSVPs, tickets, or payments."
+            action={<EtMockupButton variant="secondary" onClick={() => openCollectorEventPlannerFlow({ source: `${surface}-collector-event-empty` })}>Plan Event</EtMockupButton>}
+          />
+        )}
+      </EtMockupSectionCard>
+    );
+  }
+
   function renderKidsProgramPage() {
     const email = accountEmail();
     const activeApplication = (betaReadinessData.kidsApplications || []).find((entry) => {
@@ -42387,6 +42578,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             />
           )}
         </EtMockupSectionCard>
+
+        {renderCollectorEventPlannerSection({ surface: "spark" })}
 
         <EtMockupSectionCard
           title="Giving Ledger"
@@ -47949,6 +48142,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </div>
           </EtMockupSectionCard>
 
+          {renderCollectorEventPlannerSection({ surface: "tidepool", compact: true })}
+
           {renderUpgradeValuePreview("tidepool")}
 
           <EtMockupSectionCard
@@ -49448,6 +49643,107 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     );
   }
 
+  function renderCollectorEventPlannerFlowContent() {
+    const normalizedDraft = normalizeCollectorEventPlanDraft(collectorEventDraft);
+    return (
+      <form className="collector-event-flow" onSubmit={saveCollectorEventPlan}>
+        <section className="collector-event-hero-card">
+          <span className="section-kicker">Event Planner</span>
+          <h3>Plan a local collector event.</h3>
+          <p>Organize trade nights, shop visits, kid pack events, release days, giveaways, and family collecting activities without creating a public listing.</p>
+          <div className="collector-event-safety-strip" aria-label="Event Planner safety limits">
+            <span>Local beta planning tool</span>
+            <span>No RSVP</span>
+            <span>No ticketing</span>
+            <span>No payment</span>
+            <span>No public listing</span>
+            <span>No calendar sync</span>
+            <span>No shop verification</span>
+          </div>
+        </section>
+
+        <section className="collector-event-form-card">
+          <div className="compact-card-header">
+            <div>
+              <span className="trust-badge trust-badge--kid">Collector event</span>
+              <h4>Event details</h4>
+              <p>Keep the plan useful for your family, trusted helpers, or shop context.</p>
+            </div>
+            <strong>{normalizedDraft.status}</strong>
+          </div>
+          <div className="collector-event-form-grid">
+            <Field label="Event name">
+              <input
+                value={collectorEventDraft.eventName}
+                onChange={(event) => updateCollectorEventDraftField("eventName", event.target.value)}
+                placeholder="Friday trade night, release day visit, Spark family table..."
+              />
+            </Field>
+            <Field label="Event Type">
+              <select value={collectorEventDraft.eventType} onChange={(event) => updateCollectorEventDraftField("eventType", event.target.value)}>
+                {COLLECTOR_EVENT_TYPES.map((option) => <option key={option} value={option}>{option}</option>)}
+              </select>
+            </Field>
+            <Field label="Date / time text">
+              <input
+                value={collectorEventDraft.dateTimeText}
+                onChange={(event) => updateCollectorEventDraftField("dateTimeText", event.target.value)}
+                placeholder="Friday 6 PM, release weekend, TBD..."
+              />
+            </Field>
+            <Field label="Location text">
+              <input
+                value={collectorEventDraft.locationText}
+                onChange={(event) => updateCollectorEventDraftField("locationText", event.target.value)}
+                placeholder="Local shop, family table, general area..."
+              />
+            </Field>
+            <Field label="People / shops involved">
+              <input
+                value={collectorEventDraft.peopleShopsInvolved}
+                onChange={(event) => updateCollectorEventDraftField("peopleShopsInvolved", event.target.value)}
+                placeholder="Family friends, trusted shop, Spark helpers..."
+              />
+            </Field>
+            <Field label="Status">
+              <select value={collectorEventDraft.status} onChange={(event) => updateCollectorEventDraftField("status", event.target.value)}>
+                {COLLECTOR_EVENT_STATUSES.map((option) => <option key={option} value={option}>{option}</option>)}
+              </select>
+            </Field>
+          </div>
+          <Field label="Supplies needed">
+            <textarea
+              value={collectorEventDraft.suppliesNeeded}
+              onChange={(event) => updateCollectorEventDraftField("suppliesNeeded", event.target.value)}
+              placeholder="Trade binders, sleeves, snacks, kid packs, table signs..."
+              rows={3}
+            />
+          </Field>
+          <Field label="Notes">
+            <textarea
+              value={collectorEventDraft.notes}
+              onChange={(event) => updateCollectorEventDraftField("notes", event.target.value)}
+              placeholder="Trusted contact context, family notes, safety reminders, or what to check before going."
+              rows={3}
+            />
+          </Field>
+        </section>
+
+        <section className="collector-event-helper-card collector-event-flow-helper" aria-label="Event Planner local-only limits">
+          <strong>Event Planner is local beta planning only.</strong>
+          <span>It does not create RSVPs, tickets, payments, public event listings, calendar sync, shop verification, messages, or notifications.</span>
+        </section>
+
+        {collectorEventMessage ? <p className="field-error trade-value-message" role="status">{collectorEventMessage}</p> : null}
+
+        <div className="quick-actions trade-value-actions collector-event-actions">
+          <button type="submit" disabled={collectorEventSaving}>{collectorEventSaving ? "Saving..." : "Save Event"}</button>
+          <button type="button" className="secondary-button" onClick={() => closeFlowModal()}>Close</button>
+        </div>
+      </form>
+    );
+  }
+
   function renderWishlistIsoFlowContent() {
     const normalizedDraft = normalizeWishlistIsoDraft(wishlistIsoDraft);
     return (
@@ -49756,6 +50052,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       return {
         title: "Event Support Planner",
         description: "Plan local Spark event support. No payment, fulfillment, shipping, or tax receipt is connected.",
+        size: "medium",
+      };
+    }
+    if (activeFlowModal?.type === "collectorEventPlanner") {
+      return {
+        title: "Event Planner",
+        description: "Plan local collector activities. No RSVP, ticketing, payment, public listing, calendar sync, or shop verification.",
         size: "medium",
       };
     }
@@ -54430,6 +54733,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     if (activeFlowModal?.type === "sparkGift") return renderSparkGiftFlowContent();
     if (activeFlowModal?.type === "sparkKidPack") return renderSparkKidPackFlowContent();
     if (activeFlowModal?.type === "sparkEventSupport") return renderSparkEventSupportFlowContent();
+    if (activeFlowModal?.type === "collectorEventPlanner") return renderCollectorEventPlannerFlowContent();
     if (activeFlowModal?.type === "marketPriceMemory") return renderMarketPriceMemoryFlowContent();
     if (activeFlowModal?.type === "wishlistIso") return renderWishlistIsoFlowContent();
     if (activeFlowModal?.type === "vaultCollectionSet") return renderVaultCollectionSetFlowContent();
@@ -56578,6 +56882,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         onClick: bestAction.onPrimary || (() => setActiveTab("vault")),
         tone: "hearth",
       };
+    const collectorEventSummaryForHearth = summarizeCollectorEventPlans(collectorEventPlans);
+    const nextCollectorEventForHearth = collectorEventSummaryForHearth.upcomingPlans?.[0] || collectorEventSummaryForHearth.latestPlan || null;
     const hearthDailyCommandCards = [
       {
         key: "collection-pulse",
@@ -56639,6 +56945,19 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         onClick: openWishlistIsoSurface,
       },
       {
+        key: "event-planner-reminder",
+        label: "Event Planner",
+        reminder: nextCollectorEventForHearth ? `${nextCollectorEventForHearth.status} collector event` : "Local planner only",
+        title: nextCollectorEventForHearth ? nextCollectorEventForHearth.eventName : "Plan a collector event",
+        detail: nextCollectorEventForHearth
+          ? `${nextCollectorEventForHearth.eventType} | ${nextCollectorEventForHearth.dateTimeText || "date/time TBD"} | no RSVP or public listing.`
+          : "Plan trade nights, shop visits, kid pack events, release days, giveaways, and family collecting without RSVP, ticketing, payment, or public listings.",
+        icon: "spark",
+        tone: "gold",
+        actionLabel: nextCollectorEventForHearth ? "Open Events" : "Plan Event",
+        onClick: nextCollectorEventForHearth ? openCollectorEventPlannerSurface : () => openCollectorEventPlannerFlow({ source: "hearth-event-reminder" }),
+      },
+      {
         key: "spark-moment",
         label: "Spark Moment",
         reminder: sparkGifts.length ? `${sparkGifts.length} Giving Ledger gift${sparkGifts.length === 1 ? "" : "s"}` : "Family support",
@@ -56668,6 +56987,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       marketPriceMemories.length ||
       sparkKidPacks.length ||
       sparkGifts.length ||
+      collectorEventPlans.length ||
       followedStores.length ||
       scoutReportRows.length ||
       trustedCircleCount
@@ -60406,6 +60726,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                       <button type="button" className="drawer-link" onClick={() => runMenuAction(openWishlistIsoSurface)}>
                         <strong>Wishlist / ISO</strong>
                         <small>Local wanted-item planning. No automatic matching or seller offers.</small>
+                      </button>
+                      <button type="button" className="drawer-link" onClick={() => runMenuAction(openCollectorEventPlannerSurface)}>
+                        <strong>Event Planner</strong>
+                        <small>Local collector event planning. No RSVP, tickets, payments, or public listings.</small>
                       </button>
                     </div>
                   </div>
