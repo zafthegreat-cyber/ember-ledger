@@ -7024,6 +7024,7 @@ export default function App() {
   const [tradeStep, setTradeStep] = useState("details");
   const [tradeMessage, setTradeMessage] = useState("");
   const [tradeSaving, setTradeSaving] = useState(false);
+  const [lastSavedTradeRecordId, setLastSavedTradeRecordId] = useState("");
   const [tradeCompassDraft, setTradeCompassDraft] = useState(BLANK_TRADE_COMPASS_DRAFT);
   const [tradeCompassMessage, setTradeCompassMessage] = useState("");
   const [tradeCompassSaving, setTradeCompassSaving] = useState(false);
@@ -19429,6 +19430,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       setTradeStep("details");
       setTradeMessage("");
       setTradeSaving(false);
+      setLastSavedTradeRecordId("");
     }
     if (type === "tradeCompass") {
       setTradeCompassDraft(BLANK_TRADE_COMPASS_DRAFT);
@@ -24124,6 +24126,7 @@ function mapCatalog(row) {
     setTradeStep("details");
     setTradeMessage("");
     setTradeSaving(false);
+    setLastSavedTradeRecordId("");
     flowModalBaselineRef.current.tradeValue = draft;
     openFlowModal("tradeValue", { size: "medium", source: options.source || "inventory-card" });
   }
@@ -24136,6 +24139,7 @@ function mapCatalog(row) {
     setTradeStep("details");
     setTradeMessage("");
     setTradeSaving(false);
+    setLastSavedTradeRecordId("");
     flowModalBaselineRef.current.tradeValue = draft;
     openFlowModal("tradeValue", { size: "medium", source: options.source || "forge-add-trade" });
   }
@@ -24189,6 +24193,251 @@ function mapCatalog(row) {
     return tradeSourceOptions.find((option) => String(option.id) === String(tradeDraft.sourceItemId))?.item || null;
   }
 
+  function tradeSourceLabelForKind(sourceKind = "") {
+    if (sourceKind === "vault") return "Vault";
+    if (sourceKind === "forge") return "Forge";
+    if (sourceKind === "manual") return "Manual";
+    return "Inventory";
+  }
+
+  function buildTradeVaultLinkMetadata(draft = {}, sourceItem = null) {
+    const sourceKind = sourceItem ? tradeSourceKindForItem(sourceItem) : draft.sourceKind || (draft.sourceItemId ? "" : "manual");
+    const sourceName = sourceItem?.name || sourceItem?.itemName || draft.outgoingName || "Manual trade item";
+    const vaultLinked = Boolean(sourceItem?.id && sourceKind === "vault");
+    return {
+      sourceKind,
+      tradeSource: tradeSourceLabelForKind(sourceKind),
+      tradeSourceLabel: `${tradeSourceLabelForKind(sourceKind)}: ${sourceName}`,
+      vaultLinkedSourceItemId: vaultLinked ? sourceItem.id : "",
+      vaultLinkedSourceName: vaultLinked ? sourceName : "",
+      vaultLinkStatus: vaultLinked ? "linked_given_item" : "manual_or_forge_trade",
+      collectionUpdateStatus: "not_started",
+      collectionUpdate: "No Vault updates have been made from this trade yet.",
+      inventoryMutation: "none",
+    };
+  }
+
+  function findTradeRecord(recordId = "") {
+    return tradeRecords.find((record) => String(record.id || "") === String(recordId || ""));
+  }
+
+  function updateTradeRecordVaultLink(recordId = "", patch = {}) {
+    if (!recordId) return;
+    const now = new Date().toISOString();
+    setTradeRecords((current) => current.map((record) =>
+      String(record.id || "") === String(recordId)
+        ? { ...record, ...patch, updatedAt: now }
+        : record
+    ));
+  }
+
+  function buildReceivedVaultItemFromTrade(record = {}) {
+    const now = new Date().toISOString();
+    const quantity = Math.max(1, Number(record.receivedQuantity || 1));
+    const totalValue = Number(record.receivedValue || 0);
+    const unitValue = totalValue > 0 ? totalValue / quantity : 0;
+    const tradeWorkspace = {
+      id: record.workspaceId || record.workspace_id || activeWorkspace?.id || activeWorkspaceId || DEFAULT_PERSONAL_WORKSPACE_ID,
+      name: record.workspaceName || activeWorkspace?.name || "My Personal Space",
+      type: record.workspaceType || activeWorkspace?.type || "personal",
+    };
+    const itemName = record.receivedName || "Received Through Trade";
+    return applyWorkspaceToRecord({
+      id: makeId("vault-trade"),
+      itemName,
+      name: itemName,
+      destinationScope: ["vault"],
+      recordType: "vault_item",
+      businessInventory: false,
+      isWishlist: false,
+      sku: `TRADE-${Date.now()}`,
+      buyer: "",
+      purchaserId: "",
+      purchaserName: "",
+      category: "Pokemon",
+      store: "Trade Ledger",
+      quantity,
+      ownedQuantity: quantity,
+      quantityWanted: 0,
+      forgeQuantity: 0,
+      unitCost: 0,
+      salePrice: 0,
+      plannedSalePrice: 0,
+      receiptImage: "",
+      itemImage: "",
+      barcode: "",
+      upc: "",
+      catalogProductId: "",
+      catalogVariantId: "",
+      tideTradrProductId: "",
+      catalogProductName: "",
+      externalProductId: "",
+      tideTradrUrl: "",
+      externalProductSource: "Trade Ledger",
+      marketPrice: unitValue,
+      marketValue: unitValue,
+      marketValueSource: unitValue > 0 ? "Manual Estimate" : "",
+      lowPrice: 0,
+      midPrice: unitValue,
+      highPrice: 0,
+      msrpPrice: 0,
+      msrp: 0,
+      setCode: "",
+      expansion: record.receivedSet || "",
+      setName: record.receivedSet || "",
+      productLine: "",
+      productType: normalizedInventoryProductType({
+        name: itemName,
+        productType: record.receivedType || "",
+        setName: record.receivedSet || "",
+        condition: record.receivedCondition || "",
+        vaultStatus: "personal_collection",
+      }),
+      packCount: 0,
+      notes: appendUniqueText(record.notes || "", `Received Through Trade from ${record.sourceItemName || "Trade Ledger"}.`),
+      storageLocation: "",
+      condition: record.receivedCondition || "",
+      conditionName: record.receivedCondition || "Review needed",
+      language: "English",
+      finish: "",
+      printing: "",
+      sealedCondition: "",
+      conditionNotes: record.receivedCondition || "",
+      sourceType: "Trade Ledger",
+      source: "Trade Ledger",
+      status: "Received Through Trade",
+      vaultStatus: "personal_collection",
+      listingPlatform: "",
+      listingUrl: "",
+      listedPrice: 0,
+      actionNotes: appendUniqueText("Received Through Trade", `Trade Source: ${record.sourceItemName || "Trade Ledger"}`),
+      vaultHistory: [{
+        type: "received_through_trade",
+        label: "Received Through Trade",
+        tradeId: record.id,
+        tradeDate: record.tradeDate || now.slice(0, 10),
+        summary: `Received through trade for ${record.sourceItemName || "item traded"}.`,
+        createdAt: now,
+      }],
+      tradedDate: record.tradeDate || now.slice(0, 10),
+      tradeNotes: record.notes || "",
+      receivedThroughTradeId: record.id,
+      tradeSourceRecordId: record.id,
+      lastPriceChecked: unitValue > 0 ? now : "",
+      purchaseDate: record.tradeDate || "",
+      createdAt: now,
+      updatedAt: now,
+    }, tradeWorkspace);
+  }
+
+  function addReceivedTradeItemToVault(recordId = lastSavedTradeRecordId) {
+    const record = findTradeRecord(recordId);
+    if (!record) {
+      setTradeMessage("Save the trade before updating Vault.");
+      return;
+    }
+    if (!String(record.receivedName || "").trim()) {
+      setTradeMessage("Add what you received before creating a Vault item.");
+      return;
+    }
+    if (record.receivedVaultItemId && items.some((item) => String(item.id || "") === String(record.receivedVaultItemId))) {
+      setTradeMessage("Received Through Trade is already linked to Vault.");
+      return;
+    }
+    const newItem = buildReceivedVaultItemFromTrade(record);
+    setItems((current) => [newItem, ...current]);
+    updateTradeRecordVaultLink(record.id, {
+      receivedVaultItemId: newItem.id,
+      receivedVaultItemName: newItem.name || newItem.itemName,
+      receivedVaultItemStatus: "Received Through Trade",
+      vaultLinkStatus: record.vaultLinkedSourceItemId ? "linked_and_received_added" : "received_added_to_vault",
+      collectionUpdateStatus: "received_added_to_vault",
+      collectionUpdate: "Received Through Trade added to Vault.",
+      inventoryMutation: "explicit_vault_update",
+    });
+    setTradeMessage("Received Through Trade added to Vault. No given item was deleted.");
+    setVaultToast("Received item added to Vault.");
+  }
+
+  function markGivenTradeItemMoved(recordId = lastSavedTradeRecordId) {
+    const record = findTradeRecord(recordId);
+    if (!record) {
+      setTradeMessage("Save the trade before updating Vault.");
+      return;
+    }
+    const linkedItemId = record.vaultLinkedSourceItemId || (record.sourceKind === "vault" ? record.sourceItemId : "");
+    if (!linkedItemId) {
+      setTradeMessage("Choose a Vault item as What You Gave before marking it moved through trade.");
+      return;
+    }
+    const item = items.find((entry) => String(entry.id || "") === String(linkedItemId));
+    if (!item) {
+      setTradeMessage("That Vault item is not available on this device.");
+      return;
+    }
+    const now = new Date().toISOString();
+    const historyEntry = {
+      type: "moved_through_trade",
+      label: "Moved Through Trade",
+      tradeId: record.id,
+      tradeDate: record.tradeDate || now.slice(0, 10),
+      summary: `Moved through trade for ${record.receivedName || "received item"}.`,
+      createdAt: now,
+    };
+    const itemNote = `Moved Through Trade via Trade Ledger ${record.id}. Ember & Tide kept the Vault record and did not delete the item.`;
+    setItems((current) => current.map((entry) =>
+      String(entry.id || "") === String(item.id)
+        ? {
+          ...entry,
+          status: "Moved Through Trade",
+          vaultStatus: "traded",
+          tradeStatus: "Moved Through Trade",
+          movedThroughTradeAt: now,
+          movedThroughTradeId: record.id,
+          tradedDate: record.tradeDate || now.slice(0, 10),
+          tradeNotes: appendUniqueText(entry.tradeNotes || "", `Moved Through Trade for ${record.receivedName || "received item"}.`),
+          actionNotes: appendUniqueText(entry.actionNotes || entry.notes || "", itemNote),
+          vaultHistory: [...(Array.isArray(entry.vaultHistory) ? entry.vaultHistory : []), historyEntry],
+          updatedAt: now,
+        }
+        : entry
+    ));
+    updateTradeRecordVaultLink(record.id, {
+      givenVaultItemMarkedAt: now,
+      givenVaultItemStatus: "Moved Through Trade",
+      givenVaultItemName: item.name || item.itemName || record.sourceItemName,
+      vaultLinkStatus: record.receivedVaultItemId ? "linked_and_received_added" : "given_marked_moved",
+      collectionUpdateStatus: "given_marked_moved",
+      collectionUpdate: "Given item marked Moved Through Trade. Vault record was kept.",
+      inventoryMutation: "explicit_vault_update",
+    });
+    setTradeMessage("Given item marked Moved Through Trade. Ember & Tide kept the Vault record and did not delete it.");
+    setVaultToast("Given Vault item marked moved through trade.");
+  }
+
+  function keepGivenTradeItemInVault(recordId = lastSavedTradeRecordId) {
+    const record = findTradeRecord(recordId);
+    if (!record) {
+      setTradeMessage("Save the trade before updating Vault.");
+      return;
+    }
+    if (!record.vaultLinkedSourceItemId) {
+      setTradeMessage("Choose a Vault item as What You Gave before recording a Keep in Vault choice.");
+      return;
+    }
+    const now = new Date().toISOString();
+    updateTradeRecordVaultLink(record.id, {
+      givenItemKeptInVaultAt: now,
+      givenVaultItemStatus: "Keep in Vault",
+      vaultLinkStatus: record.receivedVaultItemId ? "linked_and_received_added" : "given_kept_in_vault",
+      collectionUpdateStatus: "given_kept_in_vault",
+      collectionUpdate: "Given item kept in Vault. No inventory counts changed.",
+      inventoryMutation: record.receivedVaultItemId ? "explicit_vault_update" : "none",
+    });
+    setTradeMessage("Keep in Vault recorded. No inventory counts changed.");
+    setVaultToast("Given item kept in Vault.");
+  }
+
   function reviewTradeDraft(event) {
     event?.preventDefault?.();
     const sourceItem = selectedTradeSourceItem();
@@ -24225,12 +24474,14 @@ function mapCatalog(row) {
         id: makeId("trade"),
         now,
       }),
+      ...buildTradeVaultLinkMetadata(tradeDraft, sourceItem),
       workspaceId: tradeWorkspace.id || activeWorkspaceId,
       workspace_id: tradeWorkspace.id || activeWorkspaceId,
       workspaceName: tradeWorkspace.name || "",
       savedBy: user?.id || "local-beta",
     }, tradeWorkspace);
     setTradeRecords((current) => [record, ...current]);
+    setLastSavedTradeRecordId(record.id);
     setTradeStep("saved");
     setTradeMessage("Trade saved to local history. Inventory counts were not changed.");
     setTradeSaving(false);
@@ -24286,6 +24537,7 @@ function mapCatalog(row) {
         id: makeId("trade-compass"),
         now,
       }),
+      ...buildTradeVaultLinkMetadata(ledgerDraft, sourceItem),
       sourceItemName: sourceItem?.name || sourceItem?.itemName || draft.yourSide,
       receivedName: draft.theirSide,
       guidance: reading.label,
@@ -26953,7 +27205,11 @@ function renderForgeBusinessCommandPanel() {
               <article key={record.id}>
                 <span>{record.tradeDate ? shortDate(record.tradeDate) : shortDate(record.createdAt)}</span>
                 <strong>{record.sourceItemName || "Item traded"} for {record.receivedName || "received item"}</strong>
-                <small>{record.resultLabel || record.guidance || "Trade saved"} | {record.difference || record.difference === 0 ? money(Math.abs(Number(record.difference || 0))) : "Unknown Balance"} | Inventory unchanged</small>
+                <small>{record.resultLabel || record.guidance || "Trade saved"} | {record.difference || record.difference === 0 ? money(Math.abs(Number(record.difference || 0))) : "Unknown Balance"} | {record.inventoryMutation === "none" ? "Inventory unchanged" : "Collection Update"}</small>
+                <small>{record.vaultLinkedSourceItemId ? `Vault Link: ${record.vaultLinkedSourceName || record.sourceItemName}` : `Trade Source: ${record.tradeSource || tradeSourceLabelForKind(record.sourceKind)}`}</small>
+                {record.receivedVaultItemId || record.givenVaultItemStatus ? (
+                  <small>Collection Update: {[record.receivedVaultItemId ? "Received Through Trade" : "", record.givenVaultItemStatus || ""].filter(Boolean).join(" | ")}</small>
+                ) : null}
               </article>
             )) : (
               <div className="small-empty-state forge-start-empty-state">
@@ -47198,6 +47454,27 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const sourceSubtitle = selectedOption?.subtitle
       || (sourceItem ? [sourceItem.productType, sourceItem.expansion || sourceItem.setName].filter(Boolean).join(" - ") : "")
       || (tradeDraft.outgoingCondition ? `Condition: ${tradeDraft.outgoingCondition}` : "Manual entry. Inventory stays unchanged.");
+    const selectedSourceKind = sourceItem ? tradeSourceKindForItem(sourceItem) : tradeDraft.sourceKind || "manual";
+    const selectedSourceLabel = sourceItem ? tradeSourceLabelForKind(selectedSourceKind) : "Manual";
+    const selectedVaultSourceLinked = Boolean(sourceItem?.id && selectedSourceKind === "vault");
+    const savedTradeRecord = lastSavedTradeRecordId ? findTradeRecord(lastSavedTradeRecordId) : null;
+    const savedRecordId = savedTradeRecord?.id || lastSavedTradeRecordId;
+    const savedVaultSourceLinked = Boolean(savedTradeRecord?.vaultLinkedSourceItemId);
+    const savedReceivedAdded = Boolean(savedTradeRecord?.receivedVaultItemId);
+    const savedGivenMarked = Boolean(savedTradeRecord?.givenVaultItemMarkedAt);
+    const savedGivenKept = Boolean(savedTradeRecord?.givenItemKeptInVaultAt);
+    const savedSourceTitle = savedTradeRecord?.sourceItemName || sourceTitle;
+    const savedReceivedTitle = savedTradeRecord?.receivedName || tradeDraft.receivedName || "Received item";
+    const savedDifferenceKnown = savedTradeRecord && (savedTradeRecord.difference || savedTradeRecord.difference === 0);
+    const savedComparison = savedTradeRecord
+      ? {
+        outgoingLabel: Number(savedTradeRecord.outgoingValue || 0) > 0 ? money(savedTradeRecord.outgoingValue) : comparison.outgoingLabel,
+        receivedLabel: Number(savedTradeRecord.receivedValue || 0) > 0 ? money(savedTradeRecord.receivedValue) : comparison.receivedLabel,
+        resultLabel: savedTradeRecord.resultLabel || savedTradeRecord.guidance || comparison.resultLabel,
+        differenceLabel: savedDifferenceKnown ? `${Number(savedTradeRecord.difference || 0) >= 0 ? "+" : "-"}${money(Math.abs(Number(savedTradeRecord.difference || 0)))}` : comparison.differenceLabel,
+        tone: savedTradeRecord.guidanceTone || comparison.tone,
+      }
+      : comparison;
 
     if (tradeStep === "saved") {
       return (
@@ -47205,24 +47482,60 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <section className="trade-value-success-card">
             <span className="trust-badge trust-badge--verified">Saved locally</span>
             <h3>Trade saved to your Trade Ledger.</h3>
-            <p>No Vault or Forge inventory counts were changed. Update item records separately after the trade is complete.</p>
+            <p>No Vault or Forge inventory counts were changed automatically. Use Collection Update if you want to connect this Trade Memory to Vault.</p>
             <div className="trade-comparison-grid">
               <div>
                 <span>What You Gave</span>
-                <strong>{sourceTitle}</strong>
-                <small>{comparison.outgoingLabel}</small>
+                <strong>{savedSourceTitle}</strong>
+                <small>{savedComparison.outgoingLabel}</small>
               </div>
               <div>
                 <span>What You Got</span>
-                <strong>{tradeDraft.receivedName || "Received item"}</strong>
-                <small>{comparison.receivedLabel}</small>
+                <strong>{savedReceivedTitle}</strong>
+                <small>{savedComparison.receivedLabel}</small>
               </div>
-              <div className={`trade-guidance-card ${comparison.tone}`}>
+              <div className={`trade-guidance-card ${savedComparison.tone}`}>
                 <span>Trade Balance</span>
-                <strong>{comparison.resultLabel}</strong>
-                <small>{comparison.differenceLabel}</small>
+                <strong>{savedComparison.resultLabel}</strong>
+                <small>{savedComparison.differenceLabel}</small>
               </div>
             </div>
+            <div className="trade-vault-link-row">
+              <span>Vault Link</span>
+              <strong>{savedVaultSourceLinked ? savedTradeRecord?.vaultLinkedSourceName || "Linked Vault item" : "Manual trade memory"}</strong>
+              <small>{savedTradeRecord?.tradeSourceLabel || "Trade Source: Manual entry"}</small>
+            </div>
+          </section>
+
+          <section className="trade-collection-update-card">
+            <div className="compact-card-header">
+              <div>
+                <span className="section-kicker">Collection Update</span>
+                <h4>Update Vault</h4>
+                <p>Link trades to Vault so your collection story stays connected.</p>
+              </div>
+              <strong>{savedTradeRecord?.collectionUpdateStatus === "not_started" || !savedTradeRecord ? "Optional" : "Updated"}</strong>
+            </div>
+            <div className="trade-collection-update-grid">
+              <div>
+                <strong>Add Received Item to Vault</strong>
+                <span>Add what you received into Vault so it becomes part of your collection record.</span>
+                <small>{savedReceivedAdded ? `Received Through Trade: ${savedTradeRecord?.receivedVaultItemName || "Vault item"}` : "User-triggered only. Nothing is added automatically."}</small>
+              </div>
+              <div>
+                <strong>Mark Given Item</strong>
+                <span>Mark what you gave as moved through trade. Ember & Tide will not delete it unless you choose to manage it later.</span>
+                <small>{savedVaultSourceLinked ? (savedGivenMarked ? "Moved Through Trade recorded." : "Linked Vault item is ready to update.") : "Choose a Vault item as What You Gave to enable this."}</small>
+              </div>
+            </div>
+            <div className="quick-actions trade-collection-update-actions">
+              <button type="button" onClick={() => addReceivedTradeItemToVault(savedRecordId)} disabled={!savedTradeRecord || savedReceivedAdded}>Add Received Item to Vault</button>
+              <button type="button" className="secondary-button" onClick={() => markGivenTradeItemMoved(savedRecordId)} disabled={!savedTradeRecord || !savedVaultSourceLinked || savedGivenMarked}>Mark Given Item</button>
+              {savedVaultSourceLinked ? (
+                <button type="button" className="ghost-button" onClick={() => keepGivenTradeItemInVault(savedRecordId)} disabled={!savedTradeRecord || savedGivenKept || savedGivenMarked}>Keep in Vault</button>
+              ) : null}
+            </div>
+            {tradeMessage ? <p className="field-error trade-value-message" role="status">{tradeMessage}</p> : null}
           </section>
           <div className="quick-actions trade-value-actions">
             <button type="button" onClick={() => {
@@ -47231,6 +47544,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               flowModalBaselineRef.current.tradeValue = nextDraft;
               setTradeStep("details");
               setTradeMessage("");
+              setLastSavedTradeRecordId("");
             }}>
               Log another trade
             </button>
@@ -47264,7 +47578,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </div>
               <strong>{comparison.outgoingLabel}</strong>
             </div>
-            <Field label="Saved item from Vault or Forge" help="Choose an existing item when it is already tracked, or leave this blank and enter a manual item below.">
+            <Field label="Trade Source" help="Choose an existing Vault or Forge item when it is already tracked, or leave this blank and enter a manual item below.">
               <select
                 value={tradeDraft.sourceItemId}
                 onChange={(event) => {
@@ -47286,6 +47600,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 ))}
               </select>
             </Field>
+            <div className={`trade-vault-link-card ${selectedVaultSourceLinked ? "is-linked" : ""}`}>
+              <span>Vault Link</span>
+              <strong>{selectedVaultSourceLinked ? sourceTitle : `${selectedSourceLabel} Trade Source`}</strong>
+              <small>{selectedVaultSourceLinked ? "Linked Vault item will appear on the saved Trade Memory. Vault still will not update until you choose Update Vault." : "Manual and Forge trades save safely, with Vault update options after the trade is saved."}</small>
+            </div>
             <Field label="What You Gave" error={tradeMessage && validation.errors.sourceItemId ? validation.errors.sourceItemId : ""}>
               <input
                 value={tradeDraft.outgoingName}
@@ -47448,6 +47767,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <span>{shortDate(record.tradeDate || record.createdAt)}</span>
                   <strong>{record.sourceItemName} for {record.receivedName}</strong>
                   <small>{record.resultLabel || record.guidance} | {record.inventoryMutation === "none" ? "Inventory unchanged" : "Review item records"}</small>
+                  <small>{record.vaultLinkedSourceItemId ? `Vault Link: ${record.vaultLinkedSourceName || record.sourceItemName}` : `Trade Source: ${record.tradeSource || tradeSourceLabelForKind(record.sourceKind)}`}</small>
                 </article>
               ))}
             </div>

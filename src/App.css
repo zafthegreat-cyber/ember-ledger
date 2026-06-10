@@ -72930,6 +72930,103 @@ body:has(.catalog-detail-drawer) :where(.mobile-bottom-nav, .bottom-nav, .bottom
   line-height: 1.35;
 }
 
+.trade-vault-link-card,
+.trade-vault-link-row {
+  display: grid;
+  gap: 4px;
+  padding: 11px;
+  border: 1px solid rgba(167, 139, 250, 0.26);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(167, 139, 250, 0.15), transparent 36%),
+    rgba(24, 18, 43, 0.68);
+}
+
+.trade-vault-link-card.is-linked,
+.trade-vault-link-row {
+  border-color: rgba(255, 184, 77, 0.32);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 184, 77, 0.16), transparent 38%),
+    rgba(27, 18, 11, 0.58);
+}
+
+.trade-vault-link-card span,
+.trade-vault-link-row span {
+  color: rgba(255, 202, 138, 0.86);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.trade-vault-link-card strong,
+.trade-vault-link-row strong {
+  color: #fff7ed;
+  overflow-wrap: anywhere;
+}
+
+.trade-vault-link-card small,
+.trade-vault-link-row small {
+  color: rgba(232, 238, 246, 0.72) !important;
+  line-height: 1.35;
+}
+
+.trade-collection-update-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(255, 184, 77, 0.28);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(255, 184, 77, 0.15), transparent 35%),
+    rgba(6, 14, 31, 0.76);
+}
+
+.trade-collection-update-card h4 {
+  margin: 4px 0 0;
+  color: #fff7ed;
+}
+
+.trade-collection-update-card p {
+  margin: 0;
+  color: rgba(232, 238, 246, 0.78);
+  line-height: 1.44;
+}
+
+.trade-collection-update-card .compact-card-header > strong {
+  color: #ffba49;
+}
+
+.trade-collection-update-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.trade-collection-update-grid > div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid rgba(121, 233, 255, 0.16);
+  border-radius: 16px;
+  background: rgba(3, 10, 22, 0.5);
+}
+
+.trade-collection-update-grid strong {
+  color: #fff7ed;
+}
+
+.trade-collection-update-grid span,
+.trade-collection-update-grid small {
+  color: rgba(232, 238, 246, 0.7) !important;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.trade-collection-update-actions {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
 .trade-review-card {
   border-color: rgba(121, 233, 255, 0.22);
 }
@@ -73096,7 +73193,9 @@ body:has(.catalog-detail-drawer) :where(.mobile-bottom-nav, .bottom-nav, .bottom
   .trade-builder-grid,
   .trade-value-form-grid,
   .trade-comparison-grid,
+  .trade-collection-update-grid,
   .trade-compass-reading-card,
+  .trade-collection-update-actions,
   .trade-value-actions {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -73107,6 +73206,7 @@ body:has(.catalog-detail-drawer) :where(.mobile-bottom-nav, .bottom-nav, .bottom
   .trade-signals-card,
   .trade-history-panel,
   .trade-value-success-card,
+  .trade-collection-update-card,
   .trade-side-card {
     border-radius: 17px;
   }
@@ -89134,7 +89234,8 @@ html body #root .app.app-command-shell.app-forge .trade-review-card,
 html body #root .app.app-command-shell.app-forge .trade-compass-reading-card,
 html body #root .app.app-command-shell.app-forge .trade-signals-card,
 html body #root .app.app-command-shell.app-forge .trade-history-panel,
-html body #root .app.app-command-shell.app-forge .trade-value-success-card {
+html body #root .app.app-command-shell.app-forge .trade-value-success-card,
+html body #root .app.app-command-shell.app-forge .trade-collection-update-card {
   border: 1px solid var(--forge-table-border) !important;
   border-radius: 24px !important;
   background:
@@ -89156,7 +89257,9 @@ html body #root .app.app-shell-dark.app-forge .trade-signals-card,
 html body #root .app.app-command-shell.app-theme-dark.app-forge .trade-history-panel,
 html body #root .app.app-shell-dark.app-forge .trade-history-panel,
 html body #root .app.app-command-shell.app-theme-dark.app-forge .trade-value-success-card,
-html body #root .app.app-shell-dark.app-forge .trade-value-success-card {
+html body #root .app.app-shell-dark.app-forge .trade-value-success-card,
+html body #root .app.app-command-shell.app-theme-dark.app-forge .trade-collection-update-card,
+html body #root .app.app-shell-dark.app-forge .trade-collection-update-card {
   background:
     radial-gradient(circle at 8% 0%, rgba(255, 111, 78, 0.16), transparent 30%),
     linear-gradient(145deg, rgba(13, 25, 48, 0.98), rgba(5, 14, 31, 0.9)) !important;
@@ -89181,7 +89284,11 @@ html body #root .app.app-command-shell.app-forge .trade-review-card h4,
 html body #root .app.app-command-shell.app-forge .trade-compass-reading-card h4,
 html body #root .app.app-command-shell.app-forge .trade-signals-card h4,
 html body #root .app.app-command-shell.app-forge .trade-history-panel h4,
+html body #root .app.app-command-shell.app-forge .trade-collection-update-card h4,
 html body #root .app.app-command-shell.app-forge .trade-item-preview strong,
+html body #root .app.app-command-shell.app-forge .trade-vault-link-card strong,
+html body #root .app.app-command-shell.app-forge .trade-vault-link-row strong,
+html body #root .app.app-command-shell.app-forge .trade-collection-update-grid strong,
 html body #root .app.app-command-shell.app-forge .trade-comparison-grid strong,
 html body #root .app.app-command-shell.app-forge .trade-history-list strong {
   color: var(--forge-table-ink) !important;
@@ -89191,8 +89298,13 @@ html body #root .app.app-command-shell.app-forge .trade-value-hero-card p,
 html body #root .app.app-command-shell.app-forge .trade-side-card p,
 html body #root .app.app-command-shell.app-forge .trade-compass-reading-card p,
 html body #root .app.app-command-shell.app-forge .trade-signals-card p,
+html body #root .app.app-command-shell.app-forge .trade-collection-update-card p,
 html body #root .app.app-command-shell.app-forge .trade-item-preview span,
 html body #root .app.app-command-shell.app-forge .trade-item-preview small,
+html body #root .app.app-command-shell.app-forge .trade-vault-link-card small,
+html body #root .app.app-command-shell.app-forge .trade-vault-link-row small,
+html body #root .app.app-command-shell.app-forge .trade-collection-update-grid span,
+html body #root .app.app-command-shell.app-forge .trade-collection-update-grid small,
 html body #root .app.app-command-shell.app-forge .trade-comparison-grid small,
 html body #root .app.app-command-shell.app-forge .trade-history-list span,
 html body #root .app.app-command-shell.app-forge .trade-history-list small {
@@ -89202,6 +89314,9 @@ html body #root .app.app-command-shell.app-forge .trade-history-list small {
 html body #root .app.app-command-shell.app-forge .trade-safety-strip span,
 html body #root .app.app-command-shell.app-forge .trade-item-preview,
 html body #root .app.app-command-shell.app-forge .trade-exact-copy-note,
+html body #root .app.app-command-shell.app-forge .trade-vault-link-card,
+html body #root .app.app-command-shell.app-forge .trade-vault-link-row,
+html body #root .app.app-command-shell.app-forge .trade-collection-update-grid > div,
 html body #root .app.app-command-shell.app-forge .trade-compass-reading-card,
 html body #root .app.app-command-shell.app-forge .trade-signals-card,
 html body #root .app.app-command-shell.app-forge .trade-comparison-grid > div,
@@ -89217,6 +89332,12 @@ html body #root .app.app-command-shell.app-theme-dark.app-forge .trade-item-prev
 html body #root .app.app-shell-dark.app-forge .trade-item-preview,
 html body #root .app.app-command-shell.app-theme-dark.app-forge .trade-exact-copy-note,
 html body #root .app.app-shell-dark.app-forge .trade-exact-copy-note,
+html body #root .app.app-command-shell.app-theme-dark.app-forge .trade-vault-link-card,
+html body #root .app.app-shell-dark.app-forge .trade-vault-link-card,
+html body #root .app.app-command-shell.app-theme-dark.app-forge .trade-vault-link-row,
+html body #root .app.app-shell-dark.app-forge .trade-vault-link-row,
+html body #root .app.app-command-shell.app-theme-dark.app-forge .trade-collection-update-grid > div,
+html body #root .app.app-shell-dark.app-forge .trade-collection-update-grid > div,
 html body #root .app.app-command-shell.app-theme-dark.app-forge .trade-compass-reading-card,
 html body #root .app.app-shell-dark.app-forge .trade-compass-reading-card,
 html body #root .app.app-command-shell.app-theme-dark.app-forge .trade-signals-card,
@@ -89319,6 +89440,8 @@ html body #root .app.app-command-shell.app-forge .trade-value-actions {
   html body #root .app.app-command-shell.app-forge .forge-ledger-card-grid,
   html body #root .app.app-command-shell.app-forge .forge-workspace-flow-grid,
   html body #root .app.app-command-shell.app-forge .forge-exact-copy-strip,
+  html body #root .app.app-command-shell.app-forge .trade-collection-update-grid,
+  html body #root .app.app-command-shell.app-forge .trade-collection-update-actions,
   html body #root .app.app-command-shell.app-forge .trade-comparison-grid {
     grid-template-columns: minmax(0, 1fr) !important;
   }
@@ -89372,7 +89495,8 @@ html body #root .app.app-command-shell.app-forge .trade-value-actions {
   html body #root .app.app-command-shell.app-forge .forge-workspace-flow-card,
   html body #root .app.app-command-shell.app-forge .forge-main-command-card,
   html body #root .app.app-command-shell.app-forge .trade-side-card,
-  html body #root .app.app-command-shell.app-forge .trade-review-card {
+  html body #root .app.app-command-shell.app-forge .trade-review-card,
+  html body #root .app.app-command-shell.app-forge .trade-collection-update-card {
     border-radius: 18px !important;
     padding: 11px !important;
   }

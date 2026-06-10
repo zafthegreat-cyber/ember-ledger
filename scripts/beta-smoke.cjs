@@ -791,7 +791,10 @@ async function main() {
         dashboardPreset: "seller",
       };
       data.items = [
-        ...(data.items || []).filter((item) => item.id !== "focused-forge-smoke-item"),
+        ...(data.items || []).filter((item) => ![
+          "focused-forge-smoke-item",
+          "focused-vault-trade-item",
+        ].includes(item.id) && item.name !== "Focused Smoke Booster Bundle" && item.receivedThroughTradeId !== "focused-smoke-trade"),
         {
           id: "focused-forge-smoke-item",
           name: "Focused Forge Smoke ETB",
@@ -809,7 +812,29 @@ async function main() {
           createdAt: now,
           updatedAt: now,
         },
+        {
+          id: "focused-vault-trade-item",
+          name: "Focused Vault Trade Card",
+          itemName: "Focused Vault Trade Card",
+          destinationScope: ["vault"],
+          recordType: "vault_item",
+          businessInventory: false,
+          status: "Personal Collection",
+          vaultStatus: "personal_collection",
+          quantity: 1,
+          ownedQuantity: 1,
+          marketPrice: 35,
+          marketValue: 35,
+          setName: "Smoke Test Set",
+          productType: "Card",
+          conditionName: "Near Mint",
+          workspaceId: "workspace-personal-local-beta",
+          workspaceName: "My Personal Space",
+          createdAt: now,
+          updatedAt: now,
+        },
       ];
+      data.tradeRecords = (data.tradeRecords || []).filter((record) => !String(record.sourceItemName || "").startsWith("Focused Smoke") && !String(record.sourceItemName || "").startsWith("Focused Vault"));
       return data;
     });
     await reloadWithAppData(forgeData);
@@ -862,22 +887,54 @@ async function main() {
     await expectVisible(tradeModal.getByText("Value Gained").first(), "Forge Trade Balance result");
     await tradeModal.getByRole("button", { name: "Save Trade" }).click();
     await expectVisible(tradeModal.getByText("Trade saved to your Trade Ledger.").first(), "Forge trade saved state");
+    await expectVisible(tradeModal.getByText("Collection Update").first(), "Forge trade collection update panel");
+    await expectVisible(tradeModal.getByText("Manual trade memory").first(), "Forge manual trade Vault Link state");
+    await tradeModal.getByRole("button", { name: "Add Received Item to Vault" }).click();
+    await expectVisible(tradeModal.getByText("Received Through Trade added to Vault").first(), "Forge received item added to Vault message");
     await tradeModal.getByRole("button", { name: "Close", exact: true }).click();
     await tradeModal.waitFor({ state: "hidden", timeout: 5000 });
     await expectVisible(page.locator(".forge-trade-history-card").filter({ hasText: "Focused Smoke Binder Lot" }).first(), "Forge Trade Ledger saved record");
     await page.waitForFunction(() => {
       const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
-      return (data.tradeRecords || []).some((record) => record.sourceItemName === "Focused Smoke Binder Lot");
+      return (data.tradeRecords || []).some((record) => record.sourceItemName === "Focused Smoke Binder Lot" && record.receivedVaultItemId);
     }, null, { timeout: 5000 });
     const savedTradeState = await page.evaluate(() => {
       const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
       const trade = (data.tradeRecords || []).find((record) => record.sourceItemName === "Focused Smoke Binder Lot");
       const item = (data.items || []).find((record) => record.id === "focused-forge-smoke-item");
-      return { trade, itemQuantity: item?.quantity };
+      const receivedItem = (data.items || []).find((record) => record.id === trade?.receivedVaultItemId);
+      return { trade, itemQuantity: item?.quantity, receivedItem };
     });
     assert.equal(savedTradeState.trade?.resultLabel, "Value Gained");
-    assert.equal(savedTradeState.trade?.inventoryMutation, "none");
+    assert.equal(savedTradeState.trade?.inventoryMutation, "explicit_vault_update");
     assert.equal(savedTradeState.itemQuantity, 2, "Saving trade history should not change Forge inventory quantity");
+    assert.equal(savedTradeState.receivedItem?.status, "Received Through Trade", "Add Received Item to Vault should create an explicit Vault record");
+
+    await addTradeAction.click();
+    await expectVisible(tradeModal, "Forge linked Trade Ledger modal");
+    await tradeModal.getByLabel("Trade Source").selectOption("focused-vault-trade-item");
+    await expectVisible(tradeModal.getByText("Vault Link").first(), "Forge linked trade Vault Link helper");
+    await tradeModal.getByLabel("What You Got").fill("Focused Linked Trade Reward");
+    await tradeModal.getByLabel("Estimated value received").fill("35");
+    await tradeModal.getByLabel("Trade Story").fill("Linked the trade to a Vault item and reviewed the update manually.");
+    await tradeModal.getByRole("button", { name: "Review Trade Balance" }).click();
+    await expectVisible(tradeModal.getByText("Fair Trade").first(), "Forge linked trade balance");
+    await tradeModal.getByRole("button", { name: "Save Trade" }).click();
+    await expectVisible(tradeModal.getByText("Focused Vault Trade Card").first(), "Forge linked source appears on saved trade");
+    await tradeModal.getByRole("button", { name: "Mark Given Item" }).click();
+    await expectVisible(tradeModal.getByText("Given item marked Moved Through Trade").first(), "Forge Mark Given Item message");
+    await tradeModal.getByRole("button", { name: "Close", exact: true }).click();
+    await tradeModal.waitFor({ state: "hidden", timeout: 5000 });
+    await expectVisible(page.locator(".forge-trade-history-card").filter({ hasText: "Focused Vault Trade Card" }).first(), "Forge linked Vault trade record");
+    const linkedTradeState = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      const trade = (data.tradeRecords || []).find((record) => record.vaultLinkedSourceItemId === "focused-vault-trade-item");
+      const item = (data.items || []).find((record) => record.id === "focused-vault-trade-item");
+      return { trade, item };
+    });
+    assert.equal(linkedTradeState.trade?.givenVaultItemStatus, "Moved Through Trade");
+    assert.equal(linkedTradeState.item?.vaultStatus, "traded");
+    assert.equal(linkedTradeState.item?.quantity, 1, "Mark Given Item should not delete or decrement the Vault item");
   }
 
   async function focusedAdminTest() {
