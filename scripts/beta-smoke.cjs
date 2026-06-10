@@ -878,10 +878,19 @@ async function main() {
     await wishlistModal.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
     await expectVisible(wishlistPanel.locator(".wishlist-iso-row").filter({ hasText: "Focused ISO Chase Card" }).first(), "Saved Wishlist / ISO row");
     await page.getByRole("button", { name: /^Collection$/ }).first().click();
+    await page.getByRole("button", { name: /^Showcase$/ }).first().click();
+    await assertVisibleText("3D Collector Showcase");
+    await assertVisibleText("Collection pieces with depth");
+    await expectVisible(
+      page.locator(".vault-showcase-grid .collector-showcase-card").filter({ hasText: "Focused Vault Smoke Card" }).first(),
+      "Vault Showcase card"
+    );
+    await page.getByRole("button", { name: /^Standard view$/ }).first().click();
     const focusedVaultCard = page.locator(".vault-item-card").filter({ hasText: "Focused Vault Smoke Card" }).first();
     await expectVisible(focusedVaultCard, "focused Vault item card");
     await focusedVaultCard.getByRole("button", { name: /Item Profile/i }).first().click();
     await assertVisibleText("Item Profile");
+    await assertVisibleText("3D Collector Showcase");
     await assertVisibleText("Vault Item");
     await assertVisibleText("Collector Notes");
     await assertVisibleText("Condition Notes");
@@ -964,6 +973,7 @@ async function main() {
       "Market focused search result",
       20000
     );
+    await expectVisible(focusedMarketCard.locator(".market-showcase-preview").first(), "Market compact 3D showcase preview");
     await expectVisible(focusedMarketCard.getByRole("button", { name: /^Save Price$/ }).first(), "Market result Save Price action");
     await expectVisible(focusedMarketCard.getByRole("button", { name: /^Add to Wishlist \/ ISO$/ }).first(), "Market result Add to Wishlist / ISO action");
     await focusedMarketCard.getByRole("button", { name: /^Add to Wishlist \/ ISO$/ }).first().click();

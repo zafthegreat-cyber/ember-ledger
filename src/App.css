@@ -100624,3 +100624,500 @@ html body #root .app.app-shell-dark .wishlist-iso-planning-card,
     width: 100%;
   }
 }
+
+/* 3D Collector Showcase: CSS-transform display only, no live pricing or verification claims. */
+html body #root .app.app-command-shell .collector-showcase-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(86px, 0.82fr) minmax(0, 1fr);
+  gap: clamp(10px, 1.6vw, 16px);
+  align-items: center;
+  min-width: 0;
+  width: 100%;
+  padding: clamp(10px, 1.5vw, 15px);
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2, #d9a441) 28%, var(--et-dream-border, rgba(118, 84, 42, 0.18)));
+  border-radius: clamp(18px, 1.6vw, 24px);
+  color: var(--et-ink, #172033);
+  background:
+    radial-gradient(circle at 18% 14%, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 20%, transparent), transparent 34%),
+    linear-gradient(145deg, color-mix(in srgb, var(--et-panel, #fffdf7) 90%, var(--et-page-accent-2, #d9a441) 10%), color-mix(in srgb, var(--et-panel-soft, #fff1dc) 86%, var(--et-page-accent, #f97316) 7%));
+  box-shadow:
+    0 18px 38px color-mix(in srgb, var(--et-page-accent, #f97316) 12%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  overflow: hidden;
+  isolation: isolate;
+  text-align: left;
+}
+
+html body #root .app.app-theme-dark.app-command-shell .collector-showcase-card,
+html body #root .app.app-shell-dark.app-command-shell .collector-showcase-card {
+  color: var(--et-ink, #f7f0df);
+  background:
+    radial-gradient(circle at 18% 14%, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 16%, transparent), transparent 36%),
+    linear-gradient(145deg, color-mix(in srgb, var(--et-panel, #0d1b31) 88%, var(--et-page-accent, #f97316) 7%), color-mix(in srgb, var(--et-panel-soft, #10243f) 92%, #06101e 8%));
+  box-shadow:
+    0 20px 42px rgba(0, 0, 0, 0.3),
+    0 0 0 1px color-mix(in srgb, var(--et-page-accent-2, #d9a441) 12%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+button.collector-showcase-card {
+  cursor: pointer;
+}
+
+button.collector-showcase-card:hover,
+button.collector-showcase-card:focus-visible {
+  border-color: color-mix(in srgb, var(--et-page-accent, #f97316) 44%, var(--et-page-accent-2, #d9a441));
+  box-shadow:
+    0 22px 46px color-mix(in srgb, var(--et-page-accent, #f97316) 16%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--et-page-accent-2, #d9a441) 24%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.58);
+}
+
+button.collector-showcase-card:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--et-page-accent-2, #d9a441) 58%, transparent);
+  outline-offset: 3px;
+}
+
+html body #root .app.app-command-shell .collector-showcase-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  perspective: 900px;
+  transform-style: preserve-3d;
+}
+
+html body #root .app.app-command-shell .collector-showcase-shadow {
+  position: absolute;
+  inset: auto 12% 5% 12%;
+  height: 18%;
+  border-radius: 999px;
+  background: radial-gradient(ellipse, rgba(34, 23, 14, 0.28), transparent 68%);
+  filter: blur(8px);
+  transform: rotateX(62deg) translateY(10px);
+  z-index: 0;
+}
+
+html body #root .app.app-command-shell .collector-showcase-object {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: min(100%, 132px);
+  transform: rotateX(9deg) rotateY(-12deg) translateZ(0);
+  transform-style: preserve-3d;
+  transition: transform 180ms ease, filter 180ms ease;
+}
+
+html body #root .app.app-command-shell button.collector-showcase-card:hover .collector-showcase-object,
+html body #root .app.app-command-shell button.collector-showcase-card:focus-visible .collector-showcase-object {
+  transform: rotateX(5deg) rotateY(-7deg) translateY(-3px) translateZ(10px);
+  filter: saturate(1.06);
+}
+
+html body #root .app.app-command-shell .collector-showcase-face {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 5 / 7;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2, #d9a441) 38%, rgba(255, 255, 255, 0.28));
+  border-radius: 16px;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 12%, rgba(255, 255, 255, 0.74)), color-mix(in srgb, var(--et-page-accent, #f97316) 10%, rgba(255, 255, 255, 0.4))),
+    color-mix(in srgb, var(--et-panel, #fffdf7) 90%, transparent);
+  box-shadow:
+    9px 10px 0 color-mix(in srgb, var(--et-page-accent, #f97316) 20%, rgba(78, 46, 22, 0.34)),
+    0 16px 28px rgba(48, 31, 18, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.74);
+  overflow: hidden;
+}
+
+html body #root .app.app-theme-dark.app-command-shell .collector-showcase-face,
+html body #root .app.app-shell-dark.app-command-shell .collector-showcase-face {
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 10%, rgba(255, 255, 255, 0.08)), color-mix(in srgb, var(--et-page-accent, #f97316) 10%, rgba(255, 255, 255, 0.05))),
+    color-mix(in srgb, var(--et-panel-soft, #10243f) 88%, transparent);
+  box-shadow:
+    9px 10px 0 color-mix(in srgb, var(--et-page-accent, #f97316) 16%, rgba(0, 0, 0, 0.5)),
+    0 18px 30px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+html body #root .app.app-command-shell .collector-showcase-sealed .collector-showcase-face,
+html body #root .app.app-command-shell .collector-showcase-supply .collector-showcase-face,
+html body #root .app.app-command-shell .collector-showcase-set .collector-showcase-face {
+  aspect-ratio: 1 / 1;
+  border-radius: 18px;
+  box-shadow:
+    12px 12px 0 color-mix(in srgb, var(--et-page-accent, #f97316) 18%, rgba(78, 46, 22, 0.32)),
+    0 16px 28px rgba(48, 31, 18, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+html body #root .app.app-command-shell .collector-showcase-slab .collector-showcase-face {
+  aspect-ratio: 4 / 5.8;
+  border-radius: 20px;
+}
+
+html body #root .app.app-command-shell .collector-showcase-face img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+html body #root .app.app-command-shell .collector-showcase-fallback {
+  display: grid;
+  gap: 4px;
+  place-items: center;
+  min-height: 100%;
+  padding: 14px;
+  text-align: center;
+}
+
+html body #root .app.app-command-shell .collector-showcase-fallback strong {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 18px;
+  color: #fffaf0;
+  background: linear-gradient(135deg, var(--et-page-accent, #f97316), var(--et-page-accent-2, #d9a441));
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--et-page-accent, #f97316) 22%, transparent);
+}
+
+html body #root .app.app-command-shell .collector-showcase-fallback small {
+  color: color-mix(in srgb, var(--et-muted, #675d52) 88%, var(--et-ink, #172033));
+  font-weight: 800;
+}
+
+html body #root .app.app-command-shell .collector-showcase-shine {
+  position: absolute;
+  inset: -20%;
+  pointer-events: none;
+  background:
+    linear-gradient(112deg, transparent 0 30%, rgba(255, 255, 255, 0.32) 43%, transparent 56%),
+    radial-gradient(circle at 16% 18%, rgba(255, 255, 255, 0.22), transparent 28%);
+  mix-blend-mode: screen;
+  opacity: 0.78;
+  transform: translateX(-12%);
+}
+
+html body #root .app.app-command-shell .collector-showcase-copy {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  align-content: center;
+}
+
+html body #root .app.app-command-shell .collector-showcase-copy strong {
+  font-size: clamp(1rem, 2vw, 1.24rem);
+  line-height: 1.08;
+  overflow-wrap: anywhere;
+}
+
+html body #root .app.app-command-shell .collector-showcase-copy small,
+html body #root .app.app-command-shell .collector-showcase-copy em {
+  color: color-mix(in srgb, var(--et-muted, #675d52) 92%, var(--et-ink, #172033));
+  font-size: 0.82rem;
+  line-height: 1.35;
+  font-style: normal;
+}
+
+html body #root .app.app-theme-dark.app-command-shell .collector-showcase-copy small,
+html body #root .app.app-theme-dark.app-command-shell .collector-showcase-copy em,
+html body #root .app.app-shell-dark.app-command-shell .collector-showcase-copy small,
+html body #root .app.app-shell-dark.app-command-shell .collector-showcase-copy em {
+  color: color-mix(in srgb, var(--et-muted, #c9d7ea) 88%, var(--et-ink, #f7f0df));
+}
+
+html body #root .app.app-command-shell .collector-showcase-kicker,
+html body #root .app.app-command-shell .collector-showcase-action {
+  display: inline-flex;
+  width: max-content;
+  max-width: 100%;
+  align-items: center;
+  min-height: 27px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2, #d9a441) 34%, transparent);
+  background: color-mix(in srgb, var(--et-page-accent-2, #d9a441) 12%, transparent);
+  color: color-mix(in srgb, var(--et-ink, #172033) 82%, var(--et-page-accent, #f97316));
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+html body #root .app.app-command-shell .collector-showcase-action {
+  color: #fffaf0;
+  background: linear-gradient(135deg, var(--et-page-accent, #f97316), color-mix(in srgb, var(--et-page-accent-2, #d9a441) 70%, var(--et-page-accent)));
+}
+
+html body #root .app.app-command-shell .collector-showcase-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+html body #root .app.app-command-shell .collector-showcase-chip-row b {
+  display: inline-flex;
+  align-items: center;
+  min-height: 25px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--et-panel, #fffdf7) 74%, var(--et-page-accent-2, #d9a441) 12%);
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2, #d9a441) 18%, transparent);
+  color: color-mix(in srgb, var(--et-ink, #172033) 88%, var(--et-page-accent, #f97316));
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+html body #root .app.app-theme-dark.app-command-shell .collector-showcase-chip-row b,
+html body #root .app.app-shell-dark.app-command-shell .collector-showcase-chip-row b {
+  background: color-mix(in srgb, var(--et-panel-soft, #10243f) 78%, var(--et-page-accent-2, #d9a441) 8%);
+  color: color-mix(in srgb, var(--et-ink, #f7f0df) 88%, var(--et-page-accent-2, #d9a441));
+}
+
+html body #root .app.app-command-shell .collector-showcase-helper {
+  max-width: 36ch;
+}
+
+html body #root .app.app-command-shell .collector-showcase-mini {
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 10px;
+  padding: 9px;
+  border-radius: 18px;
+}
+
+html body #root .app.app-command-shell .collector-showcase-mini .collector-showcase-object {
+  width: min(100%, 76px);
+}
+
+html body #root .app.app-command-shell .collector-showcase-mini .collector-showcase-copy strong {
+  font-size: 0.88rem;
+}
+
+html body #root .app.app-command-shell .collector-showcase-mini .collector-showcase-helper,
+html body #root .app.app-command-shell .collector-showcase-mini .collector-showcase-kicker {
+  display: none;
+}
+
+html body #root .app.app-command-shell .collector-showcase-display {
+  min-height: 232px;
+}
+
+html body #root .app.app-command-shell .collector-showcase-display .collector-showcase-object {
+  width: min(100%, 158px);
+}
+
+html body #root .app.app-command-shell .collector-showcase-hero {
+  grid-template-columns: minmax(132px, 0.82fr) minmax(0, 1fr);
+  min-height: 284px;
+  padding: clamp(14px, 2vw, 20px);
+}
+
+html body #root .app.app-command-shell .collector-showcase-hero .collector-showcase-object {
+  width: min(100%, 188px);
+}
+
+html body #root .app.app-command-shell .vault-showcase-toggle {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  min-height: 42px;
+  padding: 3px;
+  gap: 4px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2, #d9a441) 24%, var(--et-border, rgba(118, 84, 42, 0.18)));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--et-panel-soft, #fff1dc) 84%, transparent);
+}
+
+html body #root .app.app-command-shell .vault-showcase-toggle button {
+  min-height: 34px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--et-ink, #172033);
+  font-weight: 850;
+}
+
+html body #root .app.app-command-shell .vault-showcase-toggle button.active {
+  color: #fffaf0;
+  background: linear-gradient(135deg, var(--et-page-accent, #8b5cf6), color-mix(in srgb, var(--et-page-accent-2, #d9a441) 72%, var(--et-page-accent)));
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--et-page-accent, #8b5cf6) 20%, transparent);
+}
+
+html body #root .app.app-command-shell .vault-heading-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+}
+
+html body #root .app.app-command-shell .vault-heading-actions > button {
+  min-width: max-content;
+}
+
+html body #root .app.app-command-shell .vault-showcase-panel {
+  display: grid;
+  gap: 14px;
+  padding: clamp(14px, 2vw, 18px);
+  margin-top: 6px;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent-2, #d9a441) 26%, var(--et-border, rgba(118, 84, 42, 0.18)));
+  border-radius: clamp(20px, 1.8vw, 28px);
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--et-page-accent, #8b5cf6) 12%, transparent), transparent 14rem),
+    color-mix(in srgb, var(--et-panel, #fffdf7) 88%, var(--et-page-accent-2, #d9a441) 6%);
+}
+
+html body #root .app.app-theme-dark.app-command-shell .vault-showcase-panel,
+html body #root .app.app-shell-dark.app-command-shell .vault-showcase-panel {
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--et-page-accent, #8b5cf6) 16%, transparent), transparent 14rem),
+    color-mix(in srgb, var(--et-panel, #0d1b31) 88%, #141f38 12%);
+}
+
+html body #root .app.app-command-shell .collector-showcase-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: clamp(12px, 1.8vw, 18px);
+  min-width: 0;
+}
+
+html body #root .app.app-command-shell .collector-showcase-note {
+  margin: 0;
+}
+
+html body #root .app.app-command-shell .inventory-detail-hero {
+  grid-template-columns: minmax(220px, 1fr) minmax(154px, 0.62fr) minmax(0, 1.05fr);
+}
+
+html body #root .app.app-command-shell .vault-item-profile-showcase {
+  align-self: stretch;
+}
+
+html body #root .app.app-command-shell .market-mockup-results .catalog-result-card .catalog-result-main {
+  grid-template-columns: minmax(108px, 154px) minmax(0, 1fr);
+  align-items: center;
+}
+
+html body #root .app.app-command-shell .market-showcase-preview {
+  align-self: stretch;
+  min-height: 142px;
+  grid-template-columns: minmax(0, 1fr);
+  padding: 10px;
+}
+
+html body #root .app.app-command-shell .market-showcase-preview .collector-showcase-copy,
+html body #root .app.app-command-shell .market-showcase-preview .collector-showcase-chip-row b:nth-child(n + 3),
+html body #root .app.app-command-shell .quick-add-showcase-preview .collector-showcase-chip-row b:nth-child(n + 3) {
+  display: none;
+}
+
+html body #root .app.app-command-shell .market-mockup-results .catalog-result-card .catalog-thumb {
+  display: none;
+}
+
+html body #root .app.app-command-shell .quick-add-result-card {
+  grid-template-columns: minmax(96px, 128px) minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+html body #root .app.app-command-shell .quick-add-showcase-preview {
+  min-height: 118px;
+  grid-template-columns: minmax(0, 1fr);
+  padding: 9px;
+}
+
+html body #root .app.app-command-shell .quick-add-showcase-preview .collector-showcase-copy,
+html body #root .app.app-command-shell .quick-add-result-card .quick-add-result-thumb {
+  display: none;
+}
+
+@media (max-width: 780px) {
+  html body #root .app.app-command-shell .inventory-detail-hero {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  html body #root .app.app-command-shell .market-mockup-results .catalog-result-card .catalog-result-main {
+    grid-template-columns: minmax(92px, 118px) minmax(0, 1fr);
+  }
+
+  html body #root .app.app-command-shell .quick-add-result-card {
+    grid-template-columns: minmax(88px, 112px) minmax(0, 1fr);
+  }
+
+  html body #root .app.app-command-shell .quick-add-result-card .quick-add-result-action {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+  }
+}
+
+@media (max-width: 520px) {
+  html body #root .app.app-command-shell .collector-showcase-card {
+    grid-template-columns: minmax(82px, 104px) minmax(0, 1fr);
+    padding: 10px;
+  }
+
+  html body #root .app.app-command-shell .collector-showcase-display,
+  html body #root .app.app-command-shell .collector-showcase-hero {
+    min-height: 0;
+  }
+
+  html body #root .app.app-command-shell .collector-showcase-hero {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  html body #root .app.app-command-shell .collector-showcase-hero .collector-showcase-stage {
+    min-height: 210px;
+  }
+
+  html body #root .app.app-command-shell .collector-showcase-hero .collector-showcase-object {
+    width: min(70vw, 170px);
+  }
+
+  html body #root .app.app-command-shell .vault-heading-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+    width: 100%;
+    gap: 8px;
+  }
+
+  html body #root .app.app-command-shell .vault-showcase-toggle {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  html body #root .app.app-command-shell .vault-showcase-toggle button,
+  html body #root .app.app-command-shell .vault-heading-actions > button {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html body #root .app.app-command-shell .collector-showcase-object,
+  html body #root .app.app-command-shell button.collector-showcase-card:hover .collector-showcase-object,
+  html body #root .app.app-command-shell button.collector-showcase-card:focus-visible .collector-showcase-object {
+    transform: none;
+    transition: none;
+    filter: none;
+  }
+
+  html body #root .app.app-command-shell .collector-showcase-stage {
+    perspective: none;
+  }
+
+  html body #root .app.app-command-shell .collector-showcase-shine {
+    opacity: 0.22;
+    transform: none;
+  }
+}

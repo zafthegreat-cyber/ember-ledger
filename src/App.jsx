@@ -1138,6 +1138,7 @@ const PUBLIC_BETA_REASON_FEEDBACK_TYPES = {
 const PUBLIC_BETA_SAFETY_CONSENT = "Please do not include private child information, payment details, passwords, or sensitive account details.";
 const DAILY_TIDE_STORAGE_KEY = "et-tcg-daily-tide";
 const CATALOG_VIEW_STORAGE_KEY = "et-tcg-beta-catalog-view";
+const VAULT_SHOWCASE_VIEW_STORAGE_KEY = "et-tcg-beta-vault-showcase-view";
 const CATALOG_PAGE_SIZE_STORAGE_KEY = "et-tcg-beta-catalog-page-size";
 const APP_ROUTE_STORAGE_KEY = "et-tcg-route-state";
 const BETA_INVITE_SESSION_KEY = "et-beta-invite-token";
@@ -6303,6 +6304,96 @@ function EtMockupHero({
   );
 }
 
+const COLLECTOR_SHOWCASE_KIND_LABELS = {
+  card: "Card",
+  sealed: "Sealed Product",
+  slab: "Slab",
+  supply: "Supply",
+  set: "Set",
+  item: "Vault Item",
+};
+
+function normalizeCollectorShowcaseKind(kind = "") {
+  const value = String(kind || "").toLowerCase();
+  if (value.includes("sealed") || value.includes("box") || value.includes("bundle") || value.includes("tin") || value.includes("pack")) return "sealed";
+  if (value.includes("slab") || value.includes("graded")) return "slab";
+  if (value.includes("supply") || value.includes("sleeve") || value.includes("binder") || value.includes("deck box") || value.includes("storage")) return "supply";
+  if (value.includes("set")) return "set";
+  if (value.includes("card") || value.includes("single") || value.includes("promo")) return "card";
+  return "item";
+}
+
+function collectorShowcaseInitials(title = "") {
+  const words = String(title || "Vault Item").replace(/[^a-z0-9 ]/gi, " ").trim().split(/\s+/).filter(Boolean);
+  return words.slice(0, 2).map((word) => word[0]).join("").toUpperCase() || "ET";
+}
+
+function CollectorShowcaseCard({
+  title = "Collection item",
+  subtitle = "",
+  image = "",
+  kind = "item",
+  mode = "compact",
+  valueLabel = "",
+  meta = [],
+  helper = "Image may be representative. Values stay manual or estimated when shown.",
+  actionLabel = "",
+  onClick = null,
+  className = "",
+  ariaLabel = "",
+}) {
+  const normalizedKind = normalizeCollectorShowcaseKind(kind);
+  const kindLabel = COLLECTOR_SHOWCASE_KIND_LABELS[normalizedKind] || COLLECTOR_SHOWCASE_KIND_LABELS.item;
+  const Component = onClick ? "button" : "article";
+  const componentProps = onClick
+    ? { type: "button", onClick, "aria-label": ariaLabel || `Open ${title}` }
+    : { "aria-label": ariaLabel || `${title} collector showcase` };
+  const metaItems = [...new Set([kindLabel, ...(Array.isArray(meta) ? meta : [meta]).filter(Boolean)])].slice(0, 4);
+  return (
+    <Component
+      className={`collector-showcase-card collector-showcase-${normalizedKind} collector-showcase-${mode} ${image ? "has-image" : "is-fallback"} ${className}`.trim()}
+      {...componentProps}
+    >
+      <span className="collector-showcase-stage" aria-hidden="true">
+        <span className="collector-showcase-shadow" />
+        <span className="collector-showcase-object">
+          <span className="collector-showcase-edge" />
+          <span className="collector-showcase-face">
+            {image ? (
+              <img
+                src={image}
+                alt=""
+                loading="lazy"
+                onError={(event) => {
+                  event.currentTarget.style.display = "none";
+                  event.currentTarget.nextElementSibling?.removeAttribute("hidden");
+                  event.currentTarget.closest(".collector-showcase-card")?.classList.add("is-fallback");
+                }}
+              />
+            ) : null}
+            <span className="collector-showcase-fallback" hidden={Boolean(image)}>
+              <strong>{collectorShowcaseInitials(title)}</strong>
+              <small>{kindLabel}</small>
+            </span>
+            <span className="collector-showcase-shine" />
+          </span>
+        </span>
+      </span>
+      <span className="collector-showcase-copy">
+        <span className="collector-showcase-kicker">3D Collector Showcase</span>
+        <strong>{title}</strong>
+        {subtitle ? <small>{subtitle}</small> : null}
+        {valueLabel ? <em>{valueLabel}</em> : null}
+        <span className="collector-showcase-chip-row">
+          {metaItems.map((item) => <b key={item}>{item}</b>)}
+        </span>
+        {helper ? <small className="collector-showcase-helper">{helper}</small> : null}
+        {actionLabel ? <span className="collector-showcase-action">{actionLabel}</span> : null}
+      </span>
+    </Component>
+  );
+}
+
 function CollapsibleFeatureSection({ title, summary, open, onToggle, children }) {
   return (
     <section className="feature-dropdown">
@@ -6647,6 +6738,10 @@ export default function App() {
   const [vaultOwnerFilter, setVaultOwnerFilter] = useState("all");
   const [vaultValueFilter, setVaultValueFilter] = useState("all");
   const [vaultSort, setVaultSort] = useState(initialRouteState.vaultSort || "newest");
+  const [vaultDisplayMode, setVaultDisplayMode] = useState(() => {
+    if (typeof localStorage === "undefined") return "standard";
+    return localStorage.getItem(VAULT_SHOWCASE_VIEW_STORAGE_KEY) === "showcase" ? "showcase" : "standard";
+  });
   const [vaultPage, setVaultPage] = useState(1);
   const [selectedVaultDetailId, setSelectedVaultDetailId] = useState(initialRouteState.selectedVaultDetailId || "");
   const [selectedForgeDetailId, setSelectedForgeDetailId] = useState(initialRouteState.selectedForgeDetailId || "");
@@ -12289,6 +12384,12 @@ export default function App() {
     localStorage.setItem(CATALOG_VIEW_STORAGE_KEY, catalogViewMode);
     return undefined;
   }, [catalogViewMode]);
+
+  useEffect(() => {
+    if (typeof localStorage === "undefined") return undefined;
+    localStorage.setItem(VAULT_SHOWCASE_VIEW_STORAGE_KEY, vaultDisplayMode === "showcase" ? "showcase" : "standard");
+    return undefined;
+  }, [vaultDisplayMode]);
 
   useEffect(() => {
     if (typeof localStorage === "undefined") return undefined;
@@ -35873,6 +35974,17 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           aria-label={`View details for ${catalogTitle(product)}`}
           onClick={() => openCatalogDetails(product)}
         >
+          <CollectorShowcaseCard
+            title={catalogTitle(product)}
+            subtitle={productSetName}
+            image={productImageSrc}
+            kind={isSealed ? "sealed" : isCard ? "card" : productTypeLabel}
+            mode="mini"
+            valueLabel={productHasMarketPrice ? `${productMarketLabel} saved estimate` : "Market data unavailable"}
+            meta={[productTypeLabel, marketFreshnessLabel]}
+            helper="Market preview only. Not live pricing, checkout, or a stock guarantee."
+            className="market-showcase-preview"
+          />
           <div className="catalog-thumb">
             {ownedCount ? <span className="catalog-owned-bubble">x{ownedCount}</span> : null}
             {productImageSrc ? (
@@ -50224,6 +50336,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         .map((identifier) => `${identifier.label}: ${identifier.value}`);
       const cardNumberText = product.cardNumber ? `#${product.cardNumber}` : "";
       const sourceText = product._matchReason || product.marketSource || product.sourceType || "Market Watch catalog";
+      const productKind = isCatalogSealedProduct(product) && !isCatalogCardProduct(product)
+        ? "sealed"
+        : isCatalogCardProduct(product)
+          ? "card"
+          : catalogProductTypeLabel(product);
       return (
         <button
           type="button"
@@ -50231,6 +50348,17 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           key={product.id || catalogTitle(product)}
           onClick={() => openQuickAddReviewForProduct(product, source)}
         >
+          <CollectorShowcaseCard
+            title={catalogTitle(product)}
+            subtitle={catalogExpansionName(product) || catalogProductTypeLabel(product)}
+            image={catalogImage(product)}
+            kind={productKind}
+            mode="mini"
+            valueLabel={hasCatalogMarketPrice(product) ? `${money(priceInfo.currentMarketValue)} saved estimate` : "Market data unavailable"}
+            meta={[catalogProductTypeLabel(product), sourceText]}
+            helper="Preview only. Review destination and details before anything is saved."
+            className="quick-add-showcase-preview"
+          />
           <span className="quick-add-result-thumb">
             {catalogImage(product) ? (
               <img
@@ -65404,6 +65532,22 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <p>{vaultItems.length ? "Search, filter, and open grouped items." : "Add your first item or scan a product when ready."}</p>
                 </div>
                 <div className="vault-heading-actions">
+                  <div className="vault-showcase-toggle" role="group" aria-label="Vault display mode">
+                    {[
+                      ["standard", "Standard"],
+                      ["showcase", "Showcase"],
+                    ].map(([mode, label]) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        className={vaultDisplayMode === mode ? "active" : ""}
+                        aria-pressed={vaultDisplayMode === mode}
+                        onClick={() => setVaultDisplayMode(mode)}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
                   <button type="button" onClick={openVaultQuickAddFlow}>Add to Vault</button>
                   <button type="button" className="secondary-button" onClick={() => beginScanProduct("vault")}>Scan</button>
                 </div>
@@ -65671,6 +65815,52 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   </button>
                 ))}
               </div>
+              {vaultItems.length > 0 && vaultDisplayMode === "showcase" ? (
+                <section className="vault-showcase-panel" aria-label="Vault 3D Collector Showcase">
+                  <div className="compact-card-header">
+                    <div>
+                      <span className="trust-badge trust-badge--secure">3D Collector Showcase</span>
+                      <h3>Collection pieces with depth</h3>
+                      <p>Preview cards, sealed products, slabs, and supplies without replacing the standard Vault list. Images and values are local records or saved estimates.</p>
+                    </div>
+                    <button type="button" className="secondary-button" onClick={() => setVaultDisplayMode("standard")}>Standard view</button>
+                  </div>
+                  <div className="collector-showcase-grid vault-showcase-grid">
+                    {visibleVaultItems.slice(0, 8).map((item) => {
+                      const totalValue = vaultItemTotalMarketValue(item);
+                      const itemKind = isInventorySealedProduct(item)
+                        ? "sealed"
+                        : item.grade || item.gradingCompany || item.grading_company
+                          ? "slab"
+                          : vaultItemTypeLabel(item);
+                      return (
+                        <CollectorShowcaseCard
+                          key={item.id}
+                          title={item.name}
+                          subtitle={vaultItemSetLabel(item) || vaultItemTypeLabel(item) || "Vault item"}
+                          image={vaultItemDisplayImage(item)}
+                          kind={itemKind}
+                          mode="display"
+                          valueLabel={totalValue ? `${money(totalValue)} saved estimate` : "No value saved yet"}
+                          meta={[vaultStatusLabel(normalizeVaultStatus(item)), `Qty ${item.quantity || 1}`]}
+                          actionLabel="Open Item Profile"
+                          onClick={() => setSelectedVaultDetailId(item.id)}
+                        />
+                      );
+                    })}
+                  </div>
+                  {visibleVaultItems.length > 8 ? (
+                    <p className="compact-subtitle collector-showcase-note">Showing the first 8 items for this filter. Use search or filters to focus the showcase.</p>
+                  ) : null}
+                  {!visibleVaultItems.length ? (
+                    <EtMockupEmptyState
+                      title="No showcase items for this filter."
+                      detail="Reset filters or add another card, sealed product, slab, or supply to see it here."
+                      action={<EtMockupButton variant="secondary" onClick={clearVaultFilters}>Reset Filters</EtMockupButton>}
+                    />
+                  ) : null}
+                </section>
+              ) : null}
               {editingItemId && rawVaultItems.some((item) => item.id === editingItemId) && (
                 <VaultEditForm
                   form={itemForm}
@@ -70388,6 +70578,17 @@ function VaultItemDetail({ item, masterCard, setSummary, linkedTrades = [], coll
         <button type="button" className="secondary-button" onClick={onClose}>Close</button>
       </div>
       <div className="inventory-detail-hero">
+        <CollectorShowcaseCard
+          title={masterCard?.name || item.name}
+          subtitle={masterCard?.setName || setLabel || itemType || "Vault item"}
+          image={detailImage}
+          kind={itemProfileKind}
+          mode="hero"
+          valueLabel={profileEstimatedValue ? `${profileEstimatedValue} saved estimate` : "No value saved yet"}
+          meta={[itemIsWishlist ? "Wishlist" : "Owned", itemVariantLabel || "Variant pending", conditionLabel || "Condition pending"]}
+          helper="Showcase view uses saved item details only. It does not grade, authenticate, or verify products."
+          className="vault-item-profile-showcase"
+        />
         <PremiumCardImage
           image={detailImage}
           title={masterCard?.name || item.name}

@@ -126,6 +126,9 @@ assert.match(appSource, /No exact identifier match\. Use Search Again, Manual En
 assert.match(appSource, /const visibleEntryCount = sellerQuickAddActive \? Math\.max\(6, quickAddPreferencePlan\.maxVisible\) : quickAddPreferencePlan\.maxVisible;/);
 assert.match(appSource, /title: "Scan Anything", description: "Search, enter UPC\/SKU, or add manually\."/);
 assert.match(appSource, /openQuickAddReviewForProduct\(product, source = "quick-add-search"\)/);
+assert.match(appSource, /quick-add-showcase-preview/);
+assert.match(appSource, /Review destination and details before anything is saved\./);
+assert.match(appSource, /CollectorShowcaseCard/);
 assert.match(appSource, /quickAddDestinationSeed\(sellerDestinationDefault\)/);
 assert.match(appSource, /suppressSuggestions\s+emptyMessage="No matches yet\. Try fewer words, UPC, SKU, or set name\."/);
 assert.match(appSource, /Scan Card/);
