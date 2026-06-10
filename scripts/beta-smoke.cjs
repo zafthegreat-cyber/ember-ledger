@@ -1526,8 +1526,7 @@ async function main() {
     await nav("Forge");
     await page.getByRole("button", { name: "Add Inventory", exact: true }).first().click();
     const form = page.locator("form#multi-destination-add-form").first();
-    const manualFallback = form.getByRole("button", { name: "Can't find it? Add manually" }).first();
-    if (await manualFallback.isVisible().catch(() => false)) await manualFallback.click();
+    await form.getByRole("button", { name: "Manual Add" }).first().click();
     await fillByLabel(form, "Item Name", "Smoke Purchaser Forge Item");
     await fillByLabel(form, "Type / Category", "Elite Trainer Box");
     await clickAddWizardNext();
@@ -1562,8 +1561,7 @@ async function main() {
 
     await page.getByRole("button", { name: "Add Inventory", exact: true }).first().click();
     const secondForm = page.locator("form#multi-destination-add-form").first();
-    const secondManualFallback = secondForm.getByRole("button", { name: "Can't find it? Add manually" }).first();
-    if (await secondManualFallback.isVisible().catch(() => false)) await secondManualFallback.click();
+    await secondForm.getByRole("button", { name: "Manual Add" }).first().click();
     await fillByLabel(secondForm, "Item Name", "Smoke Purchaser Draft");
     await fillByLabel(secondForm, "Type / Category", "Elite Trainer Box");
     await clickAddWizardNext();
@@ -2871,7 +2869,7 @@ async function main() {
     await groupedVaultCard.first().waitFor({ state: "visible", timeout: 5000 });
     assert.equal(await groupedVaultCard.count(), 1, "Vault should show one grouped card for the same product");
     assert.match(await groupedVaultCard.first().innerText(), /Qty\s+7/i);
-    await groupedVaultCard.first().getByRole("button", { name: "View" }).click();
+    await groupedVaultCard.first().getByRole("button", { name: /Item Profile|View/ }).first().click();
     await assertVisibleText("Grouped inventory details");
     await assertVisibleText("Zena");
     await assertVisibleText("Dillon");

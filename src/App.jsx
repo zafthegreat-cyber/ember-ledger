@@ -31204,7 +31204,7 @@ function renderForgeBusinessLedgerPanel() {
     const emberAssistQuickActions = [
       { label: "Scan a card", helper: "Open review-first card or product scan.", action: () => { setEmberAssistOpen(false); openQuickAddAction("scanProduct"); } },
       { label: "Scan restock screenshot", helper: "Review proof first; no upload or live AI promise.", action: () => { setEmberAssistOpen(false); openLiveScoutReportFlow("scanScreenshot"); } },
-      { label: "Check trade fairness", helper: "Compare exact variants with parent-aware warnings.", action: () => { setEmberAssistOpen(false); setActiveTab("forge"); } },
+      { label: "Check trade fairness", helper: "Compare exact variants with parent-aware warnings.", action: () => { setEmberAssistOpen(false); setActiveTab("inventory"); openTradeCompassFlow({ source: "ember-assist-quick-action-trade-fairness" }); } },
       { label: "Help price listing", helper: "Use fair context; nothing posts or checks out.", action: () => { setEmberAssistOpen(false); setActiveTab("market"); } },
       { label: "Recommend kid-friendly set", helper: "Guided suggestions for safer family collecting.", action: () => { setEmberAssistOpen(false); setActiveTab("kidsProgram"); } },
       { label: "Join beta / send feedback", helper: "Request a state, shop path, sponsor path, or beta fix.", action: () => { setEmberAssistOpen(false); openPublicBetaFeedback({ page: "Ember Assist", mainReason: "General feedback" }); } },
@@ -42564,7 +42564,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       else if (destination.includes("kid")) setActiveTab("kidsProgram");
       else if (destination.includes("scout")) setActiveTab("scout");
       else if (destination.includes("market")) setActiveTab("market");
-      else if (destination.includes("forge")) setActiveTab("forge");
+      else if (destination.includes("forge")) setActiveTab("inventory");
       else if (destination.includes("vault")) setActiveTab("vault");
       else setVaultToast("Announcement details are shown below.");
     };

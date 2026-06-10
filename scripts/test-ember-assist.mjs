@@ -32,6 +32,7 @@ assert.match(appSource, /Gentle Guidance/, "Collector Guide should use safe guid
 });
 assert.match(appSource, /openAddTradeFlow\(\{ source: "ember-assist-collector-guide-log-trade" \}\)/, "Log a Trade should use the existing Trade Ledger flow");
 assert.match(appSource, /openTradeCompassFlow\(\{ source: "ember-assist-collector-guide-trade-compass" \}\)/, "Check a Trade should use the existing Trade Compass flow");
+assert.match(appSource, /openTradeCompassFlow\(\{ source: "ember-assist-quick-action-trade-fairness" \}\)/, "Trade fairness quick action should open the existing Trade Compass flow");
 assert.match(appSource, /openMarketPriceMemoryFlow\(null, \{ source: "ember-assist-collector-guide-price-memory" \}\)/, "Save a Price should use the existing Price Memory flow");
 assert.match(appSource, /Guided suggestions\. No live AI promises\./, "Ember Assist should keep no-live-AI framing visible");
 assert.doesNotMatch(appSource, /fake AI backend|backend assistant exists/i, "Collector Guide must not claim a fake backend assistant");
