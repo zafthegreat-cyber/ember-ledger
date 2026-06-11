@@ -29,7 +29,7 @@ export const PRODUCT_GLOSSARY = [
   { key: "admin_command_center", term: "Admin Command Center", status: "Protected", body: "Permission-safe admin tools for beta access, review queues, invites, and cleanup controls." },
   { key: "smart_setup", term: "Smart Setup", status: "Live", body: "First-login personalization that keeps irrelevant seller or admin tools out of the way." },
   { key: "ember_watch", term: "Ember Watch", status: "Planned", body: "Alerts and watchlist center for watched products, restocks, favorite stores, reminders, and announcements." },
-  { key: "ember_id", term: "Ember ID", status: "Planned", body: "Public trust identity for username, contribution count, Scout level, and permission-safe badges." },
+  { key: "ember_id", term: "Ember ID", status: "Planned", body: "Public profile label for username, contribution count, Scout level, and permission-safe badges." },
   { key: "tide_score", term: "Tide Score", status: "Live label", body: "Report and store confidence language: Needs more reports, Based on recent reports, Community confirmed, Admin reviewed, Fresh, Aging, or Expired." },
   { key: "fair_price_badges", term: "Fair Price Badges", status: "Live label", body: "Market Watch price labels: Near Retail, Fair Price, High Price, Market Estimate, Source Unknown, or Needs Price Data." },
   { key: "partner_shops", term: "Partner Shops", status: "Future", body: "Family-friendly shop system with events, stock notes, and paid-placement labels only if sponsorship exists later." },
@@ -40,7 +40,7 @@ export const PRODUCT_ROADMAP_NOTES = [
     key: "grade_assist",
     term: "Grade Assist",
     status: "Future",
-    body: "AI-assisted pre-grading for card scans, slab scans, centering estimates, condition checklists, confidence, suggested grade range, value comparisons, and prep-before-you-send guidance.",
+    body: "Manual grade-readiness planning for condition checklists, centering notes, value comparisons, and prep-before-you-send guidance. Any scan, AI, or photo-supported workflow needs reviewed backend support before it can be live.",
     caution: "Grade Assist is an estimate, not a guaranteed grade.",
   },
   {
@@ -65,7 +65,7 @@ export const PRODUCT_ROADMAP_NOTES = [
     key: "ember_id",
     term: "Ember ID",
     status: "Future",
-    body: "A public profile and trust identity with username, Scout level, contribution count, trust badges, family-safe status, seller status, and protected admin/founder badges.",
+    body: "A public profile label with username, Scout level, contribution count, family-safe status, seller status, and protected admin/founder badges.",
   },
 ];
 

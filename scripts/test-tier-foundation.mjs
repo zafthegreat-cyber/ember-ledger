@@ -28,13 +28,14 @@ assert.match(TIER_PRICING.family.features.join(" "), /2 kid profiles included/i)
 assert.match(TIER_PRICING.seller.price, /\$5\.99\/month beta price/);
 assert.match(TIER_PRICING.shop.price, /Shop Basic \$19\/month/);
 assert.match(TIER_PRICING.shop.trialCopy, /Shop Plus \$39\/month/);
-assert.match(TIER_PRICING.shop.features.join(" "), /approval-based, not automatic payment-based/i);
+assert.match(TIER_PRICING.shop.trialCopy, /admin-reviewed/i);
+assert.match(TIER_PRICING.shop.features.join(" "), /admin-reviewed, not automatic payment-based/i);
 
 assert.match(TIER_DISPLAY_GUIDANCE.free.gateCopy, /1 Scout watch store/i);
 assert.match(TIER_DISPLAY_GUIDANCE.free.gateCopy, /30 days/i);
 assert.match(TIER_DISPLAY_GUIDANCE.collector.gateCopy, /7-day free trial/i);
 assert.match(TIER_DISPLAY_GUIDANCE.seller.gateCopy, /do not unlock raw Scout history/i);
-assert.match(TIER_DISPLAY_GUIDANCE.shop.gateCopy, /approval-based/i);
+assert.match(TIER_DISPLAY_GUIDANCE.shop.gateCopy, /admin-reviewed/i);
 
 assert.ok(TIER_ADD_ONS.some((addOn) => addOn.label === "Extra kid profile" && addOn.price === "$0.99/month"));
 assert.ok(TIER_ADD_ONS.some((addOn) => addOn.label === "Extra adult family member" && addOn.price === "$0.99/month"));

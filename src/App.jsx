@@ -1460,19 +1460,19 @@ const COMING_SOON_GROUPS = [
   {
     key: "spark",
     title: "The Spark",
-    description: "The giving program will grow carefully around verified donations, trusted helpers, and clear impact tracking.",
+    description: "The giving program will grow carefully around reviewed support records, known helpers, and clear impact tracking.",
     defaultStatus: "Planned",
     tone: "planned",
     features: [
       { name: "Spark Points", description: "A future recognition system for helpful giving and community support.", status: "In Design", userType: "Families" },
-      { name: "Spark Rewards", description: "Future non-gambling rewards tied to verified support, not random prizes.", status: "Safety Review", userType: "Families" },
+      { name: "Spark Rewards", description: "Future non-gambling recognition tied to reviewed support records, not random prizes.", status: "Safety Review", userType: "Families" },
       { name: "Donations", description: "Structured donation intake for cards, supplies, packs, and family collecting support.", status: "Planned", userType: "Donors" },
       { name: "Donation Drop-Off Sites", description: "Approved locations that can accept Spark donations when partnerships are ready.", status: "Needs Partner", userType: "Shops and donors" },
       { name: "Pickup Coordination", description: "Safe coordination tools for larger donations without public location sharing.", status: "Safety Review", userType: "Donors" },
       { name: "Kid Packs", description: "Pack-building workflows for age-appropriate collecting starter kits.", status: "Planned", userType: "Families" },
       { name: "Impact Dashboard", description: "A careful summary of packs built, donations processed, and community support.", status: "Future Phase", userType: "Community" },
       { name: "Trusted Family Friend Program", description: "An approval-based helper role for safe events, donations, and learning support.", status: "Safety Review", userType: "Trusted helpers" },
-      { name: "Donation Verification", description: "Review steps that confirm donation details before they count toward impact.", status: "Planned", userType: "Admins" },
+      { name: "Donation Review", description: "Review steps that check support details before they count toward impact.", status: "Planned", userType: "Admins" },
       { name: "Spark Points Ledger", description: "A future audit-friendly record of earned and used Spark Points.", status: "Future Phase", userType: "Families" },
     ],
   },
@@ -1484,7 +1484,7 @@ const COMING_SOON_GROUPS = [
     tone: "planned",
     features: [
       { name: "Trusted Circle", description: "Private, parent-aware circles for known collecting friends and family.", status: "Safety Review", userType: "Families" },
-      { name: "Verified Friend Trades", description: "Trade workflows limited to trusted relationships with clear review steps.", status: "Future Phase", userType: "Collectors" },
+      { name: "Reviewed Friend Trades", description: "Trade workflows limited to known relationships with clear review steps.", status: "Future Phase", userType: "Collectors" },
       { name: "Two-Sided Trade Confirmation", description: "Both users confirm what changed hands before a trade is considered complete.", status: "Planned", userType: "Collectors" },
       { name: "Trade Fairness Warnings", description: "Plain-language warnings when a trade may be unfair or incomplete.", status: "In Design", userType: "Families" },
       { name: "Child-Safe Friend Approvals", description: "Parent approval before any child-safe friend connection can exist.", status: "Safety Review", userType: "Parents" },
@@ -8422,7 +8422,7 @@ export default function App() {
     admin: adaptiveAdminNavVisible ? { key: "admin", label: "Admin", helper: "Command center", icon: "settings", target: "adminReview" } : null,
     moderator: adaptiveModeratorNavVisible && !adaptiveAdminNavVisible ? { key: "moderator", label: "Moderator", helper: "Limited review tools", icon: "settings", target: "moderator" } : null,
     "ember-watch": { key: "ember-watch", label: "Ember Watch", helper: "Drop calendar and signals", icon: "calendar", action: openEmberWatchSection },
-    profile: { key: "profile", label: "Ember ID", helper: "Public username and trust identity", icon: "settings", action: () => openUtilityPage("profile") },
+    profile: { key: "profile", label: "Ember ID", helper: "Public username and profile label", icon: "settings", action: () => openUtilityPage("profile") },
     membership: { key: "membership", label: "Plans & Features", helper: "Beta pricing and feature gates", icon: "settings", action: () => setActiveTab("membership") },
     settings: { key: "settings", label: "Settings", helper: "Profile and controls", icon: "settings", action: () => openUtilityPage("settings") },
     help: { key: "help", label: "Help & Support", helper: "Feedback and refresh tools", icon: "search", action: () => openUtilityPage("help") },
@@ -8432,7 +8432,7 @@ export default function App() {
     { key: "announcements", label: "Announcements", helper: "What's new", icon: "bell", action: () => setActiveTab("whatsNew") },
     { key: "comingSoon", label: "Coming Soon", helper: "Future roadmap and safety guardrails", icon: "calendar", action: () => setActiveTab("comingSoon") },
     { key: "ember-watch", label: "Ember Watch", helper: "Drop calendar and signals", icon: "calendar", action: openEmberWatchSection },
-    { key: "profile", label: "Ember ID", helper: "Public username and trust identity", icon: "settings", action: () => openUtilityPage("profile") },
+    { key: "profile", label: "Ember ID", helper: "Public username and profile label", icon: "settings", action: () => openUtilityPage("profile") },
     { key: "membership", label: "Plans & Features", helper: "Beta pricing and feature gates", icon: "settings", action: () => setActiveTab("membership") },
     { key: "settings", label: "Settings", helper: "Profile and controls", icon: "settings", action: () => openUtilityPage("settings") },
     { key: "help", label: "Help & Support", helper: "Feedback and refresh tools", icon: "search", action: () => openUtilityPage("help") },
@@ -8470,7 +8470,7 @@ export default function App() {
     announcements: { key: "announcements", label: "Announcements", helper: "New Stuff and app updates.", icon: "bell", action: () => setActiveTab("whatsNew") },
     comingSoon: { key: "comingSoon", label: "Coming Soon", helper: "Future features, delayed ideas, and safety guardrails.", icon: "calendar", action: () => setActiveTab("comingSoon") },
     "emberWatch": { key: "ember-watch", label: "Ember Watch", helper: "Monthly drop calendar and Scout signals.", icon: "calendar", action: openEmberWatchSection },
-    profile: { key: "profile", label: "Ember ID", helper: "Public username and trust identity.", icon: "settings", action: () => openUtilityPage("profile") },
+    profile: { key: "profile", label: "Ember ID", helper: "Public username and profile label.", icon: "settings", action: () => openUtilityPage("profile") },
     account: { key: "account", label: "Account", helper: "Sign-in, beta status, and app version.", icon: "settings", action: () => openUtilityPage("account") },
     membership: { key: "membership", label: "Plans & Features", helper: "Beta pricing, trials, add-ons, and Scout gates.", icon: "settings", action: () => setActiveTab("membership") },
     privacySafety: { key: "privacySafety", label: "Privacy & Safety", helper: "Child privacy, Scout guardrails, and role-scoped data.", icon: "settings", action: () => setActiveTab("trust") },
@@ -43283,7 +43283,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       },
       {
         title: "Shops and sellers",
-        detail: "Partners can help with drop-off sites, Learn to Play days, fair access, sponsorships, or verified support.",
+        detail: "Partners can help with drop-off sites, Learn to Play days, fair access, sponsorships, or reviewed support records.",
         badge: "Partner-ready",
       },
     ];
@@ -45176,7 +45176,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <PageHeader
           className={getHeaderCardClass("panel page-summary-card profile-progress-header")}
           title="Ember ID Progress"
-          subtitle="Public trust identity, achievements, badges, membership status, and account progress in one private place."
+          subtitle="Public profile label, achievements, badges, membership status, and account progress in one private place."
           actions={(
             <>
               <button type="button" className="secondary-button" onClick={() => setActiveTab("menu")}>Settings</button>

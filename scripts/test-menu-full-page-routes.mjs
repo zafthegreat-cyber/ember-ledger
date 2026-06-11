@@ -5,8 +5,11 @@ import path from "node:path";
 const root = process.cwd();
 const appPath = path.join(root, "src", "App.jsx");
 const cssPath = path.join(root, "src", "App.css");
+const betaReadinessPath = path.join(root, "src", "services", "betaReadinessService.js");
 const appSource = fs.readFileSync(appPath, "utf8");
 const cssSource = fs.readFileSync(cssPath, "utf8");
+const betaReadinessSource = fs.readFileSync(betaReadinessPath, "utf8");
+const publicTrustSource = `${appSource}\n${betaReadinessSource}`;
 
 const expectedRoutes = [
   ['section === "settings"', 'activeTab: "settings"'],
@@ -279,6 +282,18 @@ assert.equal(
   /next action[^.]{0,240}(live alert|automatic notification|AI automation|guaranteed price|professional grade|authentication verified|checkout connected|payment processed|tax receipt generated)/i.test(appSource),
   false,
   "Next-action guidance must not imply automation, live alerts, guaranteed value, grading, authentication, checkout, payment, or tax receipt behavior."
+);
+assert.equal(
+  /AI-assisted pre-grading|verified donations|verified support|Donation Verification|Verified Friend Trades|trust identity/i.test(publicTrustSource),
+  false,
+  "Public trust copy should avoid AI grading, verified donation/support, verified friend trade, or identity-verification wording."
+);
+assert.ok(
+  betaReadinessSource.includes("Manual grade-readiness planning") &&
+    betaReadinessSource.includes("reviewed backend support before it can be live") &&
+    appSource.includes("reviewed support records") &&
+    appSource.includes("Public username and profile label"),
+  "Privacy/trust wording should stay manual-first, reviewed, and profile-label based."
 );
 
 console.log("Menu full-page route tests passed.");

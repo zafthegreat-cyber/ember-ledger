@@ -163,7 +163,7 @@ export const TIER_PRICING = {
     label: "Shop",
     price: "Shop Basic $19/month",
     summary: "Shop profile and directory foundation for family-friendly local shops.",
-    trialCopy: "Shop Plus $39/month. Trusted status is approval-based.",
+    trialCopy: "Shop Plus $39/month. Shop trust labels are admin-reviewed.",
     futurePrice: "Checkout coming soon; beta upgrades are admin-managed.",
     cta: "Ask admin about shop access",
     features: [
@@ -171,7 +171,7 @@ export const TIER_PRICING = {
       "Store rules, limits, events, and donation/support interest",
       "Trusted Family Friend application",
       "Featured placement for Shop Plus",
-      "Trusted badge is approval-based, not automatic payment-based",
+      "Shop trust labels are admin-reviewed, not automatic payment-based",
       "Staff seat and extra location add-on copy",
     ],
   },
@@ -214,8 +214,8 @@ export const TIER_DISPLAY_GUIDANCE = {
   [PLAN_IDS.SHOP]: {
     status: "Partner review",
     audience: "Shops and partners",
-    benefit: "Supports shop profile, sponsor, trusted partner, and family-friendly shop surfaces.",
-    gateCopy: "Trusted status is approval-based and not automatic payment-based.",
+    benefit: "Supports shop profile, sponsor, reviewed partner, and family-friendly shop surfaces.",
+    gateCopy: "Shop trust labels are admin-reviewed and not automatic payment-based.",
   },
 };
 
@@ -539,7 +539,7 @@ export const FEATURE_DESCRIPTIONS = {
   family_vault: "Parent-managed family collection views for household collecting.",
   kid_profiles: "Create private, parent-managed kid profiles.",
   kid_safe_vault: "Use kid-safe collection views and progress tracking.",
-  shop_profile_tools: "Prepare a shop profile and family-friendly shop directory details. Trusted status is approval-based.",
+  shop_profile_tools: "Prepare a shop profile and family-friendly shop directory details. Shop trust labels are admin-reviewed.",
   shared_workspace: "Use team/shared workspaces and permissions.",
   team_access: "Invite teammates and share selected workspaces.",
 };
@@ -638,8 +638,8 @@ export function getLockedFeatureDetails(featureKey) {
       tierLabel,
       description,
       benefit: "Shop tools support family-friendly profiles, partner participation, sponsorships, and local events.",
-      action: "Ask admin about shop/partner review. Trusted status is approval-based.",
-      guardrail: "Paying is not enough to unlock trusted shop status in beta.",
+      action: "Ask admin about shop/partner review. Shop trust labels are admin-reviewed.",
+      guardrail: "Paying is not enough to unlock a shop trust label in beta.",
       cta: "Ask admin about Shop",
     };
   }
