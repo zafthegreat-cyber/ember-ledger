@@ -51585,6 +51585,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         key={mode.key}
         type="button"
         className={`add-anything-option add-anything-option--${mode.tone || mode.key} add-anything-option--locked`}
+        aria-label={`${mode.title}. ${mode.helper} Coming later.`}
         disabled
       >
         <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed={mode.icon || mode.key} /></span>
@@ -51662,32 +51663,32 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <p>Search, UPC/SKU lookup, Scout screenshot review, and manual card-page review work now. Camera scanning and automatic card detection are coming later.</p>
           </div>
           <div className="add-anything-option-grid">
-            <button type="button" className="add-anything-option add-anything-option--scout" onClick={() => setQuickAddPath("scoutScreenshotReview")}>
+            <button type="button" className="add-anything-option add-anything-option--scout" aria-label="Scout screenshot or photo review. Try text extraction, then review before saving a Scout report." onClick={() => setQuickAddPath("scoutScreenshotReview")}>
               <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed="scout" /></span>
               <strong>Scout screenshot/photo review</strong>
               <small>Try text extraction, then review before saving a Scout report.</small>
             </button>
-            <button type="button" className="add-anything-option add-anything-option--vault" onClick={() => setQuickAddPath("cardPageReview")}>
+            <button type="button" className="add-anything-option add-anything-option--vault" aria-label="Scan page of cards. Manual multi-card review. Automatic card detection is not live yet." onClick={() => setQuickAddPath("cardPageReview")}>
               <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed="vault" /></span>
               <strong>Scan page of cards</strong>
               <small>Manual multi-card review. Add rows yourself; automatic card detection is not live yet.</small>
             </button>
-            <button type="button" className="add-anything-option add-anything-option--search" onClick={() => setQuickAddPath("search")}>
+            <button type="button" className="add-anything-option add-anything-option--search" aria-label="Search by name. Find cards, sets, sealed products, UPCs, or SKUs." onClick={() => setQuickAddPath("search")}>
               <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed="search" /></span>
               <strong>Search by name</strong>
               <small>Find cards, sets, sealed products, UPCs, or SKUs.</small>
             </button>
-            <button type="button" className="add-anything-option add-anything-option--search" onClick={() => setQuickAddPath("upc")}>
+            <button type="button" className="add-anything-option add-anything-option--search" aria-label="Enter UPC or SKU. Look up sealed products or identifiers manually." onClick={() => setQuickAddPath("upc")}>
               <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed="scan" /></span>
               <strong>Enter UPC/SKU</strong>
               <small>Look up sealed products or identifiers manually.</small>
             </button>
-            <button type="button" className="add-anything-option add-anything-option--warning" onClick={() => setQuickAddPath("manual")}>
+            <button type="button" className="add-anything-option add-anything-option--warning" aria-label="Manual entry. Add a record now and correct details before saving." onClick={() => setQuickAddPath("manual")}>
               <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed="manual_entry" /></span>
               <strong>Manual entry</strong>
               <small>Add a record now and correct details before saving.</small>
             </button>
-            <button type="button" className="add-anything-option add-anything-option--warning" onClick={openQuickAddMissingProduct}>
+            <button type="button" className="add-anything-option add-anything-option--warning" aria-label="Request Missing Item. Ask for a catalog item when search cannot find it." onClick={openQuickAddMissingProduct}>
               <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed="search" /></span>
               <strong>Request Missing Item</strong>
               <small>Ask for a catalog item when search cannot find it.</small>
@@ -61382,6 +61383,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                             className={isDesktopSidebarItemActive(item) ? "menu-command-link active" : "menu-command-link"}
                             data-menu-key={item.key}
                             aria-current={isDesktopSidebarItemActive(item) ? "page" : undefined}
+                            aria-label={`${item.label}. ${item.helper || "Open this Ember & Tide area."}`}
                             onClick={() => {
                               if (item.keepOpen) {
                                 item.action?.();
@@ -72284,7 +72286,7 @@ function VaultItemDetail({ item, masterCard, setSummary, linkedTrades = [], coll
                 <h4>Grade Assist</h4>
                 <p>{GRADE_ASSIST_DISCLAIMER}</p>
               </div>
-              <div className={`grade-assist-readiness ${gradeAssistReadiness.tone}`}>
+              <div className={`grade-assist-readiness ${gradeAssistReadiness.tone}`} role="status" aria-live="polite" aria-label={`Grade Assist readiness status: ${gradeAssistReadiness.label}`}>
                 <span>Grade readiness</span>
                 <strong>{gradeAssistReadiness.label}</strong>
                 <p>{gradeAssistReadiness.helper}</p>
@@ -72306,7 +72308,7 @@ function VaultItemDetail({ item, masterCard, setSummary, linkedTrades = [], coll
             <div className="grade-assist-photo-grid" aria-label="Grade Assist photo references">
               <div className={detailImage ? "grade-assist-photo-card has-image" : "grade-assist-photo-card"}>
                 <span>Front/reference photo</span>
-                {detailImage ? <img src={detailImage} alt="" /> : <strong>No photo yet</strong>}
+                {detailImage ? <img src={detailImage} alt={`${item.name || "Vault item"} front reference for Grade Assist`} /> : <strong>No photo yet</strong>}
                 <p>{detailImage ? "Using the current item image for manual review." : "Add an item photo from Edit / Add details when available."}</p>
               </div>
               <div className="grade-assist-photo-card">
@@ -72320,6 +72322,7 @@ function VaultItemDetail({ item, masterCard, setSummary, linkedTrades = [], coll
                 <label className="grade-assist-field" key={field.key}>
                   <span>{field.label}</span>
                   <select
+                    aria-label={`Grade Assist ${field.label}`}
                     value={gradeAssistDraft.checks?.[field.key] || "not_checked"}
                     onChange={(event) => updateGradeAssistField(field.key, event.target.value)}
                   >
@@ -72333,6 +72336,7 @@ function VaultItemDetail({ item, masterCard, setSummary, linkedTrades = [], coll
             <label className="grade-assist-notes">
               <span>Notes</span>
               <textarea
+                aria-label="Grade Assist Notes"
                 value={gradeAssistDraft.notes || ""}
                 onChange={(event) => updateGradeAssistNotes(event.target.value)}
                 placeholder="Manual notes only: centering, whitening, print lines, dents, surface marks, or anything to review before deciding."

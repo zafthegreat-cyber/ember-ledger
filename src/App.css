@@ -102765,3 +102765,152 @@ html body #root .app.app-command-shell .quick-add-result-copy small {
     content: "Manual";
   }
 }
+
+/* Accessibility final layer: keyboard focus, tap comfort, and reduced motion. */
+html body #root .app :where(
+  a[href],
+  button,
+  summary,
+  input,
+  select,
+  textarea,
+  [role="button"],
+  [tabindex]:not([tabindex="-1"]),
+  .drawer-link,
+  .menu-command-link,
+  .mobile-dock-item,
+  .mobile-dock-add,
+  .web-command-nav-item,
+  .web-command-more-item,
+  .web-command-tool,
+  .collector-showcase-card,
+  .collector-flip-card > summary,
+  .vault-gallery-tile
+):focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--et-page-accent-2, #22d3ee) 68%, #ffffff 18%) !important;
+  outline-offset: 4px !important;
+  box-shadow:
+    0 0 0 6px color-mix(in srgb, var(--et-page-accent-2, #22d3ee) 22%, transparent),
+    var(--et-dream-shadow-soft, 0 12px 30px rgba(0, 0, 0, 0.16)) !important;
+}
+
+html body #root .app :where(.modal-close-button, .drawer-close-button, .ember-assist-fab, .mobile-quick-add-fab):focus-visible {
+  outline-offset: 5px !important;
+}
+
+html body #root .app :where(button, .drawer-link, .menu-command-link, .chip, .status-badge, .quick-action-card, .add-anything-option, .collector-showcase-card) {
+  min-height: 44px;
+}
+
+html body #root .app :where(.grade-assist-readiness, .grade-assist-safety-strip, .vault-detail-action-note, .scan-proof-note, .quick-add-missing-help, .collector-showcase-helper, .collector-showcase-rarity-note) {
+  color: color-mix(in srgb, var(--et-text, #172033) 84%, var(--et-muted, #675d52));
+}
+
+html body #root .app.app-theme-dark :where(.grade-assist-readiness, .grade-assist-safety-strip, .vault-detail-action-note, .scan-proof-note, .quick-add-missing-help, .collector-showcase-helper, .collector-showcase-rarity-note),
+html body #root .app.app-shell-dark :where(.grade-assist-readiness, .grade-assist-safety-strip, .vault-detail-action-note, .scan-proof-note, .quick-add-missing-help, .collector-showcase-helper, .collector-showcase-rarity-note) {
+  color: color-mix(in srgb, var(--et-text, #f7f0df) 86%, #ffffff 8%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:focus-within {
+    scroll-behavior: auto !important;
+  }
+
+  html body #root .app *,
+  html body #root .app *::before,
+  html body #root .app *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    transition-delay: 0s !important;
+  }
+
+  html body #root .app :where(
+    button,
+    .drawer-link,
+    .menu-command-link,
+    .quick-action-card,
+    .quick-action-tile,
+    .hearth-quick-action-tile,
+    .guided-quick-choice,
+    .quick-add-action-card,
+    .add-anything-option,
+    .vault-overview-card,
+    .vault-item-card,
+    .forge-inventory-card,
+    .market-mobile-product-card,
+    .tidepool-post-card,
+    .spark-section-card,
+    .collector-showcase-card,
+    .collector-showcase-object,
+    .collector-showcase-face,
+    .collector-showcase-edge,
+    .collector-flip-front,
+    .collector-flip-back,
+    .vault-gallery-tile,
+    .mobile-quick-add-fab,
+    .ember-assist-fab,
+    .back-to-top-button
+  ),
+  html body #root .app :where(
+    button,
+    .drawer-link,
+    .menu-command-link,
+    .quick-action-card,
+    .quick-action-tile,
+    .hearth-quick-action-tile,
+    .guided-quick-choice,
+    .quick-add-action-card,
+    .add-anything-option,
+    .vault-overview-card,
+    .vault-item-card,
+    .forge-inventory-card,
+    .market-mobile-product-card,
+    .tidepool-post-card,
+    .spark-section-card,
+    .collector-showcase-card,
+    .collector-showcase-object,
+    .collector-showcase-face,
+    .collector-showcase-edge,
+    .collector-flip-front,
+    .collector-flip-back,
+    .vault-gallery-tile,
+    .mobile-quick-add-fab,
+    .ember-assist-fab,
+    .back-to-top-button
+  ):hover,
+  html body #root .app :where(
+    button,
+    .drawer-link,
+    .menu-command-link,
+    .quick-action-card,
+    .quick-action-tile,
+    .hearth-quick-action-tile,
+    .guided-quick-choice,
+    .quick-add-action-card,
+    .add-anything-option,
+    .vault-overview-card,
+    .vault-item-card,
+    .forge-inventory-card,
+    .market-mobile-product-card,
+    .tidepool-post-card,
+    .spark-section-card,
+    .collector-showcase-card,
+    .collector-showcase-object,
+    .collector-showcase-face,
+    .collector-showcase-edge,
+    .collector-flip-front,
+    .collector-flip-back,
+    .vault-gallery-tile,
+    .mobile-quick-add-fab,
+    .ember-assist-fab,
+    .back-to-top-button
+  ):focus-visible {
+    transform: none !important;
+    filter: none !important;
+  }
+
+  html body #root .app :where(.collector-showcase-shine, .hearth-skeleton-card, .catalog-result-skeleton, .skeleton-card, .skeleton-line, .skeleton-block, .loading-card, .loading-placeholder) {
+    animation: none !important;
+  }
+}
