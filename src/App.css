@@ -103196,3 +103196,214 @@ html body #root .app.app-shell-dark :where(.grade-assist-readiness, .grade-assis
     padding-bottom: 2px;
   }
 }
+
+/* Theme contrast/readability pass: strengthen helper text, safety copy, forms, and collector-frame labels without changing behavior. */
+html body #root .app.app-command-shell {
+  --et-readable-muted: color-mix(in srgb, var(--et-ink, #172033) 72%, var(--et-muted, #675d52));
+  --et-readable-muted-strong: color-mix(in srgb, var(--et-ink, #172033) 84%, var(--et-muted, #675d52));
+  --et-readable-panel: color-mix(in srgb, var(--et-panel, #fffdf7) 90%, var(--et-page-accent-2, #d9a441) 5%);
+  --et-readable-border: color-mix(in srgb, var(--et-page-accent-2, #d9a441) 28%, var(--et-border, rgba(118, 84, 42, 0.2)));
+}
+
+html body #root .app.app-theme-dark.app-command-shell,
+html body #root .app.app-shell-dark.app-command-shell {
+  --et-readable-muted: color-mix(in srgb, var(--et-ink, #f7f0df) 76%, var(--et-muted, #c9d7ea));
+  --et-readable-muted-strong: color-mix(in srgb, var(--et-ink, #f7f0df) 88%, #ffffff 4%);
+  --et-readable-panel: color-mix(in srgb, var(--et-panel, #0d1b31) 86%, var(--et-page-accent-2, #d9a441) 7%);
+  --et-readable-border: color-mix(in srgb, var(--et-page-accent-2, #d9a441) 34%, rgba(255, 255, 255, 0.15));
+}
+
+html body #root .app.app-command-shell :where(
+  .compact-subtitle,
+  .small-empty-state p,
+  .empty-state p,
+  .et-mockup-empty-state p,
+  .drawer-link small,
+  .menu-command-link small,
+  .ai-helper-note,
+  .quick-add-missing-help,
+  .vault-detail-action-note,
+  .scan-proof-note,
+  .market-card-freshness-line,
+  .market-results-safety-note,
+  .market-detail-safety-card p,
+  .market-price-memory-helper-card p,
+  .market-price-memory-helper-card span,
+  .market-price-memory-hero-card p,
+  .market-price-memory-form-card p,
+  .market-price-memory-row p,
+  .market-price-memory-row small,
+  .market-price-memory-compare p,
+  .market-price-memory-compare-helper,
+  .market-price-memory-meta dd,
+  .collector-showcase-helper,
+  .collector-showcase-rarity-note,
+  .collector-showcase-fallback-note,
+  .vault-condition-helper-card span,
+  .vault-manual-condition-panel p,
+  .vault-manual-condition-panel small,
+  .grade-assist-header p,
+  .grade-assist-value-card p,
+  .grade-assist-photo-card p,
+  .grade-assist-empty-guide p,
+  .beta-data-note span,
+  .backup-preview p,
+  .backup-message
+) {
+  color: var(--et-readable-muted) !important;
+  line-height: 1.48;
+}
+
+html body #root .app.app-command-shell :where(
+  .grade-assist-readiness > span,
+  .grade-assist-value-card > span,
+  .grade-assist-photo-card > span,
+  .grade-assist-field > span,
+  .grade-assist-notes > span,
+  .market-price-memory-stats span,
+  .market-price-memory-comparison-grid span,
+  .market-price-memory-meta dt,
+  .market-price-memory-value span,
+  .collector-showcase-kicker,
+  .collector-showcase-chip-row b,
+  .vault-manual-condition-chip-row span
+) {
+  color: var(--et-readable-muted-strong) !important;
+}
+
+html body #root .app.app-command-shell :where(
+  .grade-assist-safety-strip span,
+  .market-price-memory-safety-strip span,
+  .scout-safety-strip span,
+  .trade-safety-strip span,
+  .spark-gift-safety-strip span,
+  .wishlist-iso-safety-strip span,
+  .tidepool-circle-safety-strip span
+) {
+  border-color: var(--et-readable-border) !important;
+  background: color-mix(in srgb, var(--et-readable-panel) 86%, var(--et-page-accent-2, #d9a441) 8%) !important;
+  color: var(--et-readable-muted-strong) !important;
+  line-height: 1.34;
+}
+
+html body #root .app.app-command-shell :where(
+  .grade-assist-readiness,
+  .grade-assist-photo-card,
+  .grade-assist-value-card,
+  .grade-assist-field,
+  .grade-assist-notes,
+  .grade-assist-empty-guide,
+  .vault-condition-helper-card,
+  .vault-manual-condition-panel,
+  .market-price-memory-helper-card,
+  .market-price-memory-hero-card,
+  .market-price-memory-form-card,
+  .market-price-memory-row,
+  .market-price-memory-stats > div,
+  .market-price-memory-comparison-grid > div,
+  .market-price-memory-compare,
+  .beta-data-note,
+  .storage-status-card,
+  .backup-preview
+) {
+  border-color: var(--et-readable-border) !important;
+  background: var(--et-readable-panel) !important;
+}
+
+html body #root .app.app-command-shell :where(
+  .grade-assist-readiness strong,
+  .grade-assist-value-card strong,
+  .grade-assist-photo-card strong,
+  .grade-assist-empty-guide strong,
+  .market-price-memory-stats strong,
+  .market-price-memory-comparison-grid strong,
+  .market-price-memory-value strong,
+  .market-price-memory-row h3,
+  .market-price-memory-compare h3,
+  .vault-condition-helper-card strong,
+  .vault-manual-condition-panel h4,
+  .collector-showcase-copy strong
+) {
+  color: var(--et-ink, #172033) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell :where(
+  .grade-assist-readiness strong,
+  .grade-assist-value-card strong,
+  .grade-assist-photo-card strong,
+  .grade-assist-empty-guide strong,
+  .market-price-memory-stats strong,
+  .market-price-memory-comparison-grid strong,
+  .market-price-memory-value strong,
+  .market-price-memory-row h3,
+  .market-price-memory-compare h3,
+  .vault-condition-helper-card strong,
+  .vault-manual-condition-panel h4,
+  .collector-showcase-copy strong
+),
+html body #root .app.app-shell-dark.app-command-shell :where(
+  .grade-assist-readiness strong,
+  .grade-assist-value-card strong,
+  .grade-assist-photo-card strong,
+  .grade-assist-empty-guide strong,
+  .market-price-memory-stats strong,
+  .market-price-memory-comparison-grid strong,
+  .market-price-memory-value strong,
+  .market-price-memory-row h3,
+  .market-price-memory-compare h3,
+  .vault-condition-helper-card strong,
+  .vault-manual-condition-panel h4,
+  .collector-showcase-copy strong
+) {
+  color: var(--et-ink, #f7f0df) !important;
+}
+
+html body #root .app.app-command-shell :where(input, select, textarea, .drawer-field) {
+  border-color: color-mix(in srgb, var(--et-page-accent-2, #d9a441) 24%, var(--et-border, rgba(118, 84, 42, 0.22))) !important;
+  background: color-mix(in srgb, var(--et-panel, #fffdf7) 94%, #ffffff 6%) !important;
+  color: var(--et-ink, #172033) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell :where(input, select, textarea, .drawer-field),
+html body #root .app.app-shell-dark.app-command-shell :where(input, select, textarea, .drawer-field) {
+  border-color: color-mix(in srgb, var(--et-page-accent-2, #d9a441) 34%, rgba(255, 255, 255, 0.15)) !important;
+  background: color-mix(in srgb, var(--et-panel, #0d1b31) 88%, #000000 6%) !important;
+  color: var(--et-ink, #f7f0df) !important;
+}
+
+html body #root .app.app-command-shell :where(input::placeholder, textarea::placeholder) {
+  color: color-mix(in srgb, var(--et-readable-muted) 78%, transparent) !important;
+}
+
+html body #root .app.app-command-shell :where(button:disabled, .disabled-link, .drawer-link:disabled, [aria-disabled="true"]) {
+  color: color-mix(in srgb, var(--et-readable-muted-strong) 74%, transparent) !important;
+  opacity: 1 !important;
+}
+
+html body #root .app.app-command-shell .collector-showcase-fallback-note {
+  font-size: 0.68rem !important;
+}
+
+html body #root .app.app-command-shell .collector-showcase-helper,
+html body #root .app.app-command-shell .collector-showcase-rarity-note {
+  font-size: max(0.76rem, var(--text-helper, 0.8rem)) !important;
+}
+
+html body #root .app.app-command-shell :where(
+  button,
+  a,
+  input,
+  select,
+  textarea,
+  summary,
+  [role="button"],
+  .drawer-link,
+  .menu-command-link,
+  .collector-showcase-card,
+  .collector-flip-card > summary
+):focus-visible {
+  outline-color: color-mix(in srgb, var(--et-page-accent-2, #22d3ee) 78%, #ffffff 12%) !important;
+  box-shadow:
+    0 0 0 6px color-mix(in srgb, var(--et-page-accent-2, #22d3ee) 26%, transparent),
+    var(--et-dream-shadow-soft, 0 12px 30px rgba(0, 0, 0, 0.16)) !important;
+}
