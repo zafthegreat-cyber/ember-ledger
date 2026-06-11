@@ -3958,9 +3958,9 @@ function detectCollectorItemVisualType(source = {}) {
     (/\b(sleeves?|top\s*loader|toploader|deck\s*box|storage|playmat|supply|supplies|shipping material|shipping supplies?)\b/.test(broadText)) ||
     (/\bbinder\b/.test(broadText) && !/\bbinder\s+collection\b|\bbinder\s+bundle\b/.test(broadText))
   ) return "supply";
-  if (/\bbooster\s+(box|display)\b|\bdisplay\s+box\b/.test(broadText)) return "booster box";
+  if (/\bbooster[-\s]+(box|display)\b|\bdisplay[-\s]+box\b/.test(broadText)) return "booster box";
   if (/\b(tin|mini\s+tin|collector'?s?\s+chest|pok[e\u00e9]?\s*ball)\b/.test(broadText)) return "tin";
-  if (/\b(bundle|build\s*&?\s*battle|stadium)\b/.test(broadText)) return "bundle";
+  if (/\b(bundle|build\s+(and\s+)?battle|stadium)\b/.test(broadText)) return "bundle";
   if (/\b(sleeved\s+booster|booster\s+pack|checklane\s+blister|3[-\s]?pack\s+blister|blister)\b/.test(broadText) || /\bpack\b/.test(explicitTypeText)) return "pack";
   if (catalogSourceSuggestsSealed(value) || /\bsealed\b|\betb\b|\belite\s+trainer\b|\bcollection\s+box\b|\bbundle\b|\btin\b|\bultra[-\s]?premium\b|\bupc\b/.test(broadText)) return "sealed product";
   if (
@@ -6583,12 +6583,16 @@ function EtMockupHero({
 const COLLECTOR_SHOWCASE_KIND_LABELS = {
   card: "Card",
   sealed: "Sealed Product",
+  pack: "Pack",
+  "booster-box": "Booster Box",
+  tin: "Tin",
+  bundle: "Bundle",
   wishlist: "Wishlist",
   slab: "Slab",
   supply: "Supply",
   set: "Set",
-  unknown: "Unknown",
-  item: "Vault Item",
+  unknown: "Unknown type",
+  item: "Visual display",
 };
 
 function sealedProductFrameMeta(value = {}) {
@@ -6615,10 +6619,10 @@ function sealedProductFrameMeta(value = {}) {
     source.franchise,
     source.meta,
   ].filter(Boolean).join(" "));
-  if (/\bbooster\s+(box|display)\b|\bdisplay\s+box\b|\bdisplay\s+case\b/.test(text)) return { key: "booster-box", label: "Booster Box" };
+  if (/\bbooster[-\s]+(box|display)\b|\bdisplay[-\s]+box\b|\bdisplay\s+case\b/.test(text)) return { key: "booster-box", label: "Booster Box" };
   if (/\betb\b|\belite\s+trainer\s+box\b/.test(text)) return { key: "etb", label: "ETB" };
   if (/\btin\b|\bcollector'?s?\s+chest\b|\bpok[e\u00e9]?\s*ball\b/.test(text)) return { key: "tin", label: "Tin" };
-  if (/\bbundle\b|\bbuild\s*&?\s*battle\b|\bstadium\b/.test(text)) return { key: "bundle", label: "Bundle" };
+  if (/\bbundle\b|\bbuild\s+(and\s+)?battle\b|\bstadium\b/.test(text)) return { key: "bundle", label: "Bundle" };
   if (/\b(collection|premium|special|ex|vmax|vstar|box)\s+box\b|\bultra[-\s]?premium\b|\bupc\b|\bcollection\b/.test(text)) return { key: "collection-box", label: "Collection Box" };
   if (/\bsleeved\s+booster\b|\bbooster\s+pack\b|\bpack\b|\bblister\b/.test(text)) return { key: "booster-pack", label: "Booster Pack" };
   return { key: "unknown", label: "Unknown sealed product" };
@@ -6626,11 +6630,15 @@ function sealedProductFrameMeta(value = {}) {
 
 function normalizeCollectorShowcaseKind(kind = "") {
   const value = String(kind || "").toLowerCase();
-  if (value.includes("sealed") || value.includes("box") || value.includes("bundle") || value.includes("tin") || value.includes("pack") || value.includes("etb") || value.includes("elite trainer") || value.includes("booster")) return "sealed";
   if (value.includes("wishlist") || value.includes("iso") || value.includes("want")) return "wishlist";
   if (value.includes("slab") || value.includes("graded")) return "slab";
   if (value.includes("supply") || value.includes("sleeve") || value.includes("binder") || value.includes("deck box") || value.includes("storage")) return "supply";
   if (value.includes("set")) return "set";
+  if (value.includes("booster box") || value.includes("booster-box") || value.includes("display box") || value.includes("display")) return "booster-box";
+  if (value.includes("pack") || value.includes("blister")) return "pack";
+  if (value.includes("tin") || value.includes("collector chest") || value.includes("collector's chest")) return "tin";
+  if (value.includes("bundle") || value.includes("stadium") || value.includes("build battle")) return "bundle";
+  if (value.includes("sealed") || value.includes("box") || value.includes("etb") || value.includes("elite trainer") || value.includes("booster")) return "sealed";
   if (value.includes("card") || value.includes("single") || value.includes("promo")) return "card";
   if (value.includes("unknown")) return "unknown";
   return "item";
@@ -6693,8 +6701,9 @@ function CollectorShowcaseCard({
 }) {
   const normalizedKind = normalizeCollectorShowcaseKind(kind);
   const kindLabel = COLLECTOR_SHOWCASE_KIND_LABELS[normalizedKind] || COLLECTOR_SHOWCASE_KIND_LABELS.item;
+  const isSealedVisualKind = ["sealed", "pack", "booster-box", "tin", "bundle"].includes(normalizedKind);
   const metaList = (Array.isArray(meta) ? meta : [meta]).filter(Boolean);
-  const sealedFrame = normalizedKind === "sealed" ? sealedProductFrameMeta({
+  const sealedFrame = isSealedVisualKind ? sealedProductFrameMeta({
     name: title,
     productType: subtitle,
     kind,
@@ -6709,13 +6718,14 @@ function CollectorShowcaseCard({
   const screenReaderHint = onClick
     ? "Visual display mode. Open item profile."
     : "Visual display mode. Card details are shown as text.";
+  const fallbackNote = normalizedKind === "unknown" ? "Check details manually" : "Image not available";
   const metaItems = [...new Set([
     sealedFrame?.label || kindLabel,
     ...metaList,
   ])].slice(0, sealedFrame ? 4 : 3);
   return (
     <Component
-      className={`collector-showcase-card collector-showcase-${normalizedKind} collector-showcase-${mode} collector-rarity-${rarityTone} ${sealedFrame ? `collector-sealed-frame-${sealedFrame.key}` : ""} ${image ? "has-image" : "is-fallback"} ${className}`.trim()}
+      className={`collector-showcase-card collector-showcase-${normalizedKind} ${isSealedVisualKind ? "collector-showcase-sealed-like" : ""} collector-showcase-${mode} collector-rarity-${rarityTone} ${sealedFrame ? `collector-sealed-frame-${sealedFrame.key}` : ""} ${image ? "has-image" : "is-fallback collector-showcase-card--fallback"} ${className}`.trim()}
       {...componentProps}
     >
       <span className="collector-showcase-stage" aria-hidden="true">
@@ -6732,12 +6742,15 @@ function CollectorShowcaseCard({
                   event.currentTarget.style.display = "none";
                   event.currentTarget.nextElementSibling?.removeAttribute("hidden");
                   event.currentTarget.closest(".collector-showcase-card")?.classList.add("is-fallback");
+                  event.currentTarget.closest(".collector-showcase-card")?.classList.add("collector-showcase-card--fallback");
+                  event.currentTarget.closest(".collector-showcase-card")?.classList.remove("has-image");
                 }}
               />
             ) : null}
             <span className="collector-showcase-fallback" hidden={Boolean(image)}>
               <strong>{collectorShowcaseInitials(title)}</strong>
               <small>{sealedFrame?.label || kindLabel}</small>
+              <span className="collector-showcase-fallback-note">{fallbackNote}</span>
             </span>
             <span className="collector-showcase-shine" />
           </span>

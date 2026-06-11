@@ -95,7 +95,11 @@ assert.ok(
     appSource.includes("3D Collector Showcase") &&
     appSource.includes("Sealed Product Shelf") &&
     appSource.includes("Collection Gallery") &&
-    appSource.includes('unknown: "Unknown"') &&
+    appSource.includes('pack: "Pack"') &&
+    appSource.includes('"booster-box": "Booster Box"') &&
+    appSource.includes('tin: "Tin"') &&
+    appSource.includes('bundle: "Bundle"') &&
+    appSource.includes('unknown: "Unknown type"') &&
     appSource.includes("Back-side details") &&
     appSource.includes("vaultDisplayMode") &&
     appSource.includes("market-showcase-preview") &&
@@ -114,6 +118,12 @@ assert.ok(
     cssSource.includes(".collector-rarity-promo") &&
     cssSource.includes(".collector-rarity-secret") &&
     cssSource.includes(".collector-showcase-unknown") &&
+    cssSource.includes(".collector-showcase-pack") &&
+    cssSource.includes(".collector-showcase-booster-box") &&
+    cssSource.includes(".collector-showcase-tin") &&
+    cssSource.includes(".collector-showcase-bundle") &&
+    cssSource.includes(".collector-showcase-supply") &&
+    cssSource.includes(".collector-showcase-set") &&
     cssSource.includes(".collector-rarity-chip") &&
     cssSource.includes("@media (prefers-reduced-motion: reduce)") &&
     cssSource.includes("transform: none"),
@@ -138,10 +148,14 @@ assert.ok(
   "Collector Showcase surfaces should use lightweight containment, compact list previews, and GPU-safe transforms."
 );
 assert.ok(
-  cssSource.includes(".collector-showcase-edge") &&
+    cssSource.includes(".collector-showcase-edge") &&
     cssSource.includes(".collector-showcase-fallback") &&
+    cssSource.includes(".collector-showcase-fallback-note") &&
     cssSource.includes(".collector-showcase-card.is-fallback .collector-showcase-face") &&
+    cssSource.includes(".collector-showcase-card--fallback") &&
     cssSource.includes("Manual visual") &&
+    appSource.includes("Image not available") &&
+    appSource.includes("Check details manually") &&
     appSource.includes("function sealedProductFrameMeta") &&
     appSource.includes("Unknown sealed product") &&
     appSource.includes("Booster Pack") &&
@@ -189,6 +203,9 @@ assert.ok(
     appSource.includes('"bundle"') &&
     appSource.includes('"sealed product"') &&
     appSource.includes('"wishlist"') &&
+    appSource.includes("collector-showcase-${normalizedKind}") &&
+    appSource.includes("collector-showcase-sealed-like") &&
+    appSource.includes("collector-showcase-card--fallback") &&
     appSource.includes("sealedFrame?.label || kindLabel") &&
     appSource.includes("visualType: detectCollectorItemVisualType(displayItem)") &&
     appSource.includes("displayKind: item ? detectCollectorItemVisualType(item)") &&

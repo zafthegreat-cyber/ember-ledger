@@ -101057,6 +101057,10 @@ html body #root .app.app-shell-dark.app-command-shell .collector-showcase-face {
 }
 
 html body #root .app.app-command-shell .collector-showcase-sealed .collector-showcase-face,
+html body #root .app.app-command-shell .collector-showcase-pack .collector-showcase-face,
+html body #root .app.app-command-shell .collector-showcase-booster-box .collector-showcase-face,
+html body #root .app.app-command-shell .collector-showcase-tin .collector-showcase-face,
+html body #root .app.app-command-shell .collector-showcase-bundle .collector-showcase-face,
 html body #root .app.app-command-shell .collector-showcase-supply .collector-showcase-face,
 html body #root .app.app-command-shell .collector-showcase-wishlist .collector-showcase-face,
 html body #root .app.app-command-shell .collector-showcase-set .collector-showcase-face {
@@ -101068,7 +101072,11 @@ html body #root .app.app-command-shell .collector-showcase-set .collector-showca
     inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
-html body #root .app.app-command-shell .collector-showcase-sealed .collector-showcase-face {
+html body #root .app.app-command-shell .collector-showcase-sealed .collector-showcase-face,
+html body #root .app.app-command-shell .collector-showcase-pack .collector-showcase-face,
+html body #root .app.app-command-shell .collector-showcase-booster-box .collector-showcase-face,
+html body #root .app.app-command-shell .collector-showcase-tin .collector-showcase-face,
+html body #root .app.app-command-shell .collector-showcase-bundle .collector-showcase-face {
   aspect-ratio: 1.12 / 1;
   border-radius: 20px;
   background:
@@ -101077,11 +101085,19 @@ html body #root .app.app-command-shell .collector-showcase-sealed .collector-sho
     color-mix(in srgb, var(--et-panel, #fffdf7) 90%, transparent);
 }
 
-html body #root .app.app-command-shell .collector-showcase-sealed .collector-showcase-object {
+html body #root .app.app-command-shell .collector-showcase-sealed .collector-showcase-object,
+html body #root .app.app-command-shell .collector-showcase-pack .collector-showcase-object,
+html body #root .app.app-command-shell .collector-showcase-booster-box .collector-showcase-object,
+html body #root .app.app-command-shell .collector-showcase-tin .collector-showcase-object,
+html body #root .app.app-command-shell .collector-showcase-bundle .collector-showcase-object {
   width: min(100%, 148px);
 }
 
-html body #root .app.app-command-shell .collector-showcase-sealed .collector-showcase-edge {
+html body #root .app.app-command-shell .collector-showcase-sealed .collector-showcase-edge,
+html body #root .app.app-command-shell .collector-showcase-pack .collector-showcase-edge,
+html body #root .app.app-command-shell .collector-showcase-booster-box .collector-showcase-edge,
+html body #root .app.app-command-shell .collector-showcase-tin .collector-showcase-edge,
+html body #root .app.app-command-shell .collector-showcase-bundle .collector-showcase-edge {
   top: 12%;
   right: -10px;
   width: 16px;
@@ -101090,21 +101106,37 @@ html body #root .app.app-command-shell .collector-showcase-sealed .collector-sho
 }
 
 html body #root .app.app-command-shell .collector-showcase-sealed .collector-showcase-face::before,
-html body #root .app.app-command-shell .collector-showcase-sealed .collector-showcase-face::after {
+html body #root .app.app-command-shell .collector-showcase-sealed .collector-showcase-face::after,
+html body #root .app.app-command-shell .collector-showcase-pack .collector-showcase-face::before,
+html body #root .app.app-command-shell .collector-showcase-pack .collector-showcase-face::after,
+html body #root .app.app-command-shell .collector-showcase-booster-box .collector-showcase-face::before,
+html body #root .app.app-command-shell .collector-showcase-booster-box .collector-showcase-face::after,
+html body #root .app.app-command-shell .collector-showcase-tin .collector-showcase-face::before,
+html body #root .app.app-command-shell .collector-showcase-tin .collector-showcase-face::after,
+html body #root .app.app-command-shell .collector-showcase-bundle .collector-showcase-face::before,
+html body #root .app.app-command-shell .collector-showcase-bundle .collector-showcase-face::after {
   content: "";
   position: absolute;
   pointer-events: none;
   z-index: 2;
 }
 
-html body #root .app.app-command-shell .collector-showcase-sealed .collector-showcase-face::before {
+html body #root .app.app-command-shell .collector-showcase-sealed .collector-showcase-face::before,
+html body #root .app.app-command-shell .collector-showcase-pack .collector-showcase-face::before,
+html body #root .app.app-command-shell .collector-showcase-booster-box .collector-showcase-face::before,
+html body #root .app.app-command-shell .collector-showcase-tin .collector-showcase-face::before,
+html body #root .app.app-command-shell .collector-showcase-bundle .collector-showcase-face::before {
   inset: 0 auto 0 0;
   width: 14%;
   background: linear-gradient(180deg, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 22%, rgba(255, 255, 255, 0.22)), color-mix(in srgb, var(--et-page-accent, #8b5cf6) 18%, rgba(70, 43, 22, 0.18)));
   border-right: 1px solid color-mix(in srgb, var(--et-page-accent-2, #d9a441) 22%, transparent);
 }
 
-html body #root .app.app-command-shell .collector-showcase-sealed .collector-showcase-face::after {
+html body #root .app.app-command-shell .collector-showcase-sealed .collector-showcase-face::after,
+html body #root .app.app-command-shell .collector-showcase-pack .collector-showcase-face::after,
+html body #root .app.app-command-shell .collector-showcase-booster-box .collector-showcase-face::after,
+html body #root .app.app-command-shell .collector-showcase-tin .collector-showcase-face::after,
+html body #root .app.app-command-shell .collector-showcase-bundle .collector-showcase-face::after {
   inset: 10% 9% auto auto;
   width: 30%;
   height: 15%;
@@ -101114,7 +101146,15 @@ html body #root .app.app-command-shell .collector-showcase-sealed .collector-sho
 }
 
 html body #root .app.app-command-shell .collector-showcase-sealed .collector-showcase-face img,
-html body #root .app.app-command-shell .collector-showcase-sealed .collector-showcase-fallback {
+html body #root .app.app-command-shell .collector-showcase-sealed .collector-showcase-fallback,
+html body #root .app.app-command-shell .collector-showcase-pack .collector-showcase-face img,
+html body #root .app.app-command-shell .collector-showcase-pack .collector-showcase-fallback,
+html body #root .app.app-command-shell .collector-showcase-booster-box .collector-showcase-face img,
+html body #root .app.app-command-shell .collector-showcase-booster-box .collector-showcase-fallback,
+html body #root .app.app-command-shell .collector-showcase-tin .collector-showcase-face img,
+html body #root .app.app-command-shell .collector-showcase-tin .collector-showcase-fallback,
+html body #root .app.app-command-shell .collector-showcase-bundle .collector-showcase-face img,
+html body #root .app.app-command-shell .collector-showcase-bundle .collector-showcase-fallback {
   position: relative;
   z-index: 1;
 }
@@ -101180,7 +101220,15 @@ html body #root .app.app-command-shell .collector-sealed-frame-unknown .collecto
 }
 
 html body #root .app.app-theme-dark.app-command-shell .collector-showcase-sealed .collector-showcase-face,
-html body #root .app.app-shell-dark.app-command-shell .collector-showcase-sealed .collector-showcase-face {
+html body #root .app.app-theme-dark.app-command-shell .collector-showcase-pack .collector-showcase-face,
+html body #root .app.app-theme-dark.app-command-shell .collector-showcase-booster-box .collector-showcase-face,
+html body #root .app.app-theme-dark.app-command-shell .collector-showcase-tin .collector-showcase-face,
+html body #root .app.app-theme-dark.app-command-shell .collector-showcase-bundle .collector-showcase-face,
+html body #root .app.app-shell-dark.app-command-shell .collector-showcase-sealed .collector-showcase-face,
+html body #root .app.app-shell-dark.app-command-shell .collector-showcase-pack .collector-showcase-face,
+html body #root .app.app-shell-dark.app-command-shell .collector-showcase-booster-box .collector-showcase-face,
+html body #root .app.app-shell-dark.app-command-shell .collector-showcase-tin .collector-showcase-face,
+html body #root .app.app-shell-dark.app-command-shell .collector-showcase-bundle .collector-showcase-face {
   background:
     linear-gradient(90deg, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 18%, rgba(255, 255, 255, 0.08)) 0 13%, transparent 13%),
     linear-gradient(145deg, color-mix(in srgb, var(--et-page-accent, #8b5cf6) 16%, rgba(255, 255, 255, 0.08)), color-mix(in srgb, var(--et-page-accent-2, #d9a441) 12%, rgba(255, 255, 255, 0.05))),
@@ -101188,12 +101236,28 @@ html body #root .app.app-shell-dark.app-command-shell .collector-showcase-sealed
 }
 
 html body #root .app.app-theme-dark.app-command-shell .collector-showcase-sealed .collector-showcase-face::before,
-html body #root .app.app-shell-dark.app-command-shell .collector-showcase-sealed .collector-showcase-face::before {
+html body #root .app.app-theme-dark.app-command-shell .collector-showcase-pack .collector-showcase-face::before,
+html body #root .app.app-theme-dark.app-command-shell .collector-showcase-booster-box .collector-showcase-face::before,
+html body #root .app.app-theme-dark.app-command-shell .collector-showcase-tin .collector-showcase-face::before,
+html body #root .app.app-theme-dark.app-command-shell .collector-showcase-bundle .collector-showcase-face::before,
+html body #root .app.app-shell-dark.app-command-shell .collector-showcase-sealed .collector-showcase-face::before,
+html body #root .app.app-shell-dark.app-command-shell .collector-showcase-pack .collector-showcase-face::before,
+html body #root .app.app-shell-dark.app-command-shell .collector-showcase-booster-box .collector-showcase-face::before,
+html body #root .app.app-shell-dark.app-command-shell .collector-showcase-tin .collector-showcase-face::before,
+html body #root .app.app-shell-dark.app-command-shell .collector-showcase-bundle .collector-showcase-face::before {
   background: linear-gradient(180deg, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 18%, rgba(255, 255, 255, 0.08)), color-mix(in srgb, var(--et-page-accent, #8b5cf6) 20%, rgba(0, 0, 0, 0.28)));
 }
 
 html body #root .app.app-theme-dark.app-command-shell .collector-showcase-sealed .collector-showcase-face::after,
-html body #root .app.app-shell-dark.app-command-shell .collector-showcase-sealed .collector-showcase-face::after {
+html body #root .app.app-theme-dark.app-command-shell .collector-showcase-pack .collector-showcase-face::after,
+html body #root .app.app-theme-dark.app-command-shell .collector-showcase-booster-box .collector-showcase-face::after,
+html body #root .app.app-theme-dark.app-command-shell .collector-showcase-tin .collector-showcase-face::after,
+html body #root .app.app-theme-dark.app-command-shell .collector-showcase-bundle .collector-showcase-face::after,
+html body #root .app.app-shell-dark.app-command-shell .collector-showcase-sealed .collector-showcase-face::after,
+html body #root .app.app-shell-dark.app-command-shell .collector-showcase-pack .collector-showcase-face::after,
+html body #root .app.app-shell-dark.app-command-shell .collector-showcase-booster-box .collector-showcase-face::after,
+html body #root .app.app-shell-dark.app-command-shell .collector-showcase-tin .collector-showcase-face::after,
+html body #root .app.app-shell-dark.app-command-shell .collector-showcase-bundle .collector-showcase-face::after {
   background: color-mix(in srgb, rgba(255, 255, 255, 0.18) 64%, var(--et-page-accent-2, #d9a441) 22%);
 }
 
@@ -101215,6 +101279,48 @@ html body #root .app.app-shell-dark.app-command-shell .collector-showcase-wishli
     color-mix(in srgb, var(--et-panel-soft, #10243f) 88%, transparent);
 }
 
+html body #root .app.app-command-shell .collector-showcase-supply .collector-showcase-face {
+  border-radius: 16px;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, #6b7280 18%, rgba(255, 255, 255, 0.72)) 0 18%, transparent 18%),
+    repeating-linear-gradient(0deg, transparent 0 13px, color-mix(in srgb, #6b7280 10%, transparent) 13px 14px),
+    linear-gradient(145deg, color-mix(in srgb, var(--et-panel, #fffdf7) 86%, #8ea4b8 12%), color-mix(in srgb, var(--et-panel-soft, #fff1dc) 86%, #6b7280 8%));
+}
+
+html body #root .app.app-command-shell .collector-showcase-supply .collector-showcase-fallback strong {
+  border-radius: 14px;
+  background: linear-gradient(135deg, #64748b, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 48%, #64748b));
+}
+
+html body #root .app.app-theme-dark.app-command-shell .collector-showcase-supply .collector-showcase-face,
+html body #root .app.app-shell-dark.app-command-shell .collector-showcase-supply .collector-showcase-face {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, #94a3b8 14%, rgba(255, 255, 255, 0.08)) 0 18%, transparent 18%),
+    repeating-linear-gradient(0deg, transparent 0 13px, color-mix(in srgb, #94a3b8 10%, transparent) 13px 14px),
+    linear-gradient(145deg, color-mix(in srgb, var(--et-panel, #0d1b31) 88%, #94a3b8 7%), color-mix(in srgb, var(--et-panel-soft, #10243f) 88%, #6b7280 8%));
+}
+
+html body #root .app.app-command-shell .collector-showcase-set .collector-showcase-face {
+  border-radius: 20px;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--et-page-accent, #8b5cf6) 18%, rgba(255, 255, 255, 0.74)) 0 15%, transparent 15%),
+    linear-gradient(0deg, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 20%, transparent) 0 11%, transparent 11%),
+    linear-gradient(145deg, color-mix(in srgb, var(--et-panel, #fffdf7) 82%, var(--et-page-accent, #8b5cf6) 10%), color-mix(in srgb, var(--et-panel-soft, #fff1dc) 84%, var(--et-page-accent-2, #d9a441) 10%));
+}
+
+html body #root .app.app-command-shell .collector-showcase-set .collector-showcase-fallback strong {
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--et-page-accent, #8b5cf6), color-mix(in srgb, var(--et-page-accent-2, #d9a441) 58%, var(--et-page-accent, #8b5cf6)));
+}
+
+html body #root .app.app-theme-dark.app-command-shell .collector-showcase-set .collector-showcase-face,
+html body #root .app.app-shell-dark.app-command-shell .collector-showcase-set .collector-showcase-face {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--et-page-accent, #8b5cf6) 16%, rgba(255, 255, 255, 0.08)) 0 15%, transparent 15%),
+    linear-gradient(0deg, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 16%, transparent) 0 11%, transparent 11%),
+    linear-gradient(145deg, color-mix(in srgb, var(--et-panel, #0d1b31) 88%, var(--et-page-accent, #8b5cf6) 7%), color-mix(in srgb, var(--et-panel-soft, #10243f) 88%, var(--et-page-accent-2, #d9a441) 7%));
+}
+
 html body #root .app.app-command-shell .collector-showcase-face img {
   width: 100%;
   height: 100%;
@@ -101222,7 +101328,8 @@ html body #root .app.app-command-shell .collector-showcase-face img {
   display: block;
 }
 
-html body #root .app.app-command-shell .collector-showcase-card.is-fallback .collector-showcase-face {
+html body #root .app.app-command-shell .collector-showcase-card.is-fallback .collector-showcase-face,
+html body #root .app.app-command-shell .collector-showcase-card--fallback .collector-showcase-face {
   border-style: solid;
   background:
     radial-gradient(circle at 22% 18%, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 26%, transparent), transparent 32%),
@@ -101231,7 +101338,9 @@ html body #root .app.app-command-shell .collector-showcase-card.is-fallback .col
 }
 
 html body #root .app.app-theme-dark.app-command-shell .collector-showcase-card.is-fallback .collector-showcase-face,
-html body #root .app.app-shell-dark.app-command-shell .collector-showcase-card.is-fallback .collector-showcase-face {
+html body #root .app.app-theme-dark.app-command-shell .collector-showcase-card--fallback .collector-showcase-face,
+html body #root .app.app-shell-dark.app-command-shell .collector-showcase-card.is-fallback .collector-showcase-face,
+html body #root .app.app-shell-dark.app-command-shell .collector-showcase-card--fallback .collector-showcase-face {
   background:
     radial-gradient(circle at 22% 18%, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 18%, transparent), transparent 32%),
     radial-gradient(circle at 84% 80%, color-mix(in srgb, var(--et-page-accent, #f97316) 18%, transparent), transparent 34%),
@@ -101267,8 +101376,18 @@ html body #root .app.app-command-shell .collector-showcase-fallback small {
   font-weight: 800;
 }
 
+html body #root .app.app-command-shell .collector-showcase-fallback-note {
+  color: color-mix(in srgb, var(--et-muted, #675d52) 86%, var(--et-ink, #172033));
+  font-size: 0.64rem;
+  font-weight: 850;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
 html body #root .app.app-theme-dark.app-command-shell .collector-showcase-fallback small,
-html body #root .app.app-shell-dark.app-command-shell .collector-showcase-fallback small {
+html body #root .app.app-shell-dark.app-command-shell .collector-showcase-fallback small,
+html body #root .app.app-theme-dark.app-command-shell .collector-showcase-fallback-note,
+html body #root .app.app-shell-dark.app-command-shell .collector-showcase-fallback-note {
   color: color-mix(in srgb, var(--et-ink, #f7f0df) 86%, var(--et-page-accent-2, #d9a441));
 }
 
@@ -101543,7 +101662,8 @@ html body #root .app.app-command-shell .collector-showcase-mini .collector-showc
 
 html body #root .app.app-command-shell .collector-showcase-mini .collector-showcase-helper,
 html body #root .app.app-command-shell .collector-showcase-mini .collector-showcase-rarity-note,
-html body #root .app.app-command-shell .collector-showcase-mini .collector-showcase-kicker {
+html body #root .app.app-command-shell .collector-showcase-mini .collector-showcase-kicker,
+html body #root .app.app-command-shell .collector-showcase-mini .collector-showcase-fallback-note {
   display: none;
 }
 
@@ -101861,7 +101981,13 @@ html body #root .app.app-command-shell .sealed-product-shelf-copy p {
 }
 
 html body #root .app.app-command-shell .sealed-product-shelf-copy h4 {
+  color: var(--et-ink, #172033);
   overflow-wrap: anywhere;
+}
+
+html body #root .app.app-theme-dark.app-command-shell .sealed-product-shelf-copy h4,
+html body #root .app.app-shell-dark.app-command-shell .sealed-product-shelf-copy h4 {
+  color: var(--et-ink, #f7f0df);
 }
 
 html body #root .app.app-command-shell .sealed-product-shelf-copy small,
@@ -102741,6 +102867,7 @@ html body #root .app.app-command-shell .collector-showcase-unknown .collector-sh
 }
 
 html body #root .app.app-command-shell .collector-showcase-card.is-fallback .collector-showcase-kicker::after,
+html body #root .app.app-command-shell .collector-showcase-card--fallback .collector-showcase-kicker::after,
 html body #root .app.app-command-shell .collector-showcase-unknown .collector-showcase-kicker::after {
   content: "Manual visual";
   margin-left: 6px;
@@ -102761,6 +102888,7 @@ html body #root .app.app-command-shell .quick-add-result-copy small {
 
 @media (max-width: 520px) {
   html body #root .app.app-command-shell .collector-showcase-card.is-fallback .collector-showcase-kicker::after,
+  html body #root .app.app-command-shell .collector-showcase-card--fallback .collector-showcase-kicker::after,
   html body #root .app.app-command-shell .collector-showcase-unknown .collector-showcase-kicker::after {
     content: "Manual";
   }
