@@ -1702,7 +1702,7 @@ function routeStateFromPath(pathname = "") {
   if (section === "data-backup" || section === "backup") return { activeTab: "dataBackup" };
   if (section === "tcg-os") return { activeTab: "tcgOs" };
   if (section === "help" || section === "support") return { activeTab: "help" };
-  if (section === "menu" || section === "more") return { activeTab: "menu" };
+  if (section === "menu" || section === "more") return { activeTab: "settings" };
   if (section === "moderator" || section === "moderation") return { activeTab: "moderator" };
   if (section === "membership" || section === "tiers" || section === "plans") return { activeTab: "membership" };
   if (section === "reports" || section === "business-reports" || section === "exports") return { activeTab: "reports", forgeSubTab: "overview" };
@@ -8066,6 +8066,8 @@ export default function App() {
       workspace: "collections",
       collections: "collections",
       data: "dataBackup",
+      "data-backup": "dataBackup",
+      backup: "dataBackup",
       dataBackup: "dataBackup",
       feedback: "help",
       help: "help",
@@ -34895,7 +34897,7 @@ function renderForgeBusinessLedgerPanel() {
     if (activeTab === "moderator") return "/moderator";
     if (activeTab === "profileProgress") return "/profile/progress";
     if (activeTab === "adminReview") return "/admin";
-    if (activeTab === "membership") return "/settings";
+    if (activeTab === "membership") return "/membership";
     if (activeTab === "betaReadiness") return "/settings";
     if (activeTab === "menu") return "/settings";
     return "/";

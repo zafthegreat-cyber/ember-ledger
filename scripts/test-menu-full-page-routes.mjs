@@ -12,13 +12,28 @@ const betaReadinessSource = fs.readFileSync(betaReadinessPath, "utf8");
 const publicTrustSource = `${appSource}\n${betaReadinessSource}`;
 
 const expectedRoutes = [
+  ['section === "today" || section === "daily-tide"', 'activeTab: "dailyTide"'],
+  ['section === "whats-new" || section === "changelog"', 'activeTab: "whatsNew"'],
+  ['section === "coming-soon" || section === "roadmap"', 'activeTab: "comingSoon"'],
+  ['section === "kids-program"', 'activeTab: "kidsProgram"'],
+  ['section === "parent-center" || section === "parent"', 'activeTab: "parentCenter"'],
   ['section === "settings"', 'activeTab: "settings"'],
   ['section === "account"', 'activeTab: "account"'],
-  ['section === "collections"', 'activeTab: "collections"'],
-  ['section === "data-backup"', 'activeTab: "dataBackup"'],
+  ['section === "collections" || section === "workspaces"', 'activeTab: "collections"'],
+  ['section === "data-backup" || section === "backup"', 'activeTab: "dataBackup"'],
   ['section === "tcg-os"', 'activeTab: "tcgOs"'],
-  ['section === "help"', 'activeTab: "help"'],
-  ['section === "moderator"', 'activeTab: "moderator"'],
+  ['section === "help" || section === "support"', 'activeTab: "help"'],
+  ['section === "menu" || section === "more"', 'activeTab: "settings"'],
+  ['section === "moderator" || section === "moderation"', 'activeTab: "moderator"'],
+  ['section === "membership" || section === "tiers" || section === "plans"', 'activeTab: "membership"'],
+  ['section === "reports" || section === "business-reports" || section === "exports"', 'activeTab: "reports"'],
+  ['section === "admin" || section === "admin-review"', 'activeTab: "adminReview"'],
+  ['section === "partner" || section === "sponsor"', 'activeTab: "sponsor"'],
+  ['section === "privacy" || section === "terms" || section === "trust"', 'activeTab: "trust"'],
+  ['section === "tidetradr"', 'state.activeTab = "market"'],
+  ['section === "forge"', 'state.activeTab = "inventory"'],
+  ['section === "vault"', 'activeTab: "vault"'],
+  ['section === "tidepool"', 'activeTab: "tidepool"'],
 ];
 
 for (const [routeFragment, activeTabFragment] of expectedRoutes) {
@@ -27,6 +42,17 @@ for (const [routeFragment, activeTabFragment] of expectedRoutes) {
 }
 
 const expectedRenderers = [
+  'activeTab === "dailyTide" && renderTodaysTideCommandCenter()',
+  'activeTab === "dashboard" && renderHearthHomeCommandView()',
+  'activeTab === "tidepool" && renderTidepoolCommunity()',
+  'activeTab === "kidsProgram" && renderKidsProgramPage()',
+  'activeTab === "parentCenter" && renderParentCenterPage()',
+  'activeTab === "sponsor" && renderSponsorInterestPage()',
+  'activeTab === "trust" && renderTrustPages()',
+  'activeTab === "links" && renderLinksPage()',
+  'activeTab === "whatsNew" && renderWhatsNewPage()',
+  'activeTab === "knownLimitations" && renderKnownLimitationsPage()',
+  'activeTab === "comingSoon" && renderComingSoonPage()',
   'activeTab === "settings" && renderSettingsPage()',
   'activeTab === "account" && renderAccountPage()',
   'activeTab === "collections" && renderCollectionsPage()',
@@ -35,11 +61,53 @@ const expectedRenderers = [
   'activeTab === "profile" && renderProfilePage()',
   'activeTab === "help" && renderHelpPage()',
   'activeTab === "moderator" && renderModeratorPage()',
+  'activeTab === "membership" && renderMembershipFoundation()',
 ];
 
 for (const renderer of expectedRenderers) {
   assert.ok(appSource.includes(renderer), `Missing full-page renderer: ${renderer}`);
 }
+
+const expectedUtilityAliases = [
+  'workspace: "collections"',
+  'collections: "collections"',
+  'data: "dataBackup"',
+  '"data-backup": "dataBackup"',
+  'backup: "dataBackup"',
+  'dataBackup: "dataBackup"',
+  'tcg_os: "tcgOs"',
+  '"tcg-os": "tcgOs"',
+  'tcgOs: "tcgOs"',
+  'subscription: "membership"',
+  'plan: "membership"',
+];
+
+for (const alias of expectedUtilityAliases) {
+  assert.ok(appSource.includes(alias), `Missing menu utility alias: ${alias}`);
+}
+
+const expectedMenuDestinations = [
+  'quickAdd: { key: "quickAdd"',
+  'scanProduct: { key: "scanProduct"',
+  'emberAssist: { key: "emberAssist"',
+  'privacySafety: { key: "privacySafety"',
+  'parentCenter: { key: "parentCenter"',
+  'publicBetaFeedback: { key: "publicBetaFeedback"',
+  'comingSoon: { key: "comingSoon"',
+  'help: { key: "help"',
+  'settings: { key: "settings"',
+  'account: { key: "account"',
+  'membership: { key: "membership"',
+];
+
+for (const destination of expectedMenuDestinations) {
+  assert.ok(appSource.includes(destination), `Missing mobile menu destination: ${destination}`);
+}
+
+assert.ok(
+  appSource.includes('if (activeTab === "membership") return "/membership";'),
+  "Membership should keep a stable /membership URL instead of serializing back to settings."
+);
 
 assert.ok(
   appSource.includes('utilityDestination ? "Open >"'),
