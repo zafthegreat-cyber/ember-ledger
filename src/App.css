@@ -102914,3 +102914,157 @@ html body #root .app.app-shell-dark :where(.grade-assist-readiness, .grade-assis
     animation: none !important;
   }
 }
+
+/* Run 13 mobile-only QA polish: scroll rhythm, dock safety, and tap comfort. */
+@media (max-width: 760px) {
+  html body #root .app.app-command-shell {
+    --et-mobile-run13-safe-bottom: max(272px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 212px));
+  }
+
+  html body #root .app.app-command-shell .main {
+    padding-bottom: var(--et-mobile-run13-safe-bottom) !important;
+    scroll-padding-bottom: var(--et-mobile-run13-safe-bottom) !important;
+  }
+
+  html body #root .app.app-command-shell :where(
+    .et-mockup-page,
+    .hearth-mockup-rebuild,
+    .scout-mockup-rebuild,
+    .vault-mockup-rebuild,
+    .market-mockup-rebuild,
+    .forge-mockup-rebuild,
+    .spark-mockup-rebuild,
+    .tidepool-mockup-rebuild,
+    .membership-mockup-rebuild
+  ) {
+    gap: 14px !important;
+    padding-bottom: var(--et-mobile-run13-safe-bottom) !important;
+  }
+
+  html body #root .app.app-command-shell :where(
+    .et-mockup-section-card,
+    .et-mockup-right-rail,
+    .et-mockup-action-card,
+    .et-mockup-empty-state,
+    .small-empty-state,
+    .catalog-result-card,
+    .market-mobile-product-card,
+    .vault-item-profile-panel,
+    .grade-assist-panel,
+    .spark-section-card,
+    .tidepool-preview-card,
+    .coming-soon-card
+  ) {
+    padding: clamp(14px, 4vw, 18px) !important;
+    border-radius: clamp(18px, 5vw, 24px) !important;
+  }
+
+  html body #root .app.app-command-shell :where(
+    .et-mockup-action-card,
+    .catalog-result-card,
+    .market-mobile-product-card,
+    .spark-section-card,
+    .tidepool-preview-card,
+    .coming-soon-card,
+    .drawer-info-card
+  ) {
+    margin-block: 0 !important;
+  }
+
+  html body #root .app.app-command-shell :where(
+    .et-mockup-action-card + .et-mockup-action-card,
+    .catalog-result-card + .catalog-result-card,
+    .market-mobile-product-card + .market-mobile-product-card,
+    .spark-section-card + .spark-section-card,
+    .tidepool-preview-card + .tidepool-preview-card,
+    .drawer-info-card + .drawer-info-card
+  ) {
+    margin-top: 12px !important;
+  }
+
+  html body #root .app.app-command-shell :where(
+    .market-result-add-actions,
+    .spark-flow-actions,
+    .tidepool-support-actions,
+    .forge-action-strip,
+    .vault-detail-action-grid,
+    .drawer-inline-actions,
+    .location-modal-actions,
+    .ember-assist-footer-actions
+  ) {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 10px !important;
+    align-items: stretch !important;
+  }
+
+  html body #root .app.app-command-shell :where(
+    .market-result-add-actions button,
+    .spark-flow-actions button,
+    .tidepool-support-actions button,
+    .forge-action-strip button,
+    .vault-detail-action-grid button,
+    .drawer-inline-actions button,
+    .location-modal-actions button,
+    .ember-assist-footer-actions button,
+    .et-mockup-button
+  ) {
+    min-height: 48px !important;
+    justify-content: center !important;
+  }
+
+  html body #root .app.app-command-shell :where(input, select, textarea, .drawer-field) {
+    min-height: 48px;
+    font-size: 16px;
+  }
+
+  html body #root .app.app-command-shell textarea {
+    line-height: 1.45;
+  }
+
+  html body #root .app.app-command-shell :where(.grade-assist-photo-grid, .collector-showcase-grid, .market-filter-drawer, .vault-detail-action-grid) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell :where(.grade-assist-safety-strip, .market-results-safety-note, .vault-detail-action-note, .quick-add-missing-help) {
+    gap: 8px;
+    line-height: 1.45;
+  }
+
+  html body #root .app.app-command-shell .drawer.open.menu-drawer .drawer-menu-stack,
+  html body #root .app.app-command-shell .drawer.open.navigation-drawer .drawer-menu-stack {
+    padding-bottom: calc(var(--bottom-nav-height, 76px) + env(safe-area-inset-bottom, 0px) + 246px) !important;
+    scroll-padding-bottom: calc(var(--bottom-nav-height, 76px) + env(safe-area-inset-bottom, 0px) + 246px) !important;
+  }
+
+  html body #root .app.app-command-shell :where(.flow-modal, .location-modal, .feedback-modal, .smart-setup-modal, .ember-assist-panel) {
+    max-height: calc(100dvh - env(safe-area-inset-top, 0px) - 12px) !important;
+  }
+
+  html body #root .app.app-command-shell :where(.flow-modal-body, .location-modal-content, .ember-assist-scroll, .drawer-body) {
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (max-width: 430px) {
+  html body #root .app.app-command-shell {
+    --et-mobile-run13-safe-bottom: max(286px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 226px));
+  }
+
+  html body #root .app.app-command-shell .topbar {
+    margin-inline: 6px !important;
+  }
+
+  html body #root .app.app-command-shell :where(.et-mockup-page, .hearth-mockup-rebuild, .vault-mockup-rebuild, .market-mockup-rebuild, .forge-mockup-rebuild, .spark-mockup-rebuild, .tidepool-mockup-rebuild) {
+    padding-inline: 8px !important;
+  }
+
+  html body #root .app.app-command-shell :where(.et-mockup-hero-copy h1, .page-dashboard-header-main h1, .standard-page-header h1) {
+    overflow-wrap: anywhere;
+  }
+
+  html body #root .app.app-command-shell :where(.et-mockup-pill-row, .catalog-chip-row, .market-filter-row, .vault-view-strip) {
+    padding-bottom: 2px;
+  }
+}
