@@ -8367,7 +8367,7 @@ export default function App() {
     settings: "Settings",
     account: "Account",
     collections: "Collections",
-    dataBackup: "Data & Backup",
+    dataBackup: "Data Safety & Export",
     tcgOs: "TCG OS",
     profile: "Profile",
     help: "Help & Support",
@@ -27443,7 +27443,7 @@ function renderTideTradrHeader() {
         brand="Market Watch"
         mark={BRAND_ASSETS.mark}
         title="Fair price discovery."
-        detail="Research cards, sealed products, sets, UPC/SKU, and freshness labels before deciding. Market never promises checkout, live stock, or guaranteed availability."
+        detail="Research cards, sealed products, sets, and UPC/SKU matches before you buy, trade, or save a note. Market never promises checkout, live stock, or guaranteed availability."
         points={{ value: workspaceWatchlist.length || "0", label: "watched items" }}
         pills={[
           { label: "No checkout", tone: "market" },
@@ -27578,13 +27578,13 @@ function renderMarketPriceMemorySection() {
     <EtMockupSectionCard
       className="market-price-memory-card"
       title="Price Memory"
-      detail="Manual snapshots for prices you want to remember. Not Live Pricing."
+      detail="Save manual price snapshots you may want to revisit. Not Live Pricing."
       action={<EtMockupButton onClick={() => openMarketPriceMemoryFlow()}>Save Price</EtMockupButton>}
       ariaLabel="Market Price Memory"
     >
       <div className="market-price-memory-helper-card market-price-memory-inline-helper">
         <strong>Not Live Pricing</strong>
-        <span>Use this as a memory/checklist, not a guaranteed live price. Compare condition, sealed status, shipping, fees, and seller reputation. Save prices you want to remember.</span>
+        <span>Use this as a memory/checklist, not a guaranteed live price. Compare condition, fees, and seller trust, then save prices worth remembering.</span>
       </div>
       <div className="market-price-memory-stats" aria-label="Market Memory summary">
         <div>
@@ -27681,8 +27681,8 @@ function renderMarketPriceMemorySection() {
         </div>
       ) : (
         <EtMockupEmptyState
-          title="Price Memory is quiet for now."
-          detail="Save a price when you see one worth remembering. Upgraded plans can expand saved comparison slots when enabled."
+          title="No saved prices yet."
+          detail="Save a manual price when you spot one you want to revisit. Upgraded plans can expand saved comparison slots when enabled."
           action={<EtMockupButton onClick={() => openMarketPriceMemoryFlow()}>Save Price</EtMockupButton>}
         />
       )}
@@ -28932,7 +28932,7 @@ function renderForgeBusinessCommandPanel() {
             )) : (
               <div className="small-empty-state forge-start-empty-state">
                 <strong>No trades logged yet.</strong>
-                <span>Your Trade Ledger is quiet for now. Log your first trade to remember what you gave, what you got, and how the balance felt. Upgraded plans can expand saved trade history when enabled.</span>
+                <span>Log your first trade to remember what you gave, what you got, and how the balance felt. Upgraded plans can expand saved trade history when enabled.</span>
                 <button type="button" className="secondary-button" onClick={() => openAddTradeFlow({ source: "forge-trade-history-empty" })}>Log a Trade</button>
               </div>
             )}
@@ -43642,7 +43642,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
         <EtMockupSectionCard
           title="Kid Packs"
-          detail="Kid Packs are where little sparks begin. Build packs for new collectors, birthdays, events, thank-yous, or families who need support."
+          detail="Plan simple, family-safe packs for new collectors, birthdays, events, thank-yous, or families who need support."
           className="spark-kid-packs-card"
           ariaLabel="The Spark Kid Packs"
           action={<EtMockupButton onClick={() => openSparkKidPackFlow({ source: "spark-kid-packs" })}>Build a Kid Pack</EtMockupButton>}
@@ -43677,7 +43677,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           ) : (
             <EtMockupEmptyState
               title="No Kid Packs built yet."
-              detail="Kid Packs are where little sparks begin. Build packs for new collectors, birthdays, events, thank-yous, or families who need support. Family/Spark upgrades can expand pack and event planning when enabled."
+              detail="Plan a starter pack, event pack, birthday pack, or family support pack. Family/Spark upgrades can expand pack and event planning when enabled."
               action={<EtMockupButton variant="secondary" onClick={() => openSparkKidPackFlow({ source: "spark-kid-packs-empty" })}>Build a Kid Pack</EtMockupButton>}
             />
           )}
@@ -43717,7 +43717,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
         <EtMockupSectionCard
           title="Giving Ledger"
-          detail="The Giving Ledger is ready for its first spark. Log cards, packs, supplies, event help, snacks, sponsorships, or anything that helps kids and families enjoy collecting."
+          detail="Track cards, packs, supplies, event help, snacks, sponsorships, or other support for kids and families."
           className="spark-giving-ledger-card"
           ariaLabel="The Spark Giving Ledger"
           action={<EtMockupButton onClick={() => openSparkGiftFlow({ source: "spark-giving-ledger" })}>Log a Gift</EtMockupButton>}
@@ -43742,7 +43742,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           ) : (
             <EtMockupEmptyState
               title="No Spark Gifts logged yet."
-              detail="The Giving Ledger is ready for its first spark. Log cards, packs, supplies, event help, snacks, sponsorships, or anything that helps kids and families enjoy collecting. Upgraded plans can expand family and event support history when enabled."
+              detail="Log cards, packs, supplies, event help, snacks, sponsorships, or other support when it happens. Upgraded plans can expand family and event support history when enabled."
               action={<EtMockupButton variant="secondary" onClick={() => openSparkGiftFlow({ source: "spark-giving-ledger-empty" })}>Log a Gift</EtMockupButton>}
             />
           )}
@@ -49263,8 +49263,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </div>
             ) : (
               <EtMockupEmptyState
-                title="Your Trusted Circle is waiting for its first helper."
-                detail="Add family friends, shops, sellers, parents, event helpers, sponsors, or community helpers you may want to remember now. Future community tools are preview-only and will not verify people from this local note."
+                title="No Trusted Circle entries yet."
+                detail="Add private notes for family friends, shops, sellers, parents, event helpers, sponsors, or community helpers you may want to remember. Future community tools are preview-only and will not verify people from this local note."
                 action={<EtMockupButton onClick={openTidepoolTrustedCircleFlow}>Add to Circle</EtMockupButton>}
               />
             )}
@@ -58378,7 +58378,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       {
         key: "market-memory",
         eyebrow: "Market Reminder",
-        title: latestMarketMemoryForHearth ? "Check saved Price Memory" : "Market price memory prompt",
+        title: latestMarketMemoryForHearth ? "Check saved Price Memory" : "Save a price to remember",
         detail: latestMarketMemoryForHearth
           ? `${latestMarketMemoryForHearth.itemName || "Saved Price"} is a manual snapshot. Check again before buying, selling, or trading.`
           : "Save one manual Price Memory when you see a card or sealed product worth remembering.",
@@ -58750,7 +58750,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <EtMockupHero
             mark={BRAND_ASSETS.mark}
             title={hearthHomeTitle}
-            detail="Collect with confidence. Protect what matters. Help families find fair access."
+            detail="Start with one clear collector step, then keep Vault, Scout, Forge, Market, and The Spark in reach."
             points={{ value: hearthEmberPoints, label: "Ember Points" }}
             pills={[
               { label: "Public Beta", tone: "beta" },
@@ -58769,14 +58769,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
           <EtMockupSectionCard
             title="Daily Command Center"
-            detail="Your collection, trades, watch stores, and Spark moments all start here."
+            detail="Pick one useful step for your collection today."
             className="hearth-daily-command-center"
             action={<EtMockupPill tone="gold">Keep Building</EtMockupPill>}
           >
             <div className="hearth-daily-tide-summary" aria-label="Today&apos;s Tide">
               <span>Today&apos;s Tide</span>
-              <strong>Your warm home base for what matters today.</strong>
-              <p>Your collection, trades, watch stores, and Spark moments all start here.</p>
+              <strong>Your warm home base for today&apos;s collector choices.</strong>
+              <p>Review what matters across Vault, Scout, Market, Forge, and The Spark.</p>
             </div>
             <article className={`hearth-next-best-step et-mockup-tone-${hearthDailyNextStep.tone}`}>
               <div>
@@ -60595,8 +60595,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
   function renderDataBackupPage() {
     return renderUtilityPageShell({
-      title: "Data & Backup",
-      subtitle: "Export, import, clear private beta data, review sync status, and submit privacy requests.",
+      title: "Data Safety & Export",
+      subtitle: "Review local browser storage, export/import beta data, clear private beta data, and submit privacy requests.",
       className: "data-backup-utility-page",
       children: (
         <>
@@ -62325,7 +62325,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   </div>
                 </div>
               ), "settings")}
-              {renderMenuPullDown("data", "Data & Backup", "Export, import, clear private beta data, and storage status", (
+              {renderMenuPullDown("data", "Data Safety & Export", "Local storage, export/import, clear beta data, and sync status", (
                 <>
                   <div className="drawer-info-card">
                     <strong>Optional Cloud Sync</strong>

@@ -1517,7 +1517,7 @@ async function main() {
     await assertVisibleText("Protect kids' info.");
     await assertVisibleText("Trusted Circle");
     await assertVisibleText("Trusted Circle is your private note space. It does not verify people, run background checks, or replace your own safety judgment.");
-    await assertVisibleText("Your Trusted Circle is waiting for its first helper.");
+    await assertVisibleText("No Trusted Circle entries yet.");
     await assertVisibleText("Event Planner");
     await assertVisibleText("Tidepool notes can help remember trusted contacts and community context. This planner does not publish events or verify shops.");
     await assertVisibleText("No RSVP, ticketing, payment, public listing, calendar sync, notification, or shop verification is connected.");
