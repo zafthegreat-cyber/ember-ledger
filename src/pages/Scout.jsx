@@ -33,7 +33,7 @@ import {
 } from "../utils/storeExpansionUtils";
 import { buildSuggestedRoute, confidenceLabel, explainRouteChoice, numericDistance } from "../utils/routeUtils";
 import { SUGGESTION_TYPES, submitSuggestion } from "../utils/suggestionReviewUtils";
-import { sanitizeScoutLocalData } from "../utils/betaDataCleanup";
+import { safeReadBrowserJson, sanitizeScoutLocalData } from "../utils/betaDataCleanup";
 import { DEFAULT_VIRGINIA_REGION, POKEMON_STOCK_LIKELIHOOD_OPTIONS, VIRGINIA_REGIONS, VIRGINIA_RETAILERS, VIRGINIA_STORE_STATE } from "../data/storeGroups";
 import { VIRGINIA_STORES_SEED, VIRGINIA_STORE_SEED_STATUS, loadVirginiaStoresSeed } from "../data/virginiaStoresSeed";
 import { BEST_BUY_ALERT_TYPES, BEST_BUY_NIGHTLY_DEFAULTS, BEST_BUY_STOCK_STATUSES } from "../data/bestBuyStockSeed";
@@ -398,6 +398,11 @@ function getReportRetailer(store = {}) {
   if (group === "Local Game Stores" || (locationType === "Game Store" && !store.chain && !store.retailer)) return "Local Game Stores";
   if (locationType === "Bookstore" && !/barnes|b&n/i.test(`${store.chain || ""} ${store.retailer || ""}`)) return "Bookstores";
   return store.chain || store.retailer || store.storeGroup || getStoreGroup(store) || "Other";
+}
+
+function readScoutLocalStorage(fallback = {}) {
+  if (typeof localStorage === "undefined") return sanitizeScoutLocalData(fallback);
+  return sanitizeScoutLocalData(safeReadBrowserJson(localStorage, SCOUT_STORAGE_KEY, fallback));
 }
 
 function normalizeReportRetailer(value = "") {
@@ -1390,7 +1395,7 @@ export default function Scout({
     setScoutSubTab(nextSubTab);
 
     if (targetSubTabKey === "reports" && targetSubTabAction === "editReport") {
-      const saved = BETA_LOCAL_SCOUT ? sanitizeScoutLocalData(JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}")) : {};
+      const saved = BETA_LOCAL_SCOUT ? readScoutLocalStorage() : {};
       const report = [...(allReports || []), ...(saved.reports || [])].find((entry) => String(entry.id || entry.reportId || entry.report_id || "") === String(targetSubTabReportId));
       if (report) {
         setSelectedStoreId(report.storeId || report.store_id || selectedStoreId);
@@ -1682,7 +1687,7 @@ export default function Scout({
     };
 
     if (BETA_LOCAL_SCOUT) {
-      const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
+      const saved = readScoutLocalStorage();
       const newReport = {
         ...reportPayload,
         id: makeScoutId("report"),
@@ -1737,7 +1742,7 @@ export default function Scout({
 
   async function loadStores() {
     if (BETA_LOCAL_SCOUT) {
-      const saved = sanitizeScoutLocalData(JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}"));
+      const saved = readScoutLocalStorage();
       const statewideSeedStores = await loadVirginiaStoresSeed().catch(() => STATEWIDE_SEED_STORES);
       const savedStores = dedupeStoresByChainAddress(saved.stores?.length ? [...statewideSeedStores, ...saved.stores] : statewideSeedStores)
         .map((store) => normalizeImportedStore(store));
@@ -1826,7 +1831,7 @@ export default function Scout({
   async function loadStoreDetails(storeId) {
     if (!storeId) return;
     if (BETA_LOCAL_SCOUT) {
-      const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
+      const saved = readScoutLocalStorage();
       const savedReports = saved.reports || [];
       setAllReports(savedReports);
       setReports(savedReports.filter((report) => getReportStoreId(report) === storeId));
@@ -2161,7 +2166,7 @@ export default function Scout({
   }
 
 function saveLocalScout(next) {
-  const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
+  const saved = readScoutLocalStorage();
   localStorage.setItem(SCOUT_STORAGE_KEY, JSON.stringify({ ...saved, ...next }));
 }
 
@@ -2193,7 +2198,7 @@ function previewStatewideStoreImport() {
 
 function confirmStatewideStoreImport() {
   if (!storeImportPreview.length) return;
-  const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
+  const saved = readScoutLocalStorage();
   const nextStores = dedupeStoresByChainAddress([...(saved.stores || stores), ...storeImportPreview]);
   saveLocalScout({ stores: nextStores });
   setStores(nextStores);
@@ -2735,7 +2740,7 @@ function saveRoute(event) {
     return;
   }
 
-  const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
+  const saved = readScoutLocalStorage();
   const newRoute = {
     id: makeScoutId("route"),
     routeName: routeForm.routeName,
@@ -2774,7 +2779,7 @@ function saveRoute(event) {
 }
 
 function markRouteCompleted(routeId) {
-  const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
+  const saved = readScoutLocalStorage();
   const nextRoutes = (saved.routes || routes).map((route) =>
     route.id === routeId ? { ...route, completed: true, completedAt: new Date().toISOString() } : route
   );
@@ -2783,7 +2788,7 @@ function markRouteCompleted(routeId) {
 }
 
 function updateRouteStopNote(routeId, storeId, note) {
-  const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
+  const saved = readScoutLocalStorage();
   const nextRoutes = (saved.routes || routes).map((route) =>
     route.id === routeId
       ? { ...route, stopNotes: { ...(route.stopNotes || {}), [storeId]: note } }
@@ -2794,7 +2799,7 @@ function updateRouteStopNote(routeId, storeId, note) {
 }
 
 function deleteRoute(routeId) {
-  const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
+  const saved = readScoutLocalStorage();
   const nextRoutes = (saved.routes || []).filter((route) => route.id !== routeId);
   saveLocalScout({ routes: nextRoutes });
   setRoutes(nextRoutes);
@@ -3186,7 +3191,7 @@ async function handleUpdateStore(e) {
       };
 
     if (BETA_LOCAL_SCOUT) {
-      const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
+      const saved = readScoutLocalStorage();
 
       if (editingReportId) {
         const nextReports = (saved.reports || []).map((report) =>
@@ -3245,7 +3250,7 @@ async function handleUpdateStore(e) {
     if (!selectedStoreId) return;
 
     if (BETA_LOCAL_SCOUT) {
-      const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
+      const saved = readScoutLocalStorage();
       const nextReports = (saved.reports || []).filter((report) => report.id !== reportId);
       saveLocalScout({ reports: nextReports });
       setAllReports(nextReports);
@@ -3284,7 +3289,7 @@ async function handleUpdateStore(e) {
       return;
     }
 
-    const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
+    const saved = readScoutLocalStorage();
     const reportDate = tipImport.reportDate || new Date().toISOString().slice(0, 10);
     const nowParts = getScoutReportNowParts();
     const reportTime = tipImport.reportTime || nowParts.time;
@@ -3532,7 +3537,7 @@ async function handleUpdateStore(e) {
       setError("Preview restock intel before saving.");
       return;
     }
-    const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
+    const saved = readScoutLocalStorage();
     const nextIntel = [...rows, ...(saved.restockIntel || restockIntel || [])];
     const nextPatterns = buildScoutRestockPatterns(nextIntel);
     saveLocalScout({
@@ -3554,7 +3559,7 @@ async function handleUpdateStore(e) {
     if (!activeStoreId) return;
 
     if (BETA_LOCAL_SCOUT) {
-      const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
+      const saved = readScoutLocalStorage();
       const itemPayload = {
         ...itemForm,
         storeId: activeStoreId,
@@ -3607,7 +3612,7 @@ async function handleUpdateStore(e) {
 
   async function handleDeleteStore(storeId) {
     if (BETA_LOCAL_SCOUT) {
-      const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
+      const saved = readScoutLocalStorage();
       const nextStores = (saved.stores || []).filter((store) => store.id !== storeId);
       const nextReports = (saved.reports || []).filter((report) => report.storeId !== storeId);
       const nextItems = (saved.items || []).filter((item) => item.storeId !== storeId);
@@ -3635,7 +3640,7 @@ async function handleUpdateStore(e) {
     if (!selectedStoreId) return;
 
     if (BETA_LOCAL_SCOUT) {
-      const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
+      const saved = readScoutLocalStorage();
       const nextItems = (saved.items || []).map((item) =>
         item.id === itemId
           ? {
@@ -3670,7 +3675,7 @@ async function handleUpdateStore(e) {
     if (!selectedStoreId) return;
 
     if (BETA_LOCAL_SCOUT) {
-      const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
+      const saved = readScoutLocalStorage();
       const nextItems = (saved.items || []).filter((item) => item.id !== itemId);
       saveLocalScout({ items: nextItems });
       setItems(nextItems.filter((item) => item.storeId === selectedStoreId));

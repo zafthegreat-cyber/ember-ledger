@@ -3,6 +3,7 @@ import { CATALOG_SORT_OPTIONS } from "../utils/catalogSortUtils";
 import { searchPokemonCatalog } from "../services/pokemonCatalogSearch";
 import MarketPriceHistoryPanel from "./MarketPriceHistoryPanel";
 import SmartCatalogSearchBox from "./SmartCatalogSearchBox";
+import { safeReadBrowserJson } from "../utils/betaDataCleanup";
 
 export const WHAT_DID_I_SEE_STORAGE_KEY = "tide_tradr_what_did_i_see_reports";
 
@@ -92,11 +93,7 @@ function buildCatalogSnapshot(product = {}) {
 }
 
 function getSavedReports() {
-  try {
-    return JSON.parse(localStorage.getItem(WHAT_DID_I_SEE_STORAGE_KEY) || "[]");
-  } catch {
-    return [];
-  }
+  return safeReadBrowserJson(localStorage, WHAT_DID_I_SEE_STORAGE_KEY, []);
 }
 
 function saveReports(reports) {

@@ -56,6 +56,7 @@ import {
   cleanupBrowserBetaStorage,
   emptyTidepoolData,
   isDemoLikeRecord,
+  safeReadBrowserJson,
   sanitizeAppLocalData,
   sanitizeScoutLocalData,
   sanitizeTidepoolLocalData,
@@ -1174,7 +1175,7 @@ function loadStoredAppThemeChoice() {
   try {
     const directPreference = localStorage.getItem(APP_THEME_STORAGE_KEY);
     if (directPreference) return normalizeAppThemeChoice(directPreference);
-    const saved = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || "{}");
+    const saved = safeReadBrowserJson(localStorage, LOCAL_STORAGE_KEY, {});
     return normalizeAppThemeChoice(saved.appThemeChoice || saved.themeChoice || saved.settings?.appThemeChoice);
   } catch {
     return "light";
@@ -1744,12 +1745,7 @@ function renderAppBuildDetails() {
 
 function loadInitialRouteState() {
   if (typeof window === "undefined") return { activeTab: "dashboard" };
-  let saved = {};
-  try {
-    saved = JSON.parse(localStorage.getItem(APP_ROUTE_STORAGE_KEY) || "{}");
-  } catch {
-    saved = {};
-  }
+  const saved = safeReadBrowserJson(localStorage, APP_ROUTE_STORAGE_KEY, {});
   const route = routeStateFromPath(window.location.pathname);
   const params = new URLSearchParams(window.location.search || "");
   const marketQuery = String(params.get("q") || "").trim().slice(0, 140);
@@ -1861,11 +1857,7 @@ function normalizeDailyTideState(value = {}) {
 
 function loadDailyTideState() {
   if (typeof localStorage === "undefined") return normalizeDailyTideState();
-  try {
-    return normalizeDailyTideState(JSON.parse(localStorage.getItem(DAILY_TIDE_STORAGE_KEY) || "{}"));
-  } catch {
-    return normalizeDailyTideState();
-  }
+  return normalizeDailyTideState(safeReadBrowserJson(localStorage, DAILY_TIDE_STORAGE_KEY, {}));
 }
 
 const CATEGORIES = ["Pokemon", "Makeup", "Clothes", "Candy", "Collectibles", "Supplies", "Other"];
@@ -4967,14 +4959,10 @@ function normalizeForgeModeSettings(value = {}) {
 
 function loadForgeModeSettings(fallback = {}) {
   if (typeof localStorage === "undefined") return normalizeForgeModeSettings(fallback);
-  try {
-    return normalizeForgeModeSettings({
-      ...fallback,
-      ...JSON.parse(localStorage.getItem(FORGE_MODE_SETTINGS_STORAGE_KEY) || "{}"),
-    });
-  } catch {
-    return normalizeForgeModeSettings(fallback);
-  }
+  return normalizeForgeModeSettings({
+    ...fallback,
+    ...safeReadBrowserJson(localStorage, FORGE_MODE_SETTINGS_STORAGE_KEY, {}),
+  });
 }
 
 function isPersonalForgeWorkspace(workspace = {}) {
@@ -10085,7 +10073,7 @@ export default function App() {
       )
       : [setStoreFavoriteState({ ...store, id: store.id || targetId }, true), ...scoutSnapshot.stores];
     setScoutSnapshot((current) => ({ ...current, stores: nextStores }));
-    const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
+    const saved = safeReadBrowserJson(localStorage, SCOUT_STORAGE_KEY, {});
     localStorage.setItem(SCOUT_STORAGE_KEY, JSON.stringify({ ...saved, stores: nextStores }));
     void persistScoutStoreWatchToSupabase(store, true);
   }
@@ -10283,12 +10271,7 @@ export default function App() {
   }
 
   function readLocalFeedbackQueue() {
-    try {
-      const rows = JSON.parse(localStorage.getItem(FEEDBACK_STORAGE_KEY) || "[]");
-      return Array.isArray(rows) ? rows : [];
-    } catch {
-      return [];
-    }
+    return safeReadBrowserJson(localStorage, FEEDBACK_STORAGE_KEY, []);
   }
 
   function publicBetaFeedbackLooksDuplicate(form = feedbackForm, rows = readLocalFeedbackQueue()) {
@@ -10656,7 +10639,7 @@ export default function App() {
       createdAt: new Date().toISOString(),
     };
     try {
-      const existing = JSON.parse(localStorage.getItem(FEEDBACK_STORAGE_KEY) || "[]");
+      const existing = safeReadBrowserJson(localStorage, FEEDBACK_STORAGE_KEY, []);
       localStorage.setItem(FEEDBACK_STORAGE_KEY, JSON.stringify([payload, ...(Array.isArray(existing) ? existing : [])]));
     } catch (error) {
       console.warn("Unable to save beta feedback", error);
@@ -13252,12 +13235,7 @@ export default function App() {
   }
   function getLocalFeedbackRecords() {
     if (typeof localStorage === "undefined") return [];
-    try {
-      const rows = JSON.parse(localStorage.getItem(FEEDBACK_STORAGE_KEY) || "[]");
-      return Array.isArray(rows) ? rows : [];
-    } catch {
-      return [];
-    }
+    return safeReadBrowserJson(localStorage, FEEDBACK_STORAGE_KEY, []);
   }
   async function showAiSuggestion(featureArea, suggestion, fallbackMessage = "") {
     const output = suggestion?.outputSummary || fallbackMessage || AI_REVIEW_DISCLAIMER;
@@ -15699,7 +15677,7 @@ export default function App() {
       setVaultToast(result.source === "supabase" ? "Scout alert preference synced." : "Scout alert preference saved locally.");
     });
     try {
-      const saved = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
+      const saved = safeReadBrowserJson(localStorage, SCOUT_STORAGE_KEY, {});
       localStorage.setItem(SCOUT_STORAGE_KEY, JSON.stringify({ ...saved, alertSettings: nextAlertSettings }));
     } catch (error) {
       console.warn("Unable to save Scout alert preference", error);
@@ -15708,7 +15686,7 @@ export default function App() {
   }
 
   function loadScoutSnapshot() {
-    const saved = sanitizeScoutLocalData(JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}"));
+    const saved = sanitizeScoutLocalData(safeReadBrowserJson(localStorage, SCOUT_STORAGE_KEY, {}));
     const restockIntel = saved.restockIntel?.length ? saved.restockIntel : [];
     setScoutSnapshot({
       stores: saved.stores || [],
@@ -16526,7 +16504,7 @@ export default function App() {
   useEffect(() => {
     if (typeof localStorage !== "undefined") cleanupBrowserBetaStorage(localStorage);
     if (typeof sessionStorage !== "undefined") cleanupBrowserBetaStorage(sessionStorage);
-    const savedTidepool = sanitizeTidepoolLocalData(JSON.parse(localStorage.getItem(TIDEPOOL_STORAGE_KEY) || "null") || createDefaultTidepoolData());
+    const savedTidepool = sanitizeTidepoolLocalData(safeReadBrowserJson(localStorage, TIDEPOOL_STORAGE_KEY, createDefaultTidepoolData()));
     setTidepoolPosts(savedTidepool.posts || []);
     setTidepoolComments(savedTidepool.comments || []);
     setTidepoolReactions(savedTidepool.reactions || []);
@@ -16733,7 +16711,7 @@ export default function App() {
       if (typeof localStorage !== "undefined") cleanupBrowserBetaStorage(localStorage);
       if (typeof sessionStorage !== "undefined") cleanupBrowserBetaStorage(sessionStorage);
       const localBetaUser = { id: "local-beta", email: "local beta mode" };
-      const saved = sanitizeAppLocalData(JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || "{}"));
+      const saved = sanitizeAppLocalData(safeReadBrowserJson(localStorage, LOCAL_STORAGE_KEY, {}));
       const workspaceState = normalizeWorkspaceState(saved, localBetaUser);
       const personalWorkspace = workspaceState.workspaces.find((workspace) => workspace.id === DEFAULT_PERSONAL_WORKSPACE_ID) || workspaceState.workspaces[0];
       const savedUserType = normalizeUserType(saved.userType);
@@ -17162,11 +17140,7 @@ export default function App() {
   useEffect(() => {
     if (!BETA_LOCAL_MODE || !localDataLoaded) return;
     let persistedLocationSettings = null;
-    try {
-      persistedLocationSettings = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || "{}")?.locationSettings || null;
-    } catch {
-      persistedLocationSettings = null;
-    }
+    persistedLocationSettings = safeReadBrowserJson(localStorage, LOCAL_STORAGE_KEY, {})?.locationSettings || null;
     const hasCurrentLocation = Boolean(
       String(locationSettings.manualLocation || "").trim() ||
       String(locationSettings.selectedSavedLocation || "").trim() ||
@@ -17253,12 +17227,7 @@ export default function App() {
     let active = true;
     async function loadProfile() {
       if (BETA_LOCAL_MODE && user?.id === "local-beta") {
-        let savedProfile = {};
-        try {
-          savedProfile = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || "{}")?.profile || {};
-        } catch {
-          savedProfile = {};
-        }
+        const savedProfile = safeReadBrowserJson(localStorage, LOCAL_STORAGE_KEY, {})?.profile || {};
         const profile = {
           ...makeFallbackUserProfile(user),
           ...savedProfile,
@@ -30180,12 +30149,7 @@ function renderForgeBusinessLedgerPanel() {
   }
 
   function createBetaBackup() {
-    let savedScout = {};
-    try {
-      savedScout = JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}");
-    } catch {
-      savedScout = {};
-    }
+    const savedScout = safeReadBrowserJson(localStorage, SCOUT_STORAGE_KEY, {});
 
     return {
       appName: "Ember & Tide",
@@ -32129,12 +32093,7 @@ function renderForgeBusinessLedgerPanel() {
       setAdminEditMode(false);
       return;
     }
-    let saved = {};
-    try {
-      saved = JSON.parse(localStorage.getItem(adminModeStorageKey) || "{}");
-    } catch {
-      saved = {};
-    }
+    const saved = safeReadBrowserJson(localStorage, adminModeStorageKey, {});
     const savedViewMode = saved.viewMode === "regular" ? "regular" : "admin";
     setAdminViewMode(savedViewMode);
     setAdminEditMode(savedViewMode === "admin" && saved.editMode === true);
@@ -37411,20 +37370,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 }
 
   function getSharedScoutData() {
-    try {
-      return sanitizeScoutLocalData(JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}"));
-    } catch {
-      return {};
-    }
+    return sanitizeScoutLocalData(safeReadBrowserJson(localStorage, SCOUT_STORAGE_KEY, {}));
   }
 
   function saveSharedScoutData(nextScout) {
-    let savedScout = {};
-    try {
-      savedScout = sanitizeScoutLocalData(JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}"));
-    } catch {
-      savedScout = {};
-    }
+    const savedScout = sanitizeScoutLocalData(safeReadBrowserJson(localStorage, SCOUT_STORAGE_KEY, {}));
     const preservedScout = {
       ...nextScout,
       stores: Array.isArray(nextScout.stores)
@@ -39303,7 +39253,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }
 
   function scoutWatchGlobalChangeWindowStatus(savedScout = null) {
-    const saved = savedScout || sanitizeScoutLocalData(JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}"));
+    const saved = savedScout || sanitizeScoutLocalData(safeReadBrowserJson(localStorage, SCOUT_STORAGE_KEY, {}));
     return scoutWatchChangeWindowStatus({
       watchChangedAt: saved.lastScoutWatchChangeAt || saved.lastWatchStoreChangeAt || saved.watchChangedAt || "",
       nextWatchChangeAt: saved.nextScoutWatchChangeAt || saved.nextWatchStoreChangeAt || "",
@@ -39463,7 +39413,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const row = rowOrStore.store ? rowOrStore : { store: rowOrStore };
     const targetId = getStoreMapStoreId(row.store);
     const replaceStoreId = options.replaceStoreId || "";
-    const saved = sanitizeScoutLocalData(JSON.parse(localStorage.getItem(SCOUT_STORAGE_KEY) || "{}"));
+    const saved = sanitizeScoutLocalData(safeReadBrowserJson(localStorage, SCOUT_STORAGE_KEY, {}));
     const savedStores = saved.stores?.length ? saved.stores : scoutSnapshot.stores || [];
     const exists = savedStores.some((store) => getStoreMapStoreId(store) === targetId);
     const nowIso = new Date().toISOString();
@@ -58329,17 +58279,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       .sort((a, b) => String(b.dateSeen || b.createdAt || "").localeCompare(String(a.dateSeen || a.createdAt || "")))[0] || null;
     const hearthGradeAssistChecklistCount = (() => {
       if (typeof localStorage === "undefined") return 0;
-      try {
-        const saved = JSON.parse(localStorage.getItem(GRADE_ASSIST_LOCAL_STORAGE_KEY) || "{}");
-        return Object.values(saved || {}).filter((entry) => {
-          if (!entry || typeof entry !== "object") return false;
-          const checks = entry.checks || {};
-          const hasCheck = Object.values(checks).some((value) => value && value !== "not_checked");
-          return hasCheck || Boolean(String(entry.notes || "").trim());
-        }).length;
-      } catch {
-        return 0;
-      }
+      const saved = safeReadBrowserJson(localStorage, GRADE_ASSIST_LOCAL_STORAGE_KEY, {});
+      return Object.values(saved || {}).filter((entry) => {
+        if (!entry || typeof entry !== "object") return false;
+        const checks = entry.checks || {};
+        const hasCheck = Object.values(checks).some((value) => value && value !== "not_checked");
+        return hasCheck || Boolean(String(entry.notes || "").trim());
+      }).length;
     })();
     const trustedCircleCount = tidepoolTrustedCircle.length;
     const hasHearthLocalSignals = Boolean(
@@ -60639,7 +60585,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <>
           <div className="drawer-info-card utility-card">
             <strong>Optional Cloud Sync</strong>
-            <p className="compact-subtitle">{BETA_LOCAL_MODE ? "Your beta data is stored on this device unless you export it or connect cloud sync. Cloud sync is not active yet." : isSupabaseConfigured ? "Cloud sync is enabled for QA. Sign in to save Phase 2 workflows to Supabase." : "Cloud sync is enabled for QA, but Supabase URL/key configuration is missing."}</p>
+            <p className="compact-subtitle">{BETA_LOCAL_MODE ? "Your beta data is stored locally in this browser. Clearing browser data may remove it; export before switching devices. Cloud sync requires backend support later." : isSupabaseConfigured ? "Cloud sync is enabled for QA. Sign in to save Phase 2 workflows to Supabase." : "Cloud sync is enabled for QA, but Supabase URL/key configuration is missing."}</p>
             <dl className="drawer-status-list">
               <div><dt>Current mode</dt><dd>{BETA_LOCAL_MODE ? "Private beta" : "Cloud-ready"}</dd></div>
               <div><dt>Preference</dt><dd>{cloudSyncPreference === "cloud" ? "Cloud sync access requested" : "Keep local"}</dd></div>
@@ -62367,7 +62313,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     <strong>Optional Cloud Sync</strong>
                     <p className="compact-subtitle">
                       {BETA_LOCAL_MODE
-                        ? "Your beta data is stored on this device unless you export it or connect cloud sync. Cloud sync is not active yet."
+                        ? "Your beta data is stored locally in this browser. Clearing browser data may remove it; export before switching devices. Cloud sync requires backend support later."
                         : isSupabaseConfigured
                           ? "Cloud sync is enabled for QA. Sign in to save Phase 2 workflows to Supabase."
                           : "Cloud sync is enabled for QA, but Supabase URL/key configuration is missing."}
@@ -71726,12 +71672,7 @@ function gradeAssistRecordKey(item = {}) {
 
 function readGradeAssistLocalStore() {
   if (typeof localStorage === "undefined") return {};
-  try {
-    const parsed = JSON.parse(localStorage.getItem(GRADE_ASSIST_LOCAL_STORAGE_KEY) || "{}");
-    return parsed && typeof parsed === "object" ? parsed : {};
-  } catch {
-    return {};
-  }
+  return safeReadBrowserJson(localStorage, GRADE_ASSIST_LOCAL_STORAGE_KEY, {});
 }
 
 function loadGradeAssistDraft(item = {}) {

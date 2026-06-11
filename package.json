@@ -57,6 +57,7 @@
     "test:forge-grouped-inventory": "node --no-warnings scripts/test-forge-grouped-inventory.mjs",
     "test:inventory-detail": "node --no-warnings scripts/test-inventory-detail-utils.mjs",
     "test:vault-set-mastery": "node --no-warnings scripts/test-vault-set-mastery.mjs",
+    "test:local-data-resilience": "node --no-warnings scripts/test-local-data-resilience.mjs",
     "test:vault-workflows": "node --no-warnings scripts/test-vault-workflows.mjs",
     "test:product-display": "node --no-warnings scripts/test-product-display.mjs",
     "test:route-loading": "node --no-warnings scripts/test-route-loading.mjs",
