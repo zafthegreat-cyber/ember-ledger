@@ -65177,7 +65177,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div className="compact-card-header">
               <div>
                 <h2 id="receipt-scan-title">Scan Receipt</h2>
-                <p>Upload or photograph a receipt. AI suggests possible lines, but you review each item, choose destinations, then submit verified records.</p>
+                <p>Upload or photograph a receipt, then review any beta draft lines manually. You choose destinations before submitting records.</p>
               </div>
               <div className="quick-actions">
                 <button type="button" className="secondary-button modal-close-icon" aria-label="Close receipt scan" onClick={closeReceiptScanWorkflow}>X</button>
