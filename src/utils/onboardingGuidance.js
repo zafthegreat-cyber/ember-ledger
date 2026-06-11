@@ -1,8 +1,8 @@
 export const ONBOARDING_PERSISTENCE_NOTE =
-  "Onboarding progress is saved in this browser's Ember & Tide beta readiness data.";
+  "Progress is saved only in this browser during beta. Cloud sync needs backend support later.";
 
 export const ONBOARDING_WELCOME_COPY =
-  "Welcome to Ember & Tide. We're here to help families, kids, collectors, and small sellers make Pokemon collecting fairer, easier, and more community-centered.";
+  "Welcome to Ember & Tide. Start with one card, sealed product, or collector note, then explore fair Scout, Market, Forge, Spark, and Tidepool tools at your own pace.";
 
 export const ACCOUNT_SETUP_USERNAME_RULES = [
   "Public usernames may appear on Marketplace, Tidepool, Scout reports, and community confirmations.",
@@ -275,9 +275,16 @@ export const ONBOARDING_CHECKLIST_ITEMS = [
   {
     key: "vault",
     title: "Add your first item",
-    description: "Start with one card, sealed product, or manual fallback so Hearth can personalize next steps.",
+    description: "Start with one card, sealed product, slab, supply, or manual fallback so Hearth has something real to organize.",
     actionLabel: "Add to Vault",
     actionTarget: "vault",
+  },
+  {
+    key: "market_research",
+    title: "Try one Market search",
+    description: "Search a card, sealed product, UPC, or SKU for research only. Market does not promise live prices, checkout, or stock.",
+    actionLabel: "Open Market",
+    actionTarget: "market",
   },
   {
     key: "forge",
@@ -289,7 +296,7 @@ export const ONBOARDING_CHECKLIST_ITEMS = [
   {
     key: "scout_report",
     title: "Submit your first Scout report",
-    description: "Confirmed Store Signals help the community and improve confidence labels safely.",
+    description: "Share a current store signal only when you have real context. Scout protects patterns and never guarantees stock.",
     actionLabel: "Submit Report",
     actionTarget: "scout_report",
   },
@@ -317,7 +324,7 @@ export const ONBOARDING_CHECKLIST_ITEMS = [
   {
     key: "follow",
     title: "Favorite your first stores",
-    description: "Follow the stores that matter before alerts and local Scout highlights get useful.",
+    description: "Choose one watched store so Scout can keep current reports nearby without exposing full restock history.",
     actionLabel: "Open Scout",
     actionTarget: "stores",
   },
@@ -399,18 +406,19 @@ export const CONTEXTUAL_HELP_CARDS = {
 export const EMPTY_STATE_GUIDANCE = {
   hearth: {
     title: "Your Hearth is ready.",
-    body: "Add one item, follow one store, or submit one Scout report to make Hearth feel personal.",
+    body: "Add one Vault item first, then choose a watched store or try one Market search when you are ready.",
     actionLabel: "Quick Add",
     actionTarget: "vault",
     assistPrompt: "What should I do first?",
   },
   vault: {
     title: "Your Vault is ready.",
-    body: "Add your first item and keep your collection protected. Manual entry stays available when catalog search misses something.",
-    actionLabel: "Manual Add",
+    body: "Add your first card, sealed product, slab, accessory, or wishlist want. Manual entry stays available when catalog search misses something.",
+    actionLabel: "Add to Vault",
     actionTarget: "vault",
     actions: [
-      { label: "Scan Card", actionTarget: "scan_card" },
+      { label: "Add to Vault", actionTarget: "vault" },
+      { label: "Scan Card", actionTarget: "scan_card", primary: false },
       { label: "Add Sealed Product", actionTarget: "add_sealed_product", primary: false },
       { label: "Manual Add", actionTarget: "manual_add", primary: false },
     ],
@@ -450,10 +458,10 @@ export const EMPTY_STATE_GUIDANCE = {
     assistPrompt: "Help me add a sale",
   },
   scout: {
-    title: "No local signals yet.",
-    body: "Be the first Scout to help another family. Reports are shared by store, not private address.",
-    actionLabel: "Submit Scout Report",
-    actionTarget: "scout_report",
+    title: "Scout is ready for your first store.",
+    body: "Choose one watched store or submit a current report when you have real proof. Scout protects raw patterns and does not guarantee stock.",
+    actionLabel: "Choose Store",
+    actionTarget: "stores",
     assistPrompt: "Help me submit a report",
   },
   drop_radar: {
@@ -464,16 +472,14 @@ export const EMPTY_STATE_GUIDANCE = {
     assistPrompt: "Why is this a prediction?",
   },
   market: {
-    title: "Search products, compare prices, and find fair deals.",
-    body: "Search products, compare known values, and save watched items. Market Watch does not imply live checkout.",
-    actionLabel: "Browse Market Watch",
+    title: "Market research is ready.",
+    body: "Search cards, sealed products, UPCs, or SKUs and save manual notes. Market is research only, not live pricing, checkout, or stock.",
+    actionLabel: "Search Market",
     actionTarget: "browse_market",
     actions: [
-      { label: "Create Alert", actionTarget: "create_market_alert" },
-      { label: "Browse Market", actionTarget: "browse_market", primary: false },
-      { label: "Add Listing", actionTarget: "add_market_listing", primary: false },
+      { label: "Search Market", actionTarget: "browse_market" },
     ],
-    assistPrompt: "Help me create a listing",
+    assistPrompt: "Help me research a price",
   },
   notifications: {
     title: "No alerts yet.",
@@ -520,7 +526,7 @@ export const EMPTY_STATE_GUIDANCE = {
   },
   quick_add: {
     title: "Quick Add is ready.",
-    body: "Choose Vault for your collection, Scout for a report, or the missing-item path when the catalog needs help. Ember & Tide shows the paths that fit your current mode first.",
+    body: "Choose Vault for the first saved item, Scout for a current report, or a manual path when the catalog misses something. Nothing saves until review.",
     actionLabel: "Open Quick Add",
     actionTarget: "vault",
     assistPrompt: "How do I add inventory?",
@@ -602,6 +608,7 @@ export function buildOnboardingChecklist(progress = {}, onboarding = {}) {
     vault: Number(progress.vaultItems || 0) > 0,
     forge: Number(progress.forgeItems || 0) > 0,
     scout_report: Number(progress.scoutReports || 0) > 0,
+    market_research: Number(progress.marketPriceMemories || 0) > 0 || Number(progress.savedProducts || 0) > 0,
     kids_program: Boolean(progress.kidsProgramReviewed || progress.kidsApplicationSubmitted),
     home_area: Boolean(progress.homeAreaSet),
     scout_points: Boolean(progress.scoutPointsLearned),

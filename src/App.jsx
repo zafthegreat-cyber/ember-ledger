@@ -12008,6 +12008,7 @@ export default function App() {
       homeAreaSet: Boolean(locationSettings.manualLocation || locationSettings.trackingEnabled),
       followedStores: (scoutSnapshot.stores || []).filter((store) => store.favorite || store.priority || store.watchlisted || store.watchlist).length,
       savedProducts: workspaceWatchlist.length + wishlistItems.length,
+      marketPriceMemories: marketPriceMemories.length,
       alertsConfigured: hasAnyAlertEnabled,
       emberAssistAsked: emberAssistMessages.some((message) => message.role === "user"),
       scoutPointsLearned: (onboardingState.manualChecklist || []).includes("scout_points"),
@@ -42521,7 +42522,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       goals: selectedGoals,
     });
     const checklistSummary = onboardingChecklistSummary(checklist);
-    const startHereKeys = ["vault", "scout_report", "kids_program", "home_area", "scout_points", "follow"];
+    const startHereKeys = ["vault", "follow", "market_research", "home_area", "kids_program", "scout_report"];
     const startHereRows = startHereKeys
       .map((key) => checklist.find((item) => item.key === key))
       .filter(Boolean);
@@ -42534,7 +42535,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <div>
             <p className="section-kicker">Start Here</p>
             <h2>Build your Hearth</h2>
-            <p>Add one item, one Scout signal, and one home area. You can skip this and replay it from Settings.</p>
+            <p>Add one item first, then choose a watched store or try one Market search. You can skip this and replay it from Settings.</p>
           </div>
           {completedAt ? <span className="status-badge">Completed</span> : <span className="status-badge">{hearthChecklistLabel}</span>}
         </div>
@@ -57425,12 +57426,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       {
         key: "market-alert",
         eyebrow: "Market Watch",
-        title: "Create your first watch",
-        detail: "Track fair value and keep chase items from slipping by.",
+        title: "Try one Market search",
+        detail: "Research a card or sealed product without checkout, live-stock, or guaranteed-price pressure.",
         cta: "Open Market",
         onClick: () => {
           setActiveTab("market");
-          setTideTradrSubTab("watch");
+          setTideTradrSubTab("overview");
         },
         accent: "market",
       },
@@ -58184,8 +58185,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         label: "Next Best Step",
         title: "Start by adding something to your Vault.",
         detail: "Add your first item to Vault so Ember & Tide can start helping you track, trade, and remember your collection.",
-        actionLabel: "Open Next",
-        onClick: () => setActiveTab("vault"),
+        actionLabel: "Add to Vault",
+        onClick: () => openQuickAddAction("vaultItem"),
         tone: "vault",
       }
       : {
@@ -58206,11 +58207,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         title: activeVaultItems.length ? `${activeVaultItems.length} Vault item${activeVaultItems.length === 1 ? "" : "s"}` : "Start your Vault",
         detail: activeVaultItems.length
           ? `Review what you own, what matters, and what may be ready for Forge. ${hearthVaultValueLabel}.`
-          : "Review what you own, what matters, and what may be ready for Forge.",
+          : "Add one card, sealed product, slab, or supply so Vault can become your collection home.",
         icon: "vault",
         tone: "vault",
-        actionLabel: "Open Vault",
-        onClick: () => setActiveTab("vault"),
+        actionLabel: activeVaultItems.length ? "Open Vault" : "Add Item",
+        onClick: () => activeVaultItems.length ? setActiveTab("vault") : openQuickAddAction("vaultItem"),
       },
       {
         key: "scout-watch",
