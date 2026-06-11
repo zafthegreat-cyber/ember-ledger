@@ -57,6 +57,7 @@ import {
   emptyTidepoolData,
   isDemoLikeRecord,
   safeReadBrowserJson,
+  safeWriteBrowserJson,
   sanitizeAppLocalData,
   sanitizeScoutLocalData,
   sanitizeTidepoolLocalData,
@@ -71699,11 +71700,11 @@ function saveGradeAssistDraft(item = {}, checklist = {}) {
     return { mode: "session", checklist: normalized };
   }
   const localStore = readGradeAssistLocalStore();
-  localStorage.setItem(GRADE_ASSIST_LOCAL_STORAGE_KEY, JSON.stringify({
+  const saved = safeWriteBrowserJson(localStorage, GRADE_ASSIST_LOCAL_STORAGE_KEY, {
     ...localStore,
     [key]: normalized,
-  }));
-  return { mode: "local", checklist: normalized };
+  });
+  return { mode: saved ? "local" : "session", checklist: normalized };
 }
 
 function gradeAssistValueComparison(item = {}, moneyFormatter = money) {
