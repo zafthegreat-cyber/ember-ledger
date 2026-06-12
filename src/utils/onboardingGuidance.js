@@ -201,8 +201,8 @@ export const ONBOARDING_GOALS = [
     key: "parent_family",
     label: "Parent/family looking for Pokemon",
     shortLabel: "Family access",
-    description: "Find kid-friendly access, fair prices, The Spark, and Ember Watch alerts without guessing.",
-    nextActions: ["Open The Spark", "Set up Ember Watch", "Follow favorite stores"],
+    description: "Find kid-friendly access, fair prices, The Spark, and in-app Ember Watch planning without guessing.",
+    nextActions: ["Open The Spark", "Review Ember Watch", "Choose one watched store"],
   },
   {
     key: "collector_vault",
@@ -223,7 +223,7 @@ export const ONBOARDING_GOALS = [
     label: "Scout helping with restock reports",
     shortLabel: "Scout",
     description: "Submit Store Signals and keep estimates separate from confirmed reports.",
-    nextActions: ["Submit Scout report", "Open Ember Watch", "Follow stores"],
+    nextActions: ["Submit Scout report", "Review Ember Watch", "Follow stores"],
   },
   {
     key: "local_shop_partner",
@@ -237,7 +237,7 @@ export const ONBOARDING_GOALS = [
     label: "Kids Program participant/parent",
     shortLabel: "The Spark",
     description: "Submit parent-managed interest without sharing unnecessary child details.",
-    nextActions: ["Join The Spark", "Follow announcements", "Set Kids Program alerts"],
+    nextActions: ["Join The Spark", "Follow announcements", "Review Kids Program reminders"],
   },
 ];
 
@@ -330,8 +330,8 @@ export const ONBOARDING_CHECKLIST_ITEMS = [
   },
   {
     key: "alerts",
-    title: "Turn on in-app alerts",
-    description: "Choose which confirmed restocks, predictions, shop updates, and admin statuses you want.",
+    title: "Review in-app alerts",
+    description: "Choose which confirmed restocks, possible windows, shop updates, and admin statuses appear inside Ember & Tide. Local beta does not send push notifications.",
     actionLabel: "Alert Settings",
     actionTarget: "alerts",
   },
@@ -483,7 +483,7 @@ export const EMPTY_STATE_GUIDANCE = {
   },
   notifications: {
     title: "No alerts yet.",
-    body: "Confirmed restocks, possible Ember Watch windows, Kids Program updates, admin message statuses, and Forge reminders will appear here when useful.",
+    body: "Confirmed restocks, possible Ember Watch windows, Kids Program updates, admin message statuses, and Forge reminders will appear here in-app when useful. Local beta does not send push notifications.",
     actionLabel: "Alert Settings",
     actionTarget: "alerts",
     assistPrompt: "How do alerts work?",
