@@ -3398,7 +3398,7 @@ const HOME_STATS = [
   { key: "market_over_msrp", label: "Market Over MSRP", group: "MSRP / Deal Metrics" },
   { key: "business_miles", label: "Business Miles", group: "Mileage & Vehicle" },
   { key: "total_vehicle_cost", label: "Total Vehicle Cost", group: "Mileage & Vehicle" },
-  { key: "store_alerts", label: "Store Alerts", group: "Scout & Community" },
+  { key: "store_alerts", label: "Store Watch Notes", group: "Scout & Community" },
   { key: "upcoming_restocks", label: "Upcoming Restocks", group: "Scout & Community" },
   { key: "kid_pack_budget", label: "Kid Pack Budget", group: "Scout & Community" },
 ];
@@ -28014,7 +28014,7 @@ function renderScoutHeader() {
     { key: "watchlist", label: "Watchlist" },
     { key: "reports", label: "Following" },
     { key: "storeMap", label: "Stores" },
-    { key: "alerts", label: "Alerts" },
+    { key: "alerts", label: "Watch Notes" },
     { key: "myReports", label: "My Reports" },
     scoutReviewVisible ? { key: "review", label: "Review" } : null,
   ].filter(Boolean);
@@ -28052,7 +28052,7 @@ function renderScoutHeader() {
         brand="Ember Scout"
         mark={BRAND_ASSETS.mark}
         title="Today's Hunt"
-        detail="Current reports, not raw patterns. Scout keeps families focused on useful proof without exposing raw timing history or stock guarantees."
+        detail="Virginia local beta reports, not raw patterns. Scout keeps families focused on useful proof without exposing raw timing history or stock guarantees."
         points={{ value: `${scoutWatchedStoreCount}/${scoutSlotLimit || 1}`, label: "Watched stores" }}
         pills={[
           { label: "Current reports", tone: "scout" },
@@ -28061,8 +28061,8 @@ function renderScoutHeader() {
         ]}
         todayAction={{
           label: "Scout today",
-          title: "Scan proof or add a current store report before making a trip.",
-          cta: "Review first",
+          title: "Scan proof or add a current Virginia store report before making a trip.",
+          cta: "Start review",
           onClick: () => openLiveScoutReportFlow("scanScreenshot"),
         }}
         ariaLabel="Scout local hunt"
@@ -28070,13 +28070,13 @@ function renderScoutHeader() {
 
       <EtMockupSectionCard
         title="Scout tools"
-        detail="Scan proof, report what you saw, or manage selected stores. Alerts are helpful reminders, never stock guarantees."
+        detail="Scan proof, report what you saw, or manage selected Virginia stores. Scout Watch notes are planning reminders, not push notifications or stock guarantees."
         className="scout-mockup-navigation scout-summary-card"
       >
         <div className="et-mockup-action-grid scout-mockup-primary-actions" aria-label="Scout primary actions">
           <EtMockupActionCard
             title="Scan Screenshot"
-            detail="Review proof from a shelf photo, app screenshot, receipt, or shop post."
+            detail="Review proof from a shelf photo, app screenshot, receipt, or shop post. No OCR or camera automation is connected in this preview."
             meta="Proof"
             icon="scout"
             tone="scout"
@@ -28086,7 +28086,7 @@ function renderScoutHeader() {
           />
           <EtMockupActionCard
             title="Add Report"
-            detail="Share a current store signal with family-safe notes and review before submit."
+            detail="Share a current Virginia store signal with family-safe notes and review before submit."
             meta="Current"
             icon="scout"
             tone="gold"
@@ -28096,7 +28096,7 @@ function renderScoutHeader() {
           />
           <EtMockupActionCard
             title="Stores"
-            detail="Choose your watched store and keep selected-store context clear."
+            detail="Choose one Virginia watched store and keep selected-store context clear."
             meta="Limit"
             icon="scout"
             tone="collector"
@@ -28115,6 +28115,7 @@ function renderScoutHeader() {
           <EtMockupPill tone="collector">{scoutSwapLabel}</EtMockupPill>
           <EtMockupPill tone="gold">{scoutReportLabel}</EtMockupPill>
           <EtMockupPill tone="beta">{scoutTrustLabel}</EtMockupPill>
+          <EtMockupPill tone="scout">Virginia soft launch</EtMockupPill>
           <EtMockupPill tone="scout">Current reports, not raw patterns.</EtMockupPill>
           <EtMockupPill tone="collector">Exact quantities stay hidden unless shop-approved.</EtMockupPill>
         </div>
@@ -31517,7 +31518,7 @@ function renderForgeBusinessLedgerPanel() {
     { key: "active_listings", label: "Active Listings", value: activeListingCount },
     { key: "business_miles", label: "Business Miles", value: totalBusinessMiles.toFixed(1) },
     { key: "total_vehicle_cost", label: "Total Vehicle Cost", value: money(totalVehicleCost) },
-    { key: "store_alerts", label: "Store Alerts", value: activeStoreAlertCount },
+    { key: "store_alerts", label: "Store Watch Notes", value: activeStoreAlertCount },
     { key: "upcoming_restocks", label: "Upcoming Restocks", value: upcomingRestockCount },
     { key: "kid_pack_budget", label: "Kid Pack Budget", value: money(kidCommunityBudgetValue) },
   ];
@@ -38658,7 +38659,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <div>
             <p className="section-kicker">Ember Watch</p>
             <h2>Today&apos;s Restock Watch</h2>
-            <p>Likely restock windows, confirmed reports, watchlist alerts, and upcoming TCG drops.</p>
+            <p>Possible watch windows, current reports, watchlist notes, and upcoming TCG drops.</p>
           </div>
           <button type="button" onClick={openPokemonWatchCalendar}>Open Ember Watch</button>
         </div>
@@ -38869,8 +38870,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const kidAlertsDisabled = /kid|child/i.test(`${currentUserProfile?.accountType || currentUserProfile?.role || userType || ""}`);
     return (
       <EtMockupSectionCard
-        title="Scout Alerts & Calendar"
-        detail="Known drops, current store reports, and planned product releases for your selected Virginia area. Alerts are helpful reminders, never stock guarantees."
+        title="Scout Watch Calendar"
+        detail="Known drops, current store reports, and planned product releases for your selected Virginia area. Watch notes are planning reminders, never stock guarantees."
         className="pokemon-watch-calendar-panel ember-watch-panel scout-mockup-calendar"
         action={(
           <div className="summary-pill-row scout-mockup-calendar-actions">
@@ -38884,7 +38885,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <div className="scout-mockup-calendar-note">
             <span className="section-kicker">Ember Watch</span>
             <strong>Current reports only.</strong>
-            <p>Area filters, layers, and watchlist alerts stay framed as review-first planning signals.</p>
+            <p>Area filters, layers, and watchlist notes stay framed as review-first planning signals.</p>
           </div>
         </div>
 
@@ -38951,7 +38952,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <div className="ember-watch-today-grid">
             {renderEmberWatchSection("Today's Tide Watch", "Known or clearly labeled watch items for today's store checks.", todayLikelyRestocks, "No store watch items today")}
             {renderEmberWatchSection("Recent Confirmed Reports", "Confirmed stock reports in the current watch window.", recentConfirmedReports, "No confirmed reports in this window")}
-            {renderEmberWatchSection("Watchlist Alerts", "Signals connected to stores you watch.", watchlistAlerts, "No watchlist alerts yet")}
+            {renderEmberWatchSection("Watchlist Notes", "Signals connected to stores you watch.", watchlistAlerts, "No watchlist notes yet")}
             <section className="ember-watch-section ember-watch-route-card">
               <div className="watch-calendar-day-heading">
                 <div>
@@ -40165,7 +40166,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         category: "Sealed products",
         status: "Worth the Trip",
         freshness: "24 min ago",
-        confidence: "92%",
+        confidence: "Strong signal",
         proof: "Photo proof",
         tripAdvice: "Worth a normal errand stop",
         proofStrength: "Shelf photo + current time",
@@ -40179,7 +40180,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         category: "Online pickup context",
         status: "Check before driving",
         freshness: "48 min ago",
-        confidence: "78%",
+        confidence: "Needs proof",
         proof: "Community confirmation",
         tripAdvice: "Check online first",
         proofStrength: "Second proof requested",
@@ -40193,7 +40194,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         category: "Kid-friendly packs",
         status: "Family friendly",
         freshness: "1 hr ago",
-        confidence: "84%",
+        confidence: "Shop-labeled",
         proof: "Trusted shop update",
         tripAdvice: "Good family shop stop",
         proofStrength: "Shop-confirmed label",
@@ -40203,8 +40204,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     ];
     const scoutHomeStats = [
       { key: "watched", label: "Watched", value: "1/1", detail: "Free plan" },
-      { key: "signals", label: "Signals", value: scoutHomeReports.length, detail: "Richmond area" },
-      { key: "proof", label: "Proof", value: "85%", detail: "Backed confidence" },
+      { key: "signals", label: "Signals", value: scoutHomeReports.length, detail: "Virginia preview" },
+      { key: "proof", label: "Proof", value: "Manual", detail: "Review-first" },
     ];
     const watchedStores = (scoutSnapshot.stores || []).filter(isWatchedEmberStore);
     const scoutSlotLimit = Number(tierAccess.scoutStoreSlots || 0);
@@ -40268,7 +40269,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
           <EtMockupSectionCard
             title="Nearby Reports"
-            detail="Mock current signals show store, proof, confidence, and family context without exploitable timing details."
+            detail="Preview examples show store, proof, review status, and family context without exploitable timing details."
             className="scout-home-reports-panel"
             action={<EtMockupButton variant="secondary" onClick={() => openLiveScoutReportFlow("reviewReport")}>Review report</EtMockupButton>}
           >
@@ -40351,6 +40352,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </span>
               ))}
             </div>
+          </div>
+
+          <div className="scout-soft-launch-note" aria-label="Scout tester note">
+            <span className="section-kicker">Tester note</span>
+            <strong>Virginia soft launch only.</strong>
+            <p>Start with Add Report, Scan Screenshot, or Stores. Scout is manual and review-first in this beta; it does not send notifications, run live OCR, guarantee stock, or expose vendor schedules.</p>
           </div>
 
           <div className="scout-mockup-safety-note">
@@ -40506,7 +40513,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         target: "Near retail",
         freshness: "Check manually",
         source: "Community proof needed",
-        setting: "Alert on trusted proof",
+        setting: "Show when trusted proof exists",
       },
       {
         key: "kids-packs",
@@ -40515,7 +40522,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         target: "Shop-confirmed",
         freshness: "Trusted shop only",
         source: "Family Card Shop",
-        setting: "Quiet family alert",
+        setting: "Family-safe note",
       },
       {
         key: "binder-supplies",
@@ -40528,7 +40535,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       },
     ];
     const alertSettings = [
-      { label: "Proof required", value: "On", detail: "Avoid rumor-only pushes" },
+      { label: "Proof required", value: "Required", detail: "Avoid rumor-only signals" },
       { label: "Exact quantities", value: "Hidden", detail: "Unless shop-approved" },
       { label: "Change rule", value: scoutWatchSwapWindowLabel(), detail: "Tier-safe store changes" },
     ];
@@ -40579,7 +40586,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div className="scout-watch-helper-grid">
               <span><strong>Free Watch</strong> Free plan includes 1 watched store. You can change it once every 30 days.</span>
               <span><strong>Upgrade for More Watches</strong> Upgrade when you are ready to watch more stores and get broader Scout coverage.</span>
-              <span><strong>Store Alert</strong> Alerts are limited current signals, not guaranteed stock or push-notification promises.</span>
+              <span><strong>Store Watch Notes</strong> Watch notes are limited current signals, not guaranteed stock or push-notification promises.</span>
             </div>
           </article>
 
@@ -40638,7 +40645,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </article>
 
           <aside className="panel scout-watchlist-alert-card">
-            <p className="section-kicker">Store Alert settings</p>
+            <p className="section-kicker">Store Watch Notes</p>
             <h2>Helpful, quiet, and tier-safe.</h2>
             <div className="scout-alert-preference-grid">
               {alertSettings.map((setting) => (
@@ -40653,7 +40660,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </div>
             <div className="scout-alert-scope-note">
               <strong>Current signals only.</strong>
-              <span>Scout watchlist alerts do not expose raw history, exact restock windows, vendor schedules, or checkout shortcuts.</span>
+              <span>Scout watchlist notes do not expose raw history, exact restock windows, vendor schedules, or checkout shortcuts.</span>
             </div>
             <div className="scout-watchlist-free-note">
               <strong>Free stays useful.</strong>
@@ -41062,7 +41069,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       status: "Worth checking today",
       timeSeen: "Today, 4:18 PM",
       proof: "Shelf photo",
-      confidence: "92%",
+      confidence: "Strong signal",
       familyNote: "Useful for a parent stop after errands. Sensitive details stay protected.",
     };
     const reportTypes = [
@@ -41109,7 +41116,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div>
               <p className="section-kicker">Scout proof flow</p>
               <h2>Scan Screenshot</h2>
-              <p>Upload, extract, review, then submit.</p>
+              <p>Review proof details manually, then decide whether to submit.</p>
             </div>
             <button type="button" className="secondary-button" onClick={backToScout}>Back to Scout</button>
           </article>
@@ -41123,7 +41130,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <article className="panel scout-live-upload-card">
               <div className="scout-live-upload-zone" role="img" aria-label="Mock screenshot upload area">
                 <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed="scan" /></span>
-                <strong>Mock scan area</strong>
+                <strong>Manual proof review</strong>
                 <p>This local preview shell does not send files, extract live text, or save reports.</p>
               </div>
               <div className="scout-live-review-rules" aria-label="Screenshot scan safety checks">
@@ -41133,7 +41140,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 {acceptedSources.map((source) => <span key={source}>{source}</span>)}
               </div>
               <div className="quick-actions scout-live-actions">
-                <button type="button" onClick={() => openLiveScoutReportFlow("reviewReport")}>Review extracted report</button>
+                <button type="button" onClick={() => openLiveScoutReportFlow("reviewReport")}>Review report</button>
                 <button type="button" className="secondary-button" onClick={() => openLiveScoutReportFlow("addReport")}>Enter manually</button>
               </div>
             </article>
@@ -41141,10 +41148,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <article className="panel scout-live-extraction-card">
               <div className="compact-card-header">
                 <div>
-                  <p className="section-kicker">Mock extraction result</p>
+                  <p className="section-kicker">Preview report summary</p>
                   <h3>Review-ready details</h3>
                 </div>
-                <span className="status-badge scout-confidence-badge scout-confidence-badge--verified">{mockReport.confidence}</span>
+                <span className="status-badge scout-confidence-badge scout-confidence-badge--likely">{mockReport.confidence}</span>
               </div>
               <div className="scout-live-summary-list">
                 {summaryRows.slice(0, 7).map((row) => (
@@ -41154,7 +41161,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   </div>
                 ))}
               </div>
-              <p className="scout-flow-footnote">Extraction is preview-only here. A real report should always be reviewed before anything is shared.</p>
+              <p className="scout-flow-footnote">Screenshot review is manual in this preview. A real report should always be reviewed before anything is shared.</p>
             </article>
           </div>
         </section>
@@ -41182,10 +41189,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <article className="panel scout-live-review-card">
               <div className="compact-card-header">
                 <div>
-                  <p className="section-kicker">Editable-looking summary</p>
+                  <p className="section-kicker">Preview summary</p>
                   <h3>Current report details</h3>
                 </div>
-                <span className="scout-live-mock-badge">Mock only</span>
+                <span className="scout-live-mock-badge">Local preview</span>
               </div>
               <div className="scout-live-summary-list">
                 {summaryRows.map((row) => (
@@ -41209,7 +41216,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               {scoutReviewMockSubmitted ? (
                 <div className="scout-live-success" role="status">
                   <strong>Thanks - your report is queued for trust review.</strong>
-                  <p>No real report was saved in this mock-only production shell.</p>
+                  <p>This preview report was not sent anywhere or saved as a live Scout report.</p>
                 </div>
               ) : null}
             </article>
@@ -41259,7 +41266,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <p className="section-kicker">Report type</p>
                 <h3>What are you sharing?</h3>
               </div>
-              <span className="scout-live-mock-badge">Mock only</span>
+              <span className="scout-live-mock-badge">Local preview</span>
             </div>
             <div className="scout-live-option-grid">
               {reportTypes.map((type, index) => (
@@ -57790,7 +57797,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       },
       {
         key: "foundation-scout",
-        label: "Scout Alerts",
+        label: "Scout Watch",
         value: foundationScoutStat.value || "3",
         detail: foundationScoutStat.detail || "useful signals",
         tone: "scout",
@@ -59604,7 +59611,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       status: tierAccess.scoutStoreSwapDays ? `${tierAccess.scoutStoreSwapDays}-day changes` : "Admin-managed",
     },
     {
-      title: "Store Alerts",
+      title: "Store Watch Notes",
       body: `${settingsFollowedStores.length} followed store${settingsFollowedStores.length === 1 ? "" : "s"} currently visible.`,
       status: settingsStoreAlertPersistenceLabel,
     },
@@ -62192,7 +62199,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     </div>
                   </div>
                   <div className="drawer-info-card store-alert-settings-card">
-                    <strong>Store Alerts</strong>
+                    <strong>Store Watch Notes</strong>
                     <p className="compact-subtitle">Followed stores power favorite-store alerts and regional Scout context. Store follows sync to Supabase when the store comes from the cloud directory; manual/local stores remain local fallback.</p>
                     <dl className="drawer-status-list">
                       <div><dt>Followed stores</dt><dd>{settingsFollowedStores.length}</dd></div>
@@ -62201,7 +62208,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     </dl>
                     <div className="drawer-inline-actions">
                       <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setActiveTab("scout"); setScoutView("stores"); setScoutStoresMode("map"); })}>Open Store Directory</button>
-                      <button type="button" className="secondary-button" onClick={() => runMenuAction(() => { setActiveTab("scout"); setScoutView("alerts"); })}>Open Store Alerts</button>
+                      <button type="button" className="secondary-button" onClick={() => runMenuAction(() => { setActiveTab("scout"); setScoutView("alerts"); })}>Open Store Watch Notes</button>
                     </div>
                   </div>
                   <div className="drawer-info-card">
@@ -62247,7 +62254,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     </details>
                     <div className="settings-frequency-panel">
                       <strong>Frequency</strong>
-                      <p className="compact-subtitle">Frequency is local-only in this beta. Alerts are grouped and deduped so one useful notice beats a noisy feed.</p>
+                      <p className="compact-subtitle">Frequency is local-only in this beta. Watch notes are grouped and deduped so one useful planning note beats a noisy feed.</p>
                       <div className="drawer-inline-actions">
                         {["Immediate", "Daily Digest", "Off"].map((frequency) => (
                           <button type="button" className="secondary-button" key={frequency} onClick={() => setVaultToast(`${frequency} preference noted locally for beta planning.`)}>{frequency}</button>

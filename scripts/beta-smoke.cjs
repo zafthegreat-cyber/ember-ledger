@@ -714,9 +714,9 @@ async function main() {
     await expectVisible(scanScreenshotButton, "Scout Scan Screenshot action");
     await scanScreenshotButton.click();
     await expectVisible(page.locator(".scout-live-flow--scan").first(), "Scout Scan Screenshot page");
-    await assertVisibleText("Upload, extract, review, then submit.");
+    await assertVisibleText("Review proof details manually, then decide whether to submit.");
     await assertVisibleText("This local preview shell does not send files, extract live text, or save reports.");
-    await page.getByRole("button", { name: /^Review extracted report$/ }).first().click();
+    await page.getByRole("button", { name: /^Review report$/ }).first().click();
     await expectVisible(page.locator(".scout-live-flow--review").first(), "Scout Review Report page");
     await assertVisibleText("Nothing is shared until you review and confirm.");
     await page.getByRole("button", { name: /^Back to Scout$/ }).first().click();
