@@ -7106,6 +7106,8 @@ export default function App() {
     whatHappened: "",
     page: "",
     steps: "",
+    expected: "",
+    deviceNotes: "",
     screenshotName: "",
     name: "",
     email: "",
@@ -8532,7 +8534,7 @@ export default function App() {
     mobileMenuByKey.scanProduct,
     mobileMenuByKey.publicBetaFeedback,
     mobileMenuByKey.help,
-    { key: "feedback", label: "Send Feedback", helper: "Share a bug, idea, or support note.", icon: "bell", action: () => openFeedbackDialog("feedback") },
+    { key: "feedback", label: "Tester Notes", helper: "Save a local bug, idea, or confusion note.", icon: "bell", action: () => openFeedbackDialog("feedback") },
   ].filter(Boolean);
   const menuRoadmapItems = [
     mobileMenuByKey.comingSoon,
@@ -10200,6 +10202,8 @@ export default function App() {
       whatHappened: defaults.whatHappened || "",
       page: defaults.page || activeTabLabel,
       steps: defaults.steps || "",
+      expected: defaults.expected || "",
+      deviceNotes: defaults.deviceNotes || "",
       screenshotName: "",
       name: publicBetaDefaults.name || "",
       email: publicBetaDefaults.email || "",
@@ -10230,6 +10234,8 @@ export default function App() {
     return Boolean(
       String(feedbackForm.whatHappened || "").trim() ||
       String(feedbackForm.steps || "").trim() ||
+      String(feedbackForm.expected || "").trim() ||
+      String(feedbackForm.deviceNotes || "").trim() ||
       String(feedbackForm.screenshotName || "").trim() ||
       String(feedbackForm.name || "").trim() ||
       String(feedbackForm.email || "").trim() ||
@@ -10252,6 +10258,8 @@ export default function App() {
       whatHappened: "",
       page: "",
       steps: "",
+      expected: "",
+      deviceNotes: "",
       screenshotName: "",
       name: "",
       email: "",
@@ -10662,7 +10670,7 @@ export default function App() {
     } catch (error) {
       console.warn("Unable to save beta feedback", error);
       logAppError("beta_feedback_submit", error, { feedbackType: feedbackDialog }, "normal");
-      setVaultToast("Could not submit right now. Please try again or export beta data.");
+      setVaultToast("Could not save this tester note. Copy the draft or export beta data.");
       return;
     }
     updateBetaReadinessData((current) => ({
@@ -10675,7 +10683,12 @@ export default function App() {
           feedbackType: feedbackDialogCopy?.title || feedbackDialog || "Feedback",
           page: payload.page || activeTabLabel,
           title: payload.whatHappened || "Beta feedback",
-          description: payload.steps || payload.whatHappened || "No details provided.",
+          description: [
+            payload.whatHappened ? `Trying to do: ${payload.whatHappened}` : "",
+            payload.steps ? `Confused or broken: ${payload.steps}` : "",
+            payload.expected ? `Expected: ${payload.expected}` : "",
+            payload.deviceNotes ? `Device notes: ${payload.deviceNotes}` : "",
+          ].filter(Boolean).join("\n") || "No details provided.",
           severity: feedbackDialog === "bug" ? "normal" : "normal",
           status: "new",
           screenshotUrl: payload.screenshotName || "",
@@ -10713,7 +10726,7 @@ export default function App() {
           category: feedbackDialog,
           device: feedbackForm.metadata?.device,
         },
-        notes: feedbackForm.steps || feedbackForm.whatHappened || "Data issue submitted from feedback dialog.",
+        notes: feedbackForm.steps || feedbackForm.whatHappened || "Data issue saved from feedback dialog.",
         source: "feedback-dialog",
         visibility: "admin_review",
       });
@@ -10729,7 +10742,7 @@ export default function App() {
               category: feedbackDialog,
               device: feedbackForm.metadata?.device,
             },
-            notes: feedbackForm.steps || feedbackForm.whatHappened || "Data issue submitted from feedback dialog.",
+            notes: feedbackForm.steps || feedbackForm.whatHappened || "Data issue saved from feedback dialog.",
             source: "feedback-dialog",
             visibility: "admin_review",
           },
@@ -10742,13 +10755,50 @@ export default function App() {
     closeFeedbackDialog(true);
     setVaultToast(
       feedbackDialog === "bug"
-        ? "Bug report submitted. We'll review it."
+        ? "Bug note saved locally for beta review."
         : feedbackDialog === "feature"
-          ? "Feature request submitted."
+          ? "Feature idea saved locally."
           : ["catalog_data", "store_data", "market_data"].includes(feedbackDialog)
-            ? "Data issue submitted for review."
-            : "Thanks - feedback submitted."
+            ? "Data issue saved locally for review."
+            : "Thanks - tester note saved locally."
     );
+  }
+
+  function buildFeedbackDraftText(form = feedbackForm) {
+    const title = feedbackDialogCopy?.title || "Tester Notes";
+    const deviceValue = String(form.deviceNotes || form.metadata?.device || "").trim();
+    const timestampValue = form.metadata?.timestamp ? new Date(form.metadata.timestamp).toLocaleString() : new Date().toLocaleString();
+    return [
+      `Feedback type: ${title}`,
+      `Page / screen: ${form.page || activeTabLabel || activeTab || "Not sure"}`,
+      `What I was trying to do: ${form.whatHappened || "Not provided"}`,
+      `What confused me or felt broken: ${form.steps || "Not provided"}`,
+      `What I expected: ${form.expected || "Not provided"}`,
+      `Device notes: ${deviceValue || "Not provided"}`,
+      `App version: ${form.metadata?.appVersion || PUBLIC_APP_VERSION_LABEL || "Beta"}`,
+      `Time: ${timestampValue}`,
+      "",
+      "Local beta note: this draft is copied manually. It is not a support ticket, not live chat, not a notification, and not a cloud submission.",
+    ].join("\n");
+  }
+
+  async function copyFeedbackDraftToClipboard() {
+    const text = buildFeedbackDraftText(feedbackForm);
+    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        setVaultToast("Tester note copied. Paste it into your message when you are ready.");
+        return;
+      } catch (error) {
+        console.warn("Unable to copy tester feedback draft", error);
+      }
+    }
+    setFeedbackSubmitState({
+      status: "error",
+      message: "",
+      error: "Copy is unavailable in this browser. Select the note text manually or save it locally.",
+      persisted: "",
+    });
   }
 
   function updateCloudSyncPreference(mode) {
@@ -32193,57 +32243,57 @@ function renderForgeBusinessLedgerPanel() {
     },
     bug: {
       title: "Report a Bug",
-      intro: "Tell us what broke or looked wrong so we can clean it up for beta.",
-      label: "What happened?",
-      placeholder: "Describe what broke or looked wrong.",
-      stepsLabel: "Steps to reproduce",
+      intro: "Save a local note about what broke or looked wrong. Copy/export it when you are ready to share.",
+      label: "What were you trying to do?",
+      placeholder: "Example: I was trying to add a Scout report or open a Vault item.",
+      stepsLabel: "What confused you or felt broken?",
       stepsPlaceholder: "Example: Opened Scout, tapped Stores, then the list overlapped.",
-      submit: "Submit Bug Report",
+      submit: "Save Bug Note",
     },
     feature: {
       title: "Request a Feature",
-      intro: "Tell us what would make Ember & Tide more useful.",
-      label: "Feature request",
+      intro: "Save a local note about what you wanted to do next or what would make Ember & Tide more useful.",
+      label: "What were you trying to do?",
       placeholder: "What should we add, change, or make easier?",
-      stepsLabel: "What were you doing?",
+      stepsLabel: "What was missing or unclear?",
       stepsPlaceholder: "Optional context: where you expected this feature to show up.",
-      submit: "Submit Feature Request",
+      submit: "Save Feature Idea",
     },
     feedback: {
-      title: "Send Feedback",
-      intro: "Share what would make the beta easier to use.",
-      label: "Feedback",
-      placeholder: "What should we improve, add, remove, or make clearer?",
-      stepsLabel: "What were you doing?",
-      stepsPlaceholder: "Optional: what page or flow were you using?",
-      submit: "Submit Feedback",
+      title: "Tester Notes",
+      intro: "Save a local tester note about what confused you, what broke, or what you wanted to do next. Nothing is automatically sent.",
+      label: "What were you trying to do?",
+      placeholder: "Example: I was trying to search Market, log a trade, or understand Scout.",
+      stepsLabel: "What confused you or felt broken?",
+      stepsPlaceholder: "Optional: what page, button, or flow was involved?",
+      submit: "Save Tester Note",
     },
     catalog_data: {
       title: "Report Bad Catalog Data",
-      intro: "Tell us what catalog product, expansion, UPC/SKU, image, or detail needs review.",
+      intro: "Save a local note about what catalog product, expansion, UPC/SKU, image, or detail needs review.",
       label: "Catalog issue",
       placeholder: "Example: This ETB is marked as a regular ETB, but it is the Pokemon Center version.",
       stepsLabel: "Proof or context",
       stepsPlaceholder: "Optional: add source links, UPC/SKU, screenshots, or what you expected to see.",
-      submit: "Submit Catalog Report",
+      submit: "Save Catalog Note",
     },
     store_data: {
       title: "Report Bad Store Data",
-      intro: "Tell us what store, address, hours, retailer, or Scout information needs review.",
+      intro: "Save a local note about what store, address, hours, retailer, or Scout information needs review.",
       label: "Store issue",
       placeholder: "Example: This store is closed, has the wrong address, or is missing a purchase limit.",
       stepsLabel: "Proof or context",
       stepsPlaceholder: "Optional: add a source link, store page, photo note, or correction details.",
-      submit: "Submit Store Report",
+      submit: "Save Store Note",
     },
     market_data: {
       title: "Report Wrong Market Price",
-      intro: "Tell us what price, source, variant, or timestamp looks wrong.",
+      intro: "Save a local note about what price, source, variant, or timestamp looks wrong.",
       label: "Market price issue",
       placeholder: "Example: Reverse Holofoil price is showing as Normal, or MSRP is missing.",
       stepsLabel: "Source or context",
       stepsPlaceholder: "Optional: add a price source, product URL, date checked, or expected value.",
-      submit: "Submit Market Report",
+      submit: "Save Market Note",
     },
   }[feedbackDialog || "feedback"];
   const publicBetaFeedbackActive = feedbackDialog === PUBLIC_BETA_FEEDBACK_DIALOG;
@@ -44546,7 +44596,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       { label: "Preview the App", action: startGuestPreview },
       { label: "Join / Learn About Kids Program", action: () => setActiveTab("kidsProgram") },
       { label: "Partner With Us", action: () => setActiveTab("sponsor") },
-      { label: "Send Feedback", action: () => openFeedbackDialog("feedback") },
+      { label: "Tester Notes", action: () => openFeedbackDialog("feedback") },
       { label: "Contact Support", action: () => window.location.assign(`mailto:${SUPPORT_EMAIL}`) },
     ];
     return (
@@ -62288,7 +62338,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                       </article>
                       <article className="settings-section-card">
                         <strong>Help & Support</strong>
-                        <span>Use Feedback / Help for bugs, feature requests, refresh/update help, or account support.</span>
+                        <span>Use Feedback / Help for local tester notes, bugs, feature requests, refresh/update help, or account support.</span>
                         <small className="status-badge">Local/admin review</small>
                       </article>
                     </div>
@@ -62402,7 +62452,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   ) : null}
                 </>
               ), "data")}
-              {renderMenuPullDown("feedback", "Feedback / Help", "Send feedback, report bugs, and app help", (
+              {renderMenuPullDown("feedback", "Feedback / Help", "Tester notes, bug reports, and app help", (
                 <div className="drawer-links">
                   <div className="drawer-info-card app-support-card">
                     <strong>App Support</strong>
@@ -62417,8 +62467,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     </button>
                   </div>
                   <div className="drawer-info-card">
-                    <strong>Feedback types</strong>
-                    <p className="compact-subtitle">{BETA_FEEDBACK_TYPES.slice(0, 6).join(", ")} and more.</p>
+                    <strong>Tester Notes</strong>
+                    <p className="compact-subtitle">Saved in this browser first. Copy or export the note when you are ready to share it with the Ember & Tide team.</p>
                     <div className="ai-helper-note">
                       <span>AI can help categorize feedback, but admin status changes stay manual.</span>
                       <button type="button" className="secondary-button" onClick={() => runMenuAction(() => void runFeedbackAiSummary())}>Summarize feedback</button>
@@ -62430,7 +62480,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("knownLimitations"))}>Open Glossary</button>
                   </div>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openPublicBetaFeedback({ page: "More Feedback", mainReason: "General feedback" }))}>Join Beta / Request State</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("feedback"))}>Send Feedback</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("feedback"))}>Tester Notes</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("bug"))}>Report a Bug</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("feature"))}>Request a Feature</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("catalog_data"))}>Report Bad Catalog Data</button>
@@ -63283,6 +63333,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </div>
             {publicBetaFeedbackActive ? renderPublicBetaFeedbackFields() : (
               <>
+                <div className="small-empty-state tester-feedback-local-note">
+                  <strong>Local tester note</strong>
+                  <p>This note is saved in this browser only. It is not a support ticket, not live chat, not a notification, and not a cloud submission.</p>
+                </div>
                 <Field label={feedbackDialogCopy.label}>
                   <textarea
                     value={feedbackForm.whatHappened}
@@ -63304,12 +63358,29 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     placeholder={feedbackDialogCopy.stepsPlaceholder}
                   />
                 </Field>
+                <Field label="What did you expect?">
+                  <textarea
+                    value={feedbackForm.expected || ""}
+                    onChange={(event) => setFeedbackForm((current) => ({ ...current, expected: event.target.value }))}
+                    placeholder="What did you expect to happen after you tapped, searched, saved, or opened that page?"
+                  />
+                </Field>
+                <Field label="Device notes">
+                  <input
+                    value={feedbackForm.deviceNotes || ""}
+                    onChange={(event) => setFeedbackForm((current) => ({ ...current, deviceNotes: event.target.value }))}
+                    placeholder="Phone, tablet, desktop, browser, or anything that might help."
+                  />
+                </Field>
                 <div className="small-empty-state">
                   <strong>Optional screenshot - coming soon</strong>
                   <p>Screenshot upload is not connected yet. For now, describe what you saw or export beta data if support needs details.</p>
                 </div>
               </>
             )}
+            {!publicBetaFeedbackActive && feedbackSubmitState.error ? (
+              <p className="flow-inline-message is-warning" role="alert">{feedbackSubmitState.error}</p>
+            ) : null}
             <dl className="drawer-status-list feedback-metadata">
               <div><dt>Version</dt><dd>{feedbackForm.metadata?.appVersion || "Beta"}</dd></div>
               <div><dt>Screen</dt><dd>{feedbackForm.metadata?.route || activeTab}</dd></div>
@@ -63321,9 +63392,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <button type="button" onClick={() => closeFeedbackDialog(true)}>Done</button>
               ) : (
                 <button type="submit" disabled={feedbackSubmitState.status === "submitting"}>
-                  {feedbackSubmitState.status === "submitting" ? "Submitting..." : feedbackDialogCopy.submit}
+                  {feedbackSubmitState.status === "submitting" ? (publicBetaFeedbackActive ? "Sending..." : "Saving...") : feedbackDialogCopy.submit}
                 </button>
               )}
+              {!publicBetaFeedbackActive ? (
+                <button type="button" className="secondary-button" onClick={() => void copyFeedbackDraftToClipboard()}>Copy Draft</button>
+              ) : null}
               <button type="button" className="secondary-button" onClick={() => closeFeedbackDialog()}>Cancel</button>
             </div>
           </form>
