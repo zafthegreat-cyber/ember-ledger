@@ -423,7 +423,9 @@ import {
   ACCOUNT_SETUP_TIER_ROWS,
   ACCOUNT_SETUP_USERNAME_RULES,
   ACCOUNT_SETUP_WORKSPACE_ROWS,
+  FIRST_TIME_ONBOARDING_CARDS,
   ONBOARDING_PERSISTENCE_NOTE,
+  ONBOARDING_WELCOME_COPY,
   accessStateLabel,
   betaAccessWaitlistMessage,
   buildOnboardingChecklist,
@@ -32981,6 +32983,7 @@ function renderForgeBusinessLedgerPanel() {
       sparkHelpfulLinkVisible ? { label: "Open The Spark", action: () => { setEmberAssistOpen(false); setActiveTab("kidsProgram"); } } : null,
     ].filter(Boolean);
     const emberAssistQuickActions = [
+      { label: "Replay first-time guide", helper: "Open the Hearth guide again; progress stays local to this browser.", action: () => { setEmberAssistOpen(false); restartOnboarding(); } },
       { label: "Scan a card", helper: "Open review-first card or product scan.", action: () => { setEmberAssistOpen(false); openQuickAddAction("scanProduct"); } },
       { label: "Scan restock screenshot", helper: "Review proof first; no upload or live AI promise.", action: () => { setEmberAssistOpen(false); openLiveScoutReportFlow("scanScreenshot"); } },
       { label: "Check trade fairness", helper: "Compare exact variants with parent-aware warnings.", action: () => { setEmberAssistOpen(false); setActiveTab("inventory"); openTradeCompassFlow({ source: "ember-assist-quick-action-trade-fairness" }); } },
@@ -42533,11 +42536,19 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       <section className={`panel beta-onboarding-panel first-run-onboarding-panel hearth-start-here-panel ${hearthStartHereExpanded ? "is-expanded" : "is-collapsed"}`} aria-label="Start Here onboarding">
         <div className="compact-card-header">
           <div>
-            <p className="section-kicker">Start Here</p>
-            <h2>Build your Hearth</h2>
-            <p>Add one item first, then choose a watched store or try one Market search. You can skip this and replay it from Settings.</p>
+            <p className="section-kicker">First-time guide</p>
+            <h2>Welcome to Ember &amp; Tide</h2>
+            <p>{ONBOARDING_WELCOME_COPY}</p>
           </div>
           {completedAt ? <span className="status-badge">Completed</span> : <span className="status-badge">{hearthChecklistLabel}</span>}
+        </div>
+        <div className="hearth-onboarding-guide-grid" aria-label="Ember and Tide first-time guide">
+          {FIRST_TIME_ONBOARDING_CARDS.map((card) => (
+            <article className={`hearth-onboarding-guide-card hearth-onboarding-guide-card--${card.key}`} key={card.key}>
+              <strong>{card.title}</strong>
+              <span>{card.body}</span>
+            </article>
+          ))}
         </div>
         <div className="onboarding-checklist-header hearth-start-here-progress">
           <div className="onboarding-progress-track" aria-label={`Onboarding ${checklistSummary.percent}% complete`}>
@@ -42595,6 +42606,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </button>
               ) : null}
               <button type="button" className="hearth-start-here-skip" onClick={completeOnboarding}>{checklistSummary.percent >= 100 ? "Finish onboarding" : "Skip for now"}</button>
+              <button type="button" className="secondary-button" onClick={() => { openUtilityPage("data"); }}>Local beta limits</button>
               <button
                 type="button"
                 className="secondary-button hearth-start-here-assist"

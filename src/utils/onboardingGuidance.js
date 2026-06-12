@@ -4,6 +4,39 @@ export const ONBOARDING_PERSISTENCE_NOTE =
 export const ONBOARDING_WELCOME_COPY =
   "Welcome to Ember & Tide. Start with one card, sealed product, or collector note, then explore fair Scout, Market, Forge, Spark, and Tidepool tools at your own pace.";
 
+export const FIRST_TIME_ONBOARDING_CARDS = [
+  {
+    key: "welcome",
+    title: "Welcome to Ember & Tide",
+    body: "A warm collector home for tracking items, researching prices, planning trades, checking Scout reports, and supporting family-friendly collecting.",
+  },
+  {
+    key: "vault",
+    title: "Start with Vault",
+    body: "Save one card, sealed product, slab, supply, or wishlist item so your Hearth has something real to organize.",
+  },
+  {
+    key: "market",
+    title: "Use Market carefully",
+    body: "Market is fair-price research and manual Price Memory, not live pricing, checkout, or stock guarantees.",
+  },
+  {
+    key: "scout",
+    title: "Try Scout",
+    body: "Review current reports and one watched store while raw restock patterns, vendor schedules, and stock guarantees stay protected.",
+  },
+  {
+    key: "local_beta",
+    title: "Know local beta limits",
+    body: "Some notes and beta tools save only in this browser. Clearing browser data may remove local beta entries.",
+  },
+  {
+    key: "coming_later",
+    title: "What is coming later",
+    body: "Cloud sync, durable photo storage, outside-the-app reminders, billing, and shop tools need separate backend support before they are live.",
+  },
+];
+
 export const ACCOUNT_SETUP_USERNAME_RULES = [
   "Public usernames may appear on Marketplace, Tidepool, Scout reports, and community confirmations.",
   "They must be unique in Ember & Tide so reports and community activity can be attributed clearly.",

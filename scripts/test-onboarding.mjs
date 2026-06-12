@@ -4,8 +4,10 @@ import {
   ACCOUNT_SETUP_TIER_ROWS,
   ACCOUNT_SETUP_USERNAME_RULES,
   ACCOUNT_SETUP_WORKSPACE_ROWS,
+  FIRST_TIME_ONBOARDING_CARDS,
   ONBOARDING_ASSIST_PROMPTS,
   ONBOARDING_GOALS,
+  ONBOARDING_WELCOME_COPY,
   betaAccessWaitlistMessage,
   buildOnboardingChecklist,
   formatBetaAccessAreaAnswer,
@@ -26,6 +28,20 @@ import {
 assert.ok(ONBOARDING_GOALS.some((goal) => goal.key === "parent_family"), "parent/family goal should exist");
 assert.ok(ONBOARDING_GOALS.some((goal) => goal.key === "seller_forge"), "seller/business goal should exist");
 assert.ok(ONBOARDING_ASSIST_PROMPTS.includes("What should I do first?"), "starter prompts should include first-step help");
+assert.ok(ONBOARDING_WELCOME_COPY.includes("Welcome to Ember & Tide"), "welcome copy should introduce Ember & Tide");
+assert.deepEqual(
+  FIRST_TIME_ONBOARDING_CARDS.map((card) => card.key),
+  ["welcome", "vault", "market", "scout", "local_beta", "coming_later"],
+  "first-time onboarding cards should cover the planned tester guide"
+);
+assert.ok(
+  FIRST_TIME_ONBOARDING_CARDS.find((card) => card.key === "local_beta")?.body.includes("only in this browser"),
+  "first-time guide should explain local browser beta limits"
+);
+assert.ok(
+  FIRST_TIME_ONBOARDING_CARDS.find((card) => card.key === "market")?.body.includes("not live pricing"),
+  "Market onboarding copy should avoid live-pricing claims"
+);
 assert.ok(ACCOUNT_SETUP_USERNAME_RULES.some((rule) => /reserved/i.test(rule)), "username rules should mention reserved names");
 assert.deepEqual(
   ACCOUNT_SETUP_TIER_ROWS.map((tier) => tier.label),
