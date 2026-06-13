@@ -106578,3 +106578,617 @@ html body #root .app.app-theme-dark:not(.app-command-shell) .auth-main.auth-main
 html body #root .app.app-theme-dark:not(.app-command-shell) .auth-main.auth-main-final-direction .signed-out-auth-card :where(.secondary-button, .auth-text-button, .ghost-button, button:not([type="submit"])) :where(span, strong, b) {
   color: #fff2dc !important;
 }
+
+/* Reference direction pass: cleaner Ember & Tide product entry and Hearth preview.
+   Scope stays limited to Auth + Hearth while preserving existing actions. */
+html body #root .app:has(.auth-main-final-direction),
+html body #root .app.app-command-shell.app-home {
+  --et-brand-serif: Georgia, "Times New Roman", serif;
+  --et-brand-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --et-reference-cream: #fff8ea;
+  --et-reference-paper: #fffdf6;
+  --et-reference-ink: #16110c;
+  --et-reference-wood: #8f4a0a;
+  --et-reference-orange: #df7307;
+  --et-reference-teal: #0f7378;
+  --et-reference-night: #061625;
+  --et-reference-night-2: #0c2133;
+}
+
+html body #root .app:not(.app-command-shell):has(.auth-main-final-direction) .app-shell-header--full {
+  display: grid !important;
+  grid-template-columns: 74px minmax(0, 1fr);
+  grid-template-areas:
+    "mark title"
+    "mark subtitle";
+  align-items: center;
+  column-gap: 18px;
+  width: min(100% - 48px, 1260px) !important;
+  min-height: 94px;
+  margin: 22px auto 18px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html body #root .app:not(.app-command-shell):has(.auth-main-final-direction) .app-shell-header--full .brand-header-mark {
+  grid-area: mark;
+  display: block;
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  filter: drop-shadow(0 13px 22px rgba(127, 68, 11, 0.18));
+}
+
+html body #root .app:not(.app-command-shell):has(.auth-main-final-direction) .app-shell-header--full h1 {
+  grid-area: title;
+  align-self: end;
+  margin: 0 !important;
+  font-family: var(--et-brand-serif) !important;
+  font-size: clamp(2.35rem, 4vw, 3.85rem) !important;
+  line-height: 0.94 !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.045em !important;
+  text-transform: uppercase;
+  color: var(--et-theme-heading) !important;
+}
+
+html body #root .app:not(.app-command-shell):has(.auth-main-final-direction) .app-shell-header--full p {
+  grid-area: subtitle;
+  align-self: start;
+  margin: 7px 0 0 !important;
+  font-family: var(--et-brand-sans) !important;
+  font-size: 0.82rem !important;
+  line-height: 1.25 !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.17em !important;
+  text-transform: uppercase;
+  color: var(--et-theme-muted) !important;
+}
+
+html body #root .app.app-theme-dark:not(.app-command-shell):has(.auth-main-final-direction) .app-shell-header--full .brand-header-mark {
+  filter: drop-shadow(0 18px 30px rgba(0, 0, 0, 0.36));
+}
+
+html body #root .auth-main-final-direction:has(.signed-out-landing) {
+  display: grid !important;
+  grid-template-columns: minmax(330px, 430px) minmax(360px, 430px) !important;
+  align-items: stretch !important;
+  justify-content: center !important;
+  gap: 20px !important;
+  width: min(100% - 48px, 980px) !important;
+  padding: 0 0 48px !important;
+}
+
+html body #root .app:not(.app-command-shell) .auth-main.auth-main-final-direction .signed-out-auth-card {
+  order: 1;
+  min-height: min(760px, calc(100dvh - 150px));
+  border-radius: 16px !important;
+  padding: 34px 32px 290px !important;
+  overflow: hidden;
+  position: relative;
+  background:
+    linear-gradient(180deg, rgba(var(--et-theme-surface-elevated-rgb), 0.96) 0%, rgba(var(--et-theme-surface-rgb), 0.93) 60%, rgba(241, 193, 118, 0.44) 100%) !important;
+  box-shadow: 0 28px 70px rgba(56, 35, 13, 0.17), inset 0 1px 0 rgba(255, 255, 255, 0.45) !important;
+}
+
+html body #root .app.app-theme-dark:not(.app-command-shell) .auth-main.auth-main-final-direction .signed-out-auth-card {
+  background:
+    radial-gradient(circle at 68% 96%, rgba(231, 121, 11, 0.28), transparent 14rem),
+    linear-gradient(180deg, rgba(10, 27, 43, 0.98) 0%, rgba(8, 22, 37, 0.98) 64%, rgba(5, 14, 25, 0.98) 100%) !important;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+html body #root .app:not(.app-command-shell) .auth-main.auth-main-final-direction .signed-out-auth-card::before {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 270px;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 82%, rgba(255, 182, 75, 0.7) 0 7%, rgba(218, 104, 12, 0.72) 8% 15%, rgba(116, 55, 12, 0.42) 16% 22%, transparent 23%),
+    linear-gradient(90deg, transparent 0 14%, rgba(92, 54, 22, 0.26) 15% 22%, transparent 23% 76%, rgba(71, 42, 23, 0.34) 77% 87%, transparent 88%),
+    linear-gradient(180deg, rgba(255, 251, 239, 0) 0%, rgba(246, 198, 116, 0.38) 46%, rgba(108, 63, 27, 0.66) 100%);
+  opacity: 0.92;
+}
+
+html body #root .app.app-theme-dark:not(.app-command-shell) .auth-main.auth-main-final-direction .signed-out-auth-card::before {
+  background:
+    radial-gradient(ellipse at 53% 76%, rgba(255, 182, 75, 0.7) 0 7%, rgba(218, 104, 12, 0.74) 8% 15%, rgba(116, 55, 12, 0.44) 16% 22%, transparent 23%),
+    linear-gradient(90deg, transparent 0 14%, rgba(13, 36, 56, 0.72) 15% 22%, transparent 23% 74%, rgba(9, 28, 46, 0.74) 75% 89%, transparent 90%),
+    linear-gradient(180deg, rgba(4, 15, 28, 0) 0%, rgba(7, 25, 43, 0.74) 35%, rgba(3, 10, 19, 0.96) 100%);
+  opacity: 0.86;
+}
+
+html body #root .app:not(.app-command-shell) .auth-main.auth-main-final-direction .signed-out-auth-card::after {
+  content: "";
+  position: absolute;
+  left: 30px;
+  right: 30px;
+  bottom: 38px;
+  height: 82px;
+  border-radius: 12px;
+  pointer-events: none;
+  background:
+    linear-gradient(103deg, transparent 0 8%, rgba(26, 42, 54, 0.58) 9% 18%, transparent 19% 30%, rgba(19, 40, 54, 0.55) 31% 44%, transparent 45%),
+    radial-gradient(ellipse at 22% 78%, rgba(255, 246, 220, 0.42), transparent 24%),
+    linear-gradient(180deg, rgba(60, 38, 24, 0.24), rgba(32, 23, 18, 0.62));
+  border: 1px solid rgba(119, 73, 35, 0.22);
+  transform: perspective(180px) rotateX(9deg);
+}
+
+html body #root .app.app-theme-dark:not(.app-command-shell) .auth-main.auth-main-final-direction .signed-out-auth-card::after {
+  border-color: rgba(236, 158, 62, 0.18);
+  background:
+    linear-gradient(103deg, transparent 0 8%, rgba(24, 57, 86, 0.68) 9% 18%, transparent 19% 30%, rgba(15, 47, 73, 0.66) 31% 44%, transparent 45%),
+    radial-gradient(ellipse at 22% 78%, rgba(255, 137, 66, 0.36), transparent 24%),
+    linear-gradient(180deg, rgba(19, 40, 58, 0.38), rgba(4, 13, 23, 0.82));
+}
+
+html body #root .app:not(.app-command-shell) .auth-main.auth-main-final-direction .signed-out-auth-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+html body #root .app:not(.app-command-shell) .auth-main.auth-main-final-direction .signed-out-auth-card h2,
+html body #root .auth-main-final-direction .signed-out-landing.panel h2 {
+  font-family: var(--et-brand-serif) !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
+}
+
+html body #root .app:not(.app-command-shell) .auth-main.auth-main-final-direction .signed-out-auth-card h2 {
+  font-size: clamp(2.1rem, 4vw, 2.85rem) !important;
+  line-height: 1.05 !important;
+  margin-bottom: 14px !important;
+}
+
+html body #root .app:not(.app-command-shell) .auth-main.auth-main-final-direction .auth-form {
+  gap: 18px !important;
+}
+
+html body #root .app:not(.app-command-shell) .auth-main.auth-main-final-direction .auth-form input {
+  min-height: 48px !important;
+  border-radius: 9px !important;
+}
+
+html body #root .app:not(.app-command-shell) .auth-main.auth-main-final-direction .auth-form button[type="submit"] {
+  min-height: 52px !important;
+  border-radius: 9px !important;
+  font-family: var(--et-brand-serif) !important;
+  font-size: 1.08rem !important;
+  font-weight: 600 !important;
+}
+
+html body #root .app:not(.app-command-shell) .auth-main.auth-main-final-direction .auth-link-stack {
+  align-items: center !important;
+  gap: 12px !important;
+  margin-top: 16px !important;
+}
+
+html body #root .app:not(.app-command-shell) .auth-main.auth-main-final-direction .auth-link-stack .auth-text-button {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--et-theme-tide) !important;
+  text-decoration: none !important;
+}
+
+html body #root .app.app-theme-dark:not(.app-command-shell) .auth-main.auth-main-final-direction .auth-link-stack .auth-text-button {
+  color: #46dbe0 !important;
+}
+
+html body #root .app:not(.app-command-shell) .auth-main.auth-main-final-direction .signed-out-landing.panel {
+  order: 2;
+  min-height: min(760px, calc(100dvh - 150px));
+  border-radius: 16px !important;
+  padding: 28px 28px 24px !important;
+  overflow: hidden;
+  display: grid !important;
+  grid-template-rows: auto minmax(240px, 1fr) auto auto;
+  gap: 18px !important;
+}
+
+html body #root .auth-main-final-direction .landing-brand-emblem {
+  width: 76px !important;
+  height: 76px !important;
+  object-fit: contain;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  filter: drop-shadow(0 16px 24px rgba(104, 54, 8, 0.24));
+}
+
+html body #root .app.app-theme-dark .auth-main-final-direction .landing-brand-emblem {
+  filter: drop-shadow(0 18px 26px rgba(0, 0, 0, 0.36));
+}
+
+html body #root .auth-main-final-direction .landing-hero {
+  text-align: center;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+}
+
+html body #root .auth-main-final-direction .landing-hero .section-kicker {
+  margin: 0 !important;
+  font-family: var(--et-brand-sans) !important;
+  font-size: 0.66rem !important;
+  letter-spacing: 0.17em !important;
+  text-transform: uppercase;
+  color: rgba(255, 246, 231, 0.72) !important;
+}
+
+html body #root .auth-main-final-direction .landing-hero h2 {
+  max-width: 12ch;
+  margin: 2px 0 2px !important;
+  font-size: clamp(2rem, 4.4vw, 2.65rem) !important;
+  line-height: 1.05 !important;
+}
+
+html body #root .auth-main-final-direction .landing-hero > p:not(.section-kicker):not(.auth-landing-note) {
+  font-size: 0.98rem !important;
+  color: rgba(255, 246, 231, 0.86) !important;
+}
+
+html body #root .auth-main-final-direction .auth-landing-note {
+  max-width: 100% !important;
+  margin-top: 10px !important;
+  border-radius: 12px !important;
+  padding: 12px 14px !important;
+  font-size: 0.83rem !important;
+  text-align: left;
+}
+
+html body #root .auth-main-final-direction .auth-command-preview {
+  position: relative;
+  min-height: 278px;
+  margin: 0 !important;
+  border-radius: 13px !important;
+  overflow: hidden;
+  border: 1px solid rgba(255, 246, 231, 0.18) !important;
+  background:
+    radial-gradient(circle at 84% 66%, rgba(230, 111, 13, 0.72) 0 6%, rgba(189, 76, 8, 0.48) 7% 12%, transparent 13%),
+    linear-gradient(90deg, rgba(255, 244, 217, 0.82) 0 20%, transparent 21%),
+    linear-gradient(116deg, rgba(248, 195, 97, 0.6), rgba(22, 71, 91, 0.18) 48%, rgba(8, 24, 38, 0.66)),
+    linear-gradient(180deg, rgba(255, 237, 198, 0.95), rgba(158, 87, 28, 0.55)) !important;
+}
+
+html body #root .app.app-theme-dark .auth-main-final-direction .auth-command-preview {
+  background:
+    radial-gradient(circle at 84% 66%, rgba(230, 111, 13, 0.82) 0 6%, rgba(189, 76, 8, 0.5) 7% 12%, transparent 13%),
+    linear-gradient(90deg, rgba(15, 44, 68, 0.78) 0 24%, transparent 25%),
+    linear-gradient(116deg, rgba(17, 49, 73, 0.82), rgba(8, 25, 42, 0.92) 48%, rgba(2, 10, 20, 0.96)),
+    linear-gradient(180deg, rgba(14, 41, 61, 0.95), rgba(3, 10, 19, 0.92)) !important;
+}
+
+html body #root .auth-main-final-direction .auth-command-preview::before,
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-page-hero::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  border-radius: 12px;
+}
+
+html body #root .auth-main-final-direction .auth-command-preview::before {
+  left: 20px;
+  right: 20px;
+  bottom: 20px;
+  height: 72px;
+  background:
+    linear-gradient(104deg, transparent 0 9%, rgba(7, 26, 42, 0.72) 10% 21%, transparent 22% 31%, rgba(10, 35, 54, 0.72) 32% 44%, transparent 45%),
+    linear-gradient(180deg, rgba(68, 43, 25, 0.24), rgba(13, 28, 37, 0.66));
+  transform: perspective(160px) rotateX(8deg);
+}
+
+html body #root .auth-main-final-direction .auth-preview-shell {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 330px);
+  margin: 18px auto 0;
+  backdrop-filter: blur(10px) saturate(1.05);
+  background: rgba(255, 248, 234, 0.72) !important;
+}
+
+html body #root .app.app-theme-dark .auth-main-final-direction .auth-preview-shell {
+  background: rgba(6, 18, 31, 0.74) !important;
+}
+
+html body #root .auth-main-final-direction .auth-choice-row,
+html body #root .auth-main-final-direction .landing-feature-grid,
+html body #root .auth-main-final-direction .landing-link-row {
+  gap: 10px !important;
+}
+
+html body #root .auth-main-final-direction .auth-choice-row .auth-choice-button {
+  min-height: 44px !important;
+  border-radius: 9px !important;
+}
+
+html body #root .auth-main-final-direction .landing-feature-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+html body #root .auth-main-final-direction .landing-feature-card {
+  min-height: 74px !important;
+  border-radius: 10px !important;
+  padding: 12px !important;
+  background: rgba(255, 246, 231, 0.08) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-page-hero {
+  min-height: clamp(250px, 31vw, 360px);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding-right: min(42%, 390px) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-page-hero::after {
+  top: 24px;
+  right: 24px;
+  bottom: 24px;
+  width: min(38%, 360px);
+  border: 1px solid rgba(255, 246, 231, 0.16);
+  background:
+    radial-gradient(circle at 76% 72%, rgba(230, 111, 13, 0.78) 0 7%, rgba(189, 76, 8, 0.48) 8% 13%, transparent 14%),
+    linear-gradient(90deg, transparent 0 12%, rgba(12, 37, 58, 0.8) 13% 25%, transparent 26% 58%, rgba(15, 44, 68, 0.72) 59% 74%, transparent 75%),
+    linear-gradient(115deg, rgba(255, 236, 195, 0.75), rgba(18, 69, 86, 0.24) 42%, rgba(5, 19, 33, 0.86)),
+    linear-gradient(180deg, rgba(255, 228, 171, 0.86), rgba(10, 33, 50, 0.86));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 18px 45px rgba(0, 0, 0, 0.24);
+  opacity: 0.95;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-dashboard-final .et-mockup-page-hero::after,
+html body #root .app.app-shell-dark.app-command-shell.app-home .hearth-dashboard-final .et-mockup-page-hero::after {
+  background:
+    radial-gradient(circle at 76% 72%, rgba(230, 111, 13, 0.88) 0 7%, rgba(189, 76, 8, 0.5) 8% 13%, transparent 14%),
+    linear-gradient(90deg, transparent 0 12%, rgba(10, 32, 54, 0.86) 13% 25%, transparent 26% 58%, rgba(11, 34, 55, 0.82) 59% 74%, transparent 75%),
+    linear-gradient(115deg, rgba(24, 58, 77, 0.82), rgba(8, 28, 45, 0.94) 42%, rgba(2, 10, 20, 0.96)),
+    linear-gradient(180deg, rgba(14, 42, 62, 0.95), rgba(2, 10, 20, 0.96));
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-page-hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+@media (max-width: 900px) {
+  html body #root .auth-main-final-direction:has(.signed-out-landing) {
+    grid-template-columns: minmax(0, 430px) !important;
+    width: min(100% - 24px, 430px) !important;
+    padding-bottom: 26px !important;
+  }
+
+  html body #root .app:not(.app-command-shell) .auth-main.auth-main-final-direction .signed-out-auth-card {
+    min-height: auto;
+    padding: 28px 26px 220px !important;
+  }
+
+  html body #root .app:not(.app-command-shell) .auth-main.auth-main-final-direction .signed-out-auth-card::before {
+    height: 205px;
+  }
+
+  html body #root .app:not(.app-command-shell) .auth-main.auth-main-final-direction .signed-out-auth-card::after {
+    left: 24px;
+    right: 24px;
+    bottom: 28px;
+    height: 58px;
+  }
+
+  html body #root .app:not(.app-command-shell):has(.auth-main-final-direction) .app-shell-header--full {
+    width: min(100% - 24px, 430px) !important;
+    grid-template-columns: 58px minmax(0, 1fr);
+    min-height: 76px;
+    margin-top: 14px !important;
+  }
+
+  html body #root .app:not(.app-command-shell):has(.auth-main-final-direction) .app-shell-header--full .brand-header-mark {
+    width: 58px;
+    height: 58px;
+  }
+
+  html body #root .app:not(.app-command-shell):has(.auth-main-final-direction) .app-shell-header--full h1 {
+    font-size: clamp(1.8rem, 9vw, 2.55rem) !important;
+  }
+
+  html body #root .app:not(.app-command-shell):has(.auth-main-final-direction) .app-shell-header--full p {
+    font-size: 0.62rem !important;
+    letter-spacing: 0.12em !important;
+  }
+
+  html body #root .app:not(.app-command-shell) .auth-main.auth-main-final-direction .signed-out-landing.panel {
+    min-height: auto;
+    grid-template-rows: auto auto auto auto;
+  }
+
+  html body #root .auth-main-final-direction .auth-command-preview {
+    min-height: 250px;
+  }
+
+  html body #root .auth-main-final-direction .landing-feature-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 760px) {
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-page-hero {
+    min-height: 294px;
+    padding-right: 20px !important;
+    padding-bottom: 126px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-page-hero::after {
+    top: auto;
+    left: 18px;
+    right: 18px;
+    bottom: 16px;
+    width: auto;
+    height: 92px;
+  }
+}
+
+/* Final reference alignment overrides.
+   These sit after older theme reset layers so Auth and Hearth follow the supplied mockup. */
+html body #root main.auth-main.auth-main-final-direction {
+  display: grid !important;
+  grid-template-columns: minmax(330px, 430px) minmax(360px, 430px) !important;
+  width: min(100% - 48px, 980px) !important;
+  max-width: 980px !important;
+  gap: 20px !important;
+  justify-content: center !important;
+  align-items: stretch !important;
+  padding: 0 0 48px !important;
+}
+
+html body #root main.auth-main.auth-main-final-direction > .signed-out-auth-card {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  order: 0 !important;
+}
+
+html body #root main.auth-main.auth-main-final-direction > .signed-out-landing.panel {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  order: 1 !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  grid-template-rows: auto minmax(270px, 1fr) auto auto auto !important;
+  align-content: start !important;
+  min-height: min(760px, calc(100dvh - 150px)) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 252, 245, 0.96), rgba(255, 239, 212, 0.94)) !important;
+  color: #16110c !important;
+}
+
+html body #root .app.app-theme-dark main.auth-main.auth-main-final-direction > .signed-out-landing.panel {
+  background:
+    linear-gradient(180deg, rgba(10, 27, 43, 0.98), rgba(5, 15, 28, 0.98)) !important;
+  color: #fff4dd !important;
+}
+
+html body #root main.auth-main.auth-main-final-direction > .signed-out-landing.panel :where(h2, h3, strong, b) {
+  color: currentColor !important;
+}
+
+html body #root main.auth-main.auth-main-final-direction > .signed-out-landing.panel .landing-hero > :where(p, .section-kicker) {
+  color: color-mix(in srgb, currentColor 72%, transparent) !important;
+}
+
+html body #root main.auth-main.auth-main-final-direction > .signed-out-landing.panel .auth-landing-note,
+html body #root main.auth-main.auth-main-final-direction > .signed-out-landing.panel .landing-feature-card,
+html body #root main.auth-main.auth-main-final-direction > .signed-out-landing.panel .landing-link-row .auth-text-button {
+  background: color-mix(in srgb, var(--et-theme-surface-elevated) 82%, transparent) !important;
+  color: var(--et-theme-text) !important;
+}
+
+html body #root .app.app-theme-dark main.auth-main.auth-main-final-direction > .signed-out-landing.panel .auth-landing-note,
+html body #root .app.app-theme-dark main.auth-main.auth-main-final-direction > .signed-out-landing.panel .landing-feature-card,
+html body #root .app.app-theme-dark main.auth-main.auth-main-final-direction > .signed-out-landing.panel .landing-link-row .auth-text-button {
+  background: rgba(255, 244, 221, 0.08) !important;
+  color: #fff4dd !important;
+}
+
+html body #root main.auth-main.auth-main-final-direction .auth-command-preview {
+  display: grid !important;
+  min-height: 290px !important;
+}
+
+html body #root .app:not(.app-command-shell) main.auth-main.auth-main-final-direction .signed-out-auth-card {
+  padding-top: 30px !important;
+}
+
+html body #root main.auth-main.auth-main-final-direction .auth-card-welcome {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  margin: 0 0 22px;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--et-theme-heading) !important;
+  text-align: center;
+}
+
+html body #root main.auth-main.auth-main-final-direction .auth-card-welcome-mark {
+  width: 68px;
+  height: 68px;
+  object-fit: contain;
+  filter: drop-shadow(0 14px 22px rgba(121, 61, 8, 0.2));
+}
+
+html body #root main.auth-main.auth-main-final-direction .auth-card-welcome h2 {
+  max-width: 12ch;
+  margin: 0 !important;
+  font-family: var(--et-brand-serif) !important;
+  font-size: clamp(2.02rem, 4vw, 2.55rem) !important;
+  line-height: 1.04 !important;
+  color: var(--et-theme-heading) !important;
+  text-align: center;
+}
+
+html body #root main.auth-main.auth-main-final-direction .auth-card-welcome p {
+  margin: 0 !important;
+  color: var(--et-theme-muted) !important;
+}
+
+html body #root main.auth-main.auth-main-final-direction .auth-mode-title {
+  margin: 0 0 8px !important;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--et-theme-border);
+  font-family: var(--et-brand-serif) !important;
+  font-size: 1.08rem !important;
+  font-weight: 600;
+  text-align: center;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-page-hero {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-page-hero .et-mockup-hero-copy h1 {
+  font-family: var(--et-brand-serif, Georgia, "Times New Roman", serif) !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
+}
+
+@media (max-width: 900px) {
+  html body #root main.auth-main.auth-main-final-direction {
+    grid-template-columns: minmax(0, 430px) !important;
+    width: min(100% - 24px, 430px) !important;
+    max-width: 430px !important;
+  }
+
+  html body #root main.auth-main.auth-main-final-direction > .signed-out-auth-card,
+  html body #root main.auth-main.auth-main-final-direction > .signed-out-landing.panel {
+    grid-column: 1 !important;
+    min-height: auto !important;
+  }
+
+  html body #root main.auth-main.auth-main-final-direction > .signed-out-auth-card {
+    grid-row: 1 !important;
+  }
+
+  html body #root main.auth-main.auth-main-final-direction > .signed-out-landing.panel {
+    grid-row: 2 !important;
+  }
+}
+
+@media (max-width: 760px) {
+  html body #root main.auth-main.auth-main-final-direction .auth-card-welcome-mark {
+    width: 62px;
+    height: 62px;
+  }
+
+  html body #root main.auth-main.auth-main-final-direction .auth-card-welcome h2 {
+    font-size: 2rem !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-page-hero .et-mockup-hero-copy h1 {
+    font-size: 2.15rem !important;
+  }
+}

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="Ember &amp; Tide flame and wave mark">
+  <defs>
+    <linearGradient id="et-flame" x1="78" y1="20" x2="143" y2="143" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffb83d"/>
+      <stop offset=".54" stop-color="#f47b13"/>
+      <stop offset="1" stop-color="#bd4a0b"/>
+    </linearGradient>
+    <linearGradient id="et-inner" x1="101" y1="87" x2="141" y2="162" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffe097"/>
+      <stop offset="1" stop-color="#f28a23"/>
+    </linearGradient>
+    <linearGradient id="et-tide" x1="48" y1="143" x2="208" y2="190" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0f7d82"/>
+      <stop offset=".52" stop-color="#38b6bd"/>
+      <stop offset="1" stop-color="#0d5965"/>
+    </linearGradient>
+    <linearGradient id="et-tide-deep" x1="50" y1="177" x2="202" y2="216" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0a5964"/>
+      <stop offset=".6" stop-color="#167d83"/>
+      <stop offset="1" stop-color="#083f4a"/>
+    </linearGradient>
+    <filter id="et-soft" x="-20%" y="-20%" width="140%" height="145%">
+      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#5a2a0d" flood-opacity=".2"/>
+    </filter>
+  </defs>
+  <g filter="url(#et-soft)">
+    <path fill="url(#et-flame)" d="M127 14c-22 24-29 47-24 72-14-14-20-31-17-52-36 32-53 68-49 105 5 49 47 83 99 86 51 3 96-25 109-72 9-34-2-68-32-98 2 24-8 43-29 55 2-38-17-70-57-96Z"/>
+    <path fill="url(#et-inner)" d="M129 83c-17 19-20 39-10 59-14-8-22-19-23-35-20 21-27 43-20 64 9 26 37 41 70 38 30-3 54-21 59-47 3-17-4-34-20-50-1 15-9 26-21 34 1-25-10-45-35-63Z"/>
+    <path fill="url(#et-tide)" d="M30 152c37 32 80 47 128 36 37-9 67-33 101-34-31 44-76 71-128 73-48 1-86-24-101-75Z"/>
+    <path fill="#fff4da" opacity=".86" d="M48 158c44 15 82 13 114-5 25-14 48-22 77-19-34 10-57 28-88 37-34 10-68 6-103-13Z"/>
+    <path fill="url(#et-tide-deep)" d="M48 190c34 20 70 27 111 17 33-8 58-28 89-31-35 36-77 56-123 55-34-1-61-15-77-41Z"/>
+    <path fill="#083f4a" opacity=".84" d="M75 197c32 9 62 6 91-8 17-8 36-13 58-12-25 17-52 29-84 31-24 1-46-3-65-11Z"/>
+  </g>
+</svg>

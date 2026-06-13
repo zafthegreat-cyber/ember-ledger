@@ -519,7 +519,7 @@ const MarketPriceHistoryPanel = lazy(() => import("./components/MarketPriceHisto
 const Scout = lazy(() => import("./pages/Scout"));
 
 const BRAND_ASSETS = {
-  mark: "/icon-192.png",
+  mark: "/assets/brand/ember-tide-flame-wave.svg",
   promoHero: "/assets/brand/ember-tide-promo-hero.png",
   linkBioHeader: "/assets/brand/link-bio-header.png",
   pwaInstallPromo: "/assets/brand/pwa-install-promo.png",
@@ -56891,6 +56891,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     return (
       <div className={`app app-${String(activeMainTab || activeTab || "home").toLowerCase()} app-theme-${resolvedAppTheme}`} data-theme={resolvedAppTheme}>
         <header className="header app-shell-header app-shell-header--full">
+          <img className="brand-header-mark" src={BRAND_ASSETS.mark} alt="" aria-hidden="true" />
           <h1
   onClick={() => {
     const nextClicks = treasureClicks + 1;
@@ -56904,18 +56905,16 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 >
   Ember & Tide
 </h1>
-          <p>A family-friendly Pokemon TCG app for fair restocks, collections, and community.</p>
+          <p>Trading-card collector command center</p>
         </header>
         <main className="main auth-main auth-main-final-direction">
           {signedOutPublicContent || (
           <section className="signed-out-landing panel">
             <div className="landing-hero">
-              <span className="landing-brand-mark landing-brand-emblem" aria-hidden="true">
-                <span>E&amp;T</span>
-              </span>
-              <p className="section-kicker">Public Beta</p>
-              <h2>Fair collecting starts here.</h2>
-              <p>A warm collector command center for your Vault, Scout notes, fair price checks, trades, and family collecting.</p>
+              <img className="landing-brand-mark landing-brand-emblem" src={BRAND_ASSETS.mark} alt="" aria-hidden="true" />
+              <p className="section-kicker">Trading-card collector command center</p>
+              <h2>Welcome to Ember &amp; Tide</h2>
+              <p>Your collection. Your command center.</p>
               <p className="auth-landing-note">New accounts may need approval before full app access. Ember &amp; Tide is starting in Virginia; out-of-state requests join the waitlist and help us choose where to expand next.</p>
               <div className="quick-actions auth-choice-row">
                 <button type="button" className="ember-gradient-button auth-choice-button" onClick={() => openAuthPanel("login")}>Log In</button>
@@ -56927,19 +56926,19 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <figure className="landing-promo-art auth-command-preview" aria-label="Ember and Tide preview">
               <div className="auth-preview-shell">
                 <div className="auth-preview-topline">
-                  <span>Collector room</span>
-                  <strong>Today</strong>
+                  <span>Hearth</span>
+                  <strong>View all</strong>
                 </div>
                 <div className="auth-preview-main-card">
-                  <span>Next Best Step</span>
-                  <strong>Start with Vault</strong>
-                  <small>Add one card, sealed product, slab, or accessory.</small>
+                  <span>Welcome back, Collector</span>
+                  <strong>The hearth is ready.</strong>
+                  <small>One calm place for your collection, trades, Scout notes, and family support.</small>
                 </div>
                 <div className="auth-preview-mini-grid">
-                  <span><b>Vault</b><small>Saved notes</small></span>
-                  <span><b>Scout</b><small>Current reports</small></span>
-                  <span><b>Market</b><small>Manual checks</small></span>
-                  <span><b>Spark</b><small>Family support</small></span>
+                  <span><b>Vault</b><small>Collection</small></span>
+                  <span><b>Sets</b><small>Organized</small></span>
+                  <span><b>Market</b><small>Manual</small></span>
+                  <span><b>Forge</b><small>Trades</small></span>
                 </div>
                 <p>Local beta tools stay honest: no live pricing, no checkout, and no fake alerts.</p>
               </div>
@@ -57008,7 +57007,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </>
             ) : (
               <>
-                <h2>{authMode === "login" ? "Log In" : "Create your account"}</h2>
+                <div className="auth-card-welcome">
+                  <img className="auth-card-welcome-mark" src={BRAND_ASSETS.mark} alt="" aria-hidden="true" />
+                  <h2>Welcome to Ember &amp; Tide</h2>
+                  <p>Your collection. Your command center.</p>
+                </div>
+                <h3 className="auth-mode-title">{authMode === "login" ? "Log In" : "Create Account"}</h3>
                 {authMode === "signup" ? (
                   <p className="compact-subtitle">Create your account first. New accounts may need beta approval before full app access.</p>
                 ) : (
