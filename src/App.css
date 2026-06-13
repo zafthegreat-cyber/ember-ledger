@@ -106041,3 +106041,540 @@ html body #root .app.app-command-shell.app-home .hearth-dashboard-final .hearth-
     margin-top: 8px !important;
   }
 }
+
+/* Light/Dark theme system reset: Auth + Hearth proof surfaces.
+   Light = morning hearth. Dark = evening collector room. */
+html body #root .app:has(.auth-main-final-direction),
+html body #root .app.app-command-shell.app-home {
+  --et-theme-app-bg: #f4e2c4;
+  --et-theme-page-wash:
+    radial-gradient(circle at 12% -12%, rgba(228, 117, 33, 0.18), transparent 36rem),
+    radial-gradient(circle at 92% 4%, rgba(18, 147, 160, 0.14), transparent 32rem),
+    linear-gradient(180deg, #fff7e9 0%, #f3dfbf 54%, #fff6e7 100%);
+  --et-theme-surface: #fff8ea;
+  --et-theme-surface-rgb: 255, 248, 234;
+  --et-theme-surface-elevated: #fffdf5;
+  --et-theme-surface-elevated-rgb: 255, 253, 245;
+  --et-theme-inset: #f6e2c1;
+  --et-theme-inset-rgb: 246, 226, 193;
+  --et-theme-premium: #07172b;
+  --et-theme-premium-2: #0d273f;
+  --et-theme-border: rgba(111, 70, 28, 0.22);
+  --et-theme-border-strong: rgba(141, 83, 33, 0.36);
+  --et-theme-text: #24170d;
+  --et-theme-heading: #140e08;
+  --et-theme-muted: #63523f;
+  --et-theme-helper: #7a6853;
+  --et-theme-inverse: #fff3dd;
+  --et-theme-ember: #dd681d;
+  --et-theme-ember-strong: #b94c15;
+  --et-theme-amber: #d7a13a;
+  --et-theme-tide: #0f8d9a;
+  --et-theme-tide-soft: #d7f4f4;
+  --et-theme-action: linear-gradient(135deg, #e56d1f 0%, #d49a31 58%, #0f8d9a 100%);
+  --et-theme-action-text: #fff9ed;
+  --et-theme-secondary-bg: rgba(15, 141, 154, 0.11);
+  --et-theme-secondary-text: #0d5963;
+  --et-theme-shadow: 0 24px 70px rgba(72, 43, 14, 0.18);
+  --et-theme-shadow-soft: 0 14px 36px rgba(72, 43, 14, 0.12);
+  --et-theme-glow: 0 0 36px rgba(221, 104, 29, 0.18), 0 0 38px rgba(15, 141, 154, 0.12);
+  color: var(--et-theme-text) !important;
+}
+
+html body #root .app.app-theme-dark:has(.auth-main-final-direction),
+html body #root .app.app-theme-dark.app-command-shell.app-home,
+html body #root .app.app-shell-dark.app-command-shell.app-home {
+  --et-theme-app-bg: #08111f;
+  --et-theme-page-wash:
+    radial-gradient(circle at 14% -10%, rgba(229, 109, 31, 0.2), transparent 34rem),
+    radial-gradient(circle at 88% 0%, rgba(23, 172, 185, 0.17), transparent 32rem),
+    linear-gradient(180deg, #0a1729 0%, #0b1b30 50%, #071120 100%);
+  --et-theme-surface: #10223a;
+  --et-theme-surface-rgb: 16, 34, 58;
+  --et-theme-surface-elevated: #142944;
+  --et-theme-surface-elevated-rgb: 20, 41, 68;
+  --et-theme-inset: #0a1728;
+  --et-theme-inset-rgb: 10, 23, 40;
+  --et-theme-premium: #071120;
+  --et-theme-premium-2: #0f2941;
+  --et-theme-border: rgba(191, 220, 228, 0.18);
+  --et-theme-border-strong: rgba(238, 180, 92, 0.32);
+  --et-theme-text: #fff2dc;
+  --et-theme-heading: #fff7e8;
+  --et-theme-muted: #c8d6e2;
+  --et-theme-helper: #9fb1c2;
+  --et-theme-inverse: #071120;
+  --et-theme-ember: #ff8942;
+  --et-theme-ember-strong: #ffb06f;
+  --et-theme-amber: #f4c35a;
+  --et-theme-tide: #41d5dc;
+  --et-theme-tide-soft: rgba(65, 213, 220, 0.14);
+  --et-theme-action: linear-gradient(135deg, #ff8942 0%, #f4c35a 52%, #41d5dc 100%);
+  --et-theme-action-text: #071120;
+  --et-theme-secondary-bg: rgba(65, 213, 220, 0.12);
+  --et-theme-secondary-text: #bffcff;
+  --et-theme-shadow: 0 24px 76px rgba(0, 0, 0, 0.42);
+  --et-theme-shadow-soft: 0 14px 38px rgba(0, 0, 0, 0.28);
+  --et-theme-glow: 0 0 42px rgba(255, 137, 66, 0.18), 0 0 44px rgba(65, 213, 220, 0.14);
+  color: var(--et-theme-text) !important;
+}
+
+html:has(#root .app:has(.auth-main-final-direction)) body,
+html:has(#root .app.app-command-shell.app-home) body,
+html:has(#root .app:has(.auth-main-final-direction)) #root,
+html:has(#root .app.app-command-shell.app-home) #root {
+  min-height: 100dvh;
+  background:
+    radial-gradient(circle at 12% -12%, rgba(228, 117, 33, 0.18), transparent 36rem),
+    radial-gradient(circle at 92% 4%, rgba(18, 147, 160, 0.14), transparent 32rem),
+    linear-gradient(180deg, #fff7e9 0%, #f3dfbf 54%, #fff6e7 100%) !important;
+}
+
+html:has(#root .app.app-theme-dark:has(.auth-main-final-direction)) body,
+html:has(#root .app.app-theme-dark.app-command-shell.app-home) body,
+html:has(#root .app.app-shell-dark.app-command-shell.app-home) body,
+html:has(#root .app.app-theme-dark:has(.auth-main-final-direction)) #root,
+html:has(#root .app.app-theme-dark.app-command-shell.app-home) #root,
+html:has(#root .app.app-shell-dark.app-command-shell.app-home) #root {
+  background:
+    radial-gradient(circle at 14% -10%, rgba(229, 109, 31, 0.2), transparent 34rem),
+    radial-gradient(circle at 88% 0%, rgba(23, 172, 185, 0.17), transparent 32rem),
+    linear-gradient(180deg, #0a1729 0%, #0b1b30 50%, #071120 100%) !important;
+}
+
+html body #root .app:has(.auth-main-final-direction),
+html body #root .app.app-command-shell.app-home {
+  width: 100% !important;
+  max-width: none !important;
+  min-height: 100dvh;
+  background: var(--et-theme-page-wash) !important;
+}
+
+html body #root .auth-main-final-direction,
+html body #root .app.app-command-shell.app-home .main,
+html body #root .app.app-command-shell.app-home main,
+html body #root .app.app-command-shell.app-home .app-shell-dark {
+  background: transparent !important;
+}
+
+html body #root .auth-main-final-direction:has(.signed-out-landing) {
+  width: min(100%, 1320px) !important;
+  margin-inline: auto !important;
+  padding-inline: clamp(14px, 2.4vw, 28px) !important;
+  color: var(--et-theme-text) !important;
+}
+
+html body #root .auth-main-final-direction .signed-out-landing.panel {
+  border-color: color-mix(in srgb, var(--et-theme-tide) 26%, var(--et-theme-border)) !important;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(255, 137, 66, 0.18), transparent 24rem),
+    radial-gradient(circle at 94% 8%, rgba(65, 213, 220, 0.16), transparent 23rem),
+    linear-gradient(135deg, var(--et-theme-premium) 0%, var(--et-theme-premium-2) 56%, #10293e 100%) !important;
+  box-shadow: var(--et-theme-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+html body #root .auth-main-final-direction .signed-out-landing.panel h2,
+html body #root .auth-main-final-direction .landing-hero h1 {
+  color: #fff6e7 !important;
+  text-shadow: 0 12px 34px rgba(0, 0, 0, 0.2);
+}
+
+html body #root .auth-main-final-direction .signed-out-landing.panel p,
+html body #root .auth-main-final-direction .auth-landing-note,
+html body #root .auth-main-final-direction .auth-beta-note {
+  color: rgba(255, 246, 231, 0.84) !important;
+}
+
+html body #root .auth-main-final-direction .auth-landing-note,
+html body #root .auth-main-final-direction .auth-beta-note {
+  border-color: rgba(244, 195, 90, 0.26) !important;
+  background: rgba(255, 246, 231, 0.08) !important;
+}
+
+html body #root .auth-main-final-direction .landing-brand-emblem {
+  border-color: rgba(255, 246, 231, 0.34) !important;
+  background: var(--et-theme-action) !important;
+  box-shadow: var(--et-theme-glow), 0 16px 38px rgba(0, 0, 0, 0.28) !important;
+}
+
+html body #root .auth-main-final-direction .landing-brand-emblem span {
+  background: color-mix(in srgb, var(--et-theme-premium) 84%, #000000 10%) !important;
+  color: #fff6e7 !important;
+}
+
+html body #root .auth-main-final-direction .auth-command-preview {
+  border-color: rgba(191, 220, 228, 0.18) !important;
+  background:
+    linear-gradient(150deg, rgba(255, 246, 231, 0.1), rgba(65, 213, 220, 0.09)),
+    color-mix(in srgb, var(--et-theme-premium) 82%, #000000 12%) !important;
+}
+
+html body #root .auth-main-final-direction .auth-preview-shell,
+html body #root .auth-main-final-direction .signed-out-auth-card {
+  border: 1px solid var(--et-theme-border) !important;
+  background:
+    linear-gradient(180deg, rgba(var(--et-theme-surface-elevated-rgb), 0.96), rgba(var(--et-theme-surface-rgb), 0.93)) !important;
+  color: var(--et-theme-text) !important;
+  box-shadow: var(--et-theme-shadow-soft) !important;
+}
+
+html body #root .app.app-theme-dark .auth-main-final-direction .auth-preview-shell,
+html body #root .app.app-theme-dark .auth-main-final-direction .signed-out-auth-card {
+  border-color: var(--et-theme-border-strong) !important;
+  background:
+    radial-gradient(circle at 10% 0%, rgba(255, 137, 66, 0.12), transparent 16rem),
+    linear-gradient(180deg, rgba(var(--et-theme-surface-elevated-rgb), 0.98), rgba(var(--et-theme-surface-rgb), 0.95)) !important;
+}
+
+html body #root .auth-main-final-direction .auth-preview-topline,
+html body #root .auth-main-final-direction .auth-preview-main-card,
+html body #root .auth-main-final-direction .auth-preview-mini-grid span {
+  border-color: var(--et-theme-border) !important;
+  background: rgba(var(--et-theme-surface-elevated-rgb), 0.7) !important;
+}
+
+html body #root .auth-main-final-direction .auth-preview-main-card {
+  background:
+    linear-gradient(135deg, rgba(229, 109, 31, 0.14), rgba(65, 213, 220, 0.08)),
+    rgba(var(--et-theme-surface-elevated-rgb), 0.84) !important;
+}
+
+html body #root .auth-main-final-direction .auth-preview-topline,
+html body #root .auth-main-final-direction .auth-preview-main-card small,
+html body #root .auth-main-final-direction .auth-preview-shell p,
+html body #root .auth-main-final-direction .auth-preview-mini-grid small,
+html body #root .auth-main-final-direction .signed-out-auth-card .compact-subtitle,
+html body #root .auth-main-final-direction .signed-out-auth-card .auth-name-helper {
+  color: var(--et-theme-muted) !important;
+}
+
+html body #root .auth-main-final-direction .auth-preview-main-card strong,
+html body #root .auth-main-final-direction .auth-preview-mini-grid b,
+html body #root .auth-main-final-direction .signed-out-auth-card h2 {
+  color: var(--et-theme-heading) !important;
+}
+
+html body #root .auth-main-final-direction .auth-preview-main-card span,
+html body #root .auth-main-final-direction .auth-preview-topline span {
+  color: var(--et-theme-ember-strong) !important;
+}
+
+html body #root .app.app-theme-dark .auth-main-final-direction .auth-preview-main-card span,
+html body #root .app.app-theme-dark .auth-main-final-direction .auth-preview-topline span {
+  color: var(--et-theme-ember) !important;
+}
+
+html body #root .auth-main-final-direction :where(input, textarea, select),
+html body #root .app.app-command-shell.app-home :where(input, textarea, select) {
+  min-height: 44px;
+  border: 1px solid var(--et-theme-border) !important;
+  background: rgba(var(--et-theme-surface-elevated-rgb), 0.9) !important;
+  color: var(--et-theme-text) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+}
+
+html body #root .app.app-theme-dark :where(.auth-main-final-direction, .hearth-dashboard-final) :where(input, textarea, select),
+html body #root .app.app-shell-dark.app-home :where(.hearth-dashboard-final) :where(input, textarea, select) {
+  background: rgba(var(--et-theme-inset-rgb), 0.9) !important;
+  color: var(--et-theme-text) !important;
+}
+
+html body #root :where(.auth-main-final-direction, .hearth-dashboard-final) :where(input, textarea, select)::placeholder {
+  color: var(--et-theme-helper) !important;
+  opacity: 0.92;
+}
+
+html body #root :where(.auth-main-final-direction, .hearth-dashboard-final) :where(button, a, input, textarea, select):focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--et-theme-tide) 70%, #ffffff 10%) !important;
+  outline-offset: 3px;
+}
+
+html body #root :where(.auth-main-final-direction, .hearth-dashboard-final) :where(.auth-submit, .primary-button, .ember-gradient-button, .et-mockup-button:not(.et-mockup-button-secondary):not(.et-mockup-button-ghost)) {
+  border-color: color-mix(in srgb, var(--et-theme-amber) 48%, #ffffff 14%) !important;
+  background: var(--et-theme-action) !important;
+  color: var(--et-theme-action-text) !important;
+  box-shadow: 0 14px 30px rgba(221, 104, 29, 0.2), var(--et-theme-glow) !important;
+}
+
+html body #root :where(.auth-main-final-direction, .hearth-dashboard-final) :where(.secondary-button, .ghost-button, .auth-text-button, .inline-text-button, .et-mockup-button-secondary, .et-mockup-button-ghost) {
+  border-color: color-mix(in srgb, var(--et-theme-tide) 24%, var(--et-theme-border)) !important;
+  background: var(--et-theme-secondary-bg) !important;
+  color: var(--et-theme-secondary-text) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+html body #root .app.app-command-shell.app-home :where(.topbar, .app-shell-header, .mobile-bottom-nav, .mobile-quick-add-fab) {
+  border-color: var(--et-theme-border) !important;
+  background:
+    linear-gradient(180deg, rgba(var(--et-theme-surface-elevated-rgb), 0.9), rgba(var(--et-theme-surface-rgb), 0.82)) !important;
+  color: var(--et-theme-text) !important;
+  box-shadow: var(--et-theme-shadow-soft) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-home :where(.topbar, .app-shell-header, .mobile-bottom-nav, .mobile-quick-add-fab),
+html body #root .app.app-shell-dark.app-command-shell.app-home :where(.topbar, .app-shell-header, .mobile-bottom-nav, .mobile-quick-add-fab) {
+  background:
+    linear-gradient(180deg, rgba(20, 41, 68, 0.92), rgba(10, 23, 40, 0.86)) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final {
+  --hearth-home-warm-panel: var(--et-theme-surface);
+  --hearth-home-warm-panel-2: var(--et-theme-surface-elevated);
+  --hearth-home-ink: var(--et-theme-text);
+  --hearth-home-muted: var(--et-theme-muted);
+  color: var(--et-theme-text) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-page-hero {
+  border-color: color-mix(in srgb, var(--et-theme-tide) 28%, var(--et-theme-border)) !important;
+  background:
+    radial-gradient(circle at 11% 2%, rgba(255, 137, 66, 0.22), transparent 18rem),
+    radial-gradient(circle at 90% 4%, rgba(65, 213, 220, 0.16), transparent 20rem),
+    linear-gradient(135deg, var(--et-theme-premium), var(--et-theme-premium-2) 62%, #12324b) !important;
+  box-shadow: var(--et-theme-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-page-hero h1,
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-page-hero p,
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-brand-row {
+  color: #fff4dd !important;
+}
+
+html body #root .app.app-theme-light.app-command-shell.app-home .hearth-dashboard-final .et-mockup-page-hero .et-mockup-brand-row {
+  color: #23170d !important;
+}
+
+html body #root .app.app-theme-light.app-command-shell.app-home .hearth-dashboard-final .et-mockup-page-hero .et-mockup-brand-row :where(span, strong, b) {
+  color: #23170d !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-page-hero p {
+  color: rgba(255, 244, 221, 0.82) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-brand-row::before {
+  background: var(--et-theme-action) !important;
+  color: var(--et-theme-action-text) !important;
+  box-shadow: var(--et-theme-glow), 0 12px 30px rgba(0, 0, 0, 0.26) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final :where(.hearth-daily-command-center, .hearth-dashboard-recent, .hearth-dashboard-more-tools, .et-mockup-right-rail, .et-mockup-section-card, .et-mockup-stat-card, .et-mockup-action-card, .et-mockup-empty-state, .hearth-smart-card, .hearth-mockup-recent-list .et-mockup-action-card) {
+  border-color: var(--et-theme-border) !important;
+  background:
+    linear-gradient(180deg, rgba(var(--et-theme-surface-elevated-rgb), 0.94), rgba(var(--et-theme-surface-rgb), 0.9)) !important;
+  color: var(--et-theme-text) !important;
+  box-shadow: var(--et-theme-shadow-soft) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-dashboard-final :where(.hearth-daily-command-center, .hearth-dashboard-recent, .hearth-dashboard-more-tools, .et-mockup-right-rail, .et-mockup-section-card, .et-mockup-stat-card, .et-mockup-action-card, .et-mockup-empty-state, .hearth-smart-card, .hearth-mockup-recent-list .et-mockup-action-card),
+html body #root .app.app-shell-dark.app-command-shell.app-home .hearth-dashboard-final :where(.hearth-daily-command-center, .hearth-dashboard-recent, .hearth-dashboard-more-tools, .et-mockup-right-rail, .et-mockup-section-card, .et-mockup-stat-card, .et-mockup-action-card, .et-mockup-empty-state, .hearth-smart-card, .hearth-mockup-recent-list .et-mockup-action-card) {
+  border-color: var(--et-theme-border) !important;
+  background:
+    radial-gradient(circle at 10% 0%, rgba(255, 137, 66, 0.09), transparent 16rem),
+    linear-gradient(180deg, rgba(var(--et-theme-surface-elevated-rgb), 0.96), rgba(var(--et-theme-surface-rgb), 0.94)) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .hearth-next-best-step,
+html body #root .app.app-command-shell.app-home .hearth-dashboard-focus-compact {
+  border-color: color-mix(in srgb, var(--et-theme-ember) 34%, var(--et-theme-border)) !important;
+  background:
+    linear-gradient(135deg, rgba(229, 109, 31, 0.13), rgba(65, 213, 220, 0.08)),
+    rgba(var(--et-theme-surface-elevated-rgb), 0.92) !important;
+  color: var(--et-theme-text) !important;
+  box-shadow: var(--et-theme-shadow-soft) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-dashboard-final .hearth-next-best-step,
+html body #root .app.app-shell-dark.app-command-shell.app-home .hearth-dashboard-final .hearth-next-best-step,
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-dashboard-focus-compact,
+html body #root .app.app-shell-dark.app-command-shell.app-home .hearth-dashboard-focus-compact {
+  background:
+    radial-gradient(circle at 8% 0%, rgba(255, 137, 66, 0.13), transparent 15rem),
+    linear-gradient(135deg, rgba(20, 41, 68, 0.98), rgba(10, 23, 40, 0.96)) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final :where(h1, h2, h3, h4, strong, b, summary) {
+  color: var(--et-theme-heading) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-page-hero :where(h1, h2, h3, h4, strong, b, summary),
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-today-action :where(span, strong, b),
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-points-card :where(span, strong, b) {
+  color: #fff4dd !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final :where(p, small, span, li, dd),
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-rail-heading p,
+html body #root .app.app-command-shell.app-home .hearth-dashboard-more-tools > summary small {
+  color: var(--et-theme-muted) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-pulse-grid .et-mockup-stat-card span,
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-pill,
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .status-badge,
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .pill {
+  border-color: color-mix(in srgb, var(--et-theme-tide) 24%, var(--et-theme-border)) !important;
+  background: var(--et-theme-secondary-bg) !important;
+  color: var(--et-theme-secondary-text) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-dashboard-pulse-grid .et-mockup-stat-card span,
+html body #root .app.app-shell-dark.app-command-shell.app-home .hearth-dashboard-pulse-grid .et-mockup-stat-card span,
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-dashboard-final .et-mockup-pill,
+html body #root .app.app-shell-dark.app-command-shell.app-home .hearth-dashboard-final .et-mockup-pill {
+  color: var(--et-theme-secondary-text) !important;
+}
+
+@media (max-width: 760px) {
+  html body #root .auth-main-final-direction:has(.signed-out-landing) {
+    padding-inline: 10px !important;
+  }
+
+  html body #root .auth-main-final-direction .signed-out-landing.panel,
+  html body #root .auth-main-final-direction .signed-out-auth-card,
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-final :where(.hearth-daily-command-center, .hearth-dashboard-recent, .hearth-dashboard-more-tools, .et-mockup-right-rail) {
+    border-radius: 22px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home :where(.topbar, .app-shell-header, .mobile-bottom-nav) {
+    background: rgba(var(--et-theme-surface-elevated-rgb), 0.9) !important;
+    backdrop-filter: blur(18px) saturate(1.12);
+  }
+
+  html body #root .app.app-theme-dark.app-command-shell.app-home :where(.topbar, .app-shell-header, .mobile-bottom-nav),
+  html body #root .app.app-shell-dark.app-command-shell.app-home :where(.topbar, .app-shell-header, .mobile-bottom-nav) {
+    background: rgba(var(--et-theme-surface-rgb), 0.92) !important;
+  }
+}
+
+/* Specificity bridge for the signed-out Auth shell, whose older selectors include
+   .app:not(.app-command-shell) .auth-main and otherwise override theme tokens. */
+html[data-theme="light"] body,
+html[data-theme="light"] #root {
+  background:
+    radial-gradient(circle at 12% -12%, rgba(228, 117, 33, 0.18), transparent 36rem),
+    radial-gradient(circle at 92% 4%, rgba(18, 147, 160, 0.14), transparent 32rem),
+    linear-gradient(180deg, #fff7e9 0%, #f3dfbf 54%, #fff6e7 100%) !important;
+}
+
+html[data-theme="dark"] body,
+html[data-theme="dark"] #root {
+  background:
+    radial-gradient(circle at 14% -10%, rgba(229, 109, 31, 0.2), transparent 34rem),
+    radial-gradient(circle at 88% 0%, rgba(23, 172, 185, 0.17), transparent 32rem),
+    linear-gradient(180deg, #0a1729 0%, #0b1b30 50%, #071120 100%) !important;
+}
+
+html body #root .app.app-theme-dark:not(.app-command-shell):has(.auth-main-final-direction),
+html body #root .app.app-theme-dark:not(.app-command-shell) .auth-main.auth-main-final-direction {
+  background:
+    radial-gradient(circle at 14% -10%, rgba(229, 109, 31, 0.2), transparent 34rem),
+    radial-gradient(circle at 88% 0%, rgba(23, 172, 185, 0.17), transparent 32rem),
+    linear-gradient(180deg, #0a1729 0%, #0b1b30 50%, #071120 100%) !important;
+}
+
+html body #root .app:not(.app-command-shell):has(.auth-main-final-direction) .app-shell-header--full {
+  border-color: var(--et-theme-border) !important;
+  background:
+    linear-gradient(180deg, rgba(var(--et-theme-surface-elevated-rgb), 0.92), rgba(var(--et-theme-surface-rgb), 0.82)) !important;
+  color: var(--et-theme-text) !important;
+  box-shadow: var(--et-theme-shadow-soft) !important;
+}
+
+html body #root .app:not(.app-command-shell):has(.auth-main-final-direction) .app-shell-header--full :where(h1, p, span, strong) {
+  color: var(--et-theme-text) !important;
+}
+
+html body #root .app.app-theme-dark:not(.app-command-shell):has(.auth-main-final-direction) .app-shell-header--full {
+  background:
+    linear-gradient(180deg, rgba(var(--et-theme-surface-elevated-rgb), 0.92), rgba(var(--et-theme-surface-rgb), 0.86)) !important;
+}
+
+html body #root .app.app-theme-dark:not(.app-command-shell):has(.auth-main-final-direction) .app-shell-header--full :where(h1, p, span, strong) {
+  color: var(--et-theme-text) !important;
+}
+
+html body #root .app.app-theme-dark:not(.app-command-shell):has(.auth-main.auth-main-final-direction .signed-out-landing) .app-shell-header--full,
+html body #root .app.app-theme-dark:not(.app-command-shell):has(.auth-main.auth-main-final-direction .signed-out-landing) .app-shell-header--full h1,
+html body #root .app.app-theme-dark:not(.app-command-shell):has(.auth-main.auth-main-final-direction .signed-out-landing) .app-shell-header--full p {
+  color: var(--et-theme-text) !important;
+}
+
+html body #root .app:not(.app-command-shell) .auth-main.auth-main-final-direction .signed-out-landing.panel {
+  border-color: color-mix(in srgb, var(--et-theme-tide) 26%, var(--et-theme-border)) !important;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(255, 137, 66, 0.18), transparent 24rem),
+    radial-gradient(circle at 94% 8%, rgba(65, 213, 220, 0.16), transparent 23rem),
+    linear-gradient(135deg, var(--et-theme-premium) 0%, var(--et-theme-premium-2) 56%, #10293e 100%) !important;
+  color: #fff6e7 !important;
+  box-shadow: var(--et-theme-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+html body #root .app:not(.app-command-shell) .auth-main.auth-main-final-direction .signed-out-landing.panel :where(h2, h3, strong, b),
+html body #root .app:not(.app-command-shell) .auth-main.auth-main-final-direction .landing-hero :where(h2, h3, strong, b) {
+  color: #fff6e7 !important;
+}
+
+html body #root .app:not(.app-command-shell) .auth-main.auth-main-final-direction .signed-out-landing.panel :where(p, small, span, li),
+html body #root .app:not(.app-command-shell) .auth-main.auth-main-final-direction .landing-hero :where(p, small, span, li) {
+  color: rgba(255, 246, 231, 0.84) !important;
+}
+
+html body #root .app:not(.app-command-shell) .auth-main.auth-main-final-direction .signed-out-landing.panel :where(.secondary-button, .auth-text-button, .landing-feature-card) {
+  border-color: rgba(255, 246, 231, 0.22) !important;
+  background: rgba(255, 246, 231, 0.1) !important;
+  color: #fff6e7 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+html body #root .app:not(.app-command-shell) .auth-main.auth-main-final-direction .signed-out-landing.panel :where(.secondary-button, .auth-text-button, .landing-feature-card) :where(strong, b, p, small, span) {
+  color: rgba(255, 246, 231, 0.9) !important;
+}
+
+html body #root .app:not(.app-command-shell) .auth-main.auth-main-final-direction .signed-out-auth-card {
+  border-color: var(--et-theme-border) !important;
+  background:
+    linear-gradient(180deg, rgba(var(--et-theme-surface-elevated-rgb), 0.96), rgba(var(--et-theme-surface-rgb), 0.93)) !important;
+  color: var(--et-theme-text) !important;
+  box-shadow: var(--et-theme-shadow-soft) !important;
+}
+
+html body #root .app.app-theme-dark:not(.app-command-shell) .auth-main.auth-main-final-direction .signed-out-auth-card {
+  border-color: var(--et-theme-border-strong) !important;
+  background:
+    radial-gradient(circle at 10% 0%, rgba(255, 137, 66, 0.12), transparent 16rem),
+    linear-gradient(180deg, rgba(var(--et-theme-surface-elevated-rgb), 0.98), rgba(var(--et-theme-surface-rgb), 0.95)) !important;
+}
+
+html body #root .app:not(.app-command-shell) .auth-main.auth-main-final-direction .signed-out-auth-card :where(h2, h3, strong, b, label) {
+  color: var(--et-theme-heading) !important;
+}
+
+html body #root .app:not(.app-command-shell) .auth-main.auth-main-final-direction .signed-out-auth-card :where(p, small, span, .compact-subtitle, .auth-name-helper, .field-label, .form-label, .field > span, label) {
+  color: var(--et-theme-muted) !important;
+}
+
+html body #root .app.app-theme-dark:not(.app-command-shell) .auth-main.auth-main-final-direction .signed-out-auth-card :where(.field, label, .field-label, .form-label, .field-label-row, .field > span) {
+  color: var(--et-theme-muted) !important;
+}
+
+html body #root .app.app-theme-dark:not(.app-command-shell) .auth-main.auth-main-final-direction .auth-form :where(input::placeholder, textarea::placeholder) {
+  color: rgba(255, 242, 220, 0.58) !important;
+  opacity: 1 !important;
+}
+
+html body #root .app.app-theme-dark:not(.app-command-shell) .auth-main.auth-main-final-direction .auth-form input::placeholder,
+html body #root .app.app-theme-dark:not(.app-command-shell) .auth-main.auth-main-final-direction .auth-form textarea::placeholder {
+  color: rgba(255, 242, 220, 0.62) !important;
+  opacity: 1 !important;
+}
+
+html body #root .app.app-theme-dark:not(.app-command-shell) .auth-main.auth-main-final-direction .signed-out-auth-card :where(.secondary-button, .auth-text-button, .ghost-button, button:not([type="submit"])) {
+  border-color: rgba(191, 220, 228, 0.24) !important;
+  background: rgba(255, 246, 231, 0.08) !important;
+  color: #fff2dc !important;
+}
+
+html body #root .app.app-theme-dark:not(.app-command-shell) .auth-main.auth-main-final-direction .signed-out-auth-card :where(.secondary-button, .auth-text-button, .ghost-button, button:not([type="submit"])) :where(span, strong, b) {
+  color: #fff2dc !important;
+}
