@@ -105510,12 +105510,534 @@ html body #root .app.app-command-shell.app-home .hearth-dashboard-final > .et-mo
     gap: 7px;
   }
 
-  html body #root .app.app-command-shell.app-home .hearth-dashboard-final .hearth-dashboard-pulse-grid .et-mockup-stat-card {
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .hearth-dashboard-pulse-grid .et-mockup-stat-card {
     min-height: 70px !important;
   }
 
   html body #root .app.app-command-shell.app-home .hearth-dashboard-more-tools > summary {
     min-height: 54px;
     padding: 11px 12px;
+  }
+}
+
+/* Brand/UI direction reset: stronger warm collector-room direction for Auth + Hearth only. */
+html body #root .app:has(.auth-main-final-direction),
+html body #root .app.app-command-shell.app-home {
+  --et-direction-navy: #071327;
+  --et-direction-navy-2: #0d2338;
+  --et-direction-teal: #0c8a9d;
+  --et-direction-teal-soft: #8edbe3;
+  --et-direction-ember: #e86f1c;
+  --et-direction-amber: #d8a33a;
+  --et-direction-cream: #fff5e5;
+  --et-direction-cream-2: #f6e4c8;
+  --et-direction-ink: #20170f;
+  --et-direction-muted: #675847;
+  --et-direction-border: rgba(105, 68, 32, 0.22);
+  --et-direction-shadow: 0 24px 70px rgba(44, 28, 12, 0.18);
+}
+
+html body #root .app.app-theme-dark:has(.auth-main-final-direction),
+html body #root .app.app-theme-dark.app-command-shell.app-home,
+html body #root .app.app-shell-dark.app-command-shell.app-home {
+  --et-direction-cream: #101c2f;
+  --et-direction-cream-2: #162844;
+  --et-direction-ink: #fff4de;
+  --et-direction-muted: #cbd8e4;
+  --et-direction-border: rgba(223, 163, 73, 0.22);
+  --et-direction-shadow: 0 26px 74px rgba(0, 0, 0, 0.34);
+}
+
+html body #root .app:has(.auth-main-final-direction) {
+  background:
+    linear-gradient(145deg, rgba(7, 19, 39, 0.08), transparent 34%),
+    linear-gradient(180deg, #fff7ea 0%, #f4e4c9 48%, #fff8ed 100%) !important;
+}
+
+html body #root .app.app-theme-dark:has(.auth-main-final-direction) {
+  background:
+    linear-gradient(145deg, rgba(232, 111, 28, 0.13), transparent 32%),
+    linear-gradient(180deg, #041021 0%, #071327 52%, #030914 100%) !important;
+}
+
+html body #root .auth-main-final-direction {
+  width: min(100%, 1320px) !important;
+  max-width: 1320px !important;
+  padding-top: clamp(14px, 2.2vw, 28px) !important;
+}
+
+html body #root .auth-main-final-direction:has(.signed-out-landing) {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.12fr) minmax(380px, 0.58fr) !important;
+  align-items: stretch !important;
+  gap: clamp(16px, 2vw, 26px) !important;
+}
+
+html body #root .auth-main-final-direction .signed-out-landing.panel {
+  min-height: min(68vh, 650px) !important;
+  grid-template-columns: minmax(0, 0.95fr) minmax(330px, 0.8fr) !important;
+  align-items: stretch !important;
+  padding: clamp(24px, 3vw, 40px) !important;
+  border-radius: 32px !important;
+  border: 1px solid rgba(142, 219, 227, 0.2) !important;
+  background:
+    linear-gradient(135deg, rgba(10, 28, 54, 0.96), rgba(5, 15, 31, 0.98) 48%, rgba(12, 35, 56, 0.94)) !important;
+  box-shadow: var(--et-direction-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+html body #root .auth-main-final-direction .landing-hero {
+  max-width: 620px;
+  align-content: center;
+  gap: 14px !important;
+}
+
+html body #root .auth-main-final-direction .landing-brand-emblem {
+  display: grid !important;
+  width: 74px !important;
+  height: 74px !important;
+  place-items: center;
+  border-radius: 24px;
+  object-fit: initial !important;
+  background:
+    linear-gradient(155deg, rgba(232, 111, 28, 0.96), rgba(216, 163, 58, 0.86) 46%, rgba(12, 138, 157, 0.88));
+  border: 1px solid rgba(255, 238, 196, 0.32);
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  color: #fff9eb;
+  font-weight: 950;
+}
+
+html body #root .auth-main-final-direction .landing-brand-emblem span {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border-radius: 16px;
+  background: rgba(7, 19, 39, 0.82);
+  font-size: 1rem;
+  letter-spacing: 0;
+}
+
+html body #root .auth-main-final-direction .signed-out-landing.panel h2 {
+  max-width: 620px;
+  font-size: clamp(2.7rem, 4.2rem, 4.2rem) !important;
+  line-height: 0.92 !important;
+  letter-spacing: 0 !important;
+  color: #fff4dd !important;
+}
+
+html body #root .auth-main-final-direction .signed-out-landing.panel p {
+  max-width: 620px;
+  color: rgba(255, 247, 230, 0.84) !important;
+}
+
+html body #root .auth-main-final-direction .auth-landing-note,
+html body #root .auth-main-final-direction .auth-beta-note {
+  border-color: rgba(216, 163, 58, 0.24) !important;
+  background: rgba(255, 244, 221, 0.08) !important;
+  color: rgba(255, 247, 230, 0.86) !important;
+}
+
+html body #root .auth-main-final-direction .auth-choice-row {
+  display: flex !important;
+  align-items: center;
+  gap: 10px !important;
+}
+
+html body #root .auth-main-final-direction .auth-choice-button {
+  min-height: 48px !important;
+  border-radius: 999px !important;
+}
+
+html body #root .auth-main-final-direction .auth-command-preview {
+  display: grid;
+  place-items: center;
+  min-height: 100%;
+  padding: clamp(16px, 2vw, 24px);
+  border-radius: 28px;
+  border: 1px solid rgba(142, 219, 227, 0.18);
+  background:
+    linear-gradient(150deg, rgba(255, 244, 221, 0.1), rgba(12, 138, 157, 0.08)),
+    rgba(4, 13, 28, 0.74) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+html body #root .auth-main-final-direction .auth-preview-shell {
+  width: min(100%, 440px);
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(255, 247, 230, 0.96), rgba(255, 235, 204, 0.94));
+  color: var(--et-direction-ink);
+  box-shadow: 0 22px 48px rgba(0, 0, 0, 0.34);
+}
+
+html body #root .auth-main-final-direction .auth-preview-topline,
+html body #root .auth-main-final-direction .auth-preview-main-card,
+html body #root .auth-main-final-direction .auth-preview-mini-grid span {
+  border: 1px solid rgba(105, 68, 32, 0.16);
+  background: rgba(255, 252, 245, 0.8);
+}
+
+html body #root .auth-main-final-direction .auth-preview-topline {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 18px;
+  font-size: 0.78rem;
+  color: var(--et-direction-muted);
+}
+
+html body #root .auth-main-final-direction .auth-preview-main-card {
+  display: grid;
+  gap: 6px;
+  padding: 18px;
+  border-radius: 22px;
+  background:
+    linear-gradient(135deg, rgba(232, 111, 28, 0.14), rgba(12, 138, 157, 0.08)),
+    rgba(255, 252, 245, 0.92);
+}
+
+html body #root .auth-main-final-direction .auth-preview-main-card span,
+html body #root .auth-main-final-direction .auth-preview-topline span {
+  color: var(--et-direction-ember);
+  font-weight: 850;
+}
+
+html body #root .auth-main-final-direction .auth-preview-main-card strong {
+  font-size: 1.28rem;
+  color: var(--et-direction-ink);
+}
+
+html body #root .auth-main-final-direction .auth-preview-main-card small,
+html body #root .auth-main-final-direction .auth-preview-shell p,
+html body #root .auth-main-final-direction .auth-preview-mini-grid small {
+  color: var(--et-direction-muted);
+  line-height: 1.35;
+}
+
+html body #root .auth-main-final-direction .auth-preview-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+html body #root .auth-main-final-direction .auth-preview-mini-grid span {
+  display: grid;
+  gap: 3px;
+  min-height: 72px;
+  align-content: center;
+  padding: 11px;
+  border-radius: 18px;
+}
+
+html body #root .auth-main-final-direction .auth-preview-mini-grid b {
+  color: var(--et-direction-navy);
+}
+
+html body #root .auth-main-final-direction .signed-out-auth-card {
+  width: 100% !important;
+  align-self: start;
+  margin: 0 !important;
+  padding: clamp(20px, 2vw, 26px) !important;
+  border-radius: 28px !important;
+  border: 1px solid var(--et-direction-border) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 250, 241, 0.98), rgba(255, 242, 221, 0.96)) !important;
+  color: var(--et-direction-ink) !important;
+  box-shadow: 0 20px 56px rgba(44, 28, 12, 0.18) !important;
+}
+
+html body #root .app.app-theme-dark .auth-main-final-direction .signed-out-auth-card {
+  background:
+    linear-gradient(180deg, rgba(15, 30, 53, 0.98), rgba(9, 22, 40, 0.98)) !important;
+  color: var(--et-direction-ink) !important;
+  border-color: rgba(223, 163, 73, 0.2) !important;
+  box-shadow: 0 22px 62px rgba(0, 0, 0, 0.38) !important;
+}
+
+html body #root .auth-main-final-direction .signed-out-auth-card h2 {
+  color: var(--et-direction-ink) !important;
+  letter-spacing: 0 !important;
+}
+
+html body #root .auth-main-final-direction .signed-out-auth-card .compact-subtitle,
+html body #root .auth-main-final-direction .signed-out-auth-card .auth-name-helper {
+  color: var(--et-direction-muted) !important;
+}
+
+html body #root .auth-main-final-direction .auth-form input {
+  border-radius: 16px !important;
+  border-color: color-mix(in srgb, var(--et-direction-amber) 30%, var(--et-direction-border)) !important;
+  background: rgba(255, 252, 245, 0.88) !important;
+}
+
+html body #root .app.app-theme-dark .auth-main-final-direction .auth-form input {
+  background: rgba(5, 15, 31, 0.72) !important;
+}
+
+html body #root .app.app-command-shell.app-home {
+  background:
+    linear-gradient(135deg, rgba(232, 111, 28, 0.09), transparent 38%),
+    linear-gradient(180deg, #fff8ec 0%, #f1dfc4 52%, #fff7ea 100%) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-home,
+html body #root .app.app-shell-dark.app-command-shell.app-home {
+  background:
+    linear-gradient(135deg, rgba(232, 111, 28, 0.13), transparent 36%),
+    linear-gradient(180deg, #040d1c 0%, #071327 54%, #020711 100%) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final {
+  --et-page-accent: var(--et-direction-ember);
+  --et-page-accent-2: var(--et-direction-teal);
+  --hearth-home-warm-panel: color-mix(in srgb, var(--et-direction-cream) 88%, var(--et-direction-amber) 8%);
+  --hearth-home-warm-panel-2: color-mix(in srgb, var(--et-direction-cream-2) 86%, var(--et-direction-ember) 7%);
+  --hearth-home-ink: var(--et-direction-ink);
+  --hearth-home-muted: var(--et-direction-muted);
+  width: min(100%, 1340px) !important;
+  grid-template-columns: minmax(0, 1.18fr) minmax(318px, 0.42fr) !important;
+  gap: clamp(16px, 2vw, 24px) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-page-hero {
+  min-height: 238px !important;
+  border-color: rgba(142, 219, 227, 0.2) !important;
+  background:
+    linear-gradient(135deg, rgba(7, 19, 39, 0.98), rgba(11, 34, 56, 0.96) 58%, rgba(18, 48, 68, 0.94)) !important;
+  color: #fff4dd !important;
+  box-shadow: var(--et-direction-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-brand-row {
+  color: rgba(255, 244, 221, 0.9) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-brand-row::before {
+  content: "ET";
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  margin-right: 10px;
+  border-radius: 15px;
+  background:
+    linear-gradient(145deg, var(--et-direction-ember), var(--et-direction-amber) 48%, var(--et-direction-teal));
+  color: #fff9eb;
+  font-weight: 950;
+  letter-spacing: 0;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-page-hero h1,
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-page-hero p {
+  color: #fff4dd !important;
+  letter-spacing: 0 !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-page-hero p {
+  color: rgba(255, 244, 221, 0.78) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-today-action,
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-points-card {
+  border-color: rgba(216, 163, 58, 0.28) !important;
+  background: rgba(255, 244, 221, 0.08) !important;
+  color: #fff4dd !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-today-action :where(span, strong, b) {
+  color: #fff4dd !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-today-action b {
+  background: linear-gradient(135deg, var(--et-direction-ember), var(--et-direction-teal)) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .hearth-daily-command-center,
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .hearth-dashboard-recent,
+html body #root .app.app-command-shell.app-home .hearth-dashboard-more-tools,
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final > .et-mockup-right-rail {
+  border-color: var(--et-direction-border) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 250, 241, 0.96), rgba(255, 240, 214, 0.92)) !important;
+  box-shadow: 0 16px 42px rgba(44, 28, 12, 0.12) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-dashboard-final .hearth-daily-command-center,
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-dashboard-final .hearth-dashboard-recent,
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-dashboard-more-tools,
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-dashboard-final > .et-mockup-right-rail,
+html body #root .app.app-shell-dark.app-command-shell.app-home .hearth-dashboard-final .hearth-daily-command-center,
+html body #root .app.app-shell-dark.app-command-shell.app-home .hearth-dashboard-final .hearth-dashboard-recent,
+html body #root .app.app-shell-dark.app-command-shell.app-home .hearth-dashboard-more-tools,
+html body #root .app.app-shell-dark.app-command-shell.app-home .hearth-dashboard-final > .et-mockup-right-rail {
+  background:
+    linear-gradient(180deg, rgba(18, 39, 67, 0.95), rgba(10, 25, 45, 0.96)) !important;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.3) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .hearth-next-best-step {
+  border-color: color-mix(in srgb, var(--et-direction-ember) 38%, var(--et-direction-border)) !important;
+  background:
+    linear-gradient(135deg, rgba(232, 111, 28, 0.16), rgba(12, 138, 157, 0.08)),
+    rgba(255, 249, 238, 0.94) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .hearth-dashboard-pulse-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .hearth-dashboard-command-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-focus-compact {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 22px;
+  border: 1px solid color-mix(in srgb, var(--et-direction-teal) 22%, var(--et-direction-border));
+  background: color-mix(in srgb, var(--hearth-home-warm-panel) 80%, #ffffff 8%);
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .hearth-smart-card-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .hearth-smart-card {
+  padding: 13px !important;
+}
+
+@media (max-width: 1120px) {
+  html body #root .auth-main-final-direction:has(.signed-out-landing),
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-final {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html body #root .auth-main-final-direction .signed-out-auth-card {
+    position: static !important;
+  }
+}
+
+@media (max-width: 760px) {
+  html body #root .auth-main-final-direction {
+    padding-inline: 10px !important;
+    padding-top: 10px !important;
+  }
+
+  html body #root .auth-main-final-direction .signed-out-landing.panel {
+    grid-template-columns: minmax(0, 1fr) !important;
+    min-height: 0 !important;
+    padding: 18px !important;
+    border-radius: 24px !important;
+  }
+
+  html body #root .auth-main-final-direction .landing-hero {
+    max-width: 100%;
+  }
+
+  html body #root .auth-main-final-direction .landing-brand-emblem {
+    width: 60px !important;
+    height: 60px !important;
+    border-radius: 20px;
+  }
+
+  html body #root .auth-main-final-direction .landing-brand-emblem span {
+    width: 38px;
+    height: 38px;
+    border-radius: 14px;
+    font-size: 0.86rem;
+  }
+
+  html body #root .auth-main-final-direction .signed-out-landing.panel h2 {
+    font-size: 2.35rem !important;
+    line-height: 0.96 !important;
+  }
+
+  html body #root .auth-main-final-direction .auth-command-preview,
+  html body #root .auth-main-final-direction .landing-feature-grid,
+  html body #root .auth-main-final-direction .landing-link-row,
+  html body #root .auth-main-final-direction .brand-legal-footer {
+    display: none !important;
+  }
+
+  html body #root .auth-main-final-direction .auth-choice-row {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-final {
+    gap: 12px !important;
+    padding-inline: 2px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-page-hero {
+    min-height: 0 !important;
+    padding: 14px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-brand-row::before {
+    width: 34px;
+    height: 34px;
+    border-radius: 12px;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-hero-copy {
+    gap: 8px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-hero-copy h1 {
+    font-size: 2rem !important;
+    line-height: 0.98 !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-hero-copy p {
+    font-size: 0.82rem !important;
+    line-height: 1.28 !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-today-action {
+    min-height: 58px !important;
+    padding: 9px 11px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-hero-status {
+    display: none !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-final .hearth-dashboard-pulse-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-final .hearth-dashboard-command-grid {
+    display: none !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-final .hearth-smart-card-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-focus-compact {
+    padding: 12px;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-final .hearth-next-best-step {
+    padding: 14px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-final .hearth-next-best-step h3 {
+    font-size: 1.65rem !important;
+    line-height: 1.03 !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-final .hearth-next-step-actions {
+    max-width: 100% !important;
+    margin-top: 8px !important;
   }
 }

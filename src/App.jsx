@@ -56906,14 +56906,16 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 </h1>
           <p>A family-friendly Pokemon TCG app for fair restocks, collections, and community.</p>
         </header>
-        <main className="main auth-main">
+        <main className="main auth-main auth-main-final-direction">
           {signedOutPublicContent || (
           <section className="signed-out-landing panel">
             <div className="landing-hero">
-              <img className="landing-brand-mark" src={BRAND_ASSETS.mark} alt="" aria-hidden="true" />
+              <span className="landing-brand-mark landing-brand-emblem" aria-hidden="true">
+                <span>E&amp;T</span>
+              </span>
               <p className="section-kicker">Public Beta</p>
               <h2>Fair collecting starts here.</h2>
-              <p>Track collections, Scout reports, fair checks, and family collecting in one place.</p>
+              <p>A warm collector command center for your Vault, Scout notes, fair price checks, trades, and family collecting.</p>
               <p className="auth-landing-note">New accounts may need approval before full app access. Ember &amp; Tide is starting in Virginia; out-of-state requests join the waitlist and help us choose where to expand next.</p>
               <div className="quick-actions auth-choice-row">
                 <button type="button" className="ember-gradient-button auth-choice-button" onClick={() => openAuthPanel("login")}>Log In</button>
@@ -56922,8 +56924,25 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <button type="button" className="auth-text-button auth-help-link" onClick={() => window.location.assign(`mailto:${SUPPORT_EMAIL}`)}>Need help?</button>
               </div>
             </div>
-            <figure className="landing-promo-art">
-              <img src={BRAND_ASSETS.promoHero} alt="Ember & Tide app preview showing Scout, Vault, Forge, and Ember Assist helper dashboard." loading="eager" />
+            <figure className="landing-promo-art auth-command-preview" aria-label="Ember and Tide preview">
+              <div className="auth-preview-shell">
+                <div className="auth-preview-topline">
+                  <span>Collector room</span>
+                  <strong>Today</strong>
+                </div>
+                <div className="auth-preview-main-card">
+                  <span>Next Best Step</span>
+                  <strong>Start with Vault</strong>
+                  <small>Add one card, sealed product, slab, or accessory.</small>
+                </div>
+                <div className="auth-preview-mini-grid">
+                  <span><b>Vault</b><small>Saved notes</small></span>
+                  <span><b>Scout</b><small>Current reports</small></span>
+                  <span><b>Market</b><small>Manual checks</small></span>
+                  <span><b>Spark</b><small>Family support</small></span>
+                </div>
+                <p>Local beta tools stay honest: no live pricing, no checkout, and no fake alerts.</p>
+              </div>
             </figure>
             <div className="landing-feature-grid">
               {[
@@ -58825,9 +58844,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       >
         <div className="et-mockup-main-column hearth-mockup-main">
           <EtMockupHero
-            mark={BRAND_ASSETS.mark}
             title={hearthHomeTitle}
-            detail="One next step, a quick pulse, and calm paths into Vault, Scout, Market, Forge, and The Spark."
+            detail="Your compact collector command center: one next step, a quick pulse, and calm paths into the app."
             points={{ value: hearthEmberPoints, label: "Ember Points" }}
             pills={[
               { label: "Public Beta", tone: "beta" },
@@ -58891,30 +58909,6 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </EtMockupSectionCard>
 
           <EtMockupSectionCard
-            title="Today&apos;s Focus"
-            detail="Manual local-beta prompts; no real-time alerts or live pricing."
-            className="hearth-smart-daily-section"
-            action={<EtMockupPill tone="collector">Local beta</EtMockupPill>}
-          >
-            <div className="hearth-smart-card-grid" aria-label="Smart daily cards">
-              {visibleHearthSmartDailyCards.slice(0, 3).map((card) => (
-                <article className={`hearth-smart-card et-mockup-tone-${card.tone}`} key={card.key}>
-                  <EtMockupIcon icon={card.icon} tone={card.tone} />
-                  <div className="hearth-smart-card-main">
-                    <div className="hearth-smart-card-heading">
-                      <span>{card.eyebrow}</span>
-                      <small>{card.meta}</small>
-                    </div>
-                    <h3>{card.title}</h3>
-                    <p>{card.detail}</p>
-                    <EtMockupButton variant="secondary" onClick={card.onClick}>{card.actionLabel}</EtMockupButton>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </EtMockupSectionCard>
-
-          <EtMockupSectionCard
             title="Recent Activity"
             detail="Latest meaningful movement across Scout, Vault, Market, and Forge."
             className="hearth-mockup-recent hearth-dashboard-recent"
@@ -58952,6 +58946,32 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </span>
             </summary>
             <div className="hearth-dashboard-more-body">
+              <section className="hearth-dashboard-focus-compact" aria-label="Today's Focus">
+                <div className="compact-card-header">
+                  <div>
+                    <h3>Today&apos;s Focus</h3>
+                    <p>Manual local-beta prompts; no real-time alerts or live pricing.</p>
+                  </div>
+                  <EtMockupPill tone="collector">Local beta</EtMockupPill>
+                </div>
+                <div className="hearth-smart-card-grid" aria-label="Smart daily cards">
+                  {visibleHearthSmartDailyCards.slice(0, 3).map((card) => (
+                    <article className={`hearth-smart-card et-mockup-tone-${card.tone}`} key={card.key}>
+                      <EtMockupIcon icon={card.icon} tone={card.tone} />
+                      <div className="hearth-smart-card-main">
+                        <div className="hearth-smart-card-heading">
+                          <span>{card.eyebrow}</span>
+                          <small>{card.meta}</small>
+                        </div>
+                        <h3>{card.title}</h3>
+                        <p>{card.detail}</p>
+                        <EtMockupButton variant="secondary" onClick={card.onClick}>{card.actionLabel}</EtMockupButton>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+
               {hearthDashboardMoreCards.length ? (
                 <div className="hearth-daily-command-grid hearth-daily-command-grid-secondary" aria-label="More Hearth paths">
                   {hearthDashboardMoreCards.map((card) => (
