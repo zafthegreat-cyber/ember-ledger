@@ -551,21 +551,24 @@ async function main() {
     const dailyCommandCenter = page.locator(".hearth-daily-command-center").first();
     await expectVisible(dailyCommandCenter, "Hearth Daily Command Center");
     await assertVisibleText("Daily Command Center");
-    await assertVisibleText("Today's Tide");
     await assertVisibleText("Next Best Step");
-    await assertVisibleText("Collection Pulse");
-    await assertVisibleText("Scout Watch");
-    await assertVisibleText("Forge Reminder");
-    await assertVisibleText("Market Reminder");
-    await assertVisibleText("Wishlist / ISO");
-    await assertVisibleText("Event Planner");
-    await assertVisibleText("Spark Moment");
-    await assertVisibleText("More Hearth paths");
+    await assertVisibleText("Today's Focus");
+    await assertVisibleText("Recent Activity");
+    await assertVisibleText("More Hearth tools");
     await assertVisibleText("Add to Vault");
     await assertVisibleText("Search Market");
     await assertVisibleText("Start by adding something to your Vault.");
-    await assertVisibleText("Signals worth checking");
-    await assertVisibleText("Today's Collector Path");
+    await assertVisibleText("Manual local-beta prompts; no real-time alerts or live pricing.");
+    const moreHearthTools = page.locator(".hearth-dashboard-more-tools").first();
+    await expectVisible(moreHearthTools, "More Hearth tools disclosure");
+    await moreHearthTools.locator("summary").click();
+    await expectVisible(page.locator(".hearth-dashboard-more-tools[open]").first(), "Expanded More Hearth tools disclosure");
+    await assertVisibleText("Forge Reminder");
+    await assertVisibleText("Wishlist / ISO");
+    await assertVisibleText("Event Planner");
+    await assertVisibleText("Spark Moment");
+    await assertVisibleText("Open secondary paths when you need them.");
+    await expectVisible(page.locator(".hearth-dashboard-path-list").first(), "Hearth Collector Path list");
     await assertVisibleText("Organize one item");
     await assertVisibleText("Check one Market Memory");
     await assertVisibleText("Review one trade");
@@ -582,7 +585,9 @@ async function main() {
     await page.locator(".upgrade-value-preview-card-hearth").getByRole("button", { name: /^Compare Plans$/ }).first().click();
     await assertVisibleText("Membership Foundation");
     await assertVisibleText("No payment flow is connected.");
+    await page.setViewportSize({ width: 1280, height: 900 });
     await nav("Hearth");
+    await page.locator(".hearth-dashboard-more-tools").first().locator("summary").click();
     const hearthEventCard = page.locator(".hearth-daily-command-card").filter({ hasText: "Event Planner" }).first();
     await expectVisible(hearthEventCard, "Hearth Event Planner card");
     await hearthEventCard.getByRole("button", { name: "Plan Event", exact: true }).click();
@@ -602,12 +607,17 @@ async function main() {
     ];
     for (const route of hearthCommandRoutes) {
       await nav("Hearth");
+      await page.setViewportSize({ width: 1280, height: 900 });
+      if (!["Collection Pulse", "Scout Watch", "Market Reminder"].includes(route.label)) {
+        await page.locator(".hearth-dashboard-more-tools").first().locator("summary").click();
+      }
       const commandCard = page.locator(".hearth-daily-command-card").filter({ hasText: route.label }).first();
       await expectVisible(commandCard, `Hearth ${route.label} card`);
       await commandCard.getByRole("button", { name: route.button, exact: true }).click();
       await assertVisibleText(route.expected);
     }
     await nav("Hearth");
+    await page.locator(".hearth-dashboard-more-tools").first().locator("summary").click();
     const sparksPanel = page.locator(".hearth-today-sparks-panel").first();
     await expectVisible(sparksPanel, "Today’s Sparks panel");
     await assertVisibleText("Today's Sparks");
@@ -615,6 +625,8 @@ async function main() {
     assert.equal(await sparksPanel.locator('input[type="checkbox"]').count(), 0, "Today’s Sparks should not use manual checkboxes");
     const sparkText = await sparksPanel.innerText();
     assert.match(sparkText, /Start|Continue|Done|No Sparks today|Today's Sparks Complete/, "Today’s Sparks should expose an action or terminal state");
+    await page.setViewportSize({ width: 390, height: 844 });
+    await nav("Hearth");
     assert.ok(await page.locator(".hearth-feature-card").count() > 0, "Phone Hearth feature cards should render");
     const featureText = await page.locator(".hearth-feature-list").innerText();
     assert.equal(/Open Scout|Open Vault|Open Forge|Open The Spark/i.test(featureText), false, "Phone feature cards should not show redundant Open buttons");
@@ -689,11 +701,12 @@ async function main() {
     });
     await reloadWithAppData(hearthSampleData);
     await nav("Hearth");
-    await assertVisibleText("Signals worth checking");
+    await assertVisibleText("Today's Focus");
     await assertVisibleText("Collection needs attention");
     await assertVisibleText("Trade to review");
-    await assertVisibleText("Check saved Price Memory");
-    await assertVisibleText("Today's Collector Path");
+    await assertVisibleText("Choose your first watch store");
+    await page.locator(".hearth-dashboard-more-tools").first().locator("summary").click();
+    await expectVisible(page.locator(".hearth-dashboard-path-list").first(), "Hearth Collector Path list with sample data");
     await assertNoHorizontalOverflow("Hearth smart daily cards mobile");
     await page.setViewportSize({ width: 1366, height: 1600 });
   }

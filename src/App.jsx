@@ -58357,8 +58357,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         onClick: () => setActiveTab("kidsProgram"),
       },
     ];
-    const hearthPrimaryDailyCommandCards = hearthDailyCommandCards.slice(0, 4);
-    const hearthSecondaryDailyCommandCards = hearthDailyCommandCards.slice(4);
+    const hearthPrimaryDailyCommandKeys = new Set(["collection-pulse", "scout-watch", "market-reminder"]);
+    const hearthDashboardPulseCards = hearthDailyCommandCards.filter((card) => hearthPrimaryDailyCommandKeys.has(card.key));
+    const hearthDashboardMoreCards = hearthDailyCommandCards.filter((card) => !hearthPrimaryDailyCommandKeys.has(card.key));
     const vaultItemsMissingEstimate = activeVaultItems.filter((item) => {
       const estimate = Number(item.estimatedValue || item.marketValue || item.marketPrice || item.currentValue || item.unitCost || 0);
       return !Number.isFinite(estimate) || estimate <= 0;
@@ -58819,7 +58820,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     return (
       <EtMockupPageShell
         accent="hearth"
-        className={`home-clean-layout hearth-mockup-rebuild hearth-mode-${hearthMode}`}
+        className={`home-clean-layout hearth-mockup-rebuild hearth-dashboard-final hearth-mode-${hearthMode}`}
         ariaLabel="Hearth daily command center"
       >
         <div className="et-mockup-main-column hearth-mockup-main">
@@ -58845,7 +58846,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
           <EtMockupSectionCard
             title="Daily Command Center"
-            detail="Start with one useful collector step."
+            detail="One useful collector step, then a quick pulse."
             className="hearth-daily-command-center"
           >
             <article className={`hearth-next-best-step et-mockup-tone-${hearthDailyNextStep.tone}`}>
@@ -58859,13 +58860,22 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <EtMockupButton variant="secondary" onClick={hearthDailyNextStep.onSecondary}>{hearthDailyNextStep.secondaryActionLabel}</EtMockupButton>
               </div>
             </article>
-            <div className="hearth-daily-tide-summary" aria-label="Today&apos;s Tide">
-              <span>Today&apos;s Tide</span>
-              <strong>Your warm home base for today&apos;s collector choices.</strong>
-              <p>Review what matters across Vault, Scout, Market, Forge, and The Spark without making everything urgent.</p>
+
+            <div className="hearth-dashboard-pulse-grid" aria-label="Hearth pulse">
+              {hearthSnapshotCards.map((stat) => (
+                <EtMockupStatCard
+                  key={stat.key}
+                  label={stat.label}
+                  value={stat.value}
+                  detail={stat.detail}
+                  tone={stat.accent}
+                  onClick={stat.onClick}
+                />
+              ))}
             </div>
-            <div className="hearth-daily-command-grid" aria-label="Daily Command Center reminders">
-              {hearthPrimaryDailyCommandCards.map((card) => (
+
+            <div className="hearth-daily-command-grid hearth-dashboard-command-grid" aria-label="Core Hearth paths">
+              {hearthDashboardPulseCards.map((card) => (
                 <article className={`hearth-daily-command-card et-mockup-tone-${card.tone}`} key={card.key}>
                   <EtMockupIcon icon={card.icon} tone={card.tone} />
                   <div>
@@ -58881,55 +58891,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </EtMockupSectionCard>
 
           <EtMockupSectionCard
-            title="At a glance"
-            detail="A quick pulse before you choose where to go next."
-            className="hearth-mockup-at-glance"
-          >
-            <div className="et-mockup-stat-grid hearth-mockup-stat-grid">
-              {hearthFoundationStats.map((stat) => (
-                <EtMockupStatCard
-                  key={stat.key}
-                  label={stat.label}
-                  value={stat.value}
-                  detail={stat.detail}
-                  tone={stat.tone}
-                  onClick={stat.onClick}
-                />
-              ))}
-            </div>
-          </EtMockupSectionCard>
-
-          {hearthSecondaryDailyCommandCards.length ? (
-            <EtMockupSectionCard
-              title="More Hearth paths"
-              detail="Useful local beta tools kept below your main next step."
-              className="hearth-secondary-command-section"
-            >
-              <div className="hearth-daily-command-grid hearth-daily-command-grid-secondary" aria-label="More Hearth paths">
-                {hearthSecondaryDailyCommandCards.map((card) => (
-                  <article className={`hearth-daily-command-card et-mockup-tone-${card.tone}`} key={card.key}>
-                    <EtMockupIcon icon={card.icon} tone={card.tone} />
-                    <div>
-                      <span>{card.label}</span>
-                      <h3>{card.title}</h3>
-                      <p>{card.detail}</p>
-                      <small>{card.reminder}</small>
-                    </div>
-                    <button type="button" className="secondary-button" onClick={card.onClick}>{card.actionLabel}</button>
-                  </article>
-                ))}
-              </div>
-            </EtMockupSectionCard>
-          ) : null}
-
-          <EtMockupSectionCard
-            title="Signals worth checking"
-            detail="Local beta prompts from your collection, trades, prices, Scout, Spark, and Tidepool notes."
+            title="Today&apos;s Focus"
+            detail="Manual local-beta prompts; no real-time alerts or live pricing."
             className="hearth-smart-daily-section"
             action={<EtMockupPill tone="collector">Local beta</EtMockupPill>}
           >
             <div className="hearth-smart-card-grid" aria-label="Smart daily cards">
-              {visibleHearthSmartDailyCards.map((card) => (
+              {visibleHearthSmartDailyCards.slice(0, 3).map((card) => (
                 <article className={`hearth-smart-card et-mockup-tone-${card.tone}`} key={card.key}>
                   <EtMockupIcon icon={card.icon} tone={card.tone} />
                   <div className="hearth-smart-card-main">
@@ -58947,145 +58915,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </EtMockupSectionCard>
 
           <EtMockupSectionCard
-            title="Today's Collector Path"
-            detail="Five small steps for organizing, checking, reviewing, helping, and planning."
-            className="hearth-collector-path-section"
-            action={<EtMockupPill tone="gold">Guided path</EtMockupPill>}
-          >
-            <div className="hearth-collector-path-list" aria-label="Today's Collector Path">
-              {hearthCollectorPathSteps.map((step, index) => (
-                <button
-                  type="button"
-                  className={`hearth-collector-path-step et-mockup-tone-${step.tone}`}
-                  key={step.key}
-                  onClick={step.onClick}
-                >
-                  <span className="hearth-collector-path-index">{index + 1}</span>
-                  <span className="hearth-collector-path-copy">
-                    <strong>{step.title}</strong>
-                    <small>{step.detail}</small>
-                  </span>
-                  <span className="hearth-collector-path-status">
-                    <em>{step.status}</em>
-                    <b>{step.actionLabel}</b>
-                  </span>
-                </button>
-              ))}
-            </div>
-          </EtMockupSectionCard>
-
-          {renderUpgradeValuePreview("hearth")}
-
-          <EtMockupSectionCard
-            title="Today&apos;s Journey"
-            detail="One warm path through Scout, Vault, family events, and fair trades."
-            className="hearth-mockup-journey"
-          >
-            <div className="et-mockup-action-grid hearth-mockup-journey-grid">
-              {hearthFoundationJourneyCards.map((card, index) => (
-                <EtMockupActionCard
-                  key={card.key}
-                  title={card.title}
-                  detail={card.detail}
-                  meta={card.meta}
-                  icon={card.icon}
-                  tone={card.tone}
-                  onClick={card.onClick}
-                  index={index + 1}
-                />
-              ))}
-            </div>
-          </EtMockupSectionCard>
-
-          {hearthOnboardingPanel && hearthIsNewUser ? (
-            <div className="hearth-onboarding-slot hearth-onboarding-slot-primary">{hearthOnboardingPanel}</div>
-          ) : null}
-
-          {renderTodaySparksPanel()}
-
-          {isOffline ? (
-            <section className="hearth-state-card hearth-state-card--offline" role="status">
-              <div>
-                <strong>You&apos;re offline</strong>
-                <span>Some features may be limited. Local actions stay visible and can sync later where supported.</span>
-              </div>
-              <button type="button" className="secondary-button" onClick={() => window.location.reload()}>Try again</button>
-            </section>
-          ) : null}
-
-          <EtMockupSectionCard
-            title="Today&apos;s Tide"
-            detail={bestAction.reason}
-            className={`hearth-mockup-best-action hearth-best-action-${hearthMode}`}
-            action={<EtMockupPill tone="collector">{hearthModeLabel}</EtMockupPill>}
-          >
-            <div className="hearth-mockup-best-action-body">
-              <div>
-                <span className="section-kicker">Your Next Move</span>
-                <h3>{bestAction.title}</h3>
-                <p>{bestAction.reason}</p>
-              </div>
-              <div className="hearth-mockup-hero-stat-row" aria-label="Hearth signal summary">
-                {hearthHeroStats.map((stat) => (
-                  <span className={`hearth-hero-stat hearth-hero-stat-${stat.tone}`} key={stat.key}>
-                    <strong>{stat.value}</strong>
-                    <small>{stat.label}</small>
-                  </span>
-                ))}
-              </div>
-              <EtMockupButton onClick={bestAction.onPrimary}>{bestAction.primaryLabel}</EtMockupButton>
-            </div>
-          </EtMockupSectionCard>
-
-          <LiveEmberTrustNote message={HEARTH_FOUNDATION_TRUST_MESSAGE} />
-
-          {hearthOnboardingPanel && !hearthIsNewUser ? (
-            <div className="hearth-onboarding-slot hearth-onboarding-slot-secondary">{hearthOnboardingPanel}</div>
-          ) : null}
-        </div>
-
-        <EtMockupRightRail
-          title="Next best actions"
-          detail={hearthIsNewUser ? "Start with one useful action." : "Signals worth checking when you have a minute."}
-        >
-          <div className="et-mockup-action-stack hearth-mockup-feature-stack hearth-feature-list" aria-label="Hearth feature status">
-            {hearthFeatureCards.map((card) => (
-              <EtMockupActionCard
-                key={card.key}
-                title={card.title}
-                detail={`${card.value}${card.detail ? ` | ${card.detail}` : ""}`}
-                meta={card.meta}
-                icon={card.icon}
-                tone={card.accent}
-                onClick={card.onClick}
-                className={`hearth-feature-card hearth-accent-${card.accent}`}
-              />
-            ))}
-          </div>
-
-          <EtMockupSectionCard
-            title="Quick Actions"
-            detail="Review-first tools for collecting, Scout proof, and family support."
-            className="hearth-mockup-quick-actions"
-          >
-            <div className="hearth-mockup-quick-grid">
-              {hearthFoundationQuickActions.slice(0, 4).map((action) => (
-                <EtMockupActionCard
-                  key={action.key}
-                  title={action.title}
-                  detail={action.detail}
-                  icon={action.icon}
-                  tone={action.tone}
-                  onClick={action.onClick}
-                />
-              ))}
-            </div>
-          </EtMockupSectionCard>
-
-          <EtMockupSectionCard
             title="Recent Activity"
             detail="Latest meaningful movement across Scout, Vault, Market, and Forge."
-            className="hearth-mockup-recent"
+            className="hearth-mockup-recent hearth-dashboard-recent"
           >
             <div className="hearth-mockup-recent-list">
               {recentRows.length ? recentRows.map((activity) => (
@@ -59107,6 +58939,116 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               )}
             </div>
           </EtMockupSectionCard>
+
+          {hearthOnboardingPanel && hearthIsNewUser ? (
+            <div className="hearth-onboarding-slot hearth-onboarding-slot-primary">{hearthOnboardingPanel}</div>
+          ) : null}
+
+          <details className="hearth-dashboard-more-tools">
+            <summary>
+              <span>
+                <strong>More Hearth tools</strong>
+                <small>Open secondary paths when you need them.</small>
+              </span>
+            </summary>
+            <div className="hearth-dashboard-more-body">
+              {hearthDashboardMoreCards.length ? (
+                <div className="hearth-daily-command-grid hearth-daily-command-grid-secondary" aria-label="More Hearth paths">
+                  {hearthDashboardMoreCards.map((card) => (
+                    <article className={`hearth-daily-command-card et-mockup-tone-${card.tone}`} key={card.key}>
+                      <EtMockupIcon icon={card.icon} tone={card.tone} />
+                      <div>
+                        <span>{card.label}</span>
+                        <h3>{card.title}</h3>
+                        <p>{card.detail}</p>
+                        <small>{card.reminder}</small>
+                      </div>
+                      <button type="button" className="secondary-button" onClick={card.onClick}>{card.actionLabel}</button>
+                    </article>
+                  ))}
+                </div>
+              ) : null}
+
+              <div className="hearth-collector-path-list hearth-dashboard-path-list" aria-label="Today's Collector Path">
+                {hearthCollectorPathSteps.map((step, index) => (
+                  <button
+                    type="button"
+                    className={`hearth-collector-path-step et-mockup-tone-${step.tone}`}
+                    key={step.key}
+                    onClick={step.onClick}
+                  >
+                    <span className="hearth-collector-path-index">{index + 1}</span>
+                    <span className="hearth-collector-path-copy">
+                      <strong>{step.title}</strong>
+                      <small>{step.detail}</small>
+                    </span>
+                    <span className="hearth-collector-path-status">
+                      <em>{step.status}</em>
+                      <b>{step.actionLabel}</b>
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              {renderUpgradeValuePreview("hearth")}
+              {renderTodaySparksPanel()}
+            </div>
+          </details>
+
+          {isOffline ? (
+            <section className="hearth-state-card hearth-state-card--offline" role="status">
+              <div>
+                <strong>You&apos;re offline</strong>
+                <span>Some features may be limited. Local actions stay visible and can sync later where supported.</span>
+              </div>
+              <button type="button" className="secondary-button" onClick={() => window.location.reload()}>Try again</button>
+            </section>
+          ) : null}
+
+          <LiveEmberTrustNote message={HEARTH_FOUNDATION_TRUST_MESSAGE} />
+
+          {hearthOnboardingPanel && !hearthIsNewUser ? (
+            <div className="hearth-onboarding-slot hearth-onboarding-slot-secondary">{hearthOnboardingPanel}</div>
+          ) : null}
+        </div>
+
+        <EtMockupRightRail
+          title="Quick Actions"
+          detail="Review-first tools kept close without crowding the dashboard."
+        >
+          <EtMockupSectionCard
+            title="Common paths"
+            detail="Start, search, report, or ask for guidance."
+            className="hearth-mockup-quick-actions"
+          >
+            <div className="hearth-mockup-quick-grid">
+              {hearthFoundationQuickActions.slice(0, 4).map((action) => (
+                <EtMockupActionCard
+                  key={action.key}
+                  title={action.title}
+                  detail={action.detail}
+                  icon={action.icon}
+                  tone={action.tone}
+                  onClick={action.onClick}
+                />
+              ))}
+            </div>
+          </EtMockupSectionCard>
+
+          <div className="et-mockup-action-stack hearth-mockup-feature-stack hearth-feature-list" aria-label="Hearth feature status">
+            {hearthFeatureCards.slice(0, 3).map((card) => (
+              <EtMockupActionCard
+                key={card.key}
+                title={card.title}
+                detail={`${card.value}${card.detail ? ` | ${card.detail}` : ""}`}
+                meta={card.meta}
+                icon={card.icon}
+                tone={card.accent}
+                onClick={card.onClick}
+                className={`hearth-feature-card hearth-accent-${card.accent}`}
+              />
+            ))}
+          </div>
         </EtMockupRightRail>
       </EtMockupPageShell>
     );
