@@ -103494,3 +103494,699 @@ html body #root .app.app-command-shell :where(
     0 0 0 6px color-mix(in srgb, var(--et-page-accent-2, #22d3ee) 26%, transparent),
     var(--et-dream-shadow-soft, 0 12px 30px rgba(0, 0, 0, 0.16)) !important;
 }
+
+/* Advanced interface system rebuild: shared final-product rhythm without changing page behavior. */
+html body #root .app.app-command-shell {
+  --et-final-page-max: 1240px;
+  --et-final-readable-max: 760px;
+  --et-final-gutter: clamp(14px, 2vw, 28px);
+  --et-final-section-gap: clamp(16px, 2.1vw, 26px);
+  --et-final-card-gap: clamp(12px, 1.6vw, 18px);
+  --et-final-card-pad: clamp(16px, 2vw, 22px);
+  --et-final-compact-pad: clamp(13px, 1.5vw, 17px);
+  --et-final-radius-shell: clamp(24px, 2vw, 32px);
+  --et-final-radius-card: clamp(17px, 1.5vw, 23px);
+  --et-final-radius-control: 999px;
+  --et-final-touch: 46px;
+  --et-final-mobile-bottom: max(236px, calc(var(--bottom-nav-height, 74px) + env(safe-area-inset-bottom, 0px) + 174px));
+  --et-final-surface: color-mix(in srgb, var(--et-panel, #fffdf7) 92%, var(--et-page-accent-2, #d9a441) 5%);
+  --et-final-surface-soft: color-mix(in srgb, var(--et-panel-soft, #fff1dc) 88%, var(--et-panel, #fffdf7) 12%);
+  --et-final-surface-inset: color-mix(in srgb, var(--et-panel, #fffdf7) 84%, var(--et-page-accent, #f97316) 5%);
+  --et-final-border: color-mix(in srgb, var(--et-page-accent-2, #d9a441) 24%, var(--et-border, rgba(118, 84, 42, 0.2)));
+  --et-final-border-strong: color-mix(in srgb, var(--et-page-accent, #f97316) 34%, var(--et-final-border));
+  --et-final-ink: var(--et-ink, #172033);
+  --et-final-muted: color-mix(in srgb, var(--et-muted, #675d52) 88%, var(--et-final-ink));
+  --et-final-shadow-card: 0 14px 34px color-mix(in srgb, var(--wc-shadow, rgba(88, 56, 26, 0.14)) 58%, transparent);
+  --et-final-shadow-shell: 0 24px 62px color-mix(in srgb, var(--wc-shadow, rgba(88, 56, 26, 0.18)) 66%, transparent);
+  --et-final-focus: color-mix(in srgb, var(--et-page-accent-2, #22d3ee) 72%, #ffffff 8%);
+}
+
+html body #root .app.app-theme-dark.app-command-shell,
+html body #root .app.app-shell-dark.app-command-shell {
+  --et-final-surface: color-mix(in srgb, var(--et-panel, #0d1b31) 88%, #182845 12%);
+  --et-final-surface-soft: color-mix(in srgb, var(--et-panel-soft, #10243f) 88%, #07101e 12%);
+  --et-final-surface-inset: color-mix(in srgb, var(--et-panel, #0d1b31) 86%, var(--et-page-accent, #f97316) 6%);
+  --et-final-border: color-mix(in srgb, var(--et-page-accent-2, #d9a441) 26%, rgba(255, 255, 255, 0.14));
+  --et-final-border-strong: color-mix(in srgb, var(--et-page-accent, #f97316) 38%, rgba(255, 255, 255, 0.17));
+  --et-final-ink: var(--et-ink, #f7f0df);
+  --et-final-muted: color-mix(in srgb, var(--et-muted, #c9d7ea) 84%, var(--et-final-ink));
+  --et-final-shadow-card: 0 16px 36px rgba(0, 0, 0, 0.22);
+  --et-final-shadow-shell: 0 26px 68px rgba(0, 0, 0, 0.36);
+}
+
+html body #root .app.app-theme-light.app-command-shell {
+  background:
+    radial-gradient(circle at 8% 0%, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 18%, transparent), transparent 28rem),
+    radial-gradient(circle at 92% 8%, color-mix(in srgb, var(--et-page-accent, #f97316) 11%, transparent), transparent 30rem),
+    linear-gradient(180deg, #fff8ed, #fff3e3 54%, #fffaf3) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell,
+html body #root .app.app-shell-dark.app-command-shell {
+  background:
+    radial-gradient(circle at 6% 0%, color-mix(in srgb, var(--et-page-accent, #f97316) 16%, transparent), transparent 28rem),
+    radial-gradient(circle at 94% 9%, color-mix(in srgb, var(--et-page-accent-2, #22d3ee) 14%, transparent), transparent 31rem),
+    linear-gradient(180deg, #030915, #06101f 46%, #020611) !important;
+}
+
+html body #root .app.app-command-shell > .main {
+  width: min(100%, var(--et-final-page-max));
+  max-width: var(--et-final-page-max);
+  margin-inline: auto;
+  padding-inline: var(--et-final-gutter);
+  padding-bottom: max(148px, calc(var(--bottom-nav-height, 74px) + env(safe-area-inset-bottom, 0px) + 68px));
+  scroll-padding-bottom: max(148px, calc(var(--bottom-nav-height, 74px) + env(safe-area-inset-bottom, 0px) + 68px));
+}
+
+html body #root .app.app-command-shell :where(
+  .et-mockup-page,
+  .settings-utility-page,
+  .live-onboarding-page,
+  .coming-soon-page,
+  .collections-utility-page,
+  .data-safety-page,
+  .help-utility-page
+) {
+  width: min(100%, var(--et-final-page-max));
+  margin-inline: auto;
+  gap: var(--et-final-section-gap);
+  min-width: 0;
+}
+
+html body #root .app.app-command-shell :where(
+  .et-mockup-main-column,
+  .hearth-mockup-main,
+  .vault-mockup-main,
+  .market-mockup-main,
+  .forge-mockup-main,
+  .scout-mockup-main,
+  .spark-mockup-main,
+  .tidepool-mockup-main,
+  .membership-mockup-main,
+  .standard-page-body,
+  .utility-page-body,
+  .drawer-menu-stack,
+  .ember-assist-scroll
+) {
+  gap: var(--et-final-section-gap);
+  min-width: 0;
+}
+
+html body #root .app.app-command-shell :where(
+  .et-mockup-page-hero,
+  .standard-page-header,
+  .page-dashboard-header,
+  .auth-panel,
+  .signed-out-auth-card,
+  .signed-out-landing.panel,
+  .shoreline-hero,
+  .live-onboarding-hero,
+  .et-mockup-section-card,
+  .et-mockup-right-rail,
+  .compact-card,
+  .drawer-info-card,
+  .utility-card,
+  .settings-section-card,
+  .settings-preference-panel,
+  .settings-app-setup-card,
+  .live-onboarding-card,
+  .small-empty-state,
+  .empty-state,
+  .flow-next-action-card,
+  .grade-assist-panel,
+  .vault-item-profile-panel,
+  .market-results-panel,
+  .scout-subpage-panel,
+  .spark-section-card,
+  .tidepool-preview-card,
+  .coming-soon-card
+) {
+  border-color: var(--et-final-border) !important;
+  border-radius: var(--et-final-radius-shell) !important;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 28%, transparent), transparent 58%) 0 0 / 100% 2px no-repeat,
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--et-page-accent, #f97316) 10%, transparent), transparent 15rem),
+    linear-gradient(145deg, var(--et-final-surface), color-mix(in srgb, var(--et-final-surface-soft) 88%, transparent)) !important;
+  box-shadow: var(--et-final-shadow-shell), inset 0 1px 0 rgba(255, 255, 255, 0.16) !important;
+  color: var(--et-final-ink) !important;
+}
+
+html body #root .app.app-command-shell :where(
+  .et-mockup-stat-card,
+  .et-mockup-action-card,
+  .et-mockup-empty-state,
+  .quick-action-card,
+  .menu-command-link,
+  .drawer-link,
+  .settings-list-row,
+  .settings-feedback-option,
+  .quick-add-result-card,
+  .add-anything-option,
+  .catalog-result-card,
+  .market-mobile-product-card,
+  .market-price-memory-row,
+  .forge-preview-card,
+  .scout-report-compact-card,
+  .vault-gallery-tile,
+  .vault-display-case-card,
+  .collector-flip-card,
+  .sealed-product-shelf-card,
+  .theme-choice-card,
+  .public-beta-interest-grid label
+) {
+  border-color: var(--et-final-border) !important;
+  border-radius: var(--et-final-radius-card) !important;
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 10%, transparent), transparent 9rem),
+    var(--et-final-surface-inset) !important;
+  box-shadow: var(--et-final-shadow-card), inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+  color: var(--et-final-ink) !important;
+}
+
+html body #root .app.app-command-shell :where(
+  .et-mockup-section-heading,
+  .compact-card-header,
+  .standard-page-header-main,
+  .drawer-info-card > header,
+  .settings-section-header,
+  .modal-title-row,
+  .flow-modal-header,
+  .grade-assist-header,
+  .vault-item-profile-heading,
+  .market-results-panel > .compact-card-header
+) {
+  gap: clamp(8px, 1.2vw, 14px);
+  align-items: flex-start;
+}
+
+html body #root .app.app-command-shell :where(
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  strong,
+  b,
+  dt,
+  label
+) {
+  color: var(--et-final-ink) !important;
+  letter-spacing: 0;
+}
+
+html body #root .app.app-command-shell :where(
+  p,
+  small,
+  dd,
+  li,
+  .compact-subtitle,
+  .et-mockup-section-heading p,
+  .et-mockup-action-copy small,
+  .standard-page-header-copy p,
+  .drawer-link small,
+  .menu-command-link small,
+  .small-empty-state p,
+  .empty-state p
+) {
+  color: var(--et-final-muted) !important;
+  line-height: 1.48;
+}
+
+html body #root .app.app-command-shell :where(
+  .standard-page-header-copy,
+  .et-mockup-hero-copy,
+  .compact-card-header > div,
+  .drawer-info-card > div,
+  .flow-next-action-card > div:first-child,
+  .small-empty-state,
+  .empty-state
+) {
+  max-width: var(--et-final-readable-max);
+}
+
+html body #root .app.app-command-shell :where(
+  .primary-button,
+  .secondary-button,
+  .ghost-button,
+  .ember-gradient-button,
+  .tide-gradient-button,
+  .drawer-link,
+  .auth-text-button,
+  .et-mockup-button,
+  .standard-page-header-actions button,
+  .location-modal-actions button,
+  .flow-modal-footer button,
+  .quick-add-menu button,
+  .menu-command-link,
+  .settings-feedback-option,
+  .topbar-command-actions > button,
+  .topbar .menu-button,
+  .topbar-market-link,
+  .topbar-scan-button,
+  .hearth-spark-action-button,
+  .hearth-spark-dismiss,
+  .modal-close-button,
+  .drawer-close-button
+) {
+  min-height: var(--et-final-touch);
+  border-radius: var(--et-final-radius-control) !important;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  text-wrap: balance;
+}
+
+html body #root .app.app-command-shell :where(
+  .standard-page-header-actions,
+  .et-mockup-pill-row,
+  .quick-actions,
+  .drawer-inline-actions,
+  .location-modal-actions,
+  .flow-modal-footer,
+  .flow-next-action-buttons,
+  .vault-heading-actions,
+  .market-result-add-actions,
+  .forge-action-strip,
+  .spark-flow-actions,
+  .tidepool-support-actions,
+  .collector-flip-actions,
+  .sealed-product-shelf-actions,
+  .vault-display-case-actions
+) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+html body #root .app.app-command-shell :where(
+  .et-mockup-pill,
+  .status-badge,
+  .mini-badge,
+  .trust-badge,
+  .source-badge,
+  .market-status-pill,
+  .price-badge,
+  .filter-chip,
+  .tab-chip,
+  .pill,
+  .badge,
+  .standard-page-header-tabs button,
+  .vault-view-strip button,
+  .vault-showcase-toggle button,
+  .catalog-chip-row button,
+  .market-filter-row button
+) {
+  min-height: 34px;
+  border-radius: var(--et-final-radius-control) !important;
+  align-items: center;
+  line-height: 1.2;
+  white-space: normal;
+}
+
+html body #root .app.app-command-shell :where(
+  input,
+  select,
+  textarea,
+  .drawer-field
+) {
+  min-height: var(--et-final-touch);
+  border-radius: clamp(13px, 1vw, 17px) !important;
+  border-color: var(--et-final-border) !important;
+  background: color-mix(in srgb, var(--et-final-surface) 94%, #ffffff 6%) !important;
+  color: var(--et-final-ink) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+html body #root .app.app-command-shell :where(
+  .flow-modal,
+  .location-modal,
+  .feedback-modal,
+  .smart-setup-modal,
+  .ember-assist-panel,
+  .drawer.open.menu-drawer,
+  .drawer.open.navigation-drawer
+) {
+  border-color: var(--et-final-border-strong) !important;
+  border-radius: var(--et-final-radius-shell) !important;
+  background:
+    radial-gradient(circle at 4% 0%, color-mix(in srgb, var(--et-page-accent, #f97316) 13%, transparent), transparent 16rem),
+    linear-gradient(145deg, var(--et-final-surface), var(--et-final-surface-soft)) !important;
+  box-shadow: var(--et-final-shadow-shell) !important;
+}
+
+html body #root .app.app-command-shell :where(
+  .flow-modal-body,
+  .location-modal-content,
+  .menu-drawer-body,
+  .drawer-menu-stack,
+  .ember-assist-scroll
+) {
+  scrollbar-gutter: stable both-edges;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+html body #root .app.app-command-shell :where(
+  .flow-modal,
+  .location-modal,
+  .feedback-modal
+) :where(label:not(.checkbox-row):not(.public-beta-interest-option), .field),
+html body #root .app.app-command-shell :where(
+  .settings-utility-page,
+  .auth-main,
+  .shoreline-form,
+  .drawer-info-card
+) :where(label:not(.checkbox-row):not(.public-beta-interest-option), .field) {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+html body #root .app.app-command-shell :where(
+  button,
+  a,
+  input,
+  select,
+  textarea,
+  summary,
+  [role="button"],
+  .drawer-link,
+  .menu-command-link,
+  .et-mockup-action-card,
+  .et-mockup-stat-card,
+  .quick-action-card
+):focus-visible {
+  outline: 3px solid var(--et-final-focus) !important;
+  outline-offset: 3px;
+  box-shadow:
+    0 0 0 7px color-mix(in srgb, var(--et-final-focus) 22%, transparent),
+    var(--et-final-shadow-card) !important;
+}
+
+html body #root .app.app-command-shell :where(button:disabled, [aria-disabled="true"], .is-disabled, .disabled-link) {
+  cursor: not-allowed;
+  filter: saturate(0.78);
+}
+
+@media (min-width: 1120px) {
+  html body #root .app.app-command-shell :where(
+    .et-mockup-page,
+    .settings-utility-page,
+    .live-onboarding-page,
+    .coming-soon-page
+  ) {
+    padding-inline: clamp(18px, 2vw, 30px);
+  }
+
+  html body #root .app.app-command-shell :where(.et-mockup-right-rail) {
+    align-self: start;
+  }
+}
+
+@media (max-width: 760px) {
+  html body #root .app.app-command-shell {
+    --et-final-gutter: clamp(10px, 3.5vw, 14px);
+    --et-final-section-gap: 14px;
+    --et-final-card-gap: 12px;
+    --et-final-card-pad: clamp(14px, 4vw, 17px);
+    --et-final-radius-shell: clamp(20px, 6vw, 26px);
+    --et-final-radius-card: clamp(16px, 5vw, 21px);
+    --et-final-mobile-bottom: max(250px, calc(var(--bottom-nav-height, 74px) + env(safe-area-inset-bottom, 0px) + 194px));
+  }
+
+  html body #root .app.app-command-shell > .main {
+    padding-inline: var(--et-final-gutter);
+    padding-bottom: var(--et-final-mobile-bottom) !important;
+    scroll-padding-bottom: var(--et-final-mobile-bottom) !important;
+  }
+
+  html body #root .app.app-command-shell :where(
+    .et-mockup-page,
+    .hearth-mockup-rebuild,
+    .vault-mockup-rebuild,
+    .market-mockup-rebuild,
+    .forge-mockup-rebuild,
+    .scout-mockup-rebuild,
+    .spark-mockup-rebuild,
+    .tidepool-mockup-rebuild,
+    .membership-mockup-rebuild,
+    .settings-utility-page,
+    .coming-soon-page
+  ) {
+    gap: var(--et-final-section-gap) !important;
+    padding-inline: 0 !important;
+    padding-bottom: var(--et-final-mobile-bottom) !important;
+  }
+
+  html body #root .app.app-command-shell :where(
+    .et-mockup-page-hero,
+    .standard-page-header,
+    .page-dashboard-header,
+    .compact-card,
+    .drawer-info-card,
+    .utility-card,
+    .settings-section-card,
+    .et-mockup-section-card,
+    .et-mockup-right-rail,
+    .flow-next-action-card,
+    .small-empty-state,
+    .empty-state,
+    .grade-assist-panel,
+    .vault-item-profile-panel,
+    .market-results-panel,
+    .spark-section-card,
+    .tidepool-preview-card
+  ) {
+    padding: var(--et-final-card-pad) !important;
+  }
+
+  html body #root .app.app-command-shell :where(
+    .standard-page-header-actions,
+    .quick-actions,
+    .drawer-inline-actions,
+    .location-modal-actions,
+    .flow-modal-footer,
+    .flow-next-action-buttons,
+    .vault-heading-actions,
+    .market-result-add-actions,
+    .forge-action-strip,
+    .spark-flow-actions,
+    .tidepool-support-actions,
+    .collector-flip-actions,
+    .sealed-product-shelf-actions
+  ) {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 10px !important;
+    align-items: stretch !important;
+  }
+
+  html body #root .app.app-command-shell :where(
+    .standard-page-header-actions > *,
+    .quick-actions > *,
+    .drawer-inline-actions > *,
+    .location-modal-actions > *,
+    .flow-modal-footer > *,
+    .flow-next-action-buttons > *,
+    .vault-heading-actions > *,
+    .market-result-add-actions > *,
+    .forge-action-strip > *,
+    .spark-flow-actions > *,
+    .tidepool-support-actions > *,
+    .collector-flip-actions > *,
+  .sealed-product-shelf-actions > *
+) {
+    width: 100%;
+    min-width: 0;
+  }
+
+  html body #root .app.app-command-shell :where(.hearth-spark-dismiss, .modal-close-button, .drawer-close-button) {
+    min-width: var(--et-final-touch);
+  }
+
+  html body #root .app.app-command-shell :where(
+    .et-mockup-pill-row,
+    .standard-page-header-tabs,
+    .catalog-chip-row,
+    .market-filter-row,
+    .vault-view-strip,
+    .vault-showcase-toggle,
+    .filter-chip-row,
+    .chip-row
+  ) {
+    display: flex;
+    flex-wrap: nowrap !important;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 6px;
+    scroll-padding-inline: 10px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  html body #root .app.app-command-shell :where(
+    .et-mockup-pill-row > *,
+    .standard-page-header-tabs > *,
+    .catalog-chip-row > *,
+    .market-filter-row > *,
+    .vault-view-strip > *,
+    .vault-showcase-toggle > *,
+    .filter-chip-row > *,
+    .chip-row > *
+  ) {
+    flex: 0 0 auto;
+  }
+
+  html body #root .app.app-command-shell :where(
+    .flow-modal,
+    .location-modal,
+    .feedback-modal,
+    .smart-setup-modal,
+    .ember-assist-panel
+  ) {
+    width: min(100%, calc(100vw - 16px)) !important;
+    max-height: calc(100dvh - env(safe-area-inset-top, 0px) - 12px) !important;
+  }
+
+  html body #root .app.app-command-shell :where(
+    .flow-modal-body,
+    .location-modal-content,
+    .ember-assist-scroll,
+    .drawer-body,
+    .drawer-menu-stack
+  ) {
+    padding-bottom: calc(var(--bottom-nav-height, 74px) + env(safe-area-inset-bottom, 0px) + 110px) !important;
+    scroll-padding-bottom: calc(var(--bottom-nav-height, 74px) + env(safe-area-inset-bottom, 0px) + 128px) !important;
+  }
+}
+
+@media (max-width: 430px) {
+  html body #root .app.app-command-shell {
+    --et-final-mobile-bottom: max(266px, calc(var(--bottom-nav-height, 74px) + env(safe-area-inset-bottom, 0px) + 208px));
+  }
+
+  html body #root .app.app-command-shell :where(
+    .et-mockup-hero-copy h1,
+    .standard-page-header-copy h2,
+    .page-dashboard-header-main h1,
+    .compact-card-header h2,
+    .modal-title-row h2
+  ) {
+    overflow-wrap: anywhere;
+    text-wrap: balance;
+  }
+
+  html body #root .app.app-command-shell :where(
+    .topbar,
+    .app-shell-header,
+    .mobile-bottom-nav
+  ) {
+    margin-inline: max(6px, env(safe-area-inset-left, 0px)) max(6px, env(safe-area-inset-right, 0px));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html body #root .app.app-command-shell :where(
+    .et-mockup-action-card,
+    .et-mockup-stat-card,
+    .quick-action-card,
+    .menu-command-link,
+    .drawer-link,
+    .catalog-result-card,
+    .vault-gallery-tile,
+    .collector-showcase-card,
+    .sealed-product-shelf-card,
+    .flow-modal,
+    .location-modal,
+    .feedback-modal
+  ) {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+html body #root .app.app-command-shell.app-home .hearth-spark-action-button,
+html body #root .app.app-command-shell.app-home .hearth-spark-dismiss {
+  min-height: var(--et-final-touch) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-spark-dismiss {
+  min-width: var(--et-final-touch) !important;
+  width: var(--et-final-touch) !important;
+  height: var(--et-final-touch) !important;
+  padding: 0 !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-daily-tide-summary :where(span, strong, b, p, small) {
+  color: inherit !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-daily-tide-summary :where(span, small) {
+  color: rgba(247, 251, 255, 0.72) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-daily-tide-summary strong {
+  color: #f7fbff !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-daily-tide-summary p {
+  color: rgba(247, 251, 255, 0.78) !important;
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-home .hearth-mockup-rebuild .hearth-daily-tide-summary :where(span, small),
+html body #root .app.app-theme-light.app-command-shell.app-home .hearth-mockup-rebuild .hearth-daily-tide-summary :where(span, small),
+html body #root .app.app-shell-light.app-command-shell.app-home .hearth-mockup-rebuild .hearth-daily-tide-summary :where(span, small) {
+  color: rgba(247, 251, 255, 0.72) !important;
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-home .hearth-mockup-rebuild .hearth-daily-tide-summary :where(strong, b),
+html body #root .app.app-theme-light.app-command-shell.app-home .hearth-mockup-rebuild .hearth-daily-tide-summary :where(strong, b),
+html body #root .app.app-shell-light.app-command-shell.app-home .hearth-mockup-rebuild .hearth-daily-tide-summary :where(strong, b) {
+  color: #f7fbff !important;
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-home .hearth-mockup-rebuild .hearth-daily-tide-summary p,
+html body #root .app.app-theme-light.app-command-shell.app-home .hearth-mockup-rebuild .hearth-daily-tide-summary p,
+html body #root .app.app-shell-light.app-command-shell.app-home .hearth-mockup-rebuild .hearth-daily-tide-summary p {
+  color: rgba(247, 251, 255, 0.78) !important;
+}
+
+@media (max-width: 430px) {
+  html body #root .app.app-command-shell .et-mockup-page-hero .et-mockup-hero-status {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+  }
+
+  html body #root .app.app-command-shell .et-mockup-page-hero .et-mockup-hero-status > .et-mockup-pill-row {
+    flex: 1 1 100% !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    white-space: normal !important;
+  }
+
+  html body #root .app.app-command-shell .et-mockup-page-hero .et-mockup-hero-status > .et-mockup-pill-row > * {
+    max-width: 100% !important;
+    white-space: normal !important;
+  }
+}
+
+html body #root .app.app-command-shell.app-trust .standard-page-header {
+  min-height: max-content !important;
+  height: auto !important;
+  overflow: visible !important;
+  align-items: start !important;
+}
+
+html body #root .app.app-command-shell.app-trust .main {
+  display: block !important;
+}
+
+html body #root .app.app-command-shell.app-trust .main > * + * {
+  margin-top: var(--et-final-section-gap) !important;
+}
