@@ -104636,7 +104636,7 @@ html body #root .app.app-command-shell.app-home .hearth-mockup-recent-list .et-m
   min-height: 68px !important;
 }
 
-html body #root .app.app-command-shell.app-home :where(.hearth-daily-command-card, .hearth-smart-card, .hearth-collector-path-step) {
+html body #root .app.app-command-shell.app-home :where(.hearth-smart-card, .hearth-collector-path-step) {
   border-color: rgba(255, 213, 128, 0.28) !important;
   background:
     radial-gradient(circle at 0% 0%, rgba(255, 145, 47, 0.12), transparent 8rem),
@@ -104647,40 +104647,39 @@ html body #root .app.app-command-shell.app-home :where(.hearth-daily-command-car
     inset 0 1px 0 rgba(255, 255, 255, 0.09) !important;
 }
 
-html body #root .app.app-command-shell.app-home :where(.hearth-daily-command-card, .hearth-smart-card, .hearth-collector-path-step) :where(h3, strong, b) {
+html body #root .app.app-command-shell.app-home :where(.hearth-smart-card, .hearth-collector-path-step) :where(h3, strong, b) {
   color: #f8fbff !important;
 }
 
-html body #root .app.app-command-shell.app-home :where(.hearth-daily-command-card, .hearth-smart-card, .hearth-collector-path-step) :where(p, small) {
+html body #root .app.app-command-shell.app-home :where(.hearth-smart-card, .hearth-collector-path-step) :where(p, small) {
   color: rgba(235, 242, 250, 0.82) !important;
 }
 
-html body #root .app.app-command-shell.app-home :where(.hearth-daily-command-card, .hearth-smart-card, .hearth-collector-path-step) :where(span, em) {
+html body #root .app.app-command-shell.app-home :where(.hearth-smart-card, .hearth-collector-path-step) :where(span, em) {
   color: rgba(255, 218, 142, 0.9) !important;
 }
 
-html body #root .app.app-command-shell.app-home .hearth-daily-command-card .secondary-button,
 html body #root .app.app-command-shell.app-home .hearth-smart-card .et-mockup-button {
   border-color: rgba(255, 218, 142, 0.24) !important;
   background: rgba(255, 248, 234, 0.92) !important;
   color: #172033 !important;
 }
 
-html[data-theme="light"] body #root .app.app-command-shell.app-home .hearth-mockup-rebuild :where(.hearth-daily-command-card, .hearth-smart-card, .hearth-collector-path-step) :where(h3, strong, b),
-html body #root .app.app-theme-light.app-command-shell.app-home .hearth-mockup-rebuild :where(.hearth-daily-command-card, .hearth-smart-card, .hearth-collector-path-step) :where(h3, strong, b),
-html body #root .app.app-shell-light.app-command-shell.app-home .hearth-mockup-rebuild :where(.hearth-daily-command-card, .hearth-smart-card, .hearth-collector-path-step) :where(h3, strong, b) {
+html[data-theme="light"] body #root .app.app-command-shell.app-home .hearth-mockup-rebuild :where(.hearth-smart-card, .hearth-collector-path-step) :where(h3, strong, b),
+html body #root .app.app-theme-light.app-command-shell.app-home .hearth-mockup-rebuild :where(.hearth-smart-card, .hearth-collector-path-step) :where(h3, strong, b),
+html body #root .app.app-shell-light.app-command-shell.app-home .hearth-mockup-rebuild :where(.hearth-smart-card, .hearth-collector-path-step) :where(h3, strong, b) {
   color: #f8fbff !important;
 }
 
-html[data-theme="light"] body #root .app.app-command-shell.app-home .hearth-mockup-rebuild :where(.hearth-daily-command-card, .hearth-smart-card, .hearth-collector-path-step) :where(p, small),
-html body #root .app.app-theme-light.app-command-shell.app-home .hearth-mockup-rebuild :where(.hearth-daily-command-card, .hearth-smart-card, .hearth-collector-path-step) :where(p, small),
-html body #root .app.app-shell-light.app-command-shell.app-home .hearth-mockup-rebuild :where(.hearth-daily-command-card, .hearth-smart-card, .hearth-collector-path-step) :where(p, small) {
+html[data-theme="light"] body #root .app.app-command-shell.app-home .hearth-mockup-rebuild :where(.hearth-smart-card, .hearth-collector-path-step) :where(p, small),
+html body #root .app.app-theme-light.app-command-shell.app-home .hearth-mockup-rebuild :where(.hearth-smart-card, .hearth-collector-path-step) :where(p, small),
+html body #root .app.app-shell-light.app-command-shell.app-home .hearth-mockup-rebuild :where(.hearth-smart-card, .hearth-collector-path-step) :where(p, small) {
   color: rgba(235, 242, 250, 0.82) !important;
 }
 
-html[data-theme="light"] body #root .app.app-command-shell.app-home .hearth-mockup-rebuild :where(.hearth-daily-command-card, .hearth-smart-card, .hearth-collector-path-step) :where(span, em),
-html body #root .app.app-theme-light.app-command-shell.app-home .hearth-mockup-rebuild :where(.hearth-daily-command-card, .hearth-smart-card, .hearth-collector-path-step) :where(span, em),
-html body #root .app.app-shell-light.app-command-shell.app-home .hearth-mockup-rebuild :where(.hearth-daily-command-card, .hearth-smart-card, .hearth-collector-path-step) :where(span, em) {
+html[data-theme="light"] body #root .app.app-command-shell.app-home .hearth-mockup-rebuild :where(.hearth-smart-card, .hearth-collector-path-step) :where(span, em),
+html body #root .app.app-theme-light.app-command-shell.app-home .hearth-mockup-rebuild :where(.hearth-smart-card, .hearth-collector-path-step) :where(span, em),
+html body #root .app.app-shell-light.app-command-shell.app-home .hearth-mockup-rebuild :where(.hearth-smart-card, .hearth-collector-path-step) :where(span, em) {
   color: rgba(255, 218, 142, 0.9) !important;
 }
 
@@ -104804,5 +104803,314 @@ html body #root .app.app-shell-light.app-command-shell.app-home .hearth-mockup-r
     justify-content: space-between !important;
     width: 100%;
     min-width: 0 !important;
+  }
+}
+
+/* Hearth final product pass: one clear home-base action, calmer pulse, quieter support. */
+html body #root .app.app-command-shell.app-home .hearth-mockup-rebuild {
+  --hearth-home-warm-panel: color-mix(in srgb, #fff7ea 84%, var(--et-page-accent-2, #d9a441) 5%);
+  --hearth-home-warm-panel-2: color-mix(in srgb, #fff2dc 82%, var(--et-page-accent, #f97316) 7%);
+  --hearth-home-ink: color-mix(in srgb, var(--et-final-ink, #1f2331) 88%, #211406 12%);
+  --hearth-home-muted: color-mix(in srgb, var(--et-final-muted, #6d6254) 86%, #4f3720 14%);
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-mockup-rebuild,
+html body #root .app.app-shell-dark.app-command-shell.app-home .hearth-mockup-rebuild {
+  --hearth-home-warm-panel: color-mix(in srgb, var(--et-final-surface, #0f1d32) 88%, var(--et-page-accent, #f97316) 5%);
+  --hearth-home-warm-panel-2: color-mix(in srgb, var(--et-final-surface-soft, #101f34) 90%, var(--et-page-accent-2, #d9a441) 5%);
+  --hearth-home-ink: var(--et-final-ink, #f7f0df);
+  --hearth-home-muted: var(--et-final-muted, #c9d7ea);
+}
+
+html body #root .app.app-command-shell.app-home .hearth-daily-command-center {
+  gap: clamp(12px, 1.5vw, 16px) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-mockup-rebuild :where(.et-mockup-button, button.secondary-button) {
+  min-height: 44px !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-mockup-rebuild .hearth-daily-command-card .secondary-button {
+  min-height: 44px !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-next-best-step {
+  position: relative;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: clamp(13px, 2vw, 22px) !important;
+  padding: clamp(16px, 2.25vw, 24px) !important;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent, #f97316) 32%, var(--et-final-border, rgba(122, 83, 34, 0.18))) !important;
+  border-radius: clamp(22px, 2.4vw, 30px) !important;
+  background:
+    radial-gradient(circle at 90% 8%, color-mix(in srgb, var(--et-page-accent, #f97316) 15%, transparent), transparent 13rem),
+    radial-gradient(circle at 0% 100%, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 18%, transparent), transparent 13rem),
+    linear-gradient(145deg, var(--hearth-home-warm-panel), var(--hearth-home-warm-panel-2)) !important;
+  color: var(--hearth-home-ink) !important;
+  box-shadow:
+    0 18px 40px color-mix(in srgb, var(--et-page-accent, #f97316) 13%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.44) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-next-best-step::before {
+  content: "";
+  position: absolute;
+  inset: 12px auto 12px 0;
+  width: 5px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--et-page-accent, #f97316), var(--et-page-accent-2, #d9a441));
+}
+
+html body #root .app.app-command-shell.app-home .hearth-next-best-step :where(span, h3, p) {
+  color: inherit !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-next-best-step span {
+  display: inline-flex;
+  width: fit-content;
+  margin-bottom: 4px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--et-page-accent, #f97316) 13%, transparent);
+  color: color-mix(in srgb, var(--et-page-accent, #f97316) 72%, var(--hearth-home-ink)) !important;
+  font-size: 0.73rem !important;
+  font-weight: 950 !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-next-best-step h3 {
+  max-width: 15ch;
+  margin: 0 0 7px !important;
+  color: var(--hearth-home-ink) !important;
+  font-size: clamp(1.36rem, 2.7vw, 2.35rem);
+  line-height: 1.02 !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-next-best-step p {
+  max-width: 56ch;
+  color: var(--hearth-home-muted) !important;
+  font-size: clamp(0.9rem, 1.1vw, 1rem);
+}
+
+html body #root .app.app-command-shell.app-home .hearth-next-step-actions {
+  display: grid;
+  gap: 9px;
+  min-width: min(210px, 100%);
+}
+
+html body #root .app.app-command-shell.app-home .hearth-next-step-actions .et-mockup-button {
+  width: 100%;
+  min-height: 44px !important;
+  white-space: normal;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-daily-tide-summary,
+html body #root .app.app-command-shell.app-home .hearth-daily-command-card {
+  border-color: color-mix(in srgb, var(--et-page-accent-2, #d9a441) 20%, var(--et-final-border, rgba(122, 83, 34, 0.16))) !important;
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 8%, transparent), transparent 8rem),
+    color-mix(in srgb, var(--hearth-home-warm-panel) 88%, #ffffff 6%) !important;
+  color: var(--hearth-home-ink) !important;
+  box-shadow:
+    0 10px 22px rgba(96, 61, 25, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.48) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-daily-tide-summary,
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-daily-command-card,
+html body #root .app.app-shell-dark.app-command-shell.app-home .hearth-daily-tide-summary,
+html body #root .app.app-shell-dark.app-command-shell.app-home .hearth-daily-command-card {
+  border-color: color-mix(in srgb, var(--et-page-accent-2, #d9a441) 22%, rgba(255, 255, 255, 0.13)) !important;
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--et-page-accent-2, #d9a441) 10%, transparent), transparent 8rem),
+    color-mix(in srgb, var(--et-final-surface-inset, #14223a) 92%, transparent) !important;
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.09) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-daily-tide-summary :where(span, strong, b, p, small),
+html body #root .app.app-command-shell.app-home .hearth-daily-command-card :where(span, h3, p, small, strong, b) {
+  color: inherit !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-daily-tide-summary span,
+html body #root .app.app-command-shell.app-home .hearth-daily-command-card span {
+  color: color-mix(in srgb, var(--et-page-accent, #f97316) 72%, var(--hearth-home-ink)) !important;
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-home .hearth-mockup-rebuild .hearth-daily-tide-summary span,
+html body #root .app.app-theme-light.app-command-shell.app-home .hearth-mockup-rebuild .hearth-daily-tide-summary span,
+html body #root .app.app-shell-light.app-command-shell.app-home .hearth-mockup-rebuild .hearth-daily-tide-summary span {
+  color: color-mix(in srgb, var(--et-page-accent, #f97316) 72%, var(--hearth-home-ink)) !important;
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-home .hearth-mockup-rebuild .hearth-daily-tide-summary :where(strong, b),
+html body #root .app.app-theme-light.app-command-shell.app-home .hearth-mockup-rebuild .hearth-daily-tide-summary :where(strong, b),
+html body #root .app.app-shell-light.app-command-shell.app-home .hearth-mockup-rebuild .hearth-daily-tide-summary :where(strong, b) {
+  color: var(--hearth-home-ink) !important;
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-home .hearth-mockup-rebuild .hearth-daily-tide-summary p,
+html body #root .app.app-theme-light.app-command-shell.app-home .hearth-mockup-rebuild .hearth-daily-tide-summary p,
+html body #root .app.app-shell-light.app-command-shell.app-home .hearth-mockup-rebuild .hearth-daily-tide-summary p {
+  color: var(--hearth-home-muted) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-daily-tide-summary p,
+html body #root .app.app-command-shell.app-home .hearth-daily-command-card :where(p, small) {
+  color: var(--hearth-home-muted) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-daily-command-card h3 {
+  font-size: clamp(0.96rem, 1.2vw, 1.08rem);
+}
+
+html body #root .app.app-command-shell.app-home .hearth-daily-command-card .secondary-button {
+  border-color: color-mix(in srgb, var(--et-page-accent, #f97316) 24%, var(--et-final-border, rgba(122, 83, 34, 0.16))) !important;
+  background: color-mix(in srgb, var(--hearth-home-warm-panel) 74%, #ffffff 18%) !important;
+  color: var(--hearth-home-ink) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-home .hearth-daily-command-card .secondary-button,
+html body #root .app.app-shell-dark.app-command-shell.app-home .hearth-daily-command-card .secondary-button {
+  background: color-mix(in srgb, var(--et-final-surface, #0f1d32) 72%, #ffffff 5%) !important;
+  color: var(--hearth-home-ink) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-mockup-at-glance {
+  order: initial !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-mockup-stat-grid {
+  gap: clamp(8px, 1.1vw, 12px) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-mockup-stat-grid .et-mockup-stat-card {
+  min-height: 84px;
+  align-content: center;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-smart-daily-section {
+  opacity: 0.96;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-secondary-command-section {
+  opacity: 0.94;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-daily-command-grid-secondary {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-mockup-journey,
+html body #root .app.app-command-shell.app-home .hearth-mockup-best-action {
+  opacity: 0.94;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-mockup-best-action {
+  margin-top: clamp(4px, 0.8vw, 10px);
+}
+
+@media (min-width: 1120px) {
+  html body #root .app.app-command-shell.app-home .hearth-daily-command-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-daily-command-grid-secondary {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-daily-command-card {
+    grid-template-columns: 34px minmax(0, 1fr) !important;
+    min-height: 168px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-daily-command-card .secondary-button {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+}
+
+@media (max-width: 760px) {
+  html body #root .app.app-command-shell.app-home .hearth-next-best-step {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 10px !important;
+    padding: 12px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-next-best-step h3 {
+    max-width: 100%;
+    font-size: clamp(1.22rem, 6.2vw, 1.72rem);
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-next-step-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    min-width: 0;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-daily-command-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-daily-command-card {
+    min-height: 0 !important;
+  }
+}
+
+@media (max-width: 430px) {
+  html body #root .app.app-command-shell.app-home .hearth-mockup-rebuild .et-mockup-page-hero {
+    padding: 10px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-mockup-rebuild .et-mockup-hero-copy {
+    gap: 7px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-mockup-rebuild .et-mockup-hero-copy h1 {
+    font-size: clamp(1.52rem, 7.5vw, 1.96rem) !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-mockup-rebuild .et-mockup-hero-copy p {
+    font-size: 0.76rem !important;
+    line-height: 1.24 !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-mockup-rebuild .et-mockup-today-action {
+    padding: 8px 10px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-mockup-rebuild .et-mockup-hero-status {
+    gap: 7px !important;
+    margin-top: 8px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-mockup-rebuild .et-mockup-points-card {
+    min-width: 76px !important;
+    padding: 8px 10px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-next-best-step h3 {
+    font-size: clamp(1.15rem, 6vw, 1.55rem);
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-next-best-step p {
+    font-size: 0.82rem;
+    line-height: 1.35;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-next-step-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-width: calc(100% - 42px);
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-next-step-actions .et-mockup-button {
+    font-size: 0.82rem !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-daily-tide-summary {
+    padding: 10px !important;
   }
 }

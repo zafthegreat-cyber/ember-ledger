@@ -560,10 +560,11 @@ async function main() {
     await assertVisibleText("Wishlist / ISO");
     await assertVisibleText("Event Planner");
     await assertVisibleText("Spark Moment");
-    await assertVisibleText("Keep Building");
-    await assertVisibleText("Open Next");
+    await assertVisibleText("More Hearth paths");
+    await assertVisibleText("Add to Vault");
+    await assertVisibleText("Search Market");
     await assertVisibleText("Start by adding something to your Vault.");
-    await assertVisibleText("Smart Daily Cards");
+    await assertVisibleText("Signals worth checking");
     await assertVisibleText("Today's Collector Path");
     await assertVisibleText("Organize one item");
     await assertVisibleText("Check one Market Memory");
@@ -601,9 +602,9 @@ async function main() {
     ];
     for (const route of hearthCommandRoutes) {
       await nav("Hearth");
-      const commandSection = page.locator(".hearth-daily-command-center").first();
-      await expectVisible(commandSection.getByText(route.label).first(), `Hearth ${route.label} card`);
-      await commandSection.getByRole("button", { name: route.button, exact: true }).first().click();
+      const commandCard = page.locator(".hearth-daily-command-card").filter({ hasText: route.label }).first();
+      await expectVisible(commandCard, `Hearth ${route.label} card`);
+      await commandCard.getByRole("button", { name: route.button, exact: true }).click();
       await assertVisibleText(route.expected);
     }
     await nav("Hearth");
@@ -688,11 +689,10 @@ async function main() {
     });
     await reloadWithAppData(hearthSampleData);
     await nav("Hearth");
-    await assertVisibleText("Smart Daily Cards");
+    await assertVisibleText("Signals worth checking");
     await assertVisibleText("Collection needs attention");
     await assertVisibleText("Trade to review");
     await assertVisibleText("Check saved Price Memory");
-    await assertVisibleText("Spark pack in progress");
     await assertVisibleText("Today's Collector Path");
     await assertNoHorizontalOverflow("Hearth smart daily cards mobile");
     await page.setViewportSize({ width: 1366, height: 1600 });

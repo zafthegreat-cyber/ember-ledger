@@ -58253,9 +58253,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       ? {
         label: "Next Best Step",
         title: "Start by adding something to your Vault.",
-        detail: "Add your first item to Vault so Ember & Tide can start helping you track, trade, and remember your collection.",
+        detail: "Add one item to Vault so Ember & Tide can help you track, trade, and remember your collection.",
         actionLabel: "Add to Vault",
         onClick: () => openQuickAddAction("vaultItem"),
+        secondaryActionLabel: "Search Market",
+        onSecondary: () => setActiveTab("market"),
         tone: "vault",
       }
       : {
@@ -58264,6 +58266,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         detail: bestAction.reason || "Open the next useful Ember & Tide area when you are ready.",
         actionLabel: "Open Next",
         onClick: bestAction.onPrimary || (() => setActiveTab("vault")),
+        secondaryActionLabel: bestAction.secondaryLabel || "Ask Ember",
+        onSecondary: bestAction.onSecondary || (() => openEmberAssistPanel("hearth_next_step")),
         tone: "hearth",
       };
     const collectorEventSummaryForHearth = summarizeCollectorEventPlans(collectorEventPlans);
@@ -58279,8 +58283,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           : "Add one card, sealed product, slab, or supply so Vault can become your collection home.",
         icon: "vault",
         tone: "vault",
-        actionLabel: activeVaultItems.length ? "Open Vault" : "Add Item",
-        onClick: () => activeVaultItems.length ? setActiveTab("vault") : openQuickAddAction("vaultItem"),
+        actionLabel: "Open Vault",
+        onClick: () => setActiveTab("vault"),
       },
       {
         key: "scout-watch",
@@ -58353,6 +58357,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         onClick: () => setActiveTab("kidsProgram"),
       },
     ];
+    const hearthPrimaryDailyCommandCards = hearthDailyCommandCards.slice(0, 4);
+    const hearthSecondaryDailyCommandCards = hearthDailyCommandCards.slice(4);
     const vaultItemsMissingEstimate = activeVaultItems.filter((item) => {
       const estimate = Number(item.estimatedValue || item.marketValue || item.marketPrice || item.currentValue || item.unitCost || 0);
       return !Number.isFinite(estimate) || estimate <= 0;
@@ -58820,7 +58826,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <EtMockupHero
             mark={BRAND_ASSETS.mark}
             title={hearthHomeTitle}
-            detail="Start with one clear collector step, then keep Vault, Scout, Forge, Market, and The Spark in reach."
+            detail="One next step, a quick pulse, and calm paths into Vault, Scout, Market, Forge, and The Spark."
             points={{ value: hearthEmberPoints, label: "Ember Points" }}
             pills={[
               { label: "Public Beta", tone: "beta" },
@@ -58839,25 +58845,27 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
           <EtMockupSectionCard
             title="Daily Command Center"
-            detail="Pick one useful step for your collection today."
+            detail="Start with one useful collector step."
             className="hearth-daily-command-center"
-            action={<EtMockupPill tone="gold">Keep Building</EtMockupPill>}
           >
-            <div className="hearth-daily-tide-summary" aria-label="Today&apos;s Tide">
-              <span>Today&apos;s Tide</span>
-              <strong>Your warm home base for today&apos;s collector choices.</strong>
-              <p>Review what matters across Vault, Scout, Market, Forge, and The Spark.</p>
-            </div>
             <article className={`hearth-next-best-step et-mockup-tone-${hearthDailyNextStep.tone}`}>
               <div>
                 <span>{hearthDailyNextStep.label}</span>
                 <h3>{hearthDailyNextStep.title}</h3>
                 <p>{hearthDailyNextStep.detail}</p>
               </div>
-              <EtMockupButton onClick={hearthDailyNextStep.onClick}>{hearthDailyNextStep.actionLabel}</EtMockupButton>
+              <div className="hearth-next-step-actions">
+                <EtMockupButton onClick={hearthDailyNextStep.onClick}>{hearthDailyNextStep.actionLabel}</EtMockupButton>
+                <EtMockupButton variant="secondary" onClick={hearthDailyNextStep.onSecondary}>{hearthDailyNextStep.secondaryActionLabel}</EtMockupButton>
+              </div>
             </article>
+            <div className="hearth-daily-tide-summary" aria-label="Today&apos;s Tide">
+              <span>Today&apos;s Tide</span>
+              <strong>Your warm home base for today&apos;s collector choices.</strong>
+              <p>Review what matters across Vault, Scout, Market, Forge, and The Spark without making everything urgent.</p>
+            </div>
             <div className="hearth-daily-command-grid" aria-label="Daily Command Center reminders">
-              {hearthDailyCommandCards.map((card) => (
+              {hearthPrimaryDailyCommandCards.map((card) => (
                 <article className={`hearth-daily-command-card et-mockup-tone-${card.tone}`} key={card.key}>
                   <EtMockupIcon icon={card.icon} tone={card.tone} />
                   <div>
@@ -58873,8 +58881,50 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </EtMockupSectionCard>
 
           <EtMockupSectionCard
-            title="Smart Daily Cards"
-            detail="Adaptive local prompts from your Vault, Forge, Scout, Market, Spark, and Tidepool records."
+            title="At a glance"
+            detail="A quick pulse before you choose where to go next."
+            className="hearth-mockup-at-glance"
+          >
+            <div className="et-mockup-stat-grid hearth-mockup-stat-grid">
+              {hearthFoundationStats.map((stat) => (
+                <EtMockupStatCard
+                  key={stat.key}
+                  label={stat.label}
+                  value={stat.value}
+                  detail={stat.detail}
+                  tone={stat.tone}
+                  onClick={stat.onClick}
+                />
+              ))}
+            </div>
+          </EtMockupSectionCard>
+
+          {hearthSecondaryDailyCommandCards.length ? (
+            <EtMockupSectionCard
+              title="More Hearth paths"
+              detail="Useful local beta tools kept below your main next step."
+              className="hearth-secondary-command-section"
+            >
+              <div className="hearth-daily-command-grid hearth-daily-command-grid-secondary" aria-label="More Hearth paths">
+                {hearthSecondaryDailyCommandCards.map((card) => (
+                  <article className={`hearth-daily-command-card et-mockup-tone-${card.tone}`} key={card.key}>
+                    <EtMockupIcon icon={card.icon} tone={card.tone} />
+                    <div>
+                      <span>{card.label}</span>
+                      <h3>{card.title}</h3>
+                      <p>{card.detail}</p>
+                      <small>{card.reminder}</small>
+                    </div>
+                    <button type="button" className="secondary-button" onClick={card.onClick}>{card.actionLabel}</button>
+                  </article>
+                ))}
+              </div>
+            </EtMockupSectionCard>
+          ) : null}
+
+          <EtMockupSectionCard
+            title="Signals worth checking"
+            detail="Local beta prompts from your collection, trades, prices, Scout, Spark, and Tidepool notes."
             className="hearth-smart-daily-section"
             action={<EtMockupPill tone="collector">Local beta</EtMockupPill>}
           >
@@ -58925,25 +58975,6 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </EtMockupSectionCard>
 
           {renderUpgradeValuePreview("hearth")}
-
-          <EtMockupSectionCard
-            title="At a glance"
-            detail="Vault, Scout, Market, and Spark signals for your current collecting day."
-            className="hearth-mockup-at-glance"
-          >
-            <div className="et-mockup-stat-grid hearth-mockup-stat-grid">
-              {hearthFoundationStats.map((stat) => (
-                <EtMockupStatCard
-                  key={stat.key}
-                  label={stat.label}
-                  value={stat.value}
-                  detail={stat.detail}
-                  tone={stat.tone}
-                  onClick={stat.onClick}
-                />
-              ))}
-            </div>
-          </EtMockupSectionCard>
 
           <EtMockupSectionCard
             title="Today&apos;s Journey"
