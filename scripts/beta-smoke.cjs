@@ -554,9 +554,8 @@ async function main() {
     await assertVisibleText("Next Best Step");
     await assertVisibleText("Recent Activity");
     await assertVisibleText("More Hearth tools");
-    await assertVisibleText("Add to Vault");
-    await assertVisibleText("Search Market");
-    await assertVisibleText("Start by adding something to your Vault.");
+    await assertVisibleText("Add Item to Vault");
+    await assertVisibleText("Start by adding a card, sealed product, or binder item to begin tracking your collection value and activity.");
     const moreHearthTools = page.locator(".hearth-dashboard-more-tools").first();
     await expectVisible(moreHearthTools, "More Hearth tools disclosure");
     await moreHearthTools.locator("summary").click();
@@ -3571,14 +3570,17 @@ async function main() {
   await step("Home: totals update", async () => {
     await nav("Hearth");
     await assertVisibleText("Hearth");
-    await assertVisibleText("Your Next Move");
+    await assertVisibleText("Daily Command Center");
+    await assertVisibleText("Next Best Step");
     await assertNotVisibleText("Today / Overview");
   });
 
   await step("Today’s Tide: command view loads", async () => {
     await page.evaluate(() => localStorage.removeItem("et-tcg-daily-tide"));
     await page.reload({ waitUntil: "domcontentloaded" });
-    await nav("Today's Tide");
+    const todayUrl = new URL(APP_URL);
+    todayUrl.pathname = "/today";
+    await page.goto(todayUrl.toString(), { waitUntil: "domcontentloaded" });
     await assertVisibleText("What needs my attention today?");
     await assertVisibleText("Today's Checklist");
   });

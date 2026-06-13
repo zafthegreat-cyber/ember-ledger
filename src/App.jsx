@@ -1173,7 +1173,14 @@ function normalizeAppThemeChoice(value) {
   return normalized === "dark" ? "dark" : "light";
 }
 
+function getThemeInspectionChoice() {
+  const inspectionTheme = runtimeParams?.get("themeInspect");
+  return inspectionTheme === "light" || inspectionTheme === "dark" ? inspectionTheme : "";
+}
+
 function loadStoredAppThemeChoice() {
+  const inspectionTheme = getThemeInspectionChoice();
+  if (inspectionTheme) return inspectionTheme;
   if (typeof localStorage === "undefined") return "light";
   try {
     const directPreference = localStorage.getItem(APP_THEME_STORAGE_KEY);
@@ -8422,20 +8429,21 @@ export default function App() {
   const mobilePrimaryTabKeys = new Set(mobileBottomTabs.map((tab) => tab.key).filter((key) => key !== "menu"));
   const activeMobileTabKey = menuOpen ? "menu" : mobilePrimaryTabKeys.has(activeMainTab) ? activeMainTab : "menu";
   const desktopSidebarByKey = {
-    home: { key: "home", label: "Hearth", helper: "Your home base.", icon: "home", target: "dashboard" },
-    today: { key: "today", label: "Today's Tide", helper: "Today's attention list", icon: "calendar", target: "dailyTide" },
-    scout: { key: "scout", label: "Scout", helper: "Store Signals.", icon: "scout", target: "scout" },
-    vault: { key: "vault", label: "Vault", helper: "Collection.", icon: "vault", target: "vault" },
-    tideTradr: { key: "tideTradr", label: "Market", helper: "Market Watch price labels.", icon: "market", target: "market" },
-    forge: { key: "forge", label: "Forge", helper: "Seller Tools.", icon: "forge", target: "inventory" },
+    home: { key: "home", label: "Hearth", helper: "Home base.", icon: "home", target: "dashboard" },
+    today: { key: "today", label: "Today's Tide", helper: "Attention list", icon: "calendar", target: "dailyTide" },
+    scout: { key: "scout", label: "Scout", helper: "Signals & Reports", icon: "scout", target: "scout" },
+    vault: { key: "vault", label: "Vault", helper: "Collections", icon: "vault", target: "vault" },
+    tideTradr: { key: "tideTradr", label: "Market", helper: "Fair Prices", icon: "market", target: "market" },
+    forge: { key: "forge", label: "Forge", helper: "Receipts & Tools", icon: "forge", target: "inventory" },
     tidepool: { key: "tidepool", label: "Tidepool", helper: "Community.", icon: "pool", target: "tidepool" },
+    spark: { key: "spark", label: "The Spark", helper: "Kids & Giving", icon: "spark", action: () => setActiveTab("kidsProgram") },
   };
   const desktopSidebarItems = selectAdaptiveDesktopMainKeys(adaptiveUiState)
     .map((key) => desktopSidebarByKey[key])
     .filter(Boolean);
   const desktopMoreByKey = {
     tidepool: { key: "tidepool", label: "Tidepool Community", helper: "Family-safe community.", icon: "pool", target: "tidepool" },
-    spark: { key: "spark", label: "The Spark", helper: "Kids Program.", icon: "spark", action: () => setActiveTab("kidsProgram") },
+    spark: { key: "spark", label: "The Spark", helper: "Kids & Giving", icon: "spark", action: () => setActiveTab("kidsProgram") },
     announcements: { key: "announcements", label: "Announcements", helper: "What's new", icon: "bell", action: () => setActiveTab("whatsNew") },
     comingSoon: { key: "comingSoon", label: "Coming Soon", helper: "Future roadmap and safety guardrails", icon: "calendar", action: () => setActiveTab("comingSoon") },
     admin: adaptiveAdminNavVisible ? { key: "admin", label: "Admin", helper: "Command center", icon: "settings", target: "adminReview" } : null,
@@ -8447,7 +8455,7 @@ export default function App() {
     help: { key: "help", label: "Help & Support", helper: "Feedback and refresh tools", icon: "search", action: () => openUtilityPage("help") },
   };
   const desktopMoreItems = [
-    { key: "spark", label: "The Spark", helper: "Kids Program.", icon: "spark", action: () => setActiveTab("kidsProgram") },
+    { key: "spark", label: "The Spark", helper: "Kids & Giving", icon: "spark", action: () => setActiveTab("kidsProgram") },
     { key: "announcements", label: "Announcements", helper: "What's new", icon: "bell", action: () => setActiveTab("whatsNew") },
     { key: "comingSoon", label: "Coming Soon", helper: "Future roadmap and safety guardrails", icon: "calendar", action: () => setActiveTab("comingSoon") },
     { key: "ember-watch", label: "Ember Watch", helper: "Drop calendar and signals", icon: "calendar", action: openEmberWatchSection },
@@ -9215,8 +9223,8 @@ export default function App() {
         <div className="web-command-brand">
           <img src={BRAND_ASSETS.mark} alt="" aria-hidden="true" />
           <div>
-            <strong>Ember &amp; Tide</strong>
-            <span>Protect the spark. Follow the tide.</span>
+            <strong>EMBER &amp; TIDE</strong>
+            <span>TRADING-CARD COLLECTOR COMMAND CENTER</span>
           </div>
         </div>
         <div className="web-command-promise" aria-label="Product promise">
@@ -9311,7 +9319,7 @@ export default function App() {
         <div className="web-command-status">
           <span className="trust-badge trust-badge--verified">Family friendly</span>
           <span className="trust-badge trust-badge--fair">Fair access</span>
-          <span className="trust-badge trust-badge--secure">Secure data</span>
+          <span className="trust-badge trust-badge--secure">Local beta</span>
         </div>
       </aside>
     );
@@ -16796,7 +16804,7 @@ export default function App() {
       setDashboardPreset(savedPreset);
       setDashboardLayout(normalizeDashboardLayout(saved.dashboardLayout, savedPreset));
       setDashboardCardStyle(normalizeDashboardCardStyle(saved.dashboardCardStyle));
-      setAppThemeChoice(normalizeAppThemeChoice(saved.appThemeChoice || saved.themeChoice || saved.settings?.appThemeChoice || loadStoredAppThemeChoice()));
+      setAppThemeChoice(normalizeAppThemeChoice(getThemeInspectionChoice() || saved.appThemeChoice || saved.themeChoice || saved.settings?.appThemeChoice || loadStoredAppThemeChoice()));
       setAppSetupPersonalization(normalizeAppPersonalizationPreferences(saved.appSetupPersonalization || saved.settings?.appSetupPersonalization, {
         userType: savedUserType,
         dashboardPreset: savedPreset,
@@ -27472,7 +27480,7 @@ function renderDealFinderContent() {
 
 function renderTideTradrHeader() {
   const marketTabs = [
-    { key: "overview", label: "For You" },
+    { key: "overview", label: "Discover" },
     { key: "nearRetail", label: "Near Retail" },
     { key: "watch", label: "Watchlist" },
   ];
@@ -27493,10 +27501,10 @@ function renderTideTradrHeader() {
   return (
     <div className="market-mockup-header">
       <EtMockupHero
-        brand="Market Watch"
+        brand="Market"
         mark={BRAND_ASSETS.mark}
-        title="Fair price discovery."
-        detail="Research cards, sealed products, sets, and UPC/SKU matches before you buy, trade, or save a note. Market never promises checkout, live stock, or guaranteed availability."
+        title="Market"
+        detail="Discover, track, and compare fair-price context for cards, sealed products, and collectibles. No checkout, live stock, or guaranteed availability."
         points={{ value: workspaceWatchlist.length || "0", label: "watched items" }}
         pills={[
           { label: "No checkout", tone: "market" },
@@ -27518,8 +27526,8 @@ function renderTideTradrHeader() {
 
       <EtMockupSectionCard
         className="market-mockup-search tidetradr-summary-card market-page-heading"
-        title="Search Market Watch"
-        detail="Fair price discovery only. No checkout or stock guarantee."
+        title="Market"
+        detail="Search cards, sealed products, or sets. Manual research and saved memories for collector decisions."
         action={<EtMockupButton variant="secondary" className="market-deal-shortcut" onClick={() => openDealFinderModal()}>Check Deal</EtMockupButton>}
       >
         <form className="catalog-search-form market-search-form" onSubmit={submitCatalogSearch}>
@@ -27534,7 +27542,7 @@ function renderTideTradrHeader() {
             productGroup={currentCatalogProductGroup()}
             dataFilter={catalogDataFilter}
             inputClassName="search-input"
-            placeholder="Search Market Watch"
+            placeholder="Search cards, sealed products, UPC, or SKU..."
             closeSignal={catalogSuggestionCloseSignal}
             maxSuggestions={6}
             localCatalogProducts={catalogProducts}
@@ -27915,12 +27923,13 @@ function renderWishlistIsoPlanningSection({ compact = false, surface = "vault" }
 }
 
 function renderMarketHomeFoundation() {
-  // TODO: Replace these mock cards with a read-only market discovery contract when approved.
   const categories = [
-    { label: "All", filter: "All" },
-    { label: "Cards", filter: "card" },
-    { label: "Sealed", filter: "sealed" },
-    { label: "Other", filter: "other" },
+    { label: "Singles", filter: "card", icon: "vault" },
+    { label: "Sealed", filter: "sealed", icon: "market" },
+    { label: "Accessories", filter: "other", icon: "search" },
+    { label: "Playmats", filter: "other", icon: "spark" },
+    { label: "Supplies", filter: "other", icon: "vault" },
+    { label: "Bundles", filter: "All", icon: "market" },
   ];
   const discoveryCards = [
     {
@@ -27952,13 +27961,46 @@ function renderMarketHomeFoundation() {
       accent: "BD",
     },
   ];
+  const priceMemoryScore = marketPriceMemories.length
+    ? Math.min(99, Math.max(1, marketPriceMemories.length * 12))
+    : 0;
+  const watchlistPinnedCount = workspaceWatchlist.filter((item) => item.pinned || item.isPinned).length;
 
   return (
     <section className="market-home-foundation market-mockup-foundation" aria-label="Market discovery home">
+      <div className="market-reference-overview-grid">
+        <article className="market-reference-featured-drop" aria-label="Featured Market research">
+          <div className="market-reference-featured-copy">
+            <span>Featured research</span>
+            <h3>Booster box price check</h3>
+            <p>Compare sealed-product context before you buy, trade, or save a manual note.</p>
+            <button type="button" onClick={() => submitCatalogSearch("booster box")}>Search Booster Boxes</button>
+          </div>
+          <div className="market-reference-product-scene" aria-hidden="true">
+            <i />
+            <b />
+            <span />
+          </div>
+        </article>
+
+        <aside className="market-reference-side-rail" aria-label="Market quick status">
+          <article className="market-reference-mini-card market-reference-memory">
+            <span>Price Memory</span>
+            <strong>{priceMemoryScore || marketPriceMemories.length}</strong>
+            <small>{marketPriceMemories.length ? `${marketPriceMemories.length} saved snapshot${marketPriceMemories.length === 1 ? "" : "s"}` : "Save manual prices"}</small>
+          </article>
+          <article className="market-reference-mini-card">
+            <span>Watchlist</span>
+            <strong>{workspaceWatchlist.length}</strong>
+            <small>{watchlistPinnedCount} pinned | {workspaceWatchlist.length ? "manual tracking" : "ready to track"}</small>
+          </article>
+        </aside>
+      </div>
+
       <EtMockupSectionCard
         className="market-fair-search-card"
-        title="Find a fair range before you buy."
-        detail="Market compares fair value with source and freshness labels. It is not an auto-buy dashboard and does not guarantee stock."
+        title="Shop by category"
+        detail="Jump into common collector searches without creating a cart, checkout, or stock promise."
         action={<EtMockupPill tone="market">Fair search</EtMockupPill>}
       >
         <div className="market-home-category-row" aria-label="Market categories">
@@ -27969,8 +28011,12 @@ function renderMarketHomeFoundation() {
                 key={category.label}
                 type="button"
                 className={catalogKindFilter === filterKey ? "active" : ""}
-                onClick={() => switchCatalogKindFilter(filterKey)}
+                onClick={() => {
+                  switchCatalogKindFilter(filterKey);
+                  if (category.label === "Bundles") submitCatalogSearch("booster bundle");
+                }}
               >
+                <EtMockupIcon icon={category.icon} tone="market" />
                 {category.label}
               </button>
             );
@@ -57609,6 +57655,15 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         if (sellerGuidance?.key === "seller_progress") return sellerGuidance;
       }
       if (hearthMode === "simple") {
+        if (!activeVaultItems.length) return {
+          badge: "Vault",
+          title: "Add your first item to Vault",
+          reason: "Start by adding a card, sealed product, or binder item so Hearth can guide your next step.",
+          primaryLabel: "Add Item to Vault",
+          onPrimary: () => openQuickAddAction("vaultItem"),
+          secondaryLabel: "Search Market",
+          onSecondary: () => setActiveTab("market"),
+        };
         const simpleGuidance = renderSmartGuidanceAction();
         if (["spark_focus", "start_collection", "first_scout_report", "fresh_scout_signals", "default_collection"].includes(simpleGuidance?.key)) return simpleGuidance;
         if (latestScoutReport) return {
@@ -57653,9 +57708,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         };
         if (!activeVaultItems.length) return {
           badge: "Vault",
-          title: "Start your collection",
-          reason: "Add the first item to your Vault so Hearth can surface smarter priorities.",
-          primaryLabel: "Add to Vault",
+          title: "Add your first item to Vault",
+          reason: "Start by adding a card, sealed product, or binder item so Hearth can guide your next step.",
+          primaryLabel: "Add Item to Vault",
           onPrimary: () => openQuickAddAction("vaultItem"),
           secondaryLabel: "Search Market",
           onSecondary: () => setActiveTab("market"),
@@ -58272,12 +58327,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         visible: hearthSellerRelevant,
       },
     ].filter((card) => card.visible);
-    const hearthDailyNextStep = !activeVaultItems.length
+    const hearthDailyNextStep = activeVaultItems.length < 2
       ? {
         label: "Next Best Step",
-        title: "Start by adding something to your Vault.",
-        detail: "Add one item to Vault so Ember & Tide can help you track, trade, and remember your collection.",
-        actionLabel: "Add to Vault",
+        title: "Add your first item to Vault",
+        detail: "Start by adding a card, sealed product, or binder item to begin tracking your collection value and activity.",
+        actionLabel: "Add Item to Vault",
         onClick: () => openQuickAddAction("vaultItem"),
         secondaryActionLabel: "Search Market",
         onSecondary: () => setActiveTab("market"),
@@ -58849,7 +58904,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <div className="et-mockup-main-column hearth-mockup-main">
           <EtMockupHero
             title={hearthHomeTitle}
-            detail="Your compact collector command center: one next step, a quick pulse, and calm paths into the app."
+            detail="Here's your collection at a glance."
             points={{ value: hearthEmberPoints, label: "Ember Points" }}
             pills={[
               { label: "Public Beta", tone: "beta" },
@@ -61173,8 +61228,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     </span>
     <span className="sr-only">E&amp;T TCG</span>
     <span className="topbar-brand-copy">
-      <strong>{activeTabLabel} | E&amp;T TCG</strong>
-      <small>{activeWorkspace?.name || "My Personal Space"} | E&amp;T TCG</small>
+      <strong>EMBER &amp; TIDE</strong>
+      <small>E&amp;T TCG</small>
     </span>
   </button>
 
@@ -68221,11 +68276,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </>
             ) : (
               <>
-                {!catalogSearchHasRun && !supabaseCatalogStatus.loading ? renderMarketHomeFoundation() : null}
-
-                {renderMarketPriceMemorySection()}
-                {renderItemCompareTableSection()}
-                {renderWishlistIsoPlanningSection({ surface: "market", compact: true })}
+                {renderMarketHomeFoundation()}
 
                 {false ? (
                 <section className={getHeaderCardClass("tab-summary panel tidetradr-summary-card")}>
@@ -68745,6 +68796,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     />
                   ) : null}
                 </EtMockupSectionCard>
+
+                {renderMarketPriceMemorySection()}
+                {renderItemCompareTableSection()}
+                {renderWishlistIsoPlanningSection({ surface: "market", compact: true })}
 
                 <section className="feature-dropdown-stack">
                   {false ? (

@@ -107192,3 +107192,1581 @@ html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mock
     font-size: 2.15rem !important;
   }
 }
+
+/* Accepted app-shell reference alignment: compact collector command center. */
+html body #root .app.app-command-shell {
+  --et-ref-page: #fbf3e6;
+  --et-ref-page-2: #fffaf1;
+  --et-ref-shell: rgba(255, 250, 241, 0.94);
+  --et-ref-card: rgba(255, 252, 246, 0.94);
+  --et-ref-card-2: rgba(255, 244, 225, 0.74);
+  --et-ref-ink: #15100a;
+  --et-ref-text: #2a2118;
+  --et-ref-muted: #706354;
+  --et-ref-border: rgba(112, 83, 48, 0.15);
+  --et-ref-border-strong: rgba(185, 101, 22, 0.28);
+  --et-ref-orange: #e85b18;
+  --et-ref-orange-2: #f29122;
+  --et-ref-teal: #0b7f88;
+  --et-ref-green: #17894d;
+  --et-ref-shadow: 0 18px 46px rgba(83, 54, 23, 0.12);
+  --et-ref-soft-shadow: 0 10px 28px rgba(83, 54, 23, 0.09);
+  min-height: 100dvh !important;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(232, 91, 24, 0.08), transparent 30rem),
+    linear-gradient(180deg, var(--et-ref-page-2) 0%, var(--et-ref-page) 100%) !important;
+  color: var(--et-ref-text) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell,
+html body #root .app.app-shell-dark.app-command-shell {
+  --et-ref-page: #03090c;
+  --et-ref-page-2: #071116;
+  --et-ref-shell: rgba(6, 13, 17, 0.96);
+  --et-ref-card: rgba(9, 18, 23, 0.94);
+  --et-ref-card-2: rgba(13, 27, 34, 0.84);
+  --et-ref-ink: #fff5e5;
+  --et-ref-text: #f5eee2;
+  --et-ref-muted: #a7aca6;
+  --et-ref-border: rgba(231, 183, 112, 0.16);
+  --et-ref-border-strong: rgba(242, 145, 34, 0.34);
+  --et-ref-orange: #ff741f;
+  --et-ref-orange-2: #f5a11f;
+  --et-ref-teal: #22c4c8;
+  --et-ref-green: #40d07e;
+  --et-ref-shadow: 0 20px 56px rgba(0, 0, 0, 0.42);
+  --et-ref-soft-shadow: 0 12px 34px rgba(0, 0, 0, 0.34);
+  background:
+    radial-gradient(circle at 18% 0%, rgba(255, 116, 31, 0.08), transparent 30rem),
+    radial-gradient(circle at 96% 4%, rgba(34, 196, 200, 0.06), transparent 28rem),
+    linear-gradient(180deg, #071116 0%, #03090c 100%) !important;
+  color: var(--et-ref-text) !important;
+}
+
+html:has(#root .app.app-command-shell) body,
+html:has(#root .app.app-command-shell) #root {
+  background: var(--et-ref-page, #fbf3e6) !important;
+}
+
+html body #root .app.app-command-shell > .topbar {
+  position: sticky;
+  top: 12px;
+  z-index: 90;
+  grid-template-columns: minmax(168px, 220px) minmax(230px, 1fr) auto !important;
+  gap: 12px !important;
+  width: min(100%, 1140px);
+  min-height: 54px !important;
+  margin: 0 auto 12px !important;
+  padding: 6px 8px !important;
+  border: 1px solid var(--et-ref-border) !important;
+  border-radius: 14px !important;
+  background: color-mix(in srgb, var(--et-ref-shell) 86%, transparent) !important;
+  box-shadow: var(--et-ref-soft-shadow) !important;
+  backdrop-filter: blur(18px) saturate(1.08);
+}
+
+html body #root .app.app-command-shell .topbar-brand {
+  display: grid !important;
+  grid-template-columns: 34px minmax(0, 1fr) !important;
+  gap: 9px !important;
+  justify-self: stretch !important;
+  width: 100% !important;
+  min-height: 40px !important;
+  padding: 4px 7px !important;
+  border: 0 !important;
+  border-radius: 10px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--et-ref-ink) !important;
+}
+
+html body #root .app.app-command-shell .topbar-brand-mark,
+html body #root .app.app-command-shell .web-command-brand > img {
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: #091012;
+  box-shadow: 0 8px 18px rgba(232, 91, 24, 0.16);
+}
+
+html body #root .app.app-command-shell .topbar-brand-mark,
+html body #root .app.app-command-shell .topbar-brand-mark img {
+  width: 34px !important;
+  height: 34px !important;
+}
+
+html body #root .app.app-command-shell .topbar-brand-mark img,
+html body #root .app.app-command-shell .web-command-brand > img {
+  object-fit: contain !important;
+  padding: 5px;
+  filter: none !important;
+}
+
+html body #root .app.app-command-shell .topbar-brand-copy strong,
+html body #root .app.app-command-shell .web-command-brand strong {
+  color: var(--et-ref-ink) !important;
+  font-family: var(--et-brand-serif, Georgia, "Times New Roman", serif) !important;
+  font-size: 0.84rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.08em !important;
+  line-height: 1.05 !important;
+  text-transform: uppercase;
+}
+
+html body #root .app.app-command-shell .topbar-brand-copy {
+  display: grid !important;
+  min-width: 0 !important;
+  gap: 1px !important;
+}
+
+html body #root .app.app-command-shell .topbar-brand-copy small,
+html body #root .app.app-command-shell .web-command-brand span {
+  color: var(--et-ref-muted) !important;
+  font-size: 0.58rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.08em !important;
+  line-height: 1.15 !important;
+  text-transform: uppercase;
+}
+
+html body #root .app.app-command-shell > .topbar .app-search {
+  justify-self: end;
+  width: min(100%, 310px) !important;
+}
+
+html body #root .app.app-command-shell > .topbar .app-search:not(.expanded) {
+  min-height: 38px !important;
+  border: 1px solid var(--et-ref-border) !important;
+  border-radius: 10px !important;
+  background: var(--et-ref-card) !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell > .topbar .app-search:not(.expanded) input {
+  min-height: 38px !important;
+  color: var(--et-ref-text) !important;
+  font-size: 0.76rem !important;
+}
+
+html body #root .app.app-command-shell .topbar-command-actions {
+  gap: 7px !important;
+}
+
+html body #root .app.app-command-shell .topbar-command-actions > button,
+html body #root .app.app-command-shell .topbar-command-actions .notification-button,
+html body #root .app.app-command-shell .topbar-command-actions .notification-trigger,
+html body #root .app.app-command-shell .topbar .menu-button,
+html body #root .app.app-command-shell .topbar-profile-button,
+html body #root .app.app-command-shell .topbar-quick-add-button {
+  min-width: 38px !important;
+  min-height: 38px !important;
+  padding: 7px 9px !important;
+  border: 1px solid var(--et-ref-border) !important;
+  border-radius: 10px !important;
+  background: var(--et-ref-card) !important;
+  color: var(--et-ref-text) !important;
+  box-shadow: none !important;
+  font-size: 0.75rem !important;
+}
+
+html body #root .app.app-command-shell .topbar-quick-add-button,
+html body #root .app.app-command-shell .et-mockup-button-primary,
+html body #root .app.app-command-shell .hearth-next-best-step .et-mockup-button-primary {
+  border-color: color-mix(in srgb, var(--et-ref-orange) 62%, #ffffff 10%) !important;
+  background: linear-gradient(180deg, var(--et-ref-orange-2), var(--et-ref-orange)) !important;
+  color: #fffaf0 !important;
+  box-shadow: 0 10px 20px rgba(232, 91, 24, 0.18) !important;
+}
+
+html body #root .app.app-command-shell .topbar-ask-ember-button span:not(.action-icon),
+html body #root .app.app-command-shell .topbar-profile-button {
+  font-size: 0 !important;
+}
+
+html body #root .app.app-command-shell .topbar-profile-button .action-icon,
+html body #root .app.app-command-shell .topbar-ask-ember-button .action-icon {
+  margin: 0 !important;
+}
+
+html body #root .app.app-command-shell .web-command-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 22px 16px !important;
+  border: 1px solid var(--et-ref-border) !important;
+  border-radius: 14px !important;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--et-ref-shell) 96%, transparent), color-mix(in srgb, var(--et-ref-card-2) 76%, transparent)) !important;
+  box-shadow: var(--et-ref-soft-shadow) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell .web-command-sidebar,
+html body #root .app.app-shell-dark.app-command-shell .web-command-sidebar {
+  background:
+    linear-gradient(180deg, rgba(4, 11, 15, 0.96), rgba(2, 7, 10, 0.96)) !important;
+}
+
+html body #root .app.app-command-shell .web-command-brand {
+  display: grid !important;
+  grid-template-columns: 38px minmax(0, 1fr) !important;
+  gap: 10px !important;
+  align-items: center !important;
+}
+
+html body #root .app.app-command-shell .web-command-brand > img {
+  width: 38px !important;
+  height: 38px !important;
+}
+
+html body #root .app.app-command-shell .web-command-promise {
+  display: none !important;
+}
+
+html body #root .app.app-command-shell .web-command-more {
+  display: none !important;
+}
+
+html body #root .app.app-command-shell .web-command-nav {
+  gap: 6px !important;
+}
+
+html body #root .app.app-command-shell .web-command-nav-item,
+html body #root .app.app-command-shell .web-command-more > summary,
+html body #root .app.app-command-shell .web-command-more-item,
+html body #root .app.app-command-shell .web-command-tool {
+  min-height: 43px !important;
+  padding: 7px 8px !important;
+  border: 1px solid transparent !important;
+  border-radius: 10px !important;
+  background: transparent !important;
+  color: var(--et-ref-text) !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell .web-command-nav-icon,
+html body #root .app.app-command-shell .web-command-tool-icon {
+  width: 28px !important;
+  height: 28px !important;
+  border: 1px solid var(--et-ref-border) !important;
+  border-radius: 8px !important;
+  background: color-mix(in srgb, var(--et-ref-card) 84%, transparent) !important;
+  color: var(--et-ref-text) !important;
+}
+
+html body #root .app.app-command-shell .web-command-nav-item.active,
+html body #root .app.app-command-shell .web-command-more-item.active,
+html body #root .app.app-command-shell .web-command-tool.active {
+  border-color: color-mix(in srgb, var(--et-ref-orange) 24%, transparent) !important;
+  background: color-mix(in srgb, var(--et-ref-orange) 13%, var(--et-ref-card)) !important;
+  color: var(--et-ref-orange) !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell .web-command-nav-item.active .web-command-nav-icon,
+html body #root .app.app-command-shell .web-command-more-item.active .web-command-nav-icon {
+  border-color: color-mix(in srgb, var(--et-ref-orange) 42%, transparent) !important;
+  background: color-mix(in srgb, var(--et-ref-orange) 18%, var(--et-ref-card)) !important;
+  color: var(--et-ref-orange) !important;
+}
+
+html body #root .app.app-command-shell .web-command-nav-item strong,
+html body #root .app.app-command-shell .web-command-more-item strong,
+html body #root .app.app-command-shell .web-command-tool strong {
+  color: currentColor !important;
+  font-size: 0.78rem !important;
+}
+
+html body #root .app.app-command-shell .web-command-nav-item small,
+html body #root .app.app-command-shell .web-command-more-item small,
+html body #root .app.app-command-shell .web-command-tool small {
+  color: var(--et-ref-muted) !important;
+  font-size: 0.62rem !important;
+}
+
+html body #root .app.app-command-shell .web-command-tools,
+html body #root .app.app-command-shell .web-command-status {
+  margin-top: auto;
+  border-color: var(--et-ref-border) !important;
+  background: color-mix(in srgb, var(--et-ref-card) 74%, transparent) !important;
+  color: var(--et-ref-muted) !important;
+}
+
+html body #root .app.app-home.app-command-shell .main,
+html body #root .app.app-home.app-command-shell main {
+  padding-top: 0 !important;
+  background: transparent !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(246px, 300px) !important;
+  gap: 12px !important;
+  width: min(100%, 1140px) !important;
+  max-width: 1140px !important;
+  margin-inline: auto !important;
+  padding: 0 0 56px !important;
+  color: var(--et-ref-text) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-mockup-main {
+  gap: 12px !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-page-hero {
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-page-hero::after {
+  display: none !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-hero-copy {
+  display: grid !important;
+  gap: 3px !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-brand-row,
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-today-action,
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-hero-status {
+  display: none !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-hero-copy h1 {
+  margin: 0 !important;
+  color: var(--et-ref-ink) !important;
+  font-family: var(--et-brand-sans, Inter, system-ui, sans-serif) !important;
+  font-size: clamp(1.22rem, 2.2vw, 1.55rem) !important;
+  font-weight: 850 !important;
+  line-height: 1.08 !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-hero-copy p {
+  margin: 0 0 8px !important;
+  color: var(--et-ref-muted) !important;
+  font-size: 0.82rem !important;
+  font-weight: 700 !important;
+  line-height: 1.28 !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final :where(.hearth-daily-command-center, .hearth-dashboard-recent, .hearth-dashboard-more-tools, .et-mockup-right-rail, .et-mockup-section-card, .et-mockup-stat-card, .et-mockup-action-card, .hearth-smart-card) {
+  border: 1px solid var(--et-ref-border) !important;
+  border-radius: 12px !important;
+  background: var(--et-ref-card) !important;
+  color: var(--et-ref-text) !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .hearth-daily-command-center,
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final > .et-mockup-right-rail {
+  padding: 14px !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-section-heading {
+  margin-bottom: 10px !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-section-heading h2,
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-rail-heading h2 {
+  color: var(--et-ref-ink) !important;
+  font-size: 0.98rem !important;
+  font-weight: 850 !important;
+  line-height: 1.12 !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-section-heading p,
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-rail-heading p {
+  color: var(--et-ref-muted) !important;
+  font-size: 0.72rem !important;
+  line-height: 1.25 !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .hearth-next-best-step {
+  position: relative;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 150px !important;
+  gap: 12px !important;
+  min-height: 150px !important;
+  padding: 18px !important;
+  overflow: hidden;
+  border-color: var(--et-ref-border-strong) !important;
+  background:
+    radial-gradient(circle at 90% 28%, rgba(232, 91, 24, 0.18), transparent 8rem),
+    linear-gradient(180deg, color-mix(in srgb, var(--et-ref-card) 92%, transparent), color-mix(in srgb, var(--et-ref-card-2) 76%, transparent)) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .hearth-next-best-step::after {
+  content: "";
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: end;
+  justify-self: center;
+  width: min(132px, 100%);
+  aspect-ratio: 1.16;
+  background:
+    radial-gradient(circle at 50% 12%, rgba(255, 222, 136, 0.82), transparent 24%),
+    linear-gradient(150deg, #ba621e 0 38%, #7c3f1d 39% 68%, #3f2518 69% 100%);
+  border: 1px solid rgba(255, 185, 80, 0.34);
+  border-radius: 18px 18px 12px 12px;
+  box-shadow: 0 18px 26px rgba(91, 45, 15, 0.22), 0 0 26px rgba(232, 91, 24, 0.18);
+  transform: perspective(420px) rotateX(10deg) rotateY(-10deg);
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .hearth-next-best-step > div:first-child {
+  grid-column: 1;
+  grid-row: 1;
+  align-self: center;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .hearth-next-best-step span {
+  color: var(--et-ref-ink) !important;
+  font-size: 0.73rem !important;
+  font-weight: 850 !important;
+  letter-spacing: 0.02em !important;
+  text-transform: none !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .hearth-next-best-step h3 {
+  max-width: 30ch;
+  margin: 6px 0 6px !important;
+  color: var(--et-ref-ink) !important;
+  font-size: clamp(1rem, 1.8vw, 1.18rem) !important;
+  font-weight: 850 !important;
+  line-height: 1.12 !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .hearth-next-best-step p {
+  max-width: 45ch;
+  color: var(--et-ref-text) !important;
+  font-size: 0.76rem !important;
+  line-height: 1.45 !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .hearth-next-step-actions {
+  grid-column: 1;
+  grid-row: 2;
+  align-self: end;
+  display: flex !important;
+  gap: 8px !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .hearth-next-step-actions .et-mockup-button {
+  min-height: 36px !important;
+  padding: 8px 15px !important;
+  border-radius: 8px !important;
+  font-size: 0.73rem !important;
+  font-weight: 850 !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .hearth-next-step-actions .et-mockup-button-secondary {
+  background: var(--et-ref-card) !important;
+  color: var(--et-ref-teal) !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-pulse-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-pulse-grid .et-mockup-stat-card {
+  min-height: 86px !important;
+  padding: 12px !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-pulse-grid .et-mockup-stat-card span {
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--et-ref-muted) !important;
+  font-size: 0.64rem !important;
+  font-weight: 750 !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-pulse-grid .et-mockup-stat-card strong {
+  color: var(--et-ref-ink) !important;
+  font-size: 1.18rem !important;
+  font-weight: 900 !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-pulse-grid .et-mockup-stat-card small {
+  color: var(--et-ref-green) !important;
+  font-size: 0.62rem !important;
+  font-weight: 800 !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-command-grid,
+html body #root .app.app-command-shell.app-home .hearth-mockup-quick-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-daily-command-card,
+html body #root .app.app-command-shell.app-home .hearth-mockup-quick-grid .et-mockup-action-card,
+html body #root .app.app-command-shell.app-home .hearth-feature-card {
+  min-height: 58px !important;
+  padding: 9px !important;
+  border-radius: 10px !important;
+  background: color-mix(in srgb, var(--et-ref-card) 90%, transparent) !important;
+  color: var(--et-ref-text) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-daily-command-card p,
+html body #root .app.app-command-shell.app-home .hearth-daily-command-card small,
+html body #root .app.app-command-shell.app-home .hearth-feature-card small,
+html body #root .app.app-command-shell.app-home .hearth-mockup-quick-grid .et-mockup-action-card small {
+  color: var(--et-ref-muted) !important;
+  font-size: 0.62rem !important;
+  line-height: 1.25 !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-daily-command-card h3,
+html body #root .app.app-command-shell.app-home .hearth-feature-card strong,
+html body #root .app.app-command-shell.app-home .hearth-mockup-quick-grid .et-mockup-action-card strong {
+  color: var(--et-ref-ink) !important;
+  font-size: 0.76rem !important;
+  line-height: 1.18 !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-daily-command-card .secondary-button {
+  min-height: 30px !important;
+  padding: 6px 9px !important;
+  border-radius: 8px !important;
+  color: var(--et-ref-teal) !important;
+  font-size: 0.62rem !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-recent {
+  padding: 12px !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-mockup-recent-list {
+  gap: 7px !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-mockup-recent-list .et-mockup-action-card {
+  grid-template-columns: 34px minmax(0, 1fr) auto !important;
+  min-height: 55px !important;
+  padding: 8px !important;
+  border-radius: 10px !important;
+}
+
+html body #root .app.app-command-shell.app-home .et-mockup-icon {
+  width: 30px !important;
+  height: 30px !important;
+  border-radius: 8px !important;
+  color: var(--et-ref-teal) !important;
+}
+
+html body #root .app.app-command-shell.app-home .et-mockup-tone-gold .et-mockup-icon,
+html body #root .app.app-command-shell.app-home .et-mockup-tone-market .et-mockup-icon,
+html body #root .app.app-command-shell.app-home .et-mockup-tone-vault .et-mockup-icon {
+  color: var(--et-ref-orange) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final > .et-mockup-right-rail {
+  align-self: start;
+  gap: 10px !important;
+  position: sticky;
+  top: 84px;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-rail-heading {
+  margin-bottom: 0 !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-right-rail .et-mockup-section-card {
+  padding: 10px !important;
+  border-radius: 12px !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-feature-list {
+  gap: 8px !important;
+}
+
+html body #root .app.app-command-shell .mobile-bottom-nav {
+  border: 1px solid var(--et-ref-border) !important;
+  border-radius: 18px !important;
+  background: color-mix(in srgb, var(--et-ref-shell) 92%, transparent) !important;
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.12) !important;
+  backdrop-filter: blur(18px) saturate(1.1);
+}
+
+html body #root .app.app-command-shell .mobile-bottom-nav button {
+  color: var(--et-ref-muted) !important;
+}
+
+html body #root .app.app-command-shell .mobile-bottom-nav button.active,
+html body #root .app.app-command-shell .mobile-bottom-nav button[aria-current="page"] {
+  color: var(--et-ref-orange) !important;
+  background: transparent !important;
+}
+
+@media (min-width: 1024px) {
+  html body #root .app.app-command-shell {
+    display: grid !important;
+    grid-template-columns: 248px minmax(0, 1fr) !important;
+    grid-template-rows: auto minmax(0, 1fr) !important;
+    gap: 12px !important;
+    padding: 16px !important;
+  }
+
+  html body #root .app.app-command-shell > .topbar {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  html body #root .app.app-command-shell .web-command-sidebar {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    min-height: calc(100dvh - 32px);
+  }
+
+  html body #root .app.app-command-shell > .main,
+  html body #root .app.app-command-shell > main {
+    grid-column: 2;
+    grid-row: 2;
+  }
+}
+
+@media (max-width: 1120px) and (min-width: 761px) {
+  html body #root .app.app-command-shell {
+    grid-template-columns: 72px minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell .web-command-sidebar {
+    padding: 16px 9px !important;
+  }
+
+  html body #root .app.app-command-shell .web-command-brand {
+    grid-template-columns: 38px !important;
+    justify-content: center;
+  }
+
+  html body #root .app.app-command-shell .web-command-brand div,
+  html body #root .app.app-command-shell .web-command-nav-item > span:last-child,
+  html body #root .app.app-command-shell .web-command-more > summary > span:last-child,
+  html body #root .app.app-command-shell .web-command-tools,
+  html body #root .app.app-command-shell .web-command-status {
+    display: none !important;
+  }
+
+  html body #root .app.app-command-shell .web-command-nav-item,
+  html body #root .app.app-command-shell .web-command-more > summary {
+    grid-template-columns: 1fr !important;
+    justify-items: center;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-final {
+    grid-template-columns: minmax(0, 1fr) 260px !important;
+  }
+}
+
+@media (max-width: 980px) {
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-final {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-final > .et-mockup-right-rail {
+    position: static;
+  }
+}
+
+@media (max-width: 760px) {
+  html body #root .app.app-command-shell {
+    display: block !important;
+    padding: 12px 12px calc(92px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  html body #root .app.app-command-shell > .topbar {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    width: 100% !important;
+    min-height: 44px !important;
+    margin: 0 0 12px !important;
+    padding: 3px 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+  }
+
+  html body #root .app.app-command-shell .topbar-brand {
+    grid-template-columns: 30px minmax(0, 1fr) !important;
+    min-height: 38px !important;
+    padding: 2px 0 !important;
+  }
+
+  html body #root .app.app-command-shell .topbar-brand-mark,
+  html body #root .app.app-command-shell .topbar-brand-mark img {
+    width: 30px !important;
+    height: 30px !important;
+  }
+
+  html body #root .app.app-command-shell .topbar-brand-copy strong {
+    font-size: 0.72rem !important;
+  }
+
+  html body #root .app.app-command-shell .topbar-brand-copy small {
+    display: none !important;
+  }
+
+  html body #root .app.app-command-shell > .topbar .app-search:not(.expanded),
+  html body #root .app.app-command-shell .topbar-ask-ember-button,
+  html body #root .app.app-command-shell .topbar-workspace-chip,
+  html body #root .app.app-command-shell .topbar-quick-add-button,
+  html body #root .app.app-command-shell .topbar-profile-button,
+  html body #root .app.app-command-shell .topbar-command-actions .notification-button,
+  html body #root .app.app-command-shell .topbar-command-actions .notification-trigger {
+    display: none !important;
+  }
+
+  html body #root .app.app-command-shell .topbar-command-actions {
+    display: flex !important;
+    justify-content: flex-end !important;
+  }
+
+  html body #root .app.app-command-shell .topbar .menu-button {
+    min-width: 34px !important;
+    min-height: 34px !important;
+    padding: 0 !important;
+    border-color: var(--et-ref-border) !important;
+    border-radius: 11px !important;
+    background: var(--et-ref-card) !important;
+    color: var(--et-ref-orange) !important;
+    font-size: 0 !important;
+  }
+
+  html body #root .app.app-command-shell .topbar .menu-button .action-icon {
+    margin: 0 !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .main,
+  html body #root .app.app-command-shell.app-home main {
+    padding: 0 0 18px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-final {
+    display: grid !important;
+    gap: 10px !important;
+    width: 100% !important;
+    padding: 0 0 82px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-hero-copy h1 {
+    font-size: 1.12rem !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-hero-copy p {
+    font-size: 0.72rem !important;
+    margin-bottom: 8px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-final .hearth-daily-command-center,
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-final > .et-mockup-right-rail,
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-recent {
+    padding: 11px !important;
+    border-radius: 12px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-final .hearth-next-best-step {
+    grid-template-columns: minmax(0, 1fr) 92px !important;
+    min-height: 126px !important;
+    padding: 13px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-final .hearth-next-best-step::after {
+    width: 82px;
+    border-radius: 14px 14px 10px 10px;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-final .hearth-next-best-step h3 {
+    font-size: 0.88rem !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-final .hearth-next-best-step p {
+    font-size: 0.68rem !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-final .hearth-next-step-actions {
+    display: block !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-final .hearth-next-step-actions .et-mockup-button-secondary {
+    display: none !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-final .hearth-next-step-actions .et-mockup-button {
+    min-height: 34px !important;
+    padding-inline: 13px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-pulse-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-pulse-grid .et-mockup-stat-card {
+    min-height: 78px !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-command-grid,
+  html body #root .app.app-command-shell.app-home .hearth-mockup-quick-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-command-grid {
+    display: none !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-mockup-quick-grid .et-mockup-action-card:nth-child(n + 5),
+  html body #root .app.app-command-shell.app-home .hearth-feature-list {
+    display: none !important;
+  }
+
+  html body #root .app.app-command-shell .mobile-bottom-nav {
+    width: min(390px, calc(100vw - 14px)) !important;
+    padding: 5px 7px calc(5px + env(safe-area-inset-bottom, 0px)) !important;
+    border-radius: 17px 17px 0 0 !important;
+  }
+
+  html body #root .app.app-command-shell .mobile-bottom-nav button {
+    min-height: 46px !important;
+    border-radius: 12px !important;
+  }
+
+  html body #root .app.app-command-shell .mobile-bottom-nav b {
+    font-size: 0.58rem !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html body #root .app.app-command-shell.app-home .hearth-next-best-step::after,
+  html body #root .app.app-command-shell :where(.topbar, .web-command-sidebar, .mobile-bottom-nav) {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-page-hero .et-mockup-hero-copy h1 {
+  color: var(--et-ref-ink) !important;
+  font-family: var(--et-brand-sans, Inter, system-ui, sans-serif) !important;
+  font-size: clamp(1.22rem, 2.2vw, 1.55rem) !important;
+  font-weight: 850 !important;
+  line-height: 1.08 !important;
+  max-width: none !important;
+  width: 100% !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-page-hero .et-mockup-hero-copy p {
+  color: var(--et-ref-muted) !important;
+  font-family: var(--et-brand-sans, Inter, system-ui, sans-serif) !important;
+}
+
+@media (max-width: 760px) {
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-final .et-mockup-page-hero .et-mockup-hero-copy h1 {
+    font-size: 1.12rem !important;
+  }
+}
+
+/* Market reference alignment: warm light, collector-room dark, search-first product research. */
+html body #root .app.app-command-shell.app-market {
+  --et-market-bg: #fff7ec;
+  --et-market-bg-soft: #f5e2c8;
+  --et-market-panel: rgba(255, 250, 241, 0.92);
+  --et-market-panel-strong: rgba(255, 246, 230, 0.98);
+  --et-market-ink: #1e160e;
+  --et-market-muted: #6d5a44;
+  --et-market-border: rgba(160, 111, 55, 0.2);
+  --et-market-border-strong: rgba(175, 119, 51, 0.34);
+  --et-market-ember: #ea5a2a;
+  --et-market-gold: #d9a441;
+  --et-market-teal: #0b7f86;
+  --et-market-navy: #07172a;
+  --et-market-shadow: 0 18px 48px rgba(90, 54, 18, 0.13);
+  --et-market-card-shadow: 0 10px 24px rgba(90, 54, 18, 0.08);
+  background:
+    radial-gradient(circle at 8% 0%, rgba(217, 164, 65, 0.15), transparent 28rem),
+    radial-gradient(circle at 96% 8%, rgba(11, 127, 134, 0.09), transparent 28rem),
+    linear-gradient(180deg, var(--et-market-bg), #fffaf4 48%, #f9ead6) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-market,
+html body #root .app.app-shell-dark.app-command-shell.app-market {
+  --et-market-bg: #07121f;
+  --et-market-bg-soft: #111214;
+  --et-market-panel: rgba(12, 24, 39, 0.92);
+  --et-market-panel-strong: rgba(15, 28, 45, 0.98);
+  --et-market-ink: #fff3dd;
+  --et-market-muted: rgba(235, 221, 196, 0.7);
+  --et-market-border: rgba(223, 168, 74, 0.24);
+  --et-market-border-strong: rgba(234, 145, 39, 0.36);
+  --et-market-shadow: 0 20px 56px rgba(0, 0, 0, 0.42);
+  --et-market-card-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+  background:
+    radial-gradient(circle at 12% 0%, rgba(234, 90, 42, 0.12), transparent 30rem),
+    radial-gradient(circle at 92% 8%, rgba(11, 127, 134, 0.12), transparent 26rem),
+    linear-gradient(180deg, #050d18, #071321 46%, #05070b) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-rebuild {
+  width: min(100%, 1240px) !important;
+  gap: 12px !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-main {
+  gap: 12px !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-header .et-mockup-page-hero,
+html body #root .app.app-command-shell.app-market .market-mockup-search,
+html body #root .app.app-command-shell.app-market .market-reference-featured-drop,
+html body #root .app.app-command-shell.app-market .market-reference-mini-card,
+html body #root .app.app-command-shell.app-market .market-fair-search-card,
+html body #root .app.app-command-shell.app-market .market-home-product-card,
+html body #root .app.app-command-shell.app-market .market-mockup-guardrail-rail,
+html body #root .app.app-command-shell.app-market .market-watchlist-prompt,
+html body #root .app.app-command-shell.app-market .market-results-panel {
+  border: 1px solid var(--et-market-border) !important;
+  border-radius: 16px !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(217, 164, 65, 0.1), transparent 12rem),
+    linear-gradient(145deg, var(--et-market-panel-strong), var(--et-market-panel)) !important;
+  box-shadow: var(--et-market-card-shadow) !important;
+  color: var(--et-market-ink) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-market :where(
+  .market-mockup-header .et-mockup-page-hero,
+  .market-mockup-search,
+  .market-reference-featured-drop,
+  .market-reference-mini-card,
+  .market-fair-search-card,
+  .market-home-product-card,
+  .market-mockup-guardrail-rail,
+  .market-watchlist-prompt,
+  .market-results-panel
+),
+html body #root .app.app-shell-dark.app-command-shell.app-market :where(
+  .market-mockup-header .et-mockup-page-hero,
+  .market-mockup-search,
+  .market-reference-featured-drop,
+  .market-reference-mini-card,
+  .market-fair-search-card,
+  .market-home-product-card,
+  .market-mockup-guardrail-rail,
+  .market-watchlist-prompt,
+  .market-results-panel
+) {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(234, 145, 39, 0.11), transparent 12rem),
+    linear-gradient(145deg, rgba(14, 29, 48, 0.97), rgba(8, 18, 31, 0.96)) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-header .et-mockup-page-hero {
+  display: none !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-header .et-mockup-page-hero::before,
+html body #root .app.app-command-shell.app-market .market-mockup-header .et-mockup-page-hero::after,
+html body #root .app.app-command-shell.app-market .market-mockup-header .et-mockup-hero-brand,
+html body #root .app.app-command-shell.app-market .market-mockup-header .et-mockup-today-action,
+html body #root .app.app-command-shell.app-market .market-mockup-header .et-mockup-points-card,
+html body #root .app.app-command-shell.app-market .market-mockup-header .et-mockup-pill-row,
+html body #root .app.app-command-shell.app-market .market-mockup-header .et-mockup-hero-copy p {
+  display: none !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-header .et-mockup-hero-copy {
+  max-width: none !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-header .et-mockup-hero-copy h1 {
+  margin: 0 !important;
+  color: var(--et-market-ink) !important;
+  font-family: Georgia, "Times New Roman", serif !important;
+  font-size: clamp(1.45rem, 2.4vw, 1.85rem) !important;
+  font-weight: 760 !important;
+  line-height: 1 !important;
+  letter-spacing: 0 !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-header .et-mockup-hero-copy p,
+html body #root .app.app-command-shell.app-market .market-mockup-header .et-mockup-section-heading p,
+html body #root .app.app-command-shell.app-market .market-reference-featured-copy p,
+html body #root .app.app-command-shell.app-market .market-reference-mini-card small {
+  color: var(--et-market-muted) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-header .et-mockup-pill-row {
+  margin-top: 10px;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-search {
+  padding: 12px !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-search .et-mockup-section-heading {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-search .et-mockup-section-heading h2 {
+  margin: 0 !important;
+  color: var(--et-market-ink) !important;
+  font-size: 1rem !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-search-form {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+html body #root .app.app-command-shell.app-market .market-smart-search,
+html body #root .app.app-command-shell.app-market .market-search-form .search-input {
+  min-width: 0;
+}
+
+html body #root .app.app-command-shell.app-market .market-search-form input,
+html body #root .app.app-command-shell.app-market .market-smart-search input {
+  min-height: 38px !important;
+  border-radius: 12px !important;
+  background: color-mix(in srgb, var(--et-market-panel-strong) 88%, #ffffff 10%) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-search-helper-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px !important;
+  margin-top: 10px;
+}
+
+html body #root .app.app-command-shell.app-market .market-search-helper-grid .et-mockup-action-card {
+  min-height: 64px !important;
+  padding: 8px !important;
+  border-radius: 13px !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-search-options {
+  margin-top: 8px;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-tabs {
+  margin-top: 9px;
+  gap: 7px;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-tabs button {
+  min-height: 33px !important;
+  border-radius: 11px !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-home-foundation {
+  display: grid;
+  gap: 12px;
+}
+
+html body #root .app.app-command-shell.app-market .market-reference-overview-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(210px, 0.34fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+html body #root .app.app-command-shell.app-market .market-reference-featured-drop {
+  position: relative;
+  min-height: 156px;
+  display: grid;
+  grid-template-columns: minmax(0, 0.72fr) minmax(190px, 0.55fr);
+  gap: 12px;
+  overflow: hidden;
+  padding: 16px !important;
+  isolation: isolate;
+}
+
+html body #root .app.app-command-shell.app-market .market-reference-featured-drop::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 76% 46%, rgba(234, 90, 42, 0.22), transparent 8rem),
+    radial-gradient(circle at 91% 13%, rgba(91, 72, 179, 0.18), transparent 9rem),
+    linear-gradient(110deg, rgba(255, 247, 231, 0.92), rgba(239, 211, 172, 0.62));
+}
+
+html body #root .app.app-theme-dark.app-command-shell.app-market .market-reference-featured-drop::before,
+html body #root .app.app-shell-dark.app-command-shell.app-market .market-reference-featured-drop::before {
+  background:
+    radial-gradient(circle at 77% 46%, rgba(234, 90, 42, 0.26), transparent 8rem),
+    radial-gradient(circle at 91% 13%, rgba(91, 72, 179, 0.24), transparent 9rem),
+    linear-gradient(110deg, rgba(16, 25, 38, 0.98), rgba(15, 17, 25, 0.86));
+}
+
+html body #root .app.app-command-shell.app-market .market-reference-featured-copy {
+  display: grid;
+  align-content: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+html body #root .app.app-command-shell.app-market .market-reference-featured-copy span,
+html body #root .app.app-command-shell.app-market .market-reference-mini-card span,
+html body #root .app.app-command-shell.app-market .market-home-product-card .market-status-pill {
+  color: color-mix(in srgb, var(--et-market-ember) 82%, var(--et-market-ink)) !important;
+  font-size: 0.68rem !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.045em !important;
+  text-transform: uppercase;
+}
+
+html body #root .app.app-command-shell.app-market .market-reference-featured-copy h3 {
+  margin: 0 !important;
+  color: var(--et-market-ink) !important;
+  font-family: Georgia, "Times New Roman", serif !important;
+  font-size: clamp(1.35rem, 2.2vw, 2rem) !important;
+  line-height: 1.02 !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-reference-featured-copy button {
+  justify-self: start;
+  min-height: 38px;
+  border: 0;
+  border-radius: 12px;
+  padding: 0 14px;
+  color: #fff7ed;
+  font-weight: 850;
+  background: linear-gradient(135deg, var(--et-market-ember), #d96a0e);
+  box-shadow: 0 12px 24px rgba(234, 90, 42, 0.2);
+}
+
+html body #root .app.app-command-shell.app-market .market-reference-product-scene {
+  position: relative;
+  min-height: 126px;
+}
+
+html body #root .app.app-command-shell.app-market .market-reference-product-scene i,
+html body #root .app.app-command-shell.app-market .market-reference-product-scene b,
+html body #root .app.app-command-shell.app-market .market-reference-product-scene span {
+  position: absolute;
+  display: block;
+  border-radius: 12px;
+  transform: rotate(-3deg);
+}
+
+html body #root .app.app-command-shell.app-market .market-reference-product-scene i {
+  right: 12%;
+  bottom: 14%;
+  width: 150px;
+  height: 94px;
+  border: 1px solid rgba(255, 213, 124, 0.48);
+  background:
+    linear-gradient(135deg, rgba(13, 21, 38, 0.94), rgba(41, 34, 72, 0.94)),
+    repeating-linear-gradient(45deg, rgba(255, 193, 87, 0.2) 0 2px, transparent 2px 12px);
+  box-shadow:
+    0 18px 32px rgba(36, 23, 14, 0.28),
+    inset 0 0 0 7px rgba(232, 145, 39, 0.13);
+}
+
+html body #root .app.app-command-shell.app-market .market-reference-product-scene b {
+  right: 4%;
+  bottom: 25%;
+  width: 62px;
+  height: 88px;
+  border: 1px solid rgba(255, 213, 124, 0.34);
+  background: linear-gradient(145deg, rgba(9, 19, 34, 0.92), rgba(36, 31, 72, 0.94));
+  box-shadow: 0 12px 24px rgba(10, 9, 16, 0.25);
+}
+
+html body #root .app.app-command-shell.app-market .market-reference-product-scene span {
+  right: 60%;
+  bottom: 12%;
+  width: 48px;
+  height: 58px;
+  border-radius: 45% 45% 12px 12px;
+  background:
+    radial-gradient(circle at 50% 28%, rgba(255, 229, 155, 0.9), transparent 20%),
+    linear-gradient(135deg, rgba(113, 81, 201, 0.88), rgba(20, 117, 136, 0.78));
+  filter: drop-shadow(0 0 18px rgba(128, 103, 214, 0.36));
+}
+
+html body #root .app.app-command-shell.app-market .market-reference-side-rail {
+  display: grid;
+  gap: 10px;
+}
+
+html body #root .app.app-command-shell.app-market .market-reference-mini-card {
+  display: grid;
+  gap: 5px;
+  padding: 14px !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-reference-mini-card strong {
+  color: var(--et-market-ink) !important;
+  font-size: clamp(1.4rem, 2.4vw, 2rem) !important;
+  line-height: 1;
+}
+
+html body #root .app.app-command-shell.app-market .market-reference-memory strong {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  border: 2px solid color-mix(in srgb, var(--et-market-gold) 72%, var(--et-market-border));
+  border-radius: 999px;
+  color: var(--et-market-ink) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-home-category-row {
+  display: grid !important;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 9px;
+}
+
+html body #root .app.app-command-shell.app-market .market-home-category-row button {
+  display: grid;
+  place-items: center;
+  gap: 7px;
+  min-height: 78px;
+  padding: 10px 6px;
+  border: 1px solid var(--et-market-border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--et-market-panel-strong) 82%, transparent);
+  color: var(--et-market-ink);
+  font-size: 0.75rem;
+  font-weight: 850;
+}
+
+html body #root .app.app-command-shell.app-market .market-home-category-row button.active {
+  border-color: var(--et-market-border-strong);
+  color: var(--et-market-ember);
+  background: color-mix(in srgb, var(--et-market-gold) 16%, var(--et-market-panel-strong));
+}
+
+html body #root .app.app-command-shell.app-market .market-home-category-row .et-mockup-icon {
+  width: 30px !important;
+  height: 30px !important;
+  border-radius: 10px !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-foundation-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.32fr);
+  gap: 12px;
+}
+
+html body #root .app.app-command-shell.app-market .market-home-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+html body #root .app.app-command-shell.app-market .market-home-product-card {
+  padding: 10px !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-home-product-top {
+  gap: 9px !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-home-product-card h3 {
+  margin: 2px 0 !important;
+  color: var(--et-market-ink) !important;
+  font-size: 0.92rem !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-home-product-card p {
+  color: var(--et-market-muted) !important;
+  font-size: 0.78rem !important;
+  line-height: 1.34 !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-home-product-meta {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+html body #root .app.app-command-shell.app-market .market-home-product-meta span {
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--et-market-panel-strong) 78%, transparent);
+}
+
+html body #root .app.app-command-shell.app-market .market-card-actions {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-guardrail-rail {
+  padding: 12px !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-rule-list {
+  display: grid;
+  gap: 7px;
+}
+
+html body #root .app.app-command-shell.app-market .market-watchlist-prompt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 14px !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-watchlist-prompt h3,
+html body #root .app.app-command-shell.app-market .market-watchlist-prompt p {
+  margin: 0;
+}
+
+html body #root .app.app-command-shell.app-market .market-results-panel {
+  padding: 13px !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-results-panel > .et-mockup-section-heading {
+  align-items: center !important;
+  margin-bottom: 10px;
+}
+
+html body #root .app.app-command-shell.app-market .catalog-results-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 156px), 1fr)) !important;
+  gap: 10px !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-fair-card {
+  position: relative;
+  padding: 8px !important;
+  overflow: hidden;
+  border-color: var(--et-market-border) !important;
+  background: var(--et-market-panel) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-fair-card .catalog-result-main {
+  display: grid !important;
+  gap: 8px !important;
+  padding: 0 !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-fair-card .catalog-thumb {
+  display: none !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-showcase-preview {
+  min-height: 138px !important;
+  border-radius: 13px !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-card-body {
+  display: grid;
+  gap: 5px;
+  padding: 0 2px 2px;
+}
+
+html body #root .app.app-command-shell.app-market .market-card-title {
+  margin: 0 !important;
+  color: var(--et-market-ink) !important;
+  font-size: 0.84rem !important;
+  line-height: 1.16 !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-card-context,
+html body #root .app.app-command-shell.app-market .market-card-reference-line,
+html body #root .app.app-command-shell.app-market .market-card-freshness-line {
+  margin: 0 !important;
+  color: var(--et-market-muted) !important;
+  font-size: 0.68rem !important;
+  line-height: 1.25 !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-card-price-row {
+  margin-top: 2px;
+}
+
+html body #root .app.app-command-shell.app-market .market-price-stack strong {
+  color: var(--et-market-ink) !important;
+  font-size: 0.88rem !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-price-stack span {
+  color: var(--et-market-muted) !important;
+  font-size: 0.64rem !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-data-quality-row,
+html body #root .app.app-command-shell.app-market .market-card-freshness-line,
+html body #root .app.app-command-shell.app-market .market-fair-card .master-variant-rail {
+  display: none !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-result-add-actions {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 6px !important;
+  margin-top: 8px;
+}
+
+html body #root .app.app-command-shell.app-market .market-result-add-actions button {
+  min-height: 32px !important;
+  padding-inline: 7px !important;
+  border-radius: 10px !important;
+  font-size: 0.68rem !important;
+}
+
+@media (min-width: 1180px) {
+  html body #root .app.app-command-shell.app-market .web-command-sidebar {
+    width: 176px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market > .main {
+    padding-inline: 12px !important;
+  }
+}
+
+@media (max-width: 1020px) {
+  html body #root .app.app-command-shell.app-market .market-mockup-header,
+  html body #root .app.app-command-shell.app-market .market-reference-overview-grid,
+  html body #root .app.app-command-shell.app-market .market-mockup-foundation-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-reference-side-rail {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  html body #root .app.app-command-shell.app-market .market-mockup-header .et-mockup-page-hero {
+    display: none !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-mockup-search {
+    padding: 10px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-mockup-search .et-mockup-section-heading {
+    display: block !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-mockup-search .et-mockup-section-heading p,
+  html body #root .app.app-command-shell.app-market .market-mockup-search .market-deal-shortcut,
+  html body #root .app.app-command-shell.app-market .market-search-options,
+  html body #root .app.app-command-shell.app-market .market-search-helper-grid .et-mockup-action-card:nth-child(n + 5) {
+    display: none !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-search-form {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-search-form > button {
+    display: none !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-search-helper-grid {
+    grid-template-columns: repeat(4, minmax(72px, 1fr)) !important;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-search-helper-grid {
+    display: none !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-mockup-search .market-search-helper-grid {
+    display: none !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-reference-featured-drop {
+    min-height: 136px;
+    grid-template-columns: minmax(0, 1fr) 118px;
+    padding: 12px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-reference-featured-copy h3 {
+    font-size: 1.08rem !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-reference-featured-copy p {
+    font-size: 0.74rem !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-reference-product-scene i {
+    right: 0;
+    width: 94px;
+    height: 64px;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-reference-product-scene b {
+    display: none;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-reference-product-scene span {
+    right: 68px;
+    width: 34px;
+    height: 42px;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-reference-side-rail {
+    display: none !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-reference-side-rail,
+  html body #root .app.app-command-shell.app-market .market-home-grid,
+  html body #root .app.app-command-shell.app-market .market-home-product-meta {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-home-category-row {
+    grid-template-columns: repeat(4, minmax(74px, 1fr)) !important;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-home-category-row button {
+    min-height: 66px;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-mockup-guardrail-rail,
+  html body #root .app.app-command-shell.app-market .market-watchlist-prompt {
+    display: none !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .catalog-results-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-showcase-preview {
+    min-height: 118px !important;
+  }
+}
+
+@media (max-width: 430px) {
+  html body #root .app.app-command-shell.app-market .market-reference-side-rail,
+  html body #root .app.app-command-shell.app-market .market-home-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-reference-featured-drop {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  html body #root .app.app-command-shell.app-market .market-reference-product-scene {
+    display: none;
+  }
+}

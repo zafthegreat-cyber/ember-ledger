@@ -427,9 +427,7 @@ export function selectAdaptiveMenuKeys(state = {}) {
 }
 
 export function selectAdaptiveDesktopMainKeys(state = {}) {
-  const base = ["home", "today", "scout", "vault", "tideTradr"];
-  if (state.showSellerTools) base.push("forge");
-  base.push("tidepool");
+  const base = ["home", "scout", "vault", "forge", "tideTradr", "tidepool", "spark"];
   return base;
 }
 
