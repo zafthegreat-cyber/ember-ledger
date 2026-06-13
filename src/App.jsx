@@ -28148,7 +28148,7 @@ function renderScoutHeader() {
         brand="Ember Scout"
         mark={BRAND_ASSETS.mark}
         title="Today's Hunt"
-        detail="Virginia local beta reports, not raw patterns. Scout keeps families focused on useful proof without exposing raw timing history or stock guarantees."
+        detail="Virginia local beta reports, not raw patterns. Scout helps families check useful proof without raw timing history or stock guarantees."
         points={{ value: `${scoutWatchedStoreCount}/${scoutSlotLimit || 1}`, label: "Watched stores" }}
         pills={[
           { label: "Current reports", tone: "scout" },
@@ -28157,7 +28157,7 @@ function renderScoutHeader() {
         ]}
         todayAction={{
           label: "Scout today",
-          title: "Scan proof or add a current Virginia store report before making a trip.",
+          title: "Scan proof or add a current Virginia report before making a trip.",
           cta: "Start review",
           onClick: () => openLiveScoutReportFlow("scanScreenshot"),
         }}
@@ -28166,14 +28166,14 @@ function renderScoutHeader() {
 
       <EtMockupSectionCard
         title="Scout tools"
-        detail="Scan proof, report what you saw, or manage selected Virginia stores. Scout Watch notes are planning reminders, not push notifications or stock guarantees."
+        detail="Manual proof only. Add reports, manage Virginia stores, and keep planning notes; no OCR/camera, push notifications, or stock guarantees."
         className="scout-mockup-navigation scout-summary-card"
       >
         <div className="et-mockup-action-grid scout-mockup-primary-actions" aria-label="Scout primary actions">
           <EtMockupActionCard
             title="Scan Screenshot"
-            detail="Review proof from a shelf photo, app screenshot, receipt, or shop post. No OCR or camera automation is connected in this preview."
-            meta="Proof"
+            detail="Review shelf photos, app screenshots, receipts, or shop posts. No OCR or camera automation is connected."
+            meta="Manual"
             icon="scout"
             tone="scout"
             ariaLabel="Scan Screenshot"
@@ -28182,7 +28182,7 @@ function renderScoutHeader() {
           />
           <EtMockupActionCard
             title="Add Report"
-            detail="Share a current Virginia store signal with family-safe notes and review before submit."
+            detail="Share a current Virginia store signal with family-safe notes."
             meta="Current"
             icon="scout"
             tone="gold"
@@ -28192,7 +28192,7 @@ function renderScoutHeader() {
           />
           <EtMockupActionCard
             title="Stores"
-            detail="Choose one Virginia watched store and keep selected-store context clear."
+            detail="Choose one Virginia watched store and keep store context clear."
             meta="Limit"
             icon="scout"
             tone="collector"

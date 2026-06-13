@@ -69111,6 +69111,31 @@ html body .app .scan-product-modal .scanner-review-primary-action {
   background: rgba(80, 229, 214, 0.16);
 }
 
+@media (max-width: 620px) {
+  .app-market .market-home-category-row,
+  .app-command-shell.app-market .market-home-category-row,
+  .app-shell-dark.app-market .market-home-category-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    overflow-x: visible;
+    gap: 8px;
+    padding-bottom: 0;
+  }
+
+  .app-market .market-home-category-row button,
+  .app-command-shell.app-market .market-home-category-row button,
+  .app-shell-dark.app-market .market-home-category-row button {
+    width: 100%;
+    min-width: 0;
+    min-height: 72px;
+    padding: 8px 6px;
+    white-space: normal;
+    overflow-wrap: normal;
+    text-align: center;
+    line-height: 1.08;
+  }
+}
+
 .app-market .market-home-grid,
 .app-command-shell.app-market .market-home-grid,
 .app-shell-dark.app-market .market-home-grid {
@@ -94757,6 +94782,52 @@ html body #root .app.app-command-shell.app-scout .scout-mockup-header {
   gap: clamp(13px, 1.7vw, 18px);
 }
 
+@media (min-width: 1040px) {
+  html body #root .app.app-command-shell.app-scout .scout-mockup-header {
+    grid-template-columns: minmax(340px, 0.9fr) minmax(0, 1.1fr);
+    align-items: stretch;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-header .et-mockup-page-hero,
+  html body #root .app.app-command-shell.app-scout .scout-mockup-navigation {
+    height: 100%;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-header .et-mockup-page-hero {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-header .et-mockup-hero-status {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-primary-actions .et-mockup-action-card {
+    grid-template-columns: 42px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-primary-actions .et-mockup-action-card b {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-primary-actions .et-mockup-action-copy small {
+    display: none !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-tabs.standard-page-header-tabs {
+    flex-wrap: wrap !important;
+    overflow-x: visible !important;
+    border-radius: 22px !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-tabs.standard-page-header-tabs button {
+    flex: 1 1 74px;
+    min-width: 0;
+  }
+}
+
 html body #root .app.app-command-shell.app-scout .scout-mockup-header .et-mockup-page-hero {
   min-height: clamp(232px, 25vw, 312px);
 }
@@ -94802,7 +94873,7 @@ html body #root .app.app-command-shell.app-scout .scout-mockup-rebuild :where(.e
 }
 
 html body #root .app.app-command-shell.app-scout .scout-mockup-primary-actions .et-mockup-action-copy small {
-  display: block !important;
+  display: none !important;
   max-width: none !important;
   overflow: visible !important;
   text-overflow: clip !important;
@@ -95175,30 +95246,151 @@ html body #root .app.app-command-shell.app-scout .scout-mockup-calendar .watch-l
   }
 
   html body #root .app.app-command-shell.app-scout .scout-mockup-rebuild {
-    padding-inline: 7px;
+    padding-inline: 6px;
+    gap: 10px;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-header {
+    gap: 10px;
   }
 
   html body #root .app.app-command-shell.app-scout .scout-mockup-header .et-mockup-page-hero {
     min-height: 0;
+    padding: 13px !important;
+    border-radius: 23px !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-header .et-mockup-hero-copy {
+    gap: 7px;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-header .et-mockup-hero-copy h1 {
+    max-width: 10ch;
+    font-size: clamp(1.58rem, 7.35vw, 2.02rem);
+    line-height: 0.98;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-header .et-mockup-hero-copy p {
+    font-size: 0.8rem;
+    line-height: 1.28;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-header .et-mockup-today-action {
+    gap: 4px;
+    padding: 9px 10px;
+    border-left-width: 4px;
+    border-radius: 17px !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-header .et-mockup-today-action span {
+    font-size: 0.62rem;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-header .et-mockup-today-action strong {
+    font-size: 0.88rem;
+    line-height: 1.14;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-header .et-mockup-today-action b {
+    padding: 4px 8px;
+    font-size: 0.63rem;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-header .et-mockup-hero-status {
+    display: none !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-navigation {
+    gap: 10px;
+    padding: 12px !important;
+    border-radius: 23px !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-navigation .et-mockup-section-heading {
+    gap: 4px;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-navigation .et-mockup-section-heading h2 {
+    font-size: 1rem;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-navigation .et-mockup-section-heading p {
+    display: -webkit-box;
+    font-size: 0.76rem;
+    line-height: 1.25;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
   }
 
   html body #root .app.app-command-shell.app-scout .scout-mockup-primary-actions {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
   }
 
   html body #root .app.app-command-shell.app-scout .scout-mockup-primary-actions .et-mockup-action-card {
     min-height: 72px;
-    grid-template-columns: 38px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    gap: 6px;
+    padding: 8px 7px !important;
+    text-align: center;
+    border-radius: 17px !important;
   }
 
   html body #root .app.app-command-shell.app-scout .scout-mockup-primary-actions .et-mockup-action-card b {
-    grid-column: 2;
-    justify-self: start;
+    grid-column: auto;
+    justify-self: center;
     max-width: none;
+    min-height: 22px;
+    padding: 3px 6px;
+    font-size: 0.58rem;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-primary-actions .et-mockup-icon {
+    width: 31px;
+    height: 31px;
+    margin-inline: auto;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-primary-actions .et-mockup-action-copy {
+    justify-items: center;
+    gap: 2px;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-primary-actions .et-mockup-action-copy strong {
+    font-size: 0.72rem;
+    line-height: 1.08;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-primary-actions .et-mockup-action-copy small {
+    display: none !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-guardrails {
+    gap: 6px !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-guardrails .et-mockup-pill:nth-child(n+5) {
+    display: none !important;
   }
 
   html body #root .app.app-command-shell.app-scout .scout-mockup-tabs.standard-page-header-tabs {
     border-radius: 20px !important;
+    gap: 5px !important;
+    padding: 5px !important;
+    flex-wrap: wrap !important;
+    overflow-x: visible !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-tabs.standard-page-header-tabs button {
+    flex: 1 1 calc(25% - 5px);
+    min-width: 0;
+    min-height: 34px;
+    padding: 7px 8px;
+    font-size: 0.72rem;
+    line-height: 1.1;
+    white-space: normal;
   }
 
   html body #root .app.app-command-shell.app-scout .scout-mockup-stat-grid {
@@ -95237,11 +95429,28 @@ html body #root .app.app-command-shell.app-scout .scout-mockup-calendar .watch-l
   }
 
   html body #root .app.app-command-shell.app-scout .scout-mockup-rebuild {
-    padding-inline: 6px;
+    padding-inline: 5px;
   }
 
   html body #root .app.app-command-shell.app-scout .scout-mockup-header .et-mockup-hero-copy h1 {
-    font-size: clamp(1.72rem, 8.3vw, 2.18rem);
+    font-size: clamp(1.5rem, 6.9vw, 1.86rem);
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-navigation .et-mockup-section-heading p {
+    font-size: 0.72rem;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-primary-actions {
+    gap: 6px;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-primary-actions .et-mockup-action-card {
+    min-height: 68px;
+    padding-inline: 5px !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-primary-actions .et-mockup-action-copy strong {
+    font-size: 0.68rem;
   }
 
   html body #root .app.app-command-shell.app-scout .scout-mockup-guardrails .et-mockup-pill {
@@ -97995,29 +98204,34 @@ html body #root .app.app-shell-dark.app-forge .forge-mockup-rebuild :where(p, sm
   }
 
   html body #root .app.app-command-shell.app-forge .forge-mockup-header .et-mockup-hero-status {
-    display: flex;
-    flex-wrap: wrap;
-    align-content: flex-start;
-    justify-content: flex-start;
-    justify-items: start;
-    gap: 9px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
   }
 
-  html body #root .app.app-command-shell.app-forge .forge-mockup-header .et-mockup-points-card {
-    min-width: 88px;
-    padding: 10px;
-    border-radius: 18px;
+  html body #root .app.app-command-shell.app-forge .forge-mockup-access .et-mockup-points-card {
+    display: none !important;
   }
 
   html body #root .app.app-command-shell.app-forge .forge-mockup-header .et-mockup-pill-row {
-    flex: 1 1 172px;
-    justify-content: flex-start;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    justify-content: stretch;
     max-width: none;
   }
 
+  html body #root .app.app-command-shell.app-forge .forge-mockup-header .et-mockup-pill-row .et-mockup-pill {
+    min-height: 30px;
+    justify-content: center;
+    padding: 5px 7px;
+    font-size: 0.63rem;
+    text-align: center;
+  }
+
   html body #root .app.app-command-shell.app-forge .forge-mockup-header .et-mockup-hero-status .et-mockup-button {
-    flex: 1 1 164px;
-    min-height: 40px;
+    width: 100%;
+    min-height: 42px;
   }
 
   html body #root .app.app-command-shell.app-forge .forge-mockup-header .et-mockup-hero-copy h1 {
@@ -98054,6 +98268,12 @@ html body #root .app.app-shell-dark.app-forge .forge-mockup-rebuild :where(p, sm
 
   html body #root .app.app-command-shell.app-forge .forge-mockup-section-tabs > button {
     flex-basis: min(58vw, 160px) !important;
+  }
+}
+
+@media (max-width: 620px) {
+  html body #root .app.app-command-shell.app-forge .forge-mockup-access .forge-intro-benefits span:nth-child(n+5) {
+    display: none !important;
   }
 }
 
@@ -108706,6 +108926,11 @@ html body #root .app.app-command-shell.app-market .market-result-add-actions but
     font-size: 0.74rem !important;
   }
 
+  html body #root .app.app-command-shell.app-market .market-reference-featured-copy button {
+    min-height: 40px;
+    padding-block: 8px;
+  }
+
   html body #root .app.app-command-shell.app-market .market-reference-product-scene i {
     right: 0;
     width: 94px;
@@ -108733,13 +108958,19 @@ html body #root .app.app-command-shell.app-market .market-result-add-actions but
   }
 
   html body #root .app.app-command-shell.app-market .market-home-category-row {
-    grid-template-columns: repeat(4, minmax(74px, 1fr)) !important;
-    overflow-x: auto;
-    padding-bottom: 4px;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    overflow-x: visible;
+    padding-bottom: 0;
   }
 
   html body #root .app.app-command-shell.app-market .market-home-category-row button {
+    min-width: 0;
     min-height: 66px;
+    padding-inline: 5px !important;
+    font-size: 0.72rem;
+    line-height: 1.08;
+    white-space: normal;
+    overflow-wrap: normal;
   }
 
   html body #root .app.app-command-shell.app-market .market-mockup-guardrail-rail,

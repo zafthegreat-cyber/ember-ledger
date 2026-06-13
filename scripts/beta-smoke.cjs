@@ -715,7 +715,8 @@ async function main() {
     await page.setViewportSize({ width: 390, height: 844 });
     await nav("Scout");
     await assertVisibleText("Scout");
-    await assertVisibleText("Current reports, not raw patterns.");
+    await assertVisibleText("Virginia local beta reports, not raw patterns.");
+    await assertVisibleText("Manual proof only.");
     await assertVisibleText("Watchlist Rules");
     await assertVisibleText("Scout Access");
     await assertVisibleText("Pattern Protected");
