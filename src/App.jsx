@@ -56913,7 +56913,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <img className="landing-brand-mark" src={BRAND_ASSETS.mark} alt="" aria-hidden="true" />
               <p className="section-kicker">Public Beta</p>
               <h2>Fair collecting starts here.</h2>
-              <p>A family-friendly Pokemon TCG app for fair restocks, collections, Scout reports, and community.</p>
+              <p>Track collections, Scout reports, fair checks, and family collecting in one place.</p>
               <p className="auth-landing-note">New accounts may need approval before full app access. Ember &amp; Tide is starting in Virginia; out-of-state requests join the waitlist and help us choose where to expand next.</p>
               <div className="quick-actions auth-choice-row">
                 <button type="button" className="ember-gradient-button auth-choice-button" onClick={() => openAuthPanel("login")}>Log In</button>
@@ -56927,12 +56927,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </figure>
             <div className="landing-feature-grid">
               {[
-                ["Vault", "Track personal cards, sealed products, variants, and collection value."],
-                ["Forge", "Manage business inventory, receipts, expenses, and seller tools."],
-                ["Scout", "Submit reports, add guesses, and build restock forecasts."],
-                ["Market", "Prepare pricing, deal checks, and market source confidence."],
-                ["Kids Program", "Support kid-focused packs, giveaways, and fair-access opportunities."],
-                ["Tidepool", "Build community posts, feedback, and trusted local sharing."],
+                ["Vault", "Track your collection"],
+                ["Forge", "Receipts and seller tools"],
+                ["Scout", "Share family-safe signals"],
+                ["Market", "Manual fair checks"],
+                ["Spark", "Kids and giving"],
+                ["Tidepool", "Trusted community notes"],
               ].map(([title, body]) => (
                 <article className="landing-feature-card" key={title}>
                   <strong>{title}</strong>
