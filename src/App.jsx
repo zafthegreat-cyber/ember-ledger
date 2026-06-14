@@ -1,6 +1,5 @@
 import { lazy, Suspense, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
-import "./styles/command-system.css";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
 import OverflowMenu from "./components/OverflowMenu";
 import LockedFeatureNotice from "./components/LockedFeatureNotice";
@@ -34589,7 +34588,12 @@ function renderForgeBusinessLedgerPanel() {
       return "/kids-program";
     }
     if (activeTab === "parentCenter") return "/parent-center";
-    if (activeTab === "sponsor") return "/partner";
+    if (activeTab === "sponsor") {
+      const pathRoot = typeof window !== "undefined"
+        ? String(window.location.pathname || "").split("/").filter(Boolean)[0] || ""
+        : "";
+      return pathRoot === "sponsor" ? "/sponsor" : "/partner";
+    }
     if (activeTab === "trust") return "/trust";
     if (activeTab === "links") return "/links";
     if (activeTab === "whatsNew") return "/whats-new";
@@ -55788,6 +55792,23 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     return null;
   }
 
+  function flowModalContentOwnsFooter(type = activeFlowModal?.type) {
+    return [
+      "tradeValue",
+      "tradeCompass",
+      "sparkGift",
+      "sparkKidPack",
+      "sparkEventSupport",
+      "collectorEventPlanner",
+      "marketPriceMemory",
+      "itemComparison",
+      "wishlistIso",
+      "vaultCollectionSet",
+      "vaultDisplayCase",
+      "tidepoolTrustedCircle",
+    ].includes(type || "");
+  }
+
   useEffect(() => {
     if (!activeFlowModal) return undefined;
     const previousOverflow = document.body.style.overflow;
@@ -60761,7 +60782,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
   if (activeTab === "invite") {
     return (
-      <div className={`app app-invite app-theme-${resolvedAppTheme}`} data-theme={resolvedAppTheme}>
+      <div className={`app app-invite app-role-guest app-mode-guest app-theme-${resolvedAppTheme}`} data-theme={resolvedAppTheme}>
         <header className="header app-shell-header app-shell-header--full">
           <h1>Ember &amp; Tide</h1>
           <p>Personal beta invite</p>
@@ -60777,7 +60798,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
   if (activeTab === "workspaceInvite") {
     return (
-      <div className={`app app-invite app-theme-${resolvedAppTheme}`} data-theme={resolvedAppTheme}>
+      <div className={`app app-invite app-role-guest app-mode-guest app-theme-${resolvedAppTheme}`} data-theme={resolvedAppTheme}>
         <header className="header app-shell-header app-shell-header--full">
           <h1>Ember &amp; Tide</h1>
           <p>Workspace invite</p>
@@ -60809,9 +60830,25 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     ["scout", "vault", "market", "forge", "inventory", "sales", "expenses", "reports", "tidepool", "kidsProgram", "parentCenter", "account", "settings", "menu", "trust", "membership", "profile", "help", "adminReview", "moderator", "comingSoon"].includes(activeTab) ||
     ["scout", "vault", "market", "forge", "tidepool", "kidsProgram"].includes(activeMainTab)
   );
+  const currentPathRoot = typeof window !== "undefined"
+    ? String(window.location.pathname || "").split("/").filter(Boolean)[0] || ""
+    : "";
+  const activeRoleMode = (() => {
+    if (adminViewingAsAdmin || adminEditModeActive || activeTab === "adminReview" || activeTab === "moderator") return "admin";
+    if (guestPreviewActive || activeTab === "onboarding" || activeTab === "resetPassword" || activeTab === "invite" || activeTab === "workspaceInvite") return "guest";
+    if (activeTab === "kidsProgram") return "kids";
+    if (activeTab === "parentCenter") return "parent";
+    if (["inventory", "sales", "expenses", "reports"].includes(activeTab) || activeMainTab === "forge") return "seller";
+    if (activeTab === "sponsor") {
+      if (currentPathRoot === "sponsor") return "supporter";
+      return currentPathRoot === "partner" || activeWorkspace?.type === "card_shop_partner" ? "store-partner" : "supporter";
+    }
+    return "collector";
+  })();
+  const roleModeClass = `app-role-${activeRoleMode} app-mode-${activeRoleMode}`;
 
   return (
-    <div className={`app app-command-shell app-${String(activeMainTab || activeTab || "home").toLowerCase()}${activeTab === "market" ? " app-market" : ""} app-adaptive-${adaptiveUiState.mode} app-header-${headerMode} app-theme-${resolvedAppTheme}${guestPreviewActive ? " guest-preview-mode" : ""}${adminViewingAsAdmin ? " admin-view-mode" : ""}${adminEditModeActive ? " admin-edit-mode" : ""}`} data-theme={resolvedAppTheme}>
+    <div className={`app app-command-shell app-${String(activeMainTab || activeTab || "home").toLowerCase()} ${roleModeClass}${activeTab === "market" ? " app-market" : ""} app-adaptive-${adaptiveUiState.mode} app-header-${headerMode} app-theme-${resolvedAppTheme}${guestPreviewActive ? " guest-preview-mode" : ""}${adminViewingAsAdmin ? " admin-view-mode" : ""}${adminEditModeActive ? " admin-edit-mode" : ""}`} data-theme={resolvedAppTheme} data-role-mode={activeRoleMode}>
     <header className={`header app-shell-header app-shell-header--${headerMode}`}>
   <h1
     onClick={() => {
@@ -62900,7 +62937,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     </button>
                   </>
                 )
-              ) : activeFlowModal?.type === "multiDestinationAdd" && multiDestinationStep === "success" ? null : (
+              ) : activeFlowModal?.type === "multiDestinationAdd" && multiDestinationStep === "success" ? null : flowModalContentOwnsFooter() ? null : (
                 <button type="button" className="secondary-button" onClick={() => closeFlowModal()}>
                   {["addInventory", "addSale", "addExpense", "addMileage", "createListing", "forgeImport", "batchIntake", "tidepoolCreatePost", "tidepoolTrustedCircle", "multiDestinationAdd"].includes(activeFlowModal?.type) || isFlowModalDirty() ? "Cancel" : "Close"}
                 </button>
@@ -72272,7 +72309,7 @@ function CompactInventoryCard({
 
           <div className="vault-card-facts">
             {vaultFactRows.map(([label, value]) => (
-              <p key={label}><span>{label}</span><strong>{value}</strong></p>
+              <p key={label}><span>{label}</span>{" "}<strong>{value}</strong></p>
             ))}
           </div>
         </div>
