@@ -648,7 +648,6 @@ export function buildOnboardingChecklist(progress = {}, onboarding = {}) {
     follow: Number(progress.followedStores || 0) > 0 || Number(progress.savedProducts || 0) > 0,
     alerts: Boolean(progress.alertsConfigured),
     ember_assist: Boolean(progress.emberAssistAsked),
-    kids_program: Boolean(progress.kidsProgramReviewed || progress.kidsApplicationSubmitted),
   };
   return ONBOARDING_CHECKLIST_ITEMS.map((item) => ({
     ...item,

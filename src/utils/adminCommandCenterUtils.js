@@ -434,16 +434,10 @@ export function filterAdminRowsForViewer(rows = [], options = {}) {
 
 export function sanitizeAdminPayloadForViewer(payload = {}, options = {}) {
   if (options.isAdmin) return payload;
-  const {
-    adminNotes,
-    admin_notes,
-    internalNotes,
-    internal_notes,
-    reporterEmail,
-    userEmail,
-    email,
-    ...safe
-  } = payload || {};
+  const safe = { ...(payload || {}) };
+  ["adminNotes", "admin_notes", "internalNotes", "internal_notes", "reporterEmail", "userEmail", "email"].forEach((key) => {
+    delete safe[key];
+  });
   return safe;
 }
 

@@ -5,9 +5,15 @@ import path from "node:path";
 const root = process.cwd();
 const appPath = path.join(root, "src", "App.jsx");
 const cssPath = path.join(root, "src", "App.css");
+const commandSurfacePath = path.join(root, "src", "components", "command-system", "CommandSurface.jsx");
+const commandSystemCssPath = path.join(root, "src", "styles", "command-system.css");
 const betaReadinessPath = path.join(root, "src", "services", "betaReadinessService.js");
-const appSource = fs.readFileSync(appPath, "utf8");
-const cssSource = fs.readFileSync(cssPath, "utf8");
+const appFileSource = fs.readFileSync(appPath, "utf8");
+const commandSurfaceSource = fs.existsSync(commandSurfacePath) ? fs.readFileSync(commandSurfacePath, "utf8") : "";
+const appSource = `${appFileSource}\n${commandSurfaceSource}`;
+const appCssSource = fs.readFileSync(cssPath, "utf8");
+const commandSystemCssSource = fs.existsSync(commandSystemCssPath) ? fs.readFileSync(commandSystemCssPath, "utf8") : "";
+const cssSource = `${appCssSource}\n${commandSystemCssSource}`;
 const betaReadinessSource = fs.readFileSync(betaReadinessPath, "utf8");
 const publicTrustSource = `${appSource}\n${betaReadinessSource}`;
 

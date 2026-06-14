@@ -1,7 +1,5 @@
 import { BEST_BUY_SOURCE_STATUS } from "../data/bestBuyStockSeed";
 
-const BEST_BUY_CACHE_TTL_MS = 1000 * 60 * 30;
-
 function nowIso() {
   return new Date().toISOString();
 }

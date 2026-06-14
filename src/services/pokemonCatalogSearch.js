@@ -188,23 +188,6 @@ const CODE_CARD_TEXT_TERMS = [
   "redeem",
 ];
 
-const CODE_CARD_DB_OR_CLAUSE = [
-  "name.ilike.%code card%",
-  "product_type.ilike.%code card%",
-  "product_line.ilike.%code card%",
-  "name.ilike.%pokemon tcg live%",
-  "product_type.ilike.%pokemon tcg live%",
-  "name.ilike.%pokemon tcg online%",
-  "product_type.ilike.%pokemon tcg online%",
-  "name.ilike.%digital booster pack%",
-  "product_type.ilike.%digital booster pack%",
-  "name.ilike.%pokemon.com/redeem%",
-  "name.ilike.%online code%",
-  "product_type.ilike.%online code%",
-  "name.ilike.%booster pack code%",
-  "product_type.ilike.%booster pack code%",
-].join(",");
-
 const SEALED_PRODUCT_DB_OR_CLAUSE = [
   "is_sealed.eq.true",
   "name.ilike.%sealed%",
@@ -451,34 +434,8 @@ function withAbortSignal(query, signal) {
   return signal && typeof query.abortSignal === "function" ? query.abortSignal(signal) : query;
 }
 
-function escapeRegExp(value) {
-  return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
 export function expandCatalogAliases(input) {
   return expandCatalogSearchQueries(input, 16);
-/*
-  const normalized = normalizeCatalogQuery(input);
-  if (!normalized) return [];
-  const variants = new Set([normalized]);
-  const sortedAliases = [...CATALOG_SEARCH_ALIASES].sort((a, b) => b.alias.length - a.alias.length);
-
-  for (const entry of sortedAliases) {
-    const alias = normalizeCatalogQuery(entry.alias);
-    const pattern = new RegExp(`(^|\\s)${escapeRegExp(alias)}(?=\\s|$)`, "i");
-    const currentVariants = [...variants];
-    for (const variant of currentVariants) {
-      if (!pattern.test(variant)) continue;
-      for (const expansion of entry.expansions) {
-        const expanded = variant.replace(pattern, (match, prefix) => `${prefix}${normalizeCatalogQuery(expansion)}`).replace(/\s+/g, " ").trim();
-        if (expanded && expanded !== variant) variants.add(expanded);
-      }
-    }
-  }
-
-  variants.delete(normalized);
-  return [...variants].slice(0, 8);
-*/
 }
 
 export function detectCatalogSearchMode(input) {
@@ -531,14 +488,6 @@ function applyFilters(query, filters = {}) {
   if (productGroup === "Sealed") next = next.or(SEALED_PRODUCT_DB_OR_CLAUSE);
 
   return next;
-}
-
-function applyTextSearch(query, term, fields = TEXT_SEARCH_FIELDS) {
-  if (term.length < 2) return query;
-  const safeTerm = String(term || "").replace(/[%,()]/g, " ").replace(/\s+/g, " ").trim();
-  if (safeTerm.length < 2) return query;
-  const like = `%${safeTerm}%`;
-  return query.or(fields.map((field) => `${field}.ilike.${like}`).join(","));
 }
 
 function buildPriorityTextClauses(terms = []) {
@@ -838,7 +787,7 @@ async function runViewRowsByMasterIds({ supabase, sourceName, masterIds, selectF
   return data || [];
 }
 
-async function runExactIdentifierSearch({ supabase, sourceName, query, barcode, mode, filters, sort, page, pageSize, selectFields = CATALOG_SELECT_FIELDS, exactFields = EXACT_FIELDS, signal }) {
+async function runExactIdentifierSearch({ supabase, sourceName, query, barcode, mode, filters, sort, pageSize, selectFields = CATALOG_SELECT_FIELDS, exactFields = EXACT_FIELDS, signal }) {
   const cleanedQuery = cleanCatalogSearch(query);
   const cleanedBarcode = cleanCatalogSearch(barcode);
   const exactTerm = mode === "barcode" ? cleanedBarcode || cleanedQuery : cleanedQuery || cleanedBarcode;
@@ -973,42 +922,10 @@ async function runTextSearchAgainstSource({ supabase, sourceName, query, barcode
   };
 }
 
-async function runFastCatalogRpcSearch({ supabase, query, barcode, mode, filters, sort, page, pageSize, signal }) {
-  const cleanedQuery = cleanCatalogSearch(query);
-  const cleanedBarcode = cleanCatalogSearch(barcode);
-  const exactTerm = mode === "barcode" ? cleanedBarcode || cleanedQuery : cleanedQuery || cleanedBarcode;
-  if (page !== 1 || sort !== "bestMatch") return null;
-  if (filters.productType !== "All" || filters.setName !== "All" || filters.dataFilter !== "All" || filters.rarity !== "All") return null;
-  if (isExactIdentifierMode(mode, exactTerm)) return null;
-  if ((cleanedQuery || cleanedBarcode).length < 2) return null;
-
-  let rpcQuery = supabase.rpc("search_catalog_fast", {
-    search_text: cleanedQuery || cleanedBarcode,
-    product_group: filters.productGroup || "All",
-    max_results: pageSize,
-  });
-  rpcQuery = withAbortSignal(rpcQuery, signal);
-  const { data, error } = await rpcQuery;
-  if (error) {
-    if (/search_catalog_fast|function .* does not exist|schema cache/i.test(error.message || "")) return null;
-    throw error;
-  }
-
-  const rows = dedupeRows(data || []).slice(0, pageSize);
-  return {
-    rows,
-    count: rows.length,
-    exactCount: 0,
-    exactMiss: false,
-    aliasHints: analyzeCatalogSearch(exactTerm).didYouMean,
-    phase: "rpc",
-  };
-}
-
 async function runSearchAgainstSource({ supabase, sourceName, query, barcode, mode, filters, sort, page, pageSize, selectFields = CATALOG_SELECT_FIELDS, textFields = TEXT_SEARCH_FIELDS, exactFields = EXACT_FIELDS, signal }) {
   const exactTerm = mode === "barcode" ? cleanCatalogSearch(barcode) || cleanCatalogSearch(query) : cleanCatalogSearch(query) || cleanCatalogSearch(barcode);
   if (isExactIdentifierMode(mode, exactTerm)) {
-    const exactResult = await runExactIdentifierSearch({ supabase, sourceName, query, barcode, mode, filters, sort, page, pageSize, selectFields, exactFields, signal });
+    const exactResult = await runExactIdentifierSearch({ supabase, sourceName, query, barcode, mode, filters, sort, pageSize, selectFields, exactFields, signal });
     if (exactResult.rows.length) return exactResult;
     const fallbackResult = await runTextSearchAgainstSource({
       supabase,

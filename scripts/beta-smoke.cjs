@@ -715,13 +715,11 @@ async function main() {
     await page.setViewportSize({ width: 390, height: 844 });
     await nav("Scout");
     await assertVisibleText("Scout");
-    await assertVisibleText("Virginia local beta reports, not raw patterns.");
+    await assertVisibleText("SCOUT TODAY");
+    await assertVisibleText("Scan proof or add a current Virginia report before making a trip.");
     await assertVisibleText("Manual proof only.");
-    await assertVisibleText("Watchlist Rules");
-    await assertVisibleText("Scout Access");
-    await assertVisibleText("Pattern Protected");
-    await assertVisibleText("Free plan includes 1 watched store. You can change it once every 30 days.");
-    await assertVisibleText("Upgrade unlocks more tracking capacity");
+    await assertVisibleText("0/1 watched store");
+    await assertVisibleText("Change every 30 days");
     await expectVisible(page.locator(".scout-watch-stores-card").first(), "My Watch Stores section");
     await assertVisibleText("Nearby Reports");
     const scanScreenshotButton = page.getByRole("button", { name: /^Scan Screenshot$/ }).first();
@@ -1603,7 +1601,7 @@ async function main() {
     await step("app opens and local beta shell loads", async () => {
       await resetBetaData();
       await assertVisibleText("E&T TCG");
-      await assertVisibleText("Beta");
+      await assertVisibleText("EMBER & TIDE");
       await assertVisibleText("Hearth");
     });
 
@@ -1618,7 +1616,7 @@ async function main() {
     await step("app opens and local beta shell loads", async () => {
       await resetBetaData();
       await assertVisibleText("E&T TCG");
-      await assertVisibleText("Beta");
+      await assertVisibleText("EMBER & TIDE");
       await assertVisibleText("Collector");
       await assertVisibleText("Hearth");
     });

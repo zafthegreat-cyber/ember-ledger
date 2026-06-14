@@ -4,25 +4,32 @@ This is the internal beta reference for app icons, splash/loading visuals, marke
 
 ## Asset Rules
 
-- App icon: simplified ember flame + tide wave mark only.
-- Splash/opening screen: flame/wave mark, Ember & Tide wordmark, and `Track. Trade. Thrive.`
+- App icon: polished ember flame + tide wave monogram only.
+- Splash/opening screen: monogram, Ember & Tide wordmark, and `Find it. Track it. Trade fairly. Protect the spark.`
 - Promo mockup: marketing hero, social, flyer, link-in-bio, and PWA install promotion only.
+- Product chrome: use the monogram, never the old TCG sticker mark.
 - Do not use official Pokemon logos, official Pokemon art, or trademark-heavy visuals unless legally sourced.
 - Keep icon details away from maskable icon edges.
 
 ## Approved Colors
 
-- Deep navy: `#04111f`
-- Ember orange: `#ff6a13`
-- Tide blue: `#38bdf8`
+- Ink: `#05070B`
+- Deep navy: `#07131D`
+- Cream: `#F8F3E7`
+- Ember orange: `#FF7A3D`
+- Brass gold: `#FFC857`
+- Tide blue: `#45C7D8`
 
 ## Approved Taglines
 
-- Primary: `Track. Trade. Thrive.`
-- Secondary: `Built for collectors. Powered by community.`
+- Primary: `Find it. Track it. Trade fairly. Protect the spark.`
+- Secondary: `Warm premium collector command center.`
 
 ## Generated App Assets
 
+- `/public/assets/brand/ember-tide-monogram.svg`
+- `/public/assets/brand/ember-tide-logo-horizontal.svg`
+- `/public/assets/brand/ember-tide-app-icon.svg`
 - `/public/favicon.ico`
 - `/public/favicon.svg`
 - `/public/favicon-16x16.png`
@@ -46,11 +53,14 @@ This is the internal beta reference for app icons, splash/loading visuals, marke
   - `/public/assets/brand/link-bio-header.png`
   - `/public/assets/brand/pwa-install-promo.png`
 
-The provided premium promo mockup should be saved as a compressed production image when the final source file is available. The current SVG hero is a lightweight branded fallback/slot, not a replacement for final human-refined campaign artwork.
+The current monogram is the product identity baseline. Future human-refined brand work should preserve the warm collector command-center tone and avoid the old neon TCG-sticker direction.
 
 ## Checklist
 
-- [ ] Final human-refined SVG logo created
+- [x] Product monogram baseline created
+- [x] Horizontal logo baseline created
+- [x] SVG app icon baseline created
+- [ ] Final human-refined production logo approved
 - [ ] Trademark search completed
 - [ ] Trademark filing considered
 - [ ] Domains secured

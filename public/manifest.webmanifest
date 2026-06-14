@@ -1,7 +1,7 @@
 {
   "name": "Ember & Tide",
   "short_name": "Ember & Tide",
-  "description": "Pokemon collecting, inventory, Scout reports, and kid-friendly community access.",
+  "description": "Warm premium collector command center for Pokemon collections, Scout reports, private ledgers, and family-safe collecting.",
   "id": "/",
   "start_url": "/",
   "scope": "/",
@@ -10,9 +10,15 @@
   "background_color": "#04111f",
   "theme_color": "#04111f",
   "orientation": "portrait-primary",
-  "categories": ["shopping", "productivity", "utilities"],
+  "categories": ["productivity", "utilities", "lifestyle"],
   "lang": "en-US",
   "icons": [
+    {
+      "src": "/assets/brand/ember-tide-app-icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
     {
       "src": "/favicon-16x16.png",
       "sizes": "16x16",

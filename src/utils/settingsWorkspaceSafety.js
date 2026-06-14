@@ -84,7 +84,6 @@ export function validateWorkspaceIdentityDraft(draft = {}, options = {}) {
     return `Workspace name must be ${maxNameLength} characters or fewer.`;
   }
   const businessName = normalizeWorkspaceIdentityText(draft.businessName, 80);
-  const shopName = normalizeWorkspaceIdentityText(draft.shopName, 80);
   if (String(draft.businessName || "").trim().length > 80) return "Business/shop name must be 80 characters or fewer.";
   if (String(draft.shopName || "").trim().length > 80) return "Shop name must be 80 characters or fewer.";
   if (normalizeForgeIdentityMode(draft.forgeIdentityMode) === "ember_tide" && options.emberTideAvailable === false) {

@@ -417,18 +417,20 @@ export function listingNeedsMarketplaceReview(listing = {}, options = {}) {
 
 export function sanitizeMarketplaceListingForViewer(listing = {}, options = {}) {
   if (options.isAdmin) return listing;
-  const {
-    adminNotes,
-    admin_notes,
-    internalNotes,
-    internal_notes,
-    moderation_note,
-    reviewerEmail,
-    reporterEmail,
-    sellerEmail,
-    email,
-    ...safe
-  } = listing || {};
+  const safe = { ...(listing || {}) };
+  [
+    "adminNotes",
+    "admin_notes",
+    "internalNotes",
+    "internal_notes",
+    "moderation_note",
+    "reviewerEmail",
+    "reporterEmail",
+    "sellerEmail",
+    "email",
+  ].forEach((key) => {
+    delete safe[key];
+  });
   const flags = Array.isArray(safe.flags)
     ? safe.flags.map((flag) => ({
         reason: normalizeListingReportReason(flag.reason),

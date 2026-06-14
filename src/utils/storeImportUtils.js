@@ -8,7 +8,7 @@ import {
   VIRGINIA_STORE_STATE,
   VIRGINIA_STORE_STATE_CODE,
 } from "../data/storeGroups.js";
-import { getStoreGroup, normalizeStoreGroup } from "./storeGroupingUtils.js";
+import { normalizeStoreGroup } from "./storeGroupingUtils.js";
 import { normalizeStoreExpansionFields } from "./storeExpansionUtils.js";
 
 const REGION_ALIASES = {

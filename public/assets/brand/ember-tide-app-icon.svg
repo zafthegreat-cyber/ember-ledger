@@ -1,4 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Ember and Tide monogram">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Ember &amp; Tide app icon</title>
+  <desc id="desc">App icon using the Ember &amp; Tide ember and wave monogram.</desc>
   <defs>
     <linearGradient id="bg" x1="62" y1="28" x2="451" y2="492" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#122A36"/>

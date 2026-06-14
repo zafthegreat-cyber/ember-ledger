@@ -426,7 +426,7 @@ export function selectAdaptiveMenuKeys(state = {}) {
   ];
 }
 
-export function selectAdaptiveDesktopMainKeys(state = {}) {
+export function selectAdaptiveDesktopMainKeys() {
   const base = ["home", "scout", "vault", "forge", "tideTradr", "tidepool", "spark"];
   return base;
 }

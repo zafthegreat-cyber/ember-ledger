@@ -1,0 +1,85 @@
+{
+  "name": "product-foundation-refactor",
+  "summary": {
+    "requiredChecksPassed": true,
+    "optionalChecksPassed": true,
+    "readyToApproveOrCommit": true,
+    "readyToDeploy": false
+  },
+  "stoppedProcess": {
+    "pid": 32468,
+    "name": "cmd.exe",
+    "parentPid": 51348,
+    "command": "cmd.exe /d /c start ember-command-dev /b cmd.exe /d /c \"cd /d \" C:\\Users\\Zena\\Apps\\Embers \"ledger\\ember-hearth-command-pass && npm.cmd run dev -- --host 127.0.0.1 --clearScreen false > %TEMP%\\ember-command-dev.log 2> %TEMP%\\ember-command-dev.err.log\"",
+    "childrenFound": false,
+    "stopped": true
+  },
+  "portsAfterStop": {
+    "clear": [5173, 5174, 5343, 3000],
+    "remainingListeners": [
+      {
+        "localAddress": "127.0.0.1",
+        "localPort": 4173,
+        "pid": 6476,
+        "process": "node vite preview --host 127.0.0.1 --port 4173 --strictPort",
+        "stopped": false,
+        "reason": "Did not match the aborted ember-command-dev launcher."
+      },
+      {
+        "localAddress": "127.0.0.1",
+        "localPort": 5200,
+        "pid": 6232,
+        "process": "node vite --host 127.0.0.1 --port 5200 --strictPort",
+        "stopped": false,
+        "reason": "Did not match the aborted ember-command-dev launcher."
+      }
+    ],
+    "temporaryDevServerStillRunning": false,
+    "anyDevServerRemaining": true
+  },
+  "checks": [
+    { "command": "git status --short", "result": "PASS", "notes": "Dirty tree expected before commit." },
+    { "command": "git diff --stat", "result": "PASS", "notes": "Reviewed changed-file scope." },
+    { "command": "git diff --check", "result": "PASS", "notes": "CRLF normalization warnings only." },
+    { "command": "npm.cmd run build", "result": "PASS", "notes": "Vite large chunk warning only." },
+    { "command": "npm.cmd run smoke:beta", "result": "PASS", "notes": "App load, Quick Add, Scout, Vault, Market." },
+    { "command": "npm.cmd run test:quick-add", "result": "PASS" },
+    { "command": "npm.cmd run test:market", "result": "PASS" },
+    { "command": "npm.cmd run test:scout", "result": "PASS" },
+    { "command": "npm.cmd run test:scout-report-save-flow", "result": "PASS" },
+    { "command": "npm.cmd run test:forge", "result": "PASS" },
+    { "command": "npm.cmd run test:tier-foundation", "result": "PASS" },
+    { "command": "npm.cmd run test:inventory-detail", "result": "PASS" },
+    { "command": "npm.cmd run test:vault-set-mastery", "result": "PASS" },
+    { "command": "npm.cmd run test:app-fallbacks", "result": "PASS" },
+    { "command": "npm.cmd run test:menu-full-page-routes", "result": "PASS", "notes": "Source guard updated to include extracted command-system component source." },
+    { "command": "npm.cmd run test:onboarding", "result": "PASS" },
+    { "command": "npm.cmd run test:hearth", "result": "PASS" },
+    { "command": "npm.cmd run test:spark", "result": "PASS" },
+    { "command": "npm.cmd run smoke:catalog-search", "result": "PASS", "optional": true },
+    { "command": "npm.cmd run test:beta-regression", "result": "PASS", "optional": true, "notes": "28/28 regression checks passed." }
+  ],
+  "safetyScan": {
+    "exposedSecretValuesFound": false,
+    "unsafeLiveClaimsFound": false,
+    "notes": [
+      "SUPABASE_SERVICE_ROLE_KEY hits are environment-variable references in scripts/docs, not committed values.",
+      "Payment, grading, private child messaging, and checkout hits are negative guardrails."
+    ]
+  },
+  "generatedMarketCatalogDataChanged": false,
+  "changedAreas": {
+    "backend": false,
+    "auth": false,
+    "billing": false,
+    "database": false,
+    "rls": false,
+    "payment": false,
+    "config": true
+  },
+  "knownWarnings": [
+    "Vite chunk-size warning above 500 kB.",
+    "Git CRLF normalization warnings.",
+    "Unrelated strict-port Vite/preview listeners remain on 4173 and 5200."
+  ]
+}

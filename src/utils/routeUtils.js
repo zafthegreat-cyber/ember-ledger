@@ -50,7 +50,7 @@ export function explainRouteChoice(storeCandidate = {}, routeGoal = "Highest res
   return pieces.join("; ");
 }
 
-export function sortStoresForRoute(stores = [], routeGoal = "Highest restock chance", options = {}) {
+export function sortStoresForRoute(stores = [], routeGoal = "Highest restock chance") {
   return [...stores].sort((a, b) => {
     if (routeGoal === "Fastest route" || routeGoal === "Closest stores first") return a.distance - b.distance;
     if (routeGoal === "Most reports today") return b.reportCountToday - a.reportCountToday || b.routeScore - a.routeScore;
@@ -83,5 +83,5 @@ export function buildSuggestedRoute(stores = [], options = {}) {
     .filter(Boolean);
   const unlocked = candidates.filter((candidate) => !lockedStoreIds.some((storeId) => String(storeId) === String((candidate.store || candidate).id)));
 
-  return [...locked, ...sortStoresForRoute(unlocked, routeGoal, options)].slice(0, maxStops);
+  return [...locked, ...sortStoresForRoute(unlocked, routeGoal)].slice(0, maxStops);
 }

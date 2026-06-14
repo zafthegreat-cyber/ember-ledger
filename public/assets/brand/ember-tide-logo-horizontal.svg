@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 128" role="img" aria-labelledby="title desc">
+  <title id="title">Ember &amp; Tide logo</title>
+  <desc id="desc">Horizontal Ember &amp; Tide logo with monogram and wordmark.</desc>
+  <defs>
+    <linearGradient id="ember" x1="28" y1="18" x2="88" y2="108" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFC857"/>
+      <stop offset="0.45" stop-color="#FF7A3D"/>
+      <stop offset="1" stop-color="#C94E28"/>
+    </linearGradient>
+    <linearGradient id="tide" x1="23" y1="82" x2="107" y2="50" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#EAF7F5"/>
+      <stop offset="0.52" stop-color="#45C7D8"/>
+      <stop offset="1" stop-color="#168FA3"/>
+    </linearGradient>
+  </defs>
+  <rect width="520" height="128" rx="24" fill="#07131D"/>
+  <g transform="translate(16 16)">
+    <rect width="96" height="96" rx="24" fill="#0D1D27" stroke="rgba(248,243,231,0.16)" stroke-width="2"/>
+    <path fill="url(#ember)" d="M52 10c-12 13-10 24-6 31-7-4-11-10-10-19-14 13-19 26-17 39 3 18 17 29 34 28 16-2 28-13 30-28 2-13-5-25-18-34 1 8-2 14-8 20 1-13-1-23-5-37Z"/>
+    <path fill="url(#tide)" d="M18 62c14-8 27-7 39 2 9 6 17 8 26 2-6 11-16 18-28 18-16 1-30-6-37-22Z"/>
+    <path fill="none" stroke="#F8F3E7" stroke-width="4" stroke-linecap="round" d="M25 62c12-5 22-4 32 2 7 5 15 6 23 2"/>
+  </g>
+  <g fill="#F8F3E7" transform="translate(136 39)">
+    <text x="0" y="30" font-family="Georgia, 'Times New Roman', serif" font-size="38" font-weight="700" letter-spacing="0">Ember &amp; Tide</text>
+    <text x="2" y="60" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700" letter-spacing="2.7" fill="#D8CBB5">COLLECTOR COMMAND CENTER</text>
+  </g>
+</svg>

@@ -109001,3 +109001,1783 @@ html body #root .app.app-command-shell.app-market .market-result-add-actions but
     display: none;
   }
 }
+
+/* Product cohesion layer: one Ember/Tide system across auth and app pages. */
+:root {
+  --et-final-radius-card: 8px;
+  --et-final-radius-control: 10px;
+  --et-final-shell-max: 1480px;
+  --et-final-mobile-bottom-safe: max(118px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 36px));
+}
+
+html body #root .app {
+  --et-ui-bg: #f7ead8;
+  --et-ui-bg-2: #fbf2e7;
+  --et-ui-surface: rgba(255, 252, 246, 0.94);
+  --et-ui-surface-strong: #fffaf2;
+  --et-ui-surface-muted: #f3e1c9;
+  --et-ui-ink: #21180f;
+  --et-ui-heading: #17120d;
+  --et-ui-muted: #6a5b4d;
+  --et-ui-soft: #847363;
+  --et-ui-line: rgba(104, 77, 48, 0.22);
+  --et-ui-line-strong: rgba(154, 93, 47, 0.34);
+  --et-ui-ember: #d65b2f;
+  --et-ui-gold: #b7792f;
+  --et-ui-tide: #137f84;
+  --et-ui-shadow: 0 14px 32px rgba(94, 61, 25, 0.12);
+  --et-page-accent: var(--et-ui-ember);
+  --et-page-accent-2: var(--et-ui-tide);
+  --page-accent: var(--et-page-accent);
+  background:
+    radial-gradient(circle at 5% 0%, rgba(214, 91, 47, 0.14), transparent 28rem),
+    radial-gradient(circle at 96% 3%, rgba(19, 127, 132, 0.1), transparent 26rem),
+    linear-gradient(180deg, var(--et-ui-bg), var(--et-ui-bg-2) 42%, #f1dcc2) !important;
+  color: var(--et-ui-ink) !important;
+}
+
+html body #root .app.app-theme-dark,
+html body #root .app.app-shell-dark,
+html body #root .app[data-theme="dark"] {
+  --et-ui-bg: #0c1017;
+  --et-ui-bg-2: #121821;
+  --et-ui-surface: rgba(23, 29, 39, 0.94);
+  --et-ui-surface-strong: #1a222e;
+  --et-ui-surface-muted: #101720;
+  --et-ui-ink: #fff0dc;
+  --et-ui-heading: #fff7e8;
+  --et-ui-muted: #cbbda7;
+  --et-ui-soft: #a99b89;
+  --et-ui-line: rgba(255, 224, 176, 0.16);
+  --et-ui-line-strong: rgba(255, 190, 105, 0.28);
+  --et-ui-ember: #f07a3f;
+  --et-ui-gold: #e3aa4b;
+  --et-ui-tide: #45b8b0;
+  --et-ui-shadow: 0 16px 36px rgba(0, 0, 0, 0.32);
+  background:
+    radial-gradient(circle at 6% 0%, rgba(240, 122, 63, 0.1), transparent 27rem),
+    radial-gradient(circle at 98% 2%, rgba(69, 184, 176, 0.1), transparent 25rem),
+    linear-gradient(180deg, #0b0f15, #121821 48%, #0a0d12) !important;
+  color: var(--et-ui-ink) !important;
+}
+
+html body #root .app.app-scout { --et-page-accent: #158f88; --et-page-accent-2: #d66f38; }
+html body #root .app.app-vault { --et-page-accent: #826b4c; --et-page-accent-2: #3e8392; }
+html body #root .app.app-market { --et-page-accent: #cc6932; --et-page-accent-2: #0f7d82; }
+html body #root .app.app-forge,
+html body #root .app.app-inventory { --et-page-accent: #b35b35; --et-page-accent-2: #8a6a38; }
+html body #root .app.app-kidsprogram { --et-page-accent: #c98928; --et-page-accent-2: #d86139; }
+html body #root .app.app-tidepool { --et-page-accent: #168987; --et-page-accent-2: #c57532; }
+html body #root .app.app-settings,
+html body #root .app.app-menu,
+html body #root .app.app-account,
+html body #root .app.app-databackup,
+html body #root .app.app-help { --et-page-accent: #b96234; --et-page-accent-2: #317f83; }
+
+html body #root .app :where(h1, h2, h3, h4, strong, b, label, dt) {
+  color: var(--et-ui-heading) !important;
+  letter-spacing: 0 !important;
+}
+
+html body #root .app :where(p, small, dd, li, .compact-subtitle) {
+  color: var(--et-ui-muted) !important;
+}
+
+html body #root .app :where(.panel, .card, .compact-card, .glass-card, .glass-panel, .standard-page-header, .drawer-info-card, .utility-card, .et-mockup-page-hero, .et-mockup-section-card, .et-mockup-right-rail, .et-mockup-stat-card, .et-mockup-action-card, .et-mockup-empty-state, .small-empty-state, .empty-state, .market-home-product-card, .catalog-result-card, .scout-report-compact-card, .tidepool-post-card, .tidepool-preview-card, .spark-section-card, .forge-preview-card) {
+  border: 1px solid var(--et-ui-line) !important;
+  border-radius: var(--et-final-radius-card) !important;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.34), rgba(255, 244, 226, 0.08)),
+    var(--et-ui-surface) !important;
+  color: var(--et-ui-ink) !important;
+  box-shadow: var(--et-ui-shadow) !important;
+}
+
+html body #root .app.app-theme-dark :where(.panel, .card, .compact-card, .glass-card, .glass-panel, .standard-page-header, .drawer-info-card, .utility-card, .et-mockup-page-hero, .et-mockup-section-card, .et-mockup-right-rail, .et-mockup-stat-card, .et-mockup-action-card, .et-mockup-empty-state, .small-empty-state, .empty-state, .market-home-product-card, .catalog-result-card, .scout-report-compact-card, .tidepool-post-card, .tidepool-preview-card, .spark-section-card, .forge-preview-card),
+html body #root .app.app-shell-dark :where(.panel, .card, .compact-card, .glass-card, .glass-panel, .standard-page-header, .drawer-info-card, .utility-card, .et-mockup-page-hero, .et-mockup-section-card, .et-mockup-right-rail, .et-mockup-stat-card, .et-mockup-action-card, .et-mockup-empty-state, .small-empty-state, .empty-state, .market-home-product-card, .catalog-result-card, .scout-report-compact-card, .tidepool-post-card, .tidepool-preview-card, .spark-section-card, .forge-preview-card) {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.018)),
+    var(--et-ui-surface) !important;
+}
+
+html body #root .app :where(button, .et-mockup-button, .secondary-button, .ghost-button, .auth-text-button, .drawer-link, input, select, textarea) {
+  border-radius: var(--et-final-radius-control) !important;
+}
+
+html body #root .app :where(button:not(.secondary-button):not(.ghost-button):not(.auth-text-button):not(.inline-text-button):not(.mobile-dock-item):not(.mobile-dock-add):not(.mobile-quick-add-fab):not(.modal-close-button):not(.drawer-close-button):not([disabled]), .et-mockup-button-primary, .ember-gradient-button) {
+  border: 1px solid color-mix(in srgb, var(--et-page-accent) 54%, var(--et-ui-line-strong)) !important;
+  background: linear-gradient(135deg, var(--et-ui-ember), color-mix(in srgb, var(--et-ui-gold) 72%, var(--et-ui-ember))) !important;
+  color: #fff8ef !important;
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--et-ui-ember) 22%, transparent) !important;
+}
+
+html body #root .app :where(.secondary-button, .ghost-button, .auth-text-button, .inline-text-button, .drawer-link, button[disabled]) {
+  border: 1px solid var(--et-ui-line) !important;
+  background: color-mix(in srgb, var(--et-ui-surface-strong) 88%, transparent) !important;
+  color: color-mix(in srgb, var(--et-page-accent) 52%, var(--et-ui-heading)) !important;
+  box-shadow: none !important;
+}
+
+html body #root .app :where(input, select, textarea, .search-input, .drawer-field) {
+  border: 1px solid var(--et-ui-line) !important;
+  background: var(--et-ui-surface-strong) !important;
+  color: var(--et-ui-heading) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.26) !important;
+}
+
+html body #root .app :where(input::placeholder, textarea::placeholder) {
+  color: var(--et-ui-soft) !important;
+}
+
+html body #root .app :where(.trust-badge, .status-badge, .mini-badge, .et-mockup-pill, .market-status-pill, .scout-trust-pill, .scout-freshness-pill) {
+  min-width: 0 !important;
+  max-width: 100%;
+  border: 1px solid color-mix(in srgb, var(--et-page-accent) 20%, var(--et-ui-line)) !important;
+  background: color-mix(in srgb, var(--et-page-accent) 9%, var(--et-ui-surface-strong)) !important;
+  color: color-mix(in srgb, var(--et-page-accent) 54%, var(--et-ui-heading)) !important;
+  line-height: 1.15 !important;
+  white-space: normal !important;
+}
+
+html body #root .app.app-command-shell {
+  max-width: var(--et-final-shell-max);
+  margin-inline: auto;
+}
+
+html body #root .app.app-command-shell > :where(.main, main) {
+  width: 100% !important;
+  max-width: min(100%, 1220px) !important;
+  padding: clamp(8px, 1.4vw, 18px) !important;
+  padding-bottom: 36px !important;
+}
+
+html body #root .app.app-command-shell :where(.hearth-mockup-rebuild, .scout-mockup-rebuild, .vault-mockup-rebuild, .market-mockup-rebuild, .forge-mockup-rebuild, .spark-mockup-rebuild, .tidepool-mockup-rebuild, .membership-mockup-rebuild) {
+  width: min(100%, 1220px) !important;
+  gap: clamp(10px, 1.3vw, 16px) !important;
+}
+
+html body #root .app.app-command-shell :where(.et-mockup-main-column, .market-mockup-main, .forge-mockup-main, .scout-mockup-main, .vault-mockup-main, .spark-mockup-main, .tidepool-mockup-main) {
+  gap: clamp(10px, 1.2vw, 14px) !important;
+}
+
+html body #root .app.app-command-shell .et-mockup-page-hero {
+  min-height: 0 !important;
+  padding: clamp(12px, 1.6vw, 18px) !important;
+  border-left: 4px solid color-mix(in srgb, var(--et-page-accent) 72%, var(--et-ui-line-strong)) !important;
+}
+
+html body #root .app.app-command-shell .et-mockup-hero-copy h1 {
+  font-size: clamp(1.42rem, 2.4vw, 2rem) !important;
+  line-height: 1.05 !important;
+}
+
+html body #root .app.app-command-shell .et-mockup-hero-copy p {
+  max-width: 58ch !important;
+  font-size: 0.88rem !important;
+  line-height: 1.45 !important;
+}
+
+html body #root .app.app-command-shell :where(.et-mockup-section-card, .et-mockup-right-rail) {
+  padding: clamp(12px, 1.4vw, 16px) !important;
+}
+
+html body #root .app.app-command-shell .et-mockup-action-card {
+  min-height: 0 !important;
+  grid-template-columns: 34px minmax(0, 1fr) auto !important;
+  gap: 9px !important;
+  padding: 10px !important;
+}
+
+html body #root .app.app-command-shell .et-mockup-stat-card {
+  min-height: 70px !important;
+  padding: 10px !important;
+}
+
+html body #root .app.app-command-shell :where(.et-mockup-icon, .et-mockup-action-icon) {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 8px !important;
+}
+
+html body #root .app.app-command-shell .et-mockup-pill-row,
+html body #root .app.app-command-shell .standard-page-header-tabs,
+html body #root .app.app-command-shell .market-search-options,
+html body #root .app.app-command-shell .catalog-chip-row {
+  gap: 7px !important;
+}
+
+html body #root .app.app-command-shell .standard-page-header-tabs button,
+html body #root .app.app-command-shell .et-mockup-pill,
+html body #root .app.app-command-shell .catalog-chip-row button,
+html body #root .app.app-command-shell .vault-view-strip button {
+  min-height: 32px !important;
+  padding: 6px 10px !important;
+  font-size: 0.72rem !important;
+}
+
+html body #root .app.app-command-shell .standard-page-header-tabs button.active,
+html body #root .app.app-command-shell .standard-page-header-tabs button[aria-selected="true"],
+html body #root .app.app-command-shell :where(.vault-view-strip button.active, .forge-section-tab.is-active) {
+  border-color: color-mix(in srgb, var(--et-page-accent) 50%, var(--et-ui-line)) !important;
+  background: color-mix(in srgb, var(--et-page-accent) 14%, var(--et-ui-surface-strong)) !important;
+  color: color-mix(in srgb, var(--et-page-accent) 58%, var(--et-ui-heading)) !important;
+}
+
+html body #root .app.app-command-shell > .topbar {
+  border: 1px solid var(--et-ui-line) !important;
+  background: color-mix(in srgb, var(--et-ui-surface) 94%, transparent) !important;
+  box-shadow: var(--et-ui-shadow) !important;
+}
+
+html body #root .app.app-command-shell .web-command-sidebar {
+  border: 1px solid var(--et-ui-line) !important;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--et-ui-surface-strong) 92%, transparent), color-mix(in srgb, var(--et-ui-surface) 86%, transparent)) !important;
+  color: var(--et-ui-heading) !important;
+  box-shadow: var(--et-ui-shadow) !important;
+}
+
+html body #root .app.app-command-shell .web-command-promise,
+html body #root .app.app-command-shell .web-command-status {
+  display: none !important;
+}
+
+html body #root .app.app-command-shell :where(.web-command-nav-item, .web-command-more > summary, .web-command-more-item, .web-command-tool) {
+  border: 1px solid transparent !important;
+  background: transparent !important;
+  color: var(--et-ui-muted) !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell :where(.web-command-nav-item.active, .web-command-more-item.active, .web-command-tool.active) {
+  border-color: color-mix(in srgb, var(--et-page-accent) 32%, var(--et-ui-line)) !important;
+  background: color-mix(in srgb, var(--et-page-accent) 10%, var(--et-ui-surface-strong)) !important;
+  color: var(--et-ui-heading) !important;
+}
+
+html body #root .app.app-command-shell .mobile-bottom-nav {
+  border: 1px solid var(--et-ui-line) !important;
+  background: color-mix(in srgb, var(--et-ui-surface) 94%, transparent) !important;
+  box-shadow: 0 -10px 28px rgba(20, 13, 8, 0.16) !important;
+}
+
+html body #root .app.app-command-shell .mobile-bottom-nav button {
+  background: transparent !important;
+  color: var(--et-ui-muted) !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell .mobile-bottom-nav button.active,
+html body #root .app.app-command-shell .mobile-bottom-nav button[aria-current="page"] {
+  background: color-mix(in srgb, var(--et-page-accent) 12%, transparent) !important;
+  color: color-mix(in srgb, var(--et-page-accent) 62%, var(--et-ui-heading)) !important;
+}
+
+html body #root .app:not(.app-command-shell) .auth-main {
+  display: grid !important;
+  grid-template-columns: minmax(340px, 470px) minmax(320px, 0.9fr) !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: clamp(22px, 4vw, 56px) !important;
+  min-height: calc(100dvh - 128px) !important;
+  max-width: 1180px !important;
+  margin: 0 auto !important;
+  padding: clamp(18px, 3vw, 36px) !important;
+}
+
+html body #root .app:not(.app-command-shell) .signed-out-auth-card {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  width: 100% !important;
+  align-self: center !important;
+  padding: clamp(20px, 2.5vw, 30px) !important;
+}
+
+html body #root .app:not(.app-command-shell) .signed-out-landing {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  width: 100% !important;
+  max-width: 480px !important;
+  align-self: center !important;
+  padding: clamp(18px, 2.4vw, 28px) !important;
+}
+
+html body #root .app:not(.app-command-shell) .landing-feature-grid,
+html body #root .app:not(.app-command-shell) .landing-promo-art,
+html body #root .app:not(.app-command-shell) .brand-legal-footer {
+  display: none !important;
+}
+
+html body #root .app:not(.app-command-shell) .landing-hero {
+  display: grid !important;
+  gap: 12px !important;
+}
+
+html body #root .app:not(.app-command-shell) .landing-hero h2,
+html body #root .app:not(.app-command-shell) .auth-card-welcome h2 {
+  font-size: clamp(1.72rem, 3.8vw, 2.8rem) !important;
+  line-height: 1.02 !important;
+}
+
+html body #root .app:not(.app-command-shell) .auth-choice-row {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 9px !important;
+}
+
+html body #root .app:not(.app-command-shell) .auth-choice-button,
+html body #root .app:not(.app-command-shell) .signed-out-auth-card button[type="submit"] {
+  min-height: 42px !important;
+  padding: 8px 12px !important;
+  font-size: 0.84rem !important;
+  line-height: 1.1 !important;
+}
+
+html body #root .app:not(.app-command-shell) .auth-link-stack {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+}
+
+html body #root .app:not(.app-command-shell) .auth-link-stack .auth-preview-link {
+  order: -1;
+  border-color: color-mix(in srgb, var(--et-page-accent) 28%, var(--et-ui-line)) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final {
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 300px) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-final > .et-mockup-right-rail {
+  position: sticky !important;
+  top: 82px !important;
+  align-self: start !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-feature-list,
+html body #root .app.app-command-shell.app-home .hearth-onboarding-slot {
+  display: none !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-more-tools {
+  border: 1px solid var(--et-ui-line) !important;
+  border-radius: var(--et-final-radius-card) !important;
+  background: color-mix(in srgb, var(--et-ui-surface) 88%, transparent) !important;
+  box-shadow: var(--et-ui-shadow) !important;
+}
+
+html body #root .app.app-command-shell.app-home .hearth-dashboard-more-tools > summary {
+  min-height: 44px !important;
+  padding: 10px 12px !important;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-guardrails .et-mockup-pill:nth-child(n + 4),
+html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-guardrail-strip span:nth-child(n + 4),
+html body #root .app.app-command-shell.app-forge .forge-mockup-guardrail-strip span:nth-child(n + 4),
+html body #root .app.app-command-shell.app-forge .forge-mockup-rail-rules span:nth-child(n + 4) {
+  display: none !important;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-primary-actions {
+  grid-template-columns: minmax(0, 1.15fr) repeat(2, minmax(0, 0.92fr)) !important;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-scan-screenshot-action {
+  border-color: color-mix(in srgb, var(--et-page-accent) 42%, var(--et-ui-line)) !important;
+  background: color-mix(in srgb, var(--et-page-accent) 12%, var(--et-ui-surface-strong)) !important;
+}
+
+html body #root .app.app-command-shell.app-vault :where(.vault-empty-overview-card, .vault-empty-summary-card, .et-mockup-empty-state) {
+  min-height: 0 !important;
+  padding: 12px !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-mockup-header .et-mockup-pill-row .et-mockup-pill:nth-child(n + 3),
+html body #root .app.app-command-shell.app-market .market-mockup-header .et-mockup-pill-row .et-mockup-pill:nth-child(n + 3),
+html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-header .et-mockup-pill-row .et-mockup-pill:nth-child(n + 3) {
+  display: none !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-home-category-row button {
+  min-height: 50px !important;
+  padding: 8px 6px !important;
+  border-radius: var(--et-final-radius-card) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-home-category-row .et-mockup-icon {
+  display: none !important;
+}
+
+html body #root .app.app-command-shell.app-forge .forge-access-preview-grid .et-mockup-action-card:nth-child(n + 5),
+html body #root .app.app-command-shell.app-kidsprogram .spark-program-support-cloud span:nth-child(n + 7),
+html body #root .app.app-command-shell.app-kidsprogram .spark-gift-type-cloud span:nth-child(n + 7),
+html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-trust-grid .et-mockup-action-card:nth-child(n + 3),
+html body #root .app.app-command-shell.app-tidepool .tidepool-moderation-card:nth-child(n + 3) {
+  display: none !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram :where(.spark-impact-dashboard, .spark-mission-card, .spark-kid-packs-card, .spark-event-support-card) {
+  --et-page-accent: #c98928;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram :where(.spark-mission-orb, .spark-thank-you-orb) {
+  filter: saturate(0.82) hue-rotate(-12deg) !important;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-preview-feed {
+  display: grid !important;
+  gap: 8px !important;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-preview-card {
+  border-left: 4px solid color-mix(in srgb, var(--et-page-accent) 56%, var(--et-ui-line)) !important;
+}
+
+html body #root .app.app-command-shell :where(.settings-utility-page, .collections-page, .data-backup-page, .help-page, .account-page) {
+  gap: 12px !important;
+}
+
+html body #root .app.app-command-shell :where(.settings-utility-page, .collections-page, .data-backup-page, .help-page, .account-page) .standard-page-header {
+  padding: 14px !important;
+}
+
+html body #root .app.app-command-shell :where(.settings-utility-page, .collections-page, .data-backup-page, .help-page, .account-page) :where(.drawer-info-card, .utility-card) {
+  padding: 14px !important;
+}
+
+html body #root .app.app-command-shell :where(.ember-assist-panel, .ember-assist-live-hero, .ember-assist-context-card, .ember-assist-guidance-strip, .ember-assist-safety-note, .ember-assist-recent-help article) {
+  border-color: color-mix(in srgb, var(--et-ui-ember) 22%, var(--et-ui-line)) !important;
+  background: color-mix(in srgb, var(--et-ui-surface-strong) 88%, rgba(214, 91, 47, 0.08)) !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-quick-action-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) !important;
+}
+
+@media (min-width: 1024px) {
+  html body #root .app.app-command-shell {
+    grid-template-columns: 218px minmax(0, 1fr) !important;
+    gap: 14px !important;
+    padding: 14px !important;
+  }
+
+  html body #root .app.app-command-shell .web-command-sidebar {
+    width: 218px !important;
+    min-height: calc(100dvh - 28px) !important;
+  }
+
+  html body #root .app.app-command-shell > .topbar {
+    min-height: 52px !important;
+    padding: 8px !important;
+  }
+
+  html body #root .app.app-command-shell .topbar-command-actions > button {
+    min-height: 38px !important;
+    padding-inline: 10px !important;
+    font-size: 0.76rem !important;
+  }
+}
+
+@media (max-width: 1023px) {
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-final {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-final > .et-mockup-right-rail {
+    position: static !important;
+  }
+}
+
+@media (max-width: 760px) {
+  html body #root .app {
+    background:
+      radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--et-page-accent) 12%, transparent), transparent 18rem),
+      linear-gradient(180deg, var(--et-ui-bg), var(--et-ui-bg-2)) !important;
+  }
+
+  html body #root .app:not(.app-command-shell) .auth-main {
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: auto !important;
+    padding: 12px 12px 24px !important;
+    gap: 12px !important;
+  }
+
+  html body #root .app:not(.app-command-shell) .signed-out-auth-card {
+    order: -2 !important;
+    padding: 16px !important;
+  }
+
+  html body #root .app:not(.app-command-shell) .signed-out-landing {
+    order: -1 !important;
+    max-width: none !important;
+    padding: 12px !important;
+  }
+
+  html body #root .app:not(.app-command-shell) .signed-out-landing .landing-brand-mark,
+  html body #root .app:not(.app-command-shell) .signed-out-landing .section-kicker,
+  html body #root .app:not(.app-command-shell) .auth-landing-note,
+  html body #root .app:not(.app-command-shell) .landing-link-row {
+    display: none !important;
+  }
+
+  html body #root .app:not(.app-command-shell) .signed-out-landing h2 {
+    font-size: 1.1rem !important;
+  }
+
+  html body #root .app:not(.app-command-shell) .auth-choice-row {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html body #root .app:not(.app-command-shell) .auth-choice-row .auth-choice-button:nth-child(n + 2),
+  html body #root .app:not(.app-command-shell) .auth-choice-row .auth-help-link {
+    display: none !important;
+  }
+
+  html body #root .app:not(.app-command-shell) .auth-card-welcome {
+    display: none !important;
+  }
+
+  html body #root .app.app-command-shell {
+    padding: 10px 10px var(--et-final-mobile-bottom-safe) !important;
+  }
+
+  html body #root .app.app-command-shell > :where(.main, main) {
+    padding: 0 0 var(--et-final-mobile-bottom-safe) !important;
+    scroll-padding-bottom: var(--et-final-mobile-bottom-safe) !important;
+  }
+
+  html body #root .app.app-command-shell :where(.hearth-mockup-rebuild, .scout-mockup-rebuild, .vault-mockup-rebuild, .market-mockup-rebuild, .forge-mockup-rebuild, .spark-mockup-rebuild, .tidepool-mockup-rebuild) {
+    gap: 10px !important;
+    padding-inline: 0 !important;
+    padding-bottom: var(--et-final-mobile-bottom-safe) !important;
+  }
+
+  html body #root .app.app-command-shell .et-mockup-page-hero {
+    padding: 12px !important;
+  }
+
+  html body #root .app.app-command-shell .et-mockup-hero-copy h1 {
+    font-size: 1.18rem !important;
+  }
+
+  html body #root .app.app-command-shell .et-mockup-hero-copy p,
+  html body #root .app.app-command-shell .et-mockup-hero-status,
+  html body #root .app.app-command-shell .et-mockup-pill-row {
+    display: none !important;
+  }
+
+  html body #root .app.app-command-shell :where(.et-mockup-section-card, .et-mockup-right-rail) {
+    padding: 11px !important;
+  }
+
+  html body #root .app.app-command-shell .et-mockup-action-card {
+    grid-template-columns: 30px minmax(0, 1fr) !important;
+    padding: 9px !important;
+  }
+
+  html body #root .app.app-command-shell .et-mockup-action-card > b {
+    display: none !important;
+  }
+
+  html body #root .app.app-command-shell .mobile-bottom-nav {
+    left: 8px !important;
+    right: 8px !important;
+    bottom: max(8px, env(safe-area-inset-bottom, 0px)) !important;
+    width: auto !important;
+    transform: none !important;
+    min-height: 66px !important;
+    padding: 6px 7px calc(6px + env(safe-area-inset-bottom, 0px)) !important;
+    border-radius: 14px !important;
+  }
+
+  html body #root .app.app-command-shell .mobile-bottom-nav button {
+    min-height: 48px !important;
+    border-radius: 10px !important;
+  }
+
+  html body #root .app.app-command-shell .mobile-bottom-nav b {
+    font-size: 0.58rem !important;
+  }
+
+  html body #root .app.app-command-shell .mobile-quick-add-fab {
+    bottom: calc(84px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-final > .et-mockup-right-rail,
+  html body #root .app.app-command-shell.app-home .hearth-dashboard-command-grid,
+  html body #root .app.app-command-shell.app-scout .scout-mockup-guardrails .et-mockup-pill:nth-child(n + 3),
+  html body #root .app.app-command-shell.app-market .market-reference-featured-drop,
+  html body #root .app.app-command-shell.app-market .market-reference-overview-grid,
+  html body #root .app.app-command-shell.app-market .market-mockup-guardrail-rail,
+  html body #root .app.app-command-shell.app-market .market-watchlist-prompt,
+  html body #root .app.app-command-shell.app-kidsprogram .spark-impact-dashboard,
+  html body #root .app.app-command-shell.app-kidsprogram .spark-mission-card .spark-mission-facts,
+  html body #root .app.app-command-shell.app-tidepool .tidepool-trust-dashboard-card,
+  html body #root .app.app-command-shell.app-tidepool .tidepool-trusted-circle-card,
+  html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-trust-grid,
+  html body #root .app.app-command-shell.app-forge .forge-master-preview-panel {
+    display: none !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-primary-actions,
+  html body #root .app.app-command-shell .market-home-grid,
+  html body #root .app.app-command-shell .forge-access-preview-grid,
+  html body #root .app.app-command-shell .tidepool-live-section-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-home-category-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-home-category-row button {
+    min-height: 42px !important;
+    font-size: 0.68rem !important;
+  }
+
+  html body #root .app.app-command-shell :where(.settings-utility-page, .collections-page, .data-backup-page, .help-page, .account-page) :where(.drawer-info-card, .utility-card) {
+    padding: 11px !important;
+  }
+}
+
+/* Auth access layout: keep the form in the first viewport. */
+html body #root .app main.auth-main.auth-main-final-direction {
+  align-items: start !important;
+  align-content: start !important;
+  background:
+    radial-gradient(circle at 16% 12%, color-mix(in srgb, var(--et-ui-ember) 12%, transparent), transparent 34%),
+    radial-gradient(circle at 84% 18%, color-mix(in srgb, var(--et-ui-tide) 10%, transparent), transparent 32%),
+    var(--et-ui-bg) !important;
+  gap: clamp(24px, 5vw, 86px) !important;
+  grid-template-columns: minmax(360px, 440px) minmax(300px, 390px) !important;
+  justify-content: center !important;
+  margin: 0 auto !important;
+  max-width: 1120px !important;
+  min-height: 0 !important;
+  padding: 10px clamp(18px, 4vw, 56px) 44px !important;
+}
+
+html body #root .app main.auth-main.auth-main-final-direction > .signed-out-auth-card {
+  order: 1 !important;
+  align-self: start !important;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--et-ui-surface-strong) 78%, transparent), var(--et-ui-surface)) !important;
+  border: 1px solid var(--et-ui-line) !important;
+  border-radius: var(--et-final-radius-card) !important;
+  box-shadow: var(--et-ui-shadow) !important;
+  color: var(--et-ui-ink) !important;
+  height: auto !important;
+  margin: 0 !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+  padding: 22px 32px 20px !important;
+}
+
+html body #root .app main.auth-main.auth-main-final-direction > .signed-out-landing.panel {
+  order: 2 !important;
+  align-self: start !important;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--et-ui-surface-strong) 78%, transparent), var(--et-ui-surface)) !important;
+  border: 1px solid var(--et-ui-line) !important;
+  border-radius: var(--et-final-radius-card) !important;
+  box-shadow: var(--et-ui-shadow) !important;
+  color: var(--et-ui-ink) !important;
+  height: auto !important;
+  margin: 0 !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+  padding: 22px 28px !important;
+}
+
+html body #root .app main.auth-main.auth-main-final-direction > .signed-out-auth-card::before,
+html body #root .app main.auth-main.auth-main-final-direction > .signed-out-auth-card::after,
+html body #root .app main.auth-main.auth-main-final-direction > .signed-out-landing.panel::before,
+html body #root .app main.auth-main.auth-main-final-direction > .signed-out-landing.panel::after {
+  content: none !important;
+  display: none !important;
+}
+
+html body #root .app main.auth-main.auth-main-final-direction .landing-link-row,
+html body #root .app main.auth-main.auth-main-final-direction .landing-feature-grid,
+html body #root .app main.auth-main.auth-main-final-direction .landing-promo-art,
+html body #root .app main.auth-main.auth-main-final-direction .brand-legal-footer,
+html body #root .app main.auth-main.auth-main-final-direction .auth-choice-row .auth-choice-button:nth-child(n + 3),
+html body #root .app main.auth-main.auth-main-final-direction .auth-choice-row .auth-help-link {
+  display: none !important;
+}
+
+html body #root .app main.auth-main.auth-main-final-direction .auth-card-welcome {
+  display: none !important;
+  gap: 6px !important;
+  min-height: 0 !important;
+  margin-bottom: 6px !important;
+  padding-bottom: 10px !important;
+}
+
+html body #root .app main.auth-main.auth-main-final-direction .auth-card-welcome .landing-brand-emblem,
+html body #root .app main.auth-main.auth-main-final-direction .auth-card-welcome img {
+  display: none !important;
+}
+
+html body #root .app main.auth-main.auth-main-final-direction .auth-card-welcome h1 {
+  font-size: clamp(1.75rem, 2.5vw, 2.25rem) !important;
+  line-height: 0.98 !important;
+  margin: 0 !important;
+}
+
+html body #root .app main.auth-main.auth-main-final-direction .auth-card-welcome p,
+html body #root .app main.auth-main.auth-main-final-direction .compact-subtitle {
+  font-size: 0.88rem !important;
+  line-height: 1.35 !important;
+}
+
+html body #root .app main.auth-main.auth-main-final-direction .auth-mode-title {
+  margin: 0 0 8px !important;
+  padding-top: 0 !important;
+}
+
+html body #root .app main.auth-main.auth-main-final-direction .form.auth-form {
+  gap: 9px !important;
+  margin-top: 8px !important;
+}
+
+html body #root .app main.auth-main.auth-main-final-direction .auth-beta-note,
+html body #root .app main.auth-main.auth-main-final-direction .auth-link-stack {
+  margin-top: 9px !important;
+  padding: 10px 12px !important;
+}
+
+html body #root .app main.auth-main.auth-main-final-direction .auth-link-stack {
+  align-items: flex-start !important;
+  background: color-mix(in srgb, var(--et-ui-surface-strong) 84%, transparent) !important;
+  border: 1px solid var(--et-ui-line) !important;
+  color: var(--et-ui-muted) !important;
+}
+
+html body #root .app main.auth-main.auth-main-final-direction .auth-link-stack .auth-text-button:not(:last-child) {
+  display: none !important;
+}
+
+html body #root .app main.auth-main.auth-main-final-direction .landing-hero {
+  gap: 12px !important;
+  min-height: 0 !important;
+  text-align: left !important;
+}
+
+html body #root .app main.auth-main.auth-main-final-direction .landing-hero .landing-brand-emblem {
+  height: 56px !important;
+  margin: 0 !important;
+  width: 56px !important;
+}
+
+html body #root .app main.auth-main.auth-main-final-direction .signed-out-landing.panel :where(h1, h2, h3, strong, b) {
+  color: var(--et-ui-ink) !important;
+  text-shadow: none !important;
+}
+
+html body #root .app main.auth-main.auth-main-final-direction .signed-out-landing.panel :where(p, small, span, li) {
+  color: var(--et-ui-muted) !important;
+  text-shadow: none !important;
+}
+
+html body #root .app main.auth-main.auth-main-final-direction .signed-out-landing.panel .auth-landing-note {
+  background: color-mix(in srgb, var(--et-ui-surface-2) 86%, transparent) !important;
+  border: 1px solid var(--et-ui-line) !important;
+  color: var(--et-ui-muted) !important;
+  margin: 6px 0 0 !important;
+  padding: 12px !important;
+}
+
+html body #root .app main.auth-main.auth-main-final-direction .signed-out-landing.panel .auth-choice-row {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  margin-top: 4px !important;
+}
+
+html body #root .app main.auth-main.auth-main-final-direction .signed-out-landing.panel .auth-choice-button {
+  min-height: 42px !important;
+  padding: 9px 12px !important;
+}
+
+@media (max-width: 760px) {
+  html body #root .app main.auth-main.auth-main-final-direction {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 12px !important;
+    padding: 10px 12px calc(84px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  html body #root .app main.auth-main.auth-main-final-direction > .signed-out-auth-card {
+    order: 1 !important;
+    padding: 18px 16px !important;
+  }
+
+  html body #root .app main.auth-main.auth-main-final-direction > .signed-out-landing.panel {
+    display: none !important;
+  }
+
+  html body #root .app:not(.app-command-shell) .signed-out-landing.panel {
+    display: none !important;
+  }
+
+  html body #root .app main.auth-main.auth-main-final-direction .auth-card-welcome {
+    text-align: left !important;
+  }
+
+  html body #root .app main.auth-main.auth-main-final-direction .auth-card-welcome h1 {
+    font-size: 1.9rem !important;
+  }
+}
+
+/* Hearth reference alignment: keep every route on the same Ember/Tide system. */
+html body #root .app.app-command-shell:not(.app-home) {
+  --et-page-accent: var(--et-ui-ember);
+  --et-page-accent-2: var(--et-ui-gold);
+  --page-accent: var(--et-ui-ember);
+  --et-route-flavor: var(--et-ui-tide);
+  --et-page-accent-rgb: 214, 91, 47;
+  --et-page-accent-2-rgb: 183, 121, 47;
+  --et-shell-page-rgb: var(--et-page-accent-rgb);
+  --interactive-accent: var(--et-ui-ember);
+  --interactive-accent-rgb: 214, 91, 47;
+  --interactive-accent-soft: rgba(214, 91, 47, 0.1);
+  --wc-accent: var(--et-ui-ember);
+  --wc-accent-2: var(--et-ui-gold);
+  --wc-accent-3: var(--et-ui-tide);
+  color: var(--et-ui-ink) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell:not(.app-home),
+html body #root .app.app-shell-dark.app-command-shell:not(.app-home),
+html body #root .app.app-command-shell:not(.app-home)[data-theme="dark"] {
+  --et-page-accent-rgb: 240, 122, 63;
+  --et-page-accent-2-rgb: 227, 170, 75;
+  --interactive-accent-rgb: 240, 122, 63;
+  --interactive-accent-soft: rgba(240, 122, 63, 0.12);
+}
+
+html body #root .app.app-command-shell.app-scout {
+  --et-route-flavor: var(--et-ui-tide);
+  --wc-accent-3: var(--et-ui-tide);
+}
+
+html body #root .app.app-command-shell.app-vault {
+  --et-route-flavor: #8a734b;
+  --wc-accent-3: #8a734b;
+}
+
+html body #root .app.app-command-shell.app-market,
+html body #root .app.app-command-shell.app-tidetradr {
+  --et-route-flavor: var(--et-ui-tide);
+  --wc-accent-3: var(--et-ui-tide);
+}
+
+html body #root .app.app-command-shell.app-forge,
+html body #root .app.app-command-shell.app-inventory {
+  --et-route-flavor: #98713a;
+  --wc-accent-3: #98713a;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram {
+  --et-route-flavor: var(--et-ui-gold);
+  --wc-accent-3: var(--et-ui-gold);
+}
+
+html body #root .app.app-command-shell.app-tidepool {
+  --et-route-flavor: var(--et-ui-tide);
+  --wc-accent-3: var(--et-ui-tide);
+}
+
+html body #root .app.app-command-shell:not(.app-home) :where(.et-mockup-page, .et-mockup-main-column, .scout-mockup-main, .vault-mockup-main, .market-mockup-main, .forge-mockup-main, .spark-mockup-main, .tidepool-mockup-main) {
+  color: var(--et-ui-ink) !important;
+}
+
+html body #root .app.app-command-shell:not(.app-home) :where(
+  .et-mockup-page-hero,
+  .et-mockup-section-card,
+  .et-mockup-right-rail,
+  .panel,
+  .compact-card,
+  .glass-card,
+  .glass-panel,
+  .standard-page-header,
+  .utility-card,
+  .drawer-info-card,
+  .market-mockup-search,
+  .market-reference-featured-drop,
+  .market-reference-mini-card,
+  .market-home-product-card,
+  .market-mockup-guardrail-rail,
+  .market-watchlist-prompt,
+  .market-results-panel,
+  .vault-mockup-overview-shell,
+  .vault-collection-panel,
+  .vault-empty-action-card,
+  .vault-empty-summary-card,
+  .forge-home-inventory-section,
+  .forge-business-dashboard,
+  .forge-master-preview-panel,
+  .forge-access-preview-panel,
+  .spark-mission-card,
+  .spark-impact-dashboard,
+  .spark-kid-packs-card,
+  .spark-event-support-card,
+  .spark-giving-ledger-card,
+  .tidepool-mockup-pulse,
+  .tidepool-trust-dashboard-card,
+  .tidepool-trusted-circle-card,
+  .tidepool-community,
+  .tidepool-preview-card,
+  .tidepool-moderation-card
+) {
+  border-color: color-mix(in srgb, var(--et-ui-line) 82%, var(--et-ui-gold) 18%) !important;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--et-ui-surface-strong) 91%, transparent), color-mix(in srgb, var(--et-ui-surface) 96%, var(--et-route-flavor) 4%)),
+    var(--et-ui-surface) !important;
+  box-shadow: var(--et-ui-shadow) !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell:not(.app-home) :where(
+  .et-mockup-page-hero,
+  .et-mockup-section-card,
+  .et-mockup-right-rail,
+  .panel,
+  .compact-card,
+  .glass-card,
+  .glass-panel,
+  .standard-page-header,
+  .utility-card,
+  .drawer-info-card,
+  .market-mockup-search,
+  .market-reference-featured-drop,
+  .market-reference-mini-card,
+  .market-home-product-card,
+  .market-mockup-guardrail-rail,
+  .market-watchlist-prompt,
+  .market-results-panel,
+  .vault-mockup-overview-shell,
+  .vault-collection-panel,
+  .vault-empty-action-card,
+  .vault-empty-summary-card,
+  .forge-home-inventory-section,
+  .forge-business-dashboard,
+  .forge-master-preview-panel,
+  .forge-access-preview-panel,
+  .spark-mission-card,
+  .spark-impact-dashboard,
+  .spark-kid-packs-card,
+  .spark-event-support-card,
+  .spark-giving-ledger-card,
+  .tidepool-mockup-pulse,
+  .tidepool-trust-dashboard-card,
+  .tidepool-trusted-circle-card,
+  .tidepool-community,
+  .tidepool-preview-card,
+  .tidepool-moderation-card
+),
+html body #root .app.app-shell-dark.app-command-shell:not(.app-home) :where(
+  .et-mockup-page-hero,
+  .et-mockup-section-card,
+  .et-mockup-right-rail,
+  .panel,
+  .compact-card,
+  .glass-card,
+  .glass-panel,
+  .standard-page-header,
+  .utility-card,
+  .drawer-info-card,
+  .market-mockup-search,
+  .market-reference-featured-drop,
+  .market-reference-mini-card,
+  .market-home-product-card,
+  .market-mockup-guardrail-rail,
+  .market-watchlist-prompt,
+  .market-results-panel,
+  .vault-mockup-overview-shell,
+  .vault-collection-panel,
+  .vault-empty-action-card,
+  .vault-empty-summary-card,
+  .forge-home-inventory-section,
+  .forge-business-dashboard,
+  .forge-master-preview-panel,
+  .forge-access-preview-panel,
+  .spark-mission-card,
+  .spark-impact-dashboard,
+  .spark-kid-packs-card,
+  .spark-event-support-card,
+  .spark-giving-ledger-card,
+  .tidepool-mockup-pulse,
+  .tidepool-trust-dashboard-card,
+  .tidepool-trusted-circle-card,
+  .tidepool-community,
+  .tidepool-preview-card,
+  .tidepool-moderation-card
+) {
+  border-color: color-mix(in srgb, var(--et-ui-line) 82%, var(--et-ui-gold) 18%) !important;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--et-ui-surface-strong) 92%, transparent), color-mix(in srgb, var(--et-ui-surface-muted) 88%, var(--et-route-flavor) 7%)),
+    var(--et-ui-surface) !important;
+}
+
+html body #root .app.app-command-shell:not(.app-home) .et-mockup-page-hero {
+  align-items: center !important;
+  border-left-color: color-mix(in srgb, var(--et-ui-ember) 76%, var(--et-ui-gold)) !important;
+  gap: clamp(14px, 2vw, 24px) !important;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 280px) !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  padding: clamp(15px, 2vw, 22px) !important;
+}
+
+html body #root .app.app-command-shell:not(.app-home) .et-mockup-page-hero::before,
+html body #root .app.app-command-shell:not(.app-home) .et-mockup-page-hero::after {
+  opacity: 0.16 !important;
+  filter: saturate(0.72) sepia(0.18) !important;
+}
+
+html body #root .app.app-command-shell:not(.app-home) .et-mockup-brand-row {
+  width: fit-content !important;
+  border-color: color-mix(in srgb, var(--et-ui-gold) 22%, var(--et-ui-line)) !important;
+  background: color-mix(in srgb, var(--et-ui-surface-strong) 78%, transparent) !important;
+  color: var(--et-ui-heading) !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell:not(.app-home) .et-mockup-hero-copy {
+  display: grid !important;
+  gap: 11px !important;
+  max-width: 68ch !important;
+}
+
+html body #root .app.app-command-shell:not(.app-home) .et-mockup-hero-copy h1 {
+  color: var(--et-ui-heading) !important;
+  font-size: clamp(1.72rem, 2.7vw, 2.45rem) !important;
+  line-height: 1.02 !important;
+  max-width: 20ch !important;
+}
+
+html body #root .app.app-command-shell:not(.app-home) .et-mockup-hero-copy p {
+  color: var(--et-ui-muted) !important;
+  font-size: 0.95rem !important;
+  line-height: 1.42 !important;
+  max-width: 48ch !important;
+}
+
+html body #root .app.app-command-shell:not(.app-home) .et-mockup-today-action {
+  width: min(100%, 620px) !important;
+  min-height: 0 !important;
+  border-radius: var(--et-final-radius-card) !important;
+  border: 1px solid color-mix(in srgb, var(--et-ui-ember) 42%, var(--et-ui-line)) !important;
+  background:
+    linear-gradient(90deg, var(--et-ui-ember), color-mix(in srgb, var(--et-ui-gold) 82%, var(--et-ui-ember))) !important;
+  color: #fff8ed !important;
+  box-shadow: 0 14px 28px color-mix(in srgb, var(--et-ui-ember) 18%, transparent) !important;
+  padding: 12px 16px !important;
+  text-align: left !important;
+}
+
+html body #root .app.app-command-shell:not(.app-home) .et-mockup-today-action :where(span, strong, b) {
+  color: #fff8ed !important;
+}
+
+html body #root .app.app-command-shell:not(.app-home) .et-mockup-today-action :where(button, a, .et-mockup-button, .et-mockup-button-primary) {
+  border-color: rgba(255, 248, 237, 0.6) !important;
+  background: rgba(255, 248, 237, 0.92) !important;
+  color: #74331c !important;
+  box-shadow: 0 8px 18px rgba(73, 34, 18, 0.14) !important;
+}
+
+html body #root .app.app-command-shell:not(.app-home) .et-mockup-today-action :where(button, a, .et-mockup-button, .et-mockup-button-primary) :where(span, strong, b) {
+  color: #74331c !important;
+}
+
+html body #root .app.app-command-shell:not(.app-home) .et-mockup-hero-status {
+  align-items: end !important;
+  gap: 8px !important;
+  justify-content: center !important;
+}
+
+@media (min-width: 761px) {
+  html body #root .app.app-command-shell:not(.app-home) .et-mockup-hero-copy p,
+  html body #root .app.app-command-shell:not(.app-home) .et-mockup-hero-status {
+    display: none !important;
+  }
+
+  html body #root .app.app-command-shell:not(.app-home) .et-mockup-page-hero {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell:not(.app-home) .et-mockup-today-action {
+    max-width: 560px !important;
+  }
+}
+
+html body #root .app.app-command-shell:not(.app-home) .et-mockup-points-card,
+html body #root .app.app-command-shell:not(.app-home) .et-mockup-pill {
+  border-color: color-mix(in srgb, var(--et-ui-gold) 22%, var(--et-ui-line)) !important;
+  background: color-mix(in srgb, var(--et-ui-surface-strong) 82%, transparent) !important;
+  color: color-mix(in srgb, var(--et-ui-gold) 38%, var(--et-ui-heading)) !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-theme-dark.app-command-shell:not(.app-home) .et-mockup-points-card,
+html body #root .app.app-theme-dark.app-command-shell:not(.app-home) .et-mockup-pill,
+html body #root .app.app-shell-dark.app-command-shell:not(.app-home) .et-mockup-points-card,
+html body #root .app.app-shell-dark.app-command-shell:not(.app-home) .et-mockup-pill {
+  color: color-mix(in srgb, var(--et-ui-gold) 58%, var(--et-ui-heading)) !important;
+}
+
+html body #root .app.app-command-shell:not(.app-home) .et-mockup-hero-status .et-mockup-pill-row .et-mockup-pill:nth-child(n + 3),
+html body #root .app.app-command-shell.app-scout .scout-mockup-guardrails .et-mockup-pill:nth-child(n + 3),
+html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-guardrail-strip span:nth-child(n + 3),
+html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-header .et-mockup-pill-row .et-mockup-pill:nth-child(n + 2),
+html body #root .app.app-command-shell.app-vault .vault-mockup-header .et-mockup-pill-row .et-mockup-pill:nth-child(n + 2) {
+  display: none !important;
+}
+
+html body #root .app.app-command-shell:not(.app-home) :where(.et-mockup-section-heading, .et-mockup-rail-heading, .compact-card-header) {
+  gap: 10px !important;
+}
+
+html body #root .app.app-command-shell:not(.app-home) :where(.et-mockup-section-heading h2, .et-mockup-rail-heading h2, .compact-card-header h2, .compact-card-header h3) {
+  color: var(--et-ui-heading) !important;
+  font-size: clamp(1.1rem, 1.7vw, 1.55rem) !important;
+  line-height: 1.05 !important;
+}
+
+html body #root .app.app-command-shell:not(.app-home) :where(.et-mockup-section-heading p, .et-mockup-rail-heading p, .compact-card-header p, .et-mockup-action-copy small) {
+  color: var(--et-ui-muted) !important;
+}
+
+html body #root .app.app-command-shell:not(.app-home) :where(.et-mockup-action-card, .et-mockup-stat-card, .vault-home-preview-card, .market-home-category-row button, .tidepool-live-section-card, .tidepool-trust-dashboard-item, .spark-impact-milestone-card) {
+  border-color: color-mix(in srgb, var(--et-ui-line) 78%, var(--et-ui-gold) 18%) !important;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--et-ui-surface-strong) 90%, transparent), color-mix(in srgb, var(--et-ui-surface) 92%, var(--et-route-flavor) 4%)) !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell:not(.app-home) .et-mockup-icon,
+html body #root .app.app-command-shell:not(.app-home) .et-mockup-action-icon,
+html body #root .app.app-command-shell:not(.app-home) .spark-section-icon {
+  border-color: color-mix(in srgb, var(--et-ui-ember) 26%, var(--et-ui-line)) !important;
+  background: color-mix(in srgb, var(--et-ui-ember) 12%, var(--et-ui-surface-strong)) !important;
+  color: color-mix(in srgb, var(--et-ui-ember) 64%, var(--et-ui-heading)) !important;
+}
+
+html body #root .app.app-command-shell:not(.app-home) :where(.standard-page-header-tabs button, .market-mockup-tabs button, .market-home-category-row button, .vault-view-strip button) {
+  border-color: var(--et-ui-line) !important;
+  background: color-mix(in srgb, var(--et-ui-surface-strong) 88%, transparent) !important;
+  color: var(--et-ui-muted) !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell:not(.app-home) :where(.standard-page-header-tabs button.active, .standard-page-header-tabs button[aria-selected="true"], .market-mockup-tabs button.active, .market-home-category-row button.active, .vault-view-strip button.active) {
+  border-color: color-mix(in srgb, var(--et-ui-ember) 42%, var(--et-ui-line)) !important;
+  background: color-mix(in srgb, var(--et-ui-ember) 11%, var(--et-ui-surface-strong)) !important;
+  color: var(--et-ui-heading) !important;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-header,
+html body #root .app.app-command-shell.app-vault .vault-mockup-header,
+html body #root .app.app-command-shell.app-market .market-mockup-header,
+html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-header,
+html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-header {
+  align-items: start !important;
+  gap: 12px !important;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-header .et-mockup-page-hero {
+  align-content: start !important;
+  align-self: start !important;
+  height: auto !important;
+  min-height: 0 !important;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-navigation {
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--et-ui-surface-strong) 90%, transparent), color-mix(in srgb, var(--et-ui-surface) 94%, var(--et-ui-tide) 4%)) !important;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-primary-actions {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+html body #root .app.app-command-shell.app-scout .scout-mockup-primary-actions .et-mockup-action-card:first-child {
+  border-color: color-mix(in srgb, var(--et-ui-ember) 38%, var(--et-ui-line)) !important;
+}
+
+html body #root .app.app-command-shell.app-vault .et-mockup-page-hero,
+html body #root .app.app-command-shell.app-vault .vault-mockup-overview-shell,
+html body #root .app.app-command-shell.app-vault .vault-collection-panel {
+  border-color: color-mix(in srgb, var(--et-ui-gold) 34%, var(--et-ui-line)) !important;
+}
+
+html body #root .app.app-command-shell.app-vault :where(.et-mockup-pill, .status-badge, .trust-badge) {
+  border-color: color-mix(in srgb, var(--et-ui-gold) 22%, var(--et-ui-line)) !important;
+  background: color-mix(in srgb, var(--et-ui-gold) 9%, var(--et-ui-surface-strong)) !important;
+  color: color-mix(in srgb, var(--et-ui-gold) 42%, var(--et-ui-heading)) !important;
+}
+
+html body #root .app.app-command-shell.app-vault :where(.et-mockup-brand-row, .et-mockup-brand-row .et-mockup-icon, .vault-home-preview-card:first-child) {
+  border-color: color-mix(in srgb, var(--et-ui-gold) 28%, var(--et-ui-line)) !important;
+  background: color-mix(in srgb, var(--et-ui-gold) 10%, var(--et-ui-surface-strong)) !important;
+  color: color-mix(in srgb, var(--et-ui-gold) 48%, var(--et-ui-heading)) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-header {
+  display: grid !important;
+  gap: 12px !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-search {
+  padding: clamp(14px, 1.8vw, 20px) !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-home-category-row {
+  gap: 8px !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-home-category-row button {
+  align-items: center !important;
+  min-height: 46px !important;
+  padding: 8px 10px !important;
+  text-align: left !important;
+}
+
+html body #root .app.app-command-shell.app-market .market-mockup-guardrail-rail,
+html body #root .app.app-command-shell.app-market .market-watchlist-prompt {
+  display: none !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-header .et-mockup-page-hero {
+  border-left-color: color-mix(in srgb, var(--et-ui-gold) 66%, var(--et-ui-ember)) !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram :where(.spark-primary-cta, .spark-secondary-cta, .spark-donation-route-button) {
+  background: linear-gradient(135deg, var(--et-ui-ember), var(--et-ui-gold)) !important;
+  color: #fff8ed !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram :where(.spark-header-mission-line, .spark-gift-safety-strip, .spark-mockup-mission-note) {
+  border-color: color-mix(in srgb, var(--et-ui-gold) 22%, var(--et-ui-line)) !important;
+  background: color-mix(in srgb, var(--et-ui-gold) 8%, var(--et-ui-surface-strong)) !important;
+  color: var(--et-ui-heading) !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram :where(.spark-mockup-rail .et-mockup-action-card, .spark-section-card, .spark-gift-type-cloud span, .spark-program-support-cloud span) {
+  border-color: color-mix(in srgb, var(--et-ui-gold) 22%, var(--et-ui-line)) !important;
+  background: color-mix(in srgb, var(--et-ui-surface-strong) 92%, var(--et-ui-gold) 5%) !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram :where(.spark-mission-orb, .spark-thank-you-orb, .spark-impact-dashboard::before, .spark-mission-card::before) {
+  opacity: 0.18 !important;
+  filter: saturate(0.65) hue-rotate(-22deg) !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .et-mockup-right-rail .et-mockup-action-card:nth-child(n + 3),
+html body #root .app.app-command-shell.app-tidepool .et-mockup-right-rail .et-mockup-action-card:nth-child(n + 3) {
+  display: none !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-rail .et-mockup-action-card:nth-child(n + 2),
+html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-rail .et-mockup-action-card:nth-child(n + 2),
+html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-status-rail,
+html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-rail .et-mockup-empty-state {
+  display: none !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .et-mockup-right-rail .et-mockup-section-card:nth-of-type(n + 2),
+html body #root .app.app-command-shell.app-tidepool .et-mockup-right-rail .et-mockup-section-card:nth-of-type(n + 2) {
+  display: none !important;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-guardrail-strip {
+  gap: 7px !important;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-guardrail-strip span {
+  border-color: color-mix(in srgb, var(--et-ui-tide) 20%, var(--et-ui-line)) !important;
+  background: color-mix(in srgb, var(--et-ui-surface-strong) 82%, transparent) !important;
+  color: var(--et-ui-muted) !important;
+}
+
+html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-trust-grid,
+html body #root .app.app-command-shell.app-tidepool .tidepool-moderation-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+html body #root .app.app-command-shell.app-settings :where(.standard-page-header, .drawer-info-card, .utility-card),
+html body #root .app.app-command-shell.app-menu :where(.standard-page-header, .drawer-info-card, .utility-card),
+html body #root .app.app-command-shell.app-trust :where(.standard-page-header, .drawer-info-card, .utility-card),
+html body #root .app.app-command-shell.app-databackup :where(.standard-page-header, .drawer-info-card, .utility-card) {
+  border-color: color-mix(in srgb, var(--et-ui-gold) 18%, var(--et-ui-line)) !important;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--et-ui-surface-strong) 92%, transparent), var(--et-ui-surface)) !important;
+}
+
+html body #root .app.app-command-shell .topbar {
+  grid-template-columns: auto minmax(180px, 0.72fr) minmax(160px, 0.52fr) auto !important;
+}
+
+html body #root .app.app-command-shell .app-search input {
+  min-width: 0 !important;
+}
+
+html body #root .app.app-command-shell .topbar-workspace-pill {
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+html body #root .app.app-command-shell .topbar-workspace-pill :where(strong, span, b) {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+html body #root .app.app-command-shell .topbar-brand-copy {
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+html body #root .app.app-command-shell .topbar-brand-copy :where(strong, small) {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-scout .scout-mockup-rebuild :where(
+  .et-mockup-page-hero,
+  .et-mockup-section-card,
+  .et-mockup-right-rail,
+  .et-mockup-action-card,
+  .et-mockup-stat-card,
+  .et-mockup-pill
+),
+html[data-theme="light"] body #root .app.app-command-shell.app-vault .vault-mockup-rebuild :where(
+  .et-mockup-page-hero,
+  .et-mockup-section-card,
+  .et-mockup-right-rail,
+  .et-mockup-action-card,
+  .et-mockup-stat-card,
+  .et-mockup-pill,
+  .status-badge,
+  .trust-badge
+),
+html[data-theme="light"] body #root .app.app-command-shell.app-forge .forge-mockup-rebuild :where(
+  .et-mockup-page-hero,
+  .et-mockup-section-card,
+  .et-mockup-right-rail,
+  .et-mockup-action-card,
+  .et-mockup-stat-card,
+  .et-mockup-pill
+),
+html[data-theme="light"] body #root .app.app-command-shell.app-kidsprogram .spark-mockup-rebuild :where(
+  .et-mockup-page-hero,
+  .et-mockup-section-card,
+  .et-mockup-right-rail,
+  .et-mockup-action-card,
+  .et-mockup-stat-card,
+  .et-mockup-pill
+),
+html[data-theme="light"] body #root .app.app-command-shell.app-tidepool .tidepool-mockup-rebuild :where(
+  .et-mockup-page-hero,
+  .et-mockup-section-card,
+  .et-mockup-right-rail,
+  .et-mockup-action-card,
+  .et-mockup-stat-card,
+  .et-mockup-pill
+) {
+  border-color: color-mix(in srgb, var(--et-ui-gold) 20%, var(--et-ui-line)) !important;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--et-ui-surface-strong) 93%, transparent), color-mix(in srgb, var(--et-ui-surface) 95%, var(--et-ui-gold) 3%)),
+    var(--et-ui-surface) !important;
+  box-shadow: var(--et-ui-shadow) !important;
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-scout .scout-mockup-rebuild .et-mockup-page-hero,
+html[data-theme="light"] body #root .app.app-command-shell.app-vault .vault-mockup-rebuild .et-mockup-page-hero,
+html[data-theme="light"] body #root .app.app-command-shell.app-forge .forge-mockup-rebuild .et-mockup-page-hero,
+html[data-theme="light"] body #root .app.app-command-shell.app-kidsprogram .spark-mockup-rebuild .et-mockup-page-hero,
+html[data-theme="light"] body #root .app.app-command-shell.app-tidepool .tidepool-mockup-rebuild .et-mockup-page-hero {
+  border-left-color: color-mix(in srgb, var(--et-ui-ember) 76%, var(--et-ui-gold)) !important;
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-scout .scout-mockup-rebuild .et-mockup-today-action,
+html[data-theme="light"] body #root .app.app-command-shell.app-vault .vault-mockup-rebuild .et-mockup-today-action,
+html[data-theme="light"] body #root .app.app-command-shell.app-forge .forge-mockup-rebuild .et-mockup-today-action,
+html[data-theme="light"] body #root .app.app-command-shell.app-kidsprogram .spark-mockup-rebuild .et-mockup-today-action,
+html[data-theme="light"] body #root .app.app-command-shell.app-tidepool .tidepool-mockup-rebuild .et-mockup-today-action,
+html body #root .app.app-command-shell.app-scout .scout-mockup-rebuild .et-mockup-today-action,
+html body #root .app.app-command-shell.app-vault .vault-mockup-rebuild .et-mockup-today-action,
+html body #root .app.app-command-shell.app-forge .forge-mockup-rebuild .et-mockup-today-action,
+html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-rebuild .et-mockup-today-action,
+html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-rebuild .et-mockup-today-action {
+  border-color: color-mix(in srgb, var(--et-ui-ember) 42%, var(--et-ui-line)) !important;
+  background:
+    linear-gradient(90deg, var(--et-ui-ember), color-mix(in srgb, var(--et-ui-gold) 82%, var(--et-ui-ember))) !important;
+  color: #fff8ed !important;
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-scout .scout-mockup-rebuild .et-mockup-today-action :where(span, strong, b),
+html[data-theme="light"] body #root .app.app-command-shell.app-vault .vault-mockup-rebuild .et-mockup-today-action :where(span, strong, b),
+html[data-theme="light"] body #root .app.app-command-shell.app-forge .forge-mockup-rebuild .et-mockup-today-action :where(span, strong, b),
+html[data-theme="light"] body #root .app.app-command-shell.app-kidsprogram .spark-mockup-rebuild .et-mockup-today-action :where(span, strong, b),
+html[data-theme="light"] body #root .app.app-command-shell.app-tidepool .tidepool-mockup-rebuild .et-mockup-today-action :where(span, strong, b),
+html body #root .app.app-command-shell.app-scout .scout-mockup-rebuild .et-mockup-today-action :where(span, strong, b),
+html body #root .app.app-command-shell.app-vault .vault-mockup-rebuild .et-mockup-today-action :where(span, strong, b),
+html body #root .app.app-command-shell.app-forge .forge-mockup-rebuild .et-mockup-today-action :where(span, strong, b),
+html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-rebuild .et-mockup-today-action :where(span, strong, b),
+html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-rebuild .et-mockup-today-action :where(span, strong, b) {
+  color: #fff8ed !important;
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-vault .vault-mockup-rebuild :where(.et-mockup-pill, .status-badge, .trust-badge),
+html body #root .app.app-command-shell.app-vault .vault-mockup-rebuild :where(.et-mockup-pill, .status-badge, .trust-badge) {
+  border-color: color-mix(in srgb, var(--et-ui-gold) 24%, var(--et-ui-line)) !important;
+  background: color-mix(in srgb, var(--et-ui-gold) 10%, var(--et-ui-surface-strong)) !important;
+  color: color-mix(in srgb, var(--et-ui-gold) 46%, var(--et-ui-heading)) !important;
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-vault .vault-mockup-rebuild :where(.et-mockup-brand-row, .et-mockup-brand-row .et-mockup-icon),
+html body #root .app.app-command-shell.app-vault .vault-mockup-rebuild :where(.et-mockup-brand-row, .et-mockup-brand-row .et-mockup-icon) {
+  border-color: color-mix(in srgb, var(--et-ui-gold) 28%, var(--et-ui-line)) !important;
+  background: color-mix(in srgb, var(--et-ui-gold) 10%, var(--et-ui-surface-strong)) !important;
+  color: color-mix(in srgb, var(--et-ui-gold) 48%, var(--et-ui-heading)) !important;
+}
+
+html[data-theme="light"] body #root .app.app-command-shell.app-kidsprogram .spark-mockup-rebuild :where(.et-mockup-button-primary, .spark-primary-cta, .spark-secondary-cta),
+html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-rebuild :where(.et-mockup-button-primary, .spark-primary-cta, .spark-secondary-cta) {
+  border-color: color-mix(in srgb, var(--et-ui-ember) 46%, var(--et-ui-line)) !important;
+  background: linear-gradient(135deg, var(--et-ui-ember), var(--et-ui-gold)) !important;
+  color: #fff8ed !important;
+}
+
+@media (min-width: 1024px) {
+  html body #root .app.app-command-shell:not(.app-home) :where(.scout-mockup-rebuild, .vault-mockup-rebuild, .market-mockup-rebuild, .forge-mockup-rebuild, .spark-mockup-rebuild, .tidepool-mockup-rebuild) {
+    width: min(100%, 1260px) !important;
+  }
+
+  html body #root .app.app-command-shell:not(.app-home) :where(.spark-mockup-rebuild, .tidepool-mockup-rebuild) {
+    grid-template-columns: minmax(0, 1fr) minmax(250px, 320px) !important;
+  }
+}
+
+@media (max-width: 760px) {
+  html body #root .app.app-command-shell:not(.app-home) {
+    --et-final-mobile-bottom-safe: max(132px, calc(var(--bottom-nav-height, 72px) + env(safe-area-inset-bottom, 0px) + 48px));
+  }
+
+  html body #root .app.app-command-shell:not(.app-home) .et-mockup-page-hero {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 9px !important;
+    padding: 12px !important;
+  }
+
+  html body #root .app.app-command-shell:not(.app-home) .et-mockup-brand-row,
+  html body #root .app.app-command-shell:not(.app-home) .et-mockup-hero-copy p,
+  html body #root .app.app-command-shell:not(.app-home) .et-mockup-hero-status,
+  html body #root .app.app-command-shell:not(.app-home) .et-mockup-pill-row,
+  html body #root .app.app-command-shell:not(.app-home) .et-mockup-right-rail {
+    display: none !important;
+  }
+
+  html body #root .app.app-command-shell:not(.app-home) .et-mockup-hero-copy h1 {
+    font-size: 1.24rem !important;
+    max-width: 16ch !important;
+  }
+
+  html body #root .app.app-command-shell:not(.app-home) .et-mockup-today-action {
+    padding: 10px 12px !important;
+  }
+
+  html body #root .app.app-command-shell:not(.app-home) .et-mockup-today-action strong {
+    font-size: 0.92rem !important;
+    line-height: 1.14 !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-mockup-primary-actions,
+  html body #root .app.app-command-shell.app-market .market-home-category-row,
+  html body #root .app.app-command-shell.app-tidepool .tidepool-mockup-trust-grid,
+  html body #root .app.app-command-shell.app-tidepool .tidepool-moderation-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell.app-market .market-home-category-row button:nth-child(n + 4),
+  html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-mission-card,
+  html body #root .app.app-command-shell.app-tidepool .tidepool-trust-dashboard-card,
+  html body #root .app.app-command-shell.app-tidepool .tidepool-trusted-circle-card,
+  html body #root .app.app-command-shell.app-vault .vault-collection-panel {
+    display: none !important;
+  }
+
+  html body #root .app.app-command-shell:not(.app-home) :where(.et-mockup-section-card, .panel, .compact-card, .glass-card, .glass-panel) {
+    padding: 11px !important;
+  }
+
+  html body #root .app.app-command-shell .topbar {
+    grid-template-columns: auto auto auto !important;
+  }
+
+  html body #root .app.app-command-shell .topbar-brand {
+    width: 48px !important;
+    min-width: 48px !important;
+    max-width: 48px !important;
+    justify-content: center !important;
+    overflow: hidden !important;
+  }
+
+  html body #root .app.app-command-shell .topbar-brand-copy {
+    display: none !important;
+  }
+
+  html body #root .app.app-command-shell .topbar-brand .sr-only {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+  }
+
+  html body #root .app.app-command-shell.app-scout .scout-watch-stores-card {
+    display: grid !important;
+    padding: 11px !important;
+  }
+
+  html body #root .app.app-command-shell.app-membership .et-mockup-brand-row {
+    display: inline-flex !important;
+  }
+
+  html body #root .app.app-command-shell.app-tidepool .tidepool-trust-dashboard-card,
+  html body #root .app.app-command-shell.app-tidepool .tidepool-trusted-circle-card {
+    display: grid !important;
+    padding: 11px !important;
+  }
+}
+
+/* Final route-color clamp: route accents support the page; primary actions stay Ember/Tide. */
+html body #root .app.app-command-shell:not(.app-home) .et-mockup-today-action > b {
+  display: inline-flex !important;
+  align-items: center !important;
+  width: fit-content !important;
+  border: 1px solid rgba(255, 248, 237, 0.34) !important;
+  border-radius: 999px !important;
+  background: rgba(21, 16, 10, 0.62) !important;
+  color: #fff8ed !important;
+  box-shadow: 0 8px 18px rgba(73, 34, 18, 0.14) !important;
+  padding: 3px 8px !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-mockup-overview-shell .et-mockup-action-card,
+html body #root .app.app-command-shell.app-vault .vault-mockup-overview-shell .et-mockup-action-card:first-child {
+  border-color: color-mix(in srgb, var(--et-ui-gold) 24%, var(--et-ui-line)) !important;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--et-ui-surface-strong) 93%, transparent), color-mix(in srgb, var(--et-ui-surface) 94%, var(--et-ui-gold) 4%)),
+    var(--et-ui-surface) !important;
+}
+
+html body #root .app.app-command-shell.app-vault .vault-mockup-overview-shell .et-mockup-action-card :where(.et-mockup-action-icon, .et-mockup-icon) {
+  border-color: color-mix(in srgb, var(--et-ui-ember) 28%, var(--et-ui-line)) !important;
+  background: color-mix(in srgb, var(--et-ui-ember) 12%, var(--et-ui-surface-strong)) !important;
+  color: color-mix(in srgb, var(--et-ui-ember) 62%, var(--et-ui-heading)) !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-header-mission-line.spark-mockup-mission-note,
+html body #root .app.app-command-shell.app-kidsprogram .spark-gift-safety-strip {
+  border-color: color-mix(in srgb, var(--et-ui-gold) 24%, var(--et-ui-line)) !important;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--et-ui-surface-strong) 94%, transparent), color-mix(in srgb, var(--et-ui-surface) 94%, var(--et-ui-gold) 4%)),
+    var(--et-ui-surface) !important;
+  color: var(--et-ui-heading) !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-main :where(.secondary-button, .spark-section-card button, .spark-flow-actions button) {
+  border-color: color-mix(in srgb, var(--et-ui-gold) 28%, var(--et-ui-line)) !important;
+  background: color-mix(in srgb, var(--et-ui-surface-strong) 92%, var(--et-ui-gold) 5%) !important;
+  color: var(--et-ui-heading) !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-main button.et-mockup-button.et-mockup-button-secondary {
+  border-color: color-mix(in srgb, var(--et-ui-gold) 30%, var(--et-ui-line)) !important;
+  background: color-mix(in srgb, var(--et-ui-surface-strong) 94%, var(--et-ui-gold) 4%) !important;
+  color: var(--et-ui-heading) !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-main :where(.spark-primary-cta, .spark-donation-route-button),
+html body #root .app.app-command-shell.app-kidsprogram .spark-mockup-rail .et-mockup-action-card :where(b, em, i, svg) {
+  border-color: color-mix(in srgb, var(--et-ui-ember) 42%, var(--et-ui-line)) !important;
+  background: linear-gradient(135deg, var(--et-ui-ember), var(--et-ui-gold)) !important;
+  color: #fff8ed !important;
+}
+
+/* Brief finalization: auth, utility, safety, and guide surfaces. */
+html body #root .app:not(.app-command-shell) main.auth-main.auth-main-final-direction {
+  align-items: start !important;
+  min-height: calc(100vh - 104px) !important;
+}
+
+html body #root .app:not(.app-command-shell) main.auth-main.auth-main-final-direction .auth-choice-row {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+html body #root .app:not(.app-command-shell) main.auth-main.auth-main-final-direction .auth-choice-button,
+html body #root .app:not(.app-command-shell) main.auth-main.auth-main-final-direction .signed-out-auth-card button {
+  min-height: 46px !important;
+  padding: 10px 14px !important;
+  white-space: nowrap !important;
+}
+
+html body #root .app:not(.app-command-shell) main.auth-main.auth-main-final-direction .auth-beta-note,
+html body #root .app:not(.app-command-shell) main.auth-main.auth-main-final-direction .auth-landing-note {
+  border-color: color-mix(in srgb, var(--et-ui-gold) 22%, var(--et-ui-line)) !important;
+  background: color-mix(in srgb, var(--et-ui-surface-strong) 92%, var(--et-ui-gold) 5%) !important;
+  color: var(--et-ui-muted) !important;
+}
+
+html body #root .app.app-theme-dark:not(.app-command-shell) main.auth-main.auth-main-final-direction .auth-beta-note,
+html body #root .app.app-theme-dark:not(.app-command-shell) main.auth-main.auth-main-final-direction .auth-landing-note {
+  border-color: rgba(227, 170, 75, 0.22) !important;
+  background: rgba(255, 248, 237, 0.08) !important;
+  color: rgba(255, 248, 237, 0.78) !important;
+}
+
+html body #root .app.app-command-shell:is(.app-settings, .app-menu, .app-trust, .app-databackup, .app-help, .app-profile) .command-screen-hero,
+html body #root .app.app-command-shell:is(.app-settings, .app-menu, .app-trust, .app-databackup, .app-help, .app-profile) .standard-page-header {
+  padding: clamp(14px, 2vw, 22px) !important;
+}
+
+html body #root .app.app-command-shell:is(.app-settings, .app-menu, .app-trust, .app-databackup, .app-help, .app-profile) .standard-page-header-actions {
+  align-items: stretch !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+}
+
+html body #root .app.app-command-shell:is(.app-settings, .app-menu, .app-trust, .app-databackup, .app-help, .app-profile) .standard-page-header-actions button,
+html body #root .app.app-command-shell:is(.app-settings, .app-menu, .app-trust, .app-databackup, .app-help, .app-profile) .drawer-inline-actions button,
+html body #root .app.app-command-shell:is(.app-settings, .app-menu, .app-trust, .app-databackup, .app-help, .app-profile) .drawer-link {
+  min-height: 40px !important;
+  padding: 9px 13px !important;
+}
+
+html body #root .app.app-command-shell:is(.app-settings, .app-menu, .app-trust, .app-databackup, .app-help, .app-profile) .utility-card {
+  border-color: color-mix(in srgb, var(--et-ui-line) 84%, var(--et-ui-gold) 16%) !important;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--et-ui-surface-strong) 94%, transparent), color-mix(in srgb, var(--et-ui-surface) 96%, var(--et-ui-gold) 3%)),
+    var(--et-ui-surface) !important;
+}
+
+html body #root .app.app-command-shell:is(.app-settings, .app-menu, .app-trust, .app-databackup, .app-help, .app-profile) .utility-card :where(h2, h3, strong) {
+  color: var(--et-ui-heading) !important;
+}
+
+html body #root .app.app-command-shell:is(.app-settings, .app-menu, .app-trust, .app-databackup, .app-help, .app-profile) .utility-card :where(p, span, small, dd) {
+  color: var(--et-ui-muted) !important;
+}
+
+html body #root .app.app-command-shell.app-trust .trust-page-hero-card,
+html body #root .app.app-command-shell.app-trust .trust-page-card {
+  border-color: color-mix(in srgb, var(--et-ui-line) 84%, var(--et-ui-gold) 16%) !important;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--et-ui-surface-strong) 95%, transparent), color-mix(in srgb, var(--et-ui-surface) 96%, var(--et-ui-gold) 3%)),
+    var(--et-ui-surface) !important;
+  box-shadow: var(--et-ui-shadow) !important;
+}
+
+html body #root .app.app-command-shell.app-trust .settings-section-card {
+  border-color: color-mix(in srgb, var(--et-ui-gold) 22%, var(--et-ui-line)) !important;
+  background: color-mix(in srgb, var(--et-ui-surface-strong) 94%, var(--et-ui-gold) 4%) !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell.app-trust .settings-section-card .status-badge {
+  border-color: color-mix(in srgb, var(--et-ui-gold) 28%, var(--et-ui-line)) !important;
+  background: color-mix(in srgb, var(--et-ui-gold) 12%, var(--et-ui-surface-strong)) !important;
+  color: color-mix(in srgb, var(--et-ui-gold) 46%, var(--et-ui-heading)) !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-panel {
+  border-color: color-mix(in srgb, var(--et-ui-gold) 24%, var(--et-ui-line)) !important;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--et-ui-surface-strong) 94%, transparent), color-mix(in srgb, var(--et-ui-surface) 92%, var(--et-ui-gold) 5%)),
+    var(--et-ui-surface) !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-panel :where(.ember-assist-live-hero, .ember-assist-safety-note, .ember-assist-guidance-card, .ember-assist-recent-help, .ember-assist-empty, .ember-assist-status) {
+  border-color: color-mix(in srgb, var(--et-ui-gold) 22%, var(--et-ui-line)) !important;
+  background: color-mix(in srgb, var(--et-ui-surface-strong) 92%, var(--et-ui-gold) 5%) !important;
+  box-shadow: none !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-panel .ember-assist-live-hero {
+  padding: 14px !important;
+}
+
+html body #root .app.app-command-shell .ember-assist-panel .ember-assist-quick-action-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+@media (max-width: 760px) {
+  html body #root .app:not(.app-command-shell) main.auth-main.auth-main-final-direction {
+    display: block !important;
+    padding-top: 10px !important;
+  }
+
+  html body #root .app:not(.app-command-shell) main.auth-main.auth-main-final-direction .signed-out-landing {
+    display: none !important;
+  }
+
+  html body #root .app:not(.app-command-shell) main.auth-main.auth-main-final-direction > .signed-out-auth-card {
+    margin-top: 0 !important;
+  }
+
+  html body #root .app.app-command-shell:is(.app-settings, .app-menu, .app-trust, .app-databackup, .app-help, .app-profile) .standard-page-header-actions {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  html body #root .app.app-command-shell:is(.app-settings, .app-menu, .app-trust, .app-databackup, .app-help, .app-profile) .standard-page-header-actions button {
+    width: 100% !important;
+  }
+
+  html body #root .app.app-command-shell:is(.app-settings, .app-menu, .app-trust, .app-databackup, .app-help, .app-profile) .drawer-inline-actions {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  html body #root .app.app-command-shell.app-trust .trust-page-hero-card .settings-section-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html body #root .app.app-command-shell.app-trust .settings-section-card {
+    padding: 11px !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-panel {
+    max-height: min(78vh, 700px) !important;
+  }
+
+  html body #root .app.app-command-shell .ember-assist-panel .ember-assist-quick-action-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+@media (max-width: 760px) {
+  html body #root main.auth-main.auth-main-final-direction > section.signed-out-landing.panel {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    max-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    overflow: hidden !important;
+    pointer-events: none !important;
+  }
+}

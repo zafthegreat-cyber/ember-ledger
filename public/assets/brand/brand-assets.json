@@ -1,8 +1,10 @@
 {
   "appIcon": {
-    "source": "/assets/brand/ember-tide-icon-source.svg",
-    "mark": "/assets/brand/ember-tide-mark.svg",
-    "rule": "Use the neon booster-pack/card-stack icon with the Ember & Tide flame-wave mark and TCG lettering."
+    "source": "/assets/brand/ember-tide-app-icon.svg",
+    "mark": "/assets/brand/ember-tide-monogram.svg",
+    "wordmark": "/assets/brand/ember-tide-logo-horizontal.svg",
+    "legacyMark": "/assets/brand/ember-tide-flame-wave.svg",
+    "rule": "Use the ember and tide monogram for app chrome, favicon, loading states, and compact brand placements. Avoid TCG sticker, shopping, or social-feed styling."
   },
   "promoHero": {
     "source": "/assets/brand/ember-tide-promo-hero.svg",
@@ -20,10 +22,13 @@
     "pwaInstallPromoPng": "/assets/brand/pwa-install-promo.png"
   },
   "colors": {
-    "emberOrange": "#ff6a13",
-    "tideBlue": "#38bdf8",
-    "deepNavy": "#04111f"
+    "ink": "#05070B",
+    "deepNavy": "#07131D",
+    "cream": "#F8F3E7",
+    "emberOrange": "#FF7A3D",
+    "brassGold": "#FFC857",
+    "tideBlue": "#45C7D8"
   },
-  "tagline": "Track. Trade. Thrive.",
-  "secondaryTagline": "Built for collectors. Powered by community."
+  "tagline": "Find it. Track it. Trade fairly. Protect the spark.",
+  "secondaryTagline": "Warm premium collector command center."
 }
