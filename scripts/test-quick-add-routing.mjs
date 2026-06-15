@@ -164,7 +164,7 @@ assert.match(appSource, /mobile-quick-add-fab/);
 assert.match(appSource, /showMobileQuickAddFab/);
 assert.match(appSource, /Open Quick Add command center/);
 assert.doesNotMatch(appSource, /\{ key: "quickAdd", label: "Add", icon: "plus", center: true/);
-assert.match(appSource, /label: "More", icon: "settings"/);
+assert.match(appSource, /label: "You", target: "settings"/);
 assert.match(appSource, /Customize Quick Add/);
 assert.match(appSource, /Reset to Recommended/);
 assert.match(appSource, /action === "scanScreenshot"/);

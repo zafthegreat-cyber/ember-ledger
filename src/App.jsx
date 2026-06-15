@@ -1447,13 +1447,24 @@ function routeStateFromPath(pathname = "") {
   }
   if (section === "tidetradr") {
     state.activeTab = "market";
+    state.exchangeSection = "market";
     state.tideTradrSubTab = "overview";
     if ((subSection === "card" || subSection === "product") && detailId) {
       state.selectedCatalogDetailId = decodeURIComponent(detailId);
     }
     return state;
   }
+  if (section === "exchange") {
+    return { activeTab: "exchange", exchangeSection: normalizeExchangeSection(subSection || "market") };
+  }
+  if (section === "market") {
+    return { activeTab: "exchange", exchangeSection: "market", tideTradrSubTab: normalizeExchangeSection(subSection) === "harbor" ? "listings" : "overview" };
+  }
+  if (section === "harbor") {
+    return { activeTab: "exchange", exchangeSection: "harbor", tideTradrSubTab: "listings" };
+  }
   if (section === "forge") {
+    state.exchangeSection = "forge";
     if (subSection === "ledger") {
       state.activeTab = "inventory";
       state.forgeSubTab = "ledger";
@@ -1517,6 +1528,19 @@ function publicAppVersionLabel(value = APP_VERSION) {
 
 const PUBLIC_APP_VERSION_LABEL = publicAppVersionLabel(APP_VERSION);
 
+const EXCHANGE_SECTION_TABS = [
+  { key: "market", label: "Market", helper: "Research and price memory" },
+  { key: "harbor", label: "Harbor", helper: "Listings and offers" },
+  { key: "forge", label: "Forge", helper: "Trades and private ledger" },
+];
+
+function normalizeExchangeSection(value = "market") {
+  const key = String(value || "market").toLowerCase();
+  if (key === "listings" || key === "selling" || key === "seller" || key === "shop") return "harbor";
+  if (key === "inventory" || key === "ledger" || key === "trade" || key === "trades") return "forge";
+  return EXCHANGE_SECTION_TABS.some((tab) => tab.key === key) ? key : "market";
+}
+
 function renderAppBuildDetails() {
   return (
     <details className="app-version-details">
@@ -1537,7 +1561,7 @@ function loadInitialRouteState() {
   return {
     ...saved,
     ...route,
-    ...((route.activeTab === "market" || route.activeTab === "catalog") && marketQuery
+    ...((route.activeTab === "market" || route.activeTab === "catalog" || (route.activeTab === "exchange" && normalizeExchangeSection(route.exchangeSection) === "market")) && marketQuery
       ? { catalogSearch: marketQuery, submittedCatalogSearch: marketQuery }
       : {}),
     ...(route.activeTab === "vault" && vaultQuery ? { vaultSearch: vaultQuery } : {}),
@@ -6925,6 +6949,7 @@ export default function App() {
   const confirmationResolverRef = useRef(null);
   const confirmationCancelRef = useRef(null);
   const [tideTradrSubTab, setTideTradrSubTab] = useState(initialRouteState.tideTradrSubTab || "overview");
+  const [exchangeSection, setExchangeSection] = useState(() => normalizeExchangeSection(initialRouteState.exchangeSection || (initialRouteState.activeTab === "inventory" ? "forge" : initialRouteState.activeTab === "market" ? "market" : "market")));
   const [marketWatchPage, setMarketWatchPage] = useState(1);
   const [featureSectionsOpen, setFeatureSectionsOpen] = useState({
     home_dashboard_cards: true,
@@ -7947,14 +7972,12 @@ export default function App() {
 
   const mainTabByKey = {
     home: { key: "home", label: "Hearth", icon: "home", target: "dashboard" },
-    today: { key: "today", label: "Today's Tide", icon: "calendar", target: "dailyTide" },
-    scout: { key: "scout", label: "Scout", icon: "scout", target: "scout" },
     vault: { key: "vault", label: "Vault", icon: "vault", target: "vault" },
-    tideTradr: { key: "tideTradr", label: "Market", icon: "market", target: "market" },
-    forge: { key: "forge", label: "Forge", icon: "forge", target: "inventory" },
-    tidepool: { key: "tidepool", label: "Tidepool Community", icon: "pool", target: "tidepool" },
+    scout: { key: "scout", label: "Scout", icon: "scout", target: "scout" },
+    exchange: { key: "exchange", label: "Exchange", icon: "market", target: "exchange" },
+    you: { key: "you", label: "You", icon: "settings", target: "settings" },
   };
-  const mainTabs = selectAdaptiveDesktopMainKeys(adaptiveUiState)
+  const mainTabs = ["home", "vault", "scout", "exchange", "you"]
     .map((key) => mainTabByKey[key])
     .filter(Boolean);
 
@@ -7967,13 +7990,10 @@ export default function App() {
     },
     { title: "Main Tabs", items: [
       { key: "home", label: "Hearth", target: "dashboard" },
-      { key: "today", label: "Today's Tide", target: "dailyTide" },
-      { key: "scout-main", label: "Scout", target: "scout" },
       { key: "vault", label: "Vault" },
-      { key: "tideTradr-main", label: "Market", target: "market" },
-      { key: "forge", label: "Forge", target: "inventory" },
-      { key: "tidepool-main", label: "Tidepool Community", target: "tidepool" },
-      { key: "kids-program", label: "The Spark", target: "kidsProgram" },
+      { key: "scout-main", label: "Scout", target: "scout" },
+      { key: "exchange", label: "Exchange", target: "exchange" },
+      { key: "you", label: "You", target: "settings" },
       { key: "announcements", label: "Announcements", target: "whatsNew" },
       { key: "coming-soon", label: "Coming Soon", target: "comingSoon" },
       { key: "settings", label: "Settings", target: "settings" },
@@ -7981,6 +8001,7 @@ export default function App() {
   ];
 
   const activeBetaPageLabels = {
+    exchange: "Exchange",
     settings: "Settings",
     account: "Account",
     collections: "Collections",
@@ -8011,40 +8032,35 @@ export default function App() {
       : activeBetaPageLabels[activeTab]
         ? activeBetaPageLabels[activeTab]
       : navSections.flatMap((s) => s.items).find((i) => (i.target || i.key) === activeTab)?.label || "Dashboard";
+  const exchangeActiveTabs = new Set(["exchange", "market", "catalog", "inventory", "addInventory", "addSale", "sales", "expenses", "vehicles", "mileage", "reports"]);
+  const youActiveTabs = new Set(["settings", "menu", "account", "collections", "dataBackup", "tcgOs", "profile", "profileProgress", "help", "moderator", "adminReview", "mySuggestions", "kidsProgram", "parentCenter", "sponsor", "trust", "links", "whatsNew", "knownLimitations", "comingSoon", "membership", "betaReadiness", "tidepool"]);
   const activeMainTab =
-    activeTab === "dashboard"
+    activeTab === "dashboard" || activeTab === "dailyTide"
       ? "home"
-      : activeTab === "dailyTide"
-        ? "today"
-      : activeTab === "tidepool"
-        ? "tidepool"
-      : activeTab === "adminReview" || activeTab === "mySuggestions" || activeBetaPageLabels[activeTab]
-        ? ""
       : activeTab === "vault" || activeTab === "scout"
         ? activeTab
-      : activeTab === "market" || activeTab === "catalog"
-          ? "tideTradr"
-          : "forge";
+        : exchangeActiveTabs.has(activeTab)
+          ? "exchange"
+          : youActiveTabs.has(activeTab)
+            ? "you"
+            : "home";
   const mobileBottomTabs = [
     { key: "home", label: "Hearth", icon: "home", target: "dashboard" },
-    { key: "scout", label: "Scout", icon: "scout", target: "scout" },
     { key: "vault", label: "Vault", icon: "vault", target: "vault" },
-    { key: "tideTradr", label: "Market", icon: "market", target: "market", ariaLabel: "Market" },
-    { key: "menu", label: "More", icon: "settings", action: () => openMenuDrawer("more"), ariaLabel: "More" },
+    { key: "scout", label: "Scout", icon: "scout", target: "scout" },
+    { key: "exchange", label: "Exchange", icon: "market", target: "exchange", ariaLabel: "Exchange" },
+    { key: "you", label: "You", icon: "settings", target: "settings", ariaLabel: "You" },
   ];
-  const mobilePrimaryTabKeys = new Set(mobileBottomTabs.map((tab) => tab.key).filter((key) => key !== "menu"));
-  const activeMobileTabKey = menuOpen ? "menu" : mobilePrimaryTabKeys.has(activeMainTab) ? activeMainTab : "menu";
+  const mobilePrimaryTabKeys = new Set(mobileBottomTabs.map((tab) => tab.key));
+  const activeMobileTabKey = menuOpen ? "you" : mobilePrimaryTabKeys.has(activeMainTab) ? activeMainTab : "you";
   const desktopSidebarByKey = {
     home: { key: "home", label: "Hearth", helper: "Home base.", icon: "home", target: "dashboard" },
-    today: { key: "today", label: "Today's Tide", helper: "Attention list", icon: "calendar", target: "dailyTide" },
-    scout: { key: "scout", label: "Scout", helper: "Signals & Reports", icon: "scout", target: "scout" },
     vault: { key: "vault", label: "Vault", helper: "Collections", icon: "vault", target: "vault" },
-    tideTradr: { key: "tideTradr", label: "Market", helper: "Fair Prices", icon: "market", target: "market" },
-    forge: { key: "forge", label: "Forge", helper: "Receipts & Tools", icon: "forge", target: "inventory" },
-    tidepool: { key: "tidepool", label: "Tidepool", helper: "Community.", icon: "pool", target: "tidepool" },
-    spark: { key: "spark", label: "The Spark", helper: "Kids & Giving", icon: "spark", action: () => setActiveTab("kidsProgram") },
+    scout: { key: "scout", label: "Scout", helper: "Signals & Reports", icon: "scout", target: "scout" },
+    exchange: { key: "exchange", label: "Exchange", helper: "Market, Harbor, Forge", icon: "market", target: "exchange" },
+    you: { key: "you", label: "You", helper: "Profile, family, support", icon: "settings", target: "settings" },
   };
-  const desktopSidebarItems = selectAdaptiveDesktopMainKeys(adaptiveUiState)
+  const desktopSidebarItems = ["home", "vault", "scout", "exchange", "you"]
     .map((key) => desktopSidebarByKey[key])
     .filter(Boolean);
   const desktopMoreByKey = {
@@ -8098,6 +8114,7 @@ export default function App() {
     mileage: { key: "mileage", label: "Mileage", helper: "Trips and vehicle costs.", icon: "calendar", action: () => setActiveTab("mileage") },
     taxCenter: { key: "taxCenter", label: "Tax Center", helper: "Reports and export support.", icon: "clipboard", action: () => setActiveTab("reports") },
     market: { key: "market", label: "Market Watch", helper: "Fair prices, watchlist, and value labels.", icon: "market", target: "market" },
+    exchange: { key: "exchange", label: "Exchange", helper: "Market research, Harbor listings, and Forge tools.", icon: "market", target: "exchange" },
     tidepool: { key: "tidepool", label: "Tidepool Community", helper: "Family-safe posts and trusted trade talk.", icon: "pool", target: "tidepool" },
     spark: { key: "spark", label: "The Spark", helper: "Kids Program requests, missions, and events.", icon: "spark", action: () => setActiveTab("kidsProgram") },
     announcements: { key: "announcements", label: "Announcements", helper: "New Stuff and app updates.", icon: "bell", action: () => setActiveTab("whatsNew") },
@@ -8130,8 +8147,7 @@ export default function App() {
   ].filter(Boolean);
   const menuCollectionItems = [
     mobileMenuByKey.vault,
-    mobileMenuByKey.forge,
-    mobileMenuByKey.market,
+    mobileMenuByKey.exchange,
     mobileMenuByKey.watchList,
     mobileMenuByKey.quickAdd,
   ].filter(Boolean);
@@ -8178,9 +8194,8 @@ export default function App() {
   ].filter(Boolean);
   const topbarSectionOptions = [
     ...mainTabs,
-    { key: "settings", label: "Settings", target: "settings" },
   ];
-  const topbarSectionValue = activeTab === "menu" || activeTab === "settings" ? "settings" : activeMainTab || "home";
+  const topbarSectionValue = activeMainTab || "home";
   const dismissToast = useCallback((toastId) => {
     setAppToasts((current) => current.filter((toast) => toast.id !== toastId));
   }, []);
@@ -8656,6 +8671,7 @@ export default function App() {
     activeTab,
     activeMainTab || "standalone",
     homeSubTab,
+    exchangeSection,
     scoutView,
     vaultSubTab,
     tideTradrSubTab,
@@ -8745,11 +8761,35 @@ export default function App() {
       setActiveTab("dailyTide");
       return;
     }
+    if (tab.key === "you") {
+      setQuickAddMenuOpen(false);
+      setSearchExpanded(false);
+      openUtilityPage("settings");
+      return;
+    }
     if (tab.key === "scout") {
       setScoutView("overview");
       setScoutSubTabTarget({ tab: "overview", id: Date.now() });
     }
+    if (tab.key === "exchange") {
+      setExchangeSection("market");
+      setTideTradrSubTab("overview");
+      setFeatureSectionsOpen((current) => ({
+        ...current,
+        market_watchlist: false,
+        market_deal_finder: false,
+        market_sources: false,
+        market_filters: false,
+        forge_inventory: false,
+        forge_sales: false,
+        forge_expenses: false,
+        forge_mileage: false,
+        forge_reports: false,
+        forge_marketplace: false,
+      }));
+    }
     if (tab.key === "tideTradr") {
+      setExchangeSection("market");
       setTideTradrSubTab("overview");
       setFeatureSectionsOpen((current) => ({
         ...current,
@@ -8760,6 +8800,7 @@ export default function App() {
       }));
     }
     if (tab.key === "forge") {
+      setExchangeSection("forge");
       setForgeSubTab("overview");
       setFeatureSectionsOpen((current) => ({
         ...current,
@@ -8771,6 +8812,8 @@ export default function App() {
         forge_marketplace: false,
       }));
     }
+    if (tab.target === "market" || tab.target === "catalog") setExchangeSection("market");
+    if (tab.target === "inventory" || tab.target === "reports" || tab.target === "sales" || tab.target === "expenses" || tab.target === "mileage") setExchangeSection("forge");
     setQuickAddMenuOpen(false);
     setSearchExpanded(false);
     setActiveTab(tab.target);
@@ -8800,6 +8843,8 @@ export default function App() {
 
   function isDesktopSidebarItemActive(item) {
     if (!item) return false;
+    if (item.key === "exchange") return activeMainTab === "exchange";
+    if (item.key === "you") return activeMainTab === "you" || activeTab === "settings" || activeTab === "menu";
     if (item.key === "today") return activeTab === "dailyTide" || Boolean(dailyTideModalTask);
     if (item.key === "spark") return activeTab === "kidsProgram";
     if (item.key === "announcements") return activeTab === "whatsNew";
@@ -8949,6 +8994,176 @@ export default function App() {
       >
         {quickActions.length ? <QuickActionGrid actions={quickActions} ariaLabel={`${title} quick actions`} /> : null}
       </PageHeader>
+    );
+  }
+
+  function openExchangeSection(sectionKey) {
+    const nextSection = normalizeExchangeSection(sectionKey);
+    setExchangeSection(nextSection);
+    setQuickAddMenuOpen(false);
+    setSearchExpanded(false);
+    if (nextSection === "market") {
+      setTideTradrSubTab("overview");
+    }
+    if (nextSection === "harbor") {
+      setTideTradrSubTab("listings");
+      setMarketplaceView("browse");
+    }
+    if (nextSection === "forge") {
+      setForgeSubTab("overview");
+    }
+    setActiveTab("exchange");
+  }
+
+  function renderExchangeMarketCatalogSearchSection() {
+    const resultCount = supabaseCatalogStatus.totalCount ?? tideTradrCatalogResults.length;
+    return (
+      <EtMockupSectionCard
+        sectionRef={catalogResultsRef}
+        className={`exchange-market-catalog-card tidetradr-results-panel market-results-panel market-mockup-results ${!catalogSearchHasRun && !supabaseCatalogStatus.loading ? "tidetradr-results-panel--prompt" : ""}`}
+        title={catalogSearchHasRun ? "Market Watch Results" : "Search Market Watch"}
+        detail={catalogSearchHasRun ? `${resultCount} result${resultCount === 1 ? "" : "s"} from catalog research.` : "Search cards and sealed products before saving prices, comparisons, or wishlist notes."}
+        action={<span className="status-badge">{supabaseCatalogStatus.loading && tideTradrCatalogResults.length === 0 ? "Searching..." : catalogSearchHasRun ? `${resultCount} results` : "Search first"}</span>}
+        ariaLabel="Exchange Market catalog search"
+      >
+        <form className="catalog-search-form market-search-form" onSubmit={submitCatalogSearch}>
+          <input
+            className="search-input"
+            value={catalogSearch}
+            onChange={(event) => updateCatalogSearchInput(event.target.value)}
+            placeholder="Search cards, sets, sealed products, UPC, or SKU..."
+            aria-label="Search Market Watch catalog"
+          />
+          <button type="submit">Search Catalog</button>
+        </form>
+
+        {catalogSearchHasRun ? (
+          <p className="market-results-safety-note">Fair price discovery only. No checkout, stock guarantee, seller match, grading verification, or investment advice.</p>
+        ) : null}
+
+        {supabaseCatalogStatus.loading && tideTradrCatalogResults.length === 0 ? (
+          <div className="catalog-results-loading" aria-label="Loading catalog results">
+            {[0, 1, 2].map((index) => <div className="catalog-result-card catalog-result-skeleton" key={`exchange-catalog-loading-${index}`} />)}
+          </div>
+        ) : null}
+
+        {catalogSearchHasRun && !supabaseCatalogStatus.loading && tideTradrCatalogResults.length > 0 ? (
+          <div className={`catalog-results-list catalog-results-${catalogViewMode}`}>
+            {tideTradrCatalogResults.slice(0, 8).map((product, index) => renderTideTradrCatalogResultCard(product, { topResult: index === 0 }))}
+          </div>
+        ) : null}
+
+        {catalogSearchHasRun && !supabaseCatalogStatus.loading && tideTradrCatalogResults.length === 0 ? (
+          <EtMockupEmptyState
+            title="No catalog matches yet."
+            detail="Try fewer words, a set name, UPC, SKU, or save a manual note instead. No fake product match is created."
+            action={<EtMockupButton onClick={() => openMarketPriceMemoryFlow(null, { source: "exchange-market-empty-search" })}>Save Manual Price</EtMockupButton>}
+          />
+        ) : null}
+
+        {!catalogSearchHasRun && !supabaseCatalogStatus.loading ? (
+          <EtMockupEmptyState
+            title="Search before comparing."
+            detail="Market Watch is manual research. Search first, then decide whether to save a price, compare, or add a Wishlist / ISO note."
+            action={<EtMockupButton onClick={() => submitCatalogSearch()}>Search Catalog</EtMockupButton>}
+          />
+        ) : null}
+      </EtMockupSectionCard>
+    );
+  }
+
+  function renderExchangePage() {
+    const activeExchangeSection = normalizeExchangeSection(exchangeSection);
+    const exchangeSummary = {
+      market: {
+        kicker: "Manual research",
+        title: "Market",
+        body: "Search known products, save price memories, and compare values without checkout or stock promises.",
+      },
+      harbor: {
+        kicker: "Listings and offers",
+        title: "Harbor",
+        body: "Review listing context, saved offers, and shop-facing surfaces without turning Ember & Tide into a cart.",
+      },
+      forge: {
+        kicker: "Private ledger",
+        title: "Forge",
+        body: "Keep trades, inventory, receipts, mileage, and sales planning private and separate from Vault.",
+      },
+    }[activeExchangeSection];
+
+    return (
+      <div className={`exchange-page-final exchange-page-final--${activeExchangeSection}`}>
+        {renderPageChrome({
+          title: "Exchange",
+          subtitle: "Market research, Harbor selling, and Forge trade decisions live together here.",
+          tabs: EXCHANGE_SECTION_TABS,
+          activeSubTab: activeExchangeSection,
+          setActiveSubTab: openExchangeSection,
+          quickActions: [
+            { key: "exchange-search", title: "Search Market", subtitle: "Manual values", onClick: () => openExchangeSection("market") },
+            { key: "exchange-harbor", title: "Harbor", subtitle: "Listings/offers", onClick: () => openExchangeSection("harbor") },
+            { key: "exchange-forge", title: "Forge", subtitle: "Private ledger", onClick: () => openExchangeSection("forge") },
+            { key: "exchange-deal", title: "Check Deal", subtitle: "Compare first", onClick: openDealFinderModal },
+          ],
+        })}
+
+        <section className="panel exchange-command-strip" aria-label="Exchange safety and hierarchy">
+          <div>
+            <span className="section-kicker">{exchangeSummary.kicker}</span>
+            <h2>{exchangeSummary.title}</h2>
+            <p>{exchangeSummary.body}</p>
+          </div>
+          <div className="exchange-command-proof">
+            <span className="trust-badge trust-badge--secure">No checkout</span>
+            <span className="trust-badge trust-badge--fair">No fake live prices</span>
+            <span className="trust-badge trust-badge--verified">Family-safe context</span>
+          </div>
+        </section>
+
+        {activeExchangeSection === "market" ? (
+          <div className="exchange-section-body exchange-section-body--market">
+            {renderMarketHomeFoundation()}
+            {renderExchangeMarketCatalogSearchSection()}
+            {renderMarketPriceMemorySection()}
+            {renderItemCompareTableSection()}
+            {renderWishlistIsoPlanningSection({ surface: "market" })}
+          </div>
+        ) : null}
+
+        {activeExchangeSection === "harbor" ? (
+          <div className="exchange-section-body exchange-section-body--harbor">
+            {renderMarketplaceSection()}
+          </div>
+        ) : null}
+
+        {activeExchangeSection === "forge" ? (
+          <div className="exchange-section-body exchange-section-body--forge">
+            {commandDeskSellerAccess ? (
+              <>
+                {renderForgeHeader()}
+                {renderForgeBusinessCommandPanel()}
+                <section className="panel exchange-forge-shortcuts">
+                  <div className="compact-card-header">
+                    <div>
+                      <h2>Private Forge Shortcuts</h2>
+                      <p>These open the existing Forge records. No checkout, posting, or tax filing behavior is added here.</p>
+                    </div>
+                  </div>
+                  <div className="quick-actions forge-action-strip" aria-label="Exchange Forge shortcuts">
+                    <button type="button" onClick={() => openProductAddFlow({ source: "exchange-forge", destinations: { forge: true } })}>Add Inventory</button>
+                    <button type="button" className="secondary-button" onClick={() => openTradeCompassFlow({ source: "exchange-forge" })}>Trade Compass</button>
+                    <button type="button" className="secondary-button" onClick={() => { setForgeSubTab("ledger"); setActiveTab("inventory"); }}>Business Ledger</button>
+                    <button type="button" className="secondary-button" onClick={() => setActiveTab("reports")}>Reports</button>
+                  </div>
+                </section>
+              </>
+            ) : (
+              renderForgeAccessState()
+            )}
+          </div>
+        ) : null}
+      </div>
     );
   }
 
@@ -34571,6 +34786,7 @@ function renderForgeBusinessLedgerPanel() {
       if (activeScoutPage === "watchlist") return "/scout/watchlist";
       return "/scout";
     }
+    if (activeTab === "exchange") return `/exchange/${normalizeExchangeSection(exchangeSection)}`;
     if (activeTab === "market" || activeTab === "catalog") {
       if (selectedCatalogDetailId) return `/tidetradr/product/${encodeURIComponent(selectedCatalogDetailId)}`;
       return "/tidetradr/catalog";
@@ -34624,6 +34840,7 @@ function renderForgeBusinessLedgerPanel() {
       onboardingView: activeTab === "onboarding" ? onboardingView : "welcome",
       activeWorkspaceId,
       homeSubTab,
+      exchangeSection,
       forgeSubTab,
       scoutView: activeScoutPage,
       scoutReportFilter,
@@ -34650,7 +34867,7 @@ function renderForgeBusinessLedgerPanel() {
 
     const params = new URLSearchParams(window.location.search);
     ["q", "vaultQ", "filter"].forEach((key) => params.delete(key));
-    if ((activeTab === "market" || activeTab === "catalog") && catalogSearch) params.set("q", catalogSearch);
+    if ((activeTab === "market" || activeTab === "catalog" || (activeTab === "exchange" && exchangeSection === "market")) && catalogSearch) params.set("q", catalogSearch);
     if (activeTab === "vault" && vaultSearch) params.set("vaultQ", vaultSearch);
     if (activeTab === "vault" && vaultFilter !== "all") params.set("filter", vaultFilter);
     const nextPath = currentRoutePath();
@@ -34662,6 +34879,7 @@ function renderForgeBusinessLedgerPanel() {
     }
   }, [
     activeTab,
+    exchangeSection,
     betaInviteToken,
     workspaceInviteId,
     onboardingView,
@@ -56565,89 +56783,123 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     return (
       <div className={`app app-${String(activeMainTab || activeTab || "home").toLowerCase()} app-theme-${resolvedAppTheme}`} data-theme={resolvedAppTheme}>
         <header className="header app-shell-header app-shell-header--full">
-          <img className="brand-header-mark" src={BRAND_ASSETS.mark} alt="" aria-hidden="true" />
-          <h1
-  onClick={() => {
-    const nextClicks = treasureClicks + 1;
-    setTreasureClicks(nextClicks);
+          <div className="auth-brand-lockup">
+            <img className="auth-brand-mark" src="/assets/brand/ember-tide-auth-logo-mark.svg" alt="" aria-hidden="true" />
+            <div className="auth-brand-wordmark" aria-hidden="true">
+              <span>Ember</span>
+              <span>&amp; Tide</span>
+            </div>
+            <h1
+              className="sr-only"
+              onClick={() => {
+                const nextClicks = treasureClicks + 1;
+                setTreasureClicks(nextClicks);
 
-    if (nextClicks >= 7) {
-      setShowTreasure(true);
-    }
-  }}
-  title="There might be something hidden here..."
->
-  Ember & Tide
-</h1>
-          <p>Trading-card collector command center</p>
+                if (nextClicks >= 7) {
+                  setShowTreasure(true);
+                }
+              }}
+              title="There might be something hidden here..."
+            >
+              Ember &amp; Tide
+            </h1>
+            <p>Collect. Care. Connect.</p>
+          </div>
         </header>
         <main className="main auth-main auth-main-final-direction">
           {signedOutPublicContent || (
-          <section className="signed-out-landing panel">
-            <div className="landing-hero">
-              <img className="landing-brand-mark landing-brand-emblem" src={BRAND_ASSETS.mark} alt="" aria-hidden="true" />
-              <p className="section-kicker">Trading-card collector command center</p>
-              <h2>Welcome to Ember &amp; Tide</h2>
-              <p>Your collection. Your command center.</p>
-              <p className="auth-landing-note">New accounts may need approval before full app access. Ember &amp; Tide is starting in Virginia; out-of-state requests join the waitlist and help us choose where to expand next.</p>
-              <div className="quick-actions auth-choice-row">
-                <button type="button" className="ember-gradient-button auth-choice-button" onClick={() => openAuthPanel("login")}>Log In</button>
-                <button type="button" className="secondary-button auth-choice-button" onClick={() => openAuthPanel("signup")}>Request Access</button>
-                <button type="button" className="secondary-button auth-choice-button" onClick={() => openPublicBetaFeedback({ page: "Public Beta Landing", mainReason: "Join waitlist" })}>Join Beta / Request State</button>
-                <button type="button" className="auth-text-button auth-help-link" onClick={() => window.location.assign(`mailto:${SUPPORT_EMAIL}`)}>Need help?</button>
+          <section className="signed-out-landing panel auth-brand-board-panel">
+            <div className="auth-board-brand-top">
+              <span className="auth-board-label">Brand Logo</span>
+              <h2 className="auth-board-title">Ember &amp; Tide</h2>
+              <p>Our master brand identity across every experience.</p>
+              <div className="auth-master-lockup">
+                <img className="auth-master-mark" src="/assets/brand/ember-tide-auth-logo-mark.svg" alt="" aria-hidden="true" />
+                <div className="auth-master-type">
+                  <span>Ember</span>
+                  <span><em>&amp;</em> Tide</span>
+                </div>
               </div>
+              <div className="auth-master-rule" aria-hidden="true"><span /></div>
+              <p className="auth-master-tagline">Collect. Care. Connect.</p>
             </div>
-            <figure className="landing-promo-art auth-command-preview" aria-label="Ember and Tide preview">
-              <div className="auth-preview-shell">
-                <div className="auth-preview-topline">
-                  <span>Hearth</span>
-                  <strong>View all</strong>
-                </div>
-                <div className="auth-preview-main-card">
-                  <span>Welcome back, Collector</span>
-                  <strong>The hearth is ready.</strong>
-                  <small>One calm place for your collection, trades, Scout notes, and family support.</small>
-                </div>
-                <div className="auth-preview-mini-grid">
-                  <span><b>Vault</b><small>Collection</small></span>
-                  <span><b>Sets</b><small>Organized</small></span>
-                  <span><b>Market</b><small>Manual</small></span>
-                  <span><b>Forge</b><small>Trades</small></span>
-                </div>
-                <p>Local beta tools stay honest: no live pricing, no checkout, and no fake alerts.</p>
-              </div>
-            </figure>
-            <div className="landing-feature-grid">
+
+            <div className="auth-lockup-band" aria-label="Brand lockup examples">
+              <article>
+                <img src="/assets/brand/ember-tide-auth-logo-mark.svg" alt="" aria-hidden="true" />
+                <strong>Ember &amp; Tide</strong>
+                <small>Horizontal Lockup</small>
+              </article>
+              <article>
+                <img src="/assets/brand/ember-tide-auth-logo-mark.svg" alt="" aria-hidden="true" />
+                <strong>Ember<br />&amp; Tide</strong>
+                <small>Stacked Lockup</small>
+              </article>
+              <article>
+                <img src="/assets/brand/ember-tide-auth-logo-mark.svg" alt="" aria-hidden="true" />
+                <small>Mark Only</small>
+              </article>
+            </div>
+
+            <div className="auth-board-promises" aria-label="Our promise">
+              <span className="auth-board-divider" aria-hidden="true" />
+              <span className="auth-board-kicker">Our Promise</span>
+              <span className="auth-board-divider" aria-hidden="true" />
               {[
-                ["Vault", "Track your collection"],
-                ["Forge", "Receipts and seller tools"],
-                ["Scout", "Share family-safe signals"],
-                ["Market", "Manual fair checks"],
-                ["Spark", "Kids and giving"],
-                ["Tidepool", "Trusted community notes"],
+                ["Collect", "Build your collection with confidence."],
+                ["Care", "Treat every card, person, and moment with respect."],
+                ["Connect", "Bring our community together to grow the hobby we love."],
+                ["Spark Impact", "Every action creates kindness, opportunity, and real change."],
               ].map(([title, body]) => (
-                <article className="landing-feature-card" key={title}>
+                <article className="auth-board-promise" key={title}>
+                  <span className="auth-board-promise-icon" aria-hidden="true" />
                   <strong>{title}</strong>
                   <p>{body}</p>
                 </article>
               ))}
             </div>
-            <div className="landing-link-row">
-              <button type="button" className="auth-text-button" onClick={() => { startGuestPreview(); setActiveTab("kidsProgram"); }}>Kids Program</button>
-              <button type="button" className="auth-text-button" onClick={() => { startGuestPreview(); setActiveTab("sponsor"); }}>Partner With Us</button>
-              <button type="button" className="auth-text-button" onClick={() => openPublicBetaFeedback({ page: "Public Beta Landing", mainReason: "General feedback" })}>Send Beta Feedback</button>
-              <button type="button" className="auth-text-button" onClick={() => { startGuestPreview(); setActiveTab("links"); }}>Links</button>
-              <button type="button" className="auth-text-button" onClick={() => { startGuestPreview(); setActiveTab("whatsNew"); }}>What's New</button>
-              <button type="button" className="auth-text-button" onClick={() => { startGuestPreview(); setActiveTab("knownLimitations"); }}>Known Limitations</button>
-              <button type="button" className="auth-text-button" onClick={() => { startGuestPreview(); setActiveTab("trust"); }}>Privacy / Terms</button>
+
+            <div className="auth-palette-card" aria-label="Brand color palette">
+              <span>Brand Color Palette</span>
+              {["#0b1523", "#177c8a", "#65b7ad", "#e86a25", "#efb852", "#f4ead7", "#d8d0c5"].map((color) => (
+                <i key={color} style={{ background: color }} aria-hidden="true" />
+              ))}
             </div>
-            <footer className="brand-legal-footer">
-              <p>{BRAND_LEGAL_NOTICE}</p>
-              <p>{POKEMON_AFFILIATION_NOTICE}</p>
-            </footer>
           </section>
           )}
           <section className="panel auth-panel signed-out-auth-card" id="account-access">
+            <div className="auth-app-board" aria-label="Ember and Tide app identity">
+              <span className="auth-board-label">App Logo</span>
+              <h2>Ember &amp; Tide App</h2>
+              <p>Our app icon, designed to shine on every screen.</p>
+              <div className="auth-app-board-main">
+                <img className="auth-app-icon-hero" src="/assets/brand/ember-tide-auth-app-icon.png" alt="" aria-hidden="true" />
+                <div className="auth-promise-list" aria-label="Brand promises">
+                  {[
+                    ["Warm & Welcoming", "The ember represents passion, energy, and the joy of collecting."],
+                    ["Flow & Trust", "The tide represents connection, growth, and a safe place for everyone."],
+                    ["The Spark", "Kindness, integrity, and positive impact guide the experience."],
+                    ["Safe & Reliable", "Parents can trust the space while collectors keep control."],
+                  ].map(([title, body]) => (
+                    <article className="auth-promise-item" key={title}>
+                      <span className="auth-promise-icon" aria-hidden="true" />
+                      <div>
+                        <strong>{title}</strong>
+                        <p>{body}</p>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </div>
+              <div className="auth-icon-variants" aria-label="App icon variants">
+                <span>App Icon Variants</span>
+                <img src="/assets/brand/ember-tide-auth-logo-mark.svg" alt="Light app icon mark" />
+                <img src="/assets/brand/ember-tide-auth-app-icon.png" alt="Dark app icon" />
+                <img src="/assets/brand/ember-tide-app-icon.svg" alt="Teal app icon" />
+                <img src="/assets/brand/ember-tide-auth-kids-mode-badge.png" alt="Kids mode badge" />
+              </div>
+            </div>
+            <div className="auth-access-card">
             {authMode === "reset" ? (
               <>
                 <h2>Reset Password</h2>
@@ -56682,9 +56934,15 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             ) : (
               <>
                 <div className="auth-card-welcome">
-                  <img className="auth-card-welcome-mark" src={BRAND_ASSETS.mark} alt="" aria-hidden="true" />
-                  <h2>Welcome to Ember &amp; Tide</h2>
-                  <p>Your collection. Your command center.</p>
+                  <div className="auth-card-brand" aria-hidden="true">
+                    <img className="auth-card-brand-mark" src="/assets/brand/ember-tide-auth-logo-mark.svg" alt="" />
+                    <div className="auth-card-wordmark">
+                      <span>Ember</span>
+                      <span>&amp; Tide</span>
+                    </div>
+                  </div>
+                  <h2>{authMode === "login" ? "Welcome back!" : "Create your account"}</h2>
+                  <p>{authMode === "login" ? "Log in to continue your collection journey." : "Request beta access for your collection journey."}</p>
                 </div>
                 <h3 className="auth-mode-title">{authMode === "login" ? "Log In" : "Create Account"}</h3>
                 {authMode === "signup" ? (
@@ -56802,6 +57060,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </div>
               </>
             )}
+            </div>
           </section>
         </main>
         {renderToastViewport()}
@@ -60827,8 +61086,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     quickAddMenuOpen ||
     activeFlowModal ||
     marketResultsVisible ||
-    ["scout", "vault", "market", "forge", "inventory", "sales", "expenses", "reports", "tidepool", "kidsProgram", "parentCenter", "account", "settings", "menu", "trust", "membership", "profile", "help", "adminReview", "moderator", "comingSoon"].includes(activeTab) ||
-    ["scout", "vault", "market", "forge", "tidepool", "kidsProgram"].includes(activeMainTab)
+    ["scout", "vault", "market", "exchange", "forge", "inventory", "sales", "expenses", "reports", "tidepool", "kidsProgram", "parentCenter", "account", "settings", "menu", "trust", "membership", "profile", "help", "adminReview", "moderator", "comingSoon"].includes(activeTab) ||
+    ["scout", "vault", "exchange", "you"].includes(activeMainTab)
   );
   const currentPathRoot = typeof window !== "undefined"
     ? String(window.location.pathname || "").split("/").filter(Boolean)[0] || ""
@@ -60838,7 +61097,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     if (guestPreviewActive || activeTab === "onboarding" || activeTab === "resetPassword" || activeTab === "invite" || activeTab === "workspaceInvite") return "guest";
     if (activeTab === "kidsProgram") return "kids";
     if (activeTab === "parentCenter") return "parent";
-    if (["inventory", "sales", "expenses", "reports"].includes(activeTab) || activeMainTab === "forge") return "seller";
+    if (["inventory", "sales", "expenses", "reports"].includes(activeTab) || (activeTab === "exchange" && exchangeSection === "forge")) return "seller";
     if (activeTab === "sponsor") {
       if (currentPathRoot === "sponsor") return "supporter";
       return currentPathRoot === "partner" || activeWorkspace?.type === "card_shop_partner" ? "store-partner" : "supporter";
@@ -65524,6 +65783,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         {!activeTabLocked && activeTab === "betaReadiness" && adminToolsVisible && renderBetaReadinessPanel()}
         {!activeTabLocked && activeTab === "dailyTide" && renderTodaysTideCommandCenter()}
         {!activeTabLocked && activeTab === "dashboard" && renderHearthHomeCommandView()}
+        {!activeTabLocked && activeTab === "exchange" && renderExchangePage()}
         {!activeTabLocked && false && activeTab === "dashboard" && (
           <div className="dashboard-layout home-clean-layout hearth-command-layout">
             <PageHeader

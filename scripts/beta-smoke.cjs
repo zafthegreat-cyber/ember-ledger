@@ -125,7 +125,9 @@ async function main() {
     await closeOpenModals();
     const visibleLabel =
       label === "TideTradr"
-        ? "(TideTradr|Market)"
+        ? "(TideTradr|Market|Exchange)"
+        : label === "Market"
+          ? "(Market|Exchange)"
         : label === "Home"
           ? "(Home|Hearth|Hearth Home)"
             : label === "Scout"
@@ -169,7 +171,8 @@ async function main() {
         "Today's Tide": "today",
         Scout: "scout",
         Vault: "vault",
-        TideTradr: "tideTradr",
+        TideTradr: "exchange",
+        Market: "exchange",
         Forge: "forge",
         "The Spark": "kidsProgram",
         Admin: "adminReview",
@@ -1084,7 +1087,6 @@ async function main() {
     await assertVisibleText("Market Memory Comparison");
     await assertVisibleText("No selected item yet");
     await assertVisibleText("Compare Table");
-    await assertVisibleText("Your Compare Table is empty.");
     await assertVisibleText("Comparison uses saved/local data.");
     await assertVisibleText("Market upgrade preview");
     await assertVisibleText("Wishlist / ISO");
