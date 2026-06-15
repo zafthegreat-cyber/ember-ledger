@@ -188,6 +188,19 @@ async function main() {
         if (changed) return;
       }
     }
+    const routeFallback = {
+      Forge: "/exchange/forge",
+      Market: "/exchange/market",
+      TideTradr: "/exchange/market",
+    }[label];
+    if (routeFallback) {
+      const targetUrl = new URL(routeFallback, new URL(APP_URL).origin);
+      for (const [key, value] of new URL(APP_URL).searchParams.entries()) {
+        targetUrl.searchParams.set(key, value);
+      }
+      await page.goto(targetUrl.toString(), { waitUntil: "domcontentloaded" });
+      return;
+    }
     throw new Error(`No visible navigation target found for ${label}`);
   }
 
