@@ -56806,99 +56806,51 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <p>Collect. Care. Connect.</p>
           </div>
         </header>
-        <main className="main auth-main auth-main-final-direction">
+        <main className="main auth-main auth-login-redesign">
           {signedOutPublicContent || (
-          <section className="signed-out-landing panel auth-brand-board-panel">
-            <div className="auth-board-brand-top">
-              <span className="auth-board-label">Brand Logo</span>
-              <h2 className="auth-board-title">Ember &amp; Tide</h2>
-              <p>Our master brand identity across every experience.</p>
-              <div className="auth-master-lockup">
-                <img className="auth-master-mark" src="/assets/brand/ember-tide-auth-logo-mark.svg" alt="" aria-hidden="true" />
-                <div className="auth-master-type">
-                  <span>Ember</span>
-                  <span><em>&amp;</em> Tide</span>
-                </div>
+          <section className="signed-out-landing auth-login-story-panel" aria-label="Ember and Tide login story">
+            <div className="auth-login-room" aria-hidden="true">
+              <span className="auth-room-window" />
+              <span className="auth-room-fireplace" />
+              <span className="auth-room-flame auth-room-flame--one" />
+              <span className="auth-room-flame auth-room-flame--two" />
+              <span className="auth-room-mantle" />
+              <span className="auth-room-shelf auth-room-shelf--top" />
+              <span className="auth-room-shelf auth-room-shelf--middle" />
+              <span className="auth-room-book auth-room-book--one" />
+              <span className="auth-room-book auth-room-book--two" />
+              <span className="auth-room-book auth-room-book--three" />
+              <span className="auth-room-plant" />
+              <span className="auth-room-rug" />
+              <span className="auth-room-card auth-room-card--one" />
+              <span className="auth-room-card auth-room-card--two" />
+              <span className="auth-room-card auth-room-card--three" />
+              <span className="auth-room-table" />
+              <span className="auth-room-lantern" />
+            </div>
+            <div className="auth-login-scene">
+              <div className="auth-login-scene-copy">
+                <h2>Collect. Care. Connect. Every Spark Matters.</h2>
+                <p>Every card has a story. Your journey continues with safer collection tools, fair trades, and family-aware community support.</p>
               </div>
-              <div className="auth-master-rule" aria-hidden="true"><span /></div>
-              <p className="auth-master-tagline">Collect. Care. Connect.</p>
-            </div>
-
-            <div className="auth-lockup-band" aria-label="Brand lockup examples">
-              <article>
-                <img src="/assets/brand/ember-tide-auth-logo-mark.svg" alt="" aria-hidden="true" />
-                <strong>Ember &amp; Tide</strong>
-                <small>Horizontal Lockup</small>
-              </article>
-              <article>
-                <img src="/assets/brand/ember-tide-auth-logo-mark.svg" alt="" aria-hidden="true" />
-                <strong>Ember<br />&amp; Tide</strong>
-                <small>Stacked Lockup</small>
-              </article>
-              <article>
-                <img src="/assets/brand/ember-tide-auth-logo-mark.svg" alt="" aria-hidden="true" />
-                <small>Mark Only</small>
-              </article>
-            </div>
-
-            <div className="auth-board-promises" aria-label="Our promise">
-              <span className="auth-board-divider" aria-hidden="true" />
-              <span className="auth-board-kicker">Our Promise</span>
-              <span className="auth-board-divider" aria-hidden="true" />
-              {[
-                ["Collect", "Build your collection with confidence."],
-                ["Care", "Treat every card, person, and moment with respect."],
-                ["Connect", "Bring our community together to grow the hobby we love."],
-                ["Spark Impact", "Every action creates kindness, opportunity, and real change."],
-              ].map(([title, body]) => (
-                <article className="auth-board-promise" key={title}>
-                  <span className="auth-board-promise-icon" aria-hidden="true" />
-                  <strong>{title}</strong>
-                  <p>{body}</p>
-                </article>
-              ))}
-            </div>
-
-            <div className="auth-palette-card" aria-label="Brand color palette">
-              <span>Brand Color Palette</span>
-              {["#0b1523", "#177c8a", "#65b7ad", "#e86a25", "#efb852", "#f4ead7", "#d8d0c5"].map((color) => (
-                <i key={color} style={{ background: color }} aria-hidden="true" />
-              ))}
+              <div className="auth-login-promise-grid" aria-label="Ember and Tide promises">
+                {[
+                  ["Track", "Track your collection"],
+                  ["Find", "Find events and connect"],
+                  ["Trade", "Trade safely and fairly"],
+                  ["Impact", "Make an impact"],
+                ].map(([title, body]) => (
+                  <article className="auth-login-promise" key={title}>
+                    <span className={`auth-login-promise-icon auth-login-promise-icon--${title.toLowerCase()}`} aria-hidden="true" />
+                    <strong>{title}</strong>
+                    <p>{body}</p>
+                  </article>
+                ))}
+              </div>
             </div>
           </section>
           )}
           <section className="panel auth-panel signed-out-auth-card" id="account-access">
-            <div className="auth-app-board" aria-label="Ember and Tide app identity">
-              <span className="auth-board-label">App Logo</span>
-              <h2>Ember &amp; Tide App</h2>
-              <p>Our app icon, designed to shine on every screen.</p>
-              <div className="auth-app-board-main">
-                <img className="auth-app-icon-hero" src="/assets/brand/ember-tide-auth-app-icon.png" alt="" aria-hidden="true" />
-                <div className="auth-promise-list" aria-label="Brand promises">
-                  {[
-                    ["Warm & Welcoming", "The ember represents passion, energy, and the joy of collecting."],
-                    ["Flow & Trust", "The tide represents connection, growth, and a safe place for everyone."],
-                    ["The Spark", "Kindness, integrity, and positive impact guide the experience."],
-                    ["Safe & Reliable", "Parents can trust the space while collectors keep control."],
-                  ].map(([title, body]) => (
-                    <article className="auth-promise-item" key={title}>
-                      <span className="auth-promise-icon" aria-hidden="true" />
-                      <div>
-                        <strong>{title}</strong>
-                        <p>{body}</p>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              </div>
-              <div className="auth-icon-variants" aria-label="App icon variants">
-                <span>App Icon Variants</span>
-                <img src="/assets/brand/ember-tide-auth-logo-mark.svg" alt="Light app icon mark" />
-                <img src="/assets/brand/ember-tide-auth-app-icon.png" alt="Dark app icon" />
-                <img src="/assets/brand/ember-tide-app-icon.svg" alt="Teal app icon" />
-                <img src="/assets/brand/ember-tide-auth-kids-mode-badge.png" alt="Kids mode badge" />
-              </div>
-            </div>
             <div className="auth-access-card">
             {authMode === "reset" ? (
               <>
@@ -56936,10 +56888,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <div className="auth-card-welcome">
                   <div className="auth-card-brand" aria-hidden="true">
                     <img className="auth-card-brand-mark" src="/assets/brand/ember-tide-auth-logo-mark.svg" alt="" />
-                    <div className="auth-card-wordmark">
-                      <span>Ember</span>
-                      <span>&amp; Tide</span>
-                    </div>
+                    <div className="auth-card-wordmark">Ember &amp; Tide</div>
                   </div>
                   <h2>{authMode === "login" ? "Welcome back!" : "Create your account"}</h2>
                   <p>{authMode === "login" ? "Log in to continue your collection journey." : "Request beta access for your collection journey."}</p>
@@ -57377,15 +57326,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       pendingAdminCount: pendingBetaRequests + pendingKidsRequests + scoutNeedsReviewReports.length + pendingFeedbackCount + pendingSuggestionCount + marketReviewCount,
       kidsProgramFocus: Boolean(adaptiveUiState.familyMode && !kidsApplication),
     });
-    const foundationStatsByLabel = new Map((HEARTH_FOUNDATION_SCREEN.stats || []).map((stat) => [String(stat.label || "").toLowerCase(), stat]));
-    const foundationStat = (label, fallback) => foundationStatsByLabel.get(String(label || "").toLowerCase()) || fallback;
-    const foundationVaultStat = foundationStat("Vault", { value: "1,246", detail: "cards tracked" });
-    const foundationScoutStat = foundationStat("Scout", { value: "3", detail: "useful signals" });
-    const foundationSparkStat = foundationStat("Spark", { value: "320", detail: "points" });
-    const hearthPreviewNumber = (value) => Number(String(value ?? "").replace(/[^\d.-]/g, "")) || 0;
-    const hearthPreviewVaultCount = hearthPreviewNumber(foundationVaultStat.value);
-    const hearthHasVaultItems = activeVaultItems.length > 0 || hearthPreviewVaultCount > 0;
-    const hearthFallbackPoints = hearthPreviewNumber(foundationSparkStat.value) || 320;
+    const hearthHasVaultItems = activeVaultItems.length > 0;
     const renderSmartGuidanceAction = () => {
       if (!hearthSmartGuidance) return null;
       if (hearthSmartGuidance.key === "admin_review") return {
@@ -57800,33 +57741,6 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const foundationJourneyItems = (HEARTH_FOUNDATION_SCREEN.sections || []).find((section) => section.title === "Today's Journey")?.items || [];
     const foundationQuickActionItems = (HEARTH_FOUNDATION_SCREEN.sections || []).find((section) => section.title === "Quick Actions")?.items || [];
     const foundationTradeSourceItem = activeVaultItems.find((item) => item?.id);
-    // TODO: Replace mock Hearth foundation cards with persisted home-dashboard data after the backend contract is approved.
-    const hearthFoundationStats = [
-      {
-        key: "foundation-vault",
-        label: "Vault Items",
-        value: foundationVaultStat.value || "1,246",
-        detail: foundationVaultStat.detail || "cards tracked",
-        tone: "vault",
-        onClick: () => setActiveTab("vault"),
-      },
-      {
-        key: "foundation-scout",
-        label: "Scout Watch",
-        value: foundationScoutStat.value || "3",
-        detail: foundationScoutStat.detail || "useful signals",
-        tone: "scout",
-        onClick: () => setActiveTab("scout"),
-      },
-      {
-        key: "foundation-spark",
-        label: "Spark Points",
-        value: foundationSparkStat.value || "320",
-        detail: foundationSparkStat.detail || "points",
-        tone: "spark",
-        onClick: () => setActiveTab("kidsProgram"),
-      },
-    ];
     const hearthFoundationJourneyCards = [
       {
         key: "foundation-restock",
@@ -58029,7 +57943,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       .filter((mission) => mission.current >= mission.target)
       .reduce((sum, mission) => sum + Number(mission.reward || 0), 0);
     const realHearthPoints = Number(scoutSnapshot.scoutProfile?.rewardPoints || scoutSnapshot.scoutProfile?.emberPoints || dailyTideToday.tidePoints || 0) + todaySparkEarnedPoints;
-    const hearthEmberPoints = realHearthPoints > 0 ? realHearthPoints : hearthFallbackPoints;
+    const hearthEmberPoints = realHearthPoints > 0 ? realHearthPoints : 0;
     const dismissTodaySpark = async (sparkKey) => {
       const confirmed = await requestConfirmation({
         title: "Dismiss Spark?",
@@ -58175,14 +58089,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         title: "Vault",
         value: activeVaultItems.length
           ? `${activeVaultItems.length} item${activeVaultItems.length === 1 ? "" : "s"} tracked`
-          : hearthPreviewVaultCount
-            ? "Review recent additions"
-            : "Start Vault",
+          : "Start Vault",
         detail: activeVaultItems.length
           ? `${vaultMissingPhotoCount} missing photo${vaultMissingPhotoCount === 1 ? "" : "s"}${latestVaultSetName ? ` | Newest: ${latestVaultSetName}` : ""}`
-          : hearthPreviewVaultCount
-            ? "Add one card or sealed product, then review before saving."
-            : "Start your collection by scanning your first item.",
+          : "Start your collection by scanning your first item.",
         meta: hearthVaultValueLabel,
         icon: "vault",
         onClick: () => hearthHasVaultItems ? setActiveTab("vault") : openQuickAddAction("vaultItem"),
@@ -58516,6 +58426,201 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       tone: "hearth",
     };
     const visibleHearthSmartDailyCards = hearthSmartDailyCards.length ? hearthSmartDailyCards : [hearthSmartDailyFallback];
+    const profileDisplayNameValue = String(
+      currentUserProfile?.displayName ||
+      currentUserProfile?.display_name ||
+      profileForm.displayName ||
+      currentUserProfile?.firstName ||
+      currentUserProfile?.first_name ||
+      ""
+    ).trim();
+    const explicitPublicUsername = String(
+      currentUserProfile?.publicUsername ||
+      currentUserProfile?.public_username ||
+      currentUserProfile?.username ||
+      profileForm.publicUsername ||
+      ""
+    ).trim();
+    const smartSetupAlreadyHandled = Boolean(
+      smartSetupPreferences.completedAt ||
+      smartSetupPreferences.setupCompletedAt ||
+      smartSetupPreferences.dismissedAt ||
+      betaReadinessData.onboarding?.firstLoginSeen
+    );
+    const profileSetupIncomplete = Boolean(!profileDisplayNameValue || !explicitPublicUsername || !smartSetupAlreadyHandled);
+    const latestRecentActivity = recentRows[0] || null;
+    const exchangeReviewCount = workspaceTradeRecords.length + (sellerAccessVisible ? forgeReviewCount : 0);
+    const hearthSmartSparkCards = [
+      adminToolsVisible && (pendingBetaRequests || pendingKidsRequests || scoutNeedsReviewReports.length) ? {
+        key: "admin-review",
+        eyebrow: "Admin",
+        title: "Review protected queues",
+        detail: `${pendingBetaRequests + pendingKidsRequests + scoutNeedsReviewReports.length} item${pendingBetaRequests + pendingKidsRequests + scoutNeedsReviewReports.length === 1 ? "" : "s"} need beta, family, or Scout review.`,
+        meta: "Admin only",
+        actionLabel: "Open Admin",
+        onClick: () => setActiveTab("adminReview"),
+        icon: "settings",
+        tone: "admin",
+      } : null,
+      sellerAccessVisible && forgeReviewCount > 0 ? {
+        key: "forge-review",
+        eyebrow: "Forge",
+        title: "Review seller records",
+        detail: `${forgeReviewCount} local Forge item${forgeReviewCount === 1 ? "" : "s"} need receipt, price, or listing attention.`,
+        meta: "Private ledger",
+        actionLabel: "Open Forge",
+        onClick: () => setActiveTab("inventory"),
+        icon: "forge",
+        tone: "forge",
+      } : null,
+      profileSetupIncomplete ? {
+        key: "finish-setup",
+        eyebrow: "Setup",
+        title: "Finish your app setup",
+        detail: "Review your profile name, public handle, and setup choices so shared reports stay clear and safe.",
+        meta: "Local profile",
+        actionLabel: "Open Profile",
+        onClick: () => openUtilityPage("profile"),
+        icon: "settings",
+        tone: "gold",
+      } : null,
+      !activeVaultItems.length ? {
+        key: "first-vault-item",
+        eyebrow: "Vault",
+        title: "Add your first Vault item",
+        detail: "Save one card, sealed product, slab, or supply so Hearth can personalize future actions.",
+        meta: "First step",
+        actionLabel: "Add to Vault",
+        onClick: () => openQuickAddAction("vaultItem"),
+        icon: "vault",
+        tone: "vault",
+      } : null,
+      activeVaultItems.length && (latestVaultActivityItem || vaultItemsMissingEstimate.length || recentVaultItems.length) ? {
+        key: "review-vault",
+        eyebrow: "Vault",
+        title: latestVaultActivityItem ? "Review recent Vault activity" : "Review your Vault",
+        detail: latestVaultActivityItem
+          ? `${latestVaultActivityItem.name || latestVaultActivityItem.displayName || "Recent item"} is your latest saved item. Check notes, photos, or value when ready.`
+          : `${vaultItemsMissingEstimate.length} item${vaultItemsMissingEstimate.length === 1 ? "" : "s"} could use an estimate, note, or photo.`,
+        meta: `${activeVaultItems.length} item${activeVaultItems.length === 1 ? "" : "s"}`,
+        actionLabel: "Open Vault",
+        onClick: () => setActiveTab("vault"),
+        icon: "vault",
+        tone: "vault",
+      } : null,
+      hearthCanUseScout && scoutReportRows.length > 0 ? {
+        key: "check-scout",
+        eyebrow: "Scout",
+        title: latestScoutReport ? "Check current Scout reports" : "Review Scout reports",
+        detail: latestScoutReport
+          ? `${latestScoutItem} was reported near ${latestScoutStoreName}. Review freshness before making a trip.`
+          : `${scoutReportRows.length} local report${scoutReportRows.length === 1 ? "" : "s"} available for review.`,
+        meta: hearthFreshReports ? `${hearthFreshReports} fresh` : "Current reports",
+        actionLabel: "Open Scout",
+        onClick: () => setActiveTab("scout"),
+        icon: "scout",
+        tone: "scout",
+      } : null,
+      hearthCanUseScout && !scoutReportRows.length && !followedStores.length ? {
+        key: "choose-store",
+        eyebrow: "Scout",
+        title: "Choose your first watched store",
+        detail: "Scout works best after you choose one store or region to watch. No raw stocking patterns are exposed.",
+        meta: "Free watch",
+        actionLabel: "Open Scout",
+        onClick: () => setActiveTab("scout"),
+        icon: "scout",
+        tone: "scout",
+      } : null,
+      exchangeReviewCount > 0 ? {
+        key: "exchange-review",
+        eyebrow: "Exchange",
+        title: latestTradeForHearth ? "Review your latest trade memory" : "Review Exchange actions",
+        detail: latestTradeForHearth
+          ? `${latestTradeForHearth.sourceItemName || latestTradeForHearth.itemGiven || "Your side"} for ${latestTradeForHearth.receivedItemName || latestTradeForHearth.itemReceived || "their side"} is saved locally.`
+          : "Open Forge to review local trades, receipts, prices, or listing prep.",
+        meta: `${exchangeReviewCount} local signal${exchangeReviewCount === 1 ? "" : "s"}`,
+        actionLabel: "Open Forge",
+        onClick: () => setActiveTab("inventory"),
+        icon: "forge",
+        tone: "forge",
+      } : null,
+      (marketPriceMemories.length || workspaceWatchlist.length || needsMarketCheckItems.length) ? {
+        key: "market-review",
+        eyebrow: "Market",
+        title: latestMarketMemoryForHearth ? "Review saved Price Memory" : "Review Market watchlist",
+        detail: latestMarketMemoryForHearth
+          ? `${latestMarketMemoryForHearth.itemName || "Saved Price"} is a manual snapshot. Check again before buying, selling, or trading.`
+          : `${workspaceWatchlist.length || needsMarketCheckItems.length} watched item${(workspaceWatchlist.length || needsMarketCheckItems.length) === 1 ? "" : "s"} can be checked before a decision.`,
+        meta: "Manual research",
+        actionLabel: "Open Market",
+        onClick: () => setActiveTab("market"),
+        icon: "market",
+        tone: "market",
+      } : null,
+      hearthSparkRelevant && (kidsApplication || sparkKidPacks.length || sparkGifts.length || hearthMode === "simple") ? {
+        key: "spark-review",
+        eyebrow: "Spark",
+        title: kidsApplication ? "Review Kids Program status" : "Plan a family-safe Spark action",
+        detail: kidsApplication
+          ? `Your Kids Program request is ${statusLabel(kidsApplication.status || "pending")}.`
+          : "Open The Spark for parent-managed kid packs, gifts, and family-safe support notes.",
+        meta: "Parent-safe",
+        actionLabel: "Open The Spark",
+        onClick: () => setActiveTab("kidsProgram"),
+        icon: "spark",
+        tone: "spark",
+      } : null,
+      latestRecentActivity ? {
+        key: "recent-activity",
+        eyebrow: "Recent",
+        title: "Return to recent activity",
+        detail: `${latestRecentActivity.title} | ${latestRecentActivity.detail}`,
+        meta: latestRecentActivity.label || "Recent",
+        actionLabel: "Open",
+        onClick: latestRecentActivity.action,
+        icon: "hearth",
+        tone: "gold",
+      } : null,
+    ].filter(Boolean).slice(0, 4);
+    const visibleHearthSmartSparkCards = hearthSmartSparkCards.length ? hearthSmartSparkCards : [{
+      key: "smart-sparks-empty",
+      eyebrow: "Start",
+      title: "Add one thing to Vault",
+      detail: "Hearth will get smarter after you add one real collection item or Scout report.",
+      meta: "Local beta",
+      actionLabel: "Add to Vault",
+      onClick: () => openQuickAddAction("vaultItem"),
+      icon: "vault",
+      tone: "vault",
+    }];
+    const renderHearthSmartSparksPanel = () => (
+      <section className="hearth-smart-sparks-panel" aria-label="Smart Sparks">
+        <div className="compact-card-header hearth-smart-sparks-header">
+          <div>
+            <h3>Smart Sparks</h3>
+            <p>Adaptive next actions from your local Vault, Scout, Market, Forge, and setup data.</p>
+          </div>
+          <EtMockupPill tone={hearthIsNewUser ? "gold" : "collector"}>{hearthIsNewUser ? "First steps" : "Adaptive"}</EtMockupPill>
+        </div>
+        <div className="hearth-smart-sparks-list">
+          {visibleHearthSmartSparkCards.map((card) => (
+            <article className={`hearth-smart-spark-card et-mockup-tone-${card.tone}`} key={card.key}>
+              <EtMockupIcon icon={card.icon} tone={card.tone} />
+              <div className="hearth-smart-spark-copy">
+                <div className="hearth-smart-spark-meta">
+                  <span>{card.eyebrow}</span>
+                  <small>{card.meta}</small>
+                </div>
+                <h3>{card.title}</h3>
+                <p>{card.detail}</p>
+              </div>
+              <EtMockupButton variant="secondary" onClick={card.onClick}>{card.actionLabel}</EtMockupButton>
+            </article>
+          ))}
+        </div>
+      </section>
+    );
     const hearthCollectorPathSteps = [
       {
         key: "organize-item",
@@ -58569,14 +58674,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         label: "Vault",
         value: activeVaultItems.length
           ? `${activeVaultItems.length} item${activeVaultItems.length === 1 ? "" : "s"}`
-          : hearthPreviewVaultCount
-            ? "Review Vault"
-            : "Start Vault",
+          : "Start Vault",
         detail: vaultValue > 0
           ? hearthVaultValueLabel
-          : hearthPreviewVaultCount
-            ? "Protected collection"
-            : "Add your first item",
+          : "Add your first item",
         accent: "vault",
         onClick: () => hearthHasVaultItems ? setActiveTab("vault") : openQuickAddAction("vaultItem"),
       },
@@ -58842,6 +58943,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <EtMockupButton variant="secondary" onClick={hearthDailyNextStep.onSecondary}>{hearthDailyNextStep.secondaryActionLabel}</EtMockupButton>
               </div>
             </article>
+
+            {renderHearthSmartSparksPanel()}
 
             <div className="hearth-dashboard-pulse-grid" aria-label="Hearth pulse">
               {hearthSnapshotCards.map((stat) => (
