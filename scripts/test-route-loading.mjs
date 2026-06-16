@@ -54,15 +54,17 @@ check(
 );
 
 check(
-  "Vault dashboard and Market route shell live in page modules",
+  "Vault dashboard and Market route body live in page modules",
   routePages.vault.includes("export default function VaultPage") &&
     routePages.vault.includes("function renderVaultHomeDashboard") &&
     routePages.vault.includes("EtMockupPageShell") &&
     !app.includes("function renderVaultHomeDashboard") &&
     routePages.market.includes("export default function MarketPage") &&
     routePages.market.includes("EtMockupPageShell") &&
+    routePages.market.includes('tideTradrSubTab === "deal"') &&
+    routePages.market.includes("Market Watch Results") &&
     app.includes("<VaultPage renderHeader={renderVaultHeader} showDashboard={vaultSubTab === \"overview\" || vaultSubTab === \"collection\"} {...vaultDashboardProps}>") &&
-    app.includes("<MarketPage renderHeader={renderTideTradrHeader}>")
+    app.includes("<MarketPage {...marketPageProps} />")
 );
 
 check(
