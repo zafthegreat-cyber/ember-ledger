@@ -19,12 +19,62 @@ const storeSeed = read("src/data/virginiaStoresSeed.js");
 const smartSearch = read("src/components/SmartCatalogSearchBox.jsx");
 const smartInventory = read("src/components/SmartAddInventory.jsx");
 const smartCatalog = read("src/components/SmartAddCatalog.jsx");
+const routePages = {
+  hearth: read("src/pages/Hearth.jsx"),
+  vault: read("src/pages/Vault.jsx"),
+  forge: read("src/pages/Forge.jsx"),
+  market: read("src/pages/Market.jsx"),
+  spark: read("src/pages/Spark.jsx"),
+  menu: read("src/pages/Menu.jsx"),
+  scout: read("src/pages/Scout.jsx"),
+};
 const viteConfig = read("vite.config.js");
 const pkg = JSON.parse(read("package.json"));
 
 check(
   "Scout is route-lazy loaded",
   app.includes('const Scout = lazy(() => import("./pages/Scout"))')
+);
+
+check(
+  "Primary app routes are lazy-loaded from page modules",
+  app.includes('const HearthPage = lazy(() => import("./pages/Hearth"))') &&
+    app.includes('const VaultPage = lazy(() => import("./pages/Vault"))') &&
+    app.includes('const ForgePage = lazy(() => import("./pages/Forge"))') &&
+    app.includes('const MarketPage = lazy(() => import("./pages/Market"))') &&
+    app.includes('const SparkPage = lazy(() => import("./pages/Spark"))') &&
+    app.includes('const MenuPage = lazy(() => import("./pages/Menu"))')
+);
+
+check(
+  "Hearth page body moved out of the app shell",
+  !app.includes("function renderHearthHomeCommandView") &&
+    routePages.hearth.includes("function renderHearthHomeCommandView") &&
+    app.includes("<HearthPage {...hearthPageProps} />")
+);
+
+check(
+  "Vault dashboard and Market route shell live in page modules",
+  routePages.vault.includes("export default function VaultPage") &&
+    routePages.vault.includes("function renderVaultHomeDashboard") &&
+    routePages.vault.includes("EtMockupPageShell") &&
+    !app.includes("function renderVaultHomeDashboard") &&
+    routePages.market.includes("export default function MarketPage") &&
+    routePages.market.includes("EtMockupPageShell") &&
+    app.includes("<VaultPage renderHeader={renderVaultHeader} showDashboard={vaultSubTab === \"overview\" || vaultSubTab === \"collection\"} {...vaultDashboardProps}>") &&
+    app.includes("<MarketPage renderHeader={renderTideTradrHeader}>")
+);
+
+check(
+  "Forge, Spark, and Menu route mounts are delegated to page modules",
+  routePages.forge.includes("export default function ForgePage") &&
+    routePages.spark.includes("export default function SparkPage") &&
+    routePages.menu.includes("export default function MenuPage") &&
+    routePages.menu.includes("function renderSettingsPage") &&
+    !app.includes("function renderSettingsPage") &&
+    app.includes("<ForgePage renderPage={renderExchangePage} />") &&
+    app.includes("<SparkPage renderPage={renderKidsProgramPage} />") &&
+    app.includes("<MenuPage {...settingsPageProps} />")
 );
 
 check(

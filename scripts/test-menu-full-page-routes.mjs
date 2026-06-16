@@ -7,13 +7,21 @@ const appPath = path.join(root, "src", "App.jsx");
 const cssPath = path.join(root, "src", "App.css");
 const appStylesDir = path.join(root, "src", "styles", "app");
 const routeStatePath = path.join(root, "src", "utils", "appRouteState.js");
+const pageSourceDir = path.join(root, "src", "pages");
 const commandSurfacePath = path.join(root, "src", "components", "command-system", "CommandSurface.jsx");
 const commandSystemCssPath = path.join(root, "src", "styles", "command-system.css");
 const betaReadinessPath = path.join(root, "src", "services", "betaReadinessService.js");
 const appFileSource = fs.readFileSync(appPath, "utf8");
 const routeStateSource = fs.existsSync(routeStatePath) ? fs.readFileSync(routeStatePath, "utf8") : "";
+const pageSource = fs.existsSync(pageSourceDir)
+  ? fs.readdirSync(pageSourceDir)
+    .filter((fileName) => fileName.endsWith(".jsx"))
+    .sort((a, b) => a.localeCompare(b))
+    .map((fileName) => fs.readFileSync(path.join(pageSourceDir, fileName), "utf8"))
+    .join("\n")
+  : "";
 const commandSurfaceSource = fs.existsSync(commandSurfacePath) ? fs.readFileSync(commandSurfacePath, "utf8") : "";
-const appSource = `${appFileSource}\n${commandSurfaceSource}\n${routeStateSource}`;
+const appSource = `${appFileSource}\n${pageSource}\n${commandSurfaceSource}\n${routeStateSource}`;
 const splitAppCssSource = fs.existsSync(appStylesDir)
   ? fs.readdirSync(appStylesDir)
     .filter((fileName) => fileName.endsWith(".css"))
@@ -59,9 +67,11 @@ for (const [routeFragment, activeTabFragment] of expectedRoutes) {
 
 const expectedRenderers = [
   'activeTab === "dailyTide" && renderTodaysTideCommandCenter()',
-  'activeTab === "dashboard" && renderHearthHomeCommandView()',
+  'activeTab === "dashboard" && (',
+  '<HearthPage {...hearthPageProps} />',
   'activeTab === "tidepool" && renderTidepoolCommunity()',
-  'activeTab === "kidsProgram" && renderKidsProgramPage()',
+  'activeTab === "kidsProgram" && (',
+  '<SparkPage renderPage={renderKidsProgramPage} />',
   'activeTab === "parentCenter" && renderParentCenterPage()',
   'activeTab === "sponsor" && renderSponsorInterestPage()',
   'activeTab === "trust" && renderTrustPages()',
@@ -69,7 +79,8 @@ const expectedRenderers = [
   'activeTab === "whatsNew" && renderWhatsNewPage()',
   'activeTab === "knownLimitations" && renderKnownLimitationsPage()',
   'activeTab === "comingSoon" && renderComingSoonPage()',
-  'activeTab === "settings" && renderSettingsPage()',
+  'activeTab === "settings" && (',
+  '<MenuPage {...settingsPageProps} />',
   'activeTab === "account" && renderAccountPage()',
   'activeTab === "collections" && renderCollectionsPage()',
   'activeTab === "dataBackup" && renderDataBackupPage()',
