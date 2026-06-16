@@ -168,6 +168,7 @@ async function main() {
     if (await topbarSection.count()) {
       const topbarValue = {
         Home: "home",
+        Hearth: "home",
         "Today's Tide": "today",
         Scout: "scout",
         Vault: "vault",
@@ -189,9 +190,15 @@ async function main() {
       }
     }
     const routeFallback = {
+      Home: "/",
+      Hearth: "/",
+      Scout: "/scout",
+      Vault: "/vault/cards",
       Forge: "/exchange/forge",
       Market: "/exchange/market",
       TideTradr: "/exchange/market",
+      "The Spark": "/kids-program",
+      Admin: "/admin",
     }[label];
     if (routeFallback) {
       const targetUrl = new URL(routeFallback, new URL(APP_URL).origin);

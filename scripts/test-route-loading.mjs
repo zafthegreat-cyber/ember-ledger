@@ -12,6 +12,9 @@ function check(label, passed, details = "") {
 }
 
 const app = read("src/App.jsx");
+const main = read("src/main.jsx");
+const routeState = read("src/utils/appRouteState.js");
+const appCss = read("src/App.css");
 const storeSeed = read("src/data/virginiaStoresSeed.js");
 const smartSearch = read("src/components/SmartCatalogSearchBox.jsx");
 const smartInventory = read("src/components/SmartAddInventory.jsx");
@@ -22,6 +25,30 @@ const pkg = JSON.parse(read("package.json"));
 check(
   "Scout is route-lazy loaded",
   app.includes('const Scout = lazy(() => import("./pages/Scout"))')
+);
+
+check(
+  "App shell uses a lazy app bootstrap boundary",
+  main.includes('const App = lazy(() => import("./App.jsx"))') &&
+    main.includes("<Suspense fallback={<AppLoadFallback />}>")
+);
+
+check(
+  "Route state parser lives outside the main app module",
+  app.includes('from "./utils/appRouteState"') &&
+    routeState.includes("export function routeStateFromPath") &&
+    routeState.includes("export function loadInitialRouteState") &&
+    routeState.includes("BETA_LOCAL_STORAGE_KEYS.routeState")
+);
+
+check(
+  "App CSS is split into ordered structural imports",
+  appCss.includes('@import "./styles/app/01-tokens-theme.css";') &&
+    appCss.includes('@import "./styles/app/02-app-shell-navigation.css";') &&
+    appCss.includes('@import "./styles/app/03-cards-buttons-forms.css";') &&
+    appCss.includes('@import "./styles/app/04-route-pages.css";') &&
+    appCss.includes('@import "./styles/app/06-mobile-responsive.css";') &&
+    appCss.includes('@import "./styles/app/08-command-shell-auth.css";')
 );
 
 check(

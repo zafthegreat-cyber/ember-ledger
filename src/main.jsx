@@ -1,10 +1,11 @@
-import { Component, StrictMode } from "react";
+import { Component, lazy, StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
-import App from "./App.jsx";
 import AppLoadFallback from "./components/AppLoadFallback";
 import { registerServiceWorker } from "./registerServiceWorker";
 import { shouldExposeFallbackErrorDetails } from "./utils/appFallbackContent";
+
+const App = lazy(() => import("./App.jsx"));
 
 class EmberTideErrorBoundary extends Component {
   constructor(props) {
@@ -33,7 +34,9 @@ class EmberTideErrorBoundary extends Component {
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <EmberTideErrorBoundary>
-      <App />
+      <Suspense fallback={<AppLoadFallback />}>
+        <App />
+      </Suspense>
     </EmberTideErrorBoundary>
   </StrictMode>
 );

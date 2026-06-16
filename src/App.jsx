@@ -78,6 +78,12 @@ import {
   sanitizeTidepoolLocalData,
 } from "./utils/betaDataCleanup";
 import {
+  APP_ROUTE_STORAGE_KEY,
+  EXCHANGE_SECTION_TABS,
+  loadInitialRouteState,
+  normalizeExchangeSection,
+} from "./utils/appRouteState";
+import {
   REVIEW_SECTION_LABELS,
   SUGGESTION_STATUSES,
   SUGGESTION_STORAGE_KEY,
@@ -917,7 +923,6 @@ const DAILY_TIDE_STORAGE_KEY = "et-tcg-daily-tide";
 const CATALOG_VIEW_STORAGE_KEY = "et-tcg-beta-catalog-view";
 const VAULT_SHOWCASE_VIEW_STORAGE_KEY = "et-tcg-beta-vault-showcase-view";
 const CATALOG_PAGE_SIZE_STORAGE_KEY = "et-tcg-beta-catalog-page-size";
-const APP_ROUTE_STORAGE_KEY = "et-tcg-route-state";
 const BETA_INVITE_SESSION_KEY = "et-beta-invite-token";
 const WORKSPACE_INVITE_SESSION_KEY = "et-workspace-invite-id";
 const TOAST_AUTO_DISMISS_MS = {
@@ -1411,101 +1416,6 @@ const COMING_SOON_GROUPS = [
   },
 ];
 
-function routeStateFromPath(pathname = "") {
-  const segments = String(pathname || "/").split("/").filter(Boolean);
-  const state = {};
-  const [section, subSection, detailId] = segments;
-
-  if (!section) return { activeTab: "dashboard" };
-  if (section === "invite" || (section === "beta" && subSection === "invite")) {
-    return { activeTab: "invite", inviteToken: decodeURIComponent(section === "invite" ? subSection || "" : detailId || "") };
-  }
-  if (section === "workspace-invite") {
-    return { activeTab: "workspaceInvite", workspaceInviteId: decodeURIComponent(subSection || "") };
-  }
-  if (section === "reset-password") return { activeTab: "resetPassword" };
-  if (section === "onboarding" || section === "welcome" || section === "state-check" || section === "waitlist") {
-    const view = section === "onboarding" ? subSection || "welcome" : section;
-    return { activeTab: "onboarding", onboardingView: view };
-  }
-  if (section === "scout") {
-    state.activeTab = "scout";
-    state.scoutView = subSection === "stores"
-      ? "stores"
-      : subSection === "reports"
-        ? "reports"
-        : subSection === "calendar"
-          ? "alerts"
-          : subSection === "online"
-            ? "online"
-            : subSection === "watchlist"
-              ? "watchlist"
-              : "overview";
-    if (subSection === "stores" && detailId) state.scoutStoreId = decodeURIComponent(detailId);
-    if (subSection === "reports" && detailId) state.scoutReportId = decodeURIComponent(detailId);
-    return state;
-  }
-  if (section === "tidetradr") {
-    state.activeTab = "market";
-    state.exchangeSection = "market";
-    state.tideTradrSubTab = "overview";
-    if ((subSection === "card" || subSection === "product") && detailId) {
-      state.selectedCatalogDetailId = decodeURIComponent(detailId);
-    }
-    return state;
-  }
-  if (section === "exchange") {
-    return { activeTab: "exchange", exchangeSection: normalizeExchangeSection(subSection || "market") };
-  }
-  if (section === "market") {
-    return { activeTab: "exchange", exchangeSection: "market", tideTradrSubTab: normalizeExchangeSection(subSection) === "harbor" ? "listings" : "overview" };
-  }
-  if (section === "harbor") {
-    return { activeTab: "exchange", exchangeSection: "harbor", tideTradrSubTab: "listings" };
-  }
-  if (section === "forge") {
-    state.exchangeSection = "forge";
-    if (subSection === "ledger") {
-      state.activeTab = "inventory";
-      state.forgeSubTab = "ledger";
-      return state;
-    }
-    const forgeTabs = new Set(["expenses", "sales", "mileage", "reports"]);
-    state.activeTab = forgeTabs.has(subSection) ? subSection : "inventory";
-    state.forgeSubTab = subSection === "expenses" ? "expenses" : subSection === "sales" ? "sales" : subSection === "mileage" ? "mileage" : "overview";
-    return state;
-  }
-  if (section === "vault") return { activeTab: "vault", vaultSubTab: subSection === "cards" ? "collection" : subSection || "overview" };
-  if (section === "tidepool") return { activeTab: "tidepool", tidepoolPostId: subSection === "post" && detailId ? decodeURIComponent(detailId) : "" };
-  if (section === "links") return { activeTab: "links" };
-  if (section === "today" || section === "daily-tide") return { activeTab: "dailyTide" };
-  if (section === "whats-new" || section === "changelog") return { activeTab: "whatsNew" };
-  if (section === "known-limitations") return { activeTab: "knownLimitations" };
-  if (section === "coming-soon" || section === "roadmap") return { activeTab: "comingSoon" };
-  if (section === "kids-program") {
-    return {
-      activeTab: "kidsProgram",
-      sparkFlowView: subSection === "donate" || subSection === "thank-you" ? subSection : "home",
-    };
-  }
-  if (section === "parent-center" || section === "parent") return { activeTab: "parentCenter" };
-  if (section === "profile") return { activeTab: subSection === "progress" ? "profileProgress" : "profile" };
-  if (section === "account") return { activeTab: "account" };
-  if (section === "collections" || section === "workspaces") return { activeTab: "collections" };
-  if (section === "data-backup" || section === "backup") return { activeTab: "dataBackup" };
-  if (section === "tcg-os") return { activeTab: "tcgOs" };
-  if (section === "help" || section === "support") return { activeTab: "help" };
-  if (section === "menu" || section === "more") return { activeTab: "settings" };
-  if (section === "moderator" || section === "moderation") return { activeTab: "moderator" };
-  if (section === "membership" || section === "tiers" || section === "plans") return { activeTab: "membership" };
-  if (section === "reports" || section === "business-reports" || section === "exports") return { activeTab: "reports", forgeSubTab: "overview" };
-  if (section === "admin" || section === "admin-review") return { activeTab: "adminReview" };
-  if (section === "partner" || section === "sponsor") return { activeTab: "sponsor" };
-  if (section === "privacy" || section === "terms" || section === "trust") return { activeTab: "trust" };
-  if (section === "settings") return { activeTab: "settings" };
-  return { activeTab: "dashboard" };
-}
-
 function isEmailLike(value = "") {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "").trim());
 }
@@ -1528,19 +1438,6 @@ function publicAppVersionLabel(value = APP_VERSION) {
 
 const PUBLIC_APP_VERSION_LABEL = publicAppVersionLabel(APP_VERSION);
 
-const EXCHANGE_SECTION_TABS = [
-  { key: "market", label: "Market", helper: "Research and price memory" },
-  { key: "harbor", label: "Harbor", helper: "Listings and offers" },
-  { key: "forge", label: "Forge", helper: "Trades and private ledger" },
-];
-
-function normalizeExchangeSection(value = "market") {
-  const key = String(value || "market").toLowerCase();
-  if (key === "listings" || key === "selling" || key === "seller" || key === "shop") return "harbor";
-  if (key === "inventory" || key === "ledger" || key === "trade" || key === "trades") return "forge";
-  return EXCHANGE_SECTION_TABS.some((tab) => tab.key === key) ? key : "market";
-}
-
 function renderAppBuildDetails() {
   return (
     <details className="app-version-details">
@@ -1548,25 +1445,6 @@ function renderAppBuildDetails() {
       <code>{APP_VERSION}</code>
     </details>
   );
-}
-
-function loadInitialRouteState() {
-  if (typeof window === "undefined") return { activeTab: "dashboard" };
-  const saved = safeReadBrowserJson(localStorage, APP_ROUTE_STORAGE_KEY, {});
-  const route = routeStateFromPath(window.location.pathname);
-  const params = new URLSearchParams(window.location.search || "");
-  const marketQuery = String(params.get("q") || "").trim().slice(0, 140);
-  const vaultQuery = String(params.get("vaultQ") || "").trim().slice(0, 140);
-  const vaultFilter = String(params.get("filter") || "").trim();
-  return {
-    ...saved,
-    ...route,
-    ...((route.activeTab === "market" || route.activeTab === "catalog" || (route.activeTab === "exchange" && normalizeExchangeSection(route.exchangeSection) === "market")) && marketQuery
-      ? { catalogSearch: marketQuery, submittedCatalogSearch: marketQuery }
-      : {}),
-    ...(route.activeTab === "vault" && vaultQuery ? { vaultSearch: vaultQuery } : {}),
-    ...(route.activeTab === "vault" && vaultFilter ? { vaultFilter } : {}),
-  };
 }
 
 function getLocalDateKey(date = new Date()) {

@@ -62,6 +62,7 @@
     "test:vault-workflows": "node --no-warnings scripts/test-vault-workflows.mjs",
     "test:product-display": "node --no-warnings scripts/test-product-display.mjs",
     "test:route-loading": "node --no-warnings scripts/test-route-loading.mjs",
+    "test:viewport-guard": "node scripts/test-viewport-guard.cjs",
     "test:business-tax": "node --no-warnings scripts/test-business-tax-records.mjs",
     "test:sales-records": "node --no-warnings scripts/test-sales-records.mjs",
     "test:trade-value": "node --no-warnings scripts/test-trade-value-flow.mjs",
