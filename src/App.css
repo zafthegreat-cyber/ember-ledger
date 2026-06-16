@@ -5805,6 +5805,23 @@ button.collector-showcase-card:focus-visible,
   box-shadow: var(--et-shadow);
 }
 
+.app-command-shell :where(
+  .et-mockup-section-card,
+  .flow-next-action-card,
+  .market-home-product-card,
+  .catalog-result-card,
+  .scout-report-compact-card,
+  .tidepool-post-card,
+  .spark-section-card,
+  .forge-preview-card,
+  .command-hearth-card,
+  .admin-command-card,
+  .admin-command-section-card,
+  .store-map-card
+) {
+  contain: layout paint style;
+}
+
 .app-theme-dark .panel,
 .app-theme-dark .compact-card,
 .app-theme-dark .standard-page-header,
