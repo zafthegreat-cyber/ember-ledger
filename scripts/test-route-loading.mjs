@@ -68,13 +68,16 @@ check(
 );
 
 check(
-  "Forge, Spark, and Menu route mounts are delegated to page modules",
+  "Forge Exchange body, Spark, and Menu route mounts are delegated to page modules",
   routePages.forge.includes("export default function ForgePage") &&
+    routePages.forge.includes("exchange-page-final") &&
+    routePages.forge.includes("Exchange safety and hierarchy") &&
     routePages.spark.includes("export default function SparkPage") &&
     routePages.menu.includes("export default function MenuPage") &&
     routePages.menu.includes("function renderSettingsPage") &&
+    !app.includes("function renderExchangePage") &&
     !app.includes("function renderSettingsPage") &&
-    app.includes("<ForgePage renderPage={renderExchangePage} />") &&
+    app.includes("<ForgePage {...forgePageProps} />") &&
     app.includes("<SparkPage renderPage={renderKidsProgramPage} />") &&
     app.includes("<MenuPage {...settingsPageProps} />")
 );
