@@ -73,12 +73,15 @@ check(
     routePages.forge.includes("exchange-page-final") &&
     routePages.forge.includes("Exchange safety and hierarchy") &&
     routePages.spark.includes("export default function SparkPage") &&
+    routePages.spark.includes("spark-mockup-header") &&
+    routePages.spark.includes("submitKidsProgramApplication") &&
     routePages.menu.includes("export default function MenuPage") &&
     routePages.menu.includes("function renderSettingsPage") &&
     !app.includes("function renderExchangePage") &&
+    !app.includes("function renderKidsProgramPage") &&
     !app.includes("function renderSettingsPage") &&
     app.includes("<ForgePage {...forgePageProps} />") &&
-    app.includes("<SparkPage renderPage={renderKidsProgramPage} />") &&
+    app.includes("<SparkPage {...sparkPageProps} />") &&
     app.includes("<MenuPage {...settingsPageProps} />")
 );
 
