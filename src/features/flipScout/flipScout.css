@@ -433,7 +433,9 @@
 .flip-deal-card { min-width: 0; }
 .flip-deal-card__body { min-width: 0; display: grid; gap: 11px; padding: 14px; }
 .flip-deal-price-row { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; }
-.flip-deal-price-row > strong { font-size: 23px; font-variant-numeric: tabular-nums; }
+.flip-deal-price-row > span { display: grid; gap: 3px; }
+.flip-deal-price-row > span > strong { color: var(--text-primary); font-size: 18px; font-variant-numeric: tabular-nums; }
+.flip-deal-price-row > span > small { color: var(--text-secondary); }
 .flip-deal-price-row > span, .flip-deal-resale span { color: var(--text-muted); font-size: 12px; }
 .flip-deal-resale, .flip-deal-outcome-row { display: grid; gap: 4px; }
 .flip-deal-resale strong, .flip-deal-outcome-row strong { font-variant-numeric: tabular-nums; }
@@ -444,6 +446,18 @@
 .flip-surface-reason { margin: 0; padding: 10px; border-left: 3px solid var(--status-info); border-radius: 7px; background: color-mix(in srgb, var(--status-info) 6%, var(--surface-primary)); }
 .flip-deal-actions { display: flex; flex-wrap: wrap; }
 .flip-deal-actions > * { flex: 1 1 120px; }
+
+@media (max-width: 600px) {
+  .flip-secondary-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: visible;
+  }
+  .flip-secondary-actions > button {
+    min-width: 0;
+    white-space: normal;
+  }
+}
 
 .flip-ebay-connection, .flip-rule-runner, .flip-ebay-truth { border: 1px solid var(--border-subtle); border-radius: 12px; background: var(--surface-secondary); }
 .flip-ebay-connection { padding: 14px; }

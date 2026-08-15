@@ -3,6 +3,8 @@ import { AUCTION_OUTCOMES, AUCTION_TYPES, AUCTION_WATCH_STATUSES, RISK_LEVELS, S
 import { calculateMaximumAuctionBid } from "../calculations.js";
 import { formatCurrency, sortFlipScoutRecords, timingIndicator } from "../selectors.js";
 import { EmptyState, FormActions, MoneyInput, NumberInput, RecordActions, SectionHeading, SelectInput, StatusPill, TextArea, TextInput } from "../components/Fields.jsx";
+import { PrimaryButton, QuietButton } from "../../../components/operations/OperationsUI.jsx";
+import { DetailList, RecordDetailPage } from "../../../components/operations/RecordExperience.jsx";
 
 function blankAuction() {
   return {
@@ -53,6 +55,7 @@ export default function AuctionsScreen({ auctions, initialMode = "", onSave, onD
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("ending_soon");
   const [message, setMessage] = useState("");
+  const [selectedAuction, setSelectedAuction] = useState(null);
   const set = (key) => (value) => setForm((current) => ({ ...current, [key]: value }));
   const result = useMemo(() => calculateMaximumAuctionBid({ ...form, expectedResalePrice: form.estimatedResaleMid }), [form]);
   const visible = useMemo(() => sortFlipScoutRecords(auctions.filter((auction) => !query.trim() || [auction.title, auction.source, auction.location, auction.auctionType].join(" ").toLowerCase().includes(query.toLowerCase())), sort), [auctions, query, sort]);
@@ -71,6 +74,30 @@ export default function AuctionsScreen({ auctions, initialMode = "", onSave, onD
     setFormOpen(false);
     setMessage("Auction saved to your watch list.");
   };
+
+  if (selectedAuction) {
+    const ceiling = selectedAuction.maximumBidCalculation || calculateMaximumAuctionBid({ ...selectedAuction, expectedResalePrice: selectedAuction.estimatedResaleMid });
+    const ending = timingIndicator(selectedAuction.endDateTime);
+    const pickup = timingIndicator(selectedAuction.pickupDeadline, "pickup");
+    return <RecordDetailPage
+      eyebrow="Auction detail"
+      title={selectedAuction.title || "Untitled auction"}
+      status={selectedAuction.watchStatus || "New"}
+      statusTone={selectedAuction.riskLevel === "High" ? "danger" : selectedAuction.riskLevel === "Low" ? "success" : "warning"}
+      image={(selectedAuction.photoReferences || [])[0] || ""}
+      identity={`${selectedAuction.source || "Manual source"} · ${selectedAuction.auctionType || "Auction"}`}
+      summary={[{ label: "Current bid", value: formatCurrency(selectedAuction.currentBid), numeric: true }, { label: "Maximum bid", value: formatCurrency(selectedAuction.myMaximumBid || selectedAuction.calculatedMaximumBid || ceiling.maximumHammerBid), numeric: true }, { label: "Mid resale", value: formatCurrency(selectedAuction.estimatedResaleMid), numeric: true }, { label: "Risk", value: selectedAuction.riskLevel || "Unknown" }]}
+      primaryAction={<PrimaryButton onClick={() => { setForm(toForm(selectedAuction)); setFormOpen(true); setSelectedAuction(null); }}>Edit Auction</PrimaryButton>}
+      secondaryActions={<>{selectedAuction.url ? <a className="ops-button ops-button--secondary" href={selectedAuction.url} target="_blank" rel="noreferrer">Open Auction</a> : null}<QuietButton onClick={() => onDelete("auctions", selectedAuction.id, selectedAuction.title)}>Delete</QuietButton></>}
+      sections={[
+        { title: "Timing and pickup", description: "Deadlines and location information.", children: <DetailList items={[{ label: "Starts", value: selectedAuction.startDate ? new Date(selectedAuction.startDate).toLocaleString() : "" }, { label: "Ends", value: selectedAuction.endDateTime ? new Date(selectedAuction.endDateTime).toLocaleString() : "" }, { label: "Time remaining", value: ending?.label }, { label: "Pickup deadline", value: selectedAuction.pickupDeadline ? new Date(selectedAuction.pickupDeadline).toLocaleString() : "" }, { label: "Pickup status", value: pickup?.label }, { label: "Location", value: selectedAuction.location }, { label: "Distance", value: selectedAuction.distance ? `${selectedAuction.distance} mi` : "" }]} /> },
+        { title: "Bid calculation", description: "The hammer ceiling satisfies the recorded profit and ROI requirements.", children: <DetailList items={[{ label: "Buyer premium", value: `${selectedAuction.buyerPremiumPercentage || 0}%` }, { label: "Tax rate", value: `${selectedAuction.taxRate || 0}%` }, { label: "Tax base", value: TAX_BASE_OPTIONS.find((row) => row.value === selectedAuction.taxBase)?.label }, { label: "Fixed fees", value: formatCurrency(selectedAuction.fixedFees) }, { label: "Travel", value: formatCurrency(selectedAuction.estimatedTravelCost) }, { label: "Labor", value: formatCurrency(selectedAuction.estimatedLaborCost) }, { label: "Disposal", value: formatCurrency(selectedAuction.estimatedDisposalCost) }, { label: "Total acquisition at ceiling", value: formatCurrency(ceiling.totalCostAtMaximum) }]} /> },
+        { title: "Outcome and notes", description: "Watch status, result, and owner notes.", children: <DetailList items={[{ label: "Outcome", value: selectedAuction.outcome }, { label: "Resale range", value: [selectedAuction.estimatedResaleLow, selectedAuction.estimatedResaleMid, selectedAuction.estimatedResaleHigh].filter(Boolean).map(formatCurrency).join(" / ") }, { label: "Notes", value: selectedAuction.notes }]} /> },
+      ]}
+      timeline={[selectedAuction.startDate ? { id: "start", title: "Auction started", date: new Date(selectedAuction.startDate).toLocaleString() } : null, selectedAuction.endDateTime ? { id: "end", title: "Auction ends", date: new Date(selectedAuction.endDateTime).toLocaleString() } : null, selectedAuction.updatedAt ? { id: "updated", title: "Record updated", date: new Date(selectedAuction.updatedAt).toLocaleString() } : null].filter(Boolean)}
+      onBack={() => setSelectedAuction(null)}
+    />;
+  }
 
   return (
     <div className="flip-screen">
@@ -138,6 +165,7 @@ export default function AuctionsScreen({ auctions, initialMode = "", onSave, onD
             <div className="flip-risk-row">{ending ? <StatusPill tone={ending.tone}>{ending.label}</StatusPill> : null}{pickup ? <StatusPill tone={pickup.tone}>{pickup.label}</StatusPill> : null}<StatusPill>{auction.watchStatus}</StatusPill><StatusPill>{auction.outcome}</StatusPill></div>
             <div className="flip-record-facts"><span>Current <strong>{formatCurrency(auction.currentBid)}</strong></span><span>My max <strong>{formatCurrency(auction.myMaximumBid || auction.calculatedMaximumBid)}</strong></span><span>Mid resale <strong>{formatCurrency(auction.estimatedResaleMid)}</strong></span></div>
             {auction.url ? <a href={auction.url} target="_blank" rel="noreferrer">Open auction</a> : <p className="flip-muted-copy">No auction URL saved.</p>}
+            <PrimaryButton onClick={() => setSelectedAuction(auction)}>View Details</PrimaryButton>
             <RecordActions onEdit={() => { setForm(toForm(auction)); setFormOpen(true); window.scrollTo?.({ top: 0, behavior: "smooth" }); }} onDelete={() => onDelete("auctions", auction.id, auction.title)} />
           </article>;
         })}</div> : <EmptyState title="No auctions tracked">Add a real auction manually. No auction source is connected in Phase 1.</EmptyState>}

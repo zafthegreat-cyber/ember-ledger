@@ -50,8 +50,7 @@
   display: grid;
   gap: var(--space-3);
 }
-.owner-record-list > *,
-.owner-opportunity-list > * { content-visibility: auto; contain-intrinsic-size: 240px; }
+.owner-record-list > * { content-visibility: auto; contain-intrinsic-size: 240px; }
 
 .owner-priority-list button {
   display: grid;

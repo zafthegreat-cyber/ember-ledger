@@ -5,6 +5,30 @@
   padding: var(--space-4);
 }
 
+.everyday-action-section,
+.everyday-attention,
+.everyday-workspace > section {
+  min-width: 0;
+}
+
+.everyday-attention {
+  padding: var(--space-4);
+  border: 1px solid color-mix(in srgb, var(--status-warning) 35%, var(--border-subtle));
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--status-warning) 7%, var(--surface-primary));
+}
+
+.everyday-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.everyday-toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .everyday-tabs {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -40,9 +64,153 @@
   line-height: 1.5;
 }
 
-.owned-item-list {
+.owned-item-list,
+.everyday-record-list,
+.everyday-group-list,
+.reconciliation-list {
   display: grid;
   gap: var(--space-3);
+}
+
+.everyday-record-card {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: var(--space-3);
+  padding: var(--space-3);
+}
+
+.everyday-record-card > img,
+.everyday-record-placeholder {
+  width: 76px;
+  aspect-ratio: 1;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+  background: var(--surface-secondary);
+}
+
+.everyday-record-placeholder {
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.everyday-record-card__body,
+.everyday-record-card__heading > div {
+  min-width: 0;
+}
+
+.everyday-record-card__heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.everyday-record-card__heading span {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.everyday-record-card h3,
+.everyday-group-list h3,
+.reconciliation-list h3 {
+  margin: 2px 0 0;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.everyday-record-card dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+}
+
+.everyday-record-card dt,
+.everyday-record-card dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.everyday-record-card dt {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.everyday-record-card dd {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.everyday-card-actions,
+.related-record-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.everyday-group-list .ops-record-card,
+.reconciliation-list .ops-record-card {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.everyday-group-list p,
+.reconciliation-list p {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.purpose-action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.purpose-action-grid button {
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-primary);
+  color: var(--text-secondary);
+  font: 700 13px/1.2 var(--font-ui);
+}
+
+.purpose-action-grid button.is-active {
+  border-color: var(--brand-primary);
+  background: color-mix(in srgb, var(--brand-primary) 9%, var(--surface-primary));
+  color: var(--brand-primary);
+}
+
+.sale-result-preview {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.sale-result-preview span {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-secondary);
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.sale-result-preview strong {
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
 }
 
 .owned-item-card {
@@ -122,13 +290,35 @@
   .everyday-workspace { padding: var(--space-6); }
   .everyday-tabs { display: flex; flex-wrap: wrap; }
   .everyday-tabs button { flex: 0 0 auto; }
-  .owned-item-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .owned-item-list,
+  .everyday-record-list,
+  .everyday-group-list,
+  .reconciliation-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .everyday-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+@media (max-width: 859px) {
+  .everyday-workspace {
+    padding-bottom: calc(124px + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 @media (max-width: 420px) {
+  .everyday-record-card,
+  .everyday-record-card .ops-button {
+    scroll-margin-block-end: calc(104px + env(safe-area-inset-bottom, 0px));
+  }
   .owned-item-card { grid-template-columns: 64px minmax(0, 1fr); }
   .owned-item-card > img,
   .owned-item-placeholder { width: 64px; }
   .owned-item-card__heading { display: grid; }
   .owned-item-card dl { grid-template-columns: 1fr; }
+  .everyday-record-card { grid-template-columns: 60px minmax(0, 1fr); }
+  .everyday-record-card > img,
+  .everyday-record-placeholder { width: 60px; }
+  .everyday-record-card__heading { display: grid; }
+  .everyday-record-card dl,
+  .sale-result-preview,
+  .purpose-action-grid { grid-template-columns: 1fr; }
+  .everyday-card-actions .ops-button { flex: 1 1 auto; padding-inline: 10px; }
 }

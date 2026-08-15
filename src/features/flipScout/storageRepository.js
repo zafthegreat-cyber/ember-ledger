@@ -60,6 +60,9 @@ export function createFlipScoutRepository(storage = globalThis.localStorage) {
     const normalized = normalizeFlipScoutState({ ...nextState, updatedAt: new Date().toISOString() });
     try {
       storage?.setItem?.(FLIP_SCOUT_STORAGE_KEY, JSON.stringify(normalized));
+      if (typeof window !== "undefined" && typeof window.dispatchEvent === "function" && typeof CustomEvent === "function") {
+        window.dispatchEvent(new CustomEvent("private-business-hub:flip-scout-data", { detail: { state: normalized } }));
+      }
       lastError = "";
       return { state: normalized, error: "" };
     } catch (error) {

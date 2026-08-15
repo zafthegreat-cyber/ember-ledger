@@ -19,15 +19,40 @@ const BETA_SMOKE_MODE = CLI_ARGS.includes("--regression") || process.env.BETA_SM
   : REQUESTED_AREA
     ? `area:${REQUESTED_AREA}`
   : "smoke";
+const parsedStepTimeout = Number(process.env.BETA_SMOKE_STEP_TIMEOUT_MS || 90000);
+const STEP_TIMEOUT_MS = Number.isFinite(parsedStepTimeout) && parsedStepTimeout > 0 ? parsedStepTimeout : 90000;
+let activeBrowser = null;
+let activePage = null;
+
+async function closeActiveBrowser() {
+  const browser = activeBrowser;
+  activeBrowser = null;
+  activePage = null;
+  if (browser) await browser.close().catch(() => {});
+}
 
 async function main() {
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1366, height: 1600 } });
+  activeBrowser = browser;
+  activePage = page;
   page.setDefaultTimeout(20000);
   page.setDefaultNavigationTimeout(45000);
   const results = [];
   const fatalBrowserErrors = [];
+  const pendingRequests = new Map();
+  let activeStepName = "suite startup";
+  let lastCheckpoint = "browser launched";
   console.log(`Beta smoke mode: ${BETA_SMOKE_MODE}`);
+
+  function checkpoint(label) {
+    lastCheckpoint = String(label || "unknown checkpoint");
+  }
+
+  page.on("request", (request) => {
+    pendingRequests.set(request, { method: request.method(), resourceType: request.resourceType(), url: request.url(), startedAt: Date.now() });
+  });
+  page.on("requestfinished", (request) => pendingRequests.delete(request));
 
   function recordFatalBrowserError(kind, message, url = "") {
     const text = String(message || "").trim();
@@ -46,6 +71,7 @@ async function main() {
     recordFatalBrowserError("pageerror", error.message);
   });
   page.on("requestfailed", (request) => {
+    pendingRequests.delete(request);
     const url = request.url();
     const resourceType = request.resourceType();
     const failureText = request.failure()?.errorText || "request failed";
@@ -81,9 +107,20 @@ async function main() {
 
   async function step(name, fn) {
     const startedAt = Date.now();
+    activeStepName = name;
+    checkpoint(`step started: ${name}`);
     console.log(`START ${name}`);
+    let timeoutId;
+    const heartbeatId = setInterval(() => {
+      console.log(`WAIT ${name} (${Date.now() - startedAt}ms) · last checkpoint: ${lastCheckpoint}`);
+    }, 15000);
     try {
-      await fn();
+      await Promise.race([
+        fn(),
+        new Promise((_, reject) => {
+          timeoutId = setTimeout(() => reject(new Error(`Step exceeded ${STEP_TIMEOUT_MS}ms`)), STEP_TIMEOUT_MS);
+        }),
+      ]);
       if (BETA_SMOKE_MODE.startsWith("area:") || BETA_SMOKE_MODE === "smoke") {
         await assertNoFatalBrowserErrors();
       }
@@ -92,9 +129,14 @@ async function main() {
       console.log(`PASS ${name} (${elapsedMs}ms)`);
     } catch (error) {
       const elapsedMs = Date.now() - startedAt;
-      results.push({ name, status: "FAIL", elapsedMs, error: error.message });
+      const diagnostics = await collectStepDiagnostics(error.message);
+      error.message = `${error.message}\nRegression diagnostics:\n${JSON.stringify(diagnostics, null, 2)}`;
+      results.push({ name, status: "FAIL", elapsedMs, error: error.message, diagnostics });
       console.error(`FAIL ${name} (${elapsedMs}ms): ${error.message}`);
       throw error;
+    } finally {
+      clearTimeout(timeoutId);
+      clearInterval(heartbeatId);
     }
   }
 
@@ -155,7 +197,10 @@ async function main() {
         const target = targets.nth(index);
         if (await target.isVisible()) {
           const clicked = await target.click({ timeout: 2500 }).then(() => true).catch(() => false);
-          if (clicked) return;
+          if (clicked) {
+            checkpoint(`navigation completed: ${label}`);
+            return;
+          }
         }
       }
     }
@@ -165,6 +210,7 @@ async function main() {
       // remains wired for app routing. Use it only as a test fallback when the dev server is
       // running a cached shell before the sidebar styles hydrate.
       await legacyTab.evaluate((button) => button.click());
+      checkpoint(`legacy navigation fallback completed: ${label}`);
       return;
     }
     const topbarSection = page.locator(".topbar-section-select");
@@ -192,7 +238,10 @@ async function main() {
           select.dispatchEvent(new Event("change", { bubbles: true }));
           return true;
         }, topbarValue);
-        if (changed) return;
+        if (changed) {
+          checkpoint(`section selector navigation completed: ${label}`);
+          return;
+        }
       }
     }
     const routeFallback = {
@@ -217,9 +266,44 @@ async function main() {
         targetUrl.searchParams.set(key, value);
       }
       await page.goto(targetUrl.toString(), { waitUntil: "domcontentloaded" });
+      checkpoint(`route fallback loaded: ${targetUrl.pathname}`);
       return;
     }
     throw new Error(`No visible navigation target found for ${label}`);
+  }
+
+  async function collectStepDiagnostics(reason) {
+    const pageState = await Promise.race([
+      page.evaluate(() => ({
+        readyState: document.readyState,
+        title: document.title,
+        activeElement: document.activeElement?.outerHTML?.slice(0, 300) || "",
+        visibleDialogs: [...document.querySelectorAll('[role="dialog"], dialog, .flow-modal')]
+          .filter((element) => {
+            const style = getComputedStyle(element);
+            return style.display !== "none" && style.visibility !== "hidden";
+          })
+          .slice(0, 5)
+          .map((element) => element.getAttribute("aria-label") || element.querySelector("h1, h2, h3")?.textContent?.trim() || element.className),
+      })),
+      new Promise((resolve) => setTimeout(() => resolve({ evaluation: "timed out" }), 1500)),
+    ]).catch((error) => ({ evaluation: error.message }));
+    const pending = [...pendingRequests.values()]
+      .sort((left, right) => left.startedAt - right.startedAt)
+      .slice(0, 10)
+      .map((request) => ({ ...request, ageMs: Date.now() - request.startedAt }));
+    const handles = typeof process._getActiveHandles === "function"
+      ? process._getActiveHandles().map((handle) => handle?.constructor?.name || typeof handle)
+      : [];
+    return {
+      reason,
+      activeStep: activeStepName,
+      lastCheckpoint,
+      url: page.url(),
+      pageState,
+      pendingRequests: pending,
+      activeHandles: handles,
+    };
   }
 
   async function gotoAppRoute(pathname) {
@@ -228,6 +312,7 @@ async function main() {
       targetUrl.searchParams.set(key, value);
     }
     await page.goto(targetUrl.toString(), { waitUntil: "domcontentloaded" });
+    checkpoint(`route loaded: ${targetUrl.pathname}`);
   }
 
   async function resetBetaData() {
@@ -392,6 +477,7 @@ async function main() {
       error.message = `${error.message}\nBody preview:\n${bodyPreview.slice(0, 1500)}`;
       throw error;
     }
+    checkpoint(`field completed: ${String(label)}`);
   }
 
   function addWizardModal() {
@@ -594,6 +680,7 @@ async function main() {
       error.message = `${label} was not visible.\n${error.message}\nBody preview:\n${bodyPreview.slice(0, 1500)}`;
       throw error;
     });
+    checkpoint(`visible assertion completed: ${label}`);
   }
 
   async function focusedHearthTest() {
@@ -1731,7 +1818,7 @@ async function main() {
 
     await step(`${REQUESTED_AREA}: focused critical path`, focusedAreaTests[REQUESTED_AREA]);
 
-    await browser.close();
+    await closeActiveBrowser();
     console.log(JSON.stringify(results, null, 2));
     return;
   }
@@ -1774,22 +1861,22 @@ async function main() {
       await quickAddModal.waitFor({ state: "hidden", timeout: 5000 });
     });
 
-    await step("Scout opens", async () => {
-      await nav("Scout");
-      await assertVisibleText("Scout");
+    await step("Find opens", async () => {
+      await nav("Find");
+      await assertVisibleText("Find");
     });
 
-    await step("Vault opens", async () => {
-      await nav("Vault");
-      await assertVisibleText("Vault");
+    await step("Collection opens", async () => {
+      await nav("Collection");
+      await assertVisibleText("My Collection");
     });
 
-    await step("Market opens", async () => {
-      await nav("TideTradr");
-      await assertVisibleText(/Market|TideTradr/i);
+    await step("Business opens", async () => {
+      await nav("Business");
+      await assertVisibleText("Purchases");
     });
 
-    await browser.close();
+    await closeActiveBrowser();
     console.log(JSON.stringify(results, null, 2));
     return;
   }
@@ -2365,6 +2452,7 @@ async function main() {
       error.message = `${error.message}\nBody preview:\n${bodyPreview.slice(0, 1500)}`;
       throw error;
     }
+    checkpoint(`text assertion completed: ${String(text)}`);
   }
 
   async function openScoutReportWizard() {
@@ -2422,6 +2510,7 @@ async function main() {
       false,
       `${text} should not be visible`
     );
+    checkpoint(`absence assertion completed: ${String(text)}`);
   }
 
   async function fillScoutReportWizard(form, options = {}) {
@@ -3680,8 +3769,7 @@ async function main() {
 
     await gotoAppRoute("/forge");
     await assertVisibleText("Prismatic Evolutions Booster Bundle");
-    await nav("Vault");
-    await page.getByRole("button", { name: "Collection", exact: true }).click();
+    await nav("Collection");
     await assertVisibleText("Prismatic Evolutions Booster Bundle");
     await page.evaluate(() => {
       const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
@@ -3762,11 +3850,13 @@ async function main() {
     await page.setViewportSize({ width: 1366, height: 1600 });
   });
 
-  await browser.close();
+  await closeActiveBrowser();
   console.log(JSON.stringify(results, null, 2));
 }
 
-main().catch((error) => {
+main().catch(async (error) => {
   console.error(error);
-  process.exit(1);
+  await closeActiveBrowser();
+  process.exitCode = 1;
+  setTimeout(() => process.exit(1), 1000).unref();
 });

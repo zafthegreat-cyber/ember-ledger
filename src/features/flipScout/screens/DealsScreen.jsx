@@ -9,7 +9,8 @@ import {
 import { calculateLandedCost } from "../calculations.js";
 import { formatCurrency, formatPercent, sortFlipScoutRecords, timingIndicator } from "../selectors.js";
 import { CheckField, EmptyState, FormActions, MoneyInput, NumberInput, RecordActions, SectionHeading, SelectInput, StatusPill, TextArea, TextInput } from "../components/Fields.jsx";
-import { ConfidenceIndicator, DealCard, RiskIndicator, SourceBadge } from "../../../components/operations/OperationsUI.jsx";
+import { ConfidenceIndicator, DealCard, PrimaryButton, QuietButton, RiskIndicator, SourceBadge } from "../../../components/operations/OperationsUI.jsx";
+import { DetailList, RecordDetailPage } from "../../../components/operations/RecordExperience.jsx";
 
 function blankDeal() {
   return {
@@ -72,6 +73,7 @@ export default function DealsScreen({ deals, initialMode = "", onSave, onDelete,
   const [statusFilter, setStatusFilter] = useState("All");
   const [sort, setSort] = useState("newest");
   const [message, setMessage] = useState("");
+  const [selectedDeal, setSelectedDeal] = useState(null);
   const set = (key) => (value) => setForm((current) => ({ ...current, [key]: value }));
   const visibleDeals = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -114,6 +116,33 @@ export default function DealsScreen({ deals, initialMode = "", onSave, onDelete,
     onSave("deals", { ...deal, status }, { title: `Listing marked ${status.toLowerCase()}`, detail: deal.title });
     setMessage(`${deal.title || "Listing"} marked ${status}.`);
   };
+
+  if (selectedDeal) {
+    const landedCost = selectedDeal.landedCost ?? calculateLandedCost({ ...selectedDeal, purchasePrice: selectedDeal.askingPrice, purchaseTax: selectedDeal.estimatedTax });
+    return <RecordDetailPage
+      eyebrow="Listing review"
+      title={selectedDeal.title || "Untitled listing"}
+      status={selectedDeal.status || "New"}
+      statusTone={/pass|expired/i.test(selectedDeal.status || "") ? "neutral" : /strong/i.test(selectedDeal.status || "") ? "success" : "info"}
+      image={(selectedDeal.imageReferences || [])[0] || ""}
+      identity={`${selectedDeal.marketplace || "Manual source"} · ${selectedDeal.productClassification || "Unknown classification"}`}
+      summary={[
+        { label: selectedDeal.currentBid ? "Current bid" : "Asking price", value: formatCurrency(selectedDeal.currentBid || selectedDeal.askingPrice), numeric: true },
+        { label: "Estimated landed cost", value: formatCurrency(landedCost), numeric: true },
+        { label: "Projected profit", value: selectedDeal.projectedProfit || selectedDeal.expectedProfit ? formatCurrency(selectedDeal.projectedProfit || selectedDeal.expectedProfit) : "Not entered", numeric: true },
+        { label: "Projected ROI", value: selectedDeal.projectedRoi || selectedDeal.expectedRoi ? formatPercent(selectedDeal.projectedRoi || selectedDeal.expectedRoi) : "Not entered", numeric: true },
+      ]}
+      primaryAction={<PrimaryButton onClick={() => onAnalyze({ ...selectedDeal, purchasePrice: selectedDeal.askingPrice, purchaseTax: selectedDeal.estimatedTax })}>Analyze Deal</PrimaryButton>}
+      secondaryActions={<>{selectedDeal.listingUrl ? <a className="ops-button ops-button--secondary" href={selectedDeal.listingUrl} target="_blank" rel="noreferrer">Open Listing</a> : null}<QuietButton onClick={() => { edit(selectedDeal); setSelectedDeal(null); }}>Edit</QuietButton></>}
+      sections={[
+        { title: "Listing", description: "Source-provided and manually entered details.", children: <DetailList items={[{ label: "Source", value: selectedDeal.marketplace }, { label: "External listing ID", value: selectedDeal.externalListingId }, { label: "Seller", value: selectedDeal.sellerName }, { label: "Seller rating", value: selectedDeal.sellerRating }, { label: "Listing type", value: selectedDeal.listingType }, { label: "Location", value: selectedDeal.location }, { label: "Distance", value: selectedDeal.distance ? `${selectedDeal.distance} mi` : "" }, { label: "Description", value: selectedDeal.description }]} /> },
+        { title: "Costs and assumptions", description: "Active prices are not sold comparable records.", children: <DetailList items={[{ label: "Shipping", value: formatCurrency(selectedDeal.purchaseShipping) }, { label: "Estimated tax", value: formatCurrency(selectedDeal.estimatedTax) }, { label: "Buyer premium", value: formatCurrency(selectedDeal.buyerPremium) }, { label: "Pickup / travel", value: formatCurrency(selectedDeal.travelOrPickupCost) }, { label: "Preparation", value: formatCurrency(selectedDeal.preparationCost) }, { label: "Resale range", value: [selectedDeal.expectedResaleLow || selectedDeal.projectedResaleLow, selectedDeal.expectedResaleMid || selectedDeal.projectedResaleMid, selectedDeal.expectedResaleHigh || selectedDeal.projectedResaleHigh].filter(Boolean).map(formatCurrency).join(" / ") }, { label: "Confidence", value: selectedDeal.confidence }, { label: "Risk flags", value: (selectedDeal.riskFlags || []).join(", ") || "None recorded" }]} /> },
+        { title: "Notes and source", description: "Why this record was surfaced and when it was checked.", children: <DetailList items={[{ label: "Why surfaced", value: selectedDeal.surfacedReason || selectedDeal.explanation }, { label: "Data source", value: selectedDeal.sourceDataExplanation }, { label: "Last checked", value: selectedDeal.lastCheckedAt ? new Date(selectedDeal.lastCheckedAt).toLocaleString() : "" }, { label: "Notes", value: selectedDeal.notes }]} /> },
+      ]}
+      timeline={[selectedDeal.listingCreatedAt ? { id: "listed", title: "Listing created", date: new Date(selectedDeal.listingCreatedAt).toLocaleString() } : null, selectedDeal.dateDiscovered ? { id: "discovered", title: "Listing discovered", date: new Date(selectedDeal.dateDiscovered).toLocaleDateString() } : null, selectedDeal.updatedAt ? { id: "updated", title: "Record updated", date: new Date(selectedDeal.updatedAt).toLocaleString() } : null].filter(Boolean)}
+      onBack={() => setSelectedDeal(null)}
+    />;
+  }
 
   return (
     <div className="flip-screen">
@@ -189,7 +218,7 @@ export default function DealsScreen({ deals, initialMode = "", onSave, onDelete,
                   {deal.riskFlags?.length ? <div className="flip-risk-row">{deal.riskFlags.slice(0, 3).map((flag) => <StatusPill tone="danger" key={flag}>{flag}</StatusPill>)}</div> : null}
                   {deal.surfacedReason || deal.explanation ? <p className="flip-surface-reason"><strong>Why it surfaced:</strong> {deal.surfacedReason || deal.explanation}</p> : null}
                   <div className="flip-deal-actions">
-                    <button type="button" className="primary-button" onClick={() => onAnalyze({ ...deal, purchasePrice: deal.askingPrice, purchaseTax: deal.estimatedTax })}>Review</button>
+                    <button type="button" className="primary-button" onClick={() => setSelectedDeal(deal)}>Review</button>
                     {deal.listingUrl ? <a className="secondary-button" href={deal.listingUrl} target="_blank" rel="noreferrer">Open Listing</a> : null}
                     <button type="button" className="secondary-button" onClick={() => updateStatus(deal, "Watching")}>Save</button>
                     <button type="button" className="ghost-button" onClick={() => updateStatus(deal, "Passed")}>Pass</button>

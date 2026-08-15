@@ -125,7 +125,7 @@ const expectedMenuDestinations = [
   'key: "owner-center", label: "Owner Center"',
   'quickAdd: { key: "quickAdd"',
   'scanProduct: { key: "scanProduct"',
-  'emberAssist: { key: "emberAssist"',
+  'emberAssist: ownerFeatureControls.businessAssistant ? { key: "emberAssist", label: "Business Assistant"',
   'privacySafety: { key: "privacySafety"',
   'parentCenter: { key: "parentCenter"',
   'publicBetaFeedback: { key: "publicBetaFeedback"',

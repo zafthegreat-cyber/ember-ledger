@@ -1044,21 +1044,21 @@ const DEFAULT_FORGE_MODE_SETTINGS = {
 const DAILY_TIDE_TASKS = [
   {
     key: "scout",
-    label: "Scout",
-    title: "Check Scout",
-    helper: "Review Store Signals or submit a quick update.",
-    actionLabel: "Open Scout",
-    tab: "scout",
+    label: "Find",
+    title: "Check Find",
+    helper: "Review deals, restocks, auctions, or saved searches.",
+    actionLabel: "Open Find",
+    tab: "flipScout",
     badge: "restock_reporter",
     points: 10,
   },
   {
     key: "vault",
-    label: "Vault",
-    title: "Check Vault",
+    label: "Collection",
+    title: "Check Collection",
     helper: "Review your collection, wishlist, or recent adds.",
-    actionLabel: "Open Vault",
-    tab: "vault",
+    actionLabel: "Open Collection",
+    tab: "collectionWorkspace",
     badge: "vault_builder",
     points: 10,
   },
@@ -1074,11 +1074,11 @@ const DAILY_TIDE_TASKS = [
   },
   {
     key: "forge",
-    label: "Forge",
-    title: "Check Forge",
-    helper: "Review Seller Tools, receipts, or inventory records.",
-    actionLabel: "Open Forge",
-    tab: "inventory",
+    label: "Business",
+    title: "Check Business",
+    helper: "Review purchases, inventory, sales, or money records.",
+    actionLabel: "Open Business",
+    tab: "businessWorkspace",
     badge: "forge_starter",
     points: 10,
   },
@@ -1087,9 +1087,9 @@ const DAILY_TIDE_ACTIONS = DAILY_TIDE_TASKS.map((task) => task.key);
 const DAILY_TIDE_BADGES = [
   { key: "first_scan", label: "First Scan" },
   { key: "first_sale", label: "First Sale" },
-  { key: "vault_builder", label: "Vault Builder" },
-  { key: "forge_starter", label: "Forge Starter" },
-  { key: "scout_verified", label: "Scout Verified" },
+  { key: "vault_builder", label: "Collection Builder" },
+  { key: "forge_starter", label: "Business Starter" },
+  { key: "scout_verified", label: "Report Verified" },
   { key: "deal_finder", label: "Deal Finder" },
   { key: "restock_reporter", label: "Restock Reporter" },
   { key: "market_watcher", label: "Market Watcher" },
@@ -8032,17 +8032,17 @@ export default function App() {
     .map((key) => desktopCommandDeskByKey[key])
     .filter(Boolean);
   const mobileMenuByKey = {
-    scout: { key: "scout", label: "Local Reports", helper: "Current store reports and watched stores.", icon: "scout", target: "scout" },
-    vault: { key: "vault", label: "Collection", helper: "Collection, scans, and item details.", icon: "vault", target: "vault" },
+    scout: { key: "scout", label: "Restocks", helper: "Reports, store profiles, and saved restock evidence.", icon: "find", action: () => openFlipScoutView("restocks") },
+    vault: { key: "vault", label: "Collection", helper: "Collection, sets, wishlist, and grading.", icon: "inventory", target: "collectionWorkspace" },
     quickAdd: { key: "quickAdd", label: "Add", helper: "Scan, add, report, or request.", icon: "plus", action: () => openAddActionSheet("menu-quick-add") },
     scanProduct: { key: "scanProduct", label: "Scan Product/Card", helper: "Open scanner review before saving.", icon: "scan", action: () => openQuickAddAction("scanProduct") },
     emberAssist: ownerFeatureControls.businessAssistant ? { key: "emberAssist", label: "Business Assistant", helper: "Open the application guide.", icon: "help", action: () => setEmberAssistOpen(true) } : null,
     watchList: { key: "watchList", label: "Saved Alerts", helper: "Watched stores, alerts, and product signals.", icon: "bell", action: openEmberWatchSection },
-    forge: { key: "forge", label: "Business Records", helper: "Inventory, expenses, mileage, and reports.", icon: "business", target: "inventory" },
-    sales: { key: "sales", label: "Sales", helper: "Sales records and profit review.", icon: "forge", action: () => setActiveTab("sales") },
-    receipts: { key: "receipts", label: "Receipts", helper: "Receipt review and business expenses.", icon: "clipboard", action: () => setActiveTab("expenses") },
-    mileage: { key: "mileage", label: "Mileage", helper: "Trips and vehicle costs.", icon: "calendar", action: () => setActiveTab("mileage") },
-    taxCenter: { key: "taxCenter", label: "Tax Center", helper: "Reports and export support.", icon: "clipboard", action: () => setActiveTab("reports") },
+    forge: { key: "forge", label: "Business Records", helper: "Purchases, inventory, sales, and money.", icon: "business", target: "businessWorkspace" },
+    sales: { key: "sales", label: "Sales", helper: "Sales records and profit review.", icon: "business", action: () => { setBusinessWorkspaceView("sales"); setActiveTab("businessWorkspace"); } },
+    receipts: { key: "receipts", label: "Expenses & Receipts", helper: "Expense and receipt review.", icon: "clipboard", action: () => { setBusinessWorkspaceView("money"); setBusinessMoneyView("expenses"); setActiveTab("businessWorkspace"); } },
+    mileage: { key: "mileage", label: "Mileage", helper: "Trips and vehicle costs.", icon: "calendar", action: () => { setBusinessWorkspaceView("money"); setBusinessMoneyView("mileage"); setActiveTab("businessWorkspace"); } },
+    taxCenter: { key: "taxCenter", label: "Reports", helper: "Business summaries and reconciliation.", icon: "clipboard", action: () => { setBusinessWorkspaceView("money"); setBusinessMoneyView("reports"); setActiveTab("businessWorkspace"); } },
     market: { key: "market", label: "Market Watch", helper: "Fair prices, watchlist, and value labels.", icon: "market", target: "market" },
     exchange: { key: "exchange", label: "Sell & Product Research", helper: "Market research, listings, and business tools.", icon: "market", target: "exchange" },
     tidepool: { key: "tidepool", label: "Community", helper: "Family-safe posts and trusted trade talk.", icon: "community", target: "tidepool" },
@@ -9058,21 +9058,21 @@ export default function App() {
     const primaryAreas = [
       {
         key: "scout",
-        title: "Scout",
+        title: "Find",
         verb: "Find",
         summary: "Restock reports, nearby store checks, and community intel.",
         stat: `${scoutSnapshot.reports?.length || 0} reports`,
-        actions: ["Open Scout", "Submit Report"],
+        actions: ["Open Find", "Submit Report"],
         onOpen: () => openCommandCenterAction("scout"),
         onAction: () => openCommandCenterAction("scout", "Submit Report"),
       },
       {
         key: "vault",
-        title: "Vault",
+        title: "Collection",
         verb: "Collect",
         summary: "Your collection, wishlist, set progress, and card records.",
         stat: `${activeVaultItems.length || 0} items`,
-        actions: ["Open Vault", "Add Item"],
+        actions: ["Open Collection", "Add Item"],
         onOpen: () => openCommandCenterAction("vault"),
         onAction: () => openCommandCenterAction("vault", "Add Item"),
       },
@@ -9088,30 +9088,30 @@ export default function App() {
       },
       {
         key: "forge",
-        title: "Forge",
+        title: "Business",
         verb: "Build",
         summary: "Inventory, sales, expenses, receipts, and planning tools.",
         stat: `${forgeInventoryItems.length || 0} items`,
-        actions: ["Open Forge", "Add Inventory"],
+        actions: ["Open Business", "Add Inventory"],
         onOpen: () => openCommandCenterAction("forge"),
         onAction: () => openCommandCenterAction("forge", "Add Inventory"),
       },
     ];
     const commandQuickActions = [
-      { key: "report", label: "Quick Scout Report", category: "activity", onClick: () => openCommandCenterAction("scout", "Submit Report") },
+      { key: "report", label: "Quick Store Report", category: "activity", onClick: () => openCommandCenterAction("scout", "Submit Report") },
       { key: "add", label: "Add Item", category: "tools", onClick: () => openCommandCenterQuickAdd("vaultItem") },
       { key: "scan", label: "Scan Product/Card", category: "tools", onClick: () => openCommandCenterQuickAdd("scanProduct") },
       { key: "search", label: "Search", category: "tools", onClick: () => openCommandCenterAction("catalog", "Search Catalog") },
       { key: "import", label: "Import / Bulk Add", category: "manage", onClick: () => openCommandCenterBulkAdd() },
-      { key: "watch", label: "Ember Watch", category: "activity", onClick: () => openCommandCenterAction("scout", "Ember Watch") },
+      { key: "watch", label: "Product Alerts", category: "activity", onClick: () => openCommandCenterAction("scout", "Product Alerts") },
       { key: "map", label: "Stores", category: "tools", onClick: () => openCommandCenterAction("scout", "Stores") },
       ...(adminToolsVisible ? [{ key: "admin", label: "Admin Edit", category: "manage", onClick: () => openCommandCenterAction("admin") }] : []),
     ];
     const overviewStats = [
-      { label: "Scout reports", value: scoutSnapshot.reports?.length || 0 },
-      { label: "Vault items", value: activeVaultItems.length || 0 },
+      { label: "Store reports", value: scoutSnapshot.reports?.length || 0 },
+      { label: "Collection items", value: activeVaultItems.length || 0 },
       { label: "Market listings", value: marketplaceListings.length || 0 },
-      { label: "Forge inventory", value: forgeInventoryItems.length || 0 },
+      { label: "Business inventory", value: forgeInventoryItems.length || 0 },
       { label: "Alerts", value: getPersistedNotificationRows().filter((entry) => !entry.dismissedAt && !entry.readAt).length },
       { label: "Reviews", value: adminToolsVisible ? suggestions.filter((entry) => entry.status === SUGGESTION_STATUSES.PENDING).length : phase2MarketplaceDraftListings.length || 0 },
     ];
@@ -9123,9 +9123,9 @@ export default function App() {
     ];
     const smartTools = [
       { key: "store-map", label: "Stores", helper: "List and map store intel.", category: "tools", onClick: () => openCommandCenterAction("scout", "Stores") },
-      { key: "ember-watch", label: "Ember Watch", helper: "Restock windows, reports, and watched stores.", category: "activity", onClick: () => openCommandCenterAction("scout", "Ember Watch") },
+      { key: "ember-watch", label: "Product Alerts", helper: "Restock windows, reports, and watched stores.", category: "activity", onClick: () => openCommandCenterAction("scout", "Product Alerts") },
       { key: "watchlist", label: "Watchlist", helper: "Track wants and market changes.", category: "activity", onClick: () => openCommandCenterAction("market", "Watchlist") },
-      { key: "daily-tide", label: "Daily Tide Report", helper: "Review today's quick loop.", category: "activity", onClick: () => closeFlowModal({ force: true }) },
+      { key: "daily-tide", label: "Daily Review", helper: "Review today's quick loop.", category: "activity", onClick: () => closeFlowModal({ force: true }) },
       { key: "family", label: "Family Dashboard", helper: "Parent and kid-safe controls.", category: "community", onClick: () => { closeFlowModal({ force: true }); setActiveTab("dashboard"); } },
       { key: "kids", label: "Kids Program", helper: "Fair collecting for families.", category: "community", onClick: () => { closeFlowModal({ force: true }); setActiveTab("kidsProgram"); } },
       ...(adminToolsVisible ? [{ key: "admin-tools", label: "Admin tools", helper: "Review queue and moderation.", category: "manage", onClick: () => openCommandCenterAction("admin") }] : []),
@@ -9153,7 +9153,7 @@ export default function App() {
         <div className="tcg-command-hero">
           <div>
             <h2>TCG Command Center</h2>
-            <p>Jump into Scout, Vault, Market, or Forge.</p>
+            <p>Jump into Find, Collection, product research, or Business.</p>
           </div>
           <div className="phase2-sync-status tcg-command-sync">
             <strong>{phase2SyncStatus.label || (phase2SyncStatus.source === "supabase" ? "Supabase connected" : "Local only mode")}</strong>
@@ -9423,8 +9423,8 @@ export default function App() {
       return {
         id: `report-${report.id || report.reportId}`,
         category: "Reports",
-        title: report.itemName || report.productName || report.reportType || "Scout report",
-        subtitle: `${report.storeName || "Scout"} • ${report.reportType || report.stockStatus || "Report"}`,
+        title: report.itemName || report.productName || report.reportType || "Store report",
+        subtitle: `${report.storeName || "Local report"} • ${report.reportType || report.stockStatus || "Report"}`,
         source: report,
         score: score * 0.66,
         reason,
@@ -9432,13 +9432,13 @@ export default function App() {
     });
 
     const pageDestinations = [
-      { key: "hearth", title: "Hearth", subtitle: "Adaptive home and next actions", target: "dashboard", terms: ["home", "hearth", "dashboard", "today", "sparks"] },
+      { key: "hearth", title: "Home", subtitle: "Needs attention, opportunities, and recent activity", target: "dashboard", terms: ["home", "dashboard", "today"] },
       { key: "market", title: "Market Watch", subtitle: "Cards, sets, sealed products, UPC, and SKU search", target: "market", terms: ["market", "catalog", "price", "prices", "sealed", "cards", "sets", "upc", "sku"] },
-      { key: "vault", title: "Vault", subtitle: "Local collection search and item details", target: "vault", terms: ["vault", "collection", "cards", "sealed", "wishlist", "binder"] },
-      { key: "scout", title: "Scout", subtitle: "Current store reports and watched stores", target: "scout", terms: ["scout", "stores", "reports", "watch stores", "alerts", "current reports"] },
-      { key: "forge", title: "Forge", subtitle: "Seller tools, inventory groups, and sales records", target: "forge", terms: ["forge", "sales", "business", "ledger", "inventory", "tax", "export"] },
-      { key: "tidepool", title: "Tidepool", subtitle: "Family-safe community area", target: "tidepool", terms: ["tidepool", "community", "posts", "safe community"] },
-      { key: "spark", title: "The Spark", subtitle: "Kids program and family support", target: "kidsProgram", terms: ["spark", "kids", "family", "donations", "giveaways", "events"] },
+      { key: "vault", title: "Collection", subtitle: "Owned items, sets, wishlist, and grading", target: "collectionWorkspace", terms: ["collection", "cards", "sealed", "wishlist", "binder"] },
+      { key: "scout", title: "Find", subtitle: "Deals, restocks, auctions, and saved searches", target: "flipScout", terms: ["find", "stores", "reports", "deals", "auctions", "current reports"] },
+      { key: "forge", title: "Business", subtitle: "Purchases, inventory, sales, and money records", target: "businessWorkspace", terms: ["sales", "business", "money", "inventory", "reports", "export"] },
+      { key: "tidepool", title: "Community", subtitle: "Family-safe community area", target: "tidepool", terms: ["community", "posts", "safe community"] },
+      { key: "spark", title: "Kids & Community", subtitle: "Kids program and family support", target: "kidsProgram", terms: ["kids", "family", "donations", "giveaways", "events"] },
       { key: "settings", title: "Settings", subtitle: "Account, privacy, workspace, and app setup", target: "settings", terms: ["settings", "account", "profile", "privacy", "workspace"] },
     ];
     const pageResults = pageDestinations.map((page) => {
@@ -9500,9 +9500,9 @@ export default function App() {
       title: "Search existing areas",
       items: [
         { key: "market", title: "Search Market", helper: "Cards, sets, sealed products, UPC, or SKU.", icon: "search" },
-        { key: "vault", title: "Search Vault", helper: "Search your local collection items.", icon: "vault" },
-        { key: "scoutStores", title: "Search Scout stores", helper: "Open current store directory signals.", icon: "scout" },
-        { key: "scoutReports", title: "Current Scout reports", helper: "Open report feed. No raw patterns.", icon: "scout" },
+        { key: "vault", title: "Search Collection", helper: "Search your local collection items.", icon: "inventory" },
+        { key: "scoutStores", title: "Search stores", helper: "Open current store directory signals.", icon: "find" },
+        { key: "scoutReports", title: "Current store reports", helper: "Open report feed. No raw patterns.", icon: "find" },
       ],
     },
     {
@@ -63561,6 +63561,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               initialView={collectionWorkspaceView}
               onViewChange={setCollectionWorkspaceView}
               onAddItem={() => openProductAddFlow({ source: "collection-workspace", seed: { ownedItemPurpose: OWNED_ITEM_PURPOSES.PERSONAL_COLLECTION }, destinations: { vault: true } })}
+              onChangePurpose={(item, nextPurpose) => updateOwnedItemPurpose(item, nextPurpose, "Purpose assigned in Collection")}
               onSellItem={(item) => updateOwnedItemPurpose(item, OWNED_ITEM_PURPOSES.FOR_RESALE, "Sell This Item from Collection")}
               onOpenLegacyCollection={() => { setVaultSubTab("collection"); setActiveTab("vault"); }}
               featureControls={ownerFeatureControls}
@@ -63578,6 +63579,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               initialView={businessWorkspaceView}
               initialMoneyView={businessMoneyView}
               onViewChange={setBusinessWorkspaceView}
+              onMoneyViewChange={setBusinessMoneyView}
               onAddPurchase={() => openFlipScoutView("records", "purchases")}
               onAddInventory={() => openProductAddFlow({ source: "business-workspace", seed: { ownedItemPurpose: OWNED_ITEM_PURPOSES.FOR_RESALE }, destinations: { forge: Boolean(activeForgeWorkspace), vault: !activeForgeWorkspace } })}
               onAddSale={() => openFlipScoutView("records", "sales")}
