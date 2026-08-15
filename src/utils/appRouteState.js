@@ -56,9 +56,29 @@ export function routeStateFromPath(pathname = "") {
     const ownerCenterSection = ["overview", "sourcing", "restocks", "performance", "controls"].includes(subSection) ? subSection : "overview";
     return { activeTab: "ownerCenter", ownerCenterSection, ownerCenterSubview: detailId || "" };
   }
-  if (section === "kids-community") return { activeTab: "kidsProgram" };
+  if (section === "kids-community") {
+    if (subSection === "community") return { activeTab: "tidepool", tidepoolPostId: detailId ? decodeURIComponent(detailId) : "" };
+    if (subSection === "parent") return { activeTab: "parentCenter" };
+    return { activeTab: "kidsProgram", sparkFlowView: subSection === "donate" || subSection === "thank-you" ? subSection : "home" };
+  }
   if (section === "assistant") return { activeTab: "help" };
-  if (section === "integrations") return { activeTab: "flipScout", flipScoutView: "sources" };
+  if (section === "integrations") return { activeTab: "ownerCenter", ownerCenterSection: "controls", ownerCenterSubview: "connections" };
+  if (section === "settings") {
+    if (subSection === "profile") return { activeTab: detailId === "progress" ? "profileProgress" : "profile" };
+    if (subSection === "account") return { activeTab: "account" };
+    if (subSection === "workspaces") return { activeTab: "collections" };
+    if (subSection === "data-backup") return { activeTab: "dataBackup" };
+    if (subSection === "system-map") return { activeTab: "tcgOs" };
+    if (subSection === "help" || subSection === "business-assistant") return { activeTab: "help" };
+    if (subSection === "plans") return { activeTab: "membership" };
+    if (subSection === "trust" || subSection === "privacy" || subSection === "terms") return { activeTab: "trust" };
+    if (subSection === "links") return { activeTab: "links" };
+    if (subSection === "announcements") return { activeTab: "whatsNew" };
+    if (subSection === "known-limitations") return { activeTab: "knownLimitations" };
+    if (subSection === "roadmap") return { activeTab: "comingSoon" };
+    if (subSection === "partnerships") return { activeTab: "sponsor" };
+    return { activeTab: "settings" };
+  }
   if (section === "invite" || (section === "beta" && subSection === "invite")) {
     return { activeTab: "invite", inviteToken: decodeURIComponent(section === "invite" ? subSection || "" : detailId || "") };
   }
@@ -71,7 +91,7 @@ export function routeStateFromPath(pathname = "") {
     return { activeTab: "onboarding", onboardingView: view };
   }
   if (section === "scout") {
-    if (subSection === "flip-scout") return { activeTab: "flipScout" };
+    if (subSection === "flip-scout") return { activeTab: "flipScout", flipScoutView: "deals" };
     state.activeTab = "scout";
     state.scoutView = subSection === "stores"
       ? "stores"
@@ -150,12 +170,11 @@ export function routeStateFromPath(pathname = "") {
   if (section === "admin" || section === "admin-review") return { activeTab: "adminReview" };
   if (section === "partner" || section === "sponsor") return { activeTab: "sponsor" };
   if (section === "privacy" || section === "terms" || section === "trust") return { activeTab: "trust" };
-  if (section === "settings") return { activeTab: "settings" };
   return { activeTab: "dashboard" };
 }
 
 export function pathFromActiveTab(activeTab = "dashboard", state = {}) {
-  if (activeTab === "membership") return "/membership";
+  if (activeTab === "membership") return "/settings/plans";
   if (activeTab === "flipScout") {
     const routeByView = {
       deals: "/find/deals",
@@ -166,7 +185,7 @@ export function pathFromActiveTab(activeTab = "dashboard", state = {}) {
       appraise: "/find/deal-analysis",
       sources: "/find/sources",
     };
-    return routeByView[state.flipScoutView] || "/scout/flip-scout";
+    return routeByView[state.flipScoutView] || "/find/deals";
   }
   if (activeTab === "collectionWorkspace") return state.collectionWorkspaceView && state.collectionWorkspaceView !== "collection" ? `/collection/${encodeURIComponent(state.collectionWorkspaceView)}` : "/collection";
   if (activeTab === "businessWorkspace") {
@@ -184,24 +203,64 @@ export function pathFromActiveTab(activeTab = "dashboard", state = {}) {
     return exchangeSection === "overview" ? "/exchange" : `/exchange/${encodeURIComponent(exchangeSection)}`;
   }
   if (activeTab === "market") return "/exchange/market";
-  if (activeTab === "kidsProgram") return "/kids-program";
-  if (activeTab === "parentCenter") return "/parent-center";
-  if (activeTab === "profileProgress") return "/profile/progress";
-  if (activeTab === "profile") return "/profile";
-  if (activeTab === "account") return "/account";
+  if (activeTab === "kidsProgram") return state.sparkFlowView && state.sparkFlowView !== "home" ? `/kids-community/${encodeURIComponent(state.sparkFlowView)}` : "/kids-community";
+  if (activeTab === "parentCenter") return "/kids-community/parent";
+  if (activeTab === "profileProgress") return "/settings/profile/progress";
+  if (activeTab === "profile") return "/settings/profile";
+  if (activeTab === "account") return "/settings/account";
   if (activeTab === "settings" || activeTab === "menu") return "/settings";
-  if (activeTab === "help") return "/help";
-  if (activeTab === "dataBackup") return "/data-backup";
-  if (activeTab === "collections") return "/collections";
-  if (activeTab === "comingSoon") return "/coming-soon";
-  if (activeTab === "whatsNew") return "/whats-new";
-  if (activeTab === "knownLimitations") return "/known-limitations";
+  if (activeTab === "help") return "/settings/help";
+  if (activeTab === "dataBackup") return "/settings/data-backup";
+  if (activeTab === "collections") return "/settings/workspaces";
+  if (activeTab === "tcgOs") return "/settings/system-map";
+  if (activeTab === "comingSoon") return "/settings/roadmap";
+  if (activeTab === "whatsNew") return "/settings/announcements";
+  if (activeTab === "knownLimitations") return "/settings/known-limitations";
+  if (activeTab === "links") return "/settings/links";
   if (activeTab === "adminReview") return "/admin";
   if (activeTab === "moderator") return "/moderator";
-  if (activeTab === "tidepool") return "/tidepool";
-  if (activeTab === "trust") return "/trust";
-  if (activeTab === "sponsor") return "/sponsor";
+  if (activeTab === "tidepool") return state.tidepoolPostId ? `/kids-community/community/${encodeURIComponent(state.tidepoolPostId)}` : "/kids-community/community";
+  if (activeTab === "trust") return "/settings/trust";
+  if (activeTab === "sponsor") return "/settings/partnerships";
   return "/";
+}
+
+export function canonicalPathForPath(pathname = "") {
+  const segments = String(pathname || "/").split("/").filter(Boolean);
+  const [section, subSection, ...rest] = segments;
+  const suffix = rest.length ? `/${rest.map(encodeURIComponent).join("/")}` : "";
+  if (section === "spark") return "/kids-community";
+  if (section === "scout" && subSection === "flip-scout") return "/find/deals";
+  if (section === "purchases") return "/business/purchases";
+  if (section === "inventory") return "/business/inventory";
+  if (section === "sell" || section === "sales") return "/business/sales";
+  if (section === "integrations") return "/owner-center/controls/connections";
+  if (section === "assistant") return "/settings/help";
+  if (section === "kids-program") return `/kids-community${subSection ? `/${encodeURIComponent(subSection)}` : ""}${suffix}`;
+  if (section === "tidepool") return `/kids-community/community${subSection === "post" ? suffix : subSection ? `/${encodeURIComponent(subSection)}${suffix}` : ""}`;
+  if (section === "parent-center" || section === "parent") return "/kids-community/parent";
+  if (section === "profile") return `/settings/profile${subSection ? `/${encodeURIComponent(subSection)}` : ""}${suffix}`;
+  if (section === "account") return "/settings/account";
+  if (section === "collections" || section === "workspaces") return "/settings/workspaces";
+  if (section === "data-backup" || section === "backup") return "/settings/data-backup";
+  if (section === "tcg-os") return "/settings/system-map";
+  if (section === "help" || section === "support") return "/settings/help";
+  if (section === "menu" || section === "more") return "/settings";
+  if (section === "membership" || section === "tiers" || section === "plans") return "/settings/plans";
+  if (section === "privacy" || section === "terms" || section === "trust") return `/settings/${section === "trust" ? "trust" : section}`;
+  if (section === "links") return "/settings/links";
+  if (section === "whats-new" || section === "changelog") return "/settings/announcements";
+  if (section === "known-limitations") return "/settings/known-limitations";
+  if (section === "coming-soon" || section === "roadmap") return "/settings/roadmap";
+  if (section === "partner" || section === "sponsor") return "/settings/partnerships";
+  if (section === "market") return "/exchange/market";
+  if (section === "harbor") return "/exchange/harbor";
+  if (section === "tidetradr" && (!subSection || subSection === "catalog" || subSection === "overview")) return "/exchange/market";
+  return String(pathname || "/") || "/";
+}
+
+export function canonicalLocationForPath(pathname = "", search = "", hash = "") {
+  return `${canonicalPathForPath(pathname)}${String(search || "")}${String(hash || "")}`;
 }
 
 export function loadInitialRouteState(win = typeof window !== "undefined" ? window : undefined) {

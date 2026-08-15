@@ -1,19 +1,21 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import DashboardScreen from "./screens/DashboardScreen.jsx";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import DealsScreen from "./screens/DealsScreen.jsx";
-import AppraiserScreen from "./screens/AppraiserScreen.jsx";
-import AuctionsScreen from "./screens/AuctionsScreen.jsx";
-import SearchRulesScreen from "./screens/SearchRulesScreen.jsx";
-import RecordsScreen from "./screens/RecordsScreen.jsx";
-import SourcesDataScreen from "./screens/SourcesDataScreen.jsx";
-import EbayDiscoveryScreen from "./screens/EbayDiscoveryScreen.jsx";
 import { allocateLotCost } from "./inventory.js";
 import { findDealForProviderListing, mergeProviderListings, providerListingToDeal } from "./ebayDiscovery.js";
 import { downloadTextFile } from "./csv.js";
 import { createEmptyFlipScoutState } from "./constants.js";
 import { createFlipScoutRepository } from "./storageRepository.js";
-import { EmptyState, PageHeader, PrimaryButton, QuietButton, SectionHeader, StatusBadge } from "../../components/operations/OperationsUI.jsx";
+import { LoadingState, PageHeader, QuietButton, StatusBadge } from "../../components/operations/OperationsUI.jsx";
 import "./flipScout.css";
+
+const DashboardScreen = lazy(() => import("./screens/DashboardScreen.jsx"));
+const AppraiserScreen = lazy(() => import("./screens/AppraiserScreen.jsx"));
+const AuctionsScreen = lazy(() => import("./screens/AuctionsScreen.jsx"));
+const SearchRulesScreen = lazy(() => import("./screens/SearchRulesScreen.jsx"));
+const RecordsScreen = lazy(() => import("./screens/RecordsScreen.jsx"));
+const SourcesDataScreen = lazy(() => import("./screens/SourcesDataScreen.jsx"));
+const EbayDiscoveryScreen = lazy(() => import("./screens/EbayDiscoveryScreen.jsx"));
+const RestocksScreen = lazy(() => import("./screens/RestocksScreen.jsx"));
 
 const PRIMARY_NAV_ITEMS = [
   ["deals", "Deals"],
@@ -85,6 +87,16 @@ export default function FlipScoutPage({ onExit, onOpenRestocks, initialScreen = 
     return () => window.removeEventListener("private-business-hub:flip-scout-navigate", handleNavigation);
   }, []);
 
+  useEffect(() => {
+    const handlePopState = () => {
+      const destination = readInitialDestination({ screen: "deals" });
+      setActiveScreen(destination.screen);
+      setSubview(destination.subview);
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
   const applySave = useCallback((nextState, error = "") => {
     setState(nextState);
     setStorageMessage(error);
@@ -113,10 +125,7 @@ export default function FlipScoutPage({ onExit, onOpenRestocks, initialScreen = 
     setActiveScreen(screen);
     setSubview(nextSubview || "");
     onViewChange?.(screen, nextSubview || "");
-    const url = new URL(window.location.href);
-    url.searchParams.set("view", screen);
-    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
-    window.scrollTo?.({ top: 0, behavior: "smooth" });
+    window.scrollTo?.({ top: 0, behavior: "auto" });
   }, [onViewChange]);
 
   const analyzeDeal = useCallback((seed) => {
@@ -192,16 +201,18 @@ export default function FlipScoutPage({ onExit, onOpenRestocks, initialScreen = 
         <QuietButton onClick={() => navigate("sources")}>Sources</QuietButton>
       </div>
       {storageMessage ? <div className="flip-storage-warning" role="alert"><strong>Local save warning</strong><span>{storageMessage}</span></div> : null}
-      <main className="flip-scout-main" aria-label={activeTitle}>
+      <main className="flip-scout-main" aria-label={activeTitle} tabIndex={-1}>
+        <Suspense fallback={<LoadingState title={`Loading ${activeTitle}`} description="Preparing this workspace." />}>
         {activeScreen === "dashboard" ? <DashboardScreen state={state} onNavigate={navigate} /> : null}
         {activeScreen === "deals" ? <DealsScreen deals={state.deals} initialMode={subview} onSave={saveRecord} onDelete={deleteRecord} onAnalyze={analyzeDeal} /> : null}
-        {activeScreen === "restocks" ? <section className="flip-section"><SectionHeader title="Restocks" description="Live reports and pattern analysis use saved local records. Predictions remain probabilistic." /><EmptyState title="Open restock intelligence" action={<PrimaryButton onClick={onOpenRestocks}>Open Restocks</PrimaryButton>}>Review live reports, stores, products, and patterns in the protected owner workspace. No store is guaranteed to restock.</EmptyState></section> : null}
+        {activeScreen === "restocks" ? <RestocksScreen onOpenRestocks={onOpenRestocks} /> : null}
         {activeScreen === "appraise" ? <AppraiserScreen seed={appraisalSeed} onSave={saveRecord} /> : null}
         {activeScreen === "auctions" ? <AuctionsScreen auctions={state.auctions} initialMode={subview} onSave={saveRecord} onDelete={deleteRecord} /> : null}
         {activeScreen === "rules" ? <SearchRulesScreen rules={state.searchRules} onSave={saveRecord} onDelete={deleteRecord} onOpenEbay={(ruleId) => navigate("ebay", ruleId)} /> : null}
         {activeScreen === "ebay" ? <EbayDiscoveryScreen state={state} initialRuleId={subview} onMerge={mergeDiscoveries} onImport={importDiscovery} onUpdate={saveRecord} onNavigate={navigate} /> : null}
         {activeScreen === "records" ? <RecordsScreen state={state} initialSubview={subview} onSave={saveRecord} onDelete={deleteRecord} onAllocateLot={allocateLot} /> : null}
         {activeScreen === "sources" ? <SourcesDataScreen state={state} onExportJson={exportJson} onImportJson={importJson} onReset={reset} /> : null}
+        </Suspense>
       </main>
     </div>
   );

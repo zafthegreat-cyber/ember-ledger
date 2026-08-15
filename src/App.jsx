@@ -7,6 +7,7 @@ import ScoutTileMap from "./components/ScoutTileMap";
 import { LiveEmberTrustNote } from "./components/ember-ui";
 import { BRAND_ASSETS } from "./brand/emberTideBrand";
 import { BRAND_CONFIG, applyBrandDocumentMetadata } from "./config/brand";
+import { observePlainLanguage } from "./config/plainLanguage";
 import { AppShell, DesktopSidebar, MobileBottomNavigation } from "./components/operations/OperationsUI";
 import { OWNED_ITEM_PURPOSES, changeOwnedItemPurpose } from "./features/ownedItems/ownedItemPurpose";
 import { createOwnerCenterRepository } from "./features/ownerCenter/ownerCenterRepository";
@@ -88,8 +89,10 @@ import {
 } from "./utils/betaDataCleanup";
 import {
   APP_ROUTE_STORAGE_KEY,
+  canonicalPathForPath,
   loadInitialRouteState,
   normalizeExchangeSection,
+  routeStateFromPath,
 } from "./utils/appRouteState";
 import {
   REVIEW_SECTION_LABELS,
@@ -6617,6 +6620,11 @@ export default function App() {
   if (!initialRouteStateRef.current) initialRouteStateRef.current = loadInitialRouteState();
   const initialRouteState = initialRouteStateRef.current;
   const [activeTab, setActiveTab] = useState(initialRouteState.activeTab || "dashboard");
+
+  useEffect(() => observePlainLanguage(document.body), []);
+  const routeNavigationModeRef = useRef("replace");
+  const routeFocusModeRef = useRef("initial");
+  const routeScrollPositionsRef = useRef(new Map());
   const [betaInviteToken, setBetaInviteToken] = useState(initialRouteState.inviteToken || "");
   const [workspaceInviteId, setWorkspaceInviteId] = useState(initialRouteState.workspaceInviteId || "");
   const [onboardingView, setOnboardingView] = useState(initialRouteState.onboardingView || "welcome");
@@ -6725,6 +6733,7 @@ export default function App() {
   const [userSearchAliases, setUserSearchAliases] = useState([]);
   const [aliasDraft, setAliasDraft] = useState({ alias: "", canonical: "", type: "personal" });
   const [tidepoolOpen, setTidepoolOpen] = useState(false);
+  const [tidepoolPostId, setTidepoolPostId] = useState(initialRouteState.tidepoolPostId || "");
   const [tidepoolFilter, setTidepoolFilter] = useState("Feed");
   const [tidepoolPage, setTidepoolPage] = useState(1);
   const [tidepoolPosts, setTidepoolPosts] = useState([]);
@@ -7642,6 +7651,7 @@ export default function App() {
 
   function openUtilityPage(sectionKey = "") {
     if (!confirmLeaveVaultWork()) return;
+    prepareRouteNavigation();
     const nextTab = utilityTabForMenuSection(sectionKey) || sectionKey || "settings";
     setQuickAddMenuOpen(false);
     setSearchExpanded(false);
@@ -7990,7 +8000,7 @@ export default function App() {
     { key: "business", label: "Business", icon: "business", target: "businessWorkspace" },
   ].filter(Boolean);
   const desktopSecondaryItems = [
-    ownerCenterAuthorized ? { key: "owner-center", label: "Owner Center", icon: "settings", badge: "Owner Only", action: () => { setOwnerCenterSection("overview"); setOwnerCenterSubview(""); setActiveTab("ownerCenter"); } } : null,
+    ownerCenterAuthorized ? { key: "owner-center", label: "Owner Center", icon: "settings", badge: "Owner Only", action: () => { prepareRouteNavigation(); setOwnerCenterSection("overview"); setOwnerCenterSubview(""); setActiveTab("ownerCenter"); } } : null,
     { key: "settings", label: "Settings", icon: "settings", target: "settings" },
   ].filter(Boolean);
   const desktopMoreByKey = {
@@ -8070,7 +8080,7 @@ export default function App() {
   const menuAccountItems = [
     mobileMenuByKey.profile,
     mobileMenuByKey.account,
-    ownerCenterAuthorized ? { key: "owner-center", label: "Owner Center", helper: "Private sourcing, performance, and system controls.", icon: "settings", action: () => { setOwnerCenterSection("overview"); setOwnerCenterSubview(""); setActiveTab("ownerCenter"); } } : null,
+    ownerCenterAuthorized ? { key: "owner-center", label: "Owner Center", helper: "Private sourcing, performance, and system controls.", icon: "settings", action: () => { prepareRouteNavigation(); setOwnerCenterSection("overview"); setOwnerCenterSubview(""); setActiveTab("ownerCenter"); } } : null,
     { key: "collections", label: "Workspace / Family", helper: "Collection workspace, members, and privacy.", icon: "settings", action: () => openUtilityPage("collections") },
     mobileMenuByKey.membership,
     mobileMenuByKey.privacySafety,
@@ -8324,9 +8334,7 @@ export default function App() {
     return activeOption || forgeWorkspaceOptions[0] || null;
   }, [forgeModeSettings.lockToEmberTide, emberTideForgeWorkspace, forgeDefaultWorkspace, forgeWorkspaceOptions, activeWorkspace]);
   const activeForgeIdentityMode = forgeIdentityModeFromSettings(forgeModeSettings, activeForgeWorkspace);
-  const activeForgeTransferLabel = activeForgeWorkspace && isEmberTideForgeWorkspace(activeForgeWorkspace)
-    ? activeForgeWorkspace.name || "Ember & Tide"
-    : "Forge";
+  const activeForgeTransferLabel = "Resale Inventory";
   const forgeWorkspaceUnavailableMessage = forgeModeSettings.lockToEmberTide && !emberTideForgeWorkspace
     ? "Ember & Tide Forge is unavailable. Create or request access to an Ember & Tide workspace, or turn off Always use Ember & Tide Forge."
     : "No Forge workspace is available. Enable Personal Forge or create a business workspace.";
@@ -8687,7 +8695,7 @@ export default function App() {
 
   async function handleSafeAppRefresh() {
     setAppRefreshInProgress(true);
-    setVaultToast("Refreshing Ember & Tide to the newest version...");
+    setVaultToast(`Refreshing ${BRAND_CONFIG.applicationDisplayName} to the newest version...`);
     try {
       await refreshEmberTideApp();
     } catch (error) {
@@ -8696,8 +8704,18 @@ export default function App() {
     }
   }
 
+  function prepareRouteNavigation(mode = "push") {
+    if (typeof window !== "undefined") {
+      const currentKey = `${window.location.pathname}${window.location.search}${window.location.hash || ""}`;
+      routeScrollPositionsRef.current.set(currentKey, window.scrollY || 0);
+    }
+    routeNavigationModeRef.current = mode;
+    routeFocusModeRef.current = mode;
+  }
+
   function navigateMainTab(tab) {
     if (!confirmLeaveVaultWork()) return;
+    prepareRouteNavigation();
     if (tab.key === "find" || tab.target === "flipScout") {
       openFlipScoutView("deals");
       return;
@@ -8781,6 +8799,7 @@ export default function App() {
   }
 
   function openFlipScoutView(screen = "deals", nextSubview = "") {
+    prepareRouteNavigation();
     if (typeof window !== "undefined") {
       window.sessionStorage?.setItem("private-business-hub.flip-scout.destination", JSON.stringify({ screen, subview: nextSubview }));
     }
@@ -8804,6 +8823,7 @@ export default function App() {
   function runDesktopSidebarAction(item) {
     if (!item) return;
     if (!confirmLeaveVaultWork()) return;
+    prepareRouteNavigation();
     setQuickAddMenuOpen(false);
     setSearchExpanded(false);
     if (item.action) {
@@ -24804,8 +24824,8 @@ function mapCatalog(row) {
     const itemName = item?.name || item?.itemName || "this item";
     if (destination === "forge") {
       return {
-        title: "Delete Forge inventory item?",
-        body: `This removes the Forge inventory record for ${itemName}. Vault collection records are not removed.`,
+        title: "Delete resale inventory item?",
+        body: `This removes the resale inventory record for ${itemName}. Collection records are not removed.`,
         toast: "Forge inventory item deleted.",
         error: "Could not delete Forge inventory item: ",
       };
@@ -24828,17 +24848,17 @@ function mapCatalog(row) {
     }
     if (destination === "vault_archive") {
       return {
-        title: "Remove transferred Vault record?",
-        body: `This removes the archived Vault transfer record for ${itemName}. The Forge inventory copy is not removed.`,
-        toast: "Transferred Vault record removed.",
-        error: "Could not remove transferred Vault record: ",
+        title: "Remove transferred Collection record?",
+        body: `This removes the archived Collection transfer record for ${itemName}. The resale inventory copy is not removed.`,
+        toast: "Transferred Collection record removed.",
+        error: "Could not remove transferred Collection record: ",
       };
     }
     return {
-      title: "Delete vaulted item?",
-      body: `This removes the Vault collection record for ${itemName}. Forge inventory records are not removed.`,
-      toast: "Vault item deleted.",
-      error: "Could not delete Vault item: ",
+      title: "Remove collection item?",
+      body: `This removes the Collection record for ${itemName}. Resale inventory records are not removed.`,
+      toast: "Collection item removed.",
+      error: "Could not remove Collection item: ",
     };
   }
 
@@ -25898,12 +25918,12 @@ function mapCatalog(row) {
     setVaultMoving(false);
     setFeatureSectionsOpen((current) => ({ ...current, forge_inventory: true }));
     if (mode === "copy") {
-      setVaultToast(`Copied ${quantityToMove} to ${activeForgeTransferLabel}. Vault quantity unchanged.`);
-      showAppMessage(`Copied ${quantityToMove} to ${activeForgeTransferLabel}. Vault quantity unchanged.`);
+      setVaultToast(`Copied ${quantityToMove} to ${activeForgeTransferLabel}. Collection quantity unchanged.`);
+      showAppMessage(`Copied ${quantityToMove} to ${activeForgeTransferLabel}. Collection quantity unchanged.`);
     } else {
       const remainingQuantity = quantityAvailable - quantityToMove;
-      setVaultToast(`Moved ${quantityToMove} to ${activeForgeTransferLabel}. ${remainingQuantity} remain in Vault.`);
-      showAppMessage(`Moved ${quantityToMove} to ${activeForgeTransferLabel}. ${remainingQuantity} remain in Vault.`);
+      setVaultToast(`Moved ${quantityToMove} to ${activeForgeTransferLabel}. ${remainingQuantity} remain in Collection.`);
+      showAppMessage(`Moved ${quantityToMove} to ${activeForgeTransferLabel}. ${remainingQuantity} remain in Collection.`);
     }
   }
   async function addCatalogProduct(event) {
@@ -29002,7 +29022,7 @@ function renderForgeBusinessCommandPanel() {
 
       {!forgeBusinessHasRecords ? (
         <div className="small-empty-state forge-start-empty-state">
-          <strong>Start tracking sales and trades.</strong>
+          <strong>Start tracking sales and resale inventory.</strong>
           <span>Add sellable inventory, record a sale, or save a receipt when you are ready.</span>
         </div>
       ) : null}
@@ -29035,7 +29055,7 @@ function renderForgeBusinessCommandPanel() {
           <div className="forge-command-preview-list">
             {topForgeGroups.length ? topForgeGroups.map(renderForgeGroupPreview) : (
               <div className="small-empty-state forge-start-empty-state">
-                <strong>Start tracking sales and trades.</strong>
+                <strong>Start tracking sales and resale inventory.</strong>
                 <span>Add your first Forge item to create grouped business inventory.</span>
               </div>
             )}
@@ -32602,9 +32622,9 @@ function renderForgeBusinessLedgerPanel() {
       title: "Report a Bug",
       intro: "Save a local note about what broke or looked wrong. Copy/export it when you are ready to share.",
       label: "What were you trying to do?",
-      placeholder: "Example: I was trying to add a Scout report or open a Vault item.",
+      placeholder: "Example: I was trying to add a restock report or open a Collection item.",
       stepsLabel: "What confused you or felt broken?",
-      stepsPlaceholder: "Example: Opened Scout, tapped Stores, then the list overlapped.",
+      stepsPlaceholder: "Example: Opened Restocks, tapped Stores, then the list overlapped.",
       submit: "Save Bug Note",
     },
     feature: {
@@ -35277,7 +35297,7 @@ function renderForgeBusinessLedgerPanel() {
         appraise: "/find/deal-analysis",
         sources: "/find/sources",
       };
-      return routeByView[flipScoutView] || "/scout/flip-scout";
+      return routeByView[flipScoutView] || "/find/deals";
     }
     if (activeTab === "collectionWorkspace") return collectionWorkspaceView === "collection" ? "/collection" : `/collection/${encodeURIComponent(collectionWorkspaceView)}`;
     if (activeTab === "businessWorkspace") return businessWorkspaceView === "money" ? `/business/money/${encodeURIComponent(businessMoneyView)}` : `/business/${encodeURIComponent(businessWorkspaceView)}`;
@@ -35309,35 +35329,30 @@ function renderForgeBusinessLedgerPanel() {
     if (activeTab === "reports") return "/forge/reports";
     if (activeTab === "inventory" || activeTab === "addInventory" || activeTab === "addSale") return "/forge";
     if (activeTab === "vault") return "/vault/cards";
-    if (activeTab === "tidepool") return "/tidepool";
+    if (activeTab === "tidepool") return tidepoolPostId ? `/kids-community/community/${encodeURIComponent(tidepoolPostId)}` : "/kids-community/community";
     if (activeTab === "kidsProgram") {
-      if (sparkFlowView === "donate") return "/kids-program/donate";
-      if (sparkFlowView === "thank-you") return "/kids-program/thank-you";
-      return "/kids-program";
+      if (sparkFlowView === "donate") return "/kids-community/donate";
+      if (sparkFlowView === "thank-you") return "/kids-community/thank-you";
+      return "/kids-community";
     }
-    if (activeTab === "parentCenter") return "/parent-center";
-    if (activeTab === "sponsor") {
-      const pathRoot = typeof window !== "undefined"
-        ? String(window.location.pathname || "").split("/").filter(Boolean)[0] || ""
-        : "";
-      return pathRoot === "sponsor" ? "/sponsor" : "/partner";
-    }
-    if (activeTab === "trust") return "/trust";
-    if (activeTab === "links") return "/links";
-    if (activeTab === "whatsNew") return "/whats-new";
-    if (activeTab === "knownLimitations") return "/known-limitations";
-    if (activeTab === "comingSoon") return "/coming-soon";
+    if (activeTab === "parentCenter") return "/kids-community/parent";
+    if (activeTab === "sponsor") return "/settings/partnerships";
+    if (activeTab === "trust") return "/settings/trust";
+    if (activeTab === "links") return "/settings/links";
+    if (activeTab === "whatsNew") return "/settings/announcements";
+    if (activeTab === "knownLimitations") return "/settings/known-limitations";
+    if (activeTab === "comingSoon") return "/settings/roadmap";
     if (activeTab === "settings") return "/settings";
-    if (activeTab === "account") return "/account";
-    if (activeTab === "collections") return "/collections";
-    if (activeTab === "dataBackup") return "/data-backup";
-    if (activeTab === "tcgOs") return "/tcg-os";
-    if (activeTab === "profile") return "/profile";
-    if (activeTab === "help") return "/help";
+    if (activeTab === "account") return "/settings/account";
+    if (activeTab === "collections") return "/settings/workspaces";
+    if (activeTab === "dataBackup") return "/settings/data-backup";
+    if (activeTab === "tcgOs") return "/settings/system-map";
+    if (activeTab === "profile") return "/settings/profile";
+    if (activeTab === "help") return "/settings/help";
     if (activeTab === "moderator") return "/moderator";
-    if (activeTab === "profileProgress") return "/profile/progress";
+    if (activeTab === "profileProgress") return "/settings/profile/progress";
     if (activeTab === "adminReview") return "/admin";
-    if (activeTab === "membership") return "/membership";
+    if (activeTab === "membership") return "/settings/plans";
     if (activeTab === "betaReadiness") return "/settings";
     if (activeTab === "menu") return "/settings";
     return "/";
@@ -35358,6 +35373,7 @@ function renderForgeBusinessLedgerPanel() {
       businessMoneyView,
       ownerCenterSection,
       ownerCenterSubview,
+      tidepoolPostId,
       exchangeSection,
       forgeSubTab,
       scoutView: activeScoutPage,
@@ -35390,11 +35406,14 @@ function renderForgeBusinessLedgerPanel() {
     if (activeTab === "vault" && vaultFilter !== "all") params.set("filter", vaultFilter);
     const nextPath = currentRoutePath();
     const nextSearch = params.toString();
-    const nextUrl = `${nextPath}${nextSearch ? `?${nextSearch}` : ""}`;
-    const currentUrl = `${window.location.pathname}${window.location.search}`;
+    const nextUrl = `${nextPath}${nextSearch ? `?${nextSearch}` : ""}${window.location.hash || ""}`;
+    const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash || ""}`;
     if (currentUrl !== nextUrl) {
-      window.history.replaceState({ emberTideRoute: true }, "", nextUrl);
+      const compatibilityRedirect = canonicalPathForPath(window.location.pathname) !== window.location.pathname;
+      const method = !compatibilityRedirect && routeNavigationModeRef.current === "push" ? "pushState" : "replaceState";
+      window.history[method]({ ...(window.history.state || {}), emberTideRoute: true }, "", nextUrl);
     }
+    routeNavigationModeRef.current = "replace";
   }, [
     activeTab,
     exchangeSection,
@@ -35409,6 +35428,7 @@ function renderForgeBusinessLedgerPanel() {
     businessMoneyView,
     ownerCenterSection,
     ownerCenterSubview,
+    tidepoolPostId,
     forgeSubTab,
     activeScoutPage,
     selectedScoutReport,
@@ -35431,6 +35451,54 @@ function renderForgeBusinessLedgerPanel() {
     catalogTypeFilter,
     sparkFlowView,
   ]);
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    window.history.scrollRestoration = "manual";
+    const rememberScroll = () => {
+      const key = `${window.location.pathname}${window.location.search}${window.location.hash || ""}`;
+      routeScrollPositionsRef.current.set(key, window.scrollY || 0);
+    };
+    window.addEventListener("scroll", rememberScroll, { passive: true });
+    return () => window.removeEventListener("scroll", rememberScroll);
+  }, []);
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const handleRoutePopState = () => {
+      const route = routeStateFromPath(window.location.pathname);
+      routeNavigationModeRef.current = "pop";
+      routeFocusModeRef.current = "pop";
+      setActiveTab(route.activeTab || "dashboard");
+      if (route.flipScoutView) setFlipScoutView(route.flipScoutView);
+      if (route.collectionWorkspaceView) setCollectionWorkspaceView(route.collectionWorkspaceView);
+      if (route.businessWorkspaceView) setBusinessWorkspaceView(route.businessWorkspaceView);
+      if (route.businessMoneyView) setBusinessMoneyView(route.businessMoneyView);
+      if (route.ownerCenterSection) setOwnerCenterSection(route.ownerCenterSection);
+      if (route.ownerCenterSubview !== undefined) setOwnerCenterSubview(route.ownerCenterSubview || "");
+      if (route.scoutView) {
+        setScoutView(route.scoutView);
+        setScoutSubTabTarget({ tab: route.scoutView, storeId: route.scoutStoreId || "", reportId: route.scoutReportId || "", id: Date.now() });
+      }
+      if (route.vaultSubTab) setVaultSubTab(route.vaultSubTab);
+      if (route.exchangeSection) setExchangeSection(route.exchangeSection);
+      if (route.forgeSubTab) setForgeSubTab(route.forgeSubTab);
+      if (route.sparkFlowView) setSparkFlowView(route.sparkFlowView);
+      setTidepoolPostId(route.tidepoolPostId || "");
+    };
+    window.addEventListener("popstate", handleRoutePopState);
+    return () => window.removeEventListener("popstate", handleRoutePopState);
+  }, []);
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const focusMode = routeFocusModeRef.current;
+    const key = `${window.location.pathname}${window.location.search}${window.location.hash || ""}`;
+    const top = focusMode === "pop" ? routeScrollPositionsRef.current.get(key) || 0 : 0;
+    const frame = window.requestAnimationFrame(() => {
+      window.scrollTo({ top, behavior: "auto" });
+      document.querySelector("main.main")?.focus?.({ preventScroll: true });
+    });
+    routeFocusModeRef.current = "settled";
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeTab, flipScoutView, collectionWorkspaceView, businessWorkspaceView, businessMoneyView, ownerCenterSection, ownerCenterSubview]);
   useEffect(() => {
     if (activeTab !== "kidsProgram" && sparkFlowView !== "home") {
       setSparkFlowView("home");
@@ -62456,14 +62524,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <div className="location-modal-backdrop" role="presentation" onClick={() => setVaultForgeTransfer(null)}>
           <form className="location-modal vault-transfer-modal" role="dialog" aria-modal="true" aria-labelledby="vault-forge-transfer-title" noValidate onSubmit={(event) => { event.preventDefault(); confirmVaultForgeTransfer(vaultForgeTransfer.mode); }} onClick={(event) => event.stopPropagation()}>
             <div>
-              <h2 id="vault-forge-transfer-title">{vaultForgeTransfer.mode === "copy" ? "Copy this item to Forge?" : "Move item to Forge?"}</h2>
-              <p>{vaultForgeTransfer.mode === "copy" ? "This keeps the Vault item active and creates a Forge inventory copy." : "This will add this Vault item to Forge inventory for business/sales tracking."}</p>
+              <h2 id="vault-forge-transfer-title">{vaultForgeTransfer.mode === "copy" ? "Copy this item to Resale Inventory?" : "Move item to Resale Inventory?"}</h2>
+              <p>{vaultForgeTransfer.mode === "copy" ? "This keeps the Collection item active and creates a resale inventory copy." : "This will add this Collection item to resale inventory for business and sales tracking."}</p>
             </div>
             <div className="vault-transfer-summary">
               <strong>{vaultForgeTransfer.item.name}</strong>
               <span>Available quantity: {selectedVaultForgeTransferSource(vaultForgeTransfer)?.quantity || 1}</span>
               <span>Move from: {itemPurchaserName(selectedVaultForgeTransferSource(vaultForgeTransfer) || vaultForgeTransfer.item)}</span>
-              <span>Destination: {activeForgeWorkspace?.name || "Forge"} inventory</span>
+              <span>Destination: {activeForgeWorkspace?.name || "Business"} resale inventory</span>
             </div>
             {vaultForgeTransferEntries(vaultForgeTransfer).length > 1 ? (
               <Field label="Move from purchaser entry">
@@ -62479,7 +62547,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </select>
               </Field>
             ) : null}
-            <Field label={vaultForgeTransfer.mode === "copy" ? "Copy quantity" : "How many do you want to move to Forge?"}>
+            <Field label={vaultForgeTransfer.mode === "copy" ? "Copy quantity" : "How many do you want to move to Resale Inventory?"}>
               <input
                 type="number"
                 min="1"
@@ -62501,8 +62569,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             {findForgeMergeTargetForTransfer(selectedVaultForgeTransferSource(vaultForgeTransfer) || vaultForgeTransfer.item, activeForgeWorkspace) ? (
               <Field label="Duplicate Handling">
                 <select value={vaultForgeTransfer.duplicateMode} onChange={(event) => setVaultForgeTransfer((current) => ({ ...current, duplicateMode: event.target.value }))}>
-                  <option value="existing">Add to existing Forge item</option>
-                  <option value="create">Create separate Forge entry</option>
+                  <option value="existing">Add to existing resale inventory item</option>
+                  <option value="create">Create separate resale inventory entry</option>
                 </select>
               </Field>
             ) : null}
@@ -63513,7 +63581,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         </div>
       ) : null}
 
-      <main className={`main app-shell-themed app-shell-${resolvedAppTheme} dashboard-card-style-${dashboardCardStyle}`} data-theme={resolvedAppTheme}>
+      <main className={`main app-shell-themed app-shell-${resolvedAppTheme} dashboard-card-style-${dashboardCardStyle}`} data-theme={resolvedAppTheme} tabIndex={-1}>
         {activeTabLocked ? (
           <UpgradeScreen featureKey={activeTabFeature} subscriptionsLive={SUBSCRIPTIONS_LIVE} onBack={() => setActiveTab("dashboard")} />
         ) : null}
@@ -63559,7 +63627,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <CollectionWorkspace
               items={workspaceItems}
               initialView={collectionWorkspaceView}
-              onViewChange={setCollectionWorkspaceView}
+              onViewChange={(view) => { prepareRouteNavigation(); setCollectionWorkspaceView(view); }}
               onAddItem={() => openProductAddFlow({ source: "collection-workspace", seed: { ownedItemPurpose: OWNED_ITEM_PURPOSES.PERSONAL_COLLECTION }, destinations: { vault: true } })}
               onChangePurpose={(item, nextPurpose) => updateOwnedItemPurpose(item, nextPurpose, "Purpose assigned in Collection")}
               onSellItem={(item) => updateOwnedItemPurpose(item, OWNED_ITEM_PURPOSES.FOR_RESALE, "Sell This Item from Collection")}
@@ -63578,8 +63646,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               mileage={workspaceMileageTrips}
               initialView={businessWorkspaceView}
               initialMoneyView={businessMoneyView}
-              onViewChange={setBusinessWorkspaceView}
-              onMoneyViewChange={setBusinessMoneyView}
+              onViewChange={(view) => { prepareRouteNavigation(); setBusinessWorkspaceView(view); }}
+              onMoneyViewChange={(view) => { prepareRouteNavigation(); setBusinessMoneyView(view); }}
               onAddPurchase={() => openFlipScoutView("records", "purchases")}
               onAddInventory={() => openProductAddFlow({ source: "business-workspace", seed: { ownedItemPurpose: OWNED_ITEM_PURPOSES.FOR_RESALE }, destinations: { forge: Boolean(activeForgeWorkspace), vault: !activeForgeWorkspace } })}
               onAddSale={() => openFlipScoutView("records", "sales")}
@@ -64806,7 +64874,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
         {activeTab === "flipScout" && (
           <LazyToolBoundary label="Loading Deal Finder...">
-            <FlipScoutPage initialScreen={flipScoutView} onViewChange={setFlipScoutView} featureControls={ownerFeatureControls} onExit={() => setActiveTab("dashboard")} onOpenRestocks={() => { setOwnerCenterSection("restocks"); setOwnerCenterSubview("live"); setActiveTab(ownerCenterAuthorized ? "ownerCenter" : "scout"); }} />
+            <FlipScoutPage initialScreen={flipScoutView} onViewChange={(view) => { prepareRouteNavigation(); setFlipScoutView(view); }} featureControls={ownerFeatureControls} onExit={() => { prepareRouteNavigation(); setActiveTab("dashboard"); }} onOpenRestocks={() => { prepareRouteNavigation(); setOwnerCenterSection("restocks"); setOwnerCenterSubview("live"); setActiveTab(ownerCenterAuthorized ? "ownerCenter" : "scout"); }} />
           </LazyToolBoundary>
         )}
 
@@ -65580,7 +65648,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
               </p>
             </div>
             {groupedSortedFilteredItems.length === 0 ? (
-              <p className="forge-empty-inline-prompt">Start tracking sales and trades.</p>
+              <p className="forge-empty-inline-prompt">Start tracking sales and resale inventory.</p>
             ) : null}
             {editingItemId && (
               <section className="panel forge-edit-panel">
@@ -65634,8 +65702,8 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
             <div className="inventory-list compact-inventory-list">
               {groupedSortedFilteredItems.length === 0 ? (
                 renderGuidedEmptyState("forge", {
-                  title: "Start tracking sales and trades.",
-                  body: "Your workshop is ready. Add inventory, a receipt, mileage, or a sale when you are ready.",
+                  title: "Start tracking sales and resale inventory.",
+                  body: "Your business workspace is ready. Add inventory, a receipt, mileage, or a sale when you are ready.",
                   actionLabel: "Add first Forge item",
                   actionTarget: "forge",
                 })
@@ -68286,16 +68354,16 @@ function VaultItemDetail({ item, masterCard, setSummary, linkedTrades = [], coll
         <details className="vault-detail-disclosure">
           <summary>More actions</summary>
           <div className="quick-actions">
-            {showVaultSellerTools ? <button type="button" className="secondary-button" onClick={() => onCopyToForge(item)}>Copy to Forge</button> : null}
+            {showVaultSellerTools ? <button type="button" className="secondary-button" onClick={() => onCopyToForge(item)}>Copy to Resale Inventory</button> : null}
             {showVaultSellerTools ? <button type="button" className="secondary-button" onClick={() => onCreateListing?.(item)}>Create Listing</button> : null}
             {!itemIsWishlist ? <button type="button" className="secondary-button" onClick={() => onStartTrade?.(item)}>Start Trade</button> : null}
             {showVaultSellerTools ? <button type="button" className="secondary-button" onClick={() => onQuickUpdateSalePrice?.(item)}>Update Planned Price</button> : null}
             <button type="button" className="secondary-button" onClick={() => onAttachReceipt?.(item)}>Attach receipt</button>
             <button type="button" className="secondary-button" onClick={() => onDuplicate?.(item)}>Duplicate Item</button>
-            <button type="button" className="secondary-button" onClick={() => onDelete(item)}>Delete Vault Item</button>
+            <button type="button" className="secondary-button" onClick={() => onDelete(item)}>Remove Collection Item</button>
           </div>
           {showVaultSellerTools ? (
-            <p className="vault-detail-action-note">Vault is for collection tracking. Move or copy to Forge when this item becomes business inventory.</p>
+            <p className="vault-detail-action-note">Collection is for owned-item tracking. Move or copy to Resale Inventory when this item becomes business inventory.</p>
           ) : null}
         </details>
       </div>
@@ -68359,9 +68427,9 @@ function CompactInventoryCard({
       { label: "Review Market Value", onClick: () => onQuickUpdateMarketValue?.(item) },
       { label: "Start Trade Review", onClick: () => onStartTrade?.(item), disabled: quantity < 1 },
       ...(showVaultSellerTools ? [
-        { label: "Move to Forge", onClick: () => onMoveToForge?.(item), disabled: quantity < 1 },
+        { label: "Move to Resale Inventory", onClick: () => onMoveToForge?.(item), disabled: quantity < 1 },
         { label: "Update Planned Price", onClick: () => onQuickUpdateSalePrice?.(item) },
-        { label: "Copy to Forge", onClick: () => onCopyToForge?.(item) },
+        { label: "Copy to Resale Inventory", onClick: () => onCopyToForge?.(item) },
         ...(onCreateListing ? [{ label: "Create Listing", onClick: () => onCreateListing?.(item) }] : []),
       ] : []),
       { label: "Duplicate Item", onClick: () => onDuplicate?.(item) },
@@ -68420,7 +68488,7 @@ function CompactInventoryCard({
             buttonLabel="More"
             actions={vaultOverflowActions}
             onDelete={() => onDelete(item.id)}
-            deleteLabel="Remove from Vault"
+            deleteLabel="Remove from Collection"
           />
         </div>
       </div>
@@ -68560,7 +68628,7 @@ function CompactInventoryCard({
             { label: "Change Status", onClick: () => onEdit?.(primaryEntry) },
           ]}
           onDelete={() => onDelete?.(primaryEntry.id)}
-          deleteLabel="Delete Forge item"
+          deleteLabel="Delete resale inventory item"
         />
       </div>
     </div>

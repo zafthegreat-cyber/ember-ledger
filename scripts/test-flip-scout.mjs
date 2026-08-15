@@ -204,8 +204,8 @@ const csv = recordsToCsv([{ title: "Binder, vintage", notes: "line one\nline two
 assert.equal(csv, 'title,notes,tags\r\n"Binder, vintage","line one\nline two",pokemon | binder');
 assert.equal(recordsToCsv([], ["id", "title"]), "id,title", "empty CSV keeps the requested header");
 
-assert.deepEqual(routeStateFromPath("/scout/flip-scout"), { activeTab: "flipScout" });
-assert.equal(pathFromActiveTab("flipScout"), "/scout/flip-scout");
+assert.deepEqual(routeStateFromPath("/scout/flip-scout"), { activeTab: "flipScout", flipScoutView: "deals" });
+assert.equal(pathFromActiveTab("flipScout"), "/find/deals");
 const dashboard = getDashboardSummary({
   ...createEmptyFlipScoutState(),
   inventory: [{ id: "inv-dashboard", quantity: 4, allocatedItemCost: 100, projectedResaleMid: 40 }],

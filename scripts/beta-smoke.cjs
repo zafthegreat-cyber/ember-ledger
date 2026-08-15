@@ -6,6 +6,30 @@ const appUrl = new URL(rawAppUrl);
 appUrl.searchParams.set("betaLocalMode", "true");
 const APP_URL = appUrl.toString();
 const CLI_ARGS = process.argv.slice(2);
+
+function readCliValues(flagName) {
+  const values = [];
+  for (let index = 0; index < CLI_ARGS.length; index += 1) {
+    const argument = CLI_ARGS[index];
+    if (argument === flagName) {
+      const value = CLI_ARGS[index + 1];
+      if (!value || value.startsWith("--")) throw new Error(`${flagName} requires a value.`);
+      values.push(value);
+      index += 1;
+      continue;
+    }
+    if (argument.startsWith(`${flagName}=`)) values.push(argument.slice(flagName.length + 1));
+  }
+  return values.map((value) => String(value).trim()).filter(Boolean);
+}
+
+const REQUESTED_SCENARIOS = [
+  ...readCliValues("--scenario"),
+  ...String(process.env.BETA_REGRESSION_SCENARIOS || "").split("||"),
+].map((value) => value.trim()).filter(Boolean);
+const SCENARIO_FROM = readCliValues("--scenario-from")[0] || String(process.env.BETA_REGRESSION_SCENARIO_FROM || "").trim();
+const SCENARIO_TO = readCliValues("--scenario-to")[0] || String(process.env.BETA_REGRESSION_SCENARIO_TO || "").trim();
+const SCENARIO_FILTER_ACTIVE = REQUESTED_SCENARIOS.length > 0 || Boolean(SCENARIO_FROM || SCENARIO_TO);
 const AREA_FLAG_INDEX = CLI_ARGS.indexOf("--area");
 const REQUESTED_AREA = String(
   AREA_FLAG_INDEX >= 0 ? CLI_ARGS[AREA_FLAG_INDEX + 1] || "" : process.env.BETA_SMOKE_AREA || ""
@@ -14,7 +38,7 @@ const VALID_AREAS = new Set(["hearth", "scout", "vault", "market", "forge", "adm
 if (REQUESTED_AREA && !VALID_AREAS.has(REQUESTED_AREA)) {
   throw new Error(`Unknown beta smoke area "${REQUESTED_AREA}". Expected one of: ${[...VALID_AREAS].join(", ")}`);
 }
-const BETA_SMOKE_MODE = CLI_ARGS.includes("--regression") || process.env.BETA_SMOKE_MODE === "regression"
+const BETA_SMOKE_MODE = CLI_ARGS.includes("--regression") || process.env.BETA_SMOKE_MODE === "regression" || SCENARIO_FILTER_ACTIVE
   ? "regression"
   : REQUESTED_AREA
     ? `area:${REQUESTED_AREA}`
@@ -23,15 +47,20 @@ const parsedStepTimeout = Number(process.env.BETA_SMOKE_STEP_TIMEOUT_MS || 90000
 const STEP_TIMEOUT_MS = Number.isFinite(parsedStepTimeout) && parsedStepTimeout > 0 ? parsedStepTimeout : 90000;
 let activeBrowser = null;
 let activePage = null;
+let activeRunCleanup = null;
 
 async function closeActiveBrowser() {
   const browser = activeBrowser;
+  const cleanup = activeRunCleanup;
   activeBrowser = null;
   activePage = null;
+  activeRunCleanup = null;
+  if (cleanup) await cleanup().catch(() => {});
   if (browser) await browser.close().catch(() => {});
 }
 
 async function main() {
+  const suiteStartedAt = Date.now();
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1366, height: 1600 } });
   activeBrowser = browser;
@@ -41,6 +70,10 @@ async function main() {
   const results = [];
   const fatalBrowserErrors = [];
   const pendingRequests = new Map();
+  const knownRegressionScenarios = new Set();
+  const requestedScenarioKeys = new Set(REQUESTED_SCENARIOS.map((name) => name.toLocaleLowerCase()));
+  let rangeStarted = !SCENARIO_FROM;
+  let rangeEnded = false;
   let activeStepName = "suite startup";
   let lastCheckpoint = "browser launched";
   console.log(`Beta smoke mode: ${BETA_SMOKE_MODE}`);
@@ -105,7 +138,29 @@ async function main() {
     await dialog.accept();
   });
 
+  activeRunCleanup = async () => {
+    page.removeAllListeners();
+    pendingRequests.clear();
+  };
+
+  function shouldRunRegressionScenario(name) {
+    knownRegressionScenarios.add(name);
+    if (!SCENARIO_FILTER_ACTIVE) return true;
+    if (name === "app opens and beta data resets") return true;
+
+    const normalizedName = name.toLocaleLowerCase();
+    let selected = requestedScenarioKeys.has(normalizedName);
+    if (!rangeStarted && SCENARIO_FROM && normalizedName === SCENARIO_FROM.toLocaleLowerCase()) rangeStarted = true;
+    if (rangeStarted && !rangeEnded && (SCENARIO_FROM || SCENARIO_TO)) selected = true;
+    if (rangeStarted && SCENARIO_TO && normalizedName === SCENARIO_TO.toLocaleLowerCase()) rangeEnded = true;
+    return selected;
+  }
+
   async function step(name, fn) {
+    if (BETA_SMOKE_MODE === "regression" && !shouldRunRegressionScenario(name)) {
+      console.log(`SKIP ${name} (not selected)`);
+      return;
+    }
     const startedAt = Date.now();
     activeStepName = name;
     checkpoint(`step started: ${name}`);
@@ -140,6 +195,37 @@ async function main() {
     }
   }
 
+  function validateScenarioSelection() {
+    if (BETA_SMOKE_MODE !== "regression") return;
+    const knownKeys = new Set([...knownRegressionScenarios].map((name) => name.toLocaleLowerCase()));
+    const missing = REQUESTED_SCENARIOS.filter((name) => !knownKeys.has(name.toLocaleLowerCase()));
+    if (SCENARIO_FROM && !knownKeys.has(SCENARIO_FROM.toLocaleLowerCase())) missing.push(`--scenario-from=${SCENARIO_FROM}`);
+    if (SCENARIO_TO && !knownKeys.has(SCENARIO_TO.toLocaleLowerCase())) missing.push(`--scenario-to=${SCENARIO_TO}`);
+    if (missing.length) throw new Error(`Unknown regression scenario selection: ${missing.join(", ")}`);
+    if (!SCENARIO_FILTER_ACTIVE && results.length !== 28) {
+      throw new Error(`Expected all 28 regression scenarios to execute; completed ${results.length}.`);
+    }
+  }
+
+  async function finishRun() {
+    validateScenarioSelection();
+    await closeActiveBrowser();
+    const elapsedMs = Date.now() - suiteStartedAt;
+    const sortedResults = [...results].sort((left, right) => right.elapsedMs - left.elapsedMs);
+    const scenarioResults = SCENARIO_FILTER_ACTIVE
+      ? results.filter((result) => result.name !== "app opens and beta data resets")
+      : results;
+    const remainingHandles = typeof process._getActiveHandles === "function"
+      ? process._getActiveHandles()
+        .filter((handle) => ![process.stdin, process.stdout, process.stderr].includes(handle))
+        .map((handle) => handle?.constructor?.name || typeof handle)
+      : [];
+    console.log(JSON.stringify(results, null, 2));
+    console.log(`SUITE PASS: ${scenarioResults.length} scenario${scenarioResults.length === 1 ? "" : "s"} (${elapsedMs}ms total)`);
+    console.log(`SLOWEST: ${sortedResults.slice(0, 5).map((result) => `${result.name}=${result.elapsedMs}ms`).join(" | ") || "none"}`);
+    console.log(`OPEN_HANDLES_AFTER_CLEANUP: ${remainingHandles.join(", ") || "none"}`);
+  }
+
   async function closeOpenModals() {
     for (let attempt = 0; attempt < 4; attempt += 1) {
       const modalCount = await page.locator(".location-modal-backdrop, .catalog-detail-backdrop, .drawer-backdrop, .flow-modal-backdrop").count();
@@ -154,13 +240,23 @@ async function main() {
   }
 
   async function clickCardAction(card, actionName) {
-    const directAction = card.getByRole("button", { name: actionName });
+    const visibleActionName = {
+      "Move to Forge": "Move to Resale Inventory",
+      "Add to Forge": "Add to Resale Inventory",
+      "Add to Vault": "Add to Collection",
+      "Move to Vault": "Move to Collection",
+      "Open Vault": "Open Collection",
+      "Open Forge": "Open Business",
+      "Open Scout": "Open Restocks",
+      "Open The Spark": "Open Kids & Community",
+    }[actionName] || actionName;
+    const directAction = card.getByRole("button", { name: visibleActionName });
     if (await directAction.isVisible().catch(() => false)) {
       await directAction.click();
       return;
     }
     await card.getByRole("button", { name: /More actions|More/ }).click();
-    await card.getByRole("menuitem", { name: actionName }).click();
+    await card.getByRole("menuitem", { name: visibleActionName }).click();
   }
 
   async function nav(label) {
@@ -471,7 +567,12 @@ async function main() {
 
   async function fillByLabel(scope, label, value) {
     try {
-      await scope.getByLabel(label, { exact: true }).fill(String(value));
+      const visibleLabel = String(label)
+        .replace(/move to Forge/gi, "move to Resale Inventory")
+        .replace(/Add to Vault/gi, "Add to Collection")
+        .replace(/Add to Forge/gi, "Add to Resale Inventory");
+      const labelPattern = new RegExp(`^${visibleLabel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i");
+      await scope.getByLabel(labelPattern).fill(String(value));
     } catch (error) {
       const bodyPreview = await page.locator("body").innerText().catch(() => "");
       error.message = `${error.message}\nBody preview:\n${bodyPreview.slice(0, 1500)}`;
@@ -489,7 +590,13 @@ async function main() {
   }
 
   async function ensureAddWizardDestination(form, destinationLabel) {
-    const destination = form.locator("label.destination-checkbox").filter({ hasText: new RegExp(destinationLabel, "i") }).locator("input");
+    const visibleDestinationLabel = destinationLabel === "Forge"
+      ? "Business"
+      : destinationLabel === "Vault"
+        ? "Collection"
+        : destinationLabel;
+    const destination = form.getByRole("checkbox", { name: new RegExp(`^${visibleDestinationLabel}`, "i") });
+    assert.equal(await destination.count(), 1, `${visibleDestinationLabel} should identify one add destination`);
     if (!(await destination.isChecked())) await destination.check();
   }
 
@@ -605,7 +712,7 @@ async function main() {
   }
 
   async function assertScoutReportDetailDeleteHidden(detailSheet) {
-    await detailSheet.getByText("Scout report", { exact: true }).first().waitFor({ state: "visible", timeout: 5000 });
+    await detailSheet.getByText(/^(Scout|Restock) report$/i).first().waitFor({ state: "visible", timeout: 5000 });
     await detailSheet.getByText("Details", { exact: true }).first().waitFor({ state: "visible", timeout: 5000 });
     await detailSheet.getByText("Proof / Photos", { exact: true }).first().waitFor({ state: "visible", timeout: 5000 });
     await detailSheet.getByText("Confidence", { exact: true }).first().waitFor({ state: "visible", timeout: 5000 });
@@ -1183,7 +1290,7 @@ async function main() {
     await expectVisible(page.getByRole("button", { name: /^Edit Profile$/ }).first(), "Vault Item Profile edit action");
     await expectVisible(page.getByRole("button", { name: /^Add note$/ }).first(), "Vault Item Profile add note action");
     await expectVisible(page.getByRole("button", { name: /^Add to trade$/ }).first(), "Vault Item Profile add trade action");
-    await expectVisible(page.getByRole("button", { name: /^Use in Forge$/ }).first(), "Vault Item Profile Forge action");
+    await expectVisible(page.getByRole("button", { name: /^(Use in Forge|Use in Business)$/ }).first(), "Collection item Business action");
     await expectVisible(page.getByRole("button", { name: /^Check in Market$/ }).first(), "Vault Item Profile Market action");
     await expectVisible(page.getByRole("button", { name: /^Add to set$/ }).first(), "Vault Item Profile add to set coming soon action");
     await expectVisible(page.getByRole("button", { name: /^Add to Display Case$/ }).first(), "Vault Item Profile Display Case action");
@@ -1818,8 +1925,7 @@ async function main() {
 
     await step(`${REQUESTED_AREA}: focused critical path`, focusedAreaTests[REQUESTED_AREA]);
 
-    await closeActiveBrowser();
-    console.log(JSON.stringify(results, null, 2));
+    await finishRun();
     return;
   }
 
@@ -1876,8 +1982,7 @@ async function main() {
       await assertVisibleText("Purchases");
     });
 
-    await closeActiveBrowser();
-    console.log(JSON.stringify(results, null, 2));
+    await finishRun();
     return;
   }
 
@@ -2093,6 +2198,13 @@ async function main() {
       const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
       const now = new Date().toISOString();
       data.activeWorkspaceId = "workspace-personal-local-beta";
+      data.userType = "seller";
+      data.dashboardPreset = "seller";
+      data.profile = {
+        ...(data.profile || {}),
+        userType: "seller",
+        dashboardPreset: "seller",
+      };
       data.forgeModeSettings = {
         personalForgeEnabled: false,
         defaultForgeWorkspaceId: "workspace-ember-tide",
@@ -2187,8 +2299,8 @@ async function main() {
     const lockedTransferModal = page.locator(".vault-transfer-modal").first();
     await lockedTransferModal.waitFor({ state: "visible", timeout: 5000 });
     await fillByLabel(lockedTransferModal, "How many do you want to move to Forge?", "2");
-    await lockedTransferModal.getByRole("button", { name: /Move 2 to Ember & Tide/ }).click();
-    await assertVisibleText("Moved 2 to Ember & Tide. 2 remain in Vault.");
+    await lockedTransferModal.getByRole("button", { name: /Move 2 to Resale Inventory/ }).click();
+    await assertVisibleText("Moved 2 to Resale Inventory. 2 remain in Collection.");
     const lockedTransfer = await page.evaluate(() => {
       const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
       const source = (data.items || []).find((item) => item.id === "forge-mode-vault-source");
@@ -2245,7 +2357,7 @@ async function main() {
     assert.equal(await form.locator('[data-validation-field="item-name"] .field-error').count(), 0, "Correcting the item should clear the inline item error");
     await clickAddWizardNext();
 
-    const forgeDestination = form.locator("label.destination-checkbox").filter({ hasText: /Forge/i }).locator("input").first();
+    const forgeDestination = form.locator("label.destination-checkbox").filter({ hasText: /Forge|Business|Resale Inventory/i }).locator("input").first();
     if (await forgeDestination.isChecked()) {
       await forgeDestination.setChecked(false, { force: true });
     }
@@ -2488,6 +2600,8 @@ async function main() {
           const reportsUrl = new URL("/scout/reports", new URL(APP_URL).origin);
           for (const [key, value] of new URL(APP_URL).searchParams.entries()) reportsUrl.searchParams.set(key, value);
           await page.goto(reportsUrl.toString(), { waitUntil: "domcontentloaded" });
+          const routeReportAction = page.getByRole("button", { name: /^(Add Report|Submit Report)$/ }).first();
+          if (await routeReportAction.isVisible().catch(() => false)) await routeReportAction.click();
         }
       }
     }
@@ -2500,7 +2614,7 @@ async function main() {
     const reportsUrl = new URL("/scout/reports", new URL(APP_URL).origin);
     for (const [key, value] of new URL(APP_URL).searchParams.entries()) reportsUrl.searchParams.set(key, value);
     await page.goto(reportsUrl.toString(), { waitUntil: "domcontentloaded" });
-    await page.locator("form.scout-report-flow").first().waitFor({ state: "visible", timeout: 10000 });
+    await page.locator(".scout-command-route-v5, form.scout-report-flow").first().waitFor({ state: "visible", timeout: 10000 });
   }
 
   async function assertNotVisibleText(text) {
@@ -2619,7 +2733,7 @@ async function main() {
     await form.getByText(/Review and submit/i).first().waitFor({ state: "visible", timeout: 5000 }).catch(async (error) => {
       const formText = await form.innerText().catch(() => "");
       const bodyText = await page.locator("body").innerText().catch(() => "");
-      if (bodyText.includes("Scout report saved. Want to add proof or more details?")) return;
+      if (/((Scout|Restock) report saved\. Want to add proof or more details\?)/i.test(bodyText)) return;
       error.message = `${error.message}\nScout wizard state:\n${formText.slice(0, 1200)}\nBody:\n${bodyText.slice(0, 1600)}`;
       throw error;
     });
@@ -2826,7 +2940,7 @@ async function main() {
 
     const blankForm = await openScoutReportWizard();
     await blankForm.evaluate((form) => form.requestSubmit());
-    await assertVisibleText("Select a store before submitting a Scout report.");
+    await assertVisibleText("Select a store before submitting a restock report.");
     await closeOpenModals();
   });
 
@@ -2848,7 +2962,7 @@ async function main() {
       reportTime: "09:30",
     });
     await submitScoutWizardIfNeeded(reportForm);
-    await assertVisibleText(/Report submitted\.|Scout report saved\./);
+    await assertVisibleText(/Report submitted\.|(Scout|Restock) report saved\./i);
     const savedScoutReport = await page.evaluate(() => {
       const data = JSON.parse(localStorage.getItem("et-tcg-beta-scout") || "{}");
       return (data.reports || []).find((report) => String(report.note || report.notes || "").includes("Two ETBs on the shelf.")) || null;
@@ -2980,10 +3094,25 @@ async function main() {
     await closeScoutReportDetails(screenshotReportDetailSheet);
   });
 
-  await step("Forge: add/edit/delete inventory item", async () => {
+  await step("Business: add/edit/delete resale inventory item", async () => {
     const forgeCatalogData = await page.evaluate(() => {
       const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
       const now = new Date().toISOString();
+      data.activeWorkspaceId = "workspace-personal-local-beta";
+      data.userType = "seller";
+      data.dashboardPreset = "seller";
+      data.profile = {
+        ...(data.profile || {}),
+        userType: "seller",
+        dashboardPreset: "seller",
+      };
+      data.forgeModeSettings = {
+        personalForgeEnabled: true,
+        defaultForgeWorkspaceId: "",
+        lockToEmberTide: false,
+        updatedAt: now,
+      };
+      localStorage.setItem("et-tcg-forge-mode-settings", JSON.stringify(data.forgeModeSettings));
       data.catalogProducts = [
         ...(data.catalogProducts || []).filter((product) => product.id !== "catalog-smoke-search-etb"),
         {
@@ -3084,23 +3213,23 @@ async function main() {
 
     const forgeDeleteCard = page.locator(".compact-card").filter({ hasText: "Smoke Forge ETB Edited" });
     const cancelledForgeDelete = await withConfirmStub(false, async () => {
-      await overflowAction(forgeDeleteCard, "Delete Forge item");
+      await overflowAction(forgeDeleteCard, "Delete resale inventory item");
     });
-    assert.match(cancelledForgeDelete.join("\n"), /Delete Forge inventory item\?/);
-    assert.match(cancelledForgeDelete.join("\n"), /Vault collection records are not removed/);
+    assert.match(cancelledForgeDelete.join("\n"), /Delete resale inventory item\?/i);
+    assert.match(cancelledForgeDelete.join("\n"), /Collection records are not removed/);
     await assertVisibleText("Smoke Forge ETB Edited");
 
     const acceptedForgeDelete = await withConfirmStub(true, async () => {
-      await overflowAction(forgeDeleteCard, "Delete Forge item");
+      await overflowAction(forgeDeleteCard, "Delete resale inventory item");
     });
-    assert.match(acceptedForgeDelete.join("\n"), /Delete Forge inventory item\?/);
+    assert.match(acceptedForgeDelete.join("\n"), /Delete resale inventory item\?/i);
     await page.waitForFunction(
       () => !document.body.innerText.includes("Smoke Forge ETB Edited"),
       null,
       { timeout: 7000 }
     );
-    await assertVisibleText("Start tracking sales and trades.");
-    await assertVisibleText("Your workshop is ready. Add inventory, a receipt, mileage, or a sale when you are ready.");
+    await assertVisibleText("Start tracking sales and resale inventory.");
+    await assertVisibleText("Your business workspace is ready. Add inventory, a receipt, mileage, or a sale when you are ready.");
   });
 
   await step("Receipt: draft/verify/submit expense-only report", async () => {
@@ -3396,20 +3525,33 @@ async function main() {
 
     const vaultDeleteCard = page.locator(".compact-card").filter({ hasText: "Smoke Vault Binder Edited" });
     const cancelledVaultDelete = await withConfirmStub(false, async () => {
-      await overflowAction(vaultDeleteCard, "Remove from Vault");
+      await overflowAction(vaultDeleteCard, "Remove from Collection");
     });
-    assert.match(cancelledVaultDelete.join("\n"), /Delete vaulted item\?/);
-    assert.match(cancelledVaultDelete.join("\n"), /Forge inventory records are not removed/);
+    assert.match(cancelledVaultDelete.join("\n"), /Remove collection item\?/i);
+    assert.match(cancelledVaultDelete.join("\n"), /Resale inventory records are not removed/);
     await assertVisibleText("Smoke Vault Binder Edited");
 
     const acceptedVaultDelete = await withConfirmStub(true, async () => {
-      await overflowAction(vaultDeleteCard, "Remove from Vault");
+      await overflowAction(vaultDeleteCard, "Remove from Collection");
     });
-    assert.match(acceptedVaultDelete.join("\n"), /Delete vaulted item\?/);
+    assert.match(acceptedVaultDelete.join("\n"), /Remove collection item\?/i);
     await assert.equal(await page.getByText("Smoke Vault Binder Edited", { exact: false }).count(), 0);
   });
 
-  await step("Vault: transfer to Forge respects entered quantity", async () => {
+  await step("Collection: transfer to resale inventory respects entered quantity", async () => {
+    const transferWorkspaceData = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
+      data.userType = "seller";
+      data.dashboardPreset = "seller";
+      data.profile = {
+        ...(data.profile || {}),
+        userType: "seller",
+        dashboardPreset: "seller",
+      };
+      return data;
+    });
+    await reloadWithAppData(transferWorkspaceData);
+
     async function addVaultManualItem(name, quantity) {
       await nav("Vault");
       await page.locator(".command-board-v4-vault").getByRole("button", { name: "Quick Add", exact: true }).first().click();
@@ -3437,14 +3579,14 @@ async function main() {
     const transferModal = page.locator(".vault-transfer-modal").first();
     await transferModal.waitFor({ state: "visible", timeout: 5000 });
     await fillByLabel(transferModal, "How many do you want to move to Forge?", "0");
-    await transferModal.getByRole("button", { name: "Move 0 to Forge" }).click();
+    await transferModal.getByRole("button", { name: "Move 0 to Resale Inventory" }).click();
     await assertVisibleText("Quantity to move must be a whole number of at least 1.");
     await fillByLabel(transferModal, "How many do you want to move to Forge?", "9");
-    await transferModal.getByRole("button", { name: "Move 9 to Forge" }).click();
+    await transferModal.getByRole("button", { name: "Move 9 to Resale Inventory" }).click();
     await assertVisibleText("Move quantity cannot be higher than owned quantity.");
     await fillByLabel(transferModal, "How many do you want to move to Forge?", "2");
-    await transferModal.getByRole("button", { name: "Move 2 to Forge" }).click();
-    await assertVisibleText("Moved 2 to Forge. 6 remain in Vault.");
+    await transferModal.getByRole("button", { name: "Move 2 to Resale Inventory" }).click();
+    await assertVisibleText("Moved 2 to Resale Inventory. 6 remain in Collection.");
 
     const partialTransfer = await page.evaluate(() => {
       const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
@@ -3462,15 +3604,15 @@ async function main() {
     await gotoAppRoute("/vault/cards");
     await assertVisibleText("Smoke Vault Transfer Qty 8");
     const vaultSourceDelete = await withConfirmStub(true, async () => {
-      await overflowAction(page.locator(".compact-card").filter({ hasText: "Smoke Vault Transfer Qty 8" }).first(), "Remove from Vault");
+      await overflowAction(page.locator(".compact-card").filter({ hasText: "Smoke Vault Transfer Qty 8" }).first(), "Remove from Collection");
     });
-    assert.match(vaultSourceDelete.join("\n"), /Delete vaulted item\?/);
+    assert.match(vaultSourceDelete.join("\n"), /Remove collection item\?/i);
     await gotoAppRoute("/forge");
     await assertVisibleText("Smoke Vault Transfer Qty 8");
     const forgeCopyDelete = await withConfirmStub(true, async () => {
-      await overflowAction(page.locator(".compact-card").filter({ hasText: "Smoke Vault Transfer Qty 8" }).first(), "Delete Forge item");
+      await overflowAction(page.locator(".compact-card").filter({ hasText: "Smoke Vault Transfer Qty 8" }).first(), "Delete resale inventory item");
     });
-    assert.match(forgeCopyDelete.join("\n"), /Delete Forge inventory item\?/);
+    assert.match(forgeCopyDelete.join("\n"), /Delete resale inventory item\?/i);
     assert.equal(await page.locator(".compact-card").filter({ hasText: "Smoke Vault Transfer Qty 8" }).count(), 0);
 
     await addVaultManualItem("Smoke Vault Transfer Qty 1", 1);
@@ -3478,8 +3620,8 @@ async function main() {
     await clickCardAction(fullCard, "Move to Forge");
     const fullModal = page.locator(".vault-transfer-modal").first();
     await fillByLabel(fullModal, "How many do you want to move to Forge?", "1");
-    await fullModal.getByRole("button", { name: "Move 1 to Forge" }).click();
-    await assertVisibleText("Moved 1 to Forge. 0 remain in Vault.");
+    await fullModal.getByRole("button", { name: "Move 1 to Resale Inventory" }).click();
+    await assertVisibleText("Moved 1 to Resale Inventory. 0 remain in Collection.");
     const fullTransfer = await page.evaluate(() => {
       const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
       const source = (data.items || []).find((item) => item.name === "Smoke Vault Transfer Qty 1" && item.vaultStatus === "moved_to_forge");
@@ -3627,8 +3769,8 @@ async function main() {
     await groupedTransferModal.waitFor({ state: "visible", timeout: 5000 });
     await groupedTransferModal.getByLabel("Move from purchaser entry").selectOption("inventory-group-smoke-vault-dillon");
     await fillByLabel(groupedTransferModal, "How many do you want to move to Forge?", "2");
-    await groupedTransferModal.getByRole("button", { name: /Move 2 to Forge/ }).click();
-    await assertVisibleText("Moved 2 to Forge. 1 remain in Vault.");
+    await groupedTransferModal.getByRole("button", { name: /Move 2 to Resale Inventory/ }).click();
+    await assertVisibleText("Moved 2 to Resale Inventory. 1 remain in Collection.");
     const groupedTransferState = await page.evaluate(() => {
       const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
       const vaultDillon = (data.items || []).find((item) => item.id === "inventory-group-smoke-vault-dillon");
@@ -3733,12 +3875,12 @@ async function main() {
     await searchForm.getByRole("button", { name: /Search Catalog|Search Market Watch|Search/i }).first().click();
     const resultCard = page.locator(".market-v4-result-row, .catalog-result-card").filter({ hasText: "Prismatic Evolutions Booster Bundle", hasNotText: "Code Card" }).first();
     await resultCard.waitFor({ state: "visible", timeout: 20000 });
-    const marketResultAddButton = resultCard.getByRole("button", { name: /Add to (Vault|Forge)/i }).first();
+    const marketResultAddButton = resultCard.getByRole("button", { name: /Add to (Vault|Forge|Collection|Resale Inventory)/i }).first();
     await marketResultAddButton.scrollIntoViewIfNeeded();
     await marketResultAddButton.click();
     const marketAddModal = addWizardModal();
     await marketAddModal.waitFor({ state: "visible", timeout: 10000 }).catch(async () => {
-      const productDetailAdd = page.locator(".location-modal, .catalog-detail-modal, .market-product-detail-modal").filter({ hasText: "Prismatic Evolutions Booster Bundle" }).getByRole("button", { name: /Add to (Vault|Forge)/i }).first();
+      const productDetailAdd = page.locator(".location-modal, .catalog-detail-modal, .market-product-detail-modal").filter({ hasText: "Prismatic Evolutions Booster Bundle" }).getByRole("button", { name: /Add to (Vault|Forge|Collection|Resale Inventory)/i }).first();
       if (await productDetailAdd.isVisible().catch(() => false)) {
         await productDetailAdd.click();
       }
@@ -3850,8 +3992,7 @@ async function main() {
     await page.setViewportSize({ width: 1366, height: 1600 });
   });
 
-  await closeActiveBrowser();
-  console.log(JSON.stringify(results, null, 2));
+  await finishRun();
 }
 
 main().catch(async (error) => {

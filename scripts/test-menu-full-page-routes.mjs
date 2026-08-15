@@ -141,8 +141,8 @@ for (const destination of expectedMenuDestinations) {
 }
 
 assert.ok(
-  appSource.includes('if (activeTab === "membership") return "/membership";'),
-  "Membership should keep a stable /membership URL instead of serializing back to settings."
+  appSource.includes('if (activeTab === "membership") return "/settings/plans";'),
+  "Membership should use the canonical settings URL while retaining its compatibility route."
 );
 
 assert.ok(

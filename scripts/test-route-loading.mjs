@@ -32,6 +32,7 @@ const routePages = {
 const viteConfig = read("vite.config.js");
 const pkg = JSON.parse(read("package.json"));
 const commandBoardV4 = read("src/components/command-system/CommandBoardV4.jsx");
+const flipScoutPage = read("src/features/flipScout/FlipScoutPage.jsx");
 
 check(
   "Scout is route-lazy loaded",
@@ -46,6 +47,16 @@ check(
     app.includes('const MarketPage = lazy(() => import("./pages/Market"))') &&
     app.includes('const SparkPage = lazy(() => import("./pages/Spark"))') &&
     app.includes('const MenuPage = lazy(() => import("./pages/Menu"))')
+);
+
+check(
+  "Deal Finder advanced routes are independently lazy-loaded",
+  flipScoutPage.includes('lazy(() => import("./screens/AppraiserScreen.jsx"))') &&
+    flipScoutPage.includes('lazy(() => import("./screens/AuctionsScreen.jsx"))') &&
+    flipScoutPage.includes('lazy(() => import("./screens/EbayDiscoveryScreen.jsx"))') &&
+    flipScoutPage.includes('lazy(() => import("./screens/SearchRulesScreen.jsx"))') &&
+    flipScoutPage.includes('lazy(() => import("./screens/RecordsScreen.jsx"))') &&
+    flipScoutPage.includes('<Suspense fallback={<LoadingState')
 );
 
 check(
