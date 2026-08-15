@@ -6,6 +6,7 @@ import cors from "cors";
 import { randomUUID } from "crypto";
 import { pool, testDbConnection } from "./db";
 import { bestBuyRouter } from "./routes/bestbuy.routes";
+import { ebayRouter } from "./routes/ebay.routes";
 import { catalogRouter } from "./routes/catalog.routes";
 import { forgeRouter } from "./routes/forge.routes";
 import { inventoryRouter } from "./routes/inventory.routes";
@@ -40,6 +41,7 @@ app.use("/api/tidepool", tidepoolRouter);
 app.use("/api/market", marketRouter);
 app.use("/api/scan", scanRouter);
 app.use("/api/bestbuy", bestBuyRouter);
+app.use("/api/ebay", ebayRouter);
 
 type Day = "Sun" | "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat";
 type Confidence = "Low" | "Medium" | "High";

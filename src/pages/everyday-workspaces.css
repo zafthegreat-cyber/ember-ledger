@@ -1,0 +1,134 @@
+.everyday-workspace {
+  display: grid;
+  gap: var(--space-5);
+  min-width: 0;
+  padding: var(--space-4);
+}
+
+.everyday-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  padding: 2px 2px var(--space-2);
+}
+
+.everyday-tabs button {
+  min-height: 44px;
+  min-width: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-primary);
+  color: var(--text-secondary);
+  font: inherit;
+  font-weight: 700;
+  padding: 0 var(--space-4);
+}
+
+.everyday-tabs button.is-active {
+  border-color: var(--brand-primary);
+  background: var(--brand-primary-soft, var(--surface-secondary));
+  color: var(--brand-primary);
+}
+
+.compatibility-note {
+  border: 1px solid var(--border-subtle);
+  border-left: 4px solid var(--status-info);
+  border-radius: var(--radius-md);
+  background: var(--surface-secondary);
+  color: var(--text-secondary);
+  padding: var(--space-3) var(--space-4);
+  line-height: 1.5;
+}
+
+.owned-item-list {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.owned-item-card {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: var(--space-3);
+  padding: var(--space-3);
+}
+
+.owned-item-card > img,
+.owned-item-placeholder {
+  width: 76px;
+  aspect-ratio: 1;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+  background: var(--surface-secondary);
+}
+
+.owned-item-placeholder {
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.owned-item-card__body,
+.owned-item-card__heading > div {
+  min-width: 0;
+}
+
+.owned-item-card__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.owned-item-card h3,
+.owned-item-card p {
+  margin: 0;
+}
+
+.owned-item-card h3 {
+  overflow-wrap: anywhere;
+}
+
+.owned-item-card p,
+.owned-item-card dt {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.owned-item-card dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+}
+
+.owned-item-card dl div {
+  min-width: 0;
+}
+
+.owned-item-card dt,
+.owned-item-card dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.owned-item-card dd {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+@media (min-width: 860px) {
+  .everyday-workspace { padding: var(--space-6); }
+  .everyday-tabs { display: flex; flex-wrap: wrap; }
+  .everyday-tabs button { flex: 0 0 auto; }
+  .owned-item-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 420px) {
+  .owned-item-card { grid-template-columns: 64px minmax(0, 1fr); }
+  .owned-item-card > img,
+  .owned-item-placeholder { width: 64px; }
+  .owned-item-card__heading { display: grid; }
+  .owned-item-card dl { grid-template-columns: 1fr; }
+}

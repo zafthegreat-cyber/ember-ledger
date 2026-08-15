@@ -1,5 +1,54 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { BRAND_CONFIG } from "./src/config/brand.js";
+
+const brandReplacements = {
+  __BRAND_NAME__: BRAND_CONFIG.applicationDisplayName,
+  __BRAND_SHORT_NAME__: BRAND_CONFIG.shortName,
+  __BRAND_TAGLINE__: BRAND_CONFIG.tagline,
+  __BRAND_ACCENT__: BRAND_CONFIG.primaryAccent,
+  __BRAND_LOGO__: BRAND_CONFIG.logoReference,
+  __BRAND_FAVICON__: BRAND_CONFIG.faviconReference,
+  __BRAND_MONOGRAM__: BRAND_CONFIG.monogram,
+};
+
+function applyBrandReplacements(source = "") {
+  return Object.entries(brandReplacements).reduce((output, [token, value]) => output.replaceAll(token, value), String(source));
+}
+
+function brandMetadataPlugin() {
+  return {
+    name: "business-hub-brand-metadata",
+    transformIndexHtml: applyBrandReplacements,
+    configureServer(server) {
+      server.middlewares.use("/manifest.webmanifest", (_request, response) => {
+        response.setHeader("Content-Type", "application/manifest+json; charset=utf-8");
+        response.end(applyBrandReplacements(JSON.stringify({
+          name: BRAND_CONFIG.pwaName,
+          short_name: BRAND_CONFIG.shortName,
+          description: BRAND_CONFIG.tagline,
+          id: "/",
+          start_url: "/",
+          scope: "/",
+          display: "standalone",
+          background_color: "#f6f3ed",
+          theme_color: BRAND_CONFIG.primaryAccent,
+          icons: [{ src: BRAND_CONFIG.logoReference, sizes: "any", type: "image/svg+xml", purpose: "any maskable" }],
+        }, null, 2)));
+      });
+    },
+    generateBundle(_options, bundle) {
+      const manifest = bundle["manifest.webmanifest"];
+      if (manifest?.type === "asset") manifest.source = applyBrandReplacements(manifest.source);
+    },
+    writeBundle(outputOptions) {
+      const manifestPath = resolve(process.cwd(), outputOptions.dir || "dist", "manifest.webmanifest");
+      if (existsSync(manifestPath)) writeFileSync(manifestPath, applyBrandReplacements(readFileSync(manifestPath, "utf8")));
+    },
+  };
+}
 
 const appVersion = [
   process.env.VERCEL_DEPLOYMENT_ID,
@@ -58,7 +107,24 @@ export default defineConfig({
   define: {
     __EMBER_TIDE_APP_VERSION__: JSON.stringify(appVersion),
   },
-  plugins: [react(), appVersionPlugin()],
+  plugins: [react(), brandMetadataPlugin(), appVersionPlugin()],
+  server: {
+    watch: {
+      ignored: [
+        "**/artifacts/**",
+        "**/backend/**",
+        "**/copy/**",
+        "**/design/**",
+        "**/dist/**",
+        "**/docs/**",
+        "**/mock-data/**",
+        "**/pokemon_market_ingestion_kit/**",
+        "**/seeds/**",
+        "**/supabase/**",
+        "**/.vercel/**",
+      ],
+    },
+  },
   build: {
     modulePreload: {
       resolveDependencies(_filename, deps) {

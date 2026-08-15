@@ -36,6 +36,8 @@ const betaReadinessSource = fs.readFileSync(betaReadinessPath, "utf8");
 const publicTrustSource = `${appSource}\n${betaReadinessSource}`;
 
 const expectedRoutes = [
+  ['section === "collection"', 'activeTab: "collectionWorkspace"'],
+  ['section === "owner-center"', 'activeTab: "ownerCenter"'],
   ['section === "today" || section === "daily-tide"', 'activeTab: "dailyTide"'],
   ['section === "whats-new" || section === "changelog"', 'activeTab: "whatsNew"'],
   ['section === "coming-soon" || section === "roadmap"', 'activeTab: "comingSoon"'],
@@ -66,12 +68,18 @@ for (const [routeFragment, activeTabFragment] of expectedRoutes) {
 }
 
 const expectedRenderers = [
+  'activeTab === "collectionWorkspace" && (',
+  '<CollectionWorkspace',
+  'activeTab === "businessWorkspace" && (',
+  '<BusinessWorkspace',
+  'activeTab === "ownerCenter" && (',
+  '<OwnerCenterPage',
   'activeTab === "dailyTide" && renderTodaysTideCommandCenter()',
   'activeTab === "dashboard" && (',
-  '<HearthPage {...hearthPageProps} />',
+  '<OperationsHomePage {...hearthPageProps} />',
   'activeTab === "tidepool" && renderTidepoolCommunity()',
   'activeTab === "kidsProgram" && (',
-  '<SparkPage renderPage={renderKidsProgramPage} />',
+  '<SparkPage {...sparkPageProps} />',
   'activeTab === "parentCenter" && renderParentCenterPage()',
   'activeTab === "sponsor" && renderSponsorInterestPage()',
   'activeTab === "trust" && renderTrustPages()',
@@ -114,6 +122,7 @@ for (const alias of expectedUtilityAliases) {
 }
 
 const expectedMenuDestinations = [
+  'key: "owner-center", label: "Owner Center"',
   'quickAdd: { key: "quickAdd"',
   'scanProduct: { key: "scanProduct"',
   'emberAssist: { key: "emberAssist"',
@@ -371,16 +380,17 @@ assert.ok(
   "Mobile Scan Anything and Review/Add flows should receive full-page modal treatment."
 );
 assert.ok(
-  appSource.includes("function FlowNextActionCard") &&
+    appSource.includes("function FlowNextActionCard") &&
     appSource.includes('eyebrow="Vault next action"') &&
     appSource.includes('eyebrow="After Price Memory"') &&
-    appSource.includes('eyebrow="After Trade Compass"') &&
     appSource.includes('eyebrow="Next Spark action"') &&
     appSource.includes('eyebrow="After Grade Assist"') &&
     appSource.includes("Grade Assist checklist saved") &&
     appSource.includes("Use the manual checklist as a prompt, not a grade.") &&
     appSource.includes("Saved prices are manual research notes.") &&
-    appSource.includes("Forge does not edit Vault unless you choose a separate Vault action.") &&
+    pageSource.includes("const pageNextAction") &&
+    pageSource.includes("Inventory stays unchanged unless reviewed") &&
+    pageSource.includes("No fake commerce") &&
     appSource.includes("No payment, fulfillment, shipping, or private child messaging is connected."),
   "Flow cleanup should add safe next-action handoffs for Vault, Market, Forge, Spark, Grade Assist, and Hearth."
 );

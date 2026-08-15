@@ -3,10 +3,19 @@ import "./App.css";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
 import OverflowMenu from "./components/OverflowMenu";
 import LockedFeatureNotice from "./components/LockedFeatureNotice";
+import ScoutTileMap from "./components/ScoutTileMap";
 import { LiveEmberTrustNote } from "./components/ember-ui";
 import { BRAND_ASSETS } from "./brand/emberTideBrand";
+import { BRAND_CONFIG, applyBrandDocumentMetadata } from "./config/brand";
+import { AppShell, DesktopSidebar, MobileBottomNavigation } from "./components/operations/OperationsUI";
+import { OWNED_ITEM_PURPOSES, changeOwnedItemPurpose } from "./features/ownedItems/ownedItemPurpose";
+import { createOwnerCenterRepository } from "./features/ownerCenter/ownerCenterRepository";
+import { canAccessOwnerCenter } from "./features/ownerCenter/ownerAuthorization";
 import {
   AppNavIcon,
+  CommandBoardSection,
+  CommandBoardV4,
+  CommandMetricGrid,
   EtMockupActionCard,
   EtMockupButton,
   EtMockupEmptyState,
@@ -19,7 +28,7 @@ import {
   EtMockupStatCard,
   FlowNextActionCard,
 } from "./components/command-system";
-import { emberTideData } from "./mock/emberTideData";
+import { HEARTH_FOUNDATION_SCREEN, MASTER_CARD_PREVIEW_SEEDS } from "./data/appPreviewFoundation";
 import { APP_VERSION, checkForEmberTideUpdate, refreshEmberTideApp } from "./appUpdate";
 import { SEALED_PRODUCT_TYPES, SET_SEARCH_METADATA } from "./data/pokemonCatalogCoreData";
 import {
@@ -519,8 +528,6 @@ import {
   sanitizeAppSetupVisibleKeys,
 } from "./utils/appPersonalizationUtils";
 
-// TODO: Replace preview-backed Hearth foundation copy with backend-owned home summary data when that contract exists.
-const HEARTH_FOUNDATION_SCREEN = emberTideData.screens.find((screen) => screen.key === "hearth") || {};
 const HEARTH_FOUNDATION_TRUST_MESSAGE = "We help families collect fairly without exposing harmful restock patterns.";
 
 const SmartAddInventory = lazy(() => import("./components/SmartAddInventory"));
@@ -528,13 +535,17 @@ const SmartAddCatalog = lazy(() => import("./components/SmartAddCatalog"));
 const SmartCatalogSearchBox = lazy(() => import("./components/SmartCatalogSearchBox"));
 const BackupExportImport = lazy(() => import("./components/BackupExportImport"));
 const MarketPriceHistoryPanel = lazy(() => import("./components/MarketPriceHistoryPanel"));
-const HearthPage = lazy(() => import("./pages/Hearth"));
+const OperationsHomePage = lazy(() => import("./pages/OperationsHome"));
 const VaultPage = lazy(() => import("./pages/Vault"));
 const ForgePage = lazy(() => import("./pages/Forge"));
 const MarketPage = lazy(() => import("./pages/Market"));
 const SparkPage = lazy(() => import("./pages/Spark"));
 const MenuPage = lazy(() => import("./pages/Menu"));
 const Scout = lazy(() => import("./pages/Scout"));
+const FlipScoutPage = lazy(() => import("./features/flipScout/FlipScoutPage"));
+const OwnerCenterPage = lazy(() => import("./features/ownerCenter/OwnerCenterPage"));
+const CollectionWorkspace = lazy(() => import("./pages/EverydayWorkspaces").then((module) => ({ default: module.CollectionWorkspace })));
+const BusinessWorkspace = lazy(() => import("./pages/EverydayWorkspaces").then((module) => ({ default: module.BusinessWorkspace })));
 
 const LOCAL_CATALOG_SEED_SOURCE = "local_catalog_seed";
 const EMPTY_CATALOG_IMPORT_STATUS = {
@@ -996,7 +1007,7 @@ function normalizeToastPayload(input, fallback = {}) {
     };
   }
   const payload = input && typeof input === "object" ? input : {};
-  const title = String(payload.title || payload.message || fallback.title || "Ember & Tide update").trim();
+  const title = String(payload.title || payload.message || fallback.title || `${BRAND_CONFIG.shortName} update`).trim();
   const message = payload.title ? payload.message || fallback.message || "" : "";
   return {
     type: ["success", "error", "warning", "info"].includes(payload.type) ? payload.type : (fallback.type || toastTypeFromMessage(`${title} ${message}`)),
@@ -1737,6 +1748,7 @@ const BLANK_VAULT_FORM = {
   notes: "",
 };
 const BLANK_MULTI_DESTINATION_FORM = {
+  ownedItemPurpose: "",
   itemName: "",
   category: "Pokemon",
   productType: "",
@@ -2634,9 +2646,9 @@ const EMBER_ASSIST_COLLECTOR_GUIDE_TOPICS = [
     title: "Manage Family Collecting",
     category: "Family Help",
     description: "Find family setup, kid-safe defaults, and parent-guided collecting controls.",
-    where: "Parent Center",
-    nextStep: "Open Parent Center to review family collecting settings.",
-    actionLabel: "Open Parent Center",
+    where: "Nest",
+    nextStep: "Open Nest to review family collecting settings.",
+    actionLabel: "Open Nest",
     actionKey: "parent-center",
   },
   {
@@ -2658,15 +2670,15 @@ const UPGRADE_VALUE_PREVIEWS = {
     title: "What upgrading unlocks next",
     detail: "A beta-safe preview of how higher plans add more tracking capacity and planning room without changing today's local-first tools.",
     now: "Free keeps Hearth, Vault, Scout basics, Market search, The Spark, and helper guidance useful now.",
-    upgrade: "Collector and Family plans add more saved planning depth when enabled.",
+    upgrade: "Plus and Family plans add more saved planning depth when enabled.",
     status: "Local beta preview. Coming with connected accounts for account-wide limits later.",
     bullets: ["More cross-page reminders", "Deeper saved history", "Family planning context"],
   },
   scout: {
     title: "Scout upgrade preview",
     detail: "Upgrade unlocks more tracking capacity while Scout keeps sensitive restock timing and raw patterns protected.",
-    now: "Free Watch includes 1 watched store and nearby public signals where available.",
-    upgrade: "Collector, Family, Seller, and Shop previews can support more watched stores when enabled.",
+    now: "Free Watch includes 3 watched stores and nearby public signals where available.",
+    upgrade: "Plus, Family, Pro / Seller, and reviewed Shop Partner previews can support more watched stores when enabled.",
     status: "Available in upgraded plans when enabled. No stock guarantees or push notifications are promised.",
     bullets: ["More watched stores", "Broader current-signal coverage", "Pattern Protected stays on"],
   },
@@ -2682,7 +2694,7 @@ const UPGRADE_VALUE_PREVIEWS = {
     title: "Forge upgrade preview",
     detail: "Trade and seller planning can scale while staying private, review-first, and separate from checkout.",
     now: "Free/local beta keeps Trade Ledger, Trade Compass, and safe manual trade review.",
-    upgrade: "Seller and Collector previews can expand trade history, value comparison history, and private business planning when enabled.",
+    upgrade: "Pro / Seller and Plus previews can expand trade history, value comparison history, and private business planning when enabled.",
     status: "Available in upgraded plans when enabled. No posting, payroll, checkout, or payment processing.",
     bullets: ["More trade history", "Saved comparison context", "Private seller planning"],
   },
@@ -2724,10 +2736,10 @@ const UPGRADE_PLAN_COMPARISON_PREVIEW = [
   {
     plan: "Free / Foundation",
     status: "Current beta",
-    detail: "Core collector app, 1 Scout watched store, Vault basics, Market search, The Spark, and helper guidance.",
+    detail: "Core collector app, 3 Scout watched stores, one child profile, Vault basics, Market search, The Spark, and helper guidance.",
   },
   {
-    plan: "Collector",
+    plan: "Plus",
     status: "Available in upgraded plans when enabled",
     detail: "More watched stores, more price and trade memory, and deeper collection planning capacity.",
   },
@@ -2737,9 +2749,9 @@ const UPGRADE_PLAN_COMPARISON_PREVIEW = [
     detail: "Family setup, kid-pack planning, Spark support history, and parent-safe collection organization.",
   },
   {
-    plan: "Shop / Partner",
+    plan: "Pro / Seller",
     status: "Requires connected backend later",
-    detail: "Shop and partner previews stay review-based. No seller verification, checkout, or posting is connected here.",
+    detail: "Harbor listing health, Forge seller records, proof, exports, and selling organization can expand without checkout or payouts connected here.",
   },
 ];
 
@@ -3710,7 +3722,7 @@ const MASTER_CARD_CONDITION_LABELS = {
   sealed: "Sealed",
 };
 
-const MASTER_CARD_GROUPING_PREVIEW_CARDS = (emberTideData.masterCards || []).map((masterCard) => {
+const MASTER_CARD_GROUPING_PREVIEW_CARDS = MASTER_CARD_PREVIEW_SEEDS.map((masterCard) => {
   const variants = (masterCard.variants || []).map((variant) => ({
     ...variant,
     wantedCount: Number(variant.ownedCount || 0) > 0 ? 0 : 1,
@@ -4001,7 +4013,7 @@ function PremiumCardImage({ image, title, subtitle, variantType = "normal", clas
         <div className="premium-card-placeholder-art" aria-hidden="true">
           <span className="premium-card-crest" />
           <strong>{title || "Card"}</strong>
-          <small>{subtitle || "Ember & Tide"}</small>
+          <small>{subtitle || BRAND_CONFIG.shortName}</small>
         </div>
       )}
     </div>
@@ -6481,12 +6493,24 @@ function CollapsibleFeatureSection({ title, summary, open, onToggle, children })
   );
 }
 
-function RouteChunkFallback({ label = "Loading Ember & Tide..." }) {
+function RouteChunkFallback({ label = `Loading ${BRAND_CONFIG.shortName}...` }) {
+  const normalizedLabel = String(label || "").toLowerCase();
+  const routeKey = normalizedLabel.includes("scout")
+    ? "scout"
+    : normalizedLabel.includes("vault")
+      ? "vault"
+      : normalizedLabel.includes("exchange") || normalizedLabel.includes("forge")
+        ? "exchange"
+        : normalizedLabel.includes("spark") || normalizedLabel.includes("kids")
+          ? "spark"
+          : normalizedLabel.includes("market")
+            ? "market"
+            : "generic";
   return (
-    <div className="route-loading-card" role="status" aria-live="polite">
+    <div className={`route-loading-card route-loading-card-${routeKey}`} role="status" aria-live="polite">
       <span className="route-loading-spinner" aria-hidden="true" />
       <strong>{label}</strong>
-      <small>Preparing your command center.</small>
+      <small>Preparing this workspace.</small>
     </div>
   );
 }
@@ -6794,6 +6818,20 @@ export default function App() {
   const [selectedVaultCardGroupKey, setSelectedVaultCardGroupKey] = useState("");
   const scoutReportsRef = useRef(null);
   const [homeSubTab, setHomeSubTab] = useState(initialRouteState.homeSubTab || "overview");
+  const [flipScoutView, setFlipScoutView] = useState(initialRouteState.flipScoutView || "deals");
+  const [collectionWorkspaceView, setCollectionWorkspaceView] = useState(initialRouteState.collectionWorkspaceView || "collection");
+  const [businessWorkspaceView, setBusinessWorkspaceView] = useState(initialRouteState.businessWorkspaceView || "purchases");
+  const [businessMoneyView, setBusinessMoneyView] = useState(initialRouteState.businessMoneyView || "expenses");
+  const [ownerCenterSection, setOwnerCenterSection] = useState(initialRouteState.ownerCenterSection || "overview");
+  const [ownerCenterSubview, setOwnerCenterSubview] = useState(initialRouteState.ownerCenterSubview || "");
+  const [ownerFeatureControls, setOwnerFeatureControls] = useState(() => createOwnerCenterRepository().load().controls.features);
+  useEffect(() => {
+    const handleOwnerControls = (event) => {
+      if (event.detail?.features) setOwnerFeatureControls(event.detail.features);
+    };
+    window.addEventListener("private-business-hub:owner-controls", handleOwnerControls);
+    return () => window.removeEventListener("private-business-hub:owner-controls", handleOwnerControls);
+  }, []);
   const [forgeSubTab, setForgeSubTab] = useState(initialRouteState.forgeSubTab || "overview");
   const [forgeLedgerTimeframe, setForgeLedgerTimeframe] = useState("month");
   const [scoutSubTabTarget, setScoutSubTabTarget] = useState({
@@ -6832,7 +6870,7 @@ export default function App() {
   const confirmationResolverRef = useRef(null);
   const confirmationCancelRef = useRef(null);
   const [tideTradrSubTab, setTideTradrSubTab] = useState(initialRouteState.tideTradrSubTab || "overview");
-  const [exchangeSection, setExchangeSection] = useState(() => normalizeExchangeSection(initialRouteState.exchangeSection || (initialRouteState.activeTab === "inventory" ? "forge" : initialRouteState.activeTab === "market" ? "market" : "market")));
+  const [exchangeSection, setExchangeSection] = useState(() => normalizeExchangeSection(initialRouteState.exchangeSection || (initialRouteState.activeTab === "inventory" ? "forge" : initialRouteState.activeTab === "market" ? "market" : "overview")));
   const [marketWatchPage, setMarketWatchPage] = useState(1);
   const [featureSectionsOpen, setFeatureSectionsOpen] = useState({
     home_dashboard_cards: true,
@@ -7845,14 +7883,21 @@ export default function App() {
     setVaultToast("Seller tools are tucked away. Collector setup is active.");
   }
 
+  const ownerCenterAuthorized = canAccessOwnerCenter({
+    guestPreview: guestPreviewActive,
+    localMode: BETA_LOCAL_MODE,
+    user,
+    currentUserProfile,
+    subscriptionProfile,
+  });
   const mainTabByKey = {
-    home: { key: "home", label: "Hearth", icon: "home", target: "dashboard" },
-    vault: { key: "vault", label: "Vault", icon: "vault", target: "vault" },
-    scout: { key: "scout", label: "Scout", icon: "scout", target: "scout" },
-    exchange: { key: "exchange", label: "Exchange", icon: "market", target: "exchange" },
-    you: { key: "you", label: "You", icon: "settings", target: "settings" },
+    home: { key: "home", label: "Home", icon: "home", target: "dashboard" },
+    find: { key: "find", label: "Find", icon: "find", target: "flipScout" },
+    collection: { key: "collection", label: "Collection", icon: "inventory", target: "collectionWorkspace" },
+    business: { key: "business", label: "Business", icon: "business", target: "businessWorkspace" },
   };
-  const mainTabs = ["home", "vault", "scout", "exchange", "you"]
+  const mainTabs = ["home", "find", "collection", "business"]
+    .filter((key) => key !== "collection" || ownerFeatureControls.collection)
     .map((key) => mainTabByKey[key])
     .filter(Boolean);
 
@@ -7864,11 +7909,10 @@ export default function App() {
       ],
     },
     { title: "Main Tabs", items: [
-      { key: "home", label: "Hearth", target: "dashboard" },
-      { key: "vault", label: "Vault" },
-      { key: "scout-main", label: "Scout", target: "scout" },
-      { key: "exchange", label: "Exchange", target: "exchange" },
-      { key: "you", label: "You", target: "settings" },
+        { key: "home", label: "Home", target: "dashboard" },
+        { key: "find", label: "Find", target: "flipScout" },
+        { key: "collection", label: "Collection", target: "collectionWorkspace" },
+        { key: "business", label: "Business", target: "businessWorkspace" },
       { key: "announcements", label: "Announcements", target: "whatsNew" },
       { key: "coming-soon", label: "Coming Soon", target: "comingSoon" },
       { key: "settings", label: "Settings", target: "settings" },
@@ -7876,7 +7920,11 @@ export default function App() {
   ];
 
   const activeBetaPageLabels = {
-    exchange: "Exchange",
+    flipScout: "Find",
+    collectionWorkspace: "Collection",
+    businessWorkspace: "Business",
+    ownerCenter: "Owner Center",
+    exchange: "Sell",
     settings: "Settings",
     account: "Account",
     collections: "Collections",
@@ -7885,7 +7933,7 @@ export default function App() {
     profile: "Profile",
     help: "Help & Support",
     moderator: "Moderator",
-    kidsProgram: "The Spark",
+    kidsProgram: "Kids & Community",
     parentCenter: "Parent Center",
     sponsor: "Sponsor Interest",
     trust: "Trust Pages",
@@ -7894,12 +7942,12 @@ export default function App() {
     knownLimitations: "Known Limitations",
     comingSoon: "Coming Soon",
     membership: "Membership",
-    profileProgress: "Ember ID Progress",
+    profileProgress: "Profile Progress",
     betaReadiness: "Beta Readiness",
   };
   const activeTabLabel =
     activeTab === "tidepool"
-      ? "Tidepool Community"
+      ? "Community"
       : activeTab === "adminReview"
         ? "Admin Review"
       : activeTab === "mySuggestions"
@@ -7907,60 +7955,67 @@ export default function App() {
       : activeBetaPageLabels[activeTab]
         ? activeBetaPageLabels[activeTab]
       : navSections.flatMap((s) => s.items).find((i) => (i.target || i.key) === activeTab)?.label || "Dashboard";
+  useEffect(() => {
+    applyBrandDocumentMetadata(activeTabLabel === "Dashboard" ? "Home" : activeTabLabel);
+  }, [activeTabLabel]);
   const exchangeActiveTabs = new Set(["exchange", "market", "catalog", "inventory", "addInventory", "addSale", "sales", "expenses", "vehicles", "mileage", "reports"]);
   const youActiveTabs = new Set(["settings", "menu", "account", "collections", "dataBackup", "tcgOs", "profile", "profileProgress", "help", "moderator", "adminReview", "mySuggestions", "kidsProgram", "parentCenter", "sponsor", "trust", "links", "whatsNew", "knownLimitations", "comingSoon", "membership", "betaReadiness", "tidepool"]);
   const activeMainTab =
     activeTab === "dashboard" || activeTab === "dailyTide"
       ? "home"
-      : activeTab === "vault" || activeTab === "scout"
-        ? activeTab
-        : exchangeActiveTabs.has(activeTab)
-          ? "exchange"
+      : activeTab === "scout" || activeTab === "flipScout" || activeTab === "market" || activeTab === "catalog"
+        ? "find"
+        : activeTab === "collectionWorkspace" || activeTab === "vault"
+          ? "collection"
+          : activeTab === "businessWorkspace" || activeTab === "inventory" || activeTab === "addInventory" || activeTab === "exchange" || activeTab === "sales" || activeTab === "addSale"
+            ? "business"
           : youActiveTabs.has(activeTab)
-            ? "you"
-            : "home";
+            ? "business"
+            : exchangeActiveTabs.has(activeTab)
+              ? "business"
+              : "home";
   const mobileBottomTabs = [
-    { key: "home", label: "Hearth", icon: "home", target: "dashboard" },
-    { key: "vault", label: "Vault", icon: "vault", target: "vault" },
-    { key: "scout", label: "Scout", icon: "scout", target: "scout" },
-    { key: "exchange", label: "Exchange", icon: "market", target: "exchange", ariaLabel: "Exchange" },
-    { key: "you", label: "You", icon: "settings", target: "settings", ariaLabel: "You" },
-  ];
+    { key: "home", label: "Home", icon: "home", target: "dashboard" },
+    { key: "find", label: "Find", icon: "find", target: "flipScout" },
+    { key: "global-add", label: "Add", ariaLabel: "Open global Add menu", icon: "plus", isAction: true, action: () => openAddActionSheet("mobile-navigation") },
+    ownerFeatureControls.collection ? { key: "collection", label: "Collection", icon: "inventory", target: "collectionWorkspace" } : null,
+    { key: "business", label: "Business", icon: "business", target: "businessWorkspace" },
+  ].filter(Boolean);
   const mobilePrimaryTabKeys = new Set(mobileBottomTabs.map((tab) => tab.key));
-  const activeMobileTabKey = menuOpen ? "you" : mobilePrimaryTabKeys.has(activeMainTab) ? activeMainTab : "you";
-  const desktopSidebarByKey = {
-    home: { key: "home", label: "Hearth", helper: "Home base.", icon: "home", target: "dashboard" },
-    vault: { key: "vault", label: "Vault", helper: "Collections", icon: "vault", target: "vault" },
-    scout: { key: "scout", label: "Scout", helper: "Signals & Reports", icon: "scout", target: "scout" },
-    exchange: { key: "exchange", label: "Exchange", helper: "Market, Harbor, Forge", icon: "market", target: "exchange" },
-    you: { key: "you", label: "You", helper: "Profile, family, support", icon: "settings", target: "settings" },
-  };
-  const desktopSidebarItems = ["home", "vault", "scout", "exchange", "you"]
-    .map((key) => desktopSidebarByKey[key])
-    .filter(Boolean);
+  const activeMobileTabKey = activeTab === "ownerCenter" ? "" : mobilePrimaryTabKeys.has(activeMainTab) ? activeMainTab : "home";
+  const desktopSidebarItems = [
+    { key: "home", label: "Home", icon: "home", target: "dashboard" },
+    { key: "find", label: "Find", icon: "find", target: "flipScout" },
+    ownerFeatureControls.collection ? { key: "collection", label: "Collection", icon: "inventory", target: "collectionWorkspace" } : null,
+    { key: "business", label: "Business", icon: "business", target: "businessWorkspace" },
+  ].filter(Boolean);
+  const desktopSecondaryItems = [
+    ownerCenterAuthorized ? { key: "owner-center", label: "Owner Center", icon: "settings", badge: "Owner Only", action: () => { setOwnerCenterSection("overview"); setOwnerCenterSubview(""); setActiveTab("ownerCenter"); } } : null,
+    { key: "settings", label: "Settings", icon: "settings", target: "settings" },
+  ].filter(Boolean);
   const desktopMoreByKey = {
-    tidepool: { key: "tidepool", label: "Tidepool Community", helper: "Family-safe community.", icon: "pool", target: "tidepool" },
-    spark: { key: "spark", label: "The Spark", helper: "Kids & Giving", icon: "spark", action: () => setActiveTab("kidsProgram") },
+    tidepool: { key: "tidepool", label: "Community", helper: "Family-safe community.", icon: "pool", target: "tidepool" },
+    spark: ownerFeatureControls.kidsCommunity ? { key: "spark", label: "Kids & Community", helper: "Kids and giving records", icon: "spark", action: () => setActiveTab("kidsProgram") } : null,
     announcements: { key: "announcements", label: "Announcements", helper: "What's new", icon: "bell", action: () => setActiveTab("whatsNew") },
     comingSoon: { key: "comingSoon", label: "Coming Soon", helper: "Future roadmap and safety guardrails", icon: "calendar", action: () => setActiveTab("comingSoon") },
     admin: adaptiveAdminNavVisible ? { key: "admin", label: "Admin", helper: "Command center", icon: "settings", target: "adminReview" } : null,
     moderator: adaptiveModeratorNavVisible && !adaptiveAdminNavVisible ? { key: "moderator", label: "Moderator", helper: "Limited review tools", icon: "settings", target: "moderator" } : null,
-    "ember-watch": { key: "ember-watch", label: "Ember Watch", helper: "Drop calendar and signals", icon: "calendar", action: openEmberWatchSection },
-    profile: { key: "profile", label: "Ember ID", helper: "Public username and profile label", icon: "settings", action: () => openUtilityPage("profile") },
+    "ember-watch": { key: "ember-watch", label: "Product Alerts", helper: "Drop calendar and signals", icon: "calendar", action: openEmberWatchSection },
+    profile: { key: "profile", label: "Profile", helper: "Username and profile label", icon: "settings", action: () => openUtilityPage("profile") },
     membership: { key: "membership", label: "Plans & Features", helper: "Beta pricing and feature gates", icon: "settings", action: () => setActiveTab("membership") },
     settings: { key: "settings", label: "Settings", helper: "Profile and controls", icon: "settings", action: () => openUtilityPage("settings") },
     help: { key: "help", label: "Help & Support", helper: "Feedback and refresh tools", icon: "search", action: () => openUtilityPage("help") },
   };
   const desktopMoreItems = [
-    { key: "spark", label: "The Spark", helper: "Kids & Giving", icon: "spark", action: () => setActiveTab("kidsProgram") },
+    ownerFeatureControls.kidsCommunity ? { key: "spark", label: "Kids & Community", helper: "Kids and giving records", icon: "spark", action: () => setActiveTab("kidsProgram") } : null,
     { key: "announcements", label: "Announcements", helper: "What's new", icon: "bell", action: () => setActiveTab("whatsNew") },
     { key: "comingSoon", label: "Coming Soon", helper: "Future roadmap and safety guardrails", icon: "calendar", action: () => setActiveTab("comingSoon") },
-    { key: "ember-watch", label: "Ember Watch", helper: "Drop calendar and signals", icon: "calendar", action: openEmberWatchSection },
-    { key: "profile", label: "Ember ID", helper: "Public username and profile label", icon: "settings", action: () => openUtilityPage("profile") },
+    { key: "ember-watch", label: "Product Alerts", helper: "Drop calendar and signals", icon: "calendar", action: openEmberWatchSection },
+    { key: "profile", label: "Profile", helper: "Username and profile label", icon: "settings", action: () => openUtilityPage("profile") },
     { key: "membership", label: "Plans & Features", helper: "Beta pricing and feature gates", icon: "settings", action: () => setActiveTab("membership") },
     { key: "settings", label: "Settings", helper: "Profile and controls", icon: "settings", action: () => openUtilityPage("settings") },
     { key: "help", label: "Help & Support", helper: "Feedback and refresh tools", icon: "search", action: () => openUtilityPage("help") },
-  ].map((item) => desktopMoreByKey[item.key] || item).filter(Boolean);
+  ].filter(Boolean).map((item) => desktopMoreByKey[item.key] || item).filter(Boolean);
   const desktopCommandDeskByKey = {
     admin: adaptiveAdminNavVisible ? { key: "admin", label: "Admin Command Center", helper: "Beta, invites, roles, and system review", icon: "settings", target: "adminReview" } : null,
     betaUsers: adaptiveAdminNavVisible ? { key: "betaUsers", label: "Beta Users", helper: "Requests, approvals, and invites", icon: "settings", action: () => { setAdminReviewFilter("Beta Access"); setActiveTab("adminReview"); } } : null,
@@ -7977,37 +8032,37 @@ export default function App() {
     .map((key) => desktopCommandDeskByKey[key])
     .filter(Boolean);
   const mobileMenuByKey = {
-    scout: { key: "scout", label: "Scout", helper: "Current store reports and watched stores.", icon: "scout", target: "scout" },
-    vault: { key: "vault", label: "Vault", helper: "Collection, scans, and item details.", icon: "vault", target: "vault" },
-    quickAdd: { key: "quickAdd", label: "Quick Add", helper: "Scan, add, report, or request.", icon: "plus", action: () => openAddActionSheet("menu-quick-add") },
+    scout: { key: "scout", label: "Local Reports", helper: "Current store reports and watched stores.", icon: "scout", target: "scout" },
+    vault: { key: "vault", label: "Collection", helper: "Collection, scans, and item details.", icon: "vault", target: "vault" },
+    quickAdd: { key: "quickAdd", label: "Add", helper: "Scan, add, report, or request.", icon: "plus", action: () => openAddActionSheet("menu-quick-add") },
     scanProduct: { key: "scanProduct", label: "Scan Product/Card", helper: "Open scanner review before saving.", icon: "scan", action: () => openQuickAddAction("scanProduct") },
-    emberAssist: { key: "emberAssist", label: "Ember Assist", helper: "Open the app guide.", icon: "spark", action: () => setEmberAssistOpen(true) },
-    watchList: { key: "watchList", label: "Watch List", helper: "Watched stores, alerts, and drop signals.", icon: "bell", action: openEmberWatchSection },
-    forge: { key: "forge", label: "Forge", helper: "Seller Tools for inventory, expenses, mileage, and reports.", icon: "forge", target: "inventory" },
+    emberAssist: ownerFeatureControls.businessAssistant ? { key: "emberAssist", label: "Business Assistant", helper: "Open the application guide.", icon: "help", action: () => setEmberAssistOpen(true) } : null,
+    watchList: { key: "watchList", label: "Saved Alerts", helper: "Watched stores, alerts, and product signals.", icon: "bell", action: openEmberWatchSection },
+    forge: { key: "forge", label: "Business Records", helper: "Inventory, expenses, mileage, and reports.", icon: "business", target: "inventory" },
     sales: { key: "sales", label: "Sales", helper: "Sales records and profit review.", icon: "forge", action: () => setActiveTab("sales") },
     receipts: { key: "receipts", label: "Receipts", helper: "Receipt review and business expenses.", icon: "clipboard", action: () => setActiveTab("expenses") },
     mileage: { key: "mileage", label: "Mileage", helper: "Trips and vehicle costs.", icon: "calendar", action: () => setActiveTab("mileage") },
     taxCenter: { key: "taxCenter", label: "Tax Center", helper: "Reports and export support.", icon: "clipboard", action: () => setActiveTab("reports") },
     market: { key: "market", label: "Market Watch", helper: "Fair prices, watchlist, and value labels.", icon: "market", target: "market" },
-    exchange: { key: "exchange", label: "Exchange", helper: "Market research, Harbor listings, and Forge tools.", icon: "market", target: "exchange" },
-    tidepool: { key: "tidepool", label: "Tidepool Community", helper: "Family-safe posts and trusted trade talk.", icon: "pool", target: "tidepool" },
-    spark: { key: "spark", label: "The Spark", helper: "Kids Program requests, missions, and events.", icon: "spark", action: () => setActiveTab("kidsProgram") },
+    exchange: { key: "exchange", label: "Sell & Product Research", helper: "Market research, listings, and business tools.", icon: "market", target: "exchange" },
+    tidepool: { key: "tidepool", label: "Community", helper: "Family-safe posts and trusted trade talk.", icon: "community", target: "tidepool" },
+    spark: ownerFeatureControls.kidsCommunity ? { key: "spark", label: "Kids & Community", helper: "Kids Pack requests, missions, and events.", icon: "community", action: () => setActiveTab("kidsProgram") } : null,
     announcements: { key: "announcements", label: "Announcements", helper: "New Stuff and app updates.", icon: "bell", action: () => setActiveTab("whatsNew") },
     comingSoon: { key: "comingSoon", label: "Coming Soon", helper: "Future features, delayed ideas, and safety guardrails.", icon: "calendar", action: () => setActiveTab("comingSoon") },
-    "emberWatch": { key: "ember-watch", label: "Ember Watch", helper: "Monthly drop calendar and Scout signals.", icon: "calendar", action: openEmberWatchSection },
-    profile: { key: "profile", label: "Ember ID", helper: "Public username and profile label.", icon: "settings", action: () => openUtilityPage("profile") },
+    "emberWatch": { key: "ember-watch", label: "Product Alerts", helper: "Monthly product calendar and source signals.", icon: "calendar", action: openEmberWatchSection },
+    profile: { key: "profile", label: "Profile", helper: "Public username and profile label.", icon: "settings", action: () => openUtilityPage("profile") },
     account: { key: "account", label: "Account", helper: "Sign-in, beta status, and app version.", icon: "settings", action: () => openUtilityPage("account") },
-    membership: { key: "membership", label: "Plans & Features", helper: "Beta pricing, trials, add-ons, and Scout gates.", icon: "settings", action: () => setActiveTab("membership") },
-    privacySafety: { key: "privacySafety", label: "Privacy & Safety", helper: "Child privacy, Scout guardrails, and role-scoped data.", icon: "settings", action: () => setActiveTab("trust") },
-    parentCenter: { key: "parentCenter", label: "Parent Center", helper: "Parent-guided Spark and family safety setup.", icon: "spark", action: () => setActiveTab("parentCenter") },
+    membership: { key: "membership", label: "Plans & Features", helper: "Beta pricing, trials, add-ons, and feature access.", icon: "settings", action: () => setActiveTab("membership") },
+    privacySafety: { key: "privacySafety", label: "Privacy & Safety", helper: "Child privacy, sourcing guardrails, and role-scoped data.", icon: "settings", action: () => setActiveTab("trust") },
+    parentCenter: { key: "parentCenter", label: "Parent Center", helper: "Parent-guided Kids & Community safety setup.", icon: "community", action: () => setActiveTab("parentCenter") },
     shopPortal: { key: "shopPortal", label: "Shop Portal", helper: "Partner interest and family-friendly shop review path.", icon: "market", action: () => setActiveTab("sponsor") },
-    publicBetaFeedback: { key: "publicBetaFeedback", label: "Join / Feedback", helper: "Waitlist, state requests, bugs, features, shops, and Spark support.", icon: "bell", action: () => openPublicBetaFeedback({ page: "More" }) },
+    publicBetaFeedback: { key: "publicBetaFeedback", label: "Join / Feedback", helper: "Waitlist, state requests, bugs, features, shops, and community support.", icon: "bell", action: () => openPublicBetaFeedback({ page: "More" }) },
     help: { key: "help", label: "Help & Support", helper: "Feedback, bug reports, and support.", icon: "search", action: () => openUtilityPage("help") },
     settings: { key: "settings", label: "Settings", helper: "Profile, workspace, alerts, and privacy.", icon: "settings", action: () => openUtilityPage("settings") },
     admin: adaptiveAdminNavVisible ? { key: "admin", label: "Admin Command Center", helper: "Protected approvals, reviews, and roles.", icon: "settings", target: "adminReview" } : null,
     betaUsers: adaptiveAdminNavVisible ? { key: "betaUsers", label: "Beta Users", helper: "Track requests, invites, and joined users.", icon: "settings", action: () => { setAdminReviewFilter("Beta Access"); setActiveTab("adminReview"); } } : null,
     invites: adaptiveAdminNavVisible ? { key: "invites", label: "Invites", helper: "Invite tracking and copy-link fallback.", icon: "bell", action: () => { setAdminReviewFilter("Beta Access"); setActiveTab("adminReview"); } } : null,
-    reportReview: adaptiveModeratorNavVisible ? { key: "reportReview", label: "Report Review", helper: "Scout reports, Tide Score, and moderation queues.", icon: "scout", action: () => { setAdminReviewFilter("Scout Report Review"); setActiveTab("adminReview"); } } : null,
+    reportReview: adaptiveModeratorNavVisible ? { key: "reportReview", label: "Report Review", helper: "Local reports, quality scores, and moderation queues.", icon: "find", action: () => { setAdminReviewFilter("Scout Report Review"); setActiveTab("adminReview"); } } : null,
     missingCatalog: adaptiveAdminNavVisible ? { key: "missingCatalog", label: "Missing Catalog", helper: "Catalog corrections and SKU review.", icon: "search", action: () => { setAdminReviewFilter("Catalog Suggestions"); setActiveTab("adminReview"); } } : null,
     feedbackInbox: adaptiveAdminNavVisible ? { key: "feedbackInbox", label: "Feedback Inbox", helper: "Support messages and beta feedback.", icon: "bell", action: () => { setAdminReviewFilter("Beta Feedback"); setActiveTab("adminReview"); } } : null,
     moderation: adaptiveModeratorNavVisible ? { key: "moderation", label: "Moderation", helper: "Community and marketplace review.", icon: "settings", target: "adminReview" } : null,
@@ -8015,6 +8070,7 @@ export default function App() {
   const menuAccountItems = [
     mobileMenuByKey.profile,
     mobileMenuByKey.account,
+    ownerCenterAuthorized ? { key: "owner-center", label: "Owner Center", helper: "Private sourcing, performance, and system controls.", icon: "settings", action: () => { setOwnerCenterSection("overview"); setOwnerCenterSubview(""); setActiveTab("ownerCenter"); } } : null,
     { key: "collections", label: "Workspace / Family", helper: "Collection workspace, members, and privacy.", icon: "settings", action: () => openUtilityPage("collections") },
     mobileMenuByKey.membership,
     mobileMenuByKey.privacySafety,
@@ -8051,7 +8107,7 @@ export default function App() {
     mobileMenuByKey.reportReview,
     mobileMenuByKey.missingCatalog,
     adaptiveAdminNavVisible ? { key: "storeProductAdmin", label: "Store / Product Management", helper: "Store fixes, catalog corrections, and duplicate review.", icon: "search", action: () => { setAdminReviewFilter("Store Management"); setActiveTab("adminReview"); } } : null,
-    adaptiveAdminNavVisible ? { key: "sparkDonationAdmin", label: "Spark Donations Admin", helper: "Kids Program requests, donation review, and shop support.", icon: "spark", action: () => { setAdminReviewFilter("Kids Program Applications"); setActiveTab("adminReview"); } } : null,
+    adaptiveAdminNavVisible ? { key: "sparkDonationAdmin", label: "Kids Donations Admin", helper: "Kids Program requests, donation review, and shop support.", icon: "community", action: () => { setAdminReviewFilter("Kids Program Applications"); setActiveTab("adminReview"); } } : null,
     adaptiveAdminNavVisible ? { key: "waitlistByState", label: "Waitlist by State", helper: "Review access requests and expansion signals.", icon: "calendar", action: () => { setAdminReviewFilter("Beta Access"); setActiveTab("adminReview"); } } : null,
     mobileMenuByKey.feedbackInbox,
     mobileMenuByKey.moderation,
@@ -8181,6 +8237,22 @@ export default function App() {
     setVaultToast("Create a free account to save this.");
     return true;
   };
+  function updateOwnedItemPurpose(item, nextPurpose, reason) {
+    if (blockGuestSave()) return;
+    const itemId = item?.id;
+    if (!itemId) {
+      showAppMessage("This owned item needs a stable record ID before its purpose can change.");
+      return;
+    }
+    setItems((current) => current.map((record) => {
+      if (String(record.id) !== String(itemId)) return record;
+      return changeOwnedItemPurpose(record, nextPurpose, {
+        changedBy: user?.id || "owner",
+        reason,
+      });
+    }));
+    setVaultToast(nextPurpose === OWNED_ITEM_PURPOSES.FOR_RESALE ? "Item moved to resale inventory. Cost history was preserved." : "Item moved to Collection. Acquisition costs were preserved.");
+  }
   const activeWorkspace = useMemo(
     () => {
       const selected = workspaces.find((workspace) => String(workspace.id) === String(activeWorkspaceId));
@@ -8626,6 +8698,24 @@ export default function App() {
 
   function navigateMainTab(tab) {
     if (!confirmLeaveVaultWork()) return;
+    if (tab.key === "find" || tab.target === "flipScout") {
+      openFlipScoutView("deals");
+      return;
+    }
+    if (tab.key === "collection" || tab.target === "collectionWorkspace") {
+      setQuickAddMenuOpen(false);
+      setSearchExpanded(false);
+      setCollectionWorkspaceView("collection");
+      setActiveTab("collectionWorkspace");
+      return;
+    }
+    if (tab.key === "business" || tab.target === "businessWorkspace") {
+      setQuickAddMenuOpen(false);
+      setSearchExpanded(false);
+      setBusinessWorkspaceView("purchases");
+      setActiveTab("businessWorkspace");
+      return;
+    }
     if (tab.key === "today") {
       setQuickAddMenuOpen(false);
       setSearchExpanded(false);
@@ -8643,7 +8733,7 @@ export default function App() {
       setScoutSubTabTarget({ tab: "overview", id: Date.now() });
     }
     if (tab.key === "exchange") {
-      setExchangeSection("market");
+      setExchangeSection("overview");
       setTideTradrSubTab("overview");
       setFeatureSectionsOpen((current) => ({
         ...current,
@@ -8690,6 +8780,17 @@ export default function App() {
     setActiveTab(tab.target);
   }
 
+  function openFlipScoutView(screen = "deals", nextSubview = "") {
+    if (typeof window !== "undefined") {
+      window.sessionStorage?.setItem("private-business-hub.flip-scout.destination", JSON.stringify({ screen, subview: nextSubview }));
+    }
+    setQuickAddMenuOpen(false);
+    setSearchExpanded(false);
+    setFlipScoutView(screen);
+    setActiveTab("flipScout");
+    window.dispatchEvent?.(new CustomEvent("private-business-hub:flip-scout-navigate", { detail: { screen, subview: nextSubview } }));
+  }
+
   function navigateTopbarSection(value) {
     const tab = topbarSectionOptions.find((option) => option.key === value);
     if (!tab) return;
@@ -8714,6 +8815,13 @@ export default function App() {
 
   function isDesktopSidebarItemActive(item) {
     if (!item) return false;
+    if (item.key === "home") return activeMainTab === "home";
+    if (item.key === "find") return activeMainTab === "find";
+    if (item.key === "collection") return activeMainTab === "collection";
+    if (item.key === "business") return activeMainTab === "business" && activeTab !== "settings";
+    if (item.key === "owner-center") return activeTab === "ownerCenter";
+    if (item.key === "kids-community") return activeTab === "kidsProgram" || activeTab === "tidepool";
+    if (item.key === "settings") return activeTab === "settings" || activeTab === "menu";
     if (item.key === "exchange") return activeMainTab === "exchange";
     if (item.key === "you") return activeMainTab === "you" || activeTab === "settings" || activeTab === "menu";
     if (item.key === "today") return activeTab === "dailyTide" || Boolean(dailyTideModalTask);
@@ -8740,111 +8848,8 @@ export default function App() {
   }
 
   function renderDesktopCommandSidebar() {
-    return (
-      <aside className="web-command-sidebar" aria-label="Ember & Tide command desk navigation">
-        <div className="web-command-brand">
-          <img src={BRAND_ASSETS.mark} alt="" aria-hidden="true" />
-          <div>
-            <strong>EMBER &amp; TIDE</strong>
-            <span>TRADING-CARD COLLECTOR COMMAND CENTER</span>
-          </div>
-        </div>
-        <div className="web-command-promise" aria-label="Product promise">
-          <span>Find it.</span>
-          <span>Track it.</span>
-          <span>Trade fairly.</span>
-          <span>Protect the spark.</span>
-        </div>
-        <nav className="web-command-nav" aria-label="Command desk sections">
-          {desktopSidebarItems.map((item) => (
-            <button
-              type="button"
-              key={item.key}
-              className={isDesktopSidebarItemActive(item) ? "web-command-nav-item active" : "web-command-nav-item"}
-              aria-current={isDesktopSidebarItemActive(item) ? "page" : undefined}
-              onClick={() => runDesktopSidebarAction(item)}
-            >
-              <span className="web-command-nav-icon" aria-hidden="true">
-                <AppNavIcon kind={item.icon || "home"} />
-              </span>
-              <span>
-                <strong>{item.label}</strong>
-                <small>{item.helper}</small>
-              </span>
-            </button>
-          ))}
-        </nav>
-        <details className="web-command-more">
-          <summary>
-            <span className="web-command-nav-icon" aria-hidden="true">
-              <AppNavIcon kind="settings" />
-            </span>
-            <span>
-              <strong>More</strong>
-              <small>Spark, announcements, settings, and help</small>
-            </span>
-          </summary>
-          <div className="web-command-more-list">
-            {desktopMoreItems.map((item) => (
-              <button
-                type="button"
-                key={item.key}
-                className={isDesktopSidebarItemActive(item) ? "web-command-more-item active" : "web-command-more-item"}
-                aria-current={isDesktopSidebarItemActive(item) ? "page" : undefined}
-                onClick={() => runDesktopSidebarAction(item)}
-              >
-                <span className="web-command-nav-icon" aria-hidden="true">
-                  <AppNavIcon kind={item.icon || "home"} />
-                </span>
-                <span>
-                  <strong>{item.label}</strong>
-                  <small>{item.helper}</small>
-                </span>
-              </button>
-            ))}
-          </div>
-        </details>
-        {desktopCommandDeskTools.length ? (
-          <section className="web-command-tools" aria-label="Command desk management tools">
-            <div className="web-command-tools-heading">
-              <strong>Command Desk</strong>
-              <span>Deeper work</span>
-            </div>
-            <div className="web-command-tools-list">
-              {desktopCommandDeskTools.map((item) => (
-                <button
-                  type="button"
-                  key={item.key}
-                  className={isDesktopSidebarItemActive(item) ? "web-command-tool active" : "web-command-tool"}
-                  aria-current={isDesktopSidebarItemActive(item) ? "page" : undefined}
-                  onClick={() => runDesktopSidebarAction(item)}
-                >
-                  <span className="web-command-tool-icon" aria-hidden="true">
-                    <AppNavIcon kind={item.icon || "settings"} />
-                  </span>
-                  <span>
-                    <strong>{item.label}</strong>
-                    <small>{item.helper}</small>
-                  </span>
-                </button>
-              ))}
-            </div>
-          </section>
-        ) : (
-          <section className="web-command-tools web-command-tools--quiet" aria-label="Command desk management tools">
-            <div className="web-command-tools-heading">
-              <strong>Command Desk</strong>
-              <span>Private seller and admin tools.</span>
-            </div>
-          </section>
-        )}
-        <div className="web-command-status">
-          <span className="trust-badge trust-badge--verified">Family friendly</span>
-          <span className="trust-badge trust-badge--fair">Fair access</span>
-          <span className="trust-badge trust-badge--secure">Local beta</span>
-        </div>
-      </aside>
-    );
+    const sidebarActiveKey = activeTab === "ownerCenter" ? "owner-center" : activeTab === "settings" || activeTab === "menu" ? "settings" : activeMainTab;
+    return <DesktopSidebar items={desktopSidebarItems} secondaryItems={desktopSecondaryItems} activeKey={sidebarActiveKey} onSelect={runDesktopSidebarAction} footer={<span>Private workspace · No automatic purchases</span>} />;
   }
 
   function renderPageChrome({ title, subtitle, primary, secondary, quickActions = [], tabs = [], activeSubTab, setActiveSubTab }) {
@@ -8883,7 +8888,7 @@ export default function App() {
     if (nextSection === "forge") {
       setForgeSubTab("overview");
     }
-    setActiveTab("exchange");
+    setActiveTab(nextSection === "market" ? "market" : "exchange");
   }
 
   function renderExchangeMarketCatalogSearchSection() {
@@ -8892,10 +8897,10 @@ export default function App() {
       <EtMockupSectionCard
         sectionRef={catalogResultsRef}
         className={`exchange-market-catalog-card tidetradr-results-panel market-results-panel market-mockup-results ${!catalogSearchHasRun && !supabaseCatalogStatus.loading ? "tidetradr-results-panel--prompt" : ""}`}
-        title={catalogSearchHasRun ? "Market Watch Results" : "Search Market Watch"}
-        detail={catalogSearchHasRun ? `${resultCount} result${resultCount === 1 ? "" : "s"} from catalog research.` : "Search cards and sealed products before saving prices, comparisons, or wishlist notes."}
+        title={catalogSearchHasRun ? "Market Intelligence Results" : "Search Market Intelligence"}
+        detail={catalogSearchHasRun ? `${resultCount} result${resultCount === 1 ? "" : "s"} from catalog research.` : "Search cards and sealed products before saving prices, comparisons, watch targets, or wishlist notes."}
         action={<span className="status-badge">{supabaseCatalogStatus.loading && tideTradrCatalogResults.length === 0 ? "Searching..." : catalogSearchHasRun ? `${resultCount} results` : "Search first"}</span>}
-        ariaLabel="Exchange Market catalog search"
+        ariaLabel="Exchange Market Intelligence catalog search"
       >
         <form className="catalog-search-form market-search-form" onSubmit={submitCatalogSearch}>
           <input
@@ -8903,7 +8908,7 @@ export default function App() {
             value={catalogSearch}
             onChange={(event) => updateCatalogSearchInput(event.target.value)}
             placeholder="Search cards, sets, sealed products, UPC, or SKU..."
-            aria-label="Search Market Watch catalog"
+            aria-label="Search Market Intelligence catalog"
           />
           <button type="submit">Search Catalog</button>
         </form>
@@ -8935,7 +8940,7 @@ export default function App() {
         {!catalogSearchHasRun && !supabaseCatalogStatus.loading ? (
           <EtMockupEmptyState
             title="Search before comparing."
-            detail="Market Watch is manual research. Search first, then decide whether to save a price, compare, or add a Wishlist / ISO note."
+            detail="Market Intelligence is manual research. Search first, then decide whether to save a price, compare, watch, or add a Wishlist / ISO note."
             action={<EtMockupButton onClick={() => submitCatalogSearch()}>Search Catalog</EtMockupButton>}
           />
         ) : null}
@@ -9765,6 +9770,29 @@ export default function App() {
     setMenuOpen(false);
     setEmberAssistOpen(true);
     void trackBetaActivity("opened_ask_ember", { eventContext });
+  }
+
+  function openCompassSearch(eventContext = "compass") {
+    setQuickAddMenuOpen(false);
+    setMenuOpen(false);
+    setNotificationCenterOpen(false);
+    setEmberAssistOpen(false);
+    setSearchExpanded(true);
+    if (typeof window !== "undefined") {
+      window.setTimeout(() => {
+        document.querySelector(".app-search input")?.focus?.();
+      }, 0);
+    }
+    void trackBetaActivity("opened_compass_search", { eventContext });
+  }
+
+  function openBeaconCenter(eventContext = "beacon") {
+    setQuickAddMenuOpen(false);
+    setSearchExpanded(false);
+    setMenuOpen(false);
+    setEmberAssistOpen(false);
+    setNotificationCenterOpen(true);
+    void trackBetaActivity("opened_beacon_center", { eventContext });
   }
 
   function openLockedFeatureNotice(featureKey) {
@@ -20076,17 +20104,36 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     setVaultToast("Added to Display Case.");
   }
 
+  function waitForElementScroll(elementId, options = {}, attempt = 0) {
+    const target = typeof document !== "undefined" ? document.getElementById(elementId) : null;
+    if (target?.scrollIntoView) {
+      target.scrollIntoView(options);
+      return;
+    }
+    if (typeof window !== "undefined" && attempt < 12) {
+      window.setTimeout(() => waitForElementScroll(elementId, { ...options, behavior: "auto" }, attempt + 1), 80);
+    }
+  }
+
   function removeVaultDisplayCaseEntry(entryId) {
     setVaultDisplayCase((current) => (Array.isArray(current) ? current.filter((entry) => String(entry.id || "") !== String(entryId || "")) : []));
+    setSelectedVaultDetailId("");
+    setActiveTab("vault");
+    setVaultSubTab("collection");
+    setVaultDisplayMode("standard");
     setVaultToast("Removed from Display Case. The Vault item was not deleted.");
+    if (typeof window !== "undefined") {
+      waitForElementScroll("vault-items-section", { block: "start", behavior: "smooth" });
+    }
   }
 
   function openVaultDisplayCaseSurface() {
+    setSelectedVaultDetailId("");
     setActiveTab("vault");
     setVaultSubTab("collection");
     setVaultDisplayMode("standard");
     if (typeof window !== "undefined") {
-      window.setTimeout(() => document.getElementById("vault-display-case-section")?.scrollIntoView?.({ block: "start", behavior: "smooth" }), 80);
+      waitForElementScroll("vault-display-case-section", { block: "start", behavior: "smooth" });
     }
   }
 
@@ -20604,7 +20651,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   }
 
   function scoutScanStoreCandidates() {
-    const rows = [...(scoutSnapshot.stores || []), ...SCOUT_KNOWN_LOCAL_STORE_SEED, ...(virginiaStoreSeed || [])];
+    const rows = [...(scoutSnapshot.stores || []), ...(virginiaStoreSeed || []), ...SCOUT_KNOWN_LOCAL_STORE_SEED];
     const seen = new Set();
     return rows.filter((store, index) => {
       const key = getScoutQuickStoreId(store) || getStoreMapStoreId(store, index);
@@ -21501,7 +21548,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
         source: "scout-report",
       }))
       .filter((store) => store.name || store.id);
-    const deduped = [...(scoutSnapshot.stores || []), ...reportStores, ...SCOUT_KNOWN_LOCAL_STORE_SEED, ...virginiaStoreSeed]
+    const deduped = [...(scoutSnapshot.stores || []), ...reportStores, ...virginiaStoreSeed, ...SCOUT_KNOWN_LOCAL_STORE_SEED]
       .filter(Boolean)
       .filter((store, index) => {
         const key = String(getScoutQuickStoreId(store) || `${getScoutQuickRetailer(store)}-${getScoutQuickStoreName(store)}-${store.city || index}`).toLowerCase();
@@ -22998,6 +23045,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
           destinationScope: ["vault"],
           recordType: "vault_item",
           businessInventory: false,
+          ownedItemPurpose: multiDestinationForm.ownedItemPurpose || OWNED_ITEM_PURPOSES.PERSONAL_COLLECTION,
           isWishlist: false,
           quantity: vaultQuantity,
           ownedQuantity: vaultQuantity,
@@ -23036,6 +23084,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
           destinationScope: ["wishlist"],
           recordType: "wishlist_item",
           businessInventory: false,
+          ownedItemPurpose: multiDestinationForm.ownedItemPurpose || OWNED_ITEM_PURPOSES.HOLD,
           isWishlist: true,
           quantity: wishlistQuantity,
           quantityWanted: wishlistQuantity,
@@ -23087,6 +23136,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
           destinationScope: ["forge"],
           recordType: "forge_inventory",
           businessInventory: true,
+          ownedItemPurpose: multiDestinationForm.ownedItemPurpose || OWNED_ITEM_PURPOSES.FOR_RESALE,
           quantity: forgeQuantity,
           forgeQuantity,
           ownedQuantity: 0,
@@ -26334,9 +26384,12 @@ function openDealFinderModal(productId = "") {
     openLockedFeatureNotice("deal_finder");
     return;
   }
-  if (productId) selectTideTradrProduct(productId);
+  const normalizedProductId = typeof productId === "string" || typeof productId === "number"
+    ? String(productId).trim()
+    : "";
+  if (normalizedProductId) selectTideTradrProduct(normalizedProductId);
   const currentQuery = String(catalogSearch || "").trim();
-  if (!productId && currentQuery) {
+  if (!normalizedProductId && currentQuery) {
     setDealForm((current) => ({ ...current, title: current.title || currentQuery }));
   }
   setDealFinderOpen(true);
@@ -27112,10 +27165,10 @@ function renderTideTradrHeader() {
   return (
     <div className="market-mockup-header">
       <EtMockupHero
-        brand="Market"
+        brand="Market Intelligence"
         mark={BRAND_ASSETS.mark}
-        title="Market"
-        detail="Discover, track, and compare fair-price context for cards, sealed products, and collectibles. No checkout, live stock, or guaranteed availability."
+        title="Market Intelligence"
+        detail="Research cards, sealed products, saved watches, price memories, and purchase decisions with honest freshness labels. No checkout, live stock, or guaranteed availability."
         points={{ value: workspaceWatchlist.length || "0", label: "watched items" }}
         pills={[
           { label: "No checkout", tone: "market" },
@@ -27123,8 +27176,8 @@ function renderTideTradrHeader() {
           { label: "Freshness labeled", tone: "gold" },
         ]}
         todayAction={{
-          label: "Market today",
-          title: "Search a card, sealed product, set, UPC, or SKU before buying.",
+          label: "Decision ready",
+          title: "Search a card, sealed product, set, UPC, or SKU before you buy, hold, sell, or trade.",
           cta: "Search",
           onClick: () => {
             if (typeof document !== "undefined") {
@@ -27132,13 +27185,13 @@ function renderTideTradrHeader() {
             }
           },
         }}
-        ariaLabel="Market Watch fair price discovery"
+        ariaLabel="Market Intelligence fair price discovery"
       />
 
       <EtMockupSectionCard
         className="market-mockup-search tidetradr-summary-card market-page-heading"
-        title="Market"
-        detail="Search cards, sealed products, or sets. Manual research and saved memories for collector decisions."
+        title="Market research desk"
+        detail="Search cards, sealed products, UPCs, SKUs, and sets before saving a watch, comparing value, or moving an item into Vault or Exchange."
         action={<EtMockupButton variant="secondary" className="market-deal-shortcut" onClick={() => openDealFinderModal()}>Check Deal</EtMockupButton>}
       >
         <form className="catalog-search-form market-search-form" onSubmit={submitCatalogSearch}>
@@ -27370,6 +27423,371 @@ function renderMarketPriceMemorySection() {
         ]}
       />
       {renderUpgradeValuePreview("market")}
+    </EtMockupSectionCard>
+  );
+}
+
+function renderMarketIntelligencePanel() {
+  const marketIntelligenceNumber = (value) => {
+    if (value === undefined || value === null || value === "") return 0;
+    const number = Number.parseFloat(String(value).replace(/[$,%\s,]/g, ""));
+    return Number.isFinite(number) && number > 0 ? number : 0;
+  };
+  const marketIntelligenceSignedNumber = (value) => {
+    if (value === undefined || value === null || value === "") return null;
+    const number = Number.parseFloat(String(value).replace(/[$,%\s,]/g, ""));
+    return Number.isFinite(number) ? number : null;
+  };
+  const marketIntelligenceFirstNumber = (...values) => {
+    for (const value of values) {
+      const number = marketIntelligenceNumber(value);
+      if (number > 0) return number;
+    }
+    return 0;
+  };
+  const marketIntelligenceFirstSignedNumber = (...values) => {
+    for (const value of values) {
+      const number = marketIntelligenceSignedNumber(value);
+      if (number !== null) return number;
+    }
+    return null;
+  };
+  const marketIntelligenceClamp = (value, min = 0, max = 100) => Math.max(min, Math.min(max, value));
+  const marketIntelligenceTitle = (entry = {}, fallback = "Market item") => String(
+    entry.itemName ||
+    entry.item_name ||
+    entry.name ||
+    entry.productName ||
+    entry.product_name ||
+    entry.cardName ||
+    entry.card_name ||
+    entry.title ||
+    entry.searchQuery ||
+    entry.query ||
+    fallback
+  ).trim();
+  const marketIntelligenceMeta = (entry = {}, fallback = "Saved market signal") => String(
+    entry.setOrProduct ||
+    entry.setName ||
+    entry.set_name ||
+    entry.expansion ||
+    entry.productLine ||
+    entry.product_line ||
+    entry.productType ||
+    entry.itemType ||
+    fallback
+  ).trim();
+  const marketIntelligenceType = (entry = {}) => String(entry.itemType || entry.productType || entry.category || entry.recordType || "").toLowerCase();
+  const marketIntelligenceLiquidity = (entry = {}, current = 0) => {
+    const saved = entry.liquidity || entry.liquidityLabel || entry.demandLabel || "";
+    if (saved) return saved;
+    const type = marketIntelligenceType(entry);
+    if (/sealed|box|pack|etb|booster/.test(type)) return "Local demand high";
+    if (current >= 50) return "Easy to sell";
+    if (current >= 15) return "Medium demand";
+    return "Collector hold";
+  };
+  const marketIntelligenceRisk = (entry = {}, movement = 0, current = 0) => {
+    const saved = entry.riskLevel || entry.risk || "";
+    if (saved) return saved;
+    if (!current) return "Not enough data";
+    if (Math.abs(movement) >= 25) return "Higher risk";
+    if (Math.abs(movement) >= 10) return "Moderate risk";
+    return "Lower risk";
+  };
+  const marketIntelligenceBestFor = (entry = {}, movement = 0, current = 0) => {
+    const saved = entry.bestFor || entry.recommendationLabel || "";
+    if (saved) return saved;
+    const type = marketIntelligenceType(entry);
+    if (movement >= 12) return "Best for holding";
+    if (movement <= -8) return "Best for buying carefully";
+    if (/sealed|box|pack|etb|booster/.test(type)) return "Best for collecting";
+    if (current >= 35) return "Best for selling research";
+    return "Best for comparing";
+  };
+  const marketIntelligenceConfidence = (entry = {}, current = 0, basis = 0, sourceLabel = "") => {
+    const saved = entry.confidenceLevel || entry.confidence || entry.confidenceLabel || "";
+    if (saved) return saved;
+    if (sourceLabel === "Planning sample") return "Not enough data";
+    if (current && basis) return "Moderate";
+    if (current) return "Low";
+    return "Not enough data";
+  };
+  const normalizeMarketIntelligenceRow = (entry = {}, sourceLabel = "Saved signal", index = 0) => {
+    const current = marketIntelligenceFirstNumber(
+      entry.currentPrice,
+      entry.current_price,
+      entry.marketPrice,
+      entry.market_price,
+      entry.marketValue,
+      entry.market_value,
+      entry.rememberedPrice,
+      entry.price,
+      entry.estimatedValue,
+      entry.estimated_value,
+      entry.value,
+      entry.askingPrice,
+      entry.asking_price
+    );
+    const basis = marketIntelligenceFirstNumber(
+      entry.purchasePrice,
+      entry.purchase_price,
+      entry.unitCost,
+      entry.unit_cost,
+      entry.costBasis,
+      entry.cost_basis,
+      entry.msrpPrice,
+      entry.msrp_price,
+      entry.msrp,
+      entry.targetPrice,
+      entry.target_price
+    );
+    const derivedMovement = basis && current && basis !== current ? Math.round(((current - basis) / basis) * 100) : 0;
+    const movement30 = marketIntelligenceFirstSignedNumber(
+      entry.movement30,
+      entry.movement_30,
+      entry.change30,
+      entry.change_30,
+      entry.percentChange30,
+      entry.percent_change_30,
+      entry.thirtyDayChange,
+      entry.thirty_day_change
+    ) ?? derivedMovement;
+    const movement90 = marketIntelligenceFirstSignedNumber(
+      entry.movement90,
+      entry.movement_90,
+      entry.change90,
+      entry.change_90,
+      entry.percentChange90,
+      entry.percent_change_90,
+      entry.ninetyDayChange,
+      entry.ninety_day_change
+    ) ?? (derivedMovement ? Math.round(derivedMovement * 1.45) : 0);
+    const low = marketIntelligenceFirstNumber(entry.lowPrice, entry.low_price, entry.low, current ? current * 0.84 : 0);
+    const fair = marketIntelligenceFirstNumber(entry.fairPrice, entry.fair_price, entry.midPrice, entry.mid_price, entry.marketPrice, entry.marketValue, current);
+    const high = marketIntelligenceFirstNumber(entry.highPrice, entry.high_price, entry.high, current ? current * 1.18 : 0);
+    const sourceKey = String(entry.id || entry.productId || entry.catalogProductId || entry.sourceId || `${sourceLabel}-${index}`);
+    const liquidity = marketIntelligenceLiquidity(entry, current);
+    const risk = marketIntelligenceRisk(entry, movement30, current);
+    const confidence = marketIntelligenceConfidence(entry, current, basis, sourceLabel);
+    return {
+      key: `${sourceLabel}-${sourceKey}`,
+      entry,
+      name: marketIntelligenceTitle(entry, sourceLabel),
+      meta: marketIntelligenceMeta(entry, sourceLabel),
+      sourceLabel,
+      current,
+      basis,
+      low,
+      fair,
+      high,
+      movement30,
+      movement90,
+      liquidity,
+      risk,
+      confidence,
+      bestFor: marketIntelligenceBestFor(entry, movement30, current),
+      hasSavedValue: Boolean(current),
+    };
+  };
+  const marketIntelligenceSources = [
+    ...itemComparisons.map((entry, index) => normalizeMarketIntelligenceRow(entry, "Compare Table", index)),
+    ...workspaceWatchlist.map((entry, index) => normalizeMarketIntelligenceRow(entry, "Watchlist", index)),
+    ...marketPriceMemories.map((entry, index) => normalizeMarketIntelligenceRow(entry, "Price Memory", index)),
+    ...activeVaultItems.slice(0, 8).map((entry, index) => normalizeMarketIntelligenceRow(entry, "Vault", index)),
+  ];
+  const uniqueMarketIntelligenceRows = [];
+  const marketIntelligenceSeenNames = new Set();
+  marketIntelligenceSources.forEach((row) => {
+    const key = row.name.toLowerCase();
+    if (!key || marketIntelligenceSeenNames.has(key)) return;
+    marketIntelligenceSeenNames.add(key);
+    uniqueMarketIntelligenceRows.push(row);
+  });
+  const planningRows = [
+    {
+      key: "planning-sealed-release",
+      name: "Sealed release watch",
+      meta: "Planning sample",
+      sourceLabel: "Planning sample",
+      current: 52,
+      basis: 48,
+      low: 42,
+      fair: 58,
+      high: 75,
+      movement30: 8,
+      movement90: 16,
+      liquidity: "Local demand high",
+      risk: "Moderate risk",
+      confidence: "Not enough data",
+      bestFor: "Best for holding",
+      hasSavedValue: false,
+      entry: {},
+    },
+    {
+      key: "planning-raw-variant",
+      name: "Raw chase variant",
+      meta: "Planning sample",
+      sourceLabel: "Planning sample",
+      current: 18,
+      basis: 19,
+      low: 12,
+      fair: 17,
+      high: 24,
+      movement30: -5,
+      movement90: 7,
+      liquidity: "Medium demand",
+      risk: "Variant-sensitive",
+      confidence: "Not enough data",
+      bestFor: "Best for collecting",
+      hasSavedValue: false,
+      entry: {},
+    },
+  ];
+  const marketIntelligenceRows = [...uniqueMarketIntelligenceRows, ...planningRows];
+  const compareRows = marketIntelligenceRows.slice(0, 2);
+  const moverRows = [...marketIntelligenceRows]
+    .sort((a, b) => Math.abs(b.movement30 || 0) - Math.abs(a.movement30 || 0))
+    .slice(0, 4);
+  const recommendationSource = moverRows.find((row) => row.sourceLabel !== "Planning sample") || moverRows[0] || planningRows[0];
+  const recommendationLabel = recommendationSource.confidence === "Not enough data"
+    ? "Watch"
+    : recommendationSource.movement30 >= 12
+      ? "Hold"
+      : recommendationSource.movement30 <= -8
+        ? "Review before selling"
+        : /easy|high/i.test(recommendationSource.liquidity)
+          ? "Compare sell options"
+          : "Watch";
+  const recommendationReasons = [
+    recommendationSource.current ? `Current value ${money(recommendationSource.current)}` : "Needs current value",
+    recommendationSource.movement30 ? `30 day ${recommendationSource.movement30 > 0 ? "+" : ""}${recommendationSource.movement30}%` : "No movement saved",
+    recommendationSource.liquidity,
+    `Confidence: ${recommendationSource.confidence}`,
+  ];
+  const savedSignalCount = uniqueMarketIntelligenceRows.length;
+  const addRecommendationToCompare = () => openItemComparisonFlow(recommendationSource.entry || null, {
+    source: "market-intelligence-recommendation",
+    seed: {
+      itemName: recommendationSource.name,
+      setOrProduct: recommendationSource.meta,
+      rememberedPrice: recommendationSource.current || "",
+      notes: "Added from Market Intelligence. Check again before buying, selling, or trading.",
+    },
+  });
+
+  return (
+    <EtMockupSectionCard
+      className="market-intelligence-panel"
+      title="Market Intelligence"
+      detail="Product Compare, Top Movers, value range, liquidity, and Hold / Sell / Trade guidance using saved/local signals."
+      action={<EtMockupPill tone="market">{savedSignalCount ? `${savedSignalCount} saved signal${savedSignalCount === 1 ? "" : "s"}` : "Planning preview"}</EtMockupPill>}
+      ariaLabel="Market intelligence product compare and movers"
+    >
+      <div className="market-intelligence-grid">
+        <section className="market-product-compare-board" aria-label="Product Compare Page preview">
+          <div className="market-intelligence-section-heading">
+            <span>Product Compare</span>
+            <h3>Side-by-side decision board</h3>
+          </div>
+          <div className="market-compare-side-grid">
+            {compareRows.map((row) => (
+              <article className="market-compare-product-card" key={row.key}>
+                <div className="market-compare-product-header">
+                  <span className="market-status-pill">{row.sourceLabel}</span>
+                  <strong>{row.current ? money(row.current) : "Value missing"}</strong>
+                </div>
+                <h4>{row.name}</h4>
+                <p>{row.meta}</p>
+                <div className="market-value-range-ribbon" aria-label={`Value range for ${row.name}`}>
+                  <span>Low<br /><b>{row.low ? money(row.low) : "Missing"}</b></span>
+                  <span>Fair<br /><b>{row.fair ? money(row.fair) : "Missing"}</b></span>
+                  <span>High<br /><b>{row.high ? money(row.high) : "Missing"}</b></span>
+                  <span>Now<br /><b>{row.current ? money(row.current) : "Missing"}</b></span>
+                </div>
+                <dl className="market-compare-decision-grid">
+                  <div>
+                    <dt>30 day</dt>
+                    <dd className={row.movement30 >= 0 ? "is-positive" : "is-negative"}>{row.movement30 > 0 ? "+" : ""}{row.movement30}%</dd>
+                  </div>
+                  <div>
+                    <dt>90 day</dt>
+                    <dd className={row.movement90 >= 0 ? "is-positive" : "is-negative"}>{row.movement90 > 0 ? "+" : ""}{row.movement90}%</dd>
+                  </div>
+                  <div>
+                    <dt>Risk</dt>
+                    <dd>{row.risk}</dd>
+                  </div>
+                  <div>
+                    <dt>Liquidity</dt>
+                    <dd>{row.liquidity}</dd>
+                  </div>
+                </dl>
+                <div className="market-intelligence-chip-row">
+                  <span>{row.bestFor}</span>
+                  <span>{row.confidence}</span>
+                </div>
+              </article>
+            ))}
+          </div>
+          {savedSignalCount < 2 ? (
+            <p className="market-intelligence-helper">Planning samples are placeholders. Save watchlist, Price Memory, Vault, or Compare Table items to replace them.</p>
+          ) : null}
+        </section>
+
+        <section className="market-top-movers-board" aria-label="Top Movers Page preview">
+          <div className="market-intelligence-section-heading">
+            <span>Top Movers</span>
+            <h3>Your biggest mover today</h3>
+          </div>
+          <div className="market-biggest-mover-card">
+            <span>{moverRows[0]?.sourceLabel || "Market"}</span>
+            <strong>{moverRows[0]?.name || "No mover yet"}</strong>
+            <small>{moverRows[0]?.movement30 > 0 ? "+" : ""}{moverRows[0]?.movement30 || 0}% in the 30 day view</small>
+          </div>
+          <div className="market-mover-list">
+            {moverRows.map((row, index) => {
+              const moverWidth = marketIntelligenceClamp(24 + Math.abs(row.movement30 || 0) * 3, 24, 100);
+              const sparkBars = [34, 48, 42, 58, 68].map((value, sparkIndex) => marketIntelligenceClamp(value + (row.movement30 || 0) * (sparkIndex - 1) * 0.7, 14, 96));
+              return (
+                <article className="market-mover-card" key={`mover-${row.key}`}>
+                  <div className="market-mover-rank">{index + 1}</div>
+                  <div className="market-mover-copy">
+                    <strong>{row.name}</strong>
+                    <span>{row.liquidity} | {row.risk}</span>
+                    <i><b style={{ width: `${moverWidth}%` }} /></i>
+                  </div>
+                  <div className="market-mini-sparkline" aria-hidden="true">
+                    {sparkBars.map((height, sparkIndex) => <i key={`${row.key}-spark-${sparkIndex}`} style={{ "--spark-y": `${height}%` }} />)}
+                    <b className={row.movement30 >= 0 ? "is-positive" : "is-negative"}>{row.movement30 > 0 ? "+" : ""}{row.movement30}%</b>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="market-recommendation-card" aria-label="Hold Sell Trade Recommendation">
+          <div className="market-intelligence-section-heading">
+            <span>Recommendation</span>
+            <h3>{recommendationLabel}</h3>
+          </div>
+          <p>{recommendationSource.name}: {recommendationSource.bestFor}. This stays guidance only and should be checked again before buying, selling, or trading.</p>
+          <div className="market-confidence-meter" aria-label={`Confidence ${recommendationSource.confidence}`}>
+            <span>Confidence</span>
+            <i><b style={{ width: `${recommendationSource.confidence === "Moderate" ? 62 : recommendationSource.confidence === "Strong" ? 88 : recommendationSource.confidence === "Low" ? 38 : 22}%` }} /></i>
+            <strong>{recommendationSource.confidence}</strong>
+          </div>
+          <div className="market-intelligence-chip-row">
+            {recommendationReasons.map((reason) => <span key={reason}>{reason}</span>)}
+          </div>
+          <div className="market-intelligence-actions">
+            <button type="button" onClick={addRecommendationToCompare}>Add to Compare</button>
+            <button type="button" className="secondary-button" onClick={() => setTideTradrSubTab("watch")}>Open Watch Center</button>
+            <button type="button" className="secondary-button" onClick={() => openMarketPriceMemoryFlow(null, { source: "market-intelligence" })}>Save Price</button>
+          </div>
+        </section>
+      </div>
     </EtMockupSectionCard>
   );
 }
@@ -27756,35 +28174,35 @@ function renderScoutHeader() {
   return (
     <div className="scout-mockup-header">
       <EtMockupHero
-        brand="Ember Scout"
+        brand="Scout"
         mark={BRAND_ASSETS.mark}
-        title="Today's Hunt"
-        detail="Virginia local beta reports, not raw patterns. Scout helps families check useful proof without raw timing history or stock guarantees."
+        title="Scout Intelligence"
+        detail="Coordinate store signals, watched products, family-safe location rules, and proof-backed restock reports before making a trip."
         points={{ value: `${scoutWatchedStoreCount}/${scoutSlotLimit || 1}`, label: "Watched stores" }}
         pills={[
-          { label: "Current reports", tone: "scout" },
-          { label: "Proof-first", tone: "collector" },
-          { label: "No raw patterns", tone: "beta" },
+          { label: "Area-level location", tone: "scout" },
+          { label: "Proof-backed reports", tone: "collector" },
+          { label: "Family-safe planning", tone: "beta" },
         ]}
         todayAction={{
-          label: "Scout today",
-          title: "Scan proof or add a current Virginia report before making a trip.",
-          cta: "Start review",
+          label: "Next action",
+          title: "Review current report proof before deciding whether a store trip is worth it.",
+          cta: "Open review",
           onClick: () => openLiveScoutReportFlow("scanScreenshot"),
         }}
-        ariaLabel="Scout local hunt"
+        ariaLabel="Scout local intelligence"
       />
 
       <EtMockupSectionCard
-        title="Scout tools"
-        detail="Manual proof only. Add reports, manage Virginia stores, and keep planning notes; no OCR/camera, push notifications, or stock guarantees."
+        title="Scout operations"
+        detail="Manage store coverage, current reports, watched products, route planning, and trust rules without exposing raw timing or exact private location."
         className="scout-mockup-navigation scout-summary-card"
       >
         <div className="et-mockup-action-grid scout-mockup-primary-actions" aria-label="Scout primary actions">
           <EtMockupActionCard
             title="Scan Screenshot"
-            detail="Review shelf photos, app screenshots, receipts, or shop posts. No OCR or camera automation is connected."
-            meta="Manual"
+            detail="Attach shelf photos, receipts, or shop posts as evidence for a report."
+            meta="Proof"
             icon="scout"
             tone="scout"
             ariaLabel="Scan Screenshot"
@@ -27793,7 +28211,7 @@ function renderScoutHeader() {
           />
           <EtMockupActionCard
             title="Add Report"
-            detail="Share a current Virginia store signal with family-safe notes."
+            detail="Share a current Virginia store signal with confidence and safety context."
             meta="Current"
             icon="scout"
             tone="gold"
@@ -27803,8 +28221,8 @@ function renderScoutHeader() {
           />
           <EtMockupActionCard
             title="Stores"
-            detail="Choose one Virginia watched store and keep store context clear."
-            meta="Limit"
+            detail="Review watched stores, trusted shops, and area-level coverage."
+            meta="Coverage"
             icon="scout"
             tone="collector"
             ariaLabel="Stores"
@@ -27823,8 +28241,8 @@ function renderScoutHeader() {
           <EtMockupPill tone="gold">{scoutReportLabel}</EtMockupPill>
           <EtMockupPill tone="beta">{scoutTrustLabel}</EtMockupPill>
           <EtMockupPill tone="scout">Virginia soft launch</EtMockupPill>
-          <EtMockupPill tone="scout">Current reports, not raw patterns.</EtMockupPill>
-          <EtMockupPill tone="collector">Exact quantities stay hidden unless shop-approved.</EtMockupPill>
+          <EtMockupPill tone="scout">Current reports only</EtMockupPill>
+          <EtMockupPill tone="collector">Exact quantities hidden unless shop-approved</EtMockupPill>
         </div>
 
         <div className="standard-page-header-tabs scout-mockup-tabs" role="tablist" aria-label="Scout sections">
@@ -28001,9 +28419,9 @@ function renderVaultHeader() {
   return (
     <div className="vault-mockup-header">
       <EtMockupHero
-        brand="Protected collection room"
-        title="Vault"
-        detail="Cards, sealed products, slabs, variants, wishlist gaps, and set progress stay organized before anything moves to Forge."
+        brand="Vault Intelligence"
+        title="Vault Command Center"
+        detail="A structured command center for owned cards, sealed products, slabs, variants, wishlist gaps, storage, condition, and value confidence before anything moves to Exchange."
         mark={BRAND_ASSETS.mark}
         points={{ value: totalOwnedQuantity || "0", label: "items protected" }}
         pills={[
@@ -28012,18 +28430,18 @@ function renderVaultHeader() {
           { label: "Known values only", tone: "collector" },
         ]}
         todayAction={{
-          label: "Vault today",
-          title: "Add or scan one item, then confirm the exact variant before saving.",
+          label: "Next item review",
+          title: "Add or scan one item, then confirm identity, condition, storage, and value context before saving.",
           cta: "Add Item",
           onClick: openVaultQuickAddFlow,
         }}
-        ariaLabel="Vault protected collection room"
+        ariaLabel="Vault collection intelligence command center"
       />
 
       <EtMockupSectionCard
         className="vault-mockup-controls vault-command-center"
-        title="Vault Overview"
-        detail="Add items, scan product/card, manage settings, and jump between protected collection sections."
+        title="Vault operations"
+        detail="Add items, scan products, review collection health, and move between collection, wishlist, set, and portfolio surfaces."
       >
         <div className="et-mockup-action-grid vault-mockup-primary-actions" aria-label="Vault primary actions">
           <EtMockupActionCard
@@ -28070,8 +28488,8 @@ function renderVaultHeader() {
         vaultIsEmpty ? (
           <div className="vault-empty-overview-card" aria-label="Vault empty overview">
             <EtMockupEmptyState
-              title="Your collection room is ready."
-              detail="Start with one card, slab, binder page, sealed product, or wishlist want. Vault keeps owned, sealed, and wanted items clearly separated."
+              title="Your Vault is ready."
+              detail="Start with one card, slab, binder page, sealed product, or wishlist want. Vault keeps owned, sealed, wanted, and exchange-ready records clearly separated."
               action={(
                 <div className="quick-actions">
                   <button type="button" onClick={openVaultQuickAddFlow}>Add to Vault</button>
@@ -28217,8 +28635,8 @@ function renderForgeHeader() {
       <EtMockupHero
         brand="Forge"
         mark={BRAND_ASSETS.mark}
-        title="Private Forge."
-        detail="Seller and business tools for inventory, exact copy tracking, receipts, mileage, sales records, and trade value. Separate from Vault."
+        title="Forge Decision Desk"
+        detail="Trade, listing, inventory, receipt, mileage, and sales records stay private, exact-copy aware, and separate from Vault."
         points={{ value: forgeTotalProductQuantity || 0, label: "Sellable items" }}
         pills={[
           { label: "Private Forge", tone: "collector" },
@@ -28226,19 +28644,19 @@ function renderForgeHeader() {
           { label: "Separate from Vault", tone: "beta" },
         ]}
         todayAction={{
-          label: "Review first",
-          title: activeForgeWorkspace ? "Add inventory privately." : "Choose Forge workspace.",
+          label: "Decision first",
+          title: activeForgeWorkspace ? "Prepare inventory with proof before any sale or trade action." : "Choose Forge workspace.",
           cta: activeForgeWorkspace ? "Add inventory" : "Open settings",
           onClick: activeForgeWorkspace
             ? () => openProductAddFlow({ source: "forge-hero", destinations: { forge: true } })
             : () => setActiveTab("menu"),
         }}
         adminAction={<EtMockupButton variant="secondary" onClick={openForgeBusinessLedgerSurface}>Business Ledger</EtMockupButton>}
-        ariaLabel="Forge private seller command desk"
+        ariaLabel="Forge private exchange decision desk"
       />
       <EtMockupSectionCard
-        title="Private seller command desk"
-        detail={`${forgeWorkspaceContextLabel}. Business tools are private, review-first, and do not post listings or process checkout.`}
+        title="Forge operations"
+        detail={`${forgeWorkspaceContextLabel}. Business and trade tools are private, proof-first, and do not post listings or process checkout.`}
         className="forge-mockup-navigation"
         action={<EtMockupPill tone="gold">No posting behavior</EtMockupPill>}
       >
@@ -28292,8 +28710,8 @@ function renderForgeAccessState() {
         <EtMockupHero
           brand="Forge"
           mark={BRAND_ASSETS.mark}
-          title="Seller tools are off."
-          detail={forgeAccessMessage || "Turn on seller tools to use inventory, receipts, mileage, sales records, and private business planning."}
+          title="Forge tools are off."
+          detail={forgeAccessMessage || "Turn on Forge tools to use inventory, receipts, mileage, sales records, trade reviews, and private exchange planning."}
           points={{ value: "Off", label: "Seller tools" }}
           pills={[
             { label: "Private Forge", tone: "collector" },
@@ -28302,17 +28720,17 @@ function renderForgeAccessState() {
           ]}
           todayAction={{
             label: "Private Forge",
-            title: "Turn on seller tools.",
+            title: "Turn on Forge decision tools.",
             cta: "Open settings",
             onClick: () => openMenuDrawer("settings"),
           }}
           adminAction={<EtMockupButton variant="secondary" onClick={() => setActiveTab("dashboard")}>Return to Hearth</EtMockupButton>}
-          ariaLabel="Forge seller tools off state"
+          ariaLabel="Forge decision tools off state"
         />
 
         <EtMockupSectionCard
-          title="Private seller tools preview"
-          detail="Business tools are private and separate from Vault. No checkout/posting behavior is connected."
+          title="Private exchange tools preview"
+          detail="Forge stays private and separate from Vault. It supports trade decisions, listing prep, proof, and recordkeeping without checkout or posting behavior."
           className="forge-access-preview-panel"
           action={<EtMockupPill tone="gold">Seller tools are off</EtMockupPill>}
         >
@@ -28414,55 +28832,93 @@ function renderForgeBusinessCommandPanel() {
       helper: `${money(totalSalesRevenue)} revenue | ${money(totalExpenses)} expenses`,
     },
   ];
-  const forgeExactCopyCards = [
+  const missingBusinessProofCount =
+    Number(forgeReceiptsNeedingReviewCount || 0) +
+    Number(yearEndTaxSummary?.expenses?.missingReceiptCount || 0) +
+    Number(yearEndTaxSummary?.inventory?.missingReceiptCount || 0);
+  const missingBusinessCostCount =
+    Number(forgeValuationSummary?.missingCostCount || 0) +
+    Number(yearEndTaxSummary?.inventory?.missingCostCount || 0);
+  const salesReferenceCoverage = yearEndTaxSummary?.sales?.receiptCoverage || {};
+  const businessRecordScore = Math.max(0, Math.min(100, Math.round(
+    34 +
+    (workspaceSales.length ? 16 : 0) +
+    (workspaceExpenses.length ? 12 : 0) +
+    (workspaceMileageTrips.length ? 10 : 0) +
+    (forgeValuationSummary.costKnownQuantity ? 12 : 0) +
+    (missingBusinessProofCount ? -10 : 8) +
+    (missingBusinessCostCount ? -8 : 8)
+  )));
+  const forgeBusinessReadinessCards = [
     {
-      label: "Master card",
-      value: "One identity",
-      helper: "Same name, set, and card number stay grouped before seller actions.",
+      label: "Record health",
+      value: `${businessRecordScore}%`,
+      helper: missingBusinessProofCount || missingBusinessCostCount ? "Needs proof review" : "Ready for review",
+      tone: businessRecordScore >= 80 ? "strong" : businessRecordScore >= 55 ? "moderate" : "low",
     },
     {
-      label: "Exact copy",
-      value: "Variant first",
-      helper: "Choose raw, graded, sealed-related, promo, or duplicate before trade/listing review.",
+      label: "Proof gaps",
+      value: missingBusinessProofCount,
+      helper: missingBusinessProofCount ? "Receipts or evidence missing" : "Receipts covered",
+      tone: missingBusinessProofCount ? "moderate" : "strong",
     },
     {
-      label: "Family rule",
-      value: "Review before action",
-      helper: "Kid-owned items should get parent approval before moving into sale or trade context.",
+      label: "Cost basis gaps",
+      value: missingBusinessCostCount,
+      helper: missingBusinessCostCount ? "Add purchase cost before trusting profit" : "Known cost basis",
+      tone: missingBusinessCostCount ? "moderate" : "strong",
+    },
+    {
+      label: "Sales references",
+      value: `${salesReferenceCoverage.withReference || 0}/${salesReferenceCoverage.total || workspaceSales.length || 0}`,
+      helper: "Receipt, order, or local sale reference",
+      tone: (salesReferenceCoverage.missingReference || 0) ? "moderate" : "strong",
     },
   ];
-  const forgeWorkspaceFlows = [
+  const forgeBusinessActionCards = [
     {
-      key: "trade-analyzer",
-      eyebrow: "Trade Analyzer",
-      title: "Worth it for the family?",
-      summary: "Compare exact variants and copies before any record changes.",
-      detail: "Give: NM foil copy + sealed item | Receive: binder lot",
-      value: "+$18 fair range",
-      note: "Parent approval recommended for kid-owned items.",
-      cta: "Trade Compass",
-      onClick: () => openTradeCompassFlow({ source: "forge-trade-analyzer" }),
+      key: "sale",
+      eyebrow: "Money In",
+      title: "Record a sale with proof.",
+      summary: "Capture sale amount, platform, fees, shipping, cost basis, and reference so profit is not guesswork.",
+      detail: `${workspaceSales.length} sale record${workspaceSales.length === 1 ? "" : "s"} | ${money(totalSalesRevenue)} revenue`,
+      value: forgeHasProfitSnapshot ? money(salesSummary.estimatedProfitLoss) : "Start",
+      note: "Manual records only. No checkout, payment processing, or buyer messaging.",
+      cta: "Add Sale",
+      onClick: () => openAddSaleFlow(),
     },
     {
-      key: "listing-builder",
-      eyebrow: "Listing Builder",
-      title: "Draft before posting.",
-      summary: "Stage title, exact variant, condition, fair range, and family-safe notes without publishing.",
-      detail: "Variant: Reverse Holo | Condition: Near Mint",
-      value: "Draft only",
-      note: "No checkout, payment, or marketplace posting is connected.",
-      cta: "Mock listing draft",
+      key: "expense",
+      eyebrow: "Money Out",
+      title: "Attach receipts and expenses.",
+      summary: "Keep product cost, supplies, shipping labels, fees, event costs, and other business spending tied to the workspace.",
+      detail: `${workspaceExpenses.length} expense record${workspaceExpenses.length === 1 ? "" : "s"} | ${money(totalExpenses)} tracked`,
+      value: missingBusinessProofCount ? `${missingBusinessProofCount} gaps` : "Covered",
+      note: "Receipt coverage improves year-end exports and payout planning.",
+      cta: "Add Receipt",
+      onClick: () => openBasicReceiptFlow("forge-business-command"),
     },
     {
-      key: "sales-ledger",
-      eyebrow: "Sales Ledger",
-      title: "Keep the record clear.",
-      summary: "Track revenue, cost basis, fees, and receipt needs for seller recordkeeping.",
-      detail: "Revenue $128 | Cost basis $76 | Receipt needed",
-      value: "$52 est. P/L",
-      note: "For recordkeeping. Confirm summaries with your tax professional.",
-      cta: "Open Sales Records",
-      onClick: () => setActiveTab("sales"),
+      key: "mileage",
+      eyebrow: "Travel",
+      title: "Log restock and shipping trips.",
+      summary: "Track business miles by vehicle for store runs, USPS drop-offs, card shows, and local seller errands.",
+      detail: `${workspaceMileageTrips.length} trip${workspaceMileageTrips.length === 1 ? "" : "s"} | ${totalBusinessMiles.toFixed(1)} business miles`,
+      value: money(totalMileageValue),
+      note: "Mileage is an estimate for recordkeeping, not tax filing advice.",
+      cta: "Add Mileage",
+      onClick: () => openAddMileageFlow(),
+    },
+    {
+      key: "export",
+      eyebrow: "Export Readiness",
+      title: `${taxSummaryYear} summary stays review-first.`,
+      summary: "Revenue, cost basis, expenses, fees, shipping, mileage, purchaser totals, and proof gaps are kept together.",
+      detail: `${yearEndTaxSummary.sales.count} sales | ${yearEndTaxSummary.expenses.count} expenses | ${yearEndTaxSummary.mileage.tripCount} trips`,
+      value: yearEndTaxSummary.disclaimer ? "Review" : "Draft",
+      note: "Exports organize records for review. They are not tax, payroll, or legal advice.",
+      cta: "Business Ledger",
+      onClick: openForgeBusinessLedgerSurface,
     },
   ];
   const renderForgeGroupPreview = (item) => {
@@ -28508,9 +28964,9 @@ function renderForgeBusinessCommandPanel() {
         ))}
       </div>
 
-      <div className="forge-exact-copy-strip" aria-label="Forge exact variant and copy rules">
-        {forgeExactCopyCards.map((card) => (
-          <article key={card.label}>
+      <div className="forge-business-readiness-strip" aria-label="Forge business record readiness">
+        {forgeBusinessReadinessCards.map((card) => (
+          <article className={`is-${card.tone}`} key={card.label}>
             <span>{card.label}</span>
             <strong>{card.value}</strong>
             <small>{card.helper}</small>
@@ -28518,9 +28974,9 @@ function renderForgeBusinessCommandPanel() {
         ))}
       </div>
 
-      <div className="forge-workspace-flow-grid" aria-label="Forge trade listing and sales flows">
-        {forgeWorkspaceFlows.map((flow) => (
-          <article className={`forge-workspace-flow-card is-${flow.key}`} key={flow.key}>
+      <div className="forge-business-action-grid" aria-label="Forge business record actions">
+        {forgeBusinessActionCards.map((flow) => (
+          <article className={`forge-business-action-card is-${flow.key}`} key={flow.key}>
             <div>
               <span className="forge-preview-kicker">{flow.eyebrow}</span>
               <h4>{flow.title}</h4>
@@ -28536,13 +28992,9 @@ function renderForgeBusinessCommandPanel() {
                 <dd>{flow.value}</dd>
               </div>
             </dl>
-            <div className="forge-workspace-flow-footer">
+            <div className="forge-business-action-footer">
               <small>{flow.note}</small>
-              {flow.onClick ? (
-                <button type="button" className="secondary-button" onClick={flow.onClick}>{flow.cta}</button>
-              ) : (
-                <span className="status-badge">{flow.cta}</span>
-              )}
+              <button type="button" className="secondary-button" onClick={flow.onClick}>{flow.cta}</button>
             </div>
           </article>
         ))}
@@ -28575,8 +29027,8 @@ function renderForgeBusinessCommandPanel() {
         <div className="forge-main-command-card">
           <div className="compact-card-header">
             <div>
-              <h4>Grouped inventory</h4>
-              <p>Same products roll up together, while purchaser, location, dates, and sale history stay preserved in details.</p>
+              <h4>Business inventory</h4>
+              <p>Sellable stock stays separate from Vault while purchaser, location, cost basis, sale history, and proof stay attached.</p>
             </div>
             <span className="forge-command-count-badge">{groupedSortedFilteredItems.length} groups</span>
           </div>
@@ -28624,8 +29076,8 @@ function renderForgeBusinessCommandPanel() {
         <div className="forge-main-command-card forge-trade-history-card">
           <div className="compact-card-header">
             <div>
-              <h4>Trade Ledger</h4>
-              <p>Record what you gave, what you got, estimated values, and the story behind the trade. Saving a trade never changes Vault or Forge inventory counts.</p>
+              <h4>Trade records</h4>
+              <p>Record what you gave, what you got, estimated values, proof, and notes. Saving a trade never changes Vault or Forge inventory counts.</p>
             </div>
             <button type="button" className="secondary-button" onClick={() => openAddTradeFlow({ source: "forge-trade-history-card" })}>Log a Trade</button>
           </div>
@@ -28651,14 +29103,14 @@ function renderForgeBusinessCommandPanel() {
         </div>
 
         <FlowNextActionCard
-          eyebrow="After Trade Compass"
-          title="Keep the trade decision connected."
-          detail="Use estimated values as guidance, then either save a Trade Memory, review the Vault item, or pause. Forge does not edit Vault unless you choose a separate Vault action."
+          eyebrow="Business guardrail"
+          title="Keep business records private and proof-backed."
+          detail="Forge can organize sales, receipts, mileage, trade memories, and payout planning. It does not process checkout, payroll, tax filing, payments, or marketplace posting."
           tone="forge"
           actions={[
-            { label: "Trade Compass", onClick: () => openTradeCompassFlow({ source: "forge-next-action" }) },
-            { label: "Log a Trade", onClick: () => openAddTradeFlow({ source: "forge-next-action" }) },
-            { label: "Open Vault", onClick: () => setActiveTab("vault") },
+            { label: "Business Ledger", onClick: openForgeBusinessLedgerSurface },
+            { label: "Add Receipt", onClick: () => openBasicReceiptFlow("forge-business-guardrail") },
+            { label: "Open Sales", onClick: () => setActiveTab("sales") },
           ]}
         />
 
@@ -30774,6 +31226,254 @@ function renderForgeBusinessLedgerPanel() {
     const workspaceId = activeForgeWorkspace?.id || activeWorkspace?.id || activeWorkspaceId || DEFAULT_PERSONAL_WORKSPACE_ID;
     return tradeRecords.filter((record) => recordBelongsToWorkspace(record, workspaceId));
   }, [tradeRecords, activeForgeWorkspace?.id, activeWorkspace?.id, activeWorkspaceId]);
+  const archiveProofRows = useMemo(() => {
+    const workspaceId = activeForgeWorkspace?.id || activeWorkspace?.id || activeWorkspaceId || DEFAULT_PERSONAL_WORKSPACE_ID;
+    const archiveWorkspaceSales = sales.filter((sale) => recordBelongsToWorkspace(sale, workspaceId));
+    const rows = [];
+    const firstDate = (...values) => values.find((value) => String(value || "").trim()) || "";
+    const sortTime = (value) => {
+      const parsed = new Date(value || 0).getTime();
+      return Number.isFinite(parsed) ? parsed : 0;
+    };
+    const hasEvidence = (...values) => values.some((value) => {
+      if (Array.isArray(value)) return value.filter(Boolean).length > 0;
+      return Boolean(String(value || "").trim());
+    });
+    const addArchiveRow = (row = {}) => {
+      const date = row.date || "";
+      rows.push({
+        key: row.key || `${row.group || "archive"}-${rows.length}`,
+        group: row.group || "Archive",
+        title: row.title || "Archive record",
+        detail: row.detail || "Local beta record",
+        status: row.status || "Saved",
+        date,
+        dateLabel: date ? shortDate(date) : "Date not saved",
+        value: row.value || "",
+        proofLabel: row.proofLabel || "Proof not attached",
+        proofAttached: Boolean(row.proofAttached),
+        confidence: row.confidence || (row.proofAttached ? "Moderate data" : "Needs proof"),
+        actionLabel: row.actionLabel || "Review record",
+        tone: row.tone || (row.proofAttached ? "complete" : "warning"),
+        sort: sortTime(date),
+      });
+    };
+
+    visibleReceiptRecords
+      .filter((receipt) => recordBelongsToWorkspace(receipt, workspaceId))
+      .slice(0, 10)
+      .forEach((receipt) => {
+        const imageUrl = receiptImageUrl(receipt);
+        const linkedItems = receiptLinkedItems(receipt).length;
+        const linkedExpenses = receiptLinkedExpenses(receipt).length;
+        const linkedSales = receiptLinkedSales(receipt).length;
+        addArchiveRow({
+          key: `receipt-${receiptRecordId(receipt)}`,
+          group: "Receipts",
+          title: receiptMerchantLabel(receipt),
+          detail: `${linkedItems} item${linkedItems === 1 ? "" : "s"} | ${linkedExpenses} expense${linkedExpenses === 1 ? "" : "s"} | ${linkedSales} sale${linkedSales === 1 ? "" : "s"}`,
+          status: forgeReceiptReviewIds.has(String(receiptRecordId(receipt))) ? "Needs review" : "Saved receipt",
+          date: firstDate(receipt.purchaseDate, receipt.purchase_date, receipt.purchasedAt, receipt.purchased_at, receipt.createdAt, receipt.created_at),
+          value: receiptTotalLabel(receipt),
+          proofLabel: imageUrl ? "Receipt photo attached" : "Receipt row only",
+          proofAttached: Boolean(imageUrl),
+          confidence: imageUrl ? "Strong data" : "Moderate data",
+          actionLabel: "Open receipt",
+          tone: imageUrl ? "complete" : "needs-proof",
+        });
+      });
+
+    archiveWorkspaceSales.slice(0, 12).forEach((sale) => {
+      const proofAttached = hasEvidence(sale.receiptImage, sale.receiptImageUrl, sale.receiptId, sale.receipt_id, sale.referenceId, sale.trackingNumber, sale.tracking);
+      addArchiveRow({
+        key: `sale-${sale.id || sale.referenceId || rows.length}`,
+        group: "Sales",
+        title: sale.itemName || "Sale record",
+        detail: [sale.platform || "Sale", sale.buyerName ? `Buyer ${sale.buyerName}` : "", sale.quantitySold ? `Qty ${sale.quantitySold}` : ""].filter(Boolean).join(" | "),
+        status: sale.trackingNumber || sale.tracking ? "Tracking saved" : proofAttached ? "Proof saved" : "Needs sale proof",
+        date: firstDate(sale.saleDate, sale.sale_date, sale.soldAt, sale.sold_at, sale.createdAt, sale.created_at),
+        value: money(sale.grossSale || sale.finalSalePrice || 0),
+        proofLabel: proofAttached ? "Receipt/reference attached" : "Receipt or order proof needed",
+        proofAttached,
+        confidence: proofAttached ? "Strong data" : "Low data",
+        actionLabel: "Review sale",
+        tone: proofAttached ? "complete" : "warning",
+      });
+    });
+
+    workspaceTradeRecords.slice(0, 10).forEach((trade) => {
+      const proofAttached = hasEvidence(trade.notes, trade.shareSummary, trade.snapshotUrl, trade.parentApprovalStatus, trade.approvalStatus);
+      addArchiveRow({
+        key: `trade-${trade.id || rows.length}`,
+        group: "Trades",
+        title: `${trade.sourceItemName || trade.outgoingName || "Trade item"} -> ${trade.receivedName || "received item"}`,
+        detail: `${trade.resultLabel || trade.guidance || "Trade saved"} | ${trade.inventoryMutation === "none" ? "Inventory unchanged" : "Collection updated"}`,
+        status: trade.parentApprovalStatus || trade.approvalStatus || "Trade saved",
+        date: firstDate(trade.tradeDate, trade.trade_date, trade.updatedAt, trade.updated_at, trade.createdAt, trade.created_at),
+        value: trade.difference || trade.difference === 0 ? money(Math.abs(Number(trade.difference || 0))) : "",
+        proofLabel: proofAttached ? "Trade notes saved" : "Add trade proof",
+        proofAttached,
+        confidence: proofAttached ? "Moderate data" : "Low data",
+        actionLabel: "Review trade",
+        tone: proofAttached ? "complete" : "warning",
+      });
+    });
+
+    workspaceMarketplaceListings
+      .filter((listing) => /sold|closed|archived|shipped|pending|active|draft/i.test(String(listing.status || listing.listingStatus || "")) || hasEvidence(listing.photoUrl, listing.imageUrl, listing.receiptUrl, listing.trackingNumber))
+      .slice(0, 10)
+      .forEach((listing) => {
+        const photos = [listing.photoUrl, listing.imageUrl, listing.catalogImage, ...(Array.isArray(listing.photos) ? listing.photos : [])].filter(Boolean);
+        const proofAttached = hasEvidence(photos, listing.receiptUrl, listing.receiptImage, listing.trackingNumber, listing.tracking);
+        addArchiveRow({
+          key: `listing-${listing.id || rows.length}`,
+          group: "Harbor",
+          title: listing.title || listing.productName || "Marketplace listing",
+          detail: `${listing.listingType || "Listing"} | ${normalizeListingStatus(listing) || "Draft"}`,
+          status: normalizeListingModerationStatus(listing),
+          date: firstDate(listing.soldAt, listing.sold_at, listing.updatedAt, listing.updated_at, listing.createdAt, listing.created_at),
+          value: hasKnownPriceValue(listing.askingPrice) ? money(listing.askingPrice) : "",
+          proofLabel: photos.length ? `${photos.length} photo${photos.length === 1 ? "" : "s"} saved` : proofAttached ? "Evidence saved" : "Listing proof needed",
+          proofAttached,
+          confidence: proofAttached ? "Moderate data" : "Low data",
+          actionLabel: "Review listing",
+          tone: proofAttached ? "complete" : "warning",
+        });
+      });
+
+    marketplaceReports
+      .filter((report) => recordBelongsToWorkspace(report, workspaceId))
+      .slice(0, 10)
+      .forEach((report) => {
+        const proofAttached = hasEvidence(report.photoUrl, report.imageUrl, report.receiptUrl, report.trackingNumber, report.proofText, report.notes);
+        addArchiveRow({
+          key: `market-report-${report.id || rows.length}`,
+          group: "Issues",
+          title: report.reason || report.reportType || report.issueType || "Marketplace issue",
+          detail: report.listingTitle || report.listingId || report.message || "Admin review record",
+          status: report.status || "Open",
+          date: firstDate(report.updatedAt, report.updated_at, report.createdAt, report.created_at),
+          proofLabel: proofAttached ? "Evidence attached" : "Evidence needed",
+          proofAttached,
+          confidence: proofAttached ? "Moderate data" : "Low data",
+          actionLabel: "Review issue",
+          tone: proofAttached ? "complete" : "warning",
+        });
+      });
+
+    (scoutSnapshot.reports || [])
+      .filter((report) => !report.workspaceId && !report.workspace_id ? true : recordBelongsToWorkspace(report, workspaceId))
+      .slice(0, 10)
+      .forEach((report) => {
+        const photoCount = scoutReportPhotoUrls(report).length;
+        const proofAttached = storeDetailReportProofAttached(report);
+        addArchiveRow({
+          key: `scout-${report.id || report.reportId || rows.length}`,
+          group: "Scout",
+          title: report.itemName || report.productName || report.product_name || "Scout report",
+          detail: [report.storeName || report.store_name || report.chain || "Store report", report.quantityEstimate || report.quantity_estimate ? `Qty ${report.quantityEstimate || report.quantity_estimate}` : ""].filter(Boolean).join(" | "),
+          status: report.status || report.confidence || "Report saved",
+          date: firstDate(report.observedAt, report.observed_at, report.createdAt, report.created_at, report.updatedAt, report.updated_at),
+          proofLabel: photoCount ? `${photoCount} proof photo${photoCount === 1 ? "" : "s"}` : proofAttached ? "Proof source saved" : "No proof yet",
+          proofAttached,
+          confidence: proofAttached ? "Moderate data" : "Low data",
+          actionLabel: "Review Scout proof",
+          tone: proofAttached ? "complete" : "warning",
+        });
+      });
+
+    sparkGifts.slice(0, 8).forEach((gift, index) => {
+      const proofAttached = hasEvidence(gift.thankYouNote, gift.sponsorNote, gift.donorSponsorName, gift.quantityAmount);
+      addArchiveRow({
+        key: `spark-gift-${gift.id || gift.giftName || index}`,
+        group: "Spark",
+        title: gift.giftName || `${donationTypeLabel(gift.donationType)} gift`,
+        detail: `${donationTypeLabel(gift.donationType)} | ${gift.whoItHelps || "Spark Impact"}`,
+        status: gift.thankYouNote ? "Thank-you saved" : "Donation logged",
+        date: firstDate(gift.giftDate, gift.createdAt, gift.created_at),
+        value: Number(gift.estimatedValue || 0) > 0 ? money(gift.estimatedValue) : gift.quantityAmount || "",
+        proofLabel: proofAttached ? "Donation note saved" : "Review note needed",
+        proofAttached,
+        confidence: proofAttached ? "Moderate data" : "Low data",
+        actionLabel: "Review Spark gift",
+        tone: proofAttached ? "complete" : "warning",
+      });
+    });
+
+    sparkKidPacks.slice(0, 8).forEach((pack, index) => {
+      const proofAttached = hasEvidence(pack.packContents, pack.packNotes, pack.giftedDate);
+      addArchiveRow({
+        key: `spark-pack-${pack.id || pack.packName || index}`,
+        group: "Spark",
+        title: pack.packName || `${pack.packType || "Spark"} pack`,
+        detail: [pack.packTheme || pack.themeInterests || "Kid pack", pack.intendedRecipientGroup].filter(Boolean).join(" | "),
+        status: pack.packStatus || "Planning",
+        date: firstDate(pack.giftedDate, pack.dateCreated, pack.createdAt, pack.created_at),
+        value: Number(pack.estimatedValue || 0) > 0 ? money(pack.estimatedValue) : "",
+        proofLabel: proofAttached ? "Pack details saved" : "Pack proof needed",
+        proofAttached,
+        confidence: proofAttached ? "Moderate data" : "Low data",
+        actionLabel: "Review Spark pack",
+        tone: proofAttached ? "complete" : "warning",
+      });
+    });
+
+    items
+      .filter((item) => recordBelongsToWorkspace(item, workspaceId))
+      .filter((item) => /sold|trade|traded|donated|gift|archive|archived/i.test(`${item.status || ""} ${item.vaultStatus || item.vault_status || ""}`))
+      .slice(0, 8)
+      .forEach((item) => {
+        const proofAttached = hasEvidence(item.receiptImage, item.receiptImageUrl, item.photoProofUrl, item.proofUrl, item.notes);
+        addArchiveRow({
+          key: `vault-archive-${item.id || rows.length}`,
+          group: "Vault",
+          title: item.name || item.itemName || "Vault record",
+          detail: `${vaultStatusLabel(normalizeVaultStatus(item))} | Qty ${item.quantity || 1}`,
+          status: vaultStatusLabel(normalizeVaultStatus(item)),
+          date: firstDate(item.updatedAt, item.updated_at, item.createdAt, item.created_at),
+          value: vaultItemTotalMarketValue(item) ? money(vaultItemTotalMarketValue(item)) : "",
+          proofLabel: proofAttached ? "Item proof saved" : "Proof needed",
+          proofAttached,
+          confidence: proofAttached ? "Moderate data" : "Low data",
+          actionLabel: "Review item",
+          tone: proofAttached ? "complete" : "warning",
+        });
+      });
+
+    return rows
+      .sort((a, b) => b.sort - a.sort || a.group.localeCompare(b.group))
+      .slice(0, 28);
+  }, [
+    activeForgeWorkspace?.id,
+    activeWorkspace?.id,
+    activeWorkspaceId,
+    forgeReceiptReviewIds,
+    items,
+    marketplaceReports,
+    scoutSnapshot.reports,
+    sales,
+    sparkGifts,
+    sparkKidPacks,
+    visibleReceiptRecords,
+    workspaceMarketplaceListings,
+    workspaceSales,
+    workspaceTradeRecords,
+  ]);
+  const archiveProofSummary = useMemo(() => {
+    const groups = archiveProofRows.reduce((acc, row) => {
+      acc[row.group] = (acc[row.group] || 0) + 1;
+      return acc;
+    }, {});
+    const proofBacked = archiveProofRows.filter((row) => row.proofAttached).length;
+    const needsProof = archiveProofRows.length - proofBacked;
+    return {
+      total: archiveProofRows.length,
+      proofBacked,
+      needsProof,
+      groups,
+      latest: archiveProofRows[0],
+    };
+  }, [archiveProofRows]);
   const forgeBusinessHasRecords = Boolean(
     forgeInventoryItems.length ||
     workspaceSales.length ||
@@ -32658,8 +33358,8 @@ function renderForgeBusinessLedgerPanel() {
             );
           }) : (
             <div className="empty-state">
-              <h3>No Ember Assist messages yet</h3>
-              <p>When users ask for admin help from Ember Assist, safe context and their question will appear here.</p>
+              <h3>No Business Assistant messages yet</h3>
+              <p>When users ask for administrative help, safe context and their question will appear here.</p>
             </div>
           )}
         </div>
@@ -32677,21 +33377,21 @@ function renderForgeBusinessLedgerPanel() {
     const hiddenStarterPromptCount = Math.max(0, contextualPrompts.length - 3);
     const sparkHelpfulLinkVisible = emberAssistPermissionDenied || ["kidsProgram", "settings", "profileProgress", "membership"].includes(activeTab);
     const emberAssistPageIntro = {
-      hearth: "Helper preview: I can explain Sparks, Ember Points, and the next useful action.",
-      scout: "Helper preview: I can explain current reports, watched stores, proof, and why raw history stays protected.",
-      vault: "Helper preview: I can help with card scans, missing cards, photos, and set progress.",
-      forge: "Helper preview: I can guide trade fairness, exact-copy choices, receipts, cost basis, mileage, and sales records.",
-      market: "Helper preview: I can help with UPC search, fair-value labels, and review-before-save choices.",
-      spark: "Helper preview: I can explain kids packs, donations, trusted helpers, and giveaways.",
+      hearth: "I can explain the home workspace and the next useful action.",
+      scout: "I can explain current reports, watched stores, proof, and why restricted history stays protected.",
+      vault: "I can help with card scans, missing cards, photos, and collection progress.",
+      forge: "I can guide trade fairness, exact-copy choices, receipts, cost basis, mileage, and sales records.",
+      market: "I can help with UPC search, value labels, and review-before-save choices.",
+      spark: "I can explain kids packs, donations, trusted helpers, and giveaways.",
       admin: "Helper preview: I can point admins to flagged reports, duplicates, beta requests, and shop reviews.",
       settings: "Helper preview: I can help with workspace, profile, plans, and support questions.",
     };
     const helpfulLinks = [
-      emberAssistPermissionDenied ? { label: "Return to Hearth", action: () => { setEmberAssistOpen(false); setActiveTab("dashboard"); } } : null,
-      sparkHelpfulLinkVisible ? { label: "Open The Spark", action: () => { setEmberAssistOpen(false); setActiveTab("kidsProgram"); } } : null,
+      emberAssistPermissionDenied ? { label: "Return Home", action: () => { setEmberAssistOpen(false); setActiveTab("dashboard"); } } : null,
+      sparkHelpfulLinkVisible ? { label: "Open Kids & Community", action: () => { setEmberAssistOpen(false); setActiveTab("kidsProgram"); } } : null,
     ].filter(Boolean);
     const emberAssistQuickActions = [
-      { label: "Replay first-time guide", helper: "Open the Hearth guide again; progress stays local to this browser.", action: () => { setEmberAssistOpen(false); restartOnboarding(); } },
+      { label: "Replay first-time guide", helper: "Open the setup guide again; progress stays local to this browser.", action: () => { setEmberAssistOpen(false); restartOnboarding(); } },
       { label: "Scan a card", helper: "Open review-first card or product scan.", action: () => { setEmberAssistOpen(false); openQuickAddAction("scanProduct"); } },
       { label: "Scan restock screenshot", helper: "Review proof first; no upload or live AI promise.", action: () => { setEmberAssistOpen(false); openLiveScoutReportFlow("scanScreenshot"); } },
       { label: "Check trade fairness", helper: "Compare exact variants with parent-aware warnings.", action: () => { setEmberAssistOpen(false); setActiveTab("inventory"); openTradeCompassFlow({ source: "ember-assist-quick-action-trade-fairness" }); } },
@@ -32749,7 +33449,7 @@ function renderForgeBusinessLedgerPanel() {
       setActiveTab("comingSoon");
     };
     const assistIntroCopy = emberAssistPermissionDenied
-      ? "You may not have access to this area yet. Admin or moderator role may be required. If this looks wrong, message an admin or return to Hearth."
+      ? "You may not have access to this area yet. An admin or moderator role may be required. If this looks wrong, message an admin or return Home."
       : emberAssistPageIntro[emberAssistContext.page] || "Helper preview: ask about this page, a next step, or a confusing status.";
     return (
       <section
@@ -32759,14 +33459,14 @@ function renderForgeBusinessLedgerPanel() {
           emberAssistLauncherState.compact ? "is-compact" : "",
           emberAssistLauncherState.nearEnd ? "is-near-page-end" : "",
         ].filter(Boolean).join(" ")}
-        aria-label="Ember Assist"
+        aria-label="Business Assistant"
       >
         {!emberAssistOpen ? (
         <button
           type="button"
           className="ember-assist-fab"
           aria-expanded={emberAssistOpen}
-          aria-label="Ask Ember"
+          aria-label="Open Business Assistant"
           onClick={() => {
             setEmberAssistOpen((open) => {
               if (!open) {
@@ -32779,7 +33479,7 @@ function renderForgeBusinessLedgerPanel() {
           }}
         >
           <span aria-hidden="true">E</span>
-          <b>Ask Ember</b>
+          <b>Assistant</b>
         </button>
         ) : null}
         {emberAssistOpen ? (
@@ -32789,29 +33489,29 @@ function renderForgeBusinessLedgerPanel() {
             <div className="ember-assist-header">
               <div>
                 <p className="section-kicker">Helper preview</p>
-                <h2 id="ember-assist-title">Ask Ember</h2>
+                <h2 id="ember-assist-title">Business Assistant</h2>
                 <p>{assistIntroCopy}</p>
               </div>
-              <button type="button" className="modal-close-button" aria-label="Close Ember Assist" onClick={() => setEmberAssistOpen(false)}>X</button>
+              <button type="button" className="modal-close-button" aria-label="Close Business Assistant" onClick={() => setEmberAssistOpen(false)}>X</button>
             </div>
             <div className={`ember-assist-scroll ${emberAssistMessages.length ? "has-thread" : ""}`}>
             {emberAssistPermissionDenied ? (
               <div className="ember-assist-context-card">
                 <strong>Access help</strong>
-                <span>Admin tools are protected. You can return to Hearth, ask what role is needed, or send a short message to admin if this looks wrong.</span>
+                <span>Admin tools are protected. You can return Home, ask what role is needed, or send a short message to admin if this looks wrong.</span>
               </div>
             ) : null}
             <div className="ember-assist-context-card ember-assist-guidance-card">
               <strong>Helpful, not magic</strong>
-              <span>I can guide app steps, card or product identification, scanner troubleshooting, collection choices, and trade or value explanations. I will say when I am unsure.</span>
+              <span>I can guide application steps, card or product identification, scanner troubleshooting, collection choices, and trade or value explanations. I will say when I am unsure.</span>
             </div>
             <div className="ember-assist-live-hero">
               <div>
                 <p className="section-kicker">Guided suggestions. No live AI promises.</p>
-                <h3>Get a clear next step without exposing private family or Scout data.</h3>
-                <p>Ember can guide safe app workflows, explain card and product context, and point you to review-first tools. It does not promise live stock, checkout, guaranteed prices, or private-data searches.</p>
+                <h3>Get a clear next step without exposing private family or restricted source data.</h3>
+                <p>The assistant can guide safe application workflows, explain card and product context, and point you to review-first tools. It does not promise live stock, checkout, guaranteed prices, or private-data searches.</p>
               </div>
-              <span className="ember-assist-hero-mark" aria-hidden="true">E</span>
+              <span className="ember-assist-hero-mark" aria-hidden="true">A</span>
             </div>
             <div className="ember-assist-guidance-strip" role="note">
               <strong>Public beta helper preview</strong>
@@ -32821,8 +33521,8 @@ function renderForgeBusinessLedgerPanel() {
               <div className="compact-card-header">
                 <div>
                   <p className="section-kicker">Collector Guide</p>
-                  <h3>Quick Help for Ember & Tide</h3>
-                  <p>Ember Assist helps you find the next right step - adding items, checking trades, saving prices, watching stores, or supporting The Spark.</p>
+                  <h3>Quick business help</h3>
+                  <p>Business Assistant helps you find the next useful step: adding items, checking trades, saving prices, watching stores, or supporting Kids & Community.</p>
                 </div>
                 <span className="ember-assist-guide-pill">Gentle Guidance</span>
               </div>
@@ -32860,7 +33560,7 @@ function renderForgeBusinessLedgerPanel() {
               </div>
             </section>
             {renderUpgradeValuePreview("assist")}
-            <div className="ember-assist-quick-action-grid" aria-label="Ember Assist quick actions">
+            <div className="ember-assist-quick-action-grid" aria-label="Business Assistant quick actions">
               {emberAssistQuickActions.map((action) => (
                 <button type="button" key={action.label} onClick={action.action}>
                   <strong>{action.label}</strong>
@@ -32870,18 +33570,18 @@ function renderForgeBusinessLedgerPanel() {
             </div>
             <div className="ember-assist-safety-note">
               <strong>Private by design</strong>
-              <span>Ember Assist does not search private child details, hidden admin notes, raw Scout patterns, retailer schedules, or payment details. Use it for guided suggestions, not guaranteed outcomes.</span>
+              <span>Business Assistant does not search private child details, hidden admin notes, restricted source patterns, retailer schedules, or payment details. Use it for guided suggestions, not guaranteed outcomes.</span>
             </div>
-            <div className="ember-assist-primary-prompts" aria-label="Quick Ember prompts">
+            <div className="ember-assist-primary-prompts" aria-label="Quick assistant prompts">
               {EMBER_ASSIST_PRIMARY_PROMPTS.map((prompt) => (
                 <button type="button" key={prompt} onClick={() => sendEmberAssistMessage(prompt)} disabled={emberAssistPending}>{prompt}</button>
               ))}
             </div>
-            <div className="ember-assist-recent-help" aria-label="Recent Ember Assist examples">
+            <div className="ember-assist-recent-help" aria-label="Recent Business Assistant examples">
               <div className="compact-card-header">
                 <div>
                   <h3>Recent help examples</h3>
-                  <p>Preview examples show guided support for collecting, Scout proof, trades, and safety reports without live-data promises.</p>
+                  <p>Preview examples show guided support for collecting, source proof, trades, and safety reports without live-data promises.</p>
                 </div>
               </div>
               {emberAssistRecentHelp.map((card) => (
@@ -32901,7 +33601,7 @@ function renderForgeBusinessLedgerPanel() {
               {emberAssistPending ? (
                 <div className="ember-assist-status ember-assist-loading" role="status">
                   <strong>Thinking through the safest next step...</strong>
-                  <span>Ember uses local app guidance first and avoids pretending uncertain data is confirmed.</span>
+                  <span>The assistant uses local application guidance first and avoids pretending uncertain data is confirmed.</span>
                 </div>
               ) : null}
               {emberAssistError ? (
@@ -32912,7 +33612,7 @@ function renderForgeBusinessLedgerPanel() {
               ) : null}
               {emberAssistMessages.map((message) => (
                 <article className={`ember-assist-message is-${message.role}`} key={message.id}>
-                  <span>{message.role === "user" ? "You" : "Ember Assist"}</span>
+                  <span>{message.role === "user" ? "You" : "Business Assistant"}</span>
                   <p>{message.text}</p>
                   {message.actions?.filter((action) => !(message.shouldEscalate && /send( message)? to admin|send message to admin|message admin/i.test(action)))?.length ? (
                     <div className="ember-assist-actions">
@@ -32944,7 +33644,7 @@ function renderForgeBusinessLedgerPanel() {
                 {emberAssistOwnMessages.slice(0, 3).map((message) => (
                   <div key={message.id}>
                     <strong>{message.status || "Submitted"}</strong>
-                    <span>{message.submittedData?.question || "Ember Assist message"}</span>
+                    <span>{message.submittedData?.question || "Business Assistant message"}</span>
                   </div>
                 ))}
               </details>
@@ -32980,7 +33680,7 @@ function renderForgeBusinessLedgerPanel() {
               event.preventDefault();
               sendEmberAssistMessage();
             }}>
-              <label className="sr-only" htmlFor="ember-assist-input">Ask Ember Assist</label>
+              <label className="sr-only" htmlFor="ember-assist-input">Ask Business Assistant</label>
               <textarea
                 id="ember-assist-input"
                 rows={2}
@@ -33005,10 +33705,10 @@ function renderForgeBusinessLedgerPanel() {
               </div>
             </form>
             {emberAssistEscalationDraft ? (
-              <div className="ember-assist-escalation-form" role="group" aria-label="Send Ember Assist question to admin">
+              <div className="ember-assist-escalation-form" role="group" aria-label="Send Business Assistant question to admin">
                 <div className="compact-card-header">
                   <div>
-                    <h3>Send to Ember & Tide</h3>
+                    <h3>Send to admin</h3>
                     <p>I am not fully sure on that one. Add anything that would help a real person review it in the admin inbox.</p>
                   </div>
                   <button type="button" className="ghost-button" onClick={() => setEmberAssistEscalationDraft(null)}>Cancel</button>
@@ -34567,19 +35267,41 @@ function renderForgeBusinessLedgerPanel() {
     if (activeTab === "resetPassword") return "/reset-password";
     if (activeTab === "onboarding") return `/onboarding/${encodeURIComponent(onboardingView || "welcome")}`;
     if (activeTab === "dailyTide") return "/today";
+    if (activeTab === "flipScout") {
+      const routeByView = {
+        deals: "/find/deals",
+        restocks: "/find/restocks",
+        auctions: "/find/auctions",
+        rules: "/find/saved-searches",
+        ebay: "/find/ebay",
+        appraise: "/find/deal-analysis",
+        sources: "/find/sources",
+      };
+      return routeByView[flipScoutView] || "/scout/flip-scout";
+    }
+    if (activeTab === "collectionWorkspace") return collectionWorkspaceView === "collection" ? "/collection" : `/collection/${encodeURIComponent(collectionWorkspaceView)}`;
+    if (activeTab === "businessWorkspace") return businessWorkspaceView === "money" ? `/business/money/${encodeURIComponent(businessMoneyView)}` : `/business/${encodeURIComponent(businessWorkspaceView)}`;
+    if (activeTab === "ownerCenter") return ownerCenterSubview ? `/owner-center/${encodeURIComponent(ownerCenterSection)}/${encodeURIComponent(ownerCenterSubview)}` : `/owner-center/${encodeURIComponent(ownerCenterSection)}`;
     if (activeTab === "scout") {
       if (activeScoutPage === "stores" && scoutSubTabTarget.storeId) return `/scout/stores/${encodeURIComponent(scoutSubTabTarget.storeId)}`;
-      if (activeScoutPage === "reports" && selectedScoutReport) return `/scout/reports/${encodeURIComponent(getScoutReportId(selectedScoutReport) || "selected")}`;
+      if (activeScoutPage === "reports") {
+        return selectedScoutReport
+          ? `/scout/reports/${encodeURIComponent(getScoutReportId(selectedScoutReport) || "selected")}`
+          : "/scout/reports";
+      }
       if (activeScoutPage === "storeMap") return "/scout/store-map";
       if (activeScoutPage === "alerts") return "/scout/calendar";
       if (activeScoutPage === "online") return "/scout/online";
       if (activeScoutPage === "watchlist") return "/scout/watchlist";
       return "/scout";
     }
-    if (activeTab === "exchange") return `/exchange/${normalizeExchangeSection(exchangeSection)}`;
+    if (activeTab === "exchange") {
+      const normalizedSection = normalizeExchangeSection(exchangeSection);
+      return normalizedSection === "overview" ? "/exchange" : `/exchange/${normalizedSection}`;
+    }
     if (activeTab === "market" || activeTab === "catalog") {
       if (selectedCatalogDetailId) return `/tidetradr/product/${encodeURIComponent(selectedCatalogDetailId)}`;
-      return "/tidetradr/catalog";
+      return "/exchange/market";
     }
     if (activeTab === "expenses") return "/forge/expenses";
     if (activeTab === "sales") return "/forge/sales";
@@ -34630,6 +35352,12 @@ function renderForgeBusinessLedgerPanel() {
       onboardingView: activeTab === "onboarding" ? onboardingView : "welcome",
       activeWorkspaceId,
       homeSubTab,
+      flipScoutView,
+      collectionWorkspaceView,
+      businessWorkspaceView,
+      businessMoneyView,
+      ownerCenterSection,
+      ownerCenterSubview,
       exchangeSection,
       forgeSubTab,
       scoutView: activeScoutPage,
@@ -34675,6 +35403,12 @@ function renderForgeBusinessLedgerPanel() {
     onboardingView,
     activeWorkspaceId,
     homeSubTab,
+    flipScoutView,
+    collectionWorkspaceView,
+    businessWorkspaceView,
+    businessMoneyView,
+    ownerCenterSection,
+    ownerCenterSubview,
     forgeSubTab,
     activeScoutPage,
     selectedScoutReport,
@@ -34917,22 +35651,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
   const groupedVisibleVaultItems = useMemo(() => buildGroupedInventoryItems(visibleVaultItems, "vault"), [visibleVaultItems]);
   const visibleVaultMasterCards = useMemo(
-    () => {
-      const groupedCards = buildMasterCardsFromItems(visibleVaultItems);
-      if (groupedCards.length) return groupedCards;
-      if (activeVaultItems.length || wishlistItems.length) return [];
-      return MASTER_CARD_GROUPING_PREVIEW_CARDS;
-    },
-    [activeVaultItems.length, visibleVaultItems, wishlistItems.length]
+    () => buildMasterCardsFromItems(visibleVaultItems),
+    [visibleVaultItems]
   );
   const wishlistMasterCards = useMemo(
-    () => {
-      const groupedCards = buildMasterCardsFromItems(wishlistItems);
-      if (groupedCards.length) return groupedCards;
-      if (activeVaultItems.length || wishlistItems.length) return [];
-      return MASTER_CARD_GROUPING_PREVIEW_CARDS.filter((masterCard) => masterCard.wanted);
-    },
-    [activeVaultItems.length, wishlistItems]
+    () => buildMasterCardsFromItems(wishlistItems),
+    [wishlistItems]
   );
   const filteredForgeEntryCount = useMemo(
     () => groupedSortedFilteredItems.reduce((sum, group) => sum + inventoryGroupEntries(group).length, 0),
@@ -39336,536 +40060,110 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     return [...new Set(categoryLabels)].slice(0, 5);
   }
 
-  function openStoreDetailScanScreenshot(row = selectedStoreMapStore) {
-    const storeName = row?.name || getScoutQuickStoreName(row?.store || {}) || "";
-    closeStoreProfile();
-    openQuickAddPathFlow("scoutScreenshotReview", {
-      scoutScanStoreName: storeName,
-      scoutScanNotes: storeName ? `Screenshot or photo for ${storeName}.` : "",
-    }, "store-detail-scan-screenshot");
-  }
-
-  function openStoreMapSightingForm() {
-    setStoreMapSightingForm({
-      category: "Pokemon",
-      name: "",
-      retailerItemNumber: "",
-      sku: "",
-      upc: "",
-      productUrl: "",
-    });
-    setStoreMapSightingOpen(true);
-  }
-
-  function updateStoreMapSightingForm(field, value) {
-    setStoreMapSightingForm((current) => ({ ...current, [field]: value }));
-  }
-
-  function saveStoreMapSighting(event) {
-    event.preventDefault();
-    if (!selectedStoreMapStore) return;
-    const itemName = storeMapSightingForm.name.trim();
-    if (!itemName) {
-      setVaultToast("Item name is required.");
-      return;
-    }
-    const now = new Date().toISOString();
-    const storeId = getStoreMapStoreId(selectedStoreMapStore.store);
-    const sighting = {
-      id: makeId("scout-sighting"),
-      category: storeMapSightingForm.category.trim() || "Pokemon",
-      name: itemName,
-      productName: itemName,
-      product_name: itemName,
-      retailerItemNumber: storeMapSightingForm.retailerItemNumber.trim(),
-      retailer_item_number: storeMapSightingForm.retailerItemNumber.trim(),
-      sku: storeMapSightingForm.sku.trim(),
-      upc: storeMapSightingForm.upc.trim(),
-      productUrl: storeMapSightingForm.productUrl.trim(),
-      product_url: storeMapSightingForm.productUrl.trim(),
-      storeId,
-      store_id: storeId,
-      storeName: selectedStoreMapStore.name,
-      store_name: selectedStoreMapStore.name,
-      retailer: selectedStoreMapStore.retailer,
-      sourceType: "manual_store_sighting",
-      source_type: "manual_store_sighting",
-      createdAt: now,
-      updatedAt: now,
+  function getScoutTrustedShopProfile(row = {}) {
+    if (!row) return null;
+    const reports = Array.isArray(row.reports) ? row.reports : [];
+    const proofCount = reports.filter(storeDetailReportProofAttached).length;
+    const verifiedCount = storeDetailTrustedConfirmationCount(reports);
+    const familySafe = Boolean(
+      row.profile?.showFamilyFriendlyProfile ||
+      row.profile?.familyFriendlyApproved ||
+      row.profile?.supportsKidsAccess ||
+      row.profile?.kidsAccess ||
+      row.store?.familyFriendlyApproved ||
+      row.store?.supportsKidsAccess
+    );
+    const eventFriendly = Boolean(
+      row.profile?.hostsEvents ||
+      row.profile?.supportsEvents ||
+      row.profile?.kidEvents ||
+      row.profile?.tradeNights ||
+      row.store?.hostsEvents ||
+      row.store?.supportsEvents
+    );
+    const donationPartner = Boolean(
+      row.profile?.donationPartner ||
+      row.profile?.donationDropoff ||
+      row.profile?.acceptsDonations ||
+      row.store?.donationPartner ||
+      row.store?.donationDropoff ||
+      row.store?.acceptsDonations
+    );
+    const localShop = /card|game|comic|collect|hobby|local/i.test(`${row.retailer || ""} ${row.name || ""} ${row.profile?.storeType || ""} ${row.store?.storeType || ""}`);
+    const baseConfidence = storeDetailConfidenceScore(row);
+    const trustScore = Math.min(98, Math.max(28, Math.round(
+      baseConfidence +
+      Math.min(reports.length * 3, 12) +
+      Math.min(proofCount * 4, 12) +
+      Math.min(verifiedCount * 5, 16) +
+      (familySafe ? 8 : 0) +
+      (eventFriendly ? 4 : 0) +
+      (donationPartner ? 4 : 0) +
+      (localShop ? 4 : 0) +
+      (row.watchlisted ? 3 : 0)
+    )));
+    const confidence = trustScore >= 82 ? "Strong" : trustScore >= 66 ? "Moderate" : trustScore >= 48 ? "Building" : "Low";
+    const locationLabel = [row.city || row.area || row.store?.city, row.store?.region || row.region].filter(Boolean).join(" / ") || "Area not listed";
+    return {
+      id: row.id || getStoreMapStoreId(row.store) || row.name,
+      row,
+      trustScore,
+      confidence,
+      reportCount: reports.length,
+      proofCount,
+      verifiedCount,
+      familySafe,
+      eventFriendly,
+      donationPartner,
+      localShop,
+      trustBadge: familySafe ? "Trusted family shop" : localShop ? "Local shop candidate" : "Store profile",
+      demandLabel: reports.length >= 5 || proofCount >= 3 ? "Local demand high" : reports.length >= 2 ? "Normal demand" : "Needs signal",
+      activity: row.latestReport ? "Current activity" : reports.length ? `${reports.length} report${reports.length === 1 ? "" : "s"}` : "Needs reports",
+      lastReportLabel: row.latestReport ? scoutReportDateTimeLabel(row.latestReport) : "No current report",
+      locationLabel,
     };
-    const scoutData = getSharedScoutData();
-    const nextItems = [sighting, ...(scoutData.items || scoutSnapshot.items || [])];
-    saveSharedScoutData({ ...scoutData, items: nextItems });
-    setStoreMapSightingOpen(false);
-    setVaultToast(`${itemName} added to Scout sightings.`);
   }
 
-  function deleteStoreMapSighting(itemId) {
-    const scoutData = getSharedScoutData();
-    const nextItems = (scoutData.items || scoutSnapshot.items || []).filter((item) => String(item.id) !== String(itemId));
-    saveSharedScoutData({ ...scoutData, items: nextItems });
-    setVaultToast("Product sighting removed.");
+  function getScoutTrustedShopRows(limit = 4) {
+    return buildStoreMapRows({ unfiltered: true })
+      .map(getScoutTrustedShopProfile)
+      .filter(Boolean)
+      .sort((a, b) => {
+        if (b.trustScore !== a.trustScore) return b.trustScore - a.trustScore;
+        if (b.proofCount !== a.proofCount) return b.proofCount - a.proofCount;
+        return String(a.row.name || "").localeCompare(String(b.row.name || ""));
+      })
+      .slice(0, limit);
   }
 
-  function updateStoreSuggestionDraft(field, value) {
-    setStoreSuggestionDraft((current) => ({ ...current, [field]: value }));
-  }
-
-  function resetStoreSuggestionDraft() {
-    setStoreSuggestionDraft(ADMIN_STORE_DRAFT_DEFAULTS);
-    setStoreSuggestionOpen(false);
-  }
-
-  function submitStoreSuggestionFlow(event) {
-    event?.preventDefault?.();
-    const validation = validateAdminStoreDraft(storeSuggestionDraft);
-    if (!validation.ok) {
-      setVaultToast(validation.errors[0]);
-      return;
-    }
-    const userInfo = getSuggestionUserInfo();
-    const suggestion = buildStoreSuggestionRecord(storeSuggestionDraft, {
-      ...userInfo,
-      source: "store-directory",
-    });
-    const result = submitUniversalSuggestion(suggestion);
-    if (!result) return;
-    resetStoreSuggestionDraft();
-    setVaultToast("Store suggestion queued for admin review. It will not appear publicly until approved.");
-  }
-
-  function updateAdminStoreDraft(field, value) {
-    setAdminStoreDraft((current) => ({ ...current, [field]: value }));
-  }
-
-  function startAdminStoreDraft(row = {}) {
-    const store = row.store || row;
-    setAdminStoreEditingId(getStoreMapStoreId(store));
-    setAdminStoreDraft(normalizeAdminStoreDraft(store));
-    setAdminReviewFilter("Store Management");
-  }
-
-  function resetAdminStoreDraft() {
-    setAdminStoreDraft(ADMIN_STORE_DRAFT_DEFAULTS);
-    setAdminStoreEditingId("");
-  }
-
-  function saveAdminStoreManagementDraft(event) {
-    event?.preventDefault?.();
-    if (!adminEditModeActive) {
-      setVaultToast("Turn on Admin Edit Mode to save store metadata.");
-      return;
-    }
-    const scoutData = getSharedScoutData();
-    const stores = scoutData.stores?.length ? scoutData.stores : scoutSnapshot.stores || [];
-    const result = applyAdminStoreDraftToStores(stores, {
-      ...adminStoreDraft,
-      id: adminStoreEditingId || adminStoreDraft.id,
-    }, {
-      admin: true,
-      reviewer: adminReviewerName(),
-    });
-    if (!result.ok) {
-      setVaultToast(result.errors?.[0] || "Store metadata needs review before saving.");
-      return;
-    }
-    saveSharedScoutData({ ...scoutData, stores: result.stores });
-    resetAdminStoreDraft();
-    setVaultToast(result.mode === "created" ? "Store added to local shared store data." : "Store metadata updated.");
-  }
-
-  function quickPatchAdminStore(row, patch = {}) {
-    if (!adminEditModeActive) {
-      setVaultToast("Turn on Admin Edit Mode to update store metadata.");
-      return;
-    }
-    const store = normalizeAdminStoreDraft({ ...(row.store || row), ...patch });
-    const scoutData = getSharedScoutData();
-    const stores = scoutData.stores?.length ? scoutData.stores : scoutSnapshot.stores || [];
-    const result = applyAdminStoreDraftToStores(stores, store, {
-      admin: true,
-      reviewer: adminReviewerName(),
-    });
-    if (!result.ok) {
-      setVaultToast(result.errors?.[0] || "Store metadata needs review before saving.");
-      return;
-    }
-    saveSharedScoutData({ ...scoutData, stores: result.stores });
-    setVaultToast(`${store.displayName || store.name} updated.`);
-  }
-
-  function renderStoreMapStatusBadge(row) {
-    return <span className={`status-badge store-map-status store-map-status--${row.status.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>{row.status}</span>;
-  }
-
-  function renderStoreProfileBadges(profile = {}, options = {}) {
-    const badges = (profile.badges || []).slice(0, options.limit || 8);
-    if (!badges.length && options.hideWhenEmpty) return null;
+  function renderScoutStoreTrustProfile(row = {}) {
+    const profile = getScoutTrustedShopProfile(row);
+    if (!profile) return null;
+    const timeline = [
+      { marker: "1", title: "Trust status", body: profile.trustBadge },
+      { marker: "2", title: "Report reliability", body: `${profile.verifiedCount} trusted confirmation${profile.verifiedCount === 1 ? "" : "s"} and ${profile.proofCount} proof item${profile.proofCount === 1 ? "" : "s"}` },
+      { marker: "3", title: "Current activity", body: profile.lastReportLabel },
+    ];
     return (
-      <div className="store-profile-badge-row" aria-label="Store badges">
-        {profile.storeType ? <span className="status-badge store-type-badge">{profile.storeType}</span> : null}
-        {badges.map((badge) => (
-          <span key={badge.key || badge.label} className={`status-badge store-partner-badge store-partner-badge--${badge.tone || "default"}`}>{badge.label}</span>
-        ))}
-      </div>
-    );
-  }
-
-  function renderStoreProfileActivity(profile = {}) {
-    const activity = profile.activity || {};
-    return (
-      <section className="store-profile-activity">
-        <div className="compact-card-header">
+      <section className="scout-store-trust-profile-card" aria-label="Trusted Shop Profile">
+        <div className="scout-store-trust-hero">
           <div>
-            <h3>Store Activity</h3>
-            <p>Confirmed restocks stay separate from predictions and community guesses.</p>
+            <p className="section-kicker">Trusted Shop Profile</p>
+            <h2>{profile.row.name}</h2>
+            <p>{[profile.row.retailer, profile.row.area || profile.row.city || "Area protected"].filter(Boolean).join(" | ")}</p>
           </div>
+          <span className="status-badge">{profile.trustBadge}</span>
         </div>
-        <div className="store-profile-activity-grid">
-          <div>
-            <span>Confirmed Restocks</span>
-            <strong>{activity.recentReportCount || 0}</strong>
-            <small>{activity.lastConfirmedRestock ? `Last confirmed: ${activity.lastConfirmedRestock}` : "No confirmed restock yet"}</small>
-            <small>{activity.mostReportedProduct ? `Most reported: ${activity.mostReportedProduct}` : "Needs product history"}</small>
-          </div>
-          <div>
-            <span>Predicted Windows</span>
-            <strong>{activity.predictedWindows?.length || 0}</strong>
-            <small>{activity.nextPredictedWindow || activity.predictionConfidenceSummary || "Needs more confirmed history"}</small>
-            <small>Predictions are estimates, not guarantees.</small>
-          </div>
-          <div>
-            <span>Community Guesses</span>
-            <strong>{activity.communityGuessCount || 0}</strong>
-            <small>Community guesses are not confirmed restocks.</small>
-          </div>
-        </div>
-      </section>
-    );
-  }
-
-  function renderStoreSuggestionPanel() {
-    if (!storeSuggestionOpen) return null;
-    return (
-      <section className="panel store-suggestion-panel" aria-label="Suggest a store">
-        <div className="compact-card-header">
-          <div>
-            <h3>Suggest a Store</h3>
-            <p>{STORE_SUGGESTION_REVIEW_COPY} Family-friendly status never guarantees MSRP or inventory.</p>
-          </div>
-          <button type="button" className="ghost-button" onClick={resetStoreSuggestionDraft}>Cancel</button>
-        </div>
-        <form className="compact-form-grid admin-store-draft-form" onSubmit={submitStoreSuggestionFlow}>
-          <label className="form-field">
-            <span>Store / shop name</span>
-            <input value={storeSuggestionDraft.displayName} onChange={(event) => updateStoreSuggestionDraft("displayName", event.target.value)} placeholder="Family Table TCG" />
-          </label>
-          <label className="form-field">
-            <span>Chain / shop brand</span>
-            <input value={storeSuggestionDraft.chain} onChange={(event) => updateStoreSuggestionDraft("chain", event.target.value)} placeholder="Target, Barnes & Noble, local shop" />
-          </label>
-          <label className="form-field">
-            <span>Type</span>
-            <select value={storeSuggestionDraft.storeType} onChange={(event) => updateStoreSuggestionDraft("storeType", event.target.value)}>
-              {STORE_LOCATION_TYPES.map((type) => <option key={type}>{type}</option>)}
-            </select>
-          </label>
-          <label className="form-field">
-            <span>Nickname</span>
-            <input value={storeSuggestionDraft.nickname} onChange={(event) => updateStoreSuggestionDraft("nickname", event.target.value)} placeholder="Optional local nickname" />
-          </label>
-          <label className="form-field">
-            <span>City</span>
-            <input value={storeSuggestionDraft.city} onChange={(event) => updateStoreSuggestionDraft("city", event.target.value)} placeholder="Virginia Beach" />
-          </label>
-          <label className="form-field">
-            <span>State</span>
-            <input value={storeSuggestionDraft.state} onChange={(event) => updateStoreSuggestionDraft("state", event.target.value)} placeholder="Virginia" />
-          </label>
-          <label className="form-field">
-            <span>Region / area</span>
-            <input value={storeSuggestionDraft.region} onChange={(event) => updateStoreSuggestionDraft("region", event.target.value)} placeholder="Hampton Roads / 757" />
-          </label>
-          <label className="form-field">
-            <span>Public notes</span>
-            <textarea value={storeSuggestionDraft.publicNotes} onChange={(event) => updateStoreSuggestionDraft("publicNotes", event.target.value)} placeholder="What should admins know before reviewing this store?" />
-          </label>
-          <label className="inline-toggle">
-            <input type="checkbox" checked={storeSuggestionDraft.familyFriendlyApproved} onChange={(event) => updateStoreSuggestionDraft("familyFriendlyApproved", event.target.checked)} />
-            <span>Suggest for family-friendly review</span>
-          </label>
-          <label className="inline-toggle">
-            <input type="checkbox" checked={storeSuggestionDraft.supportsKidsAccess} onChange={(event) => updateStoreSuggestionDraft("supportsKidsAccess", event.target.checked)} />
-            <span>May support kids access</span>
-          </label>
-          <label className="inline-toggle">
-            <input type="checkbox" checked={storeSuggestionDraft.supportsMsrpOrReasonablePricing} onChange={(event) => updateStoreSuggestionDraft("supportsMsrpOrReasonablePricing", event.target.checked)} />
-            <span>May support reasonable pricing when possible</span>
-          </label>
-          <div className="flow-form-footer">
-            <button type="submit">Submit Store Suggestion</button>
-            <button type="button" className="secondary-button" onClick={resetStoreSuggestionDraft}>Cancel</button>
-          </div>
-        </form>
-      </section>
-    );
-  }
-
-  function renderStoreMapPanel() {
-    const baseRows = buildStoreMapRows({ unfiltered: true });
-    const rows = buildStoreMapRows();
-    const categoryOptions = ["All", ...new Set(baseRows.flatMap((row) => row.categories).filter(Boolean))];
-    const statusOptions = ["All", ...new Set(baseRows.map((row) => row.status))];
-    const retailerOptions = ["All", ...VIRGINIA_RETAILERS];
-    const stateOptions = ["All", ...new Set(baseRows.map((row) => row.profile?.state).filter(Boolean))];
-    const regionOptions = ["All", ...new Set(baseRows
-      .filter((row) => storeMapFilters.state === "All" || row.profile?.state === storeMapFilters.state)
-      .map((row) => row.profile?.region)
-      .filter(Boolean))];
-    const cityOptions = ["All", ...new Set(baseRows
-      .filter((row) => storeMapFilters.state === "All" || row.profile?.state === storeMapFilters.state)
-      .filter((row) => storeMapFilters.region === "All" || row.profile?.region === storeMapFilters.region)
-      .map((row) => row.profile?.city)
-      .filter(Boolean))];
-    const regionBuckets = buildRegionalStoreBuckets(baseRows.map((row) => row.profile), { admin: adminEditModeActive }).slice(0, 8);
-    const cityBuckets = buildRegionalCityBuckets(baseRows.map((row) => row.profile), storeMapFilters, { admin: adminEditModeActive }).slice(0, 8);
-    const mapReadyRows = rows.map((row) => buildMapReadyStoreLocation(row.profile));
-    const featuredRows = rows.slice(0, 7);
-    const familyFilterActive = storeMapFilters.familyStatus !== "all" || storeMapFilters.kidsAccessOnly || storeMapFilters.reasonablePricingOnly || storeMapFilters.kidEventsOnly || storeMapFilters.tradeNightsOnly || storeMapFilters.featuredPartnersOnly || storeMapFilters.advertisingPartnersOnly;
-    const areaFilterActive = regionalFilterActive(storeMapFilters);
-    const applyRegionalBrowseFilter = (bucket = {}) => {
-      setStoreMapFilters((current) => ({
-        ...current,
-        state: bucket.state || "All",
-        region: bucket.region || "All",
-        city: bucket.city || "All",
-      }));
-    };
-    const locationCopy = hasScoutLocation
-      ? `Nearby sorting is on${locationSettings.manualLocation || locationSettings.selectedSavedLocation ? ` for ${locationSettings.manualLocation || locationSettings.selectedSavedLocation}` : ""}.`
-      : "Location is optional. Search by city, store, or manual area to use Stores without sharing location.";
-    return (
-      <section className="store-map-page" aria-label="Stores">
-        <article className="store-map-hero">
-          <div>
-            <p className="section-kicker">Scout Stores</p>
-            <h2>Family-Friendly Shop Directory</h2>
-            <p>{locationCopy} Local shop profiles show mission support, partner badges, confirmed reports, and prediction data without promising inventory or MSRP.</p>
-          </div>
-          <SectionHeroArt title="Stores" className="store-map-feature-art" />
-          <div className="store-map-hero-actions">
-            <button type="button" onClick={() => openScoutSubmitFlow({ source: "store-map-hero" })}>Report Stock</button>
-            <button type="button" className="secondary-button" onClick={() => { setWatchCalendarView("today"); setScoutView("alerts"); }}>Open Ember Watch</button>
-            <button type="button" className="secondary-button" onClick={() => setStoreMapFilters((current) => ({ ...current, watchlistOnly: !current.watchlistOnly }))}>
-              {storeMapFilters.watchlistOnly ? "Show All Stores" : "Watchlist Only"}
-            </button>
-            <button type="button" className="secondary-button" onClick={() => setStoreSuggestionOpen((open) => !open)}>
-              {storeSuggestionOpen ? "Close Suggestion" : "Suggest Store"}
-            </button>
-          </div>
-        </article>
-
-        {renderStoreSuggestionPanel()}
-
-        <article className="store-map-filters panel">
-          <div className="store-map-retailer-chips" aria-label="Retailer quick filters">
-            {["All", "Target", "Walmart", "GameStop", "Best Buy", "Local Card Shops"].map((retailer) => (
-              <button
-                type="button"
-                key={retailer}
-                className={storeMapFilters.retailer === retailer ? "active" : ""}
-                onClick={() => updateStoreMapFilter("retailer", retailer)}
-              >
-                {retailer}
-              </button>
-            ))}
-          </div>
-          <div className="store-directory-filter-note">
-            <strong>Partner status is not a guarantee.</strong>
-            <span>{PARTNER_STATUS_DISCLAIMER}</span>
-          </div>
-          <section className="regional-browse-panel" aria-label="Browse by Area">
-            <div className="compact-card-header">
+        <div className="scout-store-trust-timeline" aria-label="Trusted shop activity">
+          {timeline.map((item) => (
+            <article className="scout-store-trust-step" key={item.title}>
+              <span>{item.marker}</span>
               <div>
-                <h3>Browse by Area</h3>
-                <p>Pick a region or city to narrow stores, Scout reports, Drop Radar windows, and family-friendly shop results.</p>
+                <strong>{item.title}</strong>
+                <p>{item.body}</p>
               </div>
-              <button type="button" className="ghost-button" onClick={() => applyRegionalBrowseFilter({})}>All Areas</button>
-            </div>
-            <div className="regional-browse-grid">
-              {regionBuckets.map((bucket) => (
-                <button type="button" className="regional-browse-card" key={bucket.id} onClick={() => applyRegionalBrowseFilter(bucket)}>
-                  <strong>{bucket.label}</strong>
-                  <span>{bucket.state || "State not set"}</span>
-                  <small>{bucket.storeCount} store{bucket.storeCount === 1 ? "" : "s"} | {bucket.familyFriendlyCount} family-friendly | {bucket.confirmedReportCount} confirmed</small>
-                </button>
-              ))}
-            </div>
-            {cityBuckets.length ? (
-              <div className="regional-city-chip-row" aria-label="Nearby city filters">
-                {cityBuckets.map((bucket) => (
-                  <button type="button" className={storeMapFilters.city === bucket.city ? "active" : ""} key={bucket.id} onClick={() => applyRegionalBrowseFilter(bucket)}>
-                    {bucket.label} <span>{bucket.storeCount}</span>
-                  </button>
-                ))}
-              </div>
-            ) : null}
-            <p className="store-directory-filter-note">
-              <strong>Map-ready foundation</strong>
-              <span>{mapReadyRows.length} store profile{mapReadyRows.length === 1 ? "" : "s"} have safe map-ready labels, region data, badges, and profile routes. No paid map API is connected.</span>
-            </p>
-          </section>
-          <label>
-            <span>Search stores</span>
-            <input value={storeMapFilters.query} onChange={(event) => updateStoreMapFilter("query", event.target.value)} placeholder="Store, city, ZIP, nickname" />
-          </label>
-          <label>
-            <span>Store type</span>
-            <select value={storeMapFilters.storeType} onChange={(event) => updateStoreMapFilter("storeType", event.target.value)}>
-              <option>All</option>
-              {STORE_LOCATION_TYPES.map((type) => <option key={type}>{type}</option>)}
-            </select>
-          </label>
-          <label>
-            <span>Shop status</span>
-            <select value={storeMapFilters.familyStatus} onChange={(event) => updateStoreMapFilter("familyStatus", event.target.value)}>
-              {STORE_FAMILY_FILTER_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
-          </label>
-          <label>
-            <span>Manual area</span>
-            <input value={storeMapFilters.area} onChange={(event) => updateStoreMapFilter("area", event.target.value)} placeholder="City, ZIP, or area" />
-          </label>
-          <label>
-            <span>Retailer</span>
-            <select value={storeMapFilters.retailer} onChange={(event) => updateStoreMapFilter("retailer", event.target.value)}>
-              {retailerOptions.map((retailer) => <option key={retailer}>{retailer}</option>)}
-            </select>
-          </label>
-          <label>
-            <span>Product</span>
-            <select value={storeMapFilters.category} onChange={(event) => updateStoreMapFilter("category", event.target.value)}>
-              {categoryOptions.map((category) => <option key={category}>{category}</option>)}
-            </select>
-          </label>
-          <label>
-            <span>Status</span>
-            <select value={storeMapFilters.status} onChange={(event) => updateStoreMapFilter("status", event.target.value)}>
-              {statusOptions.map((status) => <option key={status}>{status}</option>)}
-            </select>
-          </label>
-          <label>
-            <span>State</span>
-            <select value={storeMapFilters.state} onChange={(event) => updateStoreMapFilter("state", event.target.value)}>
-              {stateOptions.map((state) => <option key={state}>{state}</option>)}
-            </select>
-          </label>
-          <label>
-            <span>Region</span>
-            <select value={storeMapFilters.region} onChange={(event) => updateStoreMapFilter("region", event.target.value)}>
-              {regionOptions.map((region) => <option key={region}>{region}</option>)}
-            </select>
-          </label>
-          <label>
-            <span>City</span>
-            <select value={storeMapFilters.city} onChange={(event) => updateStoreMapFilter("city", event.target.value)}>
-              {cityOptions.map((city) => <option key={city}>{city}</option>)}
-            </select>
-          </label>
-          <label>
-            <span>Distance</span>
-            <select value={storeMapFilters.distance} onChange={(event) => updateStoreMapFilter("distance", event.target.value)}>
-              <option value="Any">Any</option>
-              <option value="5">Within 5 mi</option>
-              <option value="15">Within 15 mi</option>
-              <option value="30">Within 30 mi</option>
-              <option value="50">Within 50 mi</option>
-            </select>
-          </label>
-          <label className="store-map-watch-toggle">
-            <input type="checkbox" checked={storeMapFilters.watchlistOnly} onChange={(event) => updateStoreMapFilter("watchlistOnly", event.target.checked)} />
-            <span>Watchlist only</span>
-          </label>
-          <label className="store-map-watch-toggle">
-            <input type="checkbox" checked={storeMapFilters.kidsAccessOnly} onChange={(event) => updateStoreMapFilter("kidsAccessOnly", event.target.checked)} />
-            <span>Kids access</span>
-          </label>
-          <label className="store-map-watch-toggle">
-            <input type="checkbox" checked={storeMapFilters.reasonablePricingOnly} onChange={(event) => updateStoreMapFilter("reasonablePricingOnly", event.target.checked)} />
-            <span>Reasonable pricing</span>
-          </label>
-          <label className="store-map-watch-toggle">
-            <input type="checkbox" checked={storeMapFilters.kidEventsOnly} onChange={(event) => updateStoreMapFilter("kidEventsOnly", event.target.checked)} />
-            <span>Kid events</span>
-          </label>
-          <label className="store-map-watch-toggle">
-            <input type="checkbox" checked={storeMapFilters.tradeNightsOnly} onChange={(event) => updateStoreMapFilter("tradeNightsOnly", event.target.checked)} />
-            <span>Trade nights</span>
-          </label>
-          <label className="store-map-watch-toggle">
-            <input type="checkbox" checked={storeMapFilters.featuredPartnersOnly} onChange={(event) => updateStoreMapFilter("featuredPartnersOnly", event.target.checked)} />
-            <span>Featured</span>
-          </label>
-          <label className="store-map-watch-toggle">
-            <input type="checkbox" checked={storeMapFilters.advertisingPartnersOnly} onChange={(event) => updateStoreMapFilter("advertisingPartnersOnly", event.target.checked)} />
-            <span>Advertising</span>
-          </label>
-        </article>
-
-        <div className="store-map-layout">
-          <article className="store-map-canvas panel" aria-label="Stores map visual">
-            <div className="store-map-rings" aria-hidden="true" />
-            {featuredRows.map((row) => (
-              <button
-                type="button"
-                key={`pin-${row.id}`}
-                className={`store-map-pin store-map-pin--${row.status.toLowerCase().replace(/[^a-z0-9]+/g, "-")}${row.watchlisted ? " is-watched" : ""}`}
-                style={{ left: `${row.pinX}%`, top: `${row.pinY}%` }}
-                onClick={() => openStoreProfile(row)}
-                aria-label={`Open ${row.name}`}
-              >
-                <span>{row.retailer.slice(0, 1)}</span>
-              </button>
-            ))}
-            <div className="store-map-canvas-summary">
-              <strong>{rows.length} stores shown</strong>
-              <span>{featuredRows.filter((row) => row.watchlisted).length} watched on map</span>
-            </div>
-          </article>
-
-          <div className="store-map-card-list">
-            {rows.slice(0, 12).map((row) => (
-              <article className="store-map-card scout-store-card" key={row.id}>
-                <button type="button" className="store-map-card-main" onClick={() => openStoreProfile(row)}>
-                  <span className="store-map-retailer-mark">{row.retailer.slice(0, 2).toUpperCase()}</span>
-                  <span>
-                    <strong>{row.name}</strong>
-                    <small>{row.retailer} | {row.profile?.storeType || row.storeType} | {row.area || "Area not listed"}{Number.isFinite(row.distance) ? ` | ${row.distance.toFixed(1)} mi` : ""}</small>
-                    <em>{row.latestReport ? `Last report: ${scoutReportDateTimeLabel(row.latestReport)}` : "No Scout report yet"}</em>
-                  </span>
-                </button>
-                {renderStoreProfileBadges(row.profile, { limit: 5, hideWhenEmpty: true })}
-                <div className="store-map-card-meta">
-                  {renderStoreMapStatusBadge(row)}
-                  <span className="confidence-badge">{row.confidence} confidence</span>
-                  <span className={row.watchlisted ? "status-badge watchlist" : "status-badge"}>{row.watchlisted ? "Watching" : "Not watched"}</span>
-                </div>
-                <div className="store-map-card-actions">
-                  <button type="button" className="secondary-button" onClick={() => openStoreMapReport(row, "stock_on_shelf")}>Report Stock</button>
-                  <button type="button" className="ghost-button" onClick={() => toggleStoreMapWatch(row)}>{row.watchlisted ? "Unfollow" : "Follow"}</button>
-                  <button type="button" className="ghost-button" onClick={() => askEmberAboutStore(row)}>Ask Ember</button>
-                  <button type="button" className="ghost-button" aria-label={`Open Store Profile ${row.name}`} onClick={() => openStoreProfile(row)}>View Profile</button>
-                </div>
-              </article>
-            ))}
-            {!rows.length ? (
-              <div className="empty-state">
-                <h3>{familyFilterActive ? "No family-friendly shops match yet" : areaFilterActive ? "No stores in this area yet" : "No stores match those filters"}</h3>
-                <p>{familyFilterActive ? NO_FAMILY_SHOPS_COPY : areaFilterActive ? REGIONAL_BROWSING_EMPTY_COPY.noStores : "Try a broader city search, clear Watchlist only, or suggest a missing store from Quick Add."}</p>
-                <button type="button" className="secondary-button" onClick={() => openQuickAddAction("storeSuggestion")}>Suggest Store</button>
-              </div>
-            ) : null}
-          </div>
+            </article>
+          ))}
         </div>
       </section>
     );
@@ -41853,6 +42151,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     );
   }
 
+  function renderNotificationCenterPanel() {
+    return null;
+  }
+
   function renderOnboardingPanel() {
     const onboardingState = normalizeOnboardingState(betaReadinessData.onboarding || {});
     const completedAt = onboardingState.completedAt;
@@ -42894,59 +43196,312 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         status: "Scoped",
       },
     ];
+    const lanternStats = [
+      { label: "Safety paths", value: "6", helper: "care, trade, selling, Scout, meetup, links" },
+      { label: "Kid context", value: "On", helper: "parent-guided and private" },
+      { label: "Risk posture", value: "Review", helper: "slow down before action" },
+    ];
+    const lanternPathways = [
+      {
+        title: "Card care",
+        body: "Sleeves, binders, storage, photos, and condition notes before value decisions.",
+        status: "Learn",
+      },
+      {
+        title: "Trade safety",
+        body: "Compare exact variants, condition, proof, value range, and parent approval before trading.",
+        status: "Review first",
+      },
+      {
+        title: "Scam prevention",
+        body: "Watch for pressure, off-platform payment, fake urgency, altered photos, and unclear identity.",
+        status: "Slow down",
+      },
+      {
+        title: "Selling safety",
+        body: "Use proof photos, tracking, issue records, and clear condition notes before shipping.",
+        status: "Proof needed",
+      },
+      {
+        title: "Safe meetup",
+        body: "Meet in public, bring a grown-up for kid contexts, and avoid private address sharing.",
+        status: "Public place",
+      },
+      {
+        title: "Scout privacy",
+        body: "Use current store signals without exposing exact restock patterns, vendor schedules, or private location.",
+        status: "Area only",
+      },
+    ];
+    const lanternChecklist = [
+      "Confirm exact item, variant, condition, and quantity.",
+      "Check value range and confidence before deciding.",
+      "Keep child details, private addresses, and exact schedules out.",
+      "Use parent approval for kid or teen collecting decisions.",
+      "Save photos, receipts, tracking, or proof when trust matters.",
+    ];
+    const lanternRiskRows = [
+      { title: "External link", body: "Warn before opening off-app shops, social links, or payment pages.", status: "Gate" },
+      { title: "Local meetup", body: "Suggest trusted public places and no private child location sharing.", status: "Checklist" },
+      { title: "Suspicious seller", body: "Pause if pressure, no proof, odd payment asks, or mismatch appears.", status: "Report" },
+      { title: "Kid action", body: "Buying, selling, sharing, and trading stay parent-reviewed.", status: "Approval" },
+    ];
+    const safeMeetupLocations = [
+      { title: "Trusted shop table", body: "Best choice when a participating shop can host a public exchange area.", status: "Preferred" },
+      { title: "Public exchange zone", body: "Use a well-lit public location with cameras or posted exchange guidance.", status: "Safe zone" },
+      { title: "Card show or event", body: "Meet during a family-safe event, stay on-site, and keep details in the app record.", status: "Event" },
+    ];
+    const safeMeetupChecklist = [
+      "Confirm the exact item, photos, condition, and quantity before leaving.",
+      "Share only general area details until the meeting place is approved.",
+      "Bring a parent or trusted adult for teen and kid contexts.",
+      "Avoid private homes, parking-lot pressure, off-platform payment pressure, or last-minute location changes.",
+    ];
+    const safeMeetupProofRows = [
+      { label: "Place", value: "Public or trusted shop" },
+      { label: "Family", value: "Parent-approved when needed" },
+      { label: "Proof", value: "Photos and condition saved" },
+      { label: "Exit", value: "Cancel if anything changes" },
+    ];
+    const lanternLessonRows = [
+      { title: "Beginner collector", body: "Protect cards, sort by set, and learn condition words before value chasing.", status: "Kid safe" },
+      { title: "Teen collector", body: "Practice fair comparisons, saved wishlists, and parent-reviewed trades.", status: "Lantern" },
+      { title: "Parent guide", body: "Set permissions, review requests, and keep private family data out of public spaces.", status: "Nest" },
+    ];
+    const lanternRouteRows = [
+      { title: "Open Nest", body: "Review parent approvals, permissions, and family activity.", action: "Parent Center", onClick: () => setActiveTab("parentCenter") },
+      { title: "Open Exchange", body: "Compare Market, Harbor, and Forge decisions before trading or selling.", action: "Exchange", onClick: () => setActiveTab("exchange") },
+      { title: "Open Scout", body: "Use current local signals without unsafe restock-pattern details.", action: "Scout", onClick: () => setActiveTab("scout") },
+      { title: "Open Spark", body: "Review kid-pack, donation, and family participation requests.", action: "The Spark", onClick: () => setActiveTab("kidsProgram") },
+    ];
     return (
-      <>
-        <PageHeader
-          className={getHeaderCardClass("panel page-summary-card")}
-          title="Trust & Safety"
-          subtitle="Beta trust pages for privacy, terms, Kids Program rules, community guidelines, acceptable use, and support."
-          actions={(
-            <>
-              {adminToolsVisible ? <button type="button" className="secondary-button" onClick={() => void runTrustCopyAiAssist("legal")}>Review clarity</button> : null}
-              <button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Back to Home</button>
-            </>
-          )}
-        />
-        <section className="panel trust-page-hero-card">
-          <div>
-            <p className="section-kicker">Privacy &amp; Safety</p>
-            <h2>Family-first guardrails before growth.</h2>
-            <p>
-              Ember &amp; Tide keeps collecting useful without exposing private child details, harmful Scout patterns,
-              or admin-only moderation data.
-            </p>
+      <div className="utility-page trust-command-only-route trust-v4-route">
+        <CommandBoardV4
+          accent="you"
+          className="trust-v4-command-board"
+          ariaLabel="Trust and Safety Command Center"
+          label="Lantern"
+          title="Trust & Safety Command Center"
+          description="Family privacy, Scout fairness, safe meetups, trade/sell friction, report education, and legal foundations in one protected control surface."
+          primaryAction={{ label: "Back to Hearth", icon: "home", onClick: () => setActiveTab("dashboard") }}
+          secondaryActions={[
+            adminToolsVisible ? { label: "Review clarity", icon: "help", onClick: () => void runTrustCopyAiAssist("legal") } : null,
+            { label: "New Stuff", icon: "bell", onClick: () => setActiveTab("whatsNew") },
+          ].filter(Boolean)}
+          statusItems={[
+            { key: "privacy", icon: "community", label: "Child privacy", value: "Protected", detail: "Private by default" },
+            { key: "scout", icon: "scout", label: "Scout fairness", value: "Current", detail: "No raw patterns" },
+            { key: "meetup", icon: "store", label: "Meetups", value: "Public", detail: "No private child location" },
+            { key: "proof", icon: "data", label: "Proof", value: "Required", detail: "Photos, receipts, records" },
+            { key: "links", icon: "help", label: "External links", value: "Gated", detail: "Warning first" },
+          ]}
+          plan={{
+            label: "Safety Plan",
+            title: "Slow down, check proof, keep families protected",
+            items: [
+              { key: "care", icon: "vault", label: "Card care", detail: "Condition and storage" },
+              { key: "trade", icon: "market", label: "Trade safety", detail: "Fairness and proof" },
+              { key: "meet", icon: "store", label: "Safe meetup", detail: "Public locations only" },
+              { key: "kids", icon: "community", label: "Kid context", detail: "Parent approval" },
+            ],
+            actions: [
+              { label: "Open Nest", icon: "community", onClick: () => setActiveTab("parentCenter") },
+              { label: "Report Issue", icon: "help", onClick: () => openFeedbackDialog("safety") },
+            ],
+          }}
+          routes={[
+            { key: "nest", icon: "community", label: "Nest", title: "Family controls", detail: "Approvals and permissions", action: () => setActiveTab("parentCenter") },
+            { key: "scout", icon: "scout", label: "Scout", title: "Local intel", detail: "Privacy-safe reports", action: () => setActiveTab("scout") },
+            { key: "exchange", icon: "market", label: "Exchange", title: "Trade and sell", detail: "Safety decisions", action: () => setActiveTab("exchange") },
+            { key: "spark", icon: "spark", label: "Spark", title: "Family support", detail: "Kid-pack review", action: () => setActiveTab("kidsProgram") },
+            { key: "archive", icon: "data", label: "Archive", title: "Proof records", detail: "Receipts and history", action: () => openUtilityPage("dataBackup") },
+            { key: "help", icon: "help", label: "Help", title: "Support", detail: "Report and learn", action: () => openUtilityPage("help") },
+          ]}
+        >
+          <CommandBoardSection
+            className="trust-v4-guardrails"
+            kicker="Privacy and safety"
+            title="Family-first guardrails before growth"
+            detail="Ember & Tide keeps collecting useful without exposing private child details, harmful Scout patterns, or admin-only moderation data."
+            action={<span className="status-badge">Protected</span>}
+          >
+            <div className="trust-v4-guardrail-grid">
+              {trustSafetyRows.map((row) => (
+                <article className="trust-v4-guardrail-card" key={row.title}>
+                  <span>{row.status}</span>
+                  <strong>{row.title}</strong>
+                  <p>{row.body}</p>
+                </article>
+              ))}
+            </div>
+          </CommandBoardSection>
+
+          <CommandBoardSection
+            className="trust-v4-lantern"
+            kicker="Lantern Safety Center"
+            title="Practical safety tools, not vague warnings"
+            detail="Lantern turns safety into checklists for card care, trades, scam prevention, selling, safe meetups, Scout privacy, external links, and kid or teen collecting."
+            action={<span className="status-badge">Role-aware</span>}
+          >
+            <CommandMetricGrid className="trust-v4-lantern-metrics" items={lanternStats.map((stat) => ({ key: stat.label, label: stat.label, value: stat.value, detail: stat.helper }))} />
+            <div className="trust-v4-pathway-grid" aria-label="Lantern learning paths">
+              {lanternPathways.map((pathway) => (
+                <article className="trust-v4-pathway-card" key={pathway.title}>
+                  <span>{pathway.status}</span>
+                  <strong>{pathway.title}</strong>
+                  <p>{pathway.body}</p>
+                </article>
+              ))}
+            </div>
+          </CommandBoardSection>
+
+          <div className="trust-v4-split-grid">
+            <CommandBoardSection
+              className="trust-v4-checklist"
+              kicker="Before action"
+              title="Safety checklist"
+              detail="Use before trades, meetups, selling, external links, or child-sensitive actions."
+              action={<span className="status-badge">Required friction</span>}
+            >
+              <div className="trust-v4-checklist-list">
+                {lanternChecklist.map((item, index) => (
+                  <article className="trust-v4-check-row" key={item}>
+                    <span aria-hidden="true">{index + 1}</span>
+                    <p>{item}</p>
+                  </article>
+                ))}
+              </div>
+            </CommandBoardSection>
+
+            <CommandBoardSection
+              className="trust-v4-risks"
+              kicker="Risk prompts"
+              title="Moments that need friction"
+              detail="The interface should slow down unsafe actions instead of hiding risk in fine print."
+              action={<span className="status-badge">Confidence honest</span>}
+            >
+              <div className="trust-v4-risk-grid">
+                {lanternRiskRows.map((row) => (
+                  <article className="trust-v4-risk-card" key={row.title}>
+                    <span>{row.status}</span>
+                    <strong>{row.title}</strong>
+                    <p>{row.body}</p>
+                  </article>
+                ))}
+              </div>
+            </CommandBoardSection>
           </div>
-          <div className="settings-section-grid compact">
-            {trustSafetyRows.map((row) => (
-              <article className="settings-section-card" key={row.title}>
-                <strong>{row.title}</strong>
-                <span>{row.body}</span>
-                <small className="status-badge">{row.status}</small>
+
+          <CommandBoardSection
+            className="trust-v4-meetup"
+            kicker="Safe Meetup Center"
+            title="Public places, proof, and parent approval"
+            detail="Plan local trades or pickup only around public places, documented proof, and family approval rules."
+            action={<span className="status-badge">No private locations</span>}
+          >
+            <div className="trust-v4-meetup-layout">
+              <article className="trust-v4-map-card" aria-label="Safe meetup location options">
+                <div className="trust-v4-map-visual" aria-hidden="true">
+                  <span className="trust-v4-map-road trust-v4-map-road-a" />
+                  <span className="trust-v4-map-road trust-v4-map-road-b" />
+                  <span className="trust-v4-map-ring" />
+                  <span className="trust-v4-map-pin trust-v4-map-pin-shop">Trusted shop</span>
+                  <span className="trust-v4-map-pin trust-v4-map-pin-zone">Safe zone</span>
+                  <span className="trust-v4-map-pin trust-v4-map-pin-event">Event</span>
+                </div>
+                <div className="trust-v4-proof-grid">
+                  {safeMeetupProofRows.map((row) => (
+                    <div key={row.label}>
+                      <span>{row.label}</span>
+                      <strong>{row.value}</strong>
+                    </div>
+                  ))}
+                </div>
               </article>
-            ))}
+
+              <div className="trust-v4-meetup-list">
+                {safeMeetupLocations.map((location) => (
+                  <article className="trust-v4-meetup-card" key={location.title}>
+                    <span>{location.status}</span>
+                    <strong>{location.title}</strong>
+                    <p>{location.body}</p>
+                  </article>
+                ))}
+                <article className="trust-v4-meetup-warning">
+                  <strong>External link gate</strong>
+                  <p>Opening maps, shop pages, or off-app listings should show a warning before leaving Ember & Tide.</p>
+                </article>
+              </div>
+            </div>
+          </CommandBoardSection>
+
+          <div className="trust-v4-split-grid">
+            <CommandBoardSection
+              className="trust-v4-lessons"
+              kicker="Learning modes"
+              title="Same rules, different language by role"
+              detail="Kid, teen, parent, and adult collector contexts need different copy without weakening the guardrails."
+            >
+              <div className="trust-v4-lesson-list">
+                {lanternLessonRows.map((lesson) => (
+                  <article className="trust-v4-lesson-card" key={lesson.title}>
+                    <span>{lesson.status}</span>
+                    <strong>{lesson.title}</strong>
+                    <p>{lesson.body}</p>
+                  </article>
+                ))}
+              </div>
+            </CommandBoardSection>
+
+            <CommandBoardSection
+              className="trust-v4-routes"
+              kicker="Safe routes"
+              title="Move to the right protected surface"
+              detail="Trust should guide the user into Nest, Scout, Exchange, or Spark at the right moment."
+              action={<span className="status-badge">Connected</span>}
+            >
+              <div className="trust-v4-route-list">
+                {lanternRouteRows.map((row) => (
+                  <article className="trust-v4-route-card" key={row.title}>
+                    <strong>{row.title}</strong>
+                    <p>{row.body}</p>
+                    <button type="button" className="command-board-v4-secondary-action" onClick={row.onClick}>{row.action}</button>
+                  </article>
+                ))}
+              </div>
+            </CommandBoardSection>
           </div>
-        </section>
-        <section className="trust-page-grid">
-          {TRUST_PAGE_CONTENT.map((entry) => (
-            <article className="panel trust-page-card" key={entry.key}>
-              <h2>{entry.title}</h2>
-              <p>{entry.body}</p>
-            </article>
-          ))}
-          <article className="panel trust-page-card">
-            <h2>Upload Safety</h2>
-            <p>{UPLOAD_SAFETY_WARNING}</p>
-          </article>
-          <article className="panel trust-page-card">
-            <h2>Draft Notice</h2>
-            <p>These beta documents are operational foundations and are not final lawyer-approved documents.</p>
-          </article>
-        </section>
-        <footer className="brand-legal-footer trust-legal-footer">
-          <p>{BRAND_LEGAL_NOTICE}</p>
-          <p>{POKEMON_AFFILIATION_NOTICE}</p>
-        </footer>
-      </>
+
+          <CommandBoardSection
+            className="trust-v4-records"
+            kicker="Policy foundations"
+            title="Trust records and beta notices"
+            detail="Legal and safety pages stay clear, readable, and honest while the beta documents are still being finalized."
+            action={<span className="status-badge">Beta documents</span>}
+          >
+            <div className="trust-v4-record-grid">
+              {TRUST_PAGE_CONTENT.map((entry) => (
+                <article className="trust-v4-record-card" key={entry.key}>
+                  <strong>{entry.title}</strong>
+                  <p>{entry.body}</p>
+                </article>
+              ))}
+              <article className="trust-v4-record-card">
+                <strong>Upload Safety</strong>
+                <p>{UPLOAD_SAFETY_WARNING}</p>
+              </article>
+              <article className="trust-v4-record-card">
+                <strong>Draft Notice</strong>
+                <p>These beta documents are operational foundations and are not final lawyer-approved documents.</p>
+              </article>
+            </div>
+            <footer className="trust-v4-legal-footer">
+              <p>{BRAND_LEGAL_NOTICE}</p>
+              <p>{POKEMON_AFFILIATION_NOTICE}</p>
+            </footer>
+          </CommandBoardSection>
+        </CommandBoardV4>
+      </div>
     );
   }
 
@@ -43310,7 +43865,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       },
       {
         title: "Scout starter access",
-        detail: "Manual Scout reports, screenshot scan UI, proof review, and 1 watched store stay included.",
+        detail: "Manual Scout reports, screenshot scan UI, proof review, and 3 watched stores stay included.",
         meta: "Scout",
         icon: "scout",
         tone: "scout",
@@ -43327,7 +43882,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       {
         label: "Beta",
         value: betaStatusLabel,
-        helper: "Early access status. It can stack with Free, Collector, Family, Seller, or Shop.",
+        helper: "Early access status. It can stack with Free, Plus, Family, Pro / Seller, or reviewed Shop Partner.",
       },
       {
         label: "Admin",
@@ -43345,236 +43900,173 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const lockPreviewKeys = ["restock_predictions", "seller_tools", "kid_profiles", "shop_profile_tools"];
     const lockPreviews = lockPreviewKeys.map((featureKey) => getLockedFeatureDetails(featureKey));
     return (
-      <EtMockupPageShell
-        accent="membership"
-        className="membership-mockup-rebuild"
-        ariaLabel="Membership Foundation"
-      >
-        <div className="et-mockup-main-column membership-mockup-main" data-qa="tier-pricing-explainer">
-          <EtMockupHero
-            brand="Membership Foundation"
-            mark={BRAND_ASSETS.mark}
-            title="Free is the core collector app."
-            detail="Clear tiers, friendly locks, and Scout guardrails. Checkout is not live; upgrades are admin-managed during beta."
-            points={{ value: planLabel, label: "Current plan" }}
-            pills={[
-              { label: "Current plan: Free", tone: "gold" },
-              { label: `${tierAccess.scoutStoreSlots} Scout watch store${Number(tierAccess.scoutStoreSlots) === 1 ? "" : "s"}`, tone: "collector" },
-              { label: "Checkout not live", tone: "beta" },
-            ]}
-            todayAction={{
-              label: "Scout fairness guardrail",
-              title: "Current reports stay fair.",
-              cta: "Review guardrails",
-              onClick: () => document.getElementById("membership-scout-guardrails")?.scrollIntoView({ behavior: "smooth", block: "start" }),
-            }}
-            adminAction={<EtMockupButton variant="secondary" onClick={() => requestLockedFeatureAccess("seller_tools")}>Ask admin to upgrade during beta</EtMockupButton>}
-            ariaLabel="Membership Foundation hero"
-          />
-
-          <EtMockupSectionCard
+      <div className="membership-command-only-route membership-v4-route" data-qa="tier-pricing-explainer">
+        <CommandBoardV4
+          accent="you"
+          className="membership-v4-command-board"
+          ariaLabel="Membership Command Center"
+          label="Membership"
+          title="Membership Command Center"
+          description="Plan limits, family access, Scout fairness, seller readiness, and beta billing guardrails without turning the app into a checkout surface."
+          primaryAction={{ label: "Compare Plans", icon: "plan", onClick: () => document.getElementById("membership-plan-grid")?.scrollIntoView({ behavior: "smooth", block: "start" }) }}
+          secondaryActions={[
+            { label: "Ask Admin", icon: "help", onClick: () => requestLockedFeatureAccess("seller_tools") },
+            { label: "Back to Hearth", icon: "home", onClick: () => setActiveTab("dashboard") },
+          ]}
+          statusItems={[
+            { key: "plan", icon: "plan", label: "Current plan", value: planLabel, detail: trialActive ? "Trial active" : "No trial" },
+            { key: "scout", icon: "scout", label: "Scout stores", value: String(tierAccess.scoutStoreSlots), detail: tierAccess.scoutStoreSwapDays ? `${tierAccess.scoutStoreSwapDays}-day changes` : "Admin managed" },
+            { key: "details", icon: "data", label: "Scout details", value: planScoutDetailsAllowed ? "Selected" : "Limited", detail: "Fair current access" },
+            { key: "history", icon: "vault", label: "Raw history", value: tierAccess.canViewRawScoutHistory ? "Admin" : "Protected", detail: "Not paywalled" },
+            { key: "checkout", icon: "help", label: "Checkout", value: "Off", detail: "Admin-managed beta" },
+          ]}
+          plan={{
+            label: "Access Model",
+            title: "Free stays useful. Paid tiers add scale and support.",
+            items: [
+              { key: "free", icon: "vault", label: "Core collecting", detail: "Vault, Market, Forge basics" },
+              { key: "scout", icon: "scout", label: "Fair Scout", detail: "Reports stay current and safe", action: () => document.getElementById("membership-scout-guardrails")?.scrollIntoView({ behavior: "smooth", block: "start" }) },
+              { key: "family", icon: "community", label: "Family access", detail: "Special needs and kid support path" },
+              { key: "seller", icon: "market", label: "Seller scale", detail: "Locked until enabled" },
+            ],
+            actions: [
+              { label: "Review Guardrails", icon: "scout", onClick: () => document.getElementById("membership-scout-guardrails")?.scrollIntoView({ behavior: "smooth", block: "start" }) },
+              { label: "Request Access", icon: "help", onClick: () => requestLockedFeatureAccess("seller_tools") },
+            ],
+          }}
+          routes={[
+            { key: "vault", icon: "vault", label: "Vault", title: "Core app", detail: "Collection basics", action: () => setActiveTab("vault") },
+            { key: "scout", icon: "scout", label: "Scout", title: "Fair reports", detail: "Watch limits", action: () => setActiveTab("scout") },
+            { key: "exchange", icon: "market", label: "Exchange", title: "Seller tiers", detail: "No checkout", action: () => setActiveTab("market") },
+            { key: "spark", icon: "spark", label: "Spark", title: "Family support", detail: "Access path", action: () => setActiveTab("kidsProgram") },
+            { key: "you", icon: "account", label: "You", title: "Plan controls", detail: "Profile and billing", action: () => setActiveTab("menu") },
+            { key: "help", icon: "help", label: "Help", title: "Support", detail: "Beta questions", action: () => openUtilityPage("help") },
+          ]}
+        >
+          <CommandBoardSection
+            className="membership-v4-status"
+            kicker="Current access"
             title="Current plan and Scout limits"
             detail="Free access remains a complete collector app. Paid tiers add scale and convenience without exposing raw Scout history."
-            className="membership-mockup-status"
-            action={<EtMockupPill tone="gold">Current plan: Free</EtMockupPill>}
+            action={<span className="status-badge">Current plan: {planLabel}</span>}
           >
-            <div className="et-mockup-stat-grid membership-mockup-status-grid" aria-label="Current membership status">
-              <EtMockupStatCard label="Current plan" value={planLabel} detail={trialActive ? "Trial is active." : "No active trial on this profile."} tone="gold" />
-              <EtMockupStatCard
-                label="Scout watch stores"
-                value={String(tierAccess.scoutStoreSlots)}
-                detail={tierAccess.scoutStoreSwapDays ? `1 Scout watch store. Change once every ${tierAccess.scoutStoreSwapDays} days.` : "Admin moderation access."}
-                tone="scout"
-              />
-              <EtMockupStatCard
-                label="Current Scout details"
-                value={planScoutDetailsAllowed ? "Selected stores" : "Limited"}
-                detail={planScoutDetailsAllowed ? "Selected-store current details only." : "Current Scout details limited to keep Scout fair."}
-                tone="scout"
-              />
-              <EtMockupStatCard
-                label="Raw Scout history"
-                value={tierAccess.canViewRawScoutHistory ? "Admin" : "Protected"}
-                detail="Raw Scout history protected. No hidden history behind paid locks."
-                tone="collector"
-              />
-              <EtMockupStatCard
-                label="Pattern tools"
-                value={tierAccess.canViewPatternTools ? "Admin" : "Protected"}
-                detail="Pattern tools protected from non-admin users."
-                tone="collector"
-              />
+            <CommandMetricGrid
+              className="membership-v4-status-grid"
+              items={[
+                { key: "plan", label: "Current plan", value: planLabel, detail: trialActive ? "Trial is active." : "No active trial." },
+                { key: "stores", label: "Scout watch stores", value: String(tierAccess.scoutStoreSlots), detail: tierAccess.scoutStoreSwapDays ? `Change every ${tierAccess.scoutStoreSwapDays} days.` : "Admin moderation access." },
+                { key: "details", label: "Current Scout details", value: planScoutDetailsAllowed ? "Selected" : "Limited", detail: planScoutDetailsAllowed ? "Selected-store current details." : "Limited to keep Scout fair." },
+                { key: "history", label: "Raw Scout history", value: tierAccess.canViewRawScoutHistory ? "Admin" : "Protected", detail: "No hidden history behind paid locks." },
+                { key: "patterns", label: "Pattern tools", value: tierAccess.canViewPatternTools ? "Admin" : "Protected", detail: "Protected from non-admin users." },
+              ]}
+            />
+            <div id="membership-scout-guardrails" className="membership-v4-guardrail-rack" aria-label="Scout membership guardrails">
+              {[
+                "3 Scout watch stores",
+                "30-day store changes",
+                "Current details limited",
+                "Raw history protected",
+                "Pattern tools protected",
+                "No all-store exact access",
+              ].map((rule) => <span key={rule}>{rule}</span>)}
             </div>
-          </EtMockupSectionCard>
+          </CommandBoardSection>
 
-          <EtMockupSectionCard
-            title="Scout fairness guardrail"
-            detail="Free users can still submit and confirm Scout reports. Paid tiers unlock deeper current details for selected stores, not raw restock history, pattern tools, or all-store exact access."
-            className="membership-mockup-guardrail"
-            ariaLabel="Scout fairness guardrail"
-            action={<EtMockupPill tone="collector">Fair access</EtMockupPill>}
-          >
-            <div id="membership-scout-guardrails" className="membership-mockup-rule-row" aria-label="Scout membership guardrails">
-              <span>1 Scout watch store</span>
-              <span>Change once every 30 days</span>
-              <span>Current Scout details limited</span>
-              <span>Raw Scout history protected</span>
-              <span>Pattern tools protected</span>
-              <span>No raw all-store access</span>
-            </div>
-          </EtMockupSectionCard>
-
-          {renderUpgradePlanComparisonPreview()}
-
-          <EtMockupSectionCard
+          <CommandBoardSection
+            className="membership-v4-core"
+            kicker="Included"
             title="Free is the core collector app"
             detail="Paid plans add scale, convenience, family seats, seller workflows, or shop tools. Core collecting and safety basics stay included."
-            className="membership-mockup-free-core"
-            action={<EtMockupPill tone="gold">Included</EtMockupPill>}
-            ariaLabel="Free core collector tools"
+            action={<span className="status-badge">Safety basics free</span>}
           >
-            <div className="et-mockup-action-grid membership-mockup-free-grid">
+            <div className="membership-v4-feature-grid">
               {freeCoreFeatures.map((feature) => (
-                <EtMockupActionCard
-                  key={feature.title}
-                  title={feature.title}
-                  detail={`${feature.detail} Available as part of the beta core experience.`}
-                  meta={feature.meta}
-                  icon={feature.icon}
-                  tone={feature.tone}
-                />
+                <article className="membership-v4-feature-card" key={feature.title}>
+                  <i aria-hidden="true"><AppNavIcon kind={feature.icon} /></i>
+                  <span>{feature.meta}</span>
+                  <strong>{feature.title}</strong>
+                  <p>{feature.detail}</p>
+                </article>
               ))}
             </div>
-          </EtMockupSectionCard>
+          </CommandBoardSection>
 
-          <EtMockupSectionCard
+          <CommandBoardSection
+            className="membership-v4-plans"
+            kicker="Plans"
             title="Plans add scale, not basic collecting"
             detail="Plan cards are beta preview copy. Checkout is not live, and upgrades are admin-managed during beta."
-            className="membership-mockup-plans"
-            ariaLabel="Ember & Tide public plans"
-            action={<EtMockupPill tone="beta">No checkout</EtMockupPill>}
+            action={<span className="status-badge">No checkout</span>}
+            ariaLabel="Ember and Tide public plans"
           >
-            <div id="membership-plan-grid" className="tier-plan-grid membership-mockup-plan-grid">
+            <div id="membership-plan-grid" className="membership-v4-plan-grid">
               {tierCards.map((tier) => (
-                <article className={`tier-plan-card membership-mockup-plan-card${tier.id === plan ? " current" : ""}`} key={tier.id} data-tier-plan={tier.id}>
-                  <div className="tier-plan-card-top">
+                <article className={`membership-v4-plan-card${tier.id === plan ? " current" : ""}`} key={tier.id} data-tier-plan={tier.id}>
+                  <div>
                     <span>{tier.id === plan ? "Current" : tier.display.status || "Beta preview"}</span>
                     <strong>{tier.label}</strong>
                   </div>
-                  {tier.display.audience ? <p className="tier-plan-audience">{tier.display.audience}</p> : null}
                   <h3>{tier.price}</h3>
                   <p>{tier.summary}</p>
-                  {tier.display.benefit ? <p className="tier-plan-benefit">{tier.display.benefit}</p> : null}
-                  {tier.display.gateCopy ? <p className="tier-plan-gate-copy">{tier.display.gateCopy}</p> : null}
-                  <div className="tier-plan-rule-row">
+                  <div className="membership-v4-plan-rules">
                     <span>{tier.access.scoutStoreSlots} Scout store{Number(tier.access.scoutStoreSlots) === 1 ? "" : "s"}</span>
                     <span>{tier.access.scoutStoreSwapDays ? `${tier.access.scoutStoreSwapDays}-day changes` : "Admin changes"}</span>
-                    <span>{tier.access.canViewPatternTools ? "Admin patterns" : "Raw patterns protected"}</span>
+                    <span>{tier.access.canViewPatternTools ? "Admin patterns" : "Patterns protected"}</span>
                   </div>
-                  {tier.trialCopy ? <p className="tier-trial-copy">{tier.trialCopy}</p> : null}
-                  {tier.futurePrice ? <p className="compact-subtitle">{tier.futurePrice}</p> : null}
                   <ul>
-                    {tier.features.map((feature) => <li key={`${tier.id}-${feature}`}>{feature}</li>)}
+                    {tier.features.slice(0, 5).map((feature) => <li key={`${tier.id}-${feature}`}>{feature}</li>)}
                   </ul>
-                  <button type="button" className="secondary-button" disabled>{tier.cta}</button>
+                  <button type="button" className="command-board-v4-secondary-action" disabled>{tier.cta}</button>
                 </article>
               ))}
             </div>
-          </EtMockupSectionCard>
+          </CommandBoardSection>
 
-          <EtMockupSectionCard
-            title="Locked states explain the value"
-            detail="Locks explain the benefit and next step without revealing hidden data."
-            className="membership-mockup-locks"
-            ariaLabel="Locked state examples"
-            action={<EtMockupPill tone="collector">Clear gates</EtMockupPill>}
-          >
-            <div className="et-mockup-action-grid membership-mockup-lock-grid">
-              {lockPreviews.map((lock) => (
-                <EtMockupActionCard
-                  key={lock.label}
-                  title={lock.label}
-                  detail={`${lock.benefit} ${lock.guardrail}`}
-                  meta={lock.statusLabel}
-                  icon="plan"
-                  tone="collector"
-                />
-              ))}
-            </div>
-          </EtMockupSectionCard>
-
-          <EtMockupSectionCard
-            title="Add-ons are beta preview only"
-            detail="Coming soon as beta preview copy. No add-on checkout is connected."
-            className="membership-mockup-addons"
-            ariaLabel="Membership add-ons"
-            action={<EtMockupPill tone="beta">Coming soon</EtMockupPill>}
-          >
-            <div className="tier-add-on-grid membership-mockup-add-on-grid">
-              {addOns.map((addOn) => (
-                <article className="tier-add-on-card membership-mockup-add-on-card" key={addOn.id}>
-                  <span>{addOn.status}</span>
-                  <strong>{addOn.label}</strong>
-                  <b>{addOn.price}</b>
-                  <p>{addOn.appliesTo}</p>
-                </article>
-              ))}
-            </div>
-          </EtMockupSectionCard>
-        </div>
-
-        <EtMockupRightRail
-          title="Beta access is admin-managed"
-          detail="Checkout is not live. Upgrades are admin-managed during beta. Billing and payment tools are not connected."
-          className="membership-mockup-rail"
-        >
-          <EtMockupSectionCard
-            title="Foundation status"
-            detail="Current access stays clear without turning pricing preview into checkout."
-            className="membership-mockup-rail-card"
-            action={<EtMockupPill tone="gold">{planLabel}</EtMockupPill>}
-          >
-            <div className="et-mockup-action-stack membership-mockup-status-stack" aria-label="Beta and admin status">
-              {accessStatusRows.map((row) => (
-                <EtMockupActionCard
-                  key={row.label}
-                  title={row.label}
-                  detail={row.helper}
-                  meta={row.value}
-                  icon="plan"
-                  tone={row.label === "Checkout" ? "gold" : "collector"}
-                />
-              ))}
-            </div>
-          </EtMockupSectionCard>
-
-          <EtMockupSectionCard
-            title="Protected from paywall confusion"
-            detail="Free stays useful. Paid tiers add scale, seats, seller support, shop tools, and convenience."
-            className="membership-mockup-rail-card"
-          >
-            <div className="membership-mockup-rule-row is-rail" aria-label="Membership protected basics">
-              <span>Free is the core collector app</span>
-              <span>Basic collection tracking included</span>
-              <span>Basic fair range included</span>
-              <span>Manual Scout reports included</span>
-              <span>Scout pattern tools protected</span>
-              <span>Raw Scout history protected</span>
-            </div>
-          </EtMockupSectionCard>
-
-          <EtMockupEmptyState
-            title="No checkout connected."
-            detail="Membership is modeled for public beta review. Admins handle access changes until billing is approved."
-            action={(
-              <div className="membership-mockup-rail-actions">
-                <button type="button" className="et-mockup-button et-mockup-button-secondary membership-mockup-disabled" disabled>Checkout coming soon</button>
-                <EtMockupButton variant="secondary" onClick={() => requestLockedFeatureAccess("seller_tools")}>Ask admin to upgrade during beta</EtMockupButton>
+          <div className="membership-v4-lower-grid">
+            <CommandBoardSection
+              className="membership-v4-locks"
+              kicker="Locked states"
+              title="Explain value without exposing hidden data"
+              detail="Locks should tell users what the feature does, why it is restricted, and what the safe next step is."
+              action={<span className="status-badge">Clear gates</span>}
+            >
+              <div className="membership-v4-lock-grid">
+                {lockPreviews.map((lock) => (
+                  <article className="membership-v4-lock-card" key={lock.label}>
+                    <span>{lock.statusLabel}</span>
+                    <strong>{lock.label}</strong>
+                    <p>{lock.benefit}</p>
+                    <small>{lock.guardrail}</small>
+                  </article>
+                ))}
               </div>
-            )}
-          />
-        </EtMockupRightRail>
-      </EtMockupPageShell>
+            </CommandBoardSection>
+
+            <CommandBoardSection
+              className="membership-v4-admin"
+              kicker="Beta access"
+              title="Admin-managed until billing is approved"
+              detail="No add-on checkout is connected. Upgrades and seller/shop access remain reviewed beta actions."
+              action={<span className="status-badge">Checkout off</span>}
+            >
+              <div className="membership-v4-admin-grid">
+                {accessStatusRows.map((row) => (
+                  <article className="membership-v4-admin-card" key={row.label}>
+                    <span>{row.label}</span>
+                    <strong>{row.value}</strong>
+                    <p>{row.helper}</p>
+                  </article>
+                ))}
+              </div>
+              <div className="membership-v4-addon-row" aria-label="Membership add-ons">
+                {addOns.map((addOn) => (
+                  <span key={addOn.id}>{addOn.label}: {addOn.status}</span>
+                ))}
+              </div>
+            </CommandBoardSection>
+          </div>
+        </CommandBoardV4>
+      </div>
     );
   }
 
@@ -46118,6 +46610,28 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const pagedVisibleSuggestions = getPagedItems(visibleSuggestions, adminReviewPage, LONG_LIST_PAGE_SIZE);
     const pagedListingReviewItems = getPagedItems(listingReviewItems, marketplaceReviewPage, LONG_LIST_PAGE_SIZE);
     const dedicatedAdminFilters = new Set(["Trust Command Center", "Scout Report Moderation", "Scout Report Review", "Community Guess Review", "Family-Friendly Shop Review", "Store Management", "Beta Users", "Role Management"]);
+    const openAdminQueue = (filter) => setAdminReviewFilter(filter);
+    const adminCommandStatus = [
+      { key: "role", icon: "admin", label: "Access", value: actualAdminRole, detail: adminEditModeActive ? "Admin Edit On" : "View mode" },
+      { key: "open", icon: "bell", label: "Open queue", value: totalOpenCount, detail: "Needs review" },
+      { key: "trust", icon: "scout", label: "Trust queue", value: trustOpenCount, detail: "Scout, shops, posts" },
+      { key: "market", icon: "market", label: "Marketplace", value: listingReviewItems.length, detail: "Pricing/listing flags" },
+      { key: "identity", icon: "account", label: "Identity", value: adminReviewIdentityLabel, detail: currentUserProfile?.source || "admin" },
+    ];
+    const adminCommandPlan = [
+      { key: "trust", icon: "admin", label: "Trust center", detail: "Highest-risk queue", action: () => openAdminQueue("Trust Command Center") },
+      { key: "scout", icon: "scout", label: "Scout review", detail: "Reports and guesses", action: () => openAdminQueue("Scout Report Review") },
+      { key: "beta", icon: "account", label: "Beta access", detail: "Users and invites", action: () => openAdminQueue("Beta Access") },
+      { key: "kids", icon: "spark", label: "Spark requests", detail: "Family privacy", action: () => openAdminQueue("Kids Program Applications") },
+    ];
+    const adminCommandRoutes = [
+      { key: "moderation", icon: "admin", label: "Moderation", title: "Reports", detail: `${trustOpenCount} open`, action: () => openAdminQueue("Reports & Moderation") },
+      { key: "stores", icon: "scout", label: "Stores", title: "Store management", detail: "Profiles and imports", action: () => openAdminQueue("Store Management") },
+      { key: "people", icon: "account", label: "People", title: "Beta users", detail: `${approvedBetaUserCount} approved`, action: () => openAdminQueue("Beta Users") },
+      { key: "roles", icon: "admin", label: "Roles", title: "Role controls", detail: roleManagementVisible ? "Protected" : "Locked", action: () => openAdminQueue("Role Management") },
+      { key: "market", icon: "market", label: "Market", title: "Source controls", detail: "Catalog and pricing", action: () => openAdminQueue("Market Source Controls") },
+      { key: "health", icon: "data", label: "Health", title: "System logs", detail: `${(betaReadinessData.appErrorLogs || []).length + auditLogs.length} notes`, action: () => openAdminQueue("System Health / Logs") },
+    ];
     return (
       <>
       <PageHeader
@@ -46140,6 +46654,30 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         tabs={sections.map((section) => ({ key: section, label: section }))}
         activeTab={adminReviewFilter}
         onTabChange={setAdminReviewFilter}
+      />
+      <CommandBoardV4
+        accent="admin"
+        className="admin-command-board"
+        ariaLabel="Admin Operations Command Center"
+        label="Admin"
+        title="Admin Operations Center"
+        description="Protected review queues for beta access, Scout trust, Tidepool moderation, Marketplace safety, Spark family requests, shop approvals, catalog corrections, and system health."
+        primaryAction={{ label: "Summarize Queue", icon: "admin", onClick: () => void runAdminReviewAiSummary() }}
+        secondaryActions={[
+          { label: "Trust Center", icon: "admin", onClick: () => openAdminQueue("Trust Command Center") },
+          { label: "System Health", icon: "data", onClick: () => openAdminQueue("System Health / Logs") },
+        ]}
+        statusItems={adminCommandStatus}
+        plan={{
+          label: "Review Plan",
+          title: "Triage protected queues before public-facing changes",
+          items: adminCommandPlan,
+          actions: [
+            { label: "Open Beta", icon: "account", onClick: () => openAdminQueue("Beta Access") },
+            { label: "Open Moderation", icon: "admin", onClick: () => openAdminQueue("Reports & Moderation") },
+          ],
+        }}
+        routes={adminCommandRoutes}
       />
       {adminReviewFilter !== "All" ? (
         <section className="admin-selected-queue-panel admin-selected-queue-panel--top" role="status">
@@ -47114,6 +47652,89 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       sellerMarketMode ? ["drafts", "Drafts"] : null,
       canReviewSharedData ? ["pending", "Review"] : null,
     ].filter(Boolean);
+    const openMarketplaceReportCount = marketplaceReports.filter((report) => String(report.status || "Open").toLowerCase() !== "closed").length;
+    const issueCenterRows = [
+      { title: "Item not received", body: "Save tracking, receipt, and timeline proof for admin review.", status: "Evidence" },
+      { title: "Wrong or damaged item", body: "Compare listing photos, condition notes, and delivery photos.", status: "Photos" },
+      { title: "Suspicious buyer or seller", body: "Report pressure, private info, unsafe meetup, fake product, or payment red flags.", status: "Safety" },
+    ];
+    const issueCenterTimeline = [
+      { label: "Report opened", value: openMarketplaceReportCount ? `${openMarketplaceReportCount} open` : "Ready" },
+      { label: "Evidence added", value: "Photos, receipt, tracking" },
+      { label: "Admin review", value: "Queue status visible" },
+      { label: "Outcome", value: "Record kept in Archive later" },
+    ];
+    const exchangeSafeMeetupRules = [
+      "Choose a trusted shop, public exchange zone, or family-safe event.",
+      "Keep child profiles, private addresses, and direct contact details out of the listing.",
+      "Use proof photos and condition notes before any local handoff.",
+    ];
+    const healthSourceListings = (visibleMyListings.length ? visibleMyListings : visibleMarketplaceListings.length ? visibleMarketplaceListings : phase2MarketplaceDraftListings).slice(0, 6);
+    const listingHealthRows = healthSourceListings.map((listing) => ({
+      listing,
+      quality: getMarketplaceListingQualityReport(listing, { requirePublicFields: normalizeListingStatus(listing) !== "Draft" }),
+    }));
+    const activeHealthRows = listingHealthRows.length ? listingHealthRows : [{ listing: reviewListing, quality: getMarketplaceListingQualityReport(reviewListing, { requirePublicFields: false }) }];
+    const listingHealthScore = activeHealthRows.length
+      ? Math.round(activeHealthRows.reduce((sum, row) => sum + Number(row.quality.score || 0), 0) / activeHealthRows.length)
+      : 0;
+    const listingMissingPhotoCount = activeHealthRows.filter((row) => !row.quality.photoAvailable).length;
+    const listingMissingPriceCount = activeHealthRows.filter((row) => {
+      const listing = row.listing || {};
+      const type = String(listing.listingType || listing.listing_type || "").toLowerCase();
+      const freeOrTrade = type.includes("free") || type.includes("donation") || type.includes("trade") || type.includes("looking");
+      return !freeOrTrade && Number(listing.askingPrice || listing.asking_price || listing.price || 0) <= 0;
+    }).length;
+    const listingMissingConditionCount = activeHealthRows.filter((row) => {
+      const condition = String(row.listing?.condition || "").trim().toLowerCase();
+      return !condition || condition === "unknown";
+    }).length;
+    const listingNeedsReviewCount = activeHealthRows.filter((row) => row.quality.blockers?.length || row.quality.warnings?.length || row.quality.needsAdminReview).length;
+    const listingHealthFixRows = [
+      { label: "Missing photos", value: listingMissingPhotoCount, detail: "Add front/back or sealed box photos before public review." },
+      { label: "Missing price", value: listingMissingPriceCount, detail: "Add asking price, trade value, or mark as donation/free." },
+      { label: "Condition gaps", value: listingMissingConditionCount, detail: "Confirm condition so buyers can scan risk quickly." },
+      { label: "Review flags", value: listingNeedsReviewCount, detail: "Safety, price, or admin-review warnings need attention." },
+    ];
+    const listingHealthSuggestionRows = activeHealthRows
+      .flatMap((row) => [...(row.quality.blockers || []), ...(row.quality.warnings || [])].map((note) => ({ listing: row.listing, note, quality: row.quality })))
+      .slice(0, 4);
+    const proofTimelineListing = selectedListing || activeHealthRows[0]?.listing || reviewListing;
+    const proofTimelineQuality = selectedListingQuality || activeHealthRows[0]?.quality || getMarketplaceListingQualityReport(proofTimelineListing, { requirePublicFields: false });
+    const proofTimelinePhotos = [
+      proofTimelineListing?.photoUrl,
+      ...(Array.isArray(proofTimelineListing?.photos) ? proofTimelineListing.photos : []),
+      proofTimelineListing?.imageUrl,
+      proofTimelineListing?.catalogImage,
+    ].filter(Boolean);
+    const proofTimelineSteps = [
+      {
+        label: "Listing draft",
+        value: proofTimelineListing?.title || proofTimelineListing?.productName ? "Started" : "Not started",
+        state: proofTimelineListing?.title || proofTimelineListing?.productName ? "done" : "todo",
+      },
+      {
+        label: "Photos saved",
+        value: proofTimelinePhotos.length ? `${proofTimelinePhotos.length} photo${proofTimelinePhotos.length === 1 ? "" : "s"}` : "Needed",
+        state: proofTimelinePhotos.length ? "done" : "warning",
+      },
+      {
+        label: "Condition proof",
+        value: proofTimelineListing?.condition && String(proofTimelineListing.condition).toLowerCase() !== "unknown" ? proofTimelineListing.condition : "Needed",
+        state: proofTimelineListing?.condition && String(proofTimelineListing.condition).toLowerCase() !== "unknown" ? "done" : "warning",
+      },
+      {
+        label: "Review status",
+        value: normalizeListingModerationStatus(proofTimelineListing || {}),
+        state: proofTimelineQuality?.blockers?.length ? "warning" : "done",
+      },
+    ];
+    const proofEvidenceRows = [
+      { label: "Photos", value: proofTimelinePhotos.length ? "Attached" : "Missing", state: proofTimelinePhotos.length ? "done" : "warning" },
+      { label: "Receipt", value: proofTimelineListing?.receiptUrl || proofTimelineListing?.receiptImage ? "Saved" : "Optional", state: proofTimelineListing?.receiptUrl || proofTimelineListing?.receiptImage ? "done" : "todo" },
+      { label: "Tracking", value: proofTimelineListing?.trackingNumber || proofTimelineListing?.tracking ? "Added" : "After sale", state: proofTimelineListing?.trackingNumber || proofTimelineListing?.tracking ? "done" : "todo" },
+      { label: "Issue proof", value: openMarketplaceReportCount ? `${openMarketplaceReportCount} open` : "Clear", state: openMarketplaceReportCount ? "warning" : "done" },
+    ];
 
     return (
       <div className="marketplace-section">
@@ -47127,6 +47748,143 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             {TIDETRADR_MARKETPLACE_RULES.map((rule) => <span key={rule}>{rule}</span>)}
           </div>
         </details>
+
+        <section className="marketplace-trust-ops-grid" aria-label="Exchange safety operations">
+          <article className="marketplace-safe-meetup-card">
+            <div className="compact-card-header">
+              <div>
+                <p className="section-kicker">Safe Meetup</p>
+                <h3>Public place first, proof before handoff.</h3>
+              </div>
+              <span className="status-badge">Parent-aware</span>
+            </div>
+            <div className="safe-meetup-check-grid">
+              <div><span>Place</span><strong>Trusted shop or public zone</strong></div>
+              <div><span>Location</span><strong>Area only until approved</strong></div>
+              <div><span>Kids/teens</span><strong>Adult required</strong></div>
+            </div>
+            <div className="safe-meetup-rule-list">
+              {exchangeSafeMeetupRules.map((rule) => <span key={rule}>{rule}</span>)}
+            </div>
+            <button type="button" className="secondary-button" onClick={() => setActiveTab("trust")}>Open Lantern</button>
+          </article>
+
+          <article className="marketplace-issue-center-card" aria-label="Dispute and Issue Center">
+            <div className="compact-card-header">
+              <div>
+                <p className="section-kicker">Issue Center</p>
+                <h3>Report problems with evidence and a clear review path.</h3>
+              </div>
+              <span className="status-badge">{openMarketplaceReportCount} open</span>
+            </div>
+            <div className="issue-center-stepper" aria-label="Issue center progress steps">
+              {issueCenterTimeline.map((step, index) => (
+                <div className="issue-center-step" key={step.label}>
+                  <span>{index + 1}</span>
+                  <strong>{step.label}</strong>
+                  <small>{step.value}</small>
+                </div>
+              ))}
+            </div>
+            <div className="issue-center-evidence-grid">
+              {issueCenterRows.map((row) => (
+                <article className="issue-center-evidence-card" key={row.title}>
+                  <strong>{row.title}</strong>
+                  <p>{row.body}</p>
+                  <small className="status-badge">{row.status}</small>
+                </article>
+              ))}
+            </div>
+            <div className="quick-actions">
+              <button type="button" className="secondary-button" onClick={() => openFeedbackDialog("bug", { page: "Exchange Issue Center", topic: "Marketplace issue" })}>Start issue note</button>
+              <button type="button" className="secondary-button" onClick={() => setMarketplaceView("browse")}>Find listing to report</button>
+            </div>
+          </article>
+        </section>
+
+        <section className="marketplace-listing-health-grid" aria-label="Harbor listing health and proof timeline">
+          <article className="marketplace-listing-health-card">
+            <div className="compact-card-header">
+              <div>
+                <p className="section-kicker">Listing Health</p>
+                <h3>{listingHealthScore >= 82 ? "Harbor listings look ready for review." : "Harbor listings need cleanup before they move."}</h3>
+                <p>Health checks photos, condition, price, safety wording, and review flags without publishing or charging anyone.</p>
+              </div>
+              <div className="marketplace-health-score" aria-label={`Listing health ${listingHealthScore}%`}>
+                <strong>{listingHealthScore}%</strong>
+                <span>Health</span>
+              </div>
+            </div>
+            <div className="marketplace-health-meter" aria-hidden="true">
+              <i style={{ width: `${Math.max(0, Math.min(100, listingHealthScore))}%` }} />
+            </div>
+            <div className="marketplace-health-stat-grid">
+              {listingHealthFixRows.map((row) => (
+                <article key={row.label} className={row.value ? "needs-attention" : ""}>
+                  <span>{row.label}</span>
+                  <strong>{row.value}</strong>
+                  <p>{row.detail}</p>
+                </article>
+              ))}
+            </div>
+            <div className="marketplace-health-fix-list" aria-label="Listing health suggested fixes">
+              {listingHealthSuggestionRows.length ? listingHealthSuggestionRows.map((row) => (
+                <article key={`${row.listing?.id || row.listing?.title || "draft"}-${row.note}`}>
+                  <div>
+                    <strong>{row.listing?.title || row.listing?.productName || "Draft listing"}</strong>
+                    <p>{row.note}</p>
+                  </div>
+                  <span className="status-badge">{row.quality.blockers?.includes(row.note) ? "Blocker" : "Fix"}</span>
+                </article>
+              )) : (
+                <article>
+                  <div>
+                    <strong>No urgent fixes found</strong>
+                    <p>Current listing checks are clear. Keep proof photos and condition notes visible.</p>
+                  </div>
+                  <span className="status-badge">Ready</span>
+                </article>
+              )}
+            </div>
+            <div className="quick-actions">
+              {sellerMarketMode ? <button type="button" className="secondary-button" onClick={() => setMarketplaceView("drafts")}>Review drafts</button> : null}
+              <button type="button" className="secondary-button" onClick={() => setMarketplaceView("browse")}>Browse listings</button>
+            </div>
+          </article>
+
+          <article className="marketplace-proof-timeline-card">
+            <div className="compact-card-header">
+              <div>
+                <p className="section-kicker">Proof Timeline</p>
+                <h3>{proofTimelineListing?.title || proofTimelineListing?.productName || "Start with listing proof."}</h3>
+                <p>Proof makes Harbor safer: photos, condition, review status, receipts, tracking, and issue evidence stay connected.</p>
+              </div>
+              <span className="status-badge">{proofTimelineQuality?.photoAvailable ? "Proof started" : "Needs photos"}</span>
+            </div>
+            <div className="proof-timeline-stepper" aria-label="Harbor proof timeline steps">
+              {proofTimelineSteps.map((step, index) => (
+                <article className={`proof-timeline-step proof-timeline-step--${step.state}`} key={step.label}>
+                  <span>{index + 1}</span>
+                  <strong>{step.label}</strong>
+                  <small>{step.value}</small>
+                </article>
+              ))}
+            </div>
+            <div className="proof-evidence-grid" aria-label="Proof evidence cards">
+              {proofEvidenceRows.map((row) => (
+                <article className={`proof-evidence-card proof-evidence-card--${row.state}`} key={row.label}>
+                  <span>{row.label}</span>
+                  <strong>{row.value}</strong>
+                </article>
+              ))}
+            </div>
+            <div className="marketplace-proof-note">
+              <strong>What happens next</strong>
+              <span>Harbor keeps proof visible for listing review and future Archive records. It does not process payment, shipping labels, or disputes automatically.</span>
+            </div>
+          </article>
+        </section>
+
         <div className="market-stats-grid market-stats-grid--compact">
           <div className="card"><p>Active</p><h2>{publicListings.length}</h2></div>
           <div className="card"><p>Saved</p><h2>{marketplaceSavedIds.length}</h2></div>
@@ -47260,6 +48018,32 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </div>
             {renderCommunityProfileSummary(selectedListing, { compact: false, className: "marketplace-detail-profile-card" })}
             {selectedListingQuality ? renderMarketplaceQualitySummary(selectedListingQuality, { hideWhenClear: true, limit: 5 }) : null}
+            <section className="marketplace-detail-proof-timeline-card" aria-label="Selected listing proof timeline">
+              <div className="compact-card-header">
+                <div>
+                  <p className="section-kicker">Proof Timeline</p>
+                  <h3>Review proof before contacting or reporting.</h3>
+                </div>
+                <span className="status-badge">{selectedListingQuality?.photoAvailable ? "Proof started" : "Needs photos"}</span>
+              </div>
+              <div className="proof-timeline-stepper" aria-label="Selected listing proof steps">
+                {proofTimelineSteps.map((step, index) => (
+                  <article className={`proof-timeline-step proof-timeline-step--${step.state}`} key={`selected-${step.label}`}>
+                    <span>{index + 1}</span>
+                    <strong>{step.label}</strong>
+                    <small>{step.value}</small>
+                  </article>
+                ))}
+              </div>
+              <div className="proof-evidence-grid" aria-label="Selected listing evidence">
+                {proofEvidenceRows.map((row) => (
+                  <article className={`proof-evidence-card proof-evidence-card--${row.state}`} key={`selected-${row.label}`}>
+                    <span>{row.label}</span>
+                    <strong>{row.value}</strong>
+                  </article>
+                ))}
+              </div>
+            </section>
             <div className="catalog-detail-grid">
               <DetailItem label="Asking Price" value={hasKnownPriceValue(selectedListing.askingPrice) ? money(selectedListing.askingPrice) : "Price data unavailable"} />
               <DetailItem label="Market Value" value={formatPriceDisplay(getListingMarketReference(selectedListing).currentMarketValue, { moneyFormatter: money, missingLabel: "Market value unknown" })} />
@@ -47447,27 +48231,48 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         ariaLabel="Tidepool safe collecting community"
       >
         <div className="et-mockup-main-column tidepool-mockup-main">
-          <div className="tidepool-mockup-header">
-            <EtMockupHero
-              brand="Tidepool"
-              mark={BRAND_ASSETS.mark}
-              title="Safe collecting community."
-              detail="Family-friendly posts, proof-based confirmations, and local collecting help. General areas only."
-              points={{ value: visiblePosts, label: "Visible posts" }}
-              pills={[
-                { label: "Moderated", tone: "collector" },
-                { label: "Proof-based", tone: "beta" },
-                { label: "No private child data", tone: "gold" },
-              ]}
-              todayAction={{
-                label: "Safe post",
-                title: "Start a Post with review.",
-                cta: "Open composer",
-                onClick: openTidepoolCreatePostFlow,
-              }}
-              adminAction={<EtMockupButton variant="secondary" onClick={() => setActiveTab("scout")}>Scout Signals</EtMockupButton>}
-              ariaLabel="Tidepool community hub"
-            />
+          <CommandBoardV4
+            accent="tidepool"
+            className="tidepool-command-board"
+            ariaLabel="Tidepool community hub"
+            label="Tidepool"
+            title="Tidepool Community Center"
+            description="Family-friendly posts, trusted shop updates, event notes, proof-based confirmations, and local collecting help. General areas only, with no private child data or guaranteed stock."
+            primaryAction={{ label: "Start a Post", icon: "plus", onClick: openTidepoolCreatePostFlow, disabled: !canCreateTidepoolPost }}
+            secondaryActions={[
+              { label: "Scout Signals", icon: "scout", onClick: () => setActiveTab("scout") },
+              { label: "Report Issue", icon: "help", onClick: () => openFeedbackDialog("bug", { page: "Tidepool Community" }) },
+            ]}
+            statusItems={[
+              { key: "posts", icon: "community", label: "Visible posts", value: visiblePosts, detail: "Moderated feed" },
+              { key: "local", icon: "scout", label: "Local", value: localPosts, detail: "General area" },
+              { key: "replies", icon: "bell", label: "Replies", value: tidepoolComments.filter((comment) => visibleTidepoolPostIds.has(comment.postId) && comment.status !== "removed").length, detail: "Reviewed replies" },
+              { key: "circle", icon: "account", label: "Trusted Circle", value: tidepoolCircleEntries.length, detail: "Private notes" },
+              { key: "access", icon: "admin", label: "Posting", value: canCreateTidepoolPost ? "Open" : "Beta gated", detail: "Review-first" },
+            ]}
+            plan={{
+              label: "Community Plan",
+              title: "Share helpful community context without rush-feed behavior",
+              items: [
+                { key: "post", icon: "plus", label: "Start post", detail: "Review-first", action: openTidepoolCreatePostFlow, disabled: !canCreateTidepoolPost },
+                { key: "circle", icon: "account", label: "Trusted Circle", detail: "Private notes", action: openTidepoolTrustedCircleFlow },
+                { key: "scout", icon: "scout", label: "Scout signal", detail: "Local intel", action: () => setActiveTab("scout") },
+                { key: "report", icon: "help", label: "Report issue", detail: "Safety review", action: () => openFeedbackDialog("bug", { page: "Tidepool Community" }) },
+              ],
+              actions: [
+                { label: "Open Composer", icon: "plus", onClick: openTidepoolCreatePostFlow, disabled: !canCreateTidepoolPost },
+                { label: "Add Circle", icon: "account", onClick: openTidepoolTrustedCircleFlow },
+              ],
+            }}
+            routes={[
+              { key: "local", icon: "scout", label: "Local", title: "General area", detail: `${localPosts} local`, action: () => setActiveTab("scout") },
+              { key: "families", icon: "community", label: "Families", title: "Family safe", detail: "No child profiles" },
+              { key: "events", icon: "calendar", label: "Events", title: "Family days", detail: "Moderated notes" },
+              { key: "shops", icon: "market", label: "Shops", title: "Trusted shops", detail: "No stock guarantees" },
+              { key: "tips", icon: "help", label: "Tips", title: "Safety lessons", detail: "Care and scams" },
+              { key: "spark", icon: "spark", label: "Spark", title: "Support", detail: "Donation drives", action: () => setActiveTab("kidsProgram") },
+            ]}
+          >
             <div className="tidepool-mockup-guardrail-strip" aria-label="Tidepool guardrails">
               <span>Safe community posts</span>
               <span>Proof-based confirmations</span>
@@ -47476,7 +48281,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <span>No exact restock patterns</span>
               <span>No guaranteed stock</span>
             </div>
-          </div>
+          </CommandBoardV4>
 
           <EtMockupSectionCard
             title="Community pulse"
@@ -49531,8 +50336,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         };
       }
       return {
-        title: "Quick Add",
-        description: "Add something, then decide where it belongs.",
+        title: "Add",
+        description: "Choose the record or workflow you want to start.",
         size: "medium",
       };
     }
@@ -50495,47 +51300,30 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       );
     }
 
-    const personalizationContext = appPersonalizationContext();
-    const quickAddPreferencePlan = resolveQuickAddPreferenceActionKeys(currentAppSetupPreferences(), personalizationContext, { maxVisible: 6 });
-    const quickAddAdaptivePlan = selectSmartQuickAddActionPlan(adaptiveUiState, {
-      forgeAvailable: Boolean(activeForgeWorkspace),
-      currentPage: activeTab,
-      maxVisible: quickAddPreferencePlan.maxVisible,
-      preferredKeys: quickAddPreferencePlan.preferredKeys,
-    });
-    const sellerQuickAddOrder = ["forge", "sale", "receipt", "mileage", "vault", "missing", "scout", "quickFind", "expense"];
-    const entryOptionByPreferenceKey = {
-      vault: { key: "vault", title: "Add to Vault", helper: "Save a card or product to your collection.", icon: "vault", tone: "vault", onClick: () => runAddSheetAction("vaultItem") },
-      scout: { key: "scout", title: "Scout Report", helper: "Post store, status, and time first.", icon: "scout", tone: "scout", onClick: () => runAddSheetAction("storeReport") },
-      missing: { key: "missing", title: "Request Missing Item", helper: "Ask for a missing catalog item or add manually.", icon: "search", tone: "warning", onClick: () => runAddSheetAction("suggestCatalogItem") },
-      spark: { key: "spark", title: "The Spark", helper: "Open the Kids Program request flow.", icon: "spark", tone: "spark", onClick: () => runAddSheetAction("kidsRequest") },
-      quickFind: { key: "quickFind", title: "Scan Product/Card", helper: "Use barcode, photo, receipt, or manual entry.", icon: "search", tone: "search", onClick: () => setQuickAddPath("scanAnything") },
-      forge: { key: "forge", title: "Add to Forge", helper: "Add seller inventory.", icon: "forge", tone: "forge", onClick: () => runAddSheetAction("inventory") },
-      sale: { key: "sale", title: "Add Sale", helper: "Record a sale.", icon: "forge", tone: "forge", onClick: () => runAddSheetAction("sale") },
-      receipt: { key: "receipt", title: "Add Receipt", helper: "Save proof now; link items later.", icon: "receipt", tone: "forge", onClick: () => setQuickAddPath("receipt") },
-      mileage: { key: "mileage", title: "Add Mileage", helper: "Log a store or business trip.", icon: "mileage", tone: "forge", onClick: () => runAddSheetAction("mileage") },
-      expense: { key: "expense", title: "Add Expense", helper: "Track seller or business costs.", icon: "expense", tone: "forge", onClick: () => runAddSheetAction("expense") },
+    const openFindAction = (screen, subview = "") => {
+      closeFlowModal({ force: true });
+      window.setTimeout(() => openFlipScoutView(screen, subview), 0);
     };
-    const fallbackEntryOptions = [
-      { key: "upc", title: "Enter UPC/SKU", helper: "Search item codes or product names.", icon: "scan", tone: "search", onClick: () => setQuickAddPath("upc") },
-      { key: "photo", title: "Photo reference", helper: "Use a clear photo for review.", icon: "camera", tone: "vault", onClick: () => setQuickAddPath("photo") },
-      { key: "manual", title: "Manual Entry", helper: "Add anything without a catalog match.", icon: "manual_entry", tone: "warning", ariaLabel: "Manual Add item", onClick: () => setQuickAddPath("manual") },
+    const entryOptions = [
+      { key: "scan-listing", title: "Scan Listing", helper: "Start a review-first scan or screenshot workflow.", icon: "scan", tone: "search", onClick: () => setQuickAddPath("scanAnything") },
+      { key: "analyze-deal", title: "Analyze Deal", helper: "Review costs, resale assumptions, profit, and ROI.", icon: "find", tone: "search", onClick: () => openFindAction("appraise") },
+      { key: "add-auction", title: "Add Auction", helper: "Track timing, fees, risk, and your maximum bid.", icon: "calendar", tone: "search", onClick: () => openFindAction("auctions", "new") },
+      { key: "record-purchase", title: "Record Purchase", helper: "Create a purchase and split it into lots or items.", icon: "clipboard", tone: "forge", onClick: () => openFindAction("records", "purchases") },
+      { key: "add-collection-item", title: "Add Collection Item", helper: "Add an owned item with a personal-collection purpose.", icon: "inventory", tone: "vault", onClick: () => { closeFlowModal({ force: true }); window.setTimeout(() => openProductAddFlow({ source: "global-add-collection", seed: { ownedItemPurpose: OWNED_ITEM_PURPOSES.PERSONAL_COLLECTION }, destinations: { vault: true } }), 0); } },
+      { key: "add-resale-inventory", title: "Add Resale Inventory", helper: "Add an owned item with real cost basis and a resale purpose.", icon: "inventory", tone: "forge", onClick: () => { closeFlowModal({ force: true }); window.setTimeout(() => openProductAddFlow({ source: "global-add-resale", seed: { ownedItemPurpose: OWNED_ITEM_PURPOSES.FOR_RESALE }, destinations: { forge: Boolean(activeForgeWorkspace), vault: !activeForgeWorkspace } }), 0); } },
+      { key: "record-sale", title: "Record Sale", helper: "Record proceeds, fees, shipping, and realized profit.", icon: "sell", tone: "forge", onClick: () => openFindAction("records", "sales") },
+      { key: "add-expense", title: "Add Expense", helper: "Create a bookkeeping record for a business cost.", icon: "business", tone: "forge", onClick: () => openFindAction("records", "expenses") },
+      { key: "add-mileage", title: "Add Mileage", helper: "Log a sourcing, pickup, delivery, or event trip.", icon: "map", tone: "forge", onClick: () => openFindAction("records", "mileage") },
+      { key: "add-receipt", title: "Add Receipt", helper: "Save purchase proof and review it before linking records.", icon: "clipboard", tone: "forge", onClick: () => setQuickAddPath("receipt") },
     ];
-    const preferredEntryKeys = sellerQuickAddActive ? sellerQuickAddOrder : quickAddAdaptivePlan.allKeys;
-    const allEntryOptions = [
-      ...preferredEntryKeys.map((key) => entryOptionByPreferenceKey[key]).filter(Boolean),
-      ...fallbackEntryOptions,
-    ].filter((option, index, rows) => rows.findIndex((candidate) => candidate.key === option.key) === index);
-    const visibleEntryCount = sellerQuickAddActive ? Math.max(6, quickAddPreferencePlan.maxVisible) : quickAddPreferencePlan.maxVisible;
-    const entryOptions = allEntryOptions.slice(0, visibleEntryCount);
-    const overflowEntryOptions = allEntryOptions.slice(visibleEntryCount);
+    const overflowEntryOptions = [];
 
     return (
       <div className="add-anything-flow add-anything-entry">
         <div className="add-anything-hero">
           <div>
-            <strong>Scan Product/Card</strong>
-            <p>Scan, search, or enter manually - then review before saving.</p>
+            <strong>Add a record</strong>
+            <p>Choose a workflow. Nothing is purchased, offered, bid, or imported automatically.</p>
           </div>
           <span aria-hidden="true">+</span>
         </div>
@@ -50590,7 +51378,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </div>
           </details>
         ) : null}
-        <p className="quick-add-missing-help">Use barcode, photo, receipt, or manual entry. Nothing is saved until you confirm.</p>
+        <p className="quick-add-missing-help">Every workflow opens a review step before a record is saved or changed.</p>
       </div>
     );
   }
@@ -54392,7 +55180,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         || flowModalRef.current?.querySelector("[data-active-step='true']")
         || flowModalRef.current?.querySelector(".flow-modal-body")
         || flowModalRef.current;
-      focusScope?.scrollIntoView?.({ block: "nearest" });
+      const modalKeepsFixedFrame = ["addActionSheet", "multiDestinationAdd"].includes(activeFlowModal?.type || "");
+      if (!modalKeepsFixedFrame) {
+        focusScope?.scrollIntoView?.({ block: "nearest" });
+      }
       const preferredFocusSelector = activeFlowModal?.type === "scoutSubmit"
         ? "input[placeholder='Search store, city, ZIP, or nickname']:not([disabled]), input:not([type='hidden']):not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not(.modal-close-button):not([disabled]), [href], summary, [tabindex]:not([tabindex='-1'])"
         : "input:not([type='hidden']):not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not(.modal-close-button):not([disabled]), [href], summary, [tabindex]:not([tabindex='-1'])";
@@ -54878,23 +55669,23 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       { key: "welcome", label: "Welcome", helper: "Mission and beta path" },
       { key: "state-check", label: "State Check", helper: "Virginia-first access" },
       { key: "waitlist", label: "Waitlist", helper: "Expansion signal" },
-      { key: "choose-role", label: "Choose Role", helper: "Collector, family, seller, shop" },
+      { key: "choose-role", label: "Choose Role", helper: "Collector, family, seller, shop partner" },
       { key: "family-setup", label: "Family Setup", helper: "Parent-guided defaults" },
       { key: "notifications", label: "Notifications", helper: "Safe alert choices" },
-      { key: "first-store", label: "First Store", helper: "One watched store" },
+      { key: "first-store", label: "First Store", helper: "Three watched stores" },
       { key: "permission-needed", label: "Permission Needed", helper: "Locked state clarity" },
     ];
     const tierRows = [
-      { title: "Free", body: "Start with Vault, Market, and one Scout watched store.", status: "1 watched store" },
-      { title: "Collector", body: "More collector tools and saved product context.", status: "Preview tier" },
+      { title: "Free", body: "Start with Vault, Market, three Scout watched stores, and one child profile.", status: "Real starter app" },
+      { title: "Plus", body: "More capacity, smarter collection tools, alerts, and saved product context.", status: "Collector growth" },
       { title: "Family", body: "Parent-guided tools, Spark participation, and kid-safe defaults.", status: "Family safe" },
-      { title: "Seller", body: "Forge workspace, receipts, listings, and sales organization.", status: "Optional" },
-      { title: "Shop", body: "Trusted family friend updates and Spark support placeholders.", status: "Admin reviewed" },
+      { title: "Pro / Seller", body: "Forge workspace, Harbor listing health, receipts, proof, and sales organization.", status: "Optional" },
+      { title: "Shop Partner", body: "Trusted family friend updates and Spark support placeholders.", status: "Admin reviewed" },
       { title: "Beta / Admin", body: "Protected access for testing, review queues, and operations.", status: "Permission gated" },
     ];
     const setupRows = [
       { title: "Start with Hearth", body: "Preview the warm home base, then choose the tools your family needs first.", status: "Home base" },
-      { title: "Pick your role", body: "Collector, family, seller, shop, sponsor, and admin paths stay clearly separated.", status: "Role scoped" },
+      { title: "Pick your role", body: "Collector, family, Pro / Seller, Shop Partner, sponsor, and admin paths stay clearly separated.", status: "Role scoped" },
       { title: "Keep it safe", body: "Scout, Tidepool, Spark, and Parent Center avoid private child data and exploit-friendly details.", status: "Family first" },
     ];
     const stateRows = [
@@ -54944,7 +55735,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       "choose-role": {
         kicker: "Choose Role",
         title: "Pick the setup that matches how your family collects.",
-        body: "Free, Collector, Family, Seller, Shop, Beta, and Admin stay clearly separated. Billing is not connected here.",
+        body: "Free, Plus, Family, Pro / Seller, reviewed Shop Partner, Beta, and Admin stay clearly separated. Billing is not connected here.",
         badge: "No checkout",
       },
       "family-setup": {
@@ -54962,8 +55753,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       "first-store": {
         kicker: "First Store",
         title: "Choose your first watched store.",
-        body: "Free users start with one watched store and can change it once every 30 days. This preview does not save a store.",
-        badge: "1 watched store",
+        body: "Free users start with 3 watched stores and can change them once every 30 days. This preview does not save a store.",
+        badge: "3 watched stores",
       },
       "permission-needed": {
         kicker: "Permission Needed",
@@ -55478,7 +56269,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </article>
             <article className="shoreline-access-note glass-card">
               <span className="status-badge">Setup paths</span>
-              <strong>Free, Collector, Family, Seller, Shop, Beta, and Admin are clearly separated.</strong>
+              <strong>Free, Plus, Family, Pro / Seller, reviewed Shop Partner, Beta, and Admin are clearly separated.</strong>
               <p>Beta and Admin are protected access statuses. Checkout and self-serve upgrades are not live in this flow.</p>
             </article>
           </section>
@@ -56257,21 +57048,39 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     },
   ];
 
-  function renderUtilityPageShell({ title, subtitle, children, actions = null, className = "" }) {
+  function renderUtilityPageShell({ title, subtitle, children, actions = null, className = "", hideCommandHeader = false }) {
+    const utilityCommandRoutes = [
+      { key: "profile", label: "Profile", title: "Identity", detail: "Public and private profile", icon: "account", action: () => openUtilityPage("profile") },
+      { key: "settings", label: "Settings", title: "Preferences", detail: "Theme, privacy, alerts", icon: "settings", action: () => openUtilityPage("settings") },
+      { key: "help", label: "Help", title: "Support", detail: "Guides and bug reports", icon: "help", action: () => openUtilityPage("help") },
+      { key: "archive", label: "Records", title: "Archive", detail: "Proof and exports", icon: "data", action: () => openUtilityPage("dataBackup") },
+    ];
     return (
-      <div className={`utility-page ${className}`.trim()}>
-        <PageHeader
-          className={getHeaderCardClass("panel utility-page-header")}
-          title={title}
-          subtitle={subtitle}
-          actions={(
-            <div className="utility-page-header-actions">
-              <button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Back to Hearth</button>
-              <button type="button" onClick={() => setMenuOpen(true)}>Menu</button>
-              {actions}
-            </div>
-          )}
-        />
+      <div className={`utility-page you-command-only-route ${className}`.trim()}>
+        {!hideCommandHeader ? (
+          <CommandBoardV4
+            accent="you"
+            className="utility-page-command-board"
+            ariaLabel={`${title} command center`}
+            label="You"
+            title={title}
+            description={subtitle}
+            primaryAction={{ label: "Back to Hearth", icon: "home", onClick: () => setActiveTab("dashboard") }}
+            secondaryActions={[
+              { label: "Menu", icon: "settings", onClick: () => setMenuOpen(true) },
+              { label: "Help", icon: "help", onClick: () => openUtilityPage("help") },
+            ]}
+            statusItems={[
+              { key: "role", icon: "account", label: "Role", value: actualAdminUser ? actualAdminRole : "User", detail: activeRoleMode || "Standard" },
+              { key: "plan", icon: "plan", label: "Plan", value: TIER_LABELS[currentTier] || "Free", detail: "Safety basics included" },
+              { key: "privacy", icon: "community", label: "Privacy", value: "Protected", detail: "Child and account data" },
+              { key: "records", icon: "data", label: "Records", value: "Local", detail: cloudSyncPreference === "cloud" ? "Cloud requested" : "This device" },
+              { key: "support", icon: "help", label: "Support", value: "Open", detail: "Beta feedback ready" },
+            ]}
+            routes={utilityCommandRoutes}
+          />
+        ) : null}
+        {actions ? <div className="utility-page-command-actions">{actions}</div> : null}
         <div className="utility-page-layout">
           {children}
         </div>
@@ -57147,6 +57956,133 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }
 
   function renderDataBackupPage() {
+    function renderArchiveProofHistoryPanel() {
+      const archiveCategoryOrder = ["Sales", "Trades", "Receipts", "Harbor", "Issues", "Scout", "Spark", "Vault"];
+      const archiveCategoryRows = archiveCategoryOrder.map((group) => ({
+        group,
+        count: archiveProofSummary.groups[group] || 0,
+      }));
+      const archiveStatRows = [
+        { label: "Archive Records", value: archiveProofSummary.total, helper: "Local saved history" },
+        { label: "Proof Backed", value: archiveProofSummary.proofBacked, helper: "Photos, receipt, note, or tracking" },
+        { label: "Needs Proof", value: archiveProofSummary.needsProof, helper: "Records to tighten later" },
+        { label: "Latest", value: archiveProofSummary.latest?.dateLabel || "Not started", helper: archiveProofSummary.latest?.group || "Add a record" },
+      ];
+      const archiveEvidenceRows = [
+        { title: "Receipts & Photos", body: "Purchase proof, condition photos, listing photos, and Scout screenshots stay attached to the record that created them.", status: "Proof" },
+        { title: "Sales, Trades, Donations", body: "Sold, traded, donated, packed, and gifted records appear here without becoming a public feed.", status: "Private" },
+        { title: "Issue Review Trail", body: "Reports and evidence stay visible for admin review later. This does not process disputes, payment, or shipping labels.", status: "Review" },
+      ];
+      const handleArchiveRowAction = (group) => {
+        if (group === "Scout") {
+          setActiveTab("scout");
+          return;
+        }
+        if (group === "Spark") {
+          setActiveTab("kidsProgram");
+          return;
+        }
+        if (group === "Harbor" || group === "Issues") {
+          setExchangeSection("harbor");
+          setActiveTab("exchange");
+          return;
+        }
+        setExchangeSection("forge");
+        setActiveTab("exchange");
+      };
+
+      return (
+        <section className="drawer-info-card utility-card utility-card-wide archive-proof-history-card" aria-label="Archive Proof History">
+          <div className="archive-proof-hero">
+            <div>
+              <p className="section-kicker">Archive / Proof History</p>
+              <h3>One trustworthy trail for records and evidence.</h3>
+              <p>
+                Archive brings sales, trades, donations, Scout proof, Harbor issues, receipts, and closed records into one private review surface.
+              </p>
+            </div>
+            <span className="status-badge">Local beta archive</span>
+          </div>
+
+          <div className="archive-proof-stat-grid" aria-label="Archive proof summary">
+            {archiveStatRows.map((stat) => (
+              <article key={stat.label}>
+                <span>{stat.label}</span>
+                <strong>{stat.value}</strong>
+                <small>{stat.helper}</small>
+              </article>
+            ))}
+          </div>
+
+          <div className="archive-proof-category-row" aria-label="Archive categories">
+            {archiveCategoryRows.map((row) => (
+              <button type="button" key={row.group} onClick={() => handleArchiveRowAction(row.group)}>
+                <strong>{row.group}</strong>
+                <span>{row.count}</span>
+              </button>
+            ))}
+          </div>
+
+          {archiveProofRows.length ? (
+            <div className="archive-proof-timeline-list" aria-label="Archive proof timeline">
+              {archiveProofRows.slice(0, 8).map((row) => (
+                <article className={`archive-proof-timeline-row archive-proof-timeline-row--${row.tone}`} key={row.key}>
+                  <div className="archive-proof-row-marker" aria-hidden="true" />
+                  <div className="archive-proof-row-body">
+                    <div className="compact-card-header">
+                      <div>
+                        <span className="status-badge">{row.group}</span>
+                        <h4>{row.title}</h4>
+                        <p>{row.detail}</p>
+                      </div>
+                      <strong>{row.value || row.dateLabel}</strong>
+                    </div>
+                    <div className="archive-proof-meta-row">
+                      <span>{row.dateLabel}</span>
+                      <span>{row.status}</span>
+                      <span>{row.proofLabel}</span>
+                      <span>{row.confidence}</span>
+                    </div>
+                  </div>
+                  <button type="button" className="secondary-button" onClick={() => handleArchiveRowAction(row.group)}>{row.actionLabel}</button>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="small-empty-state archive-proof-empty-state">
+              <strong>No archive records yet.</strong>
+              <span>Save a sale, trade, receipt, Scout report, Harbor listing, issue note, or Spark gift to start the proof trail.</span>
+              <button type="button" className="secondary-button" onClick={() => { setExchangeSection("forge"); setActiveTab("exchange"); }}>Open Exchange</button>
+            </div>
+          )}
+
+          <div className="archive-proof-evidence-grid" aria-label="Archive evidence types">
+            {archiveEvidenceRows.map((row) => (
+              <article key={row.title}>
+                <div>
+                  <strong>{row.title}</strong>
+                  <p>{row.body}</p>
+                </div>
+                <span className="status-badge">{row.status}</span>
+              </article>
+            ))}
+          </div>
+
+          <div className="archive-proof-next-card">
+            <div>
+              <strong>What happens next</strong>
+              <p>Archive is the foundation for exports, receipts, issue review, and family-safe proof. It is not a legal/tax receipt system or automatic marketplace dispute processor.</p>
+            </div>
+            <div className="summary-pill-row">
+              <span className="status-badge">Export-ready later</span>
+              <span className="status-badge">Private by default</span>
+              <span className="status-badge">Proof-first</span>
+            </div>
+          </div>
+        </section>
+      );
+    }
+
     return renderUtilityPageShell({
       title: "Data Safety & Export",
       subtitle: "Review local browser storage, export/import beta data, clear private beta data, and submit privacy requests.",
@@ -57165,6 +58101,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <button type="button" className={cloudSyncPreference === "cloud" ? "drawer-link active" : "drawer-link"} onClick={() => updateCloudSyncPreference("cloud")}>Request Cloud Sync Access</button>
             </div>
           </div>
+          {renderArchiveProofHistoryPanel()}
           <div className="utility-card-wide">
             <LazyToolBoundary label="Loading backup tools...">
               <BackupExportImport
@@ -57342,42 +58279,305 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }
 
   function renderProfilePage() {
+    const profileCommandCards = [
+      {
+        key: "profile",
+        icon: "account",
+        eyebrow: "Account",
+        title: "Identity and security",
+        body: "Public label, private account details, beta status, and security actions stay separated.",
+        status: betaAccessAllowed() ? "Approved beta" : "Limited",
+        action: "Edit profile",
+        onClick: () => openUtilityPage("profile"),
+      },
+      {
+        key: "nest",
+        icon: "community",
+        eyebrow: "Family",
+        title: "Family permissions",
+        body: "Child profiles, approvals, location protection, wishlist requests, and household rules remain governed.",
+        status: "Parent guarded",
+        action: "Open Nest",
+        onClick: () => openUtilityPage("parentCenter"),
+      },
+      {
+        key: "lantern",
+        icon: "help",
+        eyebrow: "Safety",
+        title: "Lantern Safety Center",
+        body: "Trade safety, card care, local meetup rules, scam prevention, and child-safe collecting guidance.",
+        status: settingsFamilyStatusLabel,
+        action: "Open Lantern",
+        onClick: () => openUtilityPage("trust"),
+      },
+      {
+        key: "spark",
+        icon: "spark",
+        eyebrow: "Access",
+        title: "Spark access and giving",
+        body: "Kid packs, donation pledges, volunteer interest, sponsor paths, and reduced-cost access review.",
+        status: "Review first",
+        action: "Open Spark",
+        onClick: () => openUtilityPage("kidsProgram"),
+      },
+      {
+        key: "archive",
+        icon: "data",
+        eyebrow: "Archive",
+        title: "Proof and records",
+        body: "Receipts, donation proof, shipping proof, condition photos, exports, and account history.",
+        status: "Private records",
+        action: "Open Archive",
+        onClick: () => openUtilityPage("dataBackup"),
+      },
+      {
+        key: "help",
+        icon: "help",
+        eyebrow: "Support",
+        title: "Help and app status",
+        body: "Support, known issues, beta feedback, legal/status, accessibility questions, and safe account help.",
+        status: "Support hub",
+        action: "Get help",
+        onClick: () => openUtilityPage("help"),
+      },
+      {
+        key: "settings",
+        icon: "settings",
+        eyebrow: "Settings",
+        title: "Privacy and preferences",
+        body: "Notifications, appearance, accessibility, data controls, account security, and legal links.",
+        status: "Private",
+        action: "Open Settings",
+        onClick: () => openUtilityPage("settings"),
+      },
+      {
+        key: "tidepool",
+        icon: "pool",
+        eyebrow: "Community",
+        title: "Tidepool access",
+        body: "Events, trusted shops, donation drives, and family-safe community routes stay moderated.",
+        status: "Guarded",
+        action: "Open Tidepool",
+        onClick: () => openUtilityPage("tidepool"),
+      },
+    ];
+    const profileNorthStarStats = [
+      { label: "Beta access", value: betaAccessAllowed() ? "Approved" : "Limited", helper: "Current gate" },
+      { label: "Safety guard", value: settingsFamilyStatusLabel, helper: "Default protection" },
+      { label: "Scout trust", value: `${scoutGuessPoints} pts`, helper: "Report history" },
+      { label: "Setup", value: smartSetupRecommendation.label, helper: "Active app mode" },
+    ];
+    const profileAccessReviewSteps = [
+      {
+        label: "1. Request",
+        title: "Family or access help",
+        body: "Parents, guardians, adults with special needs, or families supporting special-needs children can request review.",
+        status: "Private start",
+      },
+      {
+        label: "2. Proof",
+        title: "Minimum needed only",
+        body: "Use a careful proof path before discounting. Do not expose diagnosis, child details, exact location, or private documents publicly.",
+        status: "Privacy first",
+      },
+      {
+        label: "3. Review",
+        title: "Admin decision",
+        body: "Discount or free access should be approved, logged, and reversible before any future billing connection.",
+        status: "No auto-billing",
+      },
+      {
+        label: "4. Renewal",
+        title: "Gentle recheck",
+        body: "Keep families from repeatedly proving sensitive details. Use lightweight renewal and support notes when possible.",
+        status: "Dignity rule",
+      },
+    ];
+    const profileProofRows = [
+      { label: "Identity", value: signedInWithSupabase ? "Cloud account" : "Local preview", helper: "Private account data" },
+      { label: "Public card", value: publicProfileLabel(), helper: "Shown instead of private email" },
+      { label: "Family privacy", value: "No public child profile", helper: "Parent-managed by default" },
+      { label: "Access proof", value: "Future review flow", helper: "No fake verification yet" },
+    ];
+    const profileRouteRows = [
+      { label: "Plans", body: "Family pricing, free access review, limits, and upgrade previews.", icon: "plan", onClick: () => openUtilityPage("membership") },
+      { label: "Nest", body: "Child profiles, permissions, approvals, and location controls.", icon: "community", onClick: () => openUtilityPage("parentCenter") },
+      { label: "Lantern", body: "Safety lessons, meetup rules, scams, and parent guides.", icon: "help", onClick: () => openUtilityPage("trust") },
+      { label: "Spark", body: "Access review, donations, volunteer interest, and impact previews.", icon: "spark", onClick: () => openUtilityPage("kidsProgram") },
+      { label: "Archive", body: "Receipts, proof, exports, and private records.", icon: "data", onClick: () => openUtilityPage("dataBackup") },
+      { label: "Settings", body: "Privacy, security, notifications, legal, and app status.", icon: "settings", onClick: () => openUtilityPage("settings") },
+    ];
+    const profileUsageRows = [
+      { label: "Vault items", value: vaultItems.length, helper: "Collection records", icon: "vault" },
+      { label: "Watched targets", value: workspaceWatchlist.length, helper: "Prices and restocks", icon: "bell" },
+      { label: "Scout trust", value: `${scoutGuessPoints} pts`, helper: "Report history", icon: "scout" },
+      { label: "Plan", value: TIER_LABELS[currentTier] || "Free", helper: "Safety basics included", icon: "plan" },
+      { label: "Family", value: "Protected", helper: "Parent controls ready", icon: "community" },
+      { label: "Records", value: "Private", helper: "Archive and proof", icon: "data" },
+      { label: "Settings", value: "Private", helper: "Security and preferences", icon: "settings" },
+      { label: "Tidepool", value: "Guarded", helper: "Events and trusted community", icon: "pool" },
+    ];
+    const profileOperationsRows = [
+      { label: "Profile", title: "Identity", body: "Public label, avatar, account status, and private account data stay separated.", icon: "account", action: () => openUtilityPage("account") },
+      { label: "Privacy", title: "Family data", body: "Child details, exact location, access proof, and admin notes are not public profile content.", icon: "community", action: () => openUtilityPage("settings") },
+      { label: "Security", title: "Account safety", body: "Re-auth, sessions, password, and future 2FA belong in protected account settings.", icon: "settings", action: () => openUtilityPage("account") },
+      { label: "Support", title: "Help center", body: "Known issues, support, status, legal, and beta feedback stay one tap away.", icon: "help", action: () => openUtilityPage("help") },
+    ];
+
     return renderUtilityPageShell({
-      title: "Profile",
-      subtitle: "Public identity, setup mode, role, beta status, and profile details.",
-      className: "profile-utility-page",
+      title: "You",
+      subtitle: "Profile, privacy, safety, access, records, support, and account controls.",
+      className: "profile-utility-page you-command-only-route",
+      hideCommandHeader: true,
       children: (
         <>
-          {renderSettingsProfileSummaryCard()}
-          {renderProfileSettingsCard()}
-          <div className="drawer-info-card profile-status-card utility-card">
-            <div className="compact-card-header">
-              <div>
-                <strong>Profile status</strong>
-                <p className="compact-subtitle">Public profile details stay separate from private account data.</p>
-              </div>
-              <span className="status-badge">{betaAccessAllowed() ? "Approved beta" : "Limited"}</span>
+          <CommandBoardV4
+            accent="you"
+            className="you-profile-command-card utility-card utility-card-wide"
+            ariaLabel="You account command center"
+            label="Account Operations"
+            title="You Command Center"
+            description="Profile, family controls, privacy, safety, access, records, plans, and support in one private command center."
+            primaryAction={{ label: "Account Setup", icon: "account", onClick: () => openUtilityPage("account") }}
+            secondaryActions={[
+              { label: "Plans", icon: "plan", onClick: () => openUtilityPage("membership") },
+              { label: "Help", icon: "help", onClick: () => openUtilityPage("help") },
+            ]}
+            statusItems={profileNorthStarStats.map((stat, index) => ({
+              key: stat.label,
+              icon: index === 0 ? "account" : index === 1 ? "community" : index === 2 ? "scout" : "settings",
+              label: stat.label,
+              value: stat.value,
+              detail: stat.helper,
+            }))}
+            plan={{
+              label: "Profile Plan",
+              title: "Keep public identity, proof, safety, and access separate",
+              items: [
+                { key: "profile", icon: "account", label: "Public label", detail: publicProfileLabel(), action: () => openUtilityPage("account") },
+                { key: "privacy", icon: "community", label: "Family privacy", detail: "No public child profile", action: () => openUtilityPage("parentCenter") },
+                { key: "access", icon: "plan", label: "Access review", detail: "Private proof path", action: () => openUtilityPage("membership") },
+                { key: "records", icon: "data", label: "Records", detail: "Proof and archive", action: () => openUtilityPage("dataBackup") },
+              ],
+              actions: [
+                { label: "Open Plans", icon: "plan", onClick: () => openUtilityPage("membership") },
+                { label: "Open Lantern", icon: "help", onClick: () => openUtilityPage("trust") },
+              ],
+            }}
+            routes={profileRouteRows.map((route) => ({
+              key: route.label,
+              icon: route.icon,
+              label: route.label,
+              title: route.label,
+              detail: route.body,
+              action: route.onClick,
+            }))}
+          >
+            <div className="you-v4-command-content">
+              <section className="you-v4-usage-panel" aria-label="Account usage and limits">
+                <div className="you-v4-panel-heading">
+                  <div>
+                    <span>Plan and limits</span>
+                    <h2>Know what is active before you manage it.</h2>
+                    <p>Families, collectors, shops, sponsors, and admins need one clear control center with limits, permissions, records, and safety status visible at a glance.</p>
+                  </div>
+                  <small className="trust-badge trust-badge--verified">{betaAccessAllowed() ? "Approved beta" : "Limited beta"}</small>
+                </div>
+                <div className="you-v4-usage-grid">
+                  {profileUsageRows.map((row) => (
+                    <article key={row.label}>
+                      <span><AppNavIcon kind={row.icon} />{row.label}</span>
+                      <strong>{row.value}</strong>
+                      <small>{row.helper}</small>
+                    </article>
+                  ))}
+                </div>
+              </section>
+
+              <aside className="you-v4-side-rail" aria-label="Family access and privacy">
+                <article>
+                  <span className="trust-badge trust-badge--secure">Family mode</span>
+                  <h3>Safety basics stay free.</h3>
+                  <p>Parent approval, child privacy, and location protection should never be treated as premium-only trust features.</p>
+                  <div className="you-v4-mini-list">
+                    <span>Parent approval on</span>
+                    <span>Location protected</span>
+                    <span>No public child profile</span>
+                  </div>
+                </article>
+                <article>
+                  <span className="trust-badge trust-badge--fair">Access review</span>
+                  <h3>Discounts need a private proof path.</h3>
+                  <p>Free or reduced access for families and adults with special needs should be generous, reviewed, and dignity-first.</p>
+                  <button type="button" className="command-board-v4-primary-action" onClick={() => openUtilityPage("membership")}>Review Plans</button>
+                </article>
+              </aside>
             </div>
-            <dl className="drawer-status-list">
-              <div><dt>Beta access</dt><dd>{betaAccessAllowed() ? "Approved" : "Pending or limited"}</dd></div>
-              <div><dt>Public label</dt><dd>{publicProfileLabel()}</dd></div>
-              <div><dt>Scout points</dt><dd>{scoutGuessPoints}</dd></div>
-              <div><dt>Current setup</dt><dd>{smartSetupRecommendation.label}</dd></div>
-            </dl>
-            <div className="drawer-inline-actions settings-action-row">
-              <button type="button" className="drawer-link" onClick={() => setActiveTab("profileProgress")}>Open progress</button>
-              <button type="button" className="secondary-button" onClick={() => openUtilityPage("settings")}>App setup</button>
+
+            <div className="you-v4-operations-grid" aria-label="You control center routes">
+              {profileCommandCards.map((card) => (
+                <article className={`you-profile-command-tile you-profile-command-tile--${card.key}`} key={card.key}>
+                  <div>
+                    <span className="you-profile-command-label"><AppNavIcon kind={card.icon} />{card.eyebrow}</span>
+                    <small className="status-badge">{card.status}</small>
+                  </div>
+                  <strong>{card.title}</strong>
+                  <p>{card.body}</p>
+                  <button type="button" className="secondary-button" onClick={card.onClick}>{card.action}</button>
+                </article>
+              ))}
             </div>
-          </div>
-          <div className="drawer-info-card settings-privacy-safety-card utility-card">
-            <strong>Profile privacy</strong>
-            <p className="compact-subtitle">Private email, exact location, child details, and admin notes are not shown on public cards.</p>
-            <div className="settings-chip-cloud">
-              <span className="status-badge">Public username only</span>
-              <span className="status-badge">Family details private</span>
-              <span className="status-badge">Admin notes hidden</span>
+
+            <div className="you-v4-lower-grid">
+              <section className="you-profile-access-system" aria-label="Family access review path">
+                <div className="you-profile-access-copy">
+                  <span className="section-kicker">Access Review</span>
+                  <h3>Make help generous without turning proof into a public label.</h3>
+                  <p>Families and adults requesting support should understand what is free, what is discounted, what requires review, and what data Ember & Tide will never make public.</p>
+                </div>
+                <div className="you-profile-step-grid">
+                  {profileAccessReviewSteps.map((step) => (
+                    <article key={step.label}>
+                      <span>{step.label}</span>
+                      <strong>{step.title}</strong>
+                      <p>{step.body}</p>
+                      <small className="status-badge">{step.status}</small>
+                    </article>
+                  ))}
+                </div>
+              </section>
+              <section className="you-profile-route-card" aria-label="Account operations">
+                <div>
+                  <span className="section-kicker">Operations</span>
+                  <strong>Every control goes somewhere useful.</strong>
+                </div>
+                <div className="you-v4-operation-list">
+                  {profileOperationsRows.map((row) => (
+                    <button type="button" key={row.label} onClick={row.action}>
+                      <span><AppNavIcon kind={row.icon} />{row.label}</span>
+                      <strong>{row.title}</strong>
+                      <small>{row.body}</small>
+                    </button>
+                  ))}
+                </div>
+              </section>
+              <section className="you-profile-proof-card" aria-label="Profile proof model">
+                <div>
+                  <span className="section-kicker">Proof model</span>
+                  <strong>Show trust without leaking sensitive details.</strong>
+                </div>
+                <div className="you-profile-proof-list">
+                  {profileProofRows.map((row) => (
+                    <article key={row.label}>
+                      <span>{row.label}</span>
+                      <strong>{row.value}</strong>
+                      <small>{row.helper}</small>
+                    </article>
+                  ))}
+                </div>
+              </section>
             </div>
-          </div>
+          </CommandBoardV4>
         </>
       ),
     });
@@ -57612,7 +58812,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     quickAddMenuOpen ||
     activeFlowModal ||
     marketResultsVisible ||
-    ["scout", "vault", "market", "exchange", "forge", "inventory", "sales", "expenses", "reports", "tidepool", "kidsProgram", "parentCenter", "account", "settings", "menu", "trust", "membership", "profile", "help", "adminReview", "moderator", "comingSoon"].includes(activeTab) ||
+    ["scout", "flipScout", "vault", "market", "exchange", "forge", "inventory", "sales", "expenses", "reports", "tidepool", "kidsProgram", "parentCenter", "account", "settings", "menu", "trust", "membership", "profile", "help", "adminReview", "moderator", "comingSoon"].includes(activeTab) ||
     ["scout", "vault", "exchange", "you"].includes(activeMainTab)
   );
   const currentPathRoot = typeof window !== "undefined"
@@ -57623,7 +58823,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     if (guestPreviewActive || activeTab === "onboarding" || activeTab === "resetPassword" || activeTab === "invite" || activeTab === "workspaceInvite") return "guest";
     if (activeTab === "kidsProgram") return "kids";
     if (activeTab === "parentCenter") return "parent";
-    if (["inventory", "sales", "expenses", "reports"].includes(activeTab) || (activeTab === "exchange" && exchangeSection === "forge")) return "seller";
+    if (["inventory", "sales", "expenses", "reports", "flipScout"].includes(activeTab) || (activeTab === "exchange" && exchangeSection === "forge")) return "seller";
     if (activeTab === "sponsor") {
       if (currentPathRoot === "sponsor") return "supporter";
       return currentPathRoot === "partner" || activeWorkspace?.type === "card_shop_partner" ? "store-partner" : "supporter";
@@ -57685,8 +58885,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     normalizeDailyTideState,
     normalizeVaultStatus,
     openAddActionSheet,
+    openBeaconCenter,
     openCollectorEventPlannerFlow,
     openCollectorEventPlannerSurface,
+    openCompassSearch,
     openEmberAssistPanel,
     openFlowModal,
     openMarketPriceMemoryFlow,
@@ -57757,6 +58959,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     workspaceWatchlist,
   };
   const vaultDashboardProps = {
+    activeWorkspaceName: activeWorkspace?.name || "My Collection",
     activeVaultCardItems,
     activeVaultItems,
     activeVaultSealedItems,
@@ -57773,6 +58976,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     MASTER_CARD_GROUPING_PREVIEW_CARDS,
     MasterCardGroupPreview,
     normalizeVaultStatus,
+    openBeaconCenter,
+    openCompassSearch,
+    openCollectionManager: () => setCollectionManagerOpen(true),
     openMarketWatchForVaultItem,
     openProductAddFlow,
     openTradeCompassFlow,
@@ -57815,9 +59021,18 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
   const forgePageProps = {
     commandDeskSellerAccess,
+    editMarketplaceListing,
     exchangeSection,
+    forgeInventoryItems,
+    marketPriceMemories,
+    missingSalePriceItems,
+    money,
+    needsMarketCheckItems,
+    openBeaconCenter,
+    openCompassSearch,
     openDealFinderModal,
     openExchangeSection,
+    openMarketplaceCreate,
     openProductAddFlow,
     openTradeCompassFlow,
     renderExchangeMarketCatalogSearchSection,
@@ -57826,12 +59041,18 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     renderForgeHeader,
     renderItemCompareTableSection,
     renderMarketHomeFoundation,
+    renderMarketIntelligencePanel,
     renderMarketPriceMemorySection,
     renderMarketplaceSection,
     renderPageChrome,
     renderWishlistIsoPlanningSection,
     setActiveTab,
     setForgeSubTab,
+    updateMarketplaceListingStatus,
+    workspaceMarketplaceListings,
+    workspaceSales,
+    workspaceTradeRecords,
+    workspaceWatchlist,
   };
 
   const marketPageProps = {
@@ -57873,8 +59094,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     marketCatalogDealFilter,
     marketSetSearchResults,
     money,
+    openBeaconCenter,
+    openCompassSearch,
     openCatalogDetails,
     openDealFinderModal,
+    openExchangeSection,
+    openMarketProductAddFlow,
     openProductAddFlow,
     openVaultSetSummary,
     openWatchlistProductDetails,
@@ -57887,6 +59112,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     renderHeader: renderTideTradrHeader,
     renderItemCompareTableSection,
     renderMarketHomeFoundation,
+    renderMarketIntelligencePanel,
     renderMarketPriceMemorySection,
     renderMarketplaceSection,
     renderProductImageFallback,
@@ -57927,12 +59153,21 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   };
 
   const settingsPageProps = {
+    activeWorkspaceName: activeWorkspace?.name || "",
+    adaptiveUiState,
     applyHomeViewPreset,
+    betaReadinessData,
     betaAccessAllowed,
+    commandDeskSellerAccess,
     dashboardPreset,
     dashboardPresetLabel,
+    guestPreviewActive,
     normalizeDashboardPreset,
     normalizeUserType,
+    notificationUnreadCount,
+    openMainRoute: (tab) => setActiveTab(tab),
+    openBeaconCenter,
+    openCompassSearch,
     openUtilityPage,
     PUBLIC_APP_VERSION_LABEL,
     renderAccountSetupOverviewCard,
@@ -57944,6 +59179,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     renderSettingsProfileSummaryCard,
     renderSettingsWorkspaceCard,
     renderUtilityPageShell,
+    scoutGuessPoints,
+    settingsFamilyStatusLabel,
     settingsSectionRows,
     signedInWithSupabase,
     signOut,
@@ -57952,7 +59189,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
 
   return (
-    <div className={`app app-command-shell app-${String(activeMainTab || activeTab || "home").toLowerCase()} ${roleModeClass}${activeTab === "market" ? " app-market" : ""} app-adaptive-${adaptiveUiState.mode} app-header-${headerMode} app-theme-${resolvedAppTheme}${guestPreviewActive ? " guest-preview-mode" : ""}${adminViewingAsAdmin ? " admin-view-mode" : ""}${adminEditModeActive ? " admin-edit-mode" : ""}`} data-theme={resolvedAppTheme} data-role-mode={activeRoleMode}>
+    <AppShell className={`app app-command-shell app-${String(activeMainTab || activeTab || "home").toLowerCase()} ${roleModeClass}${activeTab === "market" ? " app-market" : ""} app-adaptive-${adaptiveUiState.mode} app-header-${headerMode} app-theme-${resolvedAppTheme}${guestPreviewActive ? " guest-preview-mode" : ""}${adminViewingAsAdmin ? " admin-view-mode" : ""}${adminEditModeActive ? " admin-edit-mode" : ""}`} data-theme={resolvedAppTheme} data-role-mode={activeRoleMode}>
     <header className={`header app-shell-header app-shell-header--${headerMode}`}>
   <h1
     onClick={() => {
@@ -57965,7 +59202,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     }}
     title="There might be something hidden here..."
   >
-    Ember & Tide
+    {BRAND_CONFIG.applicationDisplayName}
   </h1>
 
   <p>{activeTabLabel} | {guestPreviewActive ? "Preview mode" : BETA_LOCAL_MODE ? "Private Beta" : user ? "Cloud sync active" : "Supabase mode"}</p>
@@ -57973,7 +59210,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   {showTreasure && (
     <div className="hidden-treasure">
       <p>Hidden Treasure Found ✨</p>
-      <h2>Thanks for finding the hidden tide.</h2>
+      <h2>Thanks for keeping your workspace organized.</h2>
     </div>
   )}
 </header>
@@ -57989,27 +59226,25 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       setActiveTab("dashboard");
     }}
   >
-    <span className="topbar-brand-mark" aria-hidden="true">
-      <img src={BRAND_ASSETS.mark} alt="" />
-    </span>
-    <span className="sr-only">E&amp;T TCG</span>
+    <span className="topbar-brand-mark ops-brand-mark" aria-hidden="true">{BRAND_CONFIG.monogram}</span>
+    <span className="sr-only">{BRAND_CONFIG.applicationDisplayName}</span>
     <span className="topbar-brand-copy">
-      <strong>EMBER &amp; TIDE</strong>
-      <small>E&amp;T TCG</small>
+      <strong>{BRAND_CONFIG.applicationDisplayName}</strong>
+      <small>{BRAND_CONFIG.businessDisplayName}</small>
     </span>
   </button>
 
   <div className={searchExpanded ? "app-search expanded" : "app-search"}>
     {searchExpanded ? (
       <div className="app-search-mobile-header">
-        <strong>Search Ember &amp; Tide</strong>
+        <strong>Search your workspace</strong>
         <button type="button" className="modal-icon-close" aria-label="Close search" onClick={closeSearchResults}>X</button>
       </div>
     ) : null}
     <button
       type="button"
       className="app-search-toggle"
-      aria-label="Search Ember & Tide"
+      aria-label="Search your workspace"
       onClick={() => {
         setQuickAddMenuOpen(false);
         setSearchExpanded((current) => !current);
@@ -58029,14 +59264,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         setSearchExpanded(true);
       }}
       placeholder="Search cards, stores, sets, reports, help..."
-      aria-label="Search across Ember & Tide"
+      aria-label={`Search across ${BRAND_CONFIG.applicationDisplayName}`}
     />
     {searchExpanded ? (
       <div className="app-search-results">
         <div className="compact-card-header">
           <div>
             <h3>Search foundation</h3>
-            <p>Routes to existing safe search areas. It does not search private, admin, child, or raw Scout pattern data.</p>
+            <p>Choose the part of the private workspace you want to search. Restricted records stay outside these results.</p>
           </div>
           <button type="button" className="secondary-button" onClick={closeSearchResults}>Close</button>
         </div>
@@ -58061,7 +59296,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         {globalSearchQueryText.length < 2 ? (
           <div className="app-search-foundation-note">
             <strong>Start with a destination.</strong>
-            <p>Type at least two characters for local matches from Market, Vault, Scout stores, current Scout reports, app pages, and Help.</p>
+            <p>Type at least two characters for local matches from products, inventory, store reports, application pages, and help.</p>
           </div>
         ) : appSearchResults.length === 0 ? (
           <div className="app-search-foundation-note">
@@ -58100,15 +59335,15 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </div>
           </section>
         )}
-        <p className="compact-subtitle">Global Search is a routing foundation: use Market for catalog results, Vault for your collection, Scout for current stores/reports, and Help for app guidance.</p>
+        <p className="compact-subtitle">Workspace search routes you to product research, inventory, local reports, and help. It does not invent or combine private records.</p>
       </div>
     ) : null}
   </div>
   <div className="topbar-command-actions" aria-label="Command desk actions">
-    <button
+    {ownerFeatureControls.businessAssistant ? <button
       type="button"
       className="topbar-ask-ember-button"
-      aria-label="Ask Ember"
+      aria-label="Open Business Assistant"
       aria-expanded={emberAssistOpen}
       onClick={() => {
         if (emberAssistOpen) {
@@ -58118,9 +59353,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         openEmberAssistPanel("topbar_ember_assist");
       }}
     >
-      <span className="action-icon" aria-hidden="true">E</span>
-      <span>Ask</span>
-    </button>
+      <span className="action-icon" aria-hidden="true"><AppNavIcon kind="help" /></span>
+      <span>Assistant</span>
+    </button> : null}
     <button
       type="button"
       className="topbar-workspace-chip"
@@ -58133,13 +59368,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     <button
       type="button"
       className="topbar-quick-add-button"
-      aria-label="Open Quick Add command center"
+      aria-label="Open global Add menu"
       onClick={() => openAddActionSheet("topbar")}
     >
       <span className="action-icon" aria-hidden="true">
         <AppNavIcon kind="plus" />
       </span>
-      Quick Add
+      Add
     </button>
     {renderNotificationCenter()}
     <button
@@ -58164,6 +59399,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     </button>
   </div>
 </div>
+
+      {renderNotificationCenterPanel()}
 
       {renderDesktopCommandSidebar()}
 
@@ -58239,7 +59476,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         </div>
       ) : null}
 
-      <nav className="main-tabs app-main-tabs" aria-label="Ember & Tide main tabs">
+      <nav className="main-tabs app-main-tabs" aria-label="Legacy route tabs">
         {mainTabs.map((tab) => (
           <button
             key={tab.key}
@@ -58261,7 +59498,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
           <aside className="drawer menu-drawer navigation-drawer open">
             <div className="drawer-header">
-              <div><p>Ember & Tide</p><h3>Menu</h3></div>
+              <div><p>{BRAND_CONFIG.applicationDisplayName}</p><h3>Menu</h3></div>
               <button type="button" className="secondary-button drawer-close-button" aria-label="Close menu" onClick={() => setMenuOpen(false)}>X</button>
             </div>
             <div className="drawer-menu-stack">
@@ -58287,7 +59524,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                             className={isDesktopSidebarItemActive(item) ? "menu-command-link active" : "menu-command-link"}
                             data-menu-key={item.key}
                             aria-current={isDesktopSidebarItemActive(item) ? "page" : undefined}
-                            aria-label={`${item.label}. ${item.helper || "Open this Ember & Tide area."}`}
+                      aria-label={`${item.label}. ${item.helper || "Open this workspace area."}`}
                             onClick={() => {
                               if (item.keepOpen) {
                                 item.action?.();
@@ -58318,7 +59555,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                       <p className="compact-subtitle">{accountStatusDescription}</p>
                     </div>
                     <dl className="drawer-status-list">
-                      <div><dt>App Version</dt><dd>Ember & Tide beta web app</dd></div>
+                  <div><dt>App Version</dt><dd>{BRAND_CONFIG.applicationDisplayName} beta web application</dd></div>
                       <div><dt>Account</dt><dd>{guestPreviewActive ? "Guest preview" : signedInWithSupabase ? "Supabase" : "Private beta"}</dd></div>
                       <div><dt>Role</dt><dd>{actualAdminUser ? actualAdminRole : "user"}</dd></div>
                       <div><dt>Tier</dt><dd>{TIER_LABELS[currentTier] || "Free"}</dd></div>
@@ -60399,6 +61636,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </div>
               </article>
 
+              {renderScoutStoreTrustProfile(selectedStoreMapStore)}
+
               <section className="store-detail-signal-card">
                 <div>
                   <span className="section-kicker">Current store signal</span>
@@ -60411,6 +61650,34 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <DetailItem label="Trusted confirmations" value={String(storeDetailTrustedConfirmationCount(selectedStoreMapStore.reports || []))} />
                   <DetailItem label="Proof count" value={String((selectedStoreMapStore.reports || []).filter(storeDetailReportProofAttached).length)} />
                   <DetailItem label="Watch status" value={selectedStoreMapStore.watchlisted ? "Watched store" : "Not watched"} />
+                </div>
+              </section>
+
+              <section className="store-detail-safe-meetup-card" aria-label="Safe meetup planning">
+                <div className="compact-card-header">
+                  <div>
+                    <span className="section-kicker">Safe Meetup</span>
+                    <h3>Use this store as a public planning point, not a private address share.</h3>
+                    <p>Scout keeps local context useful while protecting family location details and avoiding pressure-based meetups.</p>
+                  </div>
+                  <span className="status-badge">Area only</span>
+                </div>
+                <div className="store-detail-safe-grid">
+                  {[
+                    ["Trusted place", selectedStoreMapStore.profile?.showFamilyFriendlyProfile ? "Shop profile available" : "Public store location"],
+                    ["Parent rule", "Kid or teen exchanges need adult approval"],
+                    ["Proof check", "Confirm photos, condition, and item match"],
+                    ["External links", "Warn before opening maps or shop pages"],
+                  ].map(([label, value]) => (
+                    <article className="store-detail-safe-row" key={label}>
+                      <span>{label}</span>
+                      <strong>{value}</strong>
+                    </article>
+                  ))}
+                </div>
+                <div className="quick-actions">
+                  <button type="button" className="secondary-button" onClick={() => setActiveTab("trust")}>Open Lantern checklist</button>
+                  <button type="button" className="secondary-button" onClick={() => openFeedbackDialog("store_data", { page: "Scout Safe Meetup", topic: selectedStoreMapStore.name })}>Report store issue</button>
                 </div>
               </section>
 
@@ -62283,8 +63550,55 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         {!activeTabLocked && activeTab === "betaReadiness" && adminToolsVisible && renderBetaReadinessPanel()}
         {!activeTabLocked && activeTab === "dailyTide" && renderTodaysTideCommandCenter()}
         {!activeTabLocked && activeTab === "dashboard" && (
-          <LazyToolBoundary label="Loading Hearth...">
-            <HearthPage {...hearthPageProps} />
+          <LazyToolBoundary label="Loading Home...">
+            <OperationsHomePage {...hearthPageProps} />
+          </LazyToolBoundary>
+        )}
+        {!activeTabLocked && activeTab === "collectionWorkspace" && (
+          <LazyToolBoundary label="Loading Collection...">
+            <CollectionWorkspace
+              items={workspaceItems}
+              initialView={collectionWorkspaceView}
+              onViewChange={setCollectionWorkspaceView}
+              onAddItem={() => openProductAddFlow({ source: "collection-workspace", seed: { ownedItemPurpose: OWNED_ITEM_PURPOSES.PERSONAL_COLLECTION }, destinations: { vault: true } })}
+              onSellItem={(item) => updateOwnedItemPurpose(item, OWNED_ITEM_PURPOSES.FOR_RESALE, "Sell This Item from Collection")}
+              onOpenLegacyCollection={() => { setVaultSubTab("collection"); setActiveTab("vault"); }}
+              featureControls={ownerFeatureControls}
+            />
+          </LazyToolBoundary>
+        )}
+        {!activeTabLocked && activeTab === "businessWorkspace" && (
+          <LazyToolBoundary label="Loading Business...">
+            <BusinessWorkspace
+              items={workspaceItems}
+              purchases={workspaceItems.filter((item) => item.purchaseDate || item.purchase_date || item.unitCost != null || item.totalPurchaseCost != null)}
+              sales={workspaceSales}
+              expenses={workspaceExpenses}
+              mileage={workspaceMileageTrips}
+              initialView={businessWorkspaceView}
+              initialMoneyView={businessMoneyView}
+              onViewChange={setBusinessWorkspaceView}
+              onAddPurchase={() => openFlipScoutView("records", "purchases")}
+              onAddInventory={() => openProductAddFlow({ source: "business-workspace", seed: { ownedItemPurpose: OWNED_ITEM_PURPOSES.FOR_RESALE }, destinations: { forge: Boolean(activeForgeWorkspace), vault: !activeForgeWorkspace } })}
+              onAddSale={() => openFlipScoutView("records", "sales")}
+              onAddExpense={() => openFlipScoutView("records", "expenses")}
+              onAddMileage={() => openFlipScoutView("records", "mileage")}
+              onMoveToCollection={(item) => updateOwnedItemPurpose(item, OWNED_ITEM_PURPOSES.PERSONAL_COLLECTION, "Moved from resale inventory to Collection")}
+              onOpenDetailedRecords={() => openFlipScoutView("records", "expenses")}
+            />
+          </LazyToolBoundary>
+        )}
+        {!activeTabLocked && activeTab === "ownerCenter" && (
+          <LazyToolBoundary label="Loading Owner Center...">
+            <OwnerCenterPage
+              authorized={ownerCenterAuthorized}
+              initialSection={ownerCenterSection}
+              initialSubsection={ownerCenterSubview}
+              scoutSnapshot={scoutSnapshot}
+              storeDirectory={SCOUT_KNOWN_LOCAL_STORE_SEED}
+              onOpenFind={(screen, subview = "") => openFlipScoutView(screen, subview)}
+              onReviewOpportunity={(row) => openFlipScoutView(row?.providerId === "ebay" || /ebay/i.test(row?.sourceLabel || "") ? "ebay" : row?.sourceType === "Auctions" ? "auctions" : "deals")}
+            />
           </LazyToolBoundary>
         )}
         {!activeTabLocked && activeTab === "exchange" && (
@@ -62295,7 +63609,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
         {activeTab === "vault" && (
           <LazyToolBoundary label="Loading Vault...">
-            <VaultPage renderHeader={renderVaultHeader} showDashboard={vaultSubTab === "overview" || vaultSubTab === "collection"} {...vaultDashboardProps}>
+            <VaultPage renderHeader={renderVaultHeader} showDashboard={vaultSubTab === "overview"} {...vaultDashboardProps}>
             {(vaultSubTab === "overview" || vaultSubTab === "collection") ? (
             <>
             <section id="vault-items-section" className="panel vault-collection-panel">
@@ -62352,18 +63666,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <small>Cards, promos, and slabs</small>
                 </div>
               </div>
-              ) : (
-              <div className="vault-empty-summary-card" aria-label="Empty Vault summary">
-                <div>
-                  <strong>Your Vault is ready.</strong>
-                  <span>Add your first item and keep your collection protected.</span>
-                </div>
-                <dl>
-                  <div><dt>Value</dt><dd>No value yet</dd></div>
-                  <div><dt>Items</dt><dd>0</dd></div>
-                </dl>
-              </div>
-              )}
+              ) : null}
 
               {vaultItems.length ? (
                 <div className="vault-home-preview-grid" aria-label="Vault 2.0 collection previews">
@@ -63470,54 +64773,39 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         )}
 
         {activeTab === "scout" && (
-          <EtMockupPageShell
-            accent="scout"
-            className="scout-mockup-rebuild"
-            ariaLabel="Scout local hunt"
-          >
-            <div className="et-mockup-main-column scout-mockup-main">
-              {renderScoutHeader()}
+          <LazyToolBoundary label="Loading Scout command center...">
+            <Scout
+              targetSubTab={{
+                ...scoutSubTabTarget,
+                tab: activeScoutPage === "reports" || normalizedScoutView === "submit" || normalizedScoutView === "addReport" || normalizedScoutView === "scanScreenshot" || normalizedScoutView === "reviewReport"
+                  ? "reports"
+                  : activeScoutPage === "online"
+                    ? "online"
+                    : activeScoutPage === "alerts" || activeScoutPage === "watchlist"
+                      ? "alerts"
+                      : activeScoutPage === "storeMap" || activeScoutPage === "stores"
+                        ? "stores"
+                        : activeScoutPage === "guesses" || activeScoutPage === "predictions" || activeScoutPage === "forecast"
+                          ? "route"
+                          : "overview",
+              }}
+              adminMode={adminEditModeActive}
+              supabase={supabase}
+              isSupabaseConfigured={isSupabaseConfigured}
+              mapCatalogRow={mapCatalog}
+              money={money}
+              openBeaconCenter={openBeaconCenter}
+              openCompassSearch={openCompassSearch}
+              onQuickReport={(options) => openScoutSubmitFlow({ ...options, source: "scout-command" })}
+              onOpenFlipScout={() => setActiveTab("flipScout")}
+            />
+          </LazyToolBoundary>
+        )}
 
-              {normalizedScoutView === "submit" ? (
-                <>
-                  <section className="embedded-page">
-                    <LazyToolBoundary label="Loading Scout report tools...">
-                      <Scout
-                        targetSubTab={{ ...scoutSubTabTarget, tab: "reports" }}
-                        compact
-                        adminMode={adminEditModeActive}
-                        supabase={supabase}
-                        isSupabaseConfigured={isSupabaseConfigured}
-                        mapCatalogRow={mapCatalog}
-                        money={money}
-                        onQuickReport={(options) => openScoutSubmitFlow({ ...options, source: "scout-embedded" })}
-                      />
-                    </LazyToolBoundary>
-                  </section>
-                </>
-              ) : activeScoutPage === "reports" ? (
-                renderScoutReportsPanel()
-              ) : activeScoutPage === "online" ? (
-                renderScoutOnlinePanel()
-              ) : activeScoutPage === "watchlist" ? (
-                renderScoutWatchlistPanel()
-              ) : activeScoutPage === "alerts" ? (
-                renderEmberWatchPanel()
-              ) : activeScoutPage === "storeMap" || activeScoutPage === "stores" ? (
-                renderScoutStoresPanel()
-              ) : activeScoutPage === "guesses" || activeScoutPage === "predictions" || activeScoutPage === "forecast" ? (
-                renderScoutForecastPanel()
-              ) : activeScoutPage === "myReports" ? (
-                renderScoutReportsPanel()
-              ) : activeScoutPage === "review" ? (
-                renderScoutReviewPanel()
-              ) : normalizedScoutView === "addReport" || normalizedScoutView === "scanScreenshot" || normalizedScoutView === "reviewReport" ? (
-                renderLiveScoutReportFlowPage(normalizedScoutView)
-              ) : (
-                renderScoutOverviewPanel()
-              )}
-            </div>
-          </EtMockupPageShell>
+        {activeTab === "flipScout" && (
+          <LazyToolBoundary label="Loading Deal Finder...">
+            <FlipScoutPage initialScreen={flipScoutView} onViewChange={setFlipScoutView} featureControls={ownerFeatureControls} onExit={() => setActiveTab("dashboard")} onOpenRestocks={() => { setOwnerCenterSection("restocks"); setOwnerCenterSubview("live"); setActiveTab(ownerCenterAuthorized ? "ownerCenter" : "scout"); }} />
+          </LazyToolBoundary>
         )}
 
         {activeTab === "menu" && (
@@ -65507,37 +66795,9 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
         <span aria-hidden="true">↑</span>
         <b>Top</b>
       </button>
-      {renderEmberAssist()}
-      <button
-        type="button"
-        className={`mobile-quick-add-fab ${showMobileQuickAddFab && !mobileQuickAddFabSuppressed ? "is-visible" : "is-scroll-hidden"}`}
-        aria-label="Open Quick Add command center"
-        onClick={() => openAddActionSheet("mobile-fab")}
-      >
-        <span className="mobile-tab-icon" aria-hidden="true">
-          <AppNavIcon kind="plus" />
-        </span>
-      </button>
-
-      <nav className="mobile-bottom-nav" aria-label="Mobile main navigation">
-        {mobileBottomTabs.map((tab) => (
-          <button
-            key={tab.key}
-            type="button"
-            className={`${tab.center ? "mobile-dock-add" : "mobile-dock-item"} ${activeMobileTabKey === tab.key ? "active" : ""}`.trim()}
-            data-nav-key={tab.key}
-            aria-current={activeMobileTabKey === tab.key ? "page" : undefined}
-            onClick={() => tab.action ? tab.action() : navigateMainTab(tab)}
-            aria-label={tab.ariaLabel || tab.label}
-          >
-            <span className="mobile-tab-icon" aria-hidden="true">
-              <AppNavIcon kind={tab.icon || "home"} />
-            </span>
-            <b>{tab.label}</b>
-          </button>
-        ))}
-      </nav>
-    </div>
+      {ownerFeatureControls.businessAssistant ? renderEmberAssist() : null}
+      <MobileBottomNavigation items={mobileBottomTabs} activeKey={activeMobileTabKey} onSelect={(tab) => tab.action ? tab.action() : navigateMainTab(tab)} />
+    </AppShell>
   );
 }
 
@@ -66340,6 +67600,144 @@ function VaultItemDetail({ item, masterCard, setSummary, linkedTrades = [], coll
       ["Est. Gain/Loss", valuation.estimatedUnrealizedGainLoss === null ? "Unknown" : money(valuation.estimatedUnrealizedGainLoss)],
     ] : []),
   ];
+  const profileHasPhoto = Boolean(detailImage);
+  const profileHasCondition = Boolean(conditionLabel);
+  const profileHasLocation = Boolean(locationLabel && locationLabel !== "No location assigned");
+  const profileHasValue = Boolean(valuation.marketKnownQuantity && totalMarket > 0);
+  const profileConfidenceScore = [profileHasPhoto, profileHasCondition, profileHasLocation, profileHasValue, Boolean(collectorNotes || manualConditionNotes)].filter(Boolean).length;
+  const profileConfidenceLabel = profileConfidenceScore >= 4
+    ? "Strong"
+    : profileConfidenceScore >= 3
+      ? "Moderate"
+      : profileConfidenceScore >= 1
+        ? "Low"
+        : "Not enough data";
+  const profileLiquidityLabel = itemIsWishlist
+    ? "Watch only"
+    : isInventorySealedProduct(item)
+      ? "Medium demand"
+      : profileHasValue && profileHasCondition
+        ? "Easy to sell"
+        : "Collector hold";
+  const profileDecision = itemIsWishlist
+    ? {
+      label: "Recommendation: Watch",
+      title: "Watch before buying.",
+      detail: "This is a wishlist item. Track target price and availability before turning it into an owned Vault record.",
+      action: () => onCheckMarket?.(item),
+      cta: "Check in Market",
+    }
+    : !profileHasPhoto
+      ? {
+        label: "Recommendation: Add proof",
+        title: "Add photos before moving this.",
+        detail: "A reference photo makes selling, trading, donations, and condition review safer.",
+        action: () => onAttachReceipt?.(item),
+        cta: "Attach proof",
+      }
+      : !profileHasCondition
+        ? {
+          label: "Recommendation: Review",
+          title: "Add condition notes first.",
+          detail: "Condition changes value. Add manual condition context before a trade, sale, or compare decision.",
+          action: () => onEdit(item),
+          cta: "Edit Profile",
+        }
+        : !profileHasValue
+          ? {
+            label: "Recommendation: Price check",
+            title: "Save a value estimate.",
+            detail: "Vault needs a saved estimate before it can compare hold, sell, and trade paths honestly.",
+            action: () => onCheckMarket?.(item),
+            cta: "Check in Market",
+          }
+          : {
+            label: "Recommendation: Hold",
+            title: "Hold and watch demand.",
+            detail: "Photo, condition, location, and value are present. Compare before listing or trading.",
+            action: () => onAddToCompare?.(item),
+            cta: "Compare",
+          };
+  const profileRangeValue = profileHasValue ? totalMarket : Number(item.marketPrice || item.marketValue || item.currentValue || 0);
+  const profileValueRange = profileRangeValue > 0
+    ? {
+      low: money(profileRangeValue * 0.84),
+      fair: money(profileRangeValue),
+      high: money(profileRangeValue * 1.18),
+      current: money(profileRangeValue),
+    }
+    : {
+      low: "Pending",
+      fair: "Pending",
+      high: "Pending",
+      current: "Pending",
+    };
+  const profileProofBadges = [
+    { key: "photo", label: profileHasPhoto ? "Photos saved" : "Photos missing", tone: profileHasPhoto ? "ready" : "warning" },
+    { key: "condition", label: profileHasCondition ? "Condition saved" : "Condition missing", tone: profileHasCondition ? "ready" : "warning" },
+    { key: "location", label: profileHasLocation ? "Location saved" : "Location missing", tone: profileHasLocation ? "ready" : "warning" },
+    { key: "value", label: profileHasValue ? "Value saved" : "Value missing", tone: profileHasValue ? "ready" : "warning" },
+  ];
+  const vaultIntelligenceNumber = (value) => {
+    if (value === undefined || value === null || value === "") return 0;
+    const number = Number.parseFloat(String(value).replace(/[$,%\s,]/g, ""));
+    return Number.isFinite(number) && number > 0 ? number : 0;
+  };
+  const profileUnitBasis = vaultIntelligenceNumber(item.purchasePrice || item.purchase_price || item.costBasis || item.cost_basis || item.unitCost || item.unit_cost);
+  const profileQuantity = Math.max(1, Number(item.quantity || item.ownedQuantity || item.quantityOwned || 1));
+  const profileBasisValue = totalCost > 0 ? totalCost : profileUnitBasis > 0 ? profileUnitBasis * profileQuantity : 0;
+  const profileValueDelta = profileRangeValue > 0 && profileBasisValue > 0 ? profileRangeValue - profileBasisValue : 0;
+  const profileValueDeltaPercent = profileRangeValue > 0 && profileBasisValue > 0
+    ? Math.round((profileValueDelta / profileBasisValue) * 100)
+    : 0;
+  const profileValueMovementLabel = profileBasisValue > 0
+    ? `${profileValueDelta >= 0 ? "+" : ""}${money(profileValueDelta)} (${profileValueDeltaPercent >= 0 ? "+" : ""}${profileValueDeltaPercent}%)`
+    : "Add cost basis";
+  const profileConfidencePercent = Math.max(12, Math.min(100, profileConfidenceScore * 20));
+  const profileConditionScore = Math.min(100, Math.round(
+    (profileHasPhoto ? 18 : 0) +
+    (profileHasCondition ? 22 : 0) +
+    (manualConditionNotes ? 14 : 0) +
+    (conditionCheckedAt ? 10 : 0) +
+    ((gradeAssistCheckedCount / Math.max(1, GRADE_ASSIST_CHECK_FIELDS.length)) * 36)
+  ));
+  const profileConditionReadinessLabel = profileConditionScore >= 78
+    ? "Ready to review"
+    : profileConditionScore >= 48
+      ? "Partially reviewed"
+      : "Needs review";
+  const profileLiquidityPercent = itemIsWishlist
+    ? 28
+    : /easy/i.test(profileLiquidityLabel)
+      ? 86
+      : /medium|local demand/i.test(profileLiquidityLabel)
+        ? 62
+        : 38;
+  const profileDemandLabel = itemIsWishlist
+    ? "Watchlist demand"
+    : /easy|medium|local demand/i.test(profileLiquidityLabel)
+      ? profileLiquidityLabel
+      : "Collector hold";
+  const profileDecisionShortLabel = String(profileDecision.label || "Recommendation")
+    .replace(/^Recommendation:\s*/i, "")
+    .trim() || "Review";
+  const vaultIntelligenceSparkBars = [28, 42, 38, 54, 68, 76].map((base, index) => (
+    Math.max(12, Math.min(96, base + profileValueDeltaPercent * (index - 2) * 0.35))
+  ));
+  const vaultIntelligenceProofSteps = [
+    { key: "photo", label: "Photos", detail: profileHasPhoto ? "Saved" : "Missing", ready: profileHasPhoto },
+    { key: "condition", label: "Condition", detail: profileHasCondition ? "Saved" : "Missing", ready: profileHasCondition },
+    { key: "value", label: "Value", detail: profileHasValue ? "Saved" : "Missing", ready: profileHasValue },
+    { key: "location", label: "Location", detail: profileHasLocation ? "Saved" : "Missing", ready: profileHasLocation },
+    { key: "grade", label: "Grade Assist", detail: `${gradeAssistCheckedCount}/${GRADE_ASSIST_CHECK_FIELDS.length}`, ready: gradeAssistCheckedCount > 0 },
+  ];
+  const vaultIntelligenceRouteCards = [
+    { key: "market", label: "Market", detail: "Check value context", action: () => onCheckMarket?.(item) },
+    { key: "compare", label: "Compare", detail: "Raw, graded, or sealed options", action: () => onAddToCompare?.(item) },
+    itemIsWishlist
+      ? { key: "owned", label: "Mark owned", detail: "Move from want to Vault", action: () => onMarkOwned?.(item) }
+      : { key: "forge", label: "Forge", detail: "Trade or seller review", action: () => onStartTrade?.(item) },
+  ];
 
   return (
     <div className="vault-detail-card">
@@ -66408,8 +67806,123 @@ function VaultItemDetail({ item, masterCard, setSummary, linkedTrades = [], coll
               ))}
             </div>
           ) : null}
+          <div className="vault-profile-smart-decision-card" aria-label="Hold sell trade recommendation">
+            <span className="trust-badge trust-badge--verified">{profileDecision.label}</span>
+            <h4>{profileDecision.title}</h4>
+            <p>{profileDecision.detail}</p>
+            <div className="vault-profile-value-ribbon" aria-label="Value range">
+              <span>Low {profileValueRange.low}</span>
+              <span>Fair {profileValueRange.fair}</span>
+              <span>High {profileValueRange.high}</span>
+              <b>{profileValueRange.current}</b>
+            </div>
+            <div className="vault-profile-proof-row" aria-label="Proof badges">
+              {profileProofBadges.map((badge) => (
+                <span className={`vault-profile-proof-badge vault-profile-proof-badge--${badge.tone}`} key={badge.key}>{badge.label}</span>
+              ))}
+            </div>
+            <div className="vault-profile-smart-meta">
+              <span>{profileConfidenceLabel} confidence</span>
+              <span>{profileLiquidityLabel}</span>
+              <span>{profileHasValue ? "Saved estimate" : "No saved estimate"}</span>
+            </div>
+            <button type="button" className="secondary-button" onClick={profileDecision.action}>{profileDecision.cta}</button>
+          </div>
         </div>
       </div>
+      <section className="vault-item-intelligence-board" aria-label="Vault item intelligence">
+        <div className="vault-item-intelligence-heading">
+          <div>
+            <span className="trust-badge trust-badge--verified">Vault Intelligence</span>
+            <h4>Hold, sell, trade, or clean up first.</h4>
+            <p>Item-specific condition, value, liquidity, confidence, and proof readiness. Manual saved data only; not grading, authentication, or live pricing.</p>
+          </div>
+          <div className="vault-item-confidence-score" aria-label={`Data confidence ${profileConfidenceLabel}`}>
+            <span>Data confidence</span>
+            <strong>{profileConfidenceLabel}</strong>
+            <i><b style={{ width: `${profileConfidencePercent}%` }} /></i>
+          </div>
+        </div>
+
+        <div className="vault-item-intelligence-grid">
+          <article className="vault-item-decision-panel">
+            <span className="section-kicker">Hold / Sell / Trade</span>
+            <h4>{profileDecisionShortLabel}</h4>
+            <p>{profileDecision.detail}</p>
+            <div className="vault-profile-value-ribbon" aria-label="Vault item value range">
+              <span>Low {profileValueRange.low}</span>
+              <span>Fair {profileValueRange.fair}</span>
+              <span>High {profileValueRange.high}</span>
+              <b>{profileValueRange.current}</b>
+            </div>
+            <div className="vault-item-decision-metrics">
+              <div>
+                <span>Movement</span>
+                <strong className={profileValueDelta >= 0 ? "is-positive" : "is-negative"}>{profileValueMovementLabel}</strong>
+                <small>{profileBasisValue ? `Cost basis ${money(profileBasisValue)}` : "Add purchase price for gain/loss."}</small>
+              </div>
+              <div>
+                <span>Liquidity</span>
+                <strong>{profileDemandLabel}</strong>
+                <small>{profileHasValue ? "Value saved" : "Needs value context"}</small>
+              </div>
+            </div>
+            <div className="vault-item-mini-sparkline" aria-hidden="true">
+              {vaultIntelligenceSparkBars.map((height, index) => <i key={`vault-intel-spark-${index}`} style={{ "--spark-y": `${height}%` }} />)}
+              <b className={profileValueDelta >= 0 ? "is-positive" : "is-negative"}>{profileValueDeltaPercent ? `${profileValueDeltaPercent > 0 ? "+" : ""}${profileValueDeltaPercent}%` : "trend"}</b>
+            </div>
+            <div className="vault-item-intelligence-actions">
+              <button type="button" onClick={profileDecision.action}>{profileDecision.cta}</button>
+              <button type="button" className="secondary-button" onClick={() => onCheckMarket?.(item)}>Check Market</button>
+              <button type="button" className="secondary-button" onClick={() => onAddToCompare?.(item)}>Compare</button>
+            </div>
+          </article>
+
+          <article className="vault-item-condition-panel">
+            <span className="section-kicker">Condition Center</span>
+            <div className="vault-item-condition-score-row">
+              <div
+                className="vault-item-condition-ring"
+                style={{ "--vault-item-condition-score": `${Math.max(8, profileConditionScore)}%` }}
+                aria-label={`Condition readiness ${profileConditionScore}%`}
+              >
+                <b>{profileConditionScore}%</b>
+              </div>
+              <div>
+                <h4>{profileConditionReadinessLabel}</h4>
+                <p>{gradeAssistCheckedCount ? `${gradeAssistCheckedCount} Grade Assist checks filled. ${gradeAssistReadiness.label}.` : "Add photos, condition notes, and Grade Assist checks before using this item in bigger decisions."}</p>
+              </div>
+            </div>
+            <div className="vault-item-proof-stepper" aria-label="Proof readiness timeline">
+              {vaultIntelligenceProofSteps.map((step, index) => (
+                <div className={step.ready ? "is-ready" : "is-missing"} key={step.key}>
+                  <span>{index + 1}</span>
+                  <strong>{step.label}</strong>
+                  <small>{step.detail}</small>
+                </div>
+              ))}
+            </div>
+          </article>
+
+          <article className="vault-item-route-panel">
+            <span className="section-kicker">Connected Routes</span>
+            <h4>Move from this item to the right tool.</h4>
+            <div className="vault-item-route-grid">
+              {vaultIntelligenceRouteCards.map((route) => (
+                <button type="button" key={route.key} onClick={route.action}>
+                  <span>{route.label}</span>
+                  <strong>{route.detail}</strong>
+                </button>
+              ))}
+            </div>
+            <div className="vault-profile-smart-meta">
+              <span>{profileConfidenceLabel} confidence</span>
+              <span>{profileLiquidityLabel}</span>
+              <span>{profileConditionReadinessLabel}</span>
+            </div>
+          </article>
+        </div>
+      </section>
       <section className="vault-item-profile-panel" aria-label="Vault Item Profile">
         <div className="vault-item-profile-heading">
           <div>

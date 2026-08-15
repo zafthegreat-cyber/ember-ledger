@@ -19,30 +19,44 @@ export function AppNavIcon({ kind, className = "" }) {
     case "home":
       return (
         <svg {...common}>
-          <path d="M3 12c1.4 0 2.6-1 4-1s2.6 1 4 1 2.6-1 4-1 2.6 1 4 1" />
-          <path d="M3 16c1.4 0 2.6-1 4-1s2.6 1 4 1 2.6-1 4-1 2.6 1 4 1" />
-          <path d="M3 8c1.4 0 2.6-1 4-1s2.6 1 4 1 2.6-1 4-1 2.6 1 4 1" />
+          <path d="m3 11 9-8 9 8" />
+          <path d="M5 10v10h14V10" />
+          <path d="M9 20v-6h6v6" />
         </svg>
       );
+    case "find":
+    case "scout":
+      return (
+        <svg {...common}>
+          <circle cx="10.5" cy="10.5" r="6.5" />
+          <path d="m15.5 15.5 5 5" />
+          <path d="M7.5 10.5h6" />
+        </svg>
+      );
+    case "inventory":
     case "vault":
       return (
         <svg {...common}>
-          <path d="M3 5.5l9-3.8 9 3.8v6.6a7.5 7.5 0 0 1-18 0V5.5z" />
-          <path d="M9 12h6" />
-          <path d="M12 9v6" />
+          <path d="m4 7 8-4 8 4-8 4z" />
+          <path d="M4 7v10l8 4 8-4V7" />
+          <path d="M12 11v10" />
         </svg>
       );
+    case "business":
     case "forge":
       return (
         <svg {...common}>
-          <path d="M2 12h20" />
-          <path d="M5 12V7.5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2V12" />
-          <path d="M7 20h2v-6" />
-          <path d="M15 20h2v-6" />
-          <path d="M12 22v-8" />
-          <path d="M12 12 21 16" />
-          <path d="M12 12 3 16" />
-          <path d="M8 12h8" />
+          <rect x="3" y="7" width="18" height="13" rx="2" />
+          <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+          <path d="M3 12h18" />
+          <path d="M10 12v2h4v-2" />
+        </svg>
+      );
+    case "sell":
+      return (
+        <svg {...common}>
+          <path d="M20 13 13 20l-9-9V4h7z" />
+          <circle cx="8.5" cy="8.5" r="1.25" />
         </svg>
       );
     case "market":
@@ -55,18 +69,13 @@ export function AppNavIcon({ kind, className = "" }) {
           <path d="M12 8v6" />
         </svg>
       );
-    case "scout":
+    case "exchange":
       return (
         <svg {...common}>
-          <circle cx="12" cy="12" r="8" />
-          <path d="M12 4v4" />
-          <path d="M12 16v4" />
-          <path d="M4 12h4" />
-          <path d="M16 12h4" />
-          <path d="M7.1 7.1 12 12" />
-          <path d="M16.9 16.9 12 12" />
-          <path d="M16.9 7.1 12 12" />
-          <path d="M7.1 16.9 12 12" />
+          <path d="M7 7h13" />
+          <path d="m16 3 4 4-4 4" />
+          <path d="M17 17H4" />
+          <path d="m8 13-4 4 4 4" />
         </svg>
       );
     case "pool":
@@ -83,6 +92,29 @@ export function AppNavIcon({ kind, className = "" }) {
           <circle cx="12" cy="12" r="10" />
           <path d="M12 8v8" />
           <path d="M8 12h8" />
+        </svg>
+      );
+    case "filter":
+      return (
+        <svg {...common}>
+          <path d="M4 6h16" />
+          <path d="M7 12h10" />
+          <path d="M10 18h4" />
+        </svg>
+      );
+    case "close":
+      return (
+        <svg {...common}>
+          <path d="m6 6 12 12" />
+          <path d="m18 6-12 12" />
+        </svg>
+      );
+    case "warning":
+      return (
+        <svg {...common}>
+          <path d="M12 3 2.8 20h18.4z" />
+          <path d="M12 9v5" />
+          <path d="M12 17h.01" />
         </svg>
       );
     case "search":
@@ -164,6 +196,23 @@ export function AppNavIcon({ kind, className = "" }) {
           <path d="M8 13h8" />
         </svg>
       );
+    case "map":
+      return (
+        <svg {...common}>
+          <path d="m3 6 5-3 8 3 5-3v15l-5 3-8-3-5 3z" />
+          <path d="M8 3v15" />
+          <path d="M16 6v15" />
+        </svg>
+      );
+    case "trade":
+      return (
+        <svg {...common}>
+          <path d="M4 7h13" />
+          <path d="m14 4 3 3-3 3" />
+          <path d="M20 17H7" />
+          <path d="m10 14-3 3 3 3" />
+        </svg>
+      );
     case "tcg-os":
       return (
         <svg {...common}>
@@ -221,6 +270,12 @@ export function AppNavIcon({ kind, className = "" }) {
         </svg>
       );
     default:
-      return null;
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="8" />
+          <path d="M12 7v10" />
+          <path d="M7 12h10" />
+        </svg>
+      );
   }
 }

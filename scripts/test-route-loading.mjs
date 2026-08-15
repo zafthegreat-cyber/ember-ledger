@@ -21,6 +21,7 @@ const smartInventory = read("src/components/SmartAddInventory.jsx");
 const smartCatalog = read("src/components/SmartAddCatalog.jsx");
 const routePages = {
   hearth: read("src/pages/Hearth.jsx"),
+  operationsHome: read("src/pages/OperationsHome.jsx"),
   vault: read("src/pages/Vault.jsx"),
   forge: read("src/pages/Forge.jsx"),
   market: read("src/pages/Market.jsx"),
@@ -30,6 +31,7 @@ const routePages = {
 };
 const viteConfig = read("vite.config.js");
 const pkg = JSON.parse(read("package.json"));
+const commandBoardV4 = read("src/components/command-system/CommandBoardV4.jsx");
 
 check(
   "Scout is route-lazy loaded",
@@ -38,7 +40,7 @@ check(
 
 check(
   "Primary app routes are lazy-loaded from page modules",
-  app.includes('const HearthPage = lazy(() => import("./pages/Hearth"))') &&
+  app.includes('const OperationsHomePage = lazy(() => import("./pages/OperationsHome"))') &&
     app.includes('const VaultPage = lazy(() => import("./pages/Vault"))') &&
     app.includes('const ForgePage = lazy(() => import("./pages/Forge"))') &&
     app.includes('const MarketPage = lazy(() => import("./pages/Market"))') &&
@@ -47,36 +49,47 @@ check(
 );
 
 check(
-  "Hearth page body moved out of the app shell",
+  "Home page body remains outside the app shell",
   !app.includes("function renderHearthHomeCommandView") &&
-    routePages.hearth.includes("function renderHearthHomeCommandView") &&
-    app.includes("<HearthPage {...hearthPageProps} />")
+    routePages.operationsHome.includes("export default function OperationsHome") &&
+    routePages.operationsHome.includes("ops-home-page") &&
+    app.includes("<OperationsHomePage {...hearthPageProps} />")
 );
 
 check(
-  "Vault dashboard and Market route body live in page modules",
+  "Vault dashboard and Market route body live in V4 page modules",
   routePages.vault.includes("export default function VaultPage") &&
     routePages.vault.includes("function renderVaultHomeDashboard") &&
-    routePages.vault.includes("EtMockupPageShell") &&
+    routePages.vault.includes("CommandBoardV4") &&
+    routePages.vault.includes("vault-command-only-route") &&
+    !routePages.vault.includes("EtMockupPageShell") &&
     !app.includes("function renderVaultHomeDashboard") &&
     routePages.market.includes("export default function MarketPage") &&
-    routePages.market.includes("EtMockupPageShell") &&
-    routePages.market.includes('tideTradrSubTab === "deal"') &&
-    routePages.market.includes("Market Watch Results") &&
-    app.includes("<VaultPage renderHeader={renderVaultHeader} showDashboard={vaultSubTab === \"overview\" || vaultSubTab === \"collection\"} {...vaultDashboardProps}>") &&
+    routePages.market.includes("CommandBoardV4") &&
+    routePages.market.includes("market-command-only-route") &&
+    routePages.market.includes("Market Command Center") &&
+    routePages.market.includes("Product Compare") &&
+    routePages.market.includes("Watch Center") &&
+    routePages.market.includes("No checkout, no seller matching") &&
+    app.includes("<VaultPage renderHeader={renderVaultHeader} showDashboard={vaultSubTab === \"overview\"} {...vaultDashboardProps}>") &&
     app.includes("<MarketPage {...marketPageProps} />")
 );
 
 check(
-  "Forge Exchange body, Spark, and Menu route mounts are delegated to page modules",
+  "Forge Exchange body, Spark, and Menu route mounts are delegated to V4 page modules",
   routePages.forge.includes("export default function ForgePage") &&
     routePages.forge.includes("exchange-page-final") &&
-    routePages.forge.includes("Exchange safety and hierarchy") &&
+    routePages.forge.includes("CommandBoardV4") &&
+    routePages.forge.includes("exchange-command-only-route") &&
     routePages.spark.includes("export default function SparkPage") &&
-    routePages.spark.includes("spark-mockup-header") &&
+    routePages.spark.includes("CommandBoardV4") &&
+    routePages.spark.includes("spark-command-only-route") &&
+    routePages.spark.includes("FlowNextActionCard") &&
     routePages.spark.includes("submitKidsProgramApplication") &&
     routePages.menu.includes("export default function MenuPage") &&
     routePages.menu.includes("function renderSettingsPage") &&
+    routePages.menu.includes("CommandBoardV4") &&
+    routePages.menu.includes("hideCommandHeader: true") &&
     !app.includes("function renderExchangePage") &&
     !app.includes("function renderKidsProgramPage") &&
     !app.includes("function renderSettingsPage") &&
@@ -88,7 +101,7 @@ check(
 check(
   "App shell uses a lazy app bootstrap boundary",
   main.includes('const App = lazy(() => import("./App.jsx"))') &&
-    main.includes("<Suspense fallback={<AppLoadFallback />}>")
+    main.includes('<Suspense fallback={<AppLoadFallback kind="loading" />}>')
 );
 
 check(
@@ -105,8 +118,12 @@ check(
     appCss.includes('@import "./styles/app/02-app-shell-navigation.css";') &&
     appCss.includes('@import "./styles/app/03-cards-buttons-forms.css";') &&
     appCss.includes('@import "./styles/app/04-route-pages.css";') &&
+    appCss.includes('@import "./styles/app/05-modals-search-data.css";') &&
     appCss.includes('@import "./styles/app/06-mobile-responsive.css";') &&
-    appCss.includes('@import "./styles/app/08-command-shell-auth.css";')
+    appCss.includes('@import "./styles/app/10-scout-command-board.css";') &&
+    appCss.includes('@import "./styles/app/11-command-ui-overhaul.css";') &&
+    !appCss.includes('@import "./styles/app/08-command-shell-auth.css";') &&
+    !appCss.includes('@import "./styles/app/09-experience-lock.css";')
 );
 
 check(
@@ -217,6 +234,14 @@ check(
   viteConfig.includes("resolveDependencies") &&
     viteConfig.includes("store-directory") &&
     viteConfig.includes("scanner-vendor")
+);
+
+check(
+  "Command board navigation does not force local beta mode in production",
+  !commandBoardV4.includes('href="/?betaLocalMode=true"') &&
+    !commandBoardV4.includes('href: "/vault?betaLocalMode=true"') &&
+    commandBoardV4.includes("function commandBoardHref(path)") &&
+    commandBoardV4.includes("COMMAND_BOARD_QA_PARAMS")
 );
 
 check(
