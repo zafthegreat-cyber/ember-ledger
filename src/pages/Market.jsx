@@ -1,668 +1,309 @@
 import {
-  EtMockupEmptyState,
-  EtMockupPageShell,
-  EtMockupSectionCard,
+  CommandMetricGrid,
+  CommandBoardV4,
 } from "../components/command-system";
 
 export default function MarketPage(props) {
   const {
-    CATALOG_PAGE_SIZE_OPTIONS,
-    CATALOG_SORT_OPTIONS,
-    Field,
-    LONG_LIST_PAGE_SIZE,
-    MARKET_CATALOG_DEAL_FILTERS,
-    MARKET_STATUS_LABELS,
-    PaginationControls,
-    SUGGESTION_TYPES,
-    activeCatalogFilterChips,
-    adminEditModeActive,
-    catalogAlternateKindLabels,
-    catalogDataFilter,
-    catalogEmptyTerm,
     catalogImage,
-    catalogKindFilter,
-    catalogPageSize,
-    catalogResultsRef,
-    catalogRarityFilter,
-    catalogRarityOptions,
     catalogSearch,
     catalogSearchHasRun,
-    catalogSetFilter,
-    catalogSetOptions,
-    catalogSort,
     catalogTitle,
-    catalogTypeFilter,
-    catalogTypeOptions,
-    catalogViewMode,
-    clearCatalogSearch,
     destinationDefaults,
-    getCatalogKindLabel,
     getTideTradrMarketInfo,
-    goToCatalogPage,
-    hiddenCatalogFilterChipCount,
-    isFeatureSectionOpen,
-    marketCatalogDealFilter,
-    marketSetSearchResults,
     money,
+    openBeaconCenter,
     openCatalogDetails,
+    openCompassSearch,
     openDealFinderModal,
+    openExchangeSection,
+    openMarketProductAddFlow,
     openProductAddFlow,
-    openVaultSetSummary,
-    openWatchlistProductDetails,
-    openWhatDidISee,
-    pagedMarketWatchItems,
     phase2RecentDeals,
-    refreshMarketWatchlist,
-    refreshPinnedMarketWatch,
-    removeTideTradrWatchlistItem,
-    renderHeader,
-    renderItemCompareTableSection,
-    renderMarketHomeFoundation,
-    renderMarketPriceMemorySection,
-    renderMarketplaceSection,
-    renderProductImageFallback,
-    renderTideTradrCatalogResultCard,
-    renderWishlistIsoPlanningSection,
-    scrollToResultsTop,
-    setActiveTab,
-    setCatalogDataFilter,
-    setCatalogRarityFilter,
     setCatalogSearch,
-    setCatalogSearchHasRun,
-    setCatalogSetFilter,
-    setCatalogSort,
-    setCatalogTypeFilter,
-    setCatalogViewMode,
-    setEmberAssistOpen,
-    setFeatureSectionsOpen,
-    setMarketCatalogDealFilter,
-    setMarketWatchPage,
-    setSupabaseCatalogStatus,
     setTideTradrSubTab,
-    setVaultSubTab,
-    shortDate,
     submitCatalogSearch,
-    submitUniversalSuggestion,
-    suggestMissingCatalogProductFromSearch,
     supabaseCatalogStatus,
-    switchCatalogKindFilter,
-    tideTradrCatalogPageCount,
-    tideTradrCatalogResultGroups,
     tideTradrCatalogResults,
-    tideTradrLookupProduct,
-    tideTradrSubTab,
-    updateCatalogPageSize,
     useCatalogProductInDeal,
-    visibleCatalogFilterChips,
     workspaceWatchlist,
   } = props;
+  const marketResultCount = Number(supabaseCatalogStatus.totalCount ?? tideTradrCatalogResults.length ?? 0);
+  const marketFocusSearch = () => {
+    if (typeof document !== "undefined") {
+      document.querySelector(".market-v4-search-form input, .market-smart-search input, .market-search-form input")?.focus?.();
+    }
+  };
+  const marketCommandStatus = [
+    {
+      key: "watch",
+      icon: "bell",
+      label: "Watch Center",
+      value: workspaceWatchlist.length,
+      detail: "Price and product alerts",
+      action: () => setTideTradrSubTab("watch"),
+    },
+    {
+      key: "results",
+      icon: "search",
+      label: "Search",
+      value: catalogSearchHasRun ? marketResultCount : "Ready",
+      detail: catalogSearchHasRun ? "Catalog results" : "Cards, sets, UPCs",
+      action: marketFocusSearch,
+    },
+    {
+      key: "recent",
+      icon: "data",
+      label: "Recent",
+      value: phase2RecentDeals.length || "Ready",
+      detail: "Research checks",
+      action: () => setTideTradrSubTab("recent"),
+    },
+    {
+      key: "confidence",
+      icon: "market",
+      label: "Confidence",
+      value: supabaseCatalogStatus.loading ? "Checking" : supabaseCatalogStatus.usedFallback ? "Fallback" : "Labeled",
+      detail: "No guaranteed price",
+    },
+    {
+      key: "commerce",
+      icon: "help",
+      label: "Checkout",
+      value: "Off",
+      detail: "Research only",
+    },
+  ];
+  const marketCommandPlan = [
+    { key: "search", icon: "search", label: "Search product", detail: "Card, set, sealed, UPC", action: marketFocusSearch },
+    { key: "deal", icon: "market", label: "Check deal", detail: "Ask vs fair range", action: openDealFinderModal },
+    { key: "watch", icon: "bell", label: "Watch target", detail: "Price and restock alert", action: () => setTideTradrSubTab("watch") },
+    { key: "add", icon: "vault", label: "Add to Vault", detail: "Save for review", action: () => openProductAddFlow({ source: "market-command-board", seed: { destinations: destinationDefaults({ vault: true }) } }) },
+  ];
+  const marketCommandRoutes = [
+    { key: "market", icon: "market", label: "Market", title: "Price research", detail: "Search and comps", active: true, action: () => setTideTradrSubTab("overview") },
+    { key: "watch", icon: "bell", label: "Watch", title: "Watch Center", detail: `${workspaceWatchlist.length} targets`, action: () => setTideTradrSubTab("watch") },
+    { key: "compare", icon: "data", label: "Compare", title: "Product Compare", detail: "Hold, buy, sell", action: openDealFinderModal },
+    { key: "harbor", icon: "exchange", label: "Harbor", title: "Selling desk", detail: "Listings and proof", action: () => openExchangeSection?.("harbor") },
+    { key: "forge", icon: "forge", label: "Forge", title: "Trade decisions", detail: "Fairness and records", action: () => openExchangeSection?.("forge") },
+    { key: "vault", icon: "vault", label: "Vault", title: "Save item", detail: "Track ownership", action: () => openProductAddFlow({ source: "market-route-vault", seed: { destinations: destinationDefaults({ vault: true }) } }) },
+  ];
+  const marketResultSource = tideTradrCatalogResults.length ? tideTradrCatalogResults : workspaceWatchlist;
+  const marketPreviewItems = marketResultSource.slice(0, 4);
+  const marketMetricItems = [
+    { key: "watch", label: "Watch targets", value: workspaceWatchlist.length || "Ready", detail: "Price and restock signals" },
+    { key: "results", label: "Search results", value: catalogSearchHasRun ? marketResultCount : "Search first", detail: catalogSearchHasRun ? "Current catalog query" : "Cards, sets, sealed, UPC" },
+    { key: "recent", label: "Recent comps", value: phase2RecentDeals.length || "None", detail: "Saved local checks" },
+    { key: "confidence", label: "Data confidence", value: supabaseCatalogStatus.usedFallback ? "Fallback" : "Labeled", detail: "Source strength visible" },
+  ];
+  const marketDecisionCards = [
+    {
+      key: "compare",
+      title: "Product Compare",
+      detail: "Compare sealed, singles, raw vs graded, hold vs sell, and purchase options before acting.",
+      status: "Decision support",
+      action: "Open Compare",
+      onClick: openDealFinderModal,
+    },
+    {
+      key: "alerts",
+      title: "Price Alerts",
+      detail: "Watch target price, current value, alert history, and why Beacon fired.",
+      status: `${workspaceWatchlist.length} watched`,
+      action: "Watch Center",
+      onClick: () => setTideTradrSubTab("watch"),
+    },
+    {
+      key: "comps",
+      title: "Recent Comps",
+      detail: "Keep recent values, source notes, confidence, and manual price memory in one place.",
+      status: phase2RecentDeals.length ? `${phase2RecentDeals.length} checks` : "Ready",
+      action: "Review Comps",
+      onClick: () => setTideTradrSubTab("recent"),
+    },
+    {
+      key: "safety",
+      title: "Buying Safety",
+      detail: "No checkout, no seller matching, no guaranteed stock, and no investment advice in Market.",
+      status: "Research only",
+      action: "Add to Vault",
+      onClick: () => openProductAddFlow({ source: "market-safety-vault", seed: { destinations: destinationDefaults({ vault: true }) } }),
+    },
+  ];
+  const marketSafetyRows = [
+    "Fair-value context, not a guaranteed live price",
+    "No checkout or payment processing in this beta surface",
+    "No automatic seller matching or off-platform pressure",
+    "Weak or fallback data is labeled before decisions",
+  ];
+  const formatMarketValue = (product) => {
+    const info = getTideTradrMarketInfo(product);
+    const value = info?.currentMarketValue ?? product.marketValue ?? product.marketPrice ?? product.price ?? product.msrp;
+    return Number(value) > 0 ? money(value) : "No value";
+  };
+  const marketProductTitle = (product) => {
+    try {
+      return catalogTitle(product);
+    } catch {
+      return product.name || product.productName || "Watched product";
+    }
+  };
+  const marketProductSubtitle = (product) => [product.setName || product.expansion || "No set", product.productType || product.kind || "Product"].filter(Boolean).join(" | ");
 
   return (
-    <EtMockupPageShell
-      accent="market"
-      className="market-mockup-rebuild"
-      ariaLabel="Market Watch fair price discovery"
-    >
-      <div className="et-mockup-main-column market-mockup-main">
-        {renderHeader()}
-            {tideTradrSubTab === "deal" ? (
-              <section className="panel">
-                <div className="empty-state">
-                  <h3>Deal Finder opens in a focused sheet.</h3>
-                  <p>Use the Market Watch header action to check product, quantity, asking price, and recommendation without changing the page.</p>
-                  <button type="button" onClick={() => openDealFinderModal()}>Open Deal Finder</button>
-                </div>
-              </section>
-            ) : tideTradrSubTab === "watch" ? (
-              <>
-                <section className="panel tidetradr-watch-panel">
-                  <div className="compact-card-header">
-                    <div>
-                      <h2>Market Watch</h2>
-                      <p>{workspaceWatchlist.length} watched item{workspaceWatchlist.length === 1 ? "" : "s"}.</p>
-                    </div>
-                    <span className="status-badge">{workspaceWatchlist.filter((item) => item.pinned || item.isPinned).length} pinned</span>
-                  </div>
-                  <div className="quick-actions tidetradr-watch-actions">
-                    <button type="button" onClick={refreshPinnedMarketWatch}>Refresh Values</button>
-                    <button type="button" className="secondary-button" onClick={refreshMarketWatchlist}>Refresh Watchlist</button>
-                    <button type="button" className="secondary-button" onClick={() => setTideTradrSubTab("overview")}>Search Catalog</button>
-                  </div>
-                  {workspaceWatchlist.length === 0 ? (
-                    <div className="empty-state market-empty-state">
-                      <h3>Your watchlist is ready.</h3>
-                      <p>Save items to track fair prices and restocks.</p>
-                      <button type="button" onClick={() => setTideTradrSubTab("overview")}>Browse Market</button>
-                    </div>
-                  ) : (
-                    <div className="inventory-list tidetradr-watch-list">
-                      {pagedMarketWatchItems.items.map((item) => (
-                        <div className="inventory-card compact-card tidetradr-watch-card" key={item.id}>
-                          <div className="compact-card-header">
-                            <div>
-                              <h3>{item.name}</h3>
-                              <p>{item.setName || "No set"} | {item.productType || "No type"}</p>
-                            </div>
-                            <span className="status-badge">{item.pinned ? "Pinned" : MARKET_STATUS_LABELS[item.marketStatus] || "Watchlist"}</span>
-                          </div>
-                          <p>Market: {money(item.marketValue)} | MSRP: {money(item.msrp)}</p>
-                          <p className="compact-subtitle">Source: {item.sourceName || "Unknown"} | Last updated: {item.lastUpdated ? new Date(item.lastUpdated).toLocaleDateString() : "Unknown"}</p>
-                          <div className="quick-actions tidetradr-watch-actions">
-                            <button type="button" onClick={() => useCatalogProductInDeal(item.productId)}>Check Deal</button>
-                            <button type="button" className="secondary-button" onClick={() => openWatchlistProductDetails(item)}>View Details</button>
-                            <button type="button" className="secondary-button" onClick={() => removeTideTradrWatchlistItem(item.id)}>Remove</button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <PaginationControls
-                    label="Watched Products"
-                    page={pagedMarketWatchItems.page}
-                    pageCount={pagedMarketWatchItems.pageCount}
-                    totalCount={pagedMarketWatchItems.total}
-                    pageSize={LONG_LIST_PAGE_SIZE}
-                    onPageChange={(page) => {
-                      setMarketWatchPage(page);
-                      scrollToResultsTop();
-                    }}
-                    compact
-                  />
-                </section>
-              </>
-            ) : tideTradrSubTab === "recent" ? (
-              <section className="panel tidetradr-results-panel">
-                <div className="compact-card-header">
+    <div className="market-command-only-route" aria-label="Market price research command center">
+      <CommandBoardV4
+        accent="market"
+        className="market-command-board"
+        ariaLabel="Market Command Center"
+        label="Market"
+        title="Market Command Center"
+        description="Search products, compare fair-value context, manage watch targets, and move researched items into Vault or Exchange without checkout, stock promises, or seller matching."
+        primaryAction={{ label: "Search Market", icon: "search", onClick: marketFocusSearch }}
+        secondaryActions={[
+          { label: "Check Deal", icon: "market", onClick: openDealFinderModal },
+          { label: "Watch Center", icon: "bell", onClick: () => setTideTradrSubTab("watch") },
+        ]}
+        utilityActions={[
+          { label: "Compass", icon: "search", onClick: () => openCompassSearch?.("market_compass") },
+          { label: "Beacon", icon: "bell", onClick: () => openBeaconCenter?.("market_beacon") },
+        ]}
+        statusItems={marketCommandStatus}
+        plan={{
+          label: "Market Plan",
+          title: "Research before buying, selling, holding, or trading",
+          items: marketCommandPlan,
+          actions: [
+            { label: "Search", icon: "search", onClick: marketFocusSearch },
+            { label: "Review Deal", icon: "market", onClick: openDealFinderModal },
+          ],
+        }}
+        routes={marketCommandRoutes}
+      >
+        <div className="market-v4-command-content">
+          <section className="market-v4-search-panel" aria-label="Market product search">
+            <div className="market-v4-panel-heading">
+              <div>
+                <span>Price discovery</span>
+                <h2>Market Product Search</h2>
+                <p>Search cards, sealed products, sets, UPCs, or SKUs. Results stay framed as research until the app has real checkout, disputes, and payment systems.</p>
+              </div>
+              <strong>{catalogSearchHasRun ? `${marketResultCount} results` : "Ready"}</strong>
+            </div>
+
+            <form
+              className="market-v4-search-form"
+              onSubmit={(event) => {
+                event.preventDefault();
+                submitCatalogSearch();
+              }}
+            >
+              <label>
+                <span>Product, set, UPC, or SKU</span>
+                <input
+                  value={catalogSearch}
+                  onChange={(event) => setCatalogSearch(event.target.value)}
+                  placeholder="Prismatic Evolutions Booster Bundle"
+                  aria-label="Search Market"
+                />
+              </label>
+              <button type="submit">Search Market</button>
+            </form>
+
+            <div className="market-v4-result-list" aria-label="Market result preview">
+              {supabaseCatalogStatus.loading ? (
+                <article className="market-v4-result-row">
+                  <div className="market-v4-thumb is-loading" />
                   <div>
-                    <h2>Recent Checks</h2>
-                    <p>Recently viewed products and Market Watch value checks.</p>
+                    <span>Checking fair value</span>
+                    <strong>Searching catalog and saved context</strong>
+                    <small>Weak sources stay labeled before action.</small>
                   </div>
-                  <span className="status-badge">{phase2RecentDeals.length ? `${phase2RecentDeals.length} deal checks` : (tideTradrLookupProduct ? "1 recent" : "No recent checks")}</span>
+                  <b>Loading</b>
+                </article>
+              ) : marketPreviewItems.length ? (
+                marketPreviewItems.map((product, index) => (
+                  <article className="market-v4-result-row" key={product.id || product.productId || product.name || `market-product-${index}`}>
+                    <div className="market-v4-thumb">
+                      {catalogImage(product) ? (
+                        <img src={catalogImage(product)} alt="" />
+                      ) : (
+                        <span>{index + 1}</span>
+                      )}
+                    </div>
+                    <div>
+                      <span>{index === 0 ? "Top match" : "Research item"}</span>
+                      <strong>{marketProductTitle(product)}</strong>
+                      <small>{marketProductSubtitle(product)}</small>
+                    </div>
+                    <div className="market-v4-result-value">
+                      <b>{formatMarketValue(product)}</b>
+                      <small>{product.marketStatus || product.sourceName || "Confidence labeled"}</small>
+                    </div>
+                    <div className="market-v4-result-actions">
+                      <button type="button" onClick={() => openCatalogDetails(product.id || product.productId)}>Details</button>
+                      <button type="button" onClick={() => useCatalogProductInDeal(product.productId || product.id)}>Compare</button>
+                      <button type="button" onClick={() => openMarketProductAddFlow(product, "market-result", { defaultDestination: "vault" })}>Add to Vault</button>
+                    </div>
+                  </article>
+                ))
+              ) : (
+                <article className="market-v4-empty-state">
+                  <strong>Search first, then decide.</strong>
+                  <p>Market should feel like a collector research desk: range, liquidity, confidence, watch targets, and safe next steps before money moves.</p>
+                  <button type="button" onClick={marketFocusSearch}>Focus Search</button>
+                </article>
+              )}
+            </div>
+
+            <div className="market-v4-value-ribbon" aria-label="Value range ribbon">
+              <span>Low $42</span>
+              <span>Fair $58</span>
+              <span>High $75</span>
+              <strong>Current context: $61</strong>
+            </div>
+          </section>
+
+          <aside className="market-v4-side-rail" aria-label="Market decision rail">
+            <article>
+              <span>What should I do next?</span>
+              <h3>Set a target before chasing the drop.</h3>
+              <p>Watch the product, compare fair range, and save the decision to Vault if it matters to your collection.</p>
+              <button type="button" className="command-board-v4-primary-action" onClick={() => setTideTradrSubTab("watch")}>Open Watch Center</button>
+            </article>
+            <article>
+              <span>Liquidity</span>
+              <h3>Medium demand</h3>
+              <p>Good for collecting or watching; avoid treating weak data as a guaranteed sale price.</p>
+              <div className="market-v4-liquidity-meter"><i style={{ width: "62%" }} /></div>
+            </article>
+            <article>
+              <span>Safety model</span>
+              <div className="market-v4-rule-list">
+                {marketSafetyRows.map((row) => <small key={row}>{row}</small>)}
+              </div>
+            </article>
+          </aside>
+
+          <CommandMetricGrid items={marketMetricItems} className="market-v4-metrics" ariaLabel="Market intelligence metrics" />
+
+          <section className="market-v4-lower-grid" aria-label="Market feature system">
+            {marketDecisionCards.map((card) => (
+              <article key={card.key}>
+                <div className="market-v4-panel-heading compact">
+                  <div>
+                    <span>{card.status}</span>
+                    <h3>{card.title}</h3>
+                  </div>
+                  <button type="button" onClick={card.onClick}>{card.action}</button>
                 </div>
-                {phase2RecentDeals.length ? (
-                  <div className="home-list compact-home-list">
-                    {phase2RecentDeals.slice(0, 5).map((session) => (
-                      <div className="home-list-row" key={session.id}>
-                        <span>
-                          <strong>{session.title || "Saved deal check"}</strong>
-                          <small>{session.recommendation || "saved"} | score {Math.round(Number(session.dealScore || 0))}/100</small>
-                        </span>
-                        <b>{money(session.askingPrice)}</b>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-                {tideTradrLookupProduct ? (
-                  <div className="catalog-results-list">
-                    <div className="catalog-result-card">
-                      <button type="button" className="catalog-result-main" onClick={() => openCatalogDetails(tideTradrLookupProduct.id)}>
-                        <div className="catalog-thumb">
-                          {catalogImage(tideTradrLookupProduct) ? (
-                            <>
-                              <img
-                                src={catalogImage(tideTradrLookupProduct)}
-                                alt=""
-                                onError={(event) => {
-                                  event.currentTarget.style.display = "none";
-                                  event.currentTarget.nextElementSibling?.removeAttribute("hidden");
-                                }}
-                              />
-                              {renderProductImageFallback(tideTradrLookupProduct, { hidden: true })}
-                            </>
-                          ) : (
-                            renderProductImageFallback(tideTradrLookupProduct)
-                          )}
-                        </div>
-                        <div>
-                          <span className="catalog-pill">{getCatalogKindLabel(tideTradrLookupProduct)}</span>
-                          <h3>{catalogTitle(tideTradrLookupProduct)}</h3>
-                          <p>{tideTradrLookupProduct.productType || "Product"} | {tideTradrLookupProduct.setName || tideTradrLookupProduct.expansion || "No set"}</p>
-                          <p>Market: {money(getTideTradrMarketInfo(tideTradrLookupProduct).currentMarketValue)}</p>
-                        </div>
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="empty-state">
-                    <h3>No recent checks yet</h3>
-                    <p>Search Market Watch and open a product to start building recent checks.</p>
-                  </div>
-                )}
-              </section>
-            ) : tideTradrSubTab === "listings" ? (
-              <>
-                {renderMarketplaceSection()}
-              </>
-            ) : (
-              <>
-                {renderMarketHomeFoundation()}
-
-
-
-                <EtMockupSectionCard
-                  sectionRef={catalogResultsRef}
-                  className={`tidetradr-results-panel market-results-panel market-mockup-results ${!catalogSearchHasRun && !supabaseCatalogStatus.loading ? "tidetradr-results-panel--prompt" : ""}`}
-                  title={catalogSearchHasRun ? "Market Watch Results" : "Search Market Watch"}
-                  detail={catalogSearchHasRun
-                    ? `Page ${supabaseCatalogStatus.page || 1} of ${tideTradrCatalogPageCount || (supabaseCatalogStatus.hasMore ? (supabaseCatalogStatus.page || 1) + 1 : 1)}`
-                    : "Compare catalog values, retail context, and saved watches."}
-                  action={<span className="status-badge">{supabaseCatalogStatus.loading && tideTradrCatalogResults.length === 0 && marketSetSearchResults.length === 0 ? "Searching..." : catalogSearchHasRun ? `${supabaseCatalogStatus.totalCount ?? tideTradrCatalogResults.length} results` : "Search first"}</span>}
-                  ariaLabel="Market Watch Results"
-                >
-
-                  {catalogSearchHasRun ? (
-                    <p className="market-results-safety-note">Fair price discovery only. No checkout or stock guarantee.</p>
-                  ) : null}
-
-                  {catalogSearchHasRun ? (
-                  <div className="catalog-results-toolbar market-results-toolbar">
-                    <Field label="Sort">
-                      <select value={catalogSort} onChange={(e) => setCatalogSort(e.target.value)}>
-                        {CATALOG_SORT_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>{option.label}</option>
-                        ))}
-                      </select>
-                    </Field>
-                    <button type="button" className="secondary-button market-filter-button" onClick={() => setFeatureSectionsOpen((current) => ({ ...current, market_filters: !current.market_filters }))}>
-                      {isFeatureSectionOpen("market_filters") ? "Hide Filters" : "Filters"}
-                    </button>
-                  </div>
-                  ) : null}
-
-                  {catalogSearchHasRun && activeCatalogFilterChips.length ? (
-                    <div className="active-filter-chips" aria-label="Active catalog filters">
-                      <span>Active filters:</span>
-                      {visibleCatalogFilterChips.map((filter) => (
-                        <span className="status-badge" key={filter}>{filter}</span>
-                      ))}
-                      {hiddenCatalogFilterChipCount ? <span className="status-badge">+{hiddenCatalogFilterChipCount} more</span> : null}
-                      <button type="button" className="ghost-button compact-action" onClick={clearCatalogSearch}>Clear</button>
-                    </div>
-                  ) : null}
-
-                  {catalogSearchHasRun && isFeatureSectionOpen("market_filters") ? (
-                    <div className="filter-grid market-filter-drawer">
-                      <div className="market-filter-drawer-actions">
-                        <div className="catalog-view-toggle" role="group" aria-label="Catalog result view">
-                          <button
-                            type="button"
-                            className={catalogViewMode === "grid" ? "active" : ""}
-                            aria-pressed={catalogViewMode === "grid"}
-                            onClick={() => setCatalogViewMode("grid")}
-                          >
-                            Grid
-                          </button>
-                          <button
-                            type="button"
-                            className={catalogViewMode === "list" ? "active" : ""}
-                            aria-pressed={catalogViewMode === "list"}
-                            onClick={() => setCatalogViewMode("list")}
-                          >
-                            List
-                          </button>
-                        </div>
-                        <button type="button" className="secondary-button" onClick={() => setTideTradrSubTab("recent")}>Recent</button>
-                        <button type="button" className="secondary-button" onClick={() => setTideTradrSubTab("listings")}>Following</button>
-                        <button type="button" className="secondary-button" onClick={() => openDealFinderModal()}>Check Deal</button>
-                        <button type="button" className="secondary-button" onClick={openWhatDidISee}>Add Scout Sighting</button>
-                        <button type="button" className="secondary-button" onClick={clearCatalogSearch}>Clear</button>
-                      </div>
-                      <Field label="Product Group">
-                        <select value={catalogKindFilter} onChange={(event) => switchCatalogKindFilter(event.target.value)}>
-                          <option value="All">All</option>
-                          <option value="card">Cards</option>
-                          <option value="sealed">Sealed</option>
-                          <option value="other">Other</option>
-                        </select>
-                      </Field>
-                    <Field label="Fair Price Badge">
-                        <select value={marketCatalogDealFilter} onChange={(event) => setMarketCatalogDealFilter(event.target.value)}>
-                          {MARKET_CATALOG_DEAL_FILTERS.map((filter) => (
-                            <option key={filter.value} value={filter.value}>{filter.label}</option>
-                          ))}
-                        </select>
-                      </Field>
-                      <Field label="Set / Expansion">
-                        <select value={catalogSetFilter} onChange={(e) => setCatalogSetFilter(e.target.value)}>
-                          {catalogSetOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-                        </select>
-                      </Field>
-                      <Field label="Product Type">
-                        <select value={catalogTypeFilter} onChange={(e) => setCatalogTypeFilter(e.target.value)}>
-                          {catalogTypeOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-                        </select>
-                      </Field>
-                      <Field label="Rarity">
-                        <select value={catalogRarityFilter} onChange={(e) => setCatalogRarityFilter(e.target.value)}>
-                          {catalogRarityOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-                        </select>
-                      </Field>
-                      <Field label="Image / Price">
-                        <select value={catalogDataFilter} onChange={(e) => setCatalogDataFilter(e.target.value)}>
-                          <option>All</option>
-                          <option>Has market price</option>
-                          <option>Has image</option>
-                            {adminEditModeActive ? <option>Missing price</option> : null}
-                        </select>
-                      </Field>
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        onClick={() => {
-                          if (adminEditModeActive) {
-                            setActiveTab("catalog");
-                            setFeatureSectionsOpen((current) => ({ ...current, catalog_manual: true }));
-                            return;
-                          }
-                          submitUniversalSuggestion({
-                            suggestionType: SUGGESTION_TYPES.ADD_MISSING_CATALOG_PRODUCT,
-                            targetTable: "catalog_items",
-                            submittedData: { searchTerm: catalogSearch, productType: catalogTypeFilter, setName: catalogSetFilter },
-                            notes: "User suggested a missing catalog product from Market Watch search.",
-                            source: "tidetradr-search",
-                          });
-                        }}
-                      >
-                        {adminEditModeActive ? "Add Catalog Item" : "Request Missing Item"}
-                      </button>
-                    </div>
-                  ) : null}
-
-                  {(catalogSearchHasRun || supabaseCatalogStatus.loading) ? (
-                    <details className="market-search-source-note">
-                      <summary>Search source</summary>
-                      <p>Search runs against Supabase with pagination. It does not load the full 52,000+ product catalog into the browser.</p>
-                    </details>
-                  ) : null}
-                  {supabaseCatalogStatus.message ? <p className="compact-subtitle market-status-message">{supabaseCatalogStatus.message}</p> : null}
-                  {supabaseCatalogStatus.error ? (
-                    <div className="market-state-card market-state-card--error" role="status">
-                      <span className="trust-badge trust-badge--secure">Data check</span>
-                      <h3>Market data check failed.</h3>
-                      <p>{supabaseCatalogStatus.error}</p>
-                      <p>Try the search again, add the item to Vault for review, or ask Ember for help interpreting weak data.</p>
-                      <div className="quick-actions market-empty-actions">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSupabaseCatalogStatus((current) => ({ ...current, error: "", message: "" }));
-                            submitCatalogSearch();
-                          }}
-                        >
-                          Try Search Again
-                        </button>
-                        <button type="button" className="secondary-button" onClick={() => openProductAddFlow({
-                          source: "market-error-vault",
-                          seed: {
-                            initialStep: "item",
-                            itemName: catalogEmptyTerm || catalogSearch,
-                            catalogSearchQuery: catalogEmptyTerm || catalogSearch,
-                            destinations: destinationDefaults({ vault: true }),
-                            notes: "Vault fallback from Market error state.",
-                          },
-                        })}>Add to Vault review</button>
-                        <button type="button" className="secondary-button" onClick={() => setEmberAssistOpen(true)}>Ask Ember</button>
-                      </div>
-                    </div>
-                  ) : null}
-                  {!supabaseCatalogStatus.error && supabaseCatalogStatus.usedFallback ? (
-                    <div className="market-state-card market-state-card--error" role="status">
-                      <span className="trust-badge trust-badge--secure">Fallback mode</span>
-                      <h3>Market search is using fallback data.</h3>
-                      <p>{supabaseCatalogStatus.message || "Live catalog data was not available, so Market is showing safer fallback results."}</p>
-                      <p>Freshness and source strength may be limited. No checkout or stock guarantee is implied.</p>
-                      <div className="quick-actions market-empty-actions">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSupabaseCatalogStatus((current) => ({ ...current, message: "", usedFallback: false }));
-                            submitCatalogSearch();
-                          }}
-                        >
-                          Try Search Again
-                        </button>
-                        <button type="button" className="secondary-button" onClick={() => openProductAddFlow({
-                          source: "market-fallback-vault",
-                          seed: {
-                            initialStep: "item",
-                            itemName: catalogEmptyTerm || catalogSearch,
-                            catalogSearchQuery: catalogEmptyTerm || catalogSearch,
-                            destinations: destinationDefaults({ vault: true }),
-                            notes: "Vault fallback from Market fallback state.",
-                          },
-                        })}>Add to Vault review</button>
-                        <button type="button" className="secondary-button" onClick={() => setEmberAssistOpen(true)}>Ask Ember</button>
-                      </div>
-                    </div>
-                  ) : null}
-                  {supabaseCatalogStatus.exactBarcodeMiss ? <p className="compact-subtitle">No match yet. You can add this product to the catalog or try a name search.</p> : null}
-                  {catalogSearchHasRun && !supabaseCatalogStatus.loading && supabaseCatalogStatus.coverageWarning ? (
-                    <div className="catalog-coverage-warning">
-                      <div>
-                        <strong>
-                          {supabaseCatalogStatus.coverageWarning.sealedCount > 0
-                            ? `Only ${supabaseCatalogStatus.coverageWarning.sealedCount} sealed product${supabaseCatalogStatus.coverageWarning.sealedCount === 1 ? "" : "s"} found for ${supabaseCatalogStatus.coverageWarning.setName}.`
-                            : `No sealed products from ${supabaseCatalogStatus.coverageWarning.setName} are in the catalog yet.`}
-                        </strong>
-                        <p>
-                          {supabaseCatalogStatus.coverageWarning.sealedCount > 0
-                            ? "More sealed products may be missing from the catalog."
-                            : "Cards may exist for this set, but sealed product coverage still needs review."}
-                        </p>
-                        {supabaseCatalogStatus.coverageWarning.missingLikelyCategories?.length ? (
-                          <p>May be missing: {supabaseCatalogStatus.coverageWarning.missingLikelyCategories.join(", ")}.</p>
-                        ) : null}
-                      </div>
-                      <div className="quick-actions">
-                        <button type="button" onClick={() => switchCatalogKindFilter("All")}>Search All</button>
-                        <button type="button" className="secondary-button" onClick={() => switchCatalogKindFilter("card")}>View Cards</button>
-                        <button
-                          type="button"
-                          className="secondary-button"
-                          onClick={() => suggestMissingCatalogProductFromSearch({
-                            setName: supabaseCatalogStatus.coverageWarning.setName,
-                            searchTerm: catalogEmptyTerm || catalogSearch,
-                            missingLikelyCategories: supabaseCatalogStatus.coverageWarning.missingLikelyCategories,
-                            notes: "Suggested from coverage warning.",
-                            source: "tidetradr-sealed-coverage-warning",
-                          })}
-                        >
-                          {adminEditModeActive ? "Add Catalog Item" : "Request Missing Item"}
-                        </button>
-                      </div>
-                      {adminEditModeActive ? (
-                        <details className="catalog-coverage-diagnostics">
-                          <summary>Coverage diagnostics</summary>
-                          <p>Searched aliases: {supabaseCatalogStatus.coverageWarning.searchedAliases.join(", ") || "none"}</p>
-                          <p>Fetched rows: {supabaseCatalogStatus.coverageWarning.rawFetchedCount}; sealed results: {supabaseCatalogStatus.coverageWarning.resultCount}; estimated total: {supabaseCatalogStatus.coverageWarning.rawTotalCount ?? "unknown"}</p>
-                          <p>Found categories: {supabaseCatalogStatus.coverageWarning.foundCategories.join(", ") || "none"}</p>
-                          <p>Expected categories checked: {supabaseCatalogStatus.coverageWarning.expectedCategories.join(", ")}</p>
-                          <p>Sealed-specific fetch: {supabaseCatalogStatus.coverageWarning.sealedFetchRan ? "yes" : "no"}</p>
-                          <p>Active filters: {supabaseCatalogStatus.coverageWarning.activeFilters.join(", ") || "none"}</p>
-                        </details>
-                      ) : null}
-                    </div>
-                  ) : null}
-
-                  {!catalogSearchHasRun && !supabaseCatalogStatus.loading ? (
-                    <div className="small-empty-state tidetradr-search-prompt market-empty-state">
-                      <EtMockupEmptyState
-                        title="Search a card, set, sealed product, UPC, or SKU."
-                        detail="Market Watch shows fair-value context and labels weak data honestly. No checkout or stock guarantee is connected."
-                      />
-                      <div className="market-empty-examples" aria-label="Market search examples">
-                        <span>Card names</span>
-                        <span>Set names</span>
-                        <span>Sealed products</span>
-                        <span>UPC / SKU</span>
-                      </div>
-                    </div>
-                  ) : null}
-
-                  {supabaseCatalogStatus.loading && tideTradrCatalogResults.length === 0 && marketSetSearchResults.length === 0 ? (
-                    <div className="catalog-results-loading" aria-label="Loading catalog results">
-                      <div className="market-state-card market-state-card--loading" role="status">
-                        <span className="trust-badge trust-badge--secure">Checking fair value</span>
-                        <h3>Checking fair value</h3>
-                        <p>Market searches known catalog data and labels weak sources. It is not an auto-buy dashboard.</p>
-                      </div>
-                      <div className="catalog-results-list catalog-results-grid">
-                        {Array.from({ length: 6 }).map((_, index) => (
-                          <div className="catalog-result-card catalog-result-skeleton" key={`catalog-loading-${index}`}>
-                            <div className="catalog-thumb" />
-                            <span />
-                            <strong />
-                            <em />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-
-                  {catalogSearchHasRun && !supabaseCatalogStatus.loading && tideTradrCatalogResults.length === 0 && marketSetSearchResults.length === 0 ? (
-                    <div className="empty-state market-empty-state">
-                      <h3>No matches found{catalogEmptyTerm ? ` for "${catalogEmptyTerm}"` : ""}.</h3>
-                      <p>
-                        {supabaseCatalogStatus.exactBarcodeMiss
-                          ? "No match yet. You can add this product to the catalog or try a name search."
-                          : catalogAlternateKindLabels.length
-                          ? `Matches exist in ${catalogAlternateKindLabels.join(" / ")}. Switch modes or clear active filters to see them.`
-                          : "No matches yet. Try an exact card name, set name, sealed product, UPC, SKU, or simpler collector term."}
-                      </p>
-                      <div className="quick-actions market-empty-actions">
-                        <button type="button" className="secondary-button" onClick={() => {
-                          setCatalogSearch(catalogEmptyTerm || catalogSearch);
-                          setCatalogSearchHasRun(false);
-                          setSupabaseCatalogStatus((current) => ({ ...current, error: "", message: "" }));
-                        }}>
-                          Search Again
-                        </button>
-                        <button type="button" onClick={() => openProductAddFlow({
-                          source: "market-result",
-                          seed: {
-                            initialStep: "item",
-                            itemName: catalogEmptyTerm || catalogSearch,
-                            catalogSearchQuery: catalogEmptyTerm || catalogSearch,
-                            destinations: destinationDefaults({ vault: true }),
-                            notes: "Manual entry from Market Watch no-results fallback.",
-                          },
-                        })}>
-                          Manual Entry
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (adminEditModeActive) {
-                              setActiveTab("catalog");
-                              setFeatureSectionsOpen((current) => ({ ...current, catalog_manual: true }));
-                              return;
-                            }
-                            submitUniversalSuggestion({
-                              suggestionType: SUGGESTION_TYPES.ADD_MISSING_CATALOG_PRODUCT,
-                              targetTable: "catalog_items",
-                              submittedData: { searchTerm: catalogEmptyTerm || catalogSearch, productType: catalogTypeFilter, setName: catalogSetFilter },
-                              notes: "User suggested a missing catalog product from Market Watch empty search.",
-                              source: "tidetradr-empty-search",
-                            });
-                          }}
-                        >
-                          {adminEditModeActive ? "Add Catalog Item" : "Request Missing Item"}
-                        </button>
-                        <button type="button" className="secondary-button" onClick={clearCatalogSearch}>Clear search</button>
-                        {catalogKindFilter !== "All" && catalogAlternateKindLabels.length ? (
-                          <button type="button" className="secondary-button" onClick={() => switchCatalogKindFilter("All")}>Search All</button>
-                        ) : null}
-                      </div>
-                    </div>
-                  ) : null}
-
-                  {catalogSearchHasRun && !supabaseCatalogStatus.loading && marketSetSearchResults.length ? (
-                    <section className="market-set-results" aria-label="Set matches">
-                      <div className="catalog-result-group-header">
-                        <h3>Set matches</h3>
-                        <span className="status-badge">{marketSetSearchResults.length}</span>
-                      </div>
-                      <div className="market-set-result-grid">
-                        {marketSetSearchResults.map((set) => (
-                          <article className="market-set-card" key={`market-set-${set.key || set.id}`}>
-                            <div>
-                              <span>{set.series || "Pokemon set"}</span>
-                              <h3>{set.name}</h3>
-                              <p>
-                                {[
-                                  set.releaseDate ? `Released ${shortDate(set.releaseDate)}` : "",
-                                  set.checklistAvailable ? `${set.totalCards || set.catalogCards.length} checklist cards` : "Full checklist not available yet",
-                                  set.trackedSealedCount || set.sealedProducts.length ? `${set.trackedSealedCount || set.sealedProducts.length} sealed tracked` : "",
-                                ].filter(Boolean).join(" - ")}
-                              </p>
-                            </div>
-                            <div className="market-set-card-progress">
-                              <div className="vault-progress-track" aria-label={`${set.name} completion`}>
-                                <i style={{ width: `${set.percent ?? 0}%` }} />
-                              </div>
-                              <span>{set.checklistAvailable ? set.completionLabel : `${set.ownedCount || 0} owned - ${set.checklistStatus}`}</span>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setActiveTab("vault");
-                                setVaultSubTab("sets");
-                                openVaultSetSummary(set);
-                              }}
-                            >
-                              View Set
-                            </button>
-                          </article>
-                        ))}
-                      </div>
-                    </section>
-                  ) : null}
-
-                    {catalogSearchHasRun && tideTradrCatalogResults.length > 0 ? (
-                      <div className="catalog-result-groups">
-                        {tideTradrCatalogResultGroups.map((group, groupIndex) => (
-                          <section className="catalog-result-group" key={group.key}>
-                            {catalogKindFilter === "All" ? (
-                              <div className="catalog-result-group-header">
-                                <h3>{group.title}</h3>
-                                <span className="status-badge">{group.items.length}</span>
-                              </div>
-                            ) : null}
-                            <div className={`catalog-results-list catalog-results-${catalogViewMode}`}>
-                              {group.items.map((product, productIndex) => renderTideTradrCatalogResultCard(product, { topResult: groupIndex === 0 && productIndex === 0 }))}
-                            </div>
-                          </section>
-                        ))}
-                      </div>
-                    ) : null}
-
-                  {catalogSearchHasRun && tideTradrCatalogResults.length > 0 ? (
-                    <PaginationControls
-                      label="Results"
-                      page={supabaseCatalogStatus.page || 1}
-                      pageCount={tideTradrCatalogPageCount || (supabaseCatalogStatus.hasMore ? (supabaseCatalogStatus.page || 1) + 1 : 1)}
-                      totalCount={supabaseCatalogStatus.totalCount ?? tideTradrCatalogResults.length}
-                      pageSize={supabaseCatalogStatus.pageSize || catalogPageSize}
-                      pageSizeOptions={CATALOG_PAGE_SIZE_OPTIONS}
-                      onPageChange={goToCatalogPage}
-                      onPageSizeChange={updateCatalogPageSize}
-                      disabled={supabaseCatalogStatus.loading}
-                      compact
-                    />
-                  ) : null}
-                </EtMockupSectionCard>
-
-                {renderMarketPriceMemorySection()}
-                {renderItemCompareTableSection()}
-                {renderWishlistIsoPlanningSection({ surface: "market", compact: true })}
-
-                <section className="feature-dropdown-stack">
-
-
-                </section>
-              </>
-            )}
-      </div>
-    </EtMockupPageShell>
+                <p>{card.detail}</p>
+              </article>
+            ))}
+          </section>
+        </div>
+      </CommandBoardV4>
+    </div>
   );
+
 }

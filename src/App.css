@@ -4,5 +4,6 @@
 @import "./styles/app/04-route-pages.css";
 @import "./styles/app/05-modals-search-data.css";
 @import "./styles/app/06-mobile-responsive.css";
-@import "./styles/app/07-final-product-layers.css";
-@import "./styles/app/08-command-shell-auth.css";
+@import "./styles/app/10-scout-command-board.css";
+@import "./styles/app/11-command-ui-overhaul.css";
+@import "./styles/app/12-command-board-v4-lock.css";

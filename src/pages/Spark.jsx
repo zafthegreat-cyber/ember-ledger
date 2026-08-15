@@ -1,25 +1,8 @@
-import { BRAND_ASSETS } from "../brand/emberTideBrand";
-import {
-  EtMockupActionCard,
-  EtMockupButton,
-  EtMockupEmptyState,
-  EtMockupHero,
-  EtMockupPageShell,
-  EtMockupPill,
-  EtMockupRightRail,
-  EtMockupSectionCard,
-  EtMockupStatCard,
-  FlowNextActionCard,
-} from "../components/command-system";
+import { CommandBoardV4, FlowNextActionCard } from "../components/command-system";
 export default function SparkPage(props) {
   const {
-    DetailItem,
     Field,
-    KIDS_PROGRAM_ACCESS_OPTIONS,
-    SPARK_GIVING_DONATION_TYPES,
-    SPARK_KID_PACK_TYPES,
     accountEmail,
-    adminToolsVisible,
     betaReadinessData,
     donationTypeLabel,
     guestPreviewActive,
@@ -28,16 +11,10 @@ export default function SparkPage(props) {
     money,
     normalizeSparkEventSupportDraft,
     normalizeSparkKidPackDraft,
-    openPokemonWatchCalendar,
     openPublicBetaFeedback,
     openSparkEventSupportFlow,
     openSparkGiftFlow,
     openSparkKidPackFlow,
-    phase2KidProjectItemCounts,
-    phase2RecentKidProjects,
-    renderCollectorEventPlannerSection,
-    renderUpgradeValuePreview,
-    runKidsProgramAiAssist,
     setKidsProgramRequestStep,
     setSparkFlowView,
     shortDate,
@@ -50,7 +27,6 @@ export default function SparkPage(props) {
     summarizeSparkEventSupportPlans,
     summarizeSparkGivingLedger,
     summarizeSparkKidPacks,
-    toggleArrayValue,
     updateKidsProgramField,
     user,
   } = props;
@@ -61,31 +37,12 @@ export default function SparkPage(props) {
       const entryEmail = String(entry.email || "").toLowerCase();
       return (user?.id && entryUser === String(user.id)) || (email && entryEmail === email.toLowerCase());
     });
-    const safeKidProgramProjects = phase2RecentKidProjects
-      .filter((project) => adminToolsVisible || String(project.status || "planning").toLowerCase() !== "archived")
-      .slice(0, 4);
-    const kidProgramProjectCount = safeKidProgramProjects.length;
-    const kidProgramTargetPacks = safeKidProgramProjects.reduce((sum, project) => sum + Number(project.targetPackCount || 0), 0);
-    const kidProgramEventCards = safeKidProgramProjects.filter((project) => project.eventDate).slice(0, 3);
-    const kidProgramScheduledEvents = kidProgramEventCards.length;
     const sparkSafetyRules = [
       "Parent-approved access only.",
-      "No private child messaging.",
+      "No direct child messaging.",
       "Parent-approved trades only.",
       "No scalper pricing.",
       "Retail-first access when inventory allows.",
-    ];
-    const sparkProgramCards = [
-      { key: "packs", icon: "✦", title: "Kids Packs", detail: "Fair starter packs." },
-      { key: "giveaways", icon: "★", title: "Giveaways", detail: "Family-friendly chances." },
-      { key: "events", icon: "◌", title: "Events", detail: "General-area events." },
-      { key: "learn", icon: "◇", title: "Learn & Grow", detail: "Kind collecting tips." },
-    ];
-    const sparkLearningCards = [
-      "Card care basics",
-      "Trading kindly",
-      "Set collecting",
-      "How to spot fair prices",
     ];
     const sparkSupportExamples = [
       "Cards",
@@ -109,45 +66,12 @@ export default function SparkPage(props) {
     ];
     const sparkMissionCards = [
       { key: "packs", icon: "Pack", title: "Kids packs", detail: "Reviewed starter packs." },
-      { key: "giveaways", icon: "Give", title: "Giveaways", detail: "Family-friendly guardrails." },
+      { key: "access", icon: "Access", title: "Access support", detail: "Reviewed guardrails." },
       { key: "events", icon: "Meet", title: "Events", detail: "General-area family days." },
       { key: "learn", icon: "Learn", title: "Learning", detail: "Card care and fair trades." },
       { key: "donations", icon: "Track", title: "Donation tracking", detail: "Products, supplies, time, and support." },
       { key: "trusted-friends", icon: "Trust", title: "Trusted family friends", detail: "Approved helpers only." },
       { key: "shops", icon: "Shop", title: "Shop and seller support", detail: "Drop sites, events, and fair access." },
-    ];
-    const sparkDonationGroups = [
-      { title: "Cards and products", items: ["Cards", "Sealed products", "Packs"] },
-      { title: "Collecting supplies", items: ["Binders", "Sleeves", "Deck boxes", "Storage", "Playmats"] },
-      { title: "Event support", items: ["Toys/prizes", "Gift cards", "Food/snacks", "Event support"] },
-      { title: "Mission support", items: ["Money/sponsorship pledges", "Services", "Volunteer time", "Shipping help", "Other family collecting support"] },
-    ];
-    const sparkParticipationCards = [
-      {
-        title: "Families",
-        detail: "Request access, share collecting needs, and participate through parent-managed reviews.",
-        badge: activeApplication ? sparkProgramStatusLabel(activeApplication.status || "interest_submitted") : "Parent managed",
-      },
-      {
-        title: "Trusted family friends",
-        detail: "Approved helpers can support safe packs, learning, events, and donation prep without private child messaging.",
-        badge: "Trusted helpers",
-      },
-      {
-        title: "Shops and sellers",
-        detail: "Partners can help with drop-off sites, Learn to Play days, fair access, sponsorships, or reviewed support records.",
-        badge: "Partner-ready",
-      },
-    ];
-    const sparkSections = [
-      {
-        key: "parent-requests",
-        title: "Request status",
-        value: activeApplication ? sparkProgramStatusLabel(activeApplication.status || "interest_submitted") : "Not requested",
-        detail: activeApplication ? "Your family request is private and waiting for review." : "A parent or guardian can start when ready.",
-      },
-      { key: "packs", title: "Kids packs", value: kidProgramTargetPacks ? `${kidProgramTargetPacks} planned` : "Warming up", detail: "Inventory-limited and reviewed for fair access." },
-      { key: "events", title: "Events", value: kidProgramScheduledEvents ? `${kidProgramScheduledEvents} scheduled` : "Coming soon", detail: "General area only. No private addresses." },
     ];
     const requestSteps = [
       "Child/family request",
@@ -162,6 +86,7 @@ export default function SparkPage(props) {
     const scrollToSparkDetails = () => document.getElementById("spark-program-sections")?.scrollIntoView({ behavior: "smooth", block: "start" });
     const openSparkDonate = () => setSparkFlowView("donate");
     const openSparkThanks = () => setSparkFlowView("thank-you");
+    const openSparkRequest = () => setSparkFlowView("request");
     const openSparkHome = () => setSparkFlowView("home");
     const sparkSupplyDonationTypes = new Set(["supplies", "binders", "sleeves", "deck_boxes", "storage", "playmats", "food_snacks", "shipping_help"]);
     const sparkImpactStories = [
@@ -186,11 +111,6 @@ export default function SparkPage(props) {
       "Volunteer time",
       "Services",
       "Other family collecting support",
-    ];
-    const sparkImpactMilestones = [
-      { title: "Build safe starter packs", detail: "Cards, sleeves, and deck boxes are reviewed before they count toward impact." },
-      { title: "Support local family days", detail: "Event help stays general-area only and avoids private child or home details." },
-      { title: "Thank helpers clearly", detail: "Sponsors and shops can express interest, then wait for review before anything goes public." },
     ];
     const sparkGivingImpact = summarizeSparkGivingLedger(sparkGifts, { moneyFormatter: money });
     const recentSparkGifts = [...sparkGifts]
@@ -218,6 +138,59 @@ export default function SparkPage(props) {
       { label: "Event support notes", value: sparkEventSupportSummary.totalEvents, detail: "Local beta event plans", tone: "pink" },
       { label: "Family impact preview", value: sparkLocalActivityTotal || "Ready", detail: sparkLocalActivityTotal ? "Local planning records only" : "No support fulfilled yet", tone: "gold" },
       { label: "Items still needed", value: sparkNeedsDetailsCount, detail: sparkNeedsDetailsCount ? "Add supplies or pack details" : "Planning details look filled in", tone: "pink" },
+    ];
+    const sparkDonationReviewSteps = [
+      { label: "Details", title: "Support details", detail: "Type, quantity, value, and who it may help.", status: "Draft" },
+      { label: "Proof", title: "Evidence saved", detail: "Photos, notes, receipts, or source context.", status: "Needed" },
+      { label: "Review", title: "Parent/admin review", detail: "Safety, privacy, fairness, and suitability check.", status: "Protected" },
+      { label: "Confirm", title: "Confirmation", detail: "Record impact only after review is complete.", status: "Queued" },
+    ];
+    const sparkProofCards = [
+      {
+        title: "Photos",
+        detail: "Attach product, supply, condition, or drop-off photos before review.",
+        status: recentSparkGifts.length ? "Add proof" : "Needed",
+      },
+      {
+        title: "Receipt/source",
+        detail: "Keep source notes for sealed product, gift cards, shipping help, or service support.",
+        status: "Optional",
+      },
+      {
+        title: "Impact note",
+        detail: "Describe the family-safe purpose without naming or locating a child publicly.",
+        status: sparkLocalActivityTotal ? "Active" : "Ready",
+      },
+      {
+        title: "Review status",
+        detail: "Nothing counts as fulfilled, tax-receipted, shipped, or public until reviewed.",
+        status: "Admin first",
+      },
+    ];
+    const sparkSupportRouteCards = [
+      {
+        title: "Item donation",
+        detail: "Cards, packs, sealed product, binders, sleeves, storage, or prizes.",
+        action: "Log a Gift",
+        onClick: () => openSparkGiftFlow({ source: "spark-review-center" }),
+      },
+      {
+        title: "Build kid packs",
+        detail: "Turn reviewed support into starter, birthday, event, or family support packs.",
+        action: "Build Pack",
+        onClick: () => openSparkKidPackFlow({ source: "spark-review-center" }),
+      },
+      {
+        title: "Event support",
+        detail: "Plan snacks, volunteers, shop help, learning tables, and supplies.",
+        action: "Add Event Support",
+        onClick: () => openSparkEventSupportFlow({ source: "spark-review-center" }),
+      },
+    ];
+    const sparkReviewStatusRows = [
+      { label: "Payment", value: "Off", detail: "No checkout or in-app cash donation flow." },
+      { label: "Privacy", value: "On", detail: "No public child profile, private address, or private messaging." },
+      { label: "Receipt", value: "Later", detail: "Tax receipts need approved legal/payment structure first." },
     ];
     const renderSparkGiftRow = (gift) => (
       <article className="spark-gift-ledger-row" key={gift.id || `${gift.giftName}-${gift.createdAt}`}>
@@ -269,536 +242,273 @@ export default function SparkPage(props) {
         </article>
       );
     };
-    const renderSparkHero = () => (
-      <div className="spark-mockup-header">
-        <EtMockupHero
-          brand="The Spark"
-          mark={BRAND_ASSETS.mark}
-          title="Igniting the spark within kids and families."
-          detail="Parent-managed support for kids packs, learning, safe events, and fair collecting help. No private child messaging."
-          points={{ value: "Preview", label: "Public Beta" }}
-          pills={[
-            { label: "Parent managed", tone: "collector" },
-            { label: "Admin reviewed", tone: "beta" },
-            { label: "No payment processed", tone: "gold" },
-          ]}
-          todayAction={{
-            label: sparkFlowView === "home" ? "Mission" : "Support preview",
-            title: sparkFlowView === "home" ? "Help a kid collect safely." : "Nothing is charged, posted, or processed here.",
-            cta: sparkFlowView === "home" ? "Help The Spark" : "Back to The Spark",
-            onClick: sparkFlowView === "home"
-              ? () => openPublicBetaFeedback({ page: "The Spark", role: "Sponsor / Donor", mainReason: "Sponsor / donate to The Spark", interests: ["The Spark kids program"] })
-              : openSparkHome,
+    const renderSparkV4Board = ({ mode = "home", title = "Spark Impact Center", description, children } = {}) => (
+      <div className={`spark-command-only-route spark-command-only-route-${mode}`} aria-label="The Spark impact command center">
+        <CommandBoardV4
+          accent="spark"
+          className="spark-command-board"
+          ariaLabel="Spark Impact Center"
+          label="The Spark"
+          title={title}
+          description={description || "Parent-managed access support, kid-pack planning, donations, proof, and family-safe event help. No direct child messaging, public child profiles, or payment processing."}
+          primaryAction={{
+            label: activeApplication ? "View Status" : "Request Access",
+            icon: "spark",
+            onClick: openSparkRequest,
           }}
-          adminAction={sparkFlowView === "home" ? (
-            <EtMockupButton onClick={openSparkDonate}>Donate / support preview</EtMockupButton>
-          ) : (
-            <EtMockupButton variant="secondary" onClick={openSparkHome}>Back to The Spark</EtMockupButton>
-          )}
-          ariaLabel="The Spark mission"
-        />
-        <div className="spark-header-mission-line spark-mockup-mission-note">
-          Helping families keep collecting fun, fair, and kid-friendly. Parent-safe requests. No private child messaging.
-        </div>
+          secondaryActions={[
+            { label: "Support Review", icon: "plan", onClick: openSparkDonate },
+            { label: "Safety Rules", icon: "help", onClick: openSparkRequest },
+          ]}
+          statusItems={[
+            {
+              key: "access",
+              icon: "community",
+              label: "Access review",
+              value: activeApplication ? sparkProgramStatusLabel(activeApplication.status || "interest_submitted") : "Private",
+              detail: "Parent-managed",
+            },
+            {
+              key: "packs",
+              icon: "spark",
+              label: "Kid packs",
+              value: sparkKidPackSummary.totalPacks || "Ready",
+              detail: "Reviewed plans",
+            },
+            {
+              key: "support",
+              icon: "data",
+              label: "Support logged",
+              value: sparkGivingImpact.totalGifts,
+              detail: "Local beta records",
+            },
+            {
+              key: "events",
+              icon: "calendar",
+              label: "Event support",
+              value: sparkEventSupportSummary.totalEvents,
+              detail: "General area only",
+            },
+            {
+              key: "payments",
+              icon: "help",
+              label: "Payments",
+              value: "Off",
+              detail: "No checkout",
+            },
+          ]}
+          plan={{
+            label: "Spark Plan",
+            title: "Support families with privacy, review, and proof first",
+            items: [
+              { key: "request", icon: "community", label: "Request access", detail: "Parent or guardian", action: openSparkRequest },
+              { key: "donate", icon: "spark", label: "Support review", detail: "No payment processed", action: openSparkDonate },
+              { key: "packs", icon: "vault", label: "Kid packs", detail: "Inventory reviewed", action: scrollToSparkDetails },
+              { key: "rules", icon: "help", label: "Safety rules", detail: "No child exposure", action: openSparkRequest },
+            ],
+            actions: [
+              { label: mode === "home" ? "Open Review" : "Back to Spark", icon: "spark", onClick: mode === "home" ? openSparkDonate : openSparkHome },
+              { label: "Sponsor Interest", icon: "plan", onClick: () => openPublicBetaFeedback({ page: "The Spark", role: "Sponsor / Donor", mainReason: "Sponsor / donate to The Spark", interests: ["The Spark kids program"] }) },
+            ],
+          }}
+          routes={[
+            { key: "spark", icon: "spark", label: "Spark", title: "Impact", detail: "Access and support", action: scrollToSparkDetails },
+            { key: "donation", icon: "plus", label: "Donation", title: "Review flow", detail: "Items and time", action: openSparkDonate },
+            { key: "packs", icon: "vault", label: "Packs", title: "Pack Builder", detail: "Kid-pack plans", action: scrollToSparkDetails },
+            { key: "events", icon: "calendar", label: "Events", title: "Family days", detail: "General area", action: scrollToSparkDetails },
+            { key: "lantern", icon: "help", label: "Lantern", title: "Safety rules", detail: "Child-safe support", action: scrollToSparkRules },
+            { key: "feedback", icon: "bell", label: "Interest", title: "Sponsor queue", detail: "Admin reviewed", action: () => openPublicBetaFeedback({ page: "The Spark", role: "Sponsor / Donor", mainReason: "Sponsor / donate to The Spark", interests: ["The Spark kids program"] }) },
+          ]}
+        >
+          {children}
+        </CommandBoardV4>
       </div>
     );
-    const renderSparkDonatePage = () => (
-      <EtMockupPageShell
-        accent="spark"
-        className="spark-mockup-rebuild spark-mockup-donate"
-        ariaLabel="The Spark support preview"
-      >
-        <div className="et-mockup-main-column spark-mockup-main">
-          {renderSparkHero()}
-          <EtMockupSectionCard
-            title="Donate to The Spark."
-            detail="This is a public beta support preview. No payment is processed, no checkout opens, and no donation backend is connected here."
-            className="spark-donate-panel spark-mockup-support-panel"
-            action={<EtMockupPill tone="beta">Preview only</EtMockupPill>}
-          >
-            <div className="spark-impact-meter" aria-label="The Spark impact progress">
-              <span><b>68%</b> toward this month&apos;s preview kid-pack goal</span>
-              <i><em style={{ width: "68%" }} /></i>
-            </div>
-            <div className="spark-donate-category-grid" aria-label="Donation categories">
-              {sparkDonationCategories.map((category) => <span key={category} className="spark-donate-category">{category}</span>)}
-            </div>
-            <div className="spark-sponsor-card">
-              <strong>Shop / sponsor support</strong>
-              <p>Trusted shops, sponsors, and volunteers can help with drop-off days, supplies, learning tables, shipping help, or service support after review.</p>
-              <EtMockupButton variant="secondary" onClick={() => openPublicBetaFeedback({ page: "The Spark Donate", role: "Sponsor / Donor", mainReason: "Sponsor / donate to The Spark", interests: ["The Spark kids program", "Shop partnership"] })}>Share sponsor interest</EtMockupButton>
-            </div>
-            <div className="spark-flow-actions">
-              <EtMockupButton onClick={openSparkThanks}>Preview support review</EtMockupButton>
-              <EtMockupButton variant="secondary" onClick={openSparkHome}>Back to The Spark</EtMockupButton>
-            </div>
-          </EtMockupSectionCard>
+
+    const sparkV4SupportTiles = [
+      { label: "Log a Gift", value: sparkGivingImpact.totalGifts || "Ready", detail: "Cards, packs, binders, supplies", action: () => openSparkGiftFlow({ source: "spark-v4-support" }) },
+      { label: "Kid packs", value: sparkKidPackSummary.totalPacks || "Ready", detail: "Starter, event, birthday, support", action: () => openSparkKidPackFlow({ source: "spark-v4-pack" }) },
+      { label: "Plan Event Support", value: sparkEventSupportSummary.totalEvents || "Ready", detail: "Volunteers, shops, supplies", action: () => openSparkEventSupportFlow({ source: "spark-v4-event" }) },
+      { label: "Sponsor interest", value: "Review", detail: "Admin-reviewed support queue", action: () => openPublicBetaFeedback({ page: "The Spark", role: "Sponsor / Donor", mainReason: "Sponsor / donate to The Spark", interests: ["The Spark kids program", "Shop partnership"] }) },
+    ];
+
+    const renderSparkV4ImpactPanel = () => (
+      <section className="spark-v4-impact-panel" aria-label="Spark Impact Summary">
+        <div className="spark-v4-panel-heading">
+          <div>
+            <span>Impact command</span>
+            <h2>Spark Impact Summary</h2>
+            <p>Track support intent, review status, evidence, and family-safe next steps without turning Spark into a public child directory or payment flow.</p>
+          </div>
+          <strong>{sparkLocalActivityTotal || "Ready"}</strong>
         </div>
-        <EtMockupRightRail
-          title="Parent-safe support"
-          detail="Support interest is reviewed before anything becomes public or counts toward impact."
-          className="spark-mockup-rail"
-        >
-          <div className="et-mockup-action-stack">
-            {sparkImpactMilestones.map((milestone) => (
-              <EtMockupActionCard
-                key={milestone.title}
-                title={milestone.title}
-                detail={milestone.detail}
-                icon="spark"
-                tone="gold"
-              />
-            ))}
-          </div>
-          <EtMockupEmptyState
-            title="No payment processed."
-            detail="The Spark support flow is preview-only until reviewed backend support exists."
-            action={<EtMockupButton variant="secondary" onClick={openSparkHome}>Return to mission</EtMockupButton>}
-          />
-        </EtMockupRightRail>
-      </EtMockupPageShell>
-    );
-    const renderSparkThankYouPage = () => (
-      <EtMockupPageShell
-        accent="spark"
-        className="spark-mockup-rebuild spark-mockup-thanks"
-        ariaLabel="The Spark thank you preview"
-      >
-        <div className="et-mockup-main-column spark-mockup-main">
-          {renderSparkHero()}
-          <EtMockupSectionCard
-            title="Thank you - support interest queued for preview review."
-            detail="Your support preview is queued for review before it would count toward The Spark impact. Nothing is charged, posted, or processed here."
-            className="spark-thank-you-panel"
-            action={<EtMockupPill tone="beta">Queued for review</EtMockupPill>}
-          >
-            <div className="spark-thank-you-orb" aria-hidden="true"><span /></div>
-            <div className="spark-impact-story-grid" aria-label="Spark impact story">
-              {sparkImpactStories.map((story) => (
-                <article className="spark-impact-story-card" key={story.title}>
-                  <strong>{story.title}</strong>
-                  <p>{story.body}</p>
-                </article>
-              ))}
-            </div>
-            <div className="spark-flow-actions">
-              <EtMockupButton onClick={openSparkHome}>View impact</EtMockupButton>
-              <EtMockupButton variant="secondary" onClick={openSparkDonate}>Add another support preview</EtMockupButton>
-            </div>
-          </EtMockupSectionCard>
+        <div className="spark-v4-impact-grid" aria-label="The Spark impact stats">
+          {sparkDashboardSummaryCards.slice(0, 6).map((stat) => (
+            <article key={stat.label}>
+              <span>{stat.label}</span>
+              <strong>{stat.value}</strong>
+              <small>{stat.detail}</small>
+            </article>
+          ))}
         </div>
-        <EtMockupRightRail
-          title="What stays safe"
-          detail="The Spark remains parent-managed, admin-reviewed, and preview-only."
-          className="spark-mockup-rail"
-        >
-          <div className="et-mockup-action-stack">
-            {["No payment processed", "No private child messaging", "Admin-reviewed requests"].map((point) => (
-              <EtMockupActionCard key={point} title={point} detail="Guardrail stays visible in public beta." icon="spark" tone="gold" />
-            ))}
-          </div>
-        </EtMockupRightRail>
-      </EtMockupPageShell>
+        <div className="spark-v4-category-rack" aria-label="The Spark support categories">
+          {sparkSupportExamples.slice(0, 12).map((category) => <span key={category}>{category}</span>)}
+        </div>
+      </section>
     );
-    if (sparkFlowView === "donate") return renderSparkDonatePage();
-    if (sparkFlowView === "thank-you") return renderSparkThankYouPage();
-    return (
-      <EtMockupPageShell
-        accent="spark"
-        className="spark-mockup-rebuild"
-        ariaLabel="The Spark family support page"
-      >
-        <div className="et-mockup-main-column spark-mockup-main">
-        {renderSparkHero()}
 
-        <EtMockupSectionCard
-          title="Collecting support for kids and families."
-          detail="Igniting the spark within them through kids packs, giveaways, family-friendly events, learning, donations, and trusted community help that stays safe, fair, and parent-managed."
-          className="spark-mission-card spark-mockup-mission-card"
-          action={<EtMockupPill tone="collector">Mission centered</EtMockupPill>}
-        >
-          <div className="spark-mission-orb" aria-hidden="true">
-            <span />
+    const renderSparkV4ReviewPanel = () => (
+      <section className="spark-v4-review-panel" aria-label="Spark Support Review Center">
+        <div className="spark-v4-panel-heading compact">
+          <div>
+            <span>Review first</span>
+            <h3>Spark Support Review Center</h3>
+            <p>Details, proof, review, and confirmation stay visible before any support is counted as impact.</p>
           </div>
-          <div className="spark-mission-copy">
-            <p className="section-kicker">The Spark mission</p>
-            <h2>Collecting support for kids and families.</h2>
-            <p>Igniting the spark within them through kids packs, giveaways, family-friendly events, learning, donations, and trusted community help that stays safe, fair, and parent-managed.</p>
-            <div className="spark-mission-facts" aria-label="The Spark guardrails">
-              <span>Parent-managed</span>
-              <span>Admin-reviewed</span>
-              <span>Mission-centered</span>
-            </div>
-          </div>
-          <button
-            type="button"
-            className="hearth-primary-cta spark-primary-cta"
-            onClick={activeApplication ? scrollToSparkDetails : scrollToSparkRequest}
-          >
-            {activeApplication ? "View status" : "Request access"}
-          </button>
-          <button type="button" className="secondary-button spark-secondary-cta" onClick={openSparkDonate}>Donate / support</button>
-        </EtMockupSectionCard>
+          <button type="button" onClick={openSparkDonate}>Open Review</button>
+        </div>
+        <div className="spark-v4-stepper" aria-label="Spark donation review steps">
+          {sparkDonationReviewSteps.map((step, index) => (
+            <article key={step.label}>
+              <span>{index + 1}</span>
+              <div>
+                <strong>{step.label}</strong>
+                <small>{step.title}</small>
+              </div>
+              <em>{step.status}</em>
+            </article>
+          ))}
+        </div>
+        <div className="spark-v4-proof-grid" aria-label="Spark proof and evidence">
+          {sparkProofCards.map((card) => (
+            <article key={card.title}>
+              <strong>{card.title}</strong>
+              <p>{card.detail}</p>
+              <small>{card.status}</small>
+            </article>
+          ))}
+        </div>
+      </section>
+    );
 
-        <EtMockupSectionCard
-          title="Spark Family Program Summary"
-          detail="Local-only planning signals for Kid Packs, Giving Ledger support, supplies, event notes, and family impact preview. Nothing here processes payment, fulfillment, shipping, or tax receipts."
-          className="spark-impact-dashboard spark-mockup-impact-card"
-          ariaLabel="The Spark impact preview"
-          action={<EtMockupPill tone="gold">Local beta only</EtMockupPill>}
-        >
-          <div className="et-mockup-stat-grid spark-impact-stat-grid" aria-label="The Spark impact stats">
-            {sparkDashboardSummaryCards.map((stat) => (
-              <EtMockupStatCard key={stat.label} label={stat.label} value={stat.value} detail={stat.detail} tone={stat.tone} />
-            ))}
-          </div>
-          <div className="spark-gift-type-cloud spark-program-support-cloud" aria-label="The Spark support categories">
-            {sparkSupportExamples.map((category) => <span key={category}>{category}</span>)}
-          </div>
-          <div className="spark-impact-milestone-grid">
-            {sparkImpactMilestones.map((milestone) => (
-              <article className="spark-impact-milestone-card" key={milestone.title}>
-                <strong>{milestone.title}</strong>
-                <p>{milestone.detail}</p>
-              </article>
-            ))}
-          </div>
-        </EtMockupSectionCard>
-
+    const renderSparkV4SideRail = () => (
+      <aside className="spark-v4-side-rail" aria-label="Spark safety and support rail">
         <FlowNextActionCard
           eyebrow="Next Spark action"
-          title="Pick one safe family-support step."
-          detail="The Spark stays local beta here: planning, notes, and support memories only. No payment, fulfillment, shipping, or private child messaging is connected."
+          title="Pick one reviewed support step."
+          detail="Build a kid pack, log a gift, or plan event support. Spark records intent and evidence only until review is complete. No payment, fulfillment, shipping, or private child messaging is connected."
           tone="spark"
           actions={[
-            { label: "Build a Kid Pack", onClick: () => openSparkKidPackFlow({ source: "spark-next-action" }) },
-            { label: "Log a Gift", onClick: () => openSparkGiftFlow({ source: "spark-next-action" }) },
-            { label: "Plan Event Support", onClick: () => openSparkEventSupportFlow({ source: "spark-next-action" }) },
+            { label: "Build a Kid Pack", onClick: () => openSparkKidPackFlow({ source: "spark-v4-next-action" }) },
+            { label: "Log a Gift", onClick: () => openSparkGiftFlow({ source: "spark-v4-next-action" }) },
           ]}
         />
+        <article>
+          <span>Family access</span>
+          <h3>{activeApplication ? "Request is private" : "No request yet"}</h3>
+          <p>{activeApplication ? `Status: ${sparkProgramStatusLabel(activeApplication.status || "interest_submitted")}.` : "A parent or guardian can start an access request when ready."}</p>
+              <button type="button" onClick={openSparkRequest}>{activeApplication ? "View Status" : "Request Access"}</button>
+        </article>
+        <article>
+          <span>Guardrails</span>
+          <div className="spark-v4-rule-list">
+            {sparkSafetyRules.slice(0, 5).map((rule) => <small key={rule}>{rule}</small>)}
+          </div>
+        </article>
+      </aside>
+    );
 
-        <EtMockupSectionCard
-          title="Kid Packs"
-          detail="Plan simple, family-safe packs for new collectors, birthdays, events, thank-yous, or families who need support."
-          className="spark-kid-packs-card"
-          ariaLabel="The Spark Kid Packs"
-          action={<EtMockupButton onClick={() => openSparkKidPackFlow({ source: "spark-kid-packs" })}>Build a Kid Pack</EtMockupButton>}
-        >
-          <div className="spark-kid-pack-helper-card">
-            <strong>Pack Builder</strong>
-            <span>Plan what goes inside, who it may help, and when it is ready to gift.</span>
-            <small>Keep child details private. Use initials, group names, or simple notes when needed.</small>
+    const renderSparkV4HomePage = (mode = "home") => renderSparkV4Board({
+      mode,
+      title: mode === "request" ? "Spark Family Access" : "Spark Impact Center",
+      description: mode === "request"
+        ? "A private parent-managed request with clear safety rules, minimum necessary information, and human review before access changes."
+        : undefined,
+      children: (
+        <div className="spark-v4-command-content">
+          <div className="spark-v4-main-stack">
+            {renderSparkV4ImpactPanel()}
+            {renderSparkV4ReviewPanel()}
           </div>
-          <div className="spark-kid-pack-meaning-card">
-            <strong>The Spark is about helping kids feel welcomed, included, and excited to collect.</strong>
-            <span>Kid Packs are local planning records. They do not deplete Vault inventory, Giving Ledger gifts, or any backend supply.</span>
-          </div>
-          <div className="et-mockup-stat-grid spark-kid-pack-impact-grid" aria-label="Kid Packs status">
-            <EtMockupStatCard label="Kid Packs" value={sparkKidPackSummary.totalPacks} detail="packs planned locally" tone="gold" />
-            <EtMockupStatCard label="Ready to Gift" value={sparkKidPackSummary.readyToGift} detail="packs ready for review or gifting" tone="pink" />
-            <EtMockupStatCard label="Gifted" value={sparkKidPackSummary.gifted} detail="packs marked gifted locally" tone="gold" />
-          </div>
-          <div className="spark-gift-type-cloud spark-kid-pack-type-cloud" aria-label="Pack Type options">
-            {SPARK_KID_PACK_TYPES.map((option) => <span key={option}>{option}</span>)}
-          </div>
-          {sparkGifts.length ? (
-            <div className="spark-kid-pack-ledger-link">
-              <strong>Giving Ledger connection</strong>
-              <span>{sparkGivingImpact.totalGifts} gift{sparkGivingImpact.totalGifts === 1 ? "" : "s"} logged locally. Review Giving Ledger support separately before building packs.</span>
-            </div>
-          ) : null}
-          {recentSparkKidPacks.length ? (
-            <div className="spark-kid-pack-list" aria-label="Kid Packs saved packs">
-              {recentSparkKidPacks.map(renderSparkKidPackRow)}
-            </div>
-          ) : (
-            <EtMockupEmptyState
-              title="No Kid Packs built yet."
-              detail="Plan a starter pack, event pack, birthday pack, or family support pack. Family/Spark upgrades can expand pack and event planning when enabled."
-              action={<EtMockupButton variant="secondary" onClick={() => openSparkKidPackFlow({ source: "spark-kid-packs-empty" })}>Build a Kid Pack</EtMockupButton>}
-            />
-          )}
-        </EtMockupSectionCard>
-
-        <EtMockupSectionCard
-          title="Event Support Planner"
-          detail="Plan family collecting days, learning tables, kid-pack prep, volunteer help, sponsor/shop notes, and supplies needed. Local beta planning only."
-          className="spark-event-support-card"
-          ariaLabel="The Spark Event Support Planner"
-          action={<EtMockupButton onClick={() => openSparkEventSupportFlow({ source: "spark-event-support" })}>Plan Event Support</EtMockupButton>}
-        >
-          <div className="spark-event-support-helper-card">
-            <strong>Local beta planning tool</strong>
-            <span>Use this for event support notes, supplies, volunteers, and sponsor/shop ideas. It is not payment processing, fulfillment, shipping, or a tax receipt.</span>
-            <small>Keep child and family details private. Use general areas, group names, or internal notes only.</small>
-          </div>
-          <div className="et-mockup-stat-grid spark-event-support-impact-grid" aria-label="Event Support Planner status">
-            <EtMockupStatCard label="Event support notes" value={sparkEventSupportSummary.totalEvents} detail="local event plans" tone="gold" />
-            <EtMockupStatCard label="Collecting" value={sparkEventSupportSummary.collecting} detail="supplies or support being gathered" tone="pink" />
-            <EtMockupStatCard label="Packed / complete" value={sparkEventSupportSummary.packed + sparkEventSupportSummary.complete} detail="marked packed or complete locally" tone="gold" />
-          </div>
-          {recentSparkEventPlans.length ? (
-            <div className="spark-event-support-list" aria-label="Event Support saved plans">
-              {recentSparkEventPlans.map(renderSparkEventSupportRow)}
-            </div>
-          ) : (
-            <EtMockupEmptyState
-              title="No Event Support plans yet."
-              detail="Plan supplies, volunteers, sponsors, shops, snacks, shipping help, and family-safe support before a Spark event. Nothing is processed or fulfilled from this preview."
-              action={<EtMockupButton variant="secondary" onClick={() => openSparkEventSupportFlow({ source: "spark-event-support-empty" })}>Plan Event Support</EtMockupButton>}
-            />
-          )}
-        </EtMockupSectionCard>
-
-        {renderCollectorEventPlannerSection({ surface: "spark" })}
-
-        <EtMockupSectionCard
-          title="Giving Ledger"
-          detail="Track cards, packs, supplies, event help, snacks, sponsorships, or other support for kids and families."
-          className="spark-giving-ledger-card"
-          ariaLabel="The Spark Giving Ledger"
-          action={<EtMockupButton onClick={() => openSparkGiftFlow({ source: "spark-giving-ledger" })}>Log a Gift</EtMockupButton>}
-        >
-          <div className="spark-giving-helper-card">
-            <strong>Donation helper</strong>
-            <span>Track what was given, who it may help, and the story behind the support.</span>
-            <small>Giving Ledger is for program tracking only. It is not a tax receipt.</small>
-          </div>
-          <div className="et-mockup-stat-grid spark-giving-impact-grid" aria-label="Spark Impact">
-            <EtMockupStatCard label="Spark Impact" value={sparkGivingImpact.totalGifts} detail="total gifts logged locally" tone="gold" />
-            <EtMockupStatCard label="Estimated Value" value={sparkGivingImpact.totalValueLabel} detail={sparkGivingImpact.valueCount ? `${sparkGivingImpact.valueCount} gift${sparkGivingImpact.valueCount === 1 ? "" : "s"} with values` : "Add values when applicable"} tone="pink" />
-            <EtMockupStatCard label="Recent support" value={sparkGivingImpact.recentSupportLabel} detail="Latest local Giving Ledger entry" tone="gold" />
-          </div>
-          <div className="spark-gift-type-cloud" aria-label="Donation Type options">
-            {SPARK_GIVING_DONATION_TYPES.map((option) => <span key={option.value}>{option.label}</span>)}
-          </div>
-          {recentSparkGifts.length ? (
-            <div className="spark-gift-ledger-list" aria-label="Giving Ledger saved gifts">
-              {recentSparkGifts.map(renderSparkGiftRow)}
-            </div>
-          ) : (
-            <EtMockupEmptyState
-              title="No Spark Gifts logged yet."
-              detail="Log cards, packs, supplies, event help, snacks, sponsorships, or other support when it happens. Upgraded plans can expand family and event support history when enabled."
-              action={<EtMockupButton variant="secondary" onClick={() => openSparkGiftFlow({ source: "spark-giving-ledger-empty" })}>Log a Gift</EtMockupButton>}
-            />
-          )}
-        </EtMockupSectionCard>
-
-        {renderUpgradeValuePreview("spark")}
-
-        {adminToolsVisible ? (
-          <section className="panel spark-admin-shortcut">
-            <span className="status-badge trust-badge--kid">Admin</span>
-            <div>
-              <strong>Kids Program review stays in Admin Command Center.</strong>
-              <p>Application summaries are review-only. Admins make final decisions.</p>
-            </div>
-            <button type="button" className="secondary-button" onClick={() => void runKidsProgramAiAssist(activeApplication)}>
-              Summarize
-            </button>
+          {renderSparkV4SideRail()}
+          <section className="spark-v4-support-grid" aria-label="Spark support routes">
+            {sparkV4SupportTiles.map((tile) => (
+              <button type="button" key={tile.label} onClick={tile.action}>
+                <span>{tile.label}</span>
+                <strong>{tile.value}</strong>
+                <small>{tile.detail}</small>
+              </button>
+            ))}
           </section>
-        ) : null}
-
-        <section className="panel kids-program-layout spark-program-layout spark-mockup-program-layout">
-          <section id="spark-program-sections" className="spark-section-block" aria-label="Kids Program sections">
-            <div className="compact-card-header">
+          <section className="spark-v4-activity-panel" aria-label="Spark activity ledger">
+            <div className="spark-v4-panel-heading compact">
               <div>
-                <h3>What The Spark supports</h3>
-                <p>Mission areas for family collecting support, learning, donations, and trusted helpers.</p>
+                <span>Records and proof</span>
+                <h3>Spark Activity Ledger</h3>
+                <p>Recent kid packs, support gifts, and event support plans stay visible as review records after they are saved locally.</p>
               </div>
             </div>
-            <div className="spark-section-grid">
-              {sparkMissionCards.map((section) => (
-                <article className="spark-section-card" key={section.key}>
-                  <span className="spark-section-icon" aria-hidden="true">{section.icon}</span>
+            <div className="spark-v4-activity-grid">
+              <article>
+                <strong>Kid Packs</strong>
+                <div className="spark-v4-record-list">
+                  {recentSparkKidPacks.length ? recentSparkKidPacks.map(renderSparkKidPackRow) : <small>No kid packs planned yet.</small>}
+                </div>
+              </article>
+              <article>
+                <strong>Giving Ledger</strong>
+                <div className="spark-v4-record-list">
+                  {recentSparkGifts.length ? recentSparkGifts.map(renderSparkGiftRow) : <small>No Spark Gifts logged yet.</small>}
+                </div>
+              </article>
+              <article>
+                <strong>Event Support Planner</strong>
+                <div className="spark-v4-record-list">
+                  {recentSparkEventPlans.length ? recentSparkEventPlans.map(renderSparkEventSupportRow) : <small>No Event Support plans yet.</small>}
+                </div>
+              </article>
+            </div>
+          </section>
+          <section id="spark-program-sections" className="spark-v4-program-panel" aria-label="What Spark Impact supports">
+            <div className="spark-v4-panel-heading compact">
+              <div>
+                <span>Mission areas</span>
+                <h3>What Spark Impact supports</h3>
+                <p>Kid packs, access support, learning, trusted helpers, events, and donation tracking stay parent-safe and review-led.</p>
+              </div>
+            </div>
+            <div className="spark-v4-mission-grid">
+              {sparkMissionCards.slice(0, 6).map((section) => (
+                <article key={section.key}>
                   <strong>{section.title}</strong>
                   <p>{section.detail}</p>
                 </article>
               ))}
             </div>
-            <div className="spark-support-examples" aria-label="The Spark support examples">
-              {sparkSupportExamples.map((item) => <span key={item}>{item}</span>)}
+          </section>
+          <section id="spark-safety-rules" className="spark-v4-safety-panel" aria-label="Kids Program safety rules">
+            <div className="spark-v4-panel-heading compact">
+              <div>
+                <span>Safety rules</span>
+                <h3>Parent-safe by design</h3>
+                <p>These rules apply before any request, support record, event, reward, or trade can move forward.</p>
+              </div>
+              <button type="button" onClick={openSparkDonate}>Support Review</button>
+            </div>
+            <div className="spark-v4-rule-grid">
+              {sparkSafetyRules.map((rule) => <article key={rule}><strong>{rule}</strong></article>)}
             </div>
           </section>
-
-          <section className="spark-donation-tracking-panel" aria-label="Donation tracking categories">
-            <div className="compact-card-header">
+          <form id="spark-request-flow" className="spark-v4-request-panel" onSubmit={submitKidsProgramApplication} noValidate>
+            <div className="spark-v4-panel-heading compact">
               <div>
-                <h3>Donation tracking</h3>
-                <p>Track more than cards. The Spark can organize the support families actually use.</p>
-              </div>
-              <span className="trust-badge trust-badge--kid">Broad support</span>
-            </div>
-            <div className="spark-donation-group-grid">
-              {sparkDonationGroups.map((group) => (
-                <article className="spark-donation-group-card" key={group.title}>
-                  <strong>{group.title}</strong>
-                  <div>
-                    {group.items.map((item) => <span key={item}>{item}</span>)}
-                  </div>
-                </article>
-              ))}
-            </div>
-            <button type="button" className="secondary-button spark-donation-route-button" onClick={openSparkDonate}>Open Donate preview</button>
-          </section>
-
-          <section className="spark-participation-panel" aria-label="Spark participation paths">
-            <div className="compact-card-header">
-              <div>
-                <h3>Who can help</h3>
-                <p>Participation stays parent-safe, admin-reviewed, and focused on fair family access.</p>
-              </div>
-            </div>
-            <div className="spark-participation-grid">
-              {sparkParticipationCards.map((card) => (
-                <article className="spark-participation-card" key={card.title}>
-                  <span>{card.badge}</span>
-                  <strong>{card.title}</strong>
-                  <p>{card.detail}</p>
-                </article>
-              ))}
-            </div>
-          </section>
-
-          <section className="spark-status-strip" aria-label="The Spark status">
-            {sparkSections.map((section) => (
-              <article className="spark-status-card" key={section.key}>
-                <span>{section.title}</span>
-                <strong>{section.value}</strong>
-                <p>{section.detail}</p>
-              </article>
-            ))}
-          </section>
-
-          <div className="spark-parent-safe-panel">
-            <div>
-              <h3>Parent-safe by design</h3>
-              <p>Ember & Tide is built with families in mind. The Spark is community-based and inventory-limited. Participation is managed by a parent or guardian.</p>
-            </div>
-            <ul className="clean-bullet-list">
-              {["No private child messaging.", "Admin-reviewed requests.", "Family-friendly community standards.", "Details stay private unless a parent chooses to share."].map((point) => <li key={point}>{point}</li>)}
-            </ul>
-          </div>
-
-          <section id="spark-safety-rules" className="spark-safety-rules-panel" aria-label="Kids Program safety rules">
-            <div className="compact-card-header">
-              <div>
-                <h3>Safety Rules</h3>
-                <p>These rules apply before any request, mission, giveaway, event, reward, or trade can move forward.</p>
-              </div>
-              <span className="trust-badge trust-badge--kid">Parent-safe</span>
-            </div>
-            <div className="spark-rule-grid">
-              {sparkSafetyRules.map((rule) => (
-                <div className="spark-rule-card" key={rule}>
-                  <span>Rule</span>
-                  <strong>{rule}</strong>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="spark-learning-panel" aria-label="Learn and grow topics">
-            <div className="compact-card-header">
-              <div>
-                <h3>Learn & Grow</h3>
-                <p>Simple collecting habits for families and new collectors.</p>
-              </div>
-            </div>
-            <div className="spark-learning-grid">
-              {sparkLearningCards.map((item) => <span key={item}>{item}</span>)}
-            </div>
-          </section>
-
-          {kidProgramEventCards.length ? (
-            <section className="spark-events-panel" aria-label="Family-friendly events">
-              <div className="compact-card-header">
-                <div>
-                  <h3>Events & giveaways</h3>
-                  <p>General area only. Exact private locations are not shown here.</p>
-                </div>
-                <span className="trust-badge trust-badge--kid">Family-friendly</span>
-              </div>
-              <div className="spark-event-list">
-                {kidProgramEventCards.map((project) => (
-                  <article className="spark-event-card" key={project.id}>
-                    <div>
-                      <strong>{project.name || "Kids Program event"}</strong>
-                      <p>{project.eventDate ? "Date set" : "Date coming soon"} · General area shared when confirmed</p>
-                    </div>
-                    <button type="button" className="secondary-button" onClick={openPokemonWatchCalendar}>View details</button>
-                  </article>
-                ))}
-              </div>
-            </section>
-          ) : (
-            <div className="empty-state spark-empty-state spark-event-empty-state">
-              <h3>The Spark is opening carefully.</h3>
-              <p>Join the mission with kids packs, giveaways, donation support, learning help, or family-friendly events when local opportunities are ready.</p>
-              <button type="button" onClick={scrollToSparkDetails}>Learn about The Spark</button>
-            </div>
-          )}
-
-          {!activeApplication ? (
-            <div className="empty-state spark-empty-state spark-request-empty-state">
-              <h3>No Kids Program request yet.</h3>
-              <p>Start with a parent-approved interest request or review the mission areas above. We cannot promise inventory, but The Spark helps Ember & Tide understand how local families want to participate.</p>
-              <div className="quick-actions">
-                <button type="button" onClick={scrollToSparkRequest}>Request access</button>
-                <button type="button" className="secondary-button" onClick={scrollToSparkRules}>View Rules</button>
-              </div>
-            </div>
-          ) : (
-            <div className="spark-private-request-card">
-              <div>
-                <span>Request status</span>
-                <h3>Your request is private</h3>
-                <p>Status: {sparkProgramStatusLabel(activeApplication.status || "interest_submitted")}. Child/family request details are not public.</p>
-              </div>
-              <span className="status-badge">{sparkProgramStatusLabel(activeApplication.status || "interest_submitted")}</span>
-            </div>
-          )}
-
-          {safeKidProgramProjects.length ? (
-            <section className="spark-private-request-card spark-program-projects-card" aria-label="Private Kids Program project activity">
-              <div>
-                <span>Private activity</span>
-                <h3>Private family-safe plans</h3>
-                <p>Pack plans, events, and giveaway prep are shown only in your signed-in view. Child/family details and admin notes are not public.</p>
-              </div>
-              <div className="home-list compact-home-list">
-                {safeKidProgramProjects.map((project) => {
-                  const itemCount = phase2KidProjectItemCounts[project.id] || 0;
-                  const statusLabel = String(project.status || "planning").replace(/_/g, " ");
-                  return (
-                    <div className="home-list-row" key={project.id}>
-                      <span>
-                        <strong>{project.name || "Kids Program plan"}</strong>
-                        <small>
-                          {project.targetPackCount || 0} planned pack{Number(project.targetPackCount || 0) === 1 ? "" : "s"}
-                          {" | "}
-                          {itemCount} item{itemCount === 1 ? "" : "s"}
-                          {project.eventDate ? ` | Event date set` : ""}
-                        </small>
-                      </span>
-                      <b>{statusLabel}</b>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          ) : null}
-
-          <form id="spark-request-flow" className="form beta-form-card spark-request-flow" onSubmit={submitKidsProgramApplication} noValidate>
-            <div className="spark-request-heading">
-              <div>
+                <span>Parent request</span>
                 <h3>Request The Spark access</h3>
                 <p>Step {kidsProgramRequestStep} of 5: {requestSteps[kidsProgramRequestStep - 1]}</p>
               </div>
-              <span className="status-badge">Parent managed</span>
+              <strong>{requestAccessSummary}</strong>
             </div>
-            <div className="spark-stepper" aria-label="Kids request steps">
+            <div className="spark-v4-stepper compact" aria-label="Kids request steps">
               {requestSteps.map((step, index) => {
                 const stepNumber = index + 1;
                 return (
@@ -815,163 +525,119 @@ export default function SparkPage(props) {
                 );
               })}
             </div>
-
-            {kidsProgramRequestStep === 1 ? (
-              <div className="spark-flow-panel">
-                <h4>Child/family request</h4>
-                <p className="compact-subtitle">Use a first name or nickname only. We do not ask for exact birthdates, IDs, or public child profiles.</p>
-                <Field label="Parent/guardian name">
-                  <input value={kidsProgramForm.parentName} onChange={(event) => updateKidsProgramField("parentName", event.target.value)} placeholder="Parent or guardian" />
-                </Field>
-                <div className="inline-input-grid">
-                  <Field label="Home ZIP private">
-                    <input value={kidsProgramForm.zipCode} onChange={(event) => updateKidsProgramField("zipCode", event.target.value)} inputMode="numeric" />
-                  </Field>
-                  <Field label="Child age range">
-                    <select value={kidsProgramForm.childAgeRange} onChange={(event) => updateKidsProgramField("childAgeRange", event.target.value)}>
-                      <option value="">Choose range</option>
-                      <option value="under_6">Under 6</option>
-                      <option value="6_8">6-8</option>
-                      <option value="9_12">9-12</option>
-                      <option value="13_17">13-17</option>
-                    </select>
-                  </Field>
-                </div>
-                <Field label="Child first name or nickname optional">
-                  <input value={kidsProgramForm.childFirstName} onChange={(event) => updateKidsProgramField("childFirstName", event.target.value)} placeholder="First name or nickname only" />
-                </Field>
-              </div>
-            ) : null}
-
-            {kidsProgramRequestStep === 2 ? (
-              <div className="spark-flow-panel">
-                <h4>Product wanted</h4>
-                <p className="compact-subtitle">Tell us interests, not guarantees. The Spark can only help when safe inventory, giveaways, or family opportunities are available.</p>
-                <Field label="Favorite Pokemon or product">
-                  <input value={kidsProgramForm.favoritePokemon} onChange={(event) => updateKidsProgramField("favoritePokemon", event.target.value)} placeholder="Pikachu, ETB, binder, starter deck..." />
-                </Field>
-                <Field label="What are they collecting right now?">
-                  <textarea value={kidsProgramForm.collectingInterest} onChange={(event) => updateKidsProgramField("collectingInterest", event.target.value)} placeholder="Tell us what would help them collect safely." />
-                </Field>
-                <Field label="What are you hoping to access?">
-                  <div className="checkbox-grid">
-                    {KIDS_PROGRAM_ACCESS_OPTIONS.map((option) => (
-                      <label key={option}>
-                        <input
-                          type="checkbox"
-                          checked={kidsProgramForm.requestedAccess.includes(option)}
-                          onChange={() => updateKidsProgramField("requestedAccess", toggleArrayValue(kidsProgramForm.requestedAccess, option))}
-                        />
-                        <span>{option}</span>
-                      </label>
-                    ))}
-                  </div>
-                </Field>
-              </div>
-            ) : null}
-
-            {kidsProgramRequestStep === 3 ? (
-              <div className="spark-flow-panel">
-                <h4>Parent contact/settings</h4>
-                <Field label="Parent email">
-                  <input type="email" value={kidsProgramForm.email || email} onChange={(event) => updateKidsProgramField("email", event.target.value)} placeholder="you@example.com" />
-                </Field>
-                <Field label="Parent note optional">
-                  <textarea value={kidsProgramForm.reason} onChange={(event) => updateKidsProgramField("reason", event.target.value)} placeholder="Anything we should know before review?" />
-                </Field>
-                <p className="compact-subtitle">We do not expose child/family request details publicly. Admin notes stay internal.</p>
-              </div>
-            ) : null}
-
-            {kidsProgramRequestStep === 4 ? (
-              <div className="spark-flow-panel">
-                <h4>Review rules</h4>
-                <div className="spark-rule-grid compact">
-                  {sparkSafetyRules.map((rule) => <div className="spark-rule-card" key={rule}><strong>{rule}</strong></div>)}
-                </div>
-                <label className="checkbox-row">
-                  <input type="checkbox" checked={kidsProgramForm.agreesNoResale} onChange={(event) => updateKidsProgramField("agreesNoResale", event.target.checked)} />
-                  <span>I understand Kids Program items are intended for children and families, not resale.</span>
-                </label>
-                <label className="checkbox-row">
-                  <input type="checkbox" checked={kidsProgramForm.consentContact} onChange={(event) => updateKidsProgramField("consentContact", event.target.checked)} />
-                  <span>I agree Ember & Tide may contact me about Kids Program opportunities.</span>
-                </label>
-              </div>
-            ) : null}
-
-            {kidsProgramRequestStep === 5 ? (
-              <div className="spark-flow-panel spark-review-panel">
-                <h4>Review and submit</h4>
-                <div className="catalog-detail-grid">
-                  <DetailItem label="Parent" value={kidsProgramForm.parentName || "Missing"} />
-                  <DetailItem label="Contact" value={kidsProgramForm.email || email || "Missing"} />
-                  <DetailItem label="Age range" value={kidsProgramForm.childAgeRange || "Not selected"} />
-                  <DetailItem label="Product wanted" value={kidsProgramForm.favoritePokemon || "Not provided"} />
-                  <DetailItem label="Request type" value={requestAccessSummary} />
-                  <DetailItem label="Rules" value={kidsProgramForm.agreesNoResale && kidsProgramForm.consentContact ? "Accepted" : "Needs review"} />
-                </div>
-                <p className="compact-subtitle">Submit sends a private parent/family interest request. Fulfillment is not guaranteed and depends on inventory, fairness review, and program availability.</p>
-              </div>
-            ) : null}
-
-            <div className="spark-flow-actions">
-              {kidsProgramRequestStep > 1 ? (
-                <button type="button" className="secondary-button" onClick={() => setKidsProgramRequestStep((current) => Math.max(1, current - 1))}>Back</button>
-              ) : null}
-              {kidsProgramRequestStep < 5 ? (
-                <button type="button" onClick={() => setKidsProgramRequestStep((current) => Math.min(5, current + 1))}>Next</button>
-              ) : (
-                <button type="submit">{guestPreviewActive ? "Create account to apply" : "Submit request"}</button>
-              )}
+            <div className="spark-v4-form-grid">
+              <Field label="Parent/guardian name">
+                <input value={kidsProgramForm.parentName} onChange={(event) => updateKidsProgramField("parentName", event.target.value)} placeholder="Parent or guardian" />
+              </Field>
+              <Field label="Parent email">
+                <input type="email" value={kidsProgramForm.email || email} onChange={(event) => updateKidsProgramField("email", event.target.value)} placeholder="you@example.com" />
+              </Field>
+              <Field label="Home ZIP private">
+                <input value={kidsProgramForm.zipCode} onChange={(event) => updateKidsProgramField("zipCode", event.target.value)} inputMode="numeric" />
+              </Field>
+              <Field label="Child age range">
+                <select value={kidsProgramForm.childAgeRange} onChange={(event) => updateKidsProgramField("childAgeRange", event.target.value)}>
+                  <option value="">Choose range</option>
+                  <option value="under_6">Under 6</option>
+                  <option value="6_8">6-8</option>
+                  <option value="9_12">9-12</option>
+                  <option value="13_17">13-17</option>
+                </select>
+              </Field>
+            </div>
+            <Field label="What would help them collect safely?">
+              <textarea value={kidsProgramForm.collectingInterest} onChange={(event) => updateKidsProgramField("collectingInterest", event.target.value)} placeholder="Cards, binder, starter deck, learning event, safe trading help..." />
+            </Field>
+            <div className="spark-v4-request-actions">
+              <label>
+                <input type="checkbox" checked={kidsProgramForm.agreesNoResale} onChange={(event) => updateKidsProgramField("agreesNoResale", event.target.checked)} />
+                <span>Items are intended for children and families, not resale.</span>
+              </label>
+              <label>
+                <input type="checkbox" checked={kidsProgramForm.consentContact} onChange={(event) => updateKidsProgramField("consentContact", event.target.checked)} />
+                <span>Parent/guardian agrees to be contacted for review.</span>
+              </label>
+              <button type="submit">{guestPreviewActive ? "Create account to apply" : "Submit request"}</button>
             </div>
           </form>
-        </section>
         </div>
+      ),
+    });
 
-        <EtMockupRightRail
-          title="Parent-safe support"
-          detail="Ways families, shops, and sponsors can help without private child messaging or payment processing."
-          className="spark-mockup-rail"
-        >
-          <EtMockupSectionCard
-            title="Help The Spark"
-            detail="Public beta interest only. Requests are reviewed before anything becomes public."
-            className="spark-mockup-rail-card"
-            action={<EtMockupPill tone="beta">Preview only</EtMockupPill>}
-          >
-            <div className="et-mockup-action-stack">
-              <EtMockupActionCard title="Donate / support preview" detail="Cards, sealed products, packs, supplies, events, time, or services." icon="spark" tone="gold" onClick={openSparkDonate} />
-              <EtMockupActionCard title="Plan event support" detail="Local-only support notes for supplies, volunteers, sponsors, and shops." icon="spark" tone="gold" onClick={() => openSparkEventSupportFlow({ source: "spark-rail-event-support" })} />
-              <EtMockupActionCard title="Sponsor or shop interest" detail="Share interest for drop-off days, learning tables, or fair access support." icon="market" tone="gold" onClick={() => openPublicBetaFeedback({ page: "The Spark", role: "Sponsor / Donor", mainReason: "Sponsor / donate to The Spark", interests: ["The Spark kids program", "Shop partnership"] })} />
-              <EtMockupActionCard title="Request family access" detail="Parent-managed and admin-reviewed. No private child messaging." icon="spark" tone="pink" onClick={activeApplication ? scrollToSparkDetails : scrollToSparkRequest} />
-            </div>
-          </EtMockupSectionCard>
-
-          <EtMockupSectionCard
-            title="Spark guardrails"
-            detail="The Spark is a safe support preview, not a public child directory or payment flow."
-            className="spark-mockup-rail-card"
-          >
-            <div className="spark-rule-grid compact">
-              {["No private child messaging.", "Parent-safe requests.", "No payment processed.", "Admin-reviewed requests."].map((rule) => (
-                <div className="spark-rule-card" key={rule}>
-                  <strong>{rule}</strong>
+    const renderSparkV4DonatePage = () => renderSparkV4Board({
+      mode: "donate",
+      title: "Spark Support Review",
+      description: "A reviewed support-intent flow for item donations, volunteer help, sponsor interest, proof, and safe family impact. No payment or receipt backend is connected here.",
+      children: (
+        <div className="spark-v4-command-content spark-v4-command-content-donate">
+          <div className="spark-v4-main-stack">
+            {renderSparkV4ReviewPanel()}
+            <section className="spark-v4-donation-panel" aria-label="Donation categories">
+              <div className="spark-v4-panel-heading compact">
+                <div>
+                  <span>Support categories</span>
+                  <h3>What can be reviewed</h3>
+                  <p>Cards, sealed product, supplies, prizes, gift cards, event support, volunteer time, services, and shipping help can be logged as reviewed support interest.</p>
                 </div>
+                <button type="button" onClick={openSparkThanks}>Preview Submit</button>
+              </div>
+              <div className="spark-v4-category-rack large">
+                {sparkDonationCategories.map((category) => <span key={category}>{category}</span>)}
+              </div>
+            </section>
+          </div>
+          {renderSparkV4SideRail()}
+        </div>
+      ),
+    });
+
+    const renderSparkV4ThankYouPage = () => renderSparkV4Board({
+      mode: "thank-you",
+      title: "Support Interest Queued",
+      description: "Your Spark support preview is queued for review before it counts toward impact. Nothing is charged, posted, shipped, or fulfilled from this screen.",
+      children: (
+        <div className="spark-v4-command-content spark-v4-command-content-thanks">
+          <section className="spark-v4-confirmation-panel" aria-label="Spark support confirmation">
+            <div className="spark-v4-panel-heading">
+              <div>
+                <span>Queued for review</span>
+                <h2>Support interest queued for review.</h2>
+                <p>Review protects families, children, helpers, shops, and sponsors before support becomes part of Spark Impact.</p>
+              </div>
+              <strong>Queued</strong>
+            </div>
+            <div className="spark-v4-confirmation-grid">
+              {sparkImpactStories.map((story) => (
+                <article key={story.title}>
+                  <strong>{story.title}</strong>
+                  <p>{story.body}</p>
+                </article>
               ))}
             </div>
-          </EtMockupSectionCard>
+            <div className="spark-v4-stepper">
+              {sparkDonationReviewSteps.map((step, index) => (
+                <article className={index === 0 ? "active" : ""} key={step.label}>
+                  <span>{index + 1}</span>
+                  <div>
+                    <strong>{index === 0 ? "Queued" : step.label}</strong>
+                    <small>{step.detail}</small>
+                  </div>
+                  <em>{index === 0 ? "Active" : step.status}</em>
+                </article>
+              ))}
+            </div>
+            <div className="spark-v4-request-actions">
+              <button type="button" onClick={openSparkHome}>View Impact</button>
+              <button type="button" onClick={openSparkDonate}>Add Another Support Preview</button>
+            </div>
+          </section>
+          {renderSparkV4SideRail()}
+        </div>
+      ),
+    });
 
-          <div className="spark-status-strip spark-mockup-status-rail" aria-label="The Spark status">
-            {sparkSections.map((section) => (
-              <article className="spark-status-card" key={section.key}>
-                <span>{section.title}</span>
-                <strong>{section.value}</strong>
-                <p>{section.detail}</p>
-              </article>
-            ))}
-          </div>
-        </EtMockupRightRail>
-      </EtMockupPageShell>
-    );
+    if (sparkFlowView === "donate") return renderSparkV4DonatePage();
+    if (sparkFlowView === "thank-you") return renderSparkV4ThankYouPage();
+    if (sparkFlowView === "request") return renderSparkV4HomePage("request");
+    return renderSparkV4HomePage();
   }
