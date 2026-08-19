@@ -1933,7 +1933,7 @@ async function main() {
     await step("app opens and local beta shell loads", async () => {
       await resetBetaData();
       await assertVisibleText("Private Business Hub");
-      await assertVisibleText("Business snapshot");
+      await assertVisibleText("Buying budget");
       await assertVisibleText("Home");
     });
 
@@ -1961,8 +1961,11 @@ async function main() {
       await assertVisibleText("Scan Listing");
       await assertVisibleText("Analyze Deal");
       await assertVisibleText("Add Collection Item");
-      await assertVisibleText("Add Resale Inventory");
+      await assertNotVisibleText("Add Resale Inventory");
       await assertNotVisibleText("Add Kids Pack");
+      await quickAddModal.locator("summary", { hasText: "More actions" }).click();
+      await assertVisibleText("Add Resale Inventory");
+      await assertVisibleText("Add Kids Pack");
       await quickAddModal.locator(".modal-close-button").click();
       await quickAddModal.waitFor({ state: "hidden", timeout: 5000 });
     });
@@ -3923,8 +3926,8 @@ async function main() {
   await step("Home: totals update", async () => {
     await nav("Home");
     await assertVisibleText("Needs Attention");
-    await assertVisibleText("Best Opportunities");
-    await assertVisibleText("Business Snapshot");
+    await assertVisibleText("Best Opportunity");
+    await assertVisibleText("Buying budget");
     await assertVisibleText("Recent Activity");
     await assertNotVisibleText("Hearth Command Center");
   });

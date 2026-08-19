@@ -6829,7 +6829,7 @@ export default function App() {
   const [homeSubTab, setHomeSubTab] = useState(initialRouteState.homeSubTab || "overview");
   const [flipScoutView, setFlipScoutView] = useState(initialRouteState.flipScoutView || "deals");
   const [collectionWorkspaceView, setCollectionWorkspaceView] = useState(initialRouteState.collectionWorkspaceView || "collection");
-  const [businessWorkspaceView, setBusinessWorkspaceView] = useState(initialRouteState.businessWorkspaceView || "purchases");
+  const [businessWorkspaceView, setBusinessWorkspaceView] = useState(initialRouteState.businessWorkspaceView || "overview");
   const [businessMoneyView, setBusinessMoneyView] = useState(initialRouteState.businessMoneyView || "expenses");
   const [ownerCenterSection, setOwnerCenterSection] = useState(initialRouteState.ownerCenterSection || "overview");
   const [ownerCenterSubview, setOwnerCenterSubview] = useState(initialRouteState.ownerCenterSubview || "");
@@ -8730,7 +8730,7 @@ export default function App() {
     if (tab.key === "business" || tab.target === "businessWorkspace") {
       setQuickAddMenuOpen(false);
       setSearchExpanded(false);
-      setBusinessWorkspaceView("purchases");
+      setBusinessWorkspaceView("overview");
       setActiveTab("businessWorkspace");
       return;
     }
@@ -35300,7 +35300,7 @@ function renderForgeBusinessLedgerPanel() {
       return routeByView[flipScoutView] || "/find/deals";
     }
     if (activeTab === "collectionWorkspace") return collectionWorkspaceView === "collection" ? "/collection" : `/collection/${encodeURIComponent(collectionWorkspaceView)}`;
-    if (activeTab === "businessWorkspace") return businessWorkspaceView === "money" ? `/business/money/${encodeURIComponent(businessMoneyView)}` : `/business/${encodeURIComponent(businessWorkspaceView)}`;
+    if (activeTab === "businessWorkspace") return businessWorkspaceView === "money" ? `/business/money/${encodeURIComponent(businessMoneyView)}` : businessWorkspaceView === "overview" ? "/business" : `/business/${encodeURIComponent(businessWorkspaceView)}`;
     if (activeTab === "ownerCenter") return ownerCenterSubview ? `/owner-center/${encodeURIComponent(ownerCenterSection)}/${encodeURIComponent(ownerCenterSubview)}` : `/owner-center/${encodeURIComponent(ownerCenterSection)}`;
     if (activeTab === "scout") {
       if (activeScoutPage === "stores" && scoutSubTabTarget.storeId) return `/scout/stores/${encodeURIComponent(scoutSubTabTarget.storeId)}`;
@@ -51373,28 +51373,23 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       window.setTimeout(() => openFlipScoutView(screen, subview), 0);
     };
     const entryOptions = [
-      { key: "scan-listing", title: "Scan Listing", helper: "Start a review-first scan or screenshot workflow.", icon: "scan", tone: "search", onClick: () => setQuickAddPath("scanAnything") },
-      { key: "analyze-deal", title: "Analyze Deal", helper: "Review costs, resale assumptions, profit, and ROI.", icon: "find", tone: "search", onClick: () => openFindAction("appraise") },
-      { key: "add-auction", title: "Add Auction", helper: "Track timing, fees, risk, and your maximum bid.", icon: "calendar", tone: "search", onClick: () => openFindAction("auctions", "new") },
-      { key: "record-purchase", title: "Record Purchase", helper: "Create a purchase and split it into lots or items.", icon: "clipboard", tone: "forge", onClick: () => openFindAction("records", "purchases") },
-      { key: "add-collection-item", title: "Add Collection Item", helper: "Add an owned item with a personal-collection purpose.", icon: "inventory", tone: "vault", onClick: () => { closeFlowModal({ force: true }); window.setTimeout(() => openProductAddFlow({ source: "global-add-collection", seed: { ownedItemPurpose: OWNED_ITEM_PURPOSES.PERSONAL_COLLECTION }, destinations: { vault: true } }), 0); } },
-      { key: "add-resale-inventory", title: "Add Resale Inventory", helper: "Add an owned item with real cost basis and a resale purpose.", icon: "inventory", tone: "forge", onClick: () => { closeFlowModal({ force: true }); window.setTimeout(() => openProductAddFlow({ source: "global-add-resale", seed: { ownedItemPurpose: OWNED_ITEM_PURPOSES.FOR_RESALE }, destinations: { forge: Boolean(activeForgeWorkspace), vault: !activeForgeWorkspace } }), 0); } },
-      { key: "record-sale", title: "Record Sale", helper: "Record proceeds, fees, shipping, and realized profit.", icon: "sell", tone: "forge", onClick: () => openFindAction("records", "sales") },
-      { key: "add-expense", title: "Add Expense", helper: "Create a bookkeeping record for a business cost.", icon: "business", tone: "forge", onClick: () => openFindAction("records", "expenses") },
-      { key: "add-mileage", title: "Add Mileage", helper: "Log a sourcing, pickup, delivery, or event trip.", icon: "map", tone: "forge", onClick: () => openFindAction("records", "mileage") },
-      { key: "add-receipt", title: "Add Receipt", helper: "Save purchase proof and review it before linking records.", icon: "clipboard", tone: "forge", onClick: () => setQuickAddPath("receipt") },
+      { key: "scan-listing", title: "Scan Listing", ariaLabel: "Scan Listing. Start a review-first scan or screenshot workflow.", icon: "scan", tone: "search", onClick: () => setQuickAddPath("scanAnything") },
+      { key: "analyze-deal", title: "Analyze Deal", ariaLabel: "Analyze Deal. Review costs, resale assumptions, profit, and ROI.", icon: "find", tone: "search", onClick: () => openFindAction("appraise") },
+      { key: "record-purchase", title: "Record Purchase", ariaLabel: "Record Purchase. Create a purchase and split it into lots or items.", icon: "clipboard", tone: "forge", onClick: () => openFindAction("records", "purchases") },
+      { key: "add-collection-item", title: "Add Collection Item", ariaLabel: "Add Collection Item with a personal collection purpose.", icon: "inventory", tone: "vault", onClick: () => { closeFlowModal({ force: true }); window.setTimeout(() => openProductAddFlow({ source: "global-add-collection", seed: { ownedItemPurpose: OWNED_ITEM_PURPOSES.PERSONAL_COLLECTION }, destinations: { vault: true } }), 0); } },
+      { key: "record-sale", title: "Record Sale", ariaLabel: "Record Sale with proceeds, fees, shipping, and realized profit.", icon: "sell", tone: "forge", onClick: () => openFindAction("records", "sales") },
     ];
-    const overflowEntryOptions = [];
+    const overflowEntryOptions = [
+      { key: "add-auction", title: "Add Auction", ariaLabel: "Add Auction with timing, fees, risk, and a maximum bid.", icon: "calendar", tone: "search", onClick: () => openFindAction("auctions", "new") },
+      { key: "add-resale-inventory", title: "Add Resale Inventory", ariaLabel: "Add Resale Inventory with cost basis and a resale purpose.", icon: "inventory", tone: "forge", onClick: () => { closeFlowModal({ force: true }); window.setTimeout(() => openProductAddFlow({ source: "global-add-resale", seed: { ownedItemPurpose: OWNED_ITEM_PURPOSES.FOR_RESALE }, destinations: { forge: Boolean(activeForgeWorkspace), vault: !activeForgeWorkspace } }), 0); } },
+      { key: "add-expense", title: "Add Expense", ariaLabel: "Add Expense business record.", icon: "business", tone: "forge", onClick: () => openFindAction("records", "expenses") },
+      { key: "add-mileage", title: "Add Mileage", ariaLabel: "Add Mileage for a sourcing, pickup, delivery, or event trip.", icon: "map", tone: "forge", onClick: () => openFindAction("records", "mileage") },
+      { key: "add-receipt", title: "Add Receipt", ariaLabel: "Add Receipt and review it before linking records.", icon: "clipboard", tone: "forge", onClick: () => setQuickAddPath("receipt") },
+      ownerFeatureControls.kidsCommunity ? { key: "add-kids-pack", title: "Add Kids Pack", ariaLabel: "Add a parent-guided Kids and Community pack record.", icon: "spark", tone: "spark", onClick: () => { closeFlowModal({ force: true }); window.setTimeout(() => openSparkKidPackFlow({ source: "global-add" }), 0); } } : null,
+    ].filter(Boolean);
 
     return (
       <div className="add-anything-flow add-anything-entry">
-        <div className="add-anything-hero">
-          <div>
-            <strong>Add a record</strong>
-            <p>Choose a workflow. Nothing is purchased, offered, bid, or imported automatically.</p>
-          </div>
-          <span aria-hidden="true">+</span>
-        </div>
         <div className="add-anything-option-grid">
           {entryOptions.map((option) => (
             <button
@@ -51406,7 +51401,6 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             >
               <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed={option.icon || option.key} /></span>
               <strong>{option.title}</strong>
-              <small>{option.helper}</small>
             </button>
           ))}
         </div>
@@ -51436,17 +51430,15 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   type="button"
                   className={`add-anything-option add-anything-option--${option.tone || option.key}`}
                   onClick={option.onClick}
-                  aria-label={option.ariaLabel}
-                >
-                  <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed={option.icon || option.key} /></span>
-                  <strong>{option.title}</strong>
-                  <small>{option.helper}</small>
-                </button>
+                    aria-label={option.ariaLabel}
+                  >
+                    <span className="command-icon" aria-hidden="true"><CommandGlyphIcon seed={option.icon || option.key} /></span>
+                    <strong>{option.title}</strong>
+                  </button>
               ))}
             </div>
           </details>
         ) : null}
-        <p className="quick-add-missing-help">Every workflow opens a review step before a record is saved or changed.</p>
       </div>
     );
   }

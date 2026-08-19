@@ -8,8 +8,8 @@ import {
 } from "../constants.js";
 import { calculateLandedCost } from "../calculations.js";
 import { formatCurrency, formatPercent, sortFlipScoutRecords, timingIndicator } from "../selectors.js";
-import { CheckField, EmptyState, FormActions, MoneyInput, NumberInput, RecordActions, SectionHeading, SelectInput, StatusPill, TextArea, TextInput } from "../components/Fields.jsx";
-import { ConfidenceIndicator, DealCard, PrimaryButton, QuietButton, RiskIndicator, SourceBadge } from "../../../components/operations/OperationsUI.jsx";
+import { CheckField, EmptyState, FormActions, MoneyInput, NumberInput, SectionHeading, SelectInput, TextArea, TextInput } from "../components/Fields.jsx";
+import { DealCard, PrimaryButton, QuietButton } from "../../../components/operations/OperationsUI.jsx";
 import { DetailList, RecordDetailPage } from "../../../components/operations/RecordExperience.jsx";
 
 function blankDeal() {
@@ -58,12 +58,16 @@ function toForm(record = {}) {
   };
 }
 
-function toneForStatus(status) {
-  if (/strong/i.test(status)) return "good";
-  if (/offer|watch/i.test(status)) return "warning";
-  if (/pass|expired/i.test(status)) return "muted";
-  if (/purchased|sold/i.test(status)) return "tide";
-  return "neutral";
+function listingTiming(deal) {
+  if (deal.auctionEndTime && timingIndicator(deal.auctionEndTime)) return timingIndicator(deal.auctionEndTime).label;
+  const created = deal.listingCreatedAt || deal.dateDiscovered || deal.createdAt;
+  if (!created) return "Age not recorded";
+  const elapsed = Math.max(0, Date.now() - new Date(created).getTime());
+  const hours = Math.floor(elapsed / 3_600_000);
+  if (hours < 1) return "Found recently";
+  if (hours < 24) return `Found ${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `Found ${days}d ago`;
 }
 
 export default function DealsScreen({ deals, initialMode = "", onSave, onDelete, onAnalyze }) {
@@ -133,8 +137,9 @@ export default function DealsScreen({ deals, initialMode = "", onSave, onDelete,
         { label: "Projected ROI", value: selectedDeal.projectedRoi || selectedDeal.expectedRoi ? formatPercent(selectedDeal.projectedRoi || selectedDeal.expectedRoi) : "Not entered", numeric: true },
       ]}
       primaryAction={<PrimaryButton onClick={() => onAnalyze({ ...selectedDeal, purchasePrice: selectedDeal.askingPrice, purchaseTax: selectedDeal.estimatedTax })}>Analyze Deal</PrimaryButton>}
-      secondaryActions={<>{selectedDeal.listingUrl ? <a className="ops-button ops-button--secondary" href={selectedDeal.listingUrl} target="_blank" rel="noreferrer">Open Listing</a> : null}<QuietButton onClick={() => { edit(selectedDeal); setSelectedDeal(null); }}>Edit</QuietButton></>}
+      secondaryActions={<>{selectedDeal.listingUrl ? <a className="ops-button ops-button--secondary" href={selectedDeal.listingUrl} target="_blank" rel="noreferrer">Open Listing</a> : null}<QuietButton onClick={() => { edit(selectedDeal); setSelectedDeal(null); }}>Edit</QuietButton><QuietButton onClick={() => { if (onDelete("deals", selectedDeal.id, selectedDeal.title) !== false) setSelectedDeal(null); }}>Delete</QuietButton></>}
       sections={[
+        { title: "Decision", description: "Update the saved review status.", children: <div className="flip-detail-actions"><QuietButton onClick={() => updateStatus(selectedDeal, "Watching")}>Save to Watching</QuietButton><QuietButton onClick={() => updateStatus(selectedDeal, "Passed")}>Pass</QuietButton></div> },
         { title: "Listing", description: "Source-provided and manually entered details.", children: <DetailList items={[{ label: "Source", value: selectedDeal.marketplace }, { label: "External listing ID", value: selectedDeal.externalListingId }, { label: "Seller", value: selectedDeal.sellerName }, { label: "Seller rating", value: selectedDeal.sellerRating }, { label: "Listing type", value: selectedDeal.listingType }, { label: "Location", value: selectedDeal.location }, { label: "Distance", value: selectedDeal.distance ? `${selectedDeal.distance} mi` : "" }, { label: "Description", value: selectedDeal.description }]} /> },
         { title: "Costs and assumptions", description: "Active prices are not sold comparable records.", children: <DetailList items={[{ label: "Shipping", value: formatCurrency(selectedDeal.purchaseShipping) }, { label: "Estimated tax", value: formatCurrency(selectedDeal.estimatedTax) }, { label: "Buyer premium", value: formatCurrency(selectedDeal.buyerPremium) }, { label: "Pickup / travel", value: formatCurrency(selectedDeal.travelOrPickupCost) }, { label: "Preparation", value: formatCurrency(selectedDeal.preparationCost) }, { label: "Resale range", value: [selectedDeal.expectedResaleLow || selectedDeal.projectedResaleLow, selectedDeal.expectedResaleMid || selectedDeal.projectedResaleMid, selectedDeal.expectedResaleHigh || selectedDeal.projectedResaleHigh].filter(Boolean).map(formatCurrency).join(" / ") }, { label: "Confidence", value: selectedDeal.confidence }, { label: "Risk flags", value: (selectedDeal.riskFlags || []).join(", ") || "None recorded" }]} /> },
         { title: "Notes and source", description: "Why this record was surfaced and when it was checked.", children: <DetailList items={[{ label: "Why surfaced", value: selectedDeal.surfacedReason || selectedDeal.explanation }, { label: "Data source", value: selectedDeal.sourceDataExplanation }, { label: "Last checked", value: selectedDeal.lastCheckedAt ? new Date(selectedDeal.lastCheckedAt).toLocaleString() : "" }, { label: "Notes", value: selectedDeal.notes }]} /> },
@@ -148,9 +153,7 @@ export default function DealsScreen({ deals, initialMode = "", onSave, onDelete,
     <div className="flip-screen">
       <section className="flip-section">
         <SectionHeading
-          eyebrow="Deal feed"
-          title="Listings ready for review"
-          detail="Manual entries and reviewed eBay imports appear here. Active asking prices are not sold comparable records and do not establish resale value."
+          title="Deal Feed"
           actions={<button type="button" className="primary-button" onClick={() => { setForm(blankDeal()); setFormOpen((open) => !open); }}>{formOpen ? "Close form" : "Paste Listing"}</button>}
         />
         {formOpen ? (
@@ -198,32 +201,22 @@ export default function DealsScreen({ deals, initialMode = "", onSave, onDelete,
       <section className="flip-section">
         <div className="flip-filter-bar">
           <TextInput label="Search listings" value={query} onChange={setQuery} placeholder="Title, source, seller, tag…" />
-          <SelectInput label="Status" value={statusFilter} onChange={setStatusFilter} options={["All", ...DEAL_STATUSES]} />
-          <SelectInput label="Sort" value={sort} onChange={setSort} options={SORT_OPTIONS} />
+          <details className="flip-filter-menu">
+            <summary>Filter</summary>
+            <div><SelectInput label="Status" value={statusFilter} onChange={setStatusFilter} options={["All", ...DEAL_STATUSES]} /><SelectInput label="Sort" value={sort} onChange={setSort} options={SORT_OPTIONS} /></div>
+          </details>
         </div>
         {visibleDeals.length ? (
           <div className="flip-record-list flip-deal-feed">
             {visibleDeals.map((deal) => (
               <DealCard key={deal.id} image={(deal.imageReferences || [])[0] || ""} imageAlt="">
                 <div className="flip-deal-card__body">
-                  <div className="flip-record-card__head"><div><SourceBadge>{deal.marketplace || "Manual source"}</SourceBadge><h3>{deal.title || "Untitled listing"}</h3></div><StatusPill tone={toneForStatus(deal.status)}>{deal.status || "New"}</StatusPill></div>
-                  <div className="flip-deal-price-row">
-                    <span>{deal.currentBid ? "Current bid" : "Price"}<strong>{formatCurrency(deal.currentBid || deal.askingPrice)}</strong>{deal.purchaseShipping ? <small>+ {formatCurrency(deal.purchaseShipping)} shipping</small> : null}</span>
-                    <span>Estimated landed cost<strong>{formatCurrency(deal.landedCost ?? calculateLandedCost({ ...deal, purchasePrice: deal.askingPrice, purchaseTax: deal.estimatedTax }))}</strong></span>
-                  </div>
-                  {(deal.expectedResaleLow || deal.expectedResaleMid || deal.expectedResaleHigh || deal.projectedResaleLow || deal.projectedResaleMid || deal.projectedResaleHigh) ? <div className="flip-deal-resale"><span>Projected resale</span><strong>{[deal.expectedResaleLow || deal.projectedResaleLow, deal.expectedResaleMid || deal.projectedResaleMid, deal.expectedResaleHigh || deal.projectedResaleHigh].map((value) => value ? formatCurrency(value) : "—").join(" / ")}</strong></div> : null}
-                  {(deal.projectedProfit || deal.expectedProfit || deal.projectedRoi || deal.expectedRoi) ? <div className="flip-deal-outcome-row">{deal.projectedProfit || deal.expectedProfit ? <span>Projected profit <strong>{formatCurrency(deal.projectedProfit || deal.expectedProfit)}</strong></span> : null}{deal.projectedRoi || deal.expectedRoi ? <span>Projected ROI <strong>{formatPercent(deal.projectedRoi || deal.expectedRoi)}</strong></span> : null}</div> : null}
-                  <div className="ops-indicator-row"><ConfidenceIndicator value={deal.confidence || "Not set"} /><RiskIndicator value={deal.riskLevel || (deal.riskFlags?.length ? "Flagged" : "Not set")} /></div>
-                  <div className="flip-deal-meta"><span>{deal.productClassification || "Unknown classification"}</span>{deal.distance ? <span>{deal.distance} mi away</span> : null}{deal.auctionEndTime && timingIndicator(deal.auctionEndTime) ? <StatusPill tone={timingIndicator(deal.auctionEndTime).tone}>{timingIndicator(deal.auctionEndTime).label}</StatusPill> : deal.listingCreatedAt ? <span>Listed {new Date(deal.listingCreatedAt).toLocaleDateString()}</span> : null}</div>
-                  {deal.riskFlags?.length ? <div className="flip-risk-row">{deal.riskFlags.slice(0, 3).map((flag) => <StatusPill tone="danger" key={flag}>{flag}</StatusPill>)}</div> : null}
-                  {deal.surfacedReason || deal.explanation ? <p className="flip-surface-reason"><strong>Why it surfaced:</strong> {deal.surfacedReason || deal.explanation}</p> : null}
-                  <div className="flip-deal-actions">
-                    <button type="button" className="primary-button" onClick={() => setSelectedDeal(deal)}>Review</button>
-                    {deal.listingUrl ? <a className="secondary-button" href={deal.listingUrl} target="_blank" rel="noreferrer">Open Listing</a> : null}
-                    <button type="button" className="secondary-button" onClick={() => updateStatus(deal, "Watching")}>Save</button>
-                    <button type="button" className="ghost-button" onClick={() => updateStatus(deal, "Passed")}>Pass</button>
-                  </div>
-                  <details className="flip-record-more"><summary>Record details</summary><div>{deal.sourceDataExplanation ? <p className="flip-source-note">{deal.sourceDataExplanation}</p> : null}{deal.lastCheckedAt ? <small>Source last checked {new Date(deal.lastCheckedAt).toLocaleString()}</small> : null}<RecordActions onEdit={() => edit(deal)} onDelete={() => onDelete("deals", deal.id, deal.title)} /></div></details>
+                  <span className="flip-deal-source">{deal.marketplace || "Manual source"}</span>
+                  <h3>{deal.title || "Untitled listing"}</h3>
+                  <div className="flip-deal-summary"><span>{deal.currentBid ? "Current bid" : "Price"}<strong>{formatCurrency(deal.currentBid || deal.askingPrice)}</strong></span><span>Projected profit<strong>{deal.projectedProfit || deal.expectedProfit ? formatCurrency(deal.projectedProfit || deal.expectedProfit) : "Needs analysis"}</strong></span></div>
+                  <p className="flip-deal-signal">{deal.confidence || "Unrated"} confidence · {deal.riskLevel || (deal.riskFlags?.length ? "Flagged" : "Unrated")} risk</p>
+                  <time dateTime={deal.auctionEndTime || deal.listingCreatedAt || deal.dateDiscovered || deal.createdAt}>{listingTiming(deal)}</time>
+                  <button type="button" className="primary-button" onClick={() => setSelectedDeal(deal)}>Review</button>
                 </div>
               </DealCard>
             ))}

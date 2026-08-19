@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  ConfidenceIndicator,
   CurrencyInput,
   DealCard,
   EmptyState,
@@ -12,7 +11,6 @@ import {
   ProviderStatus,
   QuietButton,
   RecordCard,
-  RiskIndicator,
   SearchField,
   SectionHeader,
   SortControl,
@@ -50,7 +48,14 @@ const OWNER_SECTIONS = [
 ];
 
 function Tabs({ label, items, active, onChange }) {
-  return <div className="owner-tabs" role="tablist" aria-label={label}>{items.map((item) => <button key={item.key} type="button" role="tab" aria-selected={active === item.key} className={active === item.key ? "is-active" : ""} onClick={() => onChange(item.key)}>{item.label}</button>)}</div>;
+  const primary = items.slice(0, 3);
+  const overflow = items.slice(3);
+  const choose = (key, event) => {
+    const disclosure = event.currentTarget.closest(".owner-tabs")?.querySelector("details");
+    if (disclosure) disclosure.open = false;
+    onChange(key);
+  };
+  return <div className="owner-tabs" role="tablist" aria-label={label}>{primary.map((item) => <button key={item.key} type="button" role="tab" aria-selected={active === item.key} className={active === item.key ? "is-active" : ""} onClick={(event) => choose(item.key, event)}>{item.label}</button>)}{overflow.length ? <details className="owner-tabs-more"><summary>More</summary><div>{overflow.map((item) => <button key={item.key} type="button" role="tab" aria-selected={active === item.key} className={active === item.key ? "is-active" : ""} onClick={(event) => choose(item.key, event)}>{item.label}</button>)}</div></details> : null}</div>;
 }
 
 function displayMoney(value, empty = "Not enough data") {
@@ -68,32 +73,20 @@ function displayDate(value, empty = "Not recorded") {
   return time == null ? empty : new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" }).format(time);
 }
 
-function sourceCapability(source) {
-  const text = String(source || "").toLowerCase();
-  if (text.includes("ebay")) return "Connected";
-  if (text.includes("manual") || text.includes("local") || text.includes("storage") || text.includes("estate")) return "Manual Import";
-  if (text.includes("feed")) return "Feed Available";
-  if (text.includes("auth")) return "Authorization Required";
-  return "Manual Import";
-}
-
 function OpportunityCard({ row, onReview }) {
   const timeLabel = row.endAt ? `Ends ${displayDate(row.endAt)}` : row.discoveredAt ? `Found ${displayDate(row.discoveredAt)}` : "Timing not supplied";
   return (
     <DealCard image={row.image} imageAlt="">
       <div className="owner-opportunity-card__body">
-        <div className="owner-card-badges"><SourceBadge>{row.sourceLabel}</SourceBadge>{row.sourceType === "Auctions" ? <StatusBadge tone="neutral">{sourceCapability(row.sourceLabel)}</StatusBadge> : null}<StatusBadge tone={row.reviewed ? "neutral" : "warning"}>{row.reviewed ? "Reviewed" : "Needs review"}</StatusBadge></div>
+        <span className="owner-opportunity-source">{row.sourceLabel}</span>
         <h3>{row.title}</h3>
         <dl className="owner-financial-grid">
           <div><dt>Price / current bid</dt><dd>{displayMoney(row.price, "Not supplied")}</dd></div>
-          <div><dt>Estimated landed cost</dt><dd>{displayMoney(row.landedCost, "Not available")}</dd></div>
-          <div><dt>Expected resale</dt><dd>{row.resaleLow != null || row.resaleHigh != null ? `${displayMoney(row.resaleLow, "—")}–${displayMoney(row.resaleHigh, "—")}` : "Not supplied"}</dd></div>
           <div><dt>Expected profit</dt><dd>{displayMoney(row.profit, "Not available")}</dd></div>
           <div><dt>Expected ROI</dt><dd>{displayPercent(row.roi, "Not available")}</dd></div>
           <div><dt>Timing</dt><dd>{timeLabel}</dd></div>
         </dl>
-        <div className="owner-card-badges"><ConfidenceIndicator value={row.confidence} /><RiskIndicator value={row.risk} /></div>
-        <p className="owner-helper">Surfaced because it is an unreviewed or actively watched opportunity. Resale assumptions are shown only when recorded.</p>
+        <p className="owner-opportunity-signal">{row.confidence || "Unrated"} confidence · {row.risk || "Unrated"} risk</p>
         <PrimaryButton onClick={() => onReview?.(row)}>Review</PrimaryButton>
       </div>
     </DealCard>
@@ -154,34 +147,27 @@ function adaptRestockData(ownerState, scoutSnapshot, storeDirectory = []) {
   };
 }
 
-function OwnerOverview({ flipState, restocks, ebayHealth, onOpenSection, onReview }) {
+function OwnerOverview({ flipState, restocks, ebayHealth, onOpenSection }) {
   const opportunities = buildOpportunityFeed(flipState);
-  const awaiting = opportunities.filter((row) => !row.reviewed);
-  const highScore = opportunities.filter((row) => row.profit != null && row.roi != null && /high/i.test(row.confidence));
-  const ending = opportunities.filter((row) => isEndingSoon(row));
-  const likely = restocks.predictions.filter((row) => /high|moderate/i.test(row.confidence || ""));
-  const budget = asNumber(flipState.settings?.availableBuyingBudget);
-  const priorities = [
-    { label: "Listings needing review", count: awaiting.length, action: () => onOpenSection("sourcing", "all") },
-    { label: "Auctions ending soon", count: ending.filter((row) => row.sourceType === "Auctions").length, action: () => onOpenSection("sourcing", "auctions") },
-    { label: "Pickup deadlines", count: (flipState.auctions || []).filter((row) => row.pickupDeadline && timestamp(row.pickupDeadline) >= Date.now() && timestamp(row.pickupDeadline) - Date.now() < 2 * 86_400_000).length, action: () => onOpenSection("sourcing", "auctions") },
-    { label: "Likely restock windows", count: likely.length, action: () => onOpenSection("restocks", "live") },
-    { label: "Failed search rules", count: (flipState.searchRules || []).filter((row) => /failed|error/i.test(row.lastRunStatus || "")).length, action: () => onOpenSection("sourcing", "rules") },
-    { label: "Missing resale assumptions", count: opportunities.filter((row) => row.resaleLow == null && row.resaleMid == null && row.resaleHigh == null).length, action: () => onOpenSection("sourcing", "all") },
-  ].filter((row) => row.count > 0);
-  const eBayActivities = (flipState.activity || []).filter((row) => /ebay/i.test(`${row.title || ""} ${row.type || ""}`));
-  const imports = (flipState.providerListings || []).filter((row) => /imported/i.test(row.importStatus || row.status || ""));
-
-  return <div className="owner-section-stack">
-    <section><SectionHeader title="Opportunity overview" description="Current records only; no market value is inferred from active asking prices." /><div className="owner-metric-strip"><MetricCard label="New Opportunities" value={integer.format(awaiting.length)} /><MetricCard label="High-Score Deals" value={integer.format(highScore.length)} /><MetricCard label="Auctions Ending Soon" value={integer.format(ending.length)} /><MetricCard label="Likely Restocks" value={integer.format(likely.length)} /><MetricCard label="Listings Awaiting Review" value={integer.format(awaiting.length)} /><EmptyMetric label="Available Buying Budget" value={budget == null ? null : money.format(budget)} helper={budget == null ? "No budget has been configured." : "Owner-entered working budget."} /></div></section>
-    <section><SectionHeader title="Today’s Priorities" description="Only items with a current action are shown." />{priorities.length ? <div className="owner-priority-list">{priorities.map((row) => <button key={row.label} type="button" onClick={row.action}><span>{row.label}</span><strong>{row.count}</strong><span aria-hidden="true">›</span></button>)}</div> : <EmptyState title="No urgent priorities">New reviews, deadlines, failed rules, and missing assumptions will appear here.</EmptyState>}</section>
-    <section><SectionHeader title="Best Opportunities" description="Cross-source records with recorded financial assumptions rank first." />{opportunities.length ? <div className="owner-opportunity-list">{filterAndSortOpportunities(opportunities, {}, "best").slice(0, 5).map((row) => <OpportunityCard key={row.opportunityId} row={row} onReview={onReview} />)}</div> : <EmptyState title="No opportunities yet">Run an authorized search or add a listing or auction.</EmptyState>}</section>
-    <section><SectionHeader title="Scanner Health" description="Summary status is shown here; technical details stay collapsed." /><div className="owner-health-grid"><ProviderStatus name="eBay" status={ebayHealth?.status || "Not Configured"} detail={ebayHealth?.message || "Run a health check to confirm server-side configuration."} checkedAt={ebayHealth?.checkedAt ? displayDate(ebayHealth.checkedAt) : ""} /><RecordCard><h3>Search activity</h3><dl className="owner-definition-list"><div><dt>Last successful eBay search</dt><dd>{displayDate(eBayActivities.find((row) => !/failed|error/i.test(row.status || ""))?.createdAt)}</dd></div><div><dt>Auction sources</dt><dd>{new Set((flipState.auctions || []).map((row) => row.source).filter(Boolean)).size || "None recorded"}</dd></div><div><dt>Restock data</dt><dd>{restocks.events.length ? `${restocks.events.length} report(s)` : "No reports"}</dd></div><div><dt>Last successful import</dt><dd>{displayDate(imports[0]?.importedAt || imports[0]?.updatedAt)}</dd></div><div><dt>Failed jobs</dt><dd>{(flipState.activity || []).filter((row) => /failed|error/i.test(row.status || "")).length}</dd></div></dl><details><summary>Technical details</summary><p>Health checks use the server route. eBay credentials never enter this browser record.</p></details></RecordCard></div></section>
-  </div>;
+  const importsAwaiting = (flipState.providerListings || []).filter((row) => !/imported|passed|expired/i.test(row.reviewStatus || row.status || "")).length;
+  const auctionsEnding = opportunities.filter((row) => row.sourceType === "Auctions" && isEndingSoon(row)).length;
+  const likelyRestocks = restocks.predictions.filter((row) => /high|moderate/i.test(row.confidence || "")).length;
+  const failures = [
+    ...(flipState.activity || []).filter((row) => /failed|error/i.test(`${row.status || ""} ${row.title || ""}`)),
+    ...(flipState.searchRules || []).filter((row) => /failed|error/i.test(row.lastRunStatus || "")),
+  ].length;
+  const rows = [
+    { label: "Scanner status", value: ebayHealth?.status || "Not configured", detail: "Connection details", action: () => onOpenSection("controls", "connections") },
+    { label: "Imports awaiting review", value: integer.format(importsAwaiting), detail: importsAwaiting ? "Review required" : "Queue clear", action: () => onOpenSection("sourcing", "imports") },
+    { label: "Auctions ending soon", value: integer.format(auctionsEnding), detail: auctionsEnding ? "Time-sensitive" : "None ending soon", action: () => onOpenSection("sourcing", "auctions") },
+    { label: "Likely restocks", value: integer.format(likelyRestocks), detail: likelyRestocks ? "Probability-based windows" : "Not enough data", action: () => onOpenSection("restocks", "live") },
+    { label: "Failures requiring action", value: integer.format(failures), detail: failures ? "Open system controls" : "No failures recorded", action: () => onOpenSection("controls", "system") },
+  ];
+  return <section className="owner-overview-compact" aria-label="Owner status overview"><SectionHeader title="Overview" /><div className="owner-status-list">{rows.map((row) => <button key={row.label} type="button" onClick={row.action}><span><strong>{row.label}</strong><small>{row.detail}</small></span><b>{row.value}</b><span aria-hidden="true">›</span></button>)}</div></section>;
 }
 
 function OpportunityFilters({ filters, setFilters, sort, setSort }) {
-  return <div className="owner-filter-panel"><SearchField label="Source" value={filters.source} onChange={(value) => setFilters((current) => ({ ...current, source: value }))} placeholder="eBay, auction, local…" /><SearchField label="Product type" value={filters.productType} onChange={(value) => setFilters((current) => ({ ...current, productType: value }))} placeholder="Raw card, sealed…" /><CurrencyInput label="Maximum price" value={filters.maximumPrice} onChange={(value) => setFilters((current) => ({ ...current, maximumPrice: value }))} /><CurrencyInput label="Minimum projected profit" value={filters.minimumProfit} onChange={(value) => setFilters((current) => ({ ...current, minimumProfit: value }))} /><PercentageInput label="Minimum projected ROI" value={filters.minimumRoi} onChange={(value) => setFilters((current) => ({ ...current, minimumRoi: value }))} /><label className="owner-field"><span>Minimum confidence</span><select value={filters.confidence} onChange={(event) => setFilters((current) => ({ ...current, confidence: event.target.value }))}><option value="">Any</option><option>Low</option><option>Medium</option><option>High</option></select></label><label className="owner-check"><input type="checkbox" checked={filters.newlyListed} onChange={(event) => setFilters((current) => ({ ...current, newlyListed: event.target.checked }))} />Newly listed</label><label className="owner-check"><input type="checkbox" checked={filters.endingSoon} onChange={(event) => setFilters((current) => ({ ...current, endingSoon: event.target.checked }))} />Ending soon</label><label className="owner-field"><span>Reviewed status</span><select value={filters.reviewed} onChange={(event) => setFilters((current) => ({ ...current, reviewed: event.target.value }))}><option value="">Any</option><option value="unreviewed">Needs review</option><option value="reviewed">Reviewed</option></select></label><SortControl value={sort} onChange={setSort} options={[{ value: "best", label: "Best Opportunity" }, { value: "newest", label: "Newest" }, { value: "ending", label: "Ending Soon" }, { value: "profit", label: "Highest Profit" }, { value: "roi", label: "Highest ROI" }, { value: "closest", label: "Closest" }, { value: "risk", label: "Lowest Risk" }]} /></div>;
+  return <details className="owner-filter-disclosure"><summary>Filters & sort</summary><div className="owner-filter-panel"><SearchField label="Source" value={filters.source} onChange={(value) => setFilters((current) => ({ ...current, source: value }))} placeholder="eBay, auction, local…" /><SearchField label="Product type" value={filters.productType} onChange={(value) => setFilters((current) => ({ ...current, productType: value }))} placeholder="Raw card, sealed…" /><CurrencyInput label="Maximum price" value={filters.maximumPrice} onChange={(value) => setFilters((current) => ({ ...current, maximumPrice: value }))} /><CurrencyInput label="Minimum projected profit" value={filters.minimumProfit} onChange={(value) => setFilters((current) => ({ ...current, minimumProfit: value }))} /><PercentageInput label="Minimum projected ROI" value={filters.minimumRoi} onChange={(value) => setFilters((current) => ({ ...current, minimumRoi: value }))} /><label className="owner-field"><span>Minimum confidence</span><select value={filters.confidence} onChange={(event) => setFilters((current) => ({ ...current, confidence: event.target.value }))}><option value="">Any</option><option>Low</option><option>Medium</option><option>High</option></select></label><label className="owner-check"><input type="checkbox" checked={filters.newlyListed} onChange={(event) => setFilters((current) => ({ ...current, newlyListed: event.target.checked }))} />Newly listed</label><label className="owner-check"><input type="checkbox" checked={filters.endingSoon} onChange={(event) => setFilters((current) => ({ ...current, endingSoon: event.target.checked }))} />Ending soon</label><label className="owner-field"><span>Reviewed status</span><select value={filters.reviewed} onChange={(event) => setFilters((current) => ({ ...current, reviewed: event.target.value }))}><option value="">Any</option><option value="unreviewed">Needs review</option><option value="reviewed">Reviewed</option></select></label><SortControl value={sort} onChange={setSort} options={[{ value: "best", label: "Best Opportunity" }, { value: "newest", label: "Newest" }, { value: "ending", label: "Ending Soon" }, { value: "profit", label: "Highest Profit" }, { value: "roi", label: "Highest ROI" }, { value: "closest", label: "Closest" }, { value: "risk", label: "Lowest Risk" }]} /></div></details>;
 }
 
 function OwnerSourcing({ flipState, setFlipState, repository, initialTab, onOpenFind, onReview }) {
@@ -227,7 +213,7 @@ function OwnerRestocks({ data, purchases, initialTab }) {
   const observations = data.observations.length ? data.observations : data.events.filter((event) => event.product).map((event) => ({ id: `observation-${event.id}`, product: event.product, store: event.store, retailer: event.retailer, dateSeen: event.eventTime, quantity: event.quantity, selloutStatus: event.selloutTime ? "Sold out" : "Not recorded" }));
   if (tab === "stores" && selectedStore) return <div className="owner-section-stack"><Tabs label="Restock sections" items={tabs} active={tab} onChange={(next) => { setTab(next); if (next !== "stores") setSelectedStore(null); }} /><StoreProfile store={selectedStore} events={data.events} visits={data.visits} onBack={() => setSelectedStore(null)} /></div>;
   return <div className="owner-section-stack"><Tabs label="Restock sections" items={tabs} active={tab} onChange={setTab} />
-    {tab === "live" ? <section><SectionHeader title="Restock Intelligence" description="Patterns use stored reports and probability language. No store is guaranteed to restock." /><div className="owner-metric-strip"><MetricCard label="Newly confirmed restocks" value={confirmed.filter((event) => timestamp(event.eventTime) && Date.now() - timestamp(event.eventTime) < 86_400_000).length} /><MetricCard label="Likely windows" value={data.predictions.filter((row) => /high|moderate/i.test(row.confidence || "")).length} /><MetricCard label="Reports becoming stale" value={data.events.filter((event) => timestamp(event.eventTime) && Date.now() - timestamp(event.eventTime) > 7 * 86_400_000).length} /><MetricCard label="Nearby stores" value={data.profiles.filter((store) => asNumber(store.distance) != null).length} /><MetricCard label="Products observed" value={observations.length} /><EmptyMetric label="Last confirmation" value={confirmed.length ? displayDate([...confirmed].sort((a, b) => timestamp(b.eventTime) - timestamp(a.eventTime))[0]?.eventTime) : null} /><MetricCard label="Confidence" value={pattern.patternStability} /></div>{data.events.length ? <div className="owner-record-list">{data.events.slice(0, 12).map((event) => <RecordCard key={event.id}><div className="owner-card-badges"><StatusBadge tone={/confirmed/i.test(event.confirmationStatus || "") ? "success" : "warning"}>{event.confirmationStatus || "Unconfirmed"}</StatusBadge><StatusBadge tone="neutral">{event.reliability || "Reliability not rated"}</StatusBadge></div><h3>{event.product || "Product not recorded"}</h3><p>{event.store || "Store not recorded"} · {displayDate(event.eventTime)}</p><p>{event.notes || "No notes"}</p></RecordCard>)}</div> : <EmptyState title="No restock reports">Use existing local store reports or add a confirmed observation before calculating a pattern.</EmptyState>}</section> : null}
+    {tab === "live" ? <section><SectionHeader title="Restock Intelligence" description="Patterns use stored reports and probability language. No store is guaranteed to restock." /><div className="owner-metric-strip"><MetricCard label="Confirmed today" value={confirmed.filter((event) => timestamp(event.eventTime) && Date.now() - timestamp(event.eventTime) < 86_400_000).length} /><MetricCard label="Likely windows" value={data.predictions.filter((row) => /high|moderate/i.test(row.confidence || "")).length} /><MetricCard label="Stale reports" value={data.events.filter((event) => timestamp(event.eventTime) && Date.now() - timestamp(event.eventTime) > 7 * 86_400_000).length} /><EmptyMetric label="Last confirmation" value={confirmed.length ? displayDate([...confirmed].sort((a, b) => timestamp(b.eventTime) - timestamp(a.eventTime))[0]?.eventTime) : null} /></div>{data.events.length ? <div className="owner-record-list">{data.events.slice(0, 12).map((event) => <RecordCard key={event.id}><div className="owner-card-badges"><StatusBadge tone={/confirmed/i.test(event.confirmationStatus || "") ? "success" : "warning"}>{event.confirmationStatus || "Unconfirmed"}</StatusBadge><StatusBadge tone="neutral">{event.reliability || "Reliability not rated"}</StatusBadge></div><h3>{event.product || "Product not recorded"}</h3><p>{event.store || "Store not recorded"} · {displayDate(event.eventTime)}</p><p>{event.notes || "No notes"}</p></RecordCard>)}</div> : <EmptyState title="No restock reports">Use existing local store reports or add a confirmed observation before calculating a pattern.</EmptyState>}</section> : null}
     {tab === "stores" ? <section><SectionHeader title="Stores" description="Profiles combine saved store details with real report history." />{data.profiles.length ? <div className="owner-record-list">{data.profiles.map((store) => { const storeEvents = data.events.filter((event) => (event.storeId && event.storeId === store.id) || String(event.store || "").toLowerCase() === String(store.store || store.name || "").toLowerCase()); const storePattern = restockPatternSummary({ events: storeEvents }); return <RecordCard key={store.id || store.store}><h3>{store.store || store.name}</h3><p>{store.retailer} · {store.address || "Address not recorded"}</p><div className="owner-card-badges"><StatusBadge tone="neutral">{storePattern.patternStability}</StatusBadge><StatusBadge tone="info">{storePattern.supportingReportCount} reports</StatusBadge></div><QuietButton onClick={() => setSelectedStore(store)}>View Store Profile</QuietButton></RecordCard>; })}</div> : <EmptyState title="No store profiles">Saved local stores will appear here. A store directory alone does not count as a confirmed restock.</EmptyState>}</section> : null}
     {tab === "products" ? <section><SectionHeader title="Products" description="Observed product details only—no assumed stock or resale value." />{observations.length ? <div className="owner-record-list">{observations.map((row) => <RecordCard key={row.id}><h3>{row.product || "Product not recorded"}</h3><dl className="owner-definition-list"><div><dt>UPC / SKU</dt><dd>{row.upc || row.sku || "Not recorded"}</dd></div><div><dt>MSRP</dt><dd>{displayMoney(row.msrp, "Not recorded")}</dd></div><div><dt>Store</dt><dd>{row.store || row.retailer || "Not recorded"}</dd></div><div><dt>Last seen</dt><dd>{displayDate(row.dateSeen)}</dd></div><div><dt>Quantity</dt><dd>{row.quantity ?? "Not recorded"}</dd></div><div><dt>Sellout status</dt><dd>{row.selloutStatus || "Not recorded"}</dd></div><div><dt>Target quantity</dt><dd>{row.targetQuantity ?? "Not recorded"}</dd></div></dl></RecordCard>)}</div> : <EmptyState title="No product observations">Products appear only after a real store report or observation includes them.</EmptyState>}</section> : null}
     {tab === "patterns" ? <section data-testid="restock-patterns"><SectionHeader title="Patterns" description="Calculated only from stored confirmations, predictions, visits, and attributed profit records." /><div className="owner-metric-strip"><EmptyMetric label="Most common restock weekday" value={pattern.mostCommonWeekday} /><EmptyMetric label="Most common time window" value={pattern.mostCommonTimeWindow} /><EmptyMetric label="Average interval" value={pattern.averageIntervalDays == null ? null : `${pattern.averageIntervalDays.toFixed(1)} days`} /><MetricCard label="Pattern stability" value={pattern.patternStability} /><EmptyMetric label="Average sellout time" /><EmptyMetric label="Best historical arrival time" /><EmptyMetric label="Prediction accuracy" value={pattern.predictionAccuracy == null ? null : displayPercent(pattern.predictionAccuracy)} /><EmptyMetric label="Average timing error" value={pattern.averageTimingErrorHours == null ? null : `${pattern.averageTimingErrorHours.toFixed(1)} hours`} /><EmptyMetric label="Successful trip rate" value={pattern.successfulTripRate == null ? null : displayPercent(pattern.successfulTripRate)} /><EmptyMetric label="Profit per trip" value={pattern.profitPerTrip == null ? null : displayMoney(pattern.profitPerTrip)} /><EmptyMetric label="Profit per mile" value={pattern.profitPerMile == null ? null : displayMoney(pattern.profitPerMile)} /><EmptyMetric label="Profit per hour" value={pattern.profitPerHour == null ? null : displayMoney(pattern.profitPerHour)} /></div>{pattern.missingProfitRequirements.length ? <div className="compatibility-note"><strong>Missing requirements:</strong> {pattern.missingProfitRequirements.join(", ")}. Profit efficiency will not display as zero.</div> : null}</section> : null}
@@ -320,7 +306,7 @@ export default function OwnerCenterPage({
 
   return (
     <main className="owner-center" data-testid="owner-center">
-      <PageHeader eyebrow="Private controls" title="Owner Center" description="Cross-source sourcing, restock intelligence, performance, and controls for the owner profile only." actions={<StatusBadge tone="warning">Owner Only</StatusBadge>} />
+      <PageHeader eyebrow="Private controls" title="Owner Center" actions={<StatusBadge tone="warning">Owner Only</StatusBadge>} />
       <Tabs label="Owner Center sections" items={OWNER_SECTIONS} active={section} onChange={(next) => openSection(next)} />
       {healthError ? <div className="owner-inline-warning" role="status">eBay health status is temporarily unavailable: {healthError}</div> : null}
       {section === "overview" ? <OwnerOverview flipState={flipState} restocks={restocks} ebayHealth={ebayHealth} onOpenSection={openSection} onReview={review} /> : null}

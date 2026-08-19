@@ -48,7 +48,7 @@ export function routeStateFromPath(pathname = "") {
   if (section === "inventory") return { activeTab: "businessWorkspace", businessWorkspaceView: "inventory" };
   if (section === "sell" || section === "sales") return { activeTab: "businessWorkspace", businessWorkspaceView: "sales" };
   if (section === "business") {
-    const businessView = ["purchases", "inventory", "sales", "money"].includes(subSection) ? subSection : "purchases";
+    const businessView = ["purchases", "inventory", "sales", "money"].includes(subSection) ? subSection : "overview";
     const moneyView = ["expenses", "mileage", "reports", "reconciliation"].includes(detailId) ? detailId : ["expenses", "mileage", "reports", "reconciliation"].includes(subSection) ? subSection : "expenses";
     return { activeTab: "businessWorkspace", businessWorkspaceView: ["expenses", "mileage", "reports", "reconciliation"].includes(subSection) ? "money" : businessView, businessMoneyView: moneyView };
   }
@@ -190,7 +190,7 @@ export function pathFromActiveTab(activeTab = "dashboard", state = {}) {
   if (activeTab === "collectionWorkspace") return state.collectionWorkspaceView && state.collectionWorkspaceView !== "collection" ? `/collection/${encodeURIComponent(state.collectionWorkspaceView)}` : "/collection";
   if (activeTab === "businessWorkspace") {
     if (state.businessWorkspaceView === "money") return `/business/money/${encodeURIComponent(state.businessMoneyView || "expenses")}`;
-    return state.businessWorkspaceView ? `/business/${encodeURIComponent(state.businessWorkspaceView)}` : "/business";
+    return state.businessWorkspaceView && state.businessWorkspaceView !== "overview" ? `/business/${encodeURIComponent(state.businessWorkspaceView)}` : "/business";
   }
   if (activeTab === "ownerCenter") {
     const section = state.ownerCenterSection || "overview";

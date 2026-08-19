@@ -322,3 +322,51 @@
   .purpose-action-grid { grid-template-columns: 1fr; }
   .everyday-card-actions .ops-button { flex: 1 1 auto; padding-inline: 10px; }
 }
+
+/* Declutter pass */
+.everyday-workspace { gap: var(--space-4); }
+.everyday-secondary-navigation,
+.everyday-money-navigation { display: flex; align-items: center; gap: var(--space-2); }
+.everyday-secondary-navigation > button,
+.everyday-more-menu > summary,
+.everyday-back-button { min-height: 44px; display: flex; align-items: center; padding: 0 var(--space-3); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); background: var(--surface-primary); color: var(--text-secondary); font: 750 13px/1 var(--font-ui); cursor: pointer; }
+.everyday-secondary-navigation > button.is-active { border-color: var(--brand-primary); color: var(--brand-primary); background: color-mix(in srgb, var(--brand-primary) 7%, var(--surface-primary)); }
+.everyday-more-menu { position: relative; }
+.everyday-more-menu > summary { list-style: none; }
+.everyday-more-menu > summary::-webkit-details-marker { display: none; }
+.everyday-more-menu > div { position: absolute; z-index: 20; top: calc(100% + 5px); right: 0; min-width: 180px; display: grid; padding: 5px; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--surface-elevated); box-shadow: var(--shadow-2); }
+.everyday-more-menu button { min-height: 44px; padding: 8px 10px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text-primary); text-align: left; }
+.everyday-more-menu button:hover,
+.everyday-more-menu button:focus-visible { background: var(--surface-secondary); }
+.everyday-review-queue { min-height: 44px; padding: 8px 0; border: 0; border-bottom: 1px solid var(--status-warning); background: transparent; color: var(--status-warning); font-weight: 800; text-align: left; }
+.everyday-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: var(--space-2); }
+.everyday-toolbar .ops-search-field { min-width: 0; }
+.everyday-metrics { gap: 1px; overflow: hidden; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--border-subtle); }
+.everyday-metrics .ops-metric-card { min-height: 76px; border: 0; border-radius: 0; box-shadow: none; }
+.everyday-record-card { border: 0; border-bottom: 1px solid var(--border-subtle); border-radius: 0; box-shadow: none; }
+.everyday-record-card dl { margin: var(--space-2) 0; }
+.everyday-card-actions .ops-button { width: auto; min-height: 44px; }
+.business-destination-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+.app.app-command-shell .business-destination-grid button { min-height: 82px; display: grid; align-content: center; gap: 5px; padding: var(--space-3); border: 1px solid var(--border-subtle) !important; border-radius: var(--radius-md); background: var(--surface-primary) !important; color: var(--text-primary) !important; text-align: left; box-shadow: none !important; }
+.business-destination-grid button strong { font-size: 16px; }
+.business-destination-grid button span { color: var(--text-muted); font-size: 12px; }
+.business-attention-section { display: grid; gap: var(--space-2); margin-top: var(--space-2); }
+.business-attention-list { display: grid; }
+.app.app-command-shell .business-attention-list button { min-height: 48px; display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: var(--space-2); padding: 4px 0; border: 0 !important; border-bottom: 1px solid var(--border-subtle) !important; background: transparent !important; color: var(--text-primary) !important; text-align: left; }
+.business-attention-list button strong { color: var(--status-warning); font-variant-numeric: tabular-nums; }
+.everyday-money-navigation .everyday-tabs { flex: 1; padding: 0; }
+
+@media (min-width: 860px) {
+  .business-destination-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .everyday-workspace > .ops-page-header { margin-bottom: 0; }
+}
+
+@media (max-width: 420px) {
+  .everyday-workspace { gap: var(--space-3); padding-inline: 16px; }
+  .everyday-toolbar { grid-template-columns: minmax(0, 1fr) auto; }
+  .everyday-record-card { grid-template-columns: 56px minmax(0, 1fr); padding-inline: 0; }
+  .everyday-record-card > img,
+  .everyday-record-placeholder { width: 56px; }
+  .everyday-record-card dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .everyday-card-actions .ops-button { width: 100%; }
+}

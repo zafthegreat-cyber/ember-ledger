@@ -310,3 +310,51 @@ html, body { background: var(--app-background) !important; color: var(--text-pri
   .ops-opportunity-list .ops-deal-card { grid-template-columns: 92px minmax(0, 1fr); }
   .ops-business-snapshot > div:last-child { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Declutter pass: calm landing surfaces and one-action mobile sheets. */
+.ops-home-page { width: min(1040px, 100%); padding-top: 10px; }
+.ops-home-page .ops-page-header { margin-bottom: 8px; }
+.ops-home-section { gap: 10px; margin-bottom: 16px; padding: 0 0 16px; border: 0; border-bottom: 1px solid var(--border-subtle); border-radius: 0; background: transparent; box-shadow: none; }
+.ops-home-section .ops-section-header p,
+.ops-home-section .ops-section-header__eyebrow { display: none; }
+.ops-attention-list { gap: 0; }
+.app.app-command-shell .ops-attention-list button { min-height: 48px; padding: 6px 2px; border: 0 !important; border-bottom: 1px solid var(--border-subtle) !important; border-radius: 0; background: transparent !important; color: var(--text-primary) !important; }
+.ops-attention-list button:last-child { border-bottom: 0; }
+.ops-attention-count { width: 30px; height: 30px; border-radius: 8px; }
+.ops-home-best-opportunity { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 12px; align-items: start; }
+.ops-home-best-opportunity > img { width: 88px; aspect-ratio: 1; border-radius: var(--radius-md); object-fit: cover; background: var(--surface-secondary); }
+.ops-home-best-opportunity > div { min-width: 0; display: grid; gap: 7px; }
+.ops-home-best-opportunity span,
+.ops-home-best-opportunity p,
+.ops-home-best-opportunity dt { margin: 0; color: var(--text-muted); font-size: 12px; }
+.ops-home-best-opportunity h3 { margin: 0; overflow-wrap: anywhere; }
+.ops-home-best-opportunity dl { display: flex; gap: 18px; margin: 0; }
+.ops-home-best-opportunity dd { margin: 2px 0 0; color: var(--text-primary); font-weight: 800; font-variant-numeric: tabular-nums; }
+.ops-home-best-opportunity .ops-button { width: fit-content; }
+.ops-home-activity article { grid-template-columns: auto minmax(0, 1fr) auto; min-height: 44px; align-items: center; padding: 6px 0; }
+.ops-home-activity article strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ops-home-activity article p { display: none; }
+.ops-business-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; overflow: hidden; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--border-subtle); }
+.ops-business-strip > span { min-width: 0; display: grid; gap: 3px; padding: 10px; background: var(--surface-primary); }
+.ops-business-strip small { overflow: hidden; color: var(--text-muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.ops-business-strip strong { overflow-wrap: anywhere; color: var(--text-primary); font-size: 14px; font-variant-numeric: tabular-nums; }
+.ops-compact-empty { margin: 0; padding: 10px 0; color: var(--text-secondary); }
+.app.app-command-shell .flow-modal[data-flow="addActionSheet"] { height: auto !important; max-height: min(86dvh, 680px) !important; padding: 14px !important; border: 0 !important; border-radius: 18px !important; box-shadow: var(--shadow-2) !important; }
+.flow-modal[data-flow="addActionSheet"] .modal-title-row { padding-bottom: 10px; }
+.flow-modal[data-flow="addActionSheet"] .modal-title-row p,
+.flow-modal[data-flow="addActionSheet"] .flow-modal-footer { display: none !important; }
+.flow-modal[data-flow="addActionSheet"] .flow-modal-body,
+.flow-modal[data-flow="addActionSheet"] .add-anything-flow { min-width: 0; width: 100%; }
+.flow-modal[data-flow="addActionSheet"] .add-anything-option-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; }
+.app.app-command-shell .flow-modal[data-flow="addActionSheet"] .add-anything-option { width: 100%; min-height: 48px !important; grid-template-columns: 30px minmax(0, 1fr); gap: 9px; padding: 7px 8px !important; border: 0 !important; border-bottom: 1px solid var(--border-subtle) !important; border-radius: 0 !important; }
+.flow-modal[data-flow="addActionSheet"] .add-anything-option .command-icon { width: 30px; height: 30px; }
+.flow-modal[data-flow="addActionSheet"] .add-anything-more { margin-top: 6px; }
+.flow-modal[data-flow="addActionSheet"] .add-anything-more > summary { min-height: 44px; display: flex; align-items: center; color: var(--brand-primary); font-weight: 800; cursor: pointer; }
+
+@media (max-width: 700px) {
+  .app.app-command-shell .topbar { min-height: 72px; padding-block: 8px; }
+  .ops-home-page { padding-inline: 16px; }
+  .ops-business-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .flow-modal-backdrop:has(.flow-modal[data-flow="addActionSheet"]) { align-items: end; padding: 0; }
+  .app.app-command-shell .flow-modal[data-flow="addActionSheet"] { width: 100% !important; max-height: calc(100dvh - max(8px, env(safe-area-inset-top))) !important; border-radius: 18px 18px 0 0 !important; padding-bottom: max(14px, env(safe-area-inset-bottom)) !important; }
+}

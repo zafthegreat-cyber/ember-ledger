@@ -15,6 +15,12 @@ async function assertNoHorizontalOverflow(page, label) {
   assert.equal(overflow <= 1, true, `${label} should not overflow horizontally (difference: ${overflow}px)`);
 }
 
+async function openFindMore(page) {
+  const menu = page.locator(".flip-more-menu");
+  if (!(await menu.evaluate((element) => element.open))) await menu.locator("summary").click();
+  return menu;
+}
+
 async function main() {
   const browser = await chromium.launch({ headless: true });
   try {
@@ -32,7 +38,7 @@ async function main() {
     await page.addInitScript(() => localStorage.removeItem("ember-and-tide.flip-scout.v1"));
 
     await page.goto(appUrl("/find/deals"), { waitUntil: "domcontentloaded" });
-    await page.getByRole("heading", { name: "Listings ready for review" }).waitFor();
+    await page.getByRole("heading", { name: "Deal Feed", exact: true }).waitFor();
     assert.equal(await page.locator(".vite-error-overlay").count(), 0, "Vite error overlay should not render");
     assert.equal((await page.locator("body").innerText()).trim().length > 100, true, "Find route should not be blank");
     await assertNoHorizontalOverflow(page, "Deal Feed at 360px");
@@ -46,7 +52,7 @@ async function main() {
     await page.getByRole("heading", { name: "Manual vintage binder lead" }).waitFor();
     await assertNoHorizontalOverflow(page, "Deal Feed after manual listing at 360px");
 
-    await page.getByRole("button", { name: "Deal Analysis", exact: true }).click();
+    await (await openFindMore(page)).getByRole("button", { name: "Deal Analysis", exact: true }).click();
     await page.getByLabel("Title").fill("Manual appraiser check");
     await page.getByRole("button", { name: "Continue", exact: true }).click();
     await page.getByRole("button", { name: "Continue", exact: true }).click();
@@ -75,7 +81,7 @@ async function main() {
     assert.doesNotMatch(auctionText, /NaN|Infinity/);
     await assertNoHorizontalOverflow(page, "Auctions at 360px");
 
-    await page.getByRole("button", { name: "eBay Search", exact: true }).click();
+    await (await openFindMore(page)).getByRole("button", { name: "eBay Search", exact: true }).click();
     await page.getByRole("heading", { name: "eBay Browse API" }).first().waitFor();
     await page.waitForTimeout(250);
     const ebayText = await page.locator(".flip-scout-main").innerText();

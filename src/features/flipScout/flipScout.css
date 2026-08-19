@@ -558,3 +558,66 @@
   .flip-scenario-table > div { grid-template-columns: 76px repeat(3, minmax(0, 1fr)); gap: 3px; font-size: 9px; }
   .flip-scenario-table small { font-size: 8px; }
 }
+
+/* Declutter pass */
+.flip-scout-page > .ops-page-header { padding: 16px 16px 8px; }
+.flip-main-nav { position: static; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 4px 16px; overflow: visible; border: 0; background: transparent; backdrop-filter: none; }
+.flip-main-nav button { min-width: 0; width: 100%; border-radius: 9px; }
+.flip-more-menu { position: relative; width: fit-content; margin: 4px 16px 0 auto; }
+.flip-more-menu > summary { min-height: 44px; display: flex; align-items: center; padding: 0 12px; border: 1px solid var(--border-subtle); border-radius: 9px; color: var(--text-secondary); background: var(--surface-primary); font-weight: 750; list-style: none; cursor: pointer; }
+.flip-more-menu > summary::-webkit-details-marker { display: none; }
+.flip-more-menu > div { position: absolute; z-index: 30; top: calc(100% + 4px); right: 0; min-width: 180px; display: grid; gap: 2px; padding: 5px; border: 1px solid var(--border-subtle); border-radius: 10px; background: var(--surface-elevated); box-shadow: var(--shadow-2); }
+.flip-more-menu button { min-height: 44px; padding: 8px 10px; border: 0; border-radius: 7px; color: var(--text-primary); background: transparent; text-align: left; }
+.flip-more-menu button:hover,
+.flip-more-menu button:focus-visible { background: var(--surface-secondary); }
+.flip-context-bar { display: flex; align-items: center; gap: 10px; padding: 4px 16px; }
+.flip-context-bar button { min-height: 44px; padding: 0 10px; border: 0; background: transparent; color: var(--brand-primary); font-weight: 750; }
+.flip-context-bar strong { color: var(--text-primary); }
+.flip-scout-main { padding-top: 8px; }
+.flip-screen { gap: 14px; }
+.flip-screen > .flip-section { padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.flip-section-heading { align-items: center; margin-bottom: 10px; }
+.flip-section-heading > div > span,
+.flip-section-heading > div > p { display: none; }
+.flip-filter-bar { grid-template-columns: minmax(0, 1fr) auto; align-items: end; margin-bottom: 10px; }
+.flip-filter-menu { position: relative; }
+.flip-filter-menu > summary { min-height: 46px; display: flex; align-items: center; padding: 0 13px; border: 1px solid var(--border-strong); border-radius: 9px; color: var(--text-primary); background: var(--surface-primary); font-weight: 750; list-style: none; cursor: pointer; }
+.flip-filter-menu > summary::-webkit-details-marker { display: none; }
+.flip-filter-menu > div { position: absolute; z-index: 20; right: 0; top: calc(100% + 5px); width: min(280px, calc(100vw - 32px)); display: grid; gap: 10px; padding: 12px; border: 1px solid var(--border-subtle); border-radius: 11px; background: var(--surface-elevated); box-shadow: var(--shadow-2); }
+.flip-deal-feed .ops-deal-card { display: grid; grid-template-columns: 92px minmax(0, 1fr); border: 0; border-bottom: 1px solid var(--border-subtle); border-radius: 0; box-shadow: none; }
+.flip-deal-feed .ops-deal-card > img,
+.flip-deal-feed .ops-deal-card > .ops-product-placeholder { height: 100%; min-height: 150px; aspect-ratio: auto; }
+.flip-deal-card__body { gap: 8px; padding: 10px 12px; }
+.flip-deal-card__body h3 { margin: 0; overflow-wrap: anywhere; font-size: 16px; }
+.flip-deal-source { color: var(--text-muted); font-size: 11px; font-weight: 750; text-transform: uppercase; }
+.flip-deal-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.flip-deal-summary span { display: grid; gap: 2px; color: var(--text-muted); font-size: 11px; }
+.flip-deal-summary strong { color: var(--text-primary); font-size: 15px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.flip-deal-signal,
+.flip-deal-card__body time { margin: 0; color: var(--text-muted); font-size: 11px; }
+.flip-deal-card__body > .primary-button { width: fit-content; min-width: 96px; }
+.flip-detail-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.flip-decision-priority article { border: 0; border-radius: 9px; background: var(--surface-secondary); }
+.flip-decision-details { border-top: 1px solid var(--border-subtle); }
+.flip-decision-details > summary { min-height: 48px; display: flex; align-items: center; color: var(--brand-primary); font-weight: 800; cursor: pointer; }
+.flip-decision-details > *:not(summary) { margin-top: 10px; }
+.ops-decision-panel .flip-rule-checks > div,
+.ops-decision-panel .flip-assumption-note,
+.ops-decision-panel .flip-calculation-explanation { box-shadow: none; }
+
+@media (min-width: 700px) {
+  .flip-scout-page > .ops-page-header { padding-top: 22px; }
+  .flip-main-nav { grid-template-columns: repeat(3, minmax(0, 180px)); justify-content: start; }
+  .flip-more-menu { margin-right: max(24px, calc((100% - 1180px) / 2)); }
+  .flip-deal-feed { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 420px) {
+  .flip-scout-page > .ops-page-header { padding-inline: 16px; }
+  .flip-main-nav { padding-inline: 16px; }
+  .flip-main-nav button { padding-inline: 6px; font-size: 12px; }
+  .flip-scout-main { padding-inline: 16px; }
+  .flip-analysis-step > div:first-child > p { display: none; }
+  .flip-decision-priority { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .flip-decision-priority strong { font-size: 21px; }
+}

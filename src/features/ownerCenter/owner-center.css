@@ -160,3 +160,44 @@
   .owner-definition-list { grid-template-columns: 1fr; }
   .owner-opportunity-card__body { padding: var(--space-2); }
 }
+
+/* Declutter pass */
+.owner-center { gap: var(--space-4); }
+.owner-tabs { position: relative; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.owner-tabs-more { position: relative; }
+.owner-tabs-more > summary { min-height: 44px; display: flex; align-items: center; justify-content: center; padding: 0 var(--space-3); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--surface-primary); color: var(--text-secondary); font-weight: 750; list-style: none; cursor: pointer; }
+.owner-tabs-more > summary::-webkit-details-marker { display: none; }
+.owner-tabs-more > div { position: absolute; z-index: 30; top: calc(100% + 4px); right: 0; min-width: 180px; display: grid; gap: 2px; padding: 5px; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--surface-elevated); box-shadow: var(--shadow-2); }
+.owner-tabs-more button { width: 100%; text-align: left; }
+.owner-overview-compact { display: grid; gap: var(--space-3); }
+.owner-status-list { display: grid; }
+.app.app-command-shell .owner-status-list button { min-height: 58px; display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: var(--space-3); padding: 7px 0; border: 0 !important; border-bottom: 1px solid var(--border-subtle) !important; background: transparent !important; color: var(--text-primary) !important; text-align: left; }
+.owner-status-list button > span:first-child { min-width: 0; display: grid; gap: 3px; }
+.owner-status-list small { color: var(--text-muted); font-size: 12px; }
+.owner-status-list b { max-width: 120px; overflow-wrap: anywhere; color: var(--brand-primary); font-size: 14px; font-variant-numeric: tabular-nums; text-align: right; }
+.owner-filter-disclosure { margin-bottom: var(--space-3); }
+.owner-filter-disclosure > summary { min-height: 44px; display: flex; align-items: center; width: fit-content; padding: 0 var(--space-3); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); background: var(--surface-primary); color: var(--text-primary); font-weight: 750; cursor: pointer; }
+.owner-filter-disclosure .owner-filter-panel { margin: var(--space-2) 0 0; }
+.owner-opportunity-list .ops-deal-card { display: grid; grid-template-columns: 92px minmax(0, 1fr); border: 0; border-bottom: 1px solid var(--border-subtle); border-radius: 0; box-shadow: none; }
+.owner-opportunity-list .ops-deal-card > img,
+.owner-opportunity-list .ops-deal-card > .ops-product-placeholder { height: 100%; min-height: 170px; aspect-ratio: auto; }
+.owner-opportunity-source { color: var(--text-muted); font-size: 11px; font-weight: 750; text-transform: uppercase; }
+.owner-opportunity-signal { margin: 0; color: var(--text-muted); font-size: 12px; }
+.owner-opportunity-card__body .owner-financial-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+.owner-opportunity-card__body .ops-button { width: fit-content; }
+.owner-metric-strip { gap: 1px; overflow: hidden; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--border-subtle); }
+.owner-metric-strip .ops-metric-card { border: 0; border-radius: 0; box-shadow: none; }
+
+@media (min-width: 700px) {
+  .owner-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 180px)) auto; justify-content: start; }
+}
+
+@media (max-width: 420px) {
+  .owner-center { padding-inline: 16px; }
+  .owner-tabs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .owner-tabs button,
+  .owner-tabs-more > summary { padding-inline: 5px; font-size: 12px; }
+  .owner-opportunity-list .ops-deal-card { grid-template-columns: 80px minmax(0, 1fr); }
+  .owner-opportunity-list .ops-deal-card > img,
+  .owner-opportunity-list .ops-deal-card > .ops-product-placeholder { min-height: 160px; }
+}

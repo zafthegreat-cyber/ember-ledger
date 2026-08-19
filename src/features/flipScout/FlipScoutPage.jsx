@@ -5,7 +5,7 @@ import { findDealForProviderListing, mergeProviderListings, providerListingToDea
 import { downloadTextFile } from "./csv.js";
 import { createEmptyFlipScoutState } from "./constants.js";
 import { createFlipScoutRepository } from "./storageRepository.js";
-import { LoadingState, PageHeader, QuietButton, StatusBadge } from "../../components/operations/OperationsUI.jsx";
+import { LoadingState, PageHeader } from "../../components/operations/OperationsUI.jsx";
 import "./flipScout.css";
 
 const DashboardScreen = lazy(() => import("./screens/DashboardScreen.jsx"));
@@ -21,7 +21,6 @@ const PRIMARY_NAV_ITEMS = [
   ["deals", "Deals"],
   ["restocks", "Restocks"],
   ["auctions", "Auctions"],
-  ["rules", "Saved"],
 ];
 const SCREEN_TITLES = {
   dashboard: "Overview",
@@ -64,6 +63,7 @@ function createActivity(title, detail) {
 
 export default function FlipScoutPage({ onExit, onOpenRestocks, initialScreen = "deals", initialSubview = "", onViewChange, featureControls = EMPTY_FEATURE_CONTROLS }) {
   const repositoryRef = useRef(null);
+  const moreMenuRef = useRef(null);
   if (!repositoryRef.current) repositoryRef.current = createFlipScoutRepository();
   const repository = repositoryRef.current;
   const [state, setState] = useState(() => repository.load());
@@ -80,6 +80,7 @@ export default function FlipScoutPage({ onExit, onOpenRestocks, initialScreen = 
     const handleNavigation = (event) => {
       const screen = event.detail?.screen;
       if (!VALID_SCREENS.has(screen)) return;
+      if (moreMenuRef.current) moreMenuRef.current.open = false;
       setActiveScreen(screen);
       setSubview(event.detail?.subview || "");
     };
@@ -90,6 +91,7 @@ export default function FlipScoutPage({ onExit, onOpenRestocks, initialScreen = 
   useEffect(() => {
     const handlePopState = () => {
       const destination = readInitialDestination({ screen: "deals" });
+      if (moreMenuRef.current) moreMenuRef.current.open = false;
       setActiveScreen(destination.screen);
       setSubview(destination.subview);
     };
@@ -115,13 +117,15 @@ export default function FlipScoutPage({ onExit, onOpenRestocks, initialScreen = 
   }, [applySave, repository]);
 
   const deleteRecord = useCallback((collection, id, label = "this record") => {
-    if (!window.confirm(`Delete ${label}? This removes it from the private sourcing workspace on this device.`)) return;
+    if (!window.confirm(`Delete ${label}? This removes it from the private sourcing workspace on this device.`)) return false;
     const result = repository.remove(collection, id);
     const activityResult = repository.save({ ...result.state, activity: [createActivity("Record deleted", `${label} removed from ${collection}.`), ...result.state.activity].slice(0, 150) });
     applySave(activityResult.state, result.error || activityResult.error);
+    return true;
   }, [applySave, repository]);
 
   const navigate = useCallback((screen, nextSubview = "") => {
+    if (moreMenuRef.current) moreMenuRef.current.open = false;
     setActiveScreen(screen);
     setSubview(nextSubview || "");
     onViewChange?.(screen, nextSubview || "");
@@ -188,18 +192,19 @@ export default function FlipScoutPage({ onExit, onOpenRestocks, initialScreen = 
   return (
     <div className="flip-scout-page">
       <PageHeader
-        eyebrow="Private sourcing"
+        eyebrow="Sourcing"
         title="Find"
-        description="Review opportunities, search configured sources, analyze deals, and track auctions before committing money."
-        actions={<><button type="button" className="secondary-button flip-back-button" onClick={onExit}>Back to Home</button><StatusBadge tone="neutral">Device-local records</StatusBadge></>}
       />
       <nav className="flip-main-nav ops-find-nav" aria-label="Find navigation" style={{ "--flip-primary-count": visiblePrimaryNavItems.length }}>{visiblePrimaryNavItems.map(([key, label]) => <button type="button" key={key} className={activeScreen === key ? "active" : ""} aria-current={activeScreen === key ? "page" : undefined} onClick={() => navigate(key)}><span>{label}</span></button>)}</nav>
-      <div className="flip-secondary-actions" aria-label="Find actions">
-        <QuietButton onClick={() => navigate("deals", "new")}>Scan Listing</QuietButton>
-        <QuietButton onClick={() => navigate("appraise")}>Deal Analysis</QuietButton>
-        {featureControls.ebaySearch !== false ? <QuietButton onClick={() => navigate("ebay")}>eBay Search</QuietButton> : null}
-        <QuietButton onClick={() => navigate("sources")}>Sources</QuietButton>
-      </div>
+      <details ref={moreMenuRef} className="flip-more-menu">
+        <summary>More</summary>
+        <div>
+          <button type="button" onClick={() => navigate("rules")}>Saved</button>
+          <button type="button" onClick={() => navigate("appraise")}>Deal Analysis</button>
+          {featureControls.ebaySearch !== false ? <button type="button" onClick={() => navigate("ebay")}>eBay Search</button> : null}
+        </div>
+      </details>
+      {!PRIMARY_NAV_ITEMS.some(([key]) => key === activeScreen) ? <div className="flip-context-bar"><button type="button" onClick={() => navigate("deals")}>Back to Deals</button><strong>{activeTitle}</strong></div> : null}
       {storageMessage ? <div className="flip-storage-warning" role="alert"><strong>Local save warning</strong><span>{storageMessage}</span></div> : null}
       <main className="flip-scout-main" aria-label={activeTitle} tabIndex={-1}>
         <Suspense fallback={<LoadingState title={`Loading ${activeTitle}`} description="Preparing this workspace." />}>
