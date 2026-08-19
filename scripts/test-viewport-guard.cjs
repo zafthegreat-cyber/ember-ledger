@@ -14,7 +14,7 @@ const viewports = [
 
 const routes = [
   { name: "login", path: "/", beta: false, expect: /welcome back|create your account|log in|private business hub/i },
-  { name: "home", path: "/", beta: true, expect: /good morning|good afternoon|good evening|business snapshot/i },
+  { name: "home", path: "/", beta: true, expect: /needs attention|best opportunity|recent activity/i },
   { name: "find", path: "/find", beta: true, expect: /find|deal feed|opportunity workspace/i },
   { name: "collection", path: "/collection", beta: true, expect: /collection|my collection|owned items/i },
   { name: "business", path: "/business", beta: true, expect: /business|purchases|business records/i },
@@ -89,7 +89,7 @@ async function assertHealthyPage(page, route, viewport) {
         scrollHeight: document.documentElement.scrollHeight,
       };
     });
-    if (!hearthTail || hearthTail.blankTail > 132) {
+    if (!hearthTail || (hearthTail.scrollHeight > viewport.height + 132 && hearthTail.blankTail > 132)) {
       throw new Error(`home reserves excessive blank mobile scroll space: ${JSON.stringify(hearthTail)}`);
     }
   }

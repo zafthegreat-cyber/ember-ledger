@@ -157,13 +157,13 @@ function OwnerOverview({ flipState, restocks, ebayHealth, onOpenSection }) {
     ...(flipState.searchRules || []).filter((row) => /failed|error/i.test(row.lastRunStatus || "")),
   ].length;
   const rows = [
-    { label: "Scanner status", value: ebayHealth?.status || "Not configured", detail: "Connection details", action: () => onOpenSection("controls", "connections") },
-    { label: "Imports awaiting review", value: integer.format(importsAwaiting), detail: importsAwaiting ? "Review required" : "Queue clear", action: () => onOpenSection("sourcing", "imports") },
-    { label: "Auctions ending soon", value: integer.format(auctionsEnding), detail: auctionsEnding ? "Time-sensitive" : "None ending soon", action: () => onOpenSection("sourcing", "auctions") },
-    { label: "Likely restocks", value: integer.format(likelyRestocks), detail: likelyRestocks ? "Probability-based windows" : "Not enough data", action: () => onOpenSection("restocks", "live") },
-    { label: "Failures requiring action", value: integer.format(failures), detail: failures ? "Open system controls" : "No failures recorded", action: () => onOpenSection("controls", "system") },
+    { label: "eBay Scanner", value: ebayHealth?.status || "Not configured", detail: "Connection details", action: () => onOpenSection("controls", "connections") },
+    { label: "Imports Awaiting Review", value: integer.format(importsAwaiting), detail: importsAwaiting ? "Review required" : "Queue clear", action: () => onOpenSection("sourcing", "imports") },
+    { label: "Auctions Ending Soon", value: integer.format(auctionsEnding), detail: auctionsEnding ? "Time-sensitive" : "None ending soon", action: () => onOpenSection("sourcing", "auctions") },
+    { label: "Restock Activity", value: integer.format(likelyRestocks), detail: likelyRestocks ? "Probability-based windows" : "Not enough data", action: () => onOpenSection("restocks", "live") },
+    { label: "Failures Requiring Action", value: integer.format(failures), detail: failures ? "Open system controls" : "No failures recorded", action: () => onOpenSection("controls", "system") },
   ];
-  return <section className="owner-overview-compact" aria-label="Owner status overview"><SectionHeader title="Overview" /><div className="owner-status-list">{rows.map((row) => <button key={row.label} type="button" onClick={row.action}><span><strong>{row.label}</strong><small>{row.detail}</small></span><b>{row.value}</b><span aria-hidden="true">›</span></button>)}</div></section>;
+  return <section className="owner-overview-compact" aria-label="Owner status overview"><div className="owner-status-list">{rows.map((row) => <button key={row.label} type="button" onClick={row.action}><span><strong>{row.label}</strong><small>{row.detail}</small></span><b>{row.value}</b><span aria-hidden="true">›</span></button>)}</div></section>;
 }
 
 function OpportunityFilters({ filters, setFilters, sort, setSort }) {

@@ -370,3 +370,57 @@
   .everyday-record-card dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .everyday-card-actions .ops-button { width: 100%; }
 }
+
+/* Mobile-first minimal pass: searchable rows first, utilities behind More. */
+.everyday-collection-summary { display: flex; align-items: stretch; justify-content: space-between; gap: var(--space-2); }
+.everyday-collection-summary .everyday-metrics { flex: 1; }
+.everyday-collection-summary .everyday-more-menu > summary { height: 100%; min-height: 58px; }
+.app.app-command-shell .everyday-record-card {
+  width: 100%;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border: 0 !important;
+  border-bottom: 1px solid var(--border-subtle) !important;
+  border-radius: 0;
+  background: transparent !important;
+  color: var(--text-primary) !important;
+  box-shadow: none !important;
+  font: inherit;
+  text-align: left;
+}
+.everyday-record-card > img,
+.everyday-record-placeholder { width: 64px; border-radius: var(--radius-sm); }
+.everyday-record-placeholder { color: transparent; }
+.everyday-record-placeholder::after { content: ""; width: 20px; height: 20px; border: 1px solid var(--border-strong); border-radius: 5px; }
+.everyday-record-card h3 { display: -webkit-box; overflow: hidden; font-size: 15px; line-height: 1.25; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.everyday-record-card dl { margin: 6px 0 0; }
+.everyday-record-chevron { color: var(--text-muted); font-size: 22px; }
+.business-destination-grid { gap: 0; border-block: 1px solid var(--border-subtle); }
+.app.app-command-shell .business-destination-grid button { min-height: 70px; padding: 10px 12px; border: 0 !important; border-radius: 0; background: transparent !important; }
+.business-destination-grid button:nth-child(odd) { border-right: 1px solid var(--border-subtle) !important; }
+.business-destination-grid button:nth-child(-n+2) { border-bottom: 1px solid var(--border-subtle) !important; }
+
+@media (max-width: 859px) {
+  .everyday-workspace { gap: 12px; padding: 12px 16px calc(96px + env(safe-area-inset-bottom, 0px)); }
+  .everyday-workspace[data-testid="collection-workspace"] > .ops-page-header,
+  .everyday-workspace[data-testid="business-workspace"] > .ops-page-header { display: none; }
+  .everyday-toolbar { order: -2; }
+  .everyday-collection-summary { order: -1; }
+  .everyday-metrics { border: 0; border-radius: 0; background: transparent; }
+  .everyday-metrics .ops-metric-card { min-height: 58px; padding: 8px 10px; border-right: 1px solid var(--border-subtle); background: transparent; }
+  .everyday-metrics .ops-metric-card:first-child { padding-left: 0; }
+  .everyday-metrics .ops-metric-card > strong { font-size: 18px; }
+  .everyday-record-list { gap: 0; }
+  .everyday-record-card__heading { align-items: center; }
+  .everyday-record-card__heading .ops-status-badge { font-size: 10px; }
+}
+
+@media (max-width: 420px) {
+  .app.app-command-shell .everyday-record-card { grid-template-columns: 56px minmax(0, 1fr) auto; }
+  .everyday-record-card > img,
+  .everyday-record-placeholder { width: 56px; }
+  .everyday-record-card dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .business-destination-grid button strong { font-size: 15px; }
+}

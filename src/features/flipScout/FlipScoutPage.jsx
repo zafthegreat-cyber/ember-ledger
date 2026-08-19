@@ -189,27 +189,34 @@ export default function FlipScoutPage({ onExit, onOpenRestocks, initialScreen = 
     applySave(result.state, result.error);
   }, [applySave, repository]);
 
+  const findNavigation = <div className="flip-find-navigation">
+    <nav className="flip-main-nav ops-find-nav" aria-label="Find navigation" style={{ "--flip-primary-count": visiblePrimaryNavItems.length }}>{visiblePrimaryNavItems.map(([key, label]) => <button type="button" key={key} className={activeScreen === key ? "active" : ""} aria-current={activeScreen === key ? "page" : undefined} onClick={() => navigate(key)}><span>{label}</span></button>)}</nav>
+    <details ref={moreMenuRef} className="flip-more-menu">
+      <summary>More</summary>
+      <div>
+        <button type="button" onClick={() => navigate("rules")}>Saved</button>
+        <button type="button" onClick={() => navigate("appraise")}>Deal Analysis</button>
+        {featureControls.ebaySearch !== false ? <button type="button" onClick={() => navigate("ebay")}>eBay Search</button> : null}
+        {featureControls.ebaySearch !== false ? <button type="button" onClick={() => navigate("ebay")}>Import Review</button> : null}
+        <button type="button" onClick={() => navigate("sources")}>Sources</button>
+        <button type="button" onClick={() => navigate("rules")}>Search Rule Editor</button>
+      </div>
+    </details>
+  </div>;
+
   return (
     <div className="flip-scout-page">
       <PageHeader
         eyebrow="Sourcing"
         title="Find"
       />
-      <nav className="flip-main-nav ops-find-nav" aria-label="Find navigation" style={{ "--flip-primary-count": visiblePrimaryNavItems.length }}>{visiblePrimaryNavItems.map(([key, label]) => <button type="button" key={key} className={activeScreen === key ? "active" : ""} aria-current={activeScreen === key ? "page" : undefined} onClick={() => navigate(key)}><span>{label}</span></button>)}</nav>
-      <details ref={moreMenuRef} className="flip-more-menu">
-        <summary>More</summary>
-        <div>
-          <button type="button" onClick={() => navigate("rules")}>Saved</button>
-          <button type="button" onClick={() => navigate("appraise")}>Deal Analysis</button>
-          {featureControls.ebaySearch !== false ? <button type="button" onClick={() => navigate("ebay")}>eBay Search</button> : null}
-        </div>
-      </details>
+      {activeScreen !== "deals" && PRIMARY_NAV_ITEMS.some(([key]) => key === activeScreen) ? findNavigation : null}
       {!PRIMARY_NAV_ITEMS.some(([key]) => key === activeScreen) ? <div className="flip-context-bar"><button type="button" onClick={() => navigate("deals")}>Back to Deals</button><strong>{activeTitle}</strong></div> : null}
       {storageMessage ? <div className="flip-storage-warning" role="alert"><strong>Local save warning</strong><span>{storageMessage}</span></div> : null}
       <main className="flip-scout-main" aria-label={activeTitle} tabIndex={-1}>
         <Suspense fallback={<LoadingState title={`Loading ${activeTitle}`} description="Preparing this workspace." />}>
         {activeScreen === "dashboard" ? <DashboardScreen state={state} onNavigate={navigate} /> : null}
-        {activeScreen === "deals" ? <DealsScreen deals={state.deals} initialMode={subview} onSave={saveRecord} onDelete={deleteRecord} onAnalyze={analyzeDeal} /> : null}
+        {activeScreen === "deals" ? <DealsScreen deals={state.deals} initialMode={subview} navigation={findNavigation} onSave={saveRecord} onDelete={deleteRecord} onAnalyze={analyzeDeal} /> : null}
         {activeScreen === "restocks" ? <RestocksScreen onOpenRestocks={onOpenRestocks} /> : null}
         {activeScreen === "appraise" ? <AppraiserScreen seed={appraisalSeed} onSave={saveRecord} /> : null}
         {activeScreen === "auctions" ? <AuctionsScreen auctions={state.auctions} initialMode={subview} onSave={saveRecord} onDelete={deleteRecord} /> : null}

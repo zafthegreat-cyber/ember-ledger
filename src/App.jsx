@@ -51422,7 +51422,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               });
             }}
           >
-            <summary>More actions</summary>
+            <summary>More</summary>
             <div className="add-anything-option-grid add-anything-option-grid--more">
               {overflowEntryOptions.map((option) => (
                 <button
@@ -59294,6 +59294,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     </span>
   </button>
 
+  <span className="topbar-mobile-page-title">{activeTabLabel === "Dashboard" ? "Home" : activeTabLabel}</span>
+
   <div className={searchExpanded ? "app-search expanded" : "app-search"}>
     {searchExpanded ? (
       <div className="app-search-mobile-header">
@@ -59450,10 +59452,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     <button
       type="button"
       className="menu-button"
+      aria-label="Open profile and menu"
       onClick={() => openMenuDrawer()}
     >
       <span className="action-icon" aria-hidden="true">
-        <AppNavIcon kind="settings" />
+        <AppNavIcon kind="account" />
       </span>
       Menu
     </button>

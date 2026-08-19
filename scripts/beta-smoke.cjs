@@ -1933,7 +1933,7 @@ async function main() {
     await step("app opens and local beta shell loads", async () => {
       await resetBetaData();
       await assertVisibleText("Private Business Hub");
-      await assertVisibleText("Buying budget");
+      await assertVisibleText("Needs Attention");
       await assertVisibleText("Home");
     });
 
@@ -1963,7 +1963,7 @@ async function main() {
       await assertVisibleText("Add Collection Item");
       await assertNotVisibleText("Add Resale Inventory");
       await assertNotVisibleText("Add Kids Pack");
-      await quickAddModal.locator("summary", { hasText: "More actions" }).click();
+      await quickAddModal.locator("summary", { hasText: /^More$/ }).click();
       await assertVisibleText("Add Resale Inventory");
       await assertVisibleText("Add Kids Pack");
       await quickAddModal.locator(".modal-close-button").click();
@@ -1977,7 +1977,7 @@ async function main() {
 
     await step("Collection opens", async () => {
       await nav("Collection");
-      await assertVisibleText("My Collection");
+      await assertVisibleText("Search collection");
     });
 
     await step("Business opens", async () => {
@@ -3923,12 +3923,17 @@ async function main() {
     });
   });
 
-  await step("Home: totals update", async () => {
+  await step("Home: minimal operational view loads", async () => {
     await nav("Home");
     await assertVisibleText("Needs Attention");
-    await assertVisibleText("Best Opportunity");
-    await assertVisibleText("Buying budget");
-    await assertVisibleText("Recent Activity");
+    const homeLayout = await page.locator(".ops-home-page").first().evaluate((node) => ({
+      sectionCount: node.querySelectorAll(":scope > .ops-home-section").length,
+      summaryCount: node.querySelectorAll(":scope > .ops-business-strip").length,
+      firstHeading: node.querySelector(":scope > .ops-home-section h2")?.textContent?.trim() || "",
+    }));
+    assert.equal(homeLayout.firstHeading, "Needs Attention", "Home should lead with Needs Attention");
+    assert.ok(homeLayout.sectionCount >= 1 && homeLayout.sectionCount <= 3, "Home should expose no more than three operational sections");
+    assert.ok(homeLayout.summaryCount <= 1, "Home should expose at most one optional summary strip");
     await assertNotVisibleText("Hearth Command Center");
   });
 

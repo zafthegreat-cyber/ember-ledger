@@ -156,16 +156,16 @@ function MetricRow({ items }) {
   return <div className="everyday-metrics">{items.slice(0, 4).map((item) => <MetricCard key={item.label} {...item} />)}</div>;
 }
 
-function RecordListCard({ record, eyebrow, facts = [], status = "", statusTone = "neutral", onOpen, action = null, actionLabel = "" }) {
+function RecordListCard({ record, eyebrow, facts = [], status = "", statusTone = "neutral", onOpen }) {
   const image = recordImage(record);
-  return <RecordCard className="everyday-record-card">
+  return <button type="button" className="everyday-record-card" onClick={() => onOpen(record)} aria-label={`Open ${recordTitle(record)}`}>
     {image ? <img src={image} alt="" loading="lazy" /> : <div className="everyday-record-placeholder" aria-hidden="true">Record</div>}
     <div className="everyday-record-card__body">
       <div className="everyday-record-card__heading"><div><span>{eyebrow}</span><h3>{recordTitle(record)}</h3></div>{status ? <StatusBadge tone={statusTone}>{status}</StatusBadge> : null}</div>
       <dl>{facts.slice(0, 4).filter((fact) => fact.value !== undefined && fact.value !== null && fact.value !== "").map((fact) => <div key={fact.label}><dt>{fact.label}</dt><dd>{fact.value}</dd></div>)}</dl>
-      <div className="everyday-card-actions"><PrimaryButton onClick={() => onOpen(record)}>View Details</PrimaryButton>{action ? <QuietButton onClick={() => action(record)}>{actionLabel}</QuietButton> : null}</div>
     </div>
-  </RecordCard>;
+    <span className="everyday-record-chevron" aria-hidden="true">›</span>
+  </button>;
 }
 
 function PurposeActions({ item, onChange }) {
@@ -282,7 +282,17 @@ export function CollectionWorkspace({ items = [], initialView = "collection", on
   const grading = visible.filter((item) => item.gradingCompany || item.grade || /graded/i.test(item.productClassification || ""));
   const sets = Object.entries(collectionItems.reduce((groups, item) => { const key = item.setName || (/binder/i.test(item.productClassification || "") ? recordTitle(item) : ""); if (key) (groups[key] ||= []).push(item); return groups; }, {}));
   const secondaryDestinations = [{ key: "sets", label: "Sets & Binders" }, { key: "wishlist", label: "Wishlist" }, featureControls.grading !== false ? { key: "grading", label: "Grading" } : null].filter(Boolean);
+  const collectionMoreItems = [...secondaryDestinations, ...(unassigned.length ? [{ key: "unassigned", label: `Unassigned Review (${unassigned.length})` }] : [])];
+  const valuedCollectionItems = collectionItems.filter((item) => item.projectedResaleMid !== "" && item.projectedResaleMid != null && Number.isFinite(Number(item.projectedResaleMid)));
+  const estimatedCollectionValue = valuedCollectionItems.reduce((sum, item) => sum + Number(item.projectedResaleMid), 0);
   const changeView = (next) => { setSelected(null); setView(next); onViewChange?.(next); };
+  const chooseCollectionUtility = (next) => {
+    if (next === "unassigned") {
+      setSelected(unassigned[0] || null);
+      return;
+    }
+    changeView(next);
+  };
   const changePurpose = (item, nextPurpose) => {
     if (item._recordOrigin === "repository") {
       const changed = changeOwnedItemPurpose(item, nextPurpose, { changedBy: "owner", reason: nextPurpose === OWNED_ITEM_PURPOSES.FOR_RESALE ? "Sell This Item from Collection" : "Purpose assigned in Collection" });
@@ -295,12 +305,12 @@ export function CollectionWorkspace({ items = [], initialView = "collection", on
   };
   if (form) return <RecordForm key={`${form.type}-${form.seed?.id || "new"}`} type={form.type} seed={form.seed} state={state} onSave={(collection, record, message) => { const saved = saveRecord(collection, record, message); setSelected({ ...saved, _recordOrigin: "repository" }); }} onCancel={() => setForm(null)} />;
   if (selected) return <CollectionItemDetail item={selected} onBack={() => setSelected(null)} onPurpose={changePurpose} onEdit={(item) => setForm({ type: "collection", seed: item })} onDelete={(item) => { if (removeRecord("inventory", item)) setSelected(null); }} />;
-  const cardsFor = (records) => records.map((item) => <RecordListCard key={item.id} record={item} eyebrow={item.productClassification || "Owned item"} status={item.ownedItemPurpose === OWNED_ITEM_PURPOSES.UNASSIGNED ? "Needs purpose" : ""} statusTone="warning" facts={[{ label: "Acquisition", value: acquisitionCost(item) == null ? "Not recorded" : money(acquisitionCost(item)) }, { label: "Set", value: item.setName || "Not recorded" }]} onOpen={setSelected} />);
+  const cardsFor = (records) => records.map((item) => <RecordListCard key={item.id} record={item} eyebrow={[item.setName, item.productClassification].filter(Boolean).join(" · ") || "Owned item"} status={item.ownedItemPurpose === OWNED_ITEM_PURPOSES.UNASSIGNED ? "Needs purpose" : ""} statusTone="warning" facts={[{ label: item.condition ? "Condition" : "Quantity", value: item.condition || item.quantity || 1 }, { label: "Estimated value", value: item.projectedResaleMid !== "" && item.projectedResaleMid != null ? money(item.projectedResaleMid) : "" }]} onOpen={setSelected} />);
   return <main className="everyday-workspace" data-testid="collection-workspace">
     <PageHeader eyebrow="Owned items" title={view === "collection" ? "Collection" : secondaryDestinations.find((item) => item.key === view)?.label || "Collection"} actions={<PrimaryButton onClick={() => setForm({ type: "collection", seed: {} })}>Add Item</PrimaryButton>} />
-    <div className="everyday-secondary-navigation"><button type="button" className={view === "collection" ? "is-active" : ""} aria-current={view === "collection" ? "page" : undefined} onClick={() => changeView("collection")}>My Collection</button><WorkspaceMoreMenu items={secondaryDestinations} active={view} onChange={changeView} /></div>
+    {view !== "collection" ? <div className="everyday-secondary-navigation"><button type="button" onClick={() => changeView("collection")}>Back to Collection</button><WorkspaceMoreMenu items={collectionMoreItems} active={view} onChange={chooseCollectionUtility} /></div> : null}
     {error ? <p className="compatibility-note" role="alert">{error}</p> : null}
-    {view === "collection" ? <><MetricRow items={[{ label: "Items", value: collectionItems.length }, { label: "Sets & binders", value: sets.length }]} />{unassigned.length ? <button type="button" className="everyday-review-queue" onClick={() => setSelected(unassigned[0])}>Review {unassigned.length} unassigned item{unassigned.length === 1 ? "" : "s"}</button> : null}<div className="everyday-toolbar"><SearchField label="Search collection" value={query} onChange={setQuery} enterKeyHint="search" autoComplete="off" /><FilterButton active={filtersOpen || Boolean(conditionFilter)} onClick={() => setFiltersOpen(true)}>Filter</FilterButton></div><section aria-label="Collection items">{collectionItems.length ? <div className="everyday-record-list">{cardsFor(collectionItems)}</div> : <EmptyState title="No collection items yet" action={<PrimaryButton onClick={() => setForm({ type: "collection", seed: {} })}>Add Item</PrimaryButton>}>Add an item or assign an existing item to Personal collection.</EmptyState>}</section></> : null}
+    {view === "collection" ? <><div className="everyday-toolbar"><SearchField label="Search collection" value={query} onChange={setQuery} enterKeyHint="search" autoComplete="off" /><FilterButton active={filtersOpen || Boolean(conditionFilter)} onClick={() => setFiltersOpen(true)}>Filter</FilterButton></div><div className="everyday-collection-summary"><MetricRow items={[{ label: "Items", value: collectionItems.length }, ...(valuedCollectionItems.length ? [{ label: "Estimated Value", value: money(estimatedCollectionValue), numeric: true }] : [])]} /><WorkspaceMoreMenu items={collectionMoreItems} active={view} onChange={chooseCollectionUtility} /></div><section aria-label="Collection items">{collectionItems.length ? <div className="everyday-record-list">{cardsFor(collectionItems)}</div> : <EmptyState title="No collection items yet" action={<PrimaryButton onClick={() => setForm({ type: "collection", seed: {} })}>Add Item</PrimaryButton>}>Add an item or assign an existing item to Personal collection.</EmptyState>}</section></> : null}
     {view === "sets" ? <section><SectionHeader title="Sets & Binders" description="Grouped from real set and binder fields." />{sets.length ? <div className="everyday-group-list">{sets.map(([name, records]) => <RecordCard key={name}><h3>{name}</h3><p>{records.length} item{records.length === 1 ? "" : "s"}</p><QuietButton onClick={() => setSelected(records[0])}>Open Items</QuietButton></RecordCard>)}</div> : <EmptyState title="No set or binder groups">Add a set name or binder classification to an owned item.</EmptyState>}</section> : null}
     {view === "wishlist" ? <section><SectionHeader title="Wishlist" description="Owned targets currently assigned to Hold." />{heldItems.length ? <div className="everyday-record-list">{cardsFor(heldItems)}</div> : <EmptyState title="Your wishlist is empty">Assign an item to Hold to keep it here.</EmptyState>}</section> : null}
     {view === "grading" ? <section><SectionHeader title="Grading" description="Recorded grading candidates and graded items only." />{grading.length ? <div className="everyday-record-list">{cardsFor(grading)}</div> : <EmptyState title="No grading records">Add grading company, grade, or a graded classification to an item.</EmptyState>}</section> : null}

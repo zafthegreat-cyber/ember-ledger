@@ -35,6 +35,7 @@ async function main() {
         browserErrors.push(`console: ${message.text()}${sourceUrl ? ` (${sourceUrl})` : ""}`);
       }
     });
+    page.on("dialog", (dialog) => dialog.accept());
     await page.addInitScript(() => localStorage.removeItem("ember-and-tide.flip-scout.v1"));
 
     await page.goto(appUrl("/find/deals"), { waitUntil: "domcontentloaded" });
@@ -68,6 +69,7 @@ async function main() {
     assert.doesNotMatch(appraisalText, /NaN|Infinity/, "appraisal should not display invalid numeric values");
     await assertNoHorizontalOverflow(page, "Deal decision at 360px");
 
+    await page.getByRole("button", { name: "Back to Deals", exact: true }).click();
     await page.locator(".flip-main-nav").getByRole("button", { name: "Auctions", exact: true }).click();
     await page.getByRole("button", { name: "Add Auction", exact: true }).click();
     await page.getByLabel("Title").fill("Local estate auction");
@@ -97,6 +99,15 @@ async function main() {
     assert.equal(savedState.schemaVersion, 2);
     assert.equal(savedState.deals.length, 1);
     assert.equal(savedState.deals[0].listingUrl, "https://example.com/real-manual-listing");
+    await page.getByRole("button", { name: "Back to Deals", exact: true }).click();
+    await page.getByRole("heading", { name: "Manual vintage binder lead", exact: true }).waitFor();
+    await page.getByRole("button", { name: "Review", exact: true }).click();
+    const detailMore = page.locator(".ops-detail-more");
+    await detailMore.locator("summary").click();
+    await detailMore.getByRole("button", { name: "Delete", exact: true }).click();
+    await page.getByRole("heading", { name: "No listings match", exact: true }).waitFor();
+    const stateAfterDelete = await page.evaluate(() => JSON.parse(localStorage.getItem("ember-and-tide.flip-scout.v1") || "{}"));
+    assert.equal(stateAfterDelete.deals.length, 0, "Deal Inbox deletion should remove only the confirmed listing record");
     await page.screenshot({ path: path.join(process.cwd(), "artifacts", "qa", "flip-scout-phase2-ebay-mobile.png"), fullPage: true });
     assert.deepEqual(browserErrors, [], browserErrors.join("\n"));
 
@@ -118,7 +129,7 @@ async function main() {
     await desktopPage.screenshot({ path: path.join(process.cwd(), "artifacts", "qa", "flip-scout-phase2-ebay-desktop.png"), fullPage: true });
     assert.deepEqual(desktopErrors, [], desktopErrors.join("\n"));
     await desktopPage.close();
-    console.log("Flip Scout mobile route, listing intake, appraiser, auction calculator, eBay configuration truth, import review, persistence, and browser error checks passed.");
+    console.log("Flip Scout mobile route, listing intake and deletion, appraiser, auction calculator, eBay configuration truth, import review, persistence, and browser error checks passed.");
   } finally {
     await browser.close();
   }

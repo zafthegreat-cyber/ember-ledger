@@ -14,7 +14,7 @@ export function RecordSummary({ items = [] }) {
 }
 
 export function DetailSection({ title, description = "", children, open = false }) {
-  return <details className="ops-detail-section" open={open}><summary><span><strong>{title}</strong>{description ? <small>{description}</small> : null}</span><AppNavIcon kind="chevron" /></summary><div className="ops-detail-section__body">{children}</div></details>;
+  return <details className="ops-detail-section" name="record-detail-sections" open={open}><summary><span><strong>{title}</strong>{description ? <small>{description}</small> : null}</span><AppNavIcon kind="chevron" /></summary><div className="ops-detail-section__body">{children}</div></details>;
 }
 
 export function DetailList({ items = [] }) {
@@ -34,7 +34,7 @@ export function RecordDetailPage({ eyebrow = "Record detail", title, status = ""
     <PageHeader eyebrow={eyebrow} title={title} actions={status ? <StatusBadge tone={statusTone}>{status}</StatusBadge> : null} />
     <section className="ops-detail-hero">
       {image ? <img src={image} alt={imageAlt || title} /> : <div className="ops-detail-identity" aria-hidden="true"><AppNavIcon kind="inventory" /></div>}
-      <div>{identity ? <p>{identity}</p> : null}<RecordSummary items={summary} /><div className="ops-detail-actions">{primaryAction}{secondaryActions}</div></div>
+      <div>{identity ? <p>{identity}</p> : null}<RecordSummary items={summary} /><div className="ops-detail-actions">{primaryAction}{secondaryActions ? <details className="ops-detail-more"><summary>More</summary><div>{secondaryActions}</div></details> : null}</div></div>
     </section>
     <div className="ops-detail-sections">
       {sections.map((section, index) => <DetailSection key={section.key || section.title} {...section} open={section.open ?? index === 0} />)}

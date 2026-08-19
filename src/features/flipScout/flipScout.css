@@ -621,3 +621,66 @@
   .flip-decision-priority { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .flip-decision-priority strong { font-size: 21px; }
 }
+
+/* Mobile-first minimal pass: search and records lead, secondary tools recede. */
+.flip-find-navigation { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px; margin-bottom: 10px; }
+.flip-find-navigation .flip-main-nav { padding: 0; }
+.flip-find-navigation .flip-more-menu { margin: 0; }
+.flip-deal-workspace { display: grid; gap: 10px; }
+.flip-deal-workspace .flip-filter-bar,
+.flip-deal-workspace .flip-find-navigation,
+.flip-deal-workspace .flip-section-heading { margin-bottom: 0; }
+.flip-decision-disclosures { display: grid; }
+.flip-analysis-workflow > .flip-section > .flip-section-heading { display: none; }
+.flip-decision-primary { width: fit-content; }
+
+@media (min-width: 700px) {
+  .flip-decision-priority { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .flip-decision-primary { display: none; }
+}
+
+@media (max-width: 699px) {
+  .flip-scout-page > .ops-page-header { display: none; }
+  .flip-scout-main { padding: 12px 16px calc(96px + env(safe-area-inset-bottom, 0px)); }
+  .flip-scout-page > .flip-find-navigation { margin: 12px 16px 0; }
+  .flip-main-nav { gap: 2px; }
+  .flip-main-nav button { min-height: 44px; padding-inline: 5px; }
+  .flip-more-menu > summary { min-height: 44px; padding-inline: 10px; border-color: transparent; background: transparent; }
+  .flip-deal-workspace .flip-section-heading h2 { font-size: 17px; }
+  .flip-deal-feed { gap: 0; }
+  .flip-deal-feed .ops-deal-card { grid-template-columns: 80px minmax(0, 1fr); }
+  .flip-deal-feed .ops-deal-card > img,
+  .flip-deal-feed .ops-deal-card > .ops-product-placeholder { min-height: 126px; }
+  .flip-deal-card__body { gap: 5px; padding: 8px 10px; }
+  .flip-deal-card__body h3 { display: -webkit-box; overflow: hidden; font-size: 14px; line-height: 1.25; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+  .flip-deal-summary { gap: 6px; }
+  .flip-deal-summary strong { font-size: 14px; }
+  .flip-deal-card__body > .primary-button { min-width: 76px; min-height: 40px; padding: 7px 11px; }
+  .flip-empty-state { min-height: 0; padding: 14px 0; border: 0; background: transparent; }
+  .flip-empty-state > span { display: none; }
+  .flip-analysis-workflow .flip-form { padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+  .flip-analysis-steps { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 2px; }
+  .flip-analysis-steps button { min-height: 40px; justify-content: center; padding: 4px; }
+  .flip-analysis-steps button strong { display: none !important; }
+  .flip-analysis-steps button span { width: 26px; height: 26px; }
+  .ops-decision-panel { padding: 0 !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; }
+  .flip-result-title { gap: 5px; }
+  .flip-result-title > span:first-child { font-size: 11px; }
+  .flip-result-title h2 { font-size: 19px; }
+  .flip-decision-priority { gap: 0; border-block: 1px solid var(--border-subtle); }
+  .flip-decision-priority article { padding: 10px; border-radius: 0; background: transparent; }
+  .flip-decision-priority article:nth-child(odd) { border-right: 1px solid var(--border-subtle); }
+  .flip-decision-priority article:nth-child(-n+2) { border-bottom: 1px solid var(--border-subtle); }
+  .flip-decision-priority article small { display: none; }
+  .flip-decision-priority strong { font-size: 19px; }
+  .flip-scenario-table > div { padding-block: 8px; }
+  .flip-decision-details { border-bottom: 1px solid var(--border-subtle); border-top: 0; }
+  .flip-decision-details > summary { min-height: 46px; }
+  .flip-decision-primary { width: 100%; min-height: 46px; }
+  .ops-sticky-decision { display: none; }
+}
+
+@media (max-width: 380px) {
+  .flip-main-nav { padding-inline: 0; }
+  .flip-scenario-table > div { grid-template-columns: 68px repeat(3, minmax(0, 1fr)); font-size: 9px; }
+}

@@ -70,7 +70,7 @@ function listingTiming(deal) {
   return `Found ${days}d ago`;
 }
 
-export default function DealsScreen({ deals, initialMode = "", onSave, onDelete, onAnalyze }) {
+export default function DealsScreen({ deals, initialMode = "", navigation = null, onSave, onDelete, onAnalyze }) {
   const [form, setForm] = useState(blankDeal);
   const [formOpen, setFormOpen] = useState(() => Boolean(initialMode));
   const [query, setQuery] = useState("");
@@ -151,7 +151,15 @@ export default function DealsScreen({ deals, initialMode = "", onSave, onDelete,
 
   return (
     <div className="flip-screen">
-      <section className="flip-section">
+      <section className="flip-section flip-deal-workspace">
+        <div className="flip-filter-bar">
+          <TextInput label="Search listings" value={query} onChange={setQuery} placeholder="Title, source, seller, tag…" />
+          <details className="flip-filter-menu">
+            <summary>Filter</summary>
+            <div><SelectInput label="Status" value={statusFilter} onChange={setStatusFilter} options={["All", ...DEAL_STATUSES]} /><SelectInput label="Sort" value={sort} onChange={setSort} options={SORT_OPTIONS} /></div>
+          </details>
+        </div>
+        {navigation}
         <SectionHeading
           title="Deal Feed"
           actions={<button type="button" className="primary-button" onClick={() => { setForm(blankDeal()); setFormOpen((open) => !open); }}>{formOpen ? "Close form" : "Paste Listing"}</button>}
@@ -196,16 +204,6 @@ export default function DealsScreen({ deals, initialMode = "", onSave, onDelete,
             <FormActions><button type="submit" className="primary-button">{form.id ? "Update listing" : "Save listing"}</button><button type="button" className="secondary-button" onClick={() => onAnalyze({ ...form, purchasePrice: form.askingPrice, purchaseTax: form.estimatedTax })}>Analyze assumptions</button></FormActions>
           </form>
         ) : message ? <p className="flip-form-message" role="status">{message}</p> : null}
-      </section>
-
-      <section className="flip-section">
-        <div className="flip-filter-bar">
-          <TextInput label="Search listings" value={query} onChange={setQuery} placeholder="Title, source, seller, tag…" />
-          <details className="flip-filter-menu">
-            <summary>Filter</summary>
-            <div><SelectInput label="Status" value={statusFilter} onChange={setStatusFilter} options={["All", ...DEAL_STATUSES]} /><SelectInput label="Sort" value={sort} onChange={setSort} options={SORT_OPTIONS} /></div>
-          </details>
-        </div>
         {visibleDeals.length ? (
           <div className="flip-record-list flip-deal-feed">
             {visibleDeals.map((deal) => (

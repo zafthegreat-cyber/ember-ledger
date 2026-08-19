@@ -201,3 +201,17 @@
   .owner-opportunity-list .ops-deal-card > img,
   .owner-opportunity-list .ops-deal-card > .ops-product-placeholder { min-height: 160px; }
 }
+
+/* Mobile-first minimal overview: five status rows and no duplicate title. */
+@media (max-width: 699px) {
+  .owner-center { gap: 12px; padding: 12px 16px calc(96px + env(safe-area-inset-bottom, 0px)); }
+  .owner-center > .ops-page-header { display: none; }
+  .owner-tabs { gap: 4px; padding: 0; }
+  .owner-tabs button,
+  .owner-tabs-more > summary { min-height: 42px; border-color: transparent; border-radius: var(--radius-sm); background: transparent; }
+  .owner-tabs button.is-active { border-color: color-mix(in srgb, var(--brand-primary) 24%, var(--border-subtle)); }
+  .owner-overview-compact { gap: 0; }
+  .app.app-command-shell .owner-status-list button { min-height: 58px; }
+  .owner-status-list button > span:first-child { gap: 1px; }
+  .owner-status-list small { font-size: 11px; }
+}
