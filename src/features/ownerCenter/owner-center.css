@@ -6,7 +6,46 @@
 }
 
 .owner-center--denied { min-height: 60vh; align-content: center; }
+.owner-access-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.owner-local-development {
+  width: fit-content;
+  border: 1px solid var(--status-warning);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--status-warning) 10%, var(--surface-primary));
+  font-size: 12px;
+  font-weight: 750;
+}
 .owner-section-stack { display: grid; gap: var(--space-6); min-width: 0; }
+
+.backup-recovery { display: grid; gap: var(--space-4); min-width: 0; }
+.backup-recovery__header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); }
+.backup-recovery__header h2,
+.backup-recovery__header p { margin: 0; }
+.backup-recovery__header p { margin-top: var(--space-1); max-width: 58ch; color: var(--text-secondary); }
+.backup-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.backup-no-write,
+.backup-message { margin: 0; color: var(--text-secondary); line-height: 1.5; }
+.backup-message { color: var(--text-primary); }
+.backup-result { display: grid; border-top: 1px solid var(--border-subtle); }
+.backup-status-row { min-height: 48px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--space-3); border-bottom: 1px solid var(--border-subtle); }
+.backup-status-row > span { color: var(--text-secondary); }
+.backup-status-row > strong { color: var(--text-primary); font-variant-numeric: tabular-nums; text-align: right; }
+.backup-result details,
+.backup-activity { border-bottom: 1px solid var(--border-subtle); }
+.backup-result summary,
+.backup-activity summary { min-height: 44px; display: flex; align-items: center; color: var(--brand-primary); font-weight: 750; cursor: pointer; }
+.backup-details { padding: 0 0 var(--space-4); color: var(--text-secondary); }
+.backup-details h3 { margin: var(--space-3) 0 var(--space-1); color: var(--text-primary); font-size: 14px; }
+.backup-details p,
+.backup-details ul,
+.backup-activity p,
+.backup-activity ul { margin: var(--space-2) 0; }
+.backup-details li,
+.backup-activity li { overflow-wrap: anywhere; }
+.backup-finding-counts { display: grid; gap: 0; padding: 0; list-style: none; }
+.backup-finding-counts li { min-height: 36px; display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); border-bottom: 1px solid var(--border-subtle); }
 
 .owner-tabs,
 .owner-control-nav {
@@ -159,6 +198,9 @@
   .owner-financial-grid,
   .owner-definition-list { grid-template-columns: 1fr; }
   .owner-opportunity-card__body { padding: var(--space-2); }
+  .backup-recovery__header { display: grid; }
+  .backup-actions,
+  .backup-actions .ops-button { width: 100%; }
 }
 
 /* Declutter pass */

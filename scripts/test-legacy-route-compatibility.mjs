@@ -15,6 +15,9 @@ const redirects = new Map([
   ["/tidepool", "/kids-community/community"],
   ["/membership", "/settings/plans"],
   ["/help", "/settings/help"],
+  ["/data-backup", "/owner-center/controls/data-backup"],
+  ["/backup", "/owner-center/controls/data-backup"],
+  ["/settings/data-backup", "/owner-center/controls/data-backup"],
 ]);
 
 for (const [legacy, canonical] of redirects) {
@@ -30,6 +33,7 @@ assert.equal(
 assert.deepEqual(routeStateFromPath("/find/deal-analysis"), { activeTab: "flipScout", flipScoutView: "appraise" });
 assert.deepEqual(routeStateFromPath("/business/money/mileage"), { activeTab: "businessWorkspace", businessWorkspaceView: "money", businessMoneyView: "mileage" });
 assert.deepEqual(routeStateFromPath("/settings/plans"), { activeTab: "membership" });
+assert.deepEqual(routeStateFromPath("/settings/data-backup"), { activeTab: "ownerCenter", ownerCenterSection: "controls", ownerCenterSubview: "data-backup" });
 
 for (const distinctRoute of ["/scout/stores/store-1", "/vault/cards", "/forge/reports", "/exchange/forge", "/admin"]) {
   assert.equal(canonicalPathForPath(distinctRoute), distinctRoute, `${distinctRoute} remains available until its workflow is migrated`);

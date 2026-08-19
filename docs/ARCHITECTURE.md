@@ -1,6 +1,8 @@
 # Code 3 Architecture
 
-Verified against commit `fa087331f3e81b5cf06a57ca7a89e8b37edba0fc`.
+Published baseline: `264d5a5dbc58568295ba514b9c474f588f42282e`.
+
+Phase 1A status: implemented and validated locally in the uncommitted worktree, awaiting its publication checkpoint. Nothing described as a Phase 1A change in this document is deployed or configured in Preview/Production yet.
 
 ## Executive summary
 
@@ -10,7 +12,22 @@ Code 3 is a hybrid React/Vite single-page application. Its approved everyday she
 2. older browser storage and optional Supabase persistence used by legacy application modules;
 3. an Express/PostgreSQL backend used by legacy APIs and the secure eBay Browse connector.
 
-The current architecture is suitable for a private preview, not for production-grade owner authorization, centralized durability, or reliable background work. The safest target is an incremental strangler migration: protect sensitive server routes first, introduce a versioned canonical repository/API boundary, then migrate one domain at a time while retaining verified local backup and route/storage compatibility.
+The published architecture is suitable for a private preview, not for centralized durability or reliable background work. Phase 1A locally adds a Supabase-backed server identity boundary for the auth/eBay route families and a deterministic browser-backup/restore-preview contract. Those changes reduce risk but do not protect legacy API families, make browser-local records durable, or provide a complete backup when configured server data or referenced file bytes are omitted. The safest target remains an incremental strangler migration.
+
+## Phase 1A local worktree delta
+
+The uncommitted implementation adds these boundaries without a database migration:
+
+- `backend/src/auth/*`: normalized principals, Supabase token verification, immutable-subject owner policy, and environment gating;
+- `backend/src/security/*`: exact-origin CORS and structured redaction helpers;
+- `backend/src/routes/auth.routes.ts`: safe `GET /api/auth/session` inspection;
+- `backend/src/routes/ebay.routes.ts`: OWNER middleware around health and search;
+- `src/services/ownerSession.js`: browser session inspection and authenticated request headers;
+- `src/features/backup/*`: source registry, bounded/canonical JSON, prohibited-data filtering, SHA-256 backup envelope, and no-write restore preview;
+- Owner Center session states and a minimal Data & Backup surface;
+- centralized Code 3 runtime/PWA/offline identity.
+
+See [OWNER_AUTH_DECISION.md](./OWNER_AUTH_DECISION.md), [BACKUP_FORMAT_V1.md](./BACKUP_FORMAT_V1.md), and [RESTORE_PREVIEW_CONTRACT.md](./RESTORE_PREVIEW_CONTRACT.md).
 
 ## Current system map
 
@@ -102,26 +119,30 @@ The eBay implementation is the strongest current server boundary:
 
 It keeps credentials server-side, caches application tokens, retries authentication once, maps upstream failures, and normalizes active listings. Browser discovery and Import Review live in `src/features/flipScout/ebayDiscovery.js` and `src/features/flipScout/screens/EbayDiscoveryScreen.jsx`.
 
-Current backend limitations:
+Current backend limitations after the local Phase 1A delta:
 
-- no application-wide authenticated session middleware;
-- no backend OWNER authorization for eBay or canonical records;
-- permissive `cors()` default;
+- the new owner policy protects `/api/ebay/*`, but it is not yet an application-wide policy;
+- canonical records still have no private backend API;
+- legacy route families remain behind their previous permissive `cors()` policy until separately migrated;
 - mixed durable and process-memory services;
 - no canonical background-job subsystem, idempotency contract, or audit writer;
 - no protected object/file storage for evidence and receipts.
 
 ## Authentication and permissions
 
-Current sign-in/profile logic is legacy client/Supabase behavior in `src/App.jsx`. `src/features/ownerCenter/ownerAuthorization.js` allows the local beta identity or a client profile marked owner, and denies guest users. It correctly controls UI access but is not a server security boundary.
+The selected identity provider is the existing Supabase Auth integration. The browser supplies its current access token; the server verifies it with Supabase, normalizes an `AuthPrincipal`, and separately checks an exact provider-qualified immutable subject in `CODE3_OWNER_SUBJECTS`. Email, browser role, localStorage, hidden navigation, and Vercel Preview Authentication do not authorize a request.
 
-Current roles (`OWNER`, `ADMIN`, `MODERATOR`, `BETA_USER`, `USER`) belong to the existing beta model. The target private roles are OWNER first, with dormant collaborator, inventory-helper, bookkeeper, and read-only policy shapes. Backend enforcement, session revocation, device/session visibility, and record permissions are missing.
+`GET /api/auth/session` returns only safe, masked session facts with `Cache-Control: no-store`. The browser uses that verified result for Owner Center visibility and compact Sign In Required / Owner Access Required states. Backend policy remains definitive for protected operations.
+
+The local adapter requires an explicit server setting, a development runtime, loopback host and socket, and an explicit header. The test adapter is injectable only in the automated-test runtime. Both fail closed in Preview, Production, and hosted-unknown environments.
+
+Current roles (`OWNER`, `ADMIN`, `MODERATOR`, `BETA_USER`, `USER`) still exist in the legacy beta model, but they cannot grant access to the protected eBay routes. Future collaborator, inventory-helper, bookkeeper, and read-only policies remain dormant. Session/device management and private-record permissions are still missing.
 
 ## Brand and feature controls
 
-The approved application identity is Code 3. `src/config/brand.js` is the one runtime configuration source, but the audited commit predates the name decision. The next approved runtime task must set application display name, short name, PWA name, PWA short name, and accessible logo text to `Code 3`; use `Code 3 — {pageTitle}` for browser titles; and permit `CODE 3` only within the visual mark. It must keep the legal/public business display name and unfinished tagline as separate configurable fields. No component should repeat the app name directly.
+The approved application identity is Code 3. The local Phase 1A worktree applies display, short, PWA, PWA short, browser-title, accessible-logo, logo, favicon, and offline identity through `src/config/brand.js` and the Vite metadata replacement. The legal/public business name and tagline remain separate and blank. Historical route, storage, cache, module, and imported-source identifiers remain unchanged.
 
-The runtime configuration also still needs default social handle, currency, time zone, explicit PWA short-name/app-icon fields, and coordinated manifest/title coverage. `src/features/ownerCenter/ownerCenterRepository.js` stores feature controls and scoring defaults locally. Controls currently influence UI visibility; they are not server-enforced entitlements.
+The runtime configuration still needs the definitive default social handle, currency, and time zone. Some compatibility/public-beta copy outside the primary shell still contains historical wording and requires a separately bounded migration. `src/features/ownerCenter/ownerCenterRepository.js` stores feature controls and scoring defaults locally; these controls influence UI visibility but are not server entitlements.
 
 ## Deployment
 
@@ -142,8 +163,9 @@ Names only are documented; values were not read or copied into these documents.
 
 | Scope | Current names found |
 |---|---|
-| Browser/build configuration | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_API_BASE_URL`, `VITE_PUBLIC_APP_URL`, `VITE_BETA_LOCAL_MODE`, `VITE_QA_UNLOCK_PAID_FEATURES`, `VITE_ADMIN_EMAILS`, `VITE_DEV_ADMIN_EMAIL`, `VITE_LOCAL_DEV_ADMIN`, `VITE_SEARCH_DEBUG` |
+| Browser/build configuration | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_API_BASE_URL`, `VITE_PUBLIC_APP_URL`, `VITE_CODE3_LOCAL_AUTH_ENABLED`, `VITE_BETA_LOCAL_MODE`, `VITE_QA_UNLOCK_PAID_FEATURES`, `VITE_ADMIN_EMAILS`, `VITE_DEV_ADMIN_EMAIL`, `VITE_LOCAL_DEV_ADMIN`, `VITE_SEARCH_DEBUG` |
 | Server/database | `DATABASE_URL`, `POSTGRES_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_DB_URL`, `SUPABASE_DB_SSL_NO_VERIFY`, `SUPABASE_SERVICE_ROLE_KEY`, `PORT`, `NODE_ENV` |
+| Owner boundary and CORS | `CODE3_OWNER_SUBJECTS`, `CODE3_CORS_ALLOWED_ORIGINS`, `CODE3_CORS_PREVIEW_ORIGINS`, `CODE3_CORS_LOCAL_ORIGINS`, `CODE3_ENABLE_LOCAL_DEV_AUTH`, `VERCEL_ENV` |
 | eBay server | `EBAY_CLIENT_ID`, `EBAY_CLIENT_SECRET`, `EBAY_ENVIRONMENT`, `EBAY_MARKETPLACE_ID`, `EBAY_REQUEST_TIMEOUT_MS` |
 | Legacy Best Buy/alerts server | `BESTBUY_API_KEY`, `BESTBUY_API_BASE_URL`, `BESTBUY_MONITOR_ENABLED`, `BESTBUY_MONITOR_QUERY`, `BESTBUY_MONITOR_ZIP`, `BESTBUY_MONITOR_SKUS`, `BESTBUY_ALERT_ONLY_ON_CHANGE`, `BESTBUY_DISCORD_WEBHOOK_URL`, `BESTBUY_MONITOR_SECRET`, `DISCORD_WEBHOOK_URL` |
 | Vercel/build metadata | `VERCEL`, `VERCEL_DEPLOYMENT_ID`, `VERCEL_GIT_COMMIT_SHA`, `GITHUB_ACTIONS`, `MODE`, `DEV` |
@@ -162,7 +184,7 @@ The repository has focused Node/browser scripts rather than one consolidated tes
 - plain language, viewport light/dark, keyboard accessibility;
 - focused beta smoke and a bounded 28-scenario regression.
 
-Tests are listed in `package.json` and `backend/package.json`. The last published UI baseline passed the documented suite; this documentation-only task does not rerun it.
+Tests are listed in `package.json` and `backend/package.json`. The published UI baseline and local Phase 1A implementation passed the documented focused and full validation gates before publication review.
 
 ## Bundle structure
 
@@ -214,8 +236,8 @@ flowchart TD
 
 The repository audit changes the safest order from “database first” to “security and recovery boundary first”:
 
-1. freeze and document local schemas, produce a verified complete export, and add restore preview;
-2. establish authenticated server sessions and OWNER authorization on sensitive endpoints;
+1. freeze and document local schemas, produce a verified export with explicit complete/partial/failed coverage, and add no-write restore preview;
+2. establish authenticated principals and OWNER authorization on sensitive endpoints;
 3. define canonical schemas/repositories and rehearse migration without writes;
 4. provision relational and object storage with versioned, reversible migrations;
 5. migrate one domain behind repository interfaces, dual-read for validation, then cut over explicitly;

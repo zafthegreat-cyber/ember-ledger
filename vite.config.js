@@ -7,6 +7,9 @@ import { BRAND_CONFIG } from "./src/config/brand.js";
 const brandReplacements = {
   __BRAND_NAME__: BRAND_CONFIG.applicationDisplayName,
   __BRAND_SHORT_NAME__: BRAND_CONFIG.shortName,
+  __BRAND_PWA_NAME__: BRAND_CONFIG.pwaName,
+  __BRAND_PWA_SHORT_NAME__: BRAND_CONFIG.pwaShortName || BRAND_CONFIG.shortName,
+  __BRAND_ACCESSIBLE_LOGO_TEXT__: BRAND_CONFIG.accessibleLogoText || BRAND_CONFIG.applicationDisplayName,
   __BRAND_TAGLINE__: BRAND_CONFIG.tagline,
   __BRAND_ACCENT__: BRAND_CONFIG.primaryAccent,
   __BRAND_LOGO__: BRAND_CONFIG.logoReference,
@@ -27,7 +30,7 @@ function brandMetadataPlugin() {
         response.setHeader("Content-Type", "application/manifest+json; charset=utf-8");
         response.end(applyBrandReplacements(JSON.stringify({
           name: BRAND_CONFIG.pwaName,
-          short_name: BRAND_CONFIG.shortName,
+          short_name: BRAND_CONFIG.pwaShortName || BRAND_CONFIG.shortName,
           description: BRAND_CONFIG.tagline,
           id: "/",
           start_url: "/",
@@ -44,8 +47,11 @@ function brandMetadataPlugin() {
       if (manifest?.type === "asset") manifest.source = applyBrandReplacements(manifest.source);
     },
     writeBundle(outputOptions) {
-      const manifestPath = resolve(process.cwd(), outputOptions.dir || "dist", "manifest.webmanifest");
-      if (existsSync(manifestPath)) writeFileSync(manifestPath, applyBrandReplacements(readFileSync(manifestPath, "utf8")));
+      const outputDirectory = resolve(process.cwd(), outputOptions.dir || "dist");
+      for (const fileName of ["manifest.webmanifest", "offline.html", "sw.js"]) {
+        const filePath = resolve(outputDirectory, fileName);
+        if (existsSync(filePath)) writeFileSync(filePath, applyBrandReplacements(readFileSync(filePath, "utf8")));
+      }
     },
   };
 }

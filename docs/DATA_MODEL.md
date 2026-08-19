@@ -1,6 +1,8 @@
 # Code 3 Data Model
 
-Verified against commit `fa087331f3e81b5cf06a57ca7a89e8b37edba0fc`.
+Published baseline: `264d5a5dbc58568295ba514b9c474f588f42282e`.
+
+Phase 1A auth and recovery structures described below are implemented and validated in the local worktree, awaiting publication. No database migration has occurred.
 
 This document distinguishes current persisted shapes from the target canonical model. Proposed names are architectural contracts, not an instruction to perform a database migration now.
 
@@ -41,7 +43,7 @@ The repository schema version is currently 2. It provides defaults, safe parsing
 
 ### Owner Center repository
 
-`src/features/ownerCenter/ownerCenterRepository.js` stores schema version 1 under `private-business-hub.owner-center.v1`.
+`src/features/ownerCenter/ownerCenterRepository.js` stores schema version 1 under `private-business-hub.owner-center.v1` (an intentionally retained internal compatibility key, not visible branding).
 
 | Collection/config | Current purpose |
 |---|---|
@@ -95,7 +97,31 @@ et-tcg-phase2-data
 
 `src/services/phase2Persistence.js` may write selected legacy records to Supabase when configured, otherwise it uses `et-tcg-phase2-data`. Existing migrations in `supabase/migrations` define older profiles, workspaces, catalog, receipt, notification, and beta-feature tables. These are not yet the target canonical private-business schema.
 
-Form drafts use session/local keys such as `private-business-hub.form-draft.*`. Existing keys MUST remain readable until migration is verified.
+Form drafts use historical internal session/local keys such as `private-business-hub.form-draft.*`. These are compatibility identifiers, not the approved application name, and MUST remain readable until migration is verified.
+
+## Phase 1A security and recovery structures
+
+Phase 1A introduces transport and recovery contracts, not canonical persisted business entities.
+
+### AuthPrincipal
+
+The backend-only normalized principal contains immutable `subject`, `provider`, optional provider-supplied `email` and `emailVerified`, plus `issuedAt` and `expiresAt`. Owner authorization compares `provider:subject` with a server-only allowlist. No principal, role, or owner identifier is accepted from browser storage or request bodies.
+
+### Backup source registry
+
+Each source descriptor contains `sourceId`, `displayName`, `storageType`, `schemaVersion`, supported versions, owner-data and security-state flags, Phase 1A inclusion, export/validation adapter identifiers, reference dependencies, record paths, coverage relevance, and an exclusion reason when omitted.
+
+Registered local sources cover Deal Finder schema 2, Owner Center schema 1, allowlisted legacy business and fallback documents, legacy restock/community and review sources, safe preferences, and safe workflow drafts. Supabase, PostgreSQL/process-memory records, and file bytes are registered exclusions. Authentication/session persistence is a prohibited source and is never exportable.
+
+### BackupEnvelope version 1
+
+The JSON envelope contains format/version, creation and build provenance, coverage status/summary, manifest, data sections, and integrity metadata. Each section contains source ID, schema version, record count, exact sanitized data, warnings, and SHA-256. See [BACKUP_FORMAT_V1.md](./BACKUP_FORMAT_V1.md).
+
+Coverage is `COMPLETE`, `PARTIAL`, or `FAILED`. Configured remote sources or referenced but unembedded file bytes make an otherwise valid artifact partial. Security/session exclusion does not make it partial because those values are prohibited recovery data.
+
+### RestorePreviewResult
+
+The no-write result is `READY_FOR_FUTURE_RESTORE`, `READY_WITH_WARNINGS`, `BLOCKED`, `UNSUPPORTED`, or `CORRUPTED`. It contains integrity/schema/source/count comparisons plus duplicate, collision, money, prohibited-field, and broken-reference findings. It is an in-memory diagnostic, not an import job or audit write. See [RESTORE_PREVIEW_CONTRACT.md](./RESTORE_PREVIEW_CONTRACT.md).
 
 ## Target entity map
 
@@ -138,6 +164,7 @@ erDiagram
 | Entity | Required target content |
 |---|---|
 | `User` | identity, status, verified contact reference, session/security metadata |
+| `AuthPrincipal` | verified provider subject and bounded claims used transiently for authorization; never restored as owner data |
 | `Role` / `Permission` | OWNER plus dormant collaborator/helper/bookkeeper/read-only policies |
 | `BusinessProfile` | owner business settings and default reporting context |
 | `BrandConfig` | Code 3 application display/short/PWA names, title template and accessible logo text; independently configurable legal/public business name and unfinished tagline; marks/icons, accents, support/social, currency, time zone |
@@ -254,7 +281,7 @@ Expense categories cover inventory, shipping, packaging, selling/payment fees, s
 |---|---|
 | `FileAsset` | protected object key, original name, MIME/size/hash, source, owner, access policy, scan status |
 | `ImportJob` | method/source, original file/data, schema/mapping, row validation/deduplication, preview, confirmation, counts/errors |
-| `ExportJob` | type/date range/schema version, generated asset, validation/hash, requested/completed timestamps |
+| `ExportJob` | future durable type/date range/schema version, generated asset, validation/hash, requested/completed timestamps; Phase 1A returns only an in-memory activity summary |
 | `SyncJob` | provider/direction/cursor, idempotency key, counts/errors/retry state |
 | `BackgroundJob` | type/schedule/attempt/lease, status, inputs/result, rate-limit metadata, heartbeat/history |
 | `ActivityLog` | owner-facing domain activity |
@@ -282,7 +309,7 @@ Current local floating-point values MUST be exported, validated to currency prec
 ## Migration approach
 
 1. Inventory every current key/table and freeze schema validators.
-2. Create a complete local JSON export and verify counts, IDs, hashes, and financial totals.
+2. Create a versioned JSON export and state `COMPLETE`, `PARTIAL`, or `FAILED` coverage honestly; verify hashes/counts and diagnose IDs, references, and money without mutation.
 3. Produce a dry-run mapping report with errors, duplicates, ambiguous purposes, orphan references, and currency rounding differences.
 4. Preserve old IDs as migration references while assigning stable canonical IDs.
 5. Import originals/provenance before normalized final records.

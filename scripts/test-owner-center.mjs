@@ -66,11 +66,11 @@ assert.deepEqual(summarizePurposeCompatibility([legacyCollection, legacyResale, 
   unmappedCount: 1,
 });
 
-assert.equal(canAccessOwnerCenter({ guestPreview: true, localMode: true, user: { id: "local-beta" } }), false, "guest preview is never owner-authorized");
-assert.equal(canAccessOwnerCenter({ localMode: true, user: { id: "local-beta" } }), true, "the single local beta identity can test the private owner workspace");
-assert.equal(canAccessOwnerCenter({ currentUserProfile: { appRole: "owner" } }), true);
-assert.equal(canAccessOwnerCenter({ currentUserProfile: { appRole: "admin" } }), false, "admin is not silently promoted to owner");
-assert.equal(canAccessOwnerCenter({ currentUserProfile: { appRole: "user" } }), false);
+assert.equal(canAccessOwnerCenter({ guestPreview: true, session: { authenticated: true, ownerAuthorized: true } }), false, "guest preview is never owner-authorized");
+assert.equal(canAccessOwnerCenter({ session: { authenticated: true, ownerAuthorized: true } }), true, "a server-verified owner session grants the UI guard");
+assert.equal(canAccessOwnerCenter({ session: { authenticated: true, ownerAuthorized: false }, currentUserProfile: { appRole: "owner" } }), false, "a browser role cannot override server authorization");
+assert.equal(canAccessOwnerCenter({ session: { authenticated: false, ownerAuthorized: true } }), false, "authorization without a verified principal is denied");
+assert.equal(canAccessOwnerCenter({}), false);
 
 const memory = new MemoryStorage();
 const ownerRepository = createOwnerCenterRepository(memory);
@@ -133,6 +133,8 @@ assert.deepEqual(routeStateFromPath("/inventory"), { activeTab: "businessWorkspa
 assert.deepEqual(routeStateFromPath("/sell"), { activeTab: "businessWorkspace", businessWorkspaceView: "sales" });
 assert.deepEqual(routeStateFromPath("/business/money/mileage"), { activeTab: "businessWorkspace", businessWorkspaceView: "money", businessMoneyView: "mileage" });
 assert.deepEqual(routeStateFromPath("/owner-center/restocks/live"), { activeTab: "ownerCenter", ownerCenterSection: "restocks", ownerCenterSubview: "live" });
+assert.deepEqual(routeStateFromPath("/owner-center/controls/data-backup"), { activeTab: "ownerCenter", ownerCenterSection: "controls", ownerCenterSubview: "data-backup" });
+assert.deepEqual(routeStateFromPath("/settings/data-backup"), { activeTab: "ownerCenter", ownerCenterSection: "controls", ownerCenterSubview: "data-backup" });
 assert.equal(pathFromActiveTab("collectionWorkspace", { collectionWorkspaceView: "wishlist" }), "/collection/wishlist");
 assert.equal(pathFromActiveTab("businessWorkspace", { businessWorkspaceView: "money", businessMoneyView: "reports" }), "/business/money/reports");
 assert.equal(pathFromActiveTab("ownerCenter", { ownerCenterSection: "performance" }), "/owner-center/performance");

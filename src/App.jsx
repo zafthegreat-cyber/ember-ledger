@@ -10,8 +10,13 @@ import { BRAND_CONFIG, applyBrandDocumentMetadata } from "./config/brand";
 import { observePlainLanguage } from "./config/plainLanguage";
 import { AppShell, DesktopSidebar, MobileBottomNavigation } from "./components/operations/OperationsUI";
 import { OWNED_ITEM_PURPOSES, changeOwnedItemPurpose } from "./features/ownedItems/ownedItemPurpose";
-import { createOwnerCenterRepository } from "./features/ownerCenter/ownerCenterRepository";
-import { canAccessOwnerCenter } from "./features/ownerCenter/ownerAuthorization";
+import { createEmptyOwnerCenterState, createOwnerCenterRepository } from "./features/ownerCenter/ownerCenterRepository";
+import {
+  OWNER_SESSION_STATES,
+  isLocalDevelopmentIdentityEnabled,
+  resolveOwnerSession,
+} from "./services/ownerSession";
+import { nextOwnerSessionRecheckDelay } from "./services/ownerSessionTiming";
 import {
   AppNavIcon,
   CommandBoardSection,
@@ -890,7 +895,9 @@ function useAutoHideHeader({ disabled = false, resetKey = "" } = {}) {
 
 const IRS_MILEAGE_RATE = 0.725;
 const runtimeParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
-const BETA_LOCAL_MODE = runtimeParams?.get("betaLocalMode") === "true" || import.meta.env.VITE_BETA_LOCAL_MODE === "true";
+const BETA_LOCAL_MODE = isLocalDevelopmentIdentityEnabled({
+  queryEnabled: runtimeParams?.get("betaLocalMode") === "true",
+});
 const QA_UNLOCK_PAID_FEATURES = runtimeParams?.get("qaUnlockPaid") === "true" || import.meta.env.VITE_QA_UNLOCK_PAID_FEATURES === "true";
 const SUBSCRIPTIONS_LIVE = false;
 const FEATURE_GATES_ENABLED = true;
@@ -6833,7 +6840,7 @@ export default function App() {
   const [businessMoneyView, setBusinessMoneyView] = useState(initialRouteState.businessMoneyView || "expenses");
   const [ownerCenterSection, setOwnerCenterSection] = useState(initialRouteState.ownerCenterSection || "overview");
   const [ownerCenterSubview, setOwnerCenterSubview] = useState(initialRouteState.ownerCenterSubview || "");
-  const [ownerFeatureControls, setOwnerFeatureControls] = useState(() => createOwnerCenterRepository().load().controls.features);
+  const [ownerFeatureControls, setOwnerFeatureControls] = useState(() => createEmptyOwnerCenterState().controls.features);
   useEffect(() => {
     const handleOwnerControls = (event) => {
       if (event.detail?.features) setOwnerFeatureControls(event.detail.features);
@@ -6909,6 +6916,20 @@ export default function App() {
   const [showTreasure, setShowTreasure] = useState(false);
 
   const [user, setUser] = useState(BETA_LOCAL_MODE ? { id: "local-beta", email: "local beta mode" } : null);
+  const [ownerSession, setOwnerSession] = useState(() => ({
+    status: OWNER_SESSION_STATES.LOADING,
+    authenticated: false,
+    ownerAuthorized: false,
+    localDevelopment: false,
+  }));
+  const [authSessionVersion, setAuthSessionVersion] = useState(0);
+  useEffect(() => {
+    if (ownerSession.status === OWNER_SESSION_STATES.AUTHORIZED) {
+      setOwnerFeatureControls(createOwnerCenterRepository().load().controls.features);
+      return;
+    }
+    setOwnerFeatureControls(createEmptyOwnerCenterState().controls.features);
+  }, [ownerSession.status]);
   const [guestPreview, setGuestPreview] = useState(false);
   const [userType, setUserType] = useState("collector");
   const [homeStatsEnabled, setHomeStatsEnabled] = useState(() => getDefaultHomeStatsForUserType("collector"));
@@ -7652,6 +7673,16 @@ export default function App() {
   function openUtilityPage(sectionKey = "") {
     if (!confirmLeaveVaultWork()) return;
     prepareRouteNavigation();
+    if (["data", "data-backup", "backup", "dataBackup"].includes(sectionKey)) {
+      setQuickAddMenuOpen(false);
+      setSearchExpanded(false);
+      setMenuOpen(false);
+      setMenuSectionsOpen({});
+      setOwnerCenterSection("controls");
+      setOwnerCenterSubview("data-backup");
+      setActiveTab("ownerCenter");
+      return;
+    }
     const nextTab = utilityTabForMenuSection(sectionKey) || sectionKey || "settings";
     setQuickAddMenuOpen(false);
     setSearchExpanded(false);
@@ -7893,13 +7924,7 @@ export default function App() {
     setVaultToast("Seller tools are tucked away. Collector setup is active.");
   }
 
-  const ownerCenterAuthorized = canAccessOwnerCenter({
-    guestPreview: guestPreviewActive,
-    localMode: BETA_LOCAL_MODE,
-    user,
-    currentUserProfile,
-    subscriptionProfile,
-  });
+  const ownerCenterAuthorized = !guestPreviewActive && ownerSession.status === OWNER_SESSION_STATES.AUTHORIZED;
   const mainTabByKey = {
     home: { key: "home", label: "Home", icon: "home", target: "dashboard" },
     find: { key: "find", label: "Find", icon: "find", target: "flipScout" },
@@ -9877,7 +9902,7 @@ export default function App() {
           typeof window !== "undefined"
             ? `${window.innerWidth}x${window.innerHeight}`
             : "Unknown",
-        betaMode: BETA_LOCAL_MODE ? "Private beta" : "Cloud-ready",
+        betaMode: BETA_LOCAL_MODE ? "Local development" : "Cloud-ready",
         timestamp: now,
       },
     });
@@ -16531,6 +16556,7 @@ export default function App() {
       });
       const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
         setUser(session?.user || localBetaUser);
+        setAuthSessionVersion((current) => current + 1);
       });
       return () => subscription.unsubscribe();
     }
@@ -16542,9 +16568,31 @@ export default function App() {
     }
 
     checkUser();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setUser(session?.user || null));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user || null);
+      setAuthSessionVersion((current) => current + 1);
+    });
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    let recheckTimer = 0;
+    setOwnerSession((current) => ({ ...current, status: OWNER_SESSION_STATES.LOADING }));
+    const verifyOwnerSession = async () => {
+      const nextSession = await resolveOwnerSession({ user, localDevelopment: BETA_LOCAL_MODE });
+      if (!active) return;
+      setOwnerSession(nextSession);
+      if (nextSession.status === OWNER_SESSION_STATES.AUTHORIZED && !nextSession.localDevelopment) {
+        recheckTimer = window.setTimeout(verifyOwnerSession, nextOwnerSessionRecheckDelay(nextSession.expiresAt));
+      }
+    };
+    verifyOwnerSession();
+    return () => {
+      active = false;
+      window.clearTimeout(recheckTimer);
+    };
+  }, [user?.id, authSessionVersion]);
 
   useEffect(() => {
     if (BETA_LOCAL_MODE) return;
@@ -32134,7 +32182,7 @@ function renderForgeBusinessLedgerPanel() {
     </EtMockupSectionCard>
   );
   const signedInWithSupabase = Boolean(user?.id && user.id !== "local-beta");
-  const accountStatusTitle = guestPreviewActive ? "Guest Preview" : signedInWithSupabase ? "Signed In" : BETA_LOCAL_MODE ? "Private Beta Mode" : "Supabase Sign-In Required";
+  const accountStatusTitle = guestPreviewActive ? "Guest Preview" : signedInWithSupabase ? "Signed In" : BETA_LOCAL_MODE ? "Local Development" : "Supabase Sign-In Required";
   const accountStatusDescription = signedInWithSupabase
     ? currentUserProfile.email || user?.email || "Supabase account"
     : guestPreviewActive
@@ -35345,7 +35393,7 @@ function renderForgeBusinessLedgerPanel() {
     if (activeTab === "settings") return "/settings";
     if (activeTab === "account") return "/settings/account";
     if (activeTab === "collections") return "/settings/workspaces";
-    if (activeTab === "dataBackup") return "/settings/data-backup";
+    if (activeTab === "dataBackup") return "/owner-center/controls/data-backup";
     if (activeTab === "tcgOs") return "/settings/system-map";
     if (activeTab === "profile") return "/settings/profile";
     if (activeTab === "help") return "/settings/help";
@@ -56028,11 +56076,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       <div className={`app app-${String(activeMainTab || activeTab || "home").toLowerCase()} app-theme-${resolvedAppTheme}`} data-theme={resolvedAppTheme}>
         <header className="header app-shell-header app-shell-header--full">
           <div className="auth-brand-lockup">
-            <img className="auth-brand-mark" src="/assets/brand/ember-tide-auth-logo-mark.svg" alt="" aria-hidden="true" />
-            <div className="auth-brand-wordmark" aria-hidden="true">
-              <span>Ember</span>
-              <span>&amp; Tide</span>
-            </div>
+            <img className="auth-brand-mark" src={BRAND_CONFIG.logoReference} alt="" aria-hidden="true" />
+            <div className="auth-brand-wordmark" aria-hidden="true"><span>{BRAND_CONFIG.applicationDisplayName}</span></div>
             <h1
               className="sr-only"
               onClick={() => {
@@ -56045,39 +56090,20 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               }}
               title="There might be something hidden here..."
             >
-              Ember &amp; Tide
+              {BRAND_CONFIG.accessibleLogoText || BRAND_CONFIG.applicationDisplayName}
             </h1>
-            <p>Collect. Care. Connect.</p>
+            {BRAND_CONFIG.tagline ? <p>{BRAND_CONFIG.tagline}</p> : null}
           </div>
         </header>
         <main className="main auth-main auth-login-redesign">
           {signedOutPublicContent || (
-          <section className="signed-out-landing auth-login-story-panel" aria-label="Ember and Tide login story">
-            <div className="auth-login-room" aria-hidden="true">
-              <span className="auth-room-window" />
-              <span className="auth-room-fireplace" />
-              <span className="auth-room-flame auth-room-flame--one" />
-              <span className="auth-room-flame auth-room-flame--two" />
-              <span className="auth-room-mantle" />
-              <span className="auth-room-shelf auth-room-shelf--top" />
-              <span className="auth-room-shelf auth-room-shelf--middle" />
-              <span className="auth-room-book auth-room-book--one" />
-              <span className="auth-room-book auth-room-book--two" />
-              <span className="auth-room-book auth-room-book--three" />
-              <span className="auth-room-plant" />
-              <span className="auth-room-rug" />
-              <span className="auth-room-card auth-room-card--one" />
-              <span className="auth-room-card auth-room-card--two" />
-              <span className="auth-room-card auth-room-card--three" />
-              <span className="auth-room-table" />
-              <span className="auth-room-lantern" />
-            </div>
+          <section className="signed-out-landing auth-login-story-panel" aria-label={`${BRAND_CONFIG.applicationDisplayName} sign in`}>
             <div className="auth-login-scene">
               <div className="auth-login-scene-copy">
-                <h2>Collect. Care. Connect. Every Spark Matters.</h2>
-                <p>Every card has a story. Your journey continues with safer collection tools, fair trades, and family-aware community support.</p>
+                <h2>Your private collecting and resale workspace</h2>
+                <p>Sign in to review opportunities, collection records, and business activity.</p>
               </div>
-              <div className="auth-login-promise-grid" aria-label="Ember and Tide promises">
+              <div className="auth-login-promise-grid" aria-label="Workspace capabilities">
                 {[
                   ["Track", "Track your collection"],
                   ["Find", "Find events and connect"],
@@ -56131,8 +56157,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <>
                 <div className="auth-card-welcome">
                   <div className="auth-card-brand" aria-hidden="true">
-                    <img className="auth-card-brand-mark" src="/assets/brand/ember-tide-auth-logo-mark.svg" alt="" />
-                    <div className="auth-card-wordmark">Ember &amp; Tide</div>
+                    <img className="auth-card-brand-mark" src={BRAND_CONFIG.logoReference} alt="" />
+                    <div className="auth-card-wordmark">{BRAND_CONFIG.applicationDisplayName}</div>
                   </div>
                   <h2>{authMode === "login" ? "Welcome back!" : "Create your account"}</h2>
                   <p>{authMode === "login" ? "Log in to continue your collection journey." : "Request beta access for your collection journey."}</p>
@@ -56141,7 +56167,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 {authMode === "signup" ? (
                   <p className="compact-subtitle">Create your account first. New accounts may need beta approval before full app access.</p>
                 ) : (
-                  <p className="compact-subtitle">Use your approved Ember & Tide account to continue.</p>
+                  <p className="compact-subtitle">Use your approved {BRAND_CONFIG.applicationDisplayName} account to continue.</p>
                 )}
                 <form onSubmit={handleAuth} className="form auth-form" noValidate>
                   {authMode === "signup" ? (
@@ -56196,7 +56222,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   {authMessage ? <p className="auth-status-message success" role="status">{authMessage}</p> : null}
                   <button type="submit" disabled={authLoading || !isSupabaseConfigured}>{authLoading ? "Working..." : authMode === "login" ? "Log In" : "Create Account"}</button>
                 </form>
-                <p className="auth-beta-note">We review new accounts to keep Ember &amp; Tide safe for families and collectors. Virginia requests can be reviewed for beta access; out-of-state requests join the waitlist.</p>
+                <p className="auth-beta-note">New accounts may require approval before private records are available.</p>
                 <div className="auth-link-stack" aria-label="Account options">
                   {authMode === "login" ? (
                     <>
@@ -58829,7 +58855,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     return (
       <div className={`app app-invite app-role-guest app-mode-guest app-theme-${resolvedAppTheme}`} data-theme={resolvedAppTheme}>
         <header className="header app-shell-header app-shell-header--full">
-          <h1>Ember &amp; Tide</h1>
+          <h1>{BRAND_CONFIG.applicationDisplayName}</h1>
           <p>Personal beta invite</p>
         </header>
         <main className="main auth-main">
@@ -58845,7 +58871,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     return (
       <div className={`app app-invite app-role-guest app-mode-guest app-theme-${resolvedAppTheme}`} data-theme={resolvedAppTheme}>
         <header className="header app-shell-header app-shell-header--full">
-          <h1>Ember &amp; Tide</h1>
+          <h1>{BRAND_CONFIG.applicationDisplayName}</h1>
           <p>Workspace invite</p>
         </header>
         <main className="main auth-main">
@@ -59265,7 +59291,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     {BRAND_CONFIG.applicationDisplayName}
   </h1>
 
-  <p>{activeTabLabel} | {guestPreviewActive ? "Preview mode" : BETA_LOCAL_MODE ? "Private Beta" : user ? "Cloud sync active" : "Supabase mode"}</p>
+  <p>{activeTabLabel} | {guestPreviewActive ? "Preview mode" : BETA_LOCAL_MODE ? "Local development" : user ? "Cloud sync active" : "Supabase mode"}</p>
 
   {showTreasure && (
     <div className="hidden-treasure">
@@ -60688,7 +60714,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               ), "admin") : null}
             </div>
             <div className="drawer-footer-card">
-              <span>Ember & Tide beta web app</span>
+              <span>{BRAND_CONFIG.applicationDisplayName} web app</span>
               {signedInWithSupabase ? (
                 <button type="button" className="logout-link" onClick={() => runMenuAction(signOut)}>Log Out</button>
               ) : (
@@ -63656,13 +63682,21 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         {!activeTabLocked && activeTab === "ownerCenter" && (
           <LazyToolBoundary label="Loading Owner Center...">
             <OwnerCenterPage
-              authorized={ownerCenterAuthorized}
+              session={ownerSession}
               initialSection={ownerCenterSection}
               initialSubsection={ownerCenterSubview}
               scoutSnapshot={scoutSnapshot}
               storeDirectory={SCOUT_KNOWN_LOCAL_STORE_SEED}
               onOpenFind={(screen, subview = "") => openFlipScoutView(screen, subview)}
               onReviewOpportunity={(row) => openFlipScoutView(row?.providerId === "ebay" || /ebay/i.test(row?.sourceLabel || "") ? "ebay" : row?.sourceType === "Auctions" ? "auctions" : "deals")}
+              onSignIn={() => { setAuthMode("login"); setGuestPreview(false); setActiveTab("account"); }}
+              onSignOut={signOut}
+              onReturnHome={() => setActiveTab("dashboard")}
+              onSectionChange={(nextSection, nextSubsection = "") => {
+                setOwnerCenterSection(nextSection);
+                setOwnerCenterSubview(nextSubsection);
+              }}
+              onSubsectionChange={setOwnerCenterSubview}
             />
           </LazyToolBoundary>
         )}

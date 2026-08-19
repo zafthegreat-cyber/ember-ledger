@@ -4,10 +4,12 @@ import {
   DealCard,
   EmptyState,
   ErrorState,
+  LoadingState,
   MetricCard,
   PageHeader,
   PercentageInput,
   PrimaryButton,
+  SecondaryButton,
   ProviderStatus,
   QuietButton,
   RecordCard,
@@ -20,7 +22,11 @@ import {
 import { DetailList, RecordDetailPage } from "../../components/operations/RecordExperience.jsx";
 import { getEbayHealth } from "../flipScout/ebayClient.js";
 import { createFlipScoutRepository } from "../flipScout/storageRepository.js";
+import { createEmptyFlipScoutState } from "../flipScout/constants.js";
 import { createOwnerCenterRepository } from "./ownerCenterRepository.js";
+import { createEmptyOwnerCenterState } from "./ownerCenterRepository.js";
+import { OWNER_SESSION_STATES } from "../../services/ownerSession.js";
+import BackupRecoveryPanel from "../backup/BackupRecoveryPanel.jsx";
 import {
   asNumber,
   buildOpportunityFeed,
@@ -244,37 +250,48 @@ function OwnerPerformance({ flipState, restocks, initialTab }) {
   </div>;
 }
 
-function OwnerControls({ state, onSave, onOpenFind, ebayHealth }) {
-  const [section, setSection] = useState("connections");
+function OwnerControls({ state, onSave, onOpenFind, ebayHealth, initialSection = "", onSectionChange }) {
+  const sectionKeys = ["connections", "search-rules", "schedules", "scoring", "notifications", "imports", "data-backup", "system"];
+  const [section, setSection] = useState(sectionKeys.includes(initialSection) ? initialSection : "connections");
   const [scoring, setScoring] = useState(state.controls.scoring);
   const [features, setFeatures] = useState(state.controls.features);
+  useEffect(() => {
+    if (sectionKeys.includes(initialSection)) setSection(initialSection);
+  }, [initialSection]);
   const sections = ["Connections", "Search Rules", "Schedules", "Scoring", "Notifications", "Imports", "Data & Backup", "System"];
   const save = (next = {}) => onSave({ ...state, controls: { scoring, features, ...next } });
-  return <div className="owner-section-stack"><div className="owner-control-nav" aria-label="Control sections">{sections.map((label) => { const key = label.toLowerCase().replaceAll(" ", "-").replace("&-", ""); return <button key={key} type="button" className={section === key ? "is-active" : ""} onClick={() => setSection(key)}>{label}</button>; })}</div>
+  const chooseSection = (key) => { setSection(key); onSectionChange?.(key); };
+  return <div className="owner-section-stack"><div className="owner-control-nav" aria-label="Control sections">{sections.map((label) => { const key = label.toLowerCase().replaceAll(" ", "-").replace("&-", ""); return <button key={key} type="button" className={section === key ? "is-active" : ""} onClick={() => chooseSection(key)}>{label}</button>; })}</div>
     {section === "connections" ? <section><SectionHeader title="Connections" description="A capability is active only when its status confirms it." /><ProviderStatus name="eBay Browse API" status={ebayHealth?.status || "Not Configured"} detail={ebayHealth?.message || "Credentials are checked by the server route."} checkedAt={ebayHealth?.checkedAt ? displayDate(ebayHealth.checkedAt) : ""} /><div className="owner-record-list">{["Auction sources", "Screenshot / manual entry", "Email imports"].map((name) => <RecordCard key={name}><h3>{name}</h3><StatusBadge tone="neutral">{name === "Screenshot / manual entry" ? "Manual Import" : name === "Email imports" ? "Authorization Required" : "Manual Import"}</StatusBadge></RecordCard>)}</div></section> : null}
     {section === "search-rules" ? <section><SectionHeader title="Search Rules" description="Manage query rules without silently running a connector." actions={<PrimaryButton onClick={() => onOpenFind?.("rules")}>Open Search Rules</PrimaryButton>} /></section> : null}
     {section === "schedules" ? <section><SectionHeader title="Schedules" description="No background schedule is active in this phase." /><EmptyState title="No schedules configured">Searches and refreshes run only when the owner starts them.</EmptyState></section> : null}
     {section === "scoring" ? <section><SectionHeader title="Scoring Settings" description="Defaults apply to new analyses. Saved deal assumptions are not overwritten unless recalculation is explicitly requested." /><div className="owner-settings-form"><CurrencyInput label="Minimum expected profit" value={scoring.minimumExpectedProfit} onChange={(value) => setScoring((current) => ({ ...current, minimumExpectedProfit: value }))} /><PercentageInput label="Minimum ROI" value={scoring.minimumRoi} onChange={(value) => setScoring((current) => ({ ...current, minimumRoi: value }))} /><CurrencyInput label="Maximum purchase amount" value={scoring.maximumPurchaseAmount} onChange={(value) => setScoring((current) => ({ ...current, maximumPurchaseAmount: value }))} /><label className="owner-field"><span>Maximum risk</span><select value={scoring.maximumRisk} onChange={(event) => setScoring((current) => ({ ...current, maximumRisk: event.target.value }))}><option value="">Not set</option><option>Low</option><option>Medium</option><option>High</option></select></label><label className="owner-field"><span>Minimum confidence</span><select value={scoring.minimumConfidence} onChange={(event) => setScoring((current) => ({ ...current, minimumConfidence: event.target.value }))}><option value="">Not set</option><option>Low</option><option>Medium</option><option>High</option></select></label><label className="owner-field"><span>Maximum distance (miles)</span><input type="number" min="0" inputMode="decimal" value={scoring.maximumDistance} onChange={(event) => setScoring((current) => ({ ...current, maximumDistance: event.target.value }))} /></label><PercentageInput label="Raw-card condition reserve" value={scoring.rawCardConditionReserve} onChange={(value) => setScoring((current) => ({ ...current, rawCardConditionReserve: value }))} /><PercentageInput label="Binder uncertainty reserve" value={scoring.binderUncertaintyReserve} onChange={(value) => setScoring((current) => ({ ...current, binderUncertaintyReserve: value }))} /><CurrencyInput label="Auction disposal reserve" value={scoring.auctionDisposalReserve} onChange={(value) => setScoring((current) => ({ ...current, auctionDisposalReserve: value }))} /></div><PrimaryButton onClick={() => save()}>Save Scoring Defaults</PrimaryButton></section> : null}
     {section === "notifications" ? <section><SectionHeader title="Notifications" description="Background notifications are not configured." /><EmptyState title="No notification service">Unavailable functionality remains visibly inactive.</EmptyState></section> : null}
     {section === "imports" ? <section><SectionHeader title="Imports" description="Review gates remain required for eBay and manual source imports." /><PrimaryButton onClick={() => onOpenFind?.("ebay")}>Open Import Review</PrimaryButton></section> : null}
-    {section === "data-backup" ? <section><SectionHeader title="Data & Backup" description="Owner Center settings use a separate versioned local repository. Existing storage keys remain unchanged." /><EmptyState title="Use existing export tools">A consolidated backup flow will be added only after all legacy modules are mapped.</EmptyState></section> : null}
+    {section === "data-backup" ? <BackupRecoveryPanel /> : null}
     {section === "system" ? <section><SectionHeader title="Feature Controls" description="Hide unfinished modules from everyday navigation without claiming they are active." /><div className="owner-feature-list">{Object.entries({ ebaySearch: "eBay Search", auctions: "Auctions", restocks: "Restocks", collection: "Collection", grading: "Grading", kidsCommunity: "Kids & Community", businessAssistant: "Business Assistant", aiImageAnalysis: "AI Image Analysis", emailImports: "Email Imports" }).map(([key, label]) => <label key={key}><span><strong>{label}</strong><small>{features[key] ? "Visible when supported" : "Hidden from everyday navigation"}</small></span><input type="checkbox" checked={Boolean(features[key])} onChange={(event) => setFeatures((current) => ({ ...current, [key]: event.target.checked }))} /></label>)}</div><PrimaryButton onClick={() => save()}>Save Feature Controls</PrimaryButton></section> : null}
   </div>;
 }
 
 export default function OwnerCenterPage({
-  authorized = false,
+  session = { status: OWNER_SESSION_STATES.LOADING },
   initialSection = "overview",
   initialSubsection = "",
   scoutSnapshot = EMPTY_SNAPSHOT,
   storeDirectory = EMPTY_LIST,
   onOpenFind,
   onReviewOpportunity,
+  onSignIn,
+  onSignOut,
+  onReturnHome,
+  onSectionChange,
+  onSubsectionChange,
 }) {
   const flipRepository = useMemo(() => createFlipScoutRepository(), []);
   const ownerRepository = useMemo(() => createOwnerCenterRepository(), []);
-  const [flipState, setFlipState] = useState(() => flipRepository.load());
-  const [ownerState, setOwnerState] = useState(() => ownerRepository.load());
+  const authorized = session.status === OWNER_SESSION_STATES.AUTHORIZED;
+  const [flipState, setFlipState] = useState(() => createEmptyFlipScoutState());
+  const [ownerState, setOwnerState] = useState(() => createEmptyOwnerCenterState());
   const [section, setSection] = useState(OWNER_SECTIONS.some((item) => item.key === initialSection) ? initialSection : "overview");
   const [subsection, setSubsection] = useState(initialSubsection);
   const [ebayHealth, setEbayHealth] = useState(null);
@@ -282,21 +299,55 @@ export default function OwnerCenterPage({
   const restocks = useMemo(() => adaptRestockData(ownerState, scoutSnapshot, storeDirectory), [ownerState, scoutSnapshot, storeDirectory]);
 
   useEffect(() => {
-    if (!authorized) return undefined;
+    setSection(OWNER_SECTIONS.some((item) => item.key === initialSection) ? initialSection : "overview");
+    setSubsection(initialSubsection || "");
+  }, [initialSection, initialSubsection]);
+
+  useEffect(() => {
+    if (!authorized) {
+      setFlipState(createEmptyFlipScoutState());
+      setOwnerState(createEmptyOwnerCenterState());
+      setEbayHealth(null);
+      setHealthError("");
+      return undefined;
+    }
+    setFlipState(flipRepository.load());
+    setOwnerState(ownerRepository.load());
     let active = true;
-    getEbayHealth().then((result) => { if (active) setEbayHealth(result); }).catch(() => {
+    getEbayHealth().then((result) => { if (active) setEbayHealth(result); }).catch((error) => {
       if (!active) return;
+      if (error?.status === 401 || error?.status === 403) {
+        setEbayHealth({ status: "Authorization Required", message: error.status === 401 ? "Sign in is required." : "Owner access is required." });
+        setHealthError(error.status === 401 ? "The application session must be renewed." : "This account is not authorized for owner sourcing tools.");
+        return;
+      }
       setEbayHealth({ status: "Not Configured", message: "The server-side eBay connector health route is unavailable in this local frontend session." });
       setHealthError("");
     });
     return () => { active = false; };
   }, [authorized]);
 
-  if (!authorized) {
-    return <main className="owner-center owner-center--denied"><ErrorState title="Owner access required">This workspace is protected by the application role guard. Sign in with the owner profile to continue.</ErrorState></main>;
+  if (session.status === OWNER_SESSION_STATES.LOADING) {
+    return <main className="owner-center owner-center--denied"><LoadingState title="Checking owner access">Verifying the application session.</LoadingState></main>;
   }
 
-  const openSection = (nextSection, nextSubsection = "") => { setSection(nextSection); setSubsection(nextSubsection); };
+  if (session.status === OWNER_SESSION_STATES.SIGN_IN_REQUIRED) {
+    return <main className="owner-center owner-center--denied"><ErrorState title="Sign In Required" action={<PrimaryButton onClick={onSignIn}>Sign In</PrimaryButton>}>Sign in with the approved owner account to open this workspace.</ErrorState></main>;
+  }
+
+  if (session.status === OWNER_SESSION_STATES.OWNER_ACCESS_REQUIRED) {
+    return <main className="owner-center owner-center--denied"><ErrorState title="Owner Access Required" action={<div className="owner-access-actions"><PrimaryButton onClick={onReturnHome}>Return Home</PrimaryButton><SecondaryButton onClick={onSignOut}>Sign Out</SecondaryButton></div>}>This signed-in account is not authorized for Owner Center.</ErrorState></main>;
+  }
+
+  if (!authorized) {
+    return <main className="owner-center owner-center--denied"><ErrorState title="Owner access unavailable" action={<PrimaryButton onClick={onReturnHome}>Return Home</PrimaryButton>}>Owner authorization could not be verified. No private sourcing data was loaded.</ErrorState></main>;
+  }
+
+  const openSection = (nextSection, nextSubsection = "") => {
+    setSection(nextSection);
+    setSubsection(nextSubsection);
+    onSectionChange?.(nextSection, nextSubsection);
+  };
   const saveOwnerState = (next) => {
     const result = ownerRepository.save(next);
     setOwnerState(result.state);
@@ -307,13 +358,14 @@ export default function OwnerCenterPage({
   return (
     <main className="owner-center" data-testid="owner-center">
       <PageHeader eyebrow="Private controls" title="Owner Center" actions={<StatusBadge tone="warning">Owner Only</StatusBadge>} />
+      {session.localDevelopment ? <div className="owner-local-development" role="status">Local development identity</div> : null}
       <Tabs label="Owner Center sections" items={OWNER_SECTIONS} active={section} onChange={(next) => openSection(next)} />
       {healthError ? <div className="owner-inline-warning" role="status">eBay health status is temporarily unavailable: {healthError}</div> : null}
       {section === "overview" ? <OwnerOverview flipState={flipState} restocks={restocks} ebayHealth={ebayHealth} onOpenSection={openSection} onReview={review} /> : null}
       {section === "sourcing" ? <OwnerSourcing flipState={flipState} setFlipState={setFlipState} repository={flipRepository} initialTab={subsection} onOpenFind={onOpenFind} onReview={review} /> : null}
       {section === "restocks" ? <OwnerRestocks data={restocks} purchases={flipState.purchases || []} initialTab={subsection} /> : null}
       {section === "performance" ? <OwnerPerformance flipState={flipState} restocks={restocks} initialTab={subsection} /> : null}
-      {section === "controls" ? <OwnerControls state={ownerState} onSave={saveOwnerState} onOpenFind={onOpenFind} ebayHealth={ebayHealth} /> : null}
+      {section === "controls" ? <OwnerControls state={ownerState} onSave={saveOwnerState} onOpenFind={onOpenFind} ebayHealth={ebayHealth} initialSection={subsection} onSectionChange={(next) => { setSubsection(next); onSubsectionChange?.(next); }} /> : null}
     </main>
   );
 }

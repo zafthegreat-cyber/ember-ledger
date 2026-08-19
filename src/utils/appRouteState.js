@@ -67,7 +67,7 @@ export function routeStateFromPath(pathname = "") {
     if (subSection === "profile") return { activeTab: detailId === "progress" ? "profileProgress" : "profile" };
     if (subSection === "account") return { activeTab: "account" };
     if (subSection === "workspaces") return { activeTab: "collections" };
-    if (subSection === "data-backup") return { activeTab: "dataBackup" };
+    if (subSection === "data-backup") return { activeTab: "ownerCenter", ownerCenterSection: "controls", ownerCenterSubview: "data-backup" };
     if (subSection === "system-map") return { activeTab: "tcgOs" };
     if (subSection === "help" || subSection === "business-assistant") return { activeTab: "help" };
     if (subSection === "plans") return { activeTab: "membership" };
@@ -160,7 +160,7 @@ export function routeStateFromPath(pathname = "") {
   if (section === "profile") return { activeTab: subSection === "progress" ? "profileProgress" : "profile" };
   if (section === "account") return { activeTab: "account" };
   if (section === "collections" || section === "workspaces") return { activeTab: "collections" };
-  if (section === "data-backup" || section === "backup") return { activeTab: "dataBackup" };
+  if (section === "data-backup" || section === "backup") return { activeTab: "ownerCenter", ownerCenterSection: "controls", ownerCenterSubview: "data-backup" };
   if (section === "tcg-os") return { activeTab: "tcgOs" };
   if (section === "help" || section === "support") return { activeTab: "help" };
   if (section === "menu" || section === "more") return { activeTab: "settings" };
@@ -210,7 +210,7 @@ export function pathFromActiveTab(activeTab = "dashboard", state = {}) {
   if (activeTab === "account") return "/settings/account";
   if (activeTab === "settings" || activeTab === "menu") return "/settings";
   if (activeTab === "help") return "/settings/help";
-  if (activeTab === "dataBackup") return "/settings/data-backup";
+  if (activeTab === "dataBackup") return "/owner-center/controls/data-backup";
   if (activeTab === "collections") return "/settings/workspaces";
   if (activeTab === "tcgOs") return "/settings/system-map";
   if (activeTab === "comingSoon") return "/settings/roadmap";
@@ -242,7 +242,9 @@ export function canonicalPathForPath(pathname = "") {
   if (section === "profile") return `/settings/profile${subSection ? `/${encodeURIComponent(subSection)}` : ""}${suffix}`;
   if (section === "account") return "/settings/account";
   if (section === "collections" || section === "workspaces") return "/settings/workspaces";
-  if (section === "data-backup" || section === "backup") return "/settings/data-backup";
+  if ((section === "settings" && subSection === "data-backup") || section === "data-backup" || section === "backup") {
+    return "/owner-center/controls/data-backup";
+  }
   if (section === "tcg-os") return "/settings/system-map";
   if (section === "help" || section === "support") return "/settings/help";
   if (section === "menu" || section === "more") return "/settings";

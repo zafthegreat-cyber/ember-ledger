@@ -1,3 +1,5 @@
+import { getOwnerRequestHeaders, isLocalDevelopmentIdentityEnabled } from "../../services/ownerSession.js";
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 const CLIENT_TIMEOUT_MS = 20_000;
 
@@ -16,20 +18,30 @@ async function requestEbay(path, { allowErrorPayload = false, ...options } = {})
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), CLIENT_TIMEOUT_MS);
   try {
+    const queryEnabled = new URLSearchParams(window.location.search).get("betaLocalMode") === "true";
+    const ownerHeaders = await getOwnerRequestHeaders({
+      localDevelopment: isLocalDevelopmentIdentityEnabled({ queryEnabled }),
+    });
     const response = await fetch(`${API_BASE}/api/ebay${path}`, {
       ...options,
       signal: controller.signal,
       headers: {
         Accept: "application/json",
         ...(options.body ? { "Content-Type": "application/json" } : {}),
+        ...ownerHeaders,
         ...(options.headers || {}),
       },
     });
     const contentType = response.headers.get("content-type") || "";
     const payload = contentType.includes("application/json") ? await response.json() : null;
-    if (!response.ok && !allowErrorPayload) {
+    if (!response.ok && (!allowErrorPayload || response.status === 401 || response.status === 403)) {
       const detail = payload?.error || {};
-      throw new EbayClientError(detail.message || `The eBay connector returned HTTP ${response.status}.`, {
+      const accessMessage = response.status === 401
+        ? "Sign in is required to use the eBay connector."
+        : response.status === 403
+          ? "Owner access is required to use the eBay connector."
+          : "";
+      throw new EbayClientError(accessMessage || detail.message || `The eBay connector returned HTTP ${response.status}.`, {
         code: detail.code || "request_failed",
         status: response.status,
         retryAfterSeconds: Number(detail.retryAfterSeconds || response.headers.get("retry-after") || 0),

@@ -1,23 +1,31 @@
 export const BRAND_CONFIG = Object.freeze({
-  applicationDisplayName: "Private Business Hub",
-  shortName: "Business Hub",
-  businessDisplayName: "Owner workspace",
-  tagline: "Sourcing, inventory, sales, and business records in one calm workspace.",
-  monogram: "PB",
+  applicationDisplayName: "Code 3",
+  shortName: "Code 3",
+  businessDisplayName: "",
+  legalBusinessDisplayName: "",
+  tagline: "",
+  monogram: "C3",
   primaryAccent: "#315f55",
   secondaryAccent: "#6f7d73",
-  logoReference: "/assets/brand/private-business-hub-mark.svg",
-  faviconReference: "/assets/brand/private-business-hub-mark.svg",
-  pwaName: "Private Business Hub",
-  browserTitleTemplate: "%s · Private Business Hub",
+  logoReference: "/assets/brand/code-3-mark.svg",
+  faviconReference: "/assets/brand/code-3-mark.svg",
+  accessibleLogoText: "Code 3",
+  pwaName: "Code 3",
+  pwaShortName: "Code 3",
+  browserTitleTemplate: "Code 3 — {pageTitle}",
   supportEmailPlaceholder: "support@example.invalid",
+  defaultSocialHandle: "",
+  defaultCurrency: "USD",
+  defaultTimeZone: "America/New_York",
 });
 
 export function formatBrowserTitle(pageTitle = "") {
   const title = String(pageTitle || "").trim();
-  return title
-    ? BRAND_CONFIG.browserTitleTemplate.replace("%s", title)
-    : BRAND_CONFIG.applicationDisplayName;
+  if (!title) return BRAND_CONFIG.applicationDisplayName;
+  if (BRAND_CONFIG.browserTitleTemplate.includes("{pageTitle}")) {
+    return BRAND_CONFIG.browserTitleTemplate.replaceAll("{pageTitle}", title);
+  }
+  return BRAND_CONFIG.browserTitleTemplate.replace("%s", title);
 }
 
 export function applyBrandDocumentMetadata(pageTitle = "") {
@@ -28,5 +36,5 @@ export function applyBrandDocumentMetadata(pageTitle = "") {
   const appName = document.querySelector('meta[name="application-name"]');
   if (appName) appName.setAttribute("content", BRAND_CONFIG.applicationDisplayName);
   const appleTitle = document.querySelector('meta[name="apple-mobile-web-app-title"]');
-  if (appleTitle) appleTitle.setAttribute("content", BRAND_CONFIG.shortName);
+  if (appleTitle) appleTitle.setAttribute("content", BRAND_CONFIG.pwaShortName || BRAND_CONFIG.shortName);
 }

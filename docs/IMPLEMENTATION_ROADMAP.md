@@ -1,13 +1,13 @@
 # Code 3 Implementation Roadmap
 
-Baseline: `fa087331f3e81b5cf06a57ca7a89e8b37edba0fc`
+Published baseline: `264d5a5dbc58568295ba514b9c474f588f42282e`
 Planning rule: no phase is authorized merely by appearing here.
 
 ## Repository-informed sequencing decision
 
-The audit changes the conceptual “backend persistence first” phase into two gated parts. The exact next implementation phase is **Phase 1A — Owner Security Boundary and Verified Recovery Contract**. This comes before a database migration or scheduled scanning because current canonical records are browser-local, eBay routes lack backend owner authorization, and there is no unified verified backup. Establishing identity, default-deny authorization, and a trustworthy export/restore preview makes every later migration safer.
+The audit changes the conceptual “backend persistence first” phase into two gated parts. **Phase 1A — Owner Security Boundary and Verified Recovery Contract** is implemented and validated in the local worktree, awaiting publication. It comes before a database migration or scheduled scanning because current canonical records are browser-local and recovery must be understood first. The local result protects the eBay route family and provides a trustworthy browser export/no-write preview, but it does not yet protect legacy APIs or include server/file data.
 
-The first runtime change within that approved task must update the centralized brand configuration to Code 3 and coordinate the PWA/browser-title metadata. It must not scatter the name through components or rename storage, database, route, module, environment, history, compatibility, or imported-source identifiers. The legal/public business name and tagline remain separately configurable and unresolved.
+The first runtime change has applied Code 3 through the centralized brand configuration and coordinated PWA/browser/offline metadata in the local worktree. Storage, database, route, module, environment, cache, history, compatibility, and imported-source identifiers remain unchanged. The legal/public business name and tagline remain separately configurable and unresolved.
 
 No time estimates are provided. Complexity is relative: Small, Medium, Large, or Extra Large.
 
@@ -27,15 +27,17 @@ No time estimates are provided. Complexity is relative: Small, Medium, Large, or
 
 ## Phase 1A — Owner security boundary and verified recovery contract
 
+**Local status:** Implemented and validated, awaiting its publication checkpoint, and undeployed. Do not treat this status as authorization to start Phase 1B.
+
 - **Objective:** protect sensitive API operations with server-authenticated OWNER authorization and produce a complete, validated, restorable preview of current owner data before migration.
 - **Current code affected:** authentication/profile code in `src/App.jsx`; `src/features/ownerCenter/ownerAuthorization.js`; Express application/middleware; all sensitive API routes; feature/local repositories and legacy persistence exports.
-- **Likely files/modules:** `src/config/brand.js` and coordinated PWA/title metadata, `backend/src/server.ts`, new backend auth/policy modules, `backend/src/routes/ebay.routes.ts`, `api/[...path].ts`, `src/services/phase2Persistence.js`, `src/features/flipScout/storageRepository.js`, `src/features/ownerCenter/ownerCenterRepository.js`, backup/restore UI under Owner Center Controls, environment examples, tests.
+- **Implemented files/modules:** centralized brand/PWA metadata; `backend/src/auth`, `backend/src/security`, `backend/src/routes/auth.routes.ts`, protected eBay router/server mounts; `src/services/ownerSession.js`; `src/features/backup`; Owner Center auth/Data & Backup integration; environment examples and focused tests.
 - **Data changes:** versioned backup manifest/schema and audit-event format; no irreversible migration.
 - **Migration risks:** locking out the owner, local-development bypass leaking to preview/production, incomplete export coverage, exposing private data in backup files, incompatible legacy IDs.
 - **Dependencies:** explicit auth provider/session choice; inventory of all local keys and Supabase tables; recovery procedure.
 - **External authorization:** authentication service/configuration if not self-hosted; no marketplace expansion.
 - **Test plan:** centralized-brand/PWA/title tests; unauthenticated/wrong-role/expired/owner API tests; CORS/CSRF/origin tests; eBay regression; export counts/hashes/parse; restore dry run; legacy-key coverage; credential and log-redaction scans.
-- **Acceptance criteria:** every visible application name derives from the centralized Code 3 configuration; business name/tagline remain independent; sensitive routes default deny; owner access succeeds; UI hiding is not the security boundary; development bypass cannot operate in production; one complete export is generated and validated; restore preview shows counts/errors/duplicates without writing; rollback/recovery is documented.
+- **Acceptance criteria:** primary runtime identity derives from centralized Code 3 configuration; business name/tagline remain independent; eBay routes default deny; owner access succeeds; UI hiding is not the security boundary; development/test adapters cannot operate in hosted runtimes; export coverage is explicit rather than always called complete; SHA-256 self-verification passes; Restore Preview reports counts/errors/duplicates without writing; rollback/recovery is documented; the full regression passes.
 - **Rollback:** disable new middleware only in an isolated preview, restore previous server route deployment, and use the verified export; no record cutover has occurred.
 - **Complexity:** Large.
 
@@ -225,4 +227,6 @@ Every implementation phase must:
 
 ## Exact next task recommendation
 
-Implement only **Phase 1A — Owner Security Boundary and Verified Recovery Contract**. First apply the approved Code 3 identity through the centralized configuration and coordinated PWA/title metadata, then begin the no-write security/recovery design and route inventory, choose the server session mechanism, protect eBay health/search with OWNER middleware, and build a versioned complete-export plus restore-preview validator. Do not create the canonical database migration in that task unless a separately approved specification explicitly expands its scope.
+Publish the validated Phase 1A checkpoint, verify the Draft PR and non-production Preview, and configure the documented Preview authentication variables outside source control. Begin Phase 1B only through a separate approved task.
+
+After a separate Phase 1A checkpoint and clean-checkout proof, specify Phase 1B as a no-write canonical-schema, server/file export-adapter, audit, and migration-rehearsal task. Do not perform a database migration or restore apply without explicit approval.

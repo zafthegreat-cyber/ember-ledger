@@ -15,6 +15,23 @@ async function assertNoHorizontalOverflow(page, label) {
   assert.equal(overflow <= 1, true, `${label} should not overflow horizontally (difference: ${overflow}px)`);
 }
 
+async function assertCode3Branding(page, label) {
+  const visibleBranding = await page.evaluate(() => ({
+    title: document.title,
+    text: document.body.innerText,
+    attributes: [...document.querySelectorAll("[aria-label], [title], [alt]")]
+      .filter((element) => element.getClientRects().length)
+      .flatMap((element) => [element.getAttribute("aria-label"), element.getAttribute("title"), element.getAttribute("alt")])
+      .filter(Boolean)
+      .join("\n"),
+  }));
+  assert.match(visibleBranding.title, /^Code 3(?: — .+)?$/, `${label} should use the centralized browser title`);
+  assert.doesNotMatch(`${visibleBranding.text}\n${visibleBranding.attributes}`, /Ember\s*(?:&|and)\s*Tide|Private Business Hub/i, `${label} must not expose retired visible branding`);
+  const manifest = await page.evaluate(async () => (await fetch("/manifest.webmanifest")).json());
+  assert.equal(manifest.name, "Code 3");
+  assert.equal(manifest.short_name, "Code 3");
+}
+
 async function openFindMore(page) {
   const menu = page.locator(".flip-more-menu");
   if (!(await menu.evaluate((element) => element.open))) await menu.locator("summary").click();
@@ -42,6 +59,7 @@ async function main() {
     await page.getByRole("heading", { name: "Deal Feed", exact: true }).waitFor();
     assert.equal(await page.locator(".vite-error-overlay").count(), 0, "Vite error overlay should not render");
     assert.equal((await page.locator("body").innerText()).trim().length > 100, true, "Find route should not be blank");
+    await assertCode3Branding(page, "mobile Find");
     await assertNoHorizontalOverflow(page, "Deal Feed at 360px");
 
     await page.getByRole("button", { name: "Paste Listing", exact: true }).click();
@@ -125,6 +143,7 @@ async function main() {
     await desktopPage.goto(appUrl("/find/ebay"), { waitUntil: "domcontentloaded" });
     await desktopPage.getByRole("heading", { name: "eBay Browse API" }).first().waitFor();
     await desktopPage.getByText("Not Configured", { exact: true }).waitFor();
+    await assertCode3Branding(desktopPage, "desktop eBay Search");
     await assertNoHorizontalOverflow(desktopPage, "desktop eBay Search");
     await desktopPage.screenshot({ path: path.join(process.cwd(), "artifacts", "qa", "flip-scout-phase2-ebay-desktop.png"), fullPage: true });
     assert.deepEqual(desktopErrors, [], desktopErrors.join("\n"));

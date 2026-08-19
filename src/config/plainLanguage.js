@@ -2,6 +2,8 @@ import { BRAND_CONFIG } from "./brand.js";
 
 const EXACT_VISIBLE_LABELS = new Map([
   ["Ember & Tide", BRAND_CONFIG.applicationDisplayName],
+  ["Ember and Tide", BRAND_CONFIG.applicationDisplayName],
+  ["Private Business Hub", BRAND_CONFIG.applicationDisplayName],
   ["Hearth", "Home"],
   ["Scout", "Restocks"],
   ["Flip Scout", "Deal Finder"],
@@ -20,7 +22,8 @@ const EXACT_VISIBLE_LABELS = new Map([
 ]);
 
 const VISIBLE_PHRASE_REPLACEMENTS = [
-  [/Ember\s*&\s*Tide/gi, BRAND_CONFIG.applicationDisplayName],
+  [/Ember\s*(?:&|and)\s*Tide/gi, BRAND_CONFIG.applicationDisplayName],
+  [/Private Business Hub/gi, BRAND_CONFIG.applicationDisplayName],
   [/Ask Ember/gi, "Business Assistant"],
   [/Ember Assist/gi, "Business Assistant"],
   [/Flip Scout/gi, "Deal Finder"],
@@ -84,7 +87,7 @@ export function plainLanguageText(value = "") {
   return VISIBLE_PHRASE_REPLACEMENTS.reduce((result, [pattern, replacement]) => result.replace(pattern, replacement), source);
 }
 
-const VISIBLE_ATTRIBUTES = ["aria-label", "title", "placeholder"];
+const VISIBLE_ATTRIBUTES = ["aria-label", "title", "placeholder", "alt"];
 const SKIPPED_ELEMENTS = new Set(["SCRIPT", "STYLE", "CODE", "PRE"]);
 
 function updateElementAttributes(element) {
@@ -108,7 +111,7 @@ export function applyPlainLanguageToNode(root) {
   if (!(root instanceof Element)) return;
   if (SKIPPED_ELEMENTS.has(root.tagName)) return;
   updateElementAttributes(root);
-  root.querySelectorAll("[aria-label], [title], [placeholder]").forEach(updateElementAttributes);
+  root.querySelectorAll("[aria-label], [title], [placeholder], [alt]").forEach(updateElementAttributes);
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   let node = walker.nextNode();
   while (node) {

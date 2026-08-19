@@ -46,7 +46,7 @@ const expectedRoutes = [
   ['section === "settings"', 'activeTab: "settings"'],
   ['section === "account"', 'activeTab: "account"'],
   ['section === "collections" || section === "workspaces"', 'activeTab: "collections"'],
-  ['section === "data-backup" || section === "backup"', 'activeTab: "dataBackup"'],
+  ['section === "data-backup" || section === "backup"', 'ownerCenterSubview: "data-backup"'],
   ['section === "tcg-os"', 'activeTab: "tcgOs"'],
   ['section === "help" || section === "support"', 'activeTab: "help"'],
   ['section === "menu" || section === "more"', 'activeTab: "settings"'],

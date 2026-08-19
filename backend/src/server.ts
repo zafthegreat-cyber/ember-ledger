@@ -16,17 +16,26 @@ import { scoutRouter } from "./routes/scout.routes";
 import { storeReportsRouter, tidepoolRouter } from "./routes/tidepool.routes";
 import { storesRouter } from "./routes/stores.routes";
 import { vaultRouter } from "./routes/vault.routes";
+import { authRouter } from "./routes/auth.routes";
+import { createProtectedCors } from "./security/corsPolicy";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-app.use(cors());
 app.use(express.json({ limit: "10mb" }));
+
+const protectedCors = createProtectedCors();
+app.use("/api/auth", protectedCors, authRouter);
+app.use("/api/ebay", protectedCors, ebayRouter);
+
+// Legacy routes retain their existing behavior until they are migrated behind
+// the owner boundary. Protected Code 3 routes are mounted before this policy.
+app.use(cors());
 
 app.get("/api/health", (_req: Request, res: Response) => {
   res.json({
     status: "ok",
-    message: "Ember & Tide API is running",
+    message: "API is running",
   });
 });
 
@@ -41,7 +50,6 @@ app.use("/api/tidepool", tidepoolRouter);
 app.use("/api/market", marketRouter);
 app.use("/api/scan", scanRouter);
 app.use("/api/bestbuy", bestBuyRouter);
-app.use("/api/ebay", ebayRouter);
 
 type Day = "Sun" | "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat";
 type Confidence = "Low" | "Medium" | "High";

@@ -1919,7 +1919,7 @@ async function main() {
   if (BETA_SMOKE_MODE.startsWith("area:")) {
     await step("app opens and local beta shell loads", async () => {
       await resetBetaData();
-      await assertVisibleText("Private Business Hub");
+      await assertVisibleText("Code 3");
       await assertVisibleText("Home");
     });
 
@@ -1932,7 +1932,7 @@ async function main() {
   if (BETA_SMOKE_MODE === "smoke") {
     await step("app opens and local beta shell loads", async () => {
       await resetBetaData();
-      await assertVisibleText("Private Business Hub");
+      await assertVisibleText("Code 3");
       await assertVisibleText("Needs Attention");
       await assertVisibleText("Home");
     });
@@ -1991,7 +1991,7 @@ async function main() {
 
   await step("app opens and beta data resets", async () => {
     await resetBetaData();
-    await assertVisibleText("Private Business Hub");
+    await assertVisibleText("Code 3");
     for (const label of ["Home", "Find", "Collection", "Business"]) await assertVisibleText(label);
     await assertNotVisibleText("EMBER & TIDE");
     const primaryNavText = await page.locator(".ops-mobile-nav, .ops-desktop-sidebar").first().innerText();
@@ -2819,13 +2819,9 @@ async function main() {
 
   await step("Scout: shared store directory loads", async () => {
     await nav("Scout");
-    await page.waitForTimeout(500);
     const scoutStoresRoute = page.getByRole("button", { name: /^(Stores|Open Stores|Store Directory)$/ }).first();
-    if (await scoutStoresRoute.isVisible().catch(() => false)) {
-      await scoutStoresRoute.click();
-    } else {
-      await clickFirstVisible(page.getByRole("button", { name: /^(Stores|Open Stores|Store Directory)$/ }), "Scout stores action");
-    }
+    await scoutStoresRoute.waitFor({ state: "visible", timeout: 10000 });
+    await scoutStoresRoute.click();
     if (await page.getByRole("dialog", { name: "Location Needed" }).count()) {
       await page.getByLabel("ZIP or city").fill("23434");
       await page.getByRole("button", { name: "Enter ZIP" }).click();

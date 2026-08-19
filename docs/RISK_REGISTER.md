@@ -1,14 +1,16 @@
 # Code 3 Risk Register
 
-Verified baseline: `fa087331f3e81b5cf06a57ca7a89e8b37edba0fc`.
+Published baseline: `264d5a5dbc58568295ba514b9c474f588f42282e`.
+
+Phase 1A mitigations described as local are validated but not yet published or deployed. They reduce design risk but do not close a production risk until environment configuration and clean-checkout/deployment evidence exist.
 
 Ratings are qualitative. “Owner” identifies the responsible workstream, not a person assignment.
 
 | ID | Risk | Likelihood | Impact | Current evidence | Mitigation / acceptance gate | Owner / phase |
 |---|---|---:|---:|---|---|---|
 | R-01 | Client-local sensitive business data can be lost, read by same-origin script, or diverge by device | High | Critical | Canonical Deal Finder and Owner Center repositories use localStorage | Minimize preview data; verified complete export; CSP/dependency review; canonical authorized API; offline cache only after server source of truth | Security/data, Phase 1A–1B |
-| R-02 | Owner Center and eBay routes rely on UI hiding rather than backend OWNER enforcement | High | Critical | `ownerAuthorization.js` is client-side; Express has no general owner middleware | Server session, default deny, route policy, local-bypass production guard, authorization tests and audit | Security, Phase 1A |
-| R-03 | Backup status overstates safety because exports are not a unified verified restore point | High | Critical | Feature JSON/CSV exists; no manifest covering all local/Supabase/database/files | Versioned full manifest, hashes/counts/schema checks, restore preview, rollback rehearsal | Data/recovery, Phase 1A |
+| R-02 | Owner access may be bypassed outside the narrow protected route set or through deployment misconfiguration | Medium/high | Critical | Local Supabase principal/immutable-subject middleware protects auth/eBay only; not deployed; legacy APIs remain | Configure per environment, keep hosted fail-closed, protect/retire every sensitive legacy route, add rate limit/audit, verify clean deployment | Security, Phase 1A–1B |
+| R-03 | A valid browser backup is mistaken for complete recovery | High | Critical | Local v1 format verifies hashes and coverage, but omits configured server data and file bytes and has no restore apply | Prominent PARTIAL state; server/file adapters; protected retention; separately approved transactional restore/rollback rehearsal | Data/recovery, Phase 1A–1B |
 | R-04 | Main application bundle delays startup and increases regression surface | High | High | App chunk ~2,337 kB minified/~586 kB gzip; legacy renderers remain in `App.jsx` | Domain route extraction with direct-load/history/hydration tests and size budgets | Frontend, Phase 2 |
 | R-05 | Legacy compatibility code creates duplicate workflows or route/back regressions | High | High | custom route parser plus legacy sourcing/collection/sales/exchange/community/admin/settings renderers | One canonical route owner, explicit aliases/redirects, query/hash preservation, focused compatibility retirement | Frontend, Phase 2 |
 | R-06 | Marketplace access is unavailable or terms change | Medium | High | eBay only real automated connector; others manual/placeholder | Capability truth, official APIs/partnerships only, terms review dates, manual fallback, adapter kill switch | Integrations, all sourcing phases |
@@ -19,7 +21,7 @@ Ratings are qualitative. “Owner” identifies the responsible workstream, not 
 | R-11 | Offline edits conflict or retry twice | Medium now; high after server sync | High | local-first forms exist; no version/conflict/idempotency protocol | record versions, mutation keys, queue policy, explicit conflict UI, cache schema version | Client/data, Phase 12 |
 | R-12 | Dependency vulnerabilities compromise client-local data or server secrets | Unknown | High | prior vulnerability reports remain untriaged | lockfile/CI policy, dependency inventory, vulnerability triage, update/testing cadence, CSP | Security/platform, Phase 1A and readiness |
 | R-13 | Preview and production configuration are confused or a preview is promoted prematurely | Low/medium | Critical | current Vercel Preview only; no production deployment | explicit environment gates, protected production project/settings, deployment checklist, owner approval | Platform, Phase 12 |
-| R-14 | Permissive CORS and broad legacy API surface expose operations | High in production | High | Express uses default `cors()` and mixed legacy routes | route inventory, origin allowlist, method/content limits, auth/rate-limit middleware, retire unused routes | Backend/security, Phase 1A |
+| R-14 | Permissive CORS and broad legacy API surface expose operations | High in production | High | Exact-origin policy exists locally for auth/eBay; legacy routes still use default `cors()` | route inventory, extend origin/auth/content/rate-limit policy, retire unused routes, deployment-origin tests | Backend/security, Phase 1A–1B |
 | R-15 | Owner-entered facts are overwritten by provider refresh or AI normalization | Medium | High | browser discovery has snapshots/change detection, but target server provenance absent | immutable originals/snapshots, reviewed merge, field ownership, audit/version conflict | Data/integrations, Phase 1B/3/10 |
 | R-16 | Financial reports mix projected and actual semantics | Medium | High | foundations calculate both, but associations/reports incomplete | typed measure definitions, trace-to-record, reconciliation, explicit unavailable state, report tests | Money, Phase 8 |
 | R-17 | Quantity/COGS errors from lot allocation, drafts, returns, or duplicate sales | Medium | Critical | local allocation and sale validation exist; full return/reservation transactions missing | database constraints/transactions, inventory adjustments, idempotency, return inspection, reconciliation | Operations, Phase 7/8 |
@@ -31,13 +33,13 @@ Ratings are qualitative. “Owner” identifies the responsible workstream, not 
 | R-23 | AI assistance creates false identity/value/condition/authenticity confidence | High if enabled | High | AI target is not configured; legacy helper surfaces exist | feature off by default, evidence/confidence, human confirmation, evaluation, prohibited guarantees, cost/privacy controls | AI/product, Phase 10 |
 | R-24 | Notification UI suggests background reliability that does not exist | Medium | Medium | local notification records, no durable delivery service | capability state, delivery receipt/failure, no active wording until real service | Jobs/product, Phase 3/12 |
 | R-25 | Feature controls imply security or enable unfinished workflows | Medium | High | controls are client-local visibility flags | server capability checks and authorization; hide nonworking actions; dependency-aware states | Security/product, Phase 1A onward |
-| R-26 | Approved Code 3 identity diverges across runtime, PWA, browser, or component text | Medium | Medium | central config exists, but the audited runtime predates the decision and required fields are incomplete | update the one config source at runtime-task start; test display/short/PWA/title/logo text; keep business name/tagline separate; retain internal compatibility identifiers | Frontend/config, next runtime task |
-| R-27 | Provider/seller personal data or raw payloads leak through logs and exports | Medium | High | logging/redaction policy not centralized | structured redaction, minimized schemas, protected exports, access audit, retention policy | Security, Phase 1A/1B |
+| R-26 | Approved Code 3 identity diverges across runtime, PWA, browser, or compatibility copy | Medium | Medium | Local central config/build metadata are Code 3; historical public-beta modules/assets still contain retired visible wording | focused branding test; one-source rendering; bounded compatibility copy/asset migration; retain only documented internal identifiers | Frontend/config, Phase 1A/2 |
+| R-27 | Provider/seller personal data or raw payloads leak through logs and exports | Medium | High | Local redaction and backup sanitizer exist; legacy logging and downloaded unencrypted JSON remain | apply redaction to all sensitive log sinks, minimize schemas, owner-protect server exports, safe retention/encryption guidance, audit | Security, Phase 1A/1B |
 | R-28 | Database connection or legacy services behave differently in serverless runtime | Medium | High | Express app combines pool and memory services behind Vercel functions | serverless connection strategy, stateless services, integration/load tests, observability | Backend/platform, Phase 1B |
 
 ## Highest-priority closure order
 
-1. R-02, R-03, and R-14: server ownership boundary and verified recovery.
+1. R-02, R-03, and R-14: validate/deploy the narrow owner boundary honestly, then extend it and recovery coverage to every sensitive server/file source.
 2. R-01, R-08, R-09, and R-21: canonical storage, protected files, reversible migration, private boundary.
 3. R-04, R-05, and R-20: route ownership and shell extraction before substantial feature expansion.
 4. R-10, R-24, and provider/licensing risks: only then add scheduled intelligence.

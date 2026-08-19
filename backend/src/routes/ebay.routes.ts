@@ -5,8 +5,9 @@ import {
   readEbayConfig,
   searchEbayListings,
 } from "../services/ebayBrowse.service";
+import { ownerSecurity } from "../auth/ownerAuthorization";
 
-export const ebayRouter = Router();
+type OwnerMiddleware = typeof ownerSecurity.requireOwner;
 
 function sendEbayError(res: Response, error: unknown) {
   if (error instanceof EbayApiError) {
@@ -26,31 +27,40 @@ function sendEbayError(res: Response, error: unknown) {
   });
 }
 
-ebayRouter.get("/health", async (req, res) => {
-  try {
-    res.setHeader("Cache-Control", "no-store");
-    const verify = String(req.query.verify || "").toLowerCase() === "true";
-    const result = await checkEbayHealth(verify);
-    return res.json(result);
-  } catch (error) {
-    return sendEbayError(res, error);
-  }
-});
+export function createEbayRouter(requireOwner: OwnerMiddleware = ownerSecurity.requireOwner) {
+  const router = Router();
+  router.use(requireOwner);
 
-ebayRouter.post("/search", async (req, res) => {
-  try {
-    const configuration = readEbayConfig();
-    if (!configuration.configured) {
-      throw new EbayApiError(
-        "missing_configuration",
-        `eBay is not configured on the server. Missing: ${configuration.missing.join(", ")}.`,
-        503,
-      );
+  router.get("/health", async (req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      const verify = String(req.query.verify || "").toLowerCase() === "true";
+      const result = await checkEbayHealth(verify);
+      return res.json(result);
+    } catch (error) {
+      return sendEbayError(res, error);
     }
-    const result = await searchEbayListings(req.body || {}, configuration.config);
-    res.setHeader("Cache-Control", "no-store");
-    return res.json(result);
-  } catch (error) {
-    return sendEbayError(res, error);
-  }
-});
+  });
+
+  router.post("/search", async (req, res) => {
+    try {
+      const configuration = readEbayConfig();
+      if (!configuration.configured) {
+        throw new EbayApiError(
+          "missing_configuration",
+          `eBay is not configured on the server. Missing: ${configuration.missing.join(", ")}.`,
+          503,
+        );
+      }
+      const result = await searchEbayListings(req.body || {}, configuration.config);
+      res.setHeader("Cache-Control", "no-store");
+      return res.json(result);
+    } catch (error) {
+      return sendEbayError(res, error);
+    }
+  });
+
+  return router;
+}
+
+export const ebayRouter = createEbayRouter();

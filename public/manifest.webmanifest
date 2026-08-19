@@ -1,6 +1,6 @@
 {
-  "name": "__BRAND_NAME__",
-  "short_name": "__BRAND_SHORT_NAME__",
+  "name": "__BRAND_PWA_NAME__",
+  "short_name": "__BRAND_PWA_SHORT_NAME__",
   "description": "__BRAND_TAGLINE__",
   "id": "/",
   "start_url": "/",
