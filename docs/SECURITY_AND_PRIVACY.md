@@ -1,0 +1,210 @@
+# Code 3 Security and Privacy
+
+Published baseline: `264d5a5dbc58568295ba514b9c474f588f42282e`.
+
+Phase 1A status: implemented and validated in the local uncommitted worktree, awaiting its publication checkpoint. These controls are not yet deployed or configured in Preview/Production.
+
+## Security posture summary
+
+The published preview correctly keeps eBay credentials server-side but does not provide the full Code 3 owner boundary. The local Phase 1A implementation adds Supabase token verification, an immutable-subject OWNER policy, protected eBay routes, safe session inspection, exact-origin CORS for protected route families, redaction helpers, and deterministic backup/restore inspection. It is still not ready for production private-business data because those changes are uncommitted/unconfigured, canonical records remain browser-local, legacy API families remain broadly exposed, and backup coverage can be partial.
+
+Code 3 is the application identity, not a declaration of the legal/public business name. Authentication, records, exports, and provider connections must reference the configured business identity separately where legally or operationally relevant.
+
+The next implementation phase MUST establish a backend ownership boundary and verified recovery path before scheduled scans, remote canonical persistence, or file uploads expand the attack surface.
+
+## Current protections
+
+| Control | Current state | Evidence |
+|---|---|---|
+| eBay secret isolation | Implemented | `backend/src/services/ebayBrowse.service.ts`; browser receives normalized results only |
+| Example environment files | Names/placeholders only | `.env.production.example`, `backend/.env.example` |
+| Owner Center UI guard | Implemented client-side | `src/features/ownerCenter/ownerAuthorization.js`, `src/App.jsx` |
+| Guest denial in UI | Implemented | same guard |
+| Import Review | Implemented | `src/features/flipScout/ebayDiscovery.js`, `src/features/flipScout/screens/EbayDiscoveryScreen.jsx` |
+| Confirmed deal deletion | Implemented | Deal Inbox browser regression coverage |
+| Local parsing/validation | Implemented for feature repositories | `src/features/flipScout/storageRepository.js`, `src/features/ownerCenter/ownerCenterRepository.js` |
+| Supabase policies | Present for legacy schemas | `supabase/migrations` and RLS-focused scripts |
+| Provider timeout/error mapping | Implemented for eBay | backend HTTP client and eBay service tests |
+| Automatic external actions | Absent | provider contract and implementation |
+| Supabase identity verification | Implemented locally, not deployed | `backend/src/auth/supabaseIdentityProvider.ts` |
+| Immutable-subject OWNER policy | Implemented locally for protected routes | `backend/src/auth/ownerAuthorization.ts` |
+| Exact-origin protected-route CORS | Implemented locally for auth/eBay | `backend/src/security/corsPolicy.ts`, `backend/src/server.ts` |
+| Safe identity endpoint | Implemented locally | `GET /api/auth/session`; `Cache-Control: no-store` |
+| Security/error redaction helper | Implemented locally | `backend/src/security/redaction.ts` |
+| Versioned verified browser export | Implemented locally with explicit coverage | `src/features/backup` |
+| No-write JSON restore preview | Implemented locally; no apply path | `src/features/backup`, Owner Center Data & Backup |
+
+## Current limitations and production blockers
+
+### Critical: server authorization is narrow and not deployed
+
+The local worktree now verifies Supabase access tokens server-side and enforces an exact provider-qualified immutable subject on `GET /api/ebay/health` and `POST /api/ebay/search`. Protected-route outcomes are `401` for no/invalid/expired identity, `403` for an authenticated non-owner, `503` for provider outage, and route success for the configured owner. Missing auth or owner configuration fails closed.
+
+This is not yet an application-wide security boundary. Legacy APIs, future backup/server-data APIs, financial data, files, controls, and jobs still require route classification and OWNER enforcement before production. The client continues to contain legacy role/development settings for presentation/compatibility; none can authorize the protected server routes.
+
+The full decision and limitations are in [OWNER_AUTH_DECISION.md](./OWNER_AUTH_DECISION.md).
+
+### Critical: canonical records are browser-local
+
+Deal, purchase, inventory, sales, expense, mileage, Owner Center, and restock records are stored in localStorage. They are available to scripts executing in that origin, depend on one browser profile/device, and lack server audit, centralized backup, or revocation. This is acceptable only for the current private preview with explicit limitations.
+
+### High: backend surface and residual CORS
+
+The local exact-origin policy runs before `/api/auth/*` and `/api/ebay/*`. It accepts configured HTTPS origins and loopback HTTP origins only, rejects wildcards/arbitrary reflection, adds `Vary: Origin`, and restricts methods/headers. Preview and local origin lists are included only in their matching runtimes.
+
+The legacy Express routes still use the existing permissive `cors()` middleware. Before production, inventory every route, protect or retire it, validate content types/request sizes, and rate-limit sensitive or upstream-backed operations.
+
+### High: file evidence
+
+Screenshots, receipts, and images are currently URLs/references or browser-held data rather than a protected file service. Target storage needs MIME and size validation, content hash, malware scanning where appropriate, private object keys, short-lived signed access, authorization on metadata and bytes, retention policy, and backup.
+
+### High: backup and recovery coverage remains partial
+
+The local Phase 1A format inventories current browser sources, excludes security/session data, hashes deterministic sections and manifest with SHA-256, reparses/reverifies the result, and provides a zero-write JSON Restore Preview. It explicitly labels coverage `COMPLETE`, `PARTIAL`, or `FAILED`.
+
+It is not a full disaster-recovery system. Supabase, PostgreSQL/process-memory records, and file bytes are not fetched. Configured remote data or referenced unembedded files make coverage partial. There is no apply-restore operation, protected server export, cloud retention, encryption wrapper, or durable backup audit history. See [BACKUP_FORMAT_V1.md](./BACKUP_FORMAT_V1.md) and [RESTORE_PREVIEW_CONTRACT.md](./RESTORE_PREVIEW_CONTRACT.md).
+
+### Medium/high: legacy authorization and privacy model
+
+The repository retains public-beta roles, profiles, community, marketplace, moderation, and workspace schemas. The private product must isolate or retire these surfaces. Existing Supabase RLS is useful evidence, not proof that the new private model is protected.
+
+### Medium: dependencies and observability
+
+Dependency vulnerability reports require separate review. Logs and errors need structured redaction so credentials, seller/buyer data, imported payloads, signed URLs, and financial details are not emitted. Production monitoring must expose status without exposing raw provider payloads or tokens.
+
+## Target security architecture
+
+```mermaid
+flowchart LR
+    Client["Private PWA"] -->|"secure session + CSRF/origin controls"| Gateway["Authenticated API"]
+    Gateway --> Policy["Default-deny role policy"]
+    Policy --> Services["Validated domain services"]
+    Services --> DB["Relational records"]
+    Services --> Files["Private object storage"]
+    Services --> Providers["Server provider adapters"]
+    Services --> Audit["Append-only audit log"]
+    Jobs["Authenticated job worker"] --> Services
+    Backup["Encrypted verified backup"] --> DB
+    Backup --> Files
+```
+
+## Authentication and session requirements
+
+- OWNER is the only enabled role initially.
+- The current Supabase bearer flow uses the provider SDK session; a future server-cookie design, if selected, must use secure, HttpOnly, and appropriate SameSite settings.
+- Session rotation, expiration, revocation, and sign-out-other-devices are supported.
+- Password reset and invitation flows do not reveal account existence unnecessarily.
+- Administrative and Owner Center requests are authorized on the server for every operation.
+- Future roles are policy capabilities, not scattered UI booleans.
+- Local development authorization requires server-detected development, explicit enablement, loopback host/socket, and an explicit header; it is rejected in hosted runtimes.
+- Authentication failure never falls back to anonymous privileged data.
+
+## Secret handling
+
+- Server secrets are supplied by deployment-secret storage, never `VITE_*` variables.
+- Browser-safe configuration is explicitly allowlisted.
+- Secrets are not returned by health/configuration endpoints.
+- Logs redact authorization headers, tokens, credentials, connection strings, signed URLs, and raw provider errors that may contain request details.
+- Example files document names only.
+- Secret rotation and provider disconnect invalidate cached credentials/tokens.
+- CI and staged-content scans block known secret patterns.
+
+Known server-only eBay names are `EBAY_CLIENT_ID`, `EBAY_CLIENT_SECRET`, `EBAY_ENVIRONMENT`, `EBAY_MARKETPLACE_ID`, and `EBAY_REQUEST_TIMEOUT_MS`. `VITE_API_BASE_URL` is a browser-safe route base, not a credential.
+
+Owner-boundary server names are `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `CODE3_OWNER_SUBJECTS`, `CODE3_CORS_ALLOWED_ORIGINS`, `CODE3_CORS_PREVIEW_ORIGINS`, `CODE3_CORS_LOCAL_ORIGINS`, and `CODE3_ENABLE_LOCAL_DEV_AUTH`. Browser session configuration uses `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and `VITE_API_BASE_URL`; explicit local development may additionally use `VITE_CODE3_LOCAL_AUTH_ENABLED`. Example files contain names/placeholders only.
+
+## Authorization matrix target
+
+| Domain | OWNER | Collaborator | Inventory helper | Bookkeeper | Read only |
+|---|---:|---:|---:|---:|---:|
+| Connections, schedules, security, backup | Full | None | None | None | None |
+| Search/import raw provider data | Full | Configurable review | None | None | Configurable view |
+| Purchases/receiving/listings/sales/shipping | Full | Configurable edit | Processing subset | Financial review only | Explicit view |
+| Owned-item identification/storage | Full | Edit | Edit | View only if granted | Explicit view |
+| Sensitive totals/reports | Full | Explicit grant | Denied by default | Review/export | Explicit view |
+| Expense/mileage/receipt/reconciliation | Full | Explicit grant | Receipt capture only | Review/edit/export | Explicit view |
+
+Only OWNER is enabled now. Future columns are design reservations, not current permissions.
+
+## Input and URL safety
+
+- Validate every request with a versioned schema and reject unknown privileged fields.
+- Normalize currency, rates, quantities, dates, enums, provider IDs, and pagination bounds.
+- Prevent server-side request forgery: user URLs are stored/opened safely and never fetched by a generic backend proxy.
+- Allow only documented upstream hosts in provider adapters.
+- Use bounded timeouts, response-size limits, and redirect policies.
+- Sanitize filenames and never derive object paths directly from user input.
+- Render owner notes as text unless a separately reviewed rich-text sanitizer exists.
+- Use idempotency keys for imports, mutations, webhooks, jobs, and retried submissions.
+
+## Files and images
+
+Every uploaded file requires authenticated ownership, size/MIME/magic-byte validation, hash, protected storage key, source record, scan state, and audit entry. Image processing occurs in a sandboxed/bounded service. Original evidence is immutable; derivatives reference it. Signed URLs are short-lived and never treated as authorization themselves.
+
+## Provider and job security
+
+- Provider scopes are minimized and recorded.
+- Capability checks prevent calling unsupported operations.
+- Rate limits and retry-after are respected.
+- Scheduled work uses a server identity with explicit domain permission, not an owner browser token.
+- Jobs are leased/idempotent and cannot run twice unnoticed.
+- Raw results enter Import Review; they never become purchases or inventory automatically.
+- Webhook signatures and replay windows are validated if webhooks are introduced.
+- Disconnect removes/revokes provider credentials and marks dependent schedules unavailable.
+
+## Data minimization and privacy
+
+- Store only seller/buyer details needed for sourcing, fulfillment, returns, trust history, or reconciliation.
+- Never store full payment-card credentials.
+- Minimize children's personal information; impact tracking should prefer aggregate counts.
+- Separate private owner records from any public product dataset and credentials.
+- Store AI/provider retention and use terms with the connection configuration.
+- Exports contain the owner's data but warn when files include personal or financial information.
+- Data deletion uses archive/correction rules where audit or financial history must remain; privacy deletion is policy-driven and logged.
+
+## Audit requirements
+
+Audit records are append-only and include actor/session, action, entity and version, time, reason, and before/after references or a safe diff. At minimum, audit:
+
+- authentication/session/security changes;
+- provider connect/disconnect and schedule/scoring changes;
+- import confirmation and mapping;
+- owner-entered financial changes and recalculation;
+- purpose, quantity, allocation, storage, sale, return, refund, void, and write-off actions;
+- backup/export/restore and migration operations;
+- administrative feature-control changes.
+
+Raw secrets and protected file contents never enter audit events.
+
+## Backup, export, and deletion
+
+A complete future backup includes schema/version manifest, canonical records, provenance, audit references, protected file manifest/content, counts, hashes, and validation results. Phase 1A covers registered browser sources only and must say `PARTIAL` whenever relevant server data or file bytes are absent. Restore Preview is duplicate/reference/money checked, bounded, and guaranteed no-write; applying restore is not implemented. Future server export, restore, and deletion operations require fresh owner authorization and rate limiting.
+
+## Threat register
+
+| Threat | Current exposure | Required mitigation |
+|---|---|---|
+| Direct use of eBay endpoint by non-owner | Locally mitigated; deployment unverified | configure/test Supabase owner boundary per environment, rate limit, audit |
+| XSS reads local financial records | Browser-local data | strict CSP, dependency hygiene, safe rendering, migrate to API/cache minimization |
+| Device/profile loss | local-only records | verified complete backup and durable canonical storage |
+| Malicious/oversized file | no canonical upload boundary yet | protected upload validation/scanning/quota |
+| Provider payload overwrites owner facts | partly prevented by discovery model | immutable snapshots and explicit reviewed merge |
+| Duplicate retry creates financial/inventory records | local validations only | server idempotency and database constraints |
+| Cross-device edit conflict | unsupported | record versions, optimistic concurrency, conflict UI |
+| Legacy route exposes private operation | broad compatibility surface | route inventory, default-deny middleware, focused retirement |
+| Secret leakage through configuration/logs | eBay currently isolated | allowlist config, log redaction, CI scans, rotation |
+| Preview configuration used as production assurance | current preview only | explicit environment gates and production review |
+
+## Production security blockers
+
+The product MUST NOT be promoted to production private-business use until, at minimum:
+
+1. server-authenticated OWNER authorization protects all sensitive APIs;
+2. permissive legacy routes and CORS are reviewed or isolated;
+3. complete export/restore is verified;
+4. canonical data and files have durable protected storage or the local-only limitation is explicitly accepted for a non-production pilot;
+5. secrets/logging/configuration scans pass;
+6. dependency vulnerabilities are triaged;
+7. authorization, import idempotency, backup/restore, and file tests pass;
+8. production and preview environment/domain separation is verified;
+9. an owner-access recovery procedure exists.

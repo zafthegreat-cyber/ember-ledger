@@ -6,6 +6,7 @@ import cors from "cors";
 import { randomUUID } from "crypto";
 import { pool, testDbConnection } from "./db";
 import { bestBuyRouter } from "./routes/bestbuy.routes";
+import { ebayRouter } from "./routes/ebay.routes";
 import { catalogRouter } from "./routes/catalog.routes";
 import { forgeRouter } from "./routes/forge.routes";
 import { inventoryRouter } from "./routes/inventory.routes";
@@ -15,17 +16,26 @@ import { scoutRouter } from "./routes/scout.routes";
 import { storeReportsRouter, tidepoolRouter } from "./routes/tidepool.routes";
 import { storesRouter } from "./routes/stores.routes";
 import { vaultRouter } from "./routes/vault.routes";
+import { authRouter } from "./routes/auth.routes";
+import { createProtectedCors } from "./security/corsPolicy";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-app.use(cors());
 app.use(express.json({ limit: "10mb" }));
+
+const protectedCors = createProtectedCors();
+app.use("/api/auth", protectedCors, authRouter);
+app.use("/api/ebay", protectedCors, ebayRouter);
+
+// Legacy routes retain their existing behavior until they are migrated behind
+// the owner boundary. Protected Code 3 routes are mounted before this policy.
+app.use(cors());
 
 app.get("/api/health", (_req: Request, res: Response) => {
   res.json({
     status: "ok",
-    message: "Ember & Tide API is running",
+    message: "API is running",
   });
 });
 

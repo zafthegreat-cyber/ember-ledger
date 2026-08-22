@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">Private Business Hub</title>
+  <rect width="512" height="512" rx="112" fill="#315f55"/>
+  <path fill="#fff" d="M126 118h137c69 0 111 36 111 93 0 34-17 60-46 75 39 13 61 43 61 87 0 67-49 106-128 106H126V118Zm126 144c33 0 52-15 52-42 0-26-19-40-52-40h-56v82h56Zm8 154c37 0 58-17 58-48 0-30-21-47-58-47h-64v95h64Z"/>
+</svg>

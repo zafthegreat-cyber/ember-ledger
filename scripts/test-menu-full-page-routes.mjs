@@ -5,19 +5,39 @@ import path from "node:path";
 const root = process.cwd();
 const appPath = path.join(root, "src", "App.jsx");
 const cssPath = path.join(root, "src", "App.css");
+const appStylesDir = path.join(root, "src", "styles", "app");
+const routeStatePath = path.join(root, "src", "utils", "appRouteState.js");
+const pageSourceDir = path.join(root, "src", "pages");
 const commandSurfacePath = path.join(root, "src", "components", "command-system", "CommandSurface.jsx");
 const commandSystemCssPath = path.join(root, "src", "styles", "command-system.css");
 const betaReadinessPath = path.join(root, "src", "services", "betaReadinessService.js");
 const appFileSource = fs.readFileSync(appPath, "utf8");
+const routeStateSource = fs.existsSync(routeStatePath) ? fs.readFileSync(routeStatePath, "utf8") : "";
+const pageSource = fs.existsSync(pageSourceDir)
+  ? fs.readdirSync(pageSourceDir)
+    .filter((fileName) => fileName.endsWith(".jsx"))
+    .sort((a, b) => a.localeCompare(b))
+    .map((fileName) => fs.readFileSync(path.join(pageSourceDir, fileName), "utf8"))
+    .join("\n")
+  : "";
 const commandSurfaceSource = fs.existsSync(commandSurfacePath) ? fs.readFileSync(commandSurfacePath, "utf8") : "";
-const appSource = `${appFileSource}\n${commandSurfaceSource}`;
-const appCssSource = fs.readFileSync(cssPath, "utf8");
+const appSource = `${appFileSource}\n${pageSource}\n${commandSurfaceSource}\n${routeStateSource}`;
+const splitAppCssSource = fs.existsSync(appStylesDir)
+  ? fs.readdirSync(appStylesDir)
+    .filter((fileName) => fileName.endsWith(".css"))
+    .sort((a, b) => a.localeCompare(b))
+    .map((fileName) => fs.readFileSync(path.join(appStylesDir, fileName), "utf8"))
+    .join("\n")
+  : "";
+const appCssSource = `${fs.readFileSync(cssPath, "utf8")}\n${splitAppCssSource}`;
 const commandSystemCssSource = fs.existsSync(commandSystemCssPath) ? fs.readFileSync(commandSystemCssPath, "utf8") : "";
 const cssSource = `${appCssSource}\n${commandSystemCssSource}`;
 const betaReadinessSource = fs.readFileSync(betaReadinessPath, "utf8");
 const publicTrustSource = `${appSource}\n${betaReadinessSource}`;
 
 const expectedRoutes = [
+  ['section === "collection"', 'activeTab: "collectionWorkspace"'],
+  ['section === "owner-center"', 'activeTab: "ownerCenter"'],
   ['section === "today" || section === "daily-tide"', 'activeTab: "dailyTide"'],
   ['section === "whats-new" || section === "changelog"', 'activeTab: "whatsNew"'],
   ['section === "coming-soon" || section === "roadmap"', 'activeTab: "comingSoon"'],
@@ -26,7 +46,7 @@ const expectedRoutes = [
   ['section === "settings"', 'activeTab: "settings"'],
   ['section === "account"', 'activeTab: "account"'],
   ['section === "collections" || section === "workspaces"', 'activeTab: "collections"'],
-  ['section === "data-backup" || section === "backup"', 'activeTab: "dataBackup"'],
+  ['section === "data-backup" || section === "backup"', 'ownerCenterSubview: "data-backup"'],
   ['section === "tcg-os"', 'activeTab: "tcgOs"'],
   ['section === "help" || section === "support"', 'activeTab: "help"'],
   ['section === "menu" || section === "more"', 'activeTab: "settings"'],
@@ -48,10 +68,18 @@ for (const [routeFragment, activeTabFragment] of expectedRoutes) {
 }
 
 const expectedRenderers = [
+  'activeTab === "collectionWorkspace" && (',
+  '<CollectionWorkspace',
+  'activeTab === "businessWorkspace" && (',
+  '<BusinessWorkspace',
+  'activeTab === "ownerCenter" && (',
+  '<OwnerCenterPage',
   'activeTab === "dailyTide" && renderTodaysTideCommandCenter()',
-  'activeTab === "dashboard" && renderHearthHomeCommandView()',
+  'activeTab === "dashboard" && (',
+  '<OperationsHomePage {...hearthPageProps} />',
   'activeTab === "tidepool" && renderTidepoolCommunity()',
-  'activeTab === "kidsProgram" && renderKidsProgramPage()',
+  'activeTab === "kidsProgram" && (',
+  '<SparkPage {...sparkPageProps} />',
   'activeTab === "parentCenter" && renderParentCenterPage()',
   'activeTab === "sponsor" && renderSponsorInterestPage()',
   'activeTab === "trust" && renderTrustPages()',
@@ -59,7 +87,8 @@ const expectedRenderers = [
   'activeTab === "whatsNew" && renderWhatsNewPage()',
   'activeTab === "knownLimitations" && renderKnownLimitationsPage()',
   'activeTab === "comingSoon" && renderComingSoonPage()',
-  'activeTab === "settings" && renderSettingsPage()',
+  'activeTab === "settings" && (',
+  '<MenuPage {...settingsPageProps} />',
   'activeTab === "account" && renderAccountPage()',
   'activeTab === "collections" && renderCollectionsPage()',
   'activeTab === "dataBackup" && renderDataBackupPage()',
@@ -93,9 +122,10 @@ for (const alias of expectedUtilityAliases) {
 }
 
 const expectedMenuDestinations = [
+  'key: "owner-center", label: "Owner Center"',
   'quickAdd: { key: "quickAdd"',
   'scanProduct: { key: "scanProduct"',
-  'emberAssist: { key: "emberAssist"',
+  'emberAssist: ownerFeatureControls.businessAssistant ? { key: "emberAssist", label: "Business Assistant"',
   'privacySafety: { key: "privacySafety"',
   'parentCenter: { key: "parentCenter"',
   'publicBetaFeedback: { key: "publicBetaFeedback"',
@@ -111,8 +141,8 @@ for (const destination of expectedMenuDestinations) {
 }
 
 assert.ok(
-  appSource.includes('if (activeTab === "membership") return "/membership";'),
-  "Membership should keep a stable /membership URL instead of serializing back to settings."
+  appSource.includes('if (activeTab === "membership") return "/settings/plans";'),
+  "Membership should use the canonical settings URL while retaining its compatibility route."
 );
 
 assert.ok(
@@ -350,16 +380,17 @@ assert.ok(
   "Mobile Scan Anything and Review/Add flows should receive full-page modal treatment."
 );
 assert.ok(
-  appSource.includes("function FlowNextActionCard") &&
+    appSource.includes("function FlowNextActionCard") &&
     appSource.includes('eyebrow="Vault next action"') &&
     appSource.includes('eyebrow="After Price Memory"') &&
-    appSource.includes('eyebrow="After Trade Compass"') &&
     appSource.includes('eyebrow="Next Spark action"') &&
     appSource.includes('eyebrow="After Grade Assist"') &&
     appSource.includes("Grade Assist checklist saved") &&
     appSource.includes("Use the manual checklist as a prompt, not a grade.") &&
     appSource.includes("Saved prices are manual research notes.") &&
-    appSource.includes("Forge does not edit Vault unless you choose a separate Vault action.") &&
+    pageSource.includes("const pageNextAction") &&
+    pageSource.includes("Inventory stays unchanged unless reviewed") &&
+    pageSource.includes("No fake commerce") &&
     appSource.includes("No payment, fulfillment, shipping, or private child messaging is connected."),
   "Flow cleanup should add safe next-action handoffs for Vault, Market, Forge, Spark, Grade Assist, and Hearth."
 );

@@ -2,19 +2,7 @@ const CACHE_NAME = "ember-tide-pwa-v4";
 const APP_SHELL = [
   "/offline.html",
   "/manifest.webmanifest",
-  "/favicon.ico",
-  "/favicon.svg",
-  "/favicon-16x16.png",
-  "/favicon-32x32.png",
-  "/apple-touch-icon.png",
-  "/icon-192.png",
-  "/icon-512.png",
-  "/icon-maskable-192.png",
-  "/icon-maskable-512.png",
-  "/assets/brand/ember-tide-mark.svg",
-  "/assets/brand/ember-tide-promo-hero.png",
-  "/assets/brand/link-bio-header.png",
-  "/assets/brand/pwa-install-promo.png",
+  "__BRAND_LOGO__",
 ];
 
 function isAppCache(key) {

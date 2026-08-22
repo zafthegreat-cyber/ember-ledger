@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "tsx src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "test:ebay": "npm run build && node --test --test-isolation=none test/ebayBrowse.service.test.mjs",
+    "test:owner-security": "npm run build && node --test --test-isolation=none test/ownerSecurity.test.mjs"
   },
   "keywords": [],
   "author": "",

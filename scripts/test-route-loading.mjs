@@ -12,16 +12,129 @@ function check(label, passed, details = "") {
 }
 
 const app = read("src/App.jsx");
+const main = read("src/main.jsx");
+const routeState = read("src/utils/appRouteState.js");
+const appCss = read("src/App.css");
 const storeSeed = read("src/data/virginiaStoresSeed.js");
 const smartSearch = read("src/components/SmartCatalogSearchBox.jsx");
 const smartInventory = read("src/components/SmartAddInventory.jsx");
 const smartCatalog = read("src/components/SmartAddCatalog.jsx");
+const routePages = {
+  hearth: read("src/pages/Hearth.jsx"),
+  operationsHome: read("src/pages/OperationsHome.jsx"),
+  vault: read("src/pages/Vault.jsx"),
+  forge: read("src/pages/Forge.jsx"),
+  market: read("src/pages/Market.jsx"),
+  spark: read("src/pages/Spark.jsx"),
+  menu: read("src/pages/Menu.jsx"),
+  scout: read("src/pages/Scout.jsx"),
+};
 const viteConfig = read("vite.config.js");
 const pkg = JSON.parse(read("package.json"));
+const commandBoardV4 = read("src/components/command-system/CommandBoardV4.jsx");
+const flipScoutPage = read("src/features/flipScout/FlipScoutPage.jsx");
 
 check(
   "Scout is route-lazy loaded",
   app.includes('const Scout = lazy(() => import("./pages/Scout"))')
+);
+
+check(
+  "Primary app routes are lazy-loaded from page modules",
+  app.includes('const OperationsHomePage = lazy(() => import("./pages/OperationsHome"))') &&
+    app.includes('const VaultPage = lazy(() => import("./pages/Vault"))') &&
+    app.includes('const ForgePage = lazy(() => import("./pages/Forge"))') &&
+    app.includes('const MarketPage = lazy(() => import("./pages/Market"))') &&
+    app.includes('const SparkPage = lazy(() => import("./pages/Spark"))') &&
+    app.includes('const MenuPage = lazy(() => import("./pages/Menu"))')
+);
+
+check(
+  "Deal Finder advanced routes are independently lazy-loaded",
+  flipScoutPage.includes('lazy(() => import("./screens/AppraiserScreen.jsx"))') &&
+    flipScoutPage.includes('lazy(() => import("./screens/AuctionsScreen.jsx"))') &&
+    flipScoutPage.includes('lazy(() => import("./screens/EbayDiscoveryScreen.jsx"))') &&
+    flipScoutPage.includes('lazy(() => import("./screens/SearchRulesScreen.jsx"))') &&
+    flipScoutPage.includes('lazy(() => import("./screens/RecordsScreen.jsx"))') &&
+    flipScoutPage.includes('<Suspense fallback={<LoadingState')
+);
+
+check(
+  "Home page body remains outside the app shell",
+  !app.includes("function renderHearthHomeCommandView") &&
+    routePages.operationsHome.includes("export default function OperationsHome") &&
+    routePages.operationsHome.includes("ops-home-page") &&
+    app.includes("<OperationsHomePage {...hearthPageProps} />")
+);
+
+check(
+  "Vault dashboard and Market route body live in V4 page modules",
+  routePages.vault.includes("export default function VaultPage") &&
+    routePages.vault.includes("function renderVaultHomeDashboard") &&
+    routePages.vault.includes("CommandBoardV4") &&
+    routePages.vault.includes("vault-command-only-route") &&
+    !routePages.vault.includes("EtMockupPageShell") &&
+    !app.includes("function renderVaultHomeDashboard") &&
+    routePages.market.includes("export default function MarketPage") &&
+    routePages.market.includes("CommandBoardV4") &&
+    routePages.market.includes("market-command-only-route") &&
+    routePages.market.includes("Market Command Center") &&
+    routePages.market.includes("Product Compare") &&
+    routePages.market.includes("Watch Center") &&
+    routePages.market.includes("No checkout, no seller matching") &&
+    app.includes("<VaultPage renderHeader={renderVaultHeader} showDashboard={vaultSubTab === \"overview\"} {...vaultDashboardProps}>") &&
+    app.includes("<MarketPage {...marketPageProps} />")
+);
+
+check(
+  "Forge Exchange body, Spark, and Menu route mounts are delegated to V4 page modules",
+  routePages.forge.includes("export default function ForgePage") &&
+    routePages.forge.includes("exchange-page-final") &&
+    routePages.forge.includes("CommandBoardV4") &&
+    routePages.forge.includes("exchange-command-only-route") &&
+    routePages.spark.includes("export default function SparkPage") &&
+    routePages.spark.includes("CommandBoardV4") &&
+    routePages.spark.includes("spark-command-only-route") &&
+    routePages.spark.includes("FlowNextActionCard") &&
+    routePages.spark.includes("submitKidsProgramApplication") &&
+    routePages.menu.includes("export default function MenuPage") &&
+    routePages.menu.includes("function renderSettingsPage") &&
+    routePages.menu.includes("CommandBoardV4") &&
+    routePages.menu.includes("hideCommandHeader: true") &&
+    !app.includes("function renderExchangePage") &&
+    !app.includes("function renderKidsProgramPage") &&
+    !app.includes("function renderSettingsPage") &&
+    app.includes("<ForgePage {...forgePageProps} />") &&
+    app.includes("<SparkPage {...sparkPageProps} />") &&
+    app.includes("<MenuPage {...settingsPageProps} />")
+);
+
+check(
+  "App shell uses a lazy app bootstrap boundary",
+  main.includes('const App = lazy(() => import("./App.jsx"))') &&
+    main.includes('<Suspense fallback={<AppLoadFallback kind="loading" />}>')
+);
+
+check(
+  "Route state parser lives outside the main app module",
+  app.includes('from "./utils/appRouteState"') &&
+    routeState.includes("export function routeStateFromPath") &&
+    routeState.includes("export function loadInitialRouteState") &&
+    routeState.includes("BETA_LOCAL_STORAGE_KEYS.routeState")
+);
+
+check(
+  "App CSS is split into ordered structural imports",
+  appCss.includes('@import "./styles/app/01-tokens-theme.css";') &&
+    appCss.includes('@import "./styles/app/02-app-shell-navigation.css";') &&
+    appCss.includes('@import "./styles/app/03-cards-buttons-forms.css";') &&
+    appCss.includes('@import "./styles/app/04-route-pages.css";') &&
+    appCss.includes('@import "./styles/app/05-modals-search-data.css";') &&
+    appCss.includes('@import "./styles/app/06-mobile-responsive.css";') &&
+    appCss.includes('@import "./styles/app/10-scout-command-board.css";') &&
+    appCss.includes('@import "./styles/app/11-command-ui-overhaul.css";') &&
+    !appCss.includes('@import "./styles/app/08-command-shell-auth.css";') &&
+    !appCss.includes('@import "./styles/app/09-experience-lock.css";')
 );
 
 check(
@@ -132,6 +245,14 @@ check(
   viteConfig.includes("resolveDependencies") &&
     viteConfig.includes("store-directory") &&
     viteConfig.includes("scanner-vendor")
+);
+
+check(
+  "Command board navigation does not force local beta mode in production",
+  !commandBoardV4.includes('href="/?betaLocalMode=true"') &&
+    !commandBoardV4.includes('href: "/vault?betaLocalMode=true"') &&
+    commandBoardV4.includes("function commandBoardHref(path)") &&
+    commandBoardV4.includes("COMMAND_BOARD_QA_PARAMS")
 );
 
 check(
