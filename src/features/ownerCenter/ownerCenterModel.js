@@ -1,3 +1,12 @@
+import { calculateRestockIntelligence } from "./restockIntelligenceAdapter.js";
+import {
+  RESTOCK_PREDICTION_OUTCOME,
+  VISIT_OUTCOME,
+  isConfirmedRestockStatus,
+  restockPredictionOutcome,
+  restockVisitOutcome,
+} from "./restockStatus.js";
+
 const DAY_MS = 86_400_000;
 
 export function asNumber(value) {
@@ -108,8 +117,9 @@ export function filterAndSortOpportunities(rows = [], filters = {}, sort = "best
   return [...filtered].sort(compare);
 }
 
-export function restockPatternSummary({ events = [], visits = [], predictions = [], purchases = [] } = {}) {
-  const confirmed = events.filter((event) => /confirmed/i.test(event.confirmationStatus || event.status));
+export function restockPatternSummary({ events = [], visits = [], observations = [], predictions = [], purchases = [] } = {}) {
+  const intelligence = calculateRestockIntelligence({ events, visits, observations });
+  const confirmed = events.filter((event) => isConfirmedRestockStatus(event.confirmationStatus || event.status));
   const eventTimes = confirmed.map((event) => timestamp(event.eventTime || event.reportTime || event.date)).filter((value) => value != null).sort((a, b) => a - b);
   const weekdayCounts = {};
   const hourBuckets = {};
@@ -123,24 +133,33 @@ export function restockPatternSummary({ events = [], visits = [], predictions = 
   }
   const mostCommon = (counts) => Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
   const intervals = eventTimes.slice(1).map((time, index) => (time - eventTimes[index]) / DAY_MS);
-  const completedPredictions = predictions.filter((prediction) => /confirmed|missed|incorrect|correct/i.test(prediction.outcome || ""));
-  const correctPredictions = completedPredictions.filter((prediction) => /confirmed|correct/i.test(prediction.outcome || ""));
-  const successfulVisits = visits.filter((visit) => visit.successful === true || /successful/i.test(visit.outcome || visit.status || ""));
+  const completedPredictions = predictions.filter((prediction) => restockPredictionOutcome(prediction.outcome) !== RESTOCK_PREDICTION_OUTCOME.UNKNOWN);
+  const correctPredictions = completedPredictions.filter((prediction) => restockPredictionOutcome(prediction.outcome) === RESTOCK_PREDICTION_OUTCOME.CORRECT);
+  const completedVisits = visits.filter((visit) => restockVisitOutcome(visit) !== VISIT_OUTCOME.UNKNOWN);
+  const successfulVisits = completedVisits.filter((visit) => restockVisitOutcome(visit) === VISIT_OUTCOME.SUCCESS);
   const miles = visits.reduce((sum, visit) => sum + (asNumber(visit.miles) || 0), 0);
   const hours = visits.reduce((sum, visit) => sum + (asNumber(visit.timeSpentHours) || (asNumber(visit.timeSpentMinutes) || 0) / 60), 0);
   const attributedProfit = purchases.reduce((sum, purchase) => sum + (asNumber(purchase.realizedProfit) || 0), 0);
   const hasProfitData = purchases.some((purchase) => asNumber(purchase.realizedProfit) != null);
+  const patternStability = intelligence.confidence === "HIGH" && intelligence.likelihoodBand === "HIGH"
+    ? "High-confidence pattern"
+    : intelligence.confidence === "MEDIUM" && intelligence.likelihoodBand !== "INSUFFICIENT"
+      ? "Moderate-confidence pattern"
+      : intelligence.sampleSize >= 2
+        ? "Weak pattern"
+        : "Not enough data";
   return {
+    intelligence,
     supportingReportCount: confirmed.length,
     mostCommonWeekday: confirmed.length >= 2 ? mostCommon(weekdayCounts) : null,
     mostCommonTimeWindow: confirmed.length >= 2 ? mostCommon(hourBuckets) : null,
     averageIntervalDays: intervals.length ? intervals.reduce((sum, value) => sum + value, 0) / intervals.length : null,
-    patternStability: confirmed.length >= 6 ? "High-confidence pattern" : confirmed.length >= 3 ? "Moderate-confidence pattern" : confirmed.length >= 2 ? "Weak pattern" : "Not enough data",
+    patternStability,
     predictionAccuracy: completedPredictions.length ? correctPredictions.length / completedPredictions.length : null,
     averageTimingErrorHours: completedPredictions.some((prediction) => asNumber(prediction.timingErrorHours) != null)
       ? completedPredictions.reduce((sum, prediction) => sum + (asNumber(prediction.timingErrorHours) || 0), 0) / completedPredictions.filter((prediction) => asNumber(prediction.timingErrorHours) != null).length
       : null,
-    successfulTripRate: visits.length ? successfulVisits.length / visits.length : null,
+    successfulTripRate: completedVisits.length ? successfulVisits.length / completedVisits.length : null,
     profitPerTrip: hasProfitData && visits.length ? attributedProfit / visits.length : null,
     profitPerMile: hasProfitData && miles > 0 ? attributedProfit / miles : null,
     profitPerHour: hasProfitData && hours > 0 ? attributedProfit / hours : null,

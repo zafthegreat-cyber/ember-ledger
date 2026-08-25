@@ -6,6 +6,8 @@ Phase 1A is published on the feature branch. Hosted owner access still depends o
 
 Phase 1B status: validated checkpoint source published on the feature branch. The canonical database artifact is `SCHEMA_ONLY`; repository/API contracts are present but hosted use is gate-disabled; Migration Preview is `DRY_RUN_ONLY`; `REMOTE_ACTIVE` is `NOT_ACTIVE`. No production migration or owner-data migration has run.
 
+Phase 1C starting baseline: `cdd57bbabb2243ff510eca7aec0487f23342834d`. The Phase 1C intelligence foundation is local working-copy code pending its publication checkpoint. It does not apply the Phase 1B schema, enable `REMOTE_ACTIVE`, move owner data, start sync, or add an automated marketplace action.
+
 ## Executive summary
 
 Code 3 is a hybrid React/Vite single-page application. Its approved everyday shell and private sourcing foundation are implemented, but authoritative data is split across three persistence styles:
@@ -14,7 +16,7 @@ Code 3 is a hybrid React/Vite single-page application. Its approved everyday she
 2. older browser storage and optional Supabase persistence used by legacy application modules;
 3. an Express/PostgreSQL backend used by legacy APIs and the secure eBay Browse connector.
 
-The published architecture is suitable for a private preview, not for centralized durability or reliable background work. Phase 1A supplies a Supabase-backed server identity boundary for the auth/eBay route families and a deterministic browser-backup/restore-preview contract. Phase 1B selects and scaffolds the owner-authorized Express API → repository/service layer → PostgreSQL/Supabase Postgres target, but deliberately leaves current browser repositories authoritative. Those changes reduce migration risk; they do not migrate records, activate remote persistence, protect every legacy route, or make a backup complete when server data or referenced file bytes are omitted. The safest target remains an incremental strangler migration.
+The published architecture is suitable for a private preview, not for centralized durability or reliable background work. Phase 1A supplies a Supabase-backed server identity boundary for the auth/eBay route families and a deterministic browser-backup/restore-preview contract. Phase 1B selects and scaffolds the owner-authorized Express API → repository/service layer → PostgreSQL/Supabase Postgres target, but deliberately leaves current browser repositories authoritative. Phase 1C adds presentation-independent deterministic intelligence modules and append-only local card-analysis history on top of that unchanged authority boundary. Auction results can be saved without a generic linked revision series, and restock intelligence is recomputed from retained observations. Those changes reduce migration and recommendation risk; they do not migrate records, activate remote persistence, protect every legacy route, configure an AI/computer-vision provider, or make a backup complete when server data or referenced file bytes are omitted. The safest target remains an incremental strangler migration.
 
 ## Published Phase 1A boundary
 
@@ -48,6 +50,23 @@ The exact implementation paths are cited in [CANONICAL_PERSISTENCE_DECISION.md](
 
 `backend/src/routes/code3.routes.ts` is mounted at `/api/code3` through the same protected CORS and owner boundary as auth/eBay. It provides bounded canonical resource contracts plus read-only export and migration dry-run endpoints, but `CODE3_CANONICAL_PERSISTENCE_ENABLED` and `DATABASE_URL` must both be configured before the hosted route family leaves its safe `503` state. `supabase/migrations/20260820120000_code3_canonical_owner_records.sql` defines the unexecuted target tables/RLS/constraints. `FILE_ASSET` uses the generic record envelope plus a typed `code3_file_assets` metadata row and owner-scoped related-record validation; no file byte is uploaded. `src/features/persistence` supplies the client local/remote abstraction and deterministic local mapping, with all 80 backup-registry record paths explicitly classified. `src/services/code3OwnerApi.js` supplies owner-session headers to the bounded remote-export adapter; Data & Backup and `src/features/backup/MigrationReadinessPanel.jsx` consume that read result when available and otherwise retain honest `PARTIAL`/unavailable states. A `COMPLETE` remote export must use the repository consistent-read boundary, carry every uppercase canonical domain key, and have no truncation; source-read warnings flow into readiness and its deterministic hashes.
 
+## Phase 1C local intelligence delta
+
+Phase 1C introduces a reusable browser-side domain layer under `src/features/intelligence`:
+
+- validated card identity, image-reference, defect-observation, provenance, condition, and confidence contracts;
+- deterministic apparent-condition rules for `NM`, `LP`, `MP`, `HP`, and `DMG`, including structural-damage floors, cumulative wear, image limitations, and owner-confirmed values kept separate from the system proposal;
+- safe integer-minor-unit money, basis-point fee, `code3.valuation.v2` condition-aware valuation, deal recommendation with explicit risk severity, lot scenario, auction maximum-bid, and coarse restock-pattern services;
+- one shared `HIGH` / `MEDIUM` / `LOW` / `INSUFFICIENT` confidence vocabulary that discounts repeated underlying sources and considers freshness, completeness, identity/condition certainty, and contradictions;
+- an analysis pipeline that separates normalization, identity resolution, evidence extraction, condition, valuation, recommendation, and optional persistence;
+- valuation basis selection that prefers matched-condition verified sales without another adjustment, falls back only to an explicit `NM` baseline adjustment, and excludes unknown or incompatible comparable conditions with warnings;
+- tagged append-only `code3-intelligence-analysis-v1` card revisions in the existing local `appraisals` collection through a hard-wired Phase 1B `LOCAL_ONLY` gateway;
+- explicit owner-correction events with prior/new values and `OWNER_ENTERED` provenance; reanalysis creates a linked revision and never rewrites the prior system result;
+- official eBay active-listing evidence normalization that retains provider identity/observations separately and refuses to fabricate money when currency is missing, plus a provider-neutral scanner boundary that preserves provenance without claiming OCR or computer vision;
+- restock freshness based on the latest positive observation, with contradictory evidence preserved and shared confidence unable to bypass source independence.
+
+The Phase 1C layer is decision support only. It has no server-side intelligence route, background job, provider/model secret, hosted write, automatic purchase, offer, bid, message, or migration path. See [INTELLIGENCE_CONTRACT.md](./INTELLIGENCE_CONTRACT.md).
+
 ## Current system map
 
 ```mermaid
@@ -55,6 +74,7 @@ flowchart TD
     Browser["React 19 + Vite SPA"]
     Shell["App.jsx shell and compatibility router"]
     Canonical["Canonical workspaces and feature modules"]
+    Intelligence["Deterministic local intelligence services"]
     Legacy["Legacy route renderers and services"]
     Local["Versioned localStorage repositories"]
     Supabase["Optional Supabase client + legacy tables"]
@@ -65,6 +85,8 @@ flowchart TD
     Browser --> Shell
     Shell --> Canonical
     Shell --> Legacy
+    Canonical --> Intelligence
+    Intelligence --> Local
     Canonical --> Local
     Legacy --> Local
     Legacy --> Supabase
@@ -86,6 +108,7 @@ flowchart TD
 | Routing | Custom path parsing and render dispatch, not React Router | `src/utils/appRouteState.js`, `src/App.jsx` | Back/redirect compatibility depends on bespoke code |
 | State | Large in-memory React state plus domain repository snapshots and legacy hooks | `src/App.jsx`, feature repositories | No single authoritative state boundary |
 | Canonical read bridge | Owner-authorized Code 3 request helper and bounded server-export adapter | `src/services/code3OwnerApi.js`, `src/features/persistence/remoteBackupAdapter.js` | Backup/preview may compare remote records when configured; no remote writes or cutover |
+| Intelligence | Presentation-independent condition, valuation, deal, auction/lot, restock, card-history, and provider-evidence modules | `src/features/intelligence` | Deterministic local decision support is reusable; auction has no generic revision series, restock recomputes from observations, and no AI/CV provider or autonomous action exists |
 | PWA | Manifest/service worker and installable SPA behavior | `public/manifest.webmanifest`, `public/sw.js`, `src/main.jsx` | Offline shell support exists; conflict-safe sync does not |
 
 ## Routing and compatibility
@@ -112,6 +135,7 @@ The target is a route registry with one canonical owner per workflow, explicit r
 ### Canonical browser repositories
 
 - `src/features/flipScout/storageRepository.js` stores schema-versioned feature data under `ember-and-tide.flip-scout.v1`. The old namespace is intentionally retained for compatibility.
+- Phase 1C card-analysis history adds only tagged records to that repository's existing `appraisals` collection. Legacy appraisal rows remain untouched and are not silently reinterpreted. The history factory fixes its Phase 1B gateway to `LOCAL_ONLY` and exposes no delete/archive or remote-mode selector. Auction saves do not create this linked revision series, and restock results are recomputed from observations.
 - `src/features/ownerCenter/ownerCenterRepository.js` stores owner intelligence and controls under `private-business-hub.owner-center.v1`.
 - guided forms use namespaced session/draft keys through `src/components/operations/RecordExperience.jsx` and feature screens.
 
@@ -137,7 +161,7 @@ The eBay implementation is the strongest current server boundary:
 - `backend/src/services/ebayBrowse.service.ts`
 - `backend/src/server.ts`
 
-It keeps credentials server-side, caches application tokens, retries authentication once, maps upstream failures, and normalizes active listings. Browser discovery and Import Review live in `src/features/flipScout/ebayDiscovery.js` and `src/features/flipScout/screens/EbayDiscoveryScreen.jsx`.
+It keeps credentials server-side, caches application tokens, retries authentication once, maps upstream failures, and normalizes active listings. Browser discovery and Import Review live in `src/features/flipScout/ebayDiscovery.js` and `src/features/flipScout/screens/EbayDiscoveryScreen.jsx`. Phase 1C's `providerAdapters/ebayEvidence.js` keeps the official eBay external identity, observations, image references, and supplied active asking/current-bid/shipping evidence separately attributable. It emits exact `ACTIVE_LISTING` money only when the provider supplies a usable amount and currency; missing currency produces a warning and no fabricated money. It always leaves completed-sale evidence empty unless a separately approved source is introduced.
 
 Current backend limitations after the Phase 1B checkpoint:
 
@@ -147,6 +171,7 @@ Current backend limitations after the Phase 1B checkpoint:
 - mixed durable and process-memory services;
 - no canonical background-job subsystem or durable audit writer; mutation idempotency beyond the Phase 1B contract remains future work;
 - no protected object/file storage for evidence and receipts.
+- no configured model-backed image/OCR/AI analysis provider; image references remain references and the scanner adapter reports that no image analysis ran.
 
 ## Authentication and permissions
 
@@ -198,13 +223,14 @@ Some names occur only in maintenance/test scripts rather than deployed runtime. 
 The repository has focused Node/browser scripts rather than one consolidated test framework. Verified gates include:
 
 - calculations, allocation, storage, eBay normalization and server behavior;
+- deterministic condition, confidence, money, valuation, deal, auction/lot, restock, card-history, and evidence-boundary behavior;
 - Owner Center models, authorization, restock metrics, and purpose history;
 - browser workflows and Deal Inbox deletion;
 - route loading, compatibility aliases, direct lazy-route loads;
 - plain language, viewport light/dark, keyboard accessibility;
 - focused beta smoke and a bounded 28-scenario regression.
 
-Tests are listed in `package.json` and `backend/package.json`. The published UI and Phase 1A baseline passed the documented focused and full validation gates before publication review.
+Phase 1C focused local evidence records 168 domain assertions, 27 card-history/provider cases, 61 integration assertions, and 15/15 deterministic fixtures with 175 assertions. Tests are listed in `package.json` and `backend/package.json`. The complete local gate also passed the Phase 1A/1B suites and all 28 bounded regression scenarios in 323.446 seconds, with zero retries and no open handles after cleanup. These results describe the checkpoint candidate represented by this changeset.
 
 ## Bundle structure
 

@@ -1,12 +1,13 @@
 # Code 3 Integrations and Capability Matrix
 
-Verified against commit `fa087331f3e81b5cf06a57ca7a89e8b37edba0fc`.
+Phase 1C audited from published baseline `cdd57bbabb2243ff510eca7aec0487f23342834d`. Phase 1C provider-evidence adapters are local working-copy code pending checkpoint publication.
 
 ## Capability truth rules
 
 - A visible placeholder is not an integration.
 - `CONNECTED` requires a successful authenticated health check.
 - Active asking prices are not completed sales or market value.
+- Provider money without a usable provider-supplied currency remains unavailable; Code 3 does not substitute a default currency.
 - Provider access never implies permission for account actions or marketplace-wide scanning.
 - Unsupported automation falls back only to approved manual/share/import methods.
 - Credentials, refresh tokens, and provider secrets remain server-side.
@@ -19,8 +20,8 @@ The current UI also uses closely related display statuses such as Available, Man
 
 | Provider/capability | Current status | Current implementation | Allowed current input/action | Important gap | Next phase |
 |---|---|---|---|---|---|
-| eBay Browse search | IMPLEMENTED | `backend/src/services/ebayBrowse.service.ts`, `backend/src/routes/ebay.routes.ts`, `src/features/flipScout/ebayDiscovery.js` | Official active-listing search and review import | No backend owner authorization or scheduler | Phase 1 security, then Phase 2 |
-| eBay connection health | IMPLEMENTED | server health endpoint and Sources/eBay screens | Server configuration check | Endpoint is not owner-authorized | Phase 1 |
+| eBay Browse search | IMPLEMENTED | `backend/src/services/ebayBrowse.service.ts`, `backend/src/routes/ebay.routes.ts`, `src/features/flipScout/ebayDiscovery.js`, Phase 1C evidence adapter | Owner-authorized official active-listing search, review import, and separately attributable active evidence | Hosted auth configuration and durable scheduler/history remain | Phase 3 scheduling |
+| eBay connection health | IMPLEMENTED | protected server health endpoint and Sources/eBay screens | Owner-authorized server configuration check | Hosted configuration still needs environment verification | Phase 1A deployment verification |
 | eBay sold comparables | MISSING | none | None | Requires approved/licensed completed-sale source | External authorization |
 | Mercari | MANUAL_IMPORT_ONLY | placeholder in `src/features/flipScout/connectors.js` | manual URL/text/image entry | No approved API/partnership | Future authorization |
 | Poshmark | MANUAL_IMPORT_ONLY | placeholder | manual URL/text/image entry | No approved API/partnership | Future authorization |
@@ -29,17 +30,17 @@ The current UI also uses closely related display statuses such as Available, Man
 | OfferUp | MANUAL_IMPORT_ONLY | placeholder | manual URL/share/screenshot/entry | No approved general search API | Future authorization |
 | Auction sources | MANUAL_IMPORT_ONLY | manual auction records and generic source placeholder | URL/manual entry, JSON/CSV feature import | Source registry and authorized feed/email adapters | Phase 3 |
 | Manual URL | AVAILABLE | Deal form and provider placeholder | saves URL plus owner-entered fields | Structured metadata remains manual | Implemented baseline |
-| Screenshot/manual entry | AVAILABLE | upload/reference fields and manual forms | evidence/reference and owner entry | No OCR or protected object storage | Phase 1 files; optional Phase 9 AI |
+| Screenshot/manual entry | AVAILABLE | upload/reference fields, manual forms, `src/features/intelligence/providerAdapters/scannerEvidence.js` | evidence/reference and provenance-preserved owner/catalog/barcode fields | No OCR, computer vision, file upload, or protected object storage | Future protected files; optional AI only after approval |
 | CSV/JSON feature import | PARTIAL | `src/features/flipScout/csv.js`, Sources/Data screen, repository import/export | selected record imports/exports | Unified preview/mapping/error job model missing | Phase 1/7 |
 | Authorized email alerts | NOT_CONFIGURED | placeholder only | none | authorization, mailbox scope, parser, review queue | Phase 2/3 after approval |
 | Share target | MISSING | no complete OS share-target ingestion workflow | none beyond paste/manual | PWA share manifest/ingestion/review | Phase 2 or 3 |
-| AI provider | NOT_CONFIGURED | feature flag and legacy heuristic/placeholder surfaces | no external model-backed canonical import | provider selection, server secret, review/provenance/cost controls | Phase 9 |
+| AI / computer-vision provider | NOT_CONFIGURED | feature flag, legacy placeholders, provider-neutral Phase 1C evidence boundary | no external model-backed analysis; deterministic rules and existing barcode/catalog metadata only | provider selection, server secret, protected files, privacy/cost/evaluation controls | Optional later AI phase |
 | Background notifications | NOT_CONFIGURED | browser/client notification records and UI | in-app/local behavior only | durable scheduler and delivery provider | Phase 1/2 |
 | Cloud file storage | MISSING | local references; no canonical protected objects | local references only | protected bucket, signed access, scanning, backup | Phase 1 |
 | Sales-channel publishing | MANUAL_IMPORT_ONLY | local listing/sale records | owner records external listing and sale | approved channel APIs and confirmation workflow | Phase 6/future |
 | Best Buy legacy monitor | IMPLEMENTED_DIFFERENTLY | legacy backend service/routes and scripts | legacy configured API/monitor behavior | not part of canonical provider contract; security/product review required | Archive/review before reuse |
-| Supabase | PARTIAL | client auth/data plus legacy migrations | optional legacy persistence | not canonical repository; policy and schema review required | Phase 1 |
-| PostgreSQL | PARTIAL | backend pool and legacy services | selected backend records | no canonical domain schema/repositories | Phase 1 |
+| Supabase | PARTIAL | production identity provider, legacy client data/migrations, unapplied canonical schema source | authentication and optional legacy persistence | canonical schema remains unapplied; policy/schema/cutover review required | Separate approved persistence activation |
+| PostgreSQL | PARTIAL | backend pool, legacy services, hosted-gated Phase 1B canonical repository contracts | selected legacy records; canonical tests/dry-run only | canonical schema and owner records are not active | Separate approved persistence activation |
 | Vercel Preview | CONNECTED | `vercel.json` and repository Git integration | SPA/functions preview | production security gates remain open | Current preview only |
 
 ## eBay contract
@@ -74,7 +75,17 @@ Current limitations:
 - some fields are absent when eBay does not supply them;
 - the application does not have seller-account actions, offers, buying, bidding, messaging, sold-comparable data, schedules, alerts, or durable search history;
 - deduplication/discovery history is currently client-local;
-- eBay API endpoints do not yet enforce authenticated OWNER access.
+- protected eBay API endpoints enforce server-verified OWNER access in source; hosted environment configuration still requires verification.
+
+## Phase 1C provider-evidence boundary
+
+`src/features/intelligence/providerAdapters/ebayEvidence.js` consumes only fields already returned by the official server connector. It retains official external identity, provider observations, image references, and `ACTIVE_LISTING` valuation evidence as separate attributable structures. Exact integer-minor-unit price/current-bid and reported-shipping objects are emitted only when the supplied amount and currency are usable. A missing or invalid currency produces an explicit warning and no money object; the adapter never invents `USD` or another default. It never emits a `SOLD_COMPARABLE` or converts an ask to market value. Missing listing identity, observation time, or usable price coverage also remains absent with explicit warnings.
+
+If a future approved completed-sale provider is introduced, its comparable records must carry a validated `NM`, `LP`, `MP`, `HP`, or `DMG` condition or be explicitly excluded from a condition-specific center. Phase 1C valuation methodology `code3.valuation.v2` uses matching-condition verified sales directly, adjusts only an explicit `NM` baseline when no match exists, and excludes unknown or incompatible condition bases rather than double-adjusting them.
+
+`src/features/intelligence/providerAdapters/scannerEvidence.js` is a provider-neutral input boundary, not an AI integration. It keeps barcode reads (`MACHINE_OBSERVED`), catalog/provider fields (`PROVIDER_SUPPLIED`), owner entries (`OWNER_ENTERED`), and deterministic inferences (`INFERRED`) distinct. Image URLs/references are retained with `imageAnalysisPerformed: false`. Current capabilities explicitly report OCR, computer vision, condition assessment, and grade prediction as false.
+
+Neither adapter makes a new network request, handles a provider secret, uploads a file, starts a background job, or writes remote data. Analysis payloads cannot provide authoritative owner/role/session/token/security fields.
 
 ## Target provider contract
 
@@ -108,7 +119,7 @@ The existing `src/features/flipScout/connectors.js` contract has provider identi
 | Marketplace without approved search API | manual URL, OS share, screenshot, manual entry, authorized email, official export | no scraping, login automation, private APIs, proxy/CAPTCHA evasion |
 | Auction source | official API/feed/RSS, authorized email, CSV/export, share/manual entry | no universal tax rule; no automatic bid |
 | Seller-owner integration | approved owner inventory/order/event scopes | no inference of permission to scan all sellers |
-| AI provider | server-side request over owner-selected evidence, human review | no automatic final record, guaranteed identity/value/condition |
+| AI provider | future server-side request over owner-selected protected evidence, human review, model/version provenance | no current provider; no automatic final record or guaranteed identity/value/condition/authenticity |
 | Notification provider | explicit owner opt-in and verified delivery | no claim of background alert until delivery succeeds |
 
 ## Search and job attribution target

@@ -1,6 +1,6 @@
 # Code 3 Feature Status Matrix
 
-Phase 1B starting baseline: `26d30b9a0b1379d53778c0bc5c92887cc0ae744f`. Phase 1A and the validated Phase 1B checkpoint source are published on the feature branch; none of the Phase 1B statuses below represents an executed schema, migrated owner record, or active remote persistence.
+Phase 1B starting baseline: `26d30b9a0b1379d53778c0bc5c92887cc0ae744f`. Phase 1A and the validated Phase 1B checkpoint source are published on the feature branch. The Phase 1C intelligence checkpoint represented by this changeset starts from `cdd57bbabb2243ff510eca7aec0487f23342834d`. None of these statuses represents an executed schema, migrated owner record, active remote persistence, configured AI/computer-vision provider, or autonomous marketplace action.
 
 ## Classification rules
 
@@ -19,7 +19,7 @@ Every row has one primary classification:
 
 Phase-state qualifiers used in gap/evidence text are independent of the primary classification: `SCHEMA_ONLY` means a target representation exists but was not applied; `DRY_RUN_ONLY` means the path validates or compares without writes; `NOT_ACTIVE` means the capability cannot be used for owner data; `FUTURE` means it remains planned rather than locally implemented.
 
-Test abbreviations: **FS** `test:flip-scout`; **OC** `test:owner-center`; **EB** `test:flip-scout-ebay`; **BR** `test:flip-scout-browser`; **RL** `test:route-loading`; **LR** `test:legacy-routes`; **PL** `test:plain-language`; **A11Y** keyboard/viewport checks; **REG** bounded 28-scenario regression. “None focused” means broader loading/regression coverage may exist but no domain assertion was found.
+Test abbreviations: **FS** `test:flip-scout`; **OC** `test:owner-center`; **EB** `test:flip-scout-ebay`; **INT** Phase 1C intelligence/history/provider tests; **BR** `test:flip-scout-browser`; **RL** `test:route-loading`; **LR** `test:legacy-routes`; **PL** `test:plain-language`; **A11Y** keyboard/viewport checks; **REG** bounded 28-scenario regression. “None focused” means broader loading/regression coverage may exist but no domain assertion was found.
 
 ## Shell, identity, and common behavior
 
@@ -58,15 +58,15 @@ Test abbreviations: **FS** `test:flip-scout`; **OC** `test:owner-center`; **EB**
 | Saved Opportunities | `/find/saved-searches` / status filters | PARTIALLY_IMPLEMENTED | `FlipScoutPage.jsx`, deal statuses | local deals | FS, RL | No complete dedicated saved-opportunity product; Phase 3 |
 | Manual URL/listing entry | `/find/deals` / Add | IMPLEMENTED | Deal form and manual connector | local deals | FS, BR | Protected file evidence later |
 | Scan/share listing entry | Global Add / Find | FRONTEND_ONLY | manual/screenshot entry surfaces | local references | REG | No OCR/share-target pipeline; Phase 3/10 |
-| Deal Analysis entry | `/find/deal-analysis`, `/find/analyze` | IMPLEMENTED | `screens/AppraiserScreen.jsx` | local draft/appraisals | FS, BR, RL, REG | Preserve formulas while expanding target fields |
-| Guided analysis workflow | same | PARTIALLY_IMPLEMENTED | `AppraiserScreen.jsx`, `RecordExperience.jsx` | session draft + appraisals | FS, A11Y, REG | Target five-step field set and one-open disclosure not complete |
-| Decision summary | same | IMPLEMENTED | `AppraiserScreen.jsx` | calculation result | FS, BR, REG | Approved minimal order |
+| Deal Analysis entry | `/find/deal-analysis`, `/find/analyze` | IMPLEMENTED | `screens/AppraiserScreen.jsx`, `src/features/intelligence` | local draft/appraisals | FS, INT, BR, RL, REG | Phase 1C adds reusable deterministic results and linked card history; expanded target inputs and full evidence UI remain partial |
+| Guided analysis workflow | same | PARTIALLY_IMPLEMENTED | `AppraiserScreen.jsx`, `RecordExperience.jsx`, `analysisPipeline.js` | session draft + tagged local appraisal revisions | FS, INT, A11Y, REG | Normalization/condition/valuation/recommendation pipeline exists; complete five-step capture and protected image flow remain |
+| Decision summary | same | IMPLEMENTED | `AppraiserScreen.jsx`, `dealIntelligence.js` | calculation/intelligence result | FS, INT, BR, REG | New recommendation is advisory and explainable; preserve approved minimal order |
 | Landed cost / net / profit / ROI | same | IMPLEMENTED | `src/features/flipScout/calculations.js` | pure inputs | FS | Target adds payment fees/gross/margin/tolls/labor etc.; Phase 7 |
 | Maximum offer | same | IMPLEMENTED | calculations utility | pure inputs | FS | Target minor-unit model later |
 | Profit margin | same | MISSING | no canonical calculation found | none | None focused | Add with complete sales semantics; Phase 7/8 |
 | Target expanded cost model | same | PARTIALLY_IMPLEMENTED | calculation/forms | local appraisal inputs | FS | Missing several definitive cost fields and gross-collected semantics; Phase 7 |
-| Comparable Records | conceptual `/find/deals/:id/comparables` | MISSING | none | none | None | Licensed source/repository required; blocked before implementation |
-| Projection comparison set preservation | Deal Analysis | MISSING | no comparable-set entity | none | None | Phase 1B data model plus licensed records |
+| Comparable Records | conceptual `/find/deals/:id/comparables` | MISSING | Phase 1C valuation v2 accepts typed/conditioned evidence but has no record workflow/source | none authoritative | INT contract only | Licensed source and repository/detail UI remain required; active asks stay separate; unknown/incompatible comparable conditions are excluded |
+| Projection comparison set preservation | Deal Analysis | CLIENT_LOCAL_ONLY | `valuation.js`, `analysisHistory.js` | tagged card-appraisal revision retains input/evidence/system result | INT | Matched-condition sales are not adjusted again and only explicit `NM` baselines may be adjusted; no canonical comparable entity or licensed feed |
 | Projected-versus-actual result | Business/results view | CLIENT_LOCAL_ONLY | records/results screen and sale calculations | purchases/inventory/sales | FS | Associations/report coverage incomplete; Phase 8 |
 
 ## Import Review and eBay
@@ -78,7 +78,7 @@ Test abbreviations: **FS** `test:flip-scout`; **OC** `test:owner-center`; **EB**
 | eBay active-listing search | `/find/ebay`, `/find/ebay-search` | IMPLEMENTED | eBay screen/client + backend service | official eBay API via owner-protected server route | EB, RL, REG | Configure hosted owner authentication before Preview verification |
 | eBay token cache/auth retry | server `/api/ebay/*` | IMPLEMENTED | `backend/src/services/ebayBrowse.service.ts` | server memory + environment secret | EB | Durable distributed cache not necessary until scale evidence |
 | eBay filters/pagination/errors | same | IMPLEMENTED | eBay backend/client | upstream response | EB | Provider field availability remains conditional |
-| eBay normalization/dedupe/change/expiry | Find/eBay | IMPLEMENTED | backend normalizer + `ebayDiscovery.js` | local snapshots | EB | Move history/dedupe to canonical repository Phase 1B/3 |
+| eBay normalization/dedupe/change/expiry | Find/eBay | IMPLEMENTED | backend normalizer + `ebayDiscovery.js` + Phase 1C evidence adapter | official source fields/local snapshots | EB, INT | Source observations remain separately attributable and missing currency is not fabricated; move history/dedupe to canonical repository Phase 1B/3 |
 | eBay server OWNER authorization | `/api/ebay/health`, `/api/ebay/search` | IMPLEMENTED | `backend/src/auth`, `backend/src/routes/ebay.routes.ts` | Supabase verified principal + server allowlist | Phase 1A auth/eBay tests | Published source; hosted environment verification and legacy-route expansion remain |
 | eBay scheduled Search Rules | Owner Center Sourcing | BLOCKED_BY_AUTHORIZATION | no durable scheduler | none | None | Server auth/jobs and eBay production quota; Phase 3 |
 | eBay search history | Owner Center Sourcing | BACKEND_REQUIRED | local jobs have no durable run history | local summaries only | OC partial | Phase 3 after Phase 1 |
@@ -97,7 +97,7 @@ Test abbreviations: **FS** `test:flip-scout`; **OC** `test:owner-center`; **EB**
 | Rule test action | same | PARTIALLY_IMPLEMENTED | Search Rules/eBay search integration | live/manual result flow | EB | Durable run attribution/history missing; Phase 3 |
 | Rule schedule/quiet hours | Owner Controls | FRONTEND_ONLY | fields/control concepts | local settings | OC | No scheduler; Phase 3 |
 | Provider status screen | `/find/sources`, `/find/integrations` | IMPLEMENTED | `screens/SourcesDataScreen.jsx`, connectors | provider contract/server health | FS, EB, RL | Move technical detail Owner Center Controls in Phase 2/3 |
-| Provider adapter contract | internal | PARTIALLY_IMPLEMENTED | `src/features/flipScout/connectors.js` | static definitions | FS | Missing type, updates, owner-data import, disconnect, terms fields |
+| Provider adapter contract | internal | PARTIALLY_IMPLEMENTED | `src/features/flipScout/connectors.js`, `src/features/intelligence/providerAdapters` | static definitions + provenance-separated local evidence | FS, INT | eBay keeps official identity/observations/active evidence separate and refuses default currency; full provider type/update/import/disconnect/terms contract remains |
 | Mercari/Poshmark/Facebook/OfferUp | provider placeholders | IMPLEMENTED_DIFFERENTLY | connectors | manual entry only | FS | Honest manual import; automation needs approval |
 | Whatnot | provider placeholder | BLOCKED_BY_AUTHORIZATION | connectors | manual entry only | FS | Owner seller scopes/approved access required |
 | Auction generic provider | provider placeholder | CLIENT_LOCAL_ONLY | connectors + auctions screen | manual records | FS | Source registry/feeds Phase 4 |
@@ -116,7 +116,7 @@ Test abbreviations: **FS** `test:flip-scout`; **OC** `test:owner-center`; **EB**
 | Report Restock | Global Add / Restocks | PARTIALLY_IMPLEMENTED | legacy reports + owner repository model | legacy/local reports | OC/legacy tests | Fast canonical form/evidence/protected photo Phase 5 |
 | Record Store Visit | Global Add / Restocks | FRONTEND_ONLY | owner model/forms are incomplete | local visits | OC | Working quick form and purchase/mileage link Phase 5 |
 | Trip Planner | conceptual Restocks trip planner | MISSING | none | none | None | Real route inputs and no optimization claim; Phase 5 |
-| Restock pattern calculations | Owner Center Restocks Patterns | CLIENT_LOCAL_ONLY | `ownerCenterModel.js` | events/predictions/visits | OC | Canonical records and sample thresholds Phase 5 |
+| Restock pattern calculations | Owner Center Restocks Patterns | CLIENT_LOCAL_ONLY | `ownerCenterModel.js`, `src/features/intelligence/restockIntelligence.js` | local events/predictions/visits/observations | OC, INT | Coarse bands use last-positive freshness and source-independent confidence; result recomputes from observations, and canonical records/full review UI remain Phase 5 |
 | Prediction outcome review | Owner Center Restocks | PARTIALLY_IMPLEMENTED | owner model/repository fields | local predictions | OC | Full review workflow/timing error history Phase 5 |
 | Restock performance | Owner Center Performance | PARTIALLY_IMPLEMENTED | owner metrics | local events/visits and some sales links | OC | Trip profit attribution often unavailable; Phase 5/8 |
 
@@ -127,9 +127,9 @@ Test abbreviations: **FS** `test:flip-scout`; **OC** `test:owner-center`; **EB**
 | Auction Feed | `/find/auctions` | CLIENT_LOCAL_ONLY | `screens/AuctionsScreen.jsx` | `auctions` | FS, RL | Views/source feeds incomplete; Phase 4 |
 | Add/edit manual auction | `/find/auctions` / Global Add | IMPLEMENTED | Auctions screen/forms | local auctions | FS | Canonical event/lot split Phase 4 |
 | Auction Event detail | conceptual | PARTIALLY_IMPLEMENTED | combined auction record/editor | local auctions | FS | Registration/payment/pickup/terms model incomplete |
-| Auction Lot detail | conceptual | PARTIALLY_IMPLEMENTED | combined auction record/editor | local auctions | FS | Separate lots/visible contents/reserve/history incomplete |
-| Maximum Bid calculator | `/find/auctions` | IMPLEMENTED | `src/features/flipScout/calculations.js`, `src/features/flipScout/screens/AuctionsScreen.jsx` | pure inputs/local auction | FS | Complex solver and expanded toll/storage/cleaning fields Phase 4 |
-| Tax-base modes | same | IMPLEMENTED | auction calculation utility | pure inputs | FS | Target adds NONE/actual tax mode naming normalization |
+| Auction Lot detail | conceptual | PARTIALLY_IMPLEMENTED | combined auction record/editor, `lotIntelligence.js`, `auctionIntelligence.js` | local auctions + saved result snapshot | FS, INT | Conservative/expected/optimistic and explainable bid services exist; no generic linked revision series, and separate event/lot detail/source terms remain |
+| Maximum Bid calculator | `/find/auctions` | IMPLEMENTED | existing calculation/UI plus `src/features/intelligence/auctionIntelligence.js` | pure integer-minor-unit inputs/local auction | FS, INT | Explainable bounded solver includes premium/tax/shipping/pickup/labor/disposal; full source workflow remains Phase 4 |
+| Tax-base modes | same | IMPLEMENTED | existing utility + Phase 1C `AUCTION_TAX_MODE` | pure inputs | FS, INT | `NONE`, hammer, hammer-plus-premium, manual subtotal, and actual-tax contracts exist; source-specific terms UI remains |
 | Live Bid Mode | conceptual | MISSING | none | none | None | Read-only decision display Phase 4 |
 | Pickup Planner | conceptual | MISSING | none | none | None | Logistics/checklist Phase 4 |
 | Auction Calendar | conceptual | PARTIALLY_IMPLEMENTED | ending/pickup indicators and app deadlines | local auctions | FS/REG | Dedicated calendar and time-zone hardening Phase 4 |
@@ -267,12 +267,12 @@ Test abbreviations: **FS** `test:flip-scout`; **OC** `test:owner-center`; **EB**
 | Canonical relational persistence | `/api/code3/*` target | PARTIALLY_IMPLEMENTED | `backend/src/code3`, `backend/src/routes/code3.routes.ts`, unexecuted `20260820120000_code3_canonical_owner_records.sql` | in-memory/dry-run test adapter; PostgreSQL target | Phase 1B repository/schema/migration tests | `SCHEMA_ONLY` and `NOT_ACTIVE`; filter/archive/ordering and active-identity semantics align, create/update cannot spoof archive, the server cursor is UUID-strict while the private local cursor preserves legacy IDs, and no schema executed, owner data migrated, or `REMOTE_ACTIVE` cutover |
 | Protected object storage | private API target | BACKEND_REQUIRED | Phase 1B typed `FILE_ASSET` envelope/`code3_file_assets` metadata, explicit manifest preview, owner-scoped FK and related-record validation; no byte service | local URL/reference or supplied metadata manifest | Phase 1B schema/preview partial | Metadata is `SCHEMA_ONLY`; normal backup does not synthesize a manifest, and upload/protected access/scan/byte migration/byte backup remain future |
 | Complete backup and restore | Owner Controls | PARTIALLY_IMPLEMENTED | `src/features/backup`, Data & Backup UI, `src/services/code3OwnerApi.js`, remote-export adapter | registered browser sources plus owner-authorized canonical export when available | Phase 1A backup/preview + Phase 1B backup extension | Integrity and no-write previews implemented; canonical export uses a consistent repository snapshot and verified hash, unavailable remote/file bytes keep coverage partial, and neither restore nor migration apply exists |
-| Append-only audit log | system history | BACKEND_REQUIRED | local history plus unexecuted `code3_audit_events` schema and future migration-journal contract | local records/schema only | OC + Phase 1B schema | `SCHEMA_ONLY`; no durable audit writer or production migration journal |
+| Append-only audit log | system history | BACKEND_REQUIRED | Phase 1C append-only local card-analysis revisions plus unexecuted `code3_audit_events` schema and future migration-journal contract | local card history/schema only | INT, OC + Phase 1B schema | Auction/restock lack a generic revision series; no general durable audit writer or production migration journal |
 | Background job scheduler | Owner Controls | BACKEND_REQUIRED | no canonical scheduler | none/local summaries | None | Phase 3 after auth/data |
 | Cross-device sync/conflicts | app-wide | BACKEND_REQUIRED | Phase 1B persistence modes and offline/sync contract | browser-local | Phase 1B mode/conflict tests | `NOT_ACTIVE`; no cache sync or pending-write engine until a later phase |
 | Receipt AI assistance | optional | FUTURE | no real provider | none | None | Phase 10 |
-| Listing/card/binder/photo AI | optional | FUTURE | feature flag false; no real provider | none | mocked tests absent | Phase 10 |
-| Authenticity/condition assistance | optional | FUTURE | legacy heuristic concepts only | none authoritative | legacy tests | Review-only Phase 10 |
+| Listing/card/binder/photo AI | optional | FUTURE | feature flag false; Phase 1C provider-neutral metadata boundary but no real model | image references only | INT boundary | Protected files, approved provider, evaluation, privacy/cost controls, and owner review remain future |
+| Authenticity/condition assistance | optional | CLIENT_LOCAL_ONLY | `conditionAssessment.js`, `analysisPipeline.js`, explicit owner review/card history | normalized owner/provider observations in local appraisals | INT | Deterministic apparent-condition proposal and explicit deal-risk severity are implemented; no authenticity decision, professional grade, OCR, CV, or AI provider |
 | Provider-backed notifications | optional | BLOCKED_BY_AUTHORIZATION | no delivery provider | none | None | Phase 3/12 |
 
 ## Compatibility-only routes
@@ -293,4 +293,4 @@ These are route families, not canonical product pages. Exact per-route actions a
 
 ## Interpretation
 
-The strongest complete features are the minimal shell, manual Deal Inbox/analysis foundations, eBay Browse connector and review gate, core calculations/allocation/quantity validation, purpose history, and focused compatibility/accessibility behavior. The largest false-positive risk in a visual audit is mistaking client-local or legacy UI for durable target capability. This matrix therefore classifies many useful screens as `CLIENT_LOCAL_ONLY`, `FRONTEND_ONLY`, or `PARTIALLY_IMPLEMENTED` rather than “implemented.”
+The strongest complete features are the minimal shell, manual Deal Inbox/analysis foundations, eBay Browse connector and review gate, core calculations/allocation/quantity validation, purpose history, Phase 1C deterministic local intelligence services, and focused compatibility/accessibility behavior. The largest false-positive risk is mistaking a local rule/evidence adapter for AI, licensed market coverage, or durable canonical capability. This matrix therefore keeps card-analysis history and condition/restock decisions `CLIENT_LOCAL_ONLY`, does not imply generic auction/restock revision history, keeps sold comparables and AI appropriately missing/future, and classifies visual placeholders conservatively.

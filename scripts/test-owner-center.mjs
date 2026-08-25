@@ -128,6 +128,15 @@ assert.equal(pattern.profitPerTrip, 50);
 assert.equal(pattern.profitPerMile, 5);
 assert.equal(pattern.profitPerHour, 50);
 
+const stalePattern = restockPatternSummary({
+  events: [0, 7, 14, 21, 28, 35].map((days) => ({
+    eventTime: new Date(Date.UTC(2025, 1, 8, 10) - days * 86_400_000).toISOString(),
+    confirmationStatus: "Confirmed",
+  })),
+});
+assert.notEqual(stalePattern.patternStability, "High-confidence pattern", "a large but stale sample must not bypass shared intelligence confidence");
+assert.equal(stalePattern.intelligence.dataFreshness.stale, true);
+
 assert.deepEqual(routeStateFromPath("/collection/grading"), { activeTab: "collectionWorkspace", collectionWorkspaceView: "grading" });
 assert.deepEqual(routeStateFromPath("/inventory"), { activeTab: "businessWorkspace", businessWorkspaceView: "inventory" });
 assert.deepEqual(routeStateFromPath("/sell"), { activeTab: "businessWorkspace", businessWorkspaceView: "sales" });

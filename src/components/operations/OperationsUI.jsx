@@ -270,5 +270,5 @@ export function DesktopDataTable({ columns = [], rows = [], rowKey = "id", capti
 }
 
 export function StickyDecisionBar({ recommendation, maximumOffer, action = null }) {
-  return <aside className="ops-sticky-decision" aria-label="Decision summary"><div><span>Recommendation</span><strong>{recommendation || "Not enough information"}</strong></div><div><span>Maximum offer</span><strong>{maximumOffer || "Not available"}</strong></div>{action}</aside>;
+  return <aside className="ops-sticky-decision" aria-label="Decision summary"><div><span>Recommendation</span><strong>{recommendation || "Not enough information"}</strong></div>{maximumOffer ? <div><span>Maximum offer</span><strong>{maximumOffer}</strong></div> : null}{action}</aside>;
 }

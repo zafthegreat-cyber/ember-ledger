@@ -187,6 +187,8 @@
 .flip-auction-calculation > div { min-width: 0; }
 .flip-auction-calculation strong { display: block; margin-top: 5px; color: var(--flip-gold); font-size: 1rem; overflow-wrap: anywhere; }
 .flip-auction-calculation p { grid-column: 1 / -1; margin: 0; color: var(--flip-muted); font-size: 0.75rem; line-height: 1.5; }
+.flip-auction-calculation > ul { grid-column: 1 / -1; margin: 0; padding-left: 18px; color: var(--flip-muted); font-size: 0.75rem; line-height: 1.5; }
+.flip-auction-calculation > details { grid-column: 1 / -1; min-width: 0; }
 .flip-auction-calculation button { grid-column: 1 / -1; justify-self: start; }
 
 .flip-template-grid, .flip-provider-grid, .flip-data-actions { display: grid; gap: 11px; }
@@ -660,7 +662,7 @@
   .flip-empty-state > span { display: none; }
   .flip-analysis-workflow .flip-form { padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
   .flip-analysis-steps { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 2px; }
-  .flip-analysis-steps button { min-height: 40px; justify-content: center; padding: 4px; }
+  .flip-analysis-steps button { min-height: 44px; justify-content: center; padding: 4px; }
   .flip-analysis-steps button strong { display: none !important; }
   .flip-analysis-steps button span { width: 26px; height: 26px; }
   .ops-decision-panel { padding: 0 !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; }
@@ -683,4 +685,194 @@
 @media (max-width: 380px) {
   .flip-main-nav { padding-inline: 0; }
   .flip-scenario-table > div { grid-template-columns: 68px repeat(3, minmax(0, 1fr)); font-size: 9px; }
+}
+
+/* Phase 1C intelligence stays flat, evidence-first, and inside existing lazy routes. */
+.code3-evidence-disclosure,
+.code3-saved-analyses,
+.code3-owner-review,
+.code3-compatibility-calculation {
+  border-block: 1px solid var(--border-subtle);
+  background: transparent;
+}
+
+.code3-evidence-disclosure > summary,
+.code3-saved-analyses > summary,
+.code3-owner-review > summary,
+.code3-compatibility-calculation > summary,
+.code3-intelligence-details > details > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  color: var(--text-primary);
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.code3-evidence-disclosure > p,
+.code3-owner-review > p {
+  margin: 0 0 12px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.code3-image-effects {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 12px;
+  margin-block: 12px;
+}
+
+.code3-observation-editor {
+  display: grid;
+  gap: 12px;
+  padding-bottom: 12px;
+}
+
+.code3-observation-editor > .secondary-button { justify-self: start; }
+
+.code3-observation-list,
+.code3-history-list {
+  list-style: none;
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.code3-observation-list li,
+.code3-history-list li {
+  min-width: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding-block: 9px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.code3-saved-analyses { margin-bottom: 8px; }
+.code3-saved-analyses .code3-history-list { padding-bottom: 8px; }
+.code3-saved-analyses .secondary-button { flex: 0 0 auto; }
+
+.code3-observation-list span,
+.code3-history-list li {
+  min-width: 0;
+}
+
+.code3-observation-list strong,
+.code3-observation-list small,
+.code3-history-list strong,
+.code3-history-list span {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.code3-observation-list small,
+.code3-history-list span {
+  margin-top: 2px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.code3-intelligence-result {
+  min-width: 0;
+  display: grid;
+  gap: 14px;
+}
+
+.code3-intelligence-identity {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.code3-intelligence-identity > span {
+  color: var(--brand-primary);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.code3-intelligence-identity h2 {
+  margin: 4px 0 2px;
+  font-size: clamp(20px, 5vw, 28px);
+  line-height: 1.15;
+}
+
+.code3-intelligence-identity p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.code3-intelligence-answer {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-block: 1px solid var(--border-subtle);
+}
+
+.code3-intelligence-answer > div {
+  min-width: 0;
+  padding: 10px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.code3-intelligence-answer > div:nth-child(odd) { border-right: 1px solid var(--border-subtle); }
+.code3-intelligence-answer > div:nth-last-child(-n+2) { border-bottom: 0; }
+
+.code3-intelligence-answer span,
+.code3-intelligence-answer strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.code3-intelligence-advisory {
+  margin: -4px 0 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.code3-intelligence-answer span {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.code3-intelligence-answer strong {
+  margin-top: 3px;
+  color: var(--text-primary);
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+}
+
+.code3-intelligence-details > details {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.code3-intelligence-copy {
+  padding: 0 0 12px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.code3-intelligence-copy p { margin: 0 0 7px; }
+.code3-intelligence-copy ul { margin: 0; padding-left: 20px; }
+.code3-history-comparison { color: var(--text-primary); }
+.code3-compatibility-calculation[open] { padding-bottom: 12px; }
+.code3-warning-review { display: grid; gap: 6px; margin: 12px 0 0; padding: 12px 0 0; border: 0; border-top: 1px solid var(--border-subtle); }
+.code3-warning-review legend { padding: 0; color: var(--text-primary); font-size: 13px; font-weight: 750; }
+
+@media (min-width: 760px) {
+  .code3-intelligence-answer { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .code3-intelligence-answer > div { border-right: 1px solid var(--border-subtle); }
+  .code3-intelligence-answer > div:nth-child(3n) { border-right: 0; }
+  .code3-intelligence-answer > div:nth-last-child(-n+3) { border-bottom: 0; }
+}
+
+@media (max-width: 520px) {
+  .code3-image-effects { grid-template-columns: 1fr; }
+  .code3-observation-list li { align-items: flex-start; }
 }

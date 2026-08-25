@@ -270,3 +270,45 @@
   .owner-status-list button > span:first-child { gap: 1px; }
   .owner-status-list small { font-size: 11px; }
 }
+
+/* Phase 1C restock intelligence uses flat evidence rows, not dashboard cards. */
+.code3-restock-intelligence {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: var(--space-3);
+  border-block: 1px solid var(--border-subtle);
+}
+
+.code3-restock-intelligence > div {
+  min-width: 0;
+  padding: 10px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.code3-restock-intelligence > div:nth-child(odd) { border-right: 1px solid var(--border-subtle); }
+.code3-restock-intelligence > div:nth-last-child(-n+2) { border-bottom: 0; }
+
+.code3-restock-intelligence span,
+.code3-restock-intelligence strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.code3-restock-intelligence span {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.code3-restock-intelligence strong {
+  margin-top: 3px;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 760px) {
+  .code3-restock-intelligence { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .code3-restock-intelligence > div { border-right: 1px solid var(--border-subtle); }
+  .code3-restock-intelligence > div:nth-child(3n) { border-right: 0; }
+  .code3-restock-intelligence > div:nth-last-child(-n+3) { border-bottom: 0; }
+}

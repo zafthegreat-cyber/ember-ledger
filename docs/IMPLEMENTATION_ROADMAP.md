@@ -9,6 +9,8 @@ The audit changes the conceptual “backend persistence first” phase into gate
 
 **Phase 1B — Canonical Backend Persistence and Reversible Migration Planning** is published on the feature branch as schema, repository/API, local/remote abstraction, backup-adapter, and no-write migration-preview contracts. `LOCAL_ONLY` remains authoritative. Schema and file metadata are `SCHEMA_ONLY`, the preview/remote comparison path is `DRY_RUN_ONLY`, and `REMOTE_ACTIVE` is `NOT_ACTIVE`. No migration was run and no owner record moved.
 
+**Phase 1C — Intelligence and Card Analysis Foundation** was separately authorized from published commit `cdd57bbabb2243ff510eca7aec0487f23342834d` and is implemented and validated in the checkpoint represented by this changeset. It adds deterministic decision-support services and append-only local card-analysis history without changing the Phase 1B persistence state. Auction results can be saved without a generic linked revision series, and restock intelligence recomputes from observations. It does not configure an AI/computer-vision provider, apply a schema, activate remote persistence, move owner data, sync, or automate marketplace actions.
+
 The published Phase 1A runtime applies Code 3 through the centralized brand configuration and coordinated PWA/browser/offline metadata. Storage, database, route, module, environment, cache, history, compatibility, and imported-source identifiers remain unchanged. The legal/public business name and tagline remain separately configurable and unresolved.
 
 No time estimates are provided. Complexity is relative: Small, Medium, Large, or Extra Large.
@@ -59,6 +61,22 @@ No time estimates are provided. Complexity is relative: Small, Medium, Large, or
 - **Rollback:** preview requires no data rollback because it writes nothing; retain local repositories/export/IDs/keys and remove unactivated schema/code as one bounded change. Future apply requirements are in [MIGRATION_ROLLBACK_CONTRACT.md](./MIGRATION_ROLLBACK_CONTRACT.md).
 - **Complexity:** Extra Large.
 
+## Phase 1C — Intelligence and card analysis foundation
+
+**Status:** Locally implemented and validated from `cdd57bbabb2243ff510eca7aec0487f23342834d`; the publication checkpoint remains separate. The bounded regression passed 28/28 with no retries or open handles. `LOCAL_ONLY` is authoritative, the Phase 1B schema remains unapplied, and `REMOTE_ACTIVE` remains disabled.
+
+- **Objective:** provide a deterministic, explainable, owner-reviewable analysis layer for cards, deals, lots, auctions, and restock observations without autonomous action or fabricated provider/model evidence.
+- **Current code affected:** Deal Analysis/appraisals, existing eBay normalized results, manual auction/lot calculations, Owner Center restock observations, and future scanner/image input boundaries.
+- **Implemented files/modules:** `src/features/intelligence/constants.js`, `contracts.js`, `confidence.js`, `money.js`, `conditionAssessment.js`, `valuation.js`, `dealIntelligence.js`, `lotIntelligence.js`, `auctionIntelligence.js`, `restockIntelligence.js`, `analysisPipeline.js`, `analysisHistory.js`, provider evidence adapters, focused tests/fixtures, and [INTELLIGENCE_CONTRACT.md](./INTELLIGENCE_CONTRACT.md).
+- **Data changes:** tagged `code3-intelligence-analysis-v1` card revisions append to the existing local `appraisals` collection. Auction saves retain a current result without joining that revision series, and restock intelligence derives results from existing observations. No repository schema version, existing record, canonical table, file byte, or hosted owner record is changed.
+- **Migration risks:** local revisions need a future canonical mapping; owner-corrected values must remain separate from system proposals; image references are not protected bytes; existing float-based records must not be silently mixed into new minor-unit calculations.
+- **Dependencies:** Phase 1A owner boundary and Phase 1B `LOCAL_ONLY` persistence gateway; existing eBay normalization; real owner-entered/provider evidence.
+- **External authorization:** none for deterministic local rules or current official eBay active-listing evidence. Completed-sale evidence requires an approved/licensed source; future AI/CV requires a separately approved provider/privacy/file specification.
+- **Test plan:** condition spectrum and structural damage; poor/conflicting evidence; shared confidence/source independence; exact money/currency/fees/ROI; valuation v2 matched-condition and explicit-`NM` basis selection; unknown/incompatible comparable exclusion; sold-vs-active evidence; every deal recommendation and explicit risk severity; auction premium/tax/shipping/pickup/downside; lot unknown/liquidity burdens; sparse/stale/conflicting restock observations with latest-positive freshness; deterministic card hashes/revisions/comparisons; owner correction/version conflict; recursive authority-field rejection; eBay/scanner capability truth including missing-currency behavior; mobile/accessibility; existing Phase 1A/1B and 28-scenario regression gates.
+- **Acceptance criteria:** equivalent normalized inputs produce the same substantive hash/result; condition remains an apparent proposal, not a grade; owner confirmation is never silently replaced; only verified completed sales support completed-sale valuation; matching-condition sales are never double-adjusted; only explicit `NM` baselines may be adjusted when no match exists; unknown/incompatible bases are excluded; active eBay asks and official provider evidence remain separate, and provider currency is never fabricated; recommendation rationale, risk severity, and assumptions are visible; restock confidence cannot bypass source independence; no purchase/offer/bid action exists; card history is append-only/local without claiming generic auction/restock revisions; no remote adapter, migration, sync, file upload, or model claim is introduced.
+- **Rollback:** remove the uncheckpointed intelligence/UI integration and tagged local test data if explicitly created; no database or remote-data rollback is needed because Phase 1C performs no cutover or migration. Existing legacy appraisals remain untouched.
+- **Complexity:** Large.
+
 ## Phase 2 — App-shell extraction and route ownership hardening
 
 - **Objective:** reduce the initial bundle and make one canonical renderer own each workflow before feature growth increases coupling.
@@ -76,7 +94,7 @@ No time estimates are provided. Complexity is relative: Small, Medium, Large, or
 ## Phase 3 — Scheduled eBay intelligence
 
 - **Objective:** run authorized Search Rules on a durable, rate-limit-aware schedule and attribute discovery through realized outcome, without account actions.
-- **Current code affected:** existing eBay service/routes, Search Rules, Import Review, Owner Center sourcing/performance/controls, notifications/jobs.
+- **Current code affected:** existing eBay service/routes, Phase 1C eBay evidence normalization/deal intelligence, Search Rules, Import Review, Owner Center sourcing/performance/controls, notifications/jobs.
 - **Likely files/modules:** backend job/search-run repositories, scheduler/worker, rule compiler, expiration checks, alert delivery, eBay adapter extensions, Owner Center history/metrics.
 - **Data changes:** `SearchRun`, `BackgroundJob`, listing snapshots/change events, notification delivery, attribution links.
 - **Migration risks:** duplicate jobs/results, quota exhaustion, alert floods, stale credentials, overwriting owner corrections.
@@ -90,7 +108,7 @@ No time estimates are provided. Complexity is relative: Small, Medium, Large, or
 ## Phase 4 — Auction sources and operational workflows
 
 - **Objective:** formalize source capability/terms, authorized/manual ingestion, events/lots, maximum bid, calendar, and pickup planning.
-- **Current code affected:** `src/features/flipScout/calculations.js`, `src/features/flipScout/screens/AuctionsScreen.jsx`, connectors, imports, purchases, Owner Center sourcing/performance.
+- **Current code affected:** `src/features/flipScout/calculations.js`, `src/features/flipScout/screens/AuctionsScreen.jsx`, Phase 1C lot/auction intelligence, connectors, imports, purchases, Owner Center sourcing/performance.
 - **Likely files/modules:** auction repositories/API, source registry, event/lot/detail screens, bid solver, import adapters, pickup/calendar modules.
 - **Data changes:** `AuctionEvent`, `AuctionLot`, `BidPlan`, `PickupPlan`, source terms and performance attribution.
 - **Migration risks:** source-specific tax/premium rules, unknown-content valuation, duplicate lots, time-zone/deadline mistakes, winning auction not becoming purchase.
@@ -104,7 +122,7 @@ No time estimates are provided. Complexity is relative: Small, Medium, Large, or
 ## Phase 5 — Restock collection and intelligence
 
 - **Objective:** make fast reports, visits, observations, predictions, trip planning, and real evidence-based performance complete.
-- **Current code affected:** Owner Center restock repository/models/page, Find Restocks handoff, existing store/report services, purchase/mileage links.
+- **Current code affected:** Owner Center restock repository/models/page, Phase 1C restock intelligence, Find Restocks handoff, existing store/report services, purchase/mileage links.
 - **Likely files/modules:** restock domain repository/API, mobile report/visit forms, store/product detail, pattern service, prediction review, trip planner.
 - **Data changes:** canonical restock/store/visit/observation/prediction records and outcome links.
 - **Migration risks:** store directory mistaken for evidence, inconsistent product/store identity, time-zone errors, incomplete trip profit attribution.
@@ -174,11 +192,11 @@ No time estimates are provided. Complexity is relative: Small, Medium, Large, or
 ## Phase 10 — AI-assisted review
 
 - **Objective:** add review-only extraction/recognition for screenshots, products, binders, receipts, and auction photos.
-- **Current code affected:** imports, files, Deal Analysis, grading queue, receipts, feature controls, provider architecture.
-- **Likely files/modules:** server AI adapter, evidence pipeline, review UI, model/version/cost logging, evaluation fixtures.
+- **Current code affected:** Phase 1C normalized evidence/analysis contracts, imports, protected files, Deal Analysis, grading queue, receipts, feature controls, provider architecture.
+- **Likely files/modules:** server AI adapter behind the Phase 1C provider-neutral boundary, protected evidence pipeline, review UI, model/version/cost logging, evaluation fixtures.
 - **Data changes:** immutable AI result, confidence/evidence, correction, final confirmation, cost/usage.
 - **Migration risks:** privacy/retention, cost, hallucination, copyrighted images, false authenticity/condition/value claims.
-- **Dependencies:** protected files, authorization/audit, review queues, provider approval, evaluation dataset.
+- **Dependencies:** Phase 1C provenance/history contract, protected files, authorization/audit, review queues, provider approval, evaluation dataset.
 - **External authorization:** selected AI provider and data-use/retention approval.
 - **Test plan:** mocked responses, adversarial/low-confidence evidence, no unseen-content value, apparent-condition wording, final-confirm requirement, budget/rate limits.
 - **Acceptance criteria:** raw output never becomes final inventory; confidence/evidence/version are visible; owner corrections persist; guarantees are prohibited.

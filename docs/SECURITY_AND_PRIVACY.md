@@ -4,9 +4,11 @@ Phase 1B starting baseline: `26d30b9a0b1379d53778c0bc5c92887cc0ae744f`.
 
 Phase 1A and the validated Phase 1B checkpoint source are published on the feature branch; hosted owner access still depends on correct environment configuration and has not been accepted for Production. Phase 1B owner-scoped repository/API and migration-preview foundations are schema/dry-run contracts, not an active remote datastore.
 
+Phase 1C starts from published commit `cdd57bbabb2243ff510eca7aec0487f23342834d`. Its intelligence code remains local-only and adds no database migration, hosted persistence, sync, provider credential, model provider, file upload, or external account action.
+
 ## Security posture summary
 
-The published source keeps eBay credentials server-side and includes Supabase token verification, an immutable-subject OWNER policy, protected eBay routes, safe session inspection, exact-origin CORS for protected route families, redaction helpers, and deterministic backup/restore inspection. Hosted configuration still requires verification. Phase 1B extends that boundary to canonical owner API contracts and zero-write migration planning. It is still not ready for production private-business data because remote persistence is deliberately inactive, canonical records remain browser-local, legacy API families remain broadly exposed, and backup coverage can be partial.
+The published source keeps eBay credentials server-side and includes Supabase token verification, an immutable-subject OWNER policy, protected eBay routes, safe session inspection, exact-origin CORS for protected route families, redaction helpers, and deterministic backup/restore inspection. Hosted configuration still requires verification. Phase 1B extends that boundary to canonical owner API contracts and zero-write migration planning. Phase 1C adds recursive rejection of owner/role/session/token/security authority in local analysis payloads, provenance-separated evidence, and append-only local card-analysis revisions; these are defense-in-depth for browser decision support, not a replacement for backend authorization. Auction results do not gain a generic revision series, and restock intelligence recomputes from observations. The application is still not ready for production private-business data because remote persistence is deliberately inactive, canonical records remain browser-local, legacy API families remain broadly exposed, and backup coverage can be partial.
 
 Code 3 is the application identity, not a declaration of the legal/public business name. Authentication, records, exports, and provider connections must reference the configured business identity separately where legally or operationally relevant.
 
@@ -35,6 +37,9 @@ The next activation phase MUST verify schema/RLS, repository owner scope, rollba
 | No-write JSON restore preview | Implemented; no apply path | `src/features/backup`, Owner Center Data & Backup |
 | Canonical repository/API owner scope | Phase 1B source published; not active remotely | owner context is server-derived and required by repository methods |
 | Migration Preview | Phase 1B `DRY_RUN_ONLY` | no-write mapping/plan and readiness UI |
+| Intelligence authority-field rejection | Phase 1C local implementation | `src/features/intelligence/analysisHistory.js`; recursive owner/role/session/token/authorization/credential/security rejection |
+| Intelligence provenance/history | Phase 1C local implementation | immutable card-analysis system result, separate version-checked owner correction, linked card revisions in existing `appraisals`; no generic auction/restock revision series |
+| AI/CV and autonomous action boundary | Enforced by absence and explicit capability flags | no configured model provider, no image analysis claim, no purchase/offer/bid action |
 
 ## Current limitations and production blockers
 
@@ -48,7 +53,7 @@ The full decision and limitations are in [OWNER_AUTH_DECISION.md](./OWNER_AUTH_D
 
 ### Critical: canonical records are browser-local
 
-Deal, purchase, inventory, sales, expense, mileage, Owner Center, and restock records are stored in localStorage. They are available to scripts executing in that origin, depend on one browser profile/device, and lack server audit, centralized backup, or revocation. This is acceptable only for the current private preview with explicit limitations.
+Deal, purchase, inventory, sales, expense, mileage, Owner Center, restock observations, and Phase 1C card-analysis history records are stored in localStorage. Auction workflows may save current result snapshots locally, while restock intelligence recomputes from observations. These records are available to scripts executing in that origin, depend on one browser profile/device, and lack server audit, centralized backup, or revocation. This is acceptable only for the current private preview with explicit limitations.
 
 Phase 1B schema, repository, API, migration mapping, and remote-adapter contracts do not change that fact. `LOCAL_ONLY` remains active and `REMOTE_ACTIVE` remains disabled. A dry-run result, migration file, or successful test repository must never be presented as durable owner storage.
 
@@ -75,6 +80,14 @@ The repository retains public-beta roles, profiles, community, marketplace, mode
 ### Medium: dependencies and observability
 
 Dependency vulnerability reports require separate review. Logs and errors need structured redaction so credentials, seller/buyer data, imported payloads, signed URLs, and financial details are not emitted. Production monitoring must expose status without exposing raw provider payloads or tokens.
+
+### Medium: deterministic intelligence can be over-trusted
+
+Phase 1C condition, valuation, deal, lot, auction, and restock results are deterministic proposals from supplied observations and assumptions. Determinism makes a result reproducible; it does not make sparse, stale, duplicated, owner-entered, or incorrectly identified evidence true. Current controls retain provenance, source independence, warnings, confidence bands, methodology/input hashes, immutable card-analysis system revisions, explicit owner corrections, and explicit deal-risk severity. Valuation v2 uses matched-condition verified sales directly, permits a single adjustment only from an explicit `NM` baseline, and excludes unknown or incompatible condition bases. Restock freshness uses the most recent positive observation, and duplicated underlying sources cannot bypass the independence cap. These controls do not supply licensed completed-sale coverage, authenticate card identity, guarantee condition/grade, inspect unseen lot contents, or guarantee restocks/profit.
+
+Official eBay evidence remains separately attributable as external identity, provider observations, image references, and active-listing valuation evidence. A provider amount with missing or invalid currency does not become a money object. This prevents an integration omission from being silently converted into a false default-currency value.
+
+No image/OCR/AI provider is configured. The scanner boundary explicitly reports image analysis false and must not receive a machine-observed defect label unless a future approved adapter actually produced it. Future model work requires protected file handling, privacy/retention approval, prompt/input isolation, evaluation, cost controls, and a human-review gate before it can affect a confirmed record.
 
 ## Target security architecture
 
@@ -165,6 +178,7 @@ Every uploaded file requires authenticated ownership, size/MIME/magic-byte valid
 - Minimize children's personal information; impact tracking should prefer aggregate counts.
 - Separate private owner records from any public product dataset and credentials.
 - Store AI/provider retention and use terms with the connection configuration.
+- Preserve whether intelligence evidence was machine-observed, provider-supplied, owner-entered, or inferred; never upgrade a deterministic inference or repeated provider copy into an independent observation.
 - Exports contain the owner's data but warn when files include personal or financial information.
 - Data deletion uses archive/correction rules where audit or financial history must remain; privacy deletion is policy-driven and logged.
 
@@ -199,6 +213,9 @@ The local `/api/code3/*` route family reuses exact-origin CORS, `requireOwner`, 
 | Device/profile loss | local-only records | verified complete backup and durable canonical storage |
 | Malicious/oversized file | no canonical upload boundary yet | protected upload validation/scanning/quota |
 | Provider payload overwrites owner facts | partly prevented by discovery model | immutable snapshots and explicit reviewed merge |
+| Analysis payload forges owner/session authority | Phase 1C local validator rejects authority fields recursively; browser storage is still untrusted | retain server-derived owner scope for every future intelligence API and repeat validation server-side |
+| Deterministic recommendation is mistaken for fact or professional grade | local explainable proposal with confidence/warnings and explicit risk severity; no model provider | owner review, evidence links, methodology version, valuation condition-basis disclosure, evaluation fixtures, prohibited-guarantee copy |
+| Image reference is mistaken for analyzed/protected file | Phase 1C retains metadata only and reports image analysis false | protected file service and approved analysis adapter before any machine-observed visual claim |
 | Duplicate retry creates financial/inventory records | local validations only | server idempotency and database constraints |
 | Cross-device edit conflict | unsupported | record versions, optimistic concurrency, conflict UI |
 | Legacy route exposes private operation | broad compatibility surface | route inventory, default-deny middleware, focused retirement |

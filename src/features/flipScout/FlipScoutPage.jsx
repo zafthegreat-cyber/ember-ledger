@@ -34,6 +34,7 @@ const SCREEN_TITLES = {
   sources: "Sources",
 };
 const VALID_SCREENS = new Set(Object.keys(SCREEN_TITLES));
+const INTELLIGENCE_ANALYSIS_RECORD_TYPE = "CODE3_INTELLIGENCE_ANALYSIS";
 const DESTINATION_KEY = "private-business-hub.flip-scout.destination";
 const EMPTY_FEATURE_CONTROLS = Object.freeze({});
 
@@ -75,6 +76,9 @@ export default function FlipScoutPage({ onExit, onOpenRestocks, initialScreen = 
   const [storageMessage, setStorageMessage] = useState(repository.getLastError());
   const activeTitle = useMemo(() => SCREEN_TITLES[activeScreen] || "Find", [activeScreen]);
   const visiblePrimaryNavItems = PRIMARY_NAV_ITEMS.filter(([key]) => key !== "restocks" || featureControls.restocks !== false).filter(([key]) => key !== "auctions" || featureControls.auctions !== false);
+  const intelligenceAnalyses = useMemo(() => (state.appraisals || [])
+    .filter((record) => record.recordType === INTELLIGENCE_ANALYSIS_RECORD_TYPE)
+    .sort((left, right) => String(right.analyzedAt || "").localeCompare(String(left.analyzedAt || ""))), [state.appraisals]);
 
   useEffect(() => {
     const handleNavigation = (event) => {
@@ -122,6 +126,10 @@ export default function FlipScoutPage({ onExit, onOpenRestocks, initialScreen = 
     const activityResult = repository.save({ ...result.state, activity: [createActivity("Record deleted", `${label} removed from ${collection}.`), ...result.state.activity].slice(0, 150) });
     applySave(activityResult.state, result.error || activityResult.error);
     return true;
+  }, [applySave, repository]);
+
+  const analysisStored = useCallback(() => {
+    applySave(repository.load(), repository.getLastError());
   }, [applySave, repository]);
 
   const navigate = useCallback((screen, nextSubview = "") => {
@@ -218,7 +226,7 @@ export default function FlipScoutPage({ onExit, onOpenRestocks, initialScreen = 
         {activeScreen === "dashboard" ? <DashboardScreen state={state} onNavigate={navigate} /> : null}
         {activeScreen === "deals" ? <DealsScreen deals={state.deals} initialMode={subview} navigation={findNavigation} onSave={saveRecord} onDelete={deleteRecord} onAnalyze={analyzeDeal} /> : null}
         {activeScreen === "restocks" ? <RestocksScreen onOpenRestocks={onOpenRestocks} /> : null}
-        {activeScreen === "appraise" ? <AppraiserScreen seed={appraisalSeed} onSave={saveRecord} /> : null}
+        {activeScreen === "appraise" ? <AppraiserScreen seed={appraisalSeed} onSave={saveRecord} repository={repository} analysisRecords={intelligenceAnalyses} onAnalysisStored={analysisStored} /> : null}
         {activeScreen === "auctions" ? <AuctionsScreen auctions={state.auctions} initialMode={subview} onSave={saveRecord} onDelete={deleteRecord} /> : null}
         {activeScreen === "rules" ? <SearchRulesScreen rules={state.searchRules} onSave={saveRecord} onDelete={deleteRecord} onOpenEbay={(ruleId) => navigate("ebay", ruleId)} /> : null}
         {activeScreen === "ebay" ? <EbayDiscoveryScreen state={state} initialRuleId={subview} onMerge={mergeDiscoveries} onImport={importDiscovery} onUpdate={saveRecord} onNavigate={navigate} /> : null}

@@ -70,6 +70,7 @@
     "test:code3-client-persistence": "node --no-warnings scripts/test-code3-client-persistence.mjs",
     "test:code3-migration-preview": "node --no-warnings scripts/test-code3-migration-preview.mjs",
     "test:code3-migration-readiness": "node --no-warnings scripts/test-code3-migration-readiness.mjs",
+    "test:code3-intelligence": "node --no-warnings scripts/test-code3-intelligence-domain.mjs && node --no-warnings scripts/test-code3-intelligence-history.mjs && node --no-warnings scripts/test-code3-intelligence-integration.mjs && node --no-warnings scripts/test-code3-intelligence-fixtures.mjs",
     "test:code3-canonical": "npm --prefix backend run test:code3-canonical",
     "test:tier-foundation": "node --no-warnings scripts/test-tier-foundation.mjs",
     "test:quick-add": "node --no-warnings scripts/test-quick-add-routing.mjs",

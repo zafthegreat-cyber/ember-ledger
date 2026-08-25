@@ -4,6 +4,8 @@ Phase 1B starting baseline: `26d30b9a0b1379d53778c0bc5c92887cc0ae744f`.
 
 Phase 1A authentication and recovery structures and the validated Phase 1B schema/mapping contracts are published on the feature branch. No Phase 1B migration has been executed and no owner record has moved.
 
+Phase 1C starts from `cdd57bbabb2243ff510eca7aec0487f23342834d` and adds local intelligence contracts plus card-analysis revision history only. It does not change the repository schema version, apply the canonical schema, activate remote persistence, or canonicalize existing owner records.
+
 This document distinguishes current persisted shapes, Phase 1B schema-only representations, and the future active canonical model. A table, migration file, repository interface, or dry-run result is not evidence that remote persistence is active.
 
 ## Modeling rules
@@ -27,7 +29,7 @@ This document distinguishes current persisted shapes, Phase 1B schema-only repre
 | Collection | Current purpose |
 |---|---|
 | `deals` | normalized listings and manually entered opportunities |
-| `appraisals` | saved deal assumptions/results |
+| `appraisals` | legacy saved deal assumptions/results plus explicitly tagged Phase 1C card-analysis revisions |
 | `auctions` | manually entered auctions and maximum-bid inputs |
 | `searchRules` | local rule definitions and templates |
 | `purchases` | purchase headers and original projections |
@@ -160,6 +162,53 @@ The schema source additionally defines `code3_file_assets` for reference metadat
 
 See [CANONICAL_PERSISTENCE_DECISION.md](./CANONICAL_PERSISTENCE_DECISION.md), [MIGRATION_PREVIEW_CONTRACT.md](./MIGRATION_PREVIEW_CONTRACT.md), and [MIGRATION_ROLLBACK_CONTRACT.md](./MIGRATION_ROLLBACK_CONTRACT.md).
 
+## Phase 1C local intelligence records
+
+Phase 1C does not create a second storage namespace. `src/features/intelligence/analysisHistory.js` wraps the existing Deal Finder `appraisals` collection with `createLocalCollectionDataSource()` and a `createPersistenceGateway()` fixed to `LOCAL_ONLY`. A caller cannot select a persistence mode or supply a remote adapter. This linked revision model applies to card analyses; an auction may save its current analysis result without joining a generic revision series, and restock intelligence recomputes from its observation records. Legacy appraisal records remain present but are ignored by the Phase 1C card-history query unless both tags match:
+
+```text
+recordType = CODE3_INTELLIGENCE_ANALYSIS
+format = code3-intelligence-analysis-v1
+```
+
+Each tagged revision contains:
+
+```text
+id
+analysisType
+analysisSeriesId
+revision
+previousAnalysisId
+methodologyVersion
+inputHash
+analyzedAt
+sourceInput
+sourceReferences
+evidence
+immutable systemResult
+warnings
+ownerReview
+recordVersion / createdAt / updatedAt from the local adapter
+```
+
+An initial card analysis creates revision 1. Card reanalysis appends the next revision and links it to the latest prior record; it never rewrites the prior revision. Owner review is a separate version-checked update containing the owner-confirmed condition, manual values, replacement dismissed-warning set, and correction events. The owner can explicitly clear a prior condition or manual value, and can undismiss a warning by replacing that set. Each correction event has its own ID, time, `OWNER_ENTERED` provenance, and explicit previous/new values. A carried owner confirmation remains visibly carried after reanalysis and does not replace the new system proposal.
+
+Analysis source hashes use canonical JSON plus SHA-256. Analysis inputs recursively reject owner/role/session/token/authorization/credential/security authority fields. No authoritative owner subject is stored in the browser record. History exposes no delete/archive operation.
+
+### Phase 1C intelligence value objects
+
+- Money is `{ minorUnits, currency }` with a safe integer amount. New intelligence arithmetic rejects malformed major-unit strings, excess precision, unsafe integers, negative values where prohibited, and cross-currency operations.
+- Rates are bounded integer basis points. Fractional minor-unit fee results retain the deterministic rounding method and remainder.
+- Confidence is `HIGH`, `MEDIUM`, `LOW`, or `INSUFFICIENT` and records source independence, sample size, freshness, completeness, identity/condition certainty, and contradictions.
+- Evidence provenance is `MACHINE_OBSERVED`, `PROVIDER_SUPPLIED`, `OWNER_ENTERED`, or `INFERRED`. A repeated underlying source is not counted as independent confirmation.
+- Apparent card condition is `NM`, `LP`, `MP`, `HP`, or `DMG`. The system proposal, owner-confirmed value, and resolved display value remain separate.
+- Valuation evidence types are `SOLD_COMPARABLE`, `ACTIVE_LISTING`, `REFERENCE_PRICE`, `OWNER_COST`, `OWNER_SALE`, and `PREDICTED_RESALE`. Only a verified completed sale may enter the completed-sale center.
+- `code3.valuation.v2` records the subject condition, each comparable's validated condition/source quality, the selected condition-basis mode, included evidence IDs, and explicit exclusions. Matched-condition sold records are used without another condition adjustment. Only an explicitly `NM` baseline may be adjusted once when no match exists; unknown or incompatible conditions do not enter that center.
+- Official eBay evidence retains external identity, provider observations, image references, and active-listing valuation evidence separately. A provider amount without a valid currency yields a warning and no money object; no default currency is fabricated.
+- Recommendations are advisory. Deal results use `STRONG_BUY`, `BUY`, `WATCH`, `PASS`, or `INSUFFICIENT_DATA`, and every deal risk has explicit `LOW`, `MEDIUM`, `HIGH`, or `CRITICAL` severity. Auction results explicitly set automatic bidding false. Restock results use coarse bands, calculate freshness from the latest positive observation, respect independent-source limits, and never return a fabricated decimal probability.
+
+Image entries are metadata/references only in Phase 1C. No file byte is uploaded, analyzed by a configured computer-vision model, or added to canonical file storage. Existing backup behavior includes tagged records through the already registered Deal Finder section, while referenced unembedded file bytes still make recovery coverage partial. See [INTELLIGENCE_CONTRACT.md](./INTELLIGENCE_CONTRACT.md).
+
 ## Target entity map
 
 ```mermaid
@@ -220,7 +269,7 @@ erDiagram
 | `Listing` | provider/external identity, original URL, title/description, seller/location, format, current price/bid/shipping, dates, state, classification, confidence/risk, related rule/purchase |
 | `ListingSnapshot` | immutable provider-normalized state at check time, payload hash, change set, availability |
 | `ListingImage` | original URL or protected asset reference, position, source, content metadata |
-| `DealAnalysis` | immutable input version, selected scenario, recommendation, maximum offer, confidence/risk/missing data, source set |
+| `DealAnalysis` | immutable input/methodology version and hash, evidence provenance, system proposal, separate owner correction, selected scenario, recommendation, maximum offer, confidence/risk/missing data, source set, prior-revision link |
 | `DealScenario` | low/expected/high resale and complete cost/proceeds/profit/ROI/margin outputs |
 | `ComparableRecord` | completed-sale vs active-ask evidence, match fields, inclusion/exclusion and reason, manual/provider provenance |
 | `SellerProfile` | marketplace identity, location/rating history, purchase outcomes, packaging/condition/trust notes |
@@ -330,12 +379,12 @@ For every import or assisted analysis, retain:
 
 1. original payload, file, URL, image, or screenshot;
 2. provider-normalized payload and normalizer version;
-3. optional raw AI output and model/version;
+3. optional raw machine/AI output and adapter/model version only when a real configured provider ran;
 4. owner edits and corrections;
 5. final confirmed record and confirmation actor/time;
 6. later snapshots, change detection, corrections, and audit entries.
 
-Owner-entered tax, costs, notes, condition, status, resale assumptions, and decision history cannot be overwritten by refresh. A new snapshot may propose changes for review.
+Owner-entered tax, costs, notes, condition, status, resale assumptions, and decision history cannot be overwritten by refresh. A new snapshot or card-analysis revision may propose changes for review. Phase 1C keeps the immutable card system proposal and versioned owner correction separately and never labels a catalog match or deterministic rule as machine vision. Auction result snapshots and recomputed restock conclusions remain provenance-aware but do not claim the card revision-series contract.
 
 ## Money precision and formulas
 
