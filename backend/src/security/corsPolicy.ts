@@ -55,7 +55,7 @@ export function createProtectedCors(options: CorsOptions = {}) {
       });
     }
     if (origin) response.setHeader("Access-Control-Allow-Origin", origin);
-    response.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    response.setHeader("Access-Control-Allow-Methods", "GET, POST, PATCH, PUT, OPTIONS");
     const allowedHeaders = runtimeKind === "local-development" || runtimeKind === "automated-test"
       ? "Authorization, Content-Type, X-Code3-Local-Dev"
       : "Authorization, Content-Type";

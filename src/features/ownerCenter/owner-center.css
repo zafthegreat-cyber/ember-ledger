@@ -46,6 +46,15 @@
 .backup-activity li { overflow-wrap: anywhere; }
 .backup-finding-counts { display: grid; gap: 0; padding: 0; list-style: none; }
 .backup-finding-counts li { min-height: 36px; display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); border-bottom: 1px solid var(--border-subtle); }
+.migration-readiness { display: grid; gap: var(--space-3); margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--border-strong); }
+.migration-readiness__header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); }
+.migration-readiness__header h3,
+.migration-readiness__header p { margin: 0; }
+.migration-readiness__header p { margin-top: var(--space-1); max-width: 58ch; color: var(--text-secondary); }
+.migration-readiness > .ops-button { justify-self: start; }
+.migration-readiness .backup-status-row > strong { max-width: min(46ch, 55vw); overflow-wrap: anywhere; }
+.migration-readiness__hash { max-width: min(46ch, 55vw); overflow-wrap: anywhere; font-size: 12px; }
+.migration-readiness .backup-details h4 { margin: var(--space-3) 0 var(--space-1); color: var(--text-primary); font-size: 14px; }
 
 .owner-tabs,
 .owner-control-nav {
@@ -199,8 +208,12 @@
   .owner-definition-list { grid-template-columns: 1fr; }
   .owner-opportunity-card__body { padding: var(--space-2); }
   .backup-recovery__header { display: grid; }
+  .migration-readiness__header { display: grid; }
+  .migration-readiness .backup-status-row { grid-template-columns: minmax(0, 1fr); gap: 2px; padding: var(--space-2) 0; }
+  .migration-readiness .backup-status-row > strong { max-width: none; text-align: left; }
   .backup-actions,
   .backup-actions .ops-button { width: 100%; }
+  .migration-readiness > .ops-button { width: 100%; }
 }
 
 /* Declutter pass */

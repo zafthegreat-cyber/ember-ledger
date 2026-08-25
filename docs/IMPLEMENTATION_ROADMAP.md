@@ -1,13 +1,15 @@
 # Code 3 Implementation Roadmap
 
-Published baseline: `264d5a5dbc58568295ba514b9c474f588f42282e`
+Phase 1B starting baseline: `26d30b9a0b1379d53778c0bc5c92887cc0ae744f`
 Planning rule: no phase is authorized merely by appearing here.
 
 ## Repository-informed sequencing decision
 
-The audit changes the conceptual “backend persistence first” phase into two gated parts. **Phase 1A — Owner Security Boundary and Verified Recovery Contract** is implemented and validated in the local worktree, awaiting publication. It comes before a database migration or scheduled scanning because current canonical records are browser-local and recovery must be understood first. The local result protects the eBay route family and provides a trustworthy browser export/no-write preview, but it does not yet protect legacy APIs or include server/file data.
+The audit changes the conceptual “backend persistence first” phase into gated parts. **Phase 1A — Owner Security Boundary and Verified Recovery Contract** is published on the feature branch. It comes before a database migration or scheduled scanning because current canonical records are browser-local and recovery must be understood first. It protects the eBay route family and provides a trustworthy browser export/no-write preview, but it does not yet protect legacy APIs or include server/file data.
 
-The first runtime change has applied Code 3 through the centralized brand configuration and coordinated PWA/browser/offline metadata in the local worktree. Storage, database, route, module, environment, cache, history, compatibility, and imported-source identifiers remain unchanged. The legal/public business name and tagline remain separately configurable and unresolved.
+**Phase 1B — Canonical Backend Persistence and Reversible Migration Planning** is published on the feature branch as schema, repository/API, local/remote abstraction, backup-adapter, and no-write migration-preview contracts. `LOCAL_ONLY` remains authoritative. Schema and file metadata are `SCHEMA_ONLY`, the preview/remote comparison path is `DRY_RUN_ONLY`, and `REMOTE_ACTIVE` is `NOT_ACTIVE`. No migration was run and no owner record moved.
+
+The published Phase 1A runtime applies Code 3 through the centralized brand configuration and coordinated PWA/browser/offline metadata. Storage, database, route, module, environment, cache, history, compatibility, and imported-source identifiers remain unchanged. The legal/public business name and tagline remain separately configurable and unresolved.
 
 No time estimates are provided. Complexity is relative: Small, Medium, Large, or Extra Large.
 
@@ -27,7 +29,7 @@ No time estimates are provided. Complexity is relative: Small, Medium, Large, or
 
 ## Phase 1A — Owner security boundary and verified recovery contract
 
-**Local status:** Implemented and validated, awaiting its publication checkpoint, and undeployed. Do not treat this status as authorization to start Phase 1B.
+**Status:** Published on the feature branch. Hosted configuration and Production acceptance remain separate gates.
 
 - **Objective:** protect sensitive API operations with server-authenticated OWNER authorization and produce a complete, validated, restorable preview of current owner data before migration.
 - **Current code affected:** authentication/profile code in `src/App.jsx`; `src/features/ownerCenter/ownerAuthorization.js`; Express application/middleware; all sensitive API routes; feature/local repositories and legacy persistence exports.
@@ -41,18 +43,20 @@ No time estimates are provided. Complexity is relative: Small, Medium, Large, or
 - **Rollback:** disable new middleware only in an isolated preview, restore previous server route deployment, and use the verified export; no record cutover has occurred.
 - **Complexity:** Large.
 
-## Phase 1B — Canonical persistence, files, audit, and migration rehearsal
+## Phase 1B — Canonical backend persistence and reversible migration planning
 
-- **Objective:** introduce relational canonical repositories and protected object storage, then rehearse a reversible migration from browser/legacy data.
+**Checkpoint status:** Implemented, validated, and published on the feature branch. The schema is `SCHEMA_ONLY`; repository/API contracts remain hosted-gated; `REMOTE_ACTIVE` is `NOT_ACTIVE`; Migration Readiness is `DRY_RUN_ONLY` and no-write.
+
+- **Objective:** select the owner-authorized Express/PostgreSQL target, define relational canonical repositories and file-reference metadata, and rehearse a reversible migration from browser/legacy data without writes.
 - **Current code affected:** all domain repositories, phase-2 Supabase compatibility, backend database layer, receipt/image references, Owner Center data/backup.
-- **Likely files/modules:** proposed backend domain/repository modules, versioned migrations, protected file service, shared validators, local-to-server adapters, and migration/report scripts.
-- **Data changes:** canonical tables/entities from `DATA_MODEL.md`, stable IDs, integer minor currency units, record versions, provenance, audit logs, file manifests.
-- **Migration risks:** float-to-minor-unit differences, duplicate/overlapping legacy records, orphan links, ambiguous owned-item purpose, local records on more than one device, file loss.
+- **Implemented/likely files/modules:** backend canonical domain/repository/validation/API modules; versioned schema migration source; client persistence-mode/data-source modules; migration adapters/plan/preview; `src/features/backup/MigrationReadinessPanel.jsx`; owner-authorized canonical remote-export read integration; the four Phase 1B contract documents. Exact local paths are recorded in [CANONICAL_PERSISTENCE_DECISION.md](./CANONICAL_PERSISTENCE_DECISION.md) after implementation review.
+- **Data changes:** schema source only for canonical tables/entities from `DATA_MODEL.md`, stable IDs, integer minor currency units, record versions, provenance, future journal/audit fields, and file metadata. Existing local data is unchanged.
+- **Migration risks:** float-to-minor-unit differences, ambiguous legacy-to-generic rate semantics, duplicate/overlapping or identity-less legacy records, orphan links, ambiguous owned-item purpose, local records on more than one device, file loss.
 - **Dependencies:** Phase 1A authorization and verified export; database/object-storage choice; schema review.
-- **External authorization:** database and object-storage provisioning.
-- **Test plan:** migrations up/down in disposable environments; dry-run mapping; totals/IDs/history/file hashes; optimistic concurrency; repository contract; backup/restore; rollback rehearsal.
-- **Acceptance criteria:** no irreversible production write; preview migration reconciles counts and money; ambiguous records queue as `UNASSIGNED`; old keys remain readable; repository switch can roll back; protected files require owner authorization.
-- **Rollback:** retain local repositories and export, reverse preview migration, keep old IDs/keys, remove target data only from disposable environment.
+- **External authorization:** database provisioning and later schema execution; object-storage provisioning is deferred because Phase 1B does not upload bytes.
+- **Test plan:** schema inspection without applying owner migrations; owner-scoped repository/API behavior; strict validation, active/archive uniqueness parity across every domain, status/archive parity, strict remote timestamp/UUID keyset pagination, and legacy-compatible private local cursor ordering; optimistic conflicts; complete 80-path migration-registry coverage; deterministic mapping/plan/hash; plan-wide identity, FileAsset path, and forward-reference checks; zero-write preview; remote-backup unavailable/unauthorized/hash-mismatch/consistent-snapshot coverage; existing backup/restore; full regression.
+- **Acceptance criteria:** no production/owner migration; server-derived owner scope; no client owner override; preview classifies insert/update/skip/decision and reconciles owner-wide IDs, plan-local/remote references, file metadata, and money without writes; inserts carry their exact stable UUID in `input.id`, invalid plan targets invalidate dependents, and unresolved decisions/intra-plan ID/provider/certification/FileAsset-path collisions block; identity-less, archived, and unmapped-rate candidates require owner review; no delete or archive action is proposed, canonical create/update cannot spoof archive, and archived records are immutable without a future restore contract; old keys remain readable; `REMOTE_ACTIVE` remains disabled; file references are reported without claiming byte coverage.
+- **Rollback:** preview requires no data rollback because it writes nothing; retain local repositories/export/IDs/keys and remove unactivated schema/code as one bounded change. Future apply requirements are in [MIGRATION_ROLLBACK_CONTRACT.md](./MIGRATION_ROLLBACK_CONTRACT.md).
 - **Complexity:** Extra Large.
 
 ## Phase 2 — App-shell extraction and route ownership hardening
@@ -227,6 +231,4 @@ Every implementation phase must:
 
 ## Exact next task recommendation
 
-Publish the validated Phase 1A checkpoint, verify the Draft PR and non-production Preview, and configure the documented Preview authentication variables outside source control. Begin Phase 1B only through a separate approved task.
-
-After a separate Phase 1A checkpoint and clean-checkout proof, specify Phase 1B as a no-write canonical-schema, server/file export-adapter, audit, and migration-rehearsal task. Do not perform a database migration or restore apply without explicit approval.
+After the Phase 1B checkpoint and another clean-checkout proof, the next separately approved data task should provision a disposable database, test the schema and row-level ownership there, exercise rollback, and compare a verified owner backup through Migration Preview. Do not activate `REMOTE_ACTIVE`, migrate owner data, upload file bytes, or apply a Production schema without another explicit owner-approved cutover specification.

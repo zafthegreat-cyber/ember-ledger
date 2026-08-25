@@ -90,7 +90,7 @@ function readSourceData(source, context) {
     return result;
   }
 
-  throw new Error(`No Phase 1A export adapter exists for ${source.sourceId}.`);
+  throw new Error(`No registered export adapter exists for ${source.sourceId}.`);
 }
 
 export function readCurrentBackupSources(options = {}) {
@@ -327,11 +327,15 @@ function backupFileTimestamp(createdAt) {
 export async function createVerifiedBackup(options = {}) {
   const sourceRegistry = options.sourceRegistry || BACKUP_SOURCE_REGISTRY;
   const createdAt = options.createdAt || new Date().toISOString();
-  const configuredSourceIds = options.configuredSourceIds || [];
+  const configuredSourceIds = [...new Set([
+    ...(options.configuredSourceIds || []),
+    ...(options.remoteExportResult ? [options.remoteSourceId || "postgres-owner-data"] : []),
+  ])];
   const sections = [];
   const includedSources = [];
   const excludedSources = [];
   const failedSources = [];
+  const includedRemoteSourceIds = new Set();
   const fileReferences = { total: 0, embedded: 0, ephemeral: 0, signedOrExpiring: 0, remote: 0, unresolved: 0 };
 
   for (const source of sourceRegistry) {
@@ -368,9 +372,86 @@ export async function createVerifiedBackup(options = {}) {
     }
   }
 
+  const remoteExport = options.remoteExportResult;
+  if (remoteExport?.status === "AVAILABLE" && remoteExport.included === true) {
+    const remoteSourceId = options.remoteSourceId || "postgres-owner-data";
+    const remoteSource = sourceRegistry.find((source) => source.sourceId === remoteSourceId);
+    try {
+      if (!remoteSource) throw new Error(`Remote source ${remoteSourceId} is not registered.`);
+      if (!remoteExport.domains || typeof remoteExport.domains !== "object" || Array.isArray(remoteExport.domains)) {
+        throw new Error("Remote export domains are invalid.");
+      }
+      const records = Object.entries(remoteExport.domains)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .flatMap(([domain, domainRecords]) => {
+          if (!Array.isArray(domainRecords)) throw new Error(`Remote domain ${domain} is not an array.`);
+          return domainRecords.map((record) => ({ ...record, domain: record?.domain || domain }));
+        });
+      if (Number.isInteger(remoteExport.recordCount) && remoteExport.recordCount !== records.length) {
+        throw new Error("Remote export record count does not match its domains.");
+      }
+      const remoteData = {
+        format: "code-3-server-export",
+        formatVersion: 1,
+        createdAt: remoteExport.createdAt || createdAt,
+        coverageStatus: remoteExport.coverageStatus || "PARTIAL",
+        coverageExplanation: remoteExport.coverageExplanation || "",
+        sourceHash: remoteExport.sourceHash || "",
+        truncatedDomains: [...(remoteExport.truncatedDomains || [])],
+        records,
+      };
+      const sanitized = sanitizeBackupData(remoteData);
+      const validation = validateBackupSourceData(remoteSource, sanitized.data);
+      if (!validation.valid) throw new Error(validation.errors.join(" "));
+      const remoteWarnings = [
+        ...(remoteExport.warnings || []),
+        ...(sanitized.excludedPaths.length
+          ? [`Excluded ${sanitized.excludedPaths.length} prohibited security or session field(s) from the remote export.`]
+          : []),
+      ];
+      const section = {
+        sourceId: remoteSourceId,
+        schemaVersion: validation.schemaVersion,
+        recordCount: records.length,
+        data: sanitized.data,
+        warnings: remoteWarnings,
+        sha256: "",
+      };
+      sections.push(section);
+      includedSources.push({
+        sourceId: remoteSourceId,
+        displayName: remoteSource.displayName,
+        recordCount: section.recordCount,
+        schemaVersion: section.schemaVersion,
+        coverageStatus: remoteData.coverageStatus,
+        truncatedDomains: remoteData.truncatedDomains,
+      });
+      includedRemoteSourceIds.add(remoteSourceId);
+      addFileSummaries(fileReferences, summarizeFileReferences(sanitized.data));
+      if (remoteData.coverageStatus !== "COMPLETE" || remoteData.truncatedDomains.length) {
+        excludedSources.push({
+          sourceId: `${remoteSourceId}-coverage-gap`,
+          displayName: `${remoteSource.displayName} coverage gap`,
+          reason: remoteData.coverageExplanation || `Remote domains were truncated: ${remoteData.truncatedDomains.join(", ") || "unspecified"}.`,
+          affectsCoverage: true,
+        });
+      }
+    } catch (error) {
+      const failure = {
+        sourceId: options.remoteSourceId || "postgres-owner-data",
+        displayName: "Canonical server records",
+        reason: `Remote source could not be validated: ${error?.message || "Unknown error."}`,
+        affectsCoverage: true,
+      };
+      excludedSources.push(failure);
+      failedSources.push(failure);
+    }
+  }
+
   const coverageContext = { configuredSourceIds, hasFileReferences: fileReferences.total > fileReferences.embedded };
   for (const source of sourceRegistry) {
     if (source.includedInPhase1AExport || !source.exclusionReason) continue;
+    if (includedRemoteSourceIds.has(source.sourceId)) continue;
     excludedSources.push({
       sourceId: source.sourceId,
       displayName: source.displayName,
@@ -380,6 +461,7 @@ export async function createVerifiedBackup(options = {}) {
   }
 
   const coverageStatus = resolveCoverage(excludedSources, failedSources);
+  const serverDataIncluded = includedRemoteSourceIds.size > 0;
   const envelope = {
     format: CODE3_BACKUP_FORMAT,
     formatVersion: CODE3_BACKUP_FORMAT_VERSION,
@@ -392,7 +474,7 @@ export async function createVerifiedBackup(options = {}) {
       excludedSourceCount: excludedSources.length,
       recordCount: includedSources.reduce((sum, source) => sum + source.recordCount, 0),
       fileReferences,
-      serverDataIncluded: false,
+      serverDataIncluded,
     },
     manifest: {
       formatVersion: CODE3_BACKUP_FORMAT_VERSION,
@@ -405,16 +487,18 @@ export async function createVerifiedBackup(options = {}) {
         excludedSourceCount: excludedSources.length,
         recordCount: includedSources.reduce((sum, source) => sum + source.recordCount, 0),
         fileReferences,
-        serverDataIncluded: false,
+        serverDataIncluded,
       },
       includedSources,
       excludedSources,
       securityExclusions: SECURITY_EXCLUSION_SUMMARY,
       fileReferences,
       knownLimitations: [
-        "Phase 1A does not embed referenced file bytes.",
-        "Phase 1A does not query Supabase, PostgreSQL, or process-memory data.",
-        "Restore preview is inspection-only; this format is not applied in Phase 1A.",
+        "The current backup does not embed referenced file bytes.",
+        serverDataIncluded
+          ? "Canonical server records were included through an owner-authorized export contract; legacy server/process-memory sources may remain excluded."
+          : "Canonical server, Supabase, PostgreSQL, and process-memory records were not included.",
+        "Restore preview is inspection-only; this backup format is not applied by the current recovery workflow.",
       ],
       sections: [],
       manifestHash: "",

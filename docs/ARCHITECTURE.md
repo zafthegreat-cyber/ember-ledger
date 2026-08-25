@@ -1,8 +1,10 @@
 # Code 3 Architecture
 
-Published baseline: `264d5a5dbc58568295ba514b9c474f588f42282e`.
+Phase 1B starting baseline: `26d30b9a0b1379d53778c0bc5c92887cc0ae744f`.
 
-Phase 1A status: implemented and validated locally in the uncommitted worktree, awaiting its publication checkpoint. Nothing described as a Phase 1A change in this document is deployed or configured in Preview/Production yet.
+Phase 1A is published on the feature branch. Hosted owner access still depends on correct environment configuration and has not been accepted for Production.
+
+Phase 1B status: validated checkpoint source published on the feature branch. The canonical database artifact is `SCHEMA_ONLY`; repository/API contracts are present but hosted use is gate-disabled; Migration Preview is `DRY_RUN_ONLY`; `REMOTE_ACTIVE` is `NOT_ACTIVE`. No production migration or owner-data migration has run.
 
 ## Executive summary
 
@@ -12,11 +14,11 @@ Code 3 is a hybrid React/Vite single-page application. Its approved everyday she
 2. older browser storage and optional Supabase persistence used by legacy application modules;
 3. an Express/PostgreSQL backend used by legacy APIs and the secure eBay Browse connector.
 
-The published architecture is suitable for a private preview, not for centralized durability or reliable background work. Phase 1A locally adds a Supabase-backed server identity boundary for the auth/eBay route families and a deterministic browser-backup/restore-preview contract. Those changes reduce risk but do not protect legacy API families, make browser-local records durable, or provide a complete backup when configured server data or referenced file bytes are omitted. The safest target remains an incremental strangler migration.
+The published architecture is suitable for a private preview, not for centralized durability or reliable background work. Phase 1A supplies a Supabase-backed server identity boundary for the auth/eBay route families and a deterministic browser-backup/restore-preview contract. Phase 1B selects and scaffolds the owner-authorized Express API → repository/service layer → PostgreSQL/Supabase Postgres target, but deliberately leaves current browser repositories authoritative. Those changes reduce migration risk; they do not migrate records, activate remote persistence, protect every legacy route, or make a backup complete when server data or referenced file bytes are omitted. The safest target remains an incremental strangler migration.
 
-## Phase 1A local worktree delta
+## Published Phase 1A boundary
 
-The uncommitted implementation adds these boundaries without a database migration:
+The published Phase 1A implementation adds these boundaries without a database migration:
 
 - `backend/src/auth/*`: normalized principals, Supabase token verification, immutable-subject owner policy, and environment gating;
 - `backend/src/security/*`: exact-origin CORS and structured redaction helpers;
@@ -28,6 +30,23 @@ The uncommitted implementation adds these boundaries without a database migratio
 - centralized Code 3 runtime/PWA/offline identity.
 
 See [OWNER_AUTH_DECISION.md](./OWNER_AUTH_DECISION.md), [BACKUP_FORMAT_V1.md](./BACKUP_FORMAT_V1.md), and [RESTORE_PREVIEW_CONTRACT.md](./RESTORE_PREVIEW_CONTRACT.md).
+
+## Phase 1B checkpoint delta
+
+Phase 1B adds a no-cutover persistence foundation:
+
+- canonical relational schema/migration source for the bounded private-business domains;
+- server-side domain definitions, strict validation, owner-scoped repository contracts, optimistic versions, bounded pagination, and owner-authorized API routing;
+- test/dry-run repositories that can prove ownership, constraints, pagination, and conflict behavior without production credentials;
+- client persistence modes `LOCAL_ONLY`, `MIGRATION_PREVIEW`, and `REMOTE_ACTIVE`, with local remaining the active default and existing feature repositories not yet rewired; the local adapter mirrors canonical status/`includeArchived` behavior, `ARCHIVED` state, and stable `(createdAt, id)` ordering while retaining a private legacy-ID-compatible cursor distinct from the UUID-strict server cursor;
+- migration-source classification, client canonical wire validation aligned to the server contract, money-to-minor-unit diagnostics, deterministic no-delete plan generation, conflict/reference detection, and zero-write proof;
+- a minimal Migration Readiness surface under Owner Center Data & Backup;
+- server-export adapter contracts that keep backup coverage `PARTIAL` whenever remote data is unavailable;
+- schema-only file-asset metadata, with no object upload or byte migration.
+
+The exact implementation paths are cited in [CANONICAL_PERSISTENCE_DECISION.md](./CANONICAL_PERSISTENCE_DECISION.md) and [MIGRATION_PREVIEW_CONTRACT.md](./MIGRATION_PREVIEW_CONTRACT.md). A migration file in source is not evidence that it was executed.
+
+`backend/src/routes/code3.routes.ts` is mounted at `/api/code3` through the same protected CORS and owner boundary as auth/eBay. It provides bounded canonical resource contracts plus read-only export and migration dry-run endpoints, but `CODE3_CANONICAL_PERSISTENCE_ENABLED` and `DATABASE_URL` must both be configured before the hosted route family leaves its safe `503` state. `supabase/migrations/20260820120000_code3_canonical_owner_records.sql` defines the unexecuted target tables/RLS/constraints. `FILE_ASSET` uses the generic record envelope plus a typed `code3_file_assets` metadata row and owner-scoped related-record validation; no file byte is uploaded. `src/features/persistence` supplies the client local/remote abstraction and deterministic local mapping, with all 80 backup-registry record paths explicitly classified. `src/services/code3OwnerApi.js` supplies owner-session headers to the bounded remote-export adapter; Data & Backup and `src/features/backup/MigrationReadinessPanel.jsx` consume that read result when available and otherwise retain honest `PARTIAL`/unavailable states. A `COMPLETE` remote export must use the repository consistent-read boundary, carry every uppercase canonical domain key, and have no truncation; source-read warnings flow into readiness and its deterministic hashes.
 
 ## Current system map
 
@@ -66,6 +85,7 @@ flowchart TD
 | Shared UI | Semantic operations components and CSS | `src/components/operations`, `src/styles/app/01-tokens-theme.css` | Reusable accessible foundation |
 | Routing | Custom path parsing and render dispatch, not React Router | `src/utils/appRouteState.js`, `src/App.jsx` | Back/redirect compatibility depends on bespoke code |
 | State | Large in-memory React state plus domain repository snapshots and legacy hooks | `src/App.jsx`, feature repositories | No single authoritative state boundary |
+| Canonical read bridge | Owner-authorized Code 3 request helper and bounded server-export adapter | `src/services/code3OwnerApi.js`, `src/features/persistence/remoteBackupAdapter.js` | Backup/preview may compare remote records when configured; no remote writes or cutover |
 | PWA | Manifest/service worker and installable SPA behavior | `public/manifest.webmanifest`, `public/sw.js`, `src/main.jsx` | Offline shell support exists; conflict-safe sync does not |
 
 ## Routing and compatibility
@@ -105,7 +125,7 @@ Existing Supabase migrations cover legacy profiles, workspaces, catalog, receipt
 
 ### Backend persistence
 
-`backend/src/db.ts` provides a PostgreSQL pool from `DATABASE_URL`. Backend routes combine database services, in-memory services, and upstream adapters. This is not yet a unified transaction or repository layer.
+`backend/src/db.ts` provides a PostgreSQL pool from `DATABASE_URL`. Legacy backend routes still combine database services, in-memory services, and upstream adapters. Phase 1B adds a coherent canonical service/repository layer for `/api/code3`, but its schema is unexecuted, its hosted gate is off, and existing feature repositories have not cut over.
 
 ## Backend and API
 
@@ -119,13 +139,13 @@ The eBay implementation is the strongest current server boundary:
 
 It keeps credentials server-side, caches application tokens, retries authentication once, maps upstream failures, and normalizes active listings. Browser discovery and Import Review live in `src/features/flipScout/ebayDiscovery.js` and `src/features/flipScout/screens/EbayDiscoveryScreen.jsx`.
 
-Current backend limitations after the local Phase 1A delta:
+Current backend limitations after the Phase 1B checkpoint:
 
 - the new owner policy protects `/api/ebay/*`, but it is not yet an application-wide policy;
-- canonical records still have no private backend API;
+- canonical owner API/repository contracts exist locally, but remote persistence and owner-data cutover are not active;
 - legacy route families remain behind their previous permissive `cors()` policy until separately migrated;
 - mixed durable and process-memory services;
-- no canonical background-job subsystem, idempotency contract, or audit writer;
+- no canonical background-job subsystem or durable audit writer; mutation idempotency beyond the Phase 1B contract remains future work;
 - no protected object/file storage for evidence and receipts.
 
 ## Authentication and permissions
@@ -140,7 +160,7 @@ Current roles (`OWNER`, `ADMIN`, `MODERATOR`, `BETA_USER`, `USER`) still exist i
 
 ## Brand and feature controls
 
-The approved application identity is Code 3. The local Phase 1A worktree applies display, short, PWA, PWA short, browser-title, accessible-logo, logo, favicon, and offline identity through `src/config/brand.js` and the Vite metadata replacement. The legal/public business name and tagline remain separate and blank. Historical route, storage, cache, module, and imported-source identifiers remain unchanged.
+The approved application identity is Code 3. The published Phase 1A source applies display, short, PWA, PWA short, browser-title, accessible-logo, logo, favicon, and offline identity through `src/config/brand.js` and the Vite metadata replacement. The legal/public business name and tagline remain separate and blank. Historical route, storage, cache, module, and imported-source identifiers remain unchanged.
 
 The runtime configuration still needs the definitive default social handle, currency, and time zone. Some compatibility/public-beta copy outside the primary shell still contains historical wording and requires a separately bounded migration. `src/features/ownerCenter/ownerCenterRepository.js` stores feature controls and scoring defaults locally; these controls influence UI visibility but are not server entitlements.
 
@@ -164,7 +184,7 @@ Names only are documented; values were not read or copied into these documents.
 | Scope | Current names found |
 |---|---|
 | Browser/build configuration | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_API_BASE_URL`, `VITE_PUBLIC_APP_URL`, `VITE_CODE3_LOCAL_AUTH_ENABLED`, `VITE_BETA_LOCAL_MODE`, `VITE_QA_UNLOCK_PAID_FEATURES`, `VITE_ADMIN_EMAILS`, `VITE_DEV_ADMIN_EMAIL`, `VITE_LOCAL_DEV_ADMIN`, `VITE_SEARCH_DEBUG` |
-| Server/database | `DATABASE_URL`, `POSTGRES_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_DB_URL`, `SUPABASE_DB_SSL_NO_VERIFY`, `SUPABASE_SERVICE_ROLE_KEY`, `PORT`, `NODE_ENV` |
+| Server/database | `DATABASE_URL`, `POSTGRES_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_DB_URL`, `SUPABASE_DB_SSL_NO_VERIFY`, `SUPABASE_SERVICE_ROLE_KEY`, `CODE3_CANONICAL_PERSISTENCE_ENABLED`, `PORT`, `NODE_ENV` |
 | Owner boundary and CORS | `CODE3_OWNER_SUBJECTS`, `CODE3_CORS_ALLOWED_ORIGINS`, `CODE3_CORS_PREVIEW_ORIGINS`, `CODE3_CORS_LOCAL_ORIGINS`, `CODE3_ENABLE_LOCAL_DEV_AUTH`, `VERCEL_ENV` |
 | eBay server | `EBAY_CLIENT_ID`, `EBAY_CLIENT_SECRET`, `EBAY_ENVIRONMENT`, `EBAY_MARKETPLACE_ID`, `EBAY_REQUEST_TIMEOUT_MS` |
 | Legacy Best Buy/alerts server | `BESTBUY_API_KEY`, `BESTBUY_API_BASE_URL`, `BESTBUY_MONITOR_ENABLED`, `BESTBUY_MONITOR_QUERY`, `BESTBUY_MONITOR_ZIP`, `BESTBUY_MONITOR_SKUS`, `BESTBUY_ALERT_ONLY_ON_CHANGE`, `BESTBUY_DISCORD_WEBHOOK_URL`, `BESTBUY_MONITOR_SECRET`, `DISCORD_WEBHOOK_URL` |
@@ -184,7 +204,7 @@ The repository has focused Node/browser scripts rather than one consolidated tes
 - plain language, viewport light/dark, keyboard accessibility;
 - focused beta smoke and a bounded 28-scenario regression.
 
-Tests are listed in `package.json` and `backend/package.json`. The published UI baseline and local Phase 1A implementation passed the documented focused and full validation gates before publication review.
+Tests are listed in `package.json` and `backend/package.json`. The published UI and Phase 1A baseline passed the documented focused and full validation gates before publication review.
 
 ## Bundle structure
 

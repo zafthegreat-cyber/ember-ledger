@@ -18,6 +18,7 @@ import { storesRouter } from "./routes/stores.routes";
 import { vaultRouter } from "./routes/vault.routes";
 import { authRouter } from "./routes/auth.routes";
 import { createProtectedCors } from "./security/corsPolicy";
+import { code3Router } from "./routes/code3.routes";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -27,6 +28,7 @@ app.use(express.json({ limit: "10mb" }));
 const protectedCors = createProtectedCors();
 app.use("/api/auth", protectedCors, authRouter);
 app.use("/api/ebay", protectedCors, ebayRouter);
+app.use("/api/code3", protectedCors, code3Router);
 
 // Legacy routes retain their existing behavior until they are migrated behind
 // the owner boundary. Protected Code 3 routes are mounted before this policy.

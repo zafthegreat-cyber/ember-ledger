@@ -281,7 +281,7 @@ const registry = [
     referenceDependencies: ["phase2-local-fallback", "legacy-core-business"],
     containsSecurityOrSessionState: true,
     affectsCoverage: "when-configured",
-    exclusionReason: "Phase 1A does not fetch remote Supabase records; configured server data must be exported by a future owner-authorized server adapter.",
+    exclusionReason: "Legacy Supabase owner records are not included by the canonical server-export adapter and require a separate owner-authorized export contract.",
   },
   {
     sourceId: "postgres-owner-data",
@@ -293,11 +293,11 @@ const registry = [
     includedInPhase1AExport: false,
     exportAdapter: null,
     validationAdapter: "server-source-manifest",
-    recordPaths: [],
+    recordPaths: ["records"],
     referenceDependencies: ["legacy-core-business"],
     containsSecurityOrSessionState: false,
     affectsCoverage: "when-configured",
-    exclusionReason: "Phase 1A has no owner-scoped server export endpoint for PostgreSQL or in-memory Express records.",
+    exclusionReason: "Canonical PostgreSQL records are included only when the owner-authorized server export is available; legacy PostgreSQL and process-memory records remain outside that contract.",
   },
   {
     sourceId: "file-assets",
@@ -313,7 +313,7 @@ const registry = [
     referenceDependencies: ["phase2-local-fallback", "deal-finder", "legacy-core-business"],
     containsSecurityOrSessionState: false,
     affectsCoverage: "when-referenced",
-    exclusionReason: "Phase 1A records file references but does not embed or download file bytes.",
+    exclusionReason: "The current backup records file references but does not embed or download file bytes.",
   },
   {
     sourceId: "authentication-state",

@@ -1,10 +1,10 @@
 # Code 3 Data Model
 
-Published baseline: `264d5a5dbc58568295ba514b9c474f588f42282e`.
+Phase 1B starting baseline: `26d30b9a0b1379d53778c0bc5c92887cc0ae744f`.
 
-Phase 1A auth and recovery structures described below are implemented and validated in the local worktree, awaiting publication. No database migration has occurred.
+Phase 1A authentication and recovery structures and the validated Phase 1B schema/mapping contracts are published on the feature branch. No Phase 1B migration has been executed and no owner record has moved.
 
-This document distinguishes current persisted shapes from the target canonical model. Proposed names are architectural contracts, not an instruction to perform a database migration now.
+This document distinguishes current persisted shapes, Phase 1B schema-only representations, and the future active canonical model. A table, migration file, repository interface, or dry-run result is not evidence that remote persistence is active.
 
 ## Modeling rules
 
@@ -111,7 +111,7 @@ The backend-only normalized principal contains immutable `subject`, `provider`, 
 
 Each source descriptor contains `sourceId`, `displayName`, `storageType`, `schemaVersion`, supported versions, owner-data and security-state flags, Phase 1A inclusion, export/validation adapter identifiers, reference dependencies, record paths, coverage relevance, and an exclusion reason when omitted.
 
-Registered local sources cover Deal Finder schema 2, Owner Center schema 1, allowlisted legacy business and fallback documents, legacy restock/community and review sources, safe preferences, and safe workflow drafts. Supabase, PostgreSQL/process-memory records, and file bytes are registered exclusions. Authentication/session persistence is a prohibited source and is never exportable.
+Registered local sources cover Deal Finder schema 2, Owner Center schema 1, allowlisted legacy business and fallback documents, legacy restock/community and review sources, safe preferences, and safe workflow drafts. Phase 1B may also include a valid owner-authorized canonical PostgreSQL export. Legacy Supabase, other PostgreSQL/process-memory records, and file bytes remain registered exclusions. Authentication/session persistence is a prohibited source and is never exportable.
 
 ### BackupEnvelope version 1
 
@@ -122,6 +122,43 @@ Coverage is `COMPLETE`, `PARTIAL`, or `FAILED`. Configured remote sources or ref
 ### RestorePreviewResult
 
 The no-write result is `READY_FOR_FUTURE_RESTORE`, `READY_WITH_WARNINGS`, `BLOCKED`, `UNSUPPORTED`, or `CORRUPTED`. It contains integrity/schema/source/count comparisons plus duplicate, collision, money, prohibited-field, and broken-reference findings. It is an in-memory diagnostic, not an import job or audit write. See [RESTORE_PREVIEW_CONTRACT.md](./RESTORE_PREVIEW_CONTRACT.md).
+
+## Phase 1B schema-only rules
+
+Phase 1B defines canonical records without activating them. `supabase/migrations/20260820120000_code3_canonical_owner_records.sql` uses a typed `code3_records` envelope plus `code3_record_links`, so each major owner record row includes:
+
+```text
+id UUID
+owner_subject text
+record_type text
+status text
+source/external_provider/external_id/source_url
+amount_minor/currency/rate_basis_points
+quantity/certification_number/occurred_at
+created_at timestamptz
+updated_at timestamptz
+record_version integer
+archived_at timestamptz or explicit archive state
+source text
+notes text when relevant
+metadata jsonb when bounded evidence is safer than over-normalization
+```
+
+Relationships use explicit link rows and foreign keys where appropriate, while domain definitions validate the allowed relationship names and target types. Likely lookups are indexed by owner plus record type/status, source/provider/external ID, certification, and created/updated time. Parent purchase/lot, owned item, sale, store, and auction links remain owner-scoped. Supabase row-level policies complement—but never replace—owner scoping in the server repository.
+
+Canonical list ordering is ascending `(created_at, id)` and its opaque server keyset cursor contains both values with a strictly validated timestamp and UUID ID. The private local cursor uses the same ordering but remains compatible with legacy non-UUID IDs during `LOCAL_ONLY`; it is not a canonical server cursor. Local and PostgreSQL adapters apply the same `status` and `includeArchived` filters. Canonical create/update reject `ARCHIVED`; only the version-checked archive operation sets status `ARCHIVED` and `archived_at`. It does not delete the record. An archived record cannot be updated in Phase 1B; restoration requires a future explicit, audited contract.
+
+Canonical IDs are UUIDs generated once. The schema primary key is `(owner_subject, id)`: one owner's UUID is unique across all canonical record types, while a different owner may independently use the same UUID. A valid owner-wide unique local UUID may survive migration. Provider IDs, certification numbers, legacy IDs, and source URLs remain separate. A non-UUID legacy ID may produce a deterministic preview proposal from its source identity, but a record with no stable legacy or semantic identity receives no proposed UUID and requires an owner decision. Preview writes nothing, and every collision is reported before a future apply.
+
+Canonical money is an integer `amount_minor` paired with an ISO `currency`. Existing local numeric values remain unchanged. Preview may propose exact conversion only when the source precision and currency make it unambiguous; it preserves the source value and blocks non-finite, ambiguous, or unsupported-precision values.
+
+Mutable records use optimistic `record_version`. A future update supplies `expectedVersion`; a stale value produces `409` rather than overwriting the newer record. Archive/correction/return/refund/write-off semantics remain distinct from destructive deletion.
+
+File bytes are not migrated in Phase 1B. The `FILE_ASSET` record type, client manifest validator, generic canonical record, and `code3_file_assets` metadata row can represent stable ID, owner-derived scope, provider/path, MIME type, size, SHA-256, creation time, and a validated owner-scoped related record. The metadata row has an owner-scoped foreign key to the generic `FILE_ASSET` envelope; service and dry-run validation also require its optional related record to resolve within the same owner, including a valid planned insert for dry-run only. Its storage-provider/path pair is owner-unique and remains reserved when the metadata record is archived. The normal browser backup does not synthesize this manifest, and a metadata row never proves the referenced byte exists, is protected, or is included in backup.
+
+The schema source additionally defines `code3_file_assets` for reference metadata and `code3_audit_events` for future append-only safe summaries. Neither has an active production writer in Phase 1B. Direct browser roles are not granted table access; owner-scoped RLS policies are defense in depth for a separately reviewed future access mode.
+
+See [CANONICAL_PERSISTENCE_DECISION.md](./CANONICAL_PERSISTENCE_DECISION.md), [MIGRATION_PREVIEW_CONTRACT.md](./MIGRATION_PREVIEW_CONTRACT.md), and [MIGRATION_ROLLBACK_CONTRACT.md](./MIGRATION_ROLLBACK_CONTRACT.md).
 
 ## Target entity map
 
@@ -302,15 +339,19 @@ Owner-entered tax, costs, notes, condition, status, resale assumptions, and deci
 
 ## Money precision and formulas
 
-Target database columns store currency as integer minor units (`BIGINT` where aggregate size warrants it) and rates as validated decimal basis points or fixed-precision decimals. Every amount carries or inherits an ISO currency. Conversion, if ever introduced, preserves source amount/currency, rate, provider, and timestamp.
+Target database columns store currency as integer minor units (`BIGINT` where aggregate size warrants it). Phase 1B constrains individual `amount_minor` values to JavaScript's safe-integer range and validates amount/currency as a pair. When an amount is supplied without currency, canonical create uses the current default `USD`; currency without an amount is rejected, and an update may not leave only one member of the pair. The generic canonical record also has an optional integer `rate_basis_points` field, exposed as `rateBasisPoints` and bounded from 0 through 100,000 by client/server/schema validation. Phase 1B does not semantically map legacy fee, tax, ROI, and similar domain-specific values into that field; they remain preserved in source metadata pending an explicit owner-reviewed mapping. Conversion, if ever introduced, preserves source amount/currency, rate, provider, and timestamp.
+
+Canonical record metadata is a bounded JSON object. The client/server wire contract accepts at most 250,000 UTF-8 JSON bytes and also limits depth, node count, keys, array length, and string length. The schema's 262,144-byte JSON text constraint provides a safety margin for representation overhead; it does not expand the accepted API contract.
 
 Current local floating-point values MUST be exported, validated to currency precision, totaled by record type, and reconciled before conversion. Allocation rounding uses an explicit adjustment assigned deterministically and recorded.
+
+Phase 1B conversion is diagnostic only. The current validator explicitly supports `USD`, `CAD`, `EUR`, `GBP`, and `AUD` with two minor digits, plus `JPY` with zero; any other currency blocks until its precision rule is added and tested. For a two-decimal currency, `12.34`, `12.3`, and `12` may be proposed as `1234`, `1230`, and `1200` minor units. `12.345`, `NaN`, Infinity, ambiguous strings, missing currency, and incompatible linked currencies warn or block according to the field contract. No migration adapter silently rounds or mutates a local value.
 
 ## Migration approach
 
 1. Inventory every current key/table and freeze schema validators.
 2. Create a versioned JSON export and state `COMPLETE`, `PARTIAL`, or `FAILED` coverage honestly; verify hashes/counts and diagnose IDs, references, and money without mutation.
-3. Produce a dry-run mapping report with errors, duplicates, ambiguous purposes, orphan references, and currency rounding differences.
+3. Produce a deterministic zero-write mapping plan with inserts, updates, skips, required decisions, errors, duplicates, ambiguous purposes, orphan references, and money-conversion differences; never propose delete.
 4. Preserve old IDs as migration references while assigning stable canonical IDs.
 5. Import originals/provenance before normalized final records.
 6. Keep old keys read-only and support rollback until record-level reconciliation passes.

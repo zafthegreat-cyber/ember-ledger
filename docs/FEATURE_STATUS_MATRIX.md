@@ -1,6 +1,6 @@
 # Code 3 Feature Status Matrix
 
-Published baseline: `264d5a5dbc58568295ba514b9c474f588f42282e`. Phase 1A statuses below include validated local work awaiting publication; they are not yet deployed capabilities.
+Phase 1B starting baseline: `26d30b9a0b1379d53778c0bc5c92887cc0ae744f`. Phase 1A and the validated Phase 1B checkpoint source are published on the feature branch; none of the Phase 1B statuses below represents an executed schema, migrated owner record, or active remote persistence.
 
 ## Classification rules
 
@@ -16,6 +16,8 @@ Every row has one primary classification:
 - `BLOCKED_BY_AUTHORIZATION`: implementation requires external provider approval or a secure authorization boundary.
 - `FUTURE`: optional/later capability intentionally not active.
 - `DEPRECATED_COMPATIBILITY`: retained only for route/data compatibility and not a canonical product destination.
+
+Phase-state qualifiers used in gap/evidence text are independent of the primary classification: `SCHEMA_ONLY` means a target representation exists but was not applied; `DRY_RUN_ONLY` means the path validates or compares without writes; `NOT_ACTIVE` means the capability cannot be used for owner data; `FUTURE` means it remains planned rather than locally implemented.
 
 Test abbreviations: **FS** `test:flip-scout`; **OC** `test:owner-center`; **EB** `test:flip-scout-ebay`; **BR** `test:flip-scout-browser`; **RL** `test:route-loading`; **LR** `test:legacy-routes`; **PL** `test:plain-language`; **A11Y** keyboard/viewport checks; **REG** bounded 28-scenario regression. “None focused” means broader loading/regression coverage may exist but no domain assertion was found.
 
@@ -77,14 +79,14 @@ Test abbreviations: **FS** `test:flip-scout`; **OC** `test:owner-center`; **EB**
 | eBay token cache/auth retry | server `/api/ebay/*` | IMPLEMENTED | `backend/src/services/ebayBrowse.service.ts` | server memory + environment secret | EB | Durable distributed cache not necessary until scale evidence |
 | eBay filters/pagination/errors | same | IMPLEMENTED | eBay backend/client | upstream response | EB | Provider field availability remains conditional |
 | eBay normalization/dedupe/change/expiry | Find/eBay | IMPLEMENTED | backend normalizer + `ebayDiscovery.js` | local snapshots | EB | Move history/dedupe to canonical repository Phase 1B/3 |
-| eBay server OWNER authorization | `/api/ebay/health`, `/api/ebay/search` | IMPLEMENTED | `backend/src/auth`, `backend/src/routes/ebay.routes.ts` | Supabase verified principal + server allowlist | Phase 1A auth/eBay tests | Local uncommitted implementation; environment configuration/deployment verification and legacy-route expansion remain |
+| eBay server OWNER authorization | `/api/ebay/health`, `/api/ebay/search` | IMPLEMENTED | `backend/src/auth`, `backend/src/routes/ebay.routes.ts` | Supabase verified principal + server allowlist | Phase 1A auth/eBay tests | Published source; hosted environment verification and legacy-route expansion remain |
 | eBay scheduled Search Rules | Owner Center Sourcing | BLOCKED_BY_AUTHORIZATION | no durable scheduler | none | None | Server auth/jobs and eBay production quota; Phase 3 |
 | eBay search history | Owner Center Sourcing | BACKEND_REQUIRED | local jobs have no durable run history | local summaries only | OC partial | Phase 3 after Phase 1 |
 | eBay notifications | Owner Center Controls | BACKEND_REQUIRED | UI/control placeholder | local control only | OC partial | Durable jobs/delivery Phase 3 |
 | eBay sold comparables | none | BLOCKED_BY_AUTHORIZATION | none | none | None | Approved/licensed source required |
 | Unified import queue | Owner Center Sourcing/Imports | PARTIALLY_IMPLEMENTED | Owner Center imports + eBay review + Sources/Data | local feature documents | OC, EB | File/share/email job model Phase 1B/3 |
 | CSV import preview/mapping | Sources/Data | PARTIALLY_IMPLEMENTED | `csv.js`, Sources/Data screen | local files/records | FS | Unified staged mapping/errors missing; Phase 1B/8 |
-| JSON backup/import | Sources/Data | PARTIALLY_IMPLEMENTED | feature exports plus `src/features/backup` v1 | registered browser sources | FS + Phase 1A backup tests | Deterministic verified local export/preview exists locally; server data/file bytes excluded; no apply restore |
+| JSON backup/import | Sources/Data | PARTIALLY_IMPLEMENTED | feature exports plus `src/features/backup` v1 and Phase 1B canonical-export adapter | registered browser sources; validated owner-authorized canonical export when available | FS + Phase 1A backup tests + Phase 1B backup extension | Deterministic verified export/preview exists; gated/unavailable/partial server sources and file bytes remain excluded or partial; no apply restore |
 
 ## Search Rules and providers
 
@@ -207,7 +209,7 @@ Test abbreviations: **FS** `test:flip-scout`; **OC** `test:owner-center`; **EB**
 
 | Page / feature | Route | Status | Current component/module | Storage/data source | Tests | Gap, dependency, recommended phase |
 |---|---|---|---|---|---|---|
-| Owner Center authorization UI | `/owner-center/*` | PARTIALLY_IMPLEMENTED | `ownerSession.js`, `ownerAuthorization.js`, `src/App.jsx`, Owner Center page | verified Supabase session or narrow local/test adapter | Phase 1A auth, OC, RL, REG | Local session-backed states implemented; only eBay is server-protected and hosted configuration is unverified |
+| Owner Center authorization UI | `/owner-center/*` | PARTIALLY_IMPLEMENTED | `ownerSession.js`, `ownerAuthorization.js`, `src/App.jsx`, Owner Center page | verified Supabase session or narrow local/test adapter | Phase 1A auth, OC, RL, REG | Published session-backed states; eBay and Phase 1B canonical routes use server policy, legacy routes and hosted configuration remain |
 | Overview five rows | `/owner-center/overview` | IMPLEMENTED | `OwnerCenterPage.jsx` | local/provider health summaries | OC, A11Y, REG | Preserve compact contract |
 | Sourcing / All Opportunities | `/owner-center/sourcing/all` | CLIENT_LOCAL_ONLY | Owner Center page/models | local deals/auctions/restocks/imports | OC | Canonical cross-source backend Phase 1B/3–5 |
 | Sourcing / eBay | `/owner-center/sourcing/ebay` | PARTIALLY_IMPLEMENTED | Owner Center + eBay handoff | live health and local outcomes | OC, EB | Durable run/performance attribution Phase 3 |
@@ -234,7 +236,7 @@ Test abbreviations: **FS** `test:flip-scout`; **OC** `test:owner-center`; **EB**
 | Controls / Scoring | `/owner-center/controls/scoring` | CLIENT_LOCAL_ONLY | owner repository/control UI | local scoring defaults | OC | Server persistence; saved analyses correctly not retroactive |
 | Controls / Notifications | `/owner-center/controls/notifications` | FRONTEND_ONLY | controls UI/legacy notifications | local settings/records | OC | Durable delivery Phase 3 |
 | Controls / Imports | `/owner-center/controls/imports` | PARTIALLY_IMPLEMENTED | local import/export controls | feature repositories | OC, FS | Canonical import jobs Phase 1A/1B |
-| Controls / Data and Backup | `/owner-center/controls/data-backup` | PARTIALLY_IMPLEMENTED | Owner Center + `src/features/backup` | registered browser sources | Phase 1A backup/preview tests | Local verified export and zero-write preview; partial when server/files omitted; no apply restore |
+| Controls / Data and Backup | `/owner-center/controls/data-backup` | PARTIALLY_IMPLEMENTED | Owner Center + `src/features/backup`, `MigrationReadinessPanel.jsx`, `src/services/code3OwnerApi.js` | registered browser sources; owner-authorized canonical read export when available | Phase 1A backup/preview + Phase 1B migration tests | Verified export/restore preview plus local `DRY_RUN_ONLY` Migration Readiness; canonical export remains unavailable/partial while gated, file bytes stay omitted, and no restore or migration apply exists |
 | Controls / Feature Controls | `/owner-center/controls/features` | CLIENT_LOCAL_ONLY | owner repository | local feature flags | OC, REG | Not security; server capability states Phase 1A |
 | Controls / Security | `/owner-center/controls/security` | PARTIALLY_IMPLEMENTED | owner session UI + backend auth policy | Supabase token/server allowlist | Phase 1A auth/CORS | No device/session administration; most legacy routes lack owner policy |
 | Controls / System History | `/owner-center/controls/system` | FRONTEND_ONLY | local activity/job summaries | local owner repository | OC | Durable jobs/audit/version history Phase 1A/3 |
@@ -260,14 +262,14 @@ Test abbreviations: **FS** `test:flip-scout`; **OC** `test:owner-center`; **EB**
 
 | Page / feature | Route | Status | Current component/module | Storage/data source | Tests | Gap, dependency, recommended phase |
 |---|---|---|---|---|---|---|
-| Owner authentication | auth/session + onboarding compatibility | PARTIALLY_IMPLEMENTED | `src/services/ownerSession.js`, `backend/src/auth`, `/api/auth/session` | Supabase access token + server allowlist | Phase 1A auth/CORS, REG | Local immutable-subject boundary exists; hosted configuration, devices/revocation, and legacy routes remain |
+| Owner authentication | auth/session + onboarding compatibility | PARTIALLY_IMPLEMENTED | `src/services/ownerSession.js`, `backend/src/auth`, `/api/auth/session` | Supabase access token + server allowlist | Phase 1A auth/CORS, REG | Published immutable-subject boundary; hosted configuration, devices/revocation, and legacy routes remain |
 | Future role policy | none | FUTURE | legacy role constants differ | profile roles | role tests | Collaborator/helper/bookkeeper/read-only disabled until needed |
-| Canonical relational persistence | private API target | BACKEND_REQUIRED | legacy PostgreSQL/Supabase only | mixed legacy | backend build/tests | Phase 1B |
-| Protected object storage | private API target | BACKEND_REQUIRED | no canonical service | local URL/reference | None | Phase 1B |
-| Complete backup and restore | Owner Controls | PARTIALLY_IMPLEMENTED | `src/features/backup`, Data & Backup UI | registered browser sources only | Phase 1A backup/preview | Integrity and no-write preview implemented locally; server/file coverage and restore apply require Phase 1B |
-| Append-only audit log | system history | BACKEND_REQUIRED | local activity/purpose history only | local records | OC partial | Phase 1B |
+| Canonical relational persistence | `/api/code3/*` target | PARTIALLY_IMPLEMENTED | `backend/src/code3`, `backend/src/routes/code3.routes.ts`, unexecuted `20260820120000_code3_canonical_owner_records.sql` | in-memory/dry-run test adapter; PostgreSQL target | Phase 1B repository/schema/migration tests | `SCHEMA_ONLY` and `NOT_ACTIVE`; filter/archive/ordering and active-identity semantics align, create/update cannot spoof archive, the server cursor is UUID-strict while the private local cursor preserves legacy IDs, and no schema executed, owner data migrated, or `REMOTE_ACTIVE` cutover |
+| Protected object storage | private API target | BACKEND_REQUIRED | Phase 1B typed `FILE_ASSET` envelope/`code3_file_assets` metadata, explicit manifest preview, owner-scoped FK and related-record validation; no byte service | local URL/reference or supplied metadata manifest | Phase 1B schema/preview partial | Metadata is `SCHEMA_ONLY`; normal backup does not synthesize a manifest, and upload/protected access/scan/byte migration/byte backup remain future |
+| Complete backup and restore | Owner Controls | PARTIALLY_IMPLEMENTED | `src/features/backup`, Data & Backup UI, `src/services/code3OwnerApi.js`, remote-export adapter | registered browser sources plus owner-authorized canonical export when available | Phase 1A backup/preview + Phase 1B backup extension | Integrity and no-write previews implemented; canonical export uses a consistent repository snapshot and verified hash, unavailable remote/file bytes keep coverage partial, and neither restore nor migration apply exists |
+| Append-only audit log | system history | BACKEND_REQUIRED | local history plus unexecuted `code3_audit_events` schema and future migration-journal contract | local records/schema only | OC + Phase 1B schema | `SCHEMA_ONLY`; no durable audit writer or production migration journal |
 | Background job scheduler | Owner Controls | BACKEND_REQUIRED | no canonical scheduler | none/local summaries | None | Phase 3 after auth/data |
-| Cross-device sync/conflicts | app-wide | BACKEND_REQUIRED | none | browser-local | None | Phase 1B/12 |
+| Cross-device sync/conflicts | app-wide | BACKEND_REQUIRED | Phase 1B persistence modes and offline/sync contract | browser-local | Phase 1B mode/conflict tests | `NOT_ACTIVE`; no cache sync or pending-write engine until a later phase |
 | Receipt AI assistance | optional | FUTURE | no real provider | none | None | Phase 10 |
 | Listing/card/binder/photo AI | optional | FUTURE | feature flag false; no real provider | none | mocked tests absent | Phase 10 |
 | Authenticity/condition assistance | optional | FUTURE | legacy heuristic concepts only | none authoritative | legacy tests | Review-only Phase 10 |

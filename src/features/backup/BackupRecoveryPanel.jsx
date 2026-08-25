@@ -1,10 +1,12 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   PrimaryButton,
   SecondaryButton,
   StatusBadge,
 } from "../../components/operations/OperationsUI.jsx";
 import { isSupabaseConfigured } from "../../supabaseClient.js";
+import { code3OwnerRequest } from "../../services/code3OwnerApi.js";
+import { createRemoteBackupExportAdapter } from "../persistence/index.js";
 import {
   BACKUP_COVERAGE,
   BACKUP_PARSE_LIMITS,
@@ -12,6 +14,7 @@ import {
   previewBackupRestore,
   readCurrentBackupSources,
 } from "./index.js";
+import MigrationReadinessPanel from "./MigrationReadinessPanel.jsx";
 
 function statusTone(status) {
   if (status === BACKUP_COVERAGE.COMPLETE || status === "READY_FOR_FUTURE_RESTORE") return "success";
@@ -33,13 +36,16 @@ function StatusRow({ label, value, children }) {
   return <div className="backup-status-row"><span>{label}</span><strong>{value}</strong>{children}</div>;
 }
 
-export default function BackupRecoveryPanel() {
+export default function BackupRecoveryPanel({ localDevelopment = false }) {
   const inputRef = useRef(null);
   const [busy, setBusy] = useState("");
   const [exportResult, setExportResult] = useState(null);
   const [preview, setPreview] = useState(null);
   const [message, setMessage] = useState("");
   const [activity, setActivity] = useState([]);
+  const remoteAdapter = useMemo(() => createRemoteBackupExportAdapter({
+    request: (path, init) => code3OwnerRequest(path, init, { localDevelopment }),
+  }), [localDevelopment]);
 
   const recordActivity = (entry) => setActivity((current) => [entry, ...current].slice(0, 10));
 
@@ -47,12 +53,14 @@ export default function BackupRecoveryPanel() {
     setBusy("export");
     setMessage("");
     try {
+      const remoteExportResult = await remoteAdapter.inspect();
       const result = await createVerifiedBackup({
         localStorage: globalThis.localStorage,
         sessionStorage: globalThis.sessionStorage,
         applicationVersion: typeof __EMBER_TIDE_APP_VERSION__ === "undefined" ? "unknown" : __EMBER_TIDE_APP_VERSION__,
         sourceCommit: "not supplied to browser build",
         configuredSourceIds: isSupabaseConfigured ? ["supabase-owner-data"] : [],
+        remoteExportResult,
       });
       setExportResult(result);
       recordActivity(result.activity);
@@ -172,6 +180,7 @@ export default function BackupRecoveryPanel() {
       </div> : null}
 
       {activity.length ? <details className="backup-activity"><summary>Session activity</summary><ul>{activity.map((entry, index) => <li key={`${entry?.type}-${index}`}>{entry?.type === "BACKUP_EXPORT_COMPLETED" ? "Export completed" : "Restore preview completed"}: {entry?.coverageStatus || entry?.result || "Recorded"}</li>)}</ul><p>Activity is kept in memory only so preview remains zero-write.</p></details> : null}
+      <MigrationReadinessPanel remoteAdapter={remoteAdapter} />
     </section>
   );
 }

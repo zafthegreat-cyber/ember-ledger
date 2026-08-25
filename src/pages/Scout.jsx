@@ -1297,6 +1297,7 @@ export default function Scout({
   );
   const [reports, setReports] = useState([]);
   const [allReports, setAllReports] = useState([]);
+  const [showAllRestockHistory, setShowAllRestockHistory] = useState(false);
   const [tidepoolReports, setTidepoolReports] = useState([]);
   const [tidepoolFilter, setTidepoolFilter] = useState("Latest");
   const [tidepoolEvents, setTidepoolEvents] = useState([]);
@@ -4414,9 +4415,9 @@ async function handleUpdateStore(e) {
         const aDate = `${getReportDate(a)}T${getReportTime(a) || "00:00"}`;
         const bDate = `${getReportDate(b)}T${getReportTime(b) || "00:00"}`;
         return new Date(bDate) - new Date(aDate);
-      })
-      .slice(0, 20);
+      });
   }, [visibleAllReports]);
+  const displayedRestockHistory = showAllRestockHistory ? restockHistory : restockHistory.slice(0, 20);
 
   const enrichedTidepoolReports = useMemo(() => {
     return tidepoolReports
@@ -6318,11 +6319,18 @@ async function handleUpdateStore(e) {
           </div>
 
           <div style={styles.card}>
-            <h2 style={styles.sectionTitle}>Restock History</h2>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
+              <h2 style={styles.sectionTitle}>Restock History</h2>
+              {restockHistory.length > 20 ? (
+                <button type="button" style={styles.buttonSoft} onClick={() => setShowAllRestockHistory((current) => !current)}>
+                  {showAllRestockHistory ? "Show recent reports" : "View all reports"}
+                </button>
+              ) : null}
+            </div>
             {restockHistory.length === 0 ? (
               <p style={styles.empty}>No restock history yet. Add a Scout report after checking a store so future predictions get smarter.</p>
             ) : (
-              restockHistory.map((report) => renderCompactReportCard(report, { compact: true }))
+              displayedRestockHistory.map((report) => renderCompactReportCard(report, { compact: true }))
             )}
           </div>
         </div>

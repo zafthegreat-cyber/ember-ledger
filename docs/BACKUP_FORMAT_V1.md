@@ -1,10 +1,10 @@
 # Code 3 Backup Format Version 1
 
-Status: Phase 1A local implementation, not committed or deployed.
+Status: Phase 1A format published on the feature branch. Phase 1B adds a local owner-authorized remote-read integration, but its canonical server source remains gated/not active by default; no owner data has migrated and no restore applies data.
 
 ## Purpose and boundary
 
-Version 1 creates a deterministic JSON recovery artifact for Code 3's current browser-held records before any database migration. It is an export and inspection contract, not a cloud backup, database migration, or restore-apply mechanism.
+Version 1 creates a deterministic JSON recovery artifact for Code 3's registered records before any database migration. Its published source set is browser-held; Phase 1B may add a validated, owner-authorized canonical server section when the gated export is available. It is an export and inspection contract, not a cloud backup, database migration, or restore-apply mechanism.
 
 The format identifier is `code-3-backup`; the format version is `1`. The implementation generates neutral filenames in the form `code-3-backup-YYYY-MM-DD-HHmm.json`.
 
@@ -59,14 +59,24 @@ Historical storage keys remain unchanged. Their names are compatibility identifi
 
 ## Registered exclusions
 
-Version 1 registers but does not fetch or embed:
+Version 1 still registers but does not fetch or embed:
 
 - configured Supabase owner records;
-- PostgreSQL, Express process-memory, or other server-held records;
+- legacy PostgreSQL, Express process-memory, or other server-held records outside the Phase 1B canonical export;
 - receipt, listing, evidence, or product file bytes;
 - authentication/session persistence and any credentials.
 
-Server data makes coverage `PARTIAL` when that source is configured. Referenced but unembedded file bytes make coverage `PARTIAL`. Authentication/session state is always prohibited but does not reduce coverage because it must never be restored as business data.
+Phase 1B canonical PostgreSQL records can be included through the bounded owner-authorized export described below. Any other configured server source keeps coverage `PARTIAL` when omitted. Referenced but unembedded file bytes make coverage `PARTIAL`. Authentication/session state is always prohibited but does not reduce coverage because it must never be restored as business data.
+
+## Phase 1B server-export extension
+
+Phase 1B defines a `code-3-server-export` version 1 adapter contract so an owner-authorized backup can include canonical remote records when that gated source is configured. The adapter is a bounded read interface with uppercase backend domain keys, `sourceHash`, `coverageStatus`, owner authorization, cursor pagination, record counts, sanitized data, and validation warnings. Server export reads all PostgreSQL domains inside one `REPEATABLE READ READ ONLY` transaction (or an isolated memory-repository snapshot in tests), preventing a nominally complete export from mixing unrelated points in time. Before treating it as available, the client deterministically canonicalizes `domains`, recomputes SHA-256, and requires an exact match with `sourceHash`. A response claiming `COMPLETE` is accepted only when every canonical domain key is present and no domain is truncated. The client migration registry uses the same canonical keys for comparison. The adapter does not grant generic table access and cannot accept a client-supplied owner subject.
+
+Data & Backup supplies `createRemoteBackupExportAdapter` with the owner-authorized request helper in `src/services/code3OwnerApi.js`. When a valid server export is available, its sanitized records become a versioned backup section and `serverDataIncluded` is true. An unavailable or rejected export is not silently treated as an empty section. Until canonical remote records can be fetched, counted, validated, and hashed successfully, their registered source remains excluded and coverage stays `PARTIAL`. An authentication failure, authorization failure, unavailable database, unsupported schema, or incomplete page cannot be converted into an empty successful section.
+
+Remote records, when included in the Phase 1B envelope, use the same canonical section and SHA-256 manifest rules as local sections. File metadata and file bytes remain distinct; a metadata record cannot make referenced bytes complete.
+
+Phase 1B Migration Preview may consume an integrity-verified backup hash as plan provenance. It never modifies the backup and never treats plan readiness as restore readiness.
 
 ## Prohibited data
 
@@ -170,10 +180,11 @@ Restore Preview accepts only recognized, supported versions. New formats require
 ## Known limitations
 
 - The export is generated in the browser and inherits the browser's ability to read local records.
-- Server data and process-memory data are not included.
+- Only a successfully validated Phase 1B canonical server export can be included; legacy Supabase, other server/process-memory data, and unavailable or truncated canonical records remain excluded or partial.
 - File bytes are not embedded.
 - A valid partial backup is not a complete disaster-recovery artifact.
 - There is no encryption layer in the JSON format; the owner must protect downloaded files.
 - No restore is applied in Phase 1A.
 - No cloud backup, retention schedule, or backup verification history is implemented.
 - No durable audit entry is written during export or preview.
+- Phase 1B remote export is a real read-only integration, but its hosted source is gated/not active by default and it does not make backup coverage complete when any registered source or file byte remains omitted.

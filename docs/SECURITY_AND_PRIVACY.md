@@ -1,16 +1,16 @@
 # Code 3 Security and Privacy
 
-Published baseline: `264d5a5dbc58568295ba514b9c474f588f42282e`.
+Phase 1B starting baseline: `26d30b9a0b1379d53778c0bc5c92887cc0ae744f`.
 
-Phase 1A status: implemented and validated in the local uncommitted worktree, awaiting its publication checkpoint. These controls are not yet deployed or configured in Preview/Production.
+Phase 1A and the validated Phase 1B checkpoint source are published on the feature branch; hosted owner access still depends on correct environment configuration and has not been accepted for Production. Phase 1B owner-scoped repository/API and migration-preview foundations are schema/dry-run contracts, not an active remote datastore.
 
 ## Security posture summary
 
-The published preview correctly keeps eBay credentials server-side but does not provide the full Code 3 owner boundary. The local Phase 1A implementation adds Supabase token verification, an immutable-subject OWNER policy, protected eBay routes, safe session inspection, exact-origin CORS for protected route families, redaction helpers, and deterministic backup/restore inspection. It is still not ready for production private-business data because those changes are uncommitted/unconfigured, canonical records remain browser-local, legacy API families remain broadly exposed, and backup coverage can be partial.
+The published source keeps eBay credentials server-side and includes Supabase token verification, an immutable-subject OWNER policy, protected eBay routes, safe session inspection, exact-origin CORS for protected route families, redaction helpers, and deterministic backup/restore inspection. Hosted configuration still requires verification. Phase 1B extends that boundary to canonical owner API contracts and zero-write migration planning. It is still not ready for production private-business data because remote persistence is deliberately inactive, canonical records remain browser-local, legacy API families remain broadly exposed, and backup coverage can be partial.
 
 Code 3 is the application identity, not a declaration of the legal/public business name. Authentication, records, exports, and provider connections must reference the configured business identity separately where legally or operationally relevant.
 
-The next implementation phase MUST establish a backend ownership boundary and verified recovery path before scheduled scans, remote canonical persistence, or file uploads expand the attack surface.
+The next activation phase MUST verify schema/RLS, repository owner scope, rollback, backup coverage, and deployment configuration before remote canonical persistence or file uploads expand the attack surface. Scheduled scanning remains later work.
 
 ## Current protections
 
@@ -26,27 +26,31 @@ The next implementation phase MUST establish a backend ownership boundary and ve
 | Supabase policies | Present for legacy schemas | `supabase/migrations` and RLS-focused scripts |
 | Provider timeout/error mapping | Implemented for eBay | backend HTTP client and eBay service tests |
 | Automatic external actions | Absent | provider contract and implementation |
-| Supabase identity verification | Implemented locally, not deployed | `backend/src/auth/supabaseIdentityProvider.ts` |
-| Immutable-subject OWNER policy | Implemented locally for protected routes | `backend/src/auth/ownerAuthorization.ts` |
-| Exact-origin protected-route CORS | Implemented locally for auth/eBay | `backend/src/security/corsPolicy.ts`, `backend/src/server.ts` |
-| Safe identity endpoint | Implemented locally | `GET /api/auth/session`; `Cache-Control: no-store` |
-| Security/error redaction helper | Implemented locally | `backend/src/security/redaction.ts` |
-| Versioned verified browser export | Implemented locally with explicit coverage | `src/features/backup` |
-| No-write JSON restore preview | Implemented locally; no apply path | `src/features/backup`, Owner Center Data & Backup |
+| Supabase identity verification | Implemented in published source; hosted configuration pending verification | `backend/src/auth/supabaseIdentityProvider.ts` |
+| Immutable-subject OWNER policy | Implemented for protected routes | `backend/src/auth/ownerAuthorization.ts` |
+| Exact-origin protected-route CORS | Implemented for auth/eBay; Phase 1B canonical routes reuse it locally | `backend/src/security/corsPolicy.ts`, `backend/src/server.ts` |
+| Safe identity endpoint | Implemented | `GET /api/auth/session`; `Cache-Control: no-store` |
+| Security/error redaction helper | Implemented | `backend/src/security/redaction.ts` |
+| Versioned verified browser export | Implemented with explicit coverage | `src/features/backup` |
+| No-write JSON restore preview | Implemented; no apply path | `src/features/backup`, Owner Center Data & Backup |
+| Canonical repository/API owner scope | Phase 1B source published; not active remotely | owner context is server-derived and required by repository methods |
+| Migration Preview | Phase 1B `DRY_RUN_ONLY` | no-write mapping/plan and readiness UI |
 
 ## Current limitations and production blockers
 
-### Critical: server authorization is narrow and not deployed
+### Critical: server authorization remains narrow in the published deployment
 
-The local worktree now verifies Supabase access tokens server-side and enforces an exact provider-qualified immutable subject on `GET /api/ebay/health` and `POST /api/ebay/search`. Protected-route outcomes are `401` for no/invalid/expired identity, `403` for an authenticated non-owner, `503` for provider outage, and route success for the configured owner. Missing auth or owner configuration fails closed.
+The published source verifies Supabase access tokens server-side and enforces an exact provider-qualified immutable subject on `GET /api/ebay/health` and `POST /api/ebay/search`. Protected-route outcomes are `401` for no/invalid/expired identity, `403` for an authenticated non-owner, `503` for provider outage, and route success for the configured owner. Missing auth or owner configuration fails closed. Hosted owner configuration still requires explicit verification.
 
-This is not yet an application-wide security boundary. Legacy APIs, future backup/server-data APIs, financial data, files, controls, and jobs still require route classification and OWNER enforcement before production. The client continues to contain legacy role/development settings for presentation/compatibility; none can authorize the protected server routes.
+This is not yet an application-wide security boundary. The Phase 1B canonical API/export family reuses the owner boundary, but legacy APIs, noncanonical server-data APIs, financial/file operations, controls, and jobs still require route classification and OWNER enforcement before production. The client continues to contain legacy role/development settings for presentation/compatibility; none can authorize the protected server routes.
 
 The full decision and limitations are in [OWNER_AUTH_DECISION.md](./OWNER_AUTH_DECISION.md).
 
 ### Critical: canonical records are browser-local
 
 Deal, purchase, inventory, sales, expense, mileage, Owner Center, and restock records are stored in localStorage. They are available to scripts executing in that origin, depend on one browser profile/device, and lack server audit, centralized backup, or revocation. This is acceptable only for the current private preview with explicit limitations.
+
+Phase 1B schema, repository, API, migration mapping, and remote-adapter contracts do not change that fact. `LOCAL_ONLY` remains active and `REMOTE_ACTIVE` remains disabled. A dry-run result, migration file, or successful test repository must never be presented as durable owner storage.
 
 ### High: backend surface and residual CORS
 
@@ -60,9 +64,9 @@ Screenshots, receipts, and images are currently URLs/references or browser-held 
 
 ### High: backup and recovery coverage remains partial
 
-The local Phase 1A format inventories current browser sources, excludes security/session data, hashes deterministic sections and manifest with SHA-256, reparses/reverifies the result, and provides a zero-write JSON Restore Preview. It explicitly labels coverage `COMPLETE`, `PARTIAL`, or `FAILED`.
+The published Phase 1A format inventories current browser sources, excludes security/session data, hashes deterministic sections and manifest with SHA-256, reparses/reverifies the result, and provides a zero-write JSON Restore Preview. It explicitly labels coverage `COMPLETE`, `PARTIAL`, or `FAILED`.
 
-It is not a full disaster-recovery system. Supabase, PostgreSQL/process-memory records, and file bytes are not fetched. Configured remote data or referenced unembedded files make coverage partial. There is no apply-restore operation, protected server export, cloud retention, encryption wrapper, or durable backup audit history. See [BACKUP_FORMAT_V1.md](./BACKUP_FORMAT_V1.md) and [RESTORE_PREVIEW_CONTRACT.md](./RESTORE_PREVIEW_CONTRACT.md).
+It is not a full disaster-recovery system. Phase 1B adds an owner-protected canonical PostgreSQL export, but that source is included only when the canonical gate/database are configured and the bounded response validates. Legacy Supabase data, other PostgreSQL/Express process-memory records, and file bytes remain outside that route. Any unavailable/configured remote source or referenced unembedded file keeps coverage partial. There is no apply-restore operation, protected file-byte export, cloud retention, encryption wrapper, or durable backup audit history. See [BACKUP_FORMAT_V1.md](./BACKUP_FORMAT_V1.md) and [RESTORE_PREVIEW_CONTRACT.md](./RESTORE_PREVIEW_CONTRACT.md).
 
 ### Medium/high: legacy authorization and privacy model
 
@@ -112,6 +116,8 @@ flowchart LR
 Known server-only eBay names are `EBAY_CLIENT_ID`, `EBAY_CLIENT_SECRET`, `EBAY_ENVIRONMENT`, `EBAY_MARKETPLACE_ID`, and `EBAY_REQUEST_TIMEOUT_MS`. `VITE_API_BASE_URL` is a browser-safe route base, not a credential.
 
 Owner-boundary server names are `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `CODE3_OWNER_SUBJECTS`, `CODE3_CORS_ALLOWED_ORIGINS`, `CODE3_CORS_PREVIEW_ORIGINS`, `CODE3_CORS_LOCAL_ORIGINS`, and `CODE3_ENABLE_LOCAL_DEV_AUTH`. Browser session configuration uses `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and `VITE_API_BASE_URL`; explicit local development may additionally use `VITE_CODE3_LOCAL_AUTH_ENABLED`. Example files contain names/placeholders only.
+
+Phase 1B canonical persistence additionally uses the server-only gate `CODE3_CANONICAL_PERSISTENCE_ENABLED` and existing `DATABASE_URL`. Missing either leaves hosted canonical routes unavailable with a safe response. The gate does not bypass authentication or owner authorization and has no `VITE_` equivalent.
 
 ## Authorization matrix target
 
@@ -178,7 +184,11 @@ Raw secrets and protected file contents never enter audit events.
 
 ## Backup, export, and deletion
 
-A complete future backup includes schema/version manifest, canonical records, provenance, audit references, protected file manifest/content, counts, hashes, and validation results. Phase 1A covers registered browser sources only and must say `PARTIAL` whenever relevant server data or file bytes are absent. Restore Preview is duplicate/reference/money checked, bounded, and guaranteed no-write; applying restore is not implemented. Future server export, restore, and deletion operations require fresh owner authorization and rate limiting.
+A complete future recovery point includes schema/version manifest, canonical records, provenance, audit references, protected file manifest/content, counts, hashes, and validation results. Phase 1A covers registered browser sources; Phase 1B can additionally include the bounded canonical export only when it is owner-authorized and valid. Coverage must say `PARTIAL` whenever a relevant server source or file byte is absent. Restore Preview is duplicate/reference/money checked, bounded, and guaranteed no-write; applying restore is not implemented. Any expanded server export, future restore, or deletion operation requires fresh owner authorization and rate limiting.
+
+Phase 1B registers the remote-export adapter and owner-authorized read-only export route. Data & Backup calls it through `src/services/code3OwnerApi.js`, which obtains the current supported owner-session headers and always requests with `no-store`. PostgreSQL export uses one repeatable-read, read-only transaction for all canonical domains; tests use an isolated memory snapshot. An unavailable, unauthorized, forbidden, invalid, hash-mismatched, partial, inconsistent, or not-configured remote source remains excluded or `PARTIAL`; it cannot be represented by an empty successful section. This read bridge does not enable canonical writes or `REMOTE_ACTIVE`. Migration Preview writes no durable audit event because zero-write is part of its security contract.
+
+The local `/api/code3/*` route family reuses exact-origin CORS, `requireOwner`, `no-store`, strict validation, server-derived owner context, and a bounded owner rate limit. Its protected CORS methods are `GET`, `POST`, `PATCH`, `PUT`, and `OPTIONS`; `DELETE` is not exposed. The repository never accepts client owner authority. Missing `CODE3_CANONICAL_PERSISTENCE_ENABLED` or `DATABASE_URL` produces a safe unavailable response before any canonical operation. These controls remain unaccepted for Production until the schema, policies, configuration, and deployment are tested in a disposable environment.
 
 ## Threat register
 
