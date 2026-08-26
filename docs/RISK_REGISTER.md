@@ -4,7 +4,9 @@ Phase 1B starting baseline: `26d30b9a0b1379d53778c0bc5c92887cc0ae744f`.
 
 Phase 1A and the validated Phase 1B checkpoint source are published on the feature branch; hosted configuration and Production acceptance remain separate gates. Phase 1B mitigations reduce design risk but do not close durability, migration, file, or sync risks because `REMOTE_ACTIVE` is disabled and no owner data has moved.
 
-Phase 1C starts locally from `cdd57bbabb2243ff510eca7aec0487f23342834d`. Its deterministic intelligence, provenance, and card-history controls reduce some recommendation risks but do not add licensed market data, protected image analysis, canonical durability, migration, sync, or automation.
+Phase 1C is published through `af21199f610cc91e31d9dee59af6f0a2f748ab79`. Its deterministic intelligence, provenance, and card-history controls reduce some recommendation risks but do not add licensed market data, protected image analysis, canonical durability, migration, sync, or automation.
+
+Phase 2A Account Ops is a local, unpublished working copy. It adds browser-local operational identity/account metadata and human-assisted workflows only; no email, vault, Inbox, order, migration, sync, or retailer automation provider is active.
 
 Ratings are qualitative. “Owner” identifies the responsible workstream, not a person assignment.
 
@@ -43,6 +45,10 @@ Ratings are qualitative. “Owner” identifies the responsible workstream, not 
 | R-31 | Client migration wire rules drift from server domains, statuses, relations, or validation | Medium | High | Phase 1B keeps aligned JavaScript and TypeScript contracts with shared uppercase wire-domain keys, but they are separate source files | contract fixtures built from server-shaped exports; cross-layer dry-run tests; generate or share schemas before remote activation | Client/backend, Phase 1B/future cutover |
 | R-32 | A deterministic intelligence proposal is treated as certainty, appraisal, professional grade, or authenticity result | Medium | High | Phase 1C is reproducible/explainable but depends on supplied identity, observations, comps, and owner assumptions; deal risks have explicit severity and valuation exposes condition-basis exclusions | apparent-condition wording; shared confidence; limitations/warnings; explicit risk severity; valuation basis; methodology/input hash; owner review; fixture evaluation; no guarantee copy | Intelligence/product, Phase 1C onward |
 | R-33 | Local card-analysis history is lost, duplicated, mapped incorrectly, or assumed to cover every intelligence domain during a future cutover | Medium | High | tagged linked card revisions share the existing local `appraisals` collection; auction saves have no generic revision series, restock recomputes from observations, and no canonical mapping/apply exists | verified backup; stable card series/revision links; model auction/restock history separately; map tagged records separately from legacy appraisals; reconcile hashes/counts/corrections before cutover | Data/recovery, Phase 1C/future cutover |
+| R-34 | Browser-local Account Ops PII/operational identity data is exposed, lost, or included in an unprotected backup | High | Critical | Phase 2A stores names, phones, addresses, aliases, usernames, and notes under `code3.account-ops.v1`; Backup v1 JSON has no encryption wrapper | minimize fields/notes; protect device and downloads; CSP/dependency review; verified backup; future server-authorized protected persistence, retention, migration rehearsal and audit | Security/data, Phase 2A/future persistence |
+| R-35 | A locally generated alias is mistaken for a provisioned or mail-receiving address | Medium/high | High | Phase 2A can generate syntactically valid alias metadata but has no email provider network integration | separate lifecycle/provisioning state; explicit Generated wording; require provider/owner evidence and health check before Provisioned/Receiving; test capability truth | Account Ops/integrations, Phase 2A–2B |
+| R-36 | Retailer credentials leak or an external credential reference is mistaken for recoverable secure storage | Medium | Critical | Phase 2A has an ephemeral password generator and reference-only credential metadata; no secure-vault adapter exists | recursively reject secrets; never persist/log/back up generated passwords/OTPs/tokens; warn unsaved value is unrecoverable; future approved vault adapter and security tests | Account Ops/security, Phase 2A/future provider |
+| R-37 | Account Ops is expanded into account farming, retailer-limit evasion, or security-verification bypass | Medium if guardrails erode | Critical | profiles, aliases, setup checklists, and retailer grouping improve owner productivity but could be misused if bulk automation were added | no bulk signup, form submission, CAPTCHA/OTP bypass, identity rotation, bot/access-control evasion, household/account/purchase-limit bypass, checkout, or payment; human verification and explicit future provider review | Product/security/legal, Phase 2A onward |
 
 ## Highest-priority closure order
 
@@ -52,6 +58,7 @@ Ratings are qualitative. “Owner” identifies the responsible workstream, not 
 4. R-07, R-10, R-24, and provider/licensing risks: only then add scheduled or externally sourced intelligence.
 5. R-15, R-23, R-32, and R-33: preserve owner provenance/history and validate recommendation language before expanding models or persistence.
 6. Transaction, reporting, offline, and optional AI risks in their dependent phases.
+7. R-34 through R-37: keep Account Ops local scope explicit, protect identity/backup data, preserve alias/credential capability truth, and prohibit retailer-security or limit-evasion automation before any Phase 2B provider work.
 
 ## Review policy
 

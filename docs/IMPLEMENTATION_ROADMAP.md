@@ -9,7 +9,9 @@ The audit changes the conceptual “backend persistence first” phase into gate
 
 **Phase 1B — Canonical Backend Persistence and Reversible Migration Planning** is published on the feature branch as schema, repository/API, local/remote abstraction, backup-adapter, and no-write migration-preview contracts. `LOCAL_ONLY` remains authoritative. Schema and file metadata are `SCHEMA_ONLY`, the preview/remote comparison path is `DRY_RUN_ONLY`, and `REMOTE_ACTIVE` is `NOT_ACTIVE`. No migration was run and no owner record moved.
 
-**Phase 1C — Intelligence and Card Analysis Foundation** was separately authorized from published commit `cdd57bbabb2243ff510eca7aec0487f23342834d` and is implemented and validated in the checkpoint represented by this changeset. It adds deterministic decision-support services and append-only local card-analysis history without changing the Phase 1B persistence state. Auction results can be saved without a generic linked revision series, and restock intelligence recomputes from observations. It does not configure an AI/computer-vision provider, apply a schema, activate remote persistence, move owner data, sync, or automate marketplace actions.
+**Phase 1C — Intelligence and Card Analysis Foundation** is published through commit `af21199f610cc91e31d9dee59af6f0a2f748ab79`. It adds deterministic decision-support services and append-only local card-analysis history without changing the Phase 1B persistence state. Auction results can be saved without a generic linked revision series, and restock intelligence recomputes from observations. It does not configure an AI/computer-vision provider, apply a schema, activate remote persistence, move owner data, sync, or automate marketplace actions.
+
+**Phase 2A — Account Ops Foundation** is a separately authorized local working copy on top of that published checkpoint. It adds legitimate owner-managed profiles, alias metadata, retailer-account metadata, assisted human setup, account health, and tasks through a gateway fixed to `LOCAL_ONLY`. It adds no canonical domain, provider-provisioned email, mailbox/order integration, retailer signup submission, verification bypass, migration, sync, or remote cutover. Final validation and publication remain separate gates.
 
 The published Phase 1A runtime applies Code 3 through the centralized brand configuration and coordinated PWA/browser/offline metadata. Storage, database, route, module, environment, cache, history, compatibility, and imported-source identifiers remain unchanged. The legal/public business name and tagline remain separately configurable and unresolved.
 
@@ -63,7 +65,7 @@ No time estimates are provided. Complexity is relative: Small, Medium, Large, or
 
 ## Phase 1C — Intelligence and card analysis foundation
 
-**Status:** Locally implemented and validated from `cdd57bbabb2243ff510eca7aec0487f23342834d`; the publication checkpoint remains separate. The bounded regression passed 28/28 with no retries or open handles. `LOCAL_ONLY` is authoritative, the Phase 1B schema remains unapplied, and `REMOTE_ACTIVE` remains disabled.
+**Status:** Published through `af21199f610cc91e31d9dee59af6f0a2f748ab79`. Its publication gate passed the bounded regression with `LOCAL_ONLY` authoritative, the Phase 1B schema unapplied, and `REMOTE_ACTIVE` disabled.
 
 - **Objective:** provide a deterministic, explainable, owner-reviewable analysis layer for cards, deals, lots, auctions, and restock observations without autonomous action or fabricated provider/model evidence.
 - **Current code affected:** Deal Analysis/appraisals, existing eBay normalized results, manual auction/lot calculations, Owner Center restock observations, and future scanner/image input boundaries.
@@ -74,8 +76,40 @@ No time estimates are provided. Complexity is relative: Small, Medium, Large, or
 - **External authorization:** none for deterministic local rules or current official eBay active-listing evidence. Completed-sale evidence requires an approved/licensed source; future AI/CV requires a separately approved provider/privacy/file specification.
 - **Test plan:** condition spectrum and structural damage; poor/conflicting evidence; shared confidence/source independence; exact money/currency/fees/ROI; valuation v2 matched-condition and explicit-`NM` basis selection; unknown/incompatible comparable exclusion; sold-vs-active evidence; every deal recommendation and explicit risk severity; auction premium/tax/shipping/pickup/downside; lot unknown/liquidity burdens; sparse/stale/conflicting restock observations with latest-positive freshness; deterministic card hashes/revisions/comparisons; owner correction/version conflict; recursive authority-field rejection; eBay/scanner capability truth including missing-currency behavior; mobile/accessibility; existing Phase 1A/1B and 28-scenario regression gates.
 - **Acceptance criteria:** equivalent normalized inputs produce the same substantive hash/result; condition remains an apparent proposal, not a grade; owner confirmation is never silently replaced; only verified completed sales support completed-sale valuation; matching-condition sales are never double-adjusted; only explicit `NM` baselines may be adjusted when no match exists; unknown/incompatible bases are excluded; active eBay asks and official provider evidence remain separate, and provider currency is never fabricated; recommendation rationale, risk severity, and assumptions are visible; restock confidence cannot bypass source independence; no purchase/offer/bid action exists; card history is append-only/local without claiming generic auction/restock revisions; no remote adapter, migration, sync, file upload, or model claim is introduced.
-- **Rollback:** remove the uncheckpointed intelligence/UI integration and tagged local test data if explicitly created; no database or remote-data rollback is needed because Phase 1C performs no cutover or migration. Existing legacy appraisals remain untouched.
+- **Rollback:** revert the Phase 1C checkpoint and remove only explicitly created tagged local test data; no database or remote-data rollback is needed because Phase 1C performs no cutover or migration. Existing legacy appraisals remain untouched.
 - **Complexity:** Large.
+
+## Phase 2A — Account Ops foundation
+
+**Status:** Locally implemented from published commit `af21199f610cc91e31d9dee59af6f0a2f748ab79`; final validation and publication are pending. This bounded product extension does not replace or authorize the established Phase 2 structural extraction below.
+
+- **Objective:** provide a mobile-first, legitimate owner workspace for reusable operational profiles, generated alias metadata, retailer-account records, human-assisted setup, verification state, explainable health, and account tasks.
+- **Current code affected:** custom route registry/shell navigation; new `src/features/accountOps` domain, local repository/service, UI, and fixtures; Backup v1 registry/validation/Restore Preview; migration-source registry; focused route and Account Ops tests.
+- **Implemented files/modules:** `src/features/accountOps`, `/account-ops/*` route integration, Account Ops backup/migration adapters, [ACCOUNT_OPS_CONTRACT.md](./ACCOUNT_OPS_CONTRACT.md), and focused domain/fixture/browser coverage.
+- **Data changes:** one `code3.account-ops.v1` browser source with `profileGroups`, `profiles`, `emailDomains`, `emailAliases`, `retailers`, `storeAccounts`, `tasks`, and `activity`. `LOCAL_ONLY` is hard-wired. Backup includes allowed metadata; every migration path is `REQUIRES_MAPPING`.
+- **Migration risks:** browser-local names/phones/addresses/aliases/usernames can be lost or exposed; downloaded JSON is unencrypted; alias status can be mistaken for real mail delivery; retailer/profile/account identities require a future canonical mapping; no secure-vault provider is active.
+- **Dependencies:** published Phase 1A owner session, Phase 1B local persistence and verified recovery, existing Code 3 route/design patterns.
+- **External authorization:** none for local metadata. Provider-managed aliases, catch-all verification, credential vaults, mailbox access, and order APIs each require a separately approved provider/security contract.
+- **Test plan:** profile/group CRUD/archive/owner-scope; alias templates/secure randomness/collisions/validation/provisioning truth; password entropy and no persistence/log/backup; retailer/account/setup/status/health relationships; tasks; recursive authority/secret injection; Account Ops backup and zero-write Restore Preview; eight-path migration classification; 360px light/dark/long-content/empty/attention/setup cases; existing security, route, accessibility, and 28-scenario regression gates.
+- **Acceptance criteria:** owner-authorized first-class route; private storage is not read before authorization; profile cannot become authentication identity; generated alias is never called provisioned; plaintext password/OTP/token/payment secret never persists; setup stops at human verification; health explains each signal; Inbox/Orders remain contracts only; no bulk signup, retailer-limit evasion, purchasing, checkout, migration, sync, or remote activation exists.
+- **Rollback:** remove the unpublished Account Ops route/domain and backup registrations; retain the unchanged Phase 1A–1C sources. Because no database, provider, or remote write occurs, no data or deployment rollback is required beyond explicitly removing local test records if the owner chooses.
+- **Complexity:** Large.
+
+## Phase 2B — Unified Inbox and order intelligence
+
+**Status:** Future and not authorized. Phase 2A supplies contracts only.
+
+- **Objective:** connect one explicitly approved, minimally scoped mailbox/order provider; normalize verification, shipment, cancellation, refund, security, and order evidence; require owner review before an explicit Add to Purchases action.
+- **Current code affected:** Phase 2A alias/account relationships and future contracts, provider connections, protected files, import review, Purchases, shipments, tasks, and audit history.
+- **Likely files/modules:** server-only mail/order provider adapter; webhook/polling verification; bounded message metadata/raw-content references; order-candidate review queue; idempotent task/import linkage.
+- **Data changes:** authorized mailbox connection metadata, normalized message evidence, order candidates, import decisions, task provenance, protected raw-content references, and provider cursors; no plaintext credentials or unnecessary message bodies.
+- **Migration risks:** duplicate messages/orders, sensitive-content retention, wrong account/profile attribution, unreviewed purchase creation, provider replay, stale cursor, and cross-account disclosure.
+- **Dependencies:** Phase 2A publication; application-wide server OWNER authorization; protected file/content storage; provider selection/scopes/retention; canonical persistence or an explicitly accepted local-only limit; idempotency and audit policy. The established Phase 2 shell extraction should precede or accompany substantial UI growth.
+- **External authorization:** approved mailbox/order provider, owner consent, minimized scopes, webhook/signature or polling terms, and documented retention/deletion behavior.
+- **Test plan:** mocked authorization/scopes, message/order normalization, deduplication/replay, account/profile/alias attribution, redaction, retention, failure truthfulness, owner review gate, no automatic Purchase/checkout, task generation, disconnect, backup/export classification.
+- **Acceptance criteria:** no mailbox is labeled connected before a verified health check; only bounded metadata/content references are retained; every order candidate links to evidence and remains uncommitted until owner review; importing cannot buy, pay, message, or bypass retailer controls; secrets stay server-side.
+- **Rollback:** disable/disconnect the provider, stop ingestion, retain reviewed metadata/audit under the retention policy, and preserve Phase 2A manual workflows.
+- **Complexity:** Extra Large.
 
 ## Phase 2 — App-shell extraction and route ownership hardening
 
@@ -249,4 +283,4 @@ Every implementation phase must:
 
 ## Exact next task recommendation
 
-After the Phase 1B checkpoint and another clean-checkout proof, the next separately approved data task should provision a disposable database, test the schema and row-level ownership there, exercise rollback, and compare a verified owner backup through Migration Preview. Do not activate `REMOTE_ACTIVE`, migrate owner data, upload file bytes, or apply a Production schema without another explicit owner-approved cutover specification.
+Phase 2A final local validation is complete; the next step is owner review followed, if approved, by a separately authorized publication checkpoint that preserves its local-only boundary. The next Account Ops product task is the Phase 2B design/security review—not implementation—covering provider selection, mailbox/order scopes, retention, protected content, server secrets, idempotency, and the owner review gate. In parallel, the established route/app-shell extraction remains the safest structural task before additional feature growth. A separately approved data task may provision only a disposable database to test schema/ownership/rollback and compare a verified backup through Migration Preview. Do not activate `REMOTE_ACTIVE`, migrate owner data, upload file bytes, connect a mailbox, or apply a Production schema without another explicit owner-approved specification.

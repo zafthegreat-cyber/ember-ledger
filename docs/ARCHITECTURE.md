@@ -6,7 +6,9 @@ Phase 1A is published on the feature branch. Hosted owner access still depends o
 
 Phase 1B status: validated checkpoint source published on the feature branch. The canonical database artifact is `SCHEMA_ONLY`; repository/API contracts are present but hosted use is gate-disabled; Migration Preview is `DRY_RUN_ONLY`; `REMOTE_ACTIVE` is `NOT_ACTIVE`. No production migration or owner-data migration has run.
 
-Phase 1C starting baseline: `cdd57bbabb2243ff510eca7aec0487f23342834d`. The Phase 1C intelligence foundation is local working-copy code pending its publication checkpoint. It does not apply the Phase 1B schema, enable `REMOTE_ACTIVE`, move owner data, start sync, or add an automated marketplace action.
+Phase 1C is published through commit `af21199f610cc91e31d9dee59af6f0a2f748ab79`. It does not apply the Phase 1B schema, enable `REMOTE_ACTIVE`, move owner data, start sync, or add an automated marketplace action.
+
+Phase 2A starts from that published commit and is a local, unpublished Account Ops working copy. It adds browser-local profiles, email-alias metadata, retailer-account metadata, assisted setup state, account health, and account tasks. `LOCAL_ONLY` remains authoritative; no schema was applied, no canonical domain was added, and no provider-backed email, Inbox, Orders, sync, or retailer automation is active.
 
 ## Executive summary
 
@@ -16,7 +18,7 @@ Code 3 is a hybrid React/Vite single-page application. Its approved everyday she
 2. older browser storage and optional Supabase persistence used by legacy application modules;
 3. an Express/PostgreSQL backend used by legacy APIs and the secure eBay Browse connector.
 
-The published architecture is suitable for a private preview, not for centralized durability or reliable background work. Phase 1A supplies a Supabase-backed server identity boundary for the auth/eBay route families and a deterministic browser-backup/restore-preview contract. Phase 1B selects and scaffolds the owner-authorized Express API → repository/service layer → PostgreSQL/Supabase Postgres target, but deliberately leaves current browser repositories authoritative. Phase 1C adds presentation-independent deterministic intelligence modules and append-only local card-analysis history on top of that unchanged authority boundary. Auction results can be saved without a generic linked revision series, and restock intelligence is recomputed from retained observations. Those changes reduce migration and recommendation risk; they do not migrate records, activate remote persistence, protect every legacy route, configure an AI/computer-vision provider, or make a backup complete when server data or referenced file bytes are omitted. The safest target remains an incremental strangler migration.
+The published architecture is suitable for a private preview, not for centralized durability or reliable background work. Phase 1A supplies a Supabase-backed server identity boundary for the auth/eBay route families and a deterministic browser-backup/restore-preview contract. Phase 1B selects and scaffolds the owner-authorized Express API → repository/service layer → PostgreSQL/Supabase Postgres target, but deliberately leaves current browser repositories authoritative. Phase 1C adds presentation-independent deterministic intelligence modules and append-only local card-analysis history on top of that unchanged authority boundary. The local Phase 2A working copy adds one versioned Account Ops source behind the existing local persistence gateway and exposes a first-class, session-gated route family. Auction results can be saved without a generic linked revision series, and restock intelligence is recomputed from retained observations. Those changes reduce migration, recommendation, and account-operations tracking risk; they do not migrate records, activate remote persistence, protect every legacy route, provision email aliases, store plaintext passwords, integrate a mailbox/order provider, configure an AI/computer-vision provider, or make a backup complete when server data or referenced file bytes are omitted. The safest target remains an incremental strangler migration.
 
 ## Published Phase 1A boundary
 
@@ -67,6 +69,23 @@ Phase 1C introduces a reusable browser-side domain layer under `src/features/int
 
 The Phase 1C layer is decision support only. It has no server-side intelligence route, background job, provider/model secret, hosted write, automatic purchase, offer, bid, message, or migration path. See [INTELLIGENCE_CONTRACT.md](./INTELLIGENCE_CONTRACT.md).
 
+## Phase 2A local Account Ops delta
+
+Phase 2A introduces `src/features/accountOps` as a cohesive local domain rather than another collection of fields inside `App.jsx`:
+
+- one schema-versioned `code3.account-ops.v1` source with eight arrays: `profileGroups`, `profiles`, `emailDomains`, `emailAliases`, `retailers`, `storeAccounts`, `tasks`, and `activity`;
+- validation-backed profile/group, alias, retailer, store-account, setup, health, task, credential-reference, and future-message/order contracts;
+- a persistence service that uses the Phase 1B gateway fixed to `LOCAL_ONLY`; the caller cannot select `REMOTE_ACTIVE`, supply authoritative owner identity, or activate sync;
+- recursive rejection of owner/session/token/authorization authority fields and prohibited secret fields before a record reaches persistence;
+- first-class `/account-ops` routes for Overview, Profiles, Emails, Store Accounts, and Tasks, loaded only after the verified application session authorizes Owner access;
+- locally generated alias metadata that remains explicitly different from a provider-provisioned, mail-receiving alias;
+- ephemeral password generation for immediate copy only, with no plaintext-password persistence, logging, analytics, or backup path;
+- owner-driven account setup/checklist and verification state; retailer signup may be opened, but Code 3 does not submit bulk signups, bypass CAPTCHA/OTP/verification, or mark verification complete without owner action;
+- Account Ops metadata in Backup Format v1 and zero-write Restore Preview, while all eight new record paths remain `REQUIRES_MAPPING` for migration because no canonical Account Ops domain or schema exists;
+- provider-neutral future Inbox and Orders contracts only. They do not fetch messages, store message bodies, create purchases, or claim an active provider integration.
+
+See [ACCOUNT_OPS_CONTRACT.md](./ACCOUNT_OPS_CONTRACT.md). This is fully validated local working-copy architecture pending only review and a separately authorized publication checkpoint.
+
 ## Current system map
 
 ```mermaid
@@ -74,6 +93,7 @@ flowchart TD
     Browser["React 19 + Vite SPA"]
     Shell["App.jsx shell and compatibility router"]
     Canonical["Canonical workspaces and feature modules"]
+    AccountOps["Local Account Ops domain"]
     Intelligence["Deterministic local intelligence services"]
     Legacy["Legacy route renderers and services"]
     Local["Versioned localStorage repositories"]
@@ -84,9 +104,11 @@ flowchart TD
 
     Browser --> Shell
     Shell --> Canonical
+    Canonical --> AccountOps
     Shell --> Legacy
     Canonical --> Intelligence
     Intelligence --> Local
+    AccountOps --> Local
     Canonical --> Local
     Legacy --> Local
     Legacy --> Supabase
@@ -104,6 +126,7 @@ flowchart TD
 | Entry | `src/main.jsx` lazy-imports the application and installs an error boundary/service worker | `src/main.jsx` | Shell bootstrap is already isolated |
 | Shell | A very large `src/App.jsx` owns authentication, hydration, route selection, navigation, dialogs, and legacy renderers | `src/App.jsx`, `docs/APP_SHELL_EXTRACTION_PLAN.md` | High coupling and a large initial chunk |
 | Canonical pages | Home, Find, Collection, Business, and Owner Center delegate to focused modules | `src/pages/OperationsHome.jsx`, `src/pages/EverydayWorkspaces.jsx`, `src/features/flipScout`, `src/features/ownerCenter` | Current plain-language experience is real |
+| Account Ops | First-class lazy route with local domain service, mobile-first Overview/Profiles/Emails/Accounts/Tasks UI, and verified-session gate | `src/features/accountOps`, `src/App.jsx`, `src/utils/appRouteState.js` | Phase 2A local working copy; metadata works locally, but email provisioning, Inbox, Orders, secure-vault integration, and server durability do not |
 | Shared UI | Semantic operations components and CSS | `src/components/operations`, `src/styles/app/01-tokens-theme.css` | Reusable accessible foundation |
 | Routing | Custom path parsing and render dispatch, not React Router | `src/utils/appRouteState.js`, `src/App.jsx` | Back/redirect compatibility depends on bespoke code |
 | State | Large in-memory React state plus domain repository snapshots and legacy hooks | `src/App.jsx`, feature repositories | No single authoritative state boundary |
@@ -115,7 +138,7 @@ flowchart TD
 
 Canonical route ownership is encoded in `src/utils/appRouteState.js`. Current primary paths include:
 
-- `/`, `/find/*`, `/collection/*`, `/business/*`, `/owner-center/*`, and `/settings/*`;
+- `/`, `/find/*`, `/collection/*`, `/business/*`, `/account-ops/*`, `/owner-center/*`, and `/settings/*`;
 - direct business shortcuts `/purchases`, `/inventory`, `/sell`, and `/sales`;
 - secondary `/kids-community`, `/assistant`, and `/integrations` routes.
 
@@ -137,6 +160,7 @@ The target is a route registry with one canonical owner per workflow, explicit r
 - `src/features/flipScout/storageRepository.js` stores schema-versioned feature data under `ember-and-tide.flip-scout.v1`. The old namespace is intentionally retained for compatibility.
 - Phase 1C card-analysis history adds only tagged records to that repository's existing `appraisals` collection. Legacy appraisal rows remain untouched and are not silently reinterpreted. The history factory fixes its Phase 1B gateway to `LOCAL_ONLY` and exposes no delete/archive or remote-mode selector. Auction saves do not create this linked revision series, and restock results are recomputed from observations.
 - `src/features/ownerCenter/ownerCenterRepository.js` stores owner intelligence and controls under `private-business-hub.owner-center.v1`.
+- Phase 2A stores Account Ops schema version 1 under `code3.account-ops.v1`. Its eight arrays are read and written through the existing Phase 1B local persistence gateway; no direct remote adapter, sync mode, or canonical write path is exposed.
 - guided forms use namespaced session/draft keys through `src/components/operations/RecordExperience.jsx` and feature screens.
 
 These repositories provide safe parsing, defaults, validation, import/export, and update notifications. They are browser-local, single-device, and not protected by server authorization.
@@ -178,6 +202,8 @@ Current backend limitations after the Phase 1B checkpoint:
 The selected identity provider is the existing Supabase Auth integration. The browser supplies its current access token; the server verifies it with Supabase, normalizes an `AuthPrincipal`, and separately checks an exact provider-qualified immutable subject in `CODE3_OWNER_SUBJECTS`. Email, browser role, localStorage, hidden navigation, and Vercel Preview Authentication do not authorize a request.
 
 `GET /api/auth/session` returns only safe, masked session facts with `Cache-Control: no-store`. The browser uses that verified result for Owner Center visibility and compact Sign In Required / Owner Access Required states. Backend policy remains definitive for protected operations.
+
+The Phase 2A Account Ops route reuses that verified session boundary and does not construct or read its private local repository before authorization. Account Ops profiles are operational contact/account metadata only; they can never replace the authenticated principal or grant OWNER access.
 
 The local adapter requires an explicit server setting, a development runtime, loopback host and socket, and an explicit header. The test adapter is injectable only in the automated-test runtime. Both fail closed in Preview, Production, and hosted-unknown environments.
 
@@ -230,7 +256,9 @@ The repository has focused Node/browser scripts rather than one consolidated tes
 - plain language, viewport light/dark, keyboard accessibility;
 - focused beta smoke and a bounded 28-scenario regression.
 
-Phase 1C focused local evidence records 168 domain assertions, 27 card-history/provider cases, 61 integration assertions, and 15/15 deterministic fixtures with 175 assertions. Tests are listed in `package.json` and `backend/package.json`. The complete local gate also passed the Phase 1A/1B suites and all 28 bounded regression scenarios in 323.446 seconds, with zero retries and no open handles after cleanup. These results describe the checkpoint candidate represented by this changeset.
+The published Phase 1C checkpoint records 168 domain assertions, 27 card-history/provider cases, 61 integration assertions, and 15/15 deterministic fixtures with 175 assertions. Tests are listed in `package.json` and `backend/package.json`. Its complete local gate also passed the Phase 1A/1B suites and all 28 bounded regression scenarios in 323.446 seconds, with zero retries and no open handles after cleanup.
+
+Phase 2A adds passing profile, alias/template/collision, password, retailer-account/setup/health/task, recursive authority rejection, backup/preview, route, mobile, and deterministic fixture tests. The complete local gate also passed the inherited Phase 1A/1B/1C suites and the bounded 28-scenario regression; publication remains separately authorized.
 
 ## Bundle structure
 

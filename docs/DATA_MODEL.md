@@ -4,7 +4,9 @@ Phase 1B starting baseline: `26d30b9a0b1379d53778c0bc5c92887cc0ae744f`.
 
 Phase 1A authentication and recovery structures and the validated Phase 1B schema/mapping contracts are published on the feature branch. No Phase 1B migration has been executed and no owner record has moved.
 
-Phase 1C starts from `cdd57bbabb2243ff510eca7aec0487f23342834d` and adds local intelligence contracts plus card-analysis revision history only. It does not change the repository schema version, apply the canonical schema, activate remote persistence, or canonicalize existing owner records.
+Phase 1C is published through `af21199f610cc91e31d9dee59af6f0a2f748ab79` and adds local intelligence contracts plus card-analysis revision history only. It does not change the repository schema version, apply the canonical schema, activate remote persistence, or canonicalize existing owner records.
+
+Phase 2A is a local, unpublished working copy. It adds a separate versioned Account Ops browser document and migration classification only. It does not add a canonical Account Ops domain, apply a schema, provision email, activate remote persistence, or migrate owner records.
 
 This document distinguishes current persisted shapes, Phase 1B schema-only representations, and the future active canonical model. A table, migration file, repository interface, or dry-run result is not evidence that remote persistence is active.
 
@@ -58,6 +60,45 @@ The repository schema version is currently 2. It provides defaults, safe parsing
 | `jobs` | local job/status summaries, not a durable scheduler |
 | `controls.scoring` | owner default deal thresholds/reserves |
 | `controls.features` | client-visible feature toggles |
+
+### Account Ops repository
+
+Phase 2A stores schema version 1 under `code3.account-ops.v1` and accesses it through the Phase 1B persistence gateway fixed to `LOCAL_ONLY`.
+
+| Collection | Current purpose |
+|---|---|
+| `profileGroups` | owner-created categories for reusable operational profiles |
+| `profiles` | owner-managed contact, address, and business metadata; never an authentication principal |
+| `emailDomains` | configured domain and provider-mode metadata; no provider secret |
+| `emailAliases` | generated/provisioning-state metadata and profile/retailer relationships |
+| `retailers` | owner-created retailer directory entries; static presets remain application metadata |
+| `storeAccounts` | retailer-account metadata, setup/verification state, health inputs, and credential references |
+| `tasks` | local Account Ops tasks and retained completion/dismissal state |
+| `activity` | bounded, nonsecret local Account Ops activity summaries |
+
+All eight record paths are registered for backup and are classified `REQUIRES_MAPPING` by Migration Preview because the Phase 1B canonical schema has no corresponding domain. Preview therefore proposes no insert, update, archive, or delete action for these records. The repository accepts no browser-supplied authoritative owner/session/token field, exposes no remote adapter, and does not activate sync.
+
+#### Account Ops relationships and value objects
+
+```text
+ProfileGroup 1 -> many Profile
+Profile 1 -> many EmailAlias
+Retailer 1 -> many EmailAlias (optional relationship)
+Profile 1 -> many StoreAccount
+Retailer 1 -> many StoreAccount
+EmailAlias 1 -> many StoreAccount (optional relationship)
+Profile / Retailer / StoreAccount 1 -> many AccountOpsTask
+```
+
+Profiles, aliases, custom retailers, store accounts, tasks, and activity records use stable IDs, created/updated timestamps, record versions, and archive/retained-state semantics where applicable. A profile is operational owner data and can never act as `AuthPrincipal`, OWNER allowlist entry, or authorization input.
+
+Alias lifecycle (`ACTIVE`, `PENDING`, `DISABLED`, `ERROR`) is independent from provisioning evidence. Generated local metadata is not a live alias. Catch-all coverage, provider provisioning, receiving confirmation, or provider error require explicit evidence. Provider types are `LOCAL_METADATA_ONLY`, `CATCH_ALL`, and `PROVIDER_MANAGED`; Phase 2A performs no provider network operation.
+
+A store account references metadata only. Its status is `SETUP`, `NEEDS_VERIFICATION`, `READY`, `NEEDS_ATTENTION`, `LOCKED`, `DISABLED`, or `ARCHIVED`. Setup stages are `PREPARED`, `SIGNUP_OPENED`, `EMAIL_VERIFICATION`, `PHONE_VERIFICATION`, `OWNER_CONFIRMATION`, and `READY`; the owner completes security challenges and confirms state. Account health (`HEALTHY`, `NEEDS_ATTENTION`, `PROBLEM`, `UNKNOWN`) is a derived explanation, not retailer-supplied enforcement status.
+
+`CredentialReference` contains provider, reference ID, label, and last-updated time only. Plaintext passwords, OTPs, sessions, tokens, payment-card data, and provider secrets are invalid record content. Password generation is ephemeral and is never persisted or backed up.
+
+Account Ops task status is `OPEN`, `DONE`, or `DISMISSED`. Future Inbox message and order-candidate records are contracts only; neither is persisted in Phase 2A, and any future order evidence must pass owner review before an explicit Purchase is created.
 
 ### Owned-item compatibility
 
@@ -113,7 +154,7 @@ The backend-only normalized principal contains immutable `subject`, `provider`, 
 
 Each source descriptor contains `sourceId`, `displayName`, `storageType`, `schemaVersion`, supported versions, owner-data and security-state flags, Phase 1A inclusion, export/validation adapter identifiers, reference dependencies, record paths, coverage relevance, and an exclusion reason when omitted.
 
-Registered local sources cover Deal Finder schema 2, Owner Center schema 1, allowlisted legacy business and fallback documents, legacy restock/community and review sources, safe preferences, and safe workflow drafts. Phase 1B may also include a valid owner-authorized canonical PostgreSQL export. Legacy Supabase, other PostgreSQL/process-memory records, and file bytes remain registered exclusions. Authentication/session persistence is a prohibited source and is never exportable.
+The Phase 2A registry contains 22 sources: 18 locally included sources and four excluded or conditional sources. Included local sources cover Deal Finder schema 2, Owner Center schema 1, Account Ops schema 1, allowlisted legacy business and fallback documents, legacy restock/community and review sources, safe preferences, and safe workflow drafts. Phase 1B may also include a valid owner-authorized canonical PostgreSQL export. Legacy Supabase, other PostgreSQL/process-memory records, and file bytes remain registered exclusions. Authentication/session persistence is a prohibited source and is never exportable. Account Ops permits profile, alias, custom-retailer, store-account, credential-reference, task, and activity metadata, while plaintext passwords, OTPs, tokens, sessions, provider secrets, and owner-authority fields remain prohibited.
 
 ### BackupEnvelope version 1
 
@@ -216,6 +257,11 @@ erDiagram
     USER ||--o{ USER_ROLE : has
     ROLE ||--o{ USER_ROLE : grants
     BUSINESS_PROFILE ||--|| BRAND_CONFIG : uses
+    ACCOUNT_OPS_PROFILE ||--o{ EMAIL_ALIAS : owns
+    RETAILER ||--o{ STORE_ACCOUNT : identifies
+    ACCOUNT_OPS_PROFILE ||--o{ STORE_ACCOUNT : configures
+    EMAIL_ALIAS ||--o{ STORE_ACCOUNT : may_use
+    STORE_ACCOUNT ||--o{ ACCOUNT_OPS_TASK : requires
     PROVIDER ||--o{ PROVIDER_CONNECTION : configures
     PROVIDER ||--o{ SEARCH_RULE : searches
     SEARCH_RULE ||--o{ SEARCH_RUN : executes
@@ -276,6 +322,22 @@ erDiagram
 | `SourceProfile` | source type, capability, coverage, terms, prior outcomes, owner preference/block status |
 
 Listings use the statuses in [DEFINITIVE_PRODUCT_SPEC.md](./DEFINITIVE_PRODUCT_SPEC.md). Import staging is an `ImportJob` plus row-level review results, not a final listing or owned item.
+
+## Account Ops target extensions
+
+| Entity | Required target content |
+|---|---|
+| `AccountOpsProfile` | reusable owner-managed operational identity metadata and group; explicitly separate from authentication identity |
+| `EmailDomain` | owner-configured domain, provider type/capabilities and nonsecret configuration metadata |
+| `EmailAlias` | address/local part/domain, profile/retailer/purpose, lifecycle, provisioning evidence, provenance and archive state |
+| `Retailer` | stable retailer identity, official URLs, notes and verified capability metadata; custom retailers supported |
+| `StoreAccount` | retailer/profile/alias links, username/display metadata, setup/verification/security status, credential reference and archive state |
+| `CredentialReference` | external-vault or OS-secure-store provider/reference metadata only; never the secret |
+| `AccountOpsTask` | account/profile/retailer-linked manual work with type, priority, due time and retained completion/dismissal state |
+| `InboxMessageEvidence` | future authorized, minimized message metadata and protected raw-content reference; contract only in Phase 2A |
+| `RetailOrderCandidate` | future external order evidence awaiting owner review before Purchase creation; contract only in Phase 2A |
+
+No Phase 1B canonical table or domain currently represents these entities. They remain local metadata and require a separately reviewed schema/mapping, owner-authorized API, protected persistence, and migration rehearsal before remote activation.
 
 ## Auctions
 

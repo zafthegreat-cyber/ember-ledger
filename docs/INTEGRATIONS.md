@@ -1,6 +1,6 @@
 # Code 3 Integrations and Capability Matrix
 
-Phase 1C audited from published baseline `cdd57bbabb2243ff510eca7aec0487f23342834d`. Phase 1C provider-evidence adapters are local working-copy code pending checkpoint publication.
+Phase 1C is published through `af21199f610cc91e31d9dee59af6f0a2f748ab79`. Phase 2A Account Ops is a local, unpublished working copy. Its email, credential, Inbox, and order provider shapes are adapter contracts or local metadata only; no provider is connected.
 
 ## Capability truth rules
 
@@ -11,6 +11,8 @@ Phase 1C audited from published baseline `cdd57bbabb2243ff510eca7aec0487f2334283
 - Provider access never implies permission for account actions or marketplace-wide scanning.
 - Unsupported automation falls back only to approved manual/share/import methods.
 - Credentials, refresh tokens, and provider secrets remain server-side.
+- `Generated` email alias means local metadata only; it is never equivalent to provisioned or receiving mail.
+- Account Ops retailer/profile metadata is not authorization to automate signup, verification, checkout, or account actions.
 
 Target capability statuses are `AVAILABLE`, `CONNECTED`, `MANUAL_IMPORT_ONLY`, `SHARE_IMPORT`, `EMAIL_IMPORT`, `OWNER_DATA_ONLY`, `AUTHORIZATION_REQUIRED`, `NOT_CONFIGURED`, `UNSUPPORTED`, and `TEMPORARILY_UNAVAILABLE`.
 
@@ -32,7 +34,13 @@ The current UI also uses closely related display statuses such as Available, Man
 | Manual URL | AVAILABLE | Deal form and provider placeholder | saves URL plus owner-entered fields | Structured metadata remains manual | Implemented baseline |
 | Screenshot/manual entry | AVAILABLE | upload/reference fields, manual forms, `src/features/intelligence/providerAdapters/scannerEvidence.js` | evidence/reference and provenance-preserved owner/catalog/barcode fields | No OCR, computer vision, file upload, or protected object storage | Future protected files; optional AI only after approval |
 | CSV/JSON feature import | PARTIAL | `src/features/flipScout/csv.js`, Sources/Data screen, repository import/export | selected record imports/exports | Unified preview/mapping/error job model missing | Phase 1/7 |
-| Authorized email alerts | NOT_CONFIGURED | placeholder only | none | authorization, mailbox scope, parser, review queue | Phase 2/3 after approval |
+| Account Ops local alias metadata | AVAILABLE | `src/features/accountOps` alias/domain/provider contracts | secure-random local alias generation, copy, relationship and status metadata | Does not provision or receive mail | Phase 2A local |
+| Business-domain catch-all | NOT_CONFIGURED | Phase 2A domain/provider metadata contract | owner may record configuration/evidence only | No health check, routing API, or verified delivery | Future provider approval |
+| Provider-managed email aliases | NOT_CONFIGURED | Phase 2A provider-neutral adapter boundary | no network action | approved provider, server secret, owner authorization, health/provisioning contract | Future authorization |
+| External password manager / OS secure store | NOT_CONFIGURED | Phase 2A `CredentialReference` provider types | store nonsecret reference metadata only | No vault connection or proof a referenced secret exists | Future authorization |
+| Authorized Account Ops Inbox | NOT_CONFIGURED | Phase 2A normalized message contract only | none | mailbox provider/scopes, protected content, retention, dedupe, owner authorization | Phase 2B after approval |
+| Retail order import | NOT_CONFIGURED | Phase 2A order-candidate/review contract only | none | provider access, idempotency, owner review and explicit Purchase import | Phase 2B after approval |
+| Authorized email alerts | NOT_CONFIGURED | sourcing placeholder plus Phase 2A future message contract | none | authorization, mailbox scope, parser, review queue | Phase 2B/3 after approval |
 | Share target | MISSING | no complete OS share-target ingestion workflow | none beyond paste/manual | PWA share manifest/ingestion/review | Phase 2 or 3 |
 | AI / computer-vision provider | NOT_CONFIGURED | feature flag, legacy placeholders, provider-neutral Phase 1C evidence boundary | no external model-backed analysis; deterministic rules and existing barcode/catalog metadata only | provider selection, server secret, protected files, privacy/cost/evaluation controls | Optional later AI phase |
 | Background notifications | NOT_CONFIGURED | browser/client notification records and UI | in-app/local behavior only | durable scheduler and delivery provider | Phase 1/2 |
@@ -87,6 +95,24 @@ If a future approved completed-sale provider is introduced, its comparable recor
 
 Neither adapter makes a new network request, handles a provider secret, uploads a file, starts a background job, or writes remote data. Analysis payloads cannot provide authoritative owner/role/session/token/security fields.
 
+## Phase 2A Account Ops provider boundary
+
+Phase 2A declares three email modes:
+
+- `LOCAL_METADATA_ONLY`: Code 3 generates and records an address candidate locally; it makes no delivery claim;
+- `CATCH_ALL`: owner/provider evidence may record that a configured domain handles arbitrary recipients, but Phase 2A does not verify routing or fetch mail;
+- `PROVIDER_MANAGED`: reserved for a future server-side provider that can create, disable, check, route/forward, or list messages within approved scopes.
+
+Capabilities are declared independently. No provider credential is accepted by the browser, no email API is called, and no alias is marked provisioned or receiving merely because its syntax is valid. Domain examples are placeholders; owner configuration supplies any real domain.
+
+Retailer directory entries store official URLs and capability metadata only when known. Static presets do not imply an API, permission, automated provisioning, Inbox, order-history access, or account health. Custom retailers are local owner metadata.
+
+Credentials use reference-only provider types such as external password manager, OS secure store, or unavailable. Phase 2A has no vault adapter. A generated password exists only in ephemeral UI memory for immediate copy and is never persisted, logged, backed up, automatically submitted, or treated as recoverable.
+
+Future Inbox categories and order-candidate relationships are normalized contracts only. A Phase 2B connection requires an approved minimally scoped provider, server-side secrets, owner authorization, protected content/reference storage, retention/deletion rules, replay/deduplication controls, and a review gate. Parsed evidence can never create a Purchase or Inventory record without an explicit owner import action.
+
+Account setup is an owner-guided workflow. Code 3 may open a legitimate signup URL and prepare copyable ordinary fields, but it does not submit bulk signup forms, bypass CAPTCHA/OTP/email/phone verification, evade bot or household/account/purchase limits, rotate identities, or automate checkout/payment.
+
 ## Target provider contract
 
 Each provider adapter should expose:
@@ -121,6 +147,9 @@ The existing `src/features/flipScout/connectors.js` contract has provider identi
 | Seller-owner integration | approved owner inventory/order/event scopes | no inference of permission to scan all sellers |
 | AI provider | future server-side request over owner-selected protected evidence, human review, model/version provenance | no current provider; no automatic final record or guaranteed identity/value/condition/authenticity |
 | Notification provider | explicit owner opt-in and verified delivery | no claim of background alert until delivery succeeds |
+| Email alias provider | locally generated metadata, or documented provider API/catch-all evidence with explicit capability state | no claim that a generated address is provisioned, receiving, or verified |
+| Retailer account workflow | owner-triggered copy/open/checklist using legitimate public pages and human verification | no bulk signup, CAPTCHA/OTP bypass, identity rotation, limit evasion, checkout, or account action automation |
+| Mailbox/order provider | future minimized owner-authorized metadata ingestion with dedupe and review | no unnecessary body retention and no automatic Purchase creation |
 
 ## Search and job attribution target
 
@@ -140,6 +169,9 @@ The current application records sales manually. Future eBay, Whatnot, booth, loc
 | Completed-sale comparables | licensed source and documented usage/storage rights |
 | Marketplace automation beyond eBay | official API/partnership and approved scopes |
 | Email import | owner mailbox authorization with minimized scopes and retention policy |
+| Provider-managed aliases/catch-all verification | approved email provider, server-secret storage, explicit domain ownership and capability health |
+| Credential vault reference validation | approved password-manager or OS secure-store integration and least-privilege access; plaintext secrets remain outside Code 3 |
+| Retail order import | approved owner-account/mail scope, idempotency/replay controls, retention, and owner review before Purchase |
 | Cloud files | provisioned protected storage, access policy, lifecycle and backup |
 | AI assistance | approved provider, privacy terms, data retention choice, budget and model/version logging |
 | Push/background alerts | delivery provider, opt-in, service worker/background architecture, failure truthfulness |

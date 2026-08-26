@@ -50,6 +50,12 @@ check(
 );
 
 check(
+  "Account Ops is independently lazy-loaded",
+  app.includes('const AccountOpsPage = lazy(() => import("./features/accountOps/AccountOpsPage"))') &&
+    app.includes('<AccountOpsPage')
+);
+
+check(
   "Deal Finder advanced routes are independently lazy-loaded",
   flipScoutPage.includes('lazy(() => import("./screens/AppraiserScreen.jsx"))') &&
     flipScoutPage.includes('lazy(() => import("./screens/AuctionsScreen.jsx"))') &&

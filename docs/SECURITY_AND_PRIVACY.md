@@ -4,11 +4,13 @@ Phase 1B starting baseline: `26d30b9a0b1379d53778c0bc5c92887cc0ae744f`.
 
 Phase 1A and the validated Phase 1B checkpoint source are published on the feature branch; hosted owner access still depends on correct environment configuration and has not been accepted for Production. Phase 1B owner-scoped repository/API and migration-preview foundations are schema/dry-run contracts, not an active remote datastore.
 
-Phase 1C starts from published commit `cdd57bbabb2243ff510eca7aec0487f23342834d`. Its intelligence code remains local-only and adds no database migration, hosted persistence, sync, provider credential, model provider, file upload, or external account action.
+Phase 1C is published through commit `af21199f610cc91e31d9dee59af6f0a2f748ab79`. Its intelligence code remains local-only and adds no database migration, hosted persistence, sync, provider credential, model provider, file upload, or external account action.
+
+Phase 2A Account Ops is a local, unpublished working copy. It stores operational profiles, alias metadata, retailer-account metadata, credential references, and tasks in browser storage. It performs no email provisioning, mailbox/order access, retailer signup submission, verification bypass, secret storage, schema application, remote activation, or sync.
 
 ## Security posture summary
 
-The published source keeps eBay credentials server-side and includes Supabase token verification, an immutable-subject OWNER policy, protected eBay routes, safe session inspection, exact-origin CORS for protected route families, redaction helpers, and deterministic backup/restore inspection. Hosted configuration still requires verification. Phase 1B extends that boundary to canonical owner API contracts and zero-write migration planning. Phase 1C adds recursive rejection of owner/role/session/token/security authority in local analysis payloads, provenance-separated evidence, and append-only local card-analysis revisions; these are defense-in-depth for browser decision support, not a replacement for backend authorization. Auction results do not gain a generic revision series, and restock intelligence recomputes from observations. The application is still not ready for production private-business data because remote persistence is deliberately inactive, canonical records remain browser-local, legacy API families remain broadly exposed, and backup coverage can be partial.
+The published source keeps eBay credentials server-side and includes Supabase token verification, an immutable-subject OWNER policy, protected eBay routes, safe session inspection, exact-origin CORS for protected route families, redaction helpers, and deterministic backup/restore inspection. Hosted configuration still requires verification. Phase 1B extends that boundary to canonical owner API contracts and zero-write migration planning. Phase 1C adds recursive rejection of owner/role/session/token/security authority in local analysis payloads, provenance-separated evidence, and append-only local card-analysis revisions. Phase 2A reuses the verified client session gate before Account Ops storage is read, rejects nested authority/secret fields, stores only credential references, and keeps generated passwords ephemeral. These are defense-in-depth for browser workflows, not replacements for backend authorization or a secure secret vault. Auction results do not gain a generic revision series, and restock intelligence recomputes from observations. The application is still not ready for production private-business data because remote persistence is deliberately inactive, canonical records remain browser-local, legacy API families remain broadly exposed, Account Ops personal/operational metadata is same-origin-readable, downloaded backup JSON is unencrypted, and backup coverage can be partial.
 
 Code 3 is the application identity, not a declaration of the legal/public business name. Authentication, records, exports, and provider connections must reference the configured business identity separately where legally or operationally relevant.
 
@@ -40,6 +42,10 @@ The next activation phase MUST verify schema/RLS, repository owner scope, rollba
 | Intelligence authority-field rejection | Phase 1C local implementation | `src/features/intelligence/analysisHistory.js`; recursive owner/role/session/token/authorization/credential/security rejection |
 | Intelligence provenance/history | Phase 1C local implementation | immutable card-analysis system result, separate version-checked owner correction, linked card revisions in existing `appraisals`; no generic auction/restock revision series |
 | AI/CV and autonomous action boundary | Enforced by absence and explicit capability flags | no configured model provider, no image analysis claim, no purchase/offer/bid action |
+| Account Ops session gate | Phase 2A local implementation | repository/service construction and private reads occur only after verified OWNER session state |
+| Account Ops authority/secret rejection | Phase 2A local implementation | recursive owner/session/token/authorization/prototype/secret-field validation before persistence |
+| Account credential boundary | Phase 2A local implementation | nonsecret `CredentialReference` metadata only; generated passwords remain ephemeral and are excluded from backup/logs |
+| Retailer verification/anti-abuse boundary | Phase 2A local implementation | human-controlled signup/checklist; no CAPTCHA/OTP/verification bypass, bulk signup, limit evasion, or checkout action |
 
 ## Current limitations and production blockers
 
@@ -56,6 +62,20 @@ The full decision and limitations are in [OWNER_AUTH_DECISION.md](./OWNER_AUTH_D
 Deal, purchase, inventory, sales, expense, mileage, Owner Center, restock observations, and Phase 1C card-analysis history records are stored in localStorage. Auction workflows may save current result snapshots locally, while restock intelligence recomputes from observations. These records are available to scripts executing in that origin, depend on one browser profile/device, and lack server audit, centralized backup, or revocation. This is acceptable only for the current private preview with explicit limitations.
 
 Phase 1B schema, repository, API, migration mapping, and remote-adapter contracts do not change that fact. `LOCAL_ONLY` remains active and `REMOTE_ACTIVE` remains disabled. A dry-run result, migration file, or successful test repository must never be presented as durable owner storage.
+
+### Critical: Account Ops operational identity data is browser-local
+
+Phase 2A profiles can contain names, phone numbers, shipping/billing addresses, email preferences, aliases, retailer usernames, and operational notes. They live in `code3.account-ops.v1`, are readable by scripts executing in the same origin, and may appear in an unencrypted downloaded JSON backup. A profile is never a Code 3 authentication identity, and no profile/record field may supply owner scope, role, subject, token, or session authority.
+
+The owner must protect the browser profile/device and downloaded backup. Production use requires a separately reviewed server-authorized repository, protected persistence, CSP/dependency controls, retention/deletion rules, audit coverage, and a migration rehearsal. Phase 2A does not satisfy those gates.
+
+### High: alias, credential, and retailer-account capability truth
+
+A generated alias is local metadata only. It is not described as provider-provisioned or receiving mail unless explicit provider/owner evidence exists. Phase 2A has no email provider credential or network adapter. Catch-all and provider-managed modes are contracts, not active integrations.
+
+Store-account records may hold a nonsecret credential reference, but no plaintext password, OTP, session, token, payment-card/CVV value, or provider secret. The password generator uses secure randomness for immediate copy and keeps the result only in ephemeral UI memory; an unsaved value cannot be recovered. No current adapter proves an external password-manager/OS-secure-store item exists.
+
+Account setup is owner-assisted. Code 3 may prepare/copy ordinary metadata and open a configured legitimate signup URL, but it does not submit bulk registrations, solve/bypass CAPTCHA or OTP, manufacture email/phone verification, rotate identities, evade bot detection, or circumvent retailer household/account/purchase limits. Every `READY` transition depends on real checklist state and explicit owner confirmation.
 
 ### High: backend surface and residual CORS
 
@@ -137,6 +157,7 @@ Phase 1B canonical persistence additionally uses the server-only gate `CODE3_CAN
 | Domain | OWNER | Collaborator | Inventory helper | Bookkeeper | Read only |
 |---|---:|---:|---:|---:|---:|
 | Connections, schedules, security, backup | Full | None | None | None | None |
+| Account Ops profiles, aliases, store accounts, and provider controls | Full | None by default | None | None | Explicit view only if a future policy permits |
 | Search/import raw provider data | Full | Configurable review | None | None | Configurable view |
 | Purchases/receiving/listings/sales/shipping | Full | Configurable edit | Processing subset | Financial review only | Explicit view |
 | Owned-item identification/storage | Full | Edit | Edit | View only if granted | Explicit view |
@@ -174,7 +195,9 @@ Every uploaded file requires authenticated ownership, size/MIME/magic-byte valid
 ## Data minimization and privacy
 
 - Store only seller/buyer details needed for sourcing, fulfillment, returns, trust history, or reconciliation.
+- Store only the Account Ops profile/address/alias/account metadata needed for legitimate owner operations; avoid unnecessary identity duplication and sensitive notes.
 - Never store full payment-card credentials.
+- Never persist Account Ops plaintext passwords, OTPs, retailer sessions/tokens, provider secrets, payment-card data, or Code 3 owner authority fields.
 - Minimize children's personal information; impact tracking should prefer aggregate counts.
 - Separate private owner records from any public product dataset and credentials.
 - Store AI/provider retention and use terms with the connection configuration.
@@ -198,7 +221,7 @@ Raw secrets and protected file contents never enter audit events.
 
 ## Backup, export, and deletion
 
-A complete future recovery point includes schema/version manifest, canonical records, provenance, audit references, protected file manifest/content, counts, hashes, and validation results. Phase 1A covers registered browser sources; Phase 1B can additionally include the bounded canonical export only when it is owner-authorized and valid. Coverage must say `PARTIAL` whenever a relevant server source or file byte is absent. Restore Preview is duplicate/reference/money checked, bounded, and guaranteed no-write; applying restore is not implemented. Any expanded server export, future restore, or deletion operation requires fresh owner authorization and rate limiting.
+A complete future recovery point includes schema/version manifest, canonical records, provenance, audit references, protected file manifest/content, counts, hashes, and validation results. Phase 1A covers registered browser sources; Phase 1B can additionally include the bounded canonical export only when it is owner-authorized and valid. Phase 2A raises the registry to 22 sources (18 locally included and four excluded/conditional) by adding sanitized Account Ops metadata. Plaintext passwords, OTPs, tokens, sessions, provider secrets, and owner-authority fields remain prohibited. Coverage must say `PARTIAL` whenever a relevant server source or file byte is absent. Restore Preview remains bounded and zero-write, including Account Ops schema/count/ID/alias/reference checks; applying restore is not implemented. Any expanded server export, future restore, or deletion operation requires fresh owner authorization and rate limiting.
 
 Phase 1B registers the remote-export adapter and owner-authorized read-only export route. Data & Backup calls it through `src/services/code3OwnerApi.js`, which obtains the current supported owner-session headers and always requests with `no-store`. PostgreSQL export uses one repeatable-read, read-only transaction for all canonical domains; tests use an isolated memory snapshot. An unavailable, unauthorized, forbidden, invalid, hash-mismatched, partial, inconsistent, or not-configured remote source remains excluded or `PARTIAL`; it cannot be represented by an empty successful section. This read bridge does not enable canonical writes or `REMOTE_ACTIVE`. Migration Preview writes no durable audit event because zero-write is part of its security contract.
 
@@ -221,6 +244,10 @@ The local `/api/code3/*` route family reuses exact-origin CORS, `requireOwner`, 
 | Legacy route exposes private operation | broad compatibility surface | route inventory, default-deny middleware, focused retirement |
 | Secret leakage through configuration/logs | eBay currently isolated | allowlist config, log redaction, CI scans, rotation |
 | Preview configuration used as production assurance | current preview only | explicit environment gates and production review |
+| Account Ops profile field is treated as owner authority | local browser records are untrusted | verified application session before reads; recursive authority rejection; future server-derived owner scope only |
+| Generated alias is mistaken for receiving/provisioned mail | Phase 2A local metadata can resemble an address | separate lifecycle/provisioning evidence; no `CONNECTED` or receiving claim without verified provider result |
+| Generated or entered credential leaks through persistence/export/logs | no secure vault adapter; password is ephemeral | prohibit secret fields recursively; reference-only model; no log/backup; security/credential scans and tests |
+| Account Ops is misused for account farming or retailer-limit evasion | assisted setup and reusable profiles could be abused if expanded | human-only verification, no bulk signup/automation/bypass, no identity rotation, explicit product non-goals and future provider review |
 
 ## Production security blockers
 

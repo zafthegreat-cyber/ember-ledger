@@ -1,4 +1,5 @@
 import { canonicalStringify, parseUntrustedBackupJson } from "./canonicalJson.js";
+import { ACCOUNT_OPS_RETAILER_PRESET_IDS } from "../accountOps/retailerDirectory.js";
 import { BACKUP_SOURCE_REGISTRY, getBackupSource } from "./backupSourceRegistry.js";
 import {
   BACKUP_COVERAGE,
@@ -63,6 +64,7 @@ function emptyPreview(result, overrides = {}) {
     idCollisions: [],
     duplicateProviderListings: [],
     duplicateCertifications: [],
+    duplicateAliases: [],
     brokenReferences: [],
     unknownSources: [],
     unsupportedSchemas: [],
@@ -143,10 +145,12 @@ function inspectDuplicates(records) {
   const idCollisions = [];
   const duplicateProviderListings = [];
   const duplicateCertifications = [];
+  const duplicateAliases = [];
   const scopedIds = new Map();
   const globalIds = new Map();
   const providerListings = new Map();
   const certifications = new Map();
+  const aliases = new Map();
 
   for (const row of records) {
     const id = recordId(row.record);
@@ -185,8 +189,21 @@ function inspectDuplicates(records) {
       else certifications.set(key, row);
       break;
     }
+
+    if (row.sourceId === "account-ops" && row.collection === "emailAliases") {
+      const aliasAddress = String(row.record.aliasAddress || "").trim().toLowerCase();
+      if (aliasAddress) {
+        if (aliases.has(aliasAddress)) {
+          duplicateAliases.push({
+            aliasAddress,
+            firstId: recordId(aliases.get(aliasAddress).record),
+            secondId: id,
+          });
+        } else aliases.set(aliasAddress, row);
+      }
+    }
   }
-  return { duplicateIds, idCollisions, duplicateProviderListings, duplicateCertifications };
+  return { duplicateIds, idCollisions, duplicateProviderListings, duplicateCertifications, duplicateAliases };
 }
 
 const REFERENCE_TARGETS = Object.freeze({
@@ -200,6 +217,23 @@ const REFERENCE_TARGETS = Object.freeze({
   storeId: ["restockStoreProfiles", "stores"], store_id: ["restockStoreProfiles", "stores"],
   storageLocationId: ["storageLocations"], storage_location_id: ["storageLocations"],
 });
+
+const ACCOUNT_OPS_REFERENCE_TARGETS = Object.freeze({
+  profileGroupId: ["profileGroups"],
+  profileId: ["profiles"],
+  aliasId: ["emailAliases"],
+  emailDomainId: ["emailDomains"],
+  domainId: ["emailDomains"],
+  retailerId: ["retailers"],
+  accountId: ["storeAccounts"],
+  storeAccountId: ["storeAccounts"],
+});
+
+function isStaticAccountOpsReference(row, key, value) {
+  return row.sourceId === "account-ops"
+    && key === "retailerId"
+    && ACCOUNT_OPS_RETAILER_PRESET_IDS.has(String(value));
+}
 
 function inspectReferences(records) {
   const idsByCollection = new Map();
@@ -219,16 +253,21 @@ function inspectReferences(records) {
     }
     if (!current.value || typeof current.value !== "object") continue;
     for (const [key, value] of Object.entries(current.value)) {
-      const targets = REFERENCE_TARGETS[key];
+      const targets = current.row.sourceId === "account-ops"
+        ? ACCOUNT_OPS_REFERENCE_TARGETS[key] || REFERENCE_TARGETS[key]
+        : REFERENCE_TARGETS[key];
       if (targets && value != null && String(value).trim()) {
+        if (isStaticAccountOpsReference(current.row, key, value)) continue;
         const targetCollectionsPresent = targets.filter((target) => idsByCollection.has(target));
+        const accountOpsCollectionIsDeclared = current.row.sourceId === "account-ops"
+          && Object.prototype.hasOwnProperty.call(ACCOUNT_OPS_REFERENCE_TARGETS, key);
         const found = targets.some((target) => idsByCollection.get(target)?.has(String(value)));
         if (!found) {
           brokenReferences.push({
             path: `${current.path}.${key}`,
             reference: String(value),
             expectedCollections: targets,
-            severity: targetCollectionsPresent.length ? "ERROR" : "WARNING",
+            severity: targetCollectionsPresent.length || accountOpsCollectionIsDeclared ? "ERROR" : "WARNING",
           });
         }
       }
@@ -399,12 +438,14 @@ export async function previewBackupRestore(raw, options = {}) {
   preview.idCollisions = dedupeByJson(preview.idCollisions);
   preview.duplicateProviderListings = dedupeByJson(preview.duplicateProviderListings);
   preview.duplicateCertifications = dedupeByJson(preview.duplicateCertifications);
+  preview.duplicateAliases = dedupeByJson(preview.duplicateAliases);
   preview.brokenReferences = dedupeByJson(preview.brokenReferences);
   preview.missingCurrency = dedupeByJson(preview.missingCurrency);
 
   if (preview.duplicateIds.length) preview.errors.push("Duplicate stable IDs were found within a source collection.");
   if (preview.duplicateProviderListings.length) preview.errors.push("Duplicate provider and external listing ID pairs were found.");
   if (preview.duplicateCertifications.length) preview.errors.push("Duplicate certification numbers were found.");
+  if (preview.duplicateAliases.length) preview.errors.push("Duplicate Account Ops email aliases were found.");
   if (preview.invalidMoney.length) preview.errors.push("Invalid money values were found.");
   if (preview.brokenReferences.some((issue) => issue.severity === "ERROR")) preview.errors.push("Broken record references were found.");
   if (preview.idCollisions.length) preview.warnings.push("Stable IDs collide across different record collections.");

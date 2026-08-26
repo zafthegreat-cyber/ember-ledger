@@ -1,3 +1,5 @@
+import { normalizeAccountOpsState } from "../accountOps/repository.js";
+
 function isJsonContainer(value) {
   return Boolean(value) && typeof value === "object";
 }
@@ -5,6 +7,16 @@ function isJsonContainer(value) {
 function valueAtPath(value, path) {
   if (path === "$") return value;
   return String(path).split(".").reduce((current, key) => current?.[key], value);
+}
+
+function validateAccountOpsV1(source, data) {
+  try {
+    normalizeAccountOpsState(data, { now: () => "1970-01-01T00:00:00.000Z" });
+    return [];
+  } catch (error) {
+    const code = error?.code ? ` (${error.code})` : "";
+    return [`Account Ops persisted state is invalid${code}: ${error?.message || "validation failed"}`];
+  }
 }
 
 export function resolveSourceSchemaVersion(source, data) {
@@ -43,6 +55,10 @@ export function validateBackupSourceData(source, data, { requireSupportedSchema 
     if (path === "$") continue;
     const records = valueAtPath(data, path);
     if (records != null && !Array.isArray(records)) errors.push(`Record path ${path} must be an array when present.`);
+  }
+
+  if (source?.validationAdapter === "account-ops-v1") {
+    errors.push(...validateAccountOpsV1(source, data));
   }
 
   return { valid: errors.length === 0, errors, schemaVersion };

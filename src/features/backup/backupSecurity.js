@@ -11,9 +11,32 @@ const PROHIBITED_NORMALIZED_KEYS = new Set([
   "ebaytoken",
   "ebayaccesstoken",
   "apikey",
+  "authcookie",
+  "captcharesponse",
+  "captchatoken",
+  "cardsecuritycode",
+  "cardverificationvalue",
+  "clientcredentials",
+  "cookie",
+  "credential",
+  "credentials",
+  "cvc",
+  "cvv",
+  "generatedpassword",
   "privatekey",
+  "onetimecode",
+  "onetimepassword",
+  "otp",
+  "otpcode",
+  "otptoken",
+  "passphrase",
   "password",
+  "passwordhash",
+  "plaintextpassword",
+  "providercredentials",
+  "providersecret",
   "secret",
+  "session",
   "sessiontoken",
   "supabasesession",
   "ownerauthorizationallowlist",
@@ -22,7 +45,11 @@ const PROHIBITED_NORMALIZED_KEYS = new Set([
   "developmentimpersonation",
   "localdevelopmentidentity",
   "token",
+  "temporarypassword",
+  "verificationcode",
 ]);
+const SAFE_REFERENCE_KEYS = new Set(["credentialreference", "credentialprovider", "credentialreferenceid"]);
+const PROHIBITED_KEY_FRAGMENT_PATTERN = /(?:password(?:hash)?|passphrase|secret|apikey|privatekey|otp(?:code|token)?|cvv|cvc|credentials?|captcha(?:response|token)?|verificationcode)$/i;
 
 const PROHIBITED_STORAGE_KEY_PATTERNS = [
   /^sb-.+-auth-token$/i,
@@ -39,7 +66,9 @@ function normalizeKey(key) {
 }
 
 export function isProhibitedDataKey(key) {
-  return PROHIBITED_NORMALIZED_KEYS.has(normalizeKey(key));
+  const normalized = normalizeKey(key);
+  if (SAFE_REFERENCE_KEYS.has(normalized)) return false;
+  return PROHIBITED_NORMALIZED_KEYS.has(normalized) || PROHIBITED_KEY_FRAGMENT_PATTERN.test(normalized);
 }
 
 export function isProhibitedStorageKey(key) {

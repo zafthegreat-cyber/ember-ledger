@@ -38,6 +38,7 @@ const publicTrustSource = `${appSource}\n${betaReadinessSource}`;
 const expectedRoutes = [
   ['section === "collection"', 'activeTab: "collectionWorkspace"'],
   ['section === "owner-center"', 'activeTab: "ownerCenter"'],
+  ['section === "account-ops"', 'activeTab: "accountOps"'],
   ['section === "today" || section === "daily-tide"', 'activeTab: "dailyTide"'],
   ['section === "whats-new" || section === "changelog"', 'activeTab: "whatsNew"'],
   ['section === "coming-soon" || section === "roadmap"', 'activeTab: "comingSoon"'],
@@ -74,6 +75,8 @@ const expectedRenderers = [
   '<BusinessWorkspace',
   'activeTab === "ownerCenter" && (',
   '<OwnerCenterPage',
+  'activeTab === "accountOps" && (',
+  '<AccountOpsPage',
   'activeTab === "dailyTide" && renderTodaysTideCommandCenter()',
   'activeTab === "dashboard" && (',
   '<OperationsHomePage {...hearthPageProps} />',
@@ -123,6 +126,7 @@ for (const alias of expectedUtilityAliases) {
 
 const expectedMenuDestinations = [
   'key: "owner-center", label: "Owner Center"',
+  'key: "account-ops", label: "Account Ops"',
   'quickAdd: { key: "quickAdd"',
   'scanProduct: { key: "scanProduct"',
   'emberAssist: ownerFeatureControls.businessAssistant ? { key: "emberAssist", label: "Business Assistant"',
@@ -143,6 +147,11 @@ for (const destination of expectedMenuDestinations) {
 assert.ok(
   appSource.includes('if (activeTab === "membership") return "/settings/plans";'),
   "Membership should use the canonical settings URL while retaining its compatibility route."
+);
+
+assert.ok(
+  appSource.includes('if (activeTab === "accountOps") return accountOpsSection === "overview" ? "/account-ops" : `/account-ops/${encodeURIComponent(accountOpsSection)}`;'),
+  "Account Ops should retain canonical section URLs."
 );
 
 assert.ok(

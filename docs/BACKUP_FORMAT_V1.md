@@ -1,6 +1,6 @@
 # Code 3 Backup Format Version 1
 
-Status: Phase 1A format published on the feature branch. Phase 1B adds a local owner-authorized remote-read integration, but its canonical server source remains gated/not active by default; no owner data has migrated and no restore applies data.
+Status: Phase 1A format published on the feature branch. Phase 1B adds a local owner-authorized remote-read integration, but its canonical server source remains gated/not active by default. The local Phase 2A working copy registers sanitized Account Ops metadata. No owner data has migrated, no schema was applied, and no restore applies data.
 
 ## Purpose and boundary
 
@@ -42,7 +42,7 @@ The manifest contains the included and excluded source inventory, record counts,
 
 `src/features/backup/backupSourceRegistry.js` is the versioned coverage registry. It records storage type, schema version, export and validation adapters, reference dependencies, security/session sensitivity, and whether an omission changes coverage.
 
-Phase 1A currently produces 17 included browser-source sections when all registered local sources are readable. They come from these source families:
+The Phase 2A registry contains 22 sources: 18 locally included sources and four excluded or conditional sources. When every registered local source is readable, the 18 included sections come from these source families:
 
 - Deal Finder / Deal Inbox, appraisals, auctions, Search Rules, purchases, lots, inventory, sales, expenses, mileage, activity, and provider-listing snapshots;
 - Owner Center restock profiles/events/predictions, visits, observations, import summaries, and local job summaries;
@@ -54,6 +54,7 @@ Phase 1A currently produces 17 included browser-source sections when all registe
 - beta-readiness, grading-assistance, Business Assistant thread, and daily-progress records;
 - safe display preferences;
 - safe workflow drafts from exact registered session-storage keys/prefixes.
+- Account Ops schema 1 metadata from `code3.account-ops.v1`: profile groups, profiles, email-domain metadata, aliases, owner-created retailers, store accounts, tasks, and bounded activity.
 
 Historical storage keys remain unchanged. Their names are compatibility identifiers, not visible branding.
 
@@ -91,6 +92,27 @@ An export must exclude:
 - invitation/session tokens and cached credentials.
 
 Registered legacy documents that mix business and security fields are exported only through explicit allowlists. A recursive sanitizer removes prohibited field names and records a warning count without writing raw values to logs.
+
+For Account Ops, prohibited data additionally includes plaintext/generated passwords, OTPs, retailer or mailbox sessions/tokens, payment-card/CVV data, provider credentials, browser-supplied owner/role/subject fields, and development impersonation state. `CredentialReference` metadata may be included because it contains only provider/reference/label/timestamp data; the referenced secret is never part of the envelope. A generated alias record remains metadata and cannot make a provider or mail-delivery source complete.
+
+## Phase 2A Account Ops extension
+
+The Account Ops section uses source schema version 1 and the same deterministic section/manifest hash rules as every other Backup Format v1 section. Allowed records are counted from the eight declared paths:
+
+```text
+profileGroups
+profiles
+emailDomains
+emailAliases
+retailers
+storeAccounts
+tasks
+activity
+```
+
+Restore Preview validates the Account Ops schema, bounded records, stable IDs, duplicate aliases, and profile/alias/retailer/store-account/task relationships without mutation. Unknown or invalid relationships are diagnostics; preview never repairs or applies them. Every writable store remains unchanged after inspection.
+
+All eight Account Ops record paths are `REQUIRES_MAPPING` in Migration Preview because the Phase 1B canonical schema has no Account Ops domain. This classification creates no canonical action and does not authorize a schema, migration, restore, or remote write.
 
 ## Coverage semantics
 
@@ -188,3 +210,4 @@ Restore Preview accepts only recognized, supported versions. New formats require
 - No cloud backup, retention schedule, or backup verification history is implemented.
 - No durable audit entry is written during export or preview.
 - Phase 1B remote export is a real read-only integration, but its hosted source is gated/not active by default and it does not make backup coverage complete when any registered source or file byte remains omitted.
+- Phase 2A Account Ops metadata can include personal and operational identity data. It is sanitized but not encrypted by Backup Format v1, and no provider secret, plaintext password, OTP, mailbox content, or retailer session is recoverable from it.

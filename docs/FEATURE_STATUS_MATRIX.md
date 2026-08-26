@@ -1,6 +1,6 @@
 # Code 3 Feature Status Matrix
 
-Phase 1B starting baseline: `26d30b9a0b1379d53778c0bc5c92887cc0ae744f`. Phase 1A and the validated Phase 1B checkpoint source are published on the feature branch. The Phase 1C intelligence checkpoint represented by this changeset starts from `cdd57bbabb2243ff510eca7aec0487f23342834d`. None of these statuses represents an executed schema, migrated owner record, active remote persistence, configured AI/computer-vision provider, or autonomous marketplace action.
+Phase 1B starting baseline: `26d30b9a0b1379d53778c0bc5c92887cc0ae744f`. Phase 1A and the validated Phase 1B checkpoint source are published on the feature branch. Phase 1C is published through `af21199f610cc91e31d9dee59af6f0a2f748ab79`. Phase 2A Account Ops is a fully validated local, unpublished working copy pending review and a separately authorized checkpoint. None of these statuses represents an executed schema, migrated owner record, active remote persistence, provider-provisioned email alias, configured Inbox/Orders provider, configured AI/computer-vision provider, or autonomous retailer/marketplace action.
 
 ## Classification rules
 
@@ -19,7 +19,7 @@ Every row has one primary classification:
 
 Phase-state qualifiers used in gap/evidence text are independent of the primary classification: `SCHEMA_ONLY` means a target representation exists but was not applied; `DRY_RUN_ONLY` means the path validates or compares without writes; `NOT_ACTIVE` means the capability cannot be used for owner data; `FUTURE` means it remains planned rather than locally implemented.
 
-Test abbreviations: **FS** `test:flip-scout`; **OC** `test:owner-center`; **EB** `test:flip-scout-ebay`; **INT** Phase 1C intelligence/history/provider tests; **BR** `test:flip-scout-browser`; **RL** `test:route-loading`; **LR** `test:legacy-routes`; **PL** `test:plain-language`; **A11Y** keyboard/viewport checks; **REG** bounded 28-scenario regression. “None focused” means broader loading/regression coverage may exist but no domain assertion was found.
+Test abbreviations: **FS** `test:flip-scout`; **OC** `test:owner-center`; **EB** `test:flip-scout-ebay`; **INT** Phase 1C intelligence/history/provider tests; **AO** Phase 2A Account Ops domain/fixture/browser tests; **BR** `test:flip-scout-browser`; **RL** `test:route-loading`; **LR** `test:legacy-routes`; **PL** `test:plain-language`; **A11Y** keyboard/viewport checks; **REG** bounded 28-scenario regression. “Validated local” means the focused Phase 2A coverage and complete inherited gate passed in the unpublished working copy. “None focused” means broader loading/regression coverage may exist but no domain assertion was found.
 
 ## Shell, identity, and common behavior
 
@@ -241,6 +241,31 @@ Test abbreviations: **FS** `test:flip-scout`; **OC** `test:owner-center`; **EB**
 | Controls / Security | `/owner-center/controls/security` | PARTIALLY_IMPLEMENTED | owner session UI + backend auth policy | Supabase token/server allowlist | Phase 1A auth/CORS | No device/session administration; most legacy routes lack owner policy |
 | Controls / System History | `/owner-center/controls/system` | FRONTEND_ONLY | local activity/job summaries | local owner repository | OC | Durable jobs/audit/version history Phase 1A/3 |
 
+## Account Ops
+
+| Page / feature | Route | Status | Current component/module | Storage/data source | Tests | Gap, dependency, recommended phase |
+|---|---|---|---|---|---|---|
+| Account Ops private workspace | `/account-ops/*` | PARTIALLY_IMPLEMENTED | `src/features/accountOps/AccountOpsPage.jsx`, `src/App.jsx`, `src/utils/appRouteState.js` | verified session gate + local source | AO/RL validated local | First-class lazy route and private UI exist locally; server persistence/per-record authorization remain future |
+| Account Ops Overview | `/account-ops` | CLIENT_LOCAL_ONLY | Account Ops page/model selectors | `code3.account-ops.v1` | AO validated local | Metrics, attention, and activity derive from local records; no remote/provider activity |
+| Profiles and custom groups | `/account-ops/profiles` | CLIENT_LOCAL_ONLY | Account Ops contracts/service/UI | `profileGroups`, `profiles` | AO validated local | CRUD/archive/relationships are local; profile is never authentication identity |
+| Profile/account search and filters | Account Ops list sections | IMPLEMENTED | Account Ops UI/selectors | local snapshot | AO/A11Y validated local | Search/filter is local only; no universal-search indexing |
+| Email alias generation | `/account-ops/emails` | CLIENT_LOCAL_ONLY | `aliasEngine.js`, Account Ops UI | `emailDomains`, `emailAliases` | AO validated local | Secure random/token templates and collision checks create metadata only, not receiving mail |
+| Generated-versus-provisioned alias state | `/account-ops/emails` | IMPLEMENTED | alias/provider contracts and status UI | alias metadata | AO validated local | Capability truth is explicit; no provider call is implied |
+| Email domain/catch-all metadata | `/account-ops/emails` | CLIENT_LOCAL_ONLY | email-provider/domain contracts | `emailDomains` | AO validated local | Owner metadata only; catch-all operation is not verified or provisioned by Code 3 |
+| Provider-managed alias provisioning | future Account Ops Emails | BLOCKED_BY_AUTHORIZATION | provider-neutral adapter boundary only | none active | AO contract validated local | Requires approved provider, server secret, owner authorization, health checks, and retention policy |
+| Retailer directory | `/account-ops/accounts` | CLIENT_LOCAL_ONLY | `retailerDirectory.js`, Account Ops service/UI | static presets + custom `retailers` | AO validated local | Presets do not assert signup/order capabilities; custom retailers remain device-local |
+| Store account registry | `/account-ops/accounts` | CLIENT_LOCAL_ONLY | Account Ops contracts/service/UI | `storeAccounts` plus profile/alias/retailer links | AO validated local | Metadata and archive state exist; no retailer API, login, order, or secret storage |
+| Assisted account setup | `/account-ops/accounts` | CLIENT_LOCAL_ONLY | setup contracts/checklist/UI | local account state | AO validated local | Owner-triggered preparation/checklist only; CAPTCHA, OTP, verification, signup submission, and limits stay human/retailer controlled |
+| Account Health | Overview/Accounts | CLIENT_LOCAL_ONLY | `accountHealth.js` | local relationships, verification state, tasks | AO validated local | Explainable local derivation; it cannot infer a ban or retailer enforcement without evidence |
+| Credential references | Store Account detail/setup | CLIENT_LOCAL_ONLY | credential-reference contract | nonsecret reference metadata | AO/security validated local | No plaintext secret; reference does not prove an external vault entry exists |
+| Secure credential provider | future Account Ops Controls | BLOCKED_BY_AUTHORIZATION | provider types only | none active | AO contract validated local | External password-manager or OS-secure-store approval/integration required |
+| Ephemeral password generator | assisted setup | IMPLEMENTED | `passwordGenerator.js`, setup UI | UI memory only | AO/security validated local | Immediate copy/regenerate only; unsaved value is unrecoverable and never logged, persisted, or backed up |
+| Account Ops tasks | `/account-ops/tasks` | CLIENT_LOCAL_ONLY | Account Ops service/UI | `tasks` | AO validated local | Manual/account-generated local tasks work; this is not the full global Task/Calendar system |
+| Safe bulk metadata actions | Account Ops lists | PARTIALLY_IMPLEMENTED | Account Ops selection/service actions | local records | AO validated local | Limited to metadata grouping/retailer assignment/archive/task/export; no bulk signup or verification action |
+| Account Ops backup/preview | Owner Center Data & Backup | PARTIALLY_IMPLEMENTED | backup registry/validation/restore preview | Account Ops section in Backup v1 | AO + backup/preview validated local | Metadata is included and previewed zero-write; secrets prohibited, all eight migration paths require mapping, and no restore apply exists |
+| Unified Inbox | future Account Ops Inbox | FUTURE | `futureContracts.js` only | none | AO contract validated local | No mailbox authorization, fetch, parser, message-body store, or background delivery |
+| Retail order intelligence | future Account Ops Orders | FUTURE | `futureContracts.js` only | none | AO contract validated local | No order importer; external evidence must pass owner review before an explicit Purchase |
+
 ## Secondary modules
 
 | Page / feature | Route | Status | Current component/module | Storage/data source | Tests | Gap, dependency, recommended phase |
@@ -293,4 +318,4 @@ These are route families, not canonical product pages. Exact per-route actions a
 
 ## Interpretation
 
-The strongest complete features are the minimal shell, manual Deal Inbox/analysis foundations, eBay Browse connector and review gate, core calculations/allocation/quantity validation, purpose history, Phase 1C deterministic local intelligence services, and focused compatibility/accessibility behavior. The largest false-positive risk is mistaking a local rule/evidence adapter for AI, licensed market coverage, or durable canonical capability. This matrix therefore keeps card-analysis history and condition/restock decisions `CLIENT_LOCAL_ONLY`, does not imply generic auction/restock revision history, keeps sold comparables and AI appropriately missing/future, and classifies visual placeholders conservatively.
+The strongest complete features are the minimal shell, manual Deal Inbox/analysis foundations, eBay Browse connector and review gate, core calculations/allocation/quantity validation, purpose history, Phase 1C deterministic local intelligence services, and focused compatibility/accessibility behavior. The local Phase 2A Account Ops workspace adds useful metadata workflows without claiming mail provisioning, a secure vault, Inbox/Orders integration, or server durability. The largest false-positive risk is mistaking a local rule/evidence/alias adapter for AI, licensed market coverage, receiving email, retailer integration, or durable canonical capability. This matrix therefore keeps Account Ops records, card-analysis history, and condition/restock decisions `CLIENT_LOCAL_ONLY`, does not imply generic auction/restock revision history, keeps provider provisioning/Inbox/Orders/sold comparables/AI appropriately blocked or future, and classifies visual placeholders conservatively.

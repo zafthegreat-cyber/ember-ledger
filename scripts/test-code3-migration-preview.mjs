@@ -54,6 +54,10 @@ const registryValidation = validateMigrationSourceRegistry();
 assert.equal(registryValidation.valid, true, registryValidation.errors.join("\n"));
 assert.equal(MIGRATION_SOURCE_REGISTRY.length, BACKUP_SOURCE_REGISTRY.length, "every Phase 1A backup source must have one migration classification");
 assert.ok(MIGRATION_SOURCE_REGISTRY.every((source) => Object.values(MIGRATION_SOURCE_CLASSIFICATIONS).includes(source.classification)));
+const accountOpsMigrationSource = MIGRATION_SOURCE_REGISTRY.find((source) => source.sourceId === "account-ops");
+assert.equal(accountOpsMigrationSource.classification, MIGRATION_SOURCE_CLASSIFICATIONS.REQUIRES_MAPPING);
+assert.equal(accountOpsMigrationSource.paths.length, 8, "every Account Ops recovery collection needs an explicit migration decision");
+assert.ok(accountOpsMigrationSource.paths.every((mapping) => mapping.classification === MIGRATION_SOURCE_CLASSIFICATIONS.REQUIRES_MAPPING && mapping.targetDomain === null));
 
 assert.deepEqual(previewMoneyToMinor(12.34, { currency: "USD" }).proposedAmountMinor, 1234);
 assert.deepEqual(previewMoneyToMinor(12.3, { currency: "USD" }).proposedAmountMinor, 1230);
@@ -623,6 +627,34 @@ const mappingRequiredPreview = await createMigrationPreview({
 });
 assert.equal(mappingRequiredPreview.status, MIGRATION_PREVIEW_STATUSES.BLOCKED);
 assert.equal(mappingRequiredPreview.plan.actions[0].action, MIGRATION_ACTIONS.REQUIRES_DECISION);
+
+const accountOpsMappingPreview = await createMigrationPreview({
+  localSources: {
+    "account-ops": {
+      schemaVersion: 1,
+      profileGroups: [{ id: "group-1" }],
+      profiles: [{ id: "profile-1" }],
+      emailDomains: [{ id: "domain-1" }],
+      emailAliases: [{ id: "alias-1" }],
+      retailers: [{ id: "retailer-1" }],
+      storeAccounts: [{ id: "account-1" }],
+      tasks: [{ id: "task-1" }],
+      activity: [{ id: "activity-1" }],
+    },
+  },
+  createdAt: NOW,
+});
+assert.equal(accountOpsMappingPreview.status, MIGRATION_PREVIEW_STATUSES.BLOCKED);
+assert.deepEqual(
+  new Set(accountOpsMappingPreview.plan.actions.map((action) => action.sourceCollection)),
+  new Set(["profileGroups", "profiles", "emailDomains", "emailAliases", "retailers", "storeAccounts", "tasks", "activity"]),
+);
+assert.ok(accountOpsMappingPreview.plan.actions.every((action) => action.action === MIGRATION_ACTIONS.REQUIRES_DECISION));
+assert.throws(
+  () => toCanonicalDryRunRequest(accountOpsMappingPreview.plan),
+  /unsupported canonical domain/i,
+  "Account Ops cannot enter the canonical dry-run contract without a future approved domain mapping",
+);
 
 const unsupportedPreserved = await createMigrationPreview({
   localSources: { "legacy-community": { posts: [{ id: "post-1", price: "unknown", currency: "US" }], comments: [], reactions: [], trustedCircle: [] } },

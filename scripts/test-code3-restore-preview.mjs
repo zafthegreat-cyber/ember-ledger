@@ -27,6 +27,14 @@ class MemoryStorage {
 }
 
 const NOW = "2026-08-19T15:00:00.000Z";
+const accountOpsRecord = (id, value) => ({
+  id,
+  recordVersion: 1,
+  createdAt: NOW,
+  updatedAt: NOW,
+  archivedAt: null,
+  ...value,
+});
 const baseDealState = {
   schemaVersion: 2,
   deals: [{ id: "deal-1", providerId: "ebay", externalListingId: "listing-1", askingPrice: 10, currency: "USD" }],
@@ -98,6 +106,86 @@ const unknownSource = await mutateAndSeal((envelope) => {
 const unknownPreview = await previewBackupRestore(JSON.stringify(unknownSource));
 assert.equal(unknownPreview.result, RESTORE_PREVIEW_RESULTS.READY_WITH_WARNINGS);
 assert.deepEqual(unknownPreview.unknownSources, ["future-source"]);
+
+const validAccountOps = await mutateAndSeal((envelope) => {
+  const section = envelope.sections.find((entry) => entry.sourceId === "account-ops");
+  section.data.updatedAt = NOW;
+  section.data.profileGroups = [accountOpsRecord("group-business", { displayName: "Business" })];
+  section.data.profiles = [accountOpsRecord("profile-1", { profileGroupId: "group-business", displayName: "Business 01" })];
+  section.data.emailDomains = [accountOpsRecord("domain-1", { domain: "example.invalid", mode: "LOCAL_METADATA_ONLY" })];
+  section.data.emailAliases = [accountOpsRecord("alias-1", {
+    aliasAddress: "bestbuy-business-01@example.invalid",
+    domain: "example.invalid",
+    localPart: "bestbuy-business-01",
+    profileId: "profile-1",
+    domainId: "domain-1",
+    retailerId: "retailer-preset:best-buy",
+  })];
+  section.data.storeAccounts = [accountOpsRecord("account-1", {
+    profileId: "profile-1",
+    aliasId: "alias-1",
+    retailerId: "retailer-preset:best-buy",
+  })];
+  section.data.tasks = [accountOpsRecord("task-1", {
+    title: "Review account",
+    profileId: "profile-1",
+    accountId: "account-1",
+    retailerId: "retailer-preset:best-buy",
+  })];
+  section.data.activity = [accountOpsRecord("activity-1", { type: "ACCOUNT_CREATED", title: "Account created", accountId: "account-1" })];
+});
+const validAccountOpsPreview = await previewBackupRestore(JSON.stringify(validAccountOps));
+assert.equal(validAccountOpsPreview.result, RESTORE_PREVIEW_RESULTS.READY_FOR_FUTURE_RESTORE);
+assert.equal(validAccountOpsPreview.brokenReferences.length, 0, "static retailer presets and valid local relationships must preview cleanly");
+
+const brokenAccountOpsProfile = await mutateAndSeal((envelope) => {
+  const section = envelope.sections.find((entry) => entry.sourceId === "account-ops");
+  section.data.emailDomains = [accountOpsRecord("domain-1", { domain: "example.invalid", mode: "LOCAL_METADATA_ONLY" })];
+  section.data.emailAliases = [accountOpsRecord("alias-broken", {
+    aliasAddress: "broken@example.invalid",
+    domain: "example.invalid",
+    localPart: "broken",
+    domainId: "domain-1",
+    profileId: "profile-missing",
+  })];
+});
+const brokenAccountOpsProfilePreview = await previewBackupRestore(JSON.stringify(brokenAccountOpsProfile));
+assert.equal(brokenAccountOpsProfilePreview.result, RESTORE_PREVIEW_RESULTS.BLOCKED);
+assert.ok(brokenAccountOpsProfilePreview.brokenReferences.some((issue) => issue.reference === "profile-missing" && issue.severity === "ERROR"));
+
+const brokenAccountOpsRetailer = await mutateAndSeal((envelope) => {
+  const section = envelope.sections.find((entry) => entry.sourceId === "account-ops");
+  section.data.profiles = [accountOpsRecord("profile-1", { displayName: "Business 01" })];
+  section.data.storeAccounts = [accountOpsRecord("account-broken", { profileId: "profile-1", retailerId: "retailer-custom-missing" })];
+});
+const brokenAccountOpsRetailerPreview = await previewBackupRestore(JSON.stringify(brokenAccountOpsRetailer));
+assert.equal(brokenAccountOpsRetailerPreview.result, RESTORE_PREVIEW_RESULTS.BLOCKED);
+assert.ok(brokenAccountOpsRetailerPreview.brokenReferences.some((issue) => issue.reference === "retailer-custom-missing"));
+
+const unknownRetailerPresetReference = await mutateAndSeal((envelope) => {
+  const section = envelope.sections.find((entry) => entry.sourceId === "account-ops");
+  section.data.profiles = [accountOpsRecord("profile-1", { displayName: "Business 01" })];
+  section.data.storeAccounts = [accountOpsRecord("account-invalid-preset", { profileId: "profile-1", retailerId: "retailer-preset:not-real" })];
+});
+const unknownRetailerPresetPreview = await previewBackupRestore(JSON.stringify(unknownRetailerPresetReference));
+assert.equal(unknownRetailerPresetPreview.result, RESTORE_PREVIEW_RESULTS.BLOCKED);
+assert.ok(unknownRetailerPresetPreview.brokenReferences.some((issue) => issue.reference === "retailer-preset:not-real"));
+
+const duplicateAccountOpsAlias = await mutateAndSeal((envelope) => {
+  const section = envelope.sections.find((entry) => entry.sourceId === "account-ops");
+  section.data.emailDomains = [accountOpsRecord("domain-1", { domain: "example.invalid", mode: "LOCAL_METADATA_ONLY" })];
+  section.data.emailAliases = [
+    accountOpsRecord("alias-1", { aliasAddress: "Duplicate@Example.invalid", domain: "example.invalid", localPart: "duplicate", domainId: "domain-1" }),
+    accountOpsRecord("alias-2", { aliasAddress: "duplicate@example.invalid", domain: "example.invalid", localPart: "duplicate", domainId: "domain-1" }),
+  ];
+});
+const duplicateAccountOpsAliasPreview = await previewBackupRestore(JSON.stringify(duplicateAccountOpsAlias));
+assert.equal(duplicateAccountOpsAliasPreview.result, RESTORE_PREVIEW_RESULTS.BLOCKED);
+assert.deepEqual(duplicateAccountOpsAliasPreview.duplicateAliases, [{
+  aliasAddress: "duplicate@example.invalid",
+  firstId: "alias-1",
+  secondId: "alias-2",
+}]);
 
 const duplicateIds = await mutateAndSeal((envelope) => {
   const section = envelope.sections.find((entry) => entry.sourceId === "deal-finder");
@@ -196,6 +284,29 @@ const prohibited = await mutateAndSeal((envelope) => {
 const prohibitedPreview = await previewBackupRestore(JSON.stringify(prohibited));
 assert.equal(prohibitedPreview.result, RESTORE_PREVIEW_RESULTS.BLOCKED);
 assert.ok(prohibitedPreview.prohibitedFields.some((path) => /accessToken/.test(path)));
+
+const phase2aProhibited = await mutateAndSeal((envelope) => {
+  const section = envelope.sections.find((entry) => entry.sourceId === "account-ops");
+  section.data.profiles = [accountOpsRecord("profile-secret", { displayName: "Business 01" })];
+  section.data.storeAccounts = [accountOpsRecord("account-secret", {
+    profileId: "profile-secret",
+    retailerId: "retailer-preset:target",
+    credentialReference: { provider: "EXTERNAL_PASSWORD_MANAGER", referenceId: "safe-reference", label: "Safe metadata" },
+    otpCode: "123456",
+    retailerPassword: "not-allowed",
+    cvv: "123",
+    passphrase: "not-allowed",
+    credentials: { value: "not-allowed" },
+    sessionState: "not-allowed",
+  })];
+});
+const phase2aProhibitedPreview = await previewBackupRestore(JSON.stringify(phase2aProhibited));
+assert.equal(phase2aProhibitedPreview.result, RESTORE_PREVIEW_RESULTS.BLOCKED);
+for (const field of ["otpCode", "retailerPassword", "cvv", "passphrase", "credentials"]) {
+  assert.ok(phase2aProhibitedPreview.prohibitedFields.some((path) => path.endsWith(`.${field}`)), `${field} must be rejected during restore preview`);
+}
+assert.match(phase2aProhibitedPreview.errors.join(" "), /SECRET_FIELD_REJECTED/, "Account Ops schema validation must reject nested session-state injection");
+assert.ok(!phase2aProhibitedPreview.prohibitedFields.some((path) => /credentialReference(?:\.|$)/.test(path)), "credentialReference metadata remains permitted");
 
 const topLevelProhibited = JSON.parse(baseline.json);
 topLevelProhibited.accessToken = "malicious-token";

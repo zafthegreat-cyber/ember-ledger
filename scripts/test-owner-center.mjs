@@ -143,9 +143,15 @@ assert.deepEqual(routeStateFromPath("/sell"), { activeTab: "businessWorkspace", 
 assert.deepEqual(routeStateFromPath("/business/money/mileage"), { activeTab: "businessWorkspace", businessWorkspaceView: "money", businessMoneyView: "mileage" });
 assert.deepEqual(routeStateFromPath("/owner-center/restocks/live"), { activeTab: "ownerCenter", ownerCenterSection: "restocks", ownerCenterSubview: "live" });
 assert.deepEqual(routeStateFromPath("/owner-center/controls/data-backup"), { activeTab: "ownerCenter", ownerCenterSection: "controls", ownerCenterSubview: "data-backup" });
+assert.deepEqual(routeStateFromPath("/account-ops"), { activeTab: "accountOps", accountOpsSection: "overview" });
+for (const section of ["profiles", "emails", "accounts", "tasks"]) {
+  assert.deepEqual(routeStateFromPath(`/account-ops/${section}`), { activeTab: "accountOps", accountOpsSection: section });
+  assert.equal(pathFromActiveTab("accountOps", { accountOpsSection: section }), `/account-ops/${section}`);
+}
 assert.deepEqual(routeStateFromPath("/settings/data-backup"), { activeTab: "ownerCenter", ownerCenterSection: "controls", ownerCenterSubview: "data-backup" });
 assert.equal(pathFromActiveTab("collectionWorkspace", { collectionWorkspaceView: "wishlist" }), "/collection/wishlist");
 assert.equal(pathFromActiveTab("businessWorkspace", { businessWorkspaceView: "money", businessMoneyView: "reports" }), "/business/money/reports");
 assert.equal(pathFromActiveTab("ownerCenter", { ownerCenterSection: "performance" }), "/owner-center/performance");
+assert.equal(pathFromActiveTab("accountOps"), "/account-ops");
 
 console.log("Owner Center authorization, purpose, storage, sourcing, restock, performance, and route tests passed.");

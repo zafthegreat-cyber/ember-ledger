@@ -552,6 +552,7 @@ const MenuPage = lazy(() => import("./pages/Menu"));
 const Scout = lazy(() => import("./pages/Scout"));
 const FlipScoutPage = lazy(() => import("./features/flipScout/FlipScoutPage"));
 const OwnerCenterPage = lazy(() => import("./features/ownerCenter/OwnerCenterPage"));
+const AccountOpsPage = lazy(() => import("./features/accountOps/AccountOpsPage"));
 const CollectionWorkspace = lazy(() => import("./pages/EverydayWorkspaces").then((module) => ({ default: module.CollectionWorkspace })));
 const BusinessWorkspace = lazy(() => import("./pages/EverydayWorkspaces").then((module) => ({ default: module.BusinessWorkspace })));
 
@@ -6840,6 +6841,7 @@ export default function App() {
   const [businessMoneyView, setBusinessMoneyView] = useState(initialRouteState.businessMoneyView || "expenses");
   const [ownerCenterSection, setOwnerCenterSection] = useState(initialRouteState.ownerCenterSection || "overview");
   const [ownerCenterSubview, setOwnerCenterSubview] = useState(initialRouteState.ownerCenterSubview || "");
+  const [accountOpsSection, setAccountOpsSection] = useState(initialRouteState.accountOpsSection || "overview");
   const [ownerFeatureControls, setOwnerFeatureControls] = useState(() => createEmptyOwnerCenterState().controls.features);
   useEffect(() => {
     const handleOwnerControls = (event) => {
@@ -7959,6 +7961,7 @@ export default function App() {
     collectionWorkspace: "Collection",
     businessWorkspace: "Business",
     ownerCenter: "Owner Center",
+    accountOps: "Account Ops",
     exchange: "Sell",
     settings: "Settings",
     account: "Account",
@@ -7994,7 +7997,7 @@ export default function App() {
     applyBrandDocumentMetadata(activeTabLabel === "Dashboard" ? "Home" : activeTabLabel);
   }, [activeTabLabel]);
   const exchangeActiveTabs = new Set(["exchange", "market", "catalog", "inventory", "addInventory", "addSale", "sales", "expenses", "vehicles", "mileage", "reports"]);
-  const youActiveTabs = new Set(["settings", "menu", "account", "collections", "dataBackup", "tcgOs", "profile", "profileProgress", "help", "moderator", "adminReview", "mySuggestions", "kidsProgram", "parentCenter", "sponsor", "trust", "links", "whatsNew", "knownLimitations", "comingSoon", "membership", "betaReadiness", "tidepool"]);
+  const youActiveTabs = new Set(["settings", "menu", "account", "accountOps", "collections", "dataBackup", "tcgOs", "profile", "profileProgress", "help", "moderator", "adminReview", "mySuggestions", "kidsProgram", "parentCenter", "sponsor", "trust", "links", "whatsNew", "knownLimitations", "comingSoon", "membership", "betaReadiness", "tidepool"]);
   const activeMainTab =
     activeTab === "dashboard" || activeTab === "dailyTide"
       ? "home"
@@ -8017,7 +8020,7 @@ export default function App() {
     { key: "business", label: "Business", icon: "business", target: "businessWorkspace" },
   ].filter(Boolean);
   const mobilePrimaryTabKeys = new Set(mobileBottomTabs.map((tab) => tab.key));
-  const activeMobileTabKey = activeTab === "ownerCenter" ? "" : mobilePrimaryTabKeys.has(activeMainTab) ? activeMainTab : "home";
+  const activeMobileTabKey = activeTab === "ownerCenter" || activeTab === "accountOps" ? "" : mobilePrimaryTabKeys.has(activeMainTab) ? activeMainTab : "home";
   const desktopSidebarItems = [
     { key: "home", label: "Home", icon: "home", target: "dashboard" },
     { key: "find", label: "Find", icon: "find", target: "flipScout" },
@@ -8025,6 +8028,7 @@ export default function App() {
     { key: "business", label: "Business", icon: "business", target: "businessWorkspace" },
   ].filter(Boolean);
   const desktopSecondaryItems = [
+    ownerCenterAuthorized ? { key: "account-ops", label: "Account Ops", icon: "account", badge: "Owner Only", action: () => { prepareRouteNavigation(); setAccountOpsSection("overview"); setActiveTab("accountOps"); } } : null,
     ownerCenterAuthorized ? { key: "owner-center", label: "Owner Center", icon: "settings", badge: "Owner Only", action: () => { prepareRouteNavigation(); setOwnerCenterSection("overview"); setOwnerCenterSubview(""); setActiveTab("ownerCenter"); } } : null,
     { key: "settings", label: "Settings", icon: "settings", target: "settings" },
   ].filter(Boolean);
@@ -8105,6 +8109,7 @@ export default function App() {
   const menuAccountItems = [
     mobileMenuByKey.profile,
     mobileMenuByKey.account,
+    ownerCenterAuthorized ? { key: "account-ops", label: "Account Ops", helper: "Profiles, email aliases, retailer accounts, and account tasks.", icon: "account", action: () => { prepareRouteNavigation(); setAccountOpsSection("overview"); setActiveTab("accountOps"); } } : null,
     ownerCenterAuthorized ? { key: "owner-center", label: "Owner Center", helper: "Private sourcing, performance, and system controls.", icon: "settings", action: () => { prepareRouteNavigation(); setOwnerCenterSection("overview"); setOwnerCenterSubview(""); setActiveTab("ownerCenter"); } } : null,
     { key: "collections", label: "Workspace / Family", helper: "Collection workspace, members, and privacy.", icon: "settings", action: () => openUtilityPage("collections") },
     mobileMenuByKey.membership,
@@ -8864,6 +8869,7 @@ export default function App() {
     if (item.key === "find") return activeMainTab === "find";
     if (item.key === "collection") return activeMainTab === "collection";
     if (item.key === "business") return activeMainTab === "business" && activeTab !== "settings";
+    if (item.key === "account-ops") return activeTab === "accountOps";
     if (item.key === "owner-center") return activeTab === "ownerCenter";
     if (item.key === "kids-community") return activeTab === "kidsProgram" || activeTab === "tidepool";
     if (item.key === "settings") return activeTab === "settings" || activeTab === "menu";
@@ -8893,7 +8899,7 @@ export default function App() {
   }
 
   function renderDesktopCommandSidebar() {
-    const sidebarActiveKey = activeTab === "ownerCenter" ? "owner-center" : activeTab === "settings" || activeTab === "menu" ? "settings" : activeMainTab;
+    const sidebarActiveKey = activeTab === "accountOps" ? "account-ops" : activeTab === "ownerCenter" ? "owner-center" : activeTab === "settings" || activeTab === "menu" ? "settings" : activeMainTab;
     return <DesktopSidebar items={desktopSidebarItems} secondaryItems={desktopSecondaryItems} activeKey={sidebarActiveKey} onSelect={runDesktopSidebarAction} footer={<span>Private workspace · No automatic purchases</span>} />;
   }
 
@@ -35350,6 +35356,7 @@ function renderForgeBusinessLedgerPanel() {
     if (activeTab === "collectionWorkspace") return collectionWorkspaceView === "collection" ? "/collection" : `/collection/${encodeURIComponent(collectionWorkspaceView)}`;
     if (activeTab === "businessWorkspace") return businessWorkspaceView === "money" ? `/business/money/${encodeURIComponent(businessMoneyView)}` : businessWorkspaceView === "overview" ? "/business" : `/business/${encodeURIComponent(businessWorkspaceView)}`;
     if (activeTab === "ownerCenter") return ownerCenterSubview ? `/owner-center/${encodeURIComponent(ownerCenterSection)}/${encodeURIComponent(ownerCenterSubview)}` : `/owner-center/${encodeURIComponent(ownerCenterSection)}`;
+    if (activeTab === "accountOps") return accountOpsSection === "overview" ? "/account-ops" : `/account-ops/${encodeURIComponent(accountOpsSection)}`;
     if (activeTab === "scout") {
       if (activeScoutPage === "stores" && scoutSubTabTarget.storeId) return `/scout/stores/${encodeURIComponent(scoutSubTabTarget.storeId)}`;
       if (activeScoutPage === "reports") {
@@ -35421,6 +35428,7 @@ function renderForgeBusinessLedgerPanel() {
       businessMoneyView,
       ownerCenterSection,
       ownerCenterSubview,
+      accountOpsSection,
       tidepoolPostId,
       exchangeSection,
       forgeSubTab,
@@ -35476,6 +35484,7 @@ function renderForgeBusinessLedgerPanel() {
     businessMoneyView,
     ownerCenterSection,
     ownerCenterSubview,
+    accountOpsSection,
     tidepoolPostId,
     forgeSubTab,
     activeScoutPage,
@@ -35522,6 +35531,7 @@ function renderForgeBusinessLedgerPanel() {
       if (route.businessMoneyView) setBusinessMoneyView(route.businessMoneyView);
       if (route.ownerCenterSection) setOwnerCenterSection(route.ownerCenterSection);
       if (route.ownerCenterSubview !== undefined) setOwnerCenterSubview(route.ownerCenterSubview || "");
+      if (route.accountOpsSection) setAccountOpsSection(route.accountOpsSection);
       if (route.scoutView) {
         setScoutView(route.scoutView);
         setScoutSubTabTarget({ tab: route.scoutView, storeId: route.scoutStoreId || "", reportId: route.scoutReportId || "", id: Date.now() });
@@ -35546,7 +35556,7 @@ function renderForgeBusinessLedgerPanel() {
     });
     routeFocusModeRef.current = "settled";
     return () => window.cancelAnimationFrame(frame);
-  }, [activeTab, flipScoutView, collectionWorkspaceView, businessWorkspaceView, businessMoneyView, ownerCenterSection, ownerCenterSubview]);
+  }, [activeTab, flipScoutView, collectionWorkspaceView, businessWorkspaceView, businessMoneyView, ownerCenterSection, ownerCenterSubview, accountOpsSection]);
   useEffect(() => {
     if (activeTab !== "kidsProgram" && sparkFlowView !== "home") {
       setSparkFlowView("home");
@@ -63697,6 +63707,18 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 setOwnerCenterSubview(nextSubsection);
               }}
               onSubsectionChange={setOwnerCenterSubview}
+            />
+          </LazyToolBoundary>
+        )}
+        {!activeTabLocked && activeTab === "accountOps" && (
+          <LazyToolBoundary label="Loading Account Ops...">
+            <AccountOpsPage
+              session={ownerSession}
+              initialSection={accountOpsSection}
+              onSectionChange={setAccountOpsSection}
+              onSignIn={() => { setAuthMode("login"); setGuestPreview(false); setActiveTab("account"); }}
+              onSignOut={signOut}
+              onReturnHome={() => setActiveTab("dashboard")}
             />
           </LazyToolBoundary>
         )}

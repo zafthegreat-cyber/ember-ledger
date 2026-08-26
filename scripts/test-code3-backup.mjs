@@ -29,6 +29,14 @@ class MemoryStorage {
 }
 
 const NOW = "2026-08-19T14:05:00.000Z";
+const accountOpsRecord = (id, value) => ({
+  id,
+  recordVersion: 1,
+  createdAt: NOW,
+  updatedAt: NOW,
+  archivedAt: null,
+  ...value,
+});
 const localStorage = new MemoryStorage({
   "ember-and-tide.flip-scout.v1": {
     schemaVersion: 2,
@@ -41,6 +49,38 @@ const localStorage = new MemoryStorage({
     restockEvents: [], restockPredictions: [], storeVisits: [], productObservations: [], imports: [], jobs: [],
     controls: { scoring: {}, features: {} },
   },
+  "code3.account-ops.v1": {
+    schemaVersion: 1,
+    updatedAt: NOW,
+    profileGroups: [accountOpsRecord("profile-group-business", { displayName: "Business" })],
+    profiles: [accountOpsRecord("profile-business-1", { profileGroupId: "profile-group-business", displayName: "Business 01" })],
+    emailDomains: [accountOpsRecord("domain-example", { domain: "example.invalid", mode: "LOCAL_METADATA_ONLY" })],
+    emailAliases: [accountOpsRecord("alias-business-1", {
+      aliasAddress: "shop-business-01@example.invalid",
+      domain: "example.invalid",
+      localPart: "shop-business-01",
+      profileId: "profile-business-1",
+      domainId: "domain-example",
+      status: "ACTIVE",
+      password: "phase2a-password-must-not-export",
+      retailerPassword: "phase2a-retailer-password-must-not-export",
+      otp: "phase2a-otp-must-not-export",
+      passphrase: "phase2a-passphrase-must-not-export",
+    })],
+    retailers: [accountOpsRecord("retailer-custom-1", { displayName: "Example Retailer" })],
+    storeAccounts: [accountOpsRecord("store-account-1", {
+      retailerId: "retailer-custom-1",
+      profileId: "profile-business-1",
+      aliasId: "alias-business-1",
+      credentialReference: { provider: "EXTERNAL_PASSWORD_MANAGER", referenceId: "vault-reference-1", label: "Example account" },
+      accessToken: "phase2a-token-must-not-export",
+      cvv: "phase2a-cvv-must-not-export",
+      credentials: { value: "phase2a-credentials-must-not-export" },
+      session: "phase2a-session-must-not-export",
+    })],
+    tasks: [accountOpsRecord("account-task-1", { accountId: "store-account-1", title: "Review account", status: "OPEN" })],
+    activity: [accountOpsRecord("account-activity-1", { type: "ACCOUNT_CREATED", title: "Account created" })],
+  },
   "et-tcg-beta-data": {
     items: [{ id: "owned-1", name: "Card", accessToken: "must-not-export" }],
     sales: [], expenses: [], mileageTrips: [],
@@ -50,7 +90,7 @@ const localStorage = new MemoryStorage({
   },
   "et-tcg-phase2-data": {
     receiptRecords: [{ id: "receipt-1", merchant: "Shop", total: 4, currency: "USD" }],
-    receiptLineItems: [], dealFinderSessions: [], dealFinderItems: [], scannerIntakeSessions: [], marketplaceListingChannels: [],
+    receiptLineItems: [], dealFinderSessions: [{ id: "deal-session-1" }], dealFinderItems: [{ id: "deal-item-1", sessionId: "deal-session-1" }], scannerIntakeSessions: [], marketplaceListingChannels: [],
     kidCommunityProjects: [], kidCommunityProjectItems: [], aiAssistEvents: [],
     userTrustProfile: { role: "owner", token: "must-not-export" },
   },
@@ -67,6 +107,15 @@ const beforeLocal = localStorage.snapshot();
 const beforeSession = sessionStorage.snapshot();
 const currentSources = readCurrentBackupSources({ localStorage, sessionStorage });
 assert.equal(currentSources.sources["deal-finder"].deals[0].id, "deal-1");
+assert.equal(currentSources.sources["account-ops"].storeAccounts[0].id, "store-account-1");
+assert.equal(currentSources.sources["account-ops"].storeAccounts[0].accessToken, undefined);
+assert.equal(currentSources.sources["account-ops"].storeAccounts[0].cvv, undefined);
+assert.equal(currentSources.sources["account-ops"].storeAccounts[0].credentials, undefined);
+assert.equal(currentSources.sources["account-ops"].storeAccounts[0].session, undefined);
+assert.equal(currentSources.sources["account-ops"].emailAliases[0].password, undefined);
+assert.equal(currentSources.sources["account-ops"].emailAliases[0].retailerPassword, undefined);
+assert.equal(currentSources.sources["account-ops"].emailAliases[0].otp, undefined);
+assert.equal(currentSources.sources["account-ops"].emailAliases[0].passphrase, undefined);
 assert.equal(currentSources.sources["legacy-core-business"].items[0].accessToken, undefined);
 assert.equal(localStorage.snapshot(), beforeLocal, "current-source reads must not write localStorage");
 assert.equal(sessionStorage.snapshot(), beforeSession, "current-source reads must not write sessionStorage");
@@ -95,15 +144,32 @@ const dealSection = complete.backup.sections.find((section) => section.sourceId 
 const ownerSection = complete.backup.sections.find((section) => section.sourceId === "owner-center");
 const coreSection = complete.backup.sections.find((section) => section.sourceId === "legacy-core-business");
 const phase2Section = complete.backup.sections.find((section) => section.sourceId === "phase2-local-fallback");
+const accountOpsSection = complete.backup.sections.find((section) => section.sourceId === "account-ops");
 assert.equal(dealSection.recordCount, 1);
 assert.equal(ownerSection.recordCount, 1);
-assert.equal(phase2Section.recordCount, 1);
+assert.equal(phase2Section.recordCount, 3);
 assert.equal(coreSection.recordCount, 1);
+assert.equal(accountOpsSection.recordCount, 8);
+assert.equal(accountOpsSection.data.storeAccounts[0].accessToken, undefined, "Account Ops tokens must be removed");
+assert.equal(accountOpsSection.data.storeAccounts[0].cvv, undefined, "Account Ops card-security values must be removed");
+assert.equal(accountOpsSection.data.storeAccounts[0].credentials, undefined, "Account Ops credential payloads must be removed");
+assert.equal(accountOpsSection.data.storeAccounts[0].session, undefined, "Account Ops sessions must be removed");
+assert.equal(accountOpsSection.data.emailAliases[0].password, undefined, "Account Ops plaintext passwords must be removed");
+assert.equal(accountOpsSection.data.emailAliases[0].retailerPassword, undefined, "compound Account Ops password fields must be removed");
+assert.equal(accountOpsSection.data.emailAliases[0].otp, undefined, "Account Ops OTPs must be removed");
+assert.equal(accountOpsSection.data.emailAliases[0].passphrase, undefined, "Account Ops passphrases must be removed");
+assert.deepEqual(
+  accountOpsSection.data.storeAccounts[0].credentialReference,
+  { provider: "EXTERNAL_PASSWORD_MANAGER", referenceId: "vault-reference-1", label: "Example account" },
+  "non-secret credential references remain recoverable metadata",
+);
 assert.equal(coreSection.data.profile, undefined, "identity profile is outside the legacy business allowlist");
 assert.equal(coreSection.data.workspaceMembers, undefined, "membership data is outside the legacy business allowlist");
 assert.equal(coreSection.data.items[0].accessToken, undefined, "nested security data must be removed");
 assert.equal(phase2Section.data.userTrustProfile, undefined, "trust/role identity state must be excluded");
+assert.equal(phase2Section.data.dealFinderItems[0].sessionId, "deal-session-1", "business workflow session references must remain recoverable");
 assert.doesNotMatch(complete.json, /must-not-export/);
+assert.doesNotMatch(complete.json, /phase2a-(?:retailer-)?(?:password|otp|passphrase|token|cvv|credentials|session)-must-not-export/);
 assert.doesNotMatch(complete.json, /sb-example-auth-token/);
 assert.ok(complete.backup.manifest.securityExclusions.length >= 4);
 
@@ -179,10 +245,23 @@ const malformedShapeExport = await createVerifiedBackup({ localStorage: malforme
 assert.equal(malformedShapeExport.coverageStatus, BACKUP_COVERAGE.FAILED, "a malformed registered source cannot be called complete");
 assert.equal(malformedShapeExport.verified, false);
 
+const malformedAccountOpsStorage = new MemoryStorage({
+  "code3.account-ops.v1": {
+    schemaVersion: 1,
+    profileGroups: [], profiles: [], emailDomains: [], emailAliases: [], retailers: [], storeAccounts: [], tasks: [],
+  },
+});
+const malformedAccountOpsExport = await createVerifiedBackup({ localStorage: malformedAccountOpsStorage, sessionStorage: new MemoryStorage(), createdAt: NOW });
+assert.equal(malformedAccountOpsExport.coverageStatus, BACKUP_COVERAGE.FAILED, "an incomplete Account Ops source cannot be called complete");
+assert.equal(malformedAccountOpsExport.verified, false);
+
 const backupPanelSource = fs.readFileSync(new URL("../src/features/backup/BackupRecoveryPanel.jsx", import.meta.url), "utf8");
 assert.match(backupPanelSource, /if \(!result\.verified\)/, "the UI must not download an internally consistent export whose coverage failed");
 
 assert.ok(BACKUP_SOURCE_REGISTRY.some((source) => source.sourceId === "supabase-owner-data" && !source.includedInPhase1AExport));
 assert.ok(BACKUP_SOURCE_REGISTRY.some((source) => source.sourceId === "authentication-state" && source.containsSecurityOrSessionState));
+assert.ok(BACKUP_SOURCE_REGISTRY.some((source) => source.sourceId === "account-ops" && source.includedInPhase1AExport));
+assert.equal(BACKUP_SOURCE_REGISTRY.length, 22);
+assert.equal(BACKUP_SOURCE_REGISTRY.filter((source) => source.includedInPhase1AExport).length, 18);
 
 console.log(`Code 3 backup tests passed (${complete.backup.sections.length} sections, ${complete.backup.coverageSummary.recordCount} records).`);

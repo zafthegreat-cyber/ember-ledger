@@ -56,6 +56,10 @@ export function routeStateFromPath(pathname = "") {
     const ownerCenterSection = ["overview", "sourcing", "restocks", "performance", "controls"].includes(subSection) ? subSection : "overview";
     return { activeTab: "ownerCenter", ownerCenterSection, ownerCenterSubview: detailId || "" };
   }
+  if (section === "account-ops") {
+    const accountOpsSection = ["overview", "profiles", "emails", "accounts", "tasks"].includes(subSection) ? subSection : "overview";
+    return { activeTab: "accountOps", accountOpsSection };
+  }
   if (section === "kids-community") {
     if (subSection === "community") return { activeTab: "tidepool", tidepoolPostId: detailId ? decodeURIComponent(detailId) : "" };
     if (subSection === "parent") return { activeTab: "parentCenter" };
@@ -195,6 +199,10 @@ export function pathFromActiveTab(activeTab = "dashboard", state = {}) {
   if (activeTab === "ownerCenter") {
     const section = state.ownerCenterSection || "overview";
     return state.ownerCenterSubview ? `/owner-center/${encodeURIComponent(section)}/${encodeURIComponent(state.ownerCenterSubview)}` : `/owner-center/${encodeURIComponent(section)}`;
+  }
+  if (activeTab === "accountOps") {
+    const section = ["profiles", "emails", "accounts", "tasks"].includes(state.accountOpsSection) ? state.accountOpsSection : "overview";
+    return section === "overview" ? "/account-ops" : `/account-ops/${encodeURIComponent(section)}`;
   }
   if (activeTab === "scout") return state.scoutView ? `/scout/${encodeURIComponent(state.scoutView)}` : "/scout";
   if (activeTab === "vault") return state.vaultSubTab ? `/vault/${encodeURIComponent(state.vaultSubTab)}` : "/vault";

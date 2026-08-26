@@ -87,6 +87,20 @@ const SOURCE_DECISIONS = Object.freeze({
       ["jobs", null, C.LEGACY_ONLY, { reason: "Local job summaries are not durable scheduler history." }],
     ]),
   },
+  "account-ops": {
+    classification: C.REQUIRES_MAPPING,
+    adapterId: "account-ops-v1-future-canonical-review",
+    paths: paths([
+      ["profileGroups", null, C.REQUIRES_MAPPING, { reason: "Account Ops profile groups have no approved canonical Phase 1B domain." }],
+      ["profiles", null, C.REQUIRES_MAPPING, { reason: "Account Ops business identity profiles are local-only and must never become authentication authority." }],
+      ["emailDomains", null, C.REQUIRES_MAPPING, { reason: "Account Ops email-domain metadata has no approved canonical Phase 1B domain." }],
+      ["emailAliases", null, C.REQUIRES_MAPPING, { reason: "Account Ops alias metadata requires a future owner-approved domain and provider contract." }],
+      ["retailers", null, C.REQUIRES_MAPPING, { reason: "Custom retailer metadata has no approved canonical Phase 1B domain." }],
+      ["storeAccounts", null, C.REQUIRES_MAPPING, { reason: "Retailer account metadata and credential references require a future security-reviewed canonical domain." }],
+      ["tasks", null, C.REQUIRES_MAPPING, { reason: "Account Ops tasks have no approved canonical Phase 1B task domain." }],
+      ["activity", null, C.REQUIRES_MAPPING, { reason: "Local Account Ops activity summaries are not canonical audit events." }],
+    ]),
+  },
   "legacy-core-business": {
     classification: C.REQUIRES_MAPPING,
     adapterId: "legacy-core-v0-review",
