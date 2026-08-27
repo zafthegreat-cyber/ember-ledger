@@ -53,7 +53,7 @@ export function routeStateFromPath(pathname = "") {
   if (section === "inventory") return { activeTab: "businessWorkspace", businessWorkspaceView: "inventory" };
   if (section === "sell" || section === "sales") return { activeTab: "businessWorkspace", businessWorkspaceView: "sales" };
   if (section === "business") {
-    const businessView = ["purchases", "inventory", "sales", "money"].includes(subSection) ? subSection : "overview";
+    const businessView = ["purchases", "inventory", "sales", "money", "compliance"].includes(subSection) ? subSection : "overview";
     const moneyView = ["expenses", "mileage", "reports", "reconciliation"].includes(detailId) ? detailId : ["expenses", "mileage", "reports", "reconciliation"].includes(subSection) ? subSection : "expenses";
     return { activeTab: "businessWorkspace", businessWorkspaceView: ["expenses", "mileage", "reports", "reconciliation"].includes(subSection) ? "money" : businessView, businessMoneyView: moneyView };
   }
