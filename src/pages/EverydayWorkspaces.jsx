@@ -30,6 +30,7 @@ import { calculateSaleResults } from "../features/flipScout/calculations.js";
 import { COST_ALLOCATION_METHODS, EXPENSE_CATEGORIES, INVENTORY_STATUSES, PRODUCT_CLASSIFICATIONS, SALE_STATUSES } from "../features/flipScout/constants.js";
 import { allocateLotCost, reconcileLotAllocations, validateSaleQuantity } from "../features/flipScout/inventory.js";
 import { createFlipScoutRepository } from "../features/flipScout/storageRepository.js";
+import BusinessCompliancePage from "../features/businessCompliance/BusinessCompliancePage.jsx";
 import "./everyday-workspaces.css";
 
 const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
@@ -381,7 +382,7 @@ export function BusinessWorkspace({ items = [], purchases = [], sales = [], expe
   const allSales = useMemo(() => mergeRecords(state.sales, sales), [sales, state.sales]);
   const allExpenses = useMemo(() => mergeRecords(state.expenses, expenses), [expenses, state.expenses]);
   const allMileage = useMemo(() => mergeRecords(state.mileage, mileage), [mileage, state.mileage]);
-  const businessDestinations = [{ key: "purchases", label: "Purchases", detail: "Acquisitions and lots" }, { key: "inventory", label: "Inventory", detail: "Items for resale" }, { key: "sales", label: "Sales", detail: "Proceeds and profit" }, { key: "money", label: "Money", detail: "Expenses and records" }];
+  const businessDestinations = [{ key: "purchases", label: "Purchases", detail: "Acquisitions and lots" }, { key: "inventory", label: "Inventory", detail: "Items for resale" }, { key: "sales", label: "Sales", detail: "Proceeds and profit" }, { key: "money", label: "Money", detail: "Expenses and records" }, { key: "compliance", label: "Compliance", detail: "Registration, taxes, licenses, deadlines" }];
   const moneyTabs = [{ key: "expenses", label: "Expenses" }, { key: "mileage", label: "Mileage" }, { key: "reports", label: "Reports" }];
   const changeView = (next) => { setSelected(null); setView(next); onViewChange?.(next); };
   const findRecord = (type, record) => {
@@ -399,6 +400,7 @@ export function BusinessWorkspace({ items = [], purchases = [], sales = [], expe
   const formState = useMemo(() => ({ ...state, purchases: allPurchases, inventory: allInventory, sales: allSales, expenses: allExpenses, mileage: allMileage }), [allExpenses, allInventory, allMileage, allPurchases, allSales, state]);
   if (form) return <RecordForm key={`${form.type}-${form.seed?.id || "new"}`} type={form.type} seed={form.seed} state={formState} onSave={saveRecord} onCancel={() => setForm(null)} />;
   if (selected) return <BusinessDetail type={selected.type} record={selected.record} state={formState} onBack={() => setSelected(null)} onEdit={editRecord} onDelete={deleteRecord} onMoveToCollection={moveToCollection} onOpenRelated={openDetail} onAllocate={allocateLot} />;
+  if (view === "compliance") return <BusinessCompliancePage onBack={() => changeView("overview")} />;
   const filtered = (records) => records.filter((record) => !query || recordTitle(record).toLowerCase().includes(query.toLowerCase()));
   const purchaseCost = allPurchases.reduce((sum, row) => sum + number(row.totalPurchaseCost), 0);
   const inventoryCost = allInventory.reduce((sum, row) => sum + number(row.allocatedItemCost || row.totalPurchaseCost), 0);
