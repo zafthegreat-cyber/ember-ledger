@@ -274,6 +274,12 @@ export function CollectionWorkspace({ items = [], initialView = "collection", on
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [conditionFilter, setConditionFilter] = useState("");
+  useEffect(() => {
+    setView(initialView);
+    setSelected(null);
+    setForm(null);
+    setFiltersOpen(false);
+  }, [initialView]);
   const allItems = useMemo(() => mergeRecords(state.inventory, items).map(normalizeOwnedItem), [items, state.inventory]);
   const visible = useMemo(() => allItems.filter((item) => (!query || [recordTitle(item), item.setName, item.cardNumber, item.storageLocation].join(" ").toLowerCase().includes(query.toLowerCase())) && (!conditionFilter || item.condition === conditionFilter)), [allItems, conditionFilter, query]);
   const collectionItems = visible.filter((item) => item.ownedItemPurpose === OWNED_ITEM_PURPOSES.PERSONAL_COLLECTION);
@@ -361,6 +367,15 @@ export function BusinessWorkspace({ items = [], purchases = [], sales = [], expe
   const [form, setForm] = useState(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [query, setQuery] = useState("");
+  useEffect(() => {
+    setView(initialView);
+    setSelected(null);
+    setForm(null);
+    setFiltersOpen(false);
+  }, [initialView]);
+  useEffect(() => {
+    setMoneyViewState(initialMoneyView);
+  }, [initialMoneyView]);
   const allPurchases = useMemo(() => mergeRecords(state.purchases, purchases), [purchases, state.purchases]);
   const allInventory = useMemo(() => mergeRecords(state.inventory, items).filter((item) => inferOwnedItemPurpose(item) === OWNED_ITEM_PURPOSES.FOR_RESALE), [items, state.inventory]);
   const allSales = useMemo(() => mergeRecords(state.sales, sales), [sales, state.sales]);

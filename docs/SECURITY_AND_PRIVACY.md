@@ -6,11 +6,13 @@ Phase 1A and the validated Phase 1B checkpoint source are published on the featu
 
 Phase 1C is published through commit `af21199f610cc91e31d9dee59af6f0a2f748ab79`. Its intelligence code remains local-only and adds no database migration, hosted persistence, sync, provider credential, model provider, file upload, or external account action.
 
-Phase 2A Account Ops is a local, unpublished working copy. It stores operational profiles, alias metadata, retailer-account metadata, credential references, and tasks in browser storage. It performs no email provisioning, mailbox/order access, retailer signup submission, verification bypass, secret storage, schema application, remote activation, or sync.
+Phase 2A Account Ops is published at `c76e3e4bc668c08d9a0908c9bb2cd96444610297`. It stores operational profiles, alias metadata, retailer-account metadata, credential references, and tasks in browser storage. It performs no email provisioning, mailbox/order access, retailer signup submission, verification bypass, secret storage, schema application, remote activation, or sync.
+
+Phase 2A.5 is a local, unpublished navigation architecture. Product workspace, route, availability, and entitlement metadata are not authorization. Bot and Owner Center remain OWNER-only, and Account Ops remains `VERIFIED_OWNER` even though it is associated with Business.
 
 ## Security posture summary
 
-The published source keeps eBay credentials server-side and includes Supabase token verification, an immutable-subject OWNER policy, protected eBay routes, safe session inspection, exact-origin CORS for protected route families, redaction helpers, and deterministic backup/restore inspection. Hosted configuration still requires verification. Phase 1B extends that boundary to canonical owner API contracts and zero-write migration planning. Phase 1C adds recursive rejection of owner/role/session/token/security authority in local analysis payloads, provenance-separated evidence, and append-only local card-analysis revisions. Phase 2A reuses the verified client session gate before Account Ops storage is read, rejects nested authority/secret fields, stores only credential references, and keeps generated passwords ephemeral. These are defense-in-depth for browser workflows, not replacements for backend authorization or a secure secret vault. Auction results do not gain a generic revision series, and restock intelligence recomputes from observations. The application is still not ready for production private-business data because remote persistence is deliberately inactive, canonical records remain browser-local, legacy API families remain broadly exposed, Account Ops personal/operational metadata is same-origin-readable, downloaded backup JSON is unencrypted, and backup coverage can be partial.
+The published source keeps eBay credentials server-side and includes Supabase token verification, an immutable-subject OWNER policy, protected eBay routes, safe session inspection, exact-origin CORS for protected route families, redaction helpers, and deterministic backup/restore inspection. Hosted configuration still requires verification. Phase 1B extends that boundary to canonical owner API contracts and zero-write migration planning. Phase 1C adds recursive rejection of owner/role/session/token/security authority in local analysis payloads, provenance-separated evidence, and append-only local card-analysis revisions. Published Phase 2A reuses the verified client session gate before Account Ops storage is read, rejects nested authority/secret fields, stores only credential references, and keeps generated passwords ephemeral. Local Phase 2A.5 adds defense-in-depth around workspace visibility: direct route and verified session state take precedence over a bounded preference whose public fallback cannot grant authority. An optional remembered Bot marker remains inert unless the current session independently verifies OWNER authorization; Owner Center and authority fields are prohibited. These controls are not replacements for backend authorization or a secure secret vault. Auction results do not gain a generic revision series, and restock intelligence recomputes from observations. The application is still not ready for production private-business data because remote persistence is deliberately inactive, canonical records remain browser-local, legacy API families remain broadly exposed, Account Ops personal/operational metadata is same-origin-readable, downloaded backup JSON is unencrypted, and backup coverage can be partial.
 
 Code 3 is the application identity, not a declaration of the legal/public business name. Authentication, records, exports, and provider connections must reference the configured business identity separately where legally or operationally relevant.
 
@@ -42,10 +44,12 @@ The next activation phase MUST verify schema/RLS, repository owner scope, rollba
 | Intelligence authority-field rejection | Phase 1C local implementation | `src/features/intelligence/analysisHistory.js`; recursive owner/role/session/token/authorization/credential/security rejection |
 | Intelligence provenance/history | Phase 1C local implementation | immutable card-analysis system result, separate version-checked owner correction, linked card revisions in existing `appraisals`; no generic auction/restock revision series |
 | AI/CV and autonomous action boundary | Enforced by absence and explicit capability flags | no configured model provider, no image analysis claim, no purchase/offer/bid action |
-| Account Ops session gate | Phase 2A local implementation | repository/service construction and private reads occur only after verified OWNER session state |
-| Account Ops authority/secret rejection | Phase 2A local implementation | recursive owner/session/token/authorization/prototype/secret-field validation before persistence |
-| Account credential boundary | Phase 2A local implementation | nonsecret `CredentialReference` metadata only; generated passwords remain ephemeral and are excluded from backup/logs |
-| Retailer verification/anti-abuse boundary | Phase 2A local implementation | human-controlled signup/checklist; no CAPTCHA/OTP/verification bypass, bulk signup, limit evasion, or checkout action |
+| Account Ops session gate | Published Phase 2A implementation | repository/service construction and private reads occur only after verified OWNER session state |
+| Account Ops authority/secret rejection | Published Phase 2A implementation | recursive owner/session/token/authorization/prototype/secret-field validation before persistence |
+| Account credential boundary | Published Phase 2A implementation | nonsecret `CredentialReference` metadata only; generated passwords remain ephemeral and are excluded from backup/logs |
+| Retailer verification/anti-abuse boundary | Published Phase 2A implementation | human-controlled signup/checklist; no CAPTCHA/OTP/verification bypass, bulk signup, limit evasion, or checkout action |
+| Product workspace preference boundary | Phase 2A.5 local implementation | `code3.workspace-preference.v1` retains a public fallback plus optional inert last selection; direct route/session wins, Bot requires a fresh OWNER decision, and Owner Center/authority fields are excluded |
+| Bot and workspace authorization | Phase 2A.5 local implementation | Bot/Owner remain verified OWNER surfaces; Account Ops remains `VERIFIED_OWNER`; registry/entitlement metadata cannot authorize |
 
 ## Current limitations and production blockers
 
@@ -109,6 +113,12 @@ Official eBay evidence remains separately attributable as external identity, pro
 
 No image/OCR/AI provider is configured. The scanner boundary explicitly reports image analysis false and must not receive a machine-observed defect label unless a future approved adapter actually produced it. Future model work requires protected file handling, privacy/retention approval, prompt/input isolation, evaluation, cost controls, and a human-review gate before it can affect a confirmed record.
 
+### Medium: workspace and entitlement metadata can be mistaken for authority
+
+Phase 2A.5 route ownership, navigation visibility, remembered product workspace, and future `FREE`/`PLUS`/`PRO`/`BUSINESS`/`OWNER` hints are client presentation metadata. They cannot grant an OWNER session, authorize a backend request, expose Bot or Owner Center, or load Account Ops before its existing gate. `OWNER` is an authority role rather than a purchasable tier. No billing or subscription state is active.
+
+The saved preference always retains a public Collect, Find, Sell, or Business fallback. It may also remember Bot as inert presentation history only after an authorized selection; that marker is ignored unless the current session independently verifies OWNER authorization. Direct routes and verified session state take precedence, and session downgrade/logout must remove private visibility before private storage initializes. The product-workspace term is distinct from historical persisted collaboration/data `Workspace` records and `activeWorkspaceId`; Phase 2A.5 does not reinterpret or migrate them.
+
 ## Target security architecture
 
 ```mermaid
@@ -158,6 +168,7 @@ Phase 1B canonical persistence additionally uses the server-only gate `CODE3_CAN
 |---|---:|---:|---:|---:|---:|
 | Connections, schedules, security, backup | Full | None | None | None | None |
 | Account Ops profiles, aliases, store accounts, and provider controls | Full | None by default | None | None | Explicit view only if a future policy permits |
+| Bot workspace and future provider controls | Full | None | None | None | None |
 | Search/import raw provider data | Full | Configurable review | None | None | Configurable view |
 | Purchases/receiving/listings/sales/shipping | Full | Configurable edit | Processing subset | Financial review only | Explicit view |
 | Owned-item identification/storage | Full | Edit | Edit | View only if granted | Explicit view |
@@ -248,6 +259,9 @@ The local `/api/code3/*` route family reuses exact-origin CORS, `requireOwner`, 
 | Generated alias is mistaken for receiving/provisioned mail | Phase 2A local metadata can resemble an address | separate lifecycle/provisioning evidence; no `CONNECTED` or receiving claim without verified provider result |
 | Generated or entered credential leaks through persistence/export/logs | no secure vault adapter; password is ephemeral | prohibit secret fields recursively; reference-only model; no log/backup; security/credential scans and tests |
 | Account Ops is misused for account farming or retailer-limit evasion | assisted setup and reusable profiles could be abused if expanded | human-only verification, no bulk signup/automation/bypass, no identity rotation, explicit product non-goals and future provider review |
+| Remembered workspace or entitlement metadata grants private access | local route/navigation metadata is browser-controlled | verified session before private render/storage, public fallback plus inert private marker, direct-route precedence, server authorization, session-downgrade tests |
+| Product workspace routing exposes or duplicates records | custom route/history plus legacy `Workspace` terminology | central validated route ownership, compatibility tests, shared record IDs/projections, explicit distinction from historical persisted Workspace records |
+| Bot shell is mistaken for a connected automation provider | Phase 2A.5 provides a visible OWNER-only foundation | honest empty/capability state; no provider/token/task-control/checkout path; separate future authorization and anti-abuse review |
 
 ## Production security blockers
 

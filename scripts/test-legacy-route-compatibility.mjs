@@ -1,5 +1,16 @@
 import assert from "node:assert/strict";
-import { canonicalLocationForPath, canonicalPathForPath, routeStateFromPath } from "../src/utils/appRouteState.js";
+import {
+  canonicalLocationForPath,
+  canonicalPathForPath,
+  pathFromActiveTab,
+  routeStateFromPath,
+} from "../src/utils/appRouteState.js";
+import {
+  AUTHORITY_REQUIREMENTS,
+  resolveRouteOwnership,
+  ROUTE_CLASSIFICATIONS,
+  WORKSPACE_IDS,
+} from "../src/config/workspaceRegistry.js";
 
 const redirects = new Map([
   ["/scout/flip-scout", "/find/deals"],
@@ -39,4 +50,26 @@ for (const distinctRoute of ["/scout/stores/store-1", "/vault/cards", "/forge/re
   assert.equal(canonicalPathForPath(distinctRoute), distinctRoute, `${distinctRoute} remains available until its workflow is migrated`);
 }
 
-console.log(`Legacy compatibility checks passed: ${redirects.size + 4}`);
+const workspaceHomes = new Map([
+  ["/collect", WORKSPACE_IDS.COLLECT],
+  ["/find/home", WORKSPACE_IDS.FIND],
+  ["/sell/home", WORKSPACE_IDS.SELL],
+  ["/bot", WORKSPACE_IDS.BOT],
+]);
+
+for (const [route, workspace] of workspaceHomes) {
+  assert.deepEqual(routeStateFromPath(route), { activeTab: "workspaceHome", productWorkspaceHome: workspace });
+  assert.equal(pathFromActiveTab("workspaceHome", { productWorkspaceHome: workspace }), route);
+}
+
+assert.deepEqual(routeStateFromPath("/bot/tasks"), { activeTab: "dashboard" }, "Unimplemented Bot routes must not silently open Bot Home");
+assert.equal(canonicalPathForPath("/find"), "/find", "The established Find deal route remains canonical");
+assert.equal(resolveRouteOwnership("/find")?.workspace, WORKSPACE_IDS.FIND);
+assert.equal(resolveRouteOwnership("/sell")?.classification, ROUTE_CLASSIFICATIONS.LEGACY_REDIRECT);
+assert.equal(resolveRouteOwnership("/sell")?.redirectTo, "/business/sales");
+assert.equal(resolveRouteOwnership("/account-ops")?.workspace, WORKSPACE_IDS.BUSINESS);
+assert.equal(resolveRouteOwnership("/account-ops")?.requiredAuthority, AUTHORITY_REQUIREMENTS.VERIFIED_OWNER);
+assert.equal(resolveRouteOwnership("/owner-center")?.classification, ROUTE_CLASSIFICATIONS.OWNER);
+assert.equal(resolveRouteOwnership("/owner-center")?.workspace, null, "Owner Center stays outside product workspaces");
+
+console.log(`Legacy compatibility checks passed: ${redirects.size + 27}`);

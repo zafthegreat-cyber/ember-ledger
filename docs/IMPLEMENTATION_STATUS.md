@@ -2,23 +2,23 @@
 
 Last audited: 2026-08-26
 
-Published Phase 1C commit: `af21199f610cc91e31d9dee59af6f0a2f748ab79`
+Published Phase 2A commit: `c76e3e4bc668c08d9a0908c9bb2cd96444610297`
 
-Repository branch represented: `ui-104-final-product-ui-2` (Phase 2A local working copy prepared from a detached worktree at the published Phase 1C commit)
+Repository branch represented: `ui-104-final-product-ui-2` (Phase 2A.5 local working copy prepared from a detached worktree at the published Phase 2A commit)
 
 Pull request: #1, Draft
 Deployment: authenticated Vercel Preview only; no production deployment
 
 ## Current phase
 
-**Phase 2A — Account Ops Foundation** is implemented and fully validated locally, and remains unpublished pending a separately authorized checkpoint. It adds profiles, alias metadata, retailer-account metadata, assisted human setup, account health, tasks, backup/preview registration, and future Inbox/Orders contracts. Phase 1B remains the persistence boundary: its database artifact is `SCHEMA_ONLY`, Migration Preview is `DRY_RUN_ONLY`, `LOCAL_ONLY` remains authoritative, `REMOTE_ACTIVE` is disabled, no database migration was executed, no provider-backed alias/mail/order connection was activated, and no owner data moved.
+**Phase 2A.5 — Workspace Architecture / Mini-App Shell** is the current local, unpublished implementation phase. It organizes existing routes and shared records into Collect, Find, Sell, Bot, and Business, keeps Owner Center separate, associates Account Ops with Business without weakening its `VERIFIED_OWNER` gate, and adds no provider or business-domain migration. Phase 1B remains the persistence boundary: its database artifact is `SCHEMA_ONLY`, Migration Preview is `DRY_RUN_ONLY`, `LOCAL_ONLY` remains authoritative, `REMOTE_ACTIVE` is disabled, no database migration was executed, no provider-backed alias/mail/order/Bot connection was activated, and no owner data moved.
 
 ## Completed baseline
 
 - definitive product, feature-status, architecture, data, integration, security, roadmap, status, and risk documentation;
 - approved Code 3 application-name decision documented with the business name and tagline kept separate;
 - approved minimal mobile-first shell and plain-language primary navigation;
-- Home, Find, Global Add, Collection, and Business workspace foundations;
+- published minimal Home, Find, Global Add, Collection, and Business surfaces that Phase 2A.5 reorganizes through compatibility routes;
 - owner-only Owner Center UI with Overview, Sourcing, Restocks, Performance, and Controls;
 - server-side eBay Browse OAuth/search, token cache, filters, pagination, error mapping, and honest health state;
 - eBay discovery normalization, deduplication, changed/expired detection, and Import Review gate;
@@ -65,7 +65,7 @@ The published Phase 1C checkpoint adds:
 - an eBay adapter that preserves official source identity/observations/active-listing evidence separately and refuses to fabricate missing currency, plus a scanner/provider-neutral boundary that makes no OCR, computer-vision, grade, or authenticity claim;
 - [INTELLIGENCE_CONTRACT.md](./INTELLIGENCE_CONTRACT.md) plus focused domain/history/provider tests and deterministic QA inputs.
 
-The local, unpublished Phase 2A working copy adds:
+The published Phase 2A checkpoint adds:
 
 - a first-class, lazy-loaded `/account-ops/*` private workspace with Overview, Profiles, Emails, Store Accounts, and Tasks;
 - a verified-session gate that does not read the Account Ops repository before OWNER authorization and never treats an operational profile as authentication identity;
@@ -79,6 +79,17 @@ The local, unpublished Phase 2A working copy adds:
 - Backup Format v1 coverage for Account Ops metadata and zero-write Restore Preview validation, with all eight migration paths explicitly `REQUIRES_MAPPING` because no canonical Account Ops domain exists;
 - [ACCOUNT_OPS_CONTRACT.md](./ACCOUNT_OPS_CONTRACT.md) plus completed domain, fixture, UI-contract, browser, recovery, security, route, accessibility, and regression validation.
 
+The local, unpublished Phase 2A.5 working copy adds:
+
+- one central product-workspace/route ownership model for Collect, Find, Sell, Bot, Business, Owner, Global, and legacy redirects;
+- compatibility-first homes at `/collect`, `/find/home`, `/sell/home`, `/bot`, and `/business`;
+- a compact, accessible workspace switcher plus workspace-local mobile and desktop navigation;
+- a bounded `code3.workspace-preference.v1` preference with a public product-workspace fallback and optional inert last selection; it is separate from historical `Workspace`/`activeWorkspaceId`, contains no authority, requires fresh OWNER verification before a remembered Bot selection can resolve, and yields to direct routes;
+- an OWNER-only Bot shell with honest no-provider state and no automation;
+- Business association for Account Ops while retaining its existing pre-storage verified OWNER gate;
+- explicit future entitlement metadata that cannot authorize a route and keeps OWNER distinct from paid tiers;
+- [WORKSPACE_ARCHITECTURE_CONTRACT.md](./WORKSPACE_ARCHITECTURE_CONTRACT.md), with full local validation complete and publication still pending.
+
 ## Partially complete or implemented differently
 
 - canonical target contracts are versioned and validated, while active feature records remain browser-local and retain their existing heterogeneous schemas;
@@ -90,8 +101,9 @@ The local, unpublished Phase 2A working copy adds:
 - feature controls are local UI controls, not server policy;
 - PWA install/offline shell exists, but durable sync, conflicts, and safe queued mutation do not;
 - the approved Code 3 values are applied centrally in the local runtime, but default social handle/currency/time zone remain unresolved and compatibility/public-beta copy still needs a bounded historical-wording sweep;
-- compatibility routing remains custom and large portions of legacy UI still live in `src/App.jsx`.
-- Account Ops profiles, aliases, retailer accounts, health, and tasks work only in the Phase 2A browser-local source; secure credential storage, provider provisioning, Inbox/Orders, durable audit, and canonical mapping remain absent.
+- compatibility routing remains custom and large portions of legacy UI still live in `src/App.jsx`; Phase 2A.5 centralizes workspace ownership but does not complete renderer extraction.
+- Account Ops profiles, aliases, retailer accounts, health, and tasks work only in the published Phase 2A browser-local source; secure credential storage, provider provisioning, Inbox/Orders, durable audit, and canonical mapping remain absent.
+- Phase 2A.5 workspace homes and Bot shell are presentation foundations, not evidence that future workspace features or providers are implemented.
 
 ## Blocked
 
@@ -114,6 +126,8 @@ The local, unpublished Phase 2A working copy adds:
 - activation and disposable-database verification of the canonical backend repository for Deal Finder, Owner Center, purchases, owned items, sales, and money;
 - complete server/file-inclusive backup and an owner-confirmed transactional restore implementation;
 - universal cross-record search;
+- server-verified commercial entitlements, subscription billing, checkout, or payment processing (`OWNER` remains authority rather than a plan);
+- Bot provider adapters, task control, proxy integration, checkout, purchasing, or retailer automation; the Phase 2A.5 Bot route is an OWNER-only foundation state;
 - durable search history, schedules, notifications, and system job history;
 - comparable-record repository and licensed sold-price feed;
 - full auction event/lot/source/calendar/live-display/pickup workflows;
@@ -145,18 +159,20 @@ Phase 1C publication-candidate validation was reproducible and is represented by
 
 The Phase 1C final local gate passed frontend and backend builds; Phase 1A/1B security, canonical, persistence, migration-preview/readiness, backup/restore, eBay, sourcing, Owner Center, route, browser, accessibility, light/dark viewport, and focused-smoke suites; credential/safety scans; and the complete bounded regression. The regression passed 28/28 scenarios in 323.446 seconds of suite time, with zero retries and no open handles after cleanup. The five slowest scenarios were Business inventory add/edit/delete (42.680 seconds), Scout report persistence (33.961 seconds), Collection-to-resale quantity transfer (28.968 seconds), Market Watch deal check (27.996 seconds), and Scout report add/edit (25.154 seconds). “Scout” and “Forge” remain intentional historical regression-scenario names, not visible Code 3 product labels.
 
-The Phase 2A local validation gate passed frontend and backend builds; 183 Account Ops domain assertions; 20/20 deterministic fixtures with 573 assertions; 31 UI-contract assertions; and a 25-capture mobile browser matrix with 228 assertions, zero 360-pixel horizontal overflow, and no application browser errors. Backup Format v1 passed with 18 included sections and 14 fixture records; Restore Preview, Migration Preview, client persistence, and Migration Readiness remained zero-write/local-only. Phase 1A/1B/1C branding, security, canonical, eBay, intelligence, sourcing, Owner Center, route, compatibility, accessibility, lazy-load, light/dark viewport, and focused-smoke gates passed. The bounded regression passed 28/28 scenarios in 314.834 seconds with zero retries and no open handles. The five slowest scenarios were Business inventory add/edit/delete (42.617 seconds), Scout report persistence (33.891 seconds), Collection-to-resale quantity transfer (28.801 seconds), Scout report add/edit (25.129 seconds), and Market Watch deal check (23.789 seconds). One dark viewport run made concurrently with the light matrix missed a Scout text assertion; the unchanged dark matrix passed all 47 combinations when run alone, identifying local browser contention rather than an application correction.
+The published Phase 2A validation gate passed frontend and backend builds; 183 Account Ops domain assertions; 20/20 deterministic fixtures with 573 assertions; 31 UI-contract assertions; and a 25-capture mobile browser matrix with 228 assertions, zero 360-pixel horizontal overflow, and no application browser errors. Backup Format v1 passed with 18 included sections and 14 fixture records; Restore Preview, Migration Preview, client persistence, and Migration Readiness remained zero-write/local-only. Phase 1A/1B/1C branding, security, canonical, eBay, intelligence, sourcing, Owner Center, route, compatibility, accessibility, lazy-load, light/dark viewport, and focused-smoke gates passed. The bounded regression passed 28/28 scenarios in 314.834 seconds with zero retries and no open handles. The five slowest scenarios were Business inventory add/edit/delete (42.617 seconds), Scout report persistence (33.891 seconds), Collection-to-resale quantity transfer (28.801 seconds), Scout report add/edit (25.129 seconds), and Market Watch deal check (23.789 seconds). One dark viewport run made concurrently with the light matrix missed a Scout text assertion; the unchanged dark matrix passed all 47 combinations when run alone, identifying local browser contention rather than an application correction.
+
+The local Phase 2A.5 validation gate passes the frontend/backend builds and all inherited Phase 1A–2A security, canonical, persistence, migration-preview/readiness, backup/restore, intelligence, eBay, sourcing, Owner Center, Account Ops, route, compatibility, plain-language, accessibility, lazy-load, viewport, and smoke suites. Focused workspace evidence is 256 registry assertions, 82 preference assertions, 20/20 deterministic fixtures with 115 assertions, 91 UI-contract assertions, and a 24-capture mobile browser matrix with 237 assertions, zero browser errors, and zero 360-pixel horizontal overflow. Light and dark inherited viewport matrices each pass 46 checks. The bounded regression passes 28/28 scenarios in 323.442 seconds with zero retries and no open handles. The five slowest scenarios are Business inventory add/edit/delete (41.815 seconds), Scout report persistence (34.347 seconds), Collection-to-resale quantity transfer (28.678 seconds), Market Watch deal check (28.131 seconds), and Scout report add/edit (25.221 seconds). Phase 2A.5 remains local and unpublished; this validation is not a Production-readiness or publication claim.
 
 ## Preview state
 
 - PR #1 remains Draft per the task baseline.
-- The published branch points to the Phase 1C checkpoint `af21199f610cc91e31d9dee59af6f0a2f748ab79`; Phase 2A changes are local only.
+- The published branch points to the Phase 2A checkpoint `c76e3e4bc668c08d9a0908c9bb2cd96444610297`; Phase 2A.5 changes are local only.
 - Deployment is Vercel Preview only and requires authentication.
 - No production deployment is represented by this documentation.
 
 ## Known defects and debt
 
-1. The main application chunk is approximately 2,337 kB minified and 586 kB gzip.
+1. The local Phase 2A.5 main application chunk is approximately 2,347.63 kB minified and 589.36 kB gzip, compared with the published Phase 2A baseline of 2,337.78 kB and 586.01 kB gzip.
 2. Auth/eBay use the published owner/CORS boundary; Phase 1B canonical routes reuse it, while legacy Express routes remain outside it.
 3. Browser-visible legacy role/development variables are presentation/testing inputs, not a safe authorization source.
 4. Current owner/business records are single-browser local data.
@@ -181,9 +197,12 @@ The Phase 2A local validation gate passed frontend and backend builds; 183 Accou
 23. A generated alias is local metadata only. No provider-managed or verified catch-all integration can prove that it receives mail, and no secure credential-vault adapter is active.
 24. Account Ops Inbox and Orders are contracts only. No mailbox is connected, no messages or order events are fetched, and no external evidence can create a Purchase automatically.
 25. Assisted retailer setup is a human checklist. Code 3 neither submits signups nor bypasses CAPTCHA, OTP, verification, bot detection, household/account limits, or purchase limits.
+26. Phase 2A.5 workspace ownership remains a presentation layer over custom routing; a saved preference and entitlement hints are deliberately nonauthoritative, and physical Android Back QA remains necessary.
+27. Bot is an OWNER-only empty/foundation shell. No Bot provider, task control, proxy, checkout, or purchase integration exists.
+28. Auction events/lots are not yet addressable through stable record-detail URLs; workspace routing links honestly to the implemented `/find/auctions` surface instead of inventing an unsupported lot-detail route.
 
 ## Next recommended task
 
-Review the validated Phase 2A captures and, if approved, publish Phase 2A only through a separately authorized checkpoint. The recommended Phase 2B work is first a design/security decision for a minimally scoped read-only Inbox/order provider and owner-review gate; do not connect a mailbox or implement order ingestion without that approval. The established route/app-shell extraction remains the safer structural task before further feature growth, and disposable-database verification remains separately authorized with no owner data.
+If the local screenshots and validation are approved, publish only Phase 2A.5 through a separately authorized checkpoint. Do not start Phase 2B, connect a mailbox, connect a Bot provider, or implement billing during that checkpoint. The recommended later Phase 2B work begins with a design/security decision for a minimally scoped read-only Inbox/order provider and owner-review gate. Remaining renderer extraction and disposable-database verification are separately authorized work, with no owner data.
 
 Do not apply the schema to the owner or Production database, enable `REMOTE_ACTIVE`, migrate files, or execute a migration plan without a separately approved cutover task and verified backup.

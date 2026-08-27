@@ -6,13 +6,16 @@ Phase 1A authentication and recovery structures and the validated Phase 1B schem
 
 Phase 1C is published through `af21199f610cc91e31d9dee59af6f0a2f748ab79` and adds local intelligence contracts plus card-analysis revision history only. It does not change the repository schema version, apply the canonical schema, activate remote persistence, or canonicalize existing owner records.
 
-Phase 2A is a local, unpublished working copy. It adds a separate versioned Account Ops browser document and migration classification only. It does not add a canonical Account Ops domain, apply a schema, provision email, activate remote persistence, or migrate owner records.
+Phase 2A Account Ops is published at `c76e3e4bc668c08d9a0908c9bb2cd96444610297`. It adds a separate versioned Account Ops browser document and migration classification only. It does not add a canonical Account Ops domain, apply a schema, provision email, activate remote persistence, or migrate owner records.
+
+Phase 2A.5 is a local, unpublished presentation-architecture working copy. It adds a bounded product-workspace preference and route metadata, not a domain entity or feature-data migration.
 
 This document distinguishes current persisted shapes, Phase 1B schema-only representations, and the future active canonical model. A table, migration file, repository interface, or dry-run result is not evidence that remote persistence is active.
 
 ## Modeling rules
 
 - One physical item has one stable `OwnedItem` identity.
+- Product workspaces project shared opportunity, purchase, owned-item, inventory, and sale records; they never create Collect-, Sell-, or Business-specific clones merely for navigation.
 - Imported source evidence, normalized data, user corrections, and final records remain separate.
 - Historical financial and inventory facts are corrected, voided, returned, refunded, written off, or archived rather than destructively replaced.
 - Major records include stable ID, created/updated timestamp, created/updated actor, schema/version, source, archive status, and notes where relevant.
@@ -100,6 +103,23 @@ A store account references metadata only. Its status is `SETUP`, `NEEDS_VERIFICA
 
 Account Ops task status is `OPEN`, `DONE`, or `DISMISSED`. Future Inbox message and order-candidate records are contracts only; neither is persisted in Phase 2A, and any future order evidence must pass owner review before an explicit Purchase is created.
 
+### Product workspace preference
+
+Phase 2A.5 uses `code3.workspace-preference.v1` for reconstructible UI state. Its bounded version 1 shape is:
+
+| Field | Meaning |
+|---|---|
+| `schemaVersion` | exact supported preference schema version |
+| `lastProductWorkspace` | one available public product workspace (`COLLECT`, `FIND`, `SELL`, or `BUSINESS`) |
+| `lastSelectedWorkspace` | optional product selection; may be `BOT` only as inert presentation history written for a currently verified owner and never as authority |
+| `updatedAt` | canonical ISO update time |
+
+The preference rejects extra, dangerous, and authority-bearing fields. It never stores Owner Center, owner ID/subject, role, entitlement, token, session, business records, or navigation payload. A stored Bot selection is ignored unless the current application session independently verifies OWNER authorization. Direct route ownership takes precedence over the saved value; invalid or unavailable values fall back safely.
+
+This preference is intentionally distinct from the pre-existing persisted `Workspace` collaboration/data records and `activeWorkspaceId`. Phase 2A.5 does not rename, migrate, canonicalize, or reinterpret those historical entities. Code and documentation should use **product workspace** or **workspace shell** when the distinction matters.
+
+Because the preference is reconstructible UI state and contains no owner business record or authority, Phase 2A.5 registers its key inside Backup Format v1's existing non-coverage `safe-ui-preferences` source. It does not add a source, affect coverage, or create a duplicated business record. Restore Preview remains zero-write and treats the value only as bounded display preference data.
+
 ### Owned-item compatibility
 
 `src/features/ownedItems/ownedItemPurpose.js` formalizes:
@@ -154,7 +174,7 @@ The backend-only normalized principal contains immutable `subject`, `provider`, 
 
 Each source descriptor contains `sourceId`, `displayName`, `storageType`, `schemaVersion`, supported versions, owner-data and security-state flags, Phase 1A inclusion, export/validation adapter identifiers, reference dependencies, record paths, coverage relevance, and an exclusion reason when omitted.
 
-The Phase 2A registry contains 22 sources: 18 locally included sources and four excluded or conditional sources. Included local sources cover Deal Finder schema 2, Owner Center schema 1, Account Ops schema 1, allowlisted legacy business and fallback documents, legacy restock/community and review sources, safe preferences, and safe workflow drafts. Phase 1B may also include a valid owner-authorized canonical PostgreSQL export. Legacy Supabase, other PostgreSQL/process-memory records, and file bytes remain registered exclusions. Authentication/session persistence is a prohibited source and is never exportable. Account Ops permits profile, alias, custom-retailer, store-account, credential-reference, task, and activity metadata, while plaintext passwords, OTPs, tokens, sessions, provider secrets, and owner-authority fields remain prohibited.
+The published Phase 2A registry contains 22 sources: 18 locally included sources and four excluded or conditional sources. Included local sources cover Deal Finder schema 2, Owner Center schema 1, Account Ops schema 1, allowlisted legacy business and fallback documents, legacy restock/community and review sources, safe preferences, and safe workflow drafts. Phase 1B may also include a valid owner-authorized canonical PostgreSQL export. Legacy Supabase, other PostgreSQL/process-memory records, and file bytes remain registered exclusions. Authentication/session persistence is a prohibited source and is never exportable. Account Ops permits profile, alias, custom-retailer, store-account, credential-reference, task, and activity metadata, while plaintext passwords, OTPs, tokens, sessions, provider secrets, and owner-authority fields remain prohibited. The Phase 2A.5 product-workspace preference joins the existing `safe-ui-preferences` key group, which does not affect coverage; it does not alter source counts.
 
 ### BackupEnvelope version 1
 
@@ -302,6 +322,8 @@ erDiagram
 | `BrandConfig` | Code 3 application display/short/PWA names, title template and accessible logo text; independently configurable legal/public business name and unfinished tagline; marks/icons, accents, support/social, currency, time zone |
 | `AppSetting` | versioned owner settings not belonging to a domain |
 | `FeatureFlag` | availability, owner override, required dependency, reason unavailable |
+| Product workspace registry | static presentation metadata for route ownership, navigation placement, availability, required authority, and future nonauthoritative entitlement hints; not a business entity or authorization source |
+| Product workspace preference | bounded reconstructible client preference described above; not the historical persisted `Workspace` entity |
 
 ## Providers and discovery
 

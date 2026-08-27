@@ -1,4 +1,5 @@
 import { BETA_LOCAL_STORAGE_KEYS, safeReadBrowserJson } from "./betaDataCleanup.js";
+import { WORKSPACE_IDS } from "../config/workspaceRegistry.js";
 
 export const APP_ROUTE_STORAGE_KEY = BETA_LOCAL_STORAGE_KEYS.routeState;
 
@@ -22,6 +23,10 @@ export function routeStateFromPath(pathname = "") {
   const [section, subSection, detailId] = segments;
 
   if (!section) return { activeTab: "dashboard" };
+  if (section === "collect") return { activeTab: "workspaceHome", productWorkspaceHome: WORKSPACE_IDS.COLLECT };
+  if (section === "find" && subSection === "home") return { activeTab: "workspaceHome", productWorkspaceHome: WORKSPACE_IDS.FIND };
+  if (section === "sell" && subSection === "home") return { activeTab: "workspaceHome", productWorkspaceHome: WORKSPACE_IDS.SELL };
+  if (section === "bot" && !subSection) return { activeTab: "workspaceHome", productWorkspaceHome: WORKSPACE_IDS.BOT };
   if (section === "find") {
     const view = subSection === "deal-feed" || subSection === "deals"
       ? "deals"
@@ -179,6 +184,15 @@ export function routeStateFromPath(pathname = "") {
 
 export function pathFromActiveTab(activeTab = "dashboard", state = {}) {
   if (activeTab === "membership") return "/settings/plans";
+  if (activeTab === "workspaceHome") {
+    const routeByWorkspace = {
+      [WORKSPACE_IDS.COLLECT]: "/collect",
+      [WORKSPACE_IDS.FIND]: "/find/home",
+      [WORKSPACE_IDS.SELL]: "/sell/home",
+      [WORKSPACE_IDS.BOT]: "/bot",
+    };
+    return routeByWorkspace[state.productWorkspaceHome] || "/collect";
+  }
   if (activeTab === "flipScout") {
     const routeByView = {
       deals: "/find/deals",
@@ -206,6 +220,11 @@ export function pathFromActiveTab(activeTab = "dashboard", state = {}) {
   }
   if (activeTab === "scout") return state.scoutView ? `/scout/${encodeURIComponent(state.scoutView)}` : "/scout";
   if (activeTab === "vault") return state.vaultSubTab ? `/vault/${encodeURIComponent(state.vaultSubTab)}` : "/vault";
+  if (activeTab === "inventory" || activeTab === "addInventory" || activeTab === "addSale") return "/forge";
+  if (activeTab === "sales") return "/forge/sales";
+  if (activeTab === "expenses") return "/forge/expenses";
+  if (activeTab === "mileage") return "/forge/mileage";
+  if (activeTab === "reports") return "/forge/reports";
   if (activeTab === "exchange") {
     const exchangeSection = normalizeExchangeSection(state.exchangeSection || "overview");
     return exchangeSection === "overview" ? "/exchange" : `/exchange/${encodeURIComponent(exchangeSection)}`;
@@ -241,6 +260,7 @@ export function canonicalPathForPath(pathname = "") {
   if (section === "scout" && subSection === "flip-scout") return "/find/deals";
   if (section === "purchases") return "/business/purchases";
   if (section === "inventory") return "/business/inventory";
+  if (section === "sell" && subSection === "home") return "/sell/home";
   if (section === "sell" || section === "sales") return "/business/sales";
   if (section === "integrations") return "/owner-center/controls/connections";
   if (section === "assistant") return "/settings/help";

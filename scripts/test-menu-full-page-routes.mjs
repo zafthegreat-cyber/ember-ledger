@@ -11,6 +11,9 @@ const pageSourceDir = path.join(root, "src", "pages");
 const commandSurfacePath = path.join(root, "src", "components", "command-system", "CommandSurface.jsx");
 const commandSystemCssPath = path.join(root, "src", "styles", "command-system.css");
 const betaReadinessPath = path.join(root, "src", "services", "betaReadinessService.js");
+const workspaceRegistryPath = path.join(root, "src", "config", "workspaceRegistry.js");
+const workspaceSwitcherPath = path.join(root, "src", "features", "workspaces", "WorkspaceSwitcher.jsx");
+const workspaceHomePath = path.join(root, "src", "features", "workspaces", "WorkspaceHomePage.jsx");
 const appFileSource = fs.readFileSync(appPath, "utf8");
 const routeStateSource = fs.existsSync(routeStatePath) ? fs.readFileSync(routeStatePath, "utf8") : "";
 const pageSource = fs.existsSync(pageSourceDir)
@@ -34,8 +37,15 @@ const commandSystemCssSource = fs.existsSync(commandSystemCssPath) ? fs.readFile
 const cssSource = `${appCssSource}\n${commandSystemCssSource}`;
 const betaReadinessSource = fs.readFileSync(betaReadinessPath, "utf8");
 const publicTrustSource = `${appSource}\n${betaReadinessSource}`;
+const workspaceRegistrySource = fs.readFileSync(workspaceRegistryPath, "utf8");
+const workspaceSwitcherSource = fs.readFileSync(workspaceSwitcherPath, "utf8");
+const workspaceHomeSource = fs.readFileSync(workspaceHomePath, "utf8");
 
 const expectedRoutes = [
+  ['section === "collect"', 'productWorkspaceHome: WORKSPACE_IDS.COLLECT'],
+  ['section === "find" && subSection === "home"', 'productWorkspaceHome: WORKSPACE_IDS.FIND'],
+  ['section === "sell" && subSection === "home"', 'productWorkspaceHome: WORKSPACE_IDS.SELL'],
+  ['section === "bot" && !subSection', 'productWorkspaceHome: WORKSPACE_IDS.BOT'],
   ['section === "collection"', 'activeTab: "collectionWorkspace"'],
   ['section === "owner-center"', 'activeTab: "ownerCenter"'],
   ['section === "account-ops"', 'activeTab: "accountOps"'],
@@ -69,6 +79,8 @@ for (const [routeFragment, activeTabFragment] of expectedRoutes) {
 }
 
 const expectedRenderers = [
+  'activeTab === "workspaceHome" && (',
+  '<WorkspaceHomePage',
   'activeTab === "collectionWorkspace" && (',
   '<CollectionWorkspace',
   'activeTab === "businessWorkspace" && (',
@@ -152,6 +164,46 @@ assert.ok(
 assert.ok(
   appSource.includes('if (activeTab === "accountOps") return accountOpsSection === "overview" ? "/account-ops" : `/account-ops/${encodeURIComponent(accountOpsSection)}`;'),
   "Account Ops should retain canonical section URLs."
+);
+
+assert.ok(
+  appFileSource.includes("const availableProductWorkspaces = getAvailableWorkspaces") &&
+    appFileSource.includes("const workspaceNavItems = getWorkspaceNavigation") &&
+    appFileSource.includes("<WorkspaceSwitcher") &&
+    workspaceSwitcherSource.includes("Switch Code 3 workspace"),
+  "Global navigation should use the central workspace registry and accessible switcher."
+);
+assert.ok(
+  workspaceRegistrySource.includes('homePath: "/collect"') &&
+    workspaceRegistrySource.includes('homePath: "/find/home"') &&
+    workspaceRegistrySource.includes('homePath: "/sell/home"') &&
+    workspaceRegistrySource.includes('homePath: "/bot"') &&
+    workspaceRegistrySource.includes('homePath: "/business"'),
+  "All five product workspaces should have compatibility-safe homes."
+);
+assert.ok(
+  workspaceRegistrySource.includes('key: "account-ops"') &&
+    workspaceRegistrySource.includes("workspace: WORKSPACE_IDS.BUSINESS") &&
+    workspaceRegistrySource.includes("requiredAuthority: AUTHORITY_REQUIREMENTS.VERIFIED_OWNER"),
+  "Account Ops should remain Business-associated and owner-protected."
+);
+assert.ok(
+  appFileSource.includes("ownerCenterAuthorized ? { key: \"owner-center\"") &&
+    appFileSource.includes("shellRouteOwnership?.classification === ROUTE_CLASSIFICATIONS.OWNER") &&
+    !/id:\s*WORKSPACE_IDS\.OWNER/.test(workspaceRegistrySource),
+  "Owner Center should remain an owner affordance outside the product switcher."
+);
+assert.ok(
+  workspaceHomeSource.includes("No bot integrations are connected.") &&
+    workspaceHomeSource.includes("does not create tasks, automate checkout, bypass retailer controls, or claim provider connectivity"),
+  "Bot Home should present an honest owner-only foundation instead of fake integrations."
+);
+assert.equal(
+  /label:\s*["'](?:Inbox|Orders|Stellar|Hayha|Valor|Upgrade|Billing)["']/.test(
+    workspaceRegistrySource.slice(0, workspaceRegistrySource.indexOf("const CANONICAL_ROUTES"))
+  ),
+  false,
+  "Unimplemented Inbox, Bot provider, order, and billing destinations must stay out of workspace navigation."
 );
 
 assert.ok(

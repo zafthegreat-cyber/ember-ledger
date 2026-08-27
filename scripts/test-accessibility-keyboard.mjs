@@ -6,6 +6,9 @@ const operationsSource = fs.readFileSync(new URL("../src/components/operations/O
 const ownerCenterSource = fs.readFileSync(new URL("../src/features/ownerCenter/OwnerCenterPage.jsx", import.meta.url), "utf8");
 const ownerCenterCss = fs.readFileSync(new URL("../src/features/ownerCenter/owner-center.css", import.meta.url), "utf8");
 const everydaySource = fs.readFileSync(new URL("../src/pages/EverydayWorkspaces.jsx", import.meta.url), "utf8");
+const workspaceSwitcherSource = fs.readFileSync(new URL("../src/features/workspaces/WorkspaceSwitcher.jsx", import.meta.url), "utf8");
+const workspaceHomeSource = fs.readFileSync(new URL("../src/features/workspaces/WorkspaceHomePage.jsx", import.meta.url), "utf8");
+const workspaceCss = fs.readFileSync(new URL("../src/features/workspaces/workspace-shell.css", import.meta.url), "utf8");
 
 function readCssGraph(url, seen = new Set()) {
   const key = url.href;
@@ -55,6 +58,23 @@ assert.match(ownerCenterSource, /<label className="owner-field">/);
 assert.match(everydaySource, /role="tab"/);
 assert.match(ownerCenterCss, /min-height: 44px/);
 assert.match(ownerCenterCss, /@media \(max-width: 420px\)/);
+
+assert.match(workspaceSwitcherSource, /<details/);
+assert.match(workspaceSwitcherSource, /<summary aria-label=\{`\$\{contextLabel\}\. Switch Code 3 workspace`\}>/);
+assert.match(workspaceSwitcherSource, /aria-current=\{workspace\.id === currentWorkspaceId \? "page" : undefined\}/);
+assert.match(workspaceSwitcherSource, /event\.key !== "Escape"/);
+assert.match(workspaceSwitcherSource, /querySelector\("summary"\)\?\.focus\(\)/);
+assert.match(workspaceCss, /\.code3-workspace-switcher > summary \{[\s\S]*min-height: 44px/);
+assert.match(workspaceCss, /\.code3-workspace-switcher__menu button \{[\s\S]*min-height: 52px/);
+assert.match(workspaceCss, /\.code3-workspace-switcher > summary:focus-visible/);
+assert.match(workspaceCss, /\.code3-workspace-switcher__menu button:focus-visible/);
+assert.match(workspaceCss, /@media \(prefers-reduced-motion: reduce\)/);
+assert.match(workspaceCss, /\.code3-workspace-switcher__chevron \{ transition: none; \}/);
+assert.match(workspaceCss, /env\(safe-area-inset-bottom, 0px\)/);
+assert.match(workspaceHomeSource, /<section className=\{`code3-workspace-home/);
+assert.doesNotMatch(workspaceHomeSource, /<main\b/, "workspace homes must not nest a second main landmark inside the application shell");
+assert.match(workspaceHomeSource, /<button key=\{record\.id/);
+assert.match(workspaceHomeSource, /<StatusBadge tone="neutral">Owner only<\/StatusBadge>/);
 
 assert.match(appSource, /role="status" aria-live="polite" aria-label=\{`Grade Assist readiness status: \$\{gradeAssistReadiness\.label\}`\}/);
 assert.match(appSource, /aria-label=\{`Grade Assist \$\{field\.label\}`\}/);

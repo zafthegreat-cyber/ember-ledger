@@ -11,7 +11,9 @@ The audit changes the conceptual “backend persistence first” phase into gate
 
 **Phase 1C — Intelligence and Card Analysis Foundation** is published through commit `af21199f610cc91e31d9dee59af6f0a2f748ab79`. It adds deterministic decision-support services and append-only local card-analysis history without changing the Phase 1B persistence state. Auction results can be saved without a generic linked revision series, and restock intelligence recomputes from observations. It does not configure an AI/computer-vision provider, apply a schema, activate remote persistence, move owner data, sync, or automate marketplace actions.
 
-**Phase 2A — Account Ops Foundation** is a separately authorized local working copy on top of that published checkpoint. It adds legitimate owner-managed profiles, alias metadata, retailer-account metadata, assisted human setup, account health, and tasks through a gateway fixed to `LOCAL_ONLY`. It adds no canonical domain, provider-provisioned email, mailbox/order integration, retailer signup submission, verification bypass, migration, sync, or remote cutover. Final validation and publication remain separate gates.
+**Phase 2A — Account Ops Foundation** is published at `c76e3e4bc668c08d9a0908c9bb2cd96444610297`. It adds legitimate owner-managed profiles, alias metadata, retailer-account metadata, assisted human setup, account health, and tasks through a gateway fixed to `LOCAL_ONLY`. It adds no canonical domain, provider-provisioned email, mailbox/order integration, retailer signup submission, verification bypass, migration, sync, or remote cutover.
+
+**Phase 2A.5 — Workspace Architecture / Mini-App Shell** is the current local, unpublished structural phase. It organizes existing features into Collect, Find, Sell, Bot, and Business through a central route/workspace registry, compatibility-first homes, workspace-local navigation, and a bounded recent-workspace preference. Owner Center remains separate; Account Ops is Business-associated but `VERIFIED_OWNER`; Bot is OWNER-only and has no provider. Phase 2A.5 does not implement Inbox/Orders, email or Bot integrations, billing, migration, sync, or remote cutover.
 
 The published Phase 1A runtime applies Code 3 through the centralized brand configuration and coordinated PWA/browser/offline metadata. Storage, database, route, module, environment, cache, history, compatibility, and imported-source identifiers remain unchanged. The legal/public business name and tagline remain separately configurable and unresolved.
 
@@ -81,7 +83,7 @@ No time estimates are provided. Complexity is relative: Small, Medium, Large, or
 
 ## Phase 2A — Account Ops foundation
 
-**Status:** Locally implemented from published commit `af21199f610cc91e31d9dee59af6f0a2f748ab79`; final validation and publication are pending. This bounded product extension does not replace or authorize the established Phase 2 structural extraction below.
+**Status:** Published at `c76e3e4bc668c08d9a0908c9bb2cd96444610297`. This bounded product extension does not authorize the remaining structural extraction below.
 
 - **Objective:** provide a mobile-first, legitimate owner workspace for reusable operational profiles, generated alias metadata, retailer-account records, human-assisted setup, verification state, explainable health, and account tasks.
 - **Current code affected:** custom route registry/shell navigation; new `src/features/accountOps` domain, local repository/service, UI, and fixtures; Backup v1 registry/validation/Restore Preview; migration-source registry; focused route and Account Ops tests.
@@ -92,12 +94,28 @@ No time estimates are provided. Complexity is relative: Small, Medium, Large, or
 - **External authorization:** none for local metadata. Provider-managed aliases, catch-all verification, credential vaults, mailbox access, and order APIs each require a separately approved provider/security contract.
 - **Test plan:** profile/group CRUD/archive/owner-scope; alias templates/secure randomness/collisions/validation/provisioning truth; password entropy and no persistence/log/backup; retailer/account/setup/status/health relationships; tasks; recursive authority/secret injection; Account Ops backup and zero-write Restore Preview; eight-path migration classification; 360px light/dark/long-content/empty/attention/setup cases; existing security, route, accessibility, and 28-scenario regression gates.
 - **Acceptance criteria:** owner-authorized first-class route; private storage is not read before authorization; profile cannot become authentication identity; generated alias is never called provisioned; plaintext password/OTP/token/payment secret never persists; setup stops at human verification; health explains each signal; Inbox/Orders remain contracts only; no bulk signup, retailer-limit evasion, purchasing, checkout, migration, sync, or remote activation exists.
-- **Rollback:** remove the unpublished Account Ops route/domain and backup registrations; retain the unchanged Phase 1A–1C sources. Because no database, provider, or remote write occurs, no data or deployment rollback is required beyond explicitly removing local test records if the owner chooses.
+- **Rollback:** revert the Phase 2A checkpoint while retaining the unchanged Phase 1A–1C sources. Because no database, provider, or remote write occurred, no schema or provider rollback is required; local Account Ops records remain separately owner-controlled.
+- **Complexity:** Large.
+
+## Phase 2A.5 — Workspace architecture / mini-app shell
+
+**Status:** Local implementation in progress from published Phase 2A commit `c76e3e4bc668c08d9a0908c9bb2cd96444610297`; publication remains a separate approval.
+
+- **Objective:** make Collect, Find, Sell, Bot, and Business focused product workspaces inside one Code 3 application while retaining shared records, one authentication/persistence platform, Owner Center separation, and route compatibility.
+- **Current code affected:** `src/App.jsx`, `src/utils/appRouteState.js`, the new central workspace registry, workspace switcher/home components, mobile/desktop navigation, safe local workspace preference, and route/accessibility/browser tests.
+- **Implemented/likely files/modules:** `src/config/workspaceRegistry.js`; `src/features/workspaces/WorkspaceSwitcher.jsx`, `WorkspaceHomePage.jsx`, `workspacePreference.js`, and `workspace-shell.css`; existing shell/route integration; [WORKSPACE_ARCHITECTURE_CONTRACT.md](./WORKSPACE_ARCHITECTURE_CONTRACT.md).
+- **Data changes:** bounded reconstructible `code3.workspace-preference.v1` UI preference only. It is distinct from historical persisted `Workspace`/`activeWorkspaceId`, contains no authority or business data, and joins the existing non-coverage Backup v1 safe-preferences group without changing source counts. No feature record changes.
+- **Migration risks:** route/deep-link/back loops, stale private workspace visibility after session downgrade, naming collision with legacy Workspace records, accidental duplication of cross-workspace records, and client entitlement metadata being mistaken for authority.
+- **Dependencies:** published Phase 2A, verified owner-session boundary, current route/legacy tests, and existing lazy feature modules.
+- **External authorization:** none. Bot/email/mailbox/vault providers, billing, and subscriptions are explicitly excluded.
+- **Test plan:** registry validity/unique routes/aliases; workspace switcher and direct-route precedence; safe remembered preference; verified OWNER gates for Bot/Owner Center/Account Ops; Account Ops Business context without inherited access; representative deep and legacy links; Back/history; no shared-record cloning; 360px light/dark navigation and homes; keyboard/focus/reduced motion; existing Phase 1A–2A and 28-scenario regression gates.
+- **Acceptance criteria:** `/collect`, `/find/home`, `/sell/home`, `/bot`, and `/business` expose honest route-safe homes; current feature URLs remain compatible; only an authorized OWNER sees/opens Bot; Owner Center is outside the switcher; Account Ops stays `VERIFIED_OWNER`; direct routes override remembered public workspace; no navigation loop or 360px overflow; no duplicate records, provider, billing, migration, sync, or automation is introduced.
+- **Rollback:** revert the shell/registry integration and remove only the reconstructible workspace preference. Existing routes and feature records remain unchanged; no schema, provider, or owner-data rollback is required.
 - **Complexity:** Large.
 
 ## Phase 2B — Unified Inbox and order intelligence
 
-**Status:** Future and not authorized. Phase 2A supplies contracts only.
+**Status:** Future and not authorized. Published Phase 2A supplies contracts only; Phase 2A.5 does not begin this work.
 
 - **Objective:** connect one explicitly approved, minimally scoped mailbox/order provider; normalize verification, shipment, cancellation, refund, security, and order evidence; require owner review before an explicit Add to Purchases action.
 - **Current code affected:** Phase 2A alias/account relationships and future contracts, provider connections, protected files, import review, Purchases, shipments, tasks, and audit history.
@@ -111,9 +129,9 @@ No time estimates are provided. Complexity is relative: Small, Medium, Large, or
 - **Rollback:** disable/disconnect the provider, stop ingestion, retain reviewed metadata/audit under the retention policy, and preserve Phase 2A manual workflows.
 - **Complexity:** Extra Large.
 
-## Phase 2 — App-shell extraction and route ownership hardening
+## Phase 2 — Remaining app-shell extraction and route ownership hardening
 
-- **Objective:** reduce the initial bundle and make one canonical renderer own each workflow before feature growth increases coupling.
+- **Objective:** continue beyond the Phase 2A.5 presentation registry to reduce the initial bundle and make one canonical renderer own each workflow before feature growth increases coupling.
 - **Current code affected:** `src/App.jsx`, `src/utils/appRouteState.js`, legacy pages and compatibility renderers, Vite chunk configuration.
 - **Likely files/modules:** domain route modules for detailed sourcing, collection compatibility, business compatibility, exchange, community/moderation, administration, settings/utilities; shared route boundary and loading/error components.
 - **Data changes:** none; storage hydration behavior must remain compatible.
@@ -279,8 +297,10 @@ Every implementation phase must:
 8. keep the approved minimal UI contract;
 9. derive Code 3 app-name rendering from the centralized configuration while keeping the business name/tagline separate;
 10. avoid generated catalog changes and unrelated refactors;
-11. stop before production deployment unless separately authorized.
+11. keep OWNER authority distinct from commercial entitlement metadata;
+12. preserve shared record identity across product-workspace projections;
+13. stop before production deployment unless separately authorized.
 
 ## Exact next task recommendation
 
-Phase 2A final local validation is complete; the next step is owner review followed, if approved, by a separately authorized publication checkpoint that preserves its local-only boundary. The next Account Ops product task is the Phase 2B design/security review—not implementation—covering provider selection, mailbox/order scopes, retention, protected content, server secrets, idempotency, and the owner review gate. In parallel, the established route/app-shell extraction remains the safest structural task before additional feature growth. A separately approved data task may provision only a disposable database to test schema/ownership/rollback and compare a verified backup through Migration Preview. Do not activate `REMOTE_ACTIVE`, migrate owner data, upload file bytes, connect a mailbox, or apply a Production schema without another explicit owner-approved specification.
+Phase 2A.5 local implementation and full validation are the current task. After review, publication requires a separately authorized checkpoint that preserves the route, authority, and local-only boundaries in [WORKSPACE_ARCHITECTURE_CONTRACT.md](./WORKSPACE_ARCHITECTURE_CONTRACT.md). Do not begin Phase 2B, Bot providers, or billing during that checkpoint. The next Account Ops product task remains a separately approved Phase 2B design/security review—not automatic implementation—covering provider selection, mailbox/order scopes, retention, protected content, server secrets, idempotency, and the owner review gate. A separately approved data task may provision only a disposable database to test schema/ownership/rollback and compare a verified backup through Migration Preview. Do not activate `REMOTE_ACTIVE`, migrate owner data, upload file bytes, connect a mailbox/Bot provider, or apply a Production schema without another explicit owner-approved specification.

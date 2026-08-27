@@ -1992,7 +1992,16 @@ async function main() {
   await step("app opens and beta data resets", async () => {
     await resetBetaData();
     await assertVisibleText("Code 3");
-    for (const label of ["Home", "Find", "Collection", "Business"]) await assertVisibleText(label);
+    await assertVisibleText("Home");
+    const workspaceSwitcher = page.locator('[data-testid="workspace-switcher"]').first();
+    assert.equal(await workspaceSwitcher.count(), 1, "workspace switcher should be available after reset");
+    await workspaceSwitcher.locator("summary").click();
+    const workspaceSwitcherText = await workspaceSwitcher.innerText();
+    for (const label of ["Collect", "Find", "Sell", "Business"]) {
+      assert.match(workspaceSwitcherText, new RegExp(`\\b${label}\\b`), `${label} should be available from the product workspace switcher`);
+    }
+    assert.doesNotMatch(workspaceSwitcherText, /Owner Center/i, "Owner Center must stay outside the product workspace switcher");
+    await workspaceSwitcher.locator("summary").click();
     await assertNotVisibleText("EMBER & TIDE");
     const primaryNavText = await page.locator(".ops-mobile-nav, .ops-desktop-sidebar").first().innerText();
     assert.doesNotMatch(primaryNavText, /Hearth|Scout|Vault|Forge|Ledger|The Spark/i, "primary navigation should use plain-language workspace names");
@@ -3920,7 +3929,7 @@ async function main() {
   });
 
   await step("Home: minimal operational view loads", async () => {
-    await nav("Home");
+    await gotoAppRoute("/");
     await assertVisibleText("Needs Attention");
     const homeLayout = await page.locator(".ops-home-page").first().evaluate((node) => ({
       sectionCount: node.querySelectorAll(":scope > .ops-home-section").length,
@@ -3948,7 +3957,7 @@ async function main() {
       await closeOpenModals();
       await page.setViewportSize({ width, height });
       if (width >= 640) {
-        await nav("Home");
+        await gotoAppRoute("/");
       } else {
         await page.goto(APP_URL, { waitUntil: "domcontentloaded" });
         await expectVisible(page.locator(".ops-home-page").first(), "mobile Home surface", 10000);

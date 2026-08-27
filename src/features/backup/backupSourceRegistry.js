@@ -263,6 +263,7 @@ const registry = [
       "et-tcg-beta-vault-showcase-view",
       "et-tcg-forge-mode-settings",
       "autoOpenDropWebsite",
+      "code3.workspace-preference.v1",
     ],
     schemaVersion: 1,
     supportedSchemaVersions: [1],

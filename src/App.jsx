@@ -7,8 +7,23 @@ import ScoutTileMap from "./components/ScoutTileMap";
 import { LiveEmberTrustNote } from "./components/ember-ui";
 import { BRAND_ASSETS } from "./brand/emberTideBrand";
 import { BRAND_CONFIG, applyBrandDocumentMetadata } from "./config/brand";
+import {
+  AUTHORITY_REQUIREMENTS,
+  ROUTE_CLASSIFICATIONS,
+  WORKSPACE_IDS,
+  getAvailableWorkspaces,
+  getWorkspaceDefinition,
+  getWorkspaceNavigation,
+  resolveRouteOwnership,
+} from "./config/workspaceRegistry";
 import { observePlainLanguage } from "./config/plainLanguage";
 import { AppShell, DesktopSidebar, MobileBottomNavigation } from "./components/operations/OperationsUI";
+import WorkspaceSwitcher from "./features/workspaces/WorkspaceSwitcher";
+import {
+  readWorkspacePreference,
+  resolveWorkspaceSelection,
+  writeWorkspacePreference,
+} from "./features/workspaces/workspacePreference";
 import { OWNED_ITEM_PURPOSES, changeOwnedItemPurpose } from "./features/ownedItems/ownedItemPurpose";
 import { createEmptyOwnerCenterState, createOwnerCenterRepository } from "./features/ownerCenter/ownerCenterRepository";
 import {
@@ -97,6 +112,7 @@ import {
   canonicalPathForPath,
   loadInitialRouteState,
   normalizeExchangeSection,
+  pathFromActiveTab,
   routeStateFromPath,
 } from "./utils/appRouteState";
 import {
@@ -553,6 +569,7 @@ const Scout = lazy(() => import("./pages/Scout"));
 const FlipScoutPage = lazy(() => import("./features/flipScout/FlipScoutPage"));
 const OwnerCenterPage = lazy(() => import("./features/ownerCenter/OwnerCenterPage"));
 const AccountOpsPage = lazy(() => import("./features/accountOps/AccountOpsPage"));
+const WorkspaceHomePage = lazy(() => import("./features/workspaces/WorkspaceHomePage"));
 const CollectionWorkspace = lazy(() => import("./pages/EverydayWorkspaces").then((module) => ({ default: module.CollectionWorkspace })));
 const BusinessWorkspace = lazy(() => import("./pages/EverydayWorkspaces").then((module) => ({ default: module.BusinessWorkspace })));
 
@@ -6836,6 +6853,15 @@ export default function App() {
   const scoutReportsRef = useRef(null);
   const [homeSubTab, setHomeSubTab] = useState(initialRouteState.homeSubTab || "overview");
   const [flipScoutView, setFlipScoutView] = useState(initialRouteState.flipScoutView || "deals");
+  const [productWorkspaceHome, setProductWorkspaceHome] = useState(initialRouteState.productWorkspaceHome || WORKSPACE_IDS.COLLECT);
+  const [workspacePreference, setWorkspacePreference] = useState(() => {
+    if (typeof window === "undefined") return { lastProductWorkspace: WORKSPACE_IDS.COLLECT, lastSelectedWorkspace: WORKSPACE_IDS.COLLECT };
+    const stored = readWorkspacePreference(window.localStorage);
+    return {
+      lastProductWorkspace: stored.lastProductWorkspace || WORKSPACE_IDS.COLLECT,
+      lastSelectedWorkspace: stored.lastSelectedWorkspace || stored.lastProductWorkspace || WORKSPACE_IDS.COLLECT,
+    };
+  });
   const [collectionWorkspaceView, setCollectionWorkspaceView] = useState(initialRouteState.collectionWorkspaceView || "collection");
   const [businessWorkspaceView, setBusinessWorkspaceView] = useState(initialRouteState.businessWorkspaceView || "overview");
   const [businessMoneyView, setBusinessMoneyView] = useState(initialRouteState.businessMoneyView || "expenses");
@@ -7927,16 +7953,65 @@ export default function App() {
   }
 
   const ownerCenterAuthorized = !guestPreviewActive && ownerSession.status === OWNER_SESSION_STATES.AUTHORIZED;
-  const mainTabByKey = {
-    home: { key: "home", label: "Home", icon: "home", target: "dashboard" },
-    find: { key: "find", label: "Find", icon: "find", target: "flipScout" },
-    collection: { key: "collection", label: "Collection", icon: "inventory", target: "collectionWorkspace" },
-    business: { key: "business", label: "Business", icon: "business", target: "businessWorkspace" },
-  };
-  const mainTabs = ["home", "find", "collection", "business"]
-    .filter((key) => key !== "collection" || ownerFeatureControls.collection)
-    .map((key) => mainTabByKey[key])
-    .filter(Boolean);
+  const ownerAuthorizationPending = ownerSession.status === OWNER_SESSION_STATES.LOADING;
+  const shellRoutePath = pathFromActiveTab(activeTab, {
+    productWorkspaceHome,
+    flipScoutView,
+    collectionWorkspaceView,
+    businessWorkspaceView,
+    businessMoneyView,
+    ownerCenterSection,
+    ownerCenterSubview,
+    accountOpsSection,
+    scoutView,
+    vaultSubTab,
+    exchangeSection,
+    sparkFlowView,
+  });
+  const shellRouteOwnership = resolveRouteOwnership(shellRoutePath);
+  const availableProductWorkspaces = getAvailableWorkspaces({
+    ownerAuthorized: ownerCenterAuthorized,
+    featureControls: ownerFeatureControls,
+  });
+  const workspaceSelection = resolveWorkspaceSelection({
+    directWorkspace: shellRouteOwnership?.workspace || "",
+    lastSelectedWorkspace: workspacePreference.lastSelectedWorkspace,
+    rememberedWorkspace: workspacePreference.lastProductWorkspace,
+    availableWorkspaces: availableProductWorkspaces.map((workspace) => workspace.id),
+    ownerAuthorized: ownerCenterAuthorized,
+    authorizationPending: ownerAuthorizationPending,
+  });
+  const currentProductWorkspaceId = workspaceSelection.workspace;
+  const currentProductWorkspace = getWorkspaceDefinition(currentProductWorkspaceId) || getWorkspaceDefinition(WORKSPACE_IDS.COLLECT);
+  const productWorkspaceHomeAvailable = availableProductWorkspaces.some((workspace) => workspace.id === productWorkspaceHome);
+  const effectiveProductWorkspaceHome = productWorkspaceHome === WORKSPACE_IDS.BOT
+    ? productWorkspaceHome
+    : productWorkspaceHomeAvailable ? productWorkspaceHome : currentProductWorkspaceId;
+  const privateBotRouteDenied = shellRouteOwnership?.workspace === WORKSPACE_IDS.BOT
+    && shellRouteOwnership?.requiredAuthority === AUTHORITY_REQUIREMENTS.VERIFIED_OWNER
+    && !ownerCenterAuthorized;
+  const switcherWorkspaces = availableProductWorkspaces.map((workspace) => ({
+    id: workspace.id,
+    label: workspace.label,
+    icon: workspace.iconKey,
+    shortPurpose: workspace.description,
+    ownerOnly: workspace.requiredAuthority === AUTHORITY_REQUIREMENTS.VERIFIED_OWNER,
+    homePath: workspace.homePath,
+  }));
+  const workspaceNavItems = getWorkspaceNavigation(currentProductWorkspaceId, {
+    ownerAuthorized: ownerCenterAuthorized,
+    featureControls: ownerFeatureControls,
+  }).map((item) => ({
+    ...item,
+    icon: item.iconKey,
+    action: () => navigateProductPath(item.path),
+  }));
+  const mainTabs = switcherWorkspaces.map((workspace) => ({
+    key: workspace.id.toLowerCase(),
+    label: workspace.label,
+    icon: workspace.icon,
+    action: () => navigateProductWorkspace(workspace.id),
+  }));
 
   const navSections = [
     {
@@ -7945,11 +8020,11 @@ export default function App() {
         { key: "menu", label: "Menu" },
       ],
     },
-    { title: "Main Tabs", items: [
-        { key: "home", label: "Home", target: "dashboard" },
-        { key: "find", label: "Find", target: "flipScout" },
-        { key: "collection", label: "Collection", target: "collectionWorkspace" },
-        { key: "business", label: "Business", target: "businessWorkspace" },
+    { title: "Workspaces", items: [
+        { key: "collect", label: "Collect" },
+        { key: "find", label: "Find" },
+        { key: "sell", label: "Sell" },
+        { key: "business", label: "Business" },
       { key: "announcements", label: "Announcements", target: "whatsNew" },
       { key: "coming-soon", label: "Coming Soon", target: "comingSoon" },
       { key: "settings", label: "Settings", target: "settings" },
@@ -7959,9 +8034,10 @@ export default function App() {
   const activeBetaPageLabels = {
     flipScout: "Find",
     collectionWorkspace: "Collection",
-    businessWorkspace: "Business",
+    businessWorkspace: shellRouteOwnership?.workspace === WORKSPACE_IDS.SELL ? "Sell" : "Business",
     ownerCenter: "Owner Center",
     accountOps: "Account Ops",
+    workspaceHome: getWorkspaceDefinition(effectiveProductWorkspaceHome)?.label || "Workspace",
     exchange: "Sell",
     settings: "Settings",
     account: "Account",
@@ -7984,7 +8060,9 @@ export default function App() {
     betaReadiness: "Beta Readiness",
   };
   const activeTabLabel =
-    activeTab === "tidepool"
+    activeTab === "workspaceHome" && productWorkspaceHome === WORKSPACE_IDS.BOT && !ownerCenterAuthorized
+      ? "Owner Access Required"
+    : activeTab === "tidepool"
       ? "Community"
       : activeTab === "adminReview"
         ? "Admin Review"
@@ -7993,45 +8071,52 @@ export default function App() {
       : activeBetaPageLabels[activeTab]
         ? activeBetaPageLabels[activeTab]
       : navSections.flatMap((s) => s.items).find((i) => (i.target || i.key) === activeTab)?.label || "Dashboard";
+  const workspaceSwitcherContextLabel = shellRouteOwnership?.classification === ROUTE_CLASSIFICATIONS.OWNER
+    ? activeTabLabel
+    : privateBotRouteDenied
+      ? "Owner Access Required"
+    : shellRouteOwnership?.workspace
+      ? getWorkspaceDefinition(shellRouteOwnership.workspace)?.label || activeTabLabel
+      : activeTabLabel === "Dashboard" ? "Home" : activeTabLabel;
   useEffect(() => {
     applyBrandDocumentMetadata(activeTabLabel === "Dashboard" ? "Home" : activeTabLabel);
   }, [activeTabLabel]);
-  const exchangeActiveTabs = new Set(["exchange", "market", "catalog", "inventory", "addInventory", "addSale", "sales", "expenses", "vehicles", "mileage", "reports"]);
-  const youActiveTabs = new Set(["settings", "menu", "account", "accountOps", "collections", "dataBackup", "tcgOs", "profile", "profileProgress", "help", "moderator", "adminReview", "mySuggestions", "kidsProgram", "parentCenter", "sponsor", "trust", "links", "whatsNew", "knownLimitations", "comingSoon", "membership", "betaReadiness", "tidepool"]);
-  const activeMainTab =
-    activeTab === "dashboard" || activeTab === "dailyTide"
-      ? "home"
-      : activeTab === "scout" || activeTab === "flipScout" || activeTab === "market" || activeTab === "catalog"
-        ? "find"
-        : activeTab === "collectionWorkspace" || activeTab === "vault"
-          ? "collection"
-          : activeTab === "businessWorkspace" || activeTab === "inventory" || activeTab === "addInventory" || activeTab === "exchange" || activeTab === "sales" || activeTab === "addSale"
-            ? "business"
-          : youActiveTabs.has(activeTab)
-            ? "business"
-            : exchangeActiveTabs.has(activeTab)
-              ? "business"
-              : "home";
-  const mobileBottomTabs = [
-    { key: "home", label: "Home", icon: "home", target: "dashboard" },
-    { key: "find", label: "Find", icon: "find", target: "flipScout" },
-    { key: "global-add", label: "Add", ariaLabel: "Open global Add menu", icon: "plus", isAction: true, action: () => openAddActionSheet("mobile-navigation") },
-    ownerFeatureControls.collection ? { key: "collection", label: "Collection", icon: "inventory", target: "collectionWorkspace" } : null,
-    { key: "business", label: "Business", icon: "business", target: "businessWorkspace" },
-  ].filter(Boolean);
+  const activeMainTab = currentProductWorkspaceId.toLowerCase();
+  const sortedWorkspaceNavItems = [...workspaceNavItems].sort((left, right) => right.path.length - left.path.length);
+  const activeWorkspaceNavItem = sortedWorkspaceNavItems.find((item) => shellRoutePath === item.path || shellRoutePath.startsWith(`${item.path}/`));
+  const globalAddTab = { key: "global-add", label: "Add", ariaLabel: "Open global Add menu", icon: "plus", isAction: true, action: () => openAddActionSheet("mobile-navigation") };
+  const mobileWorkspaceItems = workspaceNavItems.filter((item) => item.mobileEligible !== false);
+  const addInsertIndex = Math.min(2, mobileWorkspaceItems.length);
+  const mobileBottomTabs = currentProductWorkspaceId === WORKSPACE_IDS.BOT
+    ? mobileWorkspaceItems
+    : [...mobileWorkspaceItems.slice(0, addInsertIndex), globalAddTab, ...mobileWorkspaceItems.slice(addInsertIndex)].slice(0, 5);
   const mobilePrimaryTabKeys = new Set(mobileBottomTabs.map((tab) => tab.key));
-  const activeMobileTabKey = activeTab === "ownerCenter" || activeTab === "accountOps" ? "" : mobilePrimaryTabKeys.has(activeMainTab) ? activeMainTab : "home";
-  const desktopSidebarItems = [
-    { key: "home", label: "Home", icon: "home", target: "dashboard" },
-    { key: "find", label: "Find", icon: "find", target: "flipScout" },
-    ownerFeatureControls.collection ? { key: "collection", label: "Collection", icon: "inventory", target: "collectionWorkspace" } : null,
-    { key: "business", label: "Business", icon: "business", target: "businessWorkspace" },
-  ].filter(Boolean);
+  const activeMobileTabKey = activeTab === "ownerCenter" ? "" : mobilePrimaryTabKeys.has(activeWorkspaceNavItem?.key) ? activeWorkspaceNavItem.key : "";
+  const desktopSidebarItems = workspaceNavItems.filter((item) => item.desktopEligible !== false);
   const desktopSecondaryItems = [
-    ownerCenterAuthorized ? { key: "account-ops", label: "Account Ops", icon: "account", badge: "Owner Only", action: () => { prepareRouteNavigation(); setAccountOpsSection("overview"); setActiveTab("accountOps"); } } : null,
     ownerCenterAuthorized ? { key: "owner-center", label: "Owner Center", icon: "settings", badge: "Owner Only", action: () => { prepareRouteNavigation(); setOwnerCenterSection("overview"); setOwnerCenterSubview(""); setActiveTab("ownerCenter"); } } : null,
     { key: "settings", label: "Settings", icon: "settings", target: "settings" },
   ].filter(Boolean);
+  useEffect(() => {
+    if (activeTab !== "workspaceHome" || productWorkspaceHome === WORKSPACE_IDS.BOT || productWorkspaceHome === effectiveProductWorkspaceHome) return;
+    setProductWorkspaceHome(effectiveProductWorkspaceHome);
+  }, [activeTab, effectiveProductWorkspaceHome, productWorkspaceHome]);
+  useEffect(() => {
+    const routeWorkspace = shellRouteOwnership?.workspace;
+    if (!routeWorkspace || shellRouteOwnership?.classification === ROUTE_CLASSIFICATIONS.OWNER) return;
+    if (routeWorkspace === WORKSPACE_IDS.BOT && !ownerCenterAuthorized) return;
+    setWorkspacePreference((current) => {
+      const nextPublicWorkspace = routeWorkspace === WORKSPACE_IDS.BOT ? current.lastProductWorkspace : routeWorkspace;
+      if (current.lastSelectedWorkspace === routeWorkspace && current.lastProductWorkspace === nextPublicWorkspace) return current;
+      return { lastSelectedWorkspace: routeWorkspace, lastProductWorkspace: nextPublicWorkspace };
+    });
+    if (typeof window !== "undefined") {
+      writeWorkspacePreference(window.localStorage, routeWorkspace, {
+        ownerAuthorized: ownerCenterAuthorized,
+        lastProductWorkspace: workspacePreference.lastProductWorkspace,
+      });
+    }
+  }, [ownerCenterAuthorized, shellRouteOwnership?.classification, shellRouteOwnership?.workspace, workspacePreference.lastProductWorkspace]);
   const desktopMoreByKey = {
     tidepool: { key: "tidepool", label: "Community", helper: "Family-safe community.", icon: "pool", target: "tidepool" },
     spark: ownerFeatureControls.kidsCommunity ? { key: "spark", label: "Kids & Community", helper: "Kids and giving records", icon: "spark", action: () => setActiveTab("kidsProgram") } : null,
@@ -8743,7 +8828,42 @@ export default function App() {
     routeFocusModeRef.current = mode;
   }
 
+  function applyProductRouteState(route) {
+    setQuickAddMenuOpen(false);
+    setSearchExpanded(false);
+    if (route.productWorkspaceHome) setProductWorkspaceHome(route.productWorkspaceHome);
+    if (route.flipScoutView) setFlipScoutView(route.flipScoutView);
+    if (route.collectionWorkspaceView) setCollectionWorkspaceView(route.collectionWorkspaceView);
+    if (route.businessWorkspaceView) setBusinessWorkspaceView(route.businessWorkspaceView);
+    if (route.businessMoneyView) setBusinessMoneyView(route.businessMoneyView);
+    if (route.accountOpsSection) setAccountOpsSection(route.accountOpsSection);
+    if (route.ownerCenterSection) setOwnerCenterSection(route.ownerCenterSection);
+    if (route.ownerCenterSubview !== undefined) setOwnerCenterSubview(route.ownerCenterSubview);
+    setActiveTab(route.activeTab || "dashboard");
+    if (route.activeTab === "flipScout") {
+      window.dispatchEvent?.(new CustomEvent("private-business-hub:flip-scout-navigate", { detail: { screen: route.flipScoutView || "deals", subview: "" } }));
+    }
+  }
+
+  function navigateProductPath(path, mode = "push") {
+    if (!confirmLeaveVaultWork()) return;
+    prepareRouteNavigation(mode);
+    applyProductRouteState(routeStateFromPath(path));
+  }
+
+  function navigateProductWorkspace(workspaceId) {
+    if (workspaceId === WORKSPACE_IDS.BOT && !ownerCenterAuthorized) return;
+    const workspace = availableProductWorkspaces.find((candidate) => candidate.id === workspaceId)
+      || getWorkspaceDefinition(currentProductWorkspaceId);
+    if (!workspace) return;
+    navigateProductPath(workspace.homePath);
+  }
+
   function navigateMainTab(tab) {
+    if (tab.action) {
+      tab.action();
+      return;
+    }
     if (!confirmLeaveVaultWork()) return;
     prepareRouteNavigation();
     if (tab.key === "find" || tab.target === "flipScout") {
@@ -8852,19 +8972,20 @@ export default function App() {
 
   function runDesktopSidebarAction(item) {
     if (!item) return;
-    if (!confirmLeaveVaultWork()) return;
-    prepareRouteNavigation();
-    setQuickAddMenuOpen(false);
-    setSearchExpanded(false);
     if (item.action) {
       item.action();
       return;
     }
+    if (!confirmLeaveVaultWork()) return;
+    prepareRouteNavigation();
+    setQuickAddMenuOpen(false);
+    setSearchExpanded(false);
     navigateMainTab(item);
   }
 
   function isDesktopSidebarItemActive(item) {
     if (!item) return false;
+    if (item.path) return activeWorkspaceNavItem?.key === item.key;
     if (item.key === "home") return activeMainTab === "home";
     if (item.key === "find") return activeMainTab === "find";
     if (item.key === "collection") return activeMainTab === "collection";
@@ -8899,8 +9020,8 @@ export default function App() {
   }
 
   function renderDesktopCommandSidebar() {
-    const sidebarActiveKey = activeTab === "accountOps" ? "account-ops" : activeTab === "ownerCenter" ? "owner-center" : activeTab === "settings" || activeTab === "menu" ? "settings" : activeMainTab;
-    return <DesktopSidebar items={desktopSidebarItems} secondaryItems={desktopSecondaryItems} activeKey={sidebarActiveKey} onSelect={runDesktopSidebarAction} footer={<span>Private workspace · No automatic purchases</span>} />;
+    const sidebarActiveKey = activeTab === "ownerCenter" ? "owner-center" : activeTab === "settings" || activeTab === "menu" ? "settings" : activeWorkspaceNavItem?.key || "";
+    return <DesktopSidebar items={desktopSidebarItems} secondaryItems={desktopSecondaryItems} activeKey={sidebarActiveKey} onSelect={runDesktopSidebarAction} footer={<span>{currentProductWorkspace.label} workspace · Shared Code 3 records</span>} />;
   }
 
   function renderPageChrome({ title, subtitle, primary, secondary, quickActions = [], tabs = [], activeSubTab, setActiveSubTab }) {
@@ -35341,6 +35462,7 @@ function renderForgeBusinessLedgerPanel() {
     if (activeTab === "resetPassword") return "/reset-password";
     if (activeTab === "onboarding") return `/onboarding/${encodeURIComponent(onboardingView || "welcome")}`;
     if (activeTab === "dailyTide") return "/today";
+    if (activeTab === "workspaceHome") return pathFromActiveTab(activeTab, { productWorkspaceHome });
     if (activeTab === "flipScout") {
       const routeByView = {
         deals: "/find/deals",
@@ -35423,6 +35545,7 @@ function renderForgeBusinessLedgerPanel() {
       activeWorkspaceId,
       homeSubTab,
       flipScoutView,
+      productWorkspaceHome,
       collectionWorkspaceView,
       businessWorkspaceView,
       businessMoneyView,
@@ -35479,6 +35602,7 @@ function renderForgeBusinessLedgerPanel() {
     activeWorkspaceId,
     homeSubTab,
     flipScoutView,
+    productWorkspaceHome,
     collectionWorkspaceView,
     businessWorkspaceView,
     businessMoneyView,
@@ -35525,6 +35649,7 @@ function renderForgeBusinessLedgerPanel() {
       routeNavigationModeRef.current = "pop";
       routeFocusModeRef.current = "pop";
       setActiveTab(route.activeTab || "dashboard");
+      if (route.productWorkspaceHome) setProductWorkspaceHome(route.productWorkspaceHome);
       if (route.flipScoutView) setFlipScoutView(route.flipScoutView);
       if (route.collectionWorkspaceView) setCollectionWorkspaceView(route.collectionWorkspaceView);
       if (route.businessWorkspaceView) setBusinessWorkspaceView(route.businessWorkspaceView);
@@ -35556,7 +35681,7 @@ function renderForgeBusinessLedgerPanel() {
     });
     routeFocusModeRef.current = "settled";
     return () => window.cancelAnimationFrame(frame);
-  }, [activeTab, flipScoutView, collectionWorkspaceView, businessWorkspaceView, businessMoneyView, ownerCenterSection, ownerCenterSubview, accountOpsSection]);
+  }, [activeTab, flipScoutView, productWorkspaceHome, effectiveProductWorkspaceHome, collectionWorkspaceView, businessWorkspaceView, businessMoneyView, ownerCenterSection, ownerCenterSubview, accountOpsSection]);
   useEffect(() => {
     if (activeTab !== "kidsProgram" && sparkFlowView !== "home") {
       setSparkFlowView("home");
@@ -58919,7 +59044,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     if (guestPreviewActive || activeTab === "onboarding" || activeTab === "resetPassword" || activeTab === "invite" || activeTab === "workspaceInvite") return "guest";
     if (activeTab === "kidsProgram") return "kids";
     if (activeTab === "parentCenter") return "parent";
-    if (["inventory", "sales", "expenses", "reports", "flipScout"].includes(activeTab) || (activeTab === "exchange" && exchangeSection === "forge")) return "seller";
+    if (
+      ["inventory", "sales", "expenses", "reports", "flipScout"].includes(activeTab)
+      || (activeTab === "exchange" && exchangeSection === "forge")
+      || (activeTab === "businessWorkspace" && shellRouteOwnership?.workspace === WORKSPACE_IDS.SELL)
+      || (activeTab === "workspaceHome" && effectiveProductWorkspaceHome === WORKSPACE_IDS.SELL)
+    ) return "seller";
     if (activeTab === "sponsor") {
       if (currentPathRoot === "sponsor") return "supporter";
       return currentPathRoot === "partner" || activeWorkspace?.type === "card_shop_partner" ? "store-partner" : "supporter";
@@ -59330,7 +59460,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     </span>
   </button>
 
-  <span className="topbar-mobile-page-title">{activeTabLabel === "Dashboard" ? "Home" : activeTabLabel}</span>
+  <WorkspaceSwitcher
+    contextLabel={workspaceSwitcherContextLabel}
+    currentWorkspaceId={shellRouteOwnership?.classification === ROUTE_CLASSIFICATIONS.OWNER || privateBotRouteDenied ? "" : currentProductWorkspaceId}
+    workspaces={switcherWorkspaces}
+    onSelect={(workspace) => navigateProductWorkspace(workspace.id)}
+  />
 
   <div className={searchExpanded ? "app-search expanded" : "app-search"}>
     {searchExpanded ? (
@@ -59454,15 +59589,6 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       <span className="action-icon" aria-hidden="true"><AppNavIcon kind="help" /></span>
       <span>Assistant</span>
     </button> : null}
-    <button
-      type="button"
-      className="topbar-workspace-chip"
-      onClick={() => openMenuDrawer("workspace")}
-      title="Open workspace settings"
-    >
-      <span>{activeWorkspace?.name || "My Personal Space"}</span>
-      <small>{workspaceTypeLabel(activeWorkspace?.type)} · {workspaceRoleLabel(activeWorkspaceRole)}</small>
-    </button>
     <button
       type="button"
       className="topbar-quick-add-button"
@@ -63653,6 +63779,20 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <OperationsHomePage {...hearthPageProps} />
           </LazyToolBoundary>
         )}
+        {!activeTabLocked && activeTab === "workspaceHome" && (
+          <LazyToolBoundary label={`Loading ${getWorkspaceDefinition(effectiveProductWorkspaceHome)?.label || "workspace"}...`}>
+            <WorkspaceHomePage
+              workspace={effectiveProductWorkspaceHome}
+              items={workspaceItems}
+              sales={workspaceSales}
+              ownerSession={ownerSession}
+              onNavigate={navigateProductPath}
+              onAddCollection={() => openProductAddFlow({ source: "collect-workspace-home", seed: { ownedItemPurpose: OWNED_ITEM_PURPOSES.PERSONAL_COLLECTION }, destinations: { vault: true } })}
+              onAddResale={() => openProductAddFlow({ source: "sell-workspace-home", seed: { ownedItemPurpose: OWNED_ITEM_PURPOSES.FOR_RESALE }, destinations: { forge: Boolean(activeForgeWorkspace), vault: !activeForgeWorkspace } })}
+              onReturnHome={() => navigateProductWorkspace(workspacePreference.lastProductWorkspace)}
+            />
+          </LazyToolBoundary>
+        )}
         {!activeTabLocked && activeTab === "collectionWorkspace" && (
           <LazyToolBoundary label="Loading Collection...">
             <CollectionWorkspace
@@ -63701,7 +63841,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               onReviewOpportunity={(row) => openFlipScoutView(row?.providerId === "ebay" || /ebay/i.test(row?.sourceLabel || "") ? "ebay" : row?.sourceType === "Auctions" ? "auctions" : "deals")}
               onSignIn={() => { setAuthMode("login"); setGuestPreview(false); setActiveTab("account"); }}
               onSignOut={signOut}
-              onReturnHome={() => setActiveTab("dashboard")}
+              onReturnHome={() => navigateProductWorkspace(currentProductWorkspaceId)}
               onSectionChange={(nextSection, nextSubsection = "") => {
                 setOwnerCenterSection(nextSection);
                 setOwnerCenterSubview(nextSubsection);
@@ -63718,7 +63858,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               onSectionChange={setAccountOpsSection}
               onSignIn={() => { setAuthMode("login"); setGuestPreview(false); setActiveTab("account"); }}
               onSignOut={signOut}
-              onReturnHome={() => setActiveTab("dashboard")}
+              onReturnHome={() => navigateProductWorkspace(WORKSPACE_IDS.BUSINESS)}
             />
           </LazyToolBoundary>
         )}
@@ -66917,7 +67057,9 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
         <b>Top</b>
       </button>
       {ownerFeatureControls.businessAssistant ? renderEmberAssist() : null}
-      <MobileBottomNavigation items={mobileBottomTabs} activeKey={activeMobileTabKey} onSelect={(tab) => tab.action ? tab.action() : navigateMainTab(tab)} />
+      {shellRouteOwnership?.classification !== ROUTE_CLASSIFICATIONS.OWNER ? (
+        <MobileBottomNavigation items={mobileBottomTabs} activeKey={activeMobileTabKey} onSelect={(tab) => tab.action ? tab.action() : navigateMainTab(tab)} />
+      ) : null}
     </AppShell>
   );
 }

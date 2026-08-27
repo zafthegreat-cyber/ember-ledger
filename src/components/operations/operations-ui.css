@@ -294,11 +294,15 @@ html, body { background: var(--app-background) !important; color: var(--text-pri
 
 @media (min-width: 1180px) {
   .app.app-command-shell { display: block !important; }
-  .app.app-command-shell .topbar { top: 0 !important; width: calc(100% - 236px) !important; max-width: none !important; grid-template-columns: minmax(280px, 1fr) auto !important; margin: 0 0 0 236px !important; border-width: 0 0 1px !important; border-radius: 0 !important; }
+  .app.app-command-shell .topbar { top: 0 !important; width: calc(100% - 236px) !important; max-width: none !important; grid-template-columns: minmax(160px, 220px) minmax(280px, 1fr) auto !important; margin: 0 0 0 236px !important; border-width: 0 0 1px !important; border-radius: 0 !important; }
   .app.app-command-shell .topbar-brand, .app.app-command-shell .topbar-profile-button, .app.app-command-shell .menu-button { display: none !important; }
   .app.app-command-shell .main { width: calc(100% - 236px) !important; max-width: none !important; margin-left: 236px !important; padding-bottom: 32px; }
   .app.app-command-shell .mobile-quick-add-fab { display: none !important; }
   .ops-home-page { padding-top: 32px; }
+}
+
+@media (min-width: 701px) and (max-width: 1179px) {
+  .app.app-command-shell .topbar-brand { display: none !important; }
 }
 
 @media (max-width: 520px) {

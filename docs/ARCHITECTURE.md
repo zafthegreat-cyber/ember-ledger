@@ -8,7 +8,9 @@ Phase 1B status: validated checkpoint source published on the feature branch. Th
 
 Phase 1C is published through commit `af21199f610cc91e31d9dee59af6f0a2f748ab79`. It does not apply the Phase 1B schema, enable `REMOTE_ACTIVE`, move owner data, start sync, or add an automated marketplace action.
 
-Phase 2A starts from that published commit and is a local, unpublished Account Ops working copy. It adds browser-local profiles, email-alias metadata, retailer-account metadata, assisted setup state, account health, and account tasks. `LOCAL_ONLY` remains authoritative; no schema was applied, no canonical domain was added, and no provider-backed email, Inbox, Orders, sync, or retailer automation is active.
+Phase 2A Account Ops is published at `c76e3e4bc668c08d9a0908c9bb2cd96444610297`. It adds browser-local profiles, email-alias metadata, retailer-account metadata, assisted setup state, account health, and account tasks. `LOCAL_ONLY` remains authoritative; no schema was applied, no canonical domain was added, and no provider-backed email, Inbox, Orders, sync, or retailer automation is active.
+
+Phase 2A.5 starts from that published checkpoint and is a local, unpublished workspace-architecture working copy. It adds presentation-level product workspace ownership, compatibility-first homes, a switcher, bounded recent-workspace preference, and route/deep-link metadata. It does not change data authority, authorize a private route, connect a provider, implement billing, apply a migration, or enable remote persistence.
 
 ## Executive summary
 
@@ -18,7 +20,7 @@ Code 3 is a hybrid React/Vite single-page application. Its approved everyday she
 2. older browser storage and optional Supabase persistence used by legacy application modules;
 3. an Express/PostgreSQL backend used by legacy APIs and the secure eBay Browse connector.
 
-The published architecture is suitable for a private preview, not for centralized durability or reliable background work. Phase 1A supplies a Supabase-backed server identity boundary for the auth/eBay route families and a deterministic browser-backup/restore-preview contract. Phase 1B selects and scaffolds the owner-authorized Express API → repository/service layer → PostgreSQL/Supabase Postgres target, but deliberately leaves current browser repositories authoritative. Phase 1C adds presentation-independent deterministic intelligence modules and append-only local card-analysis history on top of that unchanged authority boundary. The local Phase 2A working copy adds one versioned Account Ops source behind the existing local persistence gateway and exposes a first-class, session-gated route family. Auction results can be saved without a generic linked revision series, and restock intelligence is recomputed from retained observations. Those changes reduce migration, recommendation, and account-operations tracking risk; they do not migrate records, activate remote persistence, protect every legacy route, provision email aliases, store plaintext passwords, integrate a mailbox/order provider, configure an AI/computer-vision provider, or make a backup complete when server data or referenced file bytes are omitted. The safest target remains an incremental strangler migration.
+The published architecture is suitable for a private preview, not for centralized durability or reliable background work. Phase 1A supplies a Supabase-backed server identity boundary for the auth/eBay route families and a deterministic browser-backup/restore-preview contract. Phase 1B selects and scaffolds the owner-authorized Express API → repository/service layer → PostgreSQL/Supabase Postgres target, but deliberately leaves current browser repositories authoritative. Phase 1C adds presentation-independent deterministic intelligence modules and append-only local card-analysis history on top of that unchanged authority boundary. Published Phase 2A adds one versioned Account Ops source behind the existing local persistence gateway and exposes a session-gated route family. Local Phase 2A.5 adds a shared product-workspace registry and shell around existing routes without creating new domain stores. Auction results can be saved without a generic linked revision series, and restock intelligence is recomputed from retained observations. Those changes reduce migration, recommendation, account-operations, and navigation risk; they do not migrate records, activate remote persistence, protect every legacy route, provision email aliases, store plaintext passwords, integrate a mailbox/order/Bot provider, implement billing, configure an AI/computer-vision provider, or make a backup complete when server data or referenced file bytes are omitted. The safest target remains an incremental strangler migration.
 
 ## Published Phase 1A boundary
 
@@ -69,7 +71,7 @@ Phase 1C introduces a reusable browser-side domain layer under `src/features/int
 
 The Phase 1C layer is decision support only. It has no server-side intelligence route, background job, provider/model secret, hosted write, automatic purchase, offer, bid, message, or migration path. See [INTELLIGENCE_CONTRACT.md](./INTELLIGENCE_CONTRACT.md).
 
-## Phase 2A local Account Ops delta
+## Published Phase 2A Account Ops delta
 
 Phase 2A introduces `src/features/accountOps` as a cohesive local domain rather than another collection of fields inside `App.jsx`:
 
@@ -84,7 +86,23 @@ Phase 2A introduces `src/features/accountOps` as a cohesive local domain rather 
 - Account Ops metadata in Backup Format v1 and zero-write Restore Preview, while all eight new record paths remain `REQUIRES_MAPPING` for migration because no canonical Account Ops domain or schema exists;
 - provider-neutral future Inbox and Orders contracts only. They do not fetch messages, store message bodies, create purchases, or claim an active provider integration.
 
-See [ACCOUNT_OPS_CONTRACT.md](./ACCOUNT_OPS_CONTRACT.md). This is fully validated local working-copy architecture pending only review and a separately authorized publication checkpoint.
+See [ACCOUNT_OPS_CONTRACT.md](./ACCOUNT_OPS_CONTRACT.md). This architecture is published at the Phase 2A checkpoint.
+
+## Phase 2A.5 local workspace delta
+
+Phase 2A.5 adds one presentation architecture around existing records and feature modules:
+
+- a central `src/config/workspaceRegistry.js` registry for `COLLECT`, `FIND`, `SELL`, `BOT`, `BUSINESS`, `OWNER`, `GLOBAL`, and `LEGACY_REDIRECT` route ownership;
+- compatibility-first homes at `/collect`, `/find/home`, `/sell/home`, `/bot`, and `/business`;
+- `src/features/workspaces/WorkspaceSwitcher.jsx` and `WorkspaceHomePage.jsx` with shared styling in `workspace-shell.css`;
+- a dedicated `code3.workspace-preference.v1` preference contract under `src/features/workspaces`, limited to public product-workspace identity and kept separate from historical persisted `Workspace` records and `activeWorkspaceId`;
+- route-derived workspace selection that takes precedence over remembered state;
+- workspace-local navigation on mobile and desktop without exposing every route globally;
+- Business association for Account Ops without changing its `VERIFIED_OWNER` gate;
+- an OWNER-only Bot shell with no provider, checkout, task-control, or automation capability;
+- explicit nonauthoritative entitlement hints for future product packaging, distinct from OWNER authorization.
+
+The registry and switcher are not security boundaries. Verified application-session and backend authorization remain definitive. Owner Center remains outside the product-workspace switcher. See [WORKSPACE_ARCHITECTURE_CONTRACT.md](./WORKSPACE_ARCHITECTURE_CONTRACT.md).
 
 ## Current system map
 
@@ -92,7 +110,8 @@ See [ACCOUNT_OPS_CONTRACT.md](./ACCOUNT_OPS_CONTRACT.md). This is fully validate
 flowchart TD
     Browser["React 19 + Vite SPA"]
     Shell["App.jsx shell and compatibility router"]
-    Canonical["Canonical workspaces and feature modules"]
+    Registry["Product workspace and route registry"]
+    Canonical["Shared feature and domain modules"]
     AccountOps["Local Account Ops domain"]
     Intelligence["Deterministic local intelligence services"]
     Legacy["Legacy route renderers and services"]
@@ -103,7 +122,8 @@ flowchart TD
     Postgres["PostgreSQL / legacy service storage"]
 
     Browser --> Shell
-    Shell --> Canonical
+    Shell --> Registry
+    Registry --> Canonical
     Canonical --> AccountOps
     Shell --> Legacy
     Canonical --> Intelligence
@@ -125,8 +145,9 @@ flowchart TD
 | Framework | React 19.2.3, Vite 8.0.10 | `package.json`, `src/main.jsx`, `vite.config.js` | Modern SPA toolchain |
 | Entry | `src/main.jsx` lazy-imports the application and installs an error boundary/service worker | `src/main.jsx` | Shell bootstrap is already isolated |
 | Shell | A very large `src/App.jsx` owns authentication, hydration, route selection, navigation, dialogs, and legacy renderers | `src/App.jsx`, `docs/APP_SHELL_EXTRACTION_PLAN.md` | High coupling and a large initial chunk |
-| Canonical pages | Home, Find, Collection, Business, and Owner Center delegate to focused modules | `src/pages/OperationsHome.jsx`, `src/pages/EverydayWorkspaces.jsx`, `src/features/flipScout`, `src/features/ownerCenter` | Current plain-language experience is real |
-| Account Ops | First-class lazy route with local domain service, mobile-first Overview/Profiles/Emails/Accounts/Tasks UI, and verified-session gate | `src/features/accountOps`, `src/App.jsx`, `src/utils/appRouteState.js` | Phase 2A local working copy; metadata works locally, but email provisioning, Inbox, Orders, secure-vault integration, and server durability do not |
+| Product workspace shell | Five focused product contexts over shared feature modules; Owner Center remains separate | `src/config/workspaceRegistry.js`, `src/features/workspaces`, `src/App.jsx`, `src/utils/appRouteState.js` | Phase 2A.5 local; route metadata and remembered UI context do not authorize access or duplicate records |
+| Canonical pages | Collect, Find, Sell, Business, and Owner Center delegate to focused modules | `src/pages/OperationsHome.jsx`, `src/pages/EverydayWorkspaces.jsx`, `src/features/flipScout`, `src/features/ownerCenter`, `src/features/workspaces` | Current plain-language experience is reorganized rather than rewritten |
+| Account Ops | Business-associated lazy route with local domain service, mobile-first Overview/Profiles/Emails/Accounts/Tasks UI, and verified-session gate | `src/features/accountOps`, `src/App.jsx`, `src/utils/appRouteState.js` | Published Phase 2A metadata works locally, but email provisioning, Inbox, Orders, secure-vault integration, and server durability do not |
 | Shared UI | Semantic operations components and CSS | `src/components/operations`, `src/styles/app/01-tokens-theme.css` | Reusable accessible foundation |
 | Routing | Custom path parsing and render dispatch, not React Router | `src/utils/appRouteState.js`, `src/App.jsx` | Back/redirect compatibility depends on bespoke code |
 | State | Large in-memory React state plus domain repository snapshots and legacy hooks | `src/App.jsx`, feature repositories | No single authoritative state boundary |
@@ -136,13 +157,21 @@ flowchart TD
 
 ## Routing and compatibility
 
-Canonical route ownership is encoded in `src/utils/appRouteState.js`. Current primary paths include:
+Phase 2A.5 centralizes product-workspace ownership in `src/config/workspaceRegistry.js`, while `src/utils/appRouteState.js` retains the custom route parsing/compatibility boundary. Compatibility-first homes are:
+
+- `/collect` for Collect;
+- `/find/home` for Find;
+- `/sell/home` for Sell;
+- `/bot` for the OWNER-only Bot foundation;
+- `/business` for Business.
+
+Current primary feature paths continue to include:
 
 - `/`, `/find/*`, `/collection/*`, `/business/*`, `/account-ops/*`, `/owner-center/*`, and `/settings/*`;
 - direct business shortcuts `/purchases`, `/inventory`, `/sell`, and `/sales`;
 - secondary `/kids-community`, `/assistant`, and `/integrations` routes.
 
-Legacy aliases remain for older sourcing, collection, sales, exchange, community, administration, reporting, and settings URLs. `src/App.jsx` resolves these aliases or renders compatibility modules. The definitive migration inventory remains in `docs/LEGACY_ROUTE_MIGRATION.md`.
+Legacy aliases remain for older sourcing, collection, sales, exchange, community, administration, reporting, and settings URLs. `src/App.jsx` resolves these aliases or renders compatibility modules. Registry classification distinguishes canonical workspace ownership from `GLOBAL`, `OWNER`, and `LEGACY_REDIRECT`; it does not reinterpret historical stored records. The definitive migration inventory remains in `docs/LEGACY_ROUTE_MIGRATION.md`.
 
 Risks:
 
@@ -151,7 +180,7 @@ Risks:
 - localStorage hydration can influence the first route render;
 - careless route extraction can break direct refreshes and Android/browser Back.
 
-The target is a route registry with one canonical owner per workflow, explicit redirects preserving query/hash data, domain-level error/loading boundaries, and focused compatibility tests.
+Phase 2A.5 implements the presentation registry and switcher portion of that target. Route extraction, complete canonical delegation, domain-level error/loading boundaries, and retirement of legacy renderers remain future work.
 
 ## Current persistence
 
@@ -203,7 +232,9 @@ The selected identity provider is the existing Supabase Auth integration. The br
 
 `GET /api/auth/session` returns only safe, masked session facts with `Cache-Control: no-store`. The browser uses that verified result for Owner Center visibility and compact Sign In Required / Owner Access Required states. Backend policy remains definitive for protected operations.
 
-The Phase 2A Account Ops route reuses that verified session boundary and does not construct or read its private local repository before authorization. Account Ops profiles are operational contact/account metadata only; they can never replace the authenticated principal or grant OWNER access.
+The Phase 2A Account Ops route reuses that verified session boundary and does not construct or read its private local repository before authorization. Phase 2A.5 associates Account Ops with Business for route context only; Business availability does not grant Account Ops access. Account Ops profiles are operational contact/account metadata only; they can never replace the authenticated principal or grant OWNER access.
+
+Bot and Owner Center also require verified OWNER authorization. A saved workspace preference, client feature/entitlement metadata, query parameter, or hidden route cannot make either surface accessible. Owner Center remains outside the ordinary product-workspace switcher.
 
 The local adapter requires an explicit server setting, a development runtime, loopback host and socket, and an explicit header. The test adapter is injectable only in the automated-test runtime. Both fail closed in Preview, Production, and hosted-unknown environments.
 
@@ -213,7 +244,7 @@ Current roles (`OWNER`, `ADMIN`, `MODERATOR`, `BETA_USER`, `USER`) still exist i
 
 The approved application identity is Code 3. The published Phase 1A source applies display, short, PWA, PWA short, browser-title, accessible-logo, logo, favicon, and offline identity through `src/config/brand.js` and the Vite metadata replacement. The legal/public business name and tagline remain separate and blank. Historical route, storage, cache, module, and imported-source identifiers remain unchanged.
 
-The runtime configuration still needs the definitive default social handle, currency, and time zone. Some compatibility/public-beta copy outside the primary shell still contains historical wording and requires a separately bounded migration. `src/features/ownerCenter/ownerCenterRepository.js` stores feature controls and scoring defaults locally; these controls influence UI visibility but are not server entitlements.
+The runtime configuration still needs the definitive default social handle, currency, and time zone. Some compatibility/public-beta copy outside the primary shell still contains historical wording and requires a separately bounded migration. `src/features/ownerCenter/ownerCenterRepository.js` stores feature controls and scoring defaults locally; these controls influence UI visibility but are not server entitlements. Phase 2A.5 may describe future `FREE`, `PLUS`, `PRO`, `BUSINESS`, and `OWNER` packaging in registry metadata, but supplies no billing or authoritative entitlement system; `OWNER` remains authority rather than a paid package.
 
 ## Deployment
 
@@ -258,11 +289,11 @@ The repository has focused Node/browser scripts rather than one consolidated tes
 
 The published Phase 1C checkpoint records 168 domain assertions, 27 card-history/provider cases, 61 integration assertions, and 15/15 deterministic fixtures with 175 assertions. Tests are listed in `package.json` and `backend/package.json`. Its complete local gate also passed the Phase 1A/1B suites and all 28 bounded regression scenarios in 323.446 seconds, with zero retries and no open handles after cleanup.
 
-Phase 2A adds passing profile, alias/template/collision, password, retailer-account/setup/health/task, recursive authority rejection, backup/preview, route, mobile, and deterministic fixture tests. The complete local gate also passed the inherited Phase 1A/1B/1C suites and the bounded 28-scenario regression; publication remains separately authorized.
+Published Phase 2A adds passing profile, alias/template/collision, password, retailer-account/setup/health/task, recursive authority rejection, backup/preview, route, mobile, and deterministic fixture tests. Phase 2A.5 focused registry and bounded-preference tests currently pass 256 and 82 assertions; switcher, deep-link, authority, legacy-route, mobile, shared-record projection, and inherited regression validation remain part of the final local gate. Publication remains separate.
 
 ## Bundle structure
 
-`vite.config.js` separates React, Supabase, scanner, and catalog dependencies. The main `App` chunk is still approximately 2,337 kB minified and 586 kB gzip because many legacy renderers and state dependencies remain in `src/App.jsx`. Existing extraction analysis is in `docs/BUNDLE_AND_ROUTE_PERFORMANCE.md` and `docs/APP_SHELL_EXTRACTION_PLAN.md`.
+`vite.config.js` separates React, Supabase, scanner, and catalog dependencies. The published Phase 2A main `App` chunk is approximately 2,337.78 kB minified and 586.01 kB gzip because many legacy renderers and state dependencies remain in `src/App.jsx`; Account Ops is already lazy-loaded. The validated local Phase 2A.5 candidate is 2,347.63 kB minified and 589.36 kB gzip for the main `App` chunk. Its lazy workspace home is 7.06 kB minified and 2.39 kB gzip, with 6.05 kB / 1.54 kB gzip of workspace-shell CSS. Phase 2A.5 keeps the workspace home separate but cannot fully extract the shell registry/state while `App.jsx` owns the legacy renderers. Existing extraction analysis is in `docs/BUNDLE_AND_ROUTE_PERFORMANCE.md` and `docs/APP_SHELL_EXTRACTION_PLAN.md`.
 
 ## Target architecture
 

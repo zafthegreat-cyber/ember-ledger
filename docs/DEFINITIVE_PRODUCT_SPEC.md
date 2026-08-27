@@ -2,7 +2,9 @@
 
 Status: normative product source of truth
 
-Verified baseline: `fa087331f3e81b5cf06a57ca7a89e8b37edba0fc`
+Published baseline: `c76e3e4bc668c08d9a0908c9bb2cd96444610297`
+
+Current local phase: Phase 2A.5 workspace architecture, unpublished
 
 Product stage: private owner application, Vercel Preview only
 Approved application name: Code 3
@@ -15,6 +17,7 @@ Detailed implementation truth is recorded separately:
 
 - Current feature status: [FEATURE_STATUS_MATRIX.md](./FEATURE_STATUS_MATRIX.md)
 - Current and target architecture: [ARCHITECTURE.md](./ARCHITECTURE.md)
+- Product workspace contract: [WORKSPACE_ARCHITECTURE_CONTRACT.md](./WORKSPACE_ARCHITECTURE_CONTRACT.md)
 - Current and target records: [DATA_MODEL.md](./DATA_MODEL.md)
 - Provider capabilities: [INTEGRATIONS.md](./INTEGRATIONS.md)
 - Security requirements: [SECURITY_AND_PRIVACY.md](./SECURITY_AND_PRIVACY.md)
@@ -79,7 +82,7 @@ It MUST also keep these independently configurable:
 
 All visible application-name rendering MUST consume `src/config/brand.js` or a single successor configuration source. Components MUST NOT hard-code Code 3 individually. Existing storage keys, database fields, API and compatibility routes, internal modules, environment variables, historical identifiers, and imported source identifiers are not renamed for cosmetic reasons.
 
-The audited runtime configuration predates this approved decision. Its values are updated centrally at the beginning of the next approved runtime implementation task, with associated PWA/browser-title tests; this documentation task does not modify runtime source.
+The published runtime consumes these values through the centralized brand configuration and associated PWA/browser-title tests.
 
 ## 5. Roles and authorization
 
@@ -100,29 +103,35 @@ The approved minimal interface is the baseline. Everyday mobile screens MUST hav
 
 At 360 pixels, screens MUST avoid horizontal overflow, use at least 44-pixel targets, expose visible focus states, preserve logical headings, use non-color status cues, support reduced motion, and keep financial values in tabular numerals. Long workflows MUST be guided and resumable. Drafts MUST be preserved. Destructive actions MUST require confirmation.
 
-The mental model is four simple everyday tools plus one private owner control room.
+The mental model is five focused product workspaces in one application, plus one separate private owner control room.
 
 ### Primary navigation
 
-- Mobile: Home, Find, centered Global Add action, Collection, Business.
-- Desktop: Home, Find, Collection, Business; Owner Center and Settings are secondary.
+- Product workspace switcher: Collect, Find, Sell, Bot, Business. Bot is visible only to a verified OWNER.
+- Mobile and desktop navigation are workspace-local and show only implemented destinations; they MUST NOT flatten every Code 3 route into one global dock or sidebar.
+- Compatibility-first workspace homes are `/collect`, `/find/home`, `/sell/home`, `/bot`, and `/business`.
+- Owner Center is separate from the switcher and remains OWNER-only. Account Ops is associated with Business but retains its stronger `VERIFIED_OWNER` gate.
+- Global Add/search actions MAY remain globally reachable when they route into a real workflow and its owning workspace.
 - Profile menu target: Owner Center, Notifications, Business Assistant, Kids & Community, Settings, Lock App, Sign Out. Optional entries obey feature controls.
+
+The workspace registry MAY carry future `FREE`, `PLUS`, `PRO`, `BUSINESS`, and `OWNER` metadata, but billing and subscription entitlements are not implemented. `OWNER` is authority, never a purchasable tier, and client metadata cannot authorize a private route.
 
 ## 7. Conceptual page map
 
 Canonical user-facing ownership is:
 
-- **Home**: attention, one best opportunity, today/recent activity, optional four-value summary.
+- **Collect**: personal collection, owned-item details, sets, binders, wishlist, grading candidates, card identification/condition assistance, and personal storage views.
 - **Find**
   - Deals: feed/inbox, detail, analysis, import review, comparable records, saved opportunities.
   - Restocks: live, stores, store detail, product detail, report, visit, trip planner.
   - Auctions: feed, event, lot, maximum bid, live bid display, pickup planner, calendar, source detail.
-- **Collection**: owned items, item detail, sets, binders, placeholder generator, wishlist, grading queue, unassigned review.
+- **Sell**: resale inventory, listing preparation, local sales/order foundations, shipping/returns, and item-level results. A workspace shell does not imply external listing or order integration.
+- **Bot**: OWNER-only foundation and capability truth. No Bot provider, purchase, checkout, bypass, or automation is implemented.
 - **Business**
   - Purchases: list, detail, receive, lot processing, allocation, returns/refunds.
-  - Inventory: resale items, item detail, processing, storage, labels/QR, aging.
-  - Sales: drafts, active listings, orders, detail, shipping, returns/refunds, booth.
   - Money: expenses, mileage, receipts, reports, commitments, reconciliation.
+  - Account Ops: Business-associated navigation with a separate verified-OWNER authorization boundary.
+  - Operational tasks and shared business records presented without duplicating Collect or Sell records.
 - **Owner Center**
   - Overview: exactly five compact operational rows.
   - Sourcing: opportunities, eBay, auction sources, imports, search rules/history, sellers, sources.
@@ -133,9 +142,13 @@ Canonical user-facing ownership is:
 
 Internal compatibility routes MAY redirect or delegate to these concepts. They MUST NOT create a second authoritative version of a workflow.
 
+The same opportunity, purchase, owned item, inventory item, and sale MUST remain one shared record across workspace projections. Workspaces MUST NOT introduce disconnected Collect, Sell, or Business copies. Route ownership, switcher behavior, remembered preference, deep links, compatibility, and authority semantics are normative in [WORKSPACE_ARCHITECTURE_CONTRACT.md](./WORKSPACE_ARCHITECTURE_CONTRACT.md).
+
 ## 8. Home and Global Add
 
-Home answers what needs attention, what the best opportunity is, what is happening today, and how the business is doing at a glance. Attention and activity lists contain at most five compact rows. Best Opportunity contains one image-led record and is omitted when empty. The optional summary is one strip with at most Buying Budget, Inventory at Cost, Month Sales, and Month Profit.
+The root compatibility Home answers what needs attention, what the best opportunity is, what is happening today, and how the business is doing at a glance. Attention and activity lists contain at most five compact rows. Best Opportunity contains one image-led record and is omitted when empty. The optional summary is one strip with at most Buying Budget, Inventory at Cost, Month Sales, and Month Profit.
+
+Collect, Find, Sell, Bot, and Business each have a route-safe workspace Home whose content is limited to that workspace's existing data and working actions. A workspace Home MUST use an honest empty/foundation state rather than invent provider connectivity, orders, metrics, or automation. The root Home remains a global/compatibility surface and is not a sixth product workspace.
 
 Global Add is an action sheet, not a workspace. Working and enabled primary actions are Scan Listing, Analyze Deal, Record Purchase, Add Collection Item, and Record Sale. More MAY expose Add Auction, Add Resale Inventory, Add Expense, Add Mileage, Add Receipt, Report Restock, Record Store Visit, Create Kids' Pack, and Record Donation. An action MUST be hidden until it opens a real workflow.
 

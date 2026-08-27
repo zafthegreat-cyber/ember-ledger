@@ -1,12 +1,12 @@
 # Code 3 Account Ops Contract
 
-Status: Phase 2A local-first implementation contract. This contract does not authorize canonical persistence, database migration, synchronization, retailer automation, mailbox access, purchasing, or Production deployment.
+Status: Phase 2A local-first implementation published at `c76e3e4bc668c08d9a0908c9bb2cd96444610297`. Phase 2A.5 changes its product-workspace placement, not its security or provider boundary. This contract does not authorize canonical persistence, database migration, synchronization, retailer automation, mailbox access, purchasing, or Production deployment.
 
 Starting baseline: `af21199f610cc91e31d9dee59af6f0a2f748ab79`.
 
 ## Purpose
 
-Account Ops is Code 3's private workspace for legitimate owner-managed business profiles, generated email-alias metadata, retailer-account records, assisted setup, verification state, account health, and account-related tasks.
+Account Ops is Code 3's private, owner-managed business-operations area for legitimate profiles, generated email-alias metadata, retailer-account records, assisted setup, verification state, account health, and account-related tasks.
 
 The workflow is:
 
@@ -36,7 +36,7 @@ The Account Ops repository is loaded only after the verified application session
 
 ## Navigation and UI
 
-Account Ops is a first-class, lazy-loaded owner workspace with canonical routes:
+Account Ops is a first-class, lazy-loaded private route family with canonical routes:
 
 ```text
 /account-ops
@@ -46,7 +46,9 @@ Account Ops is a first-class, lazy-loaded owner workspace with canonical routes:
 /account-ops/tasks
 ```
 
-The permanent mobile dock remains Home, Find, Add, Collection, and Business. Account Ops is available from the authenticated owner menu and desktop secondary navigation. A direct URL renders the same compact Sign In Required, Owner Access Required, or unavailable state as other private owner surfaces.
+Under the Phase 2A.5 product-workspace architecture, Account Ops is associated with Business for navigation and route context. That association is descriptive only: Business workspace access does not grant Account Ops access, and Account Ops retains `VERIFIED_OWNER` authorization before `code3.account-ops.v1` is loaded. Account Ops may appear in Business navigation only for an authorized OWNER and remains available through the authenticated owner affordance. A direct URL renders the same compact Sign In Required, Owner Access Required, or unavailable state as other private owner surfaces.
+
+Account Ops is not part of Bot, and moving between workspaces does not move or duplicate its records. The global product-workspace switcher cannot bypass its gate. Owner Center remains a separate private administration surface. See [WORKSPACE_ARCHITECTURE_CONTRACT.md](./WORKSPACE_ARCHITECTURE_CONTRACT.md).
 
 The internal sections are Overview, Profiles, Emails, Store Accounts, and Tasks. Mobile uses compact cards, bounded search/filter controls, progressive disclosure, 44-pixel targets, and safe wrapping for long aliases and retailer names. Desktop may use a compact table, but it does not add extra dashboards merely to fill space.
 

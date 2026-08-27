@@ -1,6 +1,6 @@
 # Code 3 Integrations and Capability Matrix
 
-Phase 1C is published through `af21199f610cc91e31d9dee59af6f0a2f748ab79`. Phase 2A Account Ops is a local, unpublished working copy. Its email, credential, Inbox, and order provider shapes are adapter contracts or local metadata only; no provider is connected.
+Phase 1C is published through `af21199f610cc91e31d9dee59af6f0a2f748ab79`. Phase 2A Account Ops is published at `c76e3e4bc668c08d9a0908c9bb2cd96444610297`; its email, credential, Inbox, and order provider shapes remain adapter contracts or local metadata only, and no provider is connected. Phase 2A.5 is a local, unpublished workspace-shell phase and adds no integration.
 
 ## Capability truth rules
 
@@ -13,6 +13,7 @@ Phase 1C is published through `af21199f610cc91e31d9dee59af6f0a2f748ab79`. Phase 
 - Credentials, refresh tokens, and provider secrets remain server-side.
 - `Generated` email alias means local metadata only; it is never equivalent to provisioned or receiving mail.
 - Account Ops retailer/profile metadata is not authorization to automate signup, verification, checkout, or account actions.
+- A Bot workspace shell, navigation entry, or capability label is not a connected Bot provider and cannot authorize an account or purchase action.
 
 Target capability statuses are `AVAILABLE`, `CONNECTED`, `MANUAL_IMPORT_ONLY`, `SHARE_IMPORT`, `EMAIL_IMPORT`, `OWNER_DATA_ONLY`, `AUTHORIZATION_REQUIRED`, `NOT_CONFIGURED`, `UNSUPPORTED`, and `TEMPORARILY_UNAVAILABLE`.
 
@@ -34,12 +35,14 @@ The current UI also uses closely related display statuses such as Available, Man
 | Manual URL | AVAILABLE | Deal form and provider placeholder | saves URL plus owner-entered fields | Structured metadata remains manual | Implemented baseline |
 | Screenshot/manual entry | AVAILABLE | upload/reference fields, manual forms, `src/features/intelligence/providerAdapters/scannerEvidence.js` | evidence/reference and provenance-preserved owner/catalog/barcode fields | No OCR, computer vision, file upload, or protected object storage | Future protected files; optional AI only after approval |
 | CSV/JSON feature import | PARTIAL | `src/features/flipScout/csv.js`, Sources/Data screen, repository import/export | selected record imports/exports | Unified preview/mapping/error job model missing | Phase 1/7 |
-| Account Ops local alias metadata | AVAILABLE | `src/features/accountOps` alias/domain/provider contracts | secure-random local alias generation, copy, relationship and status metadata | Does not provision or receive mail | Phase 2A local |
+| Account Ops local alias metadata | AVAILABLE | `src/features/accountOps` alias/domain/provider contracts | secure-random local alias generation, copy, relationship and status metadata | Does not provision or receive mail | Published Phase 2A |
 | Business-domain catch-all | NOT_CONFIGURED | Phase 2A domain/provider metadata contract | owner may record configuration/evidence only | No health check, routing API, or verified delivery | Future provider approval |
 | Provider-managed email aliases | NOT_CONFIGURED | Phase 2A provider-neutral adapter boundary | no network action | approved provider, server secret, owner authorization, health/provisioning contract | Future authorization |
 | External password manager / OS secure store | NOT_CONFIGURED | Phase 2A `CredentialReference` provider types | store nonsecret reference metadata only | No vault connection or proof a referenced secret exists | Future authorization |
 | Authorized Account Ops Inbox | NOT_CONFIGURED | Phase 2A normalized message contract only | none | mailbox provider/scopes, protected content, retention, dedupe, owner authorization | Phase 2B after approval |
 | Retail order import | NOT_CONFIGURED | Phase 2A order-candidate/review contract only | none | provider access, idempotency, owner review and explicit Purchase import | Phase 2B after approval |
+| Bot providers (including Stellar, Hayha, or Valor) | NOT_CONFIGURED | Phase 2A.5 OWNER-only workspace shell/capability truth only | none | separate approved provider, server-only credentials, authorization, terms/anti-abuse review, health contract | Future; not Phase 2A.5 |
+| Subscription/billing provider | NOT_CONFIGURED | future entitlement hints only | none | approved billing architecture, server-verified entitlement, privacy/tax/refund specification | Future; no billing in Phase 2A.5 |
 | Authorized email alerts | NOT_CONFIGURED | sourcing placeholder plus Phase 2A future message contract | none | authorization, mailbox scope, parser, review queue | Phase 2B/3 after approval |
 | Share target | MISSING | no complete OS share-target ingestion workflow | none beyond paste/manual | PWA share manifest/ingestion/review | Phase 2 or 3 |
 | AI / computer-vision provider | NOT_CONFIGURED | feature flag, legacy placeholders, provider-neutral Phase 1C evidence boundary | no external model-backed analysis; deterministic rules and existing barcode/catalog metadata only | provider selection, server secret, protected files, privacy/cost/evaluation controls | Optional later AI phase |
@@ -112,6 +115,14 @@ Credentials use reference-only provider types such as external password manager,
 Future Inbox categories and order-candidate relationships are normalized contracts only. A Phase 2B connection requires an approved minimally scoped provider, server-side secrets, owner authorization, protected content/reference storage, retention/deletion rules, replay/deduplication controls, and a review gate. Parsed evidence can never create a Purchase or Inventory record without an explicit owner import action.
 
 Account setup is an owner-guided workflow. Code 3 may open a legitimate signup URL and prepare copyable ordinary fields, but it does not submit bulk signup forms, bypass CAPTCHA/OTP/email/phone verification, evade bot or household/account/purchase limits, rotate identities, or automate checkout/payment.
+
+## Phase 2A.5 workspace integration boundary
+
+The Bot workspace is an OWNER-only presentation foundation with no active provider adapter, token, task controller, proxy, account automation, checkout, or purchase action. Names such as Stellar, Hayha, and Valor may appear only in future planning or capability truth; Code 3 does not claim a connection.
+
+Account Ops remains contextually associated with Business, but Phase 2A.5 does not connect an email, mailbox, order, or password-vault provider. Inbox and Orders remain Phase 2A contracts only. Workspace/feature entitlement hints are not subscription state, and no billing or payment provider is configured.
+
+Moving a route into a product workspace does not expand provider permission. Existing eBay OAuth and server-side secret boundaries remain unchanged, active eBay listings remain active evidence rather than completed sales, and no provider may create a Purchase without its existing owner review/confirmation boundary.
 
 ## Target provider contract
 

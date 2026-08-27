@@ -33,6 +33,9 @@ const viteConfig = read("vite.config.js");
 const pkg = JSON.parse(read("package.json"));
 const commandBoardV4 = read("src/components/command-system/CommandBoardV4.jsx");
 const flipScoutPage = read("src/features/flipScout/FlipScoutPage.jsx");
+const workspaceHomePage = read("src/features/workspaces/WorkspaceHomePage.jsx");
+const workspaceSwitcher = read("src/features/workspaces/WorkspaceSwitcher.jsx");
+const workspaceRegistry = read("src/config/workspaceRegistry.js");
 
 check(
   "Scout is route-lazy loaded",
@@ -53,6 +56,24 @@ check(
   "Account Ops is independently lazy-loaded",
   app.includes('const AccountOpsPage = lazy(() => import("./features/accountOps/AccountOpsPage"))') &&
     app.includes('<AccountOpsPage')
+);
+
+check(
+  "Workspace homes are independently lazy-loaded",
+  app.includes('const WorkspaceHomePage = lazy(() => import("./features/workspaces/WorkspaceHomePage"))') &&
+    app.includes("<WorkspaceHomePage") &&
+    workspaceHomePage.includes("export default function WorkspaceHomePage") &&
+    workspaceHomePage.includes('import "./workspace-shell.css"')
+);
+
+check(
+  "The lightweight switcher and route registry do not pull feature domains into startup",
+  app.includes('import WorkspaceSwitcher from "./features/workspaces/WorkspaceSwitcher"') &&
+    workspaceSwitcher.includes("export default function WorkspaceSwitcher") &&
+    !workspaceSwitcher.includes("flipScout") &&
+    !workspaceSwitcher.includes("accountOpsService") &&
+    !workspaceRegistry.includes("createFlipScoutRepository") &&
+    !workspaceRegistry.includes("createAccountOpsService")
 );
 
 check(
@@ -264,6 +285,11 @@ check(
 check(
   "Route-loading test script is registered",
   pkg.scripts?.["test:route-loading"] === "node --no-warnings scripts/test-route-loading.mjs"
+);
+
+check(
+  "Workspace contract test script is registered",
+  pkg.scripts?.["test:code3-workspaces"] === "node --no-warnings scripts/test-code3-workspace-registry.mjs && node --no-warnings scripts/test-code3-workspace-preference.mjs && node --no-warnings scripts/test-code3-workspace-fixtures.mjs && node --no-warnings scripts/test-code3-workspace-ui.mjs"
 );
 
 const failed = checks.filter((entry) => !entry.passed);

@@ -73,6 +73,8 @@
     "test:code3-intelligence": "node --no-warnings scripts/test-code3-intelligence-domain.mjs && node --no-warnings scripts/test-code3-intelligence-history.mjs && node --no-warnings scripts/test-code3-intelligence-integration.mjs && node --no-warnings scripts/test-code3-intelligence-fixtures.mjs",
     "test:code3-account-ops": "node --no-warnings scripts/test-code3-account-ops-domain.mjs && node --no-warnings scripts/test-code3-account-ops-fixtures.mjs && node --no-warnings scripts/test-code3-account-ops-ui.mjs",
     "test:code3-account-ops-browser": "node --no-warnings scripts/test-code3-account-ops-browser.cjs",
+    "test:code3-workspaces": "node --no-warnings scripts/test-code3-workspace-registry.mjs && node --no-warnings scripts/test-code3-workspace-preference.mjs && node --no-warnings scripts/test-code3-workspace-fixtures.mjs && node --no-warnings scripts/test-code3-workspace-ui.mjs",
+    "test:code3-workspaces-browser": "node --no-warnings scripts/test-code3-workspace-browser.cjs",
     "test:code3-canonical": "npm --prefix backend run test:code3-canonical",
     "test:tier-foundation": "node --no-warnings scripts/test-tier-foundation.mjs",
     "test:quick-add": "node --no-warnings scripts/test-quick-add-routing.mjs",

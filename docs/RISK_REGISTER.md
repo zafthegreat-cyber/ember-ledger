@@ -6,7 +6,9 @@ Phase 1A and the validated Phase 1B checkpoint source are published on the featu
 
 Phase 1C is published through `af21199f610cc91e31d9dee59af6f0a2f748ab79`. Its deterministic intelligence, provenance, and card-history controls reduce some recommendation risks but do not add licensed market data, protected image analysis, canonical durability, migration, sync, or automation.
 
-Phase 2A Account Ops is a local, unpublished working copy. It adds browser-local operational identity/account metadata and human-assisted workflows only; no email, vault, Inbox, order, migration, sync, or retailer automation provider is active.
+Phase 2A Account Ops is published at `c76e3e4bc668c08d9a0908c9bb2cd96444610297`. It adds browser-local operational identity/account metadata and human-assisted workflows only; no email, vault, Inbox, order, migration, sync, or retailer automation provider is active.
+
+Phase 2A.5 is a local, unpublished workspace-shell change. It adds route/navigation metadata and a bounded public-workspace preference, not authorization, provider access, billing, migration, or a new record authority.
 
 Ratings are qualitative. “Owner” identifies the responsible workstream, not a person assignment.
 
@@ -49,12 +51,16 @@ Ratings are qualitative. “Owner” identifies the responsible workstream, not 
 | R-35 | A locally generated alias is mistaken for a provisioned or mail-receiving address | Medium/high | High | Phase 2A can generate syntactically valid alias metadata but has no email provider network integration | separate lifecycle/provisioning state; explicit Generated wording; require provider/owner evidence and health check before Provisioned/Receiving; test capability truth | Account Ops/integrations, Phase 2A–2B |
 | R-36 | Retailer credentials leak or an external credential reference is mistaken for recoverable secure storage | Medium | Critical | Phase 2A has an ephemeral password generator and reference-only credential metadata; no secure-vault adapter exists | recursively reject secrets; never persist/log/back up generated passwords/OTPs/tokens; warn unsaved value is unrecoverable; future approved vault adapter and security tests | Account Ops/security, Phase 2A/future provider |
 | R-37 | Account Ops is expanded into account farming, retailer-limit evasion, or security-verification bypass | Medium if guardrails erode | Critical | profiles, aliases, setup checklists, and retailer grouping improve owner productivity but could be misused if bulk automation were added | no bulk signup, form submission, CAPTCHA/OTP bypass, identity rotation, bot/access-control evasion, household/account/purchase-limit bypass, checkout, or payment; human verification and explicit future provider review | Product/security/legal, Phase 2A onward |
+| R-38 | Remembered workspace or future entitlement metadata is mistaken for authorization | Medium | Critical | Phase 2A.5 adds browser-controlled route, availability, tier-hint, and preference metadata while Bot, Owner Center, and Account Ops remain private | public fallback plus inert last-selection schema; direct-route/session precedence; remembered Bot ignored without fresh verified OWNER; OWNER gate before private render/storage; server policy remains definitive; logout/session-downgrade tests; OWNER is not purchasable | Security/frontend, Phase 2A.5 onward |
+| R-39 | Product workspace terminology or projections collide with historical `Workspace` records or duplicate business records | Medium | High | legacy persisted `Workspace`/`activeWorkspaceId` coexist with new product workspace shells over opportunities, purchases, owned items, inventory, and sales | separate key/type/name; no migration/reinterpretation; shared stable IDs and projections; cross-workspace no-clone tests; explicit backup treatment | Architecture/data, Phase 2A.5 |
+| R-40 | Workspace resolution causes deep-link, legacy redirect, or Android/browser Back loops | Medium | High | custom routing/history remains in `App.jsx` and `appRouteState.js`; direct routes and saved workspace both influence shell context | central route ownership, direct-route precedence, real alias targets, no repeated history replacement, direct/legacy/back/mobile tests and physical Android QA | Frontend/QA, Phase 2A.5/12 |
+| R-41 | OWNER-only Bot shell is mistaken for an active or safe automation provider | Medium | Critical | Phase 2A.5 may expose an honest private foundation, but no Bot provider or operational backend exists | explicit no-provider state; OWNER gate; no provider token/task control/proxy/checkout/purchase path; separate future security/legal specification before any integration | Bot/security/product, Phase 2A.5 onward |
 
 ## Highest-priority closure order
 
 1. R-02, R-03, and R-14: validate the published owner boundary honestly, then extend it and recovery coverage to every sensitive server/file source.
 2. R-01, R-08, R-09, R-21, R-29, R-30, and R-31: verify schema/repositories and cross-layer contracts in a disposable database, protect files, rehearse rollback, and keep remote cutover separately approved.
-3. R-04, R-05, and R-20: route ownership and shell extraction before substantial feature expansion.
+3. R-04, R-05, R-20, and R-38 through R-41: validate workspace route/authority boundaries, shared-record identity, capability truth, and Back behavior before substantial feature expansion.
 4. R-07, R-10, R-24, and provider/licensing risks: only then add scheduled or externally sourced intelligence.
 5. R-15, R-23, R-32, and R-33: preserve owner provenance/history and validate recommendation language before expanding models or persistence.
 6. Transaction, reporting, offline, and optional AI risks in their dependent phases.
