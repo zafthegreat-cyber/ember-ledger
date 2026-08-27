@@ -110,7 +110,8 @@ function safeJson(value: unknown, path: string, depth = 0, counter = { count: 0 
   if (depth > LIMITS.metadataDepth) {
     throw new Code3ValidationError(issue(path, "too_deep", "Metadata nesting is too deep."));
   }
-  if (value === null || typeof value === "boolean") return value;
+  if (value === null) return null;
+  if (typeof value === "boolean") return value;
   if (typeof value === "number") {
     if (!Number.isFinite(value)) throw new Code3ValidationError(issue(path, "non_finite_number", "Metadata cannot contain NaN or Infinity."));
     return value;

@@ -15,6 +15,7 @@ const {
 const { createAutomatedTestMemoryConnectionStore } = require("../dist/providerRuntime/connectionStore.js");
 const { createMailboxProviderRegistry } = require("../dist/providerRuntime/providerRegistry.js");
 const { createProviderRuntime } = require("../dist/providerRuntime/runtime.js");
+const { resolveTrustedRuntimeProof } = require("../dist/providerRuntime/trustedRuntime.js");
 const { createProviderConnectionsRouter } = require("../dist/routes/providerConnections.routes.js");
 const { createOwnerSecurity } = require("../dist/auth/ownerAuthorization.js");
 const { createProtectedCors } = require("../dist/security/corsPolicy.js");
@@ -271,6 +272,7 @@ test("injected test lifecycle revokes provider authorization, removes secrets, a
         return Object.freeze({ providerAuthorizationRevoked: true });
       },
     })],
+    trustedRuntimeProof: resolveTrustedRuntimeProof({ VERCEL: "1", VERCEL_ENV: "preview" }),
   });
   assert.equal((await runtime.connectionForProcessing(principal(), connectionId)).connection.status, "HEALTHY");
   const result = await runtime.disconnect(principal(), connectionId);
@@ -331,7 +333,7 @@ test("disconnect fails safe before remote or secret-store cleanup failures", asy
   assert.equal(result.connection.errorCode, "PROVIDER_AND_SECRET_REVOCATION_FAILED");
   assert.equal(result.futureReadsAllowed, false);
   assert.equal(result.warnings.length, 1);
-  await assert.rejects(() => runtime.connectionForProcessing(principal(), connectionId), { code: "provider_connection_not_found" });
+  await assert.rejects(() => runtime.connectionForProcessing(principal(), connectionId), { code: "provider_runtime_unavailable" });
 });
 
 test("provider status route requires a verified owner and returns safe no-store metadata", async () => {

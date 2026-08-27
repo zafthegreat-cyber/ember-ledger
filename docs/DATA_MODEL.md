@@ -10,7 +10,7 @@ Phase 2A Account Ops is published at `c76e3e4bc668c08d9a0908c9bb2cd96444610297`.
 
 Phase 2A.5 is published at `4c6c7891a123777acec8f326793f30aee61f3de6`. It adds a bounded product-workspace preference and route metadata, not a domain entity or feature-data migration.
 
-Phase 2B1 is a local, unpublished foundation that adds a separate versioned `code3.inbox-order.v1` browser source for minimized message evidence, Order Candidate projections, append-only candidate events, and sanitized activity. It does not alter the strict Account Ops v1 document, add a canonical database domain, persist provider secrets, or create a Purchase.
+Phase 2B1 is published at `2f49a5ed97cec827184c6080e4ada0f4c8194451` and adds a separate versioned `code3.inbox-order.v1` browser source for minimized message evidence, Order Candidate projections, append-only candidate events, and sanitized activity. Phase 2B2-A adds no data source or schema. Neither phase alters the strict Account Ops v1 document, adds a canonical database domain, persists provider secrets, or creates a Purchase.
 
 This document distinguishes current persisted shapes, Phase 1B schema-only representations, and the future active canonical model. A table, migration file, repository interface, or dry-run result is not evidence that remote persistence is active.
 

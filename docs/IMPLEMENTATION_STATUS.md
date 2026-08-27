@@ -2,16 +2,16 @@
 
 Last audited: 2026-08-27
 
-Published Phase 2A.5 commit: `4c6c7891a123777acec8f326793f30aee61f3de6`
+Published Phase 2B1 commit: `2f49a5ed97cec827184c6080e4ada0f4c8194451`
 
-Repository branch represented: `ui-104-final-product-ui-2` (Phase 2B1 local working copy prepared from a detached worktree at the published Phase 2A.5 commit)
+Repository branch represented: `ui-104-final-product-ui-2` (Phase 2B2-A local working copy prepared from a detached worktree at the published Phase 2B1 commit)
 
 Pull request: #1, Draft
-Deployment: authenticated Vercel Preview only; no production deployment
+Deployment: exact-candidate Phase 2B2-A Preview is Ready; deployment identity is recorded in the validation report; no Phase 2B2-A production deployment
 
 ## Current phase
 
-**Phase 2B1 — Secure Provider Runtime + Inbox / Order Intelligence Foundation** is the current local, unpublished implementation phase. It adds a default-unavailable server provider runtime, synthetic/minimized message normalization, protected-message handling, a separate `LOCAL_ONLY` Order Candidate source, deterministic idempotency/reconciliation, and owner-review surfaces under Account Ops. It does not connect a mailbox, persist provider credentials, create a Business Purchase, activate hosted canonical persistence, or deploy. Phase 1B remains the persistence boundary: its database artifact is `SCHEMA_ONLY`, Migration Preview is `DRY_RUN_ONLY`, `LOCAL_ONLY` remains authoritative, `REMOTE_ACTIVE` is disabled, no database migration was executed, and no owner data moved.
+**Phase 2B2-A — Preview Trusted Express/API Runtime** is the current local implementation phase. It adds exact Vercel Function entry points for the owner session and provider status paths, a bounded server-owned Preview execution proof, fail-closed provider-processing hardening, and an honest Account Ops runtime/provider status presentation. It does not connect a mailbox, add OAuth, persist provider credentials, create a Business Purchase, activate hosted canonical persistence, or deploy Production. Phase 1B remains the persistence boundary: its database artifact is `SCHEMA_ONLY`, Migration Preview is `DRY_RUN_ONLY`, `LOCAL_ONLY` remains authoritative, `REMOTE_ACTIVE` is disabled, no database migration was executed, and no owner data moved.
 
 ## Completed baseline
 
@@ -90,7 +90,7 @@ The published Phase 2A.5 checkpoint adds:
 - explicit future entitlement metadata that cannot authorize a route and keeps OWNER distinct from paid tiers;
 - [WORKSPACE_ARCHITECTURE_CONTRACT.md](./WORKSPACE_ARCHITECTURE_CONTRACT.md), with its reviewed workspace/navigation safety boundary published at `4c6c7891a123777acec8f326793f30aee61f3de6`.
 
-The local, unpublished Phase 2B1 working copy adds:
+The published Phase 2B1 checkpoint adds:
 
 - a provider-neutral trusted-runtime boundary under `backend/src/providerRuntime` with Gmail and Microsoft definitions that truthfully expose no active capabilities;
 - OWNER-protected, no-store status/capability and disconnect routes under `/api/account-ops/provider-connections`, mounted before legacy wildcard CORS;
@@ -103,6 +103,17 @@ The local, unpublished Phase 2B1 working copy adds:
 - explicit candidate owner confirmation/correction/rejection with retained provenance and no path to the Purchase repository;
 - Backup Format v1 registration at 23 total sources (19 locally included and four excluded/conditional), zero-write Restore Preview validation, and four `REQUIRES_MAPPING` paths;
 - [INBOX_ORDER_PROVIDER_CONTRACT.md](./INBOX_ORDER_PROVIDER_CONTRACT.md) and deterministic synthetic fixtures only. No real mailbox, provider token, authorization scope, Purchase import, or hosted provider connection is active.
+
+The local Phase 2B2-A candidate adds:
+
+- exact `api/auth/session.ts` and `api/account-ops/provider-connections.ts` filesystem functions that only export the canonical Express app;
+- `backend/src/providerRuntime/trustedRuntime.ts`, whose bounded proof requires exact server-owned Vercel Preview markers and rejects Production, hosted-unknown, local, test, request, role, and query substitutes;
+- separate runtime and provider readiness: trusted Preview execution may be available while runtime `available=false`, Gmail/Outlook remain `NOT_CONFIGURED`, all live capabilities remain false, and default connection/secret/OAuth-state stores remain unavailable;
+- a client response allowlist and Account Ops status view showing `Trusted runtime available/unavailable` separately from Gmail/Outlook configuration, with no Connect action;
+- focused Preview mapping, owner-auth, no-store/CORS, secret exclusion, no-mailbox-network, Production-safety, and provider-capability tests;
+- [PREVIEW_TRUSTED_RUNTIME_CONTRACT.md](./PREVIEW_TRUSTED_RUNTIME_CONTRACT.md). Managed secrets/state, OAuth, callbacks, provider reads, mailbox ingestion, Purchase import, remote persistence, and Production remain absent.
+
+The exact candidate was deployed manually to a Vercel Preview for bounded runtime verification. The deployment is Ready and includes Node functions for `/api/auth/session` and `/api/account-ops/provider-connections`. Both paths return Express JSON with `Cache-Control: no-store`; the session path safely reports `AUTH_NOT_CONFIGURED`, while the protected provider path returns `401 authentication_required` and ignores a synthetic client role query. The normal Code 3 Home and direct Account Ops route load to the sign-in boundary. Because server-side Preview authentication and owner-allowlist configuration are absent, no valid owner `200` response was possible, Gmail/Outlook status could not be attested through the hosted protected response, and `hostedRuntimeVerified` remains `false`.
 
 ## Partially complete or implemented differently
 
@@ -184,8 +195,9 @@ Phase 2B1 focused validation passes 16/16 provider-runtime cases, 52 domain asse
 ## Preview state
 
 - PR #1 remains Draft per the task baseline.
-- The published branch points to the Phase 2A.5 checkpoint `4c6c7891a123777acec8f326793f30aee61f3de6`; Phase 2B1 changes are local only.
-- Deployment is Vercel Preview only and requires authentication.
+- The published branch points to the Phase 2B1 checkpoint `2f49a5ed97cec827184c6080e4ada0f4c8194451`; Phase 2B2-A changes are local only.
+- The exact local candidate is deployed only as a Ready Preview; it proves filesystem routing to Express and fail-closed authentication, not the complete owner-authorized provider proof. The temporary CLI verification bypass was revoked before the final Preview was built.
+- `hostedRuntimeVerified=false` because the server-only Preview auth/owner configuration needed for a valid owner response is absent. Required names are documented without values in [OWNER_AUTH_DECISION.md](./OWNER_AUTH_DECISION.md).
 - No production deployment is represented by this documentation.
 
 ## Known defects and debt
@@ -218,13 +230,13 @@ Phase 2B1 focused validation passes 16/16 provider-runtime cases, 52 domain asse
 26. Phase 2A.5 workspace ownership remains a presentation layer over custom routing; a saved preference and entitlement hints are deliberately nonauthoritative, and physical Android Back QA remains necessary.
 27. Bot is an OWNER-only empty/foundation shell. No Bot provider, task control, proxy, checkout, or purchase integration exists.
 28. Auction events/lots are not yet addressable through stable record-detail URLs; workspace routing links honestly to the implemented `/find/auctions` surface instead of inventing an unsupported lot-detail route.
-29. Provider hosting remains unverified: the repository exposes Express function entry points, but the current Vercel Preview previously demonstrated SPA fallback behavior for an API path and Phase 2B1 does not deploy or enable OAuth.
+29. Phase 2B2-A's exact candidate Preview proves the Express functions are hosted and fail closed, but missing server authentication/owner configuration prevents an owner-authorized provider response. `hostedRuntimeVerified` therefore remains `false`; a `Ready` deployment and unauthenticated `401` are not full provider-runtime proof and do not enable OAuth.
 30. No durable server-side provider connection, managed secret, atomic OAuth-state, protected raw-content, cursor, or audit store is configured. Production/default adapters remain unavailable, and test-only memory stores are not acceptable hosted substitutes.
 31. Gmail and Microsoft minimum read-only scope/provider-registration decisions remain external blockers. Phase 2B1 requests no scope and includes no network adapter.
 32. The local Inbox/Order source requires a future canonical mapping. All four paths remain `REQUIRES_MAPPING`; its unencrypted local/backup metadata shares the existing device/download security limitation.
 
 ## Next recommended task
 
-Do not begin Phase 2B2 as part of the Phase 2B1 checkpoint. The recommended later Phase 2B2 task is a single test-provider pilot only after a durable managed secret store, durable atomic OAuth-state store, exact Preview callback/origin/redirect configuration, verified owner-protected hosted API routing, provider scope approval, retention/deletion policy, and revocation proof are all explicitly approved. Purchase import, Bot providers, billing, renderer extraction, and disposable-database work remain separate phases.
+Do not begin Phase 2B2-B as part of Phase 2B2-A. The recommended next phase is a separately approved managed-state design and one-provider authorization readiness task only after the exact Preview runtime proof is complete. It must select durable managed connection/secret storage and durable atomic OAuth-state storage before adding any connect/callback route. Gmail/Outlook scopes, mailbox reads, Purchase import, Bot providers, billing, renderer extraction, and disposable-database work remain separate approvals.
 
 Do not apply the schema to the owner or Production database, enable `REMOTE_ACTIVE`, migrate files, or execute a migration plan without a separately approved cutover task and verified backup.

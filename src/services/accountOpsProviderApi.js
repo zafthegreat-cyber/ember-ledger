@@ -19,6 +19,14 @@ const CONFIGURATION_STATES = new Set([
   "UNAVAILABLE",
   "BLOCKED",
 ]);
+const TRUSTED_RUNTIME_ENVIRONMENTS = new Set([
+  "PREVIEW",
+  "PRODUCTION",
+  "HOSTED_UNKNOWN",
+  "LOCAL_DEVELOPMENT",
+  "AUTOMATED_TEST",
+  "UNKNOWN",
+]);
 const PROHIBITED_RESPONSE_KEYS = new Set([
   "accesstoken",
   "refreshtoken",
@@ -114,6 +122,47 @@ function normalizeConnection(record) {
   });
 }
 
+function normalizeTrustedRuntime(runtime) {
+  const proof = runtime && typeof runtime === "object" && !Array.isArray(runtime)
+    ? runtime.trustedRuntimeProof
+    : null;
+  const environment = safeText(proof?.environment, 32).toUpperCase();
+  const verified = proof?.execution === "SERVER"
+    && environment === "PREVIEW"
+    && proof?.previewEnvironment === true
+    && proof?.productionEnvironment === false
+    && proof?.providerRuntimeLoaded === true
+    && proof?.providerNetworkAccessEnabled === false
+    && proof?.hostedRuntimeVerified === true
+    && runtime?.hostedRuntimeVerified === true;
+  return Object.freeze({
+    proofVersion: safeText(proof?.proofVersion, 64),
+    execution: proof?.execution === "SERVER" ? "SERVER" : "UNVERIFIED",
+    environment: TRUSTED_RUNTIME_ENVIRONMENTS.has(environment) ? environment : "UNKNOWN",
+    previewEnvironment: proof?.previewEnvironment === true,
+    productionEnvironment: proof?.productionEnvironment === true,
+    providerRuntimeLoaded: proof?.providerRuntimeLoaded === true,
+    providerNetworkAccessEnabled: proof?.providerNetworkAccessEnabled === true,
+    hostedRuntimeVerified: verified,
+  });
+}
+
+function normalizeProviderStatus(record) {
+  if (!record || typeof record !== "object" || Array.isArray(record)) return null;
+  const providerId = safeText(record.providerId, 48).toLowerCase();
+  const displayName = safePublicText(record.displayName, 80);
+  if (!/^[a-z][a-z0-9-]{0,47}$/.test(providerId) || !displayName) return null;
+  const configurationStatus = safeText(record.configurationStatus, 32).toUpperCase();
+  const authorizationStatus = safeText(record.authorizationStatus, 32).toUpperCase();
+  return Object.freeze({
+    providerId,
+    displayName,
+    configurationStatus: CONFIGURATION_STATES.has(configurationStatus) ? configurationStatus : "UNAVAILABLE",
+    authorizationStatus: CONFIGURATION_STATES.has(authorizationStatus) ? authorizationStatus : "UNAVAILABLE",
+    capabilities: Object.freeze(normalizeCapabilities(record.capabilities)),
+  });
+}
+
 export function normalizeProviderConnectionsPayload(payload) {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
     throw new AccountOpsProviderApiError("INVALID_RESPONSE", "The provider runtime returned an invalid response.");
@@ -129,8 +178,14 @@ export function normalizeProviderConnectionsPayload(payload) {
     .map((warning) => safePublicText(warning, 240, "Provider runtime reported a protected warning."))
     .filter(Boolean)
     .slice(0, 10);
+  const providers = (Array.isArray(payload.providerCapabilities) ? payload.providerCapabilities : [])
+    .slice(0, 10)
+    .map(normalizeProviderStatus)
+    .filter(Boolean);
   return Object.freeze({
     configurationState: CONFIGURATION_STATES.has(requestedConfiguration) ? requestedConfiguration : "UNAVAILABLE",
+    trustedRuntime: normalizeTrustedRuntime(payload.runtime),
+    providers: Object.freeze(providers),
     connections: Object.freeze(connections),
     warnings: Object.freeze(warnings),
   });

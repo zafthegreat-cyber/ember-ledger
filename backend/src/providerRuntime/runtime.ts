@@ -12,6 +12,7 @@ import { mailboxProviderRegistry } from "./providerRegistry";
 import type { ServerMailboxProviderAdapter } from "./providerAdapter";
 import type { ProviderSecretStore } from "./secretStore";
 import { createUnavailableProviderSecretStore } from "./secretStore";
+import { resolveTrustedRuntimeProof, type TrustedRuntimeProof } from "./trustedRuntime";
 
 const CONNECTION_ID_PATTERN = /^connection:[a-z0-9][a-z0-9._:-]{7,159}$/i;
 
@@ -24,6 +25,7 @@ type RuntimeOptions = {
   audit?: ProviderAuditSink;
   now?: () => Date;
   hostedRuntimeVerified?: boolean;
+  trustedRuntimeProof?: TrustedRuntimeProof;
 };
 
 export function validateConnectionId(value: unknown): string {
@@ -42,7 +44,10 @@ export function createProviderRuntime(options: RuntimeOptions = {}) {
   const providerAdapters = new Map((options.providerAdapters || []).map((adapter) => [adapter.providerId, adapter]));
   const audit = options.audit || createNoopProviderAuditSink();
   const now = options.now || (() => new Date());
-  const hostedRuntimeVerified = options.hostedRuntimeVerified === true;
+  const trustedRuntimeProof = options.trustedRuntimeProof || resolveTrustedRuntimeProof();
+  const hostedRuntimeVerified = options.hostedRuntimeVerified === undefined
+    ? trustedRuntimeProof.hostedRuntimeVerified
+    : options.hostedRuntimeVerified === true && trustedRuntimeProof.hostedRuntimeVerified;
 
   function recordAudit(summary: Parameters<ProviderAuditSink["write"]>[0]) {
     try {
@@ -63,6 +68,10 @@ export function createProviderRuntime(options: RuntimeOptions = {}) {
       runtimeVersion: MAILBOX_PROVIDER_RUNTIME_VERSION,
       available,
       hostedRuntimeVerified,
+      trustedRuntimeProof: Object.freeze({
+        ...trustedRuntimeProof,
+        hostedRuntimeVerified,
+      }),
       liveProviderConnected: false,
       connectionStorage: Object.freeze({ available: connectionStore.available, kind: connectionStore.kind }),
       secretStorage: Object.freeze({ available: secretStore.available, kind: secretStore.kind }),
@@ -70,7 +79,9 @@ export function createProviderRuntime(options: RuntimeOptions = {}) {
       automaticPurchaseCreation: false,
       canonicalPersistenceRequired: false,
       localOnlyBusinessDataAuthoritative: true,
-      detail: "Provider authorization is unavailable until a durable server-only secret store and single-use OAuth state store are configured and the hosted API runtime is verified.",
+      detail: hostedRuntimeVerified
+        ? "The trusted Preview runtime is available. Provider authorization remains unavailable until durable server-only stores and a mailbox adapter are configured."
+        : "Provider authorization is unavailable until a durable server-only secret store and single-use OAuth state store are configured and the hosted API runtime is verified.",
     });
   }
 
@@ -187,7 +198,7 @@ export function createProviderRuntime(options: RuntimeOptions = {}) {
     async connectionForProcessing(principal: AuthPrincipal, rawConnectionId: unknown) {
       const connectionId = validateConnectionId(rawConnectionId);
       const owner = ownerContextFromPrincipal(principal);
-      if (!connectionStore.available || !secretStore.available) {
+      if (!baseStatus().available) {
         throw new ProviderRuntimeError("provider_runtime_unavailable", "Provider processing is unavailable.", 503);
       }
       const connection = await connectionStore.get(owner, connectionId);
@@ -196,9 +207,14 @@ export function createProviderRuntime(options: RuntimeOptions = {}) {
       }
       const secret = await secretStore.get(owner, connectionId);
       if (!secret) throw new ProviderRuntimeError("provider_connection_not_found", "No active provider connection is available.", 404);
+      if (!providerAdapters.has(connection.provider)) {
+        throw new ProviderRuntimeError("provider_runtime_unavailable", "Provider processing is unavailable.", 503);
+      }
       return Object.freeze({ connection, secret });
     },
   });
 }
 
-export const providerRuntime = createProviderRuntime();
+const trustedRuntimeProof = resolveTrustedRuntimeProof();
+
+export const providerRuntime = createProviderRuntime({ trustedRuntimeProof });

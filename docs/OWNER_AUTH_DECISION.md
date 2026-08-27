@@ -160,7 +160,7 @@ Preview and Production fail closed. A missing provider, missing allowlist, missi
 
 ## Known limitations
 
-- This local Phase 1A work is uncommitted and not configured or verified in a deployed Preview or Production environment.
+- Phase 1A owner-security source is published. Phase 2B2-A adds exact Preview functions for `/api/auth/session` and the provider-status route, but hosted acceptance still requires an exact candidate Preview with real application authentication configuration; Production remains unverified and prohibited in that phase.
 - Supabase Auth establishes identity, but Code 3 does not yet provide connected-device management, server session revocation UI, sign-out-other-devices, or recovery administration.
 - Only the auth and eBay route families use the new exact-origin policy and owner middleware. Legacy Express routes still need route-by-route classification and protection or retirement.
 - Canonical business records remain browser-local; server authorization does not make those records durable or protect them from same-origin script execution.

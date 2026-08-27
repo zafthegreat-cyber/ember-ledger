@@ -1,6 +1,6 @@
 # Code 3 Inbox and Order Provider Contract
 
-Status: Phase 2B1 local implementation contract. Live mailbox authorization, message retrieval, and Business Purchase import are not enabled.
+Status: Phase 2B1 is published at `2f49a5ed97cec827184c6080e4ada0f4c8194451`. Phase 2B2-A locally adds exact Preview runtime mapping and server execution proof. Live mailbox authorization, message retrieval, and Business Purchase import are not enabled.
 
 This contract governs the secure foundation for a future flow:
 
@@ -20,7 +20,7 @@ It does not authorize Code 3 to connect to a real mailbox, retain a duplicate ma
 
 ## Trusted runtime
 
-The source-level trusted runtime is the existing Express application exported through `api/[...path].ts`. Provider routes reuse:
+The trusted runtime is the existing Express application. Phase 2B2-A adds exact filesystem functions at `api/auth/session.ts` and `api/account-ops/provider-connections.ts`; each only exports `backend/src/server.ts`. Provider routes reuse:
 
 - Supabase bearer verification;
 - immutable provider-qualified owner-subject authorization;
@@ -36,7 +36,9 @@ The Phase 2B1 provider runtime is deliberately default-unavailable. Its capabili
 
 An in-process map is permitted only as an injected automated-test adapter. It is not an accepted Preview or Production secret/state store.
 
-The repository contains Vercel function entry points, but earlier Preview evidence did not prove that the Express API won route resolution over the SPA fallback. Local tests therefore do not label the provider runtime hosted or OAuth-ready. A future Preview checkpoint must prove that the protected provider endpoint returns JSON with the expected `401`, `403`, and safe authorized response rather than `index.html`.
+`backend/src/providerRuntime/trustedRuntime.ts` derives a bounded Preview proof only from exact server `VERCEL=1` and `VERCEL_ENV=preview` markers. The proof does not accept request, browser, role, owner, query, or entitlement input and does not expose deployment/environment details. Production, hosted-unknown, local, and test execution cannot satisfy it.
+
+The proof remains independent from provider readiness. Even after exact Preview execution is verified, runtime `available` remains false, Gmail and Outlook remain not configured, all provider capabilities remain false, and no live adapter/store exists. A frontend `Ready` state is insufficient evidence. See [PREVIEW_TRUSTED_RUNTIME_CONTRACT.md](./PREVIEW_TRUSTED_RUNTIME_CONTRACT.md).
 
 ## Provider capability model
 
@@ -295,13 +297,13 @@ Disconnect never deletes an owner-reviewed Purchase or other legitimate business
 
 ## Owner-only API surface
 
-The Phase 2B1 status/capability route is under `/api/account-ops/provider-connections`, before legacy wildcard CORS, and requires server-verified OWNER authorization. It returns only capability truth and safe connection projections with `Cache-Control: no-store`.
+The Phase 2B1 status/capability route is under `/api/account-ops/provider-connections`, before legacy wildcard CORS, and requires server-verified OWNER authorization. Phase 2B2-A maps its exact public path to that canonical Express route. It returns only bounded runtime proof, capability truth, and safe connection projections with `Cache-Control: no-store`.
 
 There is no active browser route that accepts provider tokens, OAuth codes, OAuth state, or owner identifiers. Connection and callback routes remain unavailable until the durable server dependencies and hosted route behavior are separately verified.
 
 ## Explicit non-goals
 
-Phase 2B1 does not implement:
+Phase 2B1 and Phase 2B2-A do not implement:
 
 - live Gmail, Microsoft, IMAP, or other mailbox authorization;
 - mailbox sending, deletion, modification, or bulk actions;
@@ -312,16 +314,16 @@ Phase 2B1 does not implement:
 - Bot provider integration;
 - billing or subscriptions;
 - purchasing, checkout, offer, bid, CAPTCHA/OTP bypass, or retailer-limit evasion; or
-- Preview or Production deployment.
+- Production deployment or promotion.
 
-## Gate for a future Phase 2B2
+## Gate for a future Phase 2B2-B
 
 Live provider work remains blocked until a separately approved task proves:
 
 - one durable managed secret store;
 - one durable atomic replay-resistant OAuth-state store;
 - exact Preview callback/origin/redirect configuration;
-- reachable owner-protected Vercel API behavior;
+- the Phase 2B2-A exact owner-protected Vercel API behavior;
 - provider registration and minimum-scope approval;
 - disconnect/revocation behavior against a test account;
 - retention/deletion and audit policy;

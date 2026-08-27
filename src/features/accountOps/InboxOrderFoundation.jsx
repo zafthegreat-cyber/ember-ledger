@@ -15,6 +15,12 @@ import {
 const EMPTY_RUNTIME = Object.freeze({
   status: "idle",
   configurationState: "UNAVAILABLE",
+  trustedRuntime: Object.freeze({
+    hostedRuntimeVerified: false,
+    environment: "UNKNOWN",
+    productionEnvironment: false,
+  }),
+  providers: Object.freeze([]),
   connections: Object.freeze([]),
   warnings: Object.freeze([]),
   errorCode: "",
@@ -78,24 +84,66 @@ function ProviderConnections({ localDevelopment }) {
     return <ErrorState title={accessTitle} action={<QuietButton onClick={() => setAttempt((value) => value + 1)}>Retry</QuietButton>}>{accessMessage}</ErrorState>;
   }
 
+  const trustedRuntimeAvailable = runtime.trustedRuntime.hostedRuntimeVerified
+    && runtime.trustedRuntime.environment === "PREVIEW"
+    && runtime.trustedRuntime.productionEnvironment === false;
+  const providerRows = runtime.providers.length
+    ? runtime.providers
+    : Object.freeze([
+      { providerId: "gmail", displayName: "Gmail", configurationStatus: "NOT_CONFIGURED" },
+      { providerId: "microsoft-outlook", displayName: "Outlook / Microsoft", configurationStatus: "NOT_CONFIGURED" },
+    ]);
+
+  const statusSummary = (
+    <article className="account-ops-provider-card account-ops-runtime-card" aria-label="Trusted runtime and provider status">
+      <header>
+        <div>
+          <h3>Trusted runtime</h3>
+          <p>{trustedRuntimeAvailable ? "Verified server-side in Vercel Preview" : "Preview server execution has not been verified"}</p>
+        </div>
+        <StatusBadge tone={trustedRuntimeAvailable ? "success" : "warning"}>
+          {trustedRuntimeAvailable ? "Available" : "Unavailable"}
+        </StatusBadge>
+      </header>
+      <dl className="account-ops-provider-facts">
+        {providerRows.map((provider) => (
+          <div key={provider.providerId}>
+            <dt>{provider.displayName}</dt>
+            <dd>{words(provider.configurationStatus)}</dd>
+          </div>
+        ))}
+      </dl>
+      <p className="account-ops-provider-boundary">
+        Runtime availability does not authorize a mailbox. Gmail and Outlook remain disconnected with live capabilities disabled.
+      </p>
+    </article>
+  );
+
   if (runtime.configurationState !== "AVAILABLE") {
     return (
-      <EmptyState title="No mailbox connected">
-        Provider authorization is not configured in the trusted runtime. No provider credentials or mailbox content are stored in this browser.
-      </EmptyState>
+      <div className="account-ops-provider-list">
+        {statusSummary}
+        <EmptyState title="No mailbox connected">
+          Provider authorization is not configured. No provider credentials or mailbox content are stored in this browser.
+        </EmptyState>
+      </div>
     );
   }
 
   if (!runtime.connections.length) {
     return (
-      <EmptyState title="No mailbox connected">
-        The protected provider foundation is available, but no mailbox has been authorized. Live connection controls are not enabled in this phase.
-      </EmptyState>
+      <div className="account-ops-provider-list">
+        {statusSummary}
+        <EmptyState title="No mailbox connected">
+          The protected provider foundation is available, but no mailbox has been authorized. Live connection controls are not enabled in this phase.
+        </EmptyState>
+      </div>
     );
   }
 
   return (
     <div className="account-ops-provider-list" aria-label="Mailbox provider connections">
+      {statusSummary}
       {runtime.connections.map((connection) => (
         <article className="account-ops-provider-card" key={connection.connectionId}>
           <header>
@@ -136,7 +184,7 @@ function ConnectionsSection({ localDevelopment }) {
         actions={<StatusBadge tone="warning">Foundation Only</StatusBadge>}
       />
       <p className="account-ops-provider-boundary">
-        Phase 2B1 does not authorize a live mailbox. Connection availability is reported honestly by the protected runtime.
+        Phase 2B2-A verifies only the Preview server boundary. It does not authorize a live mailbox or activate provider storage.
       </p>
       <ProviderConnections localDevelopment={localDevelopment} />
     </section>

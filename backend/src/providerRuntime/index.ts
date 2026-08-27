@@ -7,3 +7,4 @@ export * from "./providerRegistry";
 export * from "./providerAdapter";
 export * from "./runtime";
 export * from "./secretStore";
+export * from "./trustedRuntime";

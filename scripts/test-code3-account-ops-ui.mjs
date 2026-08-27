@@ -44,6 +44,8 @@ const safeProviderPayload = normalizeProviderConnectionsPayload({
 assert.equal(safeProviderPayload.connections[0].capabilities.listBoundedMessageMetadata, true);
 assert.equal(safeProviderPayload.connections[0].capabilities.sendMail, false);
 assertions += 2;
+assert.equal(safeProviderPayload.trustedRuntime.hostedRuntimeVerified, false);
+assertions += 1;
 assert.throws(
   () => normalizeProviderConnectionsPayload({ configurationState: "AVAILABLE", accessToken: "synthetic" }),
   (error) => error.code === "UNSAFE_RESPONSE",
@@ -95,6 +97,8 @@ matches(page, /Credential reference ID[\s\S]*Reference metadata only — never t
 matches(page, /Account Ops tasks are manual local records in Phase 2A\./, "task automation should not be implied");
 
 matches(providerFoundation, /title="Provider Connections"[\s\S]*Foundation Only/, "provider connections should present an honest foundation state");
+matches(providerFoundation, /Trusted runtime[\s\S]*Verified server-side in Vercel Preview/, "provider connections should present trusted Preview execution separately");
+matches(providerFoundation, /Gmail and Outlook remain disconnected with live capabilities disabled/, "trusted execution must not imply live mailbox capability");
 matches(providerFoundation, /No mailbox connected/, "provider connections should have an honest disconnected empty state");
 matches(providerFoundation, /Code 3 is not reading a mailbox\./, "Inbox should not imply live mailbox access");
 matches(providerFoundation, /An Order Candidate is evidence, not a Business Purchase\./, "order candidates should stay separate from business purchases");

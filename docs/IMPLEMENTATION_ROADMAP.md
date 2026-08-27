@@ -15,7 +15,7 @@ The audit changes the conceptual “backend persistence first” phase into gate
 
 **Phase 2A.5 — Workspace Architecture / Mini-App Shell** is published at `4c6c7891a123777acec8f326793f30aee61f3de6`. It organizes existing features into Collect, Find, Sell, Bot, and Business through a central route/workspace registry, compatibility-first homes, workspace-local navigation, and a bounded recent-workspace preference. Owner Center remains separate; Account Ops is Business-associated but `VERIFIED_OWNER`; Bot is OWNER-only and has no provider.
 
-**Phase 2B1 — Secure Provider Runtime + Inbox / Order Intelligence Foundation** is the current local, unpublished phase. It establishes fail-closed server-side provider/secret/OAuth-state contracts, minimized normalized message evidence, protected-message handling, exact-money Order Candidates, deterministic idempotency/reconciliation, and owner review. Gmail, Outlook, IMAP, live Inbox ingestion, provider token persistence, Purchase import, migration, sync, and remote cutover remain inactive.
+**Phase 2B1 — Secure Provider Runtime + Inbox / Order Intelligence Foundation** is published at `2f49a5ed97cec827184c6080e4ada0f4c8194451`. **Phase 2B2-A — Preview Trusted Express/API Runtime** is the current local phase. It narrows Vercel routing to exact owner-session/provider functions and proves server execution separately from provider readiness. Gmail, Outlook, IMAP, live Inbox ingestion, provider token persistence, Purchase import, migration, sync, and remote cutover remain inactive.
 
 The published Phase 1A runtime applies Code 3 through the centralized brand configuration and coordinated PWA/browser/offline metadata. Storage, database, route, module, environment, cache, history, compatibility, and imported-source identifiers remain unchanged. The legal/public business name and tagline remain separately configurable and unresolved.
 
@@ -117,7 +117,7 @@ No time estimates are provided. Complexity is relative: Small, Medium, Large, or
 
 ## Phase 2B1 — Secure provider runtime and Inbox / Order Intelligence foundation
 
-**Status:** Local implementation and focused validation complete; unpublished and not hosted. The inherited browser/regression gate remains a completion-report check. No live provider is authorized or connected.
+**Status:** Implemented, validated, and published at `2f49a5ed97cec827184c6080e4ada0f4c8194451`. No live provider is authorized or connected.
 
 - **Objective:** establish fail-closed provider security contracts and a deterministic synthetic/minimized order-evidence domain before any live mailbox is permitted.
 - **Current code affected:** `backend/src/providerRuntime`, the protected Account Ops provider route, Account Ops Connections/Inbox/Orders foundation, `src/features/inboxOrder`, backup/Restore Preview, migration classification, and focused tests.
@@ -131,9 +131,23 @@ No time estimates are provided. Complexity is relative: Small, Medium, Large, or
 - **Rollback:** revert this local phase. No provider, database, remote record, Purchase, or file byte requires rollback because none is activated or written outside the existing browser-local evidence source.
 - **Complexity:** Large.
 
-## Phase 2B2 — One approved live mailbox provider pilot
+## Phase 2B2-A — Preview trusted Express/API runtime
 
-**Status:** Future, blocked, and not authorized by Phase 2B1.
+**Status:** Local implementation; exact candidate Preview verification is a required completion gate.
+
+- **Objective:** prove that the owner session and provider-status requests reach the canonical Express app in Vercel Preview, return server-owned non-Production proof, and keep provider readiness false.
+- **Current code affected:** exact `api/auth/session.ts` and `api/account-ops/provider-connections.ts` entries; `backend/src/providerRuntime/trustedRuntime.ts`; provider status projection; Account Ops Connections client/UI; focused runtime/deployment tests and documentation.
+- **Data changes:** none. No provider, canonical, Purchase, Inventory, migration, file, or mailbox data is written.
+- **Dependencies:** published Phase 2B1; existing Preview project/auth configuration; authenticated Vercel deployment access; exact owner session for the final `200` proof.
+- **External authorization:** no mailbox/provider authorization. A Preview deployment and existing Code 3 owner identity are required only for proof.
+- **Test plan:** exact filesystem-before-SPA mapping; strict Preview/Production matrix; `401`/`403`/owner `200`; JSON/no-store/CORS; Gmail/Outlook not configured; all live capabilities false; no provider network; client response allowlist/UI; inherited security, persistence, Account Ops, route, build and regression gates.
+- **Acceptance criteria:** real Preview JSON reaches Express; server proof is Preview/non-Production; owner middleware remains definitive; provider runtime loads but is unavailable; no secrets/provider calls/data mutation; Production untouched; `hostedRuntimeVerified` remains false if hosted verification is incomplete.
+- **Rollback:** remove the two exact function wrappers and proof/status presentation together; keep provider runtime unavailable and never weaken auth/CORS or use browser secrets as fallback.
+- **Complexity:** Medium.
+
+## Phase 2B2-B — Managed state and one approved provider authorization readiness
+
+**Status:** Future, blocked, and not authorized by Phase 2B2-A.
 
 - **Objective:** connect one test mailbox through a verified trusted Preview runtime using the least approved read-only scope, bounded incremental ingestion, and the existing owner-review gate.
 - **Current code affected:** Phase 2B1 provider interfaces/runtime, protected observability, connection lifecycle, message retrieval adapter, Account Ops Connections/Inbox/Orders, and retention/disconnect tooling.
@@ -321,4 +335,4 @@ Every implementation phase must:
 
 ## Exact next task recommendation
 
-Phase 2B1 validation is complete; checkpoint publication does not authorize Phase 2B2. A later, separately approved Phase 2B2 test-provider pilot may begin only after durable managed secret/state storage and protected Preview API routing are proven. Do not connect a real mailbox, begin Purchase import, activate `REMOTE_ACTIVE`, migrate owner data, upload file bytes, connect a Bot provider, add billing, or apply any schema without another explicit owner-approved specification.
+Phase 2B1 is published. Phase 2B2-A publication is separately gated and does not authorize Phase 2B2-B. A later provider-readiness phase may begin only after exact protected Preview routing is proven and durable managed secret/state storage is approved. Do not connect a real mailbox, begin Purchase import, activate `REMOTE_ACTIVE`, migrate owner data, upload file bytes, connect a Bot provider, add billing, or apply any schema without another explicit owner-approved specification.

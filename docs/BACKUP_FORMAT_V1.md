@@ -1,6 +1,6 @@
 # Code 3 Backup Format Version 1
 
-Status: Phase 1A format published on the feature branch. Phase 1B adds a local owner-authorized remote-read integration, but its canonical server source remains gated/not active by default. Published Phase 2A registers sanitized Account Ops metadata. Local Phase 2B1 registers a separate sanitized Inbox/Order Intelligence source. No owner data has migrated, no schema was applied, and no restore applies data.
+Status: Phase 1A format published on the feature branch. Phase 1B adds a local owner-authorized remote-read integration, but its canonical server source remains gated/not active by default. Published Phase 2A registers sanitized Account Ops metadata. Published Phase 2B1 registers a separate sanitized Inbox/Order Intelligence source. Phase 2B2-A adds no backup source and excludes runtime proof/provider state from persistence. No owner data has migrated, no schema was applied, and no restore applies data.
 
 ## Purpose and boundary
 

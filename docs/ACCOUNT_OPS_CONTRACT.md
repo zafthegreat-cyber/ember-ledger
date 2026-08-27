@@ -1,6 +1,6 @@
 # Code 3 Account Ops Contract
 
-Status: Phase 2A local-first implementation published at `c76e3e4bc668c08d9a0908c9bb2cd96444610297`; Phase 2A.5 workspace placement is published at `4c6c7891a123777acec8f326793f30aee61f3de6`. Phase 2B1 locally adds owner-only provider capability truth and synthetic/minimized Inbox and Order Candidate foundations, not a connected mailbox. This contract does not authorize canonical persistence, database migration, synchronization, retailer automation, purchasing, or Production deployment.
+Status: Phase 2A local-first implementation published at `c76e3e4bc668c08d9a0908c9bb2cd96444610297`; Phase 2A.5 workspace placement is published at `4c6c7891a123777acec8f326793f30aee61f3de6`; Phase 2B1 provider/Inbox/Order Candidate foundation is published at `2f49a5ed97cec827184c6080e4ada0f4c8194451`. Phase 2B2-A locally adds exact Preview runtime mapping and bounded execution status, not a connected mailbox. This contract does not authorize canonical persistence, database migration, synchronization, retailer automation, purchasing, or Production deployment.
 
 Starting baseline: `af21199f610cc91e31d9dee59af6f0a2f748ab79`.
 
@@ -187,6 +187,12 @@ The safe record may retain provider-scoped message identity, alias/retailer/acco
 
 No mailbox is connected, no provider message is fetched, and no background delivery is claimed. Provider capability/status presentation is an owner-only fail-closed foundation, not a live Inbox.
 
+## Phase 2B2-A Preview runtime status
+
+Account Ops Connections may show `Trusted runtime available` only when the protected response contains complete server-owned Vercel Preview proof. Runtime proof is independent from provider configuration: Gmail and Outlook remain `NOT_CONFIGURED`, every live capability stays false, default stores remain unavailable, and no Connect action is active.
+
+Exact Vercel functions for `/api/auth/session` and `/api/account-ops/provider-connections` only export the canonical Express app. The existing verified OWNER gate still runs before Account Ops local storage or the provider UI loads. See [PREVIEW_TRUSTED_RUNTIME_CONTRACT.md](./PREVIEW_TRUSTED_RUNTIME_CONTRACT.md).
+
 ## Phase 2B1 order-candidate contract
 
 The future owner-confirmed import flow is:
@@ -232,4 +238,4 @@ Phase 2A does not implement:
 
 ## Future acceptance gate
 
-A separately approved Phase 2B2 may add a read-only, minimally scoped mailbox connection only after provider selection, scope approval, durable managed secret storage, atomic replay-safe OAuth state, verified hosted API routing, retention/deletion review, redacted observability, disconnect/revocation proof, and test-account evaluation. It must keep an owner review gate before Purchases and must not introduce checkout or retailer-security bypass behavior.
+A separately approved Phase 2B2-B may add managed state and one-provider authorization readiness only after the Phase 2B2-A exact Preview proof. It still requires provider selection, scope approval, durable managed secret storage, atomic replay-safe OAuth state, retention/deletion review, redacted observability, disconnect/revocation proof, and test-account evaluation. It must keep an owner review gate before Purchases and must not introduce checkout or retailer-security bypass behavior.

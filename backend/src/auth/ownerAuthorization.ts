@@ -135,14 +135,14 @@ export function createOwnerSecurity(options: OwnerSecurityOptions = {}) {
     }
 
     const bearer = readBearerToken(request);
-    if (!bearer.ok) {
+    if (bearer.ok === false) {
       return {
         status: 200,
         body: { authenticated: false, ownerAuthorized: false, configurationState: state },
       };
     }
     const result = await provider.verifyAccessToken(bearer.token);
-    if (!result.ok) {
+    if (result.ok === false) {
       if (result.reason === "unavailable") {
         return {
           status: 503,

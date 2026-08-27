@@ -40,6 +40,7 @@ const SECTION_BY_FIXTURE = Object.freeze({
 
 const FOUNDATION_FIXTURES = Object.freeze([
   { id: "provider-not-configured", section: "connections", theme: "light", configurationState: "NOT_CONFIGURED" },
+  { id: "trusted-preview-not-configured", section: "connections", theme: "light", configurationState: "NOT_CONFIGURED", hostedRuntimeVerified: true },
   { id: "provider-healthy-metadata", section: "connections", theme: "light", configurationState: "AVAILABLE", healthy: true },
   { id: "inbox-foundation", section: "inbox", theme: "light" },
   { id: "orders-foundation", section: "orders", theme: "light" },
@@ -308,11 +309,36 @@ async function inspectFoundation(browser, fixture, emptyState) {
           grantedScopesSummary: ["Read-only order metadata"],
           capabilityFlags: { listBoundedMessageMetadata: true, sendMail: false },
         }] : [],
-        providerCapabilities: [{ providerId: "gmail", authorizationStatus: "UNAVAILABLE" }],
+        providerCapabilities: [
+          {
+            providerId: "gmail",
+            displayName: "Gmail",
+            configurationStatus: "NOT_CONFIGURED",
+            authorizationStatus: "UNAVAILABLE",
+            capabilities: { connect: false, listBoundedMessageMetadata: false },
+          },
+          {
+            providerId: "microsoft-outlook",
+            displayName: "Outlook / Microsoft",
+            configurationStatus: "NOT_CONFIGURED",
+            authorizationStatus: "UNAVAILABLE",
+            capabilities: { connect: false, listBoundedMessageMetadata: false },
+          },
+        ],
         warnings: fixture.healthy ? [] : ["No live provider is configured."],
         runtime: {
           available: fixture.configurationState === "AVAILABLE",
-          hostedRuntimeVerified: fixture.configurationState === "AVAILABLE",
+          hostedRuntimeVerified: fixture.hostedRuntimeVerified === true || fixture.configurationState === "AVAILABLE",
+          trustedRuntimeProof: {
+            proofVersion: "code3.preview-runtime-proof.v1",
+            execution: "SERVER",
+            environment: fixture.hostedRuntimeVerified === true || fixture.configurationState === "AVAILABLE" ? "PREVIEW" : "UNKNOWN",
+            previewEnvironment: fixture.hostedRuntimeVerified === true || fixture.configurationState === "AVAILABLE",
+            productionEnvironment: false,
+            providerRuntimeLoaded: true,
+            providerNetworkAccessEnabled: false,
+            hostedRuntimeVerified: fixture.hostedRuntimeVerified === true || fixture.configurationState === "AVAILABLE",
+          },
           oauthStateStorage: { available: false, kind: "UNAVAILABLE" },
           secretStorage: { available: false, kind: "UNAVAILABLE" },
         },
@@ -327,12 +353,14 @@ async function inspectFoundation(browser, fixture, emptyState) {
     const expectedHeading = fixture.section === "connections" ? "Provider Connections" : fixture.section === "inbox" ? "Inbox" : "Order Candidates";
     await page.getByRole("heading", { name: expectedHeading, exact: true }).waitFor();
     if (fixture.id === "provider-not-configured") await page.getByText("No mailbox connected", { exact: true }).waitFor();
+    if (fixture.id === "trusted-preview-not-configured") await page.getByText("Trusted runtime", { exact: true }).waitFor();
     if (fixture.id === "provider-healthy-metadata") {
       await page.getByText("Synthetic QA mailbox", { exact: true }).waitFor();
       await page.getByText("Granted permission summary", { exact: true }).click();
     }
     const body = await page.locator("body").innerText();
     if (fixture.id === "provider-not-configured") match(body, /No mailbox connected[\s\S]*not configured/i, "unconfigured provider QA must remain honest");
+    if (fixture.id === "trusted-preview-not-configured") match(body, /Trusted runtime[\s\S]*Available[\s\S]*Gmail[\s\S]*Not Configured[\s\S]*Outlook \/ Microsoft[\s\S]*Not Configured[\s\S]*No mailbox connected/i, "trusted Preview QA must remain separate from provider configuration");
     if (fixture.id === "provider-healthy-metadata") match(body, /Synthetic QA mailbox[\s\S]*Healthy[\s\S]*Read-only order metadata/i, "synthetic provider metadata should render without credential material");
     if (fixture.section === "inbox") match(body, /Code 3 is not reading a mailbox[\s\S]*No mailbox messages/i, "Inbox foundation must not claim live ingestion");
     if (fixture.section === "orders") match(body, /evidence, not a Business Purchase[\s\S]*No order candidates/i, "Order Candidate foundation must remain review-only");
