@@ -101,6 +101,16 @@ const SOURCE_DECISIONS = Object.freeze({
       ["activity", null, C.REQUIRES_MAPPING, { reason: "Local Account Ops activity summaries are not canonical audit events." }],
     ]),
   },
+  "inbox-order-intelligence": {
+    classification: C.REQUIRES_MAPPING,
+    adapterId: "inbox-order-v1-future-canonical-review",
+    paths: paths([
+      ["messageEvents", null, C.REQUIRES_MAPPING, { reason: "Sanitized provider-message evidence has no approved canonical domain and requires a future retention review." }],
+      ["orderCandidates", null, C.REQUIRES_MAPPING, { reason: "Owner-review Order Candidates are not Business Purchases and require an explicit future import mapping." }],
+      ["candidateEvents", null, C.REQUIRES_MAPPING, { reason: "Order Candidate provenance history has no approved canonical event domain." }],
+      ["activity", null, C.REQUIRES_MAPPING, { reason: "Local inbox/order activity summaries are not canonical audit events." }],
+    ]),
+  },
   "legacy-core-business": {
     classification: C.REQUIRES_MAPPING,
     adapterId: "legacy-core-v0-review",

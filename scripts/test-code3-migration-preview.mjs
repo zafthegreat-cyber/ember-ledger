@@ -58,6 +58,10 @@ const accountOpsMigrationSource = MIGRATION_SOURCE_REGISTRY.find((source) => sou
 assert.equal(accountOpsMigrationSource.classification, MIGRATION_SOURCE_CLASSIFICATIONS.REQUIRES_MAPPING);
 assert.equal(accountOpsMigrationSource.paths.length, 8, "every Account Ops recovery collection needs an explicit migration decision");
 assert.ok(accountOpsMigrationSource.paths.every((mapping) => mapping.classification === MIGRATION_SOURCE_CLASSIFICATIONS.REQUIRES_MAPPING && mapping.targetDomain === null));
+const inboxOrderMigrationSource = MIGRATION_SOURCE_REGISTRY.find((source) => source.sourceId === "inbox-order-intelligence");
+assert.equal(inboxOrderMigrationSource.classification, MIGRATION_SOURCE_CLASSIFICATIONS.REQUIRES_MAPPING);
+assert.equal(inboxOrderMigrationSource.paths.length, 4, "every inbox/order recovery collection needs an explicit migration decision");
+assert.ok(inboxOrderMigrationSource.paths.every((mapping) => mapping.classification === MIGRATION_SOURCE_CLASSIFICATIONS.REQUIRES_MAPPING && mapping.targetDomain === null));
 
 assert.deepEqual(previewMoneyToMinor(12.34, { currency: "USD" }).proposedAmountMinor, 1234);
 assert.deepEqual(previewMoneyToMinor(12.3, { currency: "USD" }).proposedAmountMinor, 1230);
@@ -654,6 +658,31 @@ assert.throws(
   () => toCanonicalDryRunRequest(accountOpsMappingPreview.plan),
   /unsupported canonical domain/i,
   "Account Ops cannot enter the canonical dry-run contract without a future approved domain mapping",
+);
+
+const inboxOrderMappingPreview = await createMigrationPreview({
+  localSources: {
+    "inbox-order-intelligence": {
+      schemaVersion: 1,
+      updatedAt: NOW,
+      messageEvents: [{ id: "message-event-1" }],
+      orderCandidates: [{ id: "order-candidate-1" }],
+      candidateEvents: [{ id: "candidate-event-1" }],
+      activity: [{ id: "inbox-order-activity-1" }],
+    },
+  },
+  createdAt: NOW,
+});
+assert.equal(inboxOrderMappingPreview.status, MIGRATION_PREVIEW_STATUSES.BLOCKED);
+assert.deepEqual(
+  new Set(inboxOrderMappingPreview.plan.actions.map((action) => action.sourceCollection)),
+  new Set(["messageEvents", "orderCandidates", "candidateEvents", "activity"]),
+);
+assert.ok(inboxOrderMappingPreview.plan.actions.every((action) => action.action === MIGRATION_ACTIONS.REQUIRES_DECISION));
+assert.throws(
+  () => toCanonicalDryRunRequest(inboxOrderMappingPreview.plan),
+  /unsupported canonical domain/i,
+  "Order Candidates cannot enter the canonical dry-run contract or become Purchases without a future approved mapping",
 );
 
 const unsupportedPreserved = await createMigrationPreview({

@@ -8,7 +8,9 @@ Phase 1C is published through `af21199f610cc91e31d9dee59af6f0a2f748ab79`. Its de
 
 Phase 2A Account Ops is published at `c76e3e4bc668c08d9a0908c9bb2cd96444610297`. It adds browser-local operational identity/account metadata and human-assisted workflows only; no email, vault, Inbox, order, migration, sync, or retailer automation provider is active.
 
-Phase 2A.5 is a local, unpublished workspace-shell change. It adds route/navigation metadata and a bounded public-workspace preference, not authorization, provider access, billing, migration, or a new record authority.
+Phase 2A.5 is published at `4c6c7891a123777acec8f326793f30aee61f3de6`. It adds route/navigation metadata and a bounded public-workspace preference, not authorization, provider access, billing, migration, or a new record authority.
+
+Phase 2B1 is a local, unpublished provider/inbox/order foundation. It adds no live mailbox or token store; secure hosted OAuth remains blocked until durable secret and replay-safe state storage plus Preview API reachability are proven.
 
 Ratings are qualitative. “Owner” identifies the responsible workstream, not a person assignment.
 
@@ -55,16 +57,24 @@ Ratings are qualitative. “Owner” identifies the responsible workstream, not 
 | R-39 | Product workspace terminology or projections collide with historical `Workspace` records or duplicate business records | Medium | High | legacy persisted `Workspace`/`activeWorkspaceId` coexist with new product workspace shells over opportunities, purchases, owned items, inventory, and sales | separate key/type/name; no migration/reinterpretation; shared stable IDs and projections; cross-workspace no-clone tests; explicit backup treatment | Architecture/data, Phase 2A.5 |
 | R-40 | Workspace resolution causes deep-link, legacy redirect, or Android/browser Back loops | Medium | High | custom routing/history remains in `App.jsx` and `appRouteState.js`; direct routes and saved workspace both influence shell context | central route ownership, direct-route precedence, real alias targets, no repeated history replacement, direct/legacy/back/mobile tests and physical Android QA | Frontend/QA, Phase 2A.5/12 |
 | R-41 | OWNER-only Bot shell is mistaken for an active or safe automation provider | Medium | Critical | Phase 2A.5 may expose an honest private foundation, but no Bot provider or operational backend exists | explicit no-provider state; OWNER gate; no provider token/task control/proxy/checkout/purchase path; separate future security/legal specification before any integration | Bot/security/product, Phase 2A.5 onward |
+| R-42 | Mailbox access/refresh tokens, OAuth code/state/verifier, or managed secret references reach the browser, backup, logs, or analytics | Critical if enabled | Critical | Phase 2B1 production adapters are unavailable; client route is fixed/read-only; recursive input/backup rejection and redaction cover credential/OAuth fields | durable managed server-only secret store; exact response projection; log/backup/client-bundle scans; rotate/revoke on exposure; never enable provider when unavailable | Provider/security, Phase 2B1–2B2 |
+| R-43 | OAuth state is replayed or bound to a browser-supplied owner/provider/redirect | High if implemented incorrectly | Critical | Phase 2B1 supplies only a test-proven contract bound to verified principal, provider, exact redirect, expiry and single use; no connect/callback route exists | durable atomic cross-instance state store; cryptographic state; exact allowlist; callback/replay/wrong-owner tests; no email/role/query authority | Auth/provider, before Phase 2B2 |
+| R-44 | Vercel SPA fallback is mistaken for a reachable trusted provider API | High until proven | Critical | Express/function entry points exist, but earlier Preview evidence did not prove protected JSON routing and Phase 2B1 does not deploy | verify `401`/`403`/owner JSON responses and callback behavior in Preview before provider registration; fail closed on HTML/non-JSON; never move secrets client-side | Platform/security, before Phase 2B2 |
+| R-45 | OTP, reset/login link, protected security content, or unrelated personal email is retained or promoted into an order | Medium after ingestion | Critical | Phase 2B1 minimizes protected/unrelated synthetic input before hashing/persistence and prohibits raw/protected content in backup | minimize before logs/hash/notification/storage; bounded retention; adversarial provider fixtures; no short-secret hashes; content deletion/audit review | Privacy/provider, Phase 2B1 onward |
+| R-46 | Retry/conflicting messages create duplicate candidates, overwrite owner correction, or later create duplicate Purchases | Medium | Critical | Phase 2B1 scopes event identity by connection/message, retains revisions/history, reconciles compatible order identity and has no Purchase writer | provider/event idempotency constraints, conflict queue, append-only provenance, owner-confirmed import key, transaction tests before Purchase import | Orders/data, Phase 2B1/future import |
+| R-47 | Disconnect leaves future reads or provider authorization/secret active | Medium after live connection | Critical | Phase 2B1 disconnect contract stops reads first and tests secret/provider revocation paths with injected fakes; no live provider exists | managed secret deletion/revocation, provider-specific revocation proof, warning/escalation on partial failure, test-account verification and health monitoring | Provider/security, before Phase 2B2 |
+| R-48 | Synthetic/local Order Candidate foundation is mistaken for a connected Inbox or confirmed business Purchase | Medium/high | High | local fixture processing and UI exist without mailbox access; every candidate fixes review required/import disabled/purchase false | explicit capability/empty-state copy; feature matrix distinction; no active import action; connected/healthy only after trusted check; owner review and mapping preview | Product/data, Phase 2B1 onward |
 
 ## Highest-priority closure order
 
 1. R-02, R-03, and R-14: validate the published owner boundary honestly, then extend it and recovery coverage to every sensitive server/file source.
 2. R-01, R-08, R-09, R-21, R-29, R-30, and R-31: verify schema/repositories and cross-layer contracts in a disposable database, protect files, rehearse rollback, and keep remote cutover separately approved.
-3. R-04, R-05, R-20, and R-38 through R-41: validate workspace route/authority boundaries, shared-record identity, capability truth, and Back behavior before substantial feature expansion.
-4. R-07, R-10, R-24, and provider/licensing risks: only then add scheduled or externally sourced intelligence.
-5. R-15, R-23, R-32, and R-33: preserve owner provenance/history and validate recommendation language before expanding models or persistence.
-6. Transaction, reporting, offline, and optional AI risks in their dependent phases.
-7. R-34 through R-37: keep Account Ops local scope explicit, protect identity/backup data, preserve alias/credential capability truth, and prohibit retailer-security or limit-evasion automation before any Phase 2B provider work.
+3. R-42 through R-48: keep the mailbox runtime unavailable until server routing, durable secrets/state, minimum scopes, minimization, idempotency, disconnect, and honest capability truth are independently proven.
+4. R-04, R-05, R-20, and R-38 through R-41: validate workspace route/authority boundaries, shared-record identity, capability truth, and Back behavior before substantial feature expansion.
+5. R-07, R-10, R-24, and other provider/licensing risks: only then add scheduled or externally sourced intelligence.
+6. R-15, R-23, R-32, and R-33: preserve owner provenance/history and validate recommendation language before expanding models or persistence.
+7. Transaction, reporting, offline, and optional AI risks in their dependent phases.
+8. R-34 through R-37: keep Account Ops local scope explicit, protect identity/backup data, preserve alias/credential capability truth, and prohibit retailer-security or limit-evasion automation before any live provider work.
 
 ## Review policy
 

@@ -69,7 +69,12 @@ assert.equal(resolveRouteOwnership("/sell")?.classification, ROUTE_CLASSIFICATIO
 assert.equal(resolveRouteOwnership("/sell")?.redirectTo, "/business/sales");
 assert.equal(resolveRouteOwnership("/account-ops")?.workspace, WORKSPACE_IDS.BUSINESS);
 assert.equal(resolveRouteOwnership("/account-ops")?.requiredAuthority, AUTHORITY_REQUIREMENTS.VERIFIED_OWNER);
+for (const accountOpsSection of ["connections", "inbox", "orders"]) {
+  const route = `/account-ops/${accountOpsSection}`;
+  assert.deepEqual(routeStateFromPath(route), { activeTab: "accountOps", accountOpsSection }, `${route} should restore the protected Account Ops section`);
+  assert.equal(pathFromActiveTab("accountOps", { accountOpsSection }), route, `${route} should serialize without a compatibility redirect`);
+}
 assert.equal(resolveRouteOwnership("/owner-center")?.classification, ROUTE_CLASSIFICATIONS.OWNER);
 assert.equal(resolveRouteOwnership("/owner-center")?.workspace, null, "Owner Center stays outside product workspaces");
 
-console.log(`Legacy compatibility checks passed: ${redirects.size + 27}`);
+console.log(`Legacy compatibility checks passed: ${redirects.size + 33}`);

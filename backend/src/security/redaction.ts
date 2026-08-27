@@ -1,9 +1,14 @@
 const REDACTED = "[REDACTED]";
-const SENSITIVE_KEY = /(authorization|cookie|access[_-]?token|refresh[_-]?token|id[_-]?token|client[_-]?secret|api[_-]?key|password|session|owner.*subjects?|database[_-]?url|postgres[_-]?url|signed[_-]?url)/i;
+const SENSITIVE_KEY = /(authorization|cookie|access[_-]?token|refresh[_-]?token|id[_-]?token|client[_-]?secret|api[_-]?key|password|passcode|one[_-]?time|otp|verification[_-]?code|authorization[_-]?code|oauth[_-]?(?:code|state)|code[_-]?(?:verifier|challenge)|reset[_-]?(?:token|link)|login[_-]?link|session|owner.*subjects?|database[_-]?url|postgres[_-]?url|signed[_-]?url)/i;
 const BEARER_VALUE = /Bearer\s+[A-Za-z0-9._~+/=-]+/gi;
+const BASIC_VALUE = /Basic\s+[A-Za-z0-9+/=]+/gi;
+const URL_SECRET_VALUE = /([?&#](?:access_token|refresh_token|id_token|client_secret|authorization_code|oauth_code|oauth_state|state|code|code_verifier|reset_token|login_token|verification_code|otp)=)[^&#\s]*/gi;
 
 export function redactText(value: unknown): string {
-  return String(value ?? "").replace(BEARER_VALUE, `Bearer ${REDACTED}`);
+  return String(value ?? "")
+    .replace(BEARER_VALUE, `Bearer ${REDACTED}`)
+    .replace(BASIC_VALUE, `Basic ${REDACTED}`)
+    .replace(URL_SECRET_VALUE, `$1${REDACTED}`);
 }
 
 export function redactSensitive(value: unknown, depth = 0): unknown {

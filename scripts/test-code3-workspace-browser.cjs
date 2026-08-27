@@ -445,7 +445,7 @@ async function verifyFixture(page, fixture) {
       break;
     }
     case "deep-linked-auction":
-      await page.getByRole("heading", { name: /Auctions/i }).first().waitFor();
+      await page.getByRole("heading", { name: "Auction Watch", exact: true }).waitFor();
       await assertSwitcherContext(page, "Find");
       equal(new URL(page.url()).pathname, "/find/auctions", "auction deep link should resolve to the implemented canonical Auctions surface");
       break;

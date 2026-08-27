@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import {
   DesktopDataTable,
   Dialog,
@@ -32,12 +32,17 @@ import {
 } from "./index.js";
 import "./account-ops.css";
 
+const InboxOrderFoundation = lazy(() => import("./InboxOrderFoundation.jsx"));
+
 const SECTIONS = Object.freeze([
   { key: "overview", label: "Overview" },
   { key: "profiles", label: "Profiles" },
   { key: "emails", label: "Emails" },
   { key: "accounts", label: "Store Accounts" },
   { key: "tasks", label: "Tasks" },
+  { key: "connections", label: "Connections" },
+  { key: "inbox", label: "Inbox" },
+  { key: "orders", label: "Orders" },
 ]);
 
 const EMPTY_SNAPSHOT = Object.freeze({
@@ -326,6 +331,11 @@ export default function AccountOpsPage({
       {section === "emails" ? renderEmails() : null}
       {section === "accounts" ? renderAccounts() : null}
       {section === "tasks" ? renderTasks() : null}
+      {section === "connections" || section === "inbox" || section === "orders" ? (
+        <Suspense fallback={<LoadingState title="Loading provider foundation">Preparing the owner-only Account Ops view.</LoadingState>}>
+          <InboxOrderFoundation section={section} localDevelopment={session.localDevelopment === true} />
+        </Suspense>
+      ) : null}
 
       {renderDialogs()}
     </main>

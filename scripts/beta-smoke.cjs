@@ -693,6 +693,7 @@ async function main() {
     const cards = cardText
       ? page.locator(".scout-report-compact-card").filter({ hasText: cardText })
       : page.locator(".scout-report-compact-card");
+    await cards.first().waitFor({ state: "visible", timeout: 10000 });
     const count = await cards.count();
     for (let index = 0; index < count; index += 1) {
       const card = cards.nth(index);
@@ -2626,7 +2627,7 @@ async function main() {
     const reportsUrl = new URL("/scout/reports", new URL(APP_URL).origin);
     for (const [key, value] of new URL(APP_URL).searchParams.entries()) reportsUrl.searchParams.set(key, value);
     await page.goto(reportsUrl.toString(), { waitUntil: "domcontentloaded" });
-    await page.locator(".scout-command-route-v5, form.scout-report-flow").first().waitFor({ state: "visible", timeout: 10000 });
+    await page.getByRole("heading", { name: "Submit Store Report", exact: true }).waitFor({ state: "visible", timeout: 10000 });
   }
 
   async function assertNotVisibleText(text) {

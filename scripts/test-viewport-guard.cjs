@@ -20,7 +20,7 @@ const routes = [
   { name: "business", path: "/business", beta: true, expect: /business|purchases|business records/i },
   { name: "owner-center", path: "/owner-center/overview", beta: true, expect: /owner center|owner only|scanner health/i },
   { name: "owner-restocks", path: "/owner-center/restocks/live", beta: true, expect: /restock intelligence|likely windows|reports becoming stale/i },
-  { name: "scout", path: "/scout", beta: true, expect: /scout|report|store/i },
+  { name: "scout", path: "/scout", beta: true, expect: /scout|report|store/i, readySelector: '[aria-label="Scout Intelligence"]' },
   { name: "vault", path: "/vault", beta: true, expect: /vault|collection|card/i },
   { name: "vault-collection", path: "/vault/cards", beta: true, expect: /vault|collection|card/i },
   { name: "exchange", path: "/exchange", beta: true, expect: /exchange|market|harbor|forge/i },
@@ -53,6 +53,9 @@ async function visibleCount(page, selector) {
 async function assertHealthyPage(page, route, viewport) {
   await page.goto(routeUrl(route, viewport.name), { waitUntil: "domcontentloaded" });
   await page.locator("body").waitFor({ state: "visible", timeout: 15000 });
+  if (route.readySelector) {
+    await page.locator(route.readySelector).waitFor({ state: "visible" });
+  }
   await page.waitForFunction(
     ({ source, flags }) => new RegExp(source, flags).test(document.body?.innerText || ""),
     { source: route.expect.source, flags: route.expect.flags },

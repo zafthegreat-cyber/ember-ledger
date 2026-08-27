@@ -8,7 +8,9 @@ Phase 1C is published through `af21199f610cc91e31d9dee59af6f0a2f748ab79` and add
 
 Phase 2A Account Ops is published at `c76e3e4bc668c08d9a0908c9bb2cd96444610297`. It adds a separate versioned Account Ops browser document and migration classification only. It does not add a canonical Account Ops domain, apply a schema, provision email, activate remote persistence, or migrate owner records.
 
-Phase 2A.5 is a local, unpublished presentation-architecture working copy. It adds a bounded product-workspace preference and route metadata, not a domain entity or feature-data migration.
+Phase 2A.5 is published at `4c6c7891a123777acec8f326793f30aee61f3de6`. It adds a bounded product-workspace preference and route metadata, not a domain entity or feature-data migration.
+
+Phase 2B1 is a local, unpublished foundation that adds a separate versioned `code3.inbox-order.v1` browser source for minimized message evidence, Order Candidate projections, append-only candidate events, and sanitized activity. It does not alter the strict Account Ops v1 document, add a canonical database domain, persist provider secrets, or create a Purchase.
 
 This document distinguishes current persisted shapes, Phase 1B schema-only representations, and the future active canonical model. A table, migration file, repository interface, or dry-run result is not evidence that remote persistence is active.
 
@@ -101,7 +103,26 @@ A store account references metadata only. Its status is `SETUP`, `NEEDS_VERIFICA
 
 `CredentialReference` contains provider, reference ID, label, and last-updated time only. Plaintext passwords, OTPs, sessions, tokens, payment-card data, and provider secrets are invalid record content. Password generation is ephemeral and is never persisted or backed up.
 
-Account Ops task status is `OPEN`, `DONE`, or `DISMISSED`. Future Inbox message and order-candidate records are contracts only; neither is persisted in Phase 2A, and any future order evidence must pass owner review before an explicit Purchase is created.
+Account Ops task status is `OPEN`, `DONE`, or `DISMISSED`. Phase 2B1 keeps Inbox/order evidence in the separate source below rather than widening this strict eight-collection document. Any future Purchase import still requires a separately approved, explicit owner action.
+
+### Inbox and Order Intelligence repository
+
+Phase 2B1 stores schema version 1 under `code3.inbox-order.v1` through the existing persistence gateway fixed to `LOCAL_ONLY`.
+
+| Collection | Current purpose |
+|---|---|
+| `messageEvents` | minimized, provider-connection-scoped message evidence; raw bodies and protected values are prohibited |
+| `orderCandidates` | current owner-reviewable Order Candidate projections; never Business Purchases |
+| `candidateEvents` | append-only source-revision and owner confirm/correct/reject history |
+| `activity` | bounded, sanitized local processing summaries |
+
+The source uses stable IDs, schema/record versions, bounded arrays and strings, recursive authority/secret rejection, and validation before writes. `messageEvents` and `candidateEvents` are immutable once written. Reprocessing the same `providerConnectionId + providerMessageId + sourceHash` is a no-op; changed evidence under the same scoped identity is retained as a revision/conflict. Order evidence reconciles only when the provider connection, normalized retailer, and external order ID are compatible. Missing or conflicting identity remains reviewable rather than being silently merged.
+
+Message categories are `VERIFICATION`, `ORDER_CONFIRMATION`, `SHIPPED`, `DELIVERED`, `CANCELLED`, `REFUND`, `RETURN`, `PICKUP`, `PASSWORD_SECURITY`, `RETAILER_NOTICE`, `OTHER`, and `PROTECTED`. OTPs, reset/login links, security codes, raw protected content, and unrelated personal content are minimized before hashing or persistence. An `OTHER` or protected message cannot create an Order Candidate.
+
+Candidate money uses safe integer minor units and one explicit currency. Decimal input is parsed without floating-point arithmetic; malformed, excess-precision, or mixed-currency evidence is rejected or warned without silent rounding. Order state, review state, per-field provenance, warnings, contradictions, source hash, processing version, and owner corrections remain separate. New or materially changed candidates require owner review; explicit owner confirmation or rejection may clear `ownerReviewRequired`, while later changing evidence sets it again. Every candidate fixes `automaticImportAllowed: false` and `purchaseCreated: false`.
+
+All four paths are registered in Backup Format v1 and classified `REQUIRES_MAPPING`. No Phase 1B canonical domain, migration action, remote adapter, sync path, or Purchase writer is approved for them.
 
 ### Product workspace preference
 
@@ -174,7 +195,7 @@ The backend-only normalized principal contains immutable `subject`, `provider`, 
 
 Each source descriptor contains `sourceId`, `displayName`, `storageType`, `schemaVersion`, supported versions, owner-data and security-state flags, Phase 1A inclusion, export/validation adapter identifiers, reference dependencies, record paths, coverage relevance, and an exclusion reason when omitted.
 
-The published Phase 2A registry contains 22 sources: 18 locally included sources and four excluded or conditional sources. Included local sources cover Deal Finder schema 2, Owner Center schema 1, Account Ops schema 1, allowlisted legacy business and fallback documents, legacy restock/community and review sources, safe preferences, and safe workflow drafts. Phase 1B may also include a valid owner-authorized canonical PostgreSQL export. Legacy Supabase, other PostgreSQL/process-memory records, and file bytes remain registered exclusions. Authentication/session persistence is a prohibited source and is never exportable. Account Ops permits profile, alias, custom-retailer, store-account, credential-reference, task, and activity metadata, while plaintext passwords, OTPs, tokens, sessions, provider secrets, and owner-authority fields remain prohibited. The Phase 2A.5 product-workspace preference joins the existing `safe-ui-preferences` key group, which does not affect coverage; it does not alter source counts.
+The Phase 2B1 registry contains 23 sources: 19 locally included sources and four excluded or conditional sources. Included local sources cover Deal Finder schema 2, Owner Center schema 1, Account Ops schema 1, Inbox/Order Intelligence schema 1, allowlisted legacy business and fallback documents, legacy restock/community and review sources, safe preferences, and safe workflow drafts. Phase 1B may also include a valid owner-authorized canonical PostgreSQL export. Legacy Supabase, other PostgreSQL/process-memory records, and file bytes remain registered exclusions. Authentication/session persistence is a prohibited source and is never exportable. Account Ops and Inbox/Order Intelligence permit only their validated nonsecret metadata. Plaintext passwords, OTPs, tokens, sessions, OAuth state/codes/verifiers, provider secrets, raw/protected message content, security links, and owner-authority fields remain prohibited. The Phase 2A.5 product-workspace preference remains inside the existing `safe-ui-preferences` key group, which does not affect coverage or add a separate source.
 
 ### BackupEnvelope version 1
 
@@ -283,6 +304,11 @@ erDiagram
     EMAIL_ALIAS ||--o{ STORE_ACCOUNT : may_use
     STORE_ACCOUNT ||--o{ ACCOUNT_OPS_TASK : requires
     PROVIDER ||--o{ PROVIDER_CONNECTION : configures
+    PROVIDER_CONNECTION ||--o{ NORMALIZED_MESSAGE_EVENT : receives
+    NORMALIZED_MESSAGE_EVENT }o--o{ ORDER_CANDIDATE : supports
+    ORDER_CANDIDATE ||--o{ ORDER_CANDIDATE_EVENT : retains
+    EMAIL_ALIAS }o--o{ NORMALIZED_MESSAGE_EVENT : may_match
+    STORE_ACCOUNT }o--o{ ORDER_CANDIDATE : may_match
     PROVIDER ||--o{ SEARCH_RULE : searches
     SEARCH_RULE ||--o{ SEARCH_RUN : executes
     SEARCH_RUN ||--o{ LISTING : discovers
@@ -330,8 +356,10 @@ erDiagram
 | Entity | Required target content |
 |---|---|
 | `Provider` | provider ID/type, display name, capabilities, legal/terms review state |
-| `ProviderConnection` | configuration/auth status, encrypted secret references, scopes, health/last check; never browser secrets |
+| `ProviderConnection` | safe server projection of provider/configuration/auth status, opaque connection ID, scope summary and health; secret references remain in a separate server-only store and never enter the browser model |
 | `ProviderCapability` | declared operation and status |
+| `ProviderSecretReference` | server-only managed/encrypted secret reference and rotation/revocation metadata; no raw token is a browser or backup field |
+| `OAuthStateRecord` | server-only digest bound to verified owner principal, provider, exact redirect, expiry and one-time consumption; production adapter unavailable in Phase 2B1 |
 | `SearchRule` | all keyword, classification, price/cost, geography, format, time-window, seller, score, schedule, quiet-hour, result-limit, queue, priority, and note fields |
 | `SearchRun` | rule/provider, start/finish, counts, errors, rate-limit state, runtime, cursor/page metadata |
 | `Listing` | provider/external identity, original URL, title/description, seller/location, format, current price/bid/shipping, dates, state, classification, confidence/risk, related rule/purchase |
@@ -356,10 +384,11 @@ Listings use the statuses in [DEFINITIVE_PRODUCT_SPEC.md](./DEFINITIVE_PRODUCT_S
 | `StoreAccount` | retailer/profile/alias links, username/display metadata, setup/verification/security status, credential reference and archive state |
 | `CredentialReference` | external-vault or OS-secure-store provider/reference metadata only; never the secret |
 | `AccountOpsTask` | account/profile/retailer-linked manual work with type, priority, due time and retained completion/dismissal state |
-| `InboxMessageEvidence` | future authorized, minimized message metadata and protected raw-content reference; contract only in Phase 2A |
-| `RetailOrderCandidate` | future external order evidence awaiting owner review before Purchase creation; contract only in Phase 2A |
+| `NormalizedMessageEvent` | Phase 2B1 minimized local provider-message evidence with scoped message identity, category proposal, safe sender/recipient facts, confidence/provenance, source hash, processing version and warnings; no raw or protected content by default |
+| `RetailOrderCandidate` | Phase 2B1 local external order projection with exact-minor-unit money, source-event history, account/alias/retailer proposals, confidence/provenance and mandatory owner review; not a Purchase |
+| `OrderCandidateEvent` | append-only source revision or owner confirm/correct/reject event that preserves previous evidence and `OWNER_ENTERED` correction provenance |
 
-No Phase 1B canonical table or domain currently represents these entities. They remain local metadata and require a separately reviewed schema/mapping, owner-authorized API, protected persistence, and migration rehearsal before remote activation.
+No Phase 1B canonical table or domain currently represents these entities. Account Ops and Phase 2B1 local evidence remain `REQUIRES_MAPPING` and require a separately reviewed schema/mapping, owner-authorized API, protected persistence, and migration rehearsal before any remote activation. Phase 2B1 does not implement Purchase mapping or import.
 
 ## Auctions
 

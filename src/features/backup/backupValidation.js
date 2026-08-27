@@ -1,4 +1,5 @@
 import { normalizeAccountOpsState } from "../accountOps/repository.js";
+import { normalizeInboxOrderState } from "../inboxOrder/repository.js";
 
 function isJsonContainer(value) {
   return Boolean(value) && typeof value === "object";
@@ -16,6 +17,16 @@ function validateAccountOpsV1(source, data) {
   } catch (error) {
     const code = error?.code ? ` (${error.code})` : "";
     return [`Account Ops persisted state is invalid${code}: ${error?.message || "validation failed"}`];
+  }
+}
+
+function validateInboxOrderV1(source, data) {
+  try {
+    normalizeInboxOrderState(data, { now: () => "1970-01-01T00:00:00.000Z" });
+    return [];
+  } catch (error) {
+    const code = error?.code ? ` (${error.code})` : "";
+    return [`Inbox/order persisted state is invalid${code}: ${error?.message || "validation failed"}`];
   }
 }
 
@@ -59,6 +70,9 @@ export function validateBackupSourceData(source, data, { requireSupportedSchema 
 
   if (source?.validationAdapter === "account-ops-v1") {
     errors.push(...validateAccountOpsV1(source, data));
+  }
+  if (source?.validationAdapter === "inbox-order-v1") {
+    errors.push(...validateInboxOrderV1(source, data));
   }
 
   return { valid: errors.length === 0, errors, schemaVersion };

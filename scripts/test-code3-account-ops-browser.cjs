@@ -38,6 +38,14 @@ const SECTION_BY_FIXTURE = Object.freeze({
   "retailer-many-profiles": "accounts",
 });
 
+const FOUNDATION_FIXTURES = Object.freeze([
+  { id: "provider-not-configured", section: "connections", theme: "light", configurationState: "NOT_CONFIGURED" },
+  { id: "provider-healthy-metadata", section: "connections", theme: "light", configurationState: "AVAILABLE", healthy: true },
+  { id: "inbox-foundation", section: "inbox", theme: "light" },
+  { id: "orders-foundation", section: "orders", theme: "light" },
+  { id: "orders-foundation-dark", section: "orders", theme: "dark" },
+]);
+
 let assertions = 0;
 function ok(value, message) {
   assertions += 1;
@@ -239,10 +247,13 @@ async function inspectFixture(browser, fixture, theme, { scenario = true } = {})
     await page.getByText("Local development identity", { exact: true }).waitFor();
     const nav = page.locator("nav[aria-label='Account Ops sections']");
     await nav.waitFor();
-    const navText = await nav.innerText();
-    excludes(navText, /\bInbox\b|\bOrders\b/, "unimplemented Inbox and Orders must not appear as working navigation");
     await assertMinimumTarget(nav.getByRole("button", { name: "Overview", exact: true }), "Overview tab");
-    await assertMinimumTarget(nav.getByText("More", { exact: true }), "More section control");
+    const moreControl = nav.getByText("More", { exact: true });
+    await assertMinimumTarget(moreControl, "More section control");
+    await moreControl.click();
+    const expandedNavText = await nav.innerText();
+    match(expandedNavText, /Connections[\s\S]*Inbox[\s\S]*Orders/, "provider foundations should remain secondary Account Ops navigation");
+    await moreControl.click();
 
     if (scenario) await verifyFixtureScenario(page, fixture, consoleMessages);
     const metrics = await assertNoHorizontalOverflow(page, `${fixture.id} (${theme}) at 360px`);
@@ -269,6 +280,86 @@ async function inspectFixture(browser, fixture, theme, { scenario = true } = {})
   }
 }
 
+async function inspectFoundation(browser, fixture, emptyState) {
+  const context = await browser.newContext({ viewport: { width: 360, height: 800 }, deviceScaleFactor: 1, colorScheme: fixture.theme });
+  await seedContext(context, emptyState);
+  const page = await context.newPage();
+  const browserErrors = [];
+  page.setDefaultTimeout(20000);
+  page.setDefaultNavigationTimeout(45000);
+  page.on("pageerror", (error) => browserErrors.push(`pageerror: ${error.message}`));
+  page.on("console", (message) => {
+    if (message.type() === "error" && !/favicon|ResizeObserver/i.test(message.text())) browserErrors.push(`console: ${message.text()}`);
+  });
+  if (fixture.section === "connections") {
+    await page.route("**/api/account-ops/provider-connections", (route) => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ok: true,
+        configurationState: fixture.configurationState,
+        connections: fixture.healthy ? [{
+          connectionId: "connection:synthetic-qa-0001",
+          provider: "gmail",
+          connectedAccountLabel: "Synthetic QA mailbox",
+          status: "HEALTHY",
+          connectedAt: "2026-08-27T12:00:00.000Z",
+          lastHealthyAt: "2026-08-27T14:00:00.000Z",
+          grantedScopesSummary: ["Read-only order metadata"],
+          capabilityFlags: { listBoundedMessageMetadata: true, sendMail: false },
+        }] : [],
+        providerCapabilities: [{ providerId: "gmail", authorizationStatus: "UNAVAILABLE" }],
+        warnings: fixture.healthy ? [] : ["No live provider is configured."],
+        runtime: {
+          available: fixture.configurationState === "AVAILABLE",
+          hostedRuntimeVerified: fixture.configurationState === "AVAILABLE",
+          oauthStateStorage: { available: false, kind: "UNAVAILABLE" },
+          secretStorage: { available: false, kind: "UNAVAILABLE" },
+        },
+      }),
+    }));
+  }
+
+  try {
+    const route = `/account-ops/${fixture.section}`;
+    await page.goto(appUrl(route, fixture.theme), { waitUntil: "domcontentloaded" });
+    await page.getByTestId("account-ops").waitFor();
+    const expectedHeading = fixture.section === "connections" ? "Provider Connections" : fixture.section === "inbox" ? "Inbox" : "Order Candidates";
+    await page.getByRole("heading", { name: expectedHeading, exact: true }).waitFor();
+    if (fixture.id === "provider-not-configured") await page.getByText("No mailbox connected", { exact: true }).waitFor();
+    if (fixture.id === "provider-healthy-metadata") {
+      await page.getByText("Synthetic QA mailbox", { exact: true }).waitFor();
+      await page.getByText("Granted permission summary", { exact: true }).click();
+    }
+    const body = await page.locator("body").innerText();
+    if (fixture.id === "provider-not-configured") match(body, /No mailbox connected[\s\S]*not configured/i, "unconfigured provider QA must remain honest");
+    if (fixture.id === "provider-healthy-metadata") match(body, /Synthetic QA mailbox[\s\S]*Healthy[\s\S]*Read-only order metadata/i, "synthetic provider metadata should render without credential material");
+    if (fixture.section === "inbox") match(body, /Code 3 is not reading a mailbox[\s\S]*No mailbox messages/i, "Inbox foundation must not claim live ingestion");
+    if (fixture.section === "orders") match(body, /evidence, not a Business Purchase[\s\S]*No order candidates/i, "Order Candidate foundation must remain review-only");
+    excludes(body, /access.?token|refresh.?token|client.?secret|\bOTP\s*[:=]|Import Purchase/i, "foundation QA must not expose secrets or Purchase mutation");
+    const metrics = await assertNoHorizontalOverflow(page, `${fixture.id} (${fixture.theme}) at 360px`);
+    equal(browserErrors.length, 0, browserErrors.join("\n"));
+    const screenshotPath = path.join(ARTIFACT_DIR, `mobile-${fixture.theme}-${fixture.id}.png`);
+    await page.screenshot({ path: screenshotPath, fullPage: true });
+    return {
+      fixtureId: fixture.id,
+      title: expectedHeading,
+      theme: fixture.theme,
+      route,
+      viewport: { width: 360, height: 800 },
+      screenshot: relativeArtifact(screenshotPath),
+      scrollWidth: metrics.scrollWidth,
+      clientWidth: metrics.clientWidth,
+      pageHeight: metrics.scrollHeight,
+      horizontalOverflow: metrics.scrollWidth - metrics.clientWidth,
+      browserErrors: [],
+      syntheticProviderFixture: fixture.section === "connections",
+    };
+  } finally {
+    await context.close();
+  }
+}
+
 async function main() {
   fs.mkdirSync(ARTIFACT_DIR, { recursive: true });
   const fixtures = await loadFixtures();
@@ -280,6 +371,9 @@ async function main() {
     for (const fixture of fixtures) captures.push(await inspectFixture(browser, fixture, "light"));
     for (const fixture of fixtures.filter(({ id }) => DARK_FIXTURES.has(id))) {
       captures.push(await inspectFixture(browser, fixture, "dark", { scenario: false }));
+    }
+    for (const fixture of FOUNDATION_FIXTURES) {
+      captures.push(await inspectFoundation(browser, fixture, fixtures[0].state));
     }
   } finally {
     await browser.close();
@@ -298,6 +392,7 @@ async function main() {
       "Generated passwords were verified as ephemeral and absent from local persistence and browser logs.",
       "Retailer signup windows were suppressed; the test performs no external account creation or verification.",
       "Generated aliases remain distinct from confirmed receiving/provisioned aliases.",
+      "Provider, Inbox, and Order Candidate foundation captures use deterministic synthetic metadata only; no mailbox or provider was contacted.",
     ],
     captures,
   };

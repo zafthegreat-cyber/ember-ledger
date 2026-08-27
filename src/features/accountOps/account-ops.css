@@ -208,7 +208,8 @@ button.account-ops-row { width: 100%; cursor: pointer; }
 .account-ops-tabs summary:focus-visible,
 .account-ops-row:focus-visible,
 .account-ops-card button:focus-visible,
-.account-ops-checklist input:focus-visible {
+.account-ops-checklist input:focus-visible,
+.account-ops-provider-details > summary:focus-visible {
   outline: 3px solid color-mix(in srgb, var(--focus-ring) 55%, transparent);
   outline-offset: 2px;
 }
@@ -379,6 +380,107 @@ button.account-ops-row { width: 100%; cursor: pointer; }
 .account-ops-desktop-table .account-ops-card-actions { min-width: 220px; }
 .account-ops-empty-line { margin: 0; padding: 10px 0; color: var(--text-secondary); }
 
+.account-ops-provider-boundary {
+  margin: 0;
+  padding: 10px 12px;
+  border-left: 3px solid var(--status-warning);
+  background: color-mix(in srgb, var(--status-warning) 7%, var(--surface-primary));
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.account-ops-provider-list {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.account-ops-provider-card {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-block: 1px solid var(--border-subtle);
+}
+
+.account-ops-provider-card > header {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.account-ops-provider-card h3,
+.account-ops-provider-card p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.account-ops-provider-card header p {
+  margin-top: 3px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.account-ops-provider-facts {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.account-ops-provider-facts div { min-width: 0; }
+.account-ops-provider-facts dt { color: var(--text-muted); font-size: 11px; }
+.account-ops-provider-facts dd {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+.account-ops-provider-details {
+  min-width: 0;
+  border-block: 1px solid var(--border-subtle);
+}
+
+.account-ops-provider-details > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  color: var(--brand-primary);
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.account-ops-provider-details ul,
+.account-ops-provider-details ol,
+.account-ops-provider-warnings ul {
+  margin: 0;
+  padding: 0 0 var(--space-3) 22px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.account-ops-provider-details li,
+.account-ops-provider-warnings li { overflow-wrap: anywhere; }
+
+.account-ops-provider-warnings {
+  min-width: 0;
+  padding: 10px 12px;
+  border-left: 3px solid var(--status-warning);
+  background: color-mix(in srgb, var(--status-warning) 7%, var(--surface-primary));
+}
+
+.account-ops-provider-warnings strong { display: block; margin-bottom: 6px; }
+
 @media (min-width: 700px) {
   .account-ops { padding: var(--space-6); }
   .account-ops-tabs { grid-template-columns: repeat(3, minmax(0, 160px)) auto; justify-content: start; }
@@ -416,7 +518,8 @@ button.account-ops-row { width: 100%; cursor: pointer; }
 @media (max-width: 380px) {
   .account-ops { padding-inline: 12px; }
   .account-ops-filter-row,
-  .account-ops-facts { grid-template-columns: minmax(0, 1fr); }
+  .account-ops-facts,
+  .account-ops-provider-facts { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (prefers-reduced-motion: reduce) {

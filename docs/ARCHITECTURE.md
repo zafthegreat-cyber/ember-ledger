@@ -10,7 +10,9 @@ Phase 1C is published through commit `af21199f610cc91e31d9dee59af6f0a2f748ab79`.
 
 Phase 2A Account Ops is published at `c76e3e4bc668c08d9a0908c9bb2cd96444610297`. It adds browser-local profiles, email-alias metadata, retailer-account metadata, assisted setup state, account health, and account tasks. `LOCAL_ONLY` remains authoritative; no schema was applied, no canonical domain was added, and no provider-backed email, Inbox, Orders, sync, or retailer automation is active.
 
-Phase 2A.5 starts from that published checkpoint and is a local, unpublished workspace-architecture working copy. It adds presentation-level product workspace ownership, compatibility-first homes, a switcher, bounded recent-workspace preference, and route/deep-link metadata. It does not change data authority, authorize a private route, connect a provider, implement billing, apply a migration, or enable remote persistence.
+Phase 2A.5 is published at `4c6c7891a123777acec8f326793f30aee61f3de6`. It adds presentation-level product workspace ownership, compatibility-first homes, a switcher, bounded recent-workspace preference, and route/deep-link metadata without changing data authority or provider access.
+
+Phase 2B1 is the current local, unpublished foundation. It adds a default-unavailable owner-protected mailbox-provider runtime, a separate versioned `LOCAL_ONLY` inbox/order evidence source, protected-message minimization, deterministic idempotency/reconciliation, and owner-reviewed Order Candidates. No mailbox is connected, no provider token store is enabled, no Purchase is created, and hosted API reachability remains unverified.
 
 ## Executive summary
 
@@ -20,7 +22,7 @@ Code 3 is a hybrid React/Vite single-page application. Its approved everyday she
 2. older browser storage and optional Supabase persistence used by legacy application modules;
 3. an Express/PostgreSQL backend used by legacy APIs and the secure eBay Browse connector.
 
-The published architecture is suitable for a private preview, not for centralized durability or reliable background work. Phase 1A supplies a Supabase-backed server identity boundary for the auth/eBay route families and a deterministic browser-backup/restore-preview contract. Phase 1B selects and scaffolds the owner-authorized Express API → repository/service layer → PostgreSQL/Supabase Postgres target, but deliberately leaves current browser repositories authoritative. Phase 1C adds presentation-independent deterministic intelligence modules and append-only local card-analysis history on top of that unchanged authority boundary. Published Phase 2A adds one versioned Account Ops source behind the existing local persistence gateway and exposes a session-gated route family. Local Phase 2A.5 adds a shared product-workspace registry and shell around existing routes without creating new domain stores. Auction results can be saved without a generic linked revision series, and restock intelligence is recomputed from retained observations. Those changes reduce migration, recommendation, account-operations, and navigation risk; they do not migrate records, activate remote persistence, protect every legacy route, provision email aliases, store plaintext passwords, integrate a mailbox/order/Bot provider, implement billing, configure an AI/computer-vision provider, or make a backup complete when server data or referenced file bytes are omitted. The safest target remains an incremental strangler migration.
+The published architecture is suitable for a private preview, not for centralized durability or reliable background work. Phase 1A supplies a Supabase-backed server identity boundary for the auth/eBay route families and a deterministic browser-backup/restore-preview contract. Phase 1B selects and scaffolds the owner-authorized Express API → repository/service layer → PostgreSQL/Supabase Postgres target, but deliberately leaves current browser repositories authoritative. Phase 1C adds presentation-independent deterministic intelligence modules and append-only local card-analysis history on top of that unchanged authority boundary. Published Phase 2A adds one versioned Account Ops source behind the existing local persistence gateway and exposes a session-gated route family. Published Phase 2A.5 adds a shared product-workspace registry and shell around existing routes without creating new domain stores. Local Phase 2B1 adds minimized synthetic message/order processing and a fail-closed provider-runtime boundary without connecting a provider. Auction results can be saved without a generic linked revision series, and restock intelligence is recomputed from retained observations. Those changes reduce migration, recommendation, account-operations, navigation, and future mailbox-ingestion risk; they do not migrate records, activate remote persistence, protect every legacy route, provision email aliases, store plaintext passwords, connect a mailbox/order/Bot provider, implement billing, configure an AI/computer-vision provider, or make a backup complete when server data or referenced file bytes are omitted. The safest target remains an incremental strangler migration.
 
 ## Published Phase 1A boundary
 
@@ -84,11 +86,11 @@ Phase 2A introduces `src/features/accountOps` as a cohesive local domain rather 
 - ephemeral password generation for immediate copy only, with no plaintext-password persistence, logging, analytics, or backup path;
 - owner-driven account setup/checklist and verification state; retailer signup may be opened, but Code 3 does not submit bulk signups, bypass CAPTCHA/OTP/verification, or mark verification complete without owner action;
 - Account Ops metadata in Backup Format v1 and zero-write Restore Preview, while all eight new record paths remain `REQUIRES_MAPPING` for migration because no canonical Account Ops domain or schema exists;
-- provider-neutral future Inbox and Orders contracts only. They do not fetch messages, store message bodies, create purchases, or claim an active provider integration.
+- provider-neutral future Inbox and Orders contracts only at the Phase 2A checkpoint. Local Phase 2B1 now implements the separate synthetic/minimized evidence foundation described below, still without provider fetch, raw-body storage, or Purchase creation.
 
 See [ACCOUNT_OPS_CONTRACT.md](./ACCOUNT_OPS_CONTRACT.md). This architecture is published at the Phase 2A checkpoint.
 
-## Phase 2A.5 local workspace delta
+## Published Phase 2A.5 workspace delta
 
 Phase 2A.5 adds one presentation architecture around existing records and feature modules:
 
@@ -113,11 +115,13 @@ flowchart TD
     Registry["Product workspace and route registry"]
     Canonical["Shared feature and domain modules"]
     AccountOps["Local Account Ops domain"]
+    InboxOrder["Minimized local Inbox / Order Candidate domain"]
     Intelligence["Deterministic local intelligence services"]
     Legacy["Legacy route renderers and services"]
     Local["Versioned localStorage repositories"]
     Supabase["Optional Supabase client + legacy tables"]
     API["Express 5 API on Vercel functions"]
+    ProviderRuntime["Default-unavailable mailbox provider runtime"]
     Ebay["eBay Browse API"]
     Postgres["PostgreSQL / legacy service storage"]
 
@@ -125,14 +129,18 @@ flowchart TD
     Shell --> Registry
     Registry --> Canonical
     Canonical --> AccountOps
+    AccountOps --> InboxOrder
     Shell --> Legacy
     Canonical --> Intelligence
     Intelligence --> Local
     AccountOps --> Local
+    InboxOrder --> Local
     Canonical --> Local
     Legacy --> Local
     Legacy --> Supabase
     Canonical -->|"/api/ebay/*"| API
+    AccountOps -->|"/api/account-ops/provider-connections"| API
+    API --> ProviderRuntime
     Legacy --> API
     API --> Ebay
     API --> Postgres
@@ -145,9 +153,10 @@ flowchart TD
 | Framework | React 19.2.3, Vite 8.0.10 | `package.json`, `src/main.jsx`, `vite.config.js` | Modern SPA toolchain |
 | Entry | `src/main.jsx` lazy-imports the application and installs an error boundary/service worker | `src/main.jsx` | Shell bootstrap is already isolated |
 | Shell | A very large `src/App.jsx` owns authentication, hydration, route selection, navigation, dialogs, and legacy renderers | `src/App.jsx`, `docs/APP_SHELL_EXTRACTION_PLAN.md` | High coupling and a large initial chunk |
-| Product workspace shell | Five focused product contexts over shared feature modules; Owner Center remains separate | `src/config/workspaceRegistry.js`, `src/features/workspaces`, `src/App.jsx`, `src/utils/appRouteState.js` | Phase 2A.5 local; route metadata and remembered UI context do not authorize access or duplicate records |
+| Product workspace shell | Five focused product contexts over shared feature modules; Owner Center remains separate | `src/config/workspaceRegistry.js`, `src/features/workspaces`, `src/App.jsx`, `src/utils/appRouteState.js` | Phase 2A.5 published; route metadata and remembered UI context do not authorize access or duplicate records |
 | Canonical pages | Collect, Find, Sell, Business, and Owner Center delegate to focused modules | `src/pages/OperationsHome.jsx`, `src/pages/EverydayWorkspaces.jsx`, `src/features/flipScout`, `src/features/ownerCenter`, `src/features/workspaces` | Current plain-language experience is reorganized rather than rewritten |
-| Account Ops | Business-associated lazy route with local domain service, mobile-first Overview/Profiles/Emails/Accounts/Tasks UI, and verified-session gate | `src/features/accountOps`, `src/App.jsx`, `src/utils/appRouteState.js` | Published Phase 2A metadata works locally, but email provisioning, Inbox, Orders, secure-vault integration, and server durability do not |
+| Account Ops | Business-associated lazy route with local domain service, mobile-first Overview/Profiles/Emails/Accounts/Tasks plus Phase 2B1 Connections/Inbox/Orders foundation, and verified-session gate | `src/features/accountOps`, `src/services/accountOpsProviderApi.js`, `src/App.jsx`, `src/utils/appRouteState.js` | Phase 2A metadata remains local; Phase 2B1 adds capability truth and synthetic evidence only, not live email, provider secrets, Purchase import, secure-vault integration, or server durability |
+| Inbox / Order Candidate domain | Provider-neutral normalization, protected-message minimization, exact money, alias/retailer proposals, connection-scoped idempotency, reconciliation, and owner review | `src/features/inboxOrder` | Separate `LOCAL_ONLY` source; no mailbox read, raw-body mirror, provider token, Purchase writer, or remote adapter |
 | Shared UI | Semantic operations components and CSS | `src/components/operations`, `src/styles/app/01-tokens-theme.css` | Reusable accessible foundation |
 | Routing | Custom path parsing and render dispatch, not React Router | `src/utils/appRouteState.js`, `src/App.jsx` | Back/redirect compatibility depends on bespoke code |
 | State | Large in-memory React state plus domain repository snapshots and legacy hooks | `src/App.jsx`, feature repositories | No single authoritative state boundary |
@@ -190,6 +199,7 @@ Phase 2A.5 implements the presentation registry and switcher portion of that tar
 - Phase 1C card-analysis history adds only tagged records to that repository's existing `appraisals` collection. Legacy appraisal rows remain untouched and are not silently reinterpreted. The history factory fixes its Phase 1B gateway to `LOCAL_ONLY` and exposes no delete/archive or remote-mode selector. Auction saves do not create this linked revision series, and restock results are recomputed from observations.
 - `src/features/ownerCenter/ownerCenterRepository.js` stores owner intelligence and controls under `private-business-hub.owner-center.v1`.
 - Phase 2A stores Account Ops schema version 1 under `code3.account-ops.v1`. Its eight arrays are read and written through the existing Phase 1B local persistence gateway; no direct remote adapter, sync mode, or canonical write path is exposed.
+- Phase 2B1 stores minimized Inbox/Order Intelligence schema version 1 under `code3.inbox-order.v1`. Its four arrays (`messageEvents`, `orderCandidates`, `candidateEvents`, and `activity`) use the same gateway fixed to `LOCAL_ONLY`; provider secrets and raw/protected content are prohibited, evidence/review history is append-only where claimed, and no Purchase repository is reachable.
 - guided forms use namespaced session/draft keys through `src/components/operations/RecordExperience.jsx` and feature screens.
 
 These repositories provide safe parsing, defaults, validation, import/export, and update notifications. They are browser-local, single-device, and not protected by server authorization.
@@ -225,6 +235,7 @@ Current backend limitations after the Phase 1B checkpoint:
 - no canonical background-job subsystem or durable audit writer; mutation idempotency beyond the Phase 1B contract remains future work;
 - no protected object/file storage for evidence and receipts.
 - no configured model-backed image/OCR/AI analysis provider; image references remain references and the scanner adapter reports that no image analysis ran.
+- mailbox provider status/capability/disconnect routing is OWNER-protected and fail-closed, but no connect/callback route, live Gmail/Microsoft adapter, durable connection/secret store, durable atomic OAuth-state store, or verified hosted runtime exists.
 
 ## Authentication and permissions
 
@@ -245,6 +256,23 @@ Current roles (`OWNER`, `ADMIN`, `MODERATOR`, `BETA_USER`, `USER`) still exist i
 The approved application identity is Code 3. The published Phase 1A source applies display, short, PWA, PWA short, browser-title, accessible-logo, logo, favicon, and offline identity through `src/config/brand.js` and the Vite metadata replacement. The legal/public business name and tagline remain separate and blank. Historical route, storage, cache, module, and imported-source identifiers remain unchanged.
 
 The runtime configuration still needs the definitive default social handle, currency, and time zone. Some compatibility/public-beta copy outside the primary shell still contains historical wording and requires a separately bounded migration. `src/features/ownerCenter/ownerCenterRepository.js` stores feature controls and scoring defaults locally; these controls influence UI visibility but are not server entitlements. Phase 2A.5 may describe future `FREE`, `PLUS`, `PRO`, `BUSINESS`, and `OWNER` packaging in registry metadata, but supplies no billing or authoritative entitlement system; `OWNER` remains authority rather than a paid package.
+
+## Phase 2B1 provider and order-intelligence boundary
+
+Phase 2B1 adds two deliberately separate layers:
+
+1. a server-only provider runtime under `backend/src/providerRuntime` and the owner-protected `/api/account-ops/provider-connections` route; and
+2. a browser-local minimized message/Order Candidate domain under `src/features/inboxOrder`, fixed to `LOCAL_ONLY` through the existing persistence gateway.
+
+The server layer contains capability definitions, safe connection projections, a secret-store interface, an OAuth-state interface, sanitized audit summaries, and default-unavailable lifecycle behavior. Its production/default adapters cannot store a secret or issue state. The only memory implementations are dependency-injected automated-test fakes and reject non-test runtimes. No Gmail or Microsoft SDK/network adapter is present.
+
+The browser receives only opaque connection metadata and capability truth. `src/services/accountOpsProviderApi.js` accepts only the protected provider-connections route, reuses the verified owner-session header mechanism, rejects caller headers/bodies/alternate methods, rejects SPA/non-JSON fallbacks, bounds the response, and discards unsafe credential-shaped data. The lazy Account Ops Connections/Inbox/Orders foundation is mounted only after the existing verified-owner gate; it does not initialize a provider or inbox store for an unauthorized session.
+
+The local inbox/order source is separate from `code3.account-ops.v1` so the strict eight-collection Account Ops schema is not silently changed. It retains minimized message events, current candidate projections, append-only candidate/review events, and sanitized activity only. Provider tokens, OAuth state, raw bodies, protected content, and authority fields are prohibited. Message identity is connection-scoped, order reconciliation is evidence-aware, owner corrections are preserved separately, and no repository path writes a Purchase.
+
+The trusted hosting state remains `UNVERIFIED`. Source entry points exist in `api/[...path].ts`, but no Phase 2B1 deployment is authorized and earlier Preview evidence showed a protected API URL could resolve to the SPA. Live OAuth remains blocked until a future Preview proves protected JSON routing and supplies durable managed secret storage plus atomic replay-resistant OAuth-state storage. The browser is never used as a fallback secret store.
+
+See [INBOX_ORDER_PROVIDER_CONTRACT.md](./INBOX_ORDER_PROVIDER_CONTRACT.md).
 
 ## Deployment
 
@@ -289,11 +317,11 @@ The repository has focused Node/browser scripts rather than one consolidated tes
 
 The published Phase 1C checkpoint records 168 domain assertions, 27 card-history/provider cases, 61 integration assertions, and 15/15 deterministic fixtures with 175 assertions. Tests are listed in `package.json` and `backend/package.json`. Its complete local gate also passed the Phase 1A/1B suites and all 28 bounded regression scenarios in 323.446 seconds, with zero retries and no open handles after cleanup.
 
-Published Phase 2A adds passing profile, alias/template/collision, password, retailer-account/setup/health/task, recursive authority rejection, backup/preview, route, mobile, and deterministic fixture tests. Phase 2A.5 focused registry and bounded-preference tests currently pass 256 and 82 assertions; switcher, deep-link, authority, legacy-route, mobile, shared-record projection, and inherited regression validation remain part of the final local gate. Publication remains separate.
+Published Phase 2A adds passing profile, alias/template/collision, password, retailer-account/setup/health/task, recursive authority rejection, backup/preview, route, mobile, and deterministic fixture tests. Published Phase 2A.5 adds registry, bounded-preference, switcher, deep-link, authority, legacy-route, mobile, shared-record projection, and inherited regression evidence. Local Phase 2B1 focused validation passes 16/16 provider-runtime cases, 52 domain assertions, 25/25 deterministic fixtures with 56 assertions, 102 history/idempotency assertions, and 55 security/protected-message assertions. Backup validation reports 19 included sections and 18 fixture records; Restore Preview and migration checks remain zero-write. The inherited gate also passes frontend/backend builds and the bounded 28/28 regression in 444.527 seconds with zero retries and no open handles. None of this source/test evidence makes the provider runtime hosted or connected.
 
 ## Bundle structure
 
-`vite.config.js` separates React, Supabase, scanner, and catalog dependencies. The published Phase 2A main `App` chunk is approximately 2,337.78 kB minified and 586.01 kB gzip because many legacy renderers and state dependencies remain in `src/App.jsx`; Account Ops is already lazy-loaded. The validated local Phase 2A.5 candidate is 2,347.63 kB minified and 589.36 kB gzip for the main `App` chunk. Its lazy workspace home is 7.06 kB minified and 2.39 kB gzip, with 6.05 kB / 1.54 kB gzip of workspace-shell CSS. Phase 2A.5 keeps the workspace home separate but cannot fully extract the shell registry/state while `App.jsx` owns the legacy renderers. Existing extraction analysis is in `docs/BUNDLE_AND_ROUTE_PERFORMANCE.md` and `docs/APP_SHELL_EXTRACTION_PLAN.md`.
+`vite.config.js` separates React, Supabase, scanner, and catalog dependencies. The published Phase 2A main `App` chunk was approximately 2,337.78 kB minified and 586.01 kB gzip because many legacy renderers and state dependencies remain in `src/App.jsx`; Account Ops is already lazy-loaded. The published Phase 2A.5 candidate was 2,347.63 kB minified and 589.36 kB gzip for the main `App` chunk. Its lazy workspace home was 7.06 kB minified and 2.39 kB gzip, with 6.05 kB / 1.54 kB gzip of workspace-shell CSS. Phase 2B1 keeps its Account Ops provider/inbox/order surface behind the existing lazy boundary. The final local Phase 2B1 main `App` chunk is 2,347.64 kB minified and 589.36 kB gzip; the lazy Inbox/Order foundation is 12.22 kB / 4.36 kB gzip and the Account Ops chunk is 88.84 kB / 22.25 kB gzip. Existing extraction analysis is in `docs/BUNDLE_AND_ROUTE_PERFORMANCE.md` and `docs/APP_SHELL_EXTRACTION_PLAN.md`.
 
 ## Target architecture
 

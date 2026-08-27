@@ -4,6 +4,7 @@ const PROHIBITED_NORMALIZED_KEYS = new Set([
   "idtoken",
   "authtoken",
   "authorization",
+  "authorizationcode",
   "authorizationheader",
   "bearertoken",
   "clientsecret",
@@ -24,20 +25,29 @@ const PROHIBITED_NORMALIZED_KEYS = new Set([
   "cvv",
   "generatedpassword",
   "privatekey",
+  "loginlink",
   "onetimecode",
   "onetimepassword",
+  "oauthcode",
+  "oauthstate",
   "otp",
   "otpcode",
   "otptoken",
   "passphrase",
   "password",
   "passwordhash",
+  "passwordresetlink",
+  "passwordresettoken",
   "plaintextpassword",
   "providercredentials",
   "providersecret",
+  "protectedcontent",
+  "rawmessagebody",
+  "rawmessagecontent",
   "secret",
   "session",
   "sessiontoken",
+  "securitycode",
   "supabasesession",
   "ownerauthorizationallowlist",
   "ownerallowlist",
@@ -47,9 +57,10 @@ const PROHIBITED_NORMALIZED_KEYS = new Set([
   "token",
   "temporarypassword",
   "verificationcode",
+  "codeverifier",
 ]);
 const SAFE_REFERENCE_KEYS = new Set(["credentialreference", "credentialprovider", "credentialreferenceid"]);
-const PROHIBITED_KEY_FRAGMENT_PATTERN = /(?:password(?:hash)?|passphrase|secret|apikey|privatekey|otp(?:code|token)?|cvv|cvc|credentials?|captcha(?:response|token)?|verificationcode)$/i;
+const PROHIBITED_KEY_FRAGMENT_PATTERN = /(?:password(?:hash)?|passwordreset(?:link|token)|passphrase|secret|apikey|privatekey|otp(?:code|token)?|oauth(?:code|state)|authorizationcode|codeverifier|securitycode|loginlink|rawmessage(?:body|content)|protectedcontent|cvv|cvc|credentials?|captcha(?:response|token)?|verificationcode)$/i;
 
 const PROHIBITED_STORAGE_KEY_PATTERNS = [
   /^sb-.+-auth-token$/i,
@@ -120,6 +131,8 @@ export function sanitizeBackupData(value) {
 export const SECURITY_EXCLUSION_SUMMARY = Object.freeze([
   "Authentication persistence and browser sessions",
   "Access, refresh, identity-provider, and eBay tokens",
+  "Mailbox OAuth state, authorization codes, code verifiers, and provider tokens",
+  "One-time codes, password-reset/login links, and raw protected message content",
   "Credentials, provider secrets, API keys, and environment values",
   "Owner allowlists and development impersonation state",
 ]);

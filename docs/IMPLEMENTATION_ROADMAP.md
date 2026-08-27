@@ -13,7 +13,9 @@ The audit changes the conceptual “backend persistence first” phase into gate
 
 **Phase 2A — Account Ops Foundation** is published at `c76e3e4bc668c08d9a0908c9bb2cd96444610297`. It adds legitimate owner-managed profiles, alias metadata, retailer-account metadata, assisted human setup, account health, and tasks through a gateway fixed to `LOCAL_ONLY`. It adds no canonical domain, provider-provisioned email, mailbox/order integration, retailer signup submission, verification bypass, migration, sync, or remote cutover.
 
-**Phase 2A.5 — Workspace Architecture / Mini-App Shell** is the current local, unpublished structural phase. It organizes existing features into Collect, Find, Sell, Bot, and Business through a central route/workspace registry, compatibility-first homes, workspace-local navigation, and a bounded recent-workspace preference. Owner Center remains separate; Account Ops is Business-associated but `VERIFIED_OWNER`; Bot is OWNER-only and has no provider. Phase 2A.5 does not implement Inbox/Orders, email or Bot integrations, billing, migration, sync, or remote cutover.
+**Phase 2A.5 — Workspace Architecture / Mini-App Shell** is published at `4c6c7891a123777acec8f326793f30aee61f3de6`. It organizes existing features into Collect, Find, Sell, Bot, and Business through a central route/workspace registry, compatibility-first homes, workspace-local navigation, and a bounded recent-workspace preference. Owner Center remains separate; Account Ops is Business-associated but `VERIFIED_OWNER`; Bot is OWNER-only and has no provider.
+
+**Phase 2B1 — Secure Provider Runtime + Inbox / Order Intelligence Foundation** is the current local, unpublished phase. It establishes fail-closed server-side provider/secret/OAuth-state contracts, minimized normalized message evidence, protected-message handling, exact-money Order Candidates, deterministic idempotency/reconciliation, and owner review. Gmail, Outlook, IMAP, live Inbox ingestion, provider token persistence, Purchase import, migration, sync, and remote cutover remain inactive.
 
 The published Phase 1A runtime applies Code 3 through the centralized brand configuration and coordinated PWA/browser/offline metadata. Storage, database, route, module, environment, cache, history, compatibility, and imported-source identifiers remain unchanged. The legal/public business name and tagline remain separately configurable and unresolved.
 
@@ -93,13 +95,13 @@ No time estimates are provided. Complexity is relative: Small, Medium, Large, or
 - **Dependencies:** published Phase 1A owner session, Phase 1B local persistence and verified recovery, existing Code 3 route/design patterns.
 - **External authorization:** none for local metadata. Provider-managed aliases, catch-all verification, credential vaults, mailbox access, and order APIs each require a separately approved provider/security contract.
 - **Test plan:** profile/group CRUD/archive/owner-scope; alias templates/secure randomness/collisions/validation/provisioning truth; password entropy and no persistence/log/backup; retailer/account/setup/status/health relationships; tasks; recursive authority/secret injection; Account Ops backup and zero-write Restore Preview; eight-path migration classification; 360px light/dark/long-content/empty/attention/setup cases; existing security, route, accessibility, and 28-scenario regression gates.
-- **Acceptance criteria:** owner-authorized first-class route; private storage is not read before authorization; profile cannot become authentication identity; generated alias is never called provisioned; plaintext password/OTP/token/payment secret never persists; setup stops at human verification; health explains each signal; Inbox/Orders remain contracts only; no bulk signup, retailer-limit evasion, purchasing, checkout, migration, sync, or remote activation exists.
+- **Acceptance criteria:** owner-authorized first-class route; private storage is not read before authorization; profile cannot become authentication identity; generated alias is never called provisioned; plaintext password/OTP/token/payment secret never persists; setup stops at human verification; health explains each signal; at the Phase 2A checkpoint Inbox/Orders remain contracts only; no bulk signup, retailer-limit evasion, purchasing, checkout, migration, sync, or remote activation exists.
 - **Rollback:** revert the Phase 2A checkpoint while retaining the unchanged Phase 1A–1C sources. Because no database, provider, or remote write occurred, no schema or provider rollback is required; local Account Ops records remain separately owner-controlled.
 - **Complexity:** Large.
 
 ## Phase 2A.5 — Workspace architecture / mini-app shell
 
-**Status:** Local implementation in progress from published Phase 2A commit `c76e3e4bc668c08d9a0908c9bb2cd96444610297`; publication remains a separate approval.
+**Status:** Published at `4c6c7891a123777acec8f326793f30aee61f3de6`. The route registry and preference remain presentation metadata and do not authorize provider access.
 
 - **Objective:** make Collect, Find, Sell, Bot, and Business focused product workspaces inside one Code 3 application while retaining shared records, one authentication/persistence platform, Owner Center separation, and route compatibility.
 - **Current code affected:** `src/App.jsx`, `src/utils/appRouteState.js`, the new central workspace registry, workspace switcher/home components, mobile/desktop navigation, safe local workspace preference, and route/accessibility/browser tests.
@@ -113,20 +115,36 @@ No time estimates are provided. Complexity is relative: Small, Medium, Large, or
 - **Rollback:** revert the shell/registry integration and remove only the reconstructible workspace preference. Existing routes and feature records remain unchanged; no schema, provider, or owner-data rollback is required.
 - **Complexity:** Large.
 
-## Phase 2B — Unified Inbox and order intelligence
+## Phase 2B1 — Secure provider runtime and Inbox / Order Intelligence foundation
 
-**Status:** Future and not authorized. Published Phase 2A supplies contracts only; Phase 2A.5 does not begin this work.
+**Status:** Local implementation and focused validation complete; unpublished and not hosted. The inherited browser/regression gate remains a completion-report check. No live provider is authorized or connected.
 
-- **Objective:** connect one explicitly approved, minimally scoped mailbox/order provider; normalize verification, shipment, cancellation, refund, security, and order evidence; require owner review before an explicit Add to Purchases action.
-- **Current code affected:** Phase 2A alias/account relationships and future contracts, provider connections, protected files, import review, Purchases, shipments, tasks, and audit history.
-- **Likely files/modules:** server-only mail/order provider adapter; webhook/polling verification; bounded message metadata/raw-content references; order-candidate review queue; idempotent task/import linkage.
-- **Data changes:** authorized mailbox connection metadata, normalized message evidence, order candidates, import decisions, task provenance, protected raw-content references, and provider cursors; no plaintext credentials or unnecessary message bodies.
-- **Migration risks:** duplicate messages/orders, sensitive-content retention, wrong account/profile attribution, unreviewed purchase creation, provider replay, stale cursor, and cross-account disclosure.
-- **Dependencies:** Phase 2A publication; application-wide server OWNER authorization; protected file/content storage; provider selection/scopes/retention; canonical persistence or an explicitly accepted local-only limit; idempotency and audit policy. The established Phase 2 shell extraction should precede or accompany substantial UI growth.
-- **External authorization:** approved mailbox/order provider, owner consent, minimized scopes, webhook/signature or polling terms, and documented retention/deletion behavior.
-- **Test plan:** mocked authorization/scopes, message/order normalization, deduplication/replay, account/profile/alias attribution, redaction, retention, failure truthfulness, owner review gate, no automatic Purchase/checkout, task generation, disconnect, backup/export classification.
-- **Acceptance criteria:** no mailbox is labeled connected before a verified health check; only bounded metadata/content references are retained; every order candidate links to evidence and remains uncommitted until owner review; importing cannot buy, pay, message, or bypass retailer controls; secrets stay server-side.
-- **Rollback:** disable/disconnect the provider, stop ingestion, retain reviewed metadata/audit under the retention policy, and preserve Phase 2A manual workflows.
+- **Objective:** establish fail-closed provider security contracts and a deterministic synthetic/minimized order-evidence domain before any live mailbox is permitted.
+- **Current code affected:** `backend/src/providerRuntime`, the protected Account Ops provider route, Account Ops Connections/Inbox/Orders foundation, `src/features/inboxOrder`, backup/Restore Preview, migration classification, and focused tests.
+- **Implemented files/modules:** provider/capability definitions; unavailable production connection/secret/OAuth-state adapters; test-only memory adapters; safe audit/redaction; `/api/account-ops/provider-connections` status/capabilities/disconnect contract; fixed client request boundary; normalized message, matching, money, Order Candidate, repository/service/history and synthetic fixtures; [INBOX_ORDER_PROVIDER_CONTRACT.md](./INBOX_ORDER_PROVIDER_CONTRACT.md).
+- **Data changes:** one schema-versioned `code3.inbox-order.v1` local source with `messageEvents`, `orderCandidates`, `candidateEvents`, and `activity`. Backup Format v1 now registers 23 sources (19 locally included and four excluded/conditional); all four new paths are `REQUIRES_MAPPING`. No canonical schema/domain changes.
+- **Migration risks:** protected content leakage, provider replay, duplicate or cross-account orders, wrong alias/retailer/account attribution, mixed/malformed money, owner correction loss, and a synthetic/local foundation being mistaken for hosted ingestion.
+- **Dependencies:** published owner-session/authorization and workspace boundaries, Phase 1B `LOCAL_ONLY` gateway/recovery, Phase 1C confidence/money/provenance, and published Account Ops relationships.
+- **External authorization:** none for synthetic processing. Live provider work requires provider registration/consent, minimum read-only scopes, a durable managed secret store, durable atomic OAuth-state store, verified Preview API/callback routing, retention/deletion review, and provider revocation proof.
+- **Test plan:** OWNER status/capability/disconnect policy; unavailable hosted defaults; test-adapter runtime isolation; OAuth owner/provider/redirect/expiry/single-use behavior; secret and client exclusion; protected/unrelated-message minimization; retailer/alias matching; exact money; 10x retry idempotency; multi-message reconciliation and conflict repair; owner correction provenance; no Purchase write; backup/zero-write preview and four-path migration classification; inherited security/application regression.
+- **Acceptance criteria:** production/default runtime cannot connect; provider capability truth is nonsecret; no OAuth/token field can enter React persistence or backup; OTP/reset/login values are removed before hashing/persistence; one scoped provider event cannot duplicate a candidate on retry; owner corrections/history survive reconciliation; every candidate requires review and cannot create a Purchase; `LOCAL_ONLY` remains authoritative and no schema/provider/deployment action occurs.
+- **Rollback:** revert this local phase. No provider, database, remote record, Purchase, or file byte requires rollback because none is activated or written outside the existing browser-local evidence source.
+- **Complexity:** Large.
+
+## Phase 2B2 — One approved live mailbox provider pilot
+
+**Status:** Future, blocked, and not authorized by Phase 2B1.
+
+- **Objective:** connect one test mailbox through a verified trusted Preview runtime using the least approved read-only scope, bounded incremental ingestion, and the existing owner-review gate.
+- **Current code affected:** Phase 2B1 provider interfaces/runtime, protected observability, connection lifecycle, message retrieval adapter, Account Ops Connections/Inbox/Orders, and retention/disconnect tooling.
+- **Likely files/modules:** one provider-specific network adapter; managed secret/state stores; exact callback/origin/redirect configuration; bounded incremental reader; provider health and revocation; sanitized audit/retention controls. Purchase import remains a later explicit subphase.
+- **Data changes:** server-side connection/secret references and bounded provider cursor state plus minimized local/approved evidence. Raw protected message contents and provider secrets remain excluded from ordinary business backup.
+- **Migration risks:** tokens or protected content leak, OAuth replay, wrong-owner binding, duplicate ingestion, stale cursor, provider revocation failure, and Preview/Production configuration drift.
+- **Dependencies:** all Phase 2B1 acceptance evidence; verified owner-protected Vercel JSON routing; durable managed secret and atomic OAuth-state stores; selected provider review; explicit data retention/deletion and test-account approval.
+- **External authorization:** approved Gmail or Microsoft registration/scopes and owner consent. Phase 2B1 requests no scopes and does not satisfy this gate.
+- **Test plan:** test-account OAuth/connect/refresh/revoke; callback replay/owner/origin/redirect failures; least-scope inspection; bounded cursor/retry; provider health truth; protected-message minimization; disconnect stops reads; zero tokens in browser/backup/logs; no automatic Purchase.
+- **Acceptance criteria:** one provider is `HEALTHY` only after a trusted live check; token/state remain server-only; disconnect stops reads and revokes/removes secrets as supported; retention is enforced; normalized evidence stays review-only; Production and Purchase import remain disabled.
+- **Rollback:** revoke the test authorization, remove the managed secret/state records, disable the provider adapter, retain only permitted reviewed metadata, and preserve all local manual workflows.
 - **Complexity:** Extra Large.
 
 ## Phase 2 — Remaining app-shell extraction and route ownership hardening
@@ -303,4 +321,4 @@ Every implementation phase must:
 
 ## Exact next task recommendation
 
-Phase 2A.5 local implementation and full validation are the current task. After review, publication requires a separately authorized checkpoint that preserves the route, authority, and local-only boundaries in [WORKSPACE_ARCHITECTURE_CONTRACT.md](./WORKSPACE_ARCHITECTURE_CONTRACT.md). Do not begin Phase 2B, Bot providers, or billing during that checkpoint. The next Account Ops product task remains a separately approved Phase 2B design/security review—not automatic implementation—covering provider selection, mailbox/order scopes, retention, protected content, server secrets, idempotency, and the owner review gate. A separately approved data task may provision only a disposable database to test schema/ownership/rollback and compare a verified backup through Migration Preview. Do not activate `REMOTE_ACTIVE`, migrate owner data, upload file bytes, connect a mailbox/Bot provider, or apply a Production schema without another explicit owner-approved specification.
+Phase 2B1 validation is complete; checkpoint publication does not authorize Phase 2B2. A later, separately approved Phase 2B2 test-provider pilot may begin only after durable managed secret/state storage and protected Preview API routing are proven. Do not connect a real mailbox, begin Purchase import, activate `REMOTE_ACTIVE`, migrate owner data, upload file bytes, connect a Bot provider, add billing, or apply any schema without another explicit owner-approved specification.

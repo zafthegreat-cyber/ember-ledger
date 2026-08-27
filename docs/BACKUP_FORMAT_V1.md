@@ -1,6 +1,6 @@
 # Code 3 Backup Format Version 1
 
-Status: Phase 1A format published on the feature branch. Phase 1B adds a local owner-authorized remote-read integration, but its canonical server source remains gated/not active by default. The local Phase 2A working copy registers sanitized Account Ops metadata. No owner data has migrated, no schema was applied, and no restore applies data.
+Status: Phase 1A format published on the feature branch. Phase 1B adds a local owner-authorized remote-read integration, but its canonical server source remains gated/not active by default. Published Phase 2A registers sanitized Account Ops metadata. Local Phase 2B1 registers a separate sanitized Inbox/Order Intelligence source. No owner data has migrated, no schema was applied, and no restore applies data.
 
 ## Purpose and boundary
 
@@ -42,7 +42,7 @@ The manifest contains the included and excluded source inventory, record counts,
 
 `src/features/backup/backupSourceRegistry.js` is the versioned coverage registry. It records storage type, schema version, export and validation adapters, reference dependencies, security/session sensitivity, and whether an omission changes coverage.
 
-The Phase 2A registry contains 22 sources: 18 locally included sources and four excluded or conditional sources. When every registered local source is readable, the 18 included sections come from these source families:
+The Phase 2B1 registry contains 23 sources: 19 locally included sources and four excluded or conditional sources. When every registered local source is readable, the 19 included sections come from these source families:
 
 - Deal Finder / Deal Inbox, appraisals, auctions, Search Rules, purchases, lots, inventory, sales, expenses, mileage, activity, and provider-listing snapshots;
 - Owner Center restock profiles/events/predictions, visits, observations, import summaries, and local job summaries;
@@ -55,6 +55,7 @@ The Phase 2A registry contains 22 sources: 18 locally included sources and four 
 - safe display preferences;
 - safe workflow drafts from exact registered session-storage keys/prefixes.
 - Account Ops schema 1 metadata from `code3.account-ops.v1`: profile groups, profiles, email-domain metadata, aliases, owner-created retailers, store accounts, tasks, and bounded activity.
+- Inbox/Order Intelligence schema 1 metadata from `code3.inbox-order.v1`: minimized message events, Order Candidate projections, append-only candidate/review events, and sanitized activity.
 
 Historical storage keys remain unchanged. Their names are compatibility identifiers, not visible branding.
 
@@ -90,6 +91,7 @@ An export must exclude:
 - owner allowlists;
 - local-development identity or impersonation state;
 - invitation/session tokens and cached credentials.
+- OAuth authorization codes/state/PKCE verifiers, reset/login links or tokens, security codes, raw/protected message bodies or content, and managed provider-secret references.
 
 Registered legacy documents that mix business and security fields are exported only through explicit allowlists. A recursive sanitizer removes prohibited field names and records a warning count without writing raw values to logs.
 
@@ -113,6 +115,21 @@ activity
 Restore Preview validates the Account Ops schema, bounded records, stable IDs, duplicate aliases, and profile/alias/retailer/store-account/task relationships without mutation. Unknown or invalid relationships are diagnostics; preview never repairs or applies them. Every writable store remains unchanged after inspection.
 
 All eight Account Ops record paths are `REQUIRES_MAPPING` in Migration Preview because the Phase 1B canonical schema has no Account Ops domain. This classification creates no canonical action and does not authorize a schema, migration, restore, or remote write.
+
+## Phase 2B1 Inbox / Order Intelligence extension
+
+The `inbox-order-intelligence` section uses source schema version 1 and the same deterministic section/manifest rules. Its four declared record paths are:
+
+```text
+messageEvents
+orderCandidates
+candidateEvents
+activity
+```
+
+The source validator accepts only minimized normalized metadata. It rejects provider secrets, OAuth state/codes/verifiers, tokens, sessions, authority fields, raw/protected message content, OTPs, reset/login links, unsafe prototype keys, malformed IDs/references, invalid collection shape, and unsupported schema versions. Restore Preview remains in memory and zero-write; it cannot contact a provider, repair a candidate, apply an owner correction, or create a Purchase.
+
+All four paths are `REQUIRES_MAPPING` because the Phase 1B canonical schema has no Inbox/Order Intelligence domain. The backup section is local evidence only. It does not include a server provider connection, prove a mailbox is connected, make provider secrets recoverable, or authorize canonical persistence.
 
 ## Coverage semantics
 
@@ -211,3 +228,4 @@ Restore Preview accepts only recognized, supported versions. New formats require
 - No durable audit entry is written during export or preview.
 - Phase 1B remote export is a real read-only integration, but its hosted source is gated/not active by default and it does not make backup coverage complete when any registered source or file byte remains omitted.
 - Phase 2A Account Ops metadata can include personal and operational identity data. It is sanitized but not encrypted by Backup Format v1, and no provider secret, plaintext password, OTP, mailbox content, or retailer session is recoverable from it.
+- Phase 2B1 Inbox/Order Intelligence metadata can include retailer, alias/account relationship and order evidence. It is sanitized but not encrypted; raw/protected content, OAuth/provider secrets, and live connection state are intentionally unrecoverable, and no Purchase restore/import exists.

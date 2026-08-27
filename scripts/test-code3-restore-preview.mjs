@@ -35,6 +35,16 @@ const accountOpsRecord = (id, value) => ({
   archivedAt: null,
   ...value,
 });
+const inboxOrderRecord = (id, recordType, value) => ({
+  id,
+  format: "code3.inbox-order.v1",
+  recordType,
+  recordVersion: 1,
+  createdAt: NOW,
+  updatedAt: NOW,
+  archivedAt: null,
+  ...value,
+});
 const baseDealState = {
   schemaVersion: 2,
   deals: [{ id: "deal-1", providerId: "ebay", externalListingId: "listing-1", askingPrice: 10, currency: "USD" }],
@@ -106,6 +116,57 @@ const unknownSource = await mutateAndSeal((envelope) => {
 const unknownPreview = await previewBackupRestore(JSON.stringify(unknownSource));
 assert.equal(unknownPreview.result, RESTORE_PREVIEW_RESULTS.READY_WITH_WARNINGS);
 assert.deepEqual(unknownPreview.unknownSources, ["future-source"]);
+
+const validInboxOrder = await mutateAndSeal((envelope) => {
+  const section = envelope.sections.find((entry) => entry.sourceId === "inbox-order-intelligence");
+  section.data.updatedAt = NOW;
+  section.data.messageEvents = [inboxOrderRecord("message-event-1", "NORMALIZED_MESSAGE_EVENT", {
+    providerConnectionId: "connection-fixture-1",
+    providerEventKey: "connection-fixture-1:message-1",
+    sourceHash: "a".repeat(64),
+    rawContentRetained: false,
+    category: "ORDER_CONFIRMATION",
+    warnings: [],
+  })];
+  section.data.orderCandidates = [inboxOrderRecord("order-candidate-1", "ORDER_CANDIDATE", {
+    providerConnectionId: "connection-fixture-1",
+    sourceEventIds: ["message-event-1"],
+    purchaseCreated: false,
+    automaticImportAllowed: false,
+    ownerReviewRequired: true,
+    ownerReview: { state: "NEW", corrections: [] },
+    warnings: [],
+  })];
+  section.data.candidateEvents = [inboxOrderRecord("candidate-event-1", "ORDER_CANDIDATE_EVENT", {
+    candidateId: "order-candidate-1",
+    type: "DETECTED",
+    details: { sourceEventId: "message-event-1" },
+  })];
+  section.data.activity = [inboxOrderRecord("inbox-order-activity-1", "INBOX_ORDER_ACTIVITY", {
+    type: "MESSAGE_NORMALIZED",
+    summary: "Synthetic retailer order evidence normalized.",
+  })];
+});
+const validInboxOrderPreview = await previewBackupRestore(JSON.stringify(validInboxOrder));
+assert.equal(validInboxOrderPreview.result, RESTORE_PREVIEW_RESULTS.READY_FOR_FUTURE_RESTORE);
+assert.equal(validInboxOrderPreview.writesPerformed, 0);
+
+const unsafeInboxOrder = await mutateAndSeal((envelope) => {
+  const section = envelope.sections.find((entry) => entry.sourceId === "inbox-order-intelligence");
+  section.data.updatedAt = NOW;
+  section.data.messageEvents = [inboxOrderRecord("message-event-unsafe", "NORMALIZED_MESSAGE_EVENT", {
+    providerConnectionId: "connection-fixture-1",
+    providerEventKey: "connection-fixture-1:unsafe-message",
+    sourceHash: "b".repeat(64),
+    rawContentRetained: false,
+    body: "A raw message body must never enter recovery data.",
+    accessToken: "synthetic-token-must-not-survive",
+  })];
+});
+const unsafeInboxOrderPreview = await previewBackupRestore(JSON.stringify(unsafeInboxOrder));
+assert.equal(unsafeInboxOrderPreview.result, RESTORE_PREVIEW_RESULTS.BLOCKED);
+assert.ok(unsafeInboxOrderPreview.prohibitedFields.some((path) => path.endsWith(".accessToken")));
+assert.match(unsafeInboxOrderPreview.errors.join(" "), /RAW_CONTENT_REJECTED|SECRET_FIELD_REJECTED/, "inbox/order schema validation must reject raw or secret message fields");
 
 const validAccountOps = await mutateAndSeal((envelope) => {
   const section = envelope.sections.find((entry) => entry.sourceId === "account-ops");

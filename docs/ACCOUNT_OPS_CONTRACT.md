@@ -1,6 +1,6 @@
 # Code 3 Account Ops Contract
 
-Status: Phase 2A local-first implementation published at `c76e3e4bc668c08d9a0908c9bb2cd96444610297`. Phase 2A.5 changes its product-workspace placement, not its security or provider boundary. This contract does not authorize canonical persistence, database migration, synchronization, retailer automation, mailbox access, purchasing, or Production deployment.
+Status: Phase 2A local-first implementation published at `c76e3e4bc668c08d9a0908c9bb2cd96444610297`; Phase 2A.5 workspace placement is published at `4c6c7891a123777acec8f326793f30aee61f3de6`. Phase 2B1 locally adds owner-only provider capability truth and synthetic/minimized Inbox and Order Candidate foundations, not a connected mailbox. This contract does not authorize canonical persistence, database migration, synchronization, retailer automation, purchasing, or Production deployment.
 
 Starting baseline: `af21199f610cc91e31d9dee59af6f0a2f748ab79`.
 
@@ -179,15 +179,17 @@ Tasks can link to a profile, retailer, or store account. Counts are derived from
 
 Safe bulk actions are limited to metadata work such as assigning a profile group, assigning an existing retailer, archiving selected metadata records, exporting metadata, and creating tasks. There is no bulk retailer registration or bulk signup submission.
 
-## Future inbox contract
+## Phase 2B1 inbox foundation
 
-Phase 2A defines only a normalized boundary for future, authorized mail evidence. Categories include verification, order confirmation, shipped, delivered, cancelled, refund, password/security, retailer notice, and other.
+Phase 2B1 implements minimized normalized-message contracts and deterministic synthetic processing under the separate `code3.inbox-order.v1` source. Categories include verification, order confirmation, shipped, delivered, cancelled, refund, return, pickup, password/security, retailer notice, other, and protected.
 
-The future record may retain message ID, alias/retailer/account relationships, category, subject, sender, received time, order reference, confidence, provider/source, and a protected raw-content reference. Phase 2A does not connect a mailbox, list messages, parse message bodies, persist unnecessary content, or claim background delivery.
+The safe record may retain provider-scoped message identity, alias/retailer/account proposals, bounded sender/subject metadata, received time, order-reference proposal, confidence, provenance, warnings, and a deterministic hash of already-sanitized evidence. It does not retain a raw body by default. OTPs, security codes, reset/login links, and similar protected values are removed before hashing or persistence.
 
-## Future order contract
+No mailbox is connected, no provider message is fetched, and no background delivery is claimed. Provider capability/status presentation is an owner-only fail-closed foundation, not a live Inbox.
 
-The future flow is:
+## Phase 2B1 order-candidate contract
+
+The future owner-confirmed import flow is:
 
 ```text
 authorized message/order evidence
@@ -198,15 +200,15 @@ authorized message/order evidence
   -> explicit Receive Inventory
 ```
 
-External text cannot create a purchase or inventory record automatically. Provider evidence, owner corrections, and confirmed business records remain separate. Phase 2A adds no order importer, checkout, payment, or purchase action.
+External text cannot create a purchase or inventory record automatically. Provider evidence, owner corrections, and confirmed business records remain separate. Phase 2B1 adds exact-minor-unit candidate money, provider-message idempotency, multi-message reconciliation, append-only evidence/review history, and explicit confirm/correct/reject states. It adds no Purchase importer, checkout, payment, or purchase action. The complete security and data contract is [INBOX_ORDER_PROVIDER_CONTRACT.md](./INBOX_ORDER_PROVIDER_CONTRACT.md).
 
 ## Backup and Restore Preview
 
-The Account Ops document is a registered browser backup source. Allowed metadata includes profiles, aliases, owner-created retailers, store accounts, account state, credential references, tasks, and activity. Passwords, OTPs, tokens, sessions, authorization fields, environment values, and provider secrets are prohibited before persistence and remain prohibited by the backup sanitizer.
+The Account Ops document is a registered browser backup source. Allowed metadata includes profiles, aliases, owner-created retailers, store accounts, account state, credential references, tasks, and activity. Phase 2B1 registers its separate minimized inbox/order source rather than changing the strict Account Ops schema, raising Backup Format v1 to 23 registered sources: 19 locally included and four excluded/conditional. Passwords, OTPs, tokens, sessions, OAuth state/codes/verifiers, raw protected message content, authorization fields, environment values, and provider secrets are prohibited before persistence and remain prohibited by the backup sanitizer.
 
 Restore Preview validates schema, counts, IDs, duplicate aliases, and relationships such as profile, alias, retailer, and store-account references. It remains JSON-only and zero-write. Account Ops has no restore-apply path.
 
-The migration registry classifies every Account Ops collection `REQUIRES_MAPPING` because the Phase 1B canonical schema has no Account Ops domain. This produces no canonical action, schema change, or migration authorization.
+The migration registry classifies every Account Ops and Phase 2B1 inbox/order collection `REQUIRES_MAPPING` because the Phase 1B canonical schema has no approved domain for either source. This produces no canonical action, schema change, or migration authorization.
 
 ## Security and privacy limitations
 
@@ -224,10 +226,10 @@ Phase 2A does not implement:
 - identity rotation to avoid enforcement;
 - automatic checkout, purchasing, payment, offers, or bidding;
 - plaintext password or payment-card vaults;
-- mailbox authorization, inbox parsing, or automatic order import;
+- live mailbox authorization or automatic order import;
 - provider-managed alias provisioning;
 - canonical database domains, migration execution, remote persistence, sync, or Production deployment.
 
 ## Future acceptance gate
 
-A separately approved Phase 2B may add a read-only, minimally scoped mailbox/provider connection and normalized message/order review only after provider selection, authorization scopes, retention, file/content protection, server-secret handling, owner authorization, idempotency, and import-review tests are approved. It must keep an owner review gate before Purchases and must not introduce checkout or retailer-security bypass behavior.
+A separately approved Phase 2B2 may add a read-only, minimally scoped mailbox connection only after provider selection, scope approval, durable managed secret storage, atomic replay-safe OAuth state, verified hosted API routing, retention/deletion review, redacted observability, disconnect/revocation proof, and test-account evaluation. It must keep an owner review gate before Purchases and must not introduce checkout or retailer-security bypass behavior.

@@ -1,6 +1,6 @@
 # Code 3 Integrations and Capability Matrix
 
-Phase 1C is published through `af21199f610cc91e31d9dee59af6f0a2f748ab79`. Phase 2A Account Ops is published at `c76e3e4bc668c08d9a0908c9bb2cd96444610297`; its email, credential, Inbox, and order provider shapes remain adapter contracts or local metadata only, and no provider is connected. Phase 2A.5 is a local, unpublished workspace-shell phase and adds no integration.
+Phase 1C is published through `af21199f610cc91e31d9dee59af6f0a2f748ab79`. Phase 2A Account Ops is published at `c76e3e4bc668c08d9a0908c9bb2cd96444610297`; Phase 2A.5 workspace architecture is published at `4c6c7891a123777acec8f326793f30aee61f3de6`. Phase 2B1 is a local, unpublished provider/inbox/order foundation. It adds contracts and synthetic deterministic processing only; no mailbox or credential provider is connected.
 
 ## Capability truth rules
 
@@ -14,6 +14,8 @@ Phase 1C is published through `af21199f610cc91e31d9dee59af6f0a2f748ab79`. Phase 
 - `Generated` email alias means local metadata only; it is never equivalent to provisioned or receiving mail.
 - Account Ops retailer/profile metadata is not authorization to automate signup, verification, checkout, or account actions.
 - A Bot workspace shell, navigation entry, or capability label is not a connected Bot provider and cannot authorize an account or purchase action.
+- A Gmail or Outlook provider definition is capability metadata only. `CONNECTED` or `HEALTHY` requires a trusted provider check; Phase 2B1 has neither.
+- A normalized synthetic message or Order Candidate is not evidence that Code 3 read a mailbox, and it is never a Business Purchase.
 
 Target capability statuses are `AVAILABLE`, `CONNECTED`, `MANUAL_IMPORT_ONLY`, `SHARE_IMPORT`, `EMAIL_IMPORT`, `OWNER_DATA_ONLY`, `AUTHORIZATION_REQUIRED`, `NOT_CONFIGURED`, `UNSUPPORTED`, and `TEMPORARILY_UNAVAILABLE`.
 
@@ -39,11 +41,15 @@ The current UI also uses closely related display statuses such as Available, Man
 | Business-domain catch-all | NOT_CONFIGURED | Phase 2A domain/provider metadata contract | owner may record configuration/evidence only | No health check, routing API, or verified delivery | Future provider approval |
 | Provider-managed email aliases | NOT_CONFIGURED | Phase 2A provider-neutral adapter boundary | no network action | approved provider, server secret, owner authorization, health/provisioning contract | Future authorization |
 | External password manager / OS secure store | NOT_CONFIGURED | Phase 2A `CredentialReference` provider types | store nonsecret reference metadata only | No vault connection or proof a referenced secret exists | Future authorization |
-| Authorized Account Ops Inbox | NOT_CONFIGURED | Phase 2A normalized message contract only | none | mailbox provider/scopes, protected content, retention, dedupe, owner authorization | Phase 2B after approval |
-| Retail order import | NOT_CONFIGURED | Phase 2A order-candidate/review contract only | none | provider access, idempotency, owner review and explicit Purchase import | Phase 2B after approval |
+| Mailbox provider runtime | NOT_CONFIGURED | Phase 2B1 owner-protected status/capability/disconnect contract with unavailable production adapters | safe capability/status projection only | durable connection/secret/state stores, verified hosted routing, provider registration/scopes and revocation | Phase 2B2 after approval |
+| Gmail mailbox | NOT_CONFIGURED | Phase 2B1 unavailable capability definition; no network adapter | none | future approved restricted read-only scope, Google verification/data-use review, managed secrets/state, Preview callback proof | Phase 2B2 after approval |
+| Outlook / Microsoft mailbox | NOT_CONFIGURED | Phase 2B1 unavailable capability definition; no network adapter | none | future least-scope Graph decision, registration/consent, managed secrets/state, Preview callback proof | Phase 2B2 after approval |
+| Authorized Account Ops Inbox | NOT_CONFIGURED | Phase 2B1 minimized normalization/protected-message/local evidence foundation | deterministic synthetic/owner-supplied fixtures only | no authorization, fetch, body mirror, webhook, polling, cursor, provider health, or background delivery | Phase 2B2 after approval |
+| Retail Order Candidate intelligence | AVAILABLE_LOCAL_ONLY | Phase 2B1 exact-money, matching, idempotency/reconciliation and owner-review services | deterministic synthetic/minimized local evidence | no live provider feed and no canonical mapping | Phase 2B1 local foundation |
+| Business Purchase import from Order Candidate | NOT_CONFIGURED | future mapping contract only | none | separately approved owner-confirmed mapping/idempotency/receiving workflow | Future after provider pilot |
 | Bot providers (including Stellar, Hayha, or Valor) | NOT_CONFIGURED | Phase 2A.5 OWNER-only workspace shell/capability truth only | none | separate approved provider, server-only credentials, authorization, terms/anti-abuse review, health contract | Future; not Phase 2A.5 |
 | Subscription/billing provider | NOT_CONFIGURED | future entitlement hints only | none | approved billing architecture, server-verified entitlement, privacy/tax/refund specification | Future; no billing in Phase 2A.5 |
-| Authorized email alerts | NOT_CONFIGURED | sourcing placeholder plus Phase 2A future message contract | none | authorization, mailbox scope, parser, review queue | Phase 2B/3 after approval |
+| Authorized email alerts | NOT_CONFIGURED | sourcing placeholder plus Phase 2B1 provider/message foundation | none | approved authorization/scope, verified hosted runtime, provider reader, retention and review queue | Phase 2B2/3 after approval |
 | Share target | MISSING | no complete OS share-target ingestion workflow | none beyond paste/manual | PWA share manifest/ingestion/review | Phase 2 or 3 |
 | AI / computer-vision provider | NOT_CONFIGURED | feature flag, legacy placeholders, provider-neutral Phase 1C evidence boundary | no external model-backed analysis; deterministic rules and existing barcode/catalog metadata only | provider selection, server secret, protected files, privacy/cost/evaluation controls | Optional later AI phase |
 | Background notifications | NOT_CONFIGURED | browser/client notification records and UI | in-app/local behavior only | durable scheduler and delivery provider | Phase 1/2 |
@@ -112,7 +118,7 @@ Retailer directory entries store official URLs and capability metadata only when
 
 Credentials use reference-only provider types such as external password manager, OS secure store, or unavailable. Phase 2A has no vault adapter. A generated password exists only in ephemeral UI memory for immediate copy and is never persisted, logged, backed up, automatically submitted, or treated as recoverable.
 
-Future Inbox categories and order-candidate relationships are normalized contracts only. A Phase 2B connection requires an approved minimally scoped provider, server-side secrets, owner authorization, protected content/reference storage, retention/deletion rules, replay/deduplication controls, and a review gate. Parsed evidence can never create a Purchase or Inventory record without an explicit owner import action.
+At the Phase 2A checkpoint, Inbox categories and order-candidate relationships were normalized contracts only. Phase 2B1 now implements deterministic synthetic/minimized local processing under a separate source. A live Phase 2B2 connection still requires an approved minimally scoped provider, server-side secrets, owner authorization, protected content handling, retention/deletion rules, replay/deduplication controls, and the existing review gate. Parsed evidence can never create a Purchase or Inventory record without a separately approved explicit owner import action.
 
 Account setup is an owner-guided workflow. Code 3 may open a legitimate signup URL and prepare copyable ordinary fields, but it does not submit bulk signup forms, bypass CAPTCHA/OTP/email/phone verification, evade bot or household/account/purchase limits, rotate identities, or automate checkout/payment.
 
@@ -120,9 +126,19 @@ Account setup is an owner-guided workflow. Code 3 may open a legitimate signup U
 
 The Bot workspace is an OWNER-only presentation foundation with no active provider adapter, token, task controller, proxy, account automation, checkout, or purchase action. Names such as Stellar, Hayha, and Valor may appear only in future planning or capability truth; Code 3 does not claim a connection.
 
-Account Ops remains contextually associated with Business, but Phase 2A.5 does not connect an email, mailbox, order, or password-vault provider. Inbox and Orders remain Phase 2A contracts only. Workspace/feature entitlement hints are not subscription state, and no billing or payment provider is configured.
+Account Ops remains contextually associated with Business. Phase 2A.5 itself did not connect an email, mailbox, order, or password-vault provider. Local Phase 2B1 now adds a secure provider-runtime contract and synthetic/minimized Inbox/Order Candidate services, but it still connects no provider and imports no Purchase. Workspace/feature entitlement hints are not subscription state, and no billing or payment provider is configured.
 
 Moving a route into a product workspace does not expand provider permission. Existing eBay OAuth and server-side secret boundaries remain unchanged, active eBay listings remain active evidence rather than completed sales, and no provider may create a Purchase without its existing owner review/confirmation boundary.
+
+## Phase 2B1 mailbox and order-provider boundary
+
+`backend/src/providerRuntime` defines Gmail and Outlook/Microsoft as unavailable providers whose current capabilities are all false. The owner-protected `/api/account-ops/provider-connections` route can return safe status/capability truth and exercise a disconnect/revocation contract with injected test stores. There is no connect route, OAuth callback, provider SDK/network adapter, live scope request, cursor reader, webhook, polling job, or active provider connection.
+
+The production/default provider connection, secret, and OAuth-state adapters fail closed. Automated-test memory adapters are dependency-injected and reject non-test runtimes. A future authorization requires a verified immutable owner principal, cryptographically random bounded state, an exact allowlisted redirect, expiration, atomic one-time consumption, managed server-only secrets, and a verified hosted JSON route. Browser storage and ordinary Code 3 backup are never substitutes.
+
+Future Gmail evaluation starts no broader than the provider's documented read-only permission needed for the reviewed use case; Google's `gmail.readonly` is a restricted scope and brings external verification/data-use obligations. Future Microsoft evaluation must compare metadata-only delegated permissions with `Mail.Read`; `offline_access` supports continued authorization but is not a mailbox permission by itself. Phase 2B1 requests none of these scopes. See [INBOX_ORDER_PROVIDER_CONTRACT.md](./INBOX_ORDER_PROVIDER_CONTRACT.md) for the exact security and retention gate.
+
+`src/features/inboxOrder` processes only deterministic synthetic or explicitly supplied minimized evidence. It distinguishes protected/unrelated messages, exact alias matches, retailer proposals, safe provider identity, confidence and provenance. It reconciles scoped provider-message retries and compatible multi-message order history into a reviewable Order Candidate using exact integer minor units. It does not fetch email, retain raw/protected bodies, fabricate provider health, or write a Business Purchase.
 
 ## Target provider contract
 
