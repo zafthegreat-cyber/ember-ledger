@@ -4,12 +4,19 @@ import { createRequire } from "node:module";
 import { test } from "node:test";
 import express from "express";
 
+process.env.NODE_ENV = "test";
+delete process.env.VERCEL;
+delete process.env.VERCEL_ENV;
+
 const require = createRequire(import.meta.url);
 const { createProviderRuntime } = require("../dist/providerRuntime/runtime.js");
 const { resolveTrustedRuntimeProof } = require("../dist/providerRuntime/trustedRuntime.js");
 const { createProviderConnectionsRouter } = require("../dist/routes/providerConnections.routes.js");
 const { createOwnerSecurity } = require("../dist/auth/ownerAuthorization.js");
 const { createProtectedCors } = require("../dist/security/corsPolicy.js");
+const { createAutomatedTestMemoryConnectionStore } = require("../dist/providerRuntime/connectionStore.js");
+const { createAutomatedTestMemorySecretStore } = require("../dist/providerRuntime/secretStore.js");
+const { createAutomatedTestMemoryOAuthStateStore } = require("../dist/providerRuntime/oauthStateStore.js");
 
 const NOW_MS = Date.parse("2026-08-27T12:00:00.000Z");
 
@@ -98,6 +105,60 @@ function auth(token = "owner-test-token") {
   return { Authorization: `Bearer ${token}` };
 }
 
+function completePreviewRuntime(connections = Object.freeze([])) {
+  const connectionStore = Object.freeze({
+    kind: "DURABLE_SERVER_METADATA",
+    available: true,
+    healthCheck: async () => undefined,
+    verifyReadiness: async () => undefined,
+    list: async () => Object.freeze([...connections]),
+    get: async () => null,
+    put: async () => undefined,
+    markDisconnected: async () => { throw new Error("not used"); },
+  });
+  const secretStore = Object.freeze({
+    kind: "MANAGED_SERVER_SECRET_STORE",
+    available: true,
+    healthCheck: async () => undefined,
+    verifyReadiness: async () => undefined,
+    put: async () => undefined,
+    get: async () => null,
+    revoke: async () => false,
+  });
+  const oauthStateStore = Object.freeze({
+    kind: "DURABLE_SINGLE_USE",
+    available: true,
+    healthCheck: async () => undefined,
+    verifyReadiness: async () => undefined,
+    issue: async () => { throw new Error("not used"); },
+    consume: async () => { throw new Error("not used"); },
+  });
+  return createProviderRuntime({
+    connectionStore,
+    secretStore,
+    oauthStateStore,
+    managedStorageConfigured: true,
+    trustedRuntimeProof: resolveTrustedRuntimeProof({ VERCEL: "1", VERCEL_ENV: "preview" }),
+  });
+}
+
+test("automated-test memory stores cannot attest durable Preview storage", async () => {
+  const runtime = createProviderRuntime({
+    connectionStore: createAutomatedTestMemoryConnectionStore({ runtimeKind: "automated-test" }),
+    secretStore: createAutomatedTestMemorySecretStore({ runtimeKind: "automated-test" }),
+    oauthStateStore: createAutomatedTestMemoryOAuthStateStore({
+      runtimeKind: "automated-test",
+      allowedRedirectUris: ["https://preview.example.test/api/account-ops/provider-connections/oauth/callback"],
+    }),
+    managedStorageConfigured: true,
+    trustedRuntimeProof: resolveTrustedRuntimeProof({ VERCEL: "1", VERCEL_ENV: "preview" }),
+  });
+  const status = await runtime.status(principal());
+  assert.equal(status.managedStorageConfigured, false);
+  assert.equal(status.managedStorageVerified, false);
+  assert.equal(status.hostedRuntimeVerified, false);
+});
+
 test("trusted-runtime proof requires exact server-owned Vercel Preview markers", () => {
   const preview = resolveTrustedRuntimeProof({ VERCEL: "1", VERCEL_ENV: "preview", NODE_ENV: "production" });
   assert.deepEqual(preview, {
@@ -108,7 +169,8 @@ test("trusted-runtime proof requires exact server-owned Vercel Preview markers",
     productionEnvironment: false,
     providerRuntimeLoaded: true,
     providerNetworkAccessEnabled: false,
-    hostedRuntimeVerified: true,
+    serverExecutionVerified: true,
+    hostedRuntimeVerified: false,
   });
 
   const cases = [
@@ -123,6 +185,7 @@ test("trusted-runtime proof requires exact server-owned Vercel Preview markers",
   for (const [env, environment] of cases) {
     const proof = resolveTrustedRuntimeProof(env);
     assert.equal(proof.environment, environment);
+    assert.equal(proof.serverExecutionVerified, false);
     assert.equal(proof.hostedRuntimeVerified, false);
   }
   assert.equal(resolveTrustedRuntimeProof({ VERCEL: "1", VERCEL_ENV: "production" }).productionEnvironment, true);
@@ -135,7 +198,9 @@ test("verified Preview execution remains separate from unavailable mailbox provi
   const result = await runtime.status(principal());
   const capabilities = runtime.capabilities(principal());
 
-  assert.equal(result.hostedRuntimeVerified, true);
+  assert.equal(result.serverExecutionVerified, true);
+  assert.equal(result.hostedRuntimeVerified, false);
+  assert.equal(result.managedStorageVerified, false);
   assert.equal(result.trustedRuntimeProof.environment, "PREVIEW");
   assert.equal(result.trustedRuntimeProof.productionEnvironment, false);
   assert.equal(result.trustedRuntimeProof.providerNetworkAccessEnabled, false);
@@ -146,7 +211,7 @@ test("verified Preview execution remains separate from unavailable mailbox provi
   assert.equal(result.oauthStateStorage.available, false);
   assert.equal(result.automaticPurchaseCreation, false);
   assert.equal(result.localOnlyBusinessDataAuthoritative, true);
-  assert.match(result.detail, /trusted Preview runtime is available/i);
+  assert.match(result.detail, /managed-storage verification are incomplete/i);
   assert.deepEqual(capabilities.providers.map((provider) => provider.providerId), ["gmail", "microsoft-outlook"]);
   for (const provider of capabilities.providers) {
     assert.equal(provider.configurationStatus, "NOT_CONFIGURED");
@@ -156,9 +221,33 @@ test("verified Preview execution remains separate from unavailable mailbox provi
 });
 
 test("Preview provider proof route is owner-gated JSON and performs no mailbox network call", async () => {
-  const runtime = createProviderRuntime({
-    trustedRuntimeProof: resolveTrustedRuntimeProof({ VERCEL: "1", VERCEL_ENV: "preview" }),
-  });
+  const runtime = completePreviewRuntime([Object.freeze({
+    provider: "gmail",
+    connectionId: "connection:preview-safe-0001",
+    connectedAccountLabel: "Synthetic preview mailbox",
+    grantedScopesSummary: Object.freeze([]),
+    status: "DISCONNECTED",
+    connectedAt: null,
+    lastHealthyAt: null,
+    cursorMetadata: Object.freeze({ serverOnlyHistoryCursor: "must-not-reach-the-browser" }),
+    capabilityFlags: Object.freeze({
+      connect: false,
+      disconnect: false,
+      refreshAuthorization: false,
+      listBoundedMessageMetadata: false,
+      retrieveRequiredMessageContent: false,
+      incrementalCursor: false,
+      providerIdentity: false,
+      health: false,
+      sendMail: false,
+      deleteMail: false,
+      modifyMailbox: false,
+      accessContacts: false,
+      accessCalendar: false,
+    }),
+    revokedAt: null,
+    errorCode: null,
+  })]);
   await withServer(createApp(runtime), async (baseUrl) => {
     const originalFetch = globalThis.fetch;
     let mailboxNetworkCalls = 0;
@@ -181,10 +270,17 @@ test("Preview provider proof route is owner-gated JSON and performs no mailbox n
       assert.equal(ownerResult.response.headers["access-control-allow-origin"], "https://preview.example.test");
       assert.equal(ownerResult.body.configurationState, "NOT_CONFIGURED");
       assert.equal(ownerResult.body.runtime.hostedRuntimeVerified, true);
+      assert.equal(ownerResult.body.runtime.authenticatedOwnerVerified, true);
+      assert.equal(ownerResult.body.runtime.managedStorageVerified, true);
+      assert.equal(ownerResult.body.runtime.serverExecutionVerified, true);
       assert.equal(ownerResult.body.runtime.trustedRuntimeProof.environment, "PREVIEW");
       assert.equal(ownerResult.body.runtime.trustedRuntimeProof.productionEnvironment, false);
       assert.equal(ownerResult.body.runtime.trustedRuntimeProof.providerNetworkAccessEnabled, false);
-      assert.deepEqual(ownerResult.body.connections, []);
+      assert.equal(ownerResult.body.runtime.trustedRuntimeProof.serverExecutionVerified, true);
+      assert.equal(ownerResult.body.connections.length, 1);
+      assert.equal(ownerResult.body.connections[0].connectionId, "connection:preview-safe-0001");
+      assert.equal(Object.hasOwn(ownerResult.body.connections[0], "cursorMetadata"), false);
+      assert.doesNotMatch(ownerResult.bodyText, /must-not-reach-the-browser/);
       assert.deepEqual(ownerResult.body.providerCapabilities.map((provider) => provider.configurationStatus), ["NOT_CONFIGURED", "NOT_CONFIGURED"]);
       for (const provider of ownerResult.body.providerCapabilities) {
         assert.ok(Object.values(provider.capabilities).every((value) => value === false));
@@ -220,4 +316,41 @@ test("Preview proof route rejects arbitrary origins and unknown operations safel
     assert.equal(unknown.response.headers["cache-control"], "no-store");
     assert.equal(unknown.body.error.code, "provider_route_not_found");
   });
+});
+
+test("Preview CORS accepts only the exact configured origin syntax", async () => {
+  await withServer(createApp(completePreviewRuntime()), async (baseUrl) => {
+    for (const origin of [
+      "https://preview.example.test/",
+      "null",
+      "https://preview.example.test/path",
+      "https://user@preview.example.test",
+      "https://preview.example.test, https://attacker.example",
+    ]) {
+      const result = await request(baseUrl, "/api/account-ops/provider-connections", {
+        headers: { ...auth(), Origin: origin },
+      });
+      assert.equal(result.response.statusCode, 403, origin);
+      assert.equal(result.response.headers["access-control-allow-origin"], undefined);
+    }
+    const noOrigin = await request(baseUrl, "/api/account-ops/provider-connections", { headers: auth() });
+    assert.equal(noOrigin.response.statusCode, 200);
+    assert.equal(noOrigin.response.headers["access-control-allow-origin"], undefined);
+  });
+});
+
+test("unauthenticated and non-owner requests cannot touch managed owner storage", async () => {
+  let statusCalls = 0;
+  const runtime = Object.freeze({
+    status: async () => { statusCalls += 1; throw new Error("storage must not be reached"); },
+    capabilities: () => { throw new Error("storage must not be reached"); },
+    disconnect: async () => { throw new Error("storage must not be reached"); },
+  });
+  await withServer(createApp(runtime), async (baseUrl) => {
+    assert.equal((await request(baseUrl, "/api/account-ops/provider-connections")).response.statusCode, 401);
+    assert.equal((await request(baseUrl, "/api/account-ops/provider-connections", {
+      headers: auth("non-owner-test-token"),
+    })).response.statusCode, 403);
+  });
+  assert.equal(statusCalls, 0);
 });

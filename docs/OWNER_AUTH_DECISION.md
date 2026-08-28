@@ -136,9 +136,20 @@ Server:
 - `CODE3_CORS_PREVIEW_ORIGINS`
 - `CODE3_CORS_LOCAL_ORIGINS`
 - `CODE3_ENABLE_LOCAL_DEV_AUTH`
+- `CODE3_PROVIDER_MANAGED_STORE_ENABLED`
+- `CODE3_PROVIDER_PREVIEW_PROJECT_ID`
+- `CODE3_PROVIDER_PREVIEW_GIT_BRANCH`
+- `CODE3_PROVIDER_KV_REST_API_URL`
+- `CODE3_PROVIDER_KV_REST_API_TOKEN`
+- `CODE3_PROVIDER_SECRET_ENCRYPTION_KEY`
+- `CODE3_PROVIDER_SECRET_KEY_VERSION`
+- `CODE3_PROVIDER_OAUTH_REDIRECT_URIS`
+- `CODE3_PROVIDER_STORE_NAMESPACE`
 - `NODE_ENV`
 - `VERCEL`
 - `VERCEL_ENV`
+- `VERCEL_PROJECT_ID`
+- `VERCEL_GIT_COMMIT_REF`
 
 Browser-safe configuration:
 
@@ -160,12 +171,27 @@ Preview and Production fail closed. A missing provider, missing allowlist, missi
 
 ## Known limitations
 
-- Phase 1A owner-security source is published. Phase 2B2-A adds exact Preview functions for `/api/auth/session` and the provider-status route, but hosted acceptance still requires an exact candidate Preview with real application authentication configuration; Production remains unverified and prohibited in that phase.
+- Phase 1A owner-security source and Phase 2B2-A exact Preview functions are published. Phase 2B2-B locally requires a valid Supabase owner principal plus exact durable store kinds and bounded readiness operations before the owner-protected provider response can set `hostedRuntimeVerified=true`. The Upstash resource is not provisioned because marketplace terms require acceptance, so hosted acceptance remains incomplete and the flag remains false.
 - Supabase Auth establishes identity, but Code 3 does not yet provide connected-device management, server session revocation UI, sign-out-other-devices, or recovery administration.
 - Only the auth and eBay route families use the new exact-origin policy and owner middleware. Legacy Express routes still need route-by-route classification and protection or retirement.
 - Canonical business records remain browser-local; server authorization does not make those records durable or protect them from same-origin script execution.
 - No durable security/audit event writer exists yet.
 - Production CSP, rate limits, dependency review, and centralized observability remain future security gates.
+
+## Phase 2B2-B Preview owner proof
+
+Phase 2B2-B does not add a Preview-only identity mechanism. The same browser Supabase session, `supabase.auth.getUser()` server verification, normalized `AuthPrincipal`, and provider-qualified immutable-subject allowlist remain authoritative. Managed provider stores derive owner scope only from that principal. Provider metadata, Redis keys, redirects, request headers, query parameters, roles, profiles, and client state cannot establish owner authority.
+
+The protected provider status route may report `hostedRuntimeVerified=true` only inside exact Vercel Preview server execution after all of the following succeed in that request:
+
+1. bearer identity validation;
+2. immutable-subject OWNER authorization;
+3. exact server-owned Vercel project and Git-branch match;
+4. the exact durable connection-store kind plus a bounded owner-scoped write/read/delete readiness probe;
+5. the exact managed secret-store kind plus an encrypted write/read/delete readiness probe; and
+6. the exact durable single-use OAuth-store kind plus an atomic readiness probe.
+
+Missing Preview Supabase values, owner allowlist, exact allowed origin, expected project/branch, managed-store configuration, or readiness proof fails closed. A Redis `PING`, configured variable names, or test-memory adapter is insufficient. Gmail and Outlook remain `NOT_CONFIGURED` and all live capabilities remain false even when the infrastructure proof eventually succeeds. Production does not select the Phase 2B2-B managed adapters. Project-wide Preview provider secrets are unacceptable; use a dedicated Preview project/resource or branch-scoped values that satisfy the exact project/branch gate.
 
 ## Rollback and recovery
 

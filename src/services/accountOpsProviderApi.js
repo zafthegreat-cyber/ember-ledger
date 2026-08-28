@@ -41,6 +41,7 @@ const PROHIBITED_RESPONSE_KEYS = new Set([
   "secret",
   "clientsecret",
   "providersecret",
+  "managedreference",
   "cookie",
   "oauthstate",
   "rawclaims",
@@ -133,7 +134,11 @@ function normalizeTrustedRuntime(runtime) {
     && proof?.productionEnvironment === false
     && proof?.providerRuntimeLoaded === true
     && proof?.providerNetworkAccessEnabled === false
+    && proof?.serverExecutionVerified === true
     && proof?.hostedRuntimeVerified === true
+    && runtime?.serverExecutionVerified === true
+    && runtime?.authenticatedOwnerVerified === true
+    && runtime?.managedStorageVerified === true
     && runtime?.hostedRuntimeVerified === true;
   return Object.freeze({
     proofVersion: safeText(proof?.proofVersion, 64),
@@ -143,6 +148,9 @@ function normalizeTrustedRuntime(runtime) {
     productionEnvironment: proof?.productionEnvironment === true,
     providerRuntimeLoaded: proof?.providerRuntimeLoaded === true,
     providerNetworkAccessEnabled: proof?.providerNetworkAccessEnabled === true,
+    serverExecutionVerified: proof?.serverExecutionVerified === true,
+    authenticatedOwnerVerified: runtime?.authenticatedOwnerVerified === true,
+    managedStorageVerified: runtime?.managedStorageVerified === true,
     hostedRuntimeVerified: verified,
   });
 }

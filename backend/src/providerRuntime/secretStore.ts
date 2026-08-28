@@ -22,6 +22,8 @@ export type ProviderSecretReference = Readonly<{
 export interface ProviderSecretStore {
   readonly kind: "UNAVAILABLE" | "AUTOMATED_TEST_MEMORY" | "MANAGED_SERVER_SECRET_STORE";
   readonly available: boolean;
+  healthCheck(): Promise<void>;
+  verifyReadiness(owner: ProviderOwnerContext): Promise<void>;
   put(owner: ProviderOwnerContext, reference: ProviderSecretReference, secret: ProviderSecretMaterial): Promise<void>;
   get(owner: ProviderOwnerContext, connectionId: string): Promise<ProviderSecretMaterial | null>;
   revoke(owner: ProviderOwnerContext, connectionId: string, revokedAt: string): Promise<boolean>;
@@ -39,6 +41,8 @@ export function createUnavailableProviderSecretStore(): ProviderSecretStore {
   return Object.freeze({
     kind: "UNAVAILABLE" as const,
     available: false,
+    healthCheck: async () => unavailable(),
+    verifyReadiness: async () => unavailable(),
     put: async () => unavailable(),
     get: async () => unavailable(),
     revoke: async () => unavailable(),
@@ -60,8 +64,9 @@ function cloneSecret(secret: ProviderSecretMaterial): ProviderSecretMaterial {
 
 /** Dependency-injected fake for automated tests only. Never select this store from hosted configuration. */
 export function createAutomatedTestMemorySecretStore(options: TestSecretStoreOptions = {}): ProviderSecretStore {
-  const runtimeKind = options.runtimeKind || detectRuntimeKind(process.env);
-  if (runtimeKind !== "automated-test") {
+  const actualRuntimeKind = detectRuntimeKind(process.env);
+  const runtimeKind = options.runtimeKind || actualRuntimeKind;
+  if (runtimeKind !== "automated-test" || actualRuntimeKind !== "automated-test") {
     throw new ProviderRuntimeError("provider_runtime_unavailable", "The memory secret store is available only to automated tests.", 503);
   }
   const records = new Map<string, ProviderSecretMaterial>();
@@ -69,6 +74,8 @@ export function createAutomatedTestMemorySecretStore(options: TestSecretStoreOpt
   return Object.freeze({
     kind: "AUTOMATED_TEST_MEMORY" as const,
     available: true,
+    healthCheck: async () => undefined,
+    verifyReadiness: async () => undefined,
     async put(owner: ProviderOwnerContext, reference: ProviderSecretReference, secret: ProviderSecretMaterial) {
       records.set(key(owner, reference.connectionId), cloneSecret(secret));
     },

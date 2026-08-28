@@ -61,6 +61,11 @@ function sendError(response: Response, error: unknown) {
   });
 }
 
+function safeConnectionForClient(connection: Awaited<ReturnType<ProviderRuntime["status"]>>["connections"][number]) {
+  const { cursorMetadata: _serverCursorMetadata, ...safeConnection } = connection;
+  return Object.freeze({ ...safeConnection });
+}
+
 export function createProviderConnectionsRouter(options: ProviderConnectionsRouterOptions = {}) {
   const router = Router();
   const runtime = options.runtime || providerRuntime;
@@ -79,23 +84,25 @@ export function createProviderConnectionsRouter(options: ProviderConnectionsRout
 
   router.get("/", asyncRoute(async (_request, response) => {
     const status = await runtime.status(principal(response));
-    const capabilities = runtime.capabilities(principal(response));
+    const { connections, ...safeRuntime } = status;
     return response.json({
       ok: true,
-      connections: status.connections,
+      connections: Object.freeze(connections.map(safeConnectionForClient)),
       configurationState: status.available ? "AVAILABLE" : "NOT_CONFIGURED",
-      providerCapabilities: capabilities.providers,
+      providerCapabilities: status.providers,
       warnings: Object.freeze([status.detail]),
-      runtime: status,
+      runtime: safeRuntime,
     });
   }));
 
-  router.get("/capabilities", (_request, response) => response.json({
-    ok: true,
-    ...(() => {
-      const result = runtime.capabilities(principal(response));
-      return { configurationState: result.available ? "AVAILABLE" : "NOT_CONFIGURED", ...result };
-    })(),
+  router.get("/capabilities", asyncRoute(async (_request, response) => {
+    const result = await runtime.status(principal(response));
+    const { connections: _connections, ...safeResult } = result;
+    return response.json({
+      ok: true,
+      configurationState: result.available ? "AVAILABLE" : "NOT_CONFIGURED",
+      ...safeResult,
+    });
   }));
 
   router.post("/:connectionId/disconnect", asyncRoute(async (request, response) => {

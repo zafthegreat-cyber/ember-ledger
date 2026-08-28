@@ -1,6 +1,6 @@
 # Code 3 Inbox and Order Provider Contract
 
-Status: Phase 2B1 is published at `2f49a5ed97cec827184c6080e4ada0f4c8194451`. Phase 2B2-A locally adds exact Preview runtime mapping and server execution proof. Live mailbox authorization, message retrieval, and Business Purchase import are not enabled.
+Status: Phase 2B1 is published at `2f49a5ed97cec827184c6080e4ada0f4c8194451`, and Phase 2B2-A is published at `c379416336e32a67346c7a3bb95f7b6469f679f5`. Phase 2B2-B locally implements Preview-only managed connection, encrypted-secret, and OAuth-state adapters. The required Upstash resource is not provisioned, so `hostedRuntimeVerified=false`. Live mailbox authorization, message retrieval, and Business Purchase import are not enabled.
 
 This contract governs the secure foundation for a future flow:
 
@@ -29,16 +29,18 @@ The trusted runtime is the existing Express application. Phase 2B2-A adds exact 
 - bounded input validation; and
 - redacted client errors and diagnostic summaries.
 
-The Phase 2B1 provider runtime is deliberately default-unavailable. Its capability endpoint can report safe provider metadata, but live connection initiation and callback processing remain disabled until both of these server-side dependencies exist:
+The provider runtime remains default-unavailable. Its capability endpoint can report safe provider metadata, but live connection initiation and callback processing remain disabled. Phase 2B2-B supplies code adapters for both server-side dependencies:
 
-1. a durable managed secret store for provider grants and refresh tokens; and
-2. a durable atomic OAuth-state store that can enforce expiration and one-time consumption across serverless instances.
+1. a durable managed secret store for future provider grants and refresh tokens; and
+2. a durable atomic OAuth-state store that enforces expiration and one-time consumption across serverless instances.
 
-An in-process map is permitted only as an injected automated-test adapter. It is not an accepted Preview or Production secret/state store.
+The adapters target a separately configured Upstash Redis resource in Preview. Selection requires exact Vercel Preview markers and exact server-owned project/branch matches; the effective namespace appends a project/branch-derived hash. Connection metadata uses an owner-scoped hash family. Secret material is stored in a separate owner/connection key family only after Code 3 encrypts it with AES-256-GCM, a fresh IV/authentication tag, key-version metadata, and associated owner/provider/connection/reference data. OAuth state uses a random value returned once, persists only its SHA-256 digest and hashed bindings, and uses Lua to issue/consume atomically. An in-process map remains permitted only as an injected automated-test adapter and is never a hosted fallback.
+
+The current resource is not provisioned because acceptance of Upstash marketplace terms is required. Accordingly, the hosted runtime still receives unavailable stores; no secret, state, or connection record exists. No claim is made about platform encryption at rest. Project-wide Preview secrets are not acceptable because they could enable every Preview branch; a future deployment must use a dedicated Preview project/resource or branch-scoped environment values.
 
 `backend/src/providerRuntime/trustedRuntime.ts` derives a bounded Preview proof only from exact server `VERCEL=1` and `VERCEL_ENV=preview` markers. The proof does not accept request, browser, role, owner, query, or entitlement input and does not expose deployment/environment details. Production, hosted-unknown, local, and test execution cannot satisfy it.
 
-The proof remains independent from provider readiness. Even after exact Preview execution is verified, runtime `available` remains false, Gmail and Outlook remain not configured, all provider capabilities remain false, and no live adapter/store exists. A frontend `Ready` state is insufficient evidence. See [PREVIEW_TRUSTED_RUNTIME_CONTRACT.md](./PREVIEW_TRUSTED_RUNTIME_CONTRACT.md).
+The proof remains independent from provider readiness. Even after authenticated owner and managed-store health are verified, runtime `available` remains false until a separately approved live provider adapter exists. Gmail and Outlook remain not configured, all provider capabilities remain false, and there is no network adapter. A frontend `Ready` state is insufficient evidence. See [PREVIEW_TRUSTED_RUNTIME_CONTRACT.md](./PREVIEW_TRUSTED_RUNTIME_CONTRACT.md).
 
 ## Provider capability model
 
@@ -94,11 +96,11 @@ A secret record is never a client record. The server-side abstraction may contai
 - creation/rotation/revocation timestamps; and
 - minimal non-secret lifecycle metadata.
 
-The abstraction must support store, retrieve-for-provider-call, rotate, and revoke semantics without returning secret material to a browser response. Phase 2B1 supplies an unavailable production adapter and an explicitly injected test adapter only. It does not implement home-grown reversible encryption.
+The abstraction supports store, retrieve-for-provider-call, and revoke semantics without returning secret material to a browser response. Phase 2B2-B adds a Preview-only implementation whose secret envelope is encrypted with AES-256-GCM before it reaches Redis. The 32-byte application encryption key and key-version label are server environment configuration and are never stored in the same envelope. Metadata and secrets remain separate. The implementation does not claim that key rotation is complete merely because a version field exists, and it makes no claim about provider-platform encryption at rest.
 
 ## OAuth state and redirect contract
 
-Any future authorization initiation must create cryptographically random, bounded state and store only a digest plus server-trusted metadata. The state record is bound to:
+Any future authorization initiation must create cryptographically random, bounded state and store only a digest plus server-trusted metadata. Phase 2B2-B implements this storage contract without exposing an initiation or callback route. The state record is bound to:
 
 - the verified `AuthPrincipal` provider and immutable subject;
 - one provider;
@@ -106,7 +108,9 @@ Any future authorization initiation must create cryptographically random, bounde
 - one issued and expiration window; and
 - one unused state identifier.
 
-Callback handling must atomically consume the state once. Missing, malformed, expired, already-used, wrong-owner, wrong-provider, or wrong-redirect state fails closed. Browser-supplied owner IDs, roles, emails, session fields, or entitlement values never establish provider ownership.
+Callback handling must atomically consume the state once. The managed adapter uses one Redis Lua transaction to validate expiry/provider/hashed owner/hashed exact redirect, delete live state, remove its owner index entry, and write a short-lived used marker. Missing, malformed, expired, already-used, wrong-owner, wrong-provider, or wrong-redirect state fails closed. Expired index entries are removed during issue and Redis TTL bounds residual keys. Browser-supplied owner IDs, roles, emails, session fields, or entitlement values never establish provider ownership.
+
+Hosted managed-storage verification requires the exact durable store kinds and bounded ephemeral readiness operations: connection metadata write/read/delete, encrypted secret write/decrypt/delete, and atomic OAuth-state write/read/delete. `PING`, configured environment names, or test-memory adapters are not readiness proof.
 
 ## Normalized message event
 
@@ -162,8 +166,8 @@ Unrelated personal messages remain `OTHER` and cannot produce an Order Candidate
 
 | Data class | Phase 2B1 treatment |
 |---|---|
-| Safe connection metadata | Server projection only; retained only by a future approved connection store |
-| Provider secrets and OAuth state | Server-only abstraction; no durable adapter enabled |
+| Safe connection metadata | Phase 2B2-B Preview-only durable adapter implemented; no resource/record provisioned |
+| Provider secrets and OAuth state | Preview-only encrypted-secret and atomic digest-state adapters implemented; no resource, secret, or state provisioned |
 | Normalized retailer/order evidence | Versioned local metadata for synthetic and owner-reviewed use |
 | Raw message body | Not persisted by default |
 | Protected code/link/content | Never retained |
@@ -293,17 +297,17 @@ A future disconnect must:
 4. revoke/remove the managed secret reference; and
 5. retain only permitted normalized, owner-reviewed historical business evidence.
 
-Disconnect never deletes an owner-reviewed Purchase or other legitimate business record. Phase 2B1 tests the contract with injected fakes but exposes no live provider connection.
+Disconnect never deletes an owner-reviewed Purchase or other legitimate business record. Phase 2B1 tests the lifecycle contract with injected fakes. Phase 2B2-B adds durable metadata/disconnect and managed secret-deletion behavior, still with no live provider connection or provider-specific revocation proof.
 
 ## Owner-only API surface
 
 The Phase 2B1 status/capability route is under `/api/account-ops/provider-connections`, before legacy wildcard CORS, and requires server-verified OWNER authorization. Phase 2B2-A maps its exact public path to that canonical Express route. It returns only bounded runtime proof, capability truth, and safe connection projections with `Cache-Control: no-store`.
 
-There is no active browser route that accepts provider tokens, OAuth codes, OAuth state, or owner identifiers. Connection and callback routes remain unavailable until the durable server dependencies and hosted route behavior are separately verified.
+There is no active browser route that accepts provider tokens, OAuth codes, OAuth state, or owner identifiers. Connection and callback routes remain unavailable. Local durable-adapter code does not authorize a real provider flow.
 
 ## Explicit non-goals
 
-Phase 2B1 and Phase 2B2-A do not implement:
+Phase 2B1, Phase 2B2-A, and Phase 2B2-B do not implement:
 
 - live Gmail, Microsoft, IMAP, or other mailbox authorization;
 - mailbox sending, deletion, modification, or bulk actions;
@@ -316,16 +320,17 @@ Phase 2B1 and Phase 2B2-A do not implement:
 - purchasing, checkout, offer, bid, CAPTCHA/OTP bypass, or retailer-limit evasion; or
 - Production deployment or promotion.
 
-## Gate for a future Phase 2B2-B
+## Gate for a future Phase 2B2-C
 
 Live provider work remains blocked until a separately approved task proves:
 
-- one durable managed secret store;
-- one durable atomic replay-resistant OAuth-state store;
+- a provisioned and healthy Preview resource behind the durable managed secret and atomic replay-resistant OAuth-state adapters;
 - exact Preview callback/origin/redirect configuration;
-- the Phase 2B2-A exact owner-protected Vercel API behavior;
+- the exact owner-protected Vercel API behavior with a legitimate authenticated owner and `hostedRuntimeVerified=true`;
 - provider registration and minimum-scope approval;
 - disconnect/revocation behavior against a test account;
 - retention/deletion and audit policy;
 - redacted observability; and
 - an explicit owner-controlled import review that still cannot auto-create a Purchase.
+
+Resource provisioning is currently blocked by required Upstash marketplace-terms acceptance. Phase 2B2-C must not work around that gate with browser storage, committed secrets, a hosted in-memory store, the canonical business database, or `REMOTE_ACTIVE`.

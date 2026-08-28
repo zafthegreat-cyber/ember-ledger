@@ -36,6 +36,8 @@ export type OAuthStateConsumption = Readonly<{
 export interface OAuthStateStore {
   readonly kind: "UNAVAILABLE" | "AUTOMATED_TEST_MEMORY" | "DURABLE_SINGLE_USE";
   readonly available: boolean;
+  healthCheck(): Promise<void>;
+  verifyReadiness(owner: ProviderOwnerContext): Promise<void>;
   issue(input: OAuthStateIssueInput): Promise<OAuthStateIssueResult>;
   consume(input: OAuthStateConsumeInput): Promise<OAuthStateConsumption>;
 }
@@ -52,6 +54,8 @@ export function createUnavailableOAuthStateStore(): OAuthStateStore {
   return Object.freeze({
     kind: "UNAVAILABLE" as const,
     available: false,
+    healthCheck: async () => unavailable(),
+    verifyReadiness: async () => unavailable(),
     issue: async () => unavailable(),
     consume: async () => unavailable(),
   });
@@ -112,8 +116,9 @@ function validatedAllowedRedirect(value: string): string {
 
 /** Atomic only inside one automated-test process. It is intentionally unavailable to Preview/Production. */
 export function createAutomatedTestMemoryOAuthStateStore(options: TestStateStoreOptions): OAuthStateStore {
-  const runtimeKind = options.runtimeKind || detectRuntimeKind(process.env);
-  if (runtimeKind !== "automated-test") {
+  const actualRuntimeKind = detectRuntimeKind(process.env);
+  const runtimeKind = options.runtimeKind || actualRuntimeKind;
+  if (runtimeKind !== "automated-test" || actualRuntimeKind !== "automated-test") {
     throw new ProviderRuntimeError("provider_runtime_unavailable", "The memory OAuth state store is available only to automated tests.", 503);
   }
   const now = options.now || Date.now;
@@ -131,6 +136,8 @@ export function createAutomatedTestMemoryOAuthStateStore(options: TestStateStore
   return Object.freeze({
     kind: "AUTOMATED_TEST_MEMORY" as const,
     available: true,
+    healthCheck: async () => undefined,
+    verifyReadiness: async () => undefined,
     async issue(input: OAuthStateIssueInput) {
       if (!PROVIDER_IDS.has(input.provider)) {
         throw new ProviderRuntimeError("invalid_provider_request", "The mailbox provider is unsupported.", 400);

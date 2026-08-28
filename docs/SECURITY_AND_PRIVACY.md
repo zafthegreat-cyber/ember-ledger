@@ -10,7 +10,7 @@ Phase 2A Account Ops is published at `c76e3e4bc668c08d9a0908c9bb2cd96444610297`.
 
 Phase 2A.5 is published at `4c6c7891a123777acec8f326793f30aee61f3de6`. Product workspace, route, availability, and entitlement metadata are not authorization. Bot and Owner Center remain OWNER-only, and Account Ops remains `VERIFIED_OWNER` even though it is associated with Business.
 
-Phase 2B1 is published at `2f49a5ed97cec827184c6080e4ada0f4c8194451`. Its provider runtime fails closed without a durable managed secret store and atomic OAuth-state store; its client domain rejects authority and secret injection, minimizes protected messages before hashing or persistence, and never creates a Purchase. Local Phase 2B2-A adds exact Preview Express mapping and bounded server execution proof only. No real mailbox or provider token is used.
+Phase 2B1 is published at `2f49a5ed97cec827184c6080e4ada0f4c8194451`. Its client domain rejects authority and secret injection, minimizes protected messages before hashing or persistence, and never creates a Purchase. Phase 2B2-A is published at `c379416336e32a67346c7a3bb95f7b6469f679f5`. The current Phase 2B2-B working copy implements Preview-only managed Redis adapters for connection metadata, AES-256-GCM-encrypted secret envelopes, and atomic OAuth state. No resource is provisioned, no real mailbox/provider token is used, and `hostedRuntimeVerified=false`.
 
 ## Security posture summary
 
@@ -36,7 +36,7 @@ The next activation phase MUST verify schema/RLS, repository owner scope, rollba
 | Automatic external actions | Absent | provider contract and implementation |
 | Supabase identity verification | Implemented in published source; hosted configuration pending verification | `backend/src/auth/supabaseIdentityProvider.ts` |
 | Immutable-subject OWNER policy | Implemented for protected routes | `backend/src/auth/ownerAuthorization.ts` |
-| Exact-origin protected-route CORS | Implemented for auth/eBay; Phase 1B canonical routes reuse it locally | `backend/src/security/corsPolicy.ts`, `backend/src/server.ts` |
+| Exact-origin protected-route CORS | Implemented for auth/eBay/canonical/provider route families; Phase 2B2-B hardens canonical origin parsing and runtime-specific headers | `backend/src/security/corsPolicy.ts`, `backend/src/server.ts` |
 | Safe identity endpoint | Implemented | `GET /api/auth/session`; `Cache-Control: no-store` |
 | Security/error redaction helper | Implemented | `backend/src/security/redaction.ts` |
 | Versioned verified browser export | Implemented with explicit coverage | `src/features/backup` |
@@ -52,9 +52,9 @@ The next activation phase MUST verify schema/RLS, repository owner scope, rollba
 | Retailer verification/anti-abuse boundary | Published Phase 2A implementation | human-controlled signup/checklist; no CAPTCHA/OTP/verification bypass, bulk signup, limit evasion, or checkout action |
 | Product workspace preference boundary | Published Phase 2A.5 implementation | `code3.workspace-preference.v1` retains a public fallback plus optional inert last selection; direct route/session wins, Bot requires a fresh OWNER decision, and Owner Center/authority fields are excluded |
 | Bot and workspace authorization | Published Phase 2A.5 implementation | Bot/Owner remain verified OWNER surfaces; Account Ops remains `VERIFIED_OWNER`; registry/entitlement metadata cannot authorize |
-| Mailbox provider runtime boundary | Phase 2B1 published; Phase 2B2-A Preview proof local | exact Vercel entries reuse `backend/src/server.ts`; protected provider-connections router remains not configured with no connect/callback/live adapter |
+| Mailbox provider runtime boundary | Phase 2B1 and 2B2-A published; Phase 2B2-B managed adapters local | exact Vercel entries reuse `backend/src/server.ts`; protected provider-connections router has no connect/callback/live adapter |
 | Trusted Preview execution proof | Exact Express route partially verified; `hostedRuntimeVerified=false` | Ready Preview returns safe Express session JSON and protected `401`; missing server auth/owner configuration prevents the required owner `200`; Production/incomplete/local/test markers cannot satisfy proof and no request-derived authority is accepted |
-| Server-only provider secret/state contracts | Phase 2B1 interface/test evidence only | production adapters unavailable; injected memory adapters are automated-test-only; secrets/state never reach browser/backup |
+| Server-only provider secret/state contracts | Phase 2B2-B local implementation, not provisioned | Redis adapters require exact Preview/project/branch, separate metadata/secrets, encrypt with AES-256-GCM, atomically consume hashed state, perform bounded readiness operations, and never use hosted memory fallback |
 | Protected Inbox/order evidence | Phase 2B1 published implementation | recursive authority/secret rejection; minimization before hashing/persistence; exact-money/idempotent Order Candidates require owner review and cannot create Purchases |
 
 ## Current limitations and production blockers
@@ -69,11 +69,11 @@ The full decision and limitations are in [OWNER_AUTH_DECISION.md](./OWNER_AUTH_D
 
 ### Critical: trusted Preview execution is not provider authorization
 
-Phase 2B2-A can report `hostedRuntimeVerified=true` only from server-owned Vercel Preview markers and only through the owner-protected provider response. This proves the Express route executed; it does not prove Gmail or Outlook authorization, managed secret storage, mailbox health, or Production readiness. Provider configuration remains `NOT_CONFIGURED`, provider network access remains disabled, and all live capabilities remain false.
+Phase 2B2-A establishes server-owned Vercel Preview execution markers. Phase 2B2-B permits the protected response to report `hostedRuntimeVerified=true` only when those markers, legitimate OWNER authorization, and all three managed-store health checks succeed together. Even that infrastructure proof would not prove Gmail or Outlook authorization, mailbox health, or Production readiness. Provider configuration remains `NOT_CONFIGURED`, provider network access remains disabled, and all live capabilities remain false.
 
 The 2026-08-27 exact candidate Preview returned `AUTH_NOT_CONFIGURED` from the safe session endpoint and `401 authentication_required` from the protected provider route, with no-store JSON and Express response headers. A synthetic client role query remained unauthorized. This is strong evidence that the trusted server route is hosted and fail closed, but it is intentionally insufficient for `hostedRuntimeVerified=true` because no valid owner request could be verified.
 
-The exact Vercel entry points contain no secrets or copied business logic. Missing auth/owner configuration still fails closed. Query, header, body, local-storage, role, and entitlement values cannot alter the runtime proof or owner scope. The complete boundary is [PREVIEW_TRUSTED_RUNTIME_CONTRACT.md](./PREVIEW_TRUSTED_RUNTIME_CONTRACT.md).
+The exact Vercel entry points contain no secrets or copied business logic. Missing auth/owner configuration still fails closed. Query, header, body, local-storage, role, and entitlement values cannot alter the runtime proof or owner scope. Phase 2B2-B further requires healthy managed connection, secret, and OAuth-state stores before the protected status response can report hosted verification. The complete boundary is [PREVIEW_TRUSTED_RUNTIME_CONTRACT.md](./PREVIEW_TRUSTED_RUNTIME_CONTRACT.md).
 
 ### Critical: canonical records are browser-local
 
@@ -97,7 +97,7 @@ Account setup is owner-assisted. Code 3 may prepare/copy ordinary metadata and o
 
 ### High: backend surface and residual CORS
 
-The local exact-origin policy runs before `/api/auth/*` and `/api/ebay/*`. It accepts configured HTTPS origins and loopback HTTP origins only, rejects wildcards/arbitrary reflection, adds `Vary: Origin`, and restricts methods/headers. Preview and local origin lists are included only in their matching runtimes.
+The protected exact-origin policy runs before `/api/auth/*`, `/api/ebay/*`, `/api/code3/*`, and `/api/account-ops/provider-connections`. It canonicalizes an origin to exactly its scheme/host/port, accepts configured HTTPS origins and loopback HTTP only in local/test lists, rejects wildcards, `null`, trailing paths/slashes, credentials, query/fragment data, malformed values, and arbitrary reflection, and always adds `Vary: Origin`. Preview reads only `CODE3_CORS_PREVIEW_ORIGINS` and does not inherit general Production origins; Production reads only `CODE3_CORS_ALLOWED_ORIGINS`. Hosted allowed headers are `Authorization` and `Content-Type`; the local-development header is excluded outside local/test runtime.
 
 The legacy Express routes still use the existing permissive `cors()` middleware. Before production, inventory every route, protect or retire it, validate content types/request sizes, and rate-limit sensitive or upstream-backed operations.
 
@@ -175,6 +175,8 @@ Known server-only eBay names are `EBAY_CLIENT_ID`, `EBAY_CLIENT_SECRET`, `EBAY_E
 Owner-boundary server names are `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `CODE3_OWNER_SUBJECTS`, `CODE3_CORS_ALLOWED_ORIGINS`, `CODE3_CORS_PREVIEW_ORIGINS`, `CODE3_CORS_LOCAL_ORIGINS`, and `CODE3_ENABLE_LOCAL_DEV_AUTH`. Browser session configuration uses `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and `VITE_API_BASE_URL`; explicit local development may additionally use `VITE_CODE3_LOCAL_AUTH_ENABLED`. Example files contain names/placeholders only.
 
 Phase 1B canonical persistence additionally uses the server-only gate `CODE3_CANONICAL_PERSISTENCE_ENABLED` and existing `DATABASE_URL`. Missing either leaves hosted canonical routes unavailable with a safe response. The gate does not bypass authentication or owner authorization and has no `VITE_` equivalent.
+
+Phase 2B2-B managed provider adapters use server-only `CODE3_PROVIDER_MANAGED_STORE_ENABLED`, `CODE3_PROVIDER_PREVIEW_PROJECT_ID`, `CODE3_PROVIDER_PREVIEW_GIT_BRANCH`, `CODE3_PROVIDER_KV_REST_API_URL`, `CODE3_PROVIDER_KV_REST_API_TOKEN`, `CODE3_PROVIDER_SECRET_ENCRYPTION_KEY`, `CODE3_PROVIDER_SECRET_KEY_VERSION`, `CODE3_PROVIDER_OAUTH_REDIRECT_URIS`, and `CODE3_PROVIDER_STORE_NAMESPACE`, matched against server-owned `VERCEL_PROJECT_ID` and `VERCEL_GIT_COMMIT_REF`. The encryption key is an exact 32-byte base64url value and never has a `VITE_` equivalent. Values are absent from source/examples. Missing, malformed, disabled, wrong-project/branch, or non-Preview configuration selects unavailable stores; it does not fall back to memory.
 
 ## Authorization matrix target
 
@@ -264,7 +266,11 @@ The backend redactor covers bearer/basic credentials, token/secret fields, OAuth
 
 The browser client provider API accepts only the fixed owner-protected status route and `GET`, obtains credentials through the existing owner-session mechanism, rejects caller-supplied headers/bodies, bounds JSON responses, rejects an SPA fallback, and does not persist its result. The backend additionally exposes a bounded owner-only disconnect contract; it is unavailable under production defaults and is not wired to a client action in Phase 2B1. Account Ops initializes the lazy provider surface only after the existing verified-owner return boundary.
 
-Remaining blockers are material: no managed server-only secret store, no durable atomic replay store, no provider registration/scope approval, no verified Vercel Preview API/callback routing, no provider-specific revocation proof, and no protected observability/retention acceptance. Live authorization must not be enabled until those blockers close.
+Phase 2B2-B locally closes the code-adapter portions of the managed secret and atomic replay-store blockers. The official Upstash REST client is telemetry-disabled. Connection metadata and encrypted secret material use separate owner-scoped key families under a project/branch-derived namespace. Code 3 encrypts secrets before storage using AES-256-GCM with fresh IVs and associated owner/provider/connection/reference data. OAuth state is random, persisted only by digest, redirect/provider/owner bound, expiring, bounded, and atomically consumed by Redis Lua; a short-lived used marker rejects replay. Redis transport failures become a generic `503`.
+
+Hosted verification requires exact durable store kinds and bounded owner-scoped connection write/read/delete, encrypted secret write/decrypt/delete, and atomic OAuth write/read/delete readiness. `PING`, configured names, or test memory cannot satisfy it. Project-wide Preview resource secrets are unacceptable because unrelated branches could inherit them; operational proof requires a dedicated Preview project/resource or branch-scoped values.
+
+These controls are not deployed proof. Upstash marketplace provisioning is blocked pending acceptance of the required terms, so no resource, secret envelope, state, or connection metadata exists. Code 3 makes no claim about platform encryption at rest. Remaining blockers include resource provisioning and Preview-only environment configuration, a legitimate owner-authenticated health/status proof, provider registration/scope approval, provider-specific revocation proof, and protected observability/retention acceptance. Live authorization must not be enabled until those blockers close.
 
 See [INBOX_ORDER_PROVIDER_CONTRACT.md](./INBOX_ORDER_PROVIDER_CONTRACT.md).
 
@@ -292,8 +298,8 @@ See [INBOX_ORDER_PROVIDER_CONTRACT.md](./INBOX_ORDER_PROVIDER_CONTRACT.md).
 | Remembered workspace or entitlement metadata grants private access | local route/navigation metadata is browser-controlled | verified session before private render/storage, public fallback plus inert private marker, direct-route precedence, server authorization, session-downgrade tests |
 | Product workspace routing exposes or duplicates records | custom route/history plus legacy `Workspace` terminology | central validated route ownership, compatibility tests, shared record IDs/projections, explicit distinction from historical persisted Workspace records |
 | Bot shell is mistaken for a connected automation provider | Phase 2A.5 provides a visible OWNER-only foundation | honest empty/capability state; no provider/token/task-control/checkout path; separate future authorization and anti-abuse review |
-| Mailbox OAuth state is replayed or owner scope is supplied by the callback/browser | no connect/callback route; test-only contract exists | immutable verified principal binding, cryptographic state, exact redirect, expiry, atomic single use, durable server store and adversarial callback tests before enabling |
-| Provider secret reaches browser persistence, backup, response, URL, or log | production secret store is unavailable and client route is fixed/read-only | managed server-only store, response allowlist, redaction, scans, rotation/revocation and no client fallback |
+| Mailbox OAuth state is replayed or owner scope is supplied by the callback/browser | no connect/callback route; Phase 2B2-B Redis/Lua adapter is locally tested but unprovisioned | provision Preview resource; prove immutable verified-principal binding, exact redirect, expiry, atomic single use/replay across deployed instances; retain adversarial callback tests before enabling |
+| Provider secret reaches browser persistence, backup, response, URL, or log | Phase 2B2-B AES-256-GCM server adapter is locally tested but unprovisioned; client route remains fixed/read-only | provision Preview resource/key, prove response allowlist/redaction/scans/deletion, establish rotation procedure, and retain no client/in-memory fallback |
 | Protected or personal message content is retained | synthetic normalizer minimizes before hash/storage and raw content is prohibited | bounded retention, no short-secret hashes, adversarial provider fixtures, sanitized observability and deletion review |
 | Synthetic candidate is treated as connected Inbox or Purchase | local review source exists without a provider/Purchase writer | honest unavailable UI, `ownerReviewRequired`, import disabled, capability truth and no Purchase route/repository dependency |
 | Disconnect fails to stop reads or revoke secrets | contract is tested with injected fakes; no live provider | stop reads first, remove managed secret, attempt provider revocation, surface partial failure, test against approved test account before live use |

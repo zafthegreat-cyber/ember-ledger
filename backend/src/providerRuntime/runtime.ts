@@ -11,8 +11,10 @@ import type { MailboxProviderRegistry } from "./providerRegistry";
 import { mailboxProviderRegistry } from "./providerRegistry";
 import type { ServerMailboxProviderAdapter } from "./providerAdapter";
 import type { ProviderSecretStore } from "./secretStore";
+import type { ProviderSecretMaterial } from "./secretStore";
 import { createUnavailableProviderSecretStore } from "./secretStore";
 import { resolveTrustedRuntimeProof, type TrustedRuntimeProof } from "./trustedRuntime";
+import { createManagedProviderStoresFromEnvironment } from "./managedStores";
 
 const CONNECTION_ID_PATTERN = /^connection:[a-z0-9][a-z0-9._:-]{7,159}$/i;
 
@@ -26,6 +28,7 @@ type RuntimeOptions = {
   now?: () => Date;
   hostedRuntimeVerified?: boolean;
   trustedRuntimeProof?: TrustedRuntimeProof;
+  managedStorageConfigured?: boolean;
 };
 
 export function validateConnectionId(value: unknown): string {
@@ -45,9 +48,16 @@ export function createProviderRuntime(options: RuntimeOptions = {}) {
   const audit = options.audit || createNoopProviderAuditSink();
   const now = options.now || (() => new Date());
   const trustedRuntimeProof = options.trustedRuntimeProof || resolveTrustedRuntimeProof();
-  const hostedRuntimeVerified = options.hostedRuntimeVerified === undefined
-    ? trustedRuntimeProof.hostedRuntimeVerified
-    : options.hostedRuntimeVerified === true && trustedRuntimeProof.hostedRuntimeVerified;
+  const serverExecutionVerified = options.hostedRuntimeVerified === undefined
+    ? trustedRuntimeProof.serverExecutionVerified
+    : options.hostedRuntimeVerified === true && trustedRuntimeProof.serverExecutionVerified;
+  const durableStoresSelected = connectionStore.available
+    && connectionStore.kind === "DURABLE_SERVER_METADATA"
+    && secretStore.available
+    && secretStore.kind === "MANAGED_SERVER_SECRET_STORE"
+    && oauthStateStore.available
+    && oauthStateStore.kind === "DURABLE_SINGLE_USE";
+  const managedStorageConfigured = durableStoresSelected && options.managedStorageConfigured !== false;
 
   function recordAudit(summary: Parameters<ProviderAuditSink["write"]>[0]) {
     try {
@@ -58,7 +68,14 @@ export function createProviderRuntime(options: RuntimeOptions = {}) {
     }
   }
 
-  function baseStatus() {
+  function baseStatus(verification: Readonly<{
+    authenticatedOwnerVerified?: boolean;
+    managedStorageVerified?: boolean;
+  }> = {}) {
+    const managedStorageVerified = verification.managedStorageVerified === true;
+    const hostedRuntimeVerified = serverExecutionVerified
+      && verification.authenticatedOwnerVerified === true
+      && managedStorageVerified;
     const available = hostedRuntimeVerified
       && connectionStore.available
       && secretStore.available
@@ -68,6 +85,10 @@ export function createProviderRuntime(options: RuntimeOptions = {}) {
       runtimeVersion: MAILBOX_PROVIDER_RUNTIME_VERSION,
       available,
       hostedRuntimeVerified,
+      serverExecutionVerified,
+      authenticatedOwnerVerified: verification.authenticatedOwnerVerified === true,
+      managedStorageConfigured,
+      managedStorageVerified,
       trustedRuntimeProof: Object.freeze({
         ...trustedRuntimeProof,
         hostedRuntimeVerified,
@@ -80,8 +101,10 @@ export function createProviderRuntime(options: RuntimeOptions = {}) {
       canonicalPersistenceRequired: false,
       localOnlyBusinessDataAuthoritative: true,
       detail: hostedRuntimeVerified
-        ? "The trusted Preview runtime is available. Provider authorization remains unavailable until durable server-only stores and a mailbox adapter are configured."
-        : "Provider authorization is unavailable until a durable server-only secret store and single-use OAuth state store are configured and the hosted API runtime is verified.",
+        ? "The trusted Preview runtime and managed provider storage are verified. Gmail and Outlook remain unavailable until a separately approved provider adapter and OAuth flow are configured."
+        : serverExecutionVerified
+          ? "The trusted Preview function is available, but authenticated owner and managed-storage verification are incomplete."
+          : "The trusted Preview runtime is unavailable.",
     });
   }
 
@@ -89,18 +112,30 @@ export function createProviderRuntime(options: RuntimeOptions = {}) {
     capabilities(principal: AuthPrincipal) {
       ownerContextFromPrincipal(principal);
       recordAudit({ action: "PROVIDER_CAPABILITIES_VIEWED", outcome: "ALLOWED", occurredAt: now().toISOString() });
-      return Object.freeze({ ...baseStatus(), providers: registry.list() });
+      return Object.freeze({ ...baseStatus({ authenticatedOwnerVerified: true }), providers: registry.list() });
     },
     async status(principal: AuthPrincipal) {
       const owner = ownerContextFromPrincipal(principal);
       recordAudit({ action: "PROVIDER_STATUS_VIEWED", outcome: "ALLOWED", occurredAt: now().toISOString() });
+      const storesConfigured = managedStorageConfigured && durableStoresSelected;
+      if (storesConfigured) {
+        await Promise.all([
+          connectionStore.verifyReadiness(owner),
+          secretStore.verifyReadiness(owner),
+          oauthStateStore.verifyReadiness(owner),
+        ]);
+      }
       const connections = connectionStore.available ? await connectionStore.list(owner) : Object.freeze([]);
-      const status = baseStatus();
+      const status = baseStatus({
+        authenticatedOwnerVerified: true,
+        managedStorageVerified: storesConfigured,
+      });
       return Object.freeze({
         ...status,
         // A metadata record alone never proves a live, trusted provider runtime.
         liveProviderConnected: status.available && connections.some((connection) => connection.status === "HEALTHY"),
         connections,
+        providers: registry.list(),
       });
     },
     async disconnect(principal: AuthPrincipal, rawConnectionId: unknown) {
@@ -116,7 +151,6 @@ export function createProviderRuntime(options: RuntimeOptions = {}) {
       }
       const connection = await connectionStore.get(owner, connectionId);
       if (!connection) throw new ProviderRuntimeError("provider_connection_not_found", "The provider connection was not found.", 404);
-      const secret = await secretStore.get(owner, connectionId);
       const adapter = providerAdapters.get(connection.provider);
       const disconnectedAt = now().toISOString();
 
@@ -128,6 +162,13 @@ export function createProviderRuntime(options: RuntimeOptions = {}) {
         revokedAt: null,
         errorCode: null,
       });
+      let secret: ProviderSecretMaterial | null = null;
+      let secretAccessFailed = false;
+      try {
+        secret = await secretStore.get(owner, connectionId);
+      } catch {
+        secretAccessFailed = true;
+      }
       let providerAuthorizationRevoked = false;
       let providerRevocationFailed = false;
       if (adapter && secret && adapter.supportsAuthorizationRevocation) {
@@ -149,7 +190,11 @@ export function createProviderRuntime(options: RuntimeOptions = {}) {
       const providerRevocationUnverified = !providerRevocationUnavailable
         && !providerRevocationFailed
         && !providerAuthorizationRevoked;
-      const errorCode = providerRevocationFailed && secretRevocationFailed
+      const errorCode = secretAccessFailed && secretRevocationFailed
+        ? "SECRET_ACCESS_AND_REVOCATION_FAILED"
+        : secretAccessFailed
+          ? "SECRET_ACCESS_FAILED"
+          : providerRevocationFailed && secretRevocationFailed
         ? "PROVIDER_AND_SECRET_REVOCATION_FAILED"
         : providerRevocationFailed
           ? "PROVIDER_REVOCATION_FAILED"
@@ -188,7 +233,9 @@ export function createProviderRuntime(options: RuntimeOptions = {}) {
         futureReadsAllowed: false,
         warnings: errorCode
           ? Object.freeze([
-            secretRevocationFailed
+            secretAccessFailed
+              ? "Code 3 stopped future reads, but secure credential access and provider authorization revocation could not be verified."
+              : secretRevocationFailed
               ? "Code 3 stopped future reads, but removal of the managed secret could not be verified."
               : "Provider authorization revocation could not be verified; Code 3 removed its local secret reference and stopped future reads.",
           ])
@@ -198,7 +245,11 @@ export function createProviderRuntime(options: RuntimeOptions = {}) {
     async connectionForProcessing(principal: AuthPrincipal, rawConnectionId: unknown) {
       const connectionId = validateConnectionId(rawConnectionId);
       const owner = ownerContextFromPrincipal(principal);
-      if (!baseStatus().available) {
+      if (!(serverExecutionVerified
+        && connectionStore.available
+        && secretStore.available
+        && oauthStateStore.available
+        && providerAdapters.size > 0)) {
         throw new ProviderRuntimeError("provider_runtime_unavailable", "Provider processing is unavailable.", 503);
       }
       const connection = await connectionStore.get(owner, connectionId);
@@ -216,5 +267,12 @@ export function createProviderRuntime(options: RuntimeOptions = {}) {
 }
 
 const trustedRuntimeProof = resolveTrustedRuntimeProof();
+const managedStores = createManagedProviderStoresFromEnvironment();
 
-export const providerRuntime = createProviderRuntime({ trustedRuntimeProof });
+export const providerRuntime = createProviderRuntime({
+  trustedRuntimeProof,
+  connectionStore: managedStores.connectionStore,
+  secretStore: managedStores.secretStore,
+  oauthStateStore: managedStores.oauthStateStore,
+  managedStorageConfigured: managedStores.configured,
+});

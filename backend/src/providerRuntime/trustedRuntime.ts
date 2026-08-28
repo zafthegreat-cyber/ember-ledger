@@ -18,6 +18,7 @@ export type TrustedRuntimeProof = Readonly<{
   productionEnvironment: boolean;
   providerRuntimeLoaded: true;
   providerNetworkAccessEnabled: false;
+  serverExecutionVerified: boolean;
   hostedRuntimeVerified: boolean;
 }>;
 
@@ -58,6 +59,10 @@ export function resolveTrustedRuntimeProof(env: RuntimeEnvironment = process.env
     productionEnvironment,
     providerRuntimeLoaded: true,
     providerNetworkAccessEnabled: false,
-    hostedRuntimeVerified: previewEnvironment && !productionEnvironment,
+    serverExecutionVerified: previewEnvironment && !productionEnvironment,
+    // Final hosted verification additionally requires an authenticated owner
+    // and healthy managed stores. That can only be established inside the
+    // protected runtime status request, not from process markers alone.
+    hostedRuntimeVerified: false,
   });
 }

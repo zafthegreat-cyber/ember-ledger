@@ -14,6 +14,8 @@ Phase 2A.5 is published at `4c6c7891a123777acec8f326793f30aee61f3de6`. It adds p
 
 Phase 2B1 is published at `2f49a5ed97cec827184c6080e4ada0f4c8194451`. It adds a default-unavailable owner-protected mailbox-provider runtime, a separate versioned `LOCAL_ONLY` inbox/order evidence source, protected-message minimization, deterministic idempotency/reconciliation, and owner-reviewed Order Candidates. No mailbox is connected, no provider token store is enabled, no Purchase is created, and hosted API reachability remains unverified.
 
+Phase 2B2-A is published at `c379416336e32a67346c7a3bb95f7b6469f679f5`. The current Phase 2B2-B working copy adds Preview-only managed-store adapters and tighter exact-origin handling, but no managed resource or owner Preview configuration has been provisioned. Upstash marketplace provisioning is blocked pending acceptance of the required marketplace terms, so the deployed owner/storage proof is incomplete and `hostedRuntimeVerified=false`.
+
 ## Executive summary
 
 Code 3 is a hybrid React/Vite single-page application. Its approved everyday shell and private sourcing foundation are implemented, but authoritative data is split across three persistence styles:
@@ -235,7 +237,7 @@ Current backend limitations after the Phase 1B checkpoint:
 - no canonical background-job subsystem or durable audit writer; mutation idempotency beyond the Phase 1B contract remains future work;
 - no protected object/file storage for evidence and receipts.
 - no configured model-backed image/OCR/AI analysis provider; image references remain references and the scanner adapter reports that no image analysis ran.
-- mailbox provider status/capability/disconnect routing is OWNER-protected and fail-closed. Phase 2B2-A can attest exact Preview server execution separately from provider readiness, but no connect/callback route, live Gmail/Microsoft adapter, durable connection/secret store, or durable atomic OAuth-state store exists.
+- mailbox provider status/capability/disconnect routing is OWNER-protected and fail-closed. Phase 2B2-A can attest exact Preview server execution separately from provider readiness. Phase 2B2-B locally implements Preview-only durable connection/secret/state adapters, but no managed resource is provisioned and no connect/callback route or live Gmail/Microsoft adapter exists.
 
 ## Authentication and permissions
 
@@ -270,7 +272,7 @@ The browser receives only opaque connection metadata and capability truth. `src/
 
 The local inbox/order source is separate from `code3.account-ops.v1` so the strict eight-collection Account Ops schema is not silently changed. It retains minimized message events, current candidate projections, append-only candidate/review events, and sanitized activity only. Provider tokens, OAuth state, raw bodies, protected content, and authority fields are prohibited. Message identity is connection-scoped, order reconciliation is evidence-aware, owner corrections are preserved separately, and no repository path writes a Purchase.
 
-Phase 2B1 was published at `2f49a5ed97cec827184c6080e4ada0f4c8194451`. Its provider readiness remains unavailable and live OAuth remains blocked. Phase 2B2-A adds a bounded server-owned proof that is true only for exact `VERCEL=1` plus `VERCEL_ENV=preview` execution, and keeps the provider runtime unavailable until durable managed stores and an adapter exist. The browser is never used as a fallback secret store.
+Phase 2B1 was published at `2f49a5ed97cec827184c6080e4ada0f4c8194451`. Its provider readiness remains unavailable and live OAuth remains blocked. Published Phase 2B2-A adds a bounded server-owned proof that is true only for exact `VERCEL=1` plus `VERCEL_ENV=preview` execution. Phase 2B2-B locally implements managed adapters, but they remain fail-closed until an explicit Preview-only resource and complete server environment are available. The browser is never used as a fallback secret store.
 
 See [INBOX_ORDER_PROVIDER_CONTRACT.md](./INBOX_ORDER_PROVIDER_CONTRACT.md).
 
@@ -288,13 +290,31 @@ Browser
 
 The exact files preserve the existing filesystem-before-SPA routing order and do not duplicate authentication, authorization, CORS, rate limiting, redaction, or provider logic. `backend/src/providerRuntime/trustedRuntime.ts` projects only bounded execution facts. Request headers, query/body fields, client roles, local storage, and entitlement metadata cannot supply the environment or owner scope.
 
-A verified trusted Preview runtime still returns provider `configurationState=NOT_CONFIGURED`: Gmail and Outlook remain unavailable, all live capabilities are false, server connection/secret/OAuth-state stores remain unavailable, no provider network adapter exists, and `LOCAL_ONLY` remains authoritative. See [PREVIEW_TRUSTED_RUNTIME_CONTRACT.md](./PREVIEW_TRUSTED_RUNTIME_CONTRACT.md).
+A verified trusted Preview runtime still returns provider `configurationState=NOT_CONFIGURED`: Gmail and Outlook remain unavailable, all live capabilities are false, no provider network adapter exists, and `LOCAL_ONLY` remains authoritative. The Phase 2B2-B source can select managed stores only in an exact Preview runtime with an explicit enable flag and complete configuration; the current hosted environment does not satisfy that gate. See [PREVIEW_TRUSTED_RUNTIME_CONTRACT.md](./PREVIEW_TRUSTED_RUNTIME_CONTRACT.md).
+
+## Phase 2B2-B managed provider-state foundation
+
+Phase 2B2-B adds a server-only adapter set around the official Upstash Redis REST client without changing the canonical business-data authority:
+
+- safe provider connection metadata is owner-hash scoped and stored separately from secret envelopes;
+- provider secret material is encrypted by Code 3 with AES-256-GCM before transport, using a 32-byte server environment key, a key-version label, a fresh 96-bit IV, an authentication tag, and owner/provider/connection/reference associated data;
+- OAuth state is generated from at least 32 random bytes, stored only by SHA-256 digest, bounded per owner, expires after a short TTL, and is validated and consumed atomically with a Redis Lua script; a temporary used-state marker makes replay distinguishable without retaining raw state;
+- metadata upsert/capacity, disconnect state, readiness probes, state issue, and state consume operations are atomic where cross-instance correctness requires it;
+- transport failures are projected as a bounded `503` and never cause a hosted in-memory fallback; automated-test memory stores remain explicitly test-only.
+
+The selector activates only for real hosted execution with exact `VERCEL=1`, `VERCEL_ENV=preview`, `CODE3_PROVIDER_MANAGED_STORE_ENABLED=true`, exact matches between `CODE3_PROVIDER_PREVIEW_PROJECT_ID`/`CODE3_PROVIDER_PREVIEW_GIT_BRANCH` and Vercel's server-owned project/commit-ref markers, an HTTPS REST endpoint, a server token, the exact 32-byte encryption key, at least one exact HTTPS OAuth redirect, and a base namespace containing `preview`. It derives a deployment scope from the Vercel project ID and Git branch and appends the hash to the configured base namespace. Any missing/invalid value, wrong project/branch, Production, hosted-unknown, local development, or ordinary automated-test runtime receives unavailable stores; tests must explicitly inject the managed Redis fake. This does not activate an OAuth connect/callback route or provider adapter.
+
+Hosted verification checks exact durable store kinds and performs bounded owner-scoped write/read/delete readiness operations for connection and encrypted-secret stores plus an atomic OAuth readiness operation. A successful Redis `PING`, a test-memory adapter, or configured environment names alone cannot set `hostedRuntimeVerified=true`.
+
+Preview protected CORS reads only `CODE3_CORS_PREVIEW_ORIGINS`; it does not inherit general Production origins. Local/test may combine their explicit local and general lists, while Production reads only the general list. No wildcard deployment URL pattern is accepted.
+
+This is locally implemented architecture, not deployed-storage evidence. Upstash marketplace resource creation is currently blocked by the required marketplace-terms acceptance. No resource, namespace, connection metadata, OAuth state, or secret has been provisioned, and no claim is made about platform encryption at rest. Project-wide Preview secrets would expose the managed store to every Preview branch and are not an acceptable deployment. A future proof must use a dedicated Preview project/resource or truly branch-scoped environment values matching the configured project/branch gate. `hostedRuntimeVerified` remains false until a legitimate authenticated owner request in that isolated Preview also passes all three bounded ephemeral write/read/delete readiness probes.
 
 ## Deployment
 
 | Layer | Current configuration |
 |---|---|
-| Frontend/API host | Vercel SPA + filesystem-first functions via `vercel.json`; Phase 2B2-A exact session/provider entries reuse Express |
+| Frontend/API host | Vercel SPA + filesystem-first functions via `vercel.json`; published Phase 2B2-A exact session/provider entries reuse Express; Phase 2B2-B remains an uncommitted local candidate |
 | Build | root `npm run build`; backend has a separate TypeScript build command |
 | Route fallback | filesystem first, then SPA fallback |
 | CI | `.github/workflows/market-price-refresh.yml` is scheduled/manual only |
@@ -312,6 +332,7 @@ Names only are documented; values were not read or copied into these documents.
 | Browser/build configuration | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_API_BASE_URL`, `VITE_PUBLIC_APP_URL`, `VITE_CODE3_LOCAL_AUTH_ENABLED`, `VITE_BETA_LOCAL_MODE`, `VITE_QA_UNLOCK_PAID_FEATURES`, `VITE_ADMIN_EMAILS`, `VITE_DEV_ADMIN_EMAIL`, `VITE_LOCAL_DEV_ADMIN`, `VITE_SEARCH_DEBUG` |
 | Server/database | `DATABASE_URL`, `POSTGRES_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_DB_URL`, `SUPABASE_DB_SSL_NO_VERIFY`, `SUPABASE_SERVICE_ROLE_KEY`, `CODE3_CANONICAL_PERSISTENCE_ENABLED`, `PORT`, `NODE_ENV` |
 | Owner boundary and CORS | `CODE3_OWNER_SUBJECTS`, `CODE3_CORS_ALLOWED_ORIGINS`, `CODE3_CORS_PREVIEW_ORIGINS`, `CODE3_CORS_LOCAL_ORIGINS`, `CODE3_ENABLE_LOCAL_DEV_AUTH`, `VERCEL_ENV` |
+| Preview provider managed storage | `CODE3_PROVIDER_MANAGED_STORE_ENABLED`, `CODE3_PROVIDER_PREVIEW_PROJECT_ID`, `CODE3_PROVIDER_PREVIEW_GIT_BRANCH`, `CODE3_PROVIDER_KV_REST_API_URL`, `CODE3_PROVIDER_KV_REST_API_TOKEN`, `CODE3_PROVIDER_SECRET_ENCRYPTION_KEY`, `CODE3_PROVIDER_SECRET_KEY_VERSION`, `CODE3_PROVIDER_OAUTH_REDIRECT_URIS`, `CODE3_PROVIDER_STORE_NAMESPACE`, plus server-owned `VERCEL_PROJECT_ID` and `VERCEL_GIT_COMMIT_REF` |
 | eBay server | `EBAY_CLIENT_ID`, `EBAY_CLIENT_SECRET`, `EBAY_ENVIRONMENT`, `EBAY_MARKETPLACE_ID`, `EBAY_REQUEST_TIMEOUT_MS` |
 | Legacy Best Buy/alerts server | `BESTBUY_API_KEY`, `BESTBUY_API_BASE_URL`, `BESTBUY_MONITOR_ENABLED`, `BESTBUY_MONITOR_QUERY`, `BESTBUY_MONITOR_ZIP`, `BESTBUY_MONITOR_SKUS`, `BESTBUY_ALERT_ONLY_ON_CHANGE`, `BESTBUY_DISCORD_WEBHOOK_URL`, `BESTBUY_MONITOR_SECRET`, `DISCORD_WEBHOOK_URL` |
 | Vercel/build metadata | `VERCEL`, `VERCEL_DEPLOYMENT_ID`, `VERCEL_GIT_COMMIT_SHA`, `GITHUB_ACTIONS`, `MODE`, `DEV` |

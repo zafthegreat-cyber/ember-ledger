@@ -75,8 +75,12 @@ const safePayload = normalizeProviderConnectionsPayload({
       productionEnvironment: false,
       providerRuntimeLoaded: true,
       providerNetworkAccessEnabled: false,
+      serverExecutionVerified: true,
       hostedRuntimeVerified: true,
     },
+    serverExecutionVerified: true,
+    authenticatedOwnerVerified: true,
+    managedStorageVerified: true,
   },
   warnings: [],
 });
@@ -99,8 +103,12 @@ const unsafeProductionPayload = normalizeProviderConnectionsPayload({
       productionEnvironment: true,
       providerRuntimeLoaded: true,
       providerNetworkAccessEnabled: false,
+      serverExecutionVerified: true,
       hostedRuntimeVerified: true,
     },
+    serverExecutionVerified: true,
+    authenticatedOwnerVerified: true,
+    managedStorageVerified: true,
   },
 });
 equal(unsafeProductionPayload.trustedRuntime.hostedRuntimeVerified, false, "Production must not satisfy the Preview-only proof");
@@ -108,7 +116,7 @@ equal(unsafeProductionPayload.trustedRuntime.hostedRuntimeVerified, false, "Prod
 const foundation = read("src/features/accountOps/InboxOrderFoundation.jsx");
 matches(foundation, /Trusted runtime[\s\S]*Verified server-side in Vercel Preview/, "the UI should state trusted Preview runtime availability honestly");
 matches(foundation, /Gmail and Outlook remain disconnected with live capabilities disabled/, "the UI should keep runtime and provider readiness separate");
-matches(foundation, /Phase 2B2-A verifies only the Preview server boundary/, "the UI should state the phase boundary");
+matches(foundation, /must verify the owner-protected Preview runtime and managed security storage before any provider can be enabled/, "the UI should state the fail-closed phase boundary without claiming hosted verification");
 excludes(foundation, />\s*Connect\s*</, "the Preview proof must not activate a mailbox Connect action");
 excludes(foundation, /Import Purchase|Create Purchase|Receive Inventory/, "the Preview proof must not activate business mutations");
 

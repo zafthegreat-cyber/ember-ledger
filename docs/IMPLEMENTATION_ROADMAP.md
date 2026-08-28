@@ -15,7 +15,7 @@ The audit changes the conceptual “backend persistence first” phase into gate
 
 **Phase 2A.5 — Workspace Architecture / Mini-App Shell** is published at `4c6c7891a123777acec8f326793f30aee61f3de6`. It organizes existing features into Collect, Find, Sell, Bot, and Business through a central route/workspace registry, compatibility-first homes, workspace-local navigation, and a bounded recent-workspace preference. Owner Center remains separate; Account Ops is Business-associated but `VERIFIED_OWNER`; Bot is OWNER-only and has no provider.
 
-**Phase 2B1 — Secure Provider Runtime + Inbox / Order Intelligence Foundation** is published at `2f49a5ed97cec827184c6080e4ada0f4c8194451`. **Phase 2B2-A — Preview Trusted Express/API Runtime** is the current local phase. It narrows Vercel routing to exact owner-session/provider functions and proves server execution separately from provider readiness. Gmail, Outlook, IMAP, live Inbox ingestion, provider token persistence, Purchase import, migration, sync, and remote cutover remain inactive.
+**Phase 2B1 — Secure Provider Runtime + Inbox / Order Intelligence Foundation** is published at `2f49a5ed97cec827184c6080e4ada0f4c8194451`. **Phase 2B2-A — Preview Trusted Express/API Runtime** is published at `c379416336e32a67346c7a3bb95f7b6469f679f5`. **Phase 2B2-B — Preview Owner Auth + Managed Provider State** is the current local phase. It implements Preview-only managed Redis adapters and tightens exact CORS, but resource provisioning is blocked by required Upstash marketplace terms and `hostedRuntimeVerified=false`. Gmail, Outlook, IMAP, live Inbox ingestion, provider token use, Purchase import, migration, sync, and remote cutover remain inactive.
 
 The published Phase 1A runtime applies Code 3 through the centralized brand configuration and coordinated PWA/browser/offline metadata. Storage, database, route, module, environment, cache, history, compatibility, and imported-source identifiers remain unchanged. The legal/public business name and tagline remain separately configurable and unresolved.
 
@@ -133,7 +133,7 @@ No time estimates are provided. Complexity is relative: Small, Medium, Large, or
 
 ## Phase 2B2-A — Preview trusted Express/API runtime
 
-**Status:** Local implementation; exact candidate Preview verification is a required completion gate.
+**Status:** Published at `c379416336e32a67346c7a3bb95f7b6469f679f5`; exact Express execution and fail-closed unauthenticated behavior are proven, while authenticated-owner proof remains incomplete.
 
 - **Objective:** prove that the owner session and provider-status requests reach the canonical Express app in Vercel Preview, return server-owned non-Production proof, and keep provider readiness false.
 - **Current code affected:** exact `api/auth/session.ts` and `api/account-ops/provider-connections.ts` entries; `backend/src/providerRuntime/trustedRuntime.ts`; provider status projection; Account Ops Connections client/UI; focused runtime/deployment tests and documentation.
@@ -145,21 +145,31 @@ No time estimates are provided. Complexity is relative: Small, Medium, Large, or
 - **Rollback:** remove the two exact function wrappers and proof/status presentation together; keep provider runtime unavailable and never weaken auth/CORS or use browser secrets as fallback.
 - **Complexity:** Medium.
 
-## Phase 2B2-B — Managed state and one approved provider authorization readiness
+## Phase 2B2-B — Preview owner authentication and managed provider state
 
-**Status:** Future, blocked, and not authorized by Phase 2B2-A.
+**Status:** Local implementation complete at the source/test boundary; operational provisioning blocked by required Upstash marketplace-terms acceptance. `hostedRuntimeVerified=false`.
 
-- **Objective:** connect one test mailbox through a verified trusted Preview runtime using the least approved read-only scope, bounded incremental ingestion, and the existing owner-review gate.
-- **Current code affected:** Phase 2B1 provider interfaces/runtime, protected observability, connection lifecycle, message retrieval adapter, Account Ops Connections/Inbox/Orders, and retention/disconnect tooling.
-- **Likely files/modules:** one provider-specific network adapter; managed secret/state stores; exact callback/origin/redirect configuration; bounded incremental reader; provider health and revocation; sanitized audit/retention controls. Purchase import remains a later explicit subphase.
-- **Data changes:** server-side connection/secret references and bounded provider cursor state plus minimized local/approved evidence. Raw protected message contents and provider secrets remain excluded from ordinary business backup.
-- **Migration risks:** tokens or protected content leak, OAuth replay, wrong-owner binding, duplicate ingestion, stale cursor, provider revocation failure, and Preview/Production configuration drift.
-- **Dependencies:** all Phase 2B1 acceptance evidence; verified owner-protected Vercel JSON routing; durable managed secret and atomic OAuth-state stores; selected provider review; explicit data retention/deletion and test-account approval.
-- **External authorization:** approved Gmail or Microsoft registration/scopes and owner consent. Phase 2B1 requests no scopes and does not satisfy this gate.
-- **Test plan:** test-account OAuth/connect/refresh/revoke; callback replay/owner/origin/redirect failures; least-scope inspection; bounded cursor/retry; provider health truth; protected-message minimization; disconnect stops reads; zero tokens in browser/backup/logs; no automatic Purchase.
-- **Acceptance criteria:** one provider is `HEALTHY` only after a trusted live check; token/state remain server-only; disconnect stops reads and revokes/removes secrets as supported; retention is enforced; normalized evidence stays review-only; Production and Purchase import remain disabled.
-- **Rollback:** revoke the test authorization, remove the managed secret/state records, disable the provider adapter, retain only permitted reviewed metadata, and preserve all local manual workflows.
-- **Complexity:** Extra Large.
+- **Objective:** support a legitimate authenticated OWNER proof in Preview and provide durable cross-instance connection metadata, encrypted-secret, and atomic OAuth-state storage without starting provider OAuth.
+- **Current code affected:** Phase 2B1 provider store interfaces/runtime, trusted-runtime verification, protected provider status, CORS, Account Ops status presentation, backup exclusion guards, environment examples, and focused tests.
+- **Implemented files/modules:** official Upstash Redis REST transport; exact Preview/project/branch managed-store selector with a derived namespace scope; durable metadata adapter; AES-256-GCM encrypted secret adapter; SHA-256-digest OAuth-state adapter with atomic Redis Lua issue/consume; write/read/delete readiness probes; Preview-only CORS isolation; status/client projections and tests.
+- **Data changes:** none in browser or canonical business persistence. The target operational Redis namespaces are separate from business records and remain empty/unprovisioned. Backup remains 23 registered/19 included sources and excludes all managed-provider state.
+- **Migration risks:** wrong environment targeting, exposed Redis/encryption credentials, weak key rotation, OAuth replay, wrong-owner/redirect binding, store outages, and operational provider state being mistaken for canonical business data.
+- **Dependencies:** published Phase 2B2-A, Preview-only Supabase owner configuration, an exact Preview-only origin, accepted Upstash marketplace terms, a dedicated Preview project/resource or branch-scoped environment, exact expected Vercel project/branch values, and complete server-only managed-store variables.
+- **External authorization:** marketplace-terms acceptance and Preview resource provisioning only. Gmail/Microsoft registration, scope consent, and mailbox access are explicitly not part of Phase 2B2-B.
+- **Test plan:** owner/non-owner/unauthenticated and spoof rejection; exact Preview/Production origin isolation with no general-origin inheritance; exact project/branch/runtime selection and derived namespace; managed metadata separation; AES-256-GCM store/retrieve/delete/redaction; bounded connection/secret/OAuth write-read-delete readiness; unavailable-store fail closed; test-memory runtime isolation; OAuth digest/expiry/owner/provider/redirect/atomic single-use/replay/capacity behavior; backup exclusion; Preview status truth; inherited builds/security/regression.
+- **Acceptance criteria:** source never enables stores outside the exact Preview project/branch; missing configuration yields unavailable adapters; project-wide Preview secrets are rejected as an operational design; no hosted memory fallback; secret material is encrypted before Redis and never enters client/backup/logs; OAuth state is digest-only and atomically consumed; legitimate owner plus exact durable kinds and bounded readiness operations are required before `hostedRuntimeVerified=true`; providers/network remain disabled; Production and canonical persistence remain untouched.
+- **Rollback:** leave the enable flag false or remove Preview-only store variables; delete the unprovisioned adapter configuration. If a future resource is provisioned, revoke/remove its Preview credentials and operational records without changing browser business data.
+- **Complexity:** Large.
+
+## Phase 2B2-C — Provisioned Preview proof and provider authorization decision
+
+**Status:** Future and not authorized. Blocked until the required Upstash marketplace terms are accepted and Phase 2B2-B is reviewed/published.
+
+- **Objective:** provision the reviewed Preview-only operational resource, configure server-only owner/CORS/store values, and prove one legitimate OWNER `200` plus healthy managed stores; then separately decide whether one provider OAuth pilot is authorized.
+- **External authorization:** explicit resource terms/provisioning and owner identity configuration. Any Gmail/Microsoft registration, scopes, callback, test mailbox, or provider network call requires another explicit authorization.
+- **Acceptance criteria:** exact commit-attributed Preview, authenticated owner proof, non-owner/unauthenticated denial, CORS denial, healthy managed stores, no secret exposure, Gmail/Outlook still `NOT_CONFIGURED` unless a later task explicitly authorizes a provider.
+- **Rollback:** remove Preview-only values/resource access and retain `hostedRuntimeVerified=false`; no business-data rollback is required.
+- **Complexity:** Medium before any provider pilot; a live provider pilot is separately Large.
 
 ## Phase 2 — Remaining app-shell extraction and route ownership hardening
 
@@ -335,4 +345,4 @@ Every implementation phase must:
 
 ## Exact next task recommendation
 
-Phase 2B1 is published. Phase 2B2-A publication is separately gated and does not authorize Phase 2B2-B. A later provider-readiness phase may begin only after exact protected Preview routing is proven and durable managed secret/state storage is approved. Do not connect a real mailbox, begin Purchase import, activate `REMOTE_ACTIVE`, migrate owner data, upload file bytes, connect a Bot provider, add billing, or apply any schema without another explicit owner-approved specification.
+Phase 2B2-A is published and Phase 2B2-B is locally implemented but operationally blocked. The exact next task is a safety review/publication checkpoint, followed only after explicit approval by Phase 2B2-C resource provisioning and authenticated-owner/managed-health proof. Do not accept marketplace terms, provision the resource, connect a real mailbox, begin provider OAuth or Purchase import, activate `REMOTE_ACTIVE`, migrate owner data, upload file bytes, connect a Bot provider, add billing, or apply any schema without another explicit owner-approved specification.

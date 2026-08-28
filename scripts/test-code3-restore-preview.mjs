@@ -358,12 +358,13 @@ const phase2aProhibited = await mutateAndSeal((envelope) => {
     cvv: "123",
     passphrase: "not-allowed",
     credentials: { value: "not-allowed" },
+    managedReference: "not-allowed",
     sessionState: "not-allowed",
   })];
 });
 const phase2aProhibitedPreview = await previewBackupRestore(JSON.stringify(phase2aProhibited));
 assert.equal(phase2aProhibitedPreview.result, RESTORE_PREVIEW_RESULTS.BLOCKED);
-for (const field of ["otpCode", "retailerPassword", "cvv", "passphrase", "credentials"]) {
+for (const field of ["otpCode", "retailerPassword", "cvv", "passphrase", "credentials", "managedReference"]) {
   assert.ok(phase2aProhibitedPreview.prohibitedFields.some((path) => path.endsWith(`.${field}`)), `${field} must be rejected during restore preview`);
 }
 assert.match(phase2aProhibitedPreview.errors.join(" "), /SECRET_FIELD_REJECTED/, "Account Ops schema validation must reject nested session-state injection");

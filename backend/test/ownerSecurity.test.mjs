@@ -303,7 +303,7 @@ test("configured exact origins are scoped to their runtime", () => {
     CODE3_CORS_LOCAL_ORIGINS: "http://localhost:5173",
   };
   assert.deepEqual([...allowedOriginsForRuntime(env, "production")].sort(), ["https://app.example.test"]);
-  assert.deepEqual([...allowedOriginsForRuntime(env, "preview")].sort(), ["https://app.example.test", "https://preview.example.test"]);
+  assert.deepEqual([...allowedOriginsForRuntime(env, "preview")].sort(), ["https://preview.example.test"]);
   assert.deepEqual([...allowedOriginsForRuntime(env, "local-development")].sort(), ["http://localhost:5173", "https://app.example.test"]);
 });
 

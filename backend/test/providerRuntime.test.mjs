@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { test } from "node:test";
+
+process.env.NODE_ENV = "test";
+delete process.env.VERCEL;
+delete process.env.VERCEL_ENV;
 import express from "express";
 
 const require = createRequire(import.meta.url);
@@ -129,6 +133,22 @@ test("memory secret and OAuth state stores cannot activate outside automated tes
   assert.throws(() => createAutomatedTestMemorySecretStore({ runtimeKind: "production" }), { code: "provider_runtime_unavailable" });
   assert.throws(() => createAutomatedTestMemoryOAuthStateStore({ runtimeKind: "preview", allowedRedirectUris: [REDIRECT] }), { code: "provider_runtime_unavailable" });
   assert.throws(() => createAutomatedTestMemoryOAuthStateStore({ runtimeKind: "production", allowedRedirectUris: [REDIRECT] }), { code: "provider_runtime_unavailable" });
+
+  const previousVercel = process.env.VERCEL;
+  const previousVercelEnvironment = process.env.VERCEL_ENV;
+  try {
+    process.env.VERCEL = "1";
+    process.env.VERCEL_ENV = "preview";
+    assert.throws(() => createAutomatedTestMemoryConnectionStore({ runtimeKind: "automated-test" }), { code: "provider_runtime_unavailable" });
+    assert.throws(() => createAutomatedTestMemorySecretStore({ runtimeKind: "automated-test" }), { code: "provider_runtime_unavailable" });
+    assert.throws(
+      () => createAutomatedTestMemoryOAuthStateStore({ runtimeKind: "automated-test", allowedRedirectUris: [REDIRECT] }),
+      { code: "provider_runtime_unavailable" },
+    );
+  } finally {
+    if (previousVercel === undefined) delete process.env.VERCEL; else process.env.VERCEL = previousVercel;
+    if (previousVercelEnvironment === undefined) delete process.env.VERCEL_ENV; else process.env.VERCEL_ENV = previousVercelEnvironment;
+  }
 });
 
 test("automated-test secret storage is owner-scoped and revocable without logging", async () => {
@@ -336,6 +356,56 @@ test("disconnect fails safe before remote or secret-store cleanup failures", asy
   await assert.rejects(() => runtime.connectionForProcessing(principal(), connectionId), { code: "provider_runtime_unavailable" });
 });
 
+test("disconnect stops future reads before attempting unavailable secret retrieval", async () => {
+  const connectionStore = createAutomatedTestMemoryConnectionStore({ runtimeKind: "automated-test" });
+  const backingSecretStore = createAutomatedTestMemorySecretStore({ runtimeKind: "automated-test" });
+  const oauthStateStore = createAutomatedTestMemoryOAuthStateStore({ runtimeKind: "automated-test", allowedRedirectUris: [REDIRECT] });
+  const connectionId = "connection:test-0004";
+  await connectionStore.put(owner(), Object.freeze({
+    provider: "gmail",
+    connectionId,
+    connectedAccountLabel: "Synthetic secret access failure",
+    grantedScopesSummary: Object.freeze(["Read-only order metadata"]),
+    status: "HEALTHY",
+    connectedAt: new Date(NOW_MS - 10_000).toISOString(),
+    lastHealthyAt: new Date(NOW_MS - 1_000).toISOString(),
+    cursorMetadata: Object.freeze({}),
+    capabilityFlags: createMailboxProviderRegistry().get("gmail").capabilities,
+    revokedAt: null,
+    errorCode: null,
+  }));
+  await backingSecretStore.put(owner(), {
+    provider: "gmail",
+    connectionId,
+    managedReference: "test:connection-4",
+    createdAt: new Date(NOW_MS).toISOString(),
+    rotatedAt: null,
+    revokedAt: null,
+  }, { refreshToken: ["synthetic", "refresh", "access-failure"].join("-") });
+  let providerDisconnectCalls = 0;
+  const failingSecretStore = Object.freeze({
+    ...backingSecretStore,
+    get: async () => { throw new Error("synthetic secret read failure"); },
+  });
+  const runtime = createProviderRuntime({
+    connectionStore,
+    secretStore: failingSecretStore,
+    oauthStateStore,
+    now: () => new Date(NOW_MS),
+    providerAdapters: [Object.freeze({
+      providerId: "gmail",
+      supportsAuthorizationRevocation: true,
+      disconnect: async () => { providerDisconnectCalls += 1; return Object.freeze({ providerAuthorizationRevoked: true }); },
+    })],
+  });
+  const result = await runtime.disconnect(principal(), connectionId);
+  assert.equal(result.connection.status, "DISCONNECTED");
+  assert.equal(result.connection.errorCode, "SECRET_ACCESS_FAILED");
+  assert.equal(result.futureReadsAllowed, false);
+  assert.equal(providerDisconnectCalls, 0);
+  assert.equal((await connectionStore.get(owner(), connectionId)).status, "DISCONNECTED");
+});
+
 test("provider status route requires a verified owner and returns safe no-store metadata", async () => {
   await withServer(createApp(), async (baseUrl) => {
     assert.equal((await request(baseUrl, "/api/account-ops/provider-connections")).response.status, 401);
@@ -430,12 +500,13 @@ test("redaction covers mailbox OAuth and protected-message secret forms", () => 
     authorizationCode: "synthetic-authorization-material",
     oauthState: "synthetic-state-material",
     codeVerifier: "synthetic-verifier-material",
+    managedReference: "synthetic-managed-reference",
     verificationCode: "123456",
     resetLink: "https://example.test/reset?reset_token=synthetic-reset-material",
     safeErrorCode: "PROVIDER_NOT_CONFIGURED",
   });
   const serialized = JSON.stringify(redacted);
-  assert.doesNotMatch(serialized, /synthetic-authorization-material|synthetic-state-material|synthetic-verifier-material|123456|synthetic-reset-material/);
+  assert.doesNotMatch(serialized, /synthetic-authorization-material|synthetic-state-material|synthetic-verifier-material|synthetic-managed-reference|123456|synthetic-reset-material/);
   assert.match(serialized, /PROVIDER_NOT_CONFIGURED/);
   const text = redactText("Basic dXNlcjpwYXNz https://example.test/callback?code=synthetic-code&state=synthetic-state#access_token=synthetic-fragment");
   assert.doesNotMatch(text, /dXNlcjpwYXNz|synthetic-code|synthetic-state|synthetic-fragment/);

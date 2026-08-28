@@ -26,6 +26,7 @@ const PROHIBITED_NORMALIZED_KEYS = new Set([
   "generatedpassword",
   "privatekey",
   "loginlink",
+  "managedreference",
   "onetimecode",
   "onetimepassword",
   "oauthcode",
@@ -60,7 +61,7 @@ const PROHIBITED_NORMALIZED_KEYS = new Set([
   "codeverifier",
 ]);
 const SAFE_REFERENCE_KEYS = new Set(["credentialreference", "credentialprovider", "credentialreferenceid"]);
-const PROHIBITED_KEY_FRAGMENT_PATTERN = /(?:password(?:hash)?|passwordreset(?:link|token)|passphrase|secret|apikey|privatekey|otp(?:code|token)?|oauth(?:code|state)|authorizationcode|codeverifier|securitycode|loginlink|rawmessage(?:body|content)|protectedcontent|cvv|cvc|credentials?|captcha(?:response|token)?|verificationcode)$/i;
+const PROHIBITED_KEY_FRAGMENT_PATTERN = /(?:password(?:hash)?|passwordreset(?:link|token)|passphrase|secret|managedreference|apikey|privatekey|otp(?:code|token)?|oauth(?:code|state)|authorizationcode|codeverifier|securitycode|loginlink|rawmessage(?:body|content)|protectedcontent|cvv|cvc|credentials?|captcha(?:response|token)?|verificationcode)$/i;
 
 const PROHIBITED_STORAGE_KEY_PATTERNS = [
   /^sb-.+-auth-token$/i,

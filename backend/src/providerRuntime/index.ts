@@ -1,5 +1,7 @@
 export * from "./audit";
 export * from "./connectionStore";
+export * from "./managedRedis";
+export * from "./managedStores";
 export * from "./contracts";
 export * from "./errors";
 export * from "./oauthStateStore";

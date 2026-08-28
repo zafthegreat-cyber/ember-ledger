@@ -113,6 +113,7 @@ const localStorage = new MemoryStorage({
       ownerReview: { state: "NEW", corrections: [] },
       warnings: [],
       refreshToken: "phase2b1-refresh-token-must-not-export",
+      managedReference: "phase2b2b-managed-reference-must-not-export",
     })],
     candidateEvents: [inboxOrderRecord("candidate-event-1", "ORDER_CANDIDATE_EVENT", {
       candidateId: "order-candidate-1",
@@ -202,6 +203,7 @@ assert.equal(inboxOrderSection.recordCount, 4);
 assert.equal(inboxOrderSection.data.messageEvents[0].accessToken, undefined, "provider tokens must be removed from normalized message metadata");
 assert.equal(inboxOrderSection.data.messageEvents[0].rawMessageContent, undefined, "raw protected message content must be removed");
 assert.equal(inboxOrderSection.data.orderCandidates[0].refreshToken, undefined, "refresh tokens must be removed from Order Candidates");
+assert.equal(inboxOrderSection.data.orderCandidates[0].managedReference, undefined, "managed provider-secret references must be removed from backups");
 assert.equal(accountOpsSection.data.storeAccounts[0].accessToken, undefined, "Account Ops tokens must be removed");
 assert.equal(accountOpsSection.data.storeAccounts[0].cvv, undefined, "Account Ops card-security values must be removed");
 assert.equal(accountOpsSection.data.storeAccounts[0].credentials, undefined, "Account Ops credential payloads must be removed");
@@ -223,6 +225,7 @@ assert.equal(phase2Section.data.dealFinderItems[0].sessionId, "deal-session-1", 
 assert.doesNotMatch(complete.json, /must-not-export/);
 assert.doesNotMatch(complete.json, /phase2a-(?:retailer-)?(?:password|otp|passphrase|token|cvv|credentials|session)-must-not-export/);
 assert.doesNotMatch(complete.json, /phase2b1-(?:access-token|refresh-token|raw-message)-must-not-export/);
+assert.doesNotMatch(complete.json, /phase2b2b-managed-reference-must-not-export/);
 assert.doesNotMatch(complete.json, /sb-example-auth-token/);
 assert.ok(complete.backup.manifest.securityExclusions.length >= 4);
 

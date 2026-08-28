@@ -1,6 +1,6 @@
 # Code 3 Backup Format Version 1
 
-Status: Phase 1A format published on the feature branch. Phase 1B adds a local owner-authorized remote-read integration, but its canonical server source remains gated/not active by default. Published Phase 2A registers sanitized Account Ops metadata. Published Phase 2B1 registers a separate sanitized Inbox/Order Intelligence source. Phase 2B2-A adds no backup source and excludes runtime proof/provider state from persistence. No owner data has migrated, no schema was applied, and no restore applies data.
+Status: Phase 1A format published on the feature branch. Phase 1B adds a local owner-authorized remote-read integration, but its canonical server source remains gated/not active by default. Published Phase 2A registers sanitized Account Ops metadata. Published Phase 2B1 registers a separate sanitized Inbox/Order Intelligence source. Published Phase 2B2-A and local Phase 2B2-B add no backup source. Managed provider connection metadata, encrypted-secret envelopes, OAuth state/index/used markers, encryption keys, Redis credentials, and runtime proof remain excluded. No owner data has migrated, no schema was applied, and no restore applies data.
 
 ## Purpose and boundary
 
@@ -130,6 +130,21 @@ activity
 The source validator accepts only minimized normalized metadata. It rejects provider secrets, OAuth state/codes/verifiers, tokens, sessions, authority fields, raw/protected message content, OTPs, reset/login links, unsafe prototype keys, malformed IDs/references, invalid collection shape, and unsupported schema versions. Restore Preview remains in memory and zero-write; it cannot contact a provider, repair a candidate, apply an owner correction, or create a Purchase.
 
 All four paths are `REQUIRES_MAPPING` because the Phase 1B canonical schema has no Inbox/Order Intelligence domain. The backup section is local evidence only. It does not include a server provider connection, prove a mailbox is connected, make provider secrets recoverable, or authorize canonical persistence.
+
+## Phase 2B2-B managed-provider exclusion
+
+Phase 2B2-B does not change the registry totals: **23 sources, 19 locally included, and four excluded or conditional**. Managed provider operational state is not a user-backup source.
+
+The following remain prohibited even if a future Preview resource is provisioned:
+
+- managed Redis endpoint credentials and server environment values;
+- the Code 3 AES-256-GCM encryption key or key-version control state;
+- encrypted provider-secret envelopes and secret references used only by the trusted runtime;
+- OAuth state values or digests, owner/redirect binding hashes, expiry indexes, used-state replay markers, and ephemeral managed-store readiness keys;
+- provider authorization codes, PKCE verifiers, access/refresh tokens, passwords, OTPs, sessions, or raw/protected mailbox content; and
+- runtime health/proof data that could be reconstructed from deployment state.
+
+Safe local `code3.inbox-order.v1` evidence remains the nineteenth included section under its existing validation contract. No Redis resource is currently provisioned, so there is no managed operational state to export. Restore Preview stays browser-local and zero-write and cannot contact, seed, validate, or mutate a managed provider store.
 
 ## Coverage semantics
 

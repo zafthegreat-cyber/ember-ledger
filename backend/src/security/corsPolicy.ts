@@ -8,18 +8,30 @@ type CorsOptions = {
   runtimeKind?: RuntimeKind;
 };
 
+function canonicalOrigin(value: unknown): string | null {
+  const origin = String(value || "").trim();
+  if (!origin || origin === "*" || origin === "null" || origin.endsWith("/")) return null;
+  try {
+    const parsed = new URL(origin);
+    const isLoopbackHttp = parsed.protocol === "http:"
+      && (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1" || parsed.hostname === "[::1]");
+    if (
+      (parsed.protocol !== "https:" && !isLoopbackHttp)
+      || parsed.username
+      || parsed.password
+      || parsed.pathname !== "/"
+      || parsed.search
+      || parsed.hash
+      || parsed.origin !== origin
+    ) return null;
+    return origin;
+  } catch {
+    return null;
+  }
+}
+
 function exactOrigins(value = ""): Set<string> {
-  return new Set(String(value || "").split(",").map((origin) => origin.trim()).filter((origin) => {
-    if (!origin || origin === "*") return false;
-    try {
-      const parsed = new URL(origin);
-      const isLoopbackHttp = parsed.protocol === "http:"
-        && (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1" || parsed.hostname === "[::1]");
-      return (parsed.protocol === "https:" || isLoopbackHttp) && parsed.origin === origin.replace(/\/$/, "");
-    } catch {
-      return false;
-    }
-  }).map((origin) => origin.replace(/\/$/, "")));
+  return new Set(String(value || "").split(",").map((origin) => canonicalOrigin(origin)).filter((origin): origin is string => Boolean(origin)));
 }
 
 function addVaryOrigin(response: Response): void {
@@ -30,14 +42,18 @@ function addVaryOrigin(response: Response): void {
 }
 
 export function allowedOriginsForRuntime(env: RuntimeEnvironment, runtimeKind = detectRuntimeKind(env)): Set<string> {
-  const allowed = exactOrigins(env.CODE3_CORS_ALLOWED_ORIGINS);
   if (runtimeKind === "preview") {
-    exactOrigins(env.CODE3_CORS_PREVIEW_ORIGINS).forEach((origin) => allowed.add(origin));
+    return exactOrigins(env.CODE3_CORS_PREVIEW_ORIGINS);
   }
   if (runtimeKind === "local-development" || runtimeKind === "automated-test") {
-    exactOrigins(env.CODE3_CORS_LOCAL_ORIGINS).forEach((origin) => allowed.add(origin));
+    const allowed = exactOrigins(env.CODE3_CORS_LOCAL_ORIGINS);
+    exactOrigins(env.CODE3_CORS_ALLOWED_ORIGINS).forEach((origin) => allowed.add(origin));
+    return allowed;
   }
-  return allowed;
+  if (runtimeKind === "production") {
+    return exactOrigins(env.CODE3_CORS_ALLOWED_ORIGINS);
+  }
+  return new Set<string>();
 }
 
 export function createProtectedCors(options: CorsOptions = {}) {
@@ -45,10 +61,11 @@ export function createProtectedCors(options: CorsOptions = {}) {
   return function protectedCors(request: Request, response: Response, next: NextFunction) {
     response.setHeader("Cache-Control", "no-store");
     addVaryOrigin(response);
-    const origin = typeof request.headers.origin === "string" ? request.headers.origin.replace(/\/$/, "") : "";
+    const rawOrigin = typeof request.headers.origin === "string" ? request.headers.origin : "";
+    const origin = rawOrigin ? canonicalOrigin(rawOrigin) : "";
     const runtimeKind = options.runtimeKind || detectRuntimeKind(env);
     const allowed = allowedOriginsForRuntime(env, runtimeKind);
-    if (origin && !allowed.has(origin)) {
+    if (rawOrigin && (!origin || !allowed.has(origin))) {
       return response.status(403).json({
         ok: false,
         error: { code: "origin_not_allowed", message: "This application origin is not allowed." },

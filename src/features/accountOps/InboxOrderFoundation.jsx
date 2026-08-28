@@ -17,6 +17,7 @@ const EMPTY_RUNTIME = Object.freeze({
   configurationState: "UNAVAILABLE",
   trustedRuntime: Object.freeze({
     hostedRuntimeVerified: false,
+    managedStorageVerified: false,
     environment: "UNKNOWN",
     productionEnvironment: false,
   }),
@@ -106,6 +107,10 @@ function ProviderConnections({ localDevelopment }) {
         </StatusBadge>
       </header>
       <dl className="account-ops-provider-facts">
+        <div>
+          <dt>Provider security storage</dt>
+          <dd>{runtime.trustedRuntime.managedStorageVerified ? "Verified" : "Unavailable"}</dd>
+        </div>
         {providerRows.map((provider) => (
           <div key={provider.providerId}>
             <dt>{provider.displayName}</dt>
@@ -184,7 +189,7 @@ function ConnectionsSection({ localDevelopment }) {
         actions={<StatusBadge tone="warning">Foundation Only</StatusBadge>}
       />
       <p className="account-ops-provider-boundary">
-        Phase 2B2-A verifies only the Preview server boundary. It does not authorize a live mailbox or activate provider storage.
+        Code 3 must verify the owner-protected Preview runtime and managed security storage before any provider can be enabled. No live mailbox is authorized.
       </p>
       <ProviderConnections localDevelopment={localDevelopment} />
     </section>

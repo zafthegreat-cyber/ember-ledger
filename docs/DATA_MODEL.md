@@ -10,7 +10,7 @@ Phase 2A Account Ops is published at `c76e3e4bc668c08d9a0908c9bb2cd96444610297`.
 
 Phase 2A.5 is published at `4c6c7891a123777acec8f326793f30aee61f3de6`. It adds a bounded product-workspace preference and route metadata, not a domain entity or feature-data migration.
 
-Phase 2B1 is published at `2f49a5ed97cec827184c6080e4ada0f4c8194451` and adds a separate versioned `code3.inbox-order.v1` browser source for minimized message evidence, Order Candidate projections, append-only candidate events, and sanitized activity. Phase 2B2-A adds no data source or schema. Neither phase alters the strict Account Ops v1 document, adds a canonical database domain, persists provider secrets, or creates a Purchase.
+Phase 2B1 is published at `2f49a5ed97cec827184c6080e4ada0f4c8194451` and adds a separate versioned `code3.inbox-order.v1` browser source for minimized message evidence, Order Candidate projections, append-only candidate events, and sanitized activity. Phase 2B2-A is published at `c379416336e32a67346c7a3bb95f7b6469f679f5` and adds no data source or schema. The current Phase 2B2-B working copy implements separate Preview-only managed provider metadata, encrypted-secret, and OAuth-state adapters; they are not browser/canonical business data and are not provisioned. These phases do not alter the strict Account Ops v1 document, add a canonical business database domain, create a Purchase, or change `LOCAL_ONLY` authority.
 
 This document distinguishes current persisted shapes, Phase 1B schema-only representations, and the future active canonical model. A table, migration file, repository interface, or dry-run result is not evidence that remote persistence is active.
 
@@ -123,6 +123,21 @@ Message categories are `VERIFICATION`, `ORDER_CONFIRMATION`, `SHIPPED`, `DELIVER
 Candidate money uses safe integer minor units and one explicit currency. Decimal input is parsed without floating-point arithmetic; malformed, excess-precision, or mixed-currency evidence is rejected or warned without silent rounding. Order state, review state, per-field provenance, warnings, contradictions, source hash, processing version, and owner corrections remain separate. New or materially changed candidates require owner review; explicit owner confirmation or rejection may clear `ownerReviewRequired`, while later changing evidence sets it again. Every candidate fixes `automaticImportAllowed: false` and `purchaseCreated: false`.
 
 All four paths are registered in Backup Format v1 and classified `REQUIRES_MAPPING`. No Phase 1B canonical domain, migration action, remote adapter, sync path, or Purchase writer is approved for them.
+
+### Phase 2B2-B managed provider records
+
+Phase 2B2-B introduces a server-only operational storage contract. It is intentionally separate from `code3.account-ops.v1`, `code3.inbox-order.v1`, the Phase 1B canonical schema, and ordinary backup/restore.
+
+| Managed record | Persisted representation | Safety boundary |
+|---|---|---|
+| Provider connection metadata | owner-hash-scoped Redis hash containing a validated bounded `SafeProviderConnection` projection | no access/refresh token, OAuth code/state, PKCE verifier, password, OTP, raw mailbox content, or browser authority |
+| Provider secret envelope | owner/connection-scoped Redis value with `code3.provider-managed-store.v1`, AES-256-GCM algorithm/key version, IV, authentication tag, ciphertext, and nonsecret reference metadata | plaintext exists only transiently inside trusted backend execution; encryption key is server environment state and never stored beside the envelope |
+| OAuth state record | state-digest-keyed Redis value containing provider, hashed owner binding, hashed redirect binding, issue time, and expiry | raw state is returned once to the initiating trusted flow but never persisted; atomic consume deletes the live record and writes a short-lived used marker |
+| OAuth state owner index | owner-hash-scoped sorted set of state digests and expiries | enforces a bounded active-state count and supports expiry cleanup without owner identifiers in keys |
+
+All keys use a configured Preview base namespace plus a derived hash of the exact Vercel project ID and Git branch. Stable owner/provider/connection input is hashed before key construction. Connection and secret records occupy separate key families even when they use the same managed Redis resource. OAuth issue and consume use Lua scripts for capacity, expiry cleanup, exact binding checks, deletion, and single-use/replay behavior across serverless instances. Ephemeral readiness key families perform bounded write/read/delete checks and are removed inside the same operation; they are not provider connection records or backup data.
+
+The current resource state is `NOT_PROVISIONED`: Upstash marketplace creation is blocked pending acceptance of its required terms. No managed record exists, no live provider is authorized, and `hostedRuntimeVerified=false`. This operational store must never be interpreted as canonical owner-business persistence or a reason to enable `REMOTE_ACTIVE`.
 
 ### Product workspace preference
 
@@ -356,10 +371,10 @@ erDiagram
 | Entity | Required target content |
 |---|---|
 | `Provider` | provider ID/type, display name, capabilities, legal/terms review state |
-| `ProviderConnection` | safe server projection of provider/configuration/auth status, opaque connection ID, scope summary and health; secret references remain in a separate server-only store and never enter the browser model |
+| `ProviderConnection` | safe server projection of provider/configuration/auth status, opaque connection ID, scope summary and health; Phase 2B2-B implements a Preview-only durable metadata adapter, but no managed resource or connection is provisioned |
 | `ProviderCapability` | declared operation and status |
-| `ProviderSecretReference` | server-only managed/encrypted secret reference and rotation/revocation metadata; no raw token is a browser or backup field |
-| `OAuthStateRecord` | server-only digest bound to verified owner principal, provider, exact redirect, expiry and one-time consumption; production adapter unavailable in Phase 2B1 |
+| `ProviderSecretReference` | server-only managed/encrypted secret reference and rotation/revocation metadata; Phase 2B2-B encrypts material with AES-256-GCM before storage and supports deletion, but no live secret exists and no raw token is a browser or backup field |
+| `OAuthStateRecord` | server-only SHA-256 digest bound to verified owner principal, provider, exact redirect, expiry and atomic one-time consumption; Phase 2B2-B implements the Preview-only Redis/Lua adapter but does not initiate OAuth |
 | `SearchRule` | all keyword, classification, price/cost, geography, format, time-window, seller, score, schedule, quiet-hour, result-limit, queue, priority, and note fields |
 | `SearchRun` | rule/provider, start/finish, counts, errors, rate-limit state, runtime, cursor/page metadata |
 | `Listing` | provider/external identity, original URL, title/description, seller/location, format, current price/bid/shipping, dates, state, classification, confidence/risk, related rule/purchase |

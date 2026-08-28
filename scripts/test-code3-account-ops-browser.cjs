@@ -329,6 +329,9 @@ async function inspectFoundation(browser, fixture, emptyState) {
         runtime: {
           available: fixture.configurationState === "AVAILABLE",
           hostedRuntimeVerified: fixture.hostedRuntimeVerified === true || fixture.configurationState === "AVAILABLE",
+          serverExecutionVerified: fixture.hostedRuntimeVerified === true || fixture.configurationState === "AVAILABLE",
+          authenticatedOwnerVerified: fixture.hostedRuntimeVerified === true || fixture.configurationState === "AVAILABLE",
+          managedStorageVerified: fixture.hostedRuntimeVerified === true || fixture.configurationState === "AVAILABLE",
           trustedRuntimeProof: {
             proofVersion: "code3.preview-runtime-proof.v1",
             execution: "SERVER",
@@ -337,6 +340,7 @@ async function inspectFoundation(browser, fixture, emptyState) {
             productionEnvironment: false,
             providerRuntimeLoaded: true,
             providerNetworkAccessEnabled: false,
+            serverExecutionVerified: fixture.hostedRuntimeVerified === true || fixture.configurationState === "AVAILABLE",
             hostedRuntimeVerified: fixture.hostedRuntimeVerified === true || fixture.configurationState === "AVAILABLE",
           },
           oauthStateStorage: { available: false, kind: "UNAVAILABLE" },

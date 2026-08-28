@@ -6,6 +6,8 @@ import { ProviderRuntimeError } from "./errors";
 export interface ProviderConnectionStore {
   readonly kind: "UNAVAILABLE" | "AUTOMATED_TEST_MEMORY" | "DURABLE_SERVER_METADATA";
   readonly available: boolean;
+  healthCheck(): Promise<void>;
+  verifyReadiness(owner: ProviderOwnerContext): Promise<void>;
   list(owner: ProviderOwnerContext): Promise<readonly SafeProviderConnection[]>;
   get(owner: ProviderOwnerContext, connectionId: string): Promise<SafeProviderConnection | null>;
   put(owner: ProviderOwnerContext, connection: SafeProviderConnection): Promise<void>;
@@ -24,6 +26,8 @@ export function createUnavailableProviderConnectionStore(): ProviderConnectionSt
   return Object.freeze({
     kind: "UNAVAILABLE" as const,
     available: false,
+    healthCheck: async () => unavailable(),
+    verifyReadiness: async () => unavailable(),
     list: async () => unavailable(),
     get: async () => unavailable(),
     put: async () => unavailable(),
@@ -42,8 +46,9 @@ function cloneConnection(connection: SafeProviderConnection): SafeProviderConnec
 
 /** Dependency-injected metadata store for automated tests only. */
 export function createAutomatedTestMemoryConnectionStore(options: { runtimeKind?: RuntimeKind } = {}): ProviderConnectionStore {
-  const runtimeKind = options.runtimeKind || detectRuntimeKind(process.env);
-  if (runtimeKind !== "automated-test") {
+  const actualRuntimeKind = detectRuntimeKind(process.env);
+  const runtimeKind = options.runtimeKind || actualRuntimeKind;
+  if (runtimeKind !== "automated-test" || actualRuntimeKind !== "automated-test") {
     throw new ProviderRuntimeError("provider_runtime_unavailable", "The memory connection store is available only to automated tests.", 503);
   }
   const records = new Map<string, SafeProviderConnection>();
@@ -51,6 +56,8 @@ export function createAutomatedTestMemoryConnectionStore(options: { runtimeKind?
   return Object.freeze({
     kind: "AUTOMATED_TEST_MEMORY" as const,
     available: true,
+    healthCheck: async () => undefined,
+    verifyReadiness: async () => undefined,
     async list(owner: ProviderOwnerContext) {
       const prefix = `${ownerContextKey(owner)}:`;
       return Object.freeze([...records.entries()]
