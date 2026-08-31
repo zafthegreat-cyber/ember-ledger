@@ -1,8 +1,10 @@
 # Code 3 Bot Provider Capability Review
 
-Status: Phase 2D-B1 discovery and pilot design only. Research was performed on 2026-08-31 against publicly accessible first-party Hayha and StellarAIO sources. No provider login, private Discord content, license credential, application traffic, undocumented endpoint, bot process, provider network API, real export, or live installation was accessed.
+Status: Phase 2D-B1 discovery and pilot design plus the Phase 2D-B2 offline Stellar task-export preview boundary. Research was performed on 2026-08-31 against publicly accessible first-party Hayha and StellarAIO sources. No provider login, private Discord content, license credential, application traffic, undocumented endpoint, bot process, provider network API, real export, or live installation was accessed.
 
-Published baseline: `cdde7df506c94bc55b2ec7995596843ae1c2261a`.
+Phase 2D-B1 research baseline: `cdde7df506c94bc55b2ec7995596843ae1c2261a`.
+
+Phase 2D-B2 preview baseline: `e832ab67a153c5e672f8a77dda5474aedb1395af`.
 
 ## Decision
 
@@ -10,7 +12,7 @@ Published baseline: `cdde7df506c94bc55b2ec7995596843ae1c2261a`.
 
 Neither provider currently exposes a publicly documented, read-only Bot-to-Code-3 interface that can prove runtime health, task status, history, and checkout evidence without additional provider confirmation or handling sensitive data. Phase 2D-B1 therefore enables no provider, no network adapter, no control capability, and no verified retailer coverage.
 
-The safest next candidate is an offline, owner-selected preview of a Stellar task-group export. Stellar's current public Tasks overview documents task import/export controls, but it does not establish the export's exact serialized format or version-compatibility rules. Before that candidate can become a Phase 2D-B2 parser, Code 3 still needs a synthetic or fully redacted current schema/version sample and provider confirmation that owner use of the export for local, read-only organization is permitted. The preview must fail closed on profile, account, payment, proxy, cookie, token, session, license, or other secret-bearing fields.
+Phase 2D-B2 implements the safest non-live candidate: an offline, owner-selected, zero-write preview of a Stellar task-group JSON export. The current public Tasks guide documents owner export/import of a task group as JSON and says the receiving installation must run the same Stellar version. It does not publish a stable JSON root, field schema, or embedded version marker. Code 3 therefore does not claim verified schema compatibility: `SUPPORTED` is reserved, and current inputs can only be `PARTIALLY_RECOGNIZED`, `UNKNOWN_FORMAT`, `UNSAFE`, or `REJECTED`. The preview fails closed on profile, account, payment, proxy, cookie, token, session, license, or other secret-bearing fields and retains no raw file.
 
 Hayha has no comparable publicly documented safe task export or read/status interface in the reviewed sources. Its documented Amazon session export copies a login token and is explicitly unsuitable for Code 3.
 
@@ -32,7 +34,7 @@ Research date: 2026-08-31.
 
 Hayha's public product page appears current but provides product-level marketing rather than an integration specification. Its public guide carries a 2021 copyright and tells users to rely on support Discord/development announcements for newer information. Restricted Discord material was not accessed. Hayha's public terms state an effective date of 2019-08-05. Because the public guide is old and no public changelog or integration specification was found, all unverified integration capabilities remain `UNKNOWN` and require current written provider confirmation.
 
-Stellar's public guide is actively updated, but page freshness varies. The getting-started guide reported an update one month before review; the documented WebSocket integration reported 16 days; Discord notification guidance reported one year; profile export guidance ranged from five to eleven months; and session mass-import guidance reported two years. The current Tasks overview confirms import/export controls but not the exact serialized format or version rules. Provider version and export schema therefore must be confirmed at pilot time.
+Stellar's public guide is actively updated, but page freshness varies. The getting-started guide reported an update one month before review; the documented WebSocket integration reported 16 days; Discord notification guidance reported one year; profile export guidance ranged from five to eleven months; and session mass-import guidance reported two years. The current Tasks overview confirms owner task-group JSON import/export and same-version transfer, but not a stable root, field schema, or version marker. Actual schema compatibility therefore remains unverified.
 
 No public current Stellar policy specifically authorizing a third-party read/status companion was located. The documented WebSocket compatibility page authorizes the narrow monitor-input pattern it describes; it is not evidence of a general API or permission to inspect the application. A provider login or acceptance of new terms was not attempted.
 
@@ -50,7 +52,7 @@ No public current Stellar policy specifically authorizing a third-party read/sta
 ### StellarAIO
 
 - [StellarAIO getting-started guide](https://guides.stellaraio.com/stellar) — current product orientation, local client setup, Discord notifications, tasks, sessions, profiles, and proxies.
-- [Stellar Tasks overview](https://guides.stellaraio.com/stellar/navigating-stellaraio/what-is-the-tasks-tab) — documents task-group Import and Export controls; the exact serialized format and version-compatibility rules require current confirmation.
+- [Stellar Tasks overview](https://guides.stellaraio.com/stellar/navigating-stellaraio/what-is-the-tasks-tab) — documents owner task-group Import and Export as JSON and requires the same Stellar version for transfer; it does not publish a stable JSON root, field schema, or embedded version marker.
 - [Stellar Tasks tab](https://guides.stellaraio.com/stellar/navigating-stellaraio/what-is-the-tasks-tab) — documents in-client task groups and owner controls; it does not document an external read API.
 - [Stellar WebSocket integration](https://guides.stellaraio.com/stellar/developing-software-compatible-with-stellar/websocket-integration) — documents external monitor servers pushing product data into Stellar. The direction is into the bot, not Bot status/history out to Code 3.
 - [Stellar Discord notification setup](https://guides.stellaraio.com/stellar/navigating-stellaraio/what-is-the-settings-tab/how-to-set-up-discord-notifications) and [Settings tab](https://guides.stellaraio.com/stellar/navigating-stellaraio/what-is-the-settings-tab) — document an owner-supplied Discord incoming-webhook URL and notification choices.
@@ -83,12 +85,12 @@ Every recommendation below leaves runtime capabilities false.
 | --- | --- | --- | --- | --- |
 | `OFFICIAL_API` | `UNKNOWN`. No public general-purpose Stellar Bot API or SDK reference was found. | Authentication and data are unknown; no credential is authorized. | Read/status/history/control/evidence are not established through an API. | Policy confidence low; risk high; complexity unknown. `NOT_READY` pending provider confirmation. |
 | `DOCUMENTED_WEBHOOK` | `DOCUMENTED_BUT_LIMITED`. Official settings guides document Discord incoming-webhook notifications, including checkout/failure options. | Stellar consumes an owner-provided Discord webhook URL. The URL is a credential and is not authorized for Code 3. | Notifications may carry bounded success/failure evidence, but the documented path targets Discord and does not expose a Bot status API or task control. | Policy confidence medium for Discord delivery; security risk high for credential handling; complexity medium. `NOT_READY` until Stellar confirms a generic or authenticated owner-controlled receiver. |
-| `DOCUMENTED_EXPORT` | `DOCUMENTED_BUT_LIMITED`. The current Tasks overview documents task-group export/import controls but does not establish the exact file format or version rules. Profiles and broad configuration also export but contain or may contain sensitive data. | A task export may carry profile/proxy/account references; profile/config/session exports can contain PII, payment, credential, or session material. | A sanitized task export could expose static task-group/task configuration, not verified runtime status/history. | Policy confidence medium for owner export; risk medium-to-critical by file type; complexity medium. Only a currently confirmed task-export format is a conditional offline candidate. Profile/config/session exports are `DO_NOT_USE`. |
+| `DOCUMENTED_EXPORT` | `DOCUMENTED_BUT_LIMITED`. The current Tasks overview documents task-group JSON export/import and same-version transfer but no stable root, field schema, or embedded version marker. Profiles and broad configuration also export but contain or may contain sensitive data. | A task export may carry profile/proxy/account references; profile/config/session exports can contain PII, payment, credential, or session material. | The Phase 2D-B2 sanitizer can preview allowlisted static metadata, not verified runtime status/history. | Policy confidence medium for owner export; risk medium-to-critical by file type; complexity medium. Task export is `OFFLINE_PREVIEW_ONLY`; profile/config/session exports are `DO_NOT_USE`. |
 | `DOCUMENTED_LOCAL_INTERFACE` | `VERIFIED_SUPPORTED` for the narrow WebSocket monitor-input protocol. | Stellar connects to an owner-specified `ws`/`wss` server; the guide describes an API key in the query string. | Direction is external product pings into Stellar. It does not read runtime/task/history out and could influence active tasks. | Policy confidence high for that documented input pattern; control/checkout risk high; complexity medium. `DO_NOT_USE` for the read/status pilot. |
 | `SUPPORTED_PLUGIN` | `UNKNOWN`. No general plugin contract was found. | Unknown. | No capability established. | Policy confidence low; risk high; complexity unknown. `NOT_READY`. |
-| `OWNER_FILE_IMPORT` | `DOCUMENTED_BUT_LIMITED` for an owner-selected task export after current format/version confirmation. | No provider token should be needed, but the file must be treated as untrusted and rejected if it carries account/profile/proxy/payment/session secrets. | Can support an offline static preview of task groups/tasks only. It does not prove runtime, status, history, or checkout. | Policy confidence medium; risk medium with strict sanitization; complexity low-to-medium. `PREFERRED_OFFLINE_CANDIDATE`, pending schema and provider confirmation. |
+| `OWNER_FILE_IMPORT` | `DOCUMENTED_BUT_LIMITED` for an owner-selected task-group JSON export. | No provider token should be needed, but the file is untrusted and rejected if it carries account/profile/proxy/payment/session secrets. | Phase 2D-B2 previews recognized safe metadata in memory only. It does not import, prove runtime/status/history, or expose checkout. | Policy confidence medium; risk medium with strict sanitization; complexity low-to-medium. `OFFLINE_PREVIEW_ONLY`; schema compatibility remains unverified. |
 | `LOCAL_READ_ONLY_COMPANION` | `UNKNOWN`. No documented Stellar-to-companion output/status interface was found. | Any future pairing or webhook secret must be server-side and separately approved. | No read/status/history path established. | Policy confidence low; risk high; complexity medium-to-high. `NOT_READY`. |
-| `MANUAL_IMPORT` | `DOCUMENTED_BUT_LIMITED` when limited to an owner-selected, sanitized task-export preview after current format/version confirmation. | Same restrictions as `OWNER_FILE_IMPORT`; raw files are not persisted or backed up. | Static configuration only; no live status/history/evidence. | Policy confidence medium; risk medium; complexity low-to-medium. Candidate for Phase 2D-B2 dry-run design, not a live provider pilot. |
+| `MANUAL_IMPORT` | `DOCUMENTED_BUT_LIMITED` and implemented only as an owner-selected sanitized preview. | Same restrictions as `OWNER_FILE_IMPORT`; raw files and normalized previews are not persisted or backed up. | Static preview only; no import, live status/history/evidence, or Task creation. | Policy confidence medium; risk medium; complexity low-to-medium. Phase 2D-B2 preview, not a live provider pilot. |
 | `UNSUPPORTED_PRIVATE_API` | `DO_NOT_USE`. Internal client communications are not evidence of a supported API. | Would likely expose license, session, retailer, or payment context. | Any apparent capability is unverified. | No discovery or use; risk critical. |
 | `REVERSE_ENGINEERED_INTERFACE` | `DO_NOT_USE`. | Would require prohibited binary/process/traffic inspection or authentication reuse. | No capability may be derived this way. | Outside project scope and without verified provider authorization; risk critical. |
 
@@ -99,8 +101,8 @@ All `enabled` values remain `false`. A documented in-client feature is not an ex
 | Capability | Hayha evidence state | Stellar evidence state | Runtime activation |
 | --- | --- | --- | --- |
 | `OBSERVE_RUNTIME` | `UNKNOWN`; no public read/status interface found. | `UNKNOWN`; no public Bot-to-client health interface found. | Hayha `false`; Stellar `false`. |
-| `READ_TASK_GROUPS` | `UNKNOWN`; no safe task export found. | `DOCUMENTED_BUT_LIMITED`; owner-exported task-group data is static and its exact format/version rules are unverified. | Both `false`. |
-| `READ_TASKS` | `UNKNOWN`. | `DOCUMENTED_BUT_LIMITED`; static task-export data only, schema not yet reviewed. | Both `false`. |
+| `READ_TASK_GROUPS` | `UNKNOWN`; no safe task export found. | `DOCUMENTED_BUT_LIMITED`; owner-exported task-group JSON is static, same-version transfer is documented, and its stable schema is not. | Both `false`; offline parsing is not runtime read authority. |
+| `READ_TASKS` | `UNKNOWN`. | `DOCUMENTED_BUT_LIMITED`; Phase 2D-B2 recognizes only allowlisted synthetic-compatible task metadata and claims no stable provider schema. | Both `false`; preview is not a live capability. |
 | `READ_STATUS` | `UNKNOWN`. | `UNKNOWN`; task export does not prove live status and Discord notifications are not a status stream. | Both `false`. |
 | `READ_HISTORY` | `UNKNOWN`. | `UNKNOWN`; no public history export/API found. | Both `false`. |
 | `READ_CHECKOUT_EVIDENCE` | `UNKNOWN`. | `DOCUMENTED_BUT_LIMITED`; Discord notifications may contain event evidence, but no safe Code 3 receiver is documented. | Both `false`. |
@@ -166,7 +168,7 @@ Hayha-branded public guides document limited Discord output, but not a stable ge
 
 ## Export sanitization boundary
 
-The only proposed offline candidate is a Stellar task-group export explicitly selected by the owner after its current format and version rules are confirmed. No real export was accessed in Phase 2D-B1.
+The only offline path is a Stellar task-group JSON export explicitly selected by the owner. Phase 2D-B2 uses a synthetic-first, partially-recognized preview precisely because the public guide does not provide a stable schema/root/version marker. No real export was accessed during Phase 2D-B1 research or Phase 2D-B2 implementation.
 
 A future dry-run parser must:
 
@@ -196,24 +198,23 @@ File access must use explicit owner selection rather than background discovery. 
 The discovery evaluated official support, read-only direction, secret exposure, owner control, revocability, auditability, stability, data minimization, checkout/payment risk, and implementation complexity.
 
 - Hayha: no safe public read/status API, webhook, or task export was established. Public terms materially constrain automated access and reverse engineering. Result: `NOT_READY`.
-- Stellar: task export/import controls are documented and owner-initiated; the unverified current format/version rules and unknown schema prevent immediate ingestion. Discord notifications and the WebSocket protocol do not provide a safe read/status adapter. Result: `OFFLINE_REVIEW_CANDIDATE`, not a live pilot.
+- Stellar: task-group JSON export/import controls and same-version transfer are documented and owner-initiated; the unverified root/fields/version marker prevent a compatibility claim or import. Discord notifications and the WebSocket protocol do not provide a safe read/status adapter. Result: `OFFLINE_PREVIEW_ONLY`, not a live pilot.
 
-Recommendation: no live provider pilot. The first bounded candidate for Phase 2D-B2 is a local, zero-write, synthetic/redacted Stellar task-export preview, contingent on current format/version confirmation, provider confirmation, and an approved safe schema. If those prerequisites cannot be obtained, retain manual Code 3 metadata entry and do not connect either Bot.
+Recommendation: no live provider pilot. Phase 2D-B2 implements only a local, zero-write, synthetic-first Stellar task-export preview behind a recursive security scan and strict field allowlist. Because no stable provider schema/version marker is public, it reserves `SUPPORTED` and makes no general compatibility claim. This does not connect either Bot.
 
-## Proposed Phase 2D-B2 scope
+## Phase 2D-B2 implemented preview boundary
 
-Phase 2D-B2 is not authorized by this review. If separately approved, its maximum initial scope should be:
+Phase 2D-B2 is limited to:
 
-1. Obtain current written Stellar confirmation that an owner may use a task-group export in a local read-only companion.
-2. Obtain a synthetic or fully redacted current task-export sample with confirmed format/version rules and no payment, retailer credential, account, profile, proxy, cookie, token, session, license, or personal data.
-3. Freeze and test an allowlisted schema/version for a local owner-selected file.
-4. Implement a dry-run-only sanitizer and mapping preview into inactive Code 3 Task Group, Task, and Product Target proposals.
-5. Add recursive secret rejection, size/depth limits, source hashing, idempotency, conflict reporting, and raw-file non-retention.
-6. Keep all provider/runtime/control/checkout capabilities false; make no network call and write nothing to Stellar.
-7. Require explicit OWNER review before any safe local metadata save; do not create Attempt, Checkout Evidence, Order Candidate, Purchase, Receiving, or Inventory records.
-8. Validate mobile/desktop review UI, Backup exclusion, Restore Preview, credential scans, and full regression with synthetic fixtures only.
+1. one explicit owner-selected JSON file, capped at 1 MiB and 500 candidate records;
+2. recursive fail-closed screening before normalization, including nested unknown data and unsafe object keys;
+3. bounded allowlisted safe-field normalization with category-only security errors and warnings for harmless ignored fields;
+4. conservative retailer/product mapping, exact minor-unit money handling, bounded integer quantities, and in-session duplicate warnings;
+5. ephemeral memory only, with no raw retention, raw-file hash, logs, telemetry, local/remote persistence, backup source, or migration source;
+6. no provider/runtime/control/checkout capability, network request, write to Stellar, Task/Attempt/Activity/Evidence creation, or business mutation; and
+7. discard/route-exit/refresh behavior that requires the owner to select the file again.
 
-This is an offline/manual import preview, not a live Bot integration.
+`Stellar Export Preview != Bot Task Import` and `Previewed Task != Task`. This is an offline preview, not a manual import or live Bot integration.
 
 ## Credential boundary
 

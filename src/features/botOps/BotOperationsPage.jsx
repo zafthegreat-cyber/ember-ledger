@@ -18,6 +18,7 @@ import {
   getBotProviderDiscovery,
   listBotProviders,
 } from "./index.js";
+import StellarTaskExportPreview from "./importPreview/StellarTaskExportPreview.jsx";
 import "./bot-operations.css";
 
 const SECTIONS = Object.freeze([
@@ -165,7 +166,7 @@ function TaskGroupsSection({ rows }) {
 
 function TasksSection({ rows, targets }) {
   const targetById = new Map(targets.map((target) => [target.id, target]));
-  return <section><SectionHeader eyebrow="Normalized status" title="Tasks" description="Statuses are local observations or synthetic QA evidence. No start, stop, restart, cart, or checkout action is connected." />{rows.length ? <div className="bot-ops-grid">{rows.map((row) => <RecordCard key={row.id} className="bot-ops-record"><div className="bot-ops-card-heading"><div><p className="eyebrow">{words(row.provider)}</p><h3>{targetById.get(row.productTargetId)?.title || row.productTargetId}</h3></div><StatusBadge tone={statusTone(row.runtimeStatus)}>{words(row.runtimeStatus)}</StatusBadge></div><Facts rows={[{ label: "Retailer", value: row.retailerId }, { label: "Quantity", value: row.quantityTarget }, { label: "Max price", value: row.maxPrice ? formatMoneyForDisplay(row.maxPrice) : "Not set" }, { label: "Last attempt", value: dateLabel(row.lastAttemptAt) }]} /><WarningList warnings={row.warnings} /></RecordCard>)}</div> : <EmptyState title="No tasks">No live or local task records exist. Provider task control is unavailable.</EmptyState>}</section>;
+  return <section><StellarTaskExportPreview /><SectionHeader eyebrow="Normalized status" title="Tasks" description="Statuses are local observations or synthetic QA evidence. No start, stop, restart, cart, or checkout action is connected." />{rows.length ? <div className="bot-ops-grid">{rows.map((row) => <RecordCard key={row.id} className="bot-ops-record"><div className="bot-ops-card-heading"><div><p className="eyebrow">{words(row.provider)}</p><h3>{targetById.get(row.productTargetId)?.title || row.productTargetId}</h3></div><StatusBadge tone={statusTone(row.runtimeStatus)}>{words(row.runtimeStatus)}</StatusBadge></div><Facts rows={[{ label: "Retailer", value: row.retailerId }, { label: "Quantity", value: row.quantityTarget }, { label: "Max price", value: row.maxPrice ? formatMoneyForDisplay(row.maxPrice) : "Not set" }, { label: "Last attempt", value: dateLabel(row.lastAttemptAt) }]} /><WarningList warnings={row.warnings} /></RecordCard>)}</div> : <EmptyState title="No tasks">No live or local task records exist. Provider task control is unavailable.</EmptyState>}</section>;
 }
 
 function AccountsSection({ rows }) {

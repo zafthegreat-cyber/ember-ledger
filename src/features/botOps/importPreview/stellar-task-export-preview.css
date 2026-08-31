@@ -1,0 +1,231 @@
+.stellar-preview {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  margin-bottom: 22px;
+  padding: 16px;
+  border: 1px solid var(--border-subtle, rgba(127, 145, 168, 0.32));
+  border-radius: 18px;
+  background: var(--surface-raised, rgba(255, 255, 255, 0.04));
+}
+
+.stellar-preview-boundary,
+.stellar-preview-result,
+.stellar-preview-task {
+  min-width: 0;
+}
+
+.stellar-preview-boundary {
+  display: grid;
+  gap: 10px;
+}
+
+.stellar-preview-boundary > p,
+.stellar-preview-result-heading p,
+.stellar-preview-task p {
+  margin: 0;
+}
+
+.stellar-preview-actions button {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-subtle, rgba(127, 145, 168, 0.32));
+  border-radius: 12px;
+  background: var(--surface-elevated, rgba(255, 255, 255, 0.08));
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+  padding: 10px 14px;
+}
+
+.stellar-preview input[type="file"] {
+  width: 100%;
+  max-width: 100%;
+  min-height: 44px;
+  color: var(--text-muted, #8b9bb0);
+  overflow: hidden;
+}
+
+.stellar-preview input[type="file"]::file-selector-button {
+  min-height: 44px;
+  margin-right: 10px;
+  border: 1px solid var(--border-subtle, rgba(127, 145, 168, 0.32));
+  border-radius: 10px;
+  background: var(--surface-elevated, rgba(255, 255, 255, 0.08));
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 750;
+  padding: 8px 12px;
+}
+
+.stellar-preview-limit,
+.stellar-preview-status,
+.stellar-preview-result-heading p,
+.stellar-preview-ignored {
+  color: var(--text-muted, #8b9bb0);
+  overflow-wrap: anywhere;
+}
+
+.stellar-preview-selection,
+.stellar-preview-invariant {
+  overflow-wrap: anywhere;
+  font-weight: 800;
+}
+
+.stellar-preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.stellar-preview-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.stellar-preview-actions .secondary {
+  background: transparent;
+}
+
+.stellar-preview-result {
+  display: grid;
+  gap: 14px;
+  padding-top: 4px;
+}
+
+.stellar-preview-result-heading,
+.stellar-preview-task-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+
+.stellar-preview-result-heading > div,
+.stellar-preview-task-heading > div {
+  min-width: 0;
+}
+
+.stellar-preview-result-heading h3,
+.stellar-preview-task-heading h4 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.stellar-preview-metrics,
+.stellar-preview-task-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 12px;
+  min-width: 0;
+}
+
+.stellar-preview-blocked,
+.stellar-preview-read-error {
+  padding: 14px;
+  border: 1px solid var(--danger-border, rgba(239, 68, 68, 0.5));
+  border-radius: 14px;
+  background: var(--danger-surface, rgba(127, 29, 29, 0.16));
+}
+
+.stellar-preview-blocked h4 {
+  margin: 0 0 6px;
+}
+
+.stellar-preview-blocked p,
+.stellar-preview-blocked ul,
+.stellar-preview-notes,
+.stellar-preview-warnings {
+  margin: 8px 0 0;
+}
+
+.stellar-preview-notes,
+.stellar-preview-warnings,
+.stellar-preview-blocked ul {
+  padding-left: 20px;
+}
+
+.stellar-preview-warnings {
+  color: var(--warning-text, #d8a448);
+}
+
+.stellar-preview-task-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 14px 0 0;
+}
+
+.stellar-preview-task-facts div {
+  min-width: 0;
+}
+
+.stellar-preview-task-facts dt {
+  color: var(--text-muted, #8b9bb0);
+  font-size: 0.76rem;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.stellar-preview-task-facts dd {
+  margin: 3px 0 0;
+  overflow-wrap: anywhere;
+  font-weight: 700;
+}
+
+.stellar-preview-task details {
+  margin-top: 10px;
+}
+
+.stellar-preview-task summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 750;
+}
+
+.stellar-preview-task details p {
+  overflow-wrap: anywhere;
+}
+
+.stellar-preview input[type="file"]:focus-visible,
+.stellar-preview-actions button:focus-visible,
+.stellar-preview-task summary:focus-visible {
+  outline: 3px solid var(--focus-ring, #60a5fa);
+  outline-offset: 3px;
+}
+
+@media (max-width: 700px) {
+  .stellar-preview {
+    padding: 14px;
+  }
+
+  .stellar-preview-actions button {
+    width: 100%;
+  }
+
+  .stellar-preview-result-heading,
+  .stellar-preview-task-heading {
+    flex-direction: column;
+  }
+
+  .stellar-preview-task-facts {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stellar-preview *,
+  .stellar-preview *::before,
+  .stellar-preview *::after {
+    animation: none !important;
+    scroll-behavior: auto !important;
+    transition: none !important;
+  }
+}

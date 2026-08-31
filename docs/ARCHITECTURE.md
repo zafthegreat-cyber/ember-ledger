@@ -16,7 +16,7 @@ Phase 2B1 is published at `2f49a5ed97cec827184c6080e4ada0f4c8194451`. It adds a 
 
 Phase 2B2-B is published at `b4848cb851b2be83093fbdc4ed4b976857f9d3ff`. Its separate Phase 2B2-B.1 operational verification is paused. A Free Upstash resource exists and three managed-store values are configured as branch-scoped Preview secrets, but Supabase owner/auth values and the remaining Preview CORS/activation/runtime values are not configured, no follow-up Preview was deployed, and `hostedRuntimeVerified=false`. Production and Development remain untouched.
 
-Phase 2D-A is published at `cdde7df506c94bc55b2ec7995596843ae1c2261a`. Phase 2D-B1 is the current local-only discovery/design workstream. It adds evidence-backed provider-integration classifications and read-versus-control capability metadata without adding a provider adapter, credential, provider network, task control, checkout, Purchase, receiving, Inventory mutation, remote persistence, or deployment. Hayha and Stellar remain `NOT_CONFIGURED`, every live capability remains false, and the evidence review recommends no live pilot on the current public record.
+Phase 2D-A is published at `cdde7df506c94bc55b2ec7995596843ae1c2261a`, and Phase 2D-B1 is published at `e832ab67a153c5e672f8a77dda5474aedb1395af`. Phase 2D-B2 is the current local-only workstream. It adds an owner-selected, offline Stellar task-export JSON preview with recursive security screening and strict allowlisted normalization, but no import, repository write, provider adapter, credential, provider network, task control, checkout, Purchase, receiving, Inventory mutation, remote persistence, or deployment. Hayha and Stellar remain `NOT_CONFIGURED`, every live capability remains false, and the evidence review continues to recommend no live pilot.
 
 ## Executive summary
 
@@ -134,7 +134,30 @@ Phase 2D-B1 keeps the Phase 2D-A runtime and persistence model unchanged. A sepa
 - Stellar public guides confirm manual task-group export/import controls, Discord notification configuration, and an external-monitor-to-Stellar WebSocket input. The current public Tasks overview does not establish the export's exact serialized format or version-compatibility rules. The WebSocket sends product pings into Stellar and is not a status egress; it may affect running tasks and is therefore not a read-only pilot path.
 - Secret-bearing session/profile/account/proxy/config exports are classified `DO_NOT_USE`. Private/internal APIs, traffic inspection, CLI/UI scraping, process attachment, reverse engineering, and undocumented automation are also `DO_NOT_USE`.
 - Every operational provider capability remains false. Evidence that a human UI can perform an action or that an export exists does not activate a Code 3 adapter capability.
-- The decision is `NO_LIVE_BOT_PILOT_YET`. A future offline, preview-only parser for a synthetic or provider-approved sanitized Stellar task export is the least-risk design candidate, but it remains unimplemented and requires current schema/version and provider confirmation.
+- The decision is `NO_LIVE_BOT_PILOT_YET`. Phase 2D-B2 implements only the least-risk offline preview boundary with synthetic fixtures. It does not claim a supported Stellar schema/version and cannot import or persist data.
+
+## Phase 2D-B2 Stellar export preview delta
+
+Phase 2D-B2 adds a dedicated Bot Operations import-preview boundary without expanding the Bot provider adapter or the `code3.bot-ops.v1` repository. The only entry is an OWNER-initiated browser file picker under `/bot/tasks`; Code 3 does not discover directories, watch Stellar files, inspect an installation, or contact a provider.
+
+The flow is deliberately one-way and ephemeral:
+
+```text
+Owner-selected JSON file
+  -> 1 MiB / 500-record bounds
+  -> JSON parse and root-shape check
+  -> recursive credential/payment/session/proxy/dangerous-key scan
+  -> strict safe-field allowlist
+  -> conservative identifiers, integer-minor-unit money and quantity normalization
+  -> in-memory preview and warnings
+  -> discard on close, replacement, navigation or refresh
+```
+
+Official Stellar documentation establishes owner task-group import/export as JSON and requires the same Stellar version for transfer, but it does not publish a stable JSON root, field list, or version marker. Format recognition therefore supports the vocabulary `SUPPORTED`, `PARTIALLY_RECOGNIZED`, `UNKNOWN_FORMAT`, `UNSAFE`, and `REJECTED`, while `SUPPORTED` is reserved and never emitted until a provider schema/version is independently verified.
+
+The scanner traverses nested objects and arrays before normalization. Any prohibited field/value or prototype-pollution key blocks the whole file without echoing the value. Harmless unknown fields are counted and discarded with warnings. Only bounded task/group labels and references, retailer/site labels, product identifiers, titles, quantities, exact price/currency data, safe mode/enabled/status values, and safe timestamps can appear in the preview. Retailer text in a file does not establish Stellar retailer coverage.
+
+The preview model has no persistence adapter and no repository/service dependency. It retains no raw JSON, full path, source hash, or data across refresh. It is absent from Backup Format v1 and Migration Preview. It cannot create Bot Tasks, Product Targets, Attempts, Activity, Checkout Evidence, Order Candidates, Purchases, Receiving, or Inventory. `Stellar Export Preview != Bot Task Import` and `Previewed Task != Task`.
 
 See [BOT_PROVIDER_CAPABILITY_REVIEW.md](./BOT_PROVIDER_CAPABILITY_REVIEW.md). Phase 2B2-B.1 remains paused and no Bot secret store is authorized.
 
@@ -192,7 +215,7 @@ flowchart TD
 | Canonical pages | Collect, Find, Sell, Business, and Owner Center delegate to focused modules | `src/pages/OperationsHome.jsx`, `src/pages/EverydayWorkspaces.jsx`, `src/features/flipScout`, `src/features/ownerCenter`, `src/features/workspaces` | Current plain-language experience is reorganized rather than rewritten |
 | Account Ops | Business-associated lazy route with local domain service, mobile-first Overview/Profiles/Emails/Accounts/Tasks plus Phase 2B1 Connections/Inbox/Orders foundation, and verified-session gate | `src/features/accountOps`, `src/services/accountOpsProviderApi.js`, `src/App.jsx`, `src/utils/appRouteState.js` | Phase 2A metadata remains local; Phase 2B1 adds capability truth and synthetic evidence only, not live email, provider secrets, Purchase import, secure-vault integration, or server durability |
 | Inbox / Order Candidate domain | Provider-neutral normalization, protected-message minimization, exact money, alias/retailer proposals, connection-scoped idempotency, reconciliation, and owner review | `src/features/inboxOrder` | Separate `LOCAL_ONLY` source; no mailbox read, raw-body mirror, provider token, Purchase writer, or remote adapter |
-| Bot Operations | OWNER-gated provider-neutral registry, local metadata/evidence services, test-only mock adapter, responsive operations sections, and honest disconnected state | `src/features/botOps`, `src/features/workspaces/WorkspaceHomePage.jsx`, `src/App.jsx`, `src/utils/appRouteState.js` | Separate `LOCAL_ONLY` source; Hayha/Stellar not configured, no credentials/provider network/task control/checkout/Purchase/Inventory writer |
+| Bot Operations | OWNER-gated provider-neutral registry, local metadata/evidence services, test-only mock adapter, responsive operations sections, honest disconnected state, and an ephemeral Stellar JSON preview | `src/features/botOps`, `src/features/workspaces/WorkspaceHomePage.jsx`, `src/App.jsx`, `src/utils/appRouteState.js` | Separate `LOCAL_ONLY` source plus a zero-write in-memory preview; Hayha/Stellar not configured, no credentials/provider network/task control/import/checkout/Purchase/Inventory writer |
 | Shared UI | Semantic operations components and CSS | `src/components/operations`, `src/styles/app/01-tokens-theme.css` | Reusable accessible foundation |
 | Routing | Custom path parsing and render dispatch, not React Router | `src/utils/appRouteState.js`, `src/App.jsx` | Back/redirect compatibility depends on bespoke code |
 | State | Large in-memory React state plus domain repository snapshots and legacy hooks | `src/App.jsx`, feature repositories | No single authoritative state boundary |
@@ -237,6 +260,7 @@ Phase 2A.5 implements the presentation registry and switcher portion of that tar
 - Phase 2A stores Account Ops schema version 1 under `code3.account-ops.v1`. Its eight arrays are read and written through the existing Phase 1B local persistence gateway; no direct remote adapter, sync mode, or canonical write path is exposed.
 - Phase 2B1 stores minimized Inbox/Order Intelligence schema version 1 under `code3.inbox-order.v1`. Its four arrays (`messageEvents`, `orderCandidates`, `candidateEvents`, and `activity`) use the same gateway fixed to `LOCAL_ONLY`; provider secrets and raw/protected content are prohibited, evidence/review history is append-only where claimed, and no Purchase repository is reachable.
 - Phase 2D-A stores Bot Operations schema version 1 under `code3.bot-ops.v1`. Its ten arrays (`installations`, `retailerAccountLinks`, `botProfiles`, `proxyGroups`, `productTargets`, `taskGroups`, `tasks`, `attempts`, `checkoutEvidence`, and `activity`) use the gateway fixed to `LOCAL_ONLY`; attempts/activity are append-only, evidence corrections preserve history, all prohibited credentials/raw provider data are rejected, and no Purchase/receiving/Inventory repository is reachable.
+- Phase 2D-B2 preview state is not an eleventh Bot Operations path. It exists only in component memory, is never handed to the persistence gateway, and disappears on discard/navigation/refresh. Backup and migration registries remain unchanged.
 - guided forms use namespaced session/draft keys through `src/components/operations/RecordExperience.jsx` and feature screens.
 
 These repositories provide safe parsing, defaults, validation, import/export, and update notifications. They are browser-local, single-device, and not protected by server authorization.

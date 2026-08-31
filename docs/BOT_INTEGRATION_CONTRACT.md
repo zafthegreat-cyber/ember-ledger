@@ -1,10 +1,12 @@
 # Code 3 Bot Integration Contract
 
-Status: Phase 2D-A local-only Bot Integration Foundation plus Phase 2D-B1 provider capability discovery. The foundation defines provider-neutral records, capability truth, synthetic adapters and fixtures, owner-only workflows, security rejection, backup/Restore Preview treatment, and a responsive Bot Operations UI. Phase 2D-B1 adds evidence-backed integration-mode and pilot-readiness contracts without connecting a Bot. It does not operate a retailer account, control a task, automate checkout, create a Purchase, receive Inventory, configure credentials, activate remote persistence, or deploy Production.
+Status: Phase 2D-A local-only Bot Integration Foundation, Phase 2D-B1 provider capability discovery, and Phase 2D-B2 offline Stellar task-export preview. The foundation defines provider-neutral records, capability truth, synthetic adapters and fixtures, owner-only workflows, security rejection, backup/Restore Preview treatment, and a responsive Bot Operations UI. Phase 2D-B1 adds evidence-backed integration-mode and pilot-readiness contracts without connecting a Bot. Phase 2D-B2 adds an owner-selected, memory-only JSON inspection path; it is not an import and cannot write a Task or any other domain record. These phases do not operate a retailer account, control a task, automate checkout, create a Purchase, receive Inventory, configure credentials, activate remote persistence, or deploy Production.
 
 Starting baseline: `b4848cb851b2be83093fbdc4ed4b976857f9d3ff`.
 
 Phase 2D-B1 starting baseline (published Phase 2D-A): `cdde7df506c94bc55b2ec7995596843ae1c2261a`.
+
+Phase 2D-B2 starting baseline (published Phase 2D-B1): `e832ab67a153c5e672f8a77dda5474aedb1395af`.
 
 ## Purpose
 
@@ -357,19 +359,23 @@ The official-source review dated 2026-08-31 found no publicly documented read-on
 
 Hayha's public guides document interactive GUI/CLI operation, limited Discord notification behavior, and a secret-bearing Amazon session-token export, but no safe public API, general signed webhook contract, task export, or read-only companion interface was established. Its public terms prohibit automated service access, data extraction, decompilation, and reverse engineering without explicit authorization. Private APIs, process/traffic inspection, CLI automation, and the session export are `DO_NOT_USE`.
 
-Stellar documents task-group export/import controls, Discord notifications, profile/config exports, session/account imports, and an external monitor WebSocket. The current public Tasks overview does not establish the task export's exact serialized format or version-compatibility rules. A sanitized task export is the only bounded offline candidate, subject to a current safe schema and provider confirmation. Profile/config/session material is excluded because official guides show that it can contain PII, payment, retailer credential, proxy, or session data. The WebSocket direction is external product pings into Stellar rather than Bot status out, so it is not a read pilot. The Discord incoming-webhook URL is a posting credential, not a readable event feed; Code 3 will not use a Discord user token or scrape a channel.
+Stellar documents task-group JSON export/import with a same-version requirement, Discord notifications, profile/config exports, session/account imports, and an external monitor WebSocket. The current public Tasks overview does not publish a stable JSON root, field schema, or embedded version marker. A sanitized task export is the only bounded offline path and remains a partially recognized preview rather than an import. Profile/config/session material is excluded because official guides show that it can contain PII, payment, retailer credential, proxy, or session data. The WebSocket direction is external product pings into Stellar rather than Bot status out, so it is not a read pilot. The Discord incoming-webhook URL is a posting credential, not a readable event feed; Code 3 will not use a Discord user token or scrape a channel.
 
-A separately approved Phase 2D-B2 may consider only a zero-write, owner-selected, synthetic/redacted Stellar task-export preview after the current format and version rules are confirmed. It must allowlist a reviewed schema, reject secret-bearing and unknown fields, retain no raw file, create no provider event/evidence, make no network call, and never write to or control Stellar. Until those prerequisites are satisfied, Hayha and Stellar remain `NOT_CONFIGURED` with every live capability false.
+Phase 2D-B2 implements only the previously approved zero-write, owner-selected preview boundary. Current official Stellar documentation establishes owner task-group import/export as JSON and requires the same Stellar version for the documented transfer workflow. It does not publish a stable JSON root, field schema, or embedded version marker. Code 3 therefore reserves `SUPPORTED` for a future verified adapter and emits only `PARTIALLY_RECOGNIZED`, `UNKNOWN_FORMAT`, `UNSAFE`, or `REJECTED` for current files.
+
+The browser accepts one explicitly selected JSON file, limits it to 1 MiB and 500 candidate records, recursively screens every object/array before normalization, and copies only strictly allowlisted bounded fields into an ephemeral preview. Harmless unknown fields are ignored with warnings; sensitive fields or values, unsafe object keys, malformed input, and prohibited file shapes fail closed. Raw JSON, full paths, source hashes, normalized preview rows, filenames, and preview metrics are not persisted, logged, backed up, migrated, or sent over a network. Discard, replacement, route exit, or refresh removes the in-memory preview. `Stellar Export Preview != Bot Task Import` and `Previewed Task != Task`.
+
+This parser does not alter the Phase 2D-B1 evidence registry. Hayha and Stellar remain `NOT_CONFIGURED`, every live provider/read/control capability remains false, and `NO_LIVE_BOT_PILOT_YET` remains the decision.
 
 ## Phase 2B2-B.1 operational isolation
 
 The separate Preview managed-store verification remains paused. A Free Upstash resource exists and three server-only managed-store variables were configured as branch-scoped Preview secrets. Supabase owner/auth values and the remaining Preview activation/CORS/runtime values are not configured, no additional Preview was deployed, and `hostedRuntimeVerified=false`.
 
-Phase 2D-B1 does not inspect, configure, use, test, or mutate that resource or those variables. It does not resume Phase 2B2-B.1. The pause remains in force until the owner explicitly says `Supabase signed in.`
+Phase 2D-B2 does not inspect, configure, use, test, or mutate that resource or those variables. It does not resume Phase 2B2-B.1. The pause remains in force until the owner explicitly says `Supabase signed in.`
 
 ## Explicit non-goals
 
-The Phase 2D-A foundation and Phase 2D-B1 discovery do not:
+The Phase 2D-A foundation, Phase 2D-B1 discovery, and Phase 2D-B2 offline preview do not:
 
 - connect, authenticate, discover, operate, or reverse engineer Hayha, Stellar, or any other Bot;
 - request or store Bot, retailer, payment, or proxy credentials;
@@ -381,10 +387,18 @@ The Phase 2D-A foundation and Phase 2D-B1 discovery do not:
 - create a Purchase, receive an item, create Inventory, adjust quantity, or alter cost basis;
 - connect Gmail, Outlook, another mailbox, or another live provider;
 - apply a schema, migrate owner data, activate `REMOTE_ACTIVE`, start billing, or deploy Production; or
-- begin Phase 2D-B2 or a live provider pilot.
+- begin Phase 2D-B3 or a live provider pilot.
 
-## Future Phase 2D-B2 gate
+## Phase 2D-B2 zero-write preview contract
 
-Phase 2D-B2 is not authorized by this contract. A future task must separately approve the bounded offline candidate or another provider-confirmed mechanism, review current terms and anti-abuse constraints, approve any local companion or network process, validate provider-specific normalization, use only owner-controlled synthetic/redacted data, and retain the Checkout Evidence and explicit Purchase review boundary.
+Phase 2D-B2 is a preview, not an import. It has no Save, Apply, Create Tasks, Sync, Connect, or send-to-Stellar action. The ephemeral preview model is deliberately separate from `BotTask`, `BotTaskGroup`, `ProductTarget`, Attempt, Activity, Checkout Evidence, Order Candidate, Purchase, Receiving, and Inventory models and repositories. It may show only bounded category-level security findings and normalized safe-field proposals; it never echoes a rejected value or exposes raw JSON by default.
+
+The recursive scanner runs before any schema mapping. It rejects credential, token, session, cookie, authorization, license, OTP/recovery, payment-card/CVV, proxy-authentication, credential-bearing URL, raw-log/response, and prototype-pollution material at any depth. The field allowlist then validates task/group references, safe labels, retailer/site labels, product identifiers, title, quantity, exact minor-unit price/currency, mode, enabled/status state, and bounded timestamps where recognizable. An observed retailer string is not evidence of Stellar retailer support and does not change provider capability metadata.
+
+No preview state is registered in Backup Format v1 or Migration Preview. Restore Preview remains zero-write and has no route into this feature. The existing `code3.bot-ops.v1` source is byte/record equivalent before and after preview, discard, and refresh.
+
+## Future Phase 2D-B3 gate
+
+A future task must separately approve any import, live adapter, local bridge, webhook receiver, provider credential, or data write. It must review current terms and anti-abuse constraints, validate a provider-confirmed schema/version, establish server-side authorization and secret boundaries where applicable, and retain the Checkout Evidence and explicit Purchase review boundary.
 
 No future adapter may become live merely because Phase 2D-A metadata, fixtures, registry entries, or UI are present.

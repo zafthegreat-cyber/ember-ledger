@@ -1,6 +1,6 @@
 # Code 3 Backup Format Version 1
 
-Status: Phase 1A format and later Account Ops, Inbox/Order, and Phase 2B2-B exclusions are published through `b4848cb851b2be83093fbdc4ed4b976857f9d3ff`. Phase 2D-A adds one sanitized Bot Operations source. Managed provider/Bot credentials, connection secret envelopes, OAuth state/index/used markers, encryption keys, Redis credentials, runtime proof, raw provider data, and proxy authentication remain excluded. No owner data has migrated, no schema was applied, and no restore applies data.
+Status: Phase 1A format and later Account Ops, Inbox/Order, and Phase 2B2-B exclusions are published through `b4848cb851b2be83093fbdc4ed4b976857f9d3ff`. Phase 2D-A adds one sanitized Bot Operations source. Phase 2D-B2 adds no source: selected Stellar JSON, filename/path, preview model, normalized temporary tasks, warnings, metrics and source derivatives remain ephemeral and excluded. Managed provider/Bot credentials, connection secret envelopes, OAuth state/index/used markers, encryption keys, Redis credentials, runtime proof, raw provider data, and proxy authentication remain excluded. No owner data has migrated, no schema was applied, and no restore applies data.
 
 ## Purpose and boundary
 
@@ -157,6 +157,14 @@ The source validator accepts only bounded nonsecret metadata. It rejects provide
 Restore Preview validates schema/counts/stable IDs, provider/installation/event scoped identities, Account Ops reference shapes, task-group/product/task/attempt/evidence relationships, duplicate/conflicting event identity and prohibited fields in memory with zero writes. It cannot contact a Bot/provider, invoke the test mock, repair a task, reconcile an order, create a Purchase, receive Inventory, or mutate any source.
 
 All ten paths are `REQUIRES_MAPPING` because the Phase 1B canonical schema has no Bot Operations domain. No migration action, remote adapter, Purchase/Inventory handoff, or managed Bot-secret recovery is approved. `Bot Success != Purchase` and `Checkout Evidence != Purchase` remain mandatory.
+
+## Phase 2D-B2 Stellar preview exclusion
+
+`StellarTaskExportPreview` is not a Backup Format v1 source and does not add a record path to `bot-operations`. The owner-selected JSON file, raw text/bytes, full path, basename, file metadata, source hash/fingerprint, parsed tree, normalized preview rows, duplicates, format state, recognized/ignored fields, security findings, warnings, retailer labels, and summary counts are component-memory data only.
+
+The preview reads one explicitly selected JSON file of at most 1 MiB and 500 candidate records. Recursive security screening and strict allowlisted normalization happen before display, but even a safe preview is never passed to the persistence gateway or backup registry. Discard, replacement, route exit, or refresh removes it and requires owner reselection.
+
+Backup generation while a preview is open exports the same registered sources and records it would export without the preview. Restore Preview cannot populate, validate, revive, or apply a Stellar preview. Migration Preview cannot classify or map it. `Stellar Export Preview != Bot Task Import`; `Previewed Task != Task`; no Task, Attempt, Activity, Checkout Evidence, Order Candidate, Purchase, Receiving, or Inventory record is created.
 
 ## Phase 2B2-B managed-provider exclusion
 

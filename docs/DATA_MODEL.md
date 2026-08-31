@@ -14,6 +14,8 @@ Phase 2B1 is published at `2f49a5ed97cec827184c6080e4ada0f4c8194451` and adds a 
 
 Phase 2D-A adds the separate versioned `code3.bot-ops.v1` browser source for provider-neutral Bot installations, Account Ops references, proxy metadata, product targets, task groups/tasks, append-only attempts/activity, and reviewable Checkout Evidence. It changes neither the strict Account Ops/Inbox documents nor the Phase 1B canonical schema, and it cannot create a Purchase or Inventory mutation. `LOCAL_ONLY` remains authoritative.
 
+Phase 2D-B2 adds no stored domain. `StellarTaskExportPreview` is an ephemeral inspection projection over one owner-selected JSON file; it is not a `BotTask`, `BotTaskGroup`, `ProductTarget`, import job, provider event, or migration source. Raw input and normalized preview data remain in memory only and are discarded on close, replacement, navigation, or refresh.
+
 This document distinguishes current persisted shapes, Phase 1B schema-only representations, and the future active canonical model. A table, migration file, repository interface, or dry-run result is not evidence that remote persistence is active.
 
 ## Modeling rules
@@ -167,6 +169,26 @@ Attempts and activity are append-only. Checkout Evidence may receive version-che
 Provider events use the stable scoped identity `providerKey + installationId + providerEventId`. The same scoped identity and source hash is idempotent; the same provider event ID on another installation is distinct; a changed hash is retained as a revision/conflict. Reordered events preserve event and ingestion time. Contradictory states remain in history and produce review warnings rather than last-write-wins replacement.
 
 All ten record paths are registered for Backup Format v1 and classified `REQUIRES_MAPPING`, because the Phase 1B schema has no Bot Operations domain. Preview proposes no canonical insert, update, archive, delete, Purchase, receiving, or Inventory action. Bot/provider, retailer, payment, and proxy credentials; raw provider payloads/logs; credential-bearing URLs; and browser authority fields are invalid before persistence and remain excluded from backup.
+
+#### Stellar task-export preview projection
+
+Phase 2D-B2 defines a non-persisted `StellarTaskExportPreview` with bounded summary fields only:
+
+| Preview field | Meaning |
+|---|---|
+| `fileValidationState` | selected JSON file accepted or safely rejected by type/size/parse/root checks |
+| `formatRecognitionState` | `SUPPORTED`, `PARTIALLY_RECOGNIZED`, `UNKNOWN_FORMAT`, `UNSAFE`, or `REJECTED`; `SUPPORTED` is reserved and not emitted while Stellar's stable schema/version marker is unverified |
+| `recordCount` / `recognizedTaskCount` / `rejectedRecordCount` | bounded in-session counts, never durable metrics |
+| `warningCount` / `blockingFindings` | category-level diagnostics with no secret values or raw JSON |
+| `recognizedFields` / `ignoredFields` | bounded field-name summaries; arbitrary unknown values are not copied |
+| `detectedRetailerLabels` | normalized labels observed in the file; not provider capability evidence |
+| `tasks[]` | non-authoritative safe mapping proposals with validation/mapping warnings and duplicate state |
+
+The preview accepts at most 1 MiB and 500 candidate records. Before a field can enter `tasks[]`, the entire parsed structure passes recursive screening for credentials, tokens/sessions/cookies, authorization, license material, OTP/recovery/security data, payment data, proxy authentication, credential-bearing URLs, raw provider artifacts, and dangerous prototype keys. Any such finding changes the file to `UNSAFE` and stops normalization.
+
+The strict task allowlist can represent bounded task/group references and labels, retailer/site labels, product identifiers (`productId`, SKU, UPC/GTIN, or TCIN where recognizable), product title, integer quantity, exact money in integer minor units plus validated currency, safe mode/type, enabled/status state, and bounded timestamps. Missing, ambiguous, unsupported, or invalid values remain diagnostics; no default quantity, retailer support, currency, or price is invented.
+
+Duplicate identities exist only within the current preview and use the narrowest available export-local reference or safe retailer/product/group tuple. They are warnings, not global IDs. No raw-file hash is retained. Only a basename may be shown, and it is discarded with the preview. No preview field enters `code3.bot-ops.v1`, Account Ops, backup, Restore Preview, Migration Preview, Upstash, Supabase, or any business repository.
 
 See [BOT_INTEGRATION_CONTRACT.md](./BOT_INTEGRATION_CONTRACT.md) for the complete provider, security, idempotency, and handoff contract.
 

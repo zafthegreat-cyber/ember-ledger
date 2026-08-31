@@ -2,16 +2,16 @@
 
 Last audited: 2026-08-31
 
-Published Phase 2D-A commit / Phase 2D-B1 starting HEAD: `cdde7df506c94bc55b2ec7995596843ae1c2261a`
+Published Phase 2D-B1 commit / Phase 2D-B2 starting HEAD: `e832ab67a153c5e672f8a77dda5474aedb1395af`
 
-Repository branch represented: `ui-104-final-product-ui-2` (Phase 2D-B1 local working copy prepared from a detached worktree at the published Phase 2D-A commit)
+Repository branch represented: `ui-104-final-product-ui-2` (Phase 2D-B2 local working copy prepared from a detached worktree at the published Phase 2D-B1 commit)
 
 Pull request: #1, Draft
-Deployment: Phase 2D-A is published on the existing Draft PR branch. The separate Phase 2B2-B.1 operational verification is paused; a Free Upstash resource and three branch-scoped Preview secrets exist, but remaining owner/CORS/activation values are absent, no follow-up provider-auth Preview was deployed, and `hostedRuntimeVerified=false`. Phase 2D-B1 is local only and makes no deployment or environment change.
+Deployment: Phase 2D-B1 is published on the existing Draft PR branch. The separate Phase 2B2-B.1 operational verification is paused; a Free Upstash resource and three branch-scoped Preview secrets exist, but remaining owner/CORS/activation values are absent, no follow-up provider-auth Preview was deployed, and `hostedRuntimeVerified=false`. Phase 2D-B2 is local only and makes no deployment or environment change.
 
 ## Current phase
 
-**Phase 2D-B1 — Bot Provider Integration Discovery and Pilot Design** is the current local-only phase. It records current public official-source evidence for Hayha and Stellar, separates observation/read/control/sensitive capability assessments from live capability flags, classifies supported/limited/unknown/prohibited integration modes, and calculates a fail-closed pilot recommendation. It does not connect or control a Bot, use a real export or credential, receive a provider event, create a Business Purchase, receive Inventory, change persistence, or deploy.
+**Phase 2D-B2 — Stellar Task Export Preview** is the current local-only phase. It accepts one explicitly owner-selected JSON file into memory, applies bounded parsing, recursive fail-closed security screening and strict safe-field normalization, then offers review/discard only. It does not connect or control a Bot, use a real export or credential, create/import a Task, persist preview data, receive a provider event, create a Business Purchase, receive Inventory, change persistence, or deploy.
 
 Phase 2B2-B.1 remains paused and independent. `LOCAL_ONLY` remains authoritative; `REMOTE_ACTIVE` is disabled; the Phase 1B schema remains `SCHEMA_ONLY`; no owner record moved; `hostedRuntimeVerified=false`.
 
@@ -146,16 +146,28 @@ Published Phase 2D-A adds:
 
 See [BOT_INTEGRATION_CONTRACT.md](./BOT_INTEGRATION_CONTRACT.md).
 
-The local Phase 2D-B1 candidate adds:
+Published Phase 2D-B1 adds:
 
 - immutable, nonpersistent integration-mode and capability-evidence metadata with short official-source references and review dates;
 - explicit `VERIFIED_SUPPORTED`, `DOCUMENTED_BUT_LIMITED`, `UNKNOWN`, `UNSUPPORTED`, and `DO_NOT_USE` classifications that never change connection state or live capability flags;
 - separate observation/read/control/sensitive capability lanes, all operationally unavailable for Hayha and Stellar;
 - an evidence-backed `NO_LIVE_BOT_PILOT_YET` result;
-- a future offline-only alternative: synthetic or provider-approved sanitized Stellar task-export preview, requiring current format/version, schema, provider confirmation, and a separate phase; and
+- a bounded offline-only alternative: synthetic-first sanitized Stellar task-export preview, while stable schema/version compatibility remains unverified; and
 - honest provider-readiness UI with no Connect, task-control, webhook, file-ingest, or network action.
 
 See [BOT_PROVIDER_CAPABILITY_REVIEW.md](./BOT_PROVIDER_CAPABILITY_REVIEW.md). Public documentation is evidence about documented mechanisms, not proof of current provider health, permission for third-party use, completeness, or a live integration.
+
+The local Phase 2D-B2 candidate adds:
+
+- an OWNER-initiated JSON file picker under Bot Operations Tasks with no directory scan, file watcher, Stellar-folder access, provider process access, or network request;
+- 1 MiB and 500-record bounds plus conservative root/format recognition; current official guidance establishes JSON task-group transfer and same-version use but no stable root/fields/version marker, so `SUPPORTED` is reserved and never emitted;
+- recursive pre-normalization rejection of nested credential/token/session/cookie/authorization/license/OTP/payment/proxy-authentication/credential-URL/raw-provider/dangerous-key data;
+- strict bounded safe-field mapping for task/group labels and references, retailer/site labels, product identifiers/titles, integer quantities, exact minor-unit money/currency, safe mode/enabled/status state and timestamps;
+- category-only security failures, ignored-field warnings, conservative retailer/product identity, malformed-value diagnostics and in-preview duplicate warnings without raw JSON display;
+- ephemeral component memory only: no raw retention/hash/log, localStorage, IndexedDB, Bot/Account Ops/business repository, Backup/Migration source, Upstash or Supabase write; discard/navigation/refresh requires file reselection; and
+- no Import, Save, Apply, Create Tasks, Sync, Connect, provider command, Attempt, Activity, Checkout Evidence, Order Candidate, Purchase, Receiving, or Inventory action.
+
+`Stellar Export Preview != Bot Task Import`; `Previewed Task != Task`; `NO_LIVE_BOT_PILOT_YET` remains the provider decision.
 
 ## Partially complete or implemented differently
 
@@ -240,10 +252,10 @@ Phase 2B1 focused validation passes 16/16 provider-runtime cases, 52 domain asse
 ## Preview state
 
 - PR #1 remains Draft per the task baseline.
-- The published branch includes Phase 2D-A at `cdde7df506c94bc55b2ec7995596843ae1c2261a`; Phase 2D-B1 changes are local only.
+- The published branch includes Phase 2D-B1 at `e832ab67a153c5e672f8a77dda5474aedb1395af`; Phase 2D-B2 changes are local only.
 - The published Preview proves filesystem routing to Express and fail-closed authentication, not the complete owner-authorized managed-store proof.
 - `hostedRuntimeVerified=false` because no legitimate owner plus exact durable-store readiness response has been proven. The Free Upstash resource and three branch-scoped Preview secrets do not satisfy the missing Supabase owner/auth and remaining exact CORS/activation/runtime gate. Phase 2B2-B.1 is paused; required names are documented without values in [OWNER_AUTH_DECISION.md](./OWNER_AUTH_DECISION.md).
-- Phase 2D-B1 does not deploy a Preview, inspect or use the Upstash resource, resume Supabase sign-in, connect a provider, or change Production/Development configuration.
+- Phase 2D-B2 does not deploy a Preview, inspect or use the Upstash resource, resume Supabase sign-in, connect a provider, or change Production/Development configuration.
 - No production deployment is represented by this documentation.
 
 ## Known defects and debt
@@ -281,9 +293,10 @@ Phase 2B1 focused validation passes 16/16 provider-runtime cases, 52 domain asse
 31. Gmail and Microsoft minimum read-only scope/provider-registration decisions remain external blockers. Phase 2B1 requests no scope and includes no network adapter.
 32. The local Inbox/Order source requires a future canonical mapping. All four paths remain `REQUIRES_MAPPING`; its unencrypted local/backup metadata shares the existing device/download security limitation.
 33. The local Bot Operations source requires a future canonical mapping. All ten paths remain `REQUIRES_MAPPING`; its unencrypted local/backup metadata shares the device/download limitation, and no managed Bot credential store or Purchase/Inventory handoff is authorized.
+34. The Stellar task-export preview does not establish compatibility with a stable provider schema: public documentation does not publish a root/field contract or embedded version marker. Recognized synthetic-compatible input is at most `PARTIALLY_RECOGNIZED`, and no preview can be saved/imported.
 
 ## Next recommended task
 
-After the Phase 2D-B1 local completion report, stop. Phase 2D-B2 is not authorized. The current evidence supports no live pilot; the narrowest possible next Bot scope is a zero-write parser design for a synthetic or provider-approved sanitized Stellar task export after current format/version, provider, and schema confirmation. Credentials, real exports, file watching, Discord, WebSocket, network access, task control and checkout remain separate approvals. Phase 2B2-B.1 remains paused until the owner explicitly says `Supabase signed in.` Gmail/Outlook, mailbox reads, Purchase import, billing, renderer extraction, and disposable-database work remain separate approvals.
+After the Phase 2D-B2 local completion report, stop. Phase 2D-B3 is not authorized. The current evidence still supports no live pilot; credentials, real-export ingestion, persistence/import, file watching, Discord, WebSocket, network access, task control and checkout remain separate approvals. Phase 2B2-B.1 remains paused until the owner explicitly says `Supabase signed in.` Gmail/Outlook, mailbox reads, Purchase import, billing, renderer extraction, and disposable-database work remain separate approvals.
 
 Do not apply the schema to the owner or Production database, enable `REMOTE_ACTIVE`, migrate files, or execute a migration plan without a separately approved cutover task and verified backup.

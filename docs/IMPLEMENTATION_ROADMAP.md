@@ -17,7 +17,7 @@ The audit changes the conceptual “backend persistence first” phase into gate
 
 **Phase 2B1 — Secure Provider Runtime + Inbox / Order Intelligence Foundation**, **Phase 2B2-A — Preview Trusted Express/API Runtime**, and **Phase 2B2-B — Preview Owner Auth + Managed Provider State** are published through `b4848cb851b2be83093fbdc4ed4b976857f9d3ff`. The separate Phase 2B2-B.1 operational verification is paused. A Free Upstash resource and three branch-scoped Preview secrets exist, but Supabase owner/auth values and the remaining Preview CORS/activation/runtime values are not configured, no follow-up Preview was deployed, and `hostedRuntimeVerified=false`. Gmail, Outlook, IMAP, live Inbox ingestion, provider token use, Purchase import, migration, sync, and remote cutover remain inactive.
 
-**Phase 2D-A — Bot Integration Foundation** is published at `cdde7df506c94bc55b2ec7995596843ae1c2261a`. **Phase 2D-B1 — Provider Integration Discovery and Pilot Design** is the current local-only workstream. It reviews public official evidence, separates observation/read/control/sensitive capability claims, and records a fail-closed pilot decision. Hayha and Stellar remain `NOT_CONFIGURED`; no live provider, credentials, task control, proxy connection, checkout, Purchase, receiving, Inventory mutation, billing, or deployment is active.
+**Phase 2D-A — Bot Integration Foundation** is published at `cdde7df506c94bc55b2ec7995596843ae1c2261a`, and **Phase 2D-B1 — Provider Integration Discovery and Pilot Design** is published at `e832ab67a153c5e672f8a77dda5474aedb1395af`. **Phase 2D-B2 — Stellar Task Export Preview** is the current local-only workstream. It adds an offline, owner-selected, zero-write JSON preview with recursive security screening and strict safe-field normalization. Hayha and Stellar remain `NOT_CONFIGURED`; no live provider, import, persistence, credentials, task control, proxy connection, checkout, Purchase, receiving, Inventory mutation, billing, or deployment is active.
 
 The published Phase 1A runtime applies Code 3 through the centralized brand configuration and coordinated PWA/browser/offline metadata. Storage, database, route, module, environment, cache, history, compatibility, and imported-source identifiers remain unchanged. The legal/public business name and tagline remain separately configurable and unresolved.
 
@@ -194,26 +194,29 @@ See [BOT_INTEGRATION_CONTRACT.md](./BOT_INTEGRATION_CONTRACT.md).
 
 ## Phase 2D-B1 — Bot provider integration discovery and pilot design
 
-**Status:** Current local-only design/research phase from `cdde7df506c94bc55b2ec7995596843ae1c2261a`. No live pilot is authorized.
+**Status:** Published at `e832ab67a153c5e672f8a77dda5474aedb1395af`. No live pilot is authorized.
 
 - **Objective:** determine current legitimate Hayha/Stellar integration surfaces using public first-party evidence; classify each mode as `VERIFIED_SUPPORTED`, `DOCUMENTED_BUT_LIMITED`, `UNKNOWN`, `UNSUPPORTED`, or `DO_NOT_USE`; keep read/status distinct from control; and design the narrowest later pilot without connecting either provider.
 - **Code/data impact:** immutable source/evidence metadata and a pure fail-closed readiness decision only. `code3.bot-ops.v1`, Backup Format v1, Restore Preview, migration classifications, backend routes, provider secrets, and adapter networking do not change.
-- **Research result:** neither provider exposes a verified public read-only task/status/history API. Hayha's public docs are stale and its terms prohibit automated access/extraction/reverse engineering. Stellar's task export is manual, with exact serialized format/version rules unverified by the current public overview; its Discord path is notification-only, and its developer WebSocket sends product pings into Stellar rather than status out.
-- **Pilot decision:** `NO_LIVE_BOT_PILOT_YET`. The safest non-live precursor is a separately authorized preview-only parser for a synthetic or provider-approved sanitized Stellar task export after current format/version confirmation. Profiles, accounts, sessions, proxies, config, license material, unknown fields and credential-bearing values must be rejected.
+- **Research result:** neither provider exposes a verified public read-only task/status/history API. Hayha's public docs are stale and its terms prohibit automated access/extraction/reverse engineering. Stellar's task-group export is manual JSON and same-version transfer is documented, but a stable root/field/version-marker contract is not; its Discord path is notification-only, and its developer WebSocket sends product pings into Stellar rather than status out.
+- **Pilot decision:** `NO_LIVE_BOT_PILOT_YET`. The safest non-live precursor is the separately authorized Phase 2D-B2 synthetic-first preview with no `SUPPORTED` compatibility claim. Profiles, accounts, sessions, proxies, config, license material, unknown secret fields and credential-bearing values must be rejected.
 - **External authorization:** none for research/static metadata. Any provider confirmation, real export, Discord app/channel, webhook URL, companion, token, test installation, or network request requires another explicit phase.
 - **Acceptance gate:** official sources referenced; absence remains `UNKNOWN`; private/reverse-engineered modes remain `DO_NOT_USE`; every operational capability stays false; no Connect/control UI; no persistence/network/backend change; complete regression passes.
 - **Rollback:** remove static discovery metadata/UI copy/tests/docs. No provider, remote record, credential, task, Purchase, Inventory, schema or deployment requires rollback.
 - **Complexity:** Medium.
 
-## Phase 2D-B2 — Isolated read/status precursor
+## Phase 2D-B2 — Stellar Task Export Preview
 
-**Status:** Future and not authorized.
+**Status:** Current local-only implementation from `e832ab67a153c5e672f8a77dda5474aedb1395af`; publication is separately gated.
 
-- **Potential objective:** only after provider/schema confirmation, implement a dry-run owner-selected synthetic/sanitized Stellar task-export preview, or choose no pilot if a safe supported contract remains unavailable.
-- **Explicit non-goals:** no live adapter, task control, Discord listener, WebSocket feed, credential store, checkout, Purchase/Inventory mutation, private API, reverse engineering, or provider network unless a later specification separately authorizes the exact mechanism.
-- **Dependencies:** current provider confirmation; current redacted schema/sample and version rules; strict allowlist and secret scanner; file-size/version/provenance rules; zero-write preview; retention/deletion and no-Purchase tests.
-- **Acceptance gate:** owner-selected input only, no automatic file watching, no write back, no sensitive export types, deterministic preview, complete cleanup and inherited security/regression gates.
-- **Complexity:** Medium if offline-only; Large if a future supported live mechanism is separately authorized.
+- **Objective:** inspect one explicitly owner-selected Stellar task-group JSON export locally through bounded parsing, recursive fail-closed security screening, strict field allowlisting, conservative normalization, and ephemeral review/discard.
+- **Evidence boundary:** current official guidance documents JSON task-group export/import and same-version transfer but no stable root, field schema, or embedded version marker. `SUPPORTED` remains reserved and is not emitted; recognized inputs are at most `PARTIALLY_RECOGNIZED`.
+- **Data impact:** none. The 1 MiB/500-record pipeline retains no raw JSON or source hash, writes no browser/remote store, adds no Backup/Migration source, and loses all preview data on discard/navigation/refresh. `Stellar Export Preview != Bot Task Import`; `Previewed Task != Task`.
+- **Security:** scan every nested object/array before normalization; reject credential/token/session/cookie/authorization/license/OTP/payment/proxy-authentication/credential-URL/raw-provider/dangerous-key content without echoing values; ignore harmless unknown fields with bounded warnings.
+- **Explicit non-goals:** no live adapter, task import/creation, task control, Discord listener, WebSocket feed, credential store, checkout, Attempt/Activity/Checkout Evidence, Order Candidate, Purchase/Inventory mutation, private API, reverse engineering, provider network, or real export acquisition.
+- **Acceptance gate:** owner-selected JSON only; strict type/size/depth/count/value bounds; exact money and quantity validation; conservative retailer/product mapping; duplicate warnings within one preview; no automatic file watching/write back; refresh/discard cleanup; Backup/Restore/Migration exclusion; accessible responsive UI; focused and inherited regression gates.
+- **Rollback:** remove the isolated preview module, Tasks-section entry, tests, and documentation. No record, backup, remote resource, provider setting, or business mutation requires rollback.
+- **Complexity:** Medium.
 
 ## Phase 2 — Remaining app-shell extraction and route ownership hardening
 
@@ -391,4 +394,4 @@ Every implementation phase must:
 
 ## Exact next task recommendation
 
-The current authorized task is Phase 2D-B1 local discovery/design and its detailed report only. After that report, stop. Phase 2D-B2 remains unauthorized; the evidence supports no live pilot yet, with only a possible future synthetic/sanitized Stellar task-export preview after provider/schema confirmation and a separate specification. Phase 2B2-B.1 remains paused until the owner explicitly says `Supabase signed in.` and must not resume automatically. Do not deploy another Preview, create a bypass, connect a mailbox or Bot, begin provider OAuth, import a Purchase, activate `REMOTE_ACTIVE`, migrate owner data, upload file bytes, add billing, apply a schema, or modify Production without another explicit owner-approved specification.
+The current authorized task is Phase 2D-B2 local Stellar task-export preview and its detailed report only. After that report, stop. Phase 2D-B3 and every live provider/import path remain unauthorized; the evidence still supports `NO_LIVE_BOT_PILOT_YET`. Phase 2B2-B.1 remains paused until the owner explicitly says `Supabase signed in.` and must not resume automatically. Do not deploy another Preview, create a bypass, connect a mailbox or Bot, begin provider OAuth, ingest a real export without a separate review, create/import a Bot Task or Purchase, activate `REMOTE_ACTIVE`, migrate owner data, upload file bytes, add billing, apply a schema, or modify Production without another explicit owner-approved specification.
