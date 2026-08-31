@@ -1,6 +1,6 @@
 # Code 3 Preview Trusted Runtime Contract
 
-Status: Phase 2B2-A is published at `c379416336e32a67346c7a3bb95f7b6469f679f5` with partial hosted verification. Phase 2B2-B locally adds Preview-only managed connection, encrypted-secret, and OAuth-state adapters plus stricter exact-origin parsing. The Upstash marketplace resource could not be provisioned without accepting required marketplace terms, and no authenticated owner plus exact durable-store readiness request has been proven. Therefore `hostedRuntimeVerified=false`. This contract does not authorize Production, live provider OAuth, mailbox reads, canonical persistence, or business-record mutation.
+Status: Phase 2B2-A is published at `c379416336e32a67346c7a3bb95f7b6469f679f5`, and Phase 2B2-B is published at `b4848cb851b2be83093fbdc4ed4b976857f9d3ff`. One isolated Free Upstash Preview/testing resource and the three required managed-store secrets are configured only for Preview branch `ui-104-final-product-ui-2`. Phase 2B2-B.1 is paused before Supabase owner/auth, CORS, and remaining runtime-activation configuration; no authenticated owner or real durable-store readiness request has been proven. Therefore `hostedRuntimeVerified=false`. This contract does not authorize Production, live provider OAuth, mailbox reads, canonical persistence, or business-record mutation.
 
 ## Purpose
 
@@ -66,7 +66,7 @@ Phase 2B2-B keeps all of these states:
 - Outlook / Microsoft `NOT_CONFIGURED` / `UNAVAILABLE`;
 - every live provider capability `false`;
 - no provider adapter or SDK;
-- connection, secret, and OAuth-state stores unavailable in the current deployment because no managed resource/configuration is provisioned;
+- connection, secret, and OAuth-state stores unavailable in the current deployment because the isolated managed resource is only partially configured and runtime activation remains intentionally incomplete;
 - no live connection or provider health claim;
 - `providerNetworkAccessEnabled=false`;
 - automatic Purchase creation `false`;
@@ -109,13 +109,13 @@ The target transport is the official Upstash Redis REST client with client telem
 - owner/connection-scoped secret envelopes encrypted by Code 3 with AES-256-GCM before storage; and
 - SHA-256-digest OAuth-state records plus owner expiry indexes and short-lived used-state markers.
 
-The secret envelope includes a fresh 96-bit IV, authentication tag, key-version label, and associated owner/provider/connection/reference data. The exact 32-byte application encryption key is supplied through server environment configuration and is not stored with ciphertext. This contract does not assert platform encryption at rest because no resource has been provisioned or independently verified.
+The secret envelope includes a fresh 96-bit IV, authentication tag, key-version label, and associated owner/provider/connection/reference data. The exact 32-byte application encryption key is supplied through server environment configuration and is not stored with ciphertext. This contract does not assert additional platform encryption-at-rest guarantees because the provisioned resource has not been exercised or independently verified by Code 3.
 
 OAuth state issuance is capacity-bounded and TTL-backed. A Redis Lua script atomically validates expiry, provider, hashed owner binding, and hashed exact redirect before deleting state and writing a temporary replay marker. The raw state, provider authorization code, PKCE verifier, token, and owner subject are not stored in ordinary client or backup data.
 
 Hosted readiness is stronger than `PING`: the runtime requires exact durable store kinds, then performs bounded owner-scoped connection metadata write/read/delete, encrypted secret write/decrypt/delete, and atomic OAuth state write/read/delete operations. Readiness keys are short-lived and removed in the operation. A configured variable, a successful transport ping, or a test-memory store cannot set `hostedRuntimeVerified=true`.
 
-Current operational status is `NOT_PROVISIONED`. Upstash marketplace creation is blocked by required marketplace-terms acceptance. No Redis resource, environment secret, connection record, encrypted secret, or OAuth-state record was created during local implementation. Project-wide Preview resource secrets are unacceptable because they could authorize unrelated Preview branches; operational proof requires a dedicated Preview project/resource or branch-scoped environment values that satisfy the exact project/branch gate.
+Current operational status is `PROVISIONED_PAUSED`. The authorized Free Upstash resource exists solely for Preview/provider-security verification, and the REST endpoint, REST token, and AES encryption key variables are Secret, Preview-only, and branch-scoped to `ui-104-final-product-ui-2`. No connection record, encrypted provider secret, OAuth-state record, or canonical business record has been written. Supabase owner/auth values and the remaining exact CORS/runtime-activation variables are absent; Development and Production remain untouched. Phase 2B2-B.1 may resume only after the owner explicitly says `Supabase signed in.`
 
 ## Verification gate
 
@@ -149,12 +149,12 @@ If deployment protection, missing Preview auth variables, absent owner credentia
 | State | Current Phase 2B2-B status | Meaning |
 |---|---|---|
 | SPA Preview | Existing | Static application can load; not API proof |
-| Trusted Preview runtime | Partially verified; `hostedRuntimeVerified=false` | Exact Express route and fail-closed auth execute in Preview; legitimate owner plus healthy managed-store proof remains blocked by missing operational configuration/resource |
-| Managed secret/state storage | Adapter implemented locally; resource not provisioned | Preview-only Redis connection metadata, AES-256-GCM secret envelopes, and atomic digest-state code exist; required Upstash terms block operational proof |
+| Trusted Preview runtime | Partially verified; `hostedRuntimeVerified=false` | Exact Express route and fail-closed auth execute in Preview; legitimate owner plus healthy managed-store proof remains blocked by intentionally incomplete Preview owner/runtime configuration |
+| Managed secret/state storage | Free Preview resource provisioned; activation proof paused | Preview-only Redis connection metadata, AES-256-GCM secret envelopes, and atomic digest-state code exist; only the three branch-scoped managed-store secrets are configured and no real-resource operation has run |
 | Live provider authorization | Missing | Approved OAuth client, scopes, callback, and revocation |
 | Mailbox ingestion | Missing | Provider reads, cursors/webhooks/polling, minimization, retention |
 | Production runtime | Prohibited in Phase 2B2-B | Separately reviewed Production authorization and deployment |
 
-## Phase 2B2-C boundary
+## Phase 2B2-B.1 and Phase 2B2-C boundary
 
-A separately approved Phase 2B2-C may provision the reviewed Preview resource/configuration after required marketplace terms are accepted and complete the authenticated OWNER plus managed-store health proof. It must not infer authorization from source/tests or work around provisioning with browser storage, committed secrets, in-memory hosted state, the canonical business database, or `REMOTE_ACTIVE`. Gmail/Outlook OAuth, callback routes, provider SDKs, message reads, Order Candidate ingestion from a real mailbox, Purchase import, remote canonical persistence, Bot providers, billing, and Production remain separately authorized work.
+Phase 2B2-B.1 remains paused and may resume only after the owner explicitly says `Supabase signed in.` It may then complete the separately authorized Preview-only owner and managed-store health proof without inferring authorization from source/tests or using browser storage, committed secrets, in-memory hosted state, the canonical business database, or `REMOTE_ACTIVE`. Phase 2B2-C remains separately authorized. Gmail/Outlook OAuth, callback routes, provider SDKs, message reads, Order Candidate ingestion from a real mailbox, Purchase import, remote canonical persistence, live Bot providers, billing, and Production remain outside this contract.

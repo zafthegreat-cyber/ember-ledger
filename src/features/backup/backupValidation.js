@@ -1,4 +1,5 @@
 import { normalizeAccountOpsState } from "../accountOps/repository.js";
+import { normalizeBotOpsState } from "../botOps/repository.js";
 import { normalizeInboxOrderState } from "../inboxOrder/repository.js";
 
 function isJsonContainer(value) {
@@ -27,6 +28,16 @@ function validateInboxOrderV1(source, data) {
   } catch (error) {
     const code = error?.code ? ` (${error.code})` : "";
     return [`Inbox/order persisted state is invalid${code}: ${error?.message || "validation failed"}`];
+  }
+}
+
+function validateBotOperationsV1(source, data) {
+  try {
+    normalizeBotOpsState(data, { now: () => "1970-01-01T00:00:00.000Z" });
+    return [];
+  } catch (error) {
+    const code = error?.code ? ` (${error.code})` : "";
+    return [`Bot Operations persisted state is invalid${code}: ${error?.message || "validation failed"}`];
   }
 }
 
@@ -73,6 +84,9 @@ export function validateBackupSourceData(source, data, { requireSupportedSchema 
   }
   if (source?.validationAdapter === "inbox-order-v1") {
     errors.push(...validateInboxOrderV1(source, data));
+  }
+  if (source?.validationAdapter === "bot-operations-v1") {
+    errors.push(...validateBotOperationsV1(source, data));
   }
 
   return { valid: errors.length === 0, errors, schemaVersion };

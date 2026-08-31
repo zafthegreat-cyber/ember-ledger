@@ -1,8 +1,8 @@
 # Code 3 Product Workspace Architecture Contract
 
-Status: Phase 2A.5 local implementation contract. Phase 2A is published at `c76e3e4bc668c08d9a0908c9bb2cd96444610297`; Phase 2A.5 remains local and unpublished until a separately authorized checkpoint.
+Status: Phase 2A.5 workspace architecture is published at `4c6c7891a123777acec8f326793f30aee61f3de6`. Phase 2D-A locally expands the OWNER-only Bot surface into a provider-neutral operations foundation without connecting or controlling a Bot.
 
-This contract reorganizes presentation and route ownership. It does not authorize Inbox or order ingestion, an email or Bot provider, billing, a database migration, synchronization, `REMOTE_ACTIVE`, automated purchasing, or Production deployment.
+This contract organizes presentation and route ownership. Phase 2D-A authorizes local Bot metadata/evidence workflows and test-only mocks only; it does not authorize Inbox/order ingestion, an email or live Bot provider, credentials, provider network, billing, a database migration, synchronization, `REMOTE_ACTIVE`, automated purchasing, or Production deployment.
 
 ## Purpose
 
@@ -27,7 +27,7 @@ Phase 2A.5 uses compatibility-first home routes:
 | Collect | `/collect` | personal collection and owned-item work |
 | Find | `/find/home` | sourcing opportunities, deals, restocks, and auctions |
 | Sell | `/sell/home` | resale inventory and sale preparation/operations |
-| Bot | `/bot` | OWNER-only honest foundation; no provider is connected |
+| Bot | `/bot` | OWNER-only provider-neutral local operations foundation; Hayha/Stellar not configured and no provider is connected |
 | Business | `/business` | purchases, money, Account Ops entry, and business operations |
 
 Existing feature URLs remain valid where practical. In particular, `/collection`, `/find/deals`, `/find/restocks`, `/find/auctions`, `/business/purchases`, `/business/inventory`, `/business/sales`, `/account-ops/*`, and `/owner-center/*` keep their established meaning. Compatibility aliases must resolve to a real destination without loops or silently changing the underlying workflow.
@@ -54,9 +54,11 @@ Sell owns resale projections and operational views over existing resale inventor
 
 ### Bot
 
-Bot is OWNER-only. Phase 2A.5 supplies a private shell, route, capability truth, and an honest empty/foundation state. No Stellar, Hayha, Valor, proxy, checkout, task-control, or other Bot provider is connected. No purchase, signup, verification, CAPTCHA/OTP, anti-bot, or access-control bypass capability exists.
+Bot is OWNER-only. Phase 2A.5 supplies the private shell/route, and Phase 2D-A adds provider-neutral `LOCAL_ONLY` contracts and workflows for Overview, Bots, Task Groups, Tasks, Accounts, Profiles, Proxies, Product Targets, and Activity. The normal runtime begins empty. Hayha and Stellar remain `NOT_CONFIGURED`, supported retailer coverage is empty/unverified, every live capability is false, and the mock adapter is explicit automated-test injection only.
 
-Bot cannot be unlocked through remembered local state, a feature flag, or a subscription label. Direct navigation must pass the verified OWNER session boundary before private content or storage loads.
+Bot installations, Account Ops references, proxy metadata, product targets, task groups/tasks, normalized attempts, Checkout Evidence, and activity are local metadata/evidence. No live proxy, credential, provider SDK/network/bridge/webhook/export watcher, checkout, task-control, or other Bot provider is connected. No purchase, signup, verification, CAPTCHA/OTP, anti-bot, account/household/purchase-limit, or access-control bypass capability exists. `Bot Success != Purchase` and `Bot Checkout Evidence != Purchase`.
+
+Bot cannot be unlocked through remembered local state, a feature flag, or a subscription label. Direct navigation must pass the verified OWNER session boundary before private content or `code3.bot-ops.v1` loads. See [BOT_INTEGRATION_CONTRACT.md](./BOT_INTEGRATION_CONTRACT.md).
 
 ### Business
 
@@ -139,6 +141,8 @@ Mobile navigation must not flatten all Code 3 features into one dock. It uses th
 
 Only working destinations are presented as active navigation. A shell or future capability must not be added merely to fill a tab count.
 
+Bot Operations uses one full-page responsive workflow with internal sections `Overview`, `Bots`, `Task Groups`, `Tasks`, `Accounts`, `Profiles`, `Proxies`, `Product Targets`, and `Activity`. Mobile may collapse these into an accessible compact section selector and cards/rows; a wide desktop table cannot be the only representation. Sections show empty/disconnected state unless owner-created safe metadata exists. Test fixtures never populate ordinary runtime.
+
 ## Global and cross-workspace actions
 
 An action can be global, workspace-local, or a cross-workspace handoff. Global actions such as Scan, Search, Quick Add, Record Expense, or Find Deal appear only when their current workflow exists and route automatically into the owning workspace.
@@ -188,7 +192,9 @@ Phase 2A.5 changes route and presentation architecture only:
 - the canonical schema remains unapplied;
 - no owner record or file byte is migrated;
 - no sync, migration-apply, or rollback executor is activated;
-- existing backup sources and record identities remain unchanged.
+- existing record identities remain unchanged; Phase 2D-A's one additive sanitized Bot backup source does not reinterpret another source.
+
+Phase 2D-A adds one validated browser source, `code3.bot-ops.v1`, through the gateway fixed to `LOCAL_ONLY`; it does not change the authority of any existing source. Its safe metadata is registered for Backup Format v1, all ten paths are `REQUIRES_MAPPING`, and Restore Preview remains zero-write. No provider secret or provider operational state is a Bot backup record.
 
 The workspace registry and shell do not become a second datastore. Workspace selection is the bounded local UI preference described above.
 
@@ -201,28 +207,30 @@ Workspace homes use only real supported data. Honest empty states include:
 - Collect: no collection items yet;
 - Find: no watched opportunities yet;
 - Sell: no items ready to sell;
-- Bot: no Bot integrations are connected;
+- Bot: Hayha and Stellar are not configured; runtime is disconnected/unavailable; no live tasks, Bot-linked real accounts, live proxies, or real checkout results exist;
 - Business: no recent business activity.
 
 No home may fabricate provider status, orders, revenue, tasks, or marketplace outcomes.
 
-## Phase 2A.5 non-goals
+## Workspace and Phase 2D-A non-goals
 
-This phase does not add:
+The workspace architecture and Phase 2D-A local foundation do not add:
 
 - Gmail, Outlook, IMAP, mailbox OAuth, email parsing, or order ingestion;
 - an email provider, secure-vault provider, or provider token persistence;
-- Stellar, Hayha, Valor, proxy, Bot task-control, or checkout integration;
+- a live Stellar, Hayha, proxy, Bot task-control, credential, provider network, or checkout integration;
 - subscription billing, payment processing, or client-authoritative paid state;
 - automatic purchasing, offers, bids, messages, signup, checkout, or payment;
 - CAPTCHA, OTP, verification, retailer-limit, access-control, or anti-bot bypass;
 - a schema application, owner-data migration, remote cutover, sync, restore apply, or Production deployment.
 
+Phase 2D-A does add nonsecret proxy metadata and normalized task/evidence states, but those records are not a live proxy, command, checkout, order, Purchase, or Inventory mutation.
+
 Inbox and Orders remain contracts or existing local business foundations only; a workspace label is not provider integration.
 
 ## Acceptance contract
 
-Phase 2A.5 is locally complete only when automated and browser QA verify:
+The workspace/Phase 2D-A boundary is locally complete only when automated and browser QA verify:
 
 - all registered routes have one valid owner and aliases resolve to real routes;
 - Account Ops is Business-associated but remains `VERIFIED_OWNER`;
@@ -233,6 +241,8 @@ Phase 2A.5 is locally complete only when automated and browser QA verify:
 - representative current and legacy URLs load without loops;
 - browser/Android Back remains natural;
 - shared records are not cloned by workspace navigation;
+- Hayha/Stellar stay `NOT_CONFIGURED`, the mock stays test-only, and normal runtime has no synthetic live data;
+- Bot record security rejects credentials/raw provider data and Checkout Evidence cannot reach Purchase/Inventory writers;
 - mobile light/dark layouts have no 360-pixel overflow;
 - existing backup, persistence, security, Account Ops, intelligence, and regression gates remain green.
 

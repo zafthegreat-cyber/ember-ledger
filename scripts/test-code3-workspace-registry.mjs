@@ -124,6 +124,7 @@ const representativeMappings = [
   ["/business/money/reports", WORKSPACE_IDS.BUSINESS, ROUTE_CLASSIFICATIONS.BUSINESS],
   ["/account-ops/accounts", WORKSPACE_IDS.BUSINESS, ROUTE_CLASSIFICATIONS.BUSINESS],
   ["/bot", WORKSPACE_IDS.BOT, ROUTE_CLASSIFICATIONS.BOT],
+  ["/bot/tasks", WORKSPACE_IDS.BOT, ROUTE_CLASSIFICATIONS.BOT],
   ["/owner-center/controls", null, ROUTE_CLASSIFICATIONS.OWNER],
   ["/settings", null, ROUTE_CLASSIFICATIONS.GLOBAL],
   ["/kids-community", null, ROUTE_CLASSIFICATIONS.GLOBAL],
@@ -147,7 +148,8 @@ equal(accountOps.workspace, WORKSPACE_IDS.BUSINESS);
 equal(accountOps.requiredAuthority, AUTHORITY_REQUIREMENTS.VERIFIED_OWNER);
 const bot = resolveRouteOwnership("/bot");
 equal(bot.requiredAuthority, AUTHORITY_REQUIREMENTS.VERIFIED_OWNER);
-equal(resolveRouteOwnership("/bot/tasks"), null, "Unimplemented Bot destinations must not appear implemented");
+equal(resolveRouteOwnership("/bot/tasks")?.requiredAuthority, AUTHORITY_REQUIREMENTS.VERIFIED_OWNER, "Implemented Bot Operations routes must retain the owner gate");
+equal(resolveRouteOwnership("/bot/unknown"), null, "Unknown Bot destinations must not silently appear implemented");
 const ownerCenter = resolveRouteOwnership("/owner-center");
 equal(ownerCenter.classification, ROUTE_CLASSIFICATIONS.OWNER);
 equal(ownerCenter.workspace, null);
@@ -183,8 +185,8 @@ deepEqual(
 );
 deepEqual(
   getWorkspaceNavigation(WORKSPACE_IDS.BOT, { ownerAuthorized: true }).map((item) => item.path),
-  ["/bot"],
-  "Bot must expose only its honest foundation home",
+  ["/bot", "/bot/bots", "/bot/task-groups", "/bot/tasks", "/bot/activity"],
+  "Bot must expose only implemented local operations destinations",
 );
 ok(
   !getWorkspaceNavigation(WORKSPACE_IDS.BUSINESS).some((item) => item.path === "/account-ops"),
@@ -196,7 +198,12 @@ ok(
 );
 ok(
   PRODUCT_WORKSPACES.flatMap((workspace) => workspace.navigation).every((item) => item.implemented),
-  "Unimplemented Inbox, Orders, Bot tasks, and billing routes must not enter navigation",
+  "Unimplemented Inbox, Orders, live provider, and billing routes must not enter navigation",
+);
+
+ok(
+  getWorkspaceNavigation(WORKSPACE_IDS.BOT, { ownerAuthorized: true }).every((item) => item.requiredAuthority === AUTHORITY_REQUIREMENTS.VERIFIED_OWNER),
+  "Every Bot navigation destination must retain verified-owner authority",
 );
 
 const directRouteContext = resolveWorkspaceContext("/find/auctions", {

@@ -1,6 +1,6 @@
 # Code 3 Inbox and Order Provider Contract
 
-Status: Phase 2B1 is published at `2f49a5ed97cec827184c6080e4ada0f4c8194451`, and Phase 2B2-A is published at `c379416336e32a67346c7a3bb95f7b6469f679f5`. Phase 2B2-B locally implements Preview-only managed connection, encrypted-secret, and OAuth-state adapters. The required Upstash resource is not provisioned, so `hostedRuntimeVerified=false`. Live mailbox authorization, message retrieval, and Business Purchase import are not enabled.
+Status: Phase 2B1 and Phase 2B2-B are published through `b4848cb851b2be83093fbdc4ed4b976857f9d3ff`. The separate Phase 2B2-B.1 operational proof is paused. A Free Upstash resource and three branch-scoped Preview secrets exist, but the remaining owner/CORS/activation configuration is absent, no follow-up Preview was deployed, and `hostedRuntimeVerified=false`. Live mailbox authorization, message retrieval, and Business Purchase import are not enabled. Phase 2D-A Bot Checkout Evidence remains a separate local source and does not use this provider runtime.
 
 This contract governs the secure foundation for a future flow:
 
@@ -36,7 +36,7 @@ The provider runtime remains default-unavailable. Its capability endpoint can re
 
 The adapters target a separately configured Upstash Redis resource in Preview. Selection requires exact Vercel Preview markers and exact server-owned project/branch matches; the effective namespace appends a project/branch-derived hash. Connection metadata uses an owner-scoped hash family. Secret material is stored in a separate owner/connection key family only after Code 3 encrypts it with AES-256-GCM, a fresh IV/authentication tag, key-version metadata, and associated owner/provider/connection/reference data. OAuth state uses a random value returned once, persists only its SHA-256 digest and hashed bindings, and uses Lua to issue/consume atomically. An in-process map remains permitted only as an injected automated-test adapter and is never a hosted fallback.
 
-The current resource is not provisioned because acceptance of Upstash marketplace terms is required. Accordingly, the hosted runtime still receives unavailable stores; no secret, state, or connection record exists. No claim is made about platform encryption at rest. Project-wide Preview secrets are not acceptable because they could enable every Preview branch; a future deployment must use a dedicated Preview project/resource or branch-scoped environment values.
+The Free Upstash resource is provisioned and three managed-store values are configured as branch-scoped Preview secrets, but Supabase owner/auth values and the remaining Preview CORS/activation/runtime values are absent. No follow-up Preview, provider secret, OAuth state, or connection record exists, and `hostedRuntimeVerified=false`. Phase 2B2-B.1 remains paused pending the owner's explicit `Supabase signed in.` confirmation. No claim is made about platform encryption at rest. The resource is isolated provider-security infrastructure; it is not canonical business persistence or a Bot credential store.
 
 `backend/src/providerRuntime/trustedRuntime.ts` derives a bounded Preview proof only from exact server `VERCEL=1` and `VERCEL_ENV=preview` markers. The proof does not accept request, browser, role, owner, query, or entitlement input and does not expose deployment/environment details. Production, hosted-unknown, local, and test execution cannot satisfy it.
 
@@ -166,8 +166,8 @@ Unrelated personal messages remain `OTHER` and cannot produce an Order Candidate
 
 | Data class | Phase 2B1 treatment |
 |---|---|
-| Safe connection metadata | Phase 2B2-B Preview-only durable adapter implemented; no resource/record provisioned |
-| Provider secrets and OAuth state | Preview-only encrypted-secret and atomic digest-state adapters implemented; no resource, secret, or state provisioned |
+| Safe connection metadata | Phase 2B2-B Preview-only durable adapter implemented; approved Free Upstash resource exists, but runtime activation/deployed proof remain paused and no connection record exists |
+| Provider secrets and OAuth state | Preview-only encrypted-secret and atomic digest-state adapters implemented; three required managed-store variables are Secret and branch-scoped to Preview, but no provider secret or OAuth state has been provisioned |
 | Normalized retailer/order evidence | Versioned local metadata for synthetic and owner-reviewed use |
 | Raw message body | Not persisted by default |
 | Protected code/link/content | Never retained |
@@ -261,6 +261,24 @@ The owner may confirm, correct, or reject a candidate. A correction event record
 
 Later provider reconciliation may update system proposals and warnings but cannot overwrite a confirmed owner value.
 
+## Phase 2D-A Bot Checkout Evidence relationship
+
+`code3.bot-ops.v1.checkoutEvidence` is a separate evidence class and storage source. It is not written into `code3.inbox-order.v1`, is not a normalized mailbox message, and does not silently create or merge an Order Candidate.
+
+Bot Checkout Evidence may retain bounded provider/installation/task/attempt/product/retailer/account/profile relationships, quantity, expected amount/currency, an external reference when supplied safely, time, confidence, warnings, provenance, source hash, and owner review/correction state. It excludes provider credentials, retailer authentication, payment credentials, proxy credentials, raw provider payloads/logs, and credential-bearing URLs.
+
+Provider event idempotency is scoped by provider + installation + provider event ID. This differs deliberately from mailbox event identity, which is scoped by provider connection + message ID. Reusing the same provider event ID on another Bot installation is distinct. Cross-source Bot/email evidence is never merged merely because retailer/order text looks similar.
+
+A future separately approved reconciliation service may compare reviewed Bot Checkout Evidence with an Order Candidate or another external order source. It must retain each source independently, report conflicts, use stable reconciliation/import identities, and require explicit OWNER confirmation before any Purchase. Phase 2D-A implements no cross-source write or Purchase mapping.
+
+```text
+Bot Success != Purchase
+Bot Checkout Evidence != Order Candidate
+Bot Checkout Evidence != Purchase
+```
+
+See [BOT_INTEGRATION_CONTRACT.md](./BOT_INTEGRATION_CONTRACT.md).
+
 ## Future Purchase mapping
 
 Phase 2B1 may describe a pure mapping preview from reviewed candidate fields to a future Purchase and Purchase Lot. It does not call the existing Business/Flip Scout purchase repository and does not write purchases, lots, inventory, receipts, sales, or files.
@@ -285,7 +303,7 @@ The safe local source contains only:
 
 It uses the existing persistence gateway fixed to `LOCAL_ONLY`, stable IDs, validation, archive semantics where relevant, and record versions. Caller input cannot select remote mode, sync, owner authority, migration apply, or rollback execution.
 
-Backup Format v1 includes this validated non-secret source as the nineteenth local section, raising the registry to 23 total sources with four excluded/conditional. It excludes provider secrets, OAuth state/codes/verifiers, sessions, tokens, raw bodies, protected content, OTPs, passwords, and security links. Restore Preview remains zero-write. Every Phase 2B1 source path is `REQUIRES_MAPPING`; no canonical domain or migration is approved.
+Backup Format v1 includes this validated non-secret source as the nineteenth local section. Phase 2D-A adds a separate twentieth local Bot Operations section, raising the registry to 24 total sources with four excluded/conditional. Both exclude provider/Bot/retailer/payment/proxy secrets, OAuth state/codes/verifiers, sessions, tokens, raw bodies/provider payloads/logs, protected content, OTPs, passwords, credential-bearing URLs, and security links. Restore Preview remains zero-write. Every Phase 2B1 and Phase 2D-A source path is `REQUIRES_MAPPING`; no canonical domain or migration is approved.
 
 ## Disconnect and revocation
 
@@ -315,7 +333,7 @@ Phase 2B1, Phase 2B2-A, and Phase 2B2-B do not implement:
 - automatic Purchase or inventory creation;
 - provider-token storage in the browser or backup;
 - canonical database activation, migration, sync, or cutover;
-- Bot provider integration;
+- live Bot provider integration, Bot credentials, task control, checkout, or Bot-to-Purchase import; Phase 2D-A local contracts remain a separate source;
 - billing or subscriptions;
 - purchasing, checkout, offer, bid, CAPTCHA/OTP bypass, or retailer-limit evasion; or
 - Production deployment or promotion.
@@ -333,4 +351,4 @@ Live provider work remains blocked until a separately approved task proves:
 - redacted observability; and
 - an explicit owner-controlled import review that still cannot auto-create a Purchase.
 
-Resource provisioning is currently blocked by required Upstash marketplace-terms acceptance. Phase 2B2-C must not work around that gate with browser storage, committed secrets, a hosted in-memory store, the canonical business database, or `REMOTE_ACTIVE`.
+The approved Free Upstash resource and three branch-scoped Preview secrets exist. Phase 2B2-B.1 remains paused pending Supabase sign-in; Supabase owner/auth and remaining CORS/activation/runtime values are absent, no follow-up Preview was deployed, and `hostedRuntimeVerified=false`. Phase 2B2-C must not work around that gate with browser storage, committed secrets, a hosted in-memory store, the canonical business database, or `REMOTE_ACTIVE`.

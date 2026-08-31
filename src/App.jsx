@@ -6854,6 +6854,7 @@ export default function App() {
   const [homeSubTab, setHomeSubTab] = useState(initialRouteState.homeSubTab || "overview");
   const [flipScoutView, setFlipScoutView] = useState(initialRouteState.flipScoutView || "deals");
   const [productWorkspaceHome, setProductWorkspaceHome] = useState(initialRouteState.productWorkspaceHome || WORKSPACE_IDS.COLLECT);
+  const [botOpsSection, setBotOpsSection] = useState(initialRouteState.botOpsSection || "overview");
   const [workspacePreference, setWorkspacePreference] = useState(() => {
     if (typeof window === "undefined") return { lastProductWorkspace: WORKSPACE_IDS.COLLECT, lastSelectedWorkspace: WORKSPACE_IDS.COLLECT };
     const stored = readWorkspacePreference(window.localStorage);
@@ -7956,6 +7957,7 @@ export default function App() {
   const ownerAuthorizationPending = ownerSession.status === OWNER_SESSION_STATES.LOADING;
   const shellRoutePath = pathFromActiveTab(activeTab, {
     productWorkspaceHome,
+    botOpsSection,
     flipScoutView,
     collectionWorkspaceView,
     businessWorkspaceView,
@@ -8832,6 +8834,7 @@ export default function App() {
     setQuickAddMenuOpen(false);
     setSearchExpanded(false);
     if (route.productWorkspaceHome) setProductWorkspaceHome(route.productWorkspaceHome);
+    if (route.botOpsSection) setBotOpsSection(route.botOpsSection);
     if (route.flipScoutView) setFlipScoutView(route.flipScoutView);
     if (route.collectionWorkspaceView) setCollectionWorkspaceView(route.collectionWorkspaceView);
     if (route.businessWorkspaceView) setBusinessWorkspaceView(route.businessWorkspaceView);
@@ -35462,7 +35465,7 @@ function renderForgeBusinessLedgerPanel() {
     if (activeTab === "resetPassword") return "/reset-password";
     if (activeTab === "onboarding") return `/onboarding/${encodeURIComponent(onboardingView || "welcome")}`;
     if (activeTab === "dailyTide") return "/today";
-    if (activeTab === "workspaceHome") return pathFromActiveTab(activeTab, { productWorkspaceHome });
+    if (activeTab === "workspaceHome") return pathFromActiveTab(activeTab, { productWorkspaceHome, botOpsSection });
     if (activeTab === "flipScout") {
       const routeByView = {
         deals: "/find/deals",
@@ -35546,6 +35549,7 @@ function renderForgeBusinessLedgerPanel() {
       homeSubTab,
       flipScoutView,
       productWorkspaceHome,
+      botOpsSection,
       collectionWorkspaceView,
       businessWorkspaceView,
       businessMoneyView,
@@ -35603,6 +35607,7 @@ function renderForgeBusinessLedgerPanel() {
     homeSubTab,
     flipScoutView,
     productWorkspaceHome,
+    botOpsSection,
     collectionWorkspaceView,
     businessWorkspaceView,
     businessMoneyView,
@@ -35650,6 +35655,7 @@ function renderForgeBusinessLedgerPanel() {
       routeFocusModeRef.current = "pop";
       setActiveTab(route.activeTab || "dashboard");
       if (route.productWorkspaceHome) setProductWorkspaceHome(route.productWorkspaceHome);
+      if (route.botOpsSection) setBotOpsSection(route.botOpsSection);
       if (route.flipScoutView) setFlipScoutView(route.flipScoutView);
       if (route.collectionWorkspaceView) setCollectionWorkspaceView(route.collectionWorkspaceView);
       if (route.businessWorkspaceView) setBusinessWorkspaceView(route.businessWorkspaceView);
@@ -35681,7 +35687,7 @@ function renderForgeBusinessLedgerPanel() {
     });
     routeFocusModeRef.current = "settled";
     return () => window.cancelAnimationFrame(frame);
-  }, [activeTab, flipScoutView, productWorkspaceHome, effectiveProductWorkspaceHome, collectionWorkspaceView, businessWorkspaceView, businessMoneyView, ownerCenterSection, ownerCenterSubview, accountOpsSection]);
+  }, [activeTab, flipScoutView, productWorkspaceHome, effectiveProductWorkspaceHome, botOpsSection, collectionWorkspaceView, businessWorkspaceView, businessMoneyView, ownerCenterSection, ownerCenterSubview, accountOpsSection]);
   useEffect(() => {
     if (activeTab !== "kidsProgram" && sparkFlowView !== "home") {
       setSparkFlowView("home");
@@ -63786,7 +63792,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               items={workspaceItems}
               sales={workspaceSales}
               ownerSession={ownerSession}
+              botOpsSection={botOpsSection}
               onNavigate={navigateProductPath}
+              onBotOpsSectionChange={(section) => navigateProductPath(section === "overview" ? "/bot" : `/bot/${encodeURIComponent(section)}`)}
               onAddCollection={() => openProductAddFlow({ source: "collect-workspace-home", seed: { ownedItemPurpose: OWNED_ITEM_PURPOSES.PERSONAL_COLLECTION }, destinations: { vault: true } })}
               onAddResale={() => openProductAddFlow({ source: "sell-workspace-home", seed: { ownedItemPurpose: OWNED_ITEM_PURPOSES.FOR_RESALE }, destinations: { forge: Boolean(activeForgeWorkspace), vault: !activeForgeWorkspace } })}
               onReturnHome={() => navigateProductWorkspace(workspacePreference.lastProductWorkspace)}

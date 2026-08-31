@@ -10,6 +10,7 @@ const ROUTES = [
   ["Auctions", "/find/auctions", /Auctions/],
   ["Restocks", "/owner-center/restocks/live", /Restocks|Restock Intelligence/],
   ["eBay Search", "/find/ebay", /eBay Search|active eBay listings/i],
+  ["Bot Operations", "/bot/tasks", /Bot Operations|No tasks|Local-only/i],
 ];
 
 async function main() {

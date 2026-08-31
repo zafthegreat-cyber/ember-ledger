@@ -111,6 +111,22 @@ const SOURCE_DECISIONS = Object.freeze({
       ["activity", null, C.REQUIRES_MAPPING, { reason: "Local inbox/order activity summaries are not canonical audit events." }],
     ]),
   },
+  "bot-operations": {
+    classification: C.REQUIRES_MAPPING,
+    adapterId: "bot-operations-v1-future-canonical-review",
+    paths: paths([
+      ["installations", null, C.REQUIRES_MAPPING, { reason: "Bot installation metadata has no approved canonical domain and no live adapter is connected." }],
+      ["retailerAccountLinks", null, C.REQUIRES_MAPPING, { reason: "Bot retailer-account references require future Account Ops mapping and security review." }],
+      ["botProfiles", null, C.REQUIRES_MAPPING, { reason: "Bot profile references contain no payment credentials and require a future canonical relationship contract." }],
+      ["proxyGroups", null, C.REQUIRES_MAPPING, { reason: "Proxy group metadata excludes credentials and has no approved canonical domain." }],
+      ["productTargets", null, C.REQUIRES_MAPPING, { reason: "Bot product targets must map to shared catalog identities without cloning records." }],
+      ["taskGroups", null, C.REQUIRES_MAPPING, { reason: "Bot task groups are local planning metadata, not executable hosted tasks." }],
+      ["tasks", null, C.REQUIRES_MAPPING, { reason: "Bot tasks are local normalized records and have no live control authority." }],
+      ["attempts", null, C.REQUIRES_MAPPING, { reason: "Append-only sanitized bot attempts are not canonical audit events." }],
+      ["checkoutEvidence", null, C.REQUIRES_MAPPING, { reason: "Checkout Evidence is not a Purchase and requires future owner-approved reconciliation." }],
+      ["activity", null, C.REQUIRES_MAPPING, { reason: "Local Bot Operations activity summaries are not canonical audit events." }],
+    ]),
+  },
   "legacy-core-business": {
     classification: C.REQUIRES_MAPPING,
     adapterId: "legacy-core-v0-review",

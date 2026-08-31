@@ -58,11 +58,17 @@ const workspaceHomes = new Map([
 ]);
 
 for (const [route, workspace] of workspaceHomes) {
-  assert.deepEqual(routeStateFromPath(route), { activeTab: "workspaceHome", productWorkspaceHome: workspace });
+  assert.deepEqual(routeStateFromPath(route), {
+    activeTab: "workspaceHome",
+    productWorkspaceHome: workspace,
+    ...(workspace === WORKSPACE_IDS.BOT ? { botOpsSection: "overview" } : {}),
+  });
   assert.equal(pathFromActiveTab("workspaceHome", { productWorkspaceHome: workspace }), route);
 }
 
-assert.deepEqual(routeStateFromPath("/bot/tasks"), { activeTab: "dashboard" }, "Unimplemented Bot routes must not silently open Bot Home");
+assert.deepEqual(routeStateFromPath("/bot/tasks"), { activeTab: "workspaceHome", productWorkspaceHome: WORKSPACE_IDS.BOT, botOpsSection: "tasks" }, "Implemented Bot routes must preserve section context");
+assert.equal(pathFromActiveTab("workspaceHome", { productWorkspaceHome: WORKSPACE_IDS.BOT, botOpsSection: "tasks" }), "/bot/tasks");
+assert.deepEqual(routeStateFromPath("/bot/unknown"), { activeTab: "dashboard" }, "Unknown Bot routes must not silently open Bot Operations");
 assert.equal(canonicalPathForPath("/find"), "/find", "The established Find deal route remains canonical");
 assert.equal(resolveRouteOwnership("/find")?.workspace, WORKSPACE_IDS.FIND);
 assert.equal(resolveRouteOwnership("/sell")?.classification, ROUTE_CLASSIFICATIONS.LEGACY_REDIRECT);

@@ -1,6 +1,6 @@
 # Code 3 Account Ops Contract
 
-Status: Phase 2A local-first implementation published at `c76e3e4bc668c08d9a0908c9bb2cd96444610297`; Phase 2A.5 workspace placement is published at `4c6c7891a123777acec8f326793f30aee61f3de6`; Phase 2B1 provider/Inbox/Order Candidate foundation is published at `2f49a5ed97cec827184c6080e4ada0f4c8194451`. Phase 2B2-A locally adds exact Preview runtime mapping and bounded execution status, not a connected mailbox. This contract does not authorize canonical persistence, database migration, synchronization, retailer automation, purchasing, or Production deployment.
+Status: Phase 2A local-first implementation, Phase 2A.5 workspace placement, Phase 2B1 provider/Inbox/Order Candidate foundation, and Phase 2B2-B managed-store source are published through `b4848cb851b2be83093fbdc4ed4b976857f9d3ff`. Phase 2D-A adds reference-only relationships from Bot Operations to Account Ops; it does not connect a Bot or mailbox and does not authorize canonical persistence, database migration, synchronization, retailer automation, purchasing, or Production deployment.
 
 Starting baseline: `af21199f610cc91e31d9dee59af6f0a2f748ab79`.
 
@@ -48,7 +48,7 @@ Account Ops is a first-class, lazy-loaded private route family with canonical ro
 
 Under the Phase 2A.5 product-workspace architecture, Account Ops is associated with Business for navigation and route context. That association is descriptive only: Business workspace access does not grant Account Ops access, and Account Ops retains `VERIFIED_OWNER` authorization before `code3.account-ops.v1` is loaded. Account Ops may appear in Business navigation only for an authorized OWNER and remains available through the authenticated owner affordance. A direct URL renders the same compact Sign In Required, Owner Access Required, or unavailable state as other private owner surfaces.
 
-Account Ops is not part of Bot, and moving between workspaces does not move or duplicate its records. The global product-workspace switcher cannot bypass its gate. Owner Center remains a separate private administration surface. See [WORKSPACE_ARCHITECTURE_CONTRACT.md](./WORKSPACE_ARCHITECTURE_CONTRACT.md).
+Account Ops is not part of Bot, and moving between workspaces does not move or duplicate its records. Phase 2D-A Bot assignments may reference stable Account Ops profile and store-account IDs, but Bot Operations cannot copy credentials, use those records as authorization, or change Account Ops state. The global product-workspace switcher cannot bypass either gate. Owner Center remains a separate private administration surface. See [WORKSPACE_ARCHITECTURE_CONTRACT.md](./WORKSPACE_ARCHITECTURE_CONTRACT.md).
 
 The internal sections are Overview, Profiles, Emails, Store Accounts, and Tasks. Mobile uses compact cards, bounded search/filter controls, progressive disclosure, 44-pixel targets, and safe wrapping for long aliases and retailer names. Desktop may use a compact table, but it does not add extra dashboards merely to fill space.
 
@@ -179,6 +179,22 @@ Tasks can link to a profile, retailer, or store account. Counts are derived from
 
 Safe bulk actions are limited to metadata work such as assigning a profile group, assigning an existing retailer, archiving selected metadata records, exporting metadata, and creating tasks. There is no bulk retailer registration or bulk signup submission.
 
+## Phase 2D-A Bot Operations relationship
+
+Bot Operations uses reference records rather than duplicating Account Ops identity:
+
+```text
+BotRetailerAccountLink.accountOpsStoreAccountId -> Account Ops storeAccounts.id
+BotRetailerAccountLink.accountOpsProfileId -> Account Ops profiles.id
+BotProfile.accountOpsProfileId -> Account Ops profiles.id
+```
+
+The Bot record may add assignment label/state, related installation/task-group IDs, compatibility, and warnings. It does not copy or expose a plaintext password, credential value, session/cookie, OTP, security answer, payment data, full Account Ops address solely for duplication, or Code 3 authority. `CredentialReference` remains nonsecret metadata and is not resolved by Bot Operations.
+
+The local Bot document validates identifier shape without pretending that it can prove current Account Ops lifecycle state. When both sources are supplied to Restore Preview, missing Account Ops references are reported for review; a future shared service must also diagnose archived, disabled, or contradictory links. Bot Operations does not silently create, modify, reactivate, or verify an Account Ops record. A Bot profile is provider-configuration metadata, not an Account Ops profile, retailer account, authentication identity, provider connection, or Purchase authority.
+
+Both sources remain separate `LOCAL_ONLY` documents. Phase 2D-A stores only bounded cross-source IDs; any current or future relationship projection may be read only after the verified OWNER gate, and neither workspace can grant access to the other. See [BOT_INTEGRATION_CONTRACT.md](./BOT_INTEGRATION_CONTRACT.md).
+
 ## Phase 2B1 inbox foundation
 
 Phase 2B1 implements minimized normalized-message contracts and deterministic synthetic processing under the separate `code3.inbox-order.v1` source. Categories include verification, order confirmation, shipped, delivered, cancelled, refund, return, pickup, password/security, retailer notice, other, and protected.
@@ -210,11 +226,11 @@ External text cannot create a purchase or inventory record automatically. Provid
 
 ## Backup and Restore Preview
 
-The Account Ops document is a registered browser backup source. Allowed metadata includes profiles, aliases, owner-created retailers, store accounts, account state, credential references, tasks, and activity. Phase 2B1 registers its separate minimized inbox/order source rather than changing the strict Account Ops schema, raising Backup Format v1 to 23 registered sources: 19 locally included and four excluded/conditional. Passwords, OTPs, tokens, sessions, OAuth state/codes/verifiers, raw protected message content, authorization fields, environment values, and provider secrets are prohibited before persistence and remain prohibited by the backup sanitizer.
+The Account Ops document is a registered browser backup source. Allowed metadata includes profiles, aliases, owner-created retailers, store accounts, account state, credential references, tasks, and activity. Phase 2B1 registers its separate minimized Inbox/Order source, and Phase 2D-A registers the separate sanitized Bot Operations source, rather than changing the strict Account Ops schema. Backup Format v1 therefore has 24 registered sources: 20 locally included and four excluded/conditional. Passwords, OTPs, tokens, sessions, OAuth state/codes/verifiers, raw protected/provider content, authorization fields, environment values, provider/Bot/retailer/payment/proxy secrets, and credential-bearing URLs are prohibited before persistence and remain prohibited by the backup sanitizer.
 
 Restore Preview validates schema, counts, IDs, duplicate aliases, and relationships such as profile, alias, retailer, and store-account references. It remains JSON-only and zero-write. Account Ops has no restore-apply path.
 
-The migration registry classifies every Account Ops and Phase 2B1 inbox/order collection `REQUIRES_MAPPING` because the Phase 1B canonical schema has no approved domain for either source. This produces no canonical action, schema change, or migration authorization.
+The migration registry classifies every Account Ops, Phase 2B1 Inbox/Order, and Phase 2D-A Bot Operations collection `REQUIRES_MAPPING` because the Phase 1B canonical schema has no approved domain for those sources. This produces no canonical action, schema change, Purchase/Inventory handoff, or migration authorization.
 
 ## Security and privacy limitations
 
@@ -236,6 +252,8 @@ Phase 2A does not implement:
 - provider-managed alias provisioning;
 - canonical database domains, migration execution, remote persistence, sync, or Production deployment.
 
-## Future acceptance gate
+## Future acceptance gates
 
-A separately approved Phase 2B2-B may add managed state and one-provider authorization readiness only after the Phase 2B2-A exact Preview proof. It still requires provider selection, scope approval, durable managed secret storage, atomic replay-safe OAuth state, retention/deletion review, redacted observability, disconnect/revocation proof, and test-account evaluation. It must keep an owner review gate before Purchases and must not introduce checkout or retailer-security bypass behavior.
+Phase 2B2-B managed-store source is published, but the separate Phase 2B2-B.1 operational verification is paused pending the owner's explicit `Supabase signed in.` confirmation. A Free Upstash resource and three branch-scoped Preview secrets exist; remaining owner/CORS/activation configuration and the authenticated-owner readiness proof do not. That workstream remains independent from Bot Operations and cannot supply Bot credentials or business persistence.
+
+A separately approved Phase 2D-B may evaluate one Bot provider/integration mode only after provider terms and anti-abuse review, server-only credential/revocation design where required, an owner-controlled test environment, provider-specific normalization, and explicit confirmation that Account Ops references remain nonsecret/non-authoritative. It must preserve `Bot Success != Purchase`, owner review before any Purchase, and every retailer-security/checkout prohibition. Phase 2D-A does not authorize Phase 2D-B.

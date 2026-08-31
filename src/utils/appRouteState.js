@@ -26,7 +26,12 @@ export function routeStateFromPath(pathname = "") {
   if (section === "collect") return { activeTab: "workspaceHome", productWorkspaceHome: WORKSPACE_IDS.COLLECT };
   if (section === "find" && subSection === "home") return { activeTab: "workspaceHome", productWorkspaceHome: WORKSPACE_IDS.FIND };
   if (section === "sell" && subSection === "home") return { activeTab: "workspaceHome", productWorkspaceHome: WORKSPACE_IDS.SELL };
-  if (section === "bot" && !subSection) return { activeTab: "workspaceHome", productWorkspaceHome: WORKSPACE_IDS.BOT };
+  if (section === "bot") {
+    const allowedBotSections = ["bots", "task-groups", "tasks", "accounts", "profiles", "proxies", "targets", "activity"];
+    if (subSection && !allowedBotSections.includes(subSection)) return { activeTab: "dashboard" };
+    const botOpsSection = subSection || "overview";
+    return { activeTab: "workspaceHome", productWorkspaceHome: WORKSPACE_IDS.BOT, botOpsSection };
+  }
   if (section === "find") {
     const view = subSection === "deal-feed" || subSection === "deals"
       ? "deals"
@@ -185,11 +190,16 @@ export function routeStateFromPath(pathname = "") {
 export function pathFromActiveTab(activeTab = "dashboard", state = {}) {
   if (activeTab === "membership") return "/settings/plans";
   if (activeTab === "workspaceHome") {
+    if (state.productWorkspaceHome === WORKSPACE_IDS.BOT) {
+      const section = ["bots", "task-groups", "tasks", "accounts", "profiles", "proxies", "targets", "activity"].includes(state.botOpsSection)
+        ? state.botOpsSection
+        : "overview";
+      return section === "overview" ? "/bot" : `/bot/${encodeURIComponent(section)}`;
+    }
     const routeByWorkspace = {
       [WORKSPACE_IDS.COLLECT]: "/collect",
       [WORKSPACE_IDS.FIND]: "/find/home",
       [WORKSPACE_IDS.SELL]: "/sell/home",
-      [WORKSPACE_IDS.BOT]: "/bot",
     };
     return routeByWorkspace[state.productWorkspaceHome] || "/collect";
   }

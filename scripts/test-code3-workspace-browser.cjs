@@ -417,6 +417,7 @@ async function verifyFixture(page, fixture) {
       break;
     case "bot-owner-only":
       await page.getByTestId("bot-workspace-home").waitFor();
+      await page.getByTestId("bot-operations").waitFor();
       match(await body(), /Owner only[\s\S]*No bot integrations are connected/i, "Bot should remain an honest owner-only foundation");
       excludes(await body(), /tasks completed|orders placed|checkout success/i, "Bot must not fabricate operational results");
       await assertSwitcherContext(page, "Bot");

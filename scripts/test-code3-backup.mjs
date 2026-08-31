@@ -11,6 +11,7 @@ import {
   verifyBackupJson,
 } from "../src/features/backup/index.js";
 import fs from "node:fs";
+import { getPhase2dQaFixture } from "../src/features/botOps/fixtures/phase2dQaFixtures.js";
 
 class MemoryStorage {
   constructor(values = {}, throwingKeys = []) {
@@ -47,6 +48,11 @@ const inboxOrderRecord = (id, recordType, value) => ({
   archivedAt: null,
   ...value,
 });
+const botOpsState = getPhase2dQaFixture("synthetic-checkout-success").state;
+botOpsState.installations[0].accessToken = "phase2da-bot-token-must-not-export";
+botOpsState.proxyGroups[0].proxyPassword = "phase2da-proxy-password-must-not-export";
+botOpsState.attempts[0].rawProviderPayload = { cookie: "phase2da-cookie-must-not-export" };
+botOpsState.checkoutEvidence[0].cvv = "000";
 const localStorage = new MemoryStorage({
   "ember-and-tide.flip-scout.v1": {
     schemaVersion: 2,
@@ -125,8 +131,15 @@ const localStorage = new MemoryStorage({
       summary: "Synthetic order evidence normalized.",
     })],
   },
+  "code3.bot-ops.v1": botOpsState,
   "et-tcg-beta-data": {
-    items: [{ id: "owned-1", name: "Card", accessToken: "must-not-export" }],
+    items: [{
+      id: "owned-1",
+      name: "Card",
+      cardNumber: "TG-001",
+      paymentCardNumber: "phase2da-payment-pan-must-not-export",
+      accessToken: "must-not-export",
+    }],
     sales: [], expenses: [], mileageTrips: [],
     profile: { email: "owner@example.invalid", refreshToken: "must-not-export" },
     subscriptionProfile: { plan: "private" },
@@ -161,9 +174,15 @@ assert.equal(currentSources.sources["account-ops"].emailAliases[0].retailerPassw
 assert.equal(currentSources.sources["account-ops"].emailAliases[0].otp, undefined);
 assert.equal(currentSources.sources["account-ops"].emailAliases[0].passphrase, undefined);
 assert.equal(currentSources.sources["inbox-order-intelligence"].messageEvents[0].id, "message-event-1");
+assert.equal(currentSources.sources["legacy-core-business"].items[0].cardNumber, "TG-001", "TCG card identity must remain recoverable");
+assert.equal(currentSources.sources["legacy-core-business"].items[0].paymentCardNumber, undefined, "payment card numbers must never enter backup data");
 assert.equal(currentSources.sources["inbox-order-intelligence"].messageEvents[0].accessToken, undefined);
 assert.equal(currentSources.sources["inbox-order-intelligence"].messageEvents[0].rawMessageContent, undefined);
 assert.equal(currentSources.sources["inbox-order-intelligence"].orderCandidates[0].refreshToken, undefined);
+assert.equal(currentSources.sources["bot-operations"].installations[0].accessToken, undefined);
+assert.equal(currentSources.sources["bot-operations"].proxyGroups[0].proxyPassword, undefined);
+assert.equal(currentSources.sources["bot-operations"].attempts[0].rawProviderPayload, undefined);
+assert.equal(currentSources.sources["bot-operations"].checkoutEvidence[0].cvv, undefined);
 assert.equal(currentSources.sources["legacy-core-business"].items[0].accessToken, undefined);
 assert.equal(localStorage.snapshot(), beforeLocal, "current-source reads must not write localStorage");
 assert.equal(sessionStorage.snapshot(), beforeSession, "current-source reads must not write sessionStorage");
@@ -194,12 +213,19 @@ const coreSection = complete.backup.sections.find((section) => section.sourceId 
 const phase2Section = complete.backup.sections.find((section) => section.sourceId === "phase2-local-fallback");
 const accountOpsSection = complete.backup.sections.find((section) => section.sourceId === "account-ops");
 const inboxOrderSection = complete.backup.sections.find((section) => section.sourceId === "inbox-order-intelligence");
+const botOperationsSection = complete.backup.sections.find((section) => section.sourceId === "bot-operations");
 assert.equal(dealSection.recordCount, 1);
 assert.equal(ownerSection.recordCount, 1);
 assert.equal(phase2Section.recordCount, 3);
 assert.equal(coreSection.recordCount, 1);
 assert.equal(accountOpsSection.recordCount, 8);
 assert.equal(inboxOrderSection.recordCount, 4);
+assert.equal(botOperationsSection.recordCount, 9);
+assert.equal(botOperationsSection.data.installations[0].accessToken, undefined, "bot tokens must never enter backup data");
+assert.equal(botOperationsSection.data.proxyGroups[0].proxyPassword, undefined, "proxy credentials must never enter backup data");
+assert.equal(botOperationsSection.data.attempts[0].rawProviderPayload, undefined, "raw provider payloads must never enter backup data");
+assert.equal(botOperationsSection.data.checkoutEvidence[0].cvv, undefined, "payment security values must never enter backup data");
+assert.equal(botOperationsSection.data.checkoutEvidence[0].purchaseCreated, false, "Checkout Evidence must remain distinct from Purchase");
 assert.equal(inboxOrderSection.data.messageEvents[0].accessToken, undefined, "provider tokens must be removed from normalized message metadata");
 assert.equal(inboxOrderSection.data.messageEvents[0].rawMessageContent, undefined, "raw protected message content must be removed");
 assert.equal(inboxOrderSection.data.orderCandidates[0].refreshToken, undefined, "refresh tokens must be removed from Order Candidates");
@@ -220,12 +246,16 @@ assert.deepEqual(
 assert.equal(coreSection.data.profile, undefined, "identity profile is outside the legacy business allowlist");
 assert.equal(coreSection.data.workspaceMembers, undefined, "membership data is outside the legacy business allowlist");
 assert.equal(coreSection.data.items[0].accessToken, undefined, "nested security data must be removed");
+assert.equal(coreSection.data.items[0].cardNumber, "TG-001", "TCG card identity must remain in the verified backup");
+assert.equal(coreSection.data.items[0].paymentCardNumber, undefined, "payment card numbers must remain excluded");
 assert.equal(phase2Section.data.userTrustProfile, undefined, "trust/role identity state must be excluded");
 assert.equal(phase2Section.data.dealFinderItems[0].sessionId, "deal-session-1", "business workflow session references must remain recoverable");
 assert.doesNotMatch(complete.json, /must-not-export/);
 assert.doesNotMatch(complete.json, /phase2a-(?:retailer-)?(?:password|otp|passphrase|token|cvv|credentials|session)-must-not-export/);
 assert.doesNotMatch(complete.json, /phase2b1-(?:access-token|refresh-token|raw-message)-must-not-export/);
 assert.doesNotMatch(complete.json, /phase2b2b-managed-reference-must-not-export/);
+assert.doesNotMatch(complete.json, /phase2da-(?:bot-token|proxy-password|cookie)-must-not-export/);
+assert.doesNotMatch(complete.json, /phase2da-payment-pan-must-not-export/);
 assert.doesNotMatch(complete.json, /sb-example-auth-token/);
 assert.ok(complete.backup.manifest.securityExclusions.length >= 4);
 
@@ -338,7 +368,8 @@ assert.ok(BACKUP_SOURCE_REGISTRY.some((source) => source.sourceId === "supabase-
 assert.ok(BACKUP_SOURCE_REGISTRY.some((source) => source.sourceId === "authentication-state" && source.containsSecurityOrSessionState));
 assert.ok(BACKUP_SOURCE_REGISTRY.some((source) => source.sourceId === "account-ops" && source.includedInPhase1AExport));
 assert.ok(BACKUP_SOURCE_REGISTRY.some((source) => source.sourceId === "inbox-order-intelligence" && source.includedInPhase1AExport));
-assert.equal(BACKUP_SOURCE_REGISTRY.length, 23);
-assert.equal(BACKUP_SOURCE_REGISTRY.filter((source) => source.includedInPhase1AExport).length, 19);
+assert.ok(BACKUP_SOURCE_REGISTRY.some((source) => source.sourceId === "bot-operations" && source.includedInPhase1AExport));
+assert.equal(BACKUP_SOURCE_REGISTRY.length, 24);
+assert.equal(BACKUP_SOURCE_REGISTRY.filter((source) => source.includedInPhase1AExport).length, 20);
 
 console.log(`Code 3 backup tests passed (${complete.backup.sections.length} sections, ${complete.backup.coverageSummary.recordCount} records).`);

@@ -229,6 +229,23 @@ const ACCOUNT_OPS_REFERENCE_TARGETS = Object.freeze({
   storeAccountId: ["storeAccounts"],
 });
 
+const BOT_OPS_REFERENCE_TARGETS = Object.freeze({
+  installationId: ["installations"],
+  installationIds: ["installations"],
+  retailerAccountLinkId: ["retailerAccountLinks"],
+  botProfileId: ["botProfiles"],
+  proxyGroupId: ["proxyGroups"],
+  productTargetId: ["productTargets"],
+  taskGroupId: ["taskGroups"],
+  taskGroupIds: ["taskGroups"],
+  taskId: ["tasks"],
+  attemptId: ["attempts"],
+  checkoutEvidenceId: ["checkoutEvidence"],
+  accountOpsStoreAccountId: ["storeAccounts"],
+  accountOpsProfileId: ["profiles"],
+  orderCandidateId: ["orderCandidates"],
+});
+
 function isStaticAccountOpsReference(row, key, value) {
   return row.sourceId === "account-ops"
     && key === "retailerId"
@@ -253,22 +270,30 @@ function inspectReferences(records) {
     }
     if (!current.value || typeof current.value !== "object") continue;
     for (const [key, value] of Object.entries(current.value)) {
-      const targets = current.row.sourceId === "account-ops"
-        ? ACCOUNT_OPS_REFERENCE_TARGETS[key] || REFERENCE_TARGETS[key]
-        : REFERENCE_TARGETS[key];
-      if (targets && value != null && String(value).trim()) {
-        if (isStaticAccountOpsReference(current.row, key, value)) continue;
-        const targetCollectionsPresent = targets.filter((target) => idsByCollection.has(target));
-        const accountOpsCollectionIsDeclared = current.row.sourceId === "account-ops"
-          && Object.prototype.hasOwnProperty.call(ACCOUNT_OPS_REFERENCE_TARGETS, key);
-        const found = targets.some((target) => idsByCollection.get(target)?.has(String(value)));
-        if (!found) {
-          brokenReferences.push({
-            path: `${current.path}.${key}`,
-            reference: String(value),
-            expectedCollections: targets,
-            severity: targetCollectionsPresent.length || accountOpsCollectionIsDeclared ? "ERROR" : "WARNING",
-          });
+      const sourceTargets = current.row.sourceId === "account-ops"
+        ? ACCOUNT_OPS_REFERENCE_TARGETS
+        : current.row.sourceId === "bot-operations"
+          ? BOT_OPS_REFERENCE_TARGETS
+          : null;
+      const targets = sourceTargets?.[key] || REFERENCE_TARGETS[key];
+      if (targets && value != null) {
+        const references = Array.isArray(value) ? value : [value];
+        for (let index = 0; index < references.length; index += 1) {
+          const reference = references[index];
+          if (reference == null || !String(reference).trim()) continue;
+          if (isStaticAccountOpsReference(current.row, key, reference)) continue;
+          const targetCollectionsPresent = targets.filter((target) => idsByCollection.has(target));
+          const sourceCollectionIsDeclared = Boolean(sourceTargets)
+            && Object.prototype.hasOwnProperty.call(sourceTargets, key);
+          const found = targets.some((target) => idsByCollection.get(target)?.has(String(reference)));
+          if (!found) {
+            brokenReferences.push({
+              path: Array.isArray(value) ? `${current.path}.${key}[${index}]` : `${current.path}.${key}`,
+              reference: String(reference),
+              expectedCollections: targets,
+              severity: targetCollectionsPresent.length || sourceCollectionIsDeclared ? "ERROR" : "WARNING",
+            });
+          }
         }
       }
       if (value && typeof value === "object") stack.push({ ...current, value, path: `${current.path}.${key}` });

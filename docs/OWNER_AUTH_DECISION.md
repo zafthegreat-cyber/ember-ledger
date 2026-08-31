@@ -171,7 +171,7 @@ Preview and Production fail closed. A missing provider, missing allowlist, missi
 
 ## Known limitations
 
-- Phase 1A owner-security source and Phase 2B2-A exact Preview functions are published. Phase 2B2-B locally requires a valid Supabase owner principal plus exact durable store kinds and bounded readiness operations before the owner-protected provider response can set `hostedRuntimeVerified=true`. The Upstash resource is not provisioned because marketplace terms require acceptance, so hosted acceptance remains incomplete and the flag remains false.
+- Phase 1A owner-security source and the Phase 2B2-A/2B2-B Preview foundations are published. One isolated Free Upstash Preview/testing resource and the three branch-scoped managed-store secrets now exist for `ui-104-final-product-ui-2`, but Supabase owner/auth values and the remaining exact CORS/runtime-activation values are intentionally not configured while Phase 2B2-B.1 is paused. No legitimate owner response or real cross-instance/atomic managed-store proof has completed, so `hostedRuntimeVerified=false` remains mandatory.
 - Supabase Auth establishes identity, but Code 3 does not yet provide connected-device management, server session revocation UI, sign-out-other-devices, or recovery administration.
 - Only the auth and eBay route families use the new exact-origin policy and owner middleware. Legacy Express routes still need route-by-route classification and protection or retirement.
 - Canonical business records remain browser-local; server authorization does not make those records durable or protect them from same-origin script execution.

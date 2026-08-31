@@ -45,7 +45,7 @@ const expectedRoutes = [
   ['section === "collect"', 'productWorkspaceHome: WORKSPACE_IDS.COLLECT'],
   ['section === "find" && subSection === "home"', 'productWorkspaceHome: WORKSPACE_IDS.FIND'],
   ['section === "sell" && subSection === "home"', 'productWorkspaceHome: WORKSPACE_IDS.SELL'],
-  ['section === "bot" && !subSection', 'productWorkspaceHome: WORKSPACE_IDS.BOT'],
+  ['section === "bot"', 'productWorkspaceHome: WORKSPACE_IDS.BOT'],
   ['section === "collection"', 'activeTab: "collectionWorkspace"'],
   ['section === "owner-center"', 'activeTab: "ownerCenter"'],
   ['section === "account-ops"', 'activeTab: "accountOps"'],
@@ -194,16 +194,16 @@ assert.ok(
   "Owner Center should remain an owner affordance outside the product switcher."
 );
 assert.ok(
-  workspaceHomeSource.includes("No bot integrations are connected.") &&
-    workspaceHomeSource.includes("does not create tasks, automate checkout, bypass retailer controls, or claim provider connectivity"),
-  "Bot Home should present an honest owner-only foundation instead of fake integrations."
+  workspaceHomeSource.includes('import("../botOps/BotOperationsPage.jsx")') &&
+    workspaceHomeSource.includes("session?.status !== OWNER_SESSION_STATES.AUTHORIZED"),
+  "Bot Operations should remain lazy and verified-owner gated."
 );
 assert.equal(
   /label:\s*["'](?:Inbox|Orders|Stellar|Hayha|Valor|Upgrade|Billing)["']/.test(
     workspaceRegistrySource.slice(0, workspaceRegistrySource.indexOf("const CANONICAL_ROUTES"))
   ),
   false,
-  "Unimplemented Inbox, Bot provider, order, and billing destinations must stay out of workspace navigation."
+  "Unimplemented Inbox, provider-specific live connection, order, and billing destinations must stay out of workspace navigation."
 );
 
 assert.ok(

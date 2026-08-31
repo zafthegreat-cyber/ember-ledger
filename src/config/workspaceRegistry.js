@@ -136,6 +136,10 @@ export const WORKSPACE_DEFINITIONS = deepFreeze({
     entitlementLabels: [ENTITLEMENT_LABELS.OWNER],
     navigation: [
       navItem({ key: "bot-home", label: "Home", path: "/bot", iconKey: "home", placement: NAV_PLACEMENTS.HOME, requiredAuthority: AUTHORITY_REQUIREMENTS.VERIFIED_OWNER }),
+      navItem({ key: "bot-bots", label: "Bots", path: "/bot/bots", iconKey: "admin", requiredAuthority: AUTHORITY_REQUIREMENTS.VERIFIED_OWNER }),
+      navItem({ key: "bot-task-groups", label: "Groups", path: "/bot/task-groups", iconKey: "plan", requiredAuthority: AUTHORITY_REQUIREMENTS.VERIFIED_OWNER }),
+      navItem({ key: "bot-tasks", label: "Tasks", path: "/bot/tasks", iconKey: "clipboard", requiredAuthority: AUTHORITY_REQUIREMENTS.VERIFIED_OWNER }),
+      navItem({ key: "bot-activity", label: "Activity", path: "/bot/activity", iconKey: "history", requiredAuthority: AUTHORITY_REQUIREMENTS.VERIFIED_OWNER }),
     ],
   },
   [WORKSPACE_IDS.BUSINESS]: {
@@ -206,7 +210,15 @@ const CANONICAL_ROUTES = [
   route({ key: "sell-inventory", path: "/business/inventory", match: ROUTE_MATCH_TYPES.PREFIX, classification: ROUTE_CLASSIFICATIONS.SELL, workspace: WORKSPACE_IDS.SELL, label: "Resale Inventory" }),
   route({ key: "sell-sales", path: "/business/sales", match: ROUTE_MATCH_TYPES.PREFIX, classification: ROUTE_CLASSIFICATIONS.SELL, workspace: WORKSPACE_IDS.SELL, label: "Sales" }),
 
-  route({ key: "bot-home", path: "/bot", classification: ROUTE_CLASSIFICATIONS.BOT, workspace: WORKSPACE_IDS.BOT, label: "Bot Home", requiredAuthority: AUTHORITY_REQUIREMENTS.VERIFIED_OWNER }),
+  route({ key: "bot-home", path: "/bot", classification: ROUTE_CLASSIFICATIONS.BOT, workspace: WORKSPACE_IDS.BOT, label: "Bot Operations", requiredAuthority: AUTHORITY_REQUIREMENTS.VERIFIED_OWNER }),
+  route({ key: "bot-bots", path: "/bot/bots", classification: ROUTE_CLASSIFICATIONS.BOT, workspace: WORKSPACE_IDS.BOT, label: "Bots", requiredAuthority: AUTHORITY_REQUIREMENTS.VERIFIED_OWNER }),
+  route({ key: "bot-task-groups", path: "/bot/task-groups", classification: ROUTE_CLASSIFICATIONS.BOT, workspace: WORKSPACE_IDS.BOT, label: "Bot Task Groups", requiredAuthority: AUTHORITY_REQUIREMENTS.VERIFIED_OWNER }),
+  route({ key: "bot-tasks", path: "/bot/tasks", classification: ROUTE_CLASSIFICATIONS.BOT, workspace: WORKSPACE_IDS.BOT, label: "Bot Tasks", requiredAuthority: AUTHORITY_REQUIREMENTS.VERIFIED_OWNER }),
+  route({ key: "bot-accounts", path: "/bot/accounts", classification: ROUTE_CLASSIFICATIONS.BOT, workspace: WORKSPACE_IDS.BOT, label: "Bot Account References", requiredAuthority: AUTHORITY_REQUIREMENTS.VERIFIED_OWNER }),
+  route({ key: "bot-profiles", path: "/bot/profiles", classification: ROUTE_CLASSIFICATIONS.BOT, workspace: WORKSPACE_IDS.BOT, label: "Bot Profiles", requiredAuthority: AUTHORITY_REQUIREMENTS.VERIFIED_OWNER }),
+  route({ key: "bot-proxies", path: "/bot/proxies", classification: ROUTE_CLASSIFICATIONS.BOT, workspace: WORKSPACE_IDS.BOT, label: "Proxy Metadata", requiredAuthority: AUTHORITY_REQUIREMENTS.VERIFIED_OWNER }),
+  route({ key: "bot-targets", path: "/bot/targets", classification: ROUTE_CLASSIFICATIONS.BOT, workspace: WORKSPACE_IDS.BOT, label: "Product Targets", requiredAuthority: AUTHORITY_REQUIREMENTS.VERIFIED_OWNER }),
+  route({ key: "bot-activity", path: "/bot/activity", classification: ROUTE_CLASSIFICATIONS.BOT, workspace: WORKSPACE_IDS.BOT, label: "Bot Activity", requiredAuthority: AUTHORITY_REQUIREMENTS.VERIFIED_OWNER }),
 
   route({ key: "account-ops", path: "/account-ops", match: ROUTE_MATCH_TYPES.PREFIX, classification: ROUTE_CLASSIFICATIONS.BUSINESS, workspace: WORKSPACE_IDS.BUSINESS, label: "Account Ops", requiredAuthority: AUTHORITY_REQUIREMENTS.VERIFIED_OWNER }),
   route({ key: "business-purchases", path: "/business/purchases", match: ROUTE_MATCH_TYPES.PREFIX, classification: ROUTE_CLASSIFICATIONS.BUSINESS, workspace: WORKSPACE_IDS.BUSINESS, label: "Purchases" }),

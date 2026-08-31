@@ -11,6 +11,7 @@ import {
   readCurrentBackupSources,
   sealBackupEnvelope,
 } from "../src/features/backup/index.js";
+import { getPhase2dQaFixture } from "../src/features/botOps/fixtures/phase2dQaFixtures.js";
 
 class MemoryStorage {
   constructor(values = {}) {
@@ -167,6 +168,26 @@ const unsafeInboxOrderPreview = await previewBackupRestore(JSON.stringify(unsafe
 assert.equal(unsafeInboxOrderPreview.result, RESTORE_PREVIEW_RESULTS.BLOCKED);
 assert.ok(unsafeInboxOrderPreview.prohibitedFields.some((path) => path.endsWith(".accessToken")));
 assert.match(unsafeInboxOrderPreview.errors.join(" "), /RAW_CONTENT_REJECTED|SECRET_FIELD_REJECTED/, "inbox/order schema validation must reject raw or secret message fields");
+
+const validBotOperations = await mutateAndSeal((envelope) => {
+  const section = envelope.sections.find((entry) => entry.sourceId === "bot-operations");
+  section.data = getPhase2dQaFixture("hayha-disconnected").state;
+});
+const validBotOperationsPreview = await previewBackupRestore(JSON.stringify(validBotOperations));
+assert.equal(validBotOperationsPreview.result, RESTORE_PREVIEW_RESULTS.READY_FOR_FUTURE_RESTORE);
+assert.equal(validBotOperationsPreview.recordCounts["bot-operations"], 1);
+assert.equal(validBotOperationsPreview.writesPerformed, 0);
+
+const unsafeBotOperations = await mutateAndSeal((envelope) => {
+  const section = envelope.sections.find((entry) => entry.sourceId === "bot-operations");
+  section.data = getPhase2dQaFixture("hayha-disconnected").state;
+  section.data.installations[0].proxyPassword = "synthetic-proxy-secret-must-not-survive";
+  section.data.installations[0].rawProviderPayload = { response: "synthetic raw payload" };
+});
+const unsafeBotOperationsPreview = await previewBackupRestore(JSON.stringify(unsafeBotOperations));
+assert.equal(unsafeBotOperationsPreview.result, RESTORE_PREVIEW_RESULTS.BLOCKED);
+assert.ok(unsafeBotOperationsPreview.prohibitedFields.some((path) => path.endsWith(".proxyPassword")));
+assert.match(unsafeBotOperationsPreview.errors.join(" "), /SECRET_FIELD_REJECTED|RAW_PROVIDER_DATA_REJECTED/);
 
 const validAccountOps = await mutateAndSeal((envelope) => {
   const section = envelope.sections.find((entry) => entry.sourceId === "account-ops");

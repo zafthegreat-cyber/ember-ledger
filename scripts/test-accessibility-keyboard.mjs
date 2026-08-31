@@ -8,6 +8,7 @@ const ownerCenterCss = fs.readFileSync(new URL("../src/features/ownerCenter/owne
 const everydaySource = fs.readFileSync(new URL("../src/pages/EverydayWorkspaces.jsx", import.meta.url), "utf8");
 const workspaceSwitcherSource = fs.readFileSync(new URL("../src/features/workspaces/WorkspaceSwitcher.jsx", import.meta.url), "utf8");
 const workspaceHomeSource = fs.readFileSync(new URL("../src/features/workspaces/WorkspaceHomePage.jsx", import.meta.url), "utf8");
+const botOperationsSource = fs.readFileSync(new URL("../src/features/botOps/BotOperationsPage.jsx", import.meta.url), "utf8");
 const workspaceCss = fs.readFileSync(new URL("../src/features/workspaces/workspace-shell.css", import.meta.url), "utf8");
 
 function readCssGraph(url, seen = new Set()) {
@@ -74,7 +75,9 @@ assert.match(workspaceCss, /env\(safe-area-inset-bottom, 0px\)/);
 assert.match(workspaceHomeSource, /<section className=\{`code3-workspace-home/);
 assert.doesNotMatch(workspaceHomeSource, /<main\b/, "workspace homes must not nest a second main landmark inside the application shell");
 assert.match(workspaceHomeSource, /<button key=\{record\.id/);
-assert.match(workspaceHomeSource, /<StatusBadge tone="neutral">Owner only<\/StatusBadge>/);
+assert.match(workspaceHomeSource, /session\?\.status !== OWNER_SESSION_STATES\.AUTHORIZED/);
+assert.match(botOperationsSource, /aria-label="Bot Operations safety state"/);
+assert.match(botOperationsSource, /<StatusBadge tone="neutral">Owner only<\/StatusBadge>/);
 
 assert.match(appSource, /role="status" aria-live="polite" aria-label=\{`Grade Assist readiness status: \$\{gradeAssistReadiness\.label\}`\}/);
 assert.match(appSource, /aria-label=\{`Grade Assist \$\{field\.label\}`\}/);

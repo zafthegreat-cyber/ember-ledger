@@ -86,7 +86,7 @@ doesNotMatch(homeSource, /data-testid=\{`\$\{workspace\.toLowerCase\(\)\}-worksp
 match(appSource, /const productWorkspaceHomeAvailable = availableProductWorkspaces\.some/);
 match(appSource, /workspace=\{effectiveProductWorkspaceHome\}/, "Disabled workspace homes should render the safe available fallback");
 match(appSource, /availableProductWorkspaces\.find\(\(candidate\) => candidate\.id === workspaceId\)/, "Programmatic workspace navigation should respect availability metadata");
-match(appSource, /\}, \[activeTab, flipScoutView, productWorkspaceHome, effectiveProductWorkspaceHome, collectionWorkspaceView/, "Switching between workspace homes should reset route focus and scroll even when the active tab is unchanged");
+match(appSource, /\}, \[activeTab, flipScoutView, productWorkspaceHome, effectiveProductWorkspaceHome, botOpsSection, collectionWorkspaceView/, "Switching between workspace homes and Bot sections should reset route focus and scroll even when the active tab is unchanged");
 doesNotMatch(homeSource, /<main\b/, "Workspace homes must not nest a second main landmark inside the application shell");
 
 match(appSource, /const mobileBottomTabs = currentProductWorkspaceId === WORKSPACE_IDS\.BOT[\s\S]*globalAddTab/);
@@ -99,22 +99,18 @@ doesNotMatch(registrySource, /label:\s*"Owner Center"[\s\S]{0,120}switcherEligib
 match(routeStateSource, /if \(section === "collect"\) return \{ activeTab: "workspaceHome", productWorkspaceHome: WORKSPACE_IDS\.COLLECT \}/);
 match(routeStateSource, /if \(section === "find" && subSection === "home"\)/);
 match(routeStateSource, /if \(section === "sell" && subSection === "home"\)/);
-match(routeStateSource, /if \(section === "bot" && !subSection\)/, "Only the implemented Bot home may load");
-doesNotMatch(routeStateSource, /if \(section === "bot"\) return/, "Unknown Bot children must not silently activate Bot");
+match(routeStateSource, /if \(section === "bot"\) \{[\s\S]*allowedBotSections[\s\S]*return \{ activeTab: "workspaceHome", productWorkspaceHome: WORKSPACE_IDS\.BOT, botOpsSection \}/, "Implemented Bot Operations sections should retain workspace context");
+match(routeStateSource, /if \(subSection && !allowedBotSections\.includes\(subSection\)\) return \{ activeTab: "dashboard" \}/, "Unknown Bot children must fail closed");
 
 for (const emptyCopy of [
   "No cards in your collection yet.",
   "No watched opportunities yet.",
   "No items ready to sell.",
-  "No bot integrations are connected.",
 ]) {
   match(homeSource, new RegExp(emptyCopy.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `Missing honest empty state: ${emptyCopy}`);
 }
-match(homeSource, /This foundation does not create tasks, automate checkout, bypass retailer controls, or claim provider connectivity\./);
-match(homeSource, /Private route and authorization boundary/);
-match(homeSource, /Capability metadata for future approved providers/);
-doesNotMatch(homeSource, /Stellar|Hayha|Valor|proxy rotation|CAPTCHA solver|automatic purchasing/i);
-doesNotMatch(homeSource, /successful bot tasks|connected providers:\s*[1-9]|orders imported/i);
+match(homeSource, /lazy\(\(\) => import\("\.\.\/botOps\/BotOperationsPage\.jsx"\)\)/, "Bot Operations should remain route-lazy");
+match(homeSource, /session\?\.status !== OWNER_SESSION_STATES\.AUTHORIZED/, "Bot Operations must remain behind the verified owner gate");
 
 match(appSource, /items=\{workspaceItems\}/, "Workspace homes should consume shared item records");
 match(appSource, /<CollectionWorkspace[\s\S]*items=\{workspaceItems\}/);

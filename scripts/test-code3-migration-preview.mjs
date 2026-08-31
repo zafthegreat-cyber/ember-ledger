@@ -62,6 +62,10 @@ const inboxOrderMigrationSource = MIGRATION_SOURCE_REGISTRY.find((source) => sou
 assert.equal(inboxOrderMigrationSource.classification, MIGRATION_SOURCE_CLASSIFICATIONS.REQUIRES_MAPPING);
 assert.equal(inboxOrderMigrationSource.paths.length, 4, "every inbox/order recovery collection needs an explicit migration decision");
 assert.ok(inboxOrderMigrationSource.paths.every((mapping) => mapping.classification === MIGRATION_SOURCE_CLASSIFICATIONS.REQUIRES_MAPPING && mapping.targetDomain === null));
+const botOperationsMigrationSource = MIGRATION_SOURCE_REGISTRY.find((source) => source.sourceId === "bot-operations");
+assert.equal(botOperationsMigrationSource.classification, MIGRATION_SOURCE_CLASSIFICATIONS.REQUIRES_MAPPING);
+assert.equal(botOperationsMigrationSource.paths.length, 10, "every Bot Operations recovery collection needs an explicit future mapping decision");
+assert.ok(botOperationsMigrationSource.paths.every((mapping) => mapping.classification === MIGRATION_SOURCE_CLASSIFICATIONS.REQUIRES_MAPPING && mapping.targetDomain === null));
 
 assert.deepEqual(previewMoneyToMinor(12.34, { currency: "USD" }).proposedAmountMinor, 1234);
 assert.deepEqual(previewMoneyToMinor(12.3, { currency: "USD" }).proposedAmountMinor, 1230);

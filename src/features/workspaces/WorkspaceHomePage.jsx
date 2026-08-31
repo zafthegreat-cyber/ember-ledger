@@ -1,14 +1,15 @@
-import { useMemo } from "react";
+import { lazy, Suspense, useMemo } from "react";
 import {
   EmptyState,
   PrimaryButton,
   SecondaryButton,
-  StatusBadge,
 } from "../../components/operations/OperationsUI.jsx";
 import { BRAND_CONFIG } from "../../config/brand.js";
 import { createFlipScoutRepository } from "../flipScout/storageRepository.js";
 import { OWNER_SESSION_STATES } from "../../services/ownerSession.js";
 import "./workspace-shell.css";
+
+const BotOperationsPage = lazy(() => import("../botOps/BotOperationsPage.jsx"));
 
 const WORKSPACE_COPY = Object.freeze({
   COLLECT: {
@@ -179,7 +180,7 @@ function SellHome({ items, sales, onNavigate, onAdd }) {
   );
 }
 
-function BotHome({ session, onReturn }) {
+function BotHome({ session, onReturn, initialSection, onSectionChange }) {
   if (session?.status === OWNER_SESSION_STATES.LOADING) {
     return <EmptyState title="Checking owner access">Private tools stay unavailable until the owner session is verified.</EmptyState>;
   }
@@ -189,25 +190,7 @@ function BotHome({ session, onReturn }) {
   if (session?.status !== OWNER_SESSION_STATES.AUTHORIZED) {
     return <EmptyState title="Owner Access Required" action={<PrimaryButton onClick={onReturn}>Return Home</PrimaryButton>}>This private workspace is available only to the verified owner.</EmptyState>;
   }
-  return (
-    <>
-      <section className="code3-workspace-status" aria-label="Bot workspace status">
-        <StatusBadge tone="neutral">Owner only</StatusBadge>
-        <div>
-          <h2>No bot integrations are connected</h2>
-          <p>This foundation does not create tasks, automate checkout, bypass retailer controls, or claim provider connectivity.</p>
-        </div>
-      </section>
-      <section className="code3-workspace-section">
-        <h2>Available foundation</h2>
-        <ul className="code3-workspace-capabilities">
-          <li>Private route and authorization boundary</li>
-          <li>Capability metadata for future approved providers</li>
-          <li>Honest empty and unavailable states</li>
-        </ul>
-      </section>
-    </>
-  );
+  return <Suspense fallback={<EmptyState title="Loading Bot Operations">Preparing the local-only owner workspace.</EmptyState>}><BotOperationsPage session={session} initialSection={initialSection} onSectionChange={onSectionChange} /></Suspense>;
 }
 
 export default function WorkspaceHomePage({
@@ -215,7 +198,9 @@ export default function WorkspaceHomePage({
   items = [],
   sales = [],
   ownerSession,
+  botOpsSection = "overview",
   onNavigate,
+  onBotOpsSectionChange,
   onAddCollection,
   onAddResale,
   onReturnHome,
@@ -225,11 +210,11 @@ export default function WorkspaceHomePage({
   const botDenied = workspace === "BOT" && ownerSession?.status !== OWNER_SESSION_STATES.AUTHORIZED;
   return (
     <section className={`code3-workspace-home code3-workspace-home--${botDenied ? "owner-gate" : workspace.toLowerCase()}`} data-testid={botDenied ? "owner-workspace-access-state" : `${workspace.toLowerCase()}-workspace-home`}>
-      {!botDenied ? <WorkspaceHeader workspace={workspace} /> : null}
+      {!botDenied && workspace !== "BOT" ? <WorkspaceHeader workspace={workspace} /> : null}
       {workspace === "COLLECT" ? <CollectHome items={items} onNavigate={onNavigate} onAdd={onAddCollection} /> : null}
       {workspace === "FIND" ? <FindHome onNavigate={onNavigate} /> : null}
       {workspace === "SELL" ? <SellHome items={items} sales={sales} onNavigate={onNavigate} onAdd={onAddResale} /> : null}
-      {workspace === "BOT" ? <BotHome session={ownerSession} onReturn={onReturnHome} /> : null}
+      {workspace === "BOT" ? <BotHome session={ownerSession} onReturn={onReturnHome} initialSection={botOpsSection} onSectionChange={onBotOpsSectionChange} /> : null}
     </section>
   );
 }

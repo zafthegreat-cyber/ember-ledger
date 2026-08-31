@@ -1,6 +1,6 @@
 # Code 3 Restore Preview Contract
 
-Status: Phase 1A local implementation, not committed or deployed.
+Status: Published zero-write contract extended locally through Phase 2D-A for sanitized Bot Operations metadata. No restore apply, provider call, Purchase/Inventory mutation, schema action, or deployment is authorized.
 
 ## Non-negotiable rule
 
@@ -68,6 +68,8 @@ The preview reports, when applicable:
 - prohibited security/session fields;
 - invalid money and precision/currency issues;
 - missing required fields;
+- invalid Bot provider/installation/event scoped identities, duplicate/conflicting event hashes, and broken installation/task-group/product-target/task/attempt/Checkout-Evidence references;
+- Bot/provider, retailer, payment, or proxy credentials; raw provider payloads/logs; credential-bearing URLs; and client authority fields;
 - warnings and blocking errors.
 
 Preview does not automatically repair any finding.
@@ -105,6 +107,12 @@ Preview reports but does not fix:
 
 Legacy sources do not always share canonical field names. A validation adapter may therefore report that a relationship cannot yet be proven instead of guessing.
 
+### Bot Operations inspection
+
+The Phase 2D-A `code3.bot-ops.v1` adapter validates all ten collections and their declared references. It distinguishes the same provider event ID on separate installations from a duplicate scoped event, retains changed-hash conflicts for review, and reports attempts/evidence whose task, installation, product target, or evidence link cannot be proven. Account Ops profile/store-account references are checked as bounded relationship metadata where the current source is available; preview does not create, repair, archive, or modify either source.
+
+All Bot Operations paths are `REQUIRES_MAPPING`. Preview never treats a normalized `SUCCESS` or Checkout Evidence record as a Purchase, confirmed order, receiving event, or Inventory record. It does not invoke a mock/live adapter, contact Hayha/Stellar/a retailer, start a task, reconcile an external order, or use the paused Upstash resource.
+
 ## Zero-write proof
 
 Automated tests snapshot the Phase 1A registered writable stores—localStorage and sessionStorage—before the complete current-source inspection plus preview path and compare them afterward. They also assert that every currently included writable registry adapter is one of those snapshotted browser stores and that the pure preview module imports or invokes no storage, IndexedDB, Supabase, PostgreSQL, or file writer. Supabase, PostgreSQL, and file assets are registered exclusions with no Phase 1A preview adapter, so there is no mutation surface to call. If any such adapter, or IndexedDB support, is added later, an instrumented before/after snapshot becomes mandatory before the zero-write claim can continue.
@@ -116,6 +124,7 @@ The implementation must not call:
 - Supabase insert/update/upsert/delete/RPC mutation paths;
 - PostgreSQL mutation queries;
 - filesystem or object-storage writes;
+- Bot/provider network, bridge, webhook, task-control, order-reconciliation, Purchase, receiving, or Inventory operations;
 - feature-setting or owner-setting mutations;
 - auth/session mutation APIs.
 
@@ -141,7 +150,7 @@ The page remains owner-only through the verified application session. Hiding the
 
 ## Acceptance tests
 
-Tests must cover valid complete and partial artifacts, deterministic hashes, corruption, unsupported format/version/schema, unknown sources, duplicates, broken references, invalid money/precision, malformed/truncated/oversized input, prototype-pollution keys, excessive records/depth/strings, security-field exclusion, and failed self-verification. The zero-write snapshot must pass for every preview outcome, including exceptions.
+Tests must cover valid complete and partial artifacts, deterministic hashes, corruption, unsupported format/version/schema, unknown sources, duplicates, broken references, invalid money/precision, malformed/truncated/oversized input, prototype-pollution keys, excessive records/depth/strings, security-field exclusion, Bot scoped-event duplicates/conflicts/cross-installation reuse, Bot relationship failures, credential/raw-provider rejection, and failed self-verification. The zero-write snapshot must pass for every preview outcome, including exceptions.
 
 ## Future restore gate
 

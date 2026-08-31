@@ -2,9 +2,9 @@
 
 Status: normative product source of truth
 
-Published baseline: `c76e3e4bc668c08d9a0908c9bb2cd96444610297`
+Published baseline: `b4848cb851b2be83093fbdc4ed4b976857f9d3ff`
 
-Current local phase: Phase 2A.5 workspace architecture, unpublished
+Current local phase: Phase 2D-A Bot Integration Foundation, unpublished and local-only. The separate Phase 2B2-B.1 Preview operational verification remains paused pending the owner's explicit `Supabase signed in.` confirmation; `hostedRuntimeVerified=false`.
 
 Product stage: private owner application, Vercel Preview only
 Approved application name: Code 3
@@ -24,6 +24,7 @@ Detailed implementation truth is recorded separately:
 - Sequenced work: [IMPLEMENTATION_ROADMAP.md](./IMPLEMENTATION_ROADMAP.md)
 - Verified project state: [IMPLEMENTATION_STATUS.md](./IMPLEMENTATION_STATUS.md)
 - Active risks: [RISK_REGISTER.md](./RISK_REGISTER.md)
+- Bot provider/domain/security boundary: [BOT_INTEGRATION_CONTRACT.md](./BOT_INTEGRATION_CONTRACT.md)
 
 The words MUST, MUST NOT, SHOULD, and MAY are normative.
 
@@ -126,7 +127,7 @@ Canonical user-facing ownership is:
   - Restocks: live, stores, store detail, product detail, report, visit, trip planner.
   - Auctions: feed, event, lot, maximum bid, live bid display, pickup planner, calendar, source detail.
 - **Sell**: resale inventory, listing preparation, local sales/order foundations, shipping/returns, and item-level results. A workspace shell does not imply external listing or order integration.
-- **Bot**: OWNER-only foundation and capability truth. No Bot provider, purchase, checkout, bypass, or automation is implemented.
+- **Bot**: OWNER-only provider-neutral operations foundation for installations, Account Ops references, task groups/tasks, product targets, proxy metadata, append-only attempts, and reviewable Checkout Evidence. Hayha and Stellar remain `NOT_CONFIGURED`; no live provider, credential, task control, purchase, checkout, bypass, or automation is implemented.
 - **Business**
   - Purchases: list, detail, receive, lot processing, allocation, returns/refunds.
   - Money: expenses, mileage, receipts, reports, commitments, reconciliation.
@@ -231,6 +232,25 @@ Auction events retain source, timing, preview/registration/deposit/payment/picku
 
 Maximum-bid tax modes are `NONE`, `HAMMER_ONLY`, `HAMMER_PLUS_PREMIUM`, `MANUAL_TAXABLE_SUBTOTAL`, and `ACTUAL_TAX_AMOUNT`. Complex fee structures SHOULD use a tested numerical solver. Live Bid Mode is a read-only decision display; it never submits a bid. Pickup Planner manages logistics and checklists without claiming optimal routing unless real route data is used.
 
+## 12A. Bot Operations foundation
+
+Bot Operations is a verified-OWNER, provider-neutral local foundation. It models providers, installations, reusable Account Ops account/profile references, proxy metadata, product targets, task groups, tasks, append-only attempts, reviewable Checkout Evidence, and sanitized activity through `src/features/botOps`. The normal runtime starts empty. Synthetic Hayha/Stellar-disconnected, healthy/degraded mock, task-state, error, contradiction, and evidence cases exist only in tests or an explicit test harness.
+
+Every provider declares capabilities independently. Unsupported behavior is unavailable rather than simulated. `HAYHA` and `STELLAR` remain `NOT_CONFIGURED`, all live capabilities remain false, and the mock adapter is test-only. Phase 2D-A includes no provider SDK/network adapter, bridge, webhook receiver, export watcher, credential store, task control, retailer automation, proxy connection, cart, checkout, or purchasing action.
+
+Attempts retain scoped provider/installation/event identity and append-only history. Repeated identical events are idempotent; changed, reordered, cross-installation, or contradictory events remain reviewable rather than being overwritten. Raw provider logs and credential-bearing payloads are prohibited.
+
+Bot success and Checkout Evidence are evidence, not business transactions:
+
+```text
+Bot Attempt -> Bot Checkout Evidence
+  -> future Order Candidate / external-order reconciliation
+  -> future OWNER confirmation -> future Purchase
+  -> future Receiving -> future Inventory
+```
+
+Every step after Checkout Evidence is inactive. Phase 2D-A cannot create or mutate a Purchase, lot, receipt, Owned Item, Inventory record, quantity, or cost basis. The complete contract is [BOT_INTEGRATION_CONTRACT.md](./BOT_INTEGRATION_CONTRACT.md).
+
 ## 13. One owned-item model and Collection
 
 One physical item has one stable owned-item record and one purpose: `PERSONAL_COLLECTION`, `FOR_RESALE`, `HOLD`, `KIDS_COMMUNITY`, or `UNASSIGNED`. Purpose changes preserve source, purchase/lot, images, identity, allocated cost, notes, storage, and history, and append an audit entry. Sell This Item changes purpose to `FOR_RESALE`; it does not duplicate the item.
@@ -309,7 +329,7 @@ The known main application chunk is approximately 2,337 kB minified and 586 kB g
 
 ## 26. Verification contract
 
-Unit coverage includes calculations, allocation/rounding, quantities/returns/aging, scoring/risk, export, serialization, and migrations. Integration coverage includes providers, deduplication/updates, rules, review, purchase-to-owned-item, allocation, purpose history, sale/return, associations, auctions, restocks, authorization, backup/restore, and mocked AI review. End-to-end coverage follows deal-to-sale, auction-to-result, restock-to-trip-performance, and collection-to-resale lifecycles.
+Unit coverage includes calculations, allocation/rounding, quantities/returns/aging, scoring/risk, export, serialization, migrations, Bot provider capability truth, event idempotency/reconciliation, and secret rejection. Integration coverage includes providers, deduplication/updates, rules, review, purchase-to-owned-item, allocation, purpose history, sale/return, associations, auctions, restocks, Bot Operations local-only boundaries, authorization, backup/restore, and mocked AI review. End-to-end coverage follows deal-to-sale, auction-to-result, restock-to-trip-performance, collection-to-resale lifecycles, and an OWNER-gated Bot empty/local foundation with no external action.
 
 The existing bounded 28-scenario suite remains a release gate. Assertions are not weakened to hide regressions.
 

@@ -1,17 +1,19 @@
 # Code 3 Implementation Status
 
-Last audited: 2026-08-27
+Last audited: 2026-08-28
 
-Published Phase 2B2-A commit: `c379416336e32a67346c7a3bb95f7b6469f679f5`
+Published Phase 2B2-B commit / Phase 2D-A starting HEAD: `b4848cb851b2be83093fbdc4ed4b976857f9d3ff`
 
-Repository branch represented: `ui-104-final-product-ui-2` (Phase 2B2-B local working copy prepared from a detached worktree at the published Phase 2B2-A commit)
+Repository branch represented: `ui-104-final-product-ui-2` (Phase 2D-A local working copy prepared from a detached worktree at the published Phase 2B2-B commit)
 
 Pull request: #1, Draft
-Deployment: published Phase 2B2-A has a commit-attributed Preview; Phase 2B2-B managed resource is not provisioned and has no accepted hosted owner/storage proof; no Phase 2B2-B Production deployment
+Deployment: the published Phase 2B2-B commit has a Preview. Its separate Phase 2B2-B.1 operational verification is paused; a Free Upstash resource and three branch-scoped Preview secrets exist, but remaining owner/CORS/activation values are absent, no follow-up Preview was deployed, and `hostedRuntimeVerified=false`. Phase 2D-A is local only and has no deployment.
 
 ## Current phase
 
-**Phase 2B2-B — Preview Owner Authentication + Managed Provider State** is the current local implementation phase. It adds Preview-only managed Redis adapters for safe connection metadata, AES-256-GCM-encrypted secret envelopes, and atomic digest-only OAuth state; exact CORS canonicalization; and a runtime proof that additionally requires legitimate OWNER authorization and healthy managed stores. Resource provisioning is blocked by required Upstash marketplace-terms acceptance, so no managed state exists and `hostedRuntimeVerified=false`. It does not connect a mailbox, start OAuth, create a Business Purchase, activate hosted canonical persistence, or deploy Production. Phase 1B remains the persistence boundary: its database artifact is `SCHEMA_ONLY`, Migration Preview is `DRY_RUN_ONLY`, `LOCAL_ONLY` remains authoritative, `REMOTE_ACTIVE` is disabled, no database migration was executed, and no owner data moved.
+**Phase 2D-A — Bot Integration Foundation** is the current local-only implementation phase. It adds provider-neutral Bot Operations records/services, safe Account Ops references, test-only mock adapters/fixtures, scoped idempotency and contradiction-preserving history, recursive credential/authority/raw-provider rejection, a sanitized Backup/zero-write Restore Preview extension, and an OWNER-gated responsive UI. Hayha and Stellar remain `NOT_CONFIGURED`; all live capabilities are false. It does not connect or control a Bot, use real credentials/accounts/proxies, automate checkout, create a Business Purchase, receive Inventory, activate hosted canonical persistence, or deploy Production.
+
+Phase 2B2-B.1 remains paused and independent. `LOCAL_ONLY` remains authoritative; `REMOTE_ACTIVE` is disabled; the Phase 1B schema remains `SCHEMA_ONLY`; no owner record moved; `hostedRuntimeVerified=false`.
 
 ## Completed baseline
 
@@ -115,7 +117,7 @@ Published Phase 2B2-A adds:
 
 The exact candidate was deployed manually to a Vercel Preview for bounded runtime verification. The deployment is Ready and includes Node functions for `/api/auth/session` and `/api/account-ops/provider-connections`. Both paths return Express JSON with `Cache-Control: no-store`; the session path safely reports `AUTH_NOT_CONFIGURED`, while the protected provider path returns `401 authentication_required` and ignores a synthetic client role query. The normal Code 3 Home and direct Account Ops route load to the sign-in boundary. Because server-side Preview authentication and owner-allowlist configuration are absent, no valid owner `200` response was possible, Gmail/Outlook status could not be attested through the hosted protected response, and `hostedRuntimeVerified` remains `false`.
 
-The local Phase 2B2-B candidate adds:
+Published Phase 2B2-B adds:
 
 - official Upstash Redis REST transport with telemetry disabled and errors reduced to bounded provider-unavailable responses;
 - an environment selector that can activate managed stores only in real exact Preview execution after configured project/Git-branch values match Vercel's server-owned values; the effective namespace adds a project/branch-derived scope;
@@ -127,7 +129,22 @@ The local Phase 2B2-B candidate adds:
 - exact durable-kind enforcement plus bounded connection/secret/OAuth write-read-delete readiness operations; `PING`, environment names, and test-memory adapters cannot verify hosting; and
 - tests and backup guards proving managed operational state stays out of browser persistence and Backup Format v1.
 
-Upstash resource creation is currently blocked until the required marketplace terms are accepted. No resource, Redis credential, encryption key, connection record, provider secret, or OAuth state was provisioned. Project-wide Preview secrets are not an acceptable substitute; a dedicated Preview project/resource or branch-scoped values are required. The application therefore makes no at-rest platform claim and keeps `hostedRuntimeVerified=false`.
+After publication, a Free Upstash resource was provisioned and its REST endpoint, token, and Code 3 encryption key were configured as branch-scoped Preview secrets. Supabase owner/auth values and the remaining Preview CORS/activation/runtime values were not configured, no follow-up Preview was deployed, and no connection record, provider secret, or OAuth state was created. The application makes no at-rest platform claim and keeps `hostedRuntimeVerified=false`. Phase 2B2-B.1 remains paused until the owner explicitly says `Supabase signed in.`
+
+The local Phase 2D-A candidate adds:
+
+- `src/features/botOps` with provider-neutral constants, contracts, validators, static provider registry, adapter boundary, security guard, `LOCAL_ONLY` persistence/repository/service, reconciliation, synthetic fixtures and exports;
+- `code3.bot-ops.v1` with ten collections: installations, retailer-account links, Bot profiles, proxy metadata, product targets, task groups, tasks, append-only attempts, reviewable Checkout Evidence, and append-only activity;
+- static Hayha and Stellar definitions that remain `NOT_CONFIGURED`, disconnected, with empty/unverified retailer coverage and all live capabilities false;
+- an explicitly injected automated-test `MOCK` adapter that cannot appear as normal-runtime provider health or a real registry connection;
+- shared Account Ops profile/store-account references without copying credentials or converting operational profiles into authentication authority;
+- recursive rejection of owner/session/role/entitlement authority, Bot/provider/retailer/payment/proxy credentials, raw provider payloads/logs/headers/request-response bodies, credential-bearing URLs/text, dangerous prototype keys and unsafe/oversized values;
+- provider + installation + event scoped identities, deterministic source hashes, same-event replay no-ops, cross-installation distinction, interrupted-write repair, reordered time preservation and contradiction history;
+- `Bot Success != Purchase` and `Checkout Evidence != Purchase`, with no Purchase/lot/receipt/receiving/Owned Item/Inventory/quantity/cost-basis writer;
+- one sanitized Backup Format v1 section, raising the registry to 24 total/20 locally included sources, with all ten Bot paths `REQUIRES_MAPPING` and Restore Preview remaining zero-write; and
+- responsive OWNER-only Overview, Bots, Task Groups, Tasks, Accounts, Profiles, Proxies, Product Targets, and Activity sections whose normal runtime is honestly disconnected/empty and never seeded from fixtures.
+
+See [BOT_INTEGRATION_CONTRACT.md](./BOT_INTEGRATION_CONTRACT.md). Focused and complete regression counts are recorded only after the final Phase 2D-A gate finishes; source presence alone is not test or provider evidence.
 
 ## Partially complete or implemented differently
 
@@ -141,8 +158,8 @@ Upstash resource creation is currently blocked until the required marketplace te
 - PWA install/offline shell exists, but durable sync, conflicts, and safe queued mutation do not;
 - the approved Code 3 values are applied centrally in the local runtime, but default social handle/currency/time zone remain unresolved and compatibility/public-beta copy still needs a bounded historical-wording sweep;
 - compatibility routing remains custom and large portions of legacy UI still live in `src/App.jsx`; Phase 2A.5 centralizes workspace ownership but does not complete renderer extraction.
-- Account Ops profiles, aliases, retailer accounts, health, and tasks work only in the published Phase 2A browser-local source; provider provisioning, durable audit, and canonical mapping remain absent. Phase 2B1 adds only synthetic/minimized local Inbox/Order Candidate evidence and safe provider capability truth. Phase 2B2-B adds unprovisioned server secret/state adapters, not a credential-vault UI or connected provider.
-- Published Phase 2A.5 workspace homes and Bot shell are presentation foundations, not evidence that future workspace features or providers are implemented.
+- Account Ops profiles, aliases, retailer accounts, health, and tasks work only in the published Phase 2A browser-local source; provider activation, durable audit, and canonical mapping remain absent. Phase 2B1 adds only synthetic/minimized local Inbox/Order Candidate evidence and safe provider capability truth. Phase 2B2-B adds server secret/state adapters, not a credential-vault UI or connected provider; its Free Upstash resource and three branch-scoped Preview secrets do not satisfy the still-paused owner/runtime/deployed proof.
+- Phase 2D-A Bot Operations is a usable local metadata/evidence foundation, but it remains browser-local and synthetic/test-only where provider activity is concerned; it is not evidence that Hayha, Stellar, task control, checkout, credentials, or provider networking is implemented.
 
 ## Blocked
 
@@ -157,8 +174,10 @@ Upstash resource creation is currently blocked until the required marketplace te
 | Background notifications | durable scheduler and verified delivery provider |
 | AI-assisted review | Phase 1C supplies deterministic contracts/provenance only; a real provider still requires privacy/cost approval, protected evidence, evaluation, and human review |
 | Provider-managed email aliases | approved email provider, server-side credentials, owner authorization, truthful health/provisioning contract, and retention policy |
-| Phase 2B2-B hosted owner/storage proof | required Upstash marketplace-terms acceptance, isolated Preview project/resource or branch-scoped configuration, legitimate Supabase OWNER session, exact Preview CORS origin, matching project/branch, and bounded deployed readiness proof |
+| Phase 2B2-B hosted owner/storage proof | legitimate Supabase OWNER session, remaining exact branch-scoped Preview CORS/activation/runtime configuration, and bounded deployed readiness proof; the approved Free Upstash resource and three Secret branch-scoped Preview variables already exist, but the operational step remains paused |
 | Live Unified Inbox and retailer-order ingestion | provisioned/verified managed stores, approved minimum provider scopes, callback routing, retention/revocation, protected content, and owner review before any future Purchase import |
+| Live Hayha or Stellar integration | separately approved provider/mode, terms/anti-abuse review, server-only credential/revocation or owner-local companion contract, test installation, provider health and no-checkout proof |
+| Bot Checkout Evidence to Purchase/Inventory | separately approved external-order reconciliation, stable import identity, explicit OWNER confirmation, transactional idempotency/rollback, receiving workflow and no automatic mutation |
 | Production deployment | all security blockers and owner physical-device review |
 
 ## Not started or materially missing
@@ -167,7 +186,7 @@ Upstash resource creation is currently blocked until the required marketplace te
 - complete server/file-inclusive backup and an owner-confirmed transactional restore implementation;
 - universal cross-record search;
 - server-verified commercial entitlements, subscription billing, checkout, or payment processing (`OWNER` remains authority rather than a plan);
-- Bot provider adapters, task control, proxy integration, checkout, purchasing, or retailer automation; the Phase 2A.5 Bot route is an OWNER-only foundation state;
+- live Hayha/Stellar/provider adapters, task control, proxy connectivity/credentials, checkout, purchasing, retailer automation, or Bot-to-Purchase/Inventory handoff; Phase 2D-A supplies only local provider-neutral metadata/evidence and test mocks;
 - live Gmail, Outlook, IMAP, webhook, polling, cursor, or mailbox authorization/ingestion; Phase 2B1 has provider definitions and synthetic local processing only;
 - Order Candidate to Business Purchase import or automatic inventory receiving; Phase 2B1 never calls those repositories;
 - durable search history, schedules, notifications, and system job history;
@@ -210,9 +229,10 @@ Phase 2B1 focused validation passes 16/16 provider-runtime cases, 52 domain asse
 ## Preview state
 
 - PR #1 remains Draft per the task baseline.
-- The published branch includes Phase 2B2-A at `c379416336e32a67346c7a3bb95f7b6469f679f5`; Phase 2B2-B changes are local only.
+- The published branch includes Phase 2B2-B at `b4848cb851b2be83093fbdc4ed4b976857f9d3ff`; Phase 2D-A changes are local only.
 - The published Preview proves filesystem routing to Express and fail-closed authentication, not the complete owner-authorized managed-store proof.
-- `hostedRuntimeVerified=false` because no legitimate owner plus exact durable-store readiness response has been proven. Required Upstash marketplace terms block resource provisioning; isolated Preview auth/owner/CORS/project/branch/store values remain an explicit operational gate. Required names are documented without values in [OWNER_AUTH_DECISION.md](./OWNER_AUTH_DECISION.md).
+- `hostedRuntimeVerified=false` because no legitimate owner plus exact durable-store readiness response has been proven. The Free Upstash resource and three branch-scoped Preview secrets do not satisfy the missing Supabase owner/auth and remaining exact CORS/activation/runtime gate. Phase 2B2-B.1 is paused; required names are documented without values in [OWNER_AUTH_DECISION.md](./OWNER_AUTH_DECISION.md).
+- Phase 2D-A does not deploy a Preview, inspect or use the Upstash resource, resume Supabase sign-in, connect a provider, or change Production/Development configuration.
 - No production deployment is represented by this documentation.
 
 ## Known defects and debt
@@ -243,15 +263,16 @@ Phase 2B1 focused validation passes 16/16 provider-runtime cases, 52 domain asse
 24. Phase 2B1 Inbox and Orders process only deterministic synthetic/owner-supplied minimized evidence locally. No mailbox is connected, no message is fetched, no protected body is retained, and no candidate can create a Purchase.
 25. Assisted retailer setup is a human checklist. Code 3 neither submits signups nor bypasses CAPTCHA, OTP, verification, bot detection, household/account limits, or purchase limits.
 26. Phase 2A.5 workspace ownership remains a presentation layer over custom routing; a saved preference and entitlement hints are deliberately nonauthoritative, and physical Android Back QA remains necessary.
-27. Bot is an OWNER-only empty/foundation shell. No Bot provider, task control, proxy, checkout, or purchase integration exists.
+27. Bot is an OWNER-only `LOCAL_ONLY` metadata/evidence foundation. Hayha/Stellar remain `NOT_CONFIGURED`; no live provider, credential, provider network, task control, live proxy, checkout, Purchase, receiving, or Inventory integration exists. Normal runtime remains empty unless the owner creates safe metadata; fixtures are test-only.
 28. Auction events/lots are not yet addressable through stable record-detail URLs; workspace routing links honestly to the implemented `/find/auctions` surface instead of inventing an unsupported lot-detail route.
 29. Phase 2B2-A's exact candidate Preview proves the Express functions are hosted and fail closed, but an owner-authorized managed-health response is still absent. `hostedRuntimeVerified` therefore remains `false`; a `Ready` deployment and unauthenticated `401` are not full provider-runtime proof and do not enable OAuth.
-30. Phase 2B2-B implements exact-project/branch Preview-only durable connection metadata, AES-256-GCM secret, and atomic OAuth-state adapters with bounded write/read/delete readiness. Required Upstash marketplace terms block resource provisioning. No store is configured or populated, project-wide Preview secrets are prohibited, key rotation operations remain incomplete, and `PING`/test-memory stores are not acceptable hosted proof.
+30. Phase 2B2-B implements exact-project/branch Preview-only durable connection metadata, AES-256-GCM secret, and atomic OAuth-state adapters with bounded write/read/delete readiness. A Free Upstash resource and three branch-scoped Preview secrets exist, but owner/CORS/activation/runtime values and the authenticated readiness proof are absent; Phase 2B2-B.1 is paused. No provider record is populated, key rotation operations remain incomplete, and resource existence/`PING`/test-memory stores are not acceptable hosted proof.
 31. Gmail and Microsoft minimum read-only scope/provider-registration decisions remain external blockers. Phase 2B1 requests no scope and includes no network adapter.
 32. The local Inbox/Order source requires a future canonical mapping. All four paths remain `REQUIRES_MAPPING`; its unencrypted local/backup metadata shares the existing device/download security limitation.
+33. The local Bot Operations source requires a future canonical mapping. All ten paths remain `REQUIRES_MAPPING`; its unencrypted local/backup metadata shares the device/download limitation, and no managed Bot credential store or Purchase/Inventory handoff is authorized.
 
 ## Next recommended task
 
-Do not begin live provider work as part of Phase 2B2-B. The recommended next action is a publication review of the local managed-store candidate. A separately approved Phase 2B2-C may then accept the required marketplace terms, provision/configure the Preview-only resource, and prove one legitimate OWNER response plus all three managed-store health checks. It must still leave Gmail/Outlook `NOT_CONFIGURED` unless another task explicitly authorizes provider OAuth. Mailbox reads, Purchase import, Bot providers, billing, renderer extraction, and disposable-database work remain separate approvals.
+After the Phase 2D-A local completion report, stop. The recommended scope for a future Phase 2D-B is a one-provider/one-integration-mode architecture, terms/anti-abuse/security review and isolated read/status pilot plan; Phase 2D-B is not authorized and must not begin with credentials, network access, task control or checkout. Phase 2B2-B.1 remains paused until the owner explicitly says `Supabase signed in.` Gmail/Outlook, mailbox reads, Purchase import, billing, renderer extraction, and disposable-database work remain separate approvals.
 
 Do not apply the schema to the owner or Production database, enable `REMOTE_ACTIVE`, migrate files, or execute a migration plan without a separately approved cutover task and verified backup.

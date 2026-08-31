@@ -10,7 +10,9 @@ Phase 2A Account Ops is published at `c76e3e4bc668c08d9a0908c9bb2cd96444610297`.
 
 Phase 2A.5 is published at `4c6c7891a123777acec8f326793f30aee61f3de6`. It adds a bounded product-workspace preference and route metadata, not a domain entity or feature-data migration.
 
-Phase 2B1 is published at `2f49a5ed97cec827184c6080e4ada0f4c8194451` and adds a separate versioned `code3.inbox-order.v1` browser source for minimized message evidence, Order Candidate projections, append-only candidate events, and sanitized activity. Phase 2B2-A is published at `c379416336e32a67346c7a3bb95f7b6469f679f5` and adds no data source or schema. The current Phase 2B2-B working copy implements separate Preview-only managed provider metadata, encrypted-secret, and OAuth-state adapters; they are not browser/canonical business data and are not provisioned. These phases do not alter the strict Account Ops v1 document, add a canonical business database domain, create a Purchase, or change `LOCAL_ONLY` authority.
+Phase 2B1 is published at `2f49a5ed97cec827184c6080e4ada0f4c8194451` and adds a separate versioned `code3.inbox-order.v1` browser source for minimized message evidence, Order Candidate projections, append-only candidate events, and sanitized activity. Phase 2B2-B is published at `b4848cb851b2be83093fbdc4ed4b976857f9d3ff`; its separate Preview operational verification remains paused and does not add canonical business data. A Free Upstash resource and three branch-scoped Preview secrets exist, but the remaining owner/CORS/activation configuration is absent, no follow-up Preview was deployed, and `hostedRuntimeVerified=false`.
+
+Phase 2D-A adds the separate versioned `code3.bot-ops.v1` browser source for provider-neutral Bot installations, Account Ops references, proxy metadata, product targets, task groups/tasks, append-only attempts/activity, and reviewable Checkout Evidence. It changes neither the strict Account Ops/Inbox documents nor the Phase 1B canonical schema, and it cannot create a Purchase or Inventory mutation. `LOCAL_ONLY` remains authoritative.
 
 This document distinguishes current persisted shapes, Phase 1B schema-only representations, and the future active canonical model. A table, migration file, repository interface, or dry-run result is not evidence that remote persistence is active.
 
@@ -124,6 +126,50 @@ Candidate money uses safe integer minor units and one explicit currency. Decimal
 
 All four paths are registered in Backup Format v1 and classified `REQUIRES_MAPPING`. No Phase 1B canonical domain, migration action, remote adapter, sync path, or Purchase writer is approved for them.
 
+### Bot Operations repository
+
+Phase 2D-A stores schema version 1 under `code3.bot-ops.v1` through the existing persistence gateway fixed to `LOCAL_ONLY`.
+
+| Collection | Current purpose |
+|---|---|
+| `installations` | nonsecret logical Bot runtime metadata, provider, version, capabilities, connection/health state, and warnings |
+| `retailerAccountLinks` | Bot-specific assignment metadata referencing canonical Account Ops store-account/profile IDs where available |
+| `botProfiles` | nonsecret Bot checkout-profile configuration and Account Ops profile/shipping/billing/phone reference IDs |
+| `proxyGroups` | proxy type/provider/region/assignment/health/count/latency metadata; never endpoints or credentials |
+| `productTargets` | reusable provider-neutral retailer/product/SKU/TCIN/UPC/price/quantity/review/provenance targets |
+| `taskGroups` | retailer/category/provider/installation/account/profile/proxy/schedule/limit/status metadata |
+| `tasks` | product-target assignments, normalized runtime state, latest attempt/result, warnings, provider reference and provenance |
+| `attempts` | append-only normalized provider-event history with bounded messages and evidence references |
+| `checkoutEvidence` | owner-reviewable external checkout/order evidence; never a Purchase or confirmed order |
+| `activity` | bounded append-only nonsecret Bot Operations activity summaries |
+
+The normal document begins with empty arrays. Hayha and Stellar are static provider-registry metadata, both `NOT_CONFIGURED`, disconnected, with empty/unverified retailer coverage and all live capabilities false. `MOCK` exists only as an explicitly injected automated-test adapter and is not a normal-runtime live registry entry.
+
+#### Bot Operations relationships
+
+```text
+AccountOps StoreAccount 1 -> many Bot RetailerAccountLink
+AccountOps Profile 1 -> many Bot RetailerAccountLink / BotProfile
+Bot Installation 1 -> many TaskGroup / ProxyGroup / Attempt
+RetailerAccountLink 1 -> many TaskGroup
+BotProfile 1 -> many TaskGroup
+ProxyGroup 1 -> many TaskGroup
+TaskGroup 1 -> many Task
+ProductTarget 1 -> many Task
+Task 1 -> many Attempt / CheckoutEvidence
+Attempt many -> zero-or-one CheckoutEvidence identity per attempt
+```
+
+Each Attempt references at most one Checkout Evidence record. Changed provider-event revisions may reference the same stable evidence identity while each revision remains in append-only history; the evidence retains its primary attempt/source relationship and records conflicts for review. References preserve shared Account Ops identities; Phase 2D-A does not clone retailer credentials, authentication identity, addresses, or payment data. Internal Bot references are validated by service operations. Account Ops identifiers remain cross-source references; Restore Preview reports missing links when both sources are available, while lifecycle-state diagnostics remain future work. No link is repaired silently.
+
+Attempts and activity are append-only. Checkout Evidence may receive version-checked owner review/correction state while retaining its underlying attempt/source history. Every evidence record forces automatic Purchase creation, Purchase-created state, receiving, and Inventory mutation false.
+
+Provider events use the stable scoped identity `providerKey + installationId + providerEventId`. The same scoped identity and source hash is idempotent; the same provider event ID on another installation is distinct; a changed hash is retained as a revision/conflict. Reordered events preserve event and ingestion time. Contradictory states remain in history and produce review warnings rather than last-write-wins replacement.
+
+All ten record paths are registered for Backup Format v1 and classified `REQUIRES_MAPPING`, because the Phase 1B schema has no Bot Operations domain. Preview proposes no canonical insert, update, archive, delete, Purchase, receiving, or Inventory action. Bot/provider, retailer, payment, and proxy credentials; raw provider payloads/logs; credential-bearing URLs; and browser authority fields are invalid before persistence and remain excluded from backup.
+
+See [BOT_INTEGRATION_CONTRACT.md](./BOT_INTEGRATION_CONTRACT.md) for the complete provider, security, idempotency, and handoff contract.
+
 ### Phase 2B2-B managed provider records
 
 Phase 2B2-B introduces a server-only operational storage contract. It is intentionally separate from `code3.account-ops.v1`, `code3.inbox-order.v1`, the Phase 1B canonical schema, and ordinary backup/restore.
@@ -137,7 +183,7 @@ Phase 2B2-B introduces a server-only operational storage contract. It is intenti
 
 All keys use a configured Preview base namespace plus a derived hash of the exact Vercel project ID and Git branch. Stable owner/provider/connection input is hashed before key construction. Connection and secret records occupy separate key families even when they use the same managed Redis resource. OAuth issue and consume use Lua scripts for capacity, expiry cleanup, exact binding checks, deletion, and single-use/replay behavior across serverless instances. Ephemeral readiness key families perform bounded write/read/delete checks and are removed inside the same operation; they are not provider connection records or backup data.
 
-The current resource state is `NOT_PROVISIONED`: Upstash marketplace creation is blocked pending acceptance of its required terms. No managed record exists, no live provider is authorized, and `hostedRuntimeVerified=false`. This operational store must never be interpreted as canonical owner-business persistence or a reason to enable `REMOTE_ACTIVE`.
+The current operational proof remains incomplete: a Free Upstash resource and three branch-scoped Preview secrets exist, but Supabase owner/auth values and the remaining Preview CORS/activation/runtime values are absent, no follow-up Preview has been deployed, and `hostedRuntimeVerified=false`. No managed provider connection, OAuth state, or live-provider secret has been created. Phase 2B2-B.1 remains paused. This operational store is unavailable to Bot Operations and must never be interpreted as canonical owner-business persistence or a reason to enable `REMOTE_ACTIVE`.
 
 ### Product workspace preference
 
@@ -210,7 +256,7 @@ The backend-only normalized principal contains immutable `subject`, `provider`, 
 
 Each source descriptor contains `sourceId`, `displayName`, `storageType`, `schemaVersion`, supported versions, owner-data and security-state flags, Phase 1A inclusion, export/validation adapter identifiers, reference dependencies, record paths, coverage relevance, and an exclusion reason when omitted.
 
-The Phase 2B1 registry contains 23 sources: 19 locally included sources and four excluded or conditional sources. Included local sources cover Deal Finder schema 2, Owner Center schema 1, Account Ops schema 1, Inbox/Order Intelligence schema 1, allowlisted legacy business and fallback documents, legacy restock/community and review sources, safe preferences, and safe workflow drafts. Phase 1B may also include a valid owner-authorized canonical PostgreSQL export. Legacy Supabase, other PostgreSQL/process-memory records, and file bytes remain registered exclusions. Authentication/session persistence is a prohibited source and is never exportable. Account Ops and Inbox/Order Intelligence permit only their validated nonsecret metadata. Plaintext passwords, OTPs, tokens, sessions, OAuth state/codes/verifiers, provider secrets, raw/protected message content, security links, and owner-authority fields remain prohibited. The Phase 2A.5 product-workspace preference remains inside the existing `safe-ui-preferences` key group, which does not affect coverage or add a separate source.
+The Phase 2D-A registry contains 24 sources: 20 locally included sources and four excluded or conditional sources. Included local sources cover Deal Finder schema 2, Owner Center schema 1, Account Ops schema 1, Inbox/Order Intelligence schema 1, Bot Operations schema 1, allowlisted legacy business and fallback documents, legacy restock/community and review sources, safe preferences, and safe workflow drafts. Phase 1B may also include a valid owner-authorized canonical PostgreSQL export. Legacy Supabase, other PostgreSQL/process-memory records, and file bytes remain registered exclusions. Authentication/session persistence is a prohibited source and is never exportable. Account Ops, Inbox/Order Intelligence, and Bot Operations permit only their validated nonsecret metadata. Plaintext passwords, OTPs, tokens, sessions, OAuth state/codes/verifiers, provider/Bot/retailer/payment/proxy secrets, raw provider/protected content, credential-bearing URLs, security links, and owner-authority fields remain prohibited. The Phase 2A.5 product-workspace preference remains inside the existing `safe-ui-preferences` key group, which does not affect coverage or add a separate source.
 
 ### BackupEnvelope version 1
 
@@ -318,6 +364,19 @@ erDiagram
     ACCOUNT_OPS_PROFILE ||--o{ STORE_ACCOUNT : configures
     EMAIL_ALIAS ||--o{ STORE_ACCOUNT : may_use
     STORE_ACCOUNT ||--o{ ACCOUNT_OPS_TASK : requires
+    BOT_PROVIDER ||--o{ BOT_INSTALLATION : identifies
+    BOT_INSTALLATION ||--o{ BOT_TASK_GROUP : hosts
+    BOT_INSTALLATION ||--o{ BOT_PROXY_GROUP : observes
+    STORE_ACCOUNT ||--o{ BOT_RETAILER_ACCOUNT_LINK : referenced_by
+    ACCOUNT_OPS_PROFILE ||--o{ BOT_PROFILE : referenced_by
+    BOT_RETAILER_ACCOUNT_LINK ||--o{ BOT_TASK_GROUP : assigned_to
+    BOT_PROFILE ||--o{ BOT_TASK_GROUP : assigned_to
+    BOT_PROXY_GROUP ||--o{ BOT_TASK_GROUP : assigned_to
+    BOT_TASK_GROUP ||--o{ BOT_TASK : contains
+    PRODUCT_TARGET ||--o{ BOT_TASK : targets
+    BOT_TASK ||--o{ BOT_ATTEMPT : records
+    BOT_TASK ||--o{ BOT_CHECKOUT_EVIDENCE : may_support
+    BOT_ATTEMPT }o--o| BOT_CHECKOUT_EVIDENCE : may_support
     PROVIDER ||--o{ PROVIDER_CONNECTION : configures
     PROVIDER_CONNECTION ||--o{ NORMALIZED_MESSAGE_EVENT : receives
     NORMALIZED_MESSAGE_EVENT }o--o{ ORDER_CANDIDATE : supports
@@ -404,6 +463,23 @@ Listings use the statuses in [DEFINITIVE_PRODUCT_SPEC.md](./DEFINITIVE_PRODUCT_S
 | `OrderCandidateEvent` | append-only source revision or owner confirm/correct/reject event that preserves previous evidence and `OWNER_ENTERED` correction provenance |
 
 No Phase 1B canonical table or domain currently represents these entities. Account Ops and Phase 2B1 local evidence remain `REQUIRES_MAPPING` and require a separately reviewed schema/mapping, owner-authorized API, protected persistence, and migration rehearsal before any remote activation. Phase 2B1 does not implement Purchase mapping or import.
+
+## Bot Operations target extensions
+
+| Entity | Required target content |
+|---|---|
+| `BotProvider` | stable provider identity, display name, supported future integration modes, explicit configuration/connection state, independently declared capabilities, unverified/supported retailer metadata, optional version and bounded warnings; never credentials |
+| `BotInstallation` | logical installation/runtime label, provider, connection mode, version, health/last seen, capability snapshot, warnings and lifecycle state; no hardware fingerprint |
+| `BotRetailerAccountLink` | stable reference to Account Ops retailer account/profile plus Bot assignment labels/state/warnings; no duplicated credential or authority |
+| `BotProfile` | nonsecret checkout-profile configuration, Account Ops/shipping/billing/phone reference IDs, retailer compatibility, Bot assignments and lifecycle state; no payment credential |
+| `BotProxyGroup` | proxy type/provider/region/assignment/health/latency/count metadata; no host/IP/URL/username/password/authentication material |
+| `ProductTarget` | shared retailer product identity, SKU/TCIN/UPC/GTIN, title/category, exact max/reference price, quantity limit, availability mode, notes, owner review and provenance |
+| `BotTaskGroup` | retailer/category/provider/installation/account/profile/proxy/schedule/limit/enabled/status/warning metadata |
+| `BotTask` | task-group/product target, retailer, quantity/max price/mode, assignments, normalized status, last attempt/result, provider reference and provenance |
+| `BotAttempt` | append-only scoped provider/installation/event identity, task/provider/retailer/time/event/outcome/failure, bounded message, relationship references and provenance |
+| `BotCheckoutEvidence` | reviewable provider/retailer/task/product/quantity/expected money/external reference/account/profile/time/confidence/warnings/provenance; explicitly not a Purchase or confirmed order |
+
+The Phase 2D-A browser representations are not Phase 1B canonical tables. They remain local and `REQUIRES_MAPPING`. A future mapping must preserve scoped event identity, source hashes, contradictions, owner reviews/corrections, and the rule that no evidence becomes a Purchase without a separately approved owner-confirmed handoff.
 
 ## Auctions
 

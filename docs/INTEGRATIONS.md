@@ -1,6 +1,6 @@
 # Code 3 Integrations and Capability Matrix
 
-Phase 1C is published through `af21199f610cc91e31d9dee59af6f0a2f748ab79`. Phase 2A Account Ops is published at `c76e3e4bc668c08d9a0908c9bb2cd96444610297`; Phase 2A.5 workspace architecture is published at `4c6c7891a123777acec8f326793f30aee61f3de6`; Phase 2B1 is published at `2f49a5ed97cec827184c6080e4ada0f4c8194451`; Phase 2B2-A is published at `c379416336e32a67346c7a3bb95f7b6469f679f5`. Phase 2B2-B locally adds Preview-only managed Redis adapters and exact CORS hardening. No managed resource, mailbox, OAuth app, or credential provider is connected.
+Phase 1C through Phase 2B2-B is published through `b4848cb851b2be83093fbdc4ed4b976857f9d3ff`. Phase 2D-A is a local-only Bot Integration Foundation. No mailbox, OAuth app, Bot, retailer account, proxy, credential provider, billing provider, or checkout provider is connected. The separate Phase 2B2-B.1 operational verification remains paused; a Free Upstash resource exists but the remaining owner/CORS/activation configuration is incomplete and `hostedRuntimeVerified=false`.
 
 ## Capability truth rules
 
@@ -14,6 +14,8 @@ Phase 1C is published through `af21199f610cc91e31d9dee59af6f0a2f748ab79`. Phase 
 - `Generated` email alias means local metadata only; it is never equivalent to provisioned or receiving mail.
 - Account Ops retailer/profile metadata is not authorization to automate signup, verification, checkout, or account actions.
 - A Bot workspace shell, navigation entry, or capability label is not a connected Bot provider and cannot authorize an account or purchase action.
+- A Bot installation, normalized task state, synthetic attempt, or Checkout Evidence record is local metadata/evidence only. It does not prove Code 3 controlled a Bot, reached a retailer, carted an item, completed checkout, or created a Purchase.
+- A test-only mock adapter cannot establish normal-runtime provider health or activate a live capability.
 - A Gmail or Outlook provider definition is capability metadata only. `CONNECTED` or `HEALTHY` requires a trusted live provider check; Phase 2B2-B still has neither.
 - A normalized synthetic message or Order Candidate is not evidence that Code 3 read a mailbox, and it is never a Business Purchase.
 
@@ -47,7 +49,9 @@ The current UI also uses closely related display statuses such as Available, Man
 | Authorized Account Ops Inbox | NOT_CONFIGURED | Phase 2B1 minimized normalization/protected-message/local evidence foundation | deterministic synthetic/owner-supplied fixtures only | no authorization, fetch, body mirror, webhook, polling, cursor, provider health, or background delivery | Phase 2B2 after approval |
 | Retail Order Candidate intelligence | AVAILABLE_LOCAL_ONLY | Phase 2B1 exact-money, matching, idempotency/reconciliation and owner-review services | deterministic synthetic/minimized local evidence | no live provider feed and no canonical mapping | Phase 2B1 local foundation |
 | Business Purchase import from Order Candidate | NOT_CONFIGURED | future mapping contract only | none | separately approved owner-confirmed mapping/idempotency/receiving workflow | Future after provider pilot |
-| Bot providers (including Stellar, Hayha, or Valor) | NOT_CONFIGURED | Phase 2A.5 OWNER-only workspace shell/capability truth only | none | separate approved provider, server-only credentials, authorization, terms/anti-abuse review, health contract | Future; not Phase 2A.5 |
+| Bot provider-neutral local foundation | AVAILABLE_LOCAL_ONLY | `src/features/botOps` registry/contracts, local metadata/evidence service, security/reconciliation and test-only mock adapter | owner-reviewed local metadata; synthetic test input only | no SDK/network/bridge/webhook/export watcher, credential store, live health or task command | Phase 2D-A local foundation |
+| Hayha Bot provider | NOT_CONFIGURED | static safe registry entry; all live capabilities false | none | approved integration mode, terms/anti-abuse review, server-only credentials/revocation, test environment and live health contract | Future Phase 2D-B only after approval |
+| Stellar Bot provider | NOT_CONFIGURED | static safe registry entry; all live capabilities false | none | approved integration mode, terms/anti-abuse review, server-only credentials/revocation, test environment and live health contract | Future Phase 2D-B only after approval |
 | Subscription/billing provider | NOT_CONFIGURED | future entitlement hints only | none | approved billing architecture, server-verified entitlement, privacy/tax/refund specification | Future; no billing in Phase 2A.5 |
 | Authorized email alerts | NOT_CONFIGURED | sourcing placeholder plus Phase 2B1 provider/message foundation | none | approved authorization/scope, verified hosted runtime, provider reader, retention and review queue | Phase 2B2/3 after approval |
 | Share target | MISSING | no complete OS share-target ingestion workflow | none beyond paste/manual | PWA share manifest/ingestion/review | Phase 2 or 3 |
@@ -59,7 +63,7 @@ The current UI also uses closely related display statuses such as Available, Man
 | Supabase | PARTIAL | production identity provider, legacy client data/migrations, unapplied canonical schema source | authentication and optional legacy persistence | canonical schema remains unapplied; policy/schema/cutover review required | Separate approved persistence activation |
 | PostgreSQL | PARTIAL | backend pool, legacy services, hosted-gated Phase 1B canonical repository contracts | selected legacy records; canonical tests/dry-run only | canonical schema and owner records are not active | Separate approved persistence activation |
 | Vercel Preview SPA | CONNECTED | `vercel.json` and repository Git integration | authenticated SPA Preview | a frontend deployment is not trusted-runtime proof | Current preview only |
-| Vercel trusted provider route | PREVIEW_PARTIAL | exact `api/auth/session.ts` and `api/account-ops/provider-connections.ts` entries into canonical Express | published Preview returns Express session JSON and fail-closed provider `401`; no provider read | no legitimate owner plus healthy managed stores proof; resource provisioning blocked by required Upstash terms; `hostedRuntimeVerified=false` | Phase 2B2-B / 2B2-C |
+| Vercel trusted provider route | PREVIEW_PARTIAL | exact `api/auth/session.ts` and `api/account-ops/provider-connections.ts` entries into canonical Express | published Preview returns Express session JSON and fail-closed provider `401`; no provider read | Free Upstash resource and three branch-scoped Preview secrets exist, but legitimate owner plus healthy managed-store proof is paused pending Supabase sign-in and remaining configuration; `hostedRuntimeVerified=false` | Phase 2B2-B / 2B2-C |
 
 ## eBay contract
 
@@ -125,19 +129,37 @@ Account setup is an owner-guided workflow. Code 3 may open a legitimate signup U
 
 ## Phase 2A.5 workspace integration boundary
 
-The Bot workspace is an OWNER-only presentation foundation with no active provider adapter, token, task controller, proxy, account automation, checkout, or purchase action. Names such as Stellar, Hayha, and Valor may appear only in future planning or capability truth; Code 3 does not claim a connection.
+The Bot workspace began as an OWNER-only presentation foundation. Phase 2D-A adds local provider-neutral contracts, safe metadata/evidence workflows and a test-only mock adapter under `src/features/botOps`; it still has no active provider adapter, token, task controller, live proxy, account automation, checkout, or purchase action. Hayha and Stellar appear as `NOT_CONFIGURED` capability truth only; Code 3 does not claim a connection.
 
-Account Ops remains contextually associated with Business. Phase 2A.5 itself did not connect an email, mailbox, order, or password-vault provider. Published Phase 2B1 adds a secure provider-runtime contract and synthetic/minimized Inbox/Order Candidate services. Published Phase 2B2-A adds exact Preview server routing and bounded execution truth. Local Phase 2B2-B adds unprovisioned managed-store adapters, not a provider connection, and imports no Purchase. Workspace/feature entitlement hints are not subscription state, and no billing or payment provider is configured.
+Account Ops remains contextually associated with Business. Phase 2A.5 itself did not connect an email, mailbox, order, or password-vault provider. Published Phase 2B1 adds a secure provider-runtime contract and synthetic/minimized Inbox/Order Candidate services. Published Phase 2B2-A adds exact Preview server routing and bounded execution truth. Published Phase 2B2-B adds managed-store adapters, not a provider connection, and imports no Purchase. Its separate Phase 2B2-B.1 operational proof remains paused with only the approved Free Upstash resource and three branch-scoped Preview secrets in place. Workspace/feature entitlement hints are not subscription state, and no billing or payment provider is configured.
 
 Moving a route into a product workspace does not expand provider permission. Existing eBay OAuth and server-side secret boundaries remain unchanged, active eBay listings remain active evidence rather than completed sales, and no provider may create a Purchase without its existing owner review/confirmation boundary.
+
+## Phase 2D-A Bot provider boundary
+
+The provider-neutral Bot adapter declares identity, version, runtime-health support, retailer coverage, task discovery/status, optional start/stop/restart support, account/profile mapping, proxy and product-target visibility, Checkout Evidence, normalized errors, and optional history independently. Unsupported capabilities remain false or unavailable.
+
+Phase 2D-A recognizes these future integration modes as metadata only:
+
+- documented official API;
+- owner-approved local companion/bridge;
+- provider-exported task data;
+- signed webhook/event ingestion; and
+- separately approved owner-local automation.
+
+No mode is active. There is no provider SDK, network client, local process, webhook route, filesystem/export watcher, token, cookie, session, username/password, or provider authentication. The `MOCK` adapter is dependency-injected only by automated tests and is not a real registry connection.
+
+Bot event normalization uses provider + installation + event identity and deterministic source hashes. Retries, reordered events, interrupted local persistence, event-ID reuse across separate installations, and contradictory success/failure evidence preserve history without creating duplicate complete records. Checkout Evidence remains owner-reviewable evidence and cannot call a Purchase, receiving, or Inventory repository.
+
+Bot/provider, retailer, payment, and proxy credentials; credential-bearing proxy/authentication URLs; raw provider request/response bodies; and raw logs are prohibited from local records, fixtures, browser state, backups, and normal logs. Phase 2D-A has no managed Bot-secret storage and does not use the paused mailbox-provider Upstash resource. See [BOT_INTEGRATION_CONTRACT.md](./BOT_INTEGRATION_CONTRACT.md).
 
 ## Phase 2B1 mailbox and order-provider boundary
 
 `backend/src/providerRuntime` defines Gmail and Outlook/Microsoft as unavailable providers whose current capabilities are all false. The owner-protected `/api/account-ops/provider-connections` route can return safe status/capability truth and exercise a disconnect/revocation contract with injected test stores. There is no connect route, OAuth callback, provider SDK/network adapter, live scope request, cursor reader, webhook, polling job, or active provider connection.
 
-Production/default provider connection, secret, and OAuth-state adapters fail closed. Automated-test memory adapters are dependency-injected and reject non-test runtimes. Phase 2B2-A maps the exact owner session and provider-status URLs to canonical Express and distinguishes trusted Preview execution from provider readiness. Phase 2B2-B locally implements an exact-Preview/project/branch-only Upstash Redis adapter set with a derived namespace: bounded owner-scoped connection metadata; AES-256-GCM-encrypted secret envelopes under a separate key family; and random SHA-256-digest OAuth state with exact owner/provider/redirect binding, TTL, capacity bounds, and atomic Lua consume/replay protection. Hosted verification additionally performs bounded write/read/delete readiness instead of trusting `PING` or test memory. Browser storage and ordinary Code 3 backup are never substitutes.
+Production/default provider connection, secret, and OAuth-state adapters fail closed. Automated-test memory adapters are dependency-injected and reject non-test runtimes. Phase 2B2-A maps the exact owner session and provider-status URLs to canonical Express and distinguishes trusted Preview execution from provider readiness. Published Phase 2B2-B implements an exact-Preview/project/branch-only Upstash Redis adapter set with a derived namespace: bounded owner-scoped connection metadata; AES-256-GCM-encrypted secret envelopes under a separate key family; and random SHA-256-digest OAuth state with exact owner/provider/redirect binding, TTL, capacity bounds, and atomic Lua consume/replay protection. Hosted verification additionally performs bounded write/read/delete readiness instead of trusting `PING` or test memory. Browser storage and ordinary Code 3 backup are never substitutes.
 
-The managed resource is not provisioned because the required Upstash marketplace terms have not been accepted. No Redis URL/token, Code 3 encryption key, connection record, provider secret, or OAuth state exists in the hosted environment. Project-wide Preview provider secrets are unacceptable; use a dedicated Preview project/resource or branch-scoped values. The adapter therefore remains unavailable and `hostedRuntimeVerified=false`. Code 3 makes no claim about platform encryption at rest. Live authorization still requires an explicit later provider decision after resource/owner readiness proof.
+The approved Free Upstash resource now exists, and the URL/token/key variables are Secret, Preview-only, and scoped to `ui-104-final-product-ui-2`. No value is documented here. Supabase owner/auth values and the remaining exact Preview CORS/activation/runtime values are not configured, no follow-up Preview has been deployed, and no connection record, provider secret, or OAuth state has been written. Phase 2B2-B.1 is paused pending the owner's exact `Supabase signed in.` instruction; the adapter remains unavailable and `hostedRuntimeVerified=false`. Production and Development remain untouched. Code 3 makes no claim about platform encryption at rest. Live authorization still requires an explicit later provider decision after resource/owner readiness proof.
 
 Future Gmail evaluation starts no broader than the provider's documented read-only permission needed for the reviewed use case; Google's `gmail.readonly` is a restricted scope and brings external verification/data-use obligations. Future Microsoft evaluation must compare metadata-only delegated permissions with `Mail.Read`; `offline_access` supports continued authorization but is not a mailbox permission by itself. Phase 2B1, Phase 2B2-A, and Phase 2B2-B request none of these scopes. See [INBOX_ORDER_PROVIDER_CONTRACT.md](./INBOX_ORDER_PROVIDER_CONTRACT.md) and [PREVIEW_TRUSTED_RUNTIME_CONTRACT.md](./PREVIEW_TRUSTED_RUNTIME_CONTRACT.md).
 
@@ -180,6 +202,7 @@ The existing `src/features/flipScout/connectors.js` contract has provider identi
 | Email alias provider | locally generated metadata, or documented provider API/catch-all evidence with explicit capability state | no claim that a generated address is provisioned, receiving, or verified |
 | Retailer account workflow | owner-triggered copy/open/checklist using legitimate public pages and human verification | no bulk signup, CAPTCHA/OTP bypass, identity rotation, limit evasion, checkout, or account action automation |
 | Mailbox/order provider | future minimized owner-authorized metadata ingestion with dedupe and review | no unnecessary body retention and no automatic Purchase creation |
+| Bot provider | future documented official API, owner-approved local companion, provider export, signed event ingestion, or separately approved local automation | no credential storage in the client, reverse engineering, authentication bypass, account/limit evasion, unapproved task control, checkout, or automatic Purchase/Inventory creation |
 
 ## Search and job attribution target
 
@@ -206,3 +229,5 @@ The current application records sales manually. Future eBay, Whatnot, booth, loc
 | AI assistance | approved provider, privacy terms, data retention choice, budget and model/version logging |
 | Push/background alerts | delivery provider, opt-in, service worker/background architecture, failure truthfulness |
 | Sales account sync | provider approval, owner-account scopes, idempotent reconciliation |
+| Live Hayha or Stellar adapter | separately selected/approved integration mode, provider terms and anti-abuse review, server-only credentials/revocation if required, owner-controlled test installation, health/capability proof and no-checkout boundary review |
+| Bot Checkout Evidence to Purchase | separately approved order reconciliation, stable import identity, explicit OWNER confirmation, transactional duplicate prevention, receiving integration and rollback tests |

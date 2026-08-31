@@ -34,6 +34,7 @@ const pkg = JSON.parse(read("package.json"));
 const commandBoardV4 = read("src/components/command-system/CommandBoardV4.jsx");
 const flipScoutPage = read("src/features/flipScout/FlipScoutPage.jsx");
 const workspaceHomePage = read("src/features/workspaces/WorkspaceHomePage.jsx");
+const botOperationsPage = read("src/features/botOps/BotOperationsPage.jsx");
 const workspaceSwitcher = read("src/features/workspaces/WorkspaceSwitcher.jsx");
 const workspaceRegistry = read("src/config/workspaceRegistry.js");
 
@@ -64,6 +65,13 @@ check(
     app.includes("<WorkspaceHomePage") &&
     workspaceHomePage.includes("export default function WorkspaceHomePage") &&
     workspaceHomePage.includes('import "./workspace-shell.css"')
+);
+
+check(
+  "Bot Operations is independently lazy-loaded behind the workspace owner gate",
+  workspaceHomePage.includes('lazy(() => import("../botOps/BotOperationsPage.jsx"))') &&
+    workspaceHomePage.includes("session?.status !== OWNER_SESSION_STATES.AUTHORIZED") &&
+    botOperationsPage.includes("export default function BotOperationsPage")
 );
 
 check(

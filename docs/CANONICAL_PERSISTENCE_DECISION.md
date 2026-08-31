@@ -2,6 +2,8 @@
 
 Status: Phase 1B validated checkpoint contract, published on the feature branch. The database artifact is `SCHEMA_ONLY`; repository/API contracts remain behind a disabled hosted gate; Migration Preview is `DRY_RUN_ONLY`; canonical `REMOTE_ACTIVE` persistence is `NOT_ACTIVE`.
 
+Phase 2D-A does not expand this canonical scope. `code3.bot-ops.v1` is a separate browser-local provider-neutral metadata/evidence source fixed to `LOCAL_ONLY`; all ten Bot Operations paths are `REQUIRES_MAPPING`, and no Bot table, API route, remote adapter, schema execution, Purchase handoff, or Inventory mutation is authorized.
+
 Phase 1B starting baseline: `26d30b9a0b1379d53778c0bc5c92887cc0ae744f`.
 
 ## Decision
@@ -61,6 +63,8 @@ The schema contract covers:
 - `OwnerPreference`, `FeatureSetting`, and file-reference metadata.
 
 Schema coverage means the domain has a target representation and validation boundary. It does not mean its complete product workflow, remote adapter, or migration is active.
+
+Account Ops, Inbox/Order Intelligence, and Bot Operations are intentionally outside the Phase 1B canonical domains. Phase 2D-A does not place Bot installations, retailer-account links, Bot profiles, proxy groups, product targets, task groups, tasks, attempts, Checkout Evidence, or activity into generic `code3_records`. A future schema decision must review their security, append-only history, idempotency, Account Ops references, Purchase boundary, and rollback separately rather than treating the local document as an approved server mapping.
 
 ## Owner identity and authorization
 
@@ -177,6 +181,8 @@ Adding a migration file is not the same as executing it. A future execution requ
 | `REMOTE_ACTIVE` | canonical API is authoritative and local storage is a cache/fallback | defined but not enabled |
 
 Phase 1B creates the persistence abstraction for later feature-by-feature adoption. Existing production feature components still use their established local repositories; they are not silently rewired in this phase. Future migrated components must depend on the abstraction rather than select local or remote storage directly. Phase 1B must not silently change a browser from `LOCAL_ONLY` to `REMOTE_ACTIVE`.
+
+Phase 2D-A follows that rule by constructing its gateway internally with `LOCAL_ONLY` and exposing no caller-selected persistence mode or remote adapter. Its Backup/Migration Preview classification proposes no canonical action. The paused Phase 2B2-B.1 Upstash resource is operational mailbox-provider security state only and cannot be used as Bot or canonical business persistence.
 
 ## Migration and rollback strategy
 

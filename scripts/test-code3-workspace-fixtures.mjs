@@ -93,13 +93,20 @@ deepEqual(routeStateFromPath("/sell/home"), {
 deepEqual(routeStateFromPath("/bot"), {
   activeTab: "workspaceHome",
   productWorkspaceHome: WORKSPACE_IDS.BOT,
+  botOpsSection: "overview",
 });
 deepEqual(routeStateFromPath("/business"), {
   activeTab: "businessWorkspace",
   businessWorkspaceView: "overview",
   businessMoneyView: "expenses",
 });
-deepEqual(routeStateFromPath("/bot/tasks"), { activeTab: "dashboard" }, "A fake Bot route must not become an active feature");
+deepEqual(routeStateFromPath("/bot/tasks"), {
+  activeTab: "workspaceHome",
+  productWorkspaceHome: WORKSPACE_IDS.BOT,
+  botOpsSection: "tasks",
+}, "The implemented Bot Tasks route must retain Bot workspace context");
+equal(pathFromActiveTab("workspaceHome", { productWorkspaceHome: WORKSPACE_IDS.BOT, botOpsSection: "tasks" }), "/bot/tasks");
+deepEqual(routeStateFromPath("/bot/unknown"), { activeTab: "dashboard" }, "An unknown Bot route must not become an active feature");
 
 const nonOwnerIds = getAvailableWorkspaces().map((workspace) => workspace.id);
 const ownerIds = getAvailableWorkspaces({ ownerAuthorized: true }).map((workspace) => workspace.id);
