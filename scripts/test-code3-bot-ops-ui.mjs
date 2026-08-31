@@ -31,6 +31,11 @@ matches(page, /Overview[\s\S]*Bots[\s\S]*Task Groups[\s\S]*Tasks[\s\S]*Accounts[
 matches(page, /Hayha[\s\S]*Stellar/, "registered provider foundations are visible");
 matches(page, /Not Configured|Not configured/, "provider state is honest");
 matches(page, /label:\s*"Provider network",\s*value:\s*"Disabled"/, "no provider networking is implied");
+matches(page, /Integration discovery/, "provider cards disclose the public-source discovery review");
+matches(page, /Research evidence only · Not provider access or approval/, "research is not presented as authorization or access");
+matches(page, /label:\s*"Live capabilities",\s*value:\s*discovery\.liveCapabilitiesEnabled \? "Enabled" : "Disabled"/, "discovery cannot imply a live capability");
+matches(page, /offline review candidate only[\s\S]*cannot report live status or control Stellar/i, "the Stellar file-review candidate remains offline and non-controlling");
+matches(page, /No supported read\/status pilot path was established/, "Hayha remains without a supported pilot path");
 matches(page, /No tasks[\s\S]*No live or local task records exist/, "empty runtime state is honest");
 matches(page, /Bot Success[^<]*Purchase|Bot success[^<]*Purchase/, "bot success stays distinct from Purchase");
 matches(page, /Checkout Evidence[^<]*Purchase|checkout evidence[^<]*Purchase/, "checkout evidence stays distinct from Purchase");

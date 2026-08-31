@@ -15,6 +15,7 @@ import {
   BOT_PROVIDER_CONNECTION_STATUS,
   BOT_TASK_STATUSES,
   createBotOpsService,
+  getBotProviderDiscovery,
   listBotProviders,
 } from "./index.js";
 import "./bot-operations.css";
@@ -95,6 +96,7 @@ function WarningList({ warnings = [] }) {
 function ProviderCard({ provider }) {
   const status = provider.connectionStatus || provider.status || BOT_PROVIDER_CONNECTION_STATUS.NOT_CONFIGURED;
   const capabilityEntries = Object.entries(provider.capabilities || {});
+  const discovery = getBotProviderDiscovery(provider.key || provider.providerKey);
   return (
     <RecordCard className="bot-ops-record">
       <div className="bot-ops-card-heading"><div><p className="eyebrow">Provider metadata</p><h3>{provider.displayName}</h3></div><StatusBadge tone={statusTone(status)}>{words(status)}</StatusBadge></div>
@@ -104,6 +106,23 @@ function ProviderCard({ provider }) {
         { label: "Integration modes", value: (provider.supportedIntegrationModes || provider.integrationModes || []).map(words).join(", ") || "Not configured" },
         { label: "Provider network", value: "Disabled" },
       ]} />
+      {discovery ? (
+        <details className="bot-ops-discovery">
+          <summary>Integration discovery</summary>
+          <p className="bot-ops-discovery-note">Research evidence only · Not provider access or approval</p>
+          <Facts rows={[
+            { label: "Official API", value: words(discovery.officialApiStatus) },
+            { label: "Webhook", value: words(discovery.webhookStatus) },
+            { label: "Export", value: words(discovery.exportStatus) },
+            { label: "Local interface", value: words(discovery.localInterfaceStatus) },
+            { label: "Pilot readiness", value: words(discovery.pilotReadiness) },
+            { label: "Live capabilities", value: discovery.liveCapabilitiesEnabled ? "Enabled" : "Disabled" },
+          ]} />
+          <p>{discovery.provider === "STELLAR"
+            ? "A sanitized, owner-selected task export is an offline review candidate only. It cannot report live status or control Stellar."
+            : "No supported read/status pilot path was established from the reviewed public evidence."}</p>
+        </details>
+      ) : null}
       <details><summary>Capability truth</summary><ul className="bot-ops-capability-list">{capabilityEntries.length ? capabilityEntries.map(([key, enabled]) => <li key={key}><span>{words(key)}</span><strong>{enabled ? "Available" : "Unavailable"}</strong></li>) : <li><span>Live capabilities</span><strong>Unavailable</strong></li>}</ul></details>
     </RecordCard>
   );
@@ -137,7 +156,7 @@ function Overview({ snapshot, providers, onOpen }) {
 }
 
 function BotsSection({ providers, installations }) {
-  return <section><SectionHeader eyebrow="Provider-neutral foundation" title="Bots" description="Definitions and local installation metadata only. No provider SDK, credentials, device connection, or network control is active." /><div className="bot-ops-grid">{providers.map((provider) => <ProviderCard key={provider.key || provider.providerKey} provider={provider} />)}</div><SectionHeader eyebrow="Local records" title="Installations" description="Installation records never contain device fingerprints or credentials." />{installations.length ? <div className="bot-ops-grid">{installations.map((row) => <RecordCard key={row.id} className="bot-ops-record"><div className="bot-ops-card-heading"><h3>{row.friendlyName}</h3><StatusBadge tone={statusTone(row.healthState)}>{words(row.healthState)}</StatusBadge></div><Facts rows={[{ label: "Provider", value: words(row.provider) }, { label: "Runtime label", value: row.runtimeLabel || "Not recorded" }, { label: "Connection", value: words(row.connectionMode) }, { label: "Last seen", value: dateLabel(row.lastSeenAt) }]} /><WarningList warnings={row.warnings} /></RecordCard>)}</div> : <EmptyState title="No installation records">Additions remain unavailable until a separately approved integration phase. Hayha and Stellar are not connected.</EmptyState>}</section>;
+  return <section><SectionHeader eyebrow="Provider-neutral foundation" title="Bots" description="Definitions and public-source integration research only. No provider SDK, credentials, device connection, or network control is active." /><div className="bot-ops-grid">{providers.map((provider) => <ProviderCard key={provider.key || provider.providerKey} provider={provider} />)}</div><SectionHeader eyebrow="Local records" title="Installations" description="Installation records never contain device fingerprints or credentials." />{installations.length ? <div className="bot-ops-grid">{installations.map((row) => <RecordCard key={row.id} className="bot-ops-record"><div className="bot-ops-card-heading"><h3>{row.friendlyName}</h3><StatusBadge tone={statusTone(row.healthState)}>{words(row.healthState)}</StatusBadge></div><Facts rows={[{ label: "Provider", value: words(row.provider) }, { label: "Runtime label", value: row.runtimeLabel || "Not recorded" }, { label: "Connection", value: words(row.connectionMode) }, { label: "Last seen", value: dateLabel(row.lastSeenAt) }]} /><WarningList warnings={row.warnings} /></RecordCard>)}</div> : <EmptyState title="No installation records">Additions remain unavailable until a separately approved integration phase. Hayha and Stellar are not connected.</EmptyState>}</section>;
 }
 
 function TaskGroupsSection({ rows }) {

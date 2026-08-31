@@ -1,8 +1,10 @@
 # Code 3 Bot Integration Contract
 
-Status: Phase 2D-A local-only Bot Integration Foundation. The foundation defines provider-neutral records, capability truth, synthetic adapters and fixtures, owner-only workflows, security rejection, backup/Restore Preview treatment, and a responsive Bot Operations UI. It does not connect a bot, operate a retailer account, control a task, automate checkout, create a Purchase, receive Inventory, configure credentials, activate remote persistence, or deploy Production.
+Status: Phase 2D-A local-only Bot Integration Foundation plus Phase 2D-B1 provider capability discovery. The foundation defines provider-neutral records, capability truth, synthetic adapters and fixtures, owner-only workflows, security rejection, backup/Restore Preview treatment, and a responsive Bot Operations UI. Phase 2D-B1 adds evidence-backed integration-mode and pilot-readiness contracts without connecting a Bot. It does not operate a retailer account, control a task, automate checkout, create a Purchase, receive Inventory, configure credentials, activate remote persistence, or deploy Production.
 
 Starting baseline: `b4848cb851b2be83093fbdc4ed4b976857f9d3ff`.
+
+Phase 2D-B1 starting baseline (published Phase 2D-A): `cdde7df506c94bc55b2ec7995596843ae1c2261a`.
 
 ## Purpose
 
@@ -108,6 +110,49 @@ The provider-neutral adapter contract can describe:
 - optional event/history streams.
 
 Every capability is independent. Unsupported behavior is reported as unavailable; an adapter must not simulate support. Possible future integration modes are official API, owner-approved local companion, provider export, webhook/event ingestion, and separately approved local automation. Listing a mode is architecture metadata only and does not authorize or implement it.
+
+Phase 2D-B1 refines the adapter vocabulary into independent observation, control, and sensitive-metadata capabilities:
+
+```text
+Observation
+  OBSERVE_RUNTIME
+  READ_TASK_GROUPS
+  READ_TASKS
+  READ_STATUS
+  READ_HISTORY
+  READ_CHECKOUT_EVIDENCE
+
+Control
+  CREATE_TASK
+  EDIT_TASK
+  START_TASK
+  STOP_TASK
+  RESTART_TASK
+
+Sensitive metadata
+  READ_ACCOUNT_METADATA
+  READ_PROXY_METADATA
+  READ_PROFILE_METADATA
+```
+
+Every capability defaults false and must remain independently false unless current first-party evidence supports the exact provider integration path and a later phase explicitly activates it. In-client buttons, CLI commands, marketing claims, retailer guides, a file export, or internal network behavior do not prove an adapter capability. A read capability never implies a control capability.
+
+The integration-mode review uses:
+
+```text
+OFFICIAL_API
+DOCUMENTED_WEBHOOK
+DOCUMENTED_EXPORT
+DOCUMENTED_LOCAL_INTERFACE
+SUPPORTED_PLUGIN
+OWNER_FILE_IMPORT
+LOCAL_READ_ONLY_COMPANION
+MANUAL_IMPORT
+UNSUPPORTED_PRIVATE_API
+REVERSE_ENGINEERED_INTERFACE
+```
+
+Evidence states are `VERIFIED_SUPPORTED`, `DOCUMENTED_BUT_LIMITED`, `UNKNOWN`, `UNSUPPORTED`, and `DO_NOT_USE`. Evidence is short, source-linked, date/version-aware metadata; it is not copied provider documentation, private Discord material, a credential, or activation state. The definitive findings are in [BOT_PROVIDER_CAPABILITY_REVIEW.md](BOT_PROVIDER_CAPABILITY_REVIEW.md).
 
 ## Installations
 
@@ -249,6 +294,8 @@ Errors and activity retain bounded codes/messages only. Secret-bearing provider 
 
 Phase 2D-A does not authorize a Bot secret store. It does not reuse the Phase 2B2-B.1 Upstash resource, mailbox provider runtime, canonical database, localStorage, Backup Format v1, or an in-process map for Bot credentials.
 
+Phase 2D-B1 also does not implement Bot credential storage. A future Bot API token, webhook verification secret, or Local Bridge pairing token requires a separate Bot-specific server-side security review. Retailer passwords, payment credentials, cookies, proxy credentials, and Bot license keys remain prohibited rather than secret-store candidates.
+
 ## Backup and Restore Preview
 
 Backup Format v1 may include the validated `code3.bot-ops.v1` nonsecret metadata section. All ten collections are explicitly classified `REQUIRES_MAPPING` because the Phase 1B canonical schema has no Bot Operations domain. No insert, update, archive, delete, or cutover action is proposed.
@@ -304,15 +351,25 @@ Focused tests cover:
 
 Passing synthetic tests proves the contract, not a provider connection, checkout, order, or purchase.
 
+## Phase 2D-B1 discovery decision
+
+The official-source review dated 2026-08-31 found no publicly documented read-only status interface sufficient for a live Hayha or Stellar pilot. The decision is `NO LIVE BOT PILOT YET`.
+
+Hayha's public guides document interactive GUI/CLI operation, limited Discord notification behavior, and a secret-bearing Amazon session-token export, but no safe public API, general signed webhook contract, task export, or read-only companion interface was established. Its public terms prohibit automated service access, data extraction, decompilation, and reverse engineering without explicit authorization. Private APIs, process/traffic inspection, CLI automation, and the session export are `DO_NOT_USE`.
+
+Stellar documents task-group export/import controls, Discord notifications, profile/config exports, session/account imports, and an external monitor WebSocket. The current public Tasks overview does not establish the task export's exact serialized format or version-compatibility rules. A sanitized task export is the only bounded offline candidate, subject to a current safe schema and provider confirmation. Profile/config/session material is excluded because official guides show that it can contain PII, payment, retailer credential, proxy, or session data. The WebSocket direction is external product pings into Stellar rather than Bot status out, so it is not a read pilot. The Discord incoming-webhook URL is a posting credential, not a readable event feed; Code 3 will not use a Discord user token or scrape a channel.
+
+A separately approved Phase 2D-B2 may consider only a zero-write, owner-selected, synthetic/redacted Stellar task-export preview after the current format and version rules are confirmed. It must allowlist a reviewed schema, reject secret-bearing and unknown fields, retain no raw file, create no provider event/evidence, make no network call, and never write to or control Stellar. Until those prerequisites are satisfied, Hayha and Stellar remain `NOT_CONFIGURED` with every live capability false.
+
 ## Phase 2B2-B.1 operational isolation
 
 The separate Preview managed-store verification remains paused. A Free Upstash resource exists and three server-only managed-store variables were configured as branch-scoped Preview secrets. Supabase owner/auth values and the remaining Preview activation/CORS/runtime values are not configured, no additional Preview was deployed, and `hostedRuntimeVerified=false`.
 
-Phase 2D-A does not inspect, configure, use, test, or mutate that resource or those variables. It does not resume Phase 2B2-B.1. The pause remains in force until the owner explicitly says `Supabase signed in.`
+Phase 2D-B1 does not inspect, configure, use, test, or mutate that resource or those variables. It does not resume Phase 2B2-B.1. The pause remains in force until the owner explicitly says `Supabase signed in.`
 
 ## Explicit non-goals
 
-Phase 2D-A does not:
+The Phase 2D-A foundation and Phase 2D-B1 discovery do not:
 
 - connect, authenticate, discover, operate, or reverse engineer Hayha, Stellar, or any other Bot;
 - request or store Bot, retailer, payment, or proxy credentials;
@@ -324,10 +381,10 @@ Phase 2D-A does not:
 - create a Purchase, receive an item, create Inventory, adjust quantity, or alter cost basis;
 - connect Gmail, Outlook, another mailbox, or another live provider;
 - apply a schema, migrate owner data, activate `REMOTE_ACTIVE`, start billing, or deploy Production; or
-- begin Phase 2D-B.
+- begin Phase 2D-B2 or a live provider pilot.
 
-## Future Phase 2D-B gate
+## Future Phase 2D-B2 gate
 
-Phase 2D-B is not authorized by this contract. A future task must separately select one documented integration mode and provider, review terms and anti-abuse constraints, define server-only credential storage and revocation, approve any local companion/network process, validate provider-specific event normalization, use only owner-controlled test data, and retain the Checkout Evidence and explicit Purchase review boundary.
+Phase 2D-B2 is not authorized by this contract. A future task must separately approve the bounded offline candidate or another provider-confirmed mechanism, review current terms and anti-abuse constraints, approve any local companion or network process, validate provider-specific normalization, use only owner-controlled synthetic/redacted data, and retain the Checkout Evidence and explicit Purchase review boundary.
 
 No future adapter may become live merely because Phase 2D-A metadata, fixtures, registry entries, or UI are present.

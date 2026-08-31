@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {
+  BOT_PILOT_READINESS,
   BOT_CAPABILITIES,
   BOT_PROVIDER_CONNECTION_STATUS,
   BOT_PROVIDER_KEYS,
@@ -46,6 +47,10 @@ for (const provider of providers) {
   ok(Object.values(BOT_CAPABILITIES).every((capability) => provider.capabilities[capability] === false));
   ok(provider.warnings.includes("PROVIDER_NOT_CONFIGURED"));
   ok(provider.warnings.includes("LIVE_ADAPTER_NOT_IMPLEMENTED"));
+  equal(provider.discovery.liveCapabilitiesEnabled, false);
+  equal(provider.discovery.providerNetworkAccess, false);
+  ok(Object.values(BOT_PILOT_READINESS).includes(provider.discovery.pilotReadiness));
+  ok(provider.discovery.evidenceCount > 0);
 }
 
 const mutableClone = getBotProvider(BOT_PROVIDER_KEYS.HAYHA);

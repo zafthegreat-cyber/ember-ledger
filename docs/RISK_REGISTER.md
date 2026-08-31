@@ -12,7 +12,7 @@ Phase 2A.5 is published at `4c6c7891a123777acec8f326793f30aee61f3de6`. It adds r
 
 Phase 2B1 is published at `2f49a5ed97cec827184c6080e4ada0f4c8194451`, and Phase 2B2-B is published at `b4848cb851b2be83093fbdc4ed4b976857f9d3ff`. The separate Phase 2B2-B.1 operational proof is paused. A Free Upstash resource and three branch-scoped Preview secrets exist, but remaining owner/CORS/activation configuration is absent, no follow-up Preview was deployed, and `hostedRuntimeVerified=false`. It adds no live mailbox or provider OAuth.
 
-Phase 2D-A adds a provider-neutral, OWNER-gated `LOCAL_ONLY` Bot Operations foundation with test-only mocks, capability truth, secret rejection, scoped event reconciliation, safe backup metadata, and no Purchase/Inventory writer. Hayha and Stellar remain `NOT_CONFIGURED`; no real Bot, retailer, proxy, credential, checkout, or provider network is active.
+Phase 2D-A is published at `cdde7df506c94bc55b2ec7995596843ae1c2261a`. Phase 2D-B1 adds a local-only official-source capability review and fail-closed pilot design. Hayha and Stellar remain `NOT_CONFIGURED`; no real Bot, retailer, proxy, credential, checkout, or provider network is active.
 
 Ratings are qualitative. “Owner” identifies the responsible workstream, not a person assignment.
 
@@ -74,8 +74,11 @@ Ratings are qualitative. “Owner” identifies the responsible workstream, not 
 | R-54 | Bot success or Checkout Evidence is treated as a confirmed order, Purchase, receiving event, or Inventory mutation | Medium/high | Critical | Phase 2D-A can represent synthetic success/evidence but exposes no Purchase/Inventory repository and forces mutation flags false | persistent invariant/copy/tests; future external-order reconciliation, stable import identity, explicit OWNER confirmation, transaction/idempotency and rollback gate | Bot/business/data, Phase 2D-A/future handoff |
 | R-55 | Bot account/profile assignments duplicate Account Ops identity or become an authorization source | Medium | High | Bot link/profile records reference Account Ops IDs; browser data remains untrusted | no credential/address duplication; recursive authority rejection; server-derived future owner scope; missing/archive relationship diagnostics; shared-ID regression tests | Bot/Account Ops/security, Phase 2D-A |
 | R-56 | Proxy metadata becomes a covert proxy-credential channel or fake health claim | Medium | Critical | Phase 2D-A permits type/provider/region/health/count/latency metadata but rejects host/IP/endpoint/auth URL/user/password | reserved `.test`/`.invalid` fixtures, bounded metadata, no live checks, UI/log/backup/credential scans, separate server secret review before provider use | Bot/security, Phase 2D-A/future adapter |
+| R-57 | Public documentation or a human-facing feature is mistaken for a supported Code 3 integration contract | High | Critical | Hayha documents GUI/CLI and limited notifications; Stellar documents Discord, task export and an input-only WebSocket, but neither publishes a verified read-only task/status API | separate evidence status from live capability; source URL/date/version notes; every live capability false; provider confirmation and isolated contract sample before any adapter | Bot/integrations, Phase 2D-B1 onward |
+| R-58 | A manual Bot export introduces payment, retailer, proxy, session, license or personal data | High if a real export is accepted | Critical | Stellar profile/config/account/session/proxy exports and Hayha session exports may contain highly sensitive values; current phase ingests none | allow only explicit future dry-run task-export format; strict allowlist and secret scan before parsing; reject profiles/accounts/sessions/proxies/config/license/unknown fields; no persistence until owner review | Bot/security/privacy, Phase 2D-B1/future import |
+| R-59 | A Discord or WebSocket mechanism is treated as read-only telemetry when it can leak links/secrets or influence checkout | Medium/high | Critical | Discord webhook URLs are write credentials and message coverage/schema/signing are undocumented; Stellar's documented WebSocket sends product pings into the bot | no listener/receiver/client in B1; classify Stellar WebSocket `DO_NOT_USE` for status pilot; require provider permission, stable schema/signing/redaction and no-control proof before any event pilot | Bot/provider/security, Phase 2D-B1/future pilot |
 
-The authoritative Phase 2D-A boundaries behind R-51 through R-56 are in [BOT_INTEGRATION_CONTRACT.md](./BOT_INTEGRATION_CONTRACT.md).
+The authoritative Phase 2D-A boundaries behind R-51 through R-56 are in [BOT_INTEGRATION_CONTRACT.md](./BOT_INTEGRATION_CONTRACT.md). Phase 2D-B1 evidence and pilot constraints behind R-57 through R-59 are in [BOT_PROVIDER_CAPABILITY_REVIEW.md](./BOT_PROVIDER_CAPABILITY_REVIEW.md).
 
 ## Highest-priority closure order
 
@@ -87,7 +90,7 @@ The authoritative Phase 2D-A boundaries behind R-51 through R-56 are in [BOT_INT
 6. R-15, R-23, R-32, and R-33: preserve owner provenance/history and validate recommendation language before expanding models or persistence.
 7. Transaction, reporting, offline, and optional AI risks in their dependent phases.
 8. R-34 through R-37: keep Account Ops local scope explicit, protect identity/backup data, preserve alias/credential capability truth, and prohibit retailer-security or limit-evasion automation before any live provider work.
-9. R-51 through R-56: keep Bot providers disconnected and test mocks isolated; close event, credential, shared-identity, proxy, and Purchase-handoff risks before any Phase 2D-B adapter decision.
+9. R-51 through R-59: keep Bot providers disconnected and test mocks isolated; close evidence-contract, export-secret, event, credential, shared-identity, proxy, and Purchase-handoff risks before any live Bot adapter decision.
 
 ## Review policy
 

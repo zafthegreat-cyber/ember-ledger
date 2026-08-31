@@ -1,17 +1,17 @@
 # Code 3 Implementation Status
 
-Last audited: 2026-08-28
+Last audited: 2026-08-31
 
-Published Phase 2B2-B commit / Phase 2D-A starting HEAD: `b4848cb851b2be83093fbdc4ed4b976857f9d3ff`
+Published Phase 2D-A commit / Phase 2D-B1 starting HEAD: `cdde7df506c94bc55b2ec7995596843ae1c2261a`
 
-Repository branch represented: `ui-104-final-product-ui-2` (Phase 2D-A local working copy prepared from a detached worktree at the published Phase 2B2-B commit)
+Repository branch represented: `ui-104-final-product-ui-2` (Phase 2D-B1 local working copy prepared from a detached worktree at the published Phase 2D-A commit)
 
 Pull request: #1, Draft
-Deployment: the published Phase 2B2-B commit has a Preview. Its separate Phase 2B2-B.1 operational verification is paused; a Free Upstash resource and three branch-scoped Preview secrets exist, but remaining owner/CORS/activation values are absent, no follow-up Preview was deployed, and `hostedRuntimeVerified=false`. Phase 2D-A is local only and has no deployment.
+Deployment: Phase 2D-A is published on the existing Draft PR branch. The separate Phase 2B2-B.1 operational verification is paused; a Free Upstash resource and three branch-scoped Preview secrets exist, but remaining owner/CORS/activation values are absent, no follow-up provider-auth Preview was deployed, and `hostedRuntimeVerified=false`. Phase 2D-B1 is local only and makes no deployment or environment change.
 
 ## Current phase
 
-**Phase 2D-A — Bot Integration Foundation** is the current local-only implementation phase. It adds provider-neutral Bot Operations records/services, safe Account Ops references, test-only mock adapters/fixtures, scoped idempotency and contradiction-preserving history, recursive credential/authority/raw-provider rejection, a sanitized Backup/zero-write Restore Preview extension, and an OWNER-gated responsive UI. Hayha and Stellar remain `NOT_CONFIGURED`; all live capabilities are false. It does not connect or control a Bot, use real credentials/accounts/proxies, automate checkout, create a Business Purchase, receive Inventory, activate hosted canonical persistence, or deploy Production.
+**Phase 2D-B1 — Bot Provider Integration Discovery and Pilot Design** is the current local-only phase. It records current public official-source evidence for Hayha and Stellar, separates observation/read/control/sensitive capability assessments from live capability flags, classifies supported/limited/unknown/prohibited integration modes, and calculates a fail-closed pilot recommendation. It does not connect or control a Bot, use a real export or credential, receive a provider event, create a Business Purchase, receive Inventory, change persistence, or deploy.
 
 Phase 2B2-B.1 remains paused and independent. `LOCAL_ONLY` remains authoritative; `REMOTE_ACTIVE` is disabled; the Phase 1B schema remains `SCHEMA_ONLY`; no owner record moved; `hostedRuntimeVerified=false`.
 
@@ -131,7 +131,7 @@ Published Phase 2B2-B adds:
 
 After publication, a Free Upstash resource was provisioned and its REST endpoint, token, and Code 3 encryption key were configured as branch-scoped Preview secrets. Supabase owner/auth values and the remaining Preview CORS/activation/runtime values were not configured, no follow-up Preview was deployed, and no connection record, provider secret, or OAuth state was created. The application makes no at-rest platform claim and keeps `hostedRuntimeVerified=false`. Phase 2B2-B.1 remains paused until the owner explicitly says `Supabase signed in.`
 
-The local Phase 2D-A candidate adds:
+Published Phase 2D-A adds:
 
 - `src/features/botOps` with provider-neutral constants, contracts, validators, static provider registry, adapter boundary, security guard, `LOCAL_ONLY` persistence/repository/service, reconciliation, synthetic fixtures and exports;
 - `code3.bot-ops.v1` with ten collections: installations, retailer-account links, Bot profiles, proxy metadata, product targets, task groups, tasks, append-only attempts, reviewable Checkout Evidence, and append-only activity;
@@ -144,7 +144,18 @@ The local Phase 2D-A candidate adds:
 - one sanitized Backup Format v1 section, raising the registry to 24 total/20 locally included sources, with all ten Bot paths `REQUIRES_MAPPING` and Restore Preview remaining zero-write; and
 - responsive OWNER-only Overview, Bots, Task Groups, Tasks, Accounts, Profiles, Proxies, Product Targets, and Activity sections whose normal runtime is honestly disconnected/empty and never seeded from fixtures.
 
-See [BOT_INTEGRATION_CONTRACT.md](./BOT_INTEGRATION_CONTRACT.md). Focused and complete regression counts are recorded only after the final Phase 2D-A gate finishes; source presence alone is not test or provider evidence.
+See [BOT_INTEGRATION_CONTRACT.md](./BOT_INTEGRATION_CONTRACT.md).
+
+The local Phase 2D-B1 candidate adds:
+
+- immutable, nonpersistent integration-mode and capability-evidence metadata with short official-source references and review dates;
+- explicit `VERIFIED_SUPPORTED`, `DOCUMENTED_BUT_LIMITED`, `UNKNOWN`, `UNSUPPORTED`, and `DO_NOT_USE` classifications that never change connection state or live capability flags;
+- separate observation/read/control/sensitive capability lanes, all operationally unavailable for Hayha and Stellar;
+- an evidence-backed `NO_LIVE_BOT_PILOT_YET` result;
+- a future offline-only alternative: synthetic or provider-approved sanitized Stellar task-export preview, requiring current format/version, schema, provider confirmation, and a separate phase; and
+- honest provider-readiness UI with no Connect, task-control, webhook, file-ingest, or network action.
+
+See [BOT_PROVIDER_CAPABILITY_REVIEW.md](./BOT_PROVIDER_CAPABILITY_REVIEW.md). Public documentation is evidence about documented mechanisms, not proof of current provider health, permission for third-party use, completeness, or a live integration.
 
 ## Partially complete or implemented differently
 
@@ -229,10 +240,10 @@ Phase 2B1 focused validation passes 16/16 provider-runtime cases, 52 domain asse
 ## Preview state
 
 - PR #1 remains Draft per the task baseline.
-- The published branch includes Phase 2B2-B at `b4848cb851b2be83093fbdc4ed4b976857f9d3ff`; Phase 2D-A changes are local only.
+- The published branch includes Phase 2D-A at `cdde7df506c94bc55b2ec7995596843ae1c2261a`; Phase 2D-B1 changes are local only.
 - The published Preview proves filesystem routing to Express and fail-closed authentication, not the complete owner-authorized managed-store proof.
 - `hostedRuntimeVerified=false` because no legitimate owner plus exact durable-store readiness response has been proven. The Free Upstash resource and three branch-scoped Preview secrets do not satisfy the missing Supabase owner/auth and remaining exact CORS/activation/runtime gate. Phase 2B2-B.1 is paused; required names are documented without values in [OWNER_AUTH_DECISION.md](./OWNER_AUTH_DECISION.md).
-- Phase 2D-A does not deploy a Preview, inspect or use the Upstash resource, resume Supabase sign-in, connect a provider, or change Production/Development configuration.
+- Phase 2D-B1 does not deploy a Preview, inspect or use the Upstash resource, resume Supabase sign-in, connect a provider, or change Production/Development configuration.
 - No production deployment is represented by this documentation.
 
 ## Known defects and debt
@@ -273,6 +284,6 @@ Phase 2B1 focused validation passes 16/16 provider-runtime cases, 52 domain asse
 
 ## Next recommended task
 
-After the Phase 2D-A local completion report, stop. The recommended scope for a future Phase 2D-B is a one-provider/one-integration-mode architecture, terms/anti-abuse/security review and isolated read/status pilot plan; Phase 2D-B is not authorized and must not begin with credentials, network access, task control or checkout. Phase 2B2-B.1 remains paused until the owner explicitly says `Supabase signed in.` Gmail/Outlook, mailbox reads, Purchase import, billing, renderer extraction, and disposable-database work remain separate approvals.
+After the Phase 2D-B1 local completion report, stop. Phase 2D-B2 is not authorized. The current evidence supports no live pilot; the narrowest possible next Bot scope is a zero-write parser design for a synthetic or provider-approved sanitized Stellar task export after current format/version, provider, and schema confirmation. Credentials, real exports, file watching, Discord, WebSocket, network access, task control and checkout remain separate approvals. Phase 2B2-B.1 remains paused until the owner explicitly says `Supabase signed in.` Gmail/Outlook, mailbox reads, Purchase import, billing, renderer extraction, and disposable-database work remain separate approvals.
 
 Do not apply the schema to the owner or Production database, enable `REMOTE_ACTIVE`, migrate files, or execute a migration plan without a separately approved cutover task and verified backup.

@@ -3,6 +3,7 @@ export * from "./contracts.js";
 export * from "./security.js";
 export * from "./validators.js";
 export * from "./providerRegistry.js";
+export * from "./providerDiscovery.js";
 export * from "./providerAdapters.js";
 export * from "./repository.js";
 export * from "./persistence.js";

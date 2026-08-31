@@ -97,6 +97,14 @@
 
 .bot-ops-record details { margin-top: 14px; }
 .bot-ops-record summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 700; }
+.bot-ops-discovery {
+  padding: 0 12px 12px;
+  border: 1px solid var(--border-subtle, rgba(127, 145, 168, 0.32));
+  border-radius: 12px;
+  background: var(--surface-raised, rgba(255, 255, 255, 0.035));
+}
+.bot-ops-discovery .bot-ops-facts { margin-top: 12px; }
+.bot-ops-discovery-note { font-size: 0.85rem; font-weight: 750; }
 .bot-ops-capability-list,
 .bot-ops-warnings { margin: 8px 0 0; padding-left: 20px; }
 .bot-ops-capability-list li { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; }

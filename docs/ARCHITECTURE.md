@@ -16,7 +16,7 @@ Phase 2B1 is published at `2f49a5ed97cec827184c6080e4ada0f4c8194451`. It adds a 
 
 Phase 2B2-B is published at `b4848cb851b2be83093fbdc4ed4b976857f9d3ff`. Its separate Phase 2B2-B.1 operational verification is paused. A Free Upstash resource exists and three managed-store values are configured as branch-scoped Preview secrets, but Supabase owner/auth values and the remaining Preview CORS/activation/runtime values are not configured, no follow-up Preview was deployed, and `hostedRuntimeVerified=false`. Production and Development remain untouched.
 
-Phase 2D-A is the current parallel local-only workstream. It adds a provider-neutral Bot Operations domain, test-only mock adapter, security/reconciliation boundary, safe Backup/Restore Preview extension, and OWNER-gated responsive UI under `src/features/botOps`. Hayha and Stellar remain `NOT_CONFIGURED`; no live provider, credential, provider network, task control, checkout, Purchase, receiving, Inventory mutation, remote persistence, or Production deployment is added.
+Phase 2D-A is published at `cdde7df506c94bc55b2ec7995596843ae1c2261a`. Phase 2D-B1 is the current local-only discovery/design workstream. It adds evidence-backed provider-integration classifications and read-versus-control capability metadata without adding a provider adapter, credential, provider network, task control, checkout, Purchase, receiving, Inventory mutation, remote persistence, or deployment. Hayha and Stellar remain `NOT_CONFIGURED`, every live capability remains false, and the evidence review recommends no live pilot on the current public record.
 
 ## Executive summary
 
@@ -125,6 +125,18 @@ Phase 2D-A introduces `src/features/botOps` as a provider-neutral local domain b
 - responsive Overview, Bots, Task Groups, Tasks, Accounts, Profiles, Proxies, Product Targets, and Activity views whose normal state contains no synthetic live data.
 
 This layer has no backend Bot route, server secret store, provider SDK/network client, local companion process, webhook receiver, export watcher, task command, retailer automation, Purchase writer, or Inventory dependency. It does not reuse the paused Phase 2B2-B.1 Upstash resource. See [BOT_INTEGRATION_CONTRACT.md](./BOT_INTEGRATION_CONTRACT.md).
+
+## Phase 2D-B1 provider discovery delta
+
+Phase 2D-B1 keeps the Phase 2D-A runtime and persistence model unchanged. A separate immutable research layer records short official-source references, evidence freshness, integration-mode status, independent observation/read/control/sensitive capability assessments, and fail-closed pilot readiness. Research metadata is bundled source, not owner data, provider health, or a backup source.
+
+- Hayha public evidence confirms a human-operated desktop GUI/CLI and limited Discord notification behavior, but no supported machine-readable read/status API, SDK, local companion protocol, or safe task/history export was verified. Public docs are stale and say restricted Discord material is newer; current provider confirmation is required.
+- Stellar public guides confirm manual task-group export/import controls, Discord notification configuration, and an external-monitor-to-Stellar WebSocket input. The current public Tasks overview does not establish the export's exact serialized format or version-compatibility rules. The WebSocket sends product pings into Stellar and is not a status egress; it may affect running tasks and is therefore not a read-only pilot path.
+- Secret-bearing session/profile/account/proxy/config exports are classified `DO_NOT_USE`. Private/internal APIs, traffic inspection, CLI/UI scraping, process attachment, reverse engineering, and undocumented automation are also `DO_NOT_USE`.
+- Every operational provider capability remains false. Evidence that a human UI can perform an action or that an export exists does not activate a Code 3 adapter capability.
+- The decision is `NO_LIVE_BOT_PILOT_YET`. A future offline, preview-only parser for a synthetic or provider-approved sanitized Stellar task export is the least-risk design candidate, but it remains unimplemented and requires current schema/version and provider confirmation.
+
+See [BOT_PROVIDER_CAPABILITY_REVIEW.md](./BOT_PROVIDER_CAPABILITY_REVIEW.md). Phase 2B2-B.1 remains paused and no Bot secret store is authorized.
 
 ## Current system map
 

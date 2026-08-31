@@ -4,6 +4,7 @@ import {
   BOT_PROVIDER_CONNECTION_STATUS,
   BOT_PROVIDER_KEYS,
 } from "./constants.js";
+import { getBotProviderDiscoverySummary } from "./providerDiscovery.js";
 
 const DISABLED_CAPABILITIES = Object.freeze(Object.fromEntries(Object.values(BOT_CAPABILITIES).map((key) => [key, false])));
 
@@ -27,6 +28,7 @@ function providerDefinition(providerKey, displayName) {
     configurationReady: false,
     live: false,
     networkAccess: false,
+    discovery: Object.freeze(getBotProviderDiscoverySummary(providerKey)),
     warnings: Object.freeze([
       "PROVIDER_NOT_CONFIGURED",
       "CAPABILITIES_UNVERIFIED",

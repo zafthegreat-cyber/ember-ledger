@@ -17,7 +17,7 @@ The audit changes the conceptual “backend persistence first” phase into gate
 
 **Phase 2B1 — Secure Provider Runtime + Inbox / Order Intelligence Foundation**, **Phase 2B2-A — Preview Trusted Express/API Runtime**, and **Phase 2B2-B — Preview Owner Auth + Managed Provider State** are published through `b4848cb851b2be83093fbdc4ed4b976857f9d3ff`. The separate Phase 2B2-B.1 operational verification is paused. A Free Upstash resource and three branch-scoped Preview secrets exist, but Supabase owner/auth values and the remaining Preview CORS/activation/runtime values are not configured, no follow-up Preview was deployed, and `hostedRuntimeVerified=false`. Gmail, Outlook, IMAP, live Inbox ingestion, provider token use, Purchase import, migration, sync, and remote cutover remain inactive.
 
-**Phase 2D-A — Bot Integration Foundation** is the current parallel local-only workstream. It adds provider-neutral Bot Operations contracts, `LOCAL_ONLY` safe metadata/evidence, test-only mocks, security/idempotency/reconciliation guards, backup/Restore Preview treatment, and an OWNER-gated responsive UI. Hayha and Stellar remain `NOT_CONFIGURED`; no live provider, credentials, task control, proxy connection, checkout, Purchase, receiving, Inventory mutation, billing, or deployment is active.
+**Phase 2D-A — Bot Integration Foundation** is published at `cdde7df506c94bc55b2ec7995596843ae1c2261a`. **Phase 2D-B1 — Provider Integration Discovery and Pilot Design** is the current local-only workstream. It reviews public official evidence, separates observation/read/control/sensitive capability claims, and records a fail-closed pilot decision. Hayha and Stellar remain `NOT_CONFIGURED`; no live provider, credentials, task control, proxy connection, checkout, Purchase, receiving, Inventory mutation, billing, or deployment is active.
 
 The published Phase 1A runtime applies Code 3 through the centralized brand configuration and coordinated PWA/browser/offline metadata. Storage, database, route, module, environment, cache, history, compatibility, and imported-source identifiers remain unchanged. The legal/public business name and tagline remain separately configurable and unresolved.
 
@@ -175,7 +175,7 @@ No time estimates are provided. Complexity is relative: Small, Medium, Large, or
 
 ## Phase 2D-A — Bot Integration Foundation
 
-**Status:** Current local-only implementation workstream from published baseline `b4848cb851b2be83093fbdc4ed4b976857f9d3ff`. It is independent from the paused Phase 2B2-B.1 operational verification.
+**Status:** Published at `cdde7df506c94bc55b2ec7995596843ae1c2261a`. It remains independent from the paused Phase 2B2-B.1 operational verification.
 
 - **Objective:** establish provider-neutral Bot Operations contracts, local owner workflows, capability truth, security and event-history boundaries, safe synthetic fixtures, backup/Restore Preview coverage, and a responsive OWNER-only UI before any real Bot integration is considered.
 - **Current code affected:** `src/features/botOps`; `/bot` route/shell integration; Account Ops reference projections; Backup Format v1 source/validator and migration-source registry; Restore Preview; focused tests and browser QA; definitive documentation.
@@ -192,16 +192,28 @@ No time estimates are provided. Complexity is relative: Small, Medium, Large, or
 
 See [BOT_INTEGRATION_CONTRACT.md](./BOT_INTEGRATION_CONTRACT.md).
 
-## Phase 2D-B — One reviewed Bot adapter pilot
+## Phase 2D-B1 — Bot provider integration discovery and pilot design
 
-**Status:** Future and not authorized. Phase 2D-A completion does not start this phase.
+**Status:** Current local-only design/research phase from `cdde7df506c94bc55b2ec7995596843ae1c2261a`. No live pilot is authorized.
 
-- **Potential objective:** select exactly one provider and one documented integration mode; review provider terms/anti-abuse constraints; design server-only credentials/revocation or an owner-controlled local companion where required; normalize provider-specific data behind the Phase 2D-A adapter; and prove capability/health truth in an isolated owner-controlled test environment.
-- **Dependencies:** reviewed Phase 2D-A contract/tests, explicit provider/integration selection, legal/terms and retailer-policy review, protected observability, credential/rotation/revocation design, and a no-purchase test plan.
-- **External authorization:** explicit approval for the named provider, integration mechanism, credentials, test installation/account, network access, and any local companion. Checkout/purchasing remains a separate authorization even if read-only status/event access is approved.
-- **Acceptance gate:** no reverse engineering or auth/security/limit bypass; least capability; test-account isolation; safe disconnect; exact event idempotency; no raw logs/client secrets; no automatic Purchase/Inventory; all normal capability truth remains false until live health is independently proven.
-- **Rollback:** disable/remove the adapter and revoke/delete its separately managed credentials without deleting retained normalized owner-reviewed evidence.
-- **Complexity:** Large.
+- **Objective:** determine current legitimate Hayha/Stellar integration surfaces using public first-party evidence; classify each mode as `VERIFIED_SUPPORTED`, `DOCUMENTED_BUT_LIMITED`, `UNKNOWN`, `UNSUPPORTED`, or `DO_NOT_USE`; keep read/status distinct from control; and design the narrowest later pilot without connecting either provider.
+- **Code/data impact:** immutable source/evidence metadata and a pure fail-closed readiness decision only. `code3.bot-ops.v1`, Backup Format v1, Restore Preview, migration classifications, backend routes, provider secrets, and adapter networking do not change.
+- **Research result:** neither provider exposes a verified public read-only task/status/history API. Hayha's public docs are stale and its terms prohibit automated access/extraction/reverse engineering. Stellar's task export is manual, with exact serialized format/version rules unverified by the current public overview; its Discord path is notification-only, and its developer WebSocket sends product pings into Stellar rather than status out.
+- **Pilot decision:** `NO_LIVE_BOT_PILOT_YET`. The safest non-live precursor is a separately authorized preview-only parser for a synthetic or provider-approved sanitized Stellar task export after current format/version confirmation. Profiles, accounts, sessions, proxies, config, license material, unknown fields and credential-bearing values must be rejected.
+- **External authorization:** none for research/static metadata. Any provider confirmation, real export, Discord app/channel, webhook URL, companion, token, test installation, or network request requires another explicit phase.
+- **Acceptance gate:** official sources referenced; absence remains `UNKNOWN`; private/reverse-engineered modes remain `DO_NOT_USE`; every operational capability stays false; no Connect/control UI; no persistence/network/backend change; complete regression passes.
+- **Rollback:** remove static discovery metadata/UI copy/tests/docs. No provider, remote record, credential, task, Purchase, Inventory, schema or deployment requires rollback.
+- **Complexity:** Medium.
+
+## Phase 2D-B2 — Isolated read/status precursor
+
+**Status:** Future and not authorized.
+
+- **Potential objective:** only after provider/schema confirmation, implement a dry-run owner-selected synthetic/sanitized Stellar task-export preview, or choose no pilot if a safe supported contract remains unavailable.
+- **Explicit non-goals:** no live adapter, task control, Discord listener, WebSocket feed, credential store, checkout, Purchase/Inventory mutation, private API, reverse engineering, or provider network unless a later specification separately authorizes the exact mechanism.
+- **Dependencies:** current provider confirmation; current redacted schema/sample and version rules; strict allowlist and secret scanner; file-size/version/provenance rules; zero-write preview; retention/deletion and no-Purchase tests.
+- **Acceptance gate:** owner-selected input only, no automatic file watching, no write back, no sensitive export types, deterministic preview, complete cleanup and inherited security/regression gates.
+- **Complexity:** Medium if offline-only; Large if a future supported live mechanism is separately authorized.
 
 ## Phase 2 — Remaining app-shell extraction and route ownership hardening
 
@@ -379,4 +391,4 @@ Every implementation phase must:
 
 ## Exact next task recommendation
 
-The current authorized task is Phase 2D-A local completion and its detailed report only. After that report, stop. Phase 2D-B is the recommended next Bot scope but remains unauthorized; it should begin with a one-provider/one-mode decision and terms/security review, not credentials or live checkout. Phase 2B2-B.1 remains paused until the owner explicitly says `Supabase signed in.` and must not resume automatically. Do not deploy another Preview, create a bypass, connect a mailbox or Bot, begin provider OAuth, import a Purchase, activate `REMOTE_ACTIVE`, migrate owner data, upload file bytes, add billing, apply a schema, or modify Production without another explicit owner-approved specification.
+The current authorized task is Phase 2D-B1 local discovery/design and its detailed report only. After that report, stop. Phase 2D-B2 remains unauthorized; the evidence supports no live pilot yet, with only a possible future synthetic/sanitized Stellar task-export preview after provider/schema confirmation and a separate specification. Phase 2B2-B.1 remains paused until the owner explicitly says `Supabase signed in.` and must not resume automatically. Do not deploy another Preview, create a bypass, connect a mailbox or Bot, begin provider OAuth, import a Purchase, activate `REMOTE_ACTIVE`, migrate owner data, upload file bytes, add billing, apply a schema, or modify Production without another explicit owner-approved specification.
