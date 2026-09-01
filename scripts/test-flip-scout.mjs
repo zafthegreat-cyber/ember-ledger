@@ -11,6 +11,7 @@ import {
   safeNumber,
 } from "../src/features/flipScout/calculations.js";
 import { allocateLotCost, reconcileLotAllocations, validateSaleQuantity } from "../src/features/flipScout/inventory.js";
+import { availableInventoryCostMajorUnits, inventoryRecordCostMajorUnits, suggestedInventorySaleCogsMajorUnits, suggestedInventorySaleCogsMinorUnits, validateManagedInventorySales } from "../src/features/flipScout/exactInventoryCost.js";
 import { escapeCsvValue, recordsToCsv } from "../src/features/flipScout/csv.js";
 import { FLIP_SCOUT_STORAGE_KEY, createEmptyFlipScoutState } from "../src/features/flipScout/constants.js";
 import { createFlipScoutRepository, deserializeFlipScoutState, normalizeFlipScoutState, serializeFlipScoutState } from "../src/features/flipScout/storageRepository.js";
@@ -143,10 +144,38 @@ const draftSale = validateSaleQuantity({ inventoryItem, sales: completedSales, s
 assert.equal(draftSale.valid, true);
 assert.match(draftSale.message, /inventory quantity is unchanged/);
 
+const exactInventory = {
+  id: "inventory-item.exact.test",
+  provenanceManaged: true,
+  costAuthority: "INTEGER_MINOR_UNITS",
+  quantity: 3,
+  acquisitionCostMinorUnits: 1000,
+  unitAcquisitionCostsMinorUnits: [334, 333, 333],
+};
+assert.equal(inventoryRecordCostMajorUnits(exactInventory), 10, "exact Inventory cost is projected from integer minor units");
+assert.equal(suggestedInventorySaleCogsMajorUnits(exactInventory, [], 1), 3.34, "the first sale receives the deterministic remainder unit");
+assert.equal(suggestedInventorySaleCogsMajorUnits(exactInventory, [{ id: "sale-exact-1", inventoryItemId: exactInventory.id, quantitySold: 1, status: "Completed" }], 2), 6.66, "later sales consume the next exact unit-cost slice");
+assert.equal(availableInventoryCostMajorUnits(exactInventory, [{ id: "sale-exact-1", inventoryItemId: exactInventory.id, quantitySold: 1, status: "Completed" }]), 6.66, "available Inventory cost excludes already sold exact units");
+assert.equal(validateSaleQuantity({ inventoryItem: exactInventory, sales: [], saleDraft: { quantitySold: 1.5, status: "Completed" } }).valid, false, "provenance-managed Inventory rejects fractional unit sales");
+assert.equal(
+  validateSaleQuantity({
+    inventoryItem: { ...exactInventory, unitAcquisitionCostsMinorUnits: [0, 0, 0] },
+    sales: [],
+    saleDraft: { quantitySold: 1, status: "Completed" },
+  }).valid,
+  false,
+  "provenance-managed Inventory with inconsistent exact costs cannot record a completed sale",
+);
+
 class MemoryStorage {
-  constructor(entries = {}) { this.map = new Map(Object.entries(entries)); }
+  constructor(entries = {}, { failBefore = 0, failAfter = 0 } = {}) { this.map = new Map(Object.entries(entries)); this.writes = 0; this.failBefore = failBefore; this.failAfter = failAfter; }
   getItem(key) { return this.map.has(key) ? this.map.get(key) : null; }
-  setItem(key, value) { this.map.set(key, String(value)); }
+  setItem(key, value) {
+    this.writes += 1;
+    if (this.failBefore > 0) { this.failBefore -= 1; throw new Error("Synthetic write failed before persistence."); }
+    this.map.set(key, String(value));
+    if (this.failAfter > 0) { this.failAfter -= 1; throw new Error("Synthetic response failed after persistence."); }
+  }
   removeItem(key) { this.map.delete(key); }
 }
 const memory = new MemoryStorage();
@@ -169,8 +198,102 @@ assert.deepEqual(malformed.state, createEmptyFlipScoutState(malformed.state.upda
 const imported = repository.importJson(JSON.stringify({ schemaVersion: 1, deals: [{ id: "deal-import", title: "Imported" }] }));
 assert.equal(imported.error, "");
 assert.equal(imported.state.deals[0].title, "Imported");
-assert.equal(imported.state.schemaVersion, 2, "Phase 1 backups migrate to the Phase 2 schema without changing the storage key");
+assert.equal(imported.state.schemaVersion, 3, "Older backups migrate to the Phase 2C-B schema without changing the storage key");
+assert.deepEqual(imported.state.inventoryLots, [], "older Business state receives an empty acquisition-lot collection");
+assert.deepEqual(imported.state.inventoryCreationEvents, [], "older Business state receives an empty Inventory creation history");
 assert.deepEqual(imported.state.providerListings, []);
+
+function managedSaleInput({ id, quantity = 1, minorUnits, status = "Completed", inventoryItemId = exactInventory.id }) {
+  return {
+    id,
+    inventoryItemId,
+    quantitySold: quantity,
+    status,
+    allocatedCostOfGoodsSoldMinorUnits: minorUnits,
+    allocatedCostOfGoodsSold: minorUnits / 100,
+    costAuthority: "INTEGER_MINOR_UNITS",
+  };
+}
+
+function exactManagedState() {
+  return {
+    ...createEmptyFlipScoutState("2026-09-01T12:00:00.000Z"),
+    inventory: [{ ...exactInventory, productClassification: "Sealed product", condition: "SEALED" }],
+  };
+}
+
+{
+  const storage = new MemoryStorage({ [FLIP_SCOUT_STORAGE_KEY]: JSON.stringify(exactManagedState()) });
+  const exactRepository = createFlipScoutRepository(storage);
+  const wrong = exactRepository.upsert("sales", managedSaleInput({ id: "sale-managed-wrong.test", minorUnits: 333 }));
+  assert.match(wrong.error, /exact owner-confirmed Inventory cost slice/);
+  assert.equal(storage.writes, 0, "wrong managed COGS is rejected before persistence");
+
+  const activity = { id: "activity.sale-managed-1.test", type: "SALE_RECORDED", title: "Sale recorded", detail: "Synthetic exact-cost sale.", occurredAt: "2026-09-01T12:00:00.000Z" };
+  const first = exactRepository.upsert("sales", managedSaleInput({ id: "sale-managed-1.test", minorUnits: 334 }), { activityRecord: activity });
+  assert.equal(first.error, "");
+  assert.equal(storage.writes, 1, "managed sale and activity persist atomically in one Business-state write");
+  assert.equal(first.state.sales.length, 1);
+  assert.equal(first.state.activity.length, 1);
+  assert.equal(first.record.inventoryAllocationSequence, 1);
+  assert.equal(first.record.allocatedCostOfGoodsSoldMinorUnits, 334);
+
+  const oversell = exactRepository.upsert("sales", managedSaleInput({ id: "sale-managed-oversell.test", quantity: 3, minorUnits: 999 }));
+  assert.match(oversell.error, /exceeds owner-confirmed Inventory availability/);
+  assert.equal(storage.writes, 1, "oversell rejection performs no write");
+
+  const cancelled = exactRepository.upsert("sales", managedSaleInput({ id: "sale-managed-cancelled.test", quantity: 999, minorUnits: 0, status: " Cancelled " }));
+  assert.equal(cancelled.error, "");
+  assert.equal(cancelled.record.status, "Cancelled", "managed sale status is canonicalized at the repository boundary");
+  assert.equal(cancelled.record.inventoryAllocationSequence, undefined, "cancelled sale consumes no exact-cost slice");
+
+  const refundedMinor = suggestedInventorySaleCogsMinorUnits(exactInventory, exactRepository.load().sales, 1);
+  const refunded = exactRepository.upsert("sales", managedSaleInput({ id: "sale-managed-refunded.test", minorUnits: refundedMinor, status: "Refunded" }));
+  assert.equal(refunded.error, "");
+  assert.equal(refunded.record.inventoryAllocationSequence, 2, "refund without an explicit return still consumes physical Inventory");
+  assert.equal(refunded.record.allocatedCostOfGoodsSoldMinorUnits, 333);
+
+  const draft = exactRepository.upsert("sales", { id: "sale-managed-draft.test", inventoryItemId: exactInventory.id, quantitySold: 1, status: "Draft" });
+  assert.equal(draft.error, "");
+  assert.equal(draft.record.inventoryAllocationSequence, undefined);
+  const completionMinor = suggestedInventorySaleCogsMinorUnits(exactInventory, exactRepository.load().sales, 1, draft.record.id);
+  const completedDraft = exactRepository.upsert("sales", { ...draft.record, status: "Completed", allocatedCostOfGoodsSoldMinorUnits: completionMinor, allocatedCostOfGoodsSold: completionMinor / 100, costAuthority: "INTEGER_MINOR_UNITS" });
+  assert.equal(completedDraft.error, "");
+  assert.equal(completedDraft.record.inventoryAllocationSequence, 3, "a later-completed draft receives the next repository allocation sequence");
+  assert.equal(completedDraft.record.allocatedCostOfGoodsSoldMinorUnits, 333);
+  assert.equal(validateManagedInventorySales(completedDraft.state), true);
+
+  const activeSnapshot = exactRepository.load();
+  const removedActive = { ...activeSnapshot, sales: activeSnapshot.sales.filter((sale) => sale.id !== first.record.id) };
+  assert.match(exactRepository.save(removedActive).error, /append-only/);
+  assert.match(exactRepository.replace(removedActive).error, /append-only/);
+  assert.match(exactRepository.importJson(JSON.stringify(removedActive)).error, /cannot be replaced/);
+  assert.throws(() => exactRepository.remove("sales", first.record.id), /append-only correction workflow/);
+  assert.throws(() => exactRepository.upsert("sales", { ...first.record, quantitySold: 2 }), /append-only/);
+
+  const duplicateIds = { ...activeSnapshot, sales: [...activeSnapshot.sales, { ...first.record }] };
+  assert.match(exactRepository.save(duplicateIds).error, /unique stable identities/);
+}
+
+{
+  const initial = exactManagedState();
+  const storage = new MemoryStorage({ [FLIP_SCOUT_STORAGE_KEY]: JSON.stringify(initial) }, { failBefore: 1 });
+  const exactRepository = createFlipScoutRepository(storage);
+  const result = exactRepository.upsert("sales", managedSaleInput({ id: "sale-managed-fail-before.test", minorUnits: 334 }), { activityRecord: { id: "activity.fail-before.test", title: "Sale recorded" } });
+  assert.ok(result.error);
+  assert.equal(exactRepository.load().sales.length, 0);
+  assert.equal(exactRepository.load().activity.length, 0);
+}
+
+{
+  const storage = new MemoryStorage({ [FLIP_SCOUT_STORAGE_KEY]: JSON.stringify(exactManagedState()) }, { failAfter: 1 });
+  const exactRepository = createFlipScoutRepository(storage);
+  const result = exactRepository.upsert("sales", managedSaleInput({ id: "sale-managed-ambiguous.test", minorUnits: 334 }), { activityRecord: { id: "activity.ambiguous.test", title: "Sale recorded" } });
+  assert.equal(result.error, "", "exact read-back resolves a storage response failure after persistence");
+  assert.equal(result.verifiedAfterAmbiguousWrite, true);
+  assert.equal(exactRepository.load().sales.length, 1);
+  assert.equal(exactRepository.load().activity.length, 1);
+}
 
 const firstDiscovery = {
   providerId: "ebay",
@@ -213,5 +336,36 @@ const dashboard = getDashboardSummary({
 });
 assert.equal(dashboard.inventoryCost, 75, "inventory cost reflects only the unsold portion of a record allocation");
 assert.equal(dashboard.projectedInventoryValue, 120);
+const exactDashboard = getDashboardSummary({
+  ...createEmptyFlipScoutState(),
+  inventory: [exactInventory],
+  sales: [{ id: "sale-exact-dashboard", inventoryItemId: exactInventory.id, quantitySold: 1, status: "Completed" }],
+});
+assert.equal(exactDashboard.inventoryCost, 6.66, "dashboard cost preserves unsold exact minor-unit provenance");
+
+{
+  const storage = new MemoryStorage({ [FLIP_SCOUT_STORAGE_KEY]: JSON.stringify(exactManagedState()) });
+  const repository = createFlipScoutRepository(storage);
+  let submitting = false;
+  let releaseFirst;
+  const pendingStorage = new Promise((resolve) => { releaseFirst = resolve; });
+  const guardedBlankIdSale = async () => {
+    if (submitting) return null;
+    submitting = true;
+    try {
+      await pendingStorage;
+      return repository.upsert("sales", managedSaleInput({ id: undefined, minorUnits: 334 }));
+    } finally {
+      submitting = false;
+    }
+  };
+  const firstSubmit = guardedBlankIdSale();
+  const queuedDuplicate = guardedBlankIdSale();
+  releaseFirst();
+  const [firstResult, duplicateResult] = await Promise.all([firstSubmit, queuedDuplicate]);
+  assert.equal(firstResult.error, "");
+  assert.equal(duplicateResult, null, "a synchronous in-flight guard rejects a queued blank-ID duplicate submit");
+  assert.equal(repository.load().sales.length, 1, "one intended managed sale creates exactly one repository record");
+}
 
 console.log("Flip Scout calculation, allocation, sale validation, storage, and CSV tests passed.");

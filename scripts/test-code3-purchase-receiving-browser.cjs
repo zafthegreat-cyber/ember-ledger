@@ -208,14 +208,14 @@ async function assertMinimumTargets(root, label) {
 async function assertSafetySurface(page, root, label) {
   const body = await root.innerText();
   equal(await root.getAttribute("data-owner-gate"), "authorized", `${label} should use the existing authorized OWNER boundary`);
-  equal(await root.getAttribute("data-inventory-writer"), "false", `${label} must expose no inventory writer`);
+  equal(await root.getAttribute("data-inventory-writer"), "owner-confirmed-only", `${label} must expose only the explicit owner-confirmed inventory boundary`);
   match(body, /Order Candidate != Purchase/i, `${label} should preserve the Order Candidate boundary`);
   match(body, /Checkout Evidence != Purchase/i, `${label} should preserve the Checkout Evidence boundary`);
   match(body, /Purchase Draft != Purchase/i, `${label} should preserve the draft boundary`);
   match(body, /Receiving != Inventory/i, `${label} should preserve the inventory boundary`);
-  excludes(body, /(?:create inventory|import purchase|auto(?:matic)? checkout|place order|pay now)/i, `${label} must not offer downstream mutation or checkout actions`);
+  excludes(body, /(?:automatically create inventory|import purchase|auto(?:matic)? checkout|place order|pay now)/i, `${label} must not offer automatic downstream mutation or checkout actions`);
   excludes(body, /synthetic-secret-must-not-render|(?:bearer|basic)\s+[a-z0-9._~+/=-]{12,}/i, `${label} must not render secret material`);
-  equal(await root.locator('[data-inventory-writer="true"], [data-remote-active="true"]').count(), 0, `${label} must not expose active remote or inventory mutation authority`);
+  equal(await root.locator('[data-inventory-writer="true"], [data-remote-active="true"]').count(), 0, `${label} must not expose automatic or remote inventory mutation authority`);
   equal(await page.evaluate(() => matchMedia("(prefers-reduced-motion: reduce)").matches), true, `${label} should honor the reduced-motion browser preference`);
 }
 
@@ -287,8 +287,8 @@ async function prepareScenario(page, scenario, root) {
       await selectSection(root, "Purchases");
       await root.getByRole("button", { name: "Preview Inventory Handoff", exact: true }).click();
       await root.getByRole("heading", { name: "Inventory Handoff Preview", exact: true }).waitFor();
-      match(await body(), /Preview only[\s\S]*does not create inventory[\s\S]*Receiving != Inventory/i, "handoff must remain a derived preview with no inventory mutation");
-      equal(await root.locator('.purchase-receiving-handoff[data-inventory-writer="false"]').count(), 1, "handoff preview must explicitly expose no inventory writer");
+      match(await body(), /Preview only[\s\S]*separate candidate[\s\S]*Receiving != Inventory/i, "handoff remains a derived preview before separate candidate confirmation");
+      equal(await root.locator('.purchase-receiving-handoff[data-inventory-writer="owner-confirmed-only"]').count(), 1, "handoff exposes only the owner-confirmed candidate writer");
       break;
     default:
       throw new Error(`Unknown browser QA scenario kind: ${scenario.kind}`);

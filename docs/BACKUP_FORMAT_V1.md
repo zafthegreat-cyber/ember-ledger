@@ -1,6 +1,6 @@
 # Code 3 Backup Format Version 1
 
-Status: Phase 1A format and later Account Ops, Inbox/Order, and Phase 2B2-B exclusions are published through `b4848cb851b2be83093fbdc4ed4b976857f9d3ff`. Phase 2D-A adds one sanitized Bot Operations source. Phase 2C-A adds one validated Purchase/Receiving metadata source. Phase 2D-B2 adds no source: selected Stellar JSON, filename/path, preview model, normalized temporary tasks, warnings, metrics and source derivatives remain ephemeral and excluded. Managed provider/Bot credentials, connection secret envelopes, OAuth state/index/used markers, encryption keys, Redis credentials, runtime proof, raw provider data, Inventory Handoff Preview, and proxy authentication remain excluded. No owner data has migrated, no schema was applied, and no restore applies data.
+Status: Phase 1A format and later Account Ops, Inbox/Order, Bot Operations, and Purchase/Receiving sources are published through Phase 2C-A. Phase 2C-B adds no source; it extends the existing Deal Finder source to schema version 3 with safe owner-confirmed Inventory acquisition/provenance metadata. Selected Stellar JSON, Inventory Handoff Preview, Inventory Creation Candidate, managed provider/Bot credentials, connection secret envelopes, OAuth state/index/used markers, encryption keys, Redis credentials, runtime proof, raw provider data, and proxy authentication remain excluded. No owner data has migrated, no canonical schema was applied, and no restore applies data.
 
 ## Purpose and boundary
 
@@ -42,9 +42,9 @@ The manifest contains the included and excluded source inventory, record counts,
 
 `src/features/backup/backupSourceRegistry.js` is the versioned coverage registry. It records storage type, schema version, export and validation adapters, reference dependencies, security/session sensitivity, and whether an omission changes coverage.
 
-The Phase 2C-A registry contains 25 sources: 21 locally included sources and four excluded or conditional sources. When every registered local source is readable, the 21 included sections come from these source families:
+The Phase 2C-B registry remains 25 sources: 21 locally included sources and four excluded or conditional sources. When every registered local source is readable, the 21 included sections come from these source families:
 
-- Deal Finder / Deal Inbox, appraisals, auctions, Search Rules, purchases, lots, inventory, sales, expenses, mileage, activity, and provider-listing snapshots;
+- Deal Finder / Deal Inbox schema 3: appraisals, auctions, Search Rules, purchases, legacy lots/cost allocations, Inventory, owner-confirmed acquisition lots/applications/events/adjustments, sales/returns, expenses, mileage, activity, and provider-listing snapshots;
 - Owner Center restock profiles/events/predictions, visits, observations, import summaries, and local job summaries;
 - allowlisted legacy collection/business records;
 - legacy restock/store and private community records;
@@ -102,7 +102,9 @@ For Account Ops, prohibited data additionally includes plaintext/generated passw
 
 For Bot Operations, every included value must pass the domain's recursive authority/credential/raw-provider guard and schema validator. Proxy type/provider/region/health/count/latency metadata may be included; proxy connection/authentication data may not. Static provider keys, normalized task/attempt states, or Checkout Evidence do not make a Bot connection, checkout, order, Purchase, receiving, or Inventory source complete.
 
-For Purchase/Receiving, every included value must pass the domain's recursive authority/credential/raw-source guard and exact-money schema validator. It may include nonsecret transaction metadata, source references, corrections, confirmation facts, and Receiving Events. It may not include payment credentials, retailer authentication, raw messages/provider payloads, client authority, or a derived Inventory Handoff Preview. A Receiving Event in backup is not an Inventory record and cannot make inventory coverage complete.
+For Purchase/Receiving, every included value must pass the domain's recursive authority/credential/raw-source guard and exact-money schema validator. It may include nonsecret transaction metadata, source references, corrections, confirmation facts, and Receiving Events. It may not include payment credentials, retailer authentication, raw messages/provider payloads, client authority, a derived Inventory Handoff Preview, or an ephemeral Inventory Creation Candidate. A Receiving Event in backup is not an Inventory record and cannot make inventory coverage complete.
+
+For Phase 2C-B Inventory provenance, every included schema-3 Deal Finder value must pass the recursive security guard and exact integer-minor-unit record validator. Safe applications, creation events, acquisition lots, adjustments, and provenance-managed Inventory rows may retain stable Purchase/Receiving/product/lot references, quantities, condition, currency, original/current costs, owner-confirmation method, and bounded summaries. They may not embed candidate/preview state, client authority, credentials, payment authentication, raw source evidence, or arbitrary provider data.
 
 ## Phase 2A Account Ops extension
 
@@ -179,6 +181,23 @@ Restore Preview checks schema/counts/IDs, duplicate source and external-order id
 
 All five paths are `REQUIRES_MAPPING`. The Phase 1B schema's generic Purchase domains do not yet represent the richer owner-review and Receiving contract. No migration action maps Receiving to an Inventory or Inventory Adjustment domain, and no restore/import path is active.
 
+## Phase 2C-B Inventory creation extension
+
+Phase 2C-B does not add a 26th source or another Inventory section. It advances the existing `deal-finder` source to schema version 3 and adds these declared record paths:
+
+```text
+inventoryLots
+inventoryCreationApplications
+inventoryCreationEvents
+inventoryAdjustments
+```
+
+Phase 2C-B-managed rows in the existing `inventory` path are also validated for exact cost and protected provenance. The schema-3 validator requires a complete application/event/item/lot bundle for every source identity, unique deterministic IDs, reciprocal item/lot links, and strict reconciliation of Purchase, line, Receiving, product, original Purchase product, received product, owner-resolution reason, currency, condition, disposition, original/current quantity, total cost, and per-unit arrays. Adjustments must reference their application/item/lot/Purchase bundle. Generic edits/deletes cannot be inferred from a backup record.
+
+`InventoryHandoffPreview` and `InventoryCreationCandidate` are pure in-memory projections and never appear as paths, records, metrics, filenames, or derivatives. Backup generation does not confirm a candidate, repair a write, reverse Inventory, or change any source.
+
+Restore Preview validates schema/counts/IDs, complete application/event/item/lot bundles, adjustment references, exact current/original unit sums, duplicate source identity, protected provenance, and migration warnings with zero writes. It cannot create or reverse Inventory. Migration Preview classifies the mixed existing `inventory` collection plus `inventoryLots`, `inventoryCreationApplications`, `inventoryCreationEvents`, and `inventoryAdjustments` as `REQUIRES_MAPPING`; it does not activate remote Inventory, apply the canonical schema, or map Receiving automatically.
+
 ## Phase 2D-B2 Stellar preview exclusion
 
 `StellarTaskExportPreview` is not a Backup Format v1 source and does not add a record path to `bot-operations`. The owner-selected JSON file, raw text/bytes, full path, basename, file metadata, source hash/fingerprint, parsed tree, normalized preview rows, duplicates, format state, recognized/ignored fields, security findings, warnings, retailer labels, and summary counts are component-memory data only.
@@ -189,7 +208,7 @@ Backup generation while a preview is open exports the same registered sources an
 
 ## Phase 2B2-B managed-provider exclusion
 
-Phase 2B2-B does not itself change registry totals. After the additive Phase 2D-A Bot Operations section and Phase 2C-A Purchase/Receiving section, the totals are **25 sources, 21 locally included, and four excluded or conditional**. Managed provider operational state is not a user-backup source.
+Phase 2B2-B and Phase 2C-B do not change registry totals. After the additive Phase 2D-A Bot Operations and Phase 2C-A Purchase/Receiving sections, the totals remain **25 sources, 21 locally included, and four excluded or conditional**. Managed provider operational state is not a user-backup source.
 
 The following remain prohibited even if a future Preview resource is provisioned:
 
@@ -301,3 +320,4 @@ Restore Preview accepts only recognized, supported versions. New formats require
 - Phase 2A Account Ops metadata can include personal and operational identity data. It is sanitized but not encrypted by Backup Format v1, and no provider secret, plaintext password, OTP, mailbox content, or retailer session is recoverable from it.
 - Phase 2B1 Inbox/Order Intelligence metadata can include retailer, alias/account relationship and order evidence. It is sanitized but not encrypted; raw/protected content, OAuth/provider secrets, and live connection state are intentionally unrecoverable, and no Purchase restore/import exists.
 - Phase 2D-A Bot Operations metadata can include provider/installation/task/product/account/profile/proxy-metadata relationships, attempts and Checkout Evidence. It is sanitized but not encrypted; all credentials/raw provider data/live connection state are intentionally unrecoverable, and no task control, order reconciliation, Purchase, receiving, or Inventory restore/import exists.
+- Phase 2C-B Inventory acquisition metadata can include exact cost, product, Purchase/Receiving, lot, application/event, and adjustment relationships. It is sanitized but not encrypted. Restore Preview cannot apply it, every new remote path requires mapping, and same-origin local idempotency is not server/multi-device durability.

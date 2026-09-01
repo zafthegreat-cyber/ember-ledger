@@ -1,4 +1,4 @@
-export const FLIP_SCOUT_SCHEMA_VERSION = 2;
+export const FLIP_SCOUT_SCHEMA_VERSION = 3;
 export const FLIP_SCOUT_STORAGE_KEY = "ember-and-tide.flip-scout.v1";
 
 export const RECORD_COLLECTIONS = [
@@ -8,8 +8,14 @@ export const RECORD_COLLECTIONS = [
   "searchRules",
   "purchases",
   "lots",
+  "costAllocations",
   "inventory",
+  "inventoryLots",
+  "inventoryCreationApplications",
+  "inventoryCreationEvents",
+  "inventoryAdjustments",
   "sales",
+  "returns",
   "expenses",
   "mileage",
   "activity",
@@ -159,8 +165,14 @@ export function createEmptyFlipScoutState(now = new Date().toISOString()) {
     searchRules: [],
     purchases: [],
     lots: [],
+    costAllocations: [],
     inventory: [],
+    inventoryLots: [],
+    inventoryCreationApplications: [],
+    inventoryCreationEvents: [],
+    inventoryAdjustments: [],
     sales: [],
+    returns: [],
     expenses: [],
     mileage: [],
     activity: [],

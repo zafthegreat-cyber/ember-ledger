@@ -98,7 +98,7 @@ for (const option of ["mode", "persistenceMode", "remoteDataSource", "request", 
   equal(service.automaticPurchaseCreation, false);
   equal(service.automaticReceiving, false);
   equal(service.automaticInventoryMutation, false);
-  equal(service.inventoryWriterAvailable, false);
+  equal(service.inventoryWriterAvailable, true, "Inventory writer exists only behind explicit owner-confirmed candidate validation");
   for (const name of ["createInventory", "receiveInventory", "importPurchase", "importOrderCandidate", "importCheckoutEvidence", "sync", "delete"]) {
     equal(name in service, false, `${name} is not an available service capability`);
   }

@@ -1,5 +1,6 @@
 import { calculateSaleResults, nonNegative, safeNumber } from "./calculations.js";
 import { soldQuantityForInventory } from "./inventory.js";
+import { availableInventoryCostMajorUnits, inventoryRecordCostMajorUnits } from "./exactInventoryCost.js";
 
 export function formatCurrency(value, options = {}) {
   const parsed = safeNumber(value, 0);
@@ -57,7 +58,7 @@ export function getActualVsProjectedRows(state = {}, now = new Date()) {
     const projectedProfit = safeNumber(item.originalProjectedProfit ?? item.projectedProfit);
     const projectedRoiInput = safeNumber(item.originalProjectedRoi ?? item.projectedRoi);
     const projectedRoi = Math.abs(projectedRoiInput) > 1 ? projectedRoiInput / 100 : projectedRoiInput;
-    const actualPurchasePrice = safeNumber(item.actualPurchasePrice ?? item.allocatedItemCost ?? item.totalPurchaseCost);
+    const actualPurchasePrice = inventoryRecordCostMajorUnits(item);
     const lastSaleDate = itemSales.map((sale) => new Date(sale.saleDate || sale.createdAt || 0)).sort((a, b) => b - a)[0];
     const purchaseDate = new Date(item.purchaseDate || item.createdAt || now);
     const daysToSell = lastSaleDate && Number.isFinite(lastSaleDate.getTime()) && Number.isFinite(purchaseDate.getTime())
@@ -97,12 +98,7 @@ export function getDashboardSummary(state = {}, now = new Date()) {
     return (!end || end >= now.getTime()) && !["won", "lost", "cancelled"].includes(String(auction.outcome || "").toLowerCase());
   });
   const completedSales = sales.filter((sale) => String(sale.status || "").toLowerCase() === "completed");
-  const inventoryCost = inventory.reduce((total, item) => {
-    const quantity = Math.max(1, nonNegative(item.quantity || 1));
-    const available = Math.max(0, quantity - soldQuantityForInventory(item.id, sales));
-    const allocatedRecordCost = nonNegative(item.allocatedItemCost || item.totalPurchaseCost);
-    return total + allocatedRecordCost * (available / quantity);
-  }, 0);
+  const inventoryCost = inventory.reduce((total, item) => total + availableInventoryCostMajorUnits(item, sales), 0);
   const projectedInventoryValue = inventory.reduce((total, item) => {
     const available = Math.max(0, nonNegative(item.quantity) - soldQuantityForInventory(item.id, sales));
     return total + nonNegative(item.projectedResaleMid) * available;

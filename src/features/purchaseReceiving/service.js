@@ -21,6 +21,9 @@ import {
 import { createPurchaseReceivingPersistence } from "./persistence.js";
 import { normalizePurchaseMoney } from "./money.js";
 import { assertSafePurchaseReceivingInput, safePurchaseReceivingClone, sanitizePurchaseReceivingNote } from "./security.js";
+import { deriveInventoryCreationCandidates } from "./inventoryCreation/contracts.js";
+import { createInventoryCreationGateway } from "./inventoryCreation/gateway.js";
+import { INVENTORY_CREATION_SAFETY } from "./inventoryCreation/constants.js";
 
 const PROHIBITED_OPTIONS = new Set([
   "mode", "persistenceMode", "remoteDataSource", "request", "remoteActive", "sync", "syncEngine",
@@ -46,7 +49,7 @@ export class PurchaseReceivingServiceError extends Error {
 
 function assertNoCallerMode(options) {
   const prohibited = Object.keys(options || {}).find((key) => PROHIBITED_OPTIONS.has(key));
-  if (prohibited) throw new PurchaseReceivingServiceError("UNSAFE_OPTION_REJECTED", `Purchase/Receiving does not accept ${prohibited}; LOCAL_ONLY and zero inventory mutation are fixed.`, { field: prohibited });
+  if (prohibited) throw new PurchaseReceivingServiceError("UNSAFE_OPTION_REJECTED", `Purchase/Receiving does not accept ${prohibited}; LOCAL_ONLY and verified-owner boundaries are fixed.`, { field: prohibited });
 }
 
 function isoNow(clock) {
@@ -189,7 +192,14 @@ export function createPurchaseReceivingService(options = {}) {
   let sequence = 0;
   const idFactory = options.idFactory || ((prefix) => `${prefix}:${globalThis.crypto?.randomUUID?.() || `${Date.now()}-${sequence += 1}`}`);
   const isOwnerAuthorized = typeof options.isOwnerAuthorized === "function" ? options.isOwnerAuthorized : () => false;
-  const persistence = createPurchaseReceivingPersistence({ storage: options.storage, repository: options.repository, now });
+  const persistence = createPurchaseReceivingPersistence({ storage: options.storage, repository: options.repository, now, lockManager: options.inventoryLockManager });
+  const inventoryGateway = createInventoryCreationGateway({
+    storage: options.inventoryStorage,
+    repository: options.inventoryRepository,
+    lockManager: options.inventoryLockManager,
+    now,
+    isOwnerAuthorized,
+  });
 
   function assertOwner() {
     if (isOwnerAuthorized() !== true) throw new PurchaseReceivingServiceError("OWNER_REQUIRED", "A verified OWNER session is required before Purchase/Receiving mutation.");
@@ -232,7 +242,7 @@ export function createPurchaseReceivingService(options = {}) {
       sourceIdentityKey: draftSourceIdentity(input, draftId),
     };
     const draft = normalizePurchaseDraftInput(systemRecord(prepared, draftId, "PURCHASE_DRAFT", timestamp), { persisted: true });
-    const transaction = persistence.transact((state) => {
+    const transaction = await persistence.transactLocked((state) => {
       const duplicate = state.purchaseDrafts.find((entry) => entry.sourceIdentityKey === draft.sourceIdentityKey);
       if (duplicate) {
         assertCompatibleDraftReplay(duplicate, draft, "SOURCE_IDENTITY");
@@ -269,7 +279,7 @@ export function createPurchaseReceivingService(options = {}) {
     const correctedFields = Object.keys(patch).filter((field) => CORRECTABLE_DRAFT_FIELDS.has(field));
     if (!correctedFields.length) throw new PurchaseReceivingServiceError("CORRECTION_REQUIRED", "At least one correctable Purchase Draft field is required.");
     const timestamp = isoNow(now);
-    return persistence.transact((state) => {
+    return (await persistence.transactLocked((state) => {
       const current = requiredRecord(state, "purchaseDrafts", draftId);
       requireExpectedVersion(current, expectedVersion);
       if ([PURCHASE_DRAFT_STATES.CONFIRMED, PURCHASE_DRAFT_STATES.REJECTED, PURCHASE_DRAFT_STATES.CANCELLED].includes(current.status)) {
@@ -306,13 +316,13 @@ export function createPurchaseReceivingService(options = {}) {
         },
         result: candidate,
       };
-    }).result;
+    })).result;
   }
 
   async function markDraftReady(draftId, expectedVersion) {
     assertOwner();
     const timestamp = isoNow(now);
-    return persistence.transact((state) => {
+    return (await persistence.transactLocked((state) => {
       const current = requiredRecord(state, "purchaseDrafts", draftId);
       requireExpectedVersion(current, expectedVersion);
       if ([PURCHASE_DRAFT_STATES.CONFIRMED, PURCHASE_DRAFT_STATES.REJECTED, PURCHASE_DRAFT_STATES.CANCELLED].includes(current.status)) throw new PurchaseReceivingServiceError("DRAFT_TERMINAL", "A terminal Purchase Draft cannot be readied.");
@@ -321,13 +331,13 @@ export function createPurchaseReceivingService(options = {}) {
       const validation = validateDraftForConfirmation(candidate);
       if (!validation.valid) throw new PurchaseReceivingServiceError("DRAFT_NOT_CONFIRMABLE", "Purchase Draft has blocking confirmation errors.", validation);
       return { state: replaceRecord(state, "purchaseDrafts", candidate), result: { draft: candidate, validation } };
-    }).result;
+    })).result;
   }
 
   async function terminateDraft(draftId, status, reason, expectedVersion) {
     assertOwner();
     const timestamp = isoNow(now);
-    return persistence.transact((state) => {
+    return (await persistence.transactLocked((state) => {
       const current = requiredRecord(state, "purchaseDrafts", draftId);
       requireExpectedVersion(current, expectedVersion);
       if (current.status === PURCHASE_DRAFT_STATES.CONFIRMED) throw new PurchaseReceivingServiceError("DRAFT_CONFIRMED", "A confirmed Purchase Draft cannot be rejected or cancelled.");
@@ -348,14 +358,14 @@ export function createPurchaseReceivingService(options = {}) {
         },
         result: updated,
       };
-    }).result;
+    })).result;
   }
 
   async function confirmDraft(draftId, confirmation = {}) {
     assertOwner();
     assertSafePurchaseReceivingInput(confirmation);
     const timestamp = isoNow(now);
-    const transaction = persistence.transact((state) => {
+    const transaction = await persistence.transactLocked((state) => {
       const current = requiredRecord(state, "purchaseDrafts", draftId);
       const confirmationKey = `purchase-confirm:${current.id}`;
       const existing = state.purchases.find((entry) => entry.sourceDraftId === current.id || entry.confirmationKey === confirmationKey);
@@ -425,7 +435,7 @@ export function createPurchaseReceivingService(options = {}) {
     const idempotencyKey = String(input.idempotencyKey || "").trim();
     if (!idempotencyKey) throw new PurchaseReceivingServiceError("IDEMPOTENCY_KEY_REQUIRED", "Purchase adjustment requires a stable idempotencyKey.");
     const timestamp = isoNow(now);
-    return persistence.transact((state) => {
+    return (await persistence.transactLocked((state) => {
       const purchase = requiredRecord(state, "purchases", purchaseId);
       const existing = state.purchaseEvents.find((entry) => entry.purchaseId === purchase.id && entry.idempotencyKey === idempotencyKey);
       if (existing) {
@@ -545,7 +555,7 @@ export function createPurchaseReceivingService(options = {}) {
         },
         result: { event, purchase: updatedPurchase, deduplicated: false, wroteEvent: true },
       };
-    }).result;
+    })).result;
   }
 
   async function recordReceivingEvent(purchaseId, input) {
@@ -555,7 +565,7 @@ export function createPurchaseReceivingService(options = {}) {
     const idempotencyKey = String(input.idempotencyKey || "").trim();
     if (!idempotencyKey) throw new PurchaseReceivingServiceError("IDEMPOTENCY_KEY_REQUIRED", "Receiving confirmation requires a stable idempotencyKey.");
     const timestamp = isoNow(now);
-    const transaction = persistence.transact((state) => {
+    const transaction = await persistence.transactLocked((state) => {
       const purchase = requiredRecord(state, "purchases", purchaseId);
       const existing = state.receivingEvents.find((entry) => entry.purchaseId === purchase.id && entry.idempotencyKey === idempotencyKey);
       if (existing) {
@@ -631,6 +641,57 @@ export function createPurchaseReceivingService(options = {}) {
     return buildInventoryHandoffPreview(purchase, state.receivingEvents);
   }
 
+  function previewInventoryCreation(purchaseId, reviews = {}) {
+    assertOwner();
+    assertSafePurchaseReceivingInput(reviews);
+    const sourceState = persistence.read();
+    const purchase = requiredRecord(sourceState, "purchases", purchaseId);
+    return deriveInventoryCreationCandidates({
+      purchase,
+      receivingEvents: sourceState.receivingEvents,
+      inventoryState: inventoryGateway.load(),
+      reviews,
+    });
+  }
+
+  async function confirmInventoryCreation(candidateId, input = {}) {
+    assertOwner();
+    assertSafePurchaseReceivingInput(input);
+    const allowed = new Set(["expectedVersion", "review"]);
+    const unknown = Object.keys(input || {}).find((key) => !allowed.has(key));
+    if (unknown) throw new PurchaseReceivingServiceError("UNSUPPORTED_INVENTORY_CONFIRMATION_FIELD", `${unknown} cannot supply Inventory authority.`, { field: unknown });
+    const expectedVersion = String(input.expectedVersion || "").trim();
+    if (!expectedVersion) throw new PurchaseReceivingServiceError("EXPECTED_VERSION_REQUIRED", "Inventory confirmation requires the reviewed candidate version.");
+    const review = input.review || {};
+    return inventoryGateway.confirm({
+      candidateId: String(candidateId),
+      expectedVersion,
+      deriveCurrentCandidate(inventoryState) {
+        const sourceState = persistence.read();
+        for (const purchase of sourceState.purchases) {
+          const candidate = deriveInventoryCreationCandidates({
+            purchase,
+            receivingEvents: sourceState.receivingEvents,
+            inventoryState,
+            reviews: { [candidateId]: review },
+          }).find((entry) => entry.candidateId === candidateId);
+          if (candidate) return candidate;
+        }
+        throw new PurchaseReceivingServiceError("INVENTORY_CANDIDATE_NOT_FOUND", "Inventory candidate source is unavailable.");
+      },
+    });
+  }
+
+  async function reverseInventoryCreation(applicationId, input = {}) {
+    assertOwner();
+    assertSafePurchaseReceivingInput(input);
+    const allowed = new Set(["expectedInventoryVersion", "quantity", "reason", "idempotencyKey"]);
+    const unknown = Object.keys(input || {}).find((key) => !allowed.has(key));
+    if (unknown) throw new PurchaseReceivingServiceError("UNSUPPORTED_INVENTORY_REVERSAL_FIELD", `${unknown} cannot change authoritative Inventory.`, { field: unknown });
+    if (!String(input.idempotencyKey || "").trim()) throw new PurchaseReceivingServiceError("IDEMPOTENCY_KEY_REQUIRED", "Inventory reversal requires an idempotency key.");
+    return inventoryGateway.reverse({ applicationId, ...input });
+  }
+
   return Object.freeze({
     mode: "LOCAL_ONLY",
     authoritative: "LOCAL_ONLY",
@@ -639,7 +700,8 @@ export function createPurchaseReceivingService(options = {}) {
     automaticPurchaseCreation: false,
     automaticReceiving: false,
     automaticInventoryMutation: false,
-    inventoryWriterAvailable: false,
+    inventoryWriterAvailable: true,
+    inventoryCreationSafety: INVENTORY_CREATION_SAFETY,
     storageKey: persistence.repository.storageKey,
     snapshot,
     loadSnapshot: snapshot,
@@ -661,6 +723,17 @@ export function createPurchaseReceivingService(options = {}) {
     recordPurchaseAdjustment: recordPurchaseEvent,
     recordReceivingEvent,
     previewInventoryHandoff,
+    previewInventoryCreation,
+    confirmInventoryCreation,
+    reverseInventoryCreation,
+    listInventoryCreationApplications: () => {
+      assertOwner();
+      return safePurchaseReceivingClone(inventoryGateway.load().inventoryCreationApplications);
+    },
+    listInventoryCreationEvents: () => {
+      assertOwner();
+      return safePurchaseReceivingClone(inventoryGateway.load().inventoryCreationEvents);
+    },
     stateHash: () => {
       assertOwner();
       return hashCanonicalJson(persistence.read());

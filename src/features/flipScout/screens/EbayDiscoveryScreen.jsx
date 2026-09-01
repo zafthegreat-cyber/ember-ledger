@@ -142,7 +142,7 @@ export default function EbayDiscoveryScreen({ state, initialRuleId = "", onMerge
     setMessage("");
     try {
       const result = await searchEbayListings(request);
-      const merge = onMerge(result.listings, result.checkedAt);
+      const merge = await onMerge(result.listings, result.checkedAt);
       setLastRequest(request);
       setLastCheckedAt(result.checkedAt || new Date().toISOString());
       setPagination(result.pagination);
@@ -158,9 +158,9 @@ export default function EbayDiscoveryScreen({ state, initialRuleId = "", onMerge
     }
   };
 
-  const importListing = (listing) => {
-    const result = onImport(listing);
-    setMessage(result.updated ? "The existing Deal Inbox record was updated from this reviewed listing." : "Listing imported to the Deal Inbox for appraisal and decision-making.");
+  const importListing = async (listing) => {
+    const result = await onImport(listing);
+    setMessage(result?.error ? `Import failed: ${result.error}` : result.updated ? "The existing Deal Inbox record was updated from this reviewed listing." : "Listing imported to the Deal Inbox for appraisal and decision-making.");
   };
 
   return (

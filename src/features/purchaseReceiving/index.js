@@ -7,3 +7,7 @@ export * from "./contracts.js";
 export * from "./repository.js";
 export * from "./persistence.js";
 export * from "./service.js";
+export * from "./inventoryCreation/constants.js";
+export * from "./inventoryCreation/allocation.js";
+export * from "./inventoryCreation/contracts.js";
+export * from "./inventoryCreation/gateway.js";

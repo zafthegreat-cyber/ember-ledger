@@ -18,6 +18,12 @@ import {
   createPurchaseReceivingService,
   PURCHASE_RECEIVING_STORAGE_KEY,
 } from "../src/features/purchaseReceiving/index.js";
+import {
+  confirmFixturePurchase,
+  createInventoryHarness,
+  exactDraft,
+  receive,
+} from "./inventory-creation-test-helpers.mjs";
 
 class MemoryStorage {
   constructor(values = {}) {
@@ -85,6 +91,20 @@ async function createPurchaseReceivingRestoreState() {
 }
 
 const validPurchaseReceivingState = await createPurchaseReceivingRestoreState();
+async function createManagedInventoryRestoreState() {
+  const harness = createInventoryHarness();
+  const purchase = await confirmFixturePurchase(harness.service, exactDraft({ id: "restore-managed" }));
+  await receive(harness.service, purchase, { condition: "SEALED", id: "restore-managed" });
+  const otherPurchase = await confirmFixturePurchase(harness.service, exactDraft({ id: "restore-managed-other" }));
+  await receive(harness.service, otherPurchase, { condition: "SEALED", id: "restore-managed-other" });
+  const candidate = harness.service.previewInventoryCreation(purchase.id)[0];
+  await harness.service.confirmInventoryCreation(candidate.candidateId, { expectedVersion: candidate.expectedVersion });
+  return {
+    purchaseReceiving: JSON.parse(harness.purchaseStorage.values.get(PURCHASE_RECEIVING_STORAGE_KEY)),
+    inventory: JSON.parse(harness.inventoryStorage.values.get("ember-and-tide.flip-scout.v1")),
+  };
+}
+const validManagedInventoryState = await createManagedInventoryRestoreState();
 const localStorage = new MemoryStorage({ "ember-and-tide.flip-scout.v1": baseDealState });
 const sessionStorage = new MemoryStorage({ "private-business-hub.form-draft.purchase.new": { title: "Draft" } });
 const baseline = await createVerifiedBackup({ localStorage, sessionStorage, createdAt: NOW });
@@ -289,6 +309,41 @@ assert.equal(duplicatePurchaseExternalPreview.result, RESTORE_PREVIEW_RESULTS.BL
 assert.ok(
   duplicatePurchaseExternalPreview.errors.some((error) => /DUPLICATE_EXTERNAL_ORDER_IDENTITY|Purchase\/Receiving persisted state is invalid/.test(error)),
   "Restore Preview must block duplicate retailer/account/external-order identities",
+);
+
+const brokenManagedPurchaseLine = await mutateAndSeal((envelope) => {
+  envelope.sections.find((entry) => entry.sourceId === "purchase-receiving").data = structuredClone(validManagedInventoryState.purchaseReceiving);
+  const dealFinder = envelope.sections.find((entry) => entry.sourceId === "deal-finder");
+  dealFinder.data = structuredClone(validManagedInventoryState.inventory);
+  for (const collection of ["inventoryCreationApplications", "inventoryCreationEvents", "inventoryLots"]) {
+    dealFinder.data[collection][0].purchaseLineItemId = "purchase-line.missing-managed.test";
+  }
+  dealFinder.data.inventory.find((entry) => entry.provenanceManaged === true).purchaseLineItemId = "purchase-line.missing-managed.test";
+});
+const brokenManagedPurchaseLinePreview = await previewBackupRestore(JSON.stringify(brokenManagedPurchaseLine));
+assert.equal(brokenManagedPurchaseLinePreview.result, RESTORE_PREVIEW_RESULTS.BLOCKED);
+assert.ok(
+  brokenManagedPurchaseLinePreview.brokenReferences.some((issue) => issue.reference === "purchase-line.missing-managed.test" && issue.severity === "ERROR"),
+  "Restore Preview must block managed Inventory provenance whose Purchase line does not exist",
+);
+
+const crossPurchaseReceivingReference = await mutateAndSeal((envelope) => {
+  const purchaseReceiving = structuredClone(validManagedInventoryState.purchaseReceiving);
+  envelope.sections.find((entry) => entry.sourceId === "purchase-receiving").data = purchaseReceiving;
+  const dealFinder = envelope.sections.find((entry) => entry.sourceId === "deal-finder");
+  dealFinder.data = structuredClone(validManagedInventoryState.inventory);
+  const managedPurchaseId = dealFinder.data.inventoryCreationApplications[0].purchaseId;
+  const otherReceivingEvent = purchaseReceiving.receivingEvents.find((event) => event.purchaseId !== managedPurchaseId);
+  for (const collection of ["inventoryCreationApplications", "inventoryCreationEvents", "inventoryLots"]) {
+    dealFinder.data[collection][0].receivingEventReferences = [otherReceivingEvent.id];
+  }
+  dealFinder.data.inventory.find((entry) => entry.provenanceManaged === true).receivingEventReferences = [otherReceivingEvent.id];
+});
+const crossPurchaseReceivingPreview = await previewBackupRestore(JSON.stringify(crossPurchaseReceivingReference));
+assert.equal(crossPurchaseReceivingPreview.result, RESTORE_PREVIEW_RESULTS.BLOCKED);
+assert.ok(
+  crossPurchaseReceivingPreview.brokenReferences.some((issue) => issue.path.includes("receivingEventReferences") && issue.severity === "ERROR"),
+  "Restore Preview must block managed Inventory provenance that references another Purchase's Receiving Event",
 );
 
 const validAccountOps = await mutateAndSeal((envelope) => {

@@ -131,6 +131,11 @@
 .purchase-receiving-line-form > small { grid-column: 1 / -1; color: var(--text-muted, #8b9bb0); }
 
 .purchase-receiving-handoff { display: grid; gap: 14px; margin-top: 18px; }
+.inventory-creation-candidate { display: grid; gap: 12px; min-width: 0; }
+.inventory-creation-review { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.inventory-creation-review label { display: grid; gap: 6px; min-width: 0; color: var(--text-muted, #8b9bb0); font-size: 0.85rem; font-weight: 750; }
+.inventory-creation-review input,
+.inventory-creation-review select { width: 100%; min-height: 44px; box-sizing: border-box; border: 1px solid var(--border-subtle, rgba(127, 145, 168, 0.4)); border-radius: 10px; padding: 10px 12px; background: var(--surface-raised, rgba(255, 255, 255, 0.05)); color: inherit; font: inherit; }
 .purchase-receiving-warnings { margin: 0; padding-left: 22px; color: var(--warning-text, #d8a448); }
 .purchase-receiving-invariant { margin: 0; font-weight: 850; }
 .purchase-receiving-compatibility { color: var(--text-muted, #8b9bb0); }
@@ -154,7 +159,8 @@
   .purchase-receiving { gap: 14px; }
   .purchase-receiving-facts,
   .purchase-receiving-form,
-  .purchase-receiving-line-form { grid-template-columns: 1fr; }
+  .purchase-receiving-line-form,
+  .inventory-creation-review { grid-template-columns: 1fr; }
   .purchase-receiving-form__wide,
   .purchase-receiving-line-form,
   .purchase-receiving-line-form > small { grid-column: 1; }

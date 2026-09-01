@@ -18,6 +18,7 @@ import {
 } from "../../components/operations/OperationsUI.jsx";
 import { OWNER_SESSION_STATES } from "../../services/ownerSession.js";
 import { RECEIVING_DISCREPANCIES } from "./constants.js";
+import { INVENTORY_CREATION_PRODUCT_CLASSIFICATIONS } from "./inventoryCreation/constants.js";
 import { createPurchaseReceivingService } from "./service.js";
 import "./purchase-receiving.css";
 
@@ -181,20 +182,37 @@ function PurchaseCard({ purchase, events = [], busy, onReceive, onPreview }) {
   );
 }
 
-function InventoryHandoff({ preview, purchase, onClose }) {
+function InventoryHandoff({ preview, purchase, candidates = [], reviews = {}, busy, onReview, onConfirm, onClose }) {
   if (!preview || !purchase) return null;
   const rows = preview.rows || preview.items || preview.lineItems || preview.inventoryItems || [];
   return (
-    <section className="purchase-receiving-handoff" aria-labelledby="inventory-handoff-title" data-inventory-writer="false">
+    <section className="purchase-receiving-handoff" aria-labelledby="inventory-handoff-title" data-inventory-writer="owner-confirmed-only">
       <SectionHeader
         eyebrow="Preview only"
         title="Inventory Handoff Preview"
-        description="This derived review does not create inventory, change quantities, or alter cost basis."
+        description="The handoff remains a preview. A separate candidate must pass review before explicit Inventory creation."
         actions={<QuietButton onClick={onClose}>Close Preview</QuietButton>}
       />
       {rows.length ? <div className="purchase-receiving-grid">{rows.map((row, index) => <RecordCard key={row.id || row.lineItemId || index}><h3>{row.title || row.productTitle || "Unresolved product"}</h3><Facts rows={[{ label: "Quantity", value: row.quantity ?? row.quantityReceived }, { label: "Allocated cost", value: moneyLabel(row.allocatedAcquisitionCost || row.allocatedCost || row.acquisitionCost, purchase.currency) }, { label: "Condition", value: words(row.condition || "UNKNOWN") }, { label: "Product match", value: words(row.productMatchStatus || row.productMatch?.status || row.matchStatus || "UNRESOLVED") }]} /></RecordCard>)}</div> : <EmptyState title="Nothing is ready for inventory">Only owner-confirmed receiving can appear in this preview. No inventory record was created.</EmptyState>}
       {(preview.warnings || []).length ? <ul className="purchase-receiving-warnings">{preview.warnings.map((warning, index) => <li key={`${warning}-${index}`}>{typeof warning === "string" ? words(warning) : warning.message || "Review required"}</li>)}</ul> : null}
-      <p className="purchase-receiving-invariant">Receiving != Inventory</p>
+      <SectionHeader eyebrow="Owner confirmation" title="Inventory Creation Candidates" description="Quantity and cost are re-derived from the confirmed Purchase and physical Receiving records when you confirm." />
+      {candidates.length ? <div className="purchase-receiving-grid">{candidates.map((candidate) => {
+        const review = reviews[candidate.candidateId] || {};
+        return <RecordCard className="inventory-creation-candidate" key={candidate.candidateId} data-candidate-state={candidate.alreadyConfirmed ? "confirmed" : candidate.eligible ? "eligible" : "blocked"}>
+          <div className="purchase-receiving-card__heading"><div><SourceBadge>Receiving evidence</SourceBadge><h3>{candidate.productTitle || candidate.productReference || "Unresolved product"}</h3><p>{candidate.receivingEventReferences.join(" · ")}</p></div><StatusBadge tone={candidate.alreadyConfirmed || candidate.eligible ? "success" : "warning"}>{candidate.alreadyConfirmed ? "Inventory created" : candidate.eligible ? "Ready for review" : "Review required"}</StatusBadge></div>
+          <Facts rows={[{ label: "Quantity", value: candidate.quantityEligible }, { label: "Allocated cost", value: moneyLabel(candidate.totalAcquisitionCost, candidate.currency) }, { label: "Unit costs", value: candidate.unitAcquisitionCostsMinorUnits.map((value) => moneyLabel({ minorUnits: value, currency: candidate.currency })).join(" · ") }, { label: "Product match", value: words(candidate.productMatchState) }, { label: "Classification", value: candidate.productClassification || "Review required" }, { label: "Existing product lots", value: candidate.existingInventoryReferences.length }, { label: "Condition", value: words(candidate.condition) }]} />
+          {!candidate.alreadyConfirmed ? <div className="inventory-creation-review" aria-label={`Review ${candidate.productTitle || "Inventory candidate"}`}>
+            <label><span>Product classification</span><select value={review.productClassification || candidate.productClassification || ""} onChange={(event) => onReview(candidate, { productClassification: event.target.value || null })}><option value="">Choose classification</option>{Object.values(INVENTORY_CREATION_PRODUCT_CLASSIFICATIONS).map((classification) => <option key={classification} value={classification}>{classification}{["Raw card", "Graded card"].includes(classification) ? " (future condition workflow)" : ""}</option>)}</select></label>
+            <label><span>Condition</span><select value={review.condition || candidate.condition} onChange={(event) => onReview(candidate, { condition: event.target.value })}><option value="NEW">New</option><option value="SEALED">Sealed</option><option value="OPEN_BOX">Open box</option><option value="DAMAGED">Damaged</option><option value="USED">Used</option><option value="UNKNOWN">Unknown</option></select></label>
+            <label><span>Disposition</span><select value={review.disposition || candidate.disposition} onChange={(event) => onReview(candidate, { disposition: event.target.value })}><option value="ADD_TO_INVENTORY">Add to inventory</option><option value="ADD_AS_DAMAGED">Add as damaged</option><option value="HOLD_FOR_RETURN">Hold for return</option><option value="HOLD_FOR_CLAIM">Hold for claim</option><option value="EXCLUDE">Exclude</option></select></label>
+            <label className="purchase-receiving-form__wide"><span>Resolved product reference</span><input value={review.productReference ?? candidate.productReference ?? ""} onChange={(event) => onReview(candidate, { productReference: event.target.value, resolutionReason: "Owner reviewed the actual received product." })} maxLength={500} /></label>
+          </div> : null}
+          {candidate.blockers.length ? <ul className="purchase-receiving-warnings">{candidate.blockers.map((blocker) => <li key={blocker}>{words(blocker)}</li>)}</ul> : null}
+          {candidate.warnings.length ? <ul className="purchase-receiving-warnings">{candidate.warnings.map((warning) => <li key={warning}>{words(warning)}</li>)}</ul> : null}
+          {!candidate.alreadyConfirmed ? <PrimaryButton onClick={() => onConfirm(candidate)} disabled={busy || !candidate.eligible}>Confirm Inventory Creation</PrimaryButton> : null}
+        </RecordCard>;
+      })}</div> : <EmptyState title="No Inventory Creation Candidates">Only positive, owner-confirmed Receiving quantities produce an ephemeral candidate.</EmptyState>}
+      <p className="purchase-receiving-invariant">Receiving != Inventory · Inventory Handoff Preview != Inventory · Inventory Creation Candidate != Inventory</p>
     </section>
   );
 }
@@ -240,6 +258,7 @@ export default function PurchaseReceivingPage({
   const [selected, setSelected] = useState(null);
   const [form, setForm] = useState({});
   const [handoff, setHandoff] = useState(null);
+  const [inventoryReviews, setInventoryReviews] = useState({});
   const [message, setMessage] = useState({ text: "", tone: "info" });
   const [busy, setBusy] = useState(false);
 
@@ -251,6 +270,7 @@ export default function PurchaseReceivingPage({
       setSelected(null);
       setForm({});
       setHandoff(null);
+      setInventoryReviews({});
       setMessage({ text: "", tone: "info" });
       setBusy(false);
       return;
@@ -343,7 +363,8 @@ export default function PurchaseReceivingPage({
     const result = await run(() => service.recordReceivingEvent(selected.id, { idempotencyKey: form.idempotencyKey, locationReference: form.locationReference, entries: lineReceipts }), "Receiving event recorded. Inventory was not created.");
     if (result) {
       const updatedPurchase = result.purchase || selected;
-      setHandoff({ purchase: updatedPurchase, preview: service.previewInventoryHandoff(updatedPurchase.id) });
+      setInventoryReviews({});
+      setHandoff({ purchase: updatedPurchase, preview: service.previewInventoryHandoff(updatedPurchase.id), candidates: service.previewInventoryCreation(updatedPurchase.id) });
       setDialog("");
       setSelected(null);
       setSection("receiving");
@@ -352,10 +373,30 @@ export default function PurchaseReceivingPage({
 
   function previewHandoff(purchase) {
     try {
-      setHandoff({ purchase, preview: service.previewInventoryHandoff(purchase.id) });
+      setInventoryReviews({});
+      setHandoff({ purchase, preview: service.previewInventoryHandoff(purchase.id), candidates: service.previewInventoryCreation(purchase.id) });
       setSection("receiving");
     } catch (error) {
       setMessage({ text: error?.message || "Inventory Handoff Preview is unavailable.", tone: "error" });
+    }
+  }
+
+  function updateInventoryReview(candidate, patch) {
+    if (!service || !handoff?.purchase) return;
+    const nextReviews = { ...inventoryReviews, [candidate.candidateId]: { ...(inventoryReviews[candidate.candidateId] || {}), ...patch } };
+    try {
+      const candidates = service.previewInventoryCreation(handoff.purchase.id, nextReviews);
+      setInventoryReviews(nextReviews);
+      setHandoff({ ...handoff, candidates });
+    } catch (error) {
+      setMessage({ text: error?.message || "Inventory candidate review could not be applied.", tone: "error" });
+    }
+  }
+
+  async function confirmInventory(candidate) {
+    const result = await run(() => service.confirmInventoryCreation(candidate.candidateId, { expectedVersion: candidate.expectedVersion, review: inventoryReviews[candidate.candidateId] || {} }), "Inventory was created once with Purchase and Receiving provenance.");
+    if (result && handoff?.purchase) {
+      setHandoff({ ...handoff, candidates: service.previewInventoryCreation(handoff.purchase.id, inventoryReviews) });
     }
   }
 
@@ -365,14 +406,14 @@ export default function PurchaseReceivingPage({
   if (!authorized) return <main className="purchase-receiving purchase-receiving--denied" data-page="purchase-receiving" data-owner-gate="required"><ErrorState title="Owner access unavailable" action={<PrimaryButton onClick={onReturnHome}>Return to Business</PrimaryButton>}>Owner authorization could not be verified. No Purchase records were loaded.</ErrorState></main>;
 
   return (
-    <main className="purchase-receiving" data-page="purchase-receiving" data-testid="purchase-receiving-page" data-owner-gate="authorized" data-inventory-writer="false">
+    <main className="purchase-receiving" data-page="purchase-receiving" data-testid="purchase-receiving-page" data-owner-gate="authorized" data-inventory-writer="owner-confirmed-only">
       <PageHeader
         eyebrow="Business · Owner review"
         title="Purchases & Receiving"
-        description="Turn reviewed local drafts into Purchases, confirm physical receiving, and preview—never create—future inventory."
+        description="Review Purchases, confirm physical Receiving, and explicitly create local Inventory only after every boundary passes."
         actions={onOpenLegacyPurchases ? <QuietButton onClick={onOpenLegacyPurchases}>Legacy Purchase Records</QuietButton> : null}
       />
-      <p className="purchase-receiving-boundary">Order Candidate != Purchase · Checkout Evidence != Purchase · Purchase Draft != Purchase · Receiving != Inventory</p>
+      <p className="purchase-receiving-boundary">Order Candidate != Purchase · Checkout Evidence != Purchase · Purchase Draft != Purchase · Receiving != Inventory · Inventory Creation Candidate != Inventory</p>
       {message.text ? <Toast tone={message.tone}>{message.text}</Toast> : null}
       <div className="purchase-receiving-metrics" aria-label="Purchase and Receiving summary">
         <MetricCard label="Drafts" value={drafts.length} helper="Non-authoritative review records" />
@@ -388,9 +429,9 @@ export default function PurchaseReceivingPage({
 
       {section === "purchases" ? <section aria-label="Confirmed Purchases"><SectionHeader title="Confirmed Purchases" description="These records exist only after explicit owner confirmation. Receipt and inventory are separate workflows." />{purchases.length ? <div className="purchase-receiving-grid">{purchases.map((purchase) => <PurchaseCard key={purchase.id} purchase={purchase} events={receivingEvents} busy={busy} onReceive={openReceiving} onPreview={previewHandoff} />)}</div> : <EmptyState title="No confirmed Purchases">Confirm a valid Purchase Draft to create exactly one local Purchase.</EmptyState>}</section> : null}
 
-      {section === "receiving" ? <section aria-label="Receiving"><SectionHeader title="Receiving" description="Record only physical receipt, including partial shipments and discrepancies." />{receivingPurchases.length ? <div className="purchase-receiving-grid">{receivingPurchases.map((purchase) => <PurchaseCard key={purchase.id} purchase={purchase} events={receivingEvents} busy={busy} onReceive={openReceiving} onPreview={previewHandoff} />)}</div> : <EmptyState title="Nothing awaiting receipt">There are no owner-confirmed Purchases waiting for receiving.</EmptyState>}<InventoryHandoff preview={handoff?.preview} purchase={handoff?.purchase} onClose={() => setHandoff(null)} /></section> : null}
+      {section === "receiving" ? <section aria-label="Receiving"><SectionHeader title="Receiving" description="Record only physical receipt, including partial shipments and discrepancies." />{receivingPurchases.length ? <div className="purchase-receiving-grid">{receivingPurchases.map((purchase) => <PurchaseCard key={purchase.id} purchase={purchase} events={receivingEvents} busy={busy} onReceive={openReceiving} onPreview={previewHandoff} />)}</div> : <EmptyState title="Nothing awaiting receipt">There are no owner-confirmed Purchases waiting for receiving.</EmptyState>}<InventoryHandoff preview={handoff?.preview} purchase={handoff?.purchase} candidates={handoff?.candidates} reviews={inventoryReviews} busy={busy} onReview={updateInventoryReview} onConfirm={confirmInventory} onClose={() => { setHandoff(null); setInventoryReviews({}); }} /></section> : null}
 
-      <aside className="purchase-receiving-compatibility"><strong>Legacy compatibility</strong><p>Existing Deal Finder purchase tracking remains separate and unchanged. Phase 2C-A does not clone or migrate those records.</p>{onOpenLegacyPurchases ? <QuietButton onClick={onOpenLegacyPurchases}>Open Legacy Purchase Records</QuietButton> : null}</aside>
+      <aside className="purchase-receiving-compatibility"><strong>Legacy compatibility</strong><p>Existing Deal Finder records remain compatible. Owner-confirmed Inventory is written only to the established local Business Inventory authority as a separate provenance lot.</p>{onOpenLegacyPurchases ? <QuietButton onClick={onOpenLegacyPurchases}>Open Legacy Purchase Records</QuietButton> : null}</aside>
 
       <Dialog open={dialog === "correct"} title="Correct Purchase Draft" description="Corrections append provenance; they do not replace source evidence." onClose={() => setDialog("")} actions={<><SecondaryButton onClick={() => setDialog("")}>Cancel</SecondaryButton><PrimaryButton onClick={correctDraft} disabled={busy}>Save Correction</PrimaryButton></>}><div className="purchase-receiving-form"><label><span>Retailer or vendor</span><input value={form.retailerLabel || ""} onChange={(event) => setForm({ ...form, retailerLabel: event.target.value })} maxLength={500} /></label><label><span>External order reference</span><input value={form.externalOrderId || ""} onChange={(event) => setForm({ ...form, externalOrderId: event.target.value })} maxLength={256} /></label><label><span>Order date</span><input type="date" value={form.orderedAt || ""} onChange={(event) => setForm({ ...form, orderedAt: event.target.value })} /></label></div></Dialog>
       <Dialog open={dialog === "reject"} title="Reject Purchase Draft" description="Rejection preserves review history and creates no Purchase." onClose={() => setDialog("")} actions={<><SecondaryButton onClick={() => setDialog("")}>Cancel</SecondaryButton><PrimaryButton onClick={rejectDraft} disabled={busy}>Reject Draft</PrimaryButton></>}><div className="purchase-receiving-form"><label className="purchase-receiving-form__wide"><span>Reason</span><textarea value={form.reason || ""} onChange={(event) => setForm({ reason: event.target.value })} maxLength={1000} /></label></div></Dialog>

@@ -6,6 +6,8 @@ const PROHIBITED_OPTIONS = new Set([
   "sync", "syncEngine", "migrationApply", "migrationExecutor", "rollbackExecutor", "providerNetworkAccess",
 ]);
 
+export const PURCHASE_INVENTORY_MUTATION_LOCK = "code3:owner-confirmed-purchase-inventory:v1";
+
 export class PurchaseReceivingPersistenceError extends Error {
   constructor(code, message, details = {}) {
     super(message);
@@ -30,6 +32,7 @@ function rejectCallerMode(options) {
 export function createPurchaseReceivingPersistence(options = {}) {
   rejectCallerMode(options);
   const repository = options.repository || createPurchaseReceivingRepository(options.storage, { now: options.now });
+  const lockManager = options.lockManager;
 
   function read() {
     return safePurchaseReceivingClone(repository.load());
@@ -52,6 +55,26 @@ export function createPurchaseReceivingPersistence(options = {}) {
     return Object.freeze({ state: saved, result: safePurchaseReceivingClone(outcome?.result ?? null) });
   }
 
+  function withMutationLock(action) {
+    if (typeof lockManager === "function") return lockManager(PURCHASE_INVENTORY_MUTATION_LOCK, action);
+    // Deterministic Node-domain tests do not represent a browser document and
+    // therefore do not participate in same-origin tab concurrency. Check this
+    // before Node's partial navigator.locks implementation, which can leave
+    // sequential top-level test awaits unsettled.
+    if (typeof window === "undefined") return Promise.resolve().then(action);
+    if (globalThis.navigator?.locks?.request) {
+      return globalThis.navigator.locks.request(PURCHASE_INVENTORY_MUTATION_LOCK, { mode: "exclusive" }, action);
+    }
+    throw new PurchaseReceivingPersistenceError(
+      "SAFE_LOCK_UNAVAILABLE",
+      "Purchase and Receiving mutation requires same-origin exclusive locking.",
+    );
+  }
+
+  function transactLocked(mutator) {
+    return withMutationLock(() => transact(mutator));
+  }
+
   return Object.freeze({
     mode: "LOCAL_ONLY",
     authoritative: "LOCAL_ONLY",
@@ -61,5 +84,6 @@ export function createPurchaseReceivingPersistence(options = {}) {
     read,
     replace,
     transact,
+    transactLocked,
   });
 }

@@ -2,6 +2,11 @@ import { normalizeAccountOpsState } from "../accountOps/repository.js";
 import { normalizeBotOpsState } from "../botOps/repository.js";
 import { normalizeInboxOrderState } from "../inboxOrder/repository.js";
 import { normalizePurchaseReceivingState } from "../purchaseReceiving/repository.js";
+import { normalizeFlipScoutState } from "../flipScout/storageRepository.js";
+import { validateManagedInventorySales } from "../flipScout/exactInventoryCost.js";
+import {
+  validateInventoryCreationStateBundles,
+} from "../purchaseReceiving/inventoryCreation/contracts.js";
 
 function isJsonContainer(value) {
   return Boolean(value) && typeof value === "object";
@@ -49,6 +54,18 @@ function validatePurchaseReceivingV1(source, data) {
   } catch (error) {
     const code = error?.code ? ` (${error.code})` : "";
     return [`Purchase/Receiving persisted state is invalid${code}: ${error?.message || "validation failed"}`];
+  }
+}
+
+function validateDealFinderV3(source, data) {
+  try {
+    const normalized = normalizeFlipScoutState(data, "1970-01-01T00:00:00.000Z");
+    validateInventoryCreationStateBundles(normalized);
+    validateManagedInventorySales(normalized);
+    return [];
+  } catch (error) {
+    const code = error?.code ? ` (${error.code})` : "";
+    return [`Business Inventory persisted state is invalid${code}: ${error?.message || "validation failed"}`];
   }
 }
 
@@ -101,6 +118,9 @@ export function validateBackupSourceData(source, data, { requireSupportedSchema 
   }
   if (source?.validationAdapter === "purchase-receiving-v1") {
     errors.push(...validatePurchaseReceivingV1(source, data));
+  }
+  if (source?.validationAdapter === "deal-finder-v3") {
+    errors.push(...validateDealFinderV3(source, data));
   }
 
   return { valid: errors.length === 0, errors, schemaVersion };

@@ -1,4 +1,4 @@
-/** Phase 2C-A is a local business-domain contract; none of these flags are caller selectable. */
+/** Phase 2C-B is a local business-domain contract; none of these flags are caller selectable. */
 export const PURCHASE_RECEIVING_STORAGE_KEY = "code3.purchase-receiving.v1";
 export const PURCHASE_RECEIVING_SCHEMA_VERSION = 1;
 export const PURCHASE_RECEIVING_FORMAT = "code3.purchase-receiving.v1";
@@ -136,6 +136,11 @@ export const PURCHASE_RECEIVING_SAFETY_CONTRACT = Object.freeze({
   purchaseDraftEqualsPurchase: false,
   purchaseEqualsReceivedInventory: false,
   receivingEqualsInventory: false,
-  inventoryWriterAvailable: false,
+  inventoryHandoffPreviewEqualsInventory: false,
+  inventoryCreationCandidateEqualsInventory: false,
+  inventoryWriterAvailable: true,
+  inventoryCreationRequiresVerifiedOwner: true,
+  inventoryCreationRequiresExplicitConfirmation: true,
+  automaticProductCreation: false,
   secretPersistence: false,
 });

@@ -255,6 +255,15 @@ const PURCHASE_RECEIVING_REFERENCE_TARGETS = Object.freeze({
   receivingEventId: ["receivingEvents"],
 });
 
+const DEAL_FINDER_REFERENCE_TARGETS = Object.freeze({
+  inventoryLotId: ["inventoryLots"],
+  inventoryCreationApplicationId: ["inventoryCreationApplications"],
+  applicationId: ["inventoryCreationApplications"],
+  inventoryCreationEventId: ["inventoryCreationEvents"],
+  receivingEventReferences: ["receivingEvents"],
+  purchaseLineItemId: ["purchaseLineItems"],
+});
+
 function isStaticAccountOpsReference(row, key, value) {
   return row.sourceId === "account-ops"
     && key === "retailerId"
@@ -263,11 +272,32 @@ function isStaticAccountOpsReference(row, key, value) {
 
 function inspectReferences(records) {
   const idsByCollection = new Map();
+  const purchaseLineIdsByPurchase = new Map();
+  const receivingEventProvenance = new Map();
+  const registerCollectionId = (collection, id) => {
+    if (!id) return;
+    if (!idsByCollection.has(collection)) idsByCollection.set(collection, new Set());
+    idsByCollection.get(collection).add(String(id));
+  };
   for (const row of records) {
     const id = recordId(row.record);
-    if (!id) continue;
-    if (!idsByCollection.has(row.collection)) idsByCollection.set(row.collection, new Set());
-    idsByCollection.get(row.collection).add(id);
+    registerCollectionId(row.collection, id);
+    if (row.sourceId === "purchase-receiving" && row.collection === "purchases" && id && Array.isArray(row.record.lineItems)) {
+      const lineIds = new Set();
+      for (const line of row.record.lineItems) {
+        const lineId = String(line?.lineItemId || "").trim();
+        if (!lineId) continue;
+        lineIds.add(lineId);
+        registerCollectionId("purchaseLineItems", lineId);
+      }
+      purchaseLineIdsByPurchase.set(id, lineIds);
+    }
+    if (row.sourceId === "purchase-receiving" && row.collection === "receivingEvents" && id) {
+      receivingEventProvenance.set(id, {
+        purchaseId: String(row.record.purchaseId || "").trim(),
+        lineItemIds: new Set((row.record.entries || []).map((entry) => String(entry?.lineItemId || "").trim()).filter(Boolean)),
+      });
+    }
   }
   const brokenReferences = [];
   const stack = records.map((row) => ({ value: row.record, row, path: `${row.sourceId}.${row.collection}[${row.index}]` }));
@@ -279,8 +309,39 @@ function inspectReferences(records) {
     }
     if (!current.value || typeof current.value !== "object") continue;
     for (const [key, value] of Object.entries(current.value)) {
+      if (current.row.sourceId === "deal-finder" && key === "purchaseLineItemId" && value != null) {
+        const purchaseId = String(current.value.purchaseId || "").trim();
+        const lineId = String(value).trim();
+        if (!purchaseId || !purchaseLineIdsByPurchase.get(purchaseId)?.has(lineId)) {
+          brokenReferences.push({
+            path: `${current.path}.${key}`,
+            reference: lineId,
+            expectedCollections: ["purchaseLineItems"],
+            severity: "ERROR",
+          });
+        }
+      }
+      if (current.row.sourceId === "deal-finder" && key === "receivingEventReferences" && Array.isArray(value)) {
+        const purchaseId = String(current.value.purchaseId || "").trim();
+        const purchaseLineItemId = String(current.value.purchaseLineItemId || "").trim();
+        value.forEach((reference, index) => {
+          const receivingEventId = String(reference || "").trim();
+          const provenance = receivingEventProvenance.get(receivingEventId);
+          if (!receivingEventId || !purchaseId || !provenance || provenance.purchaseId !== purchaseId
+            || (purchaseLineItemId && !provenance.lineItemIds.has(purchaseLineItemId))) {
+            brokenReferences.push({
+              path: `${current.path}.${key}[${index}]`,
+              reference: receivingEventId,
+              expectedCollections: ["receivingEvents"],
+              severity: "ERROR",
+            });
+          }
+        });
+      }
       const sourceTargets = current.row.sourceId === "account-ops"
         ? ACCOUNT_OPS_REFERENCE_TARGETS
+        : current.row.sourceId === "deal-finder"
+          ? DEAL_FINDER_REFERENCE_TARGETS
         : current.row.sourceId === "bot-operations"
           ? BOT_OPS_REFERENCE_TARGETS
           : current.row.sourceId === "purchase-receiving"

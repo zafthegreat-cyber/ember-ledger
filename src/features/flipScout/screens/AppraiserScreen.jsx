@@ -506,7 +506,9 @@ export default function AppraiserScreen({ seed, onSave, repository = null, analy
           result,
           intelligenceResult: nextResult,
         };
-        onSave?.("appraisals", record, { title: "Deal analysis saved", detail: `${record.title || "Untitled listing"} · ${recommendation}` });
+        if (typeof onSave !== "function") throw new Error("Analysis storage is unavailable.");
+        const saved = await onSave("appraisals", record, { title: "Deal analysis saved", detail: `${record.title || "Untitled listing"} · ${recommendation}` });
+        if (!saved) throw new Error("The analysis was not saved. Your inputs remain available to review and try again.");
       }
       setSavedMessage(currentAnalysis ? "Reanalysis saved. The prior result remains in local history." : "Analysis saved with its evidence, assumptions, and result.");
     } catch (error) {
@@ -535,7 +537,7 @@ export default function AppraiserScreen({ seed, onSave, repository = null, analy
         <SectionHeading title="Deal Analysis" />
         {latestSavedAnalyses.length ? <details className="code3-saved-analyses"><summary>Saved analysis history ({latestSavedAnalyses.length})</summary><ul className="code3-history-list">{latestSavedAnalyses.map((record) => <li key={record.id}><span><strong>{record.systemResult?.identity?.productName || record.workflowSnapshot?.title || "Untitled analysis"}</strong><small>Revision {record.revision} · {new Date(record.analyzedAt).toLocaleString()}</small></span><button type="button" className="secondary-button" disabled={isSaving} onClick={() => openSavedAnalysis(record)}>Open</button></li>)}</ul></details> : null}
         <nav className="flip-analysis-steps" aria-label="Deal Analysis progress">
-          {STEPS.map((label, index) => <button key={label} type="button" className={index === step ? "is-active" : index < step ? "is-complete" : ""} aria-current={index === step ? "step" : undefined} disabled={index > step} onClick={() => setStep(index)}><span>{index + 1}</span><strong>{label}</strong></button>)}
+          {STEPS.map((label, index) => <button key={label} type="button" className={index === step ? "is-active" : index < step ? "is-complete" : ""} aria-current={index === step ? "step" : undefined} disabled={isSaving || index > step} onClick={() => setStep(index)}><span>{index + 1}</span><strong>{label}</strong></button>)}
         </nav>
 
         <form className="flip-form" onSubmit={save}>

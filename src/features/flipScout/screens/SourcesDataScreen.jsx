@@ -38,7 +38,7 @@ export default function SourcesDataScreen({ state, onExportJson, onImportJson, o
       setMessage("Import cancelled; current sourcing data was not changed.");
       return;
     }
-    const result = onImportJson(await file.text());
+    const result = await onImportJson(await file.text());
     setMessage(result.error ? `Import failed: ${result.error}` : "Sourcing JSON imported successfully.");
     event.target.value = "";
   };
@@ -54,7 +54,7 @@ export default function SourcesDataScreen({ state, onExportJson, onImportJson, o
       <div className="flip-data-actions">
         <article><h3>Full JSON backup</h3><p>Includes every sourcing record and schema version.</p><button type="button" className="primary-button" onClick={() => { onExportJson(); setMessage("Sourcing JSON backup prepared."); }}>Export JSON</button><button type="button" className="secondary-button" onClick={() => fileRef.current?.click()}>Import JSON</button><input ref={fileRef} className="flip-visually-hidden" type="file" accept="application/json,.json" onChange={importFile} /></article>
         <article><h3>CSV exports</h3><p>Exports flat bookkeeping and sourcing records. Empty collections produce a header-only file.</p><div className="flip-export-grid">{CSV_EXPORTS.map(([collection, label]) => <button type="button" className="secondary-button" key={collection} onClick={() => exportCsv(collection, label)}>{label} CSV <span>{state[collection].length}</span></button>)}</div></article>
-        <article className="flip-danger-zone"><h3>Clear sourcing data</h3><p>Removes only the namespaced sourcing repository on this device. Other application storage keys are untouched.</p><button type="button" className="ghost-button flip-delete-button" onClick={() => { if (window.confirm("Clear all sourcing data on this device? Export a backup first if you may need it.")) { onReset(); setMessage("Sourcing data cleared. This cannot be recovered unless you exported a JSON backup."); } }}>Clear all sourcing data</button></article>
+        <article className="flip-danger-zone"><h3>Clear sourcing data</h3><p>Removes only the namespaced sourcing repository on this device. Other application storage keys are untouched.</p><button type="button" className="ghost-button flip-delete-button" onClick={async () => { if (window.confirm("Clear all sourcing data on this device? Export a backup first if you may need it.")) { const result = await onReset(); setMessage(result?.error ? `Clear failed: ${result.error}` : "Sourcing data cleared. This cannot be recovered unless you exported a JSON backup."); } }}>Clear all sourcing data</button></article>
       </div>
       {message ? <p className="flip-form-message" role="status">{message}</p> : null}
       {!state.deals.length && !state.providerListings.length && !state.auctions.length && !state.inventory.length && !state.sales.length ? <EmptyState title="No exportable records yet">JSON export still creates a valid empty backup with the current schema version.</EmptyState> : null}

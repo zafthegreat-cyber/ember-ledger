@@ -16,7 +16,7 @@ Phase 2D-A adds the separate versioned `code3.bot-ops.v1` browser source for pro
 
 Phase 2D-B2 adds no stored domain. `StellarTaskExportPreview` is an ephemeral inspection projection over one owner-selected JSON file; it is not a `BotTask`, `BotTaskGroup`, `ProductTarget`, import job, provider event, or migration source. Raw input and normalized preview data remain in memory only and are discarded on close, replacement, navigation, or refresh.
 
-Phase 2C-A adds a separate versioned `code3.purchase-receiving.v1` browser source for non-authoritative Purchase Drafts, owner-confirmed exact-money Purchases, append-only Purchase/Receiving history, and bounded activity. Inventory Handoff Preview remains a derived in-memory projection and is not a stored collection. The source neither changes the Phase 1B canonical schema nor creates Inventory. `LOCAL_ONLY` remains authoritative.
+Phase 2C-A adds a separate versioned `code3.purchase-receiving.v1` browser source for non-authoritative Purchase Drafts, owner-confirmed exact-money Purchases, append-only Purchase/Receiving history, and bounded activity. Phase 2C-B keeps Inventory Handoff Preview and Inventory Creation Candidate as derived in-memory projections, then permits one explicit verified-OWNER confirmation into the existing local Business Inventory. It normalizes `ember-and-tide.flip-scout.v1` to schema version 3 with acquisition-lot/application/event/adjustment provenance; it does not change or apply the Phase 1B canonical schema. `LOCAL_ONLY` remains authoritative.
 
 This document distinguishes current persisted shapes, Phase 1B schema-only representations, and the future active canonical model. A table, migration file, repository interface, or dry-run result is not evidence that remote persistence is active.
 
@@ -27,7 +27,7 @@ This document distinguishes current persisted shapes, Phase 1B schema-only repre
 - Imported source evidence, normalized data, user corrections, and final records remain separate.
 - Historical financial and inventory facts are corrected, voided, returned, refunded, written off, or archived rather than destructively replaced.
 - Major records include stable ID, created/updated timestamp, created/updated actor, schema/version, source, archive status, and notes where relevant.
-- Target money uses integer minor units plus ISO currency. Current browser records use JavaScript numbers and require reconciliation during migration.
+- Target money uses integer minor units plus ISO currency. Phase 2C-A Purchase and Phase 2C-B provenance-managed Inventory use exact minor-unit authority; older browser records may still use JavaScript numbers and require reconciliation during migration.
 - Quantities use explicit units and validation; a draft sale does not reduce available quantity.
 - Dates are stored as UTC instants when time is meaningful, plus source time zone where interpretation matters.
 - Provider and external IDs are namespaced and never used as the sole internal primary key.
@@ -194,6 +194,28 @@ Receiving Events do not modify original Purchase evidence. Multiple partial rece
 
 All five persisted paths are registered for Backup Format v1 and classified `REQUIRES_MAPPING`. Restore Preview remains zero-write, and no migration action maps Receiving Events to Inventory. See [PURCHASE_RECEIVING_CONTRACT.md](./PURCHASE_RECEIVING_CONTRACT.md).
 
+### Phase 2C-B Inventory creation projection and records
+
+`InventoryCreationCandidate` is ephemeral and non-authoritative. It is re-derived from a confirmed Purchase, one owner-confirmed Receiving entry, current Inventory state, and an owner review. Purchase `RETURN_INITIATED`/`RETURNED`/`CANCELLED` and Receiving `RETURNED_TO_SENDER`/`CANCELLED`/`MISSING`/`NOT_RECEIVED` block derivation from becoming eligible. Important fields include deterministic `candidateId`, `expectedVersion`, Purchase/line/Receiving references, `quantityEligible`, product reference/match state, condition, disposition, exact total/unit acquisition costs, existing Inventory relationships, owner resolution reason, warnings, and blockers. It is not stored, backed up, restored, or migrated. Manual `OWNER_RESOLVED` identity must reference an existing local Inventory/product relationship; arbitrary strings cannot create products.
+
+The existing Flip Scout/Business Inventory document is schema version 3 and includes these Phase 2C-B paths:
+
+| Collection | Current purpose |
+|---|---|
+| `inventory` | existing canonical local Business Inventory items; Phase 2C-B rows are separate provenance-managed acquisition records |
+| `inventoryLots` | exact-cost acquisition lots linked to Purchase, line, Receiving, creation application/event, and Inventory item |
+| `inventoryCreationApplications` | deterministic completed idempotency/application identity per source candidate |
+| `inventoryCreationEvents` | append-only `INVENTORY_CREATED` facts with bounded source/provenance references |
+| `inventoryAdjustments` | append-only reviewed reversal/disposition records; never destructive replacement of creation facts |
+
+Each managed Inventory item and lot retains original and current quantity, original and current integer-minor-unit acquisition cost, original and current per-unit cost arrays, currency, condition, product reference, and stable provenance. A matching product may relate acquisitions, but each handoff remains a new lot/item so exact source cost is not silently averaged away.
+
+Stable record IDs are derived from the candidate/source identity. Confirmation occurs under a same-origin exclusive lock and writes the application, item, lot, event, and activity summary as one normalized document; read-back must contain a semantically matching complete result. Compatible interrupted subsets are repaired under the same IDs. Conflicting source semantics or stale versions fail closed.
+
+For quantity greater than one, integer division assigns a floor cost to each unit and distributes remainder minor units to earlier deterministic positions. Partial Receiving Events consume disjoint cost slices in authoritative append order; timestamps and client-chosen IDs cannot reorder earlier slices. Unit and event sums must equal the Purchase allocation exactly. Exact minor-unit fields feed compatibility projections used by the existing Business/Flip Scout Inventory, sales, COGS, summary, and valuation UI.
+
+`inventoryAdjustments` preserve the only Phase 2C-B post-creation mutation: append-only quantity/cost reversal. Refunds do not imply a reversal. Reversal is bounded by current available quantity after sales, uses an expected Inventory version and idempotency key, removes deterministic trailing unit-cost shares, and preserves original acquisition fields. Provenance-managed items/lots cannot use generic edit/delete paths. Richer post-creation product-resolution correction is deferred to Phase 2C-C. Backup validation requires a complete application/event/item/lot bundle with strict identity, resolution-reason, quantity, and exact-cost reconciliation. The mixed `deal-finder.inventory` migration path and all four new provenance paths are `REQUIRES_MAPPING`. See [INVENTORY_CREATION_CONTRACT.md](./INVENTORY_CREATION_CONTRACT.md).
+
 #### Stellar task-export preview projection
 
 Phase 2D-B2 defines a non-persisted `StellarTaskExportPreview` with bounded summary fields only:
@@ -302,7 +324,7 @@ The backend-only normalized principal contains immutable `subject`, `provider`, 
 
 Each source descriptor contains `sourceId`, `displayName`, `storageType`, `schemaVersion`, supported versions, owner-data and security-state flags, Phase 1A inclusion, export/validation adapter identifiers, reference dependencies, record paths, coverage relevance, and an exclusion reason when omitted.
 
-The Phase 2C-A registry contains 25 sources: 21 locally included sources and four excluded or conditional sources. Included local sources cover Deal Finder schema 2, Owner Center schema 1, Account Ops schema 1, Inbox/Order Intelligence schema 1, Bot Operations schema 1, Purchase/Receiving schema 1, allowlisted legacy business and fallback documents, legacy restock/community and review sources, safe preferences, and safe workflow drafts. Phase 1B may also include a valid owner-authorized canonical PostgreSQL export. Legacy Supabase, other PostgreSQL/process-memory records, and file bytes remain registered exclusions. Authentication/session persistence is a prohibited source and is never exportable. Account Ops, Inbox/Order Intelligence, Bot Operations, and Purchase/Receiving permit only their validated nonsecret metadata. Plaintext passwords, OTPs, tokens, sessions, OAuth state/codes/verifiers, provider/Bot/retailer/payment/proxy secrets, raw provider/protected content, credential-bearing URLs, security links, and owner-authority fields remain prohibited. The Phase 2A.5 product-workspace preference remains inside the existing `safe-ui-preferences` key group, which does not affect coverage or add a separate source.
+The registry remains 25 sources: 21 locally included sources and four excluded or conditional sources. Phase 2C-B adds no source; it extends the existing Deal Finder source from schema 2 to schema 3 with safe Inventory acquisition/provenance metadata. Included local sources otherwise cover Owner Center schema 1, Account Ops schema 1, Inbox/Order Intelligence schema 1, Bot Operations schema 1, Purchase/Receiving schema 1, allowlisted legacy business and fallback documents, legacy restock/community and review sources, safe preferences, and safe workflow drafts. Phase 1B may also include a valid owner-authorized canonical PostgreSQL export. Legacy Supabase, other PostgreSQL/process-memory records, and file bytes remain registered exclusions. Authentication/session persistence is a prohibited source and is never exportable. Account Ops, Inbox/Order Intelligence, Bot Operations, Purchase/Receiving, and managed Inventory provenance permit only validated nonsecret metadata. Plaintext passwords, OTPs, tokens, sessions, OAuth state/codes/verifiers, provider/Bot/retailer/payment/proxy secrets, raw provider/protected content, credential-bearing URLs, security links, browser authority, Inventory Handoff Preview, and Inventory Creation Candidate remain prohibited. The Phase 2A.5 product-workspace preference remains inside the existing `safe-ui-preferences` key group, which does not affect coverage or add a separate source.
 
 ### BackupEnvelope version 1
 

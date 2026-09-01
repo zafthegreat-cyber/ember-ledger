@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { AUCTION_OUTCOMES, AUCTION_TYPES, AUCTION_WATCH_STATUSES, RISK_LEVELS, SORT_OPTIONS, TAX_BASE_OPTIONS } from "../constants.js";
 import { calculateMaximumAuctionBid } from "../calculations.js";
 import { formatCurrency, sortFlipScoutRecords, timingIndicator } from "../selectors.js";
@@ -63,6 +63,8 @@ export default function AuctionsScreen({ auctions, initialMode = "", onSave, onD
   const [sort, setSort] = useState("ending_soon");
   const [message, setMessage] = useState("");
   const [selectedAuction, setSelectedAuction] = useState(null);
+  const saveInFlightRef = useRef(false);
+  const [saving, setSaving] = useState(false);
   const set = (key) => (value) => setForm((current) => ({ ...current, [key]: value }));
   const result = useMemo(() => calculateMaximumAuctionBid({ ...form, expectedResalePrice: form.estimatedResaleMid }), [form]);
   const intelligence = useMemo(() => {
@@ -74,9 +76,12 @@ export default function AuctionsScreen({ auctions, initialMode = "", onSave, onD
   }, [form]);
   const visible = useMemo(() => sortFlipScoutRecords(auctions.filter((auction) => !query.trim() || [auction.title, auction.source, auction.location, auction.auctionType].join(" ").toLowerCase().includes(query.toLowerCase())), sort), [auctions, query, sort]);
 
-  const save = (event) => {
+  const save = async (event) => {
     event.preventDefault();
     if (!form.title.trim()) return setMessage("Add an auction title before saving.");
+    if (saveInFlightRef.current) return;
+    saveInFlightRef.current = true;
+    setSaving(true);
     const record = {
       ...form,
       photoReferences: form.photoReferencesText.split(/\r?\n/).map((value) => value.trim()).filter(Boolean),
@@ -88,10 +93,19 @@ export default function AuctionsScreen({ auctions, initialMode = "", onSave, onD
         { analyzedAt: new Date().toISOString(), methodologyVersion: intelligence.result.methodologyVersion, result: intelligence.result },
       ] : (form.auctionIntelligenceHistory || []),
     };
-    onSave("auctions", record, { title: form.id ? "Auction updated" : "Auction added", detail: record.title });
-    setForm(blankAuction());
-    setFormOpen(false);
-    setMessage("Auction saved to your watch list.");
+    try {
+      const saved = await onSave("auctions", record, { title: form.id ? "Auction updated" : "Auction added", detail: record.title });
+      if (!saved) {
+        setMessage("The auction was not saved. Your entries remain available to review and try again.");
+        return;
+      }
+      setForm(blankAuction());
+      setFormOpen(false);
+      setMessage("Auction saved to your watch list.");
+    } finally {
+      saveInFlightRef.current = false;
+      setSaving(false);
+    }
   };
 
   if (selectedAuction) {
@@ -114,8 +128,8 @@ export default function AuctionsScreen({ auctions, initialMode = "", onSave, onD
       image={(selectedAuction.photoReferences || [])[0] || ""}
       identity={`${selectedAuction.source || "Manual source"} · ${selectedAuction.auctionType || "Auction"}`}
       summary={[{ label: "Current bid", value: formatCurrency(selectedAuction.currentBid), numeric: true }, { label: `${BRAND_CONFIG.applicationDisplayName} maximum`, value: formatMinorMoney(selectedAuction.auctionIntelligence?.maximumRecommendedBid), numeric: true }, { label: "Owner maximum", value: formatCurrency(selectedAuction.myMaximumBid), numeric: true }, { label: "Risk", value: selectedAuction.riskLevel || "Unknown" }]}
-      primaryAction={<PrimaryButton onClick={() => { setForm(toForm(selectedAuction)); setFormOpen(true); setSelectedAuction(null); }}>Edit Auction</PrimaryButton>}
-      secondaryActions={<>{selectedAuction.url ? <a className="ops-button ops-button--secondary" href={selectedAuction.url} target="_blank" rel="noreferrer">Open Auction</a> : null}<QuietButton onClick={() => onDelete("auctions", selectedAuction.id, selectedAuction.title)}>Delete</QuietButton></>}
+      primaryAction={<PrimaryButton disabled={saving} onClick={() => { if (saveInFlightRef.current) return; setForm(toForm(selectedAuction)); setFormOpen(true); setSelectedAuction(null); }}>Edit Auction</PrimaryButton>}
+      secondaryActions={<>{selectedAuction.url ? <a className="ops-button ops-button--secondary" href={selectedAuction.url} target="_blank" rel="noreferrer">Open Auction</a> : null}<QuietButton disabled={saving} onClick={async () => { if (saveInFlightRef.current) return; if (await onDelete("auctions", selectedAuction.id, selectedAuction.title)) setSelectedAuction(null); }}>Delete</QuietButton></>}
       sections={[
         { title: "Timing and pickup", description: "Deadlines and location information.", children: <DetailList items={[{ label: "Starts", value: selectedAuction.startDate ? new Date(selectedAuction.startDate).toLocaleString() : "" }, { label: "Ends", value: selectedAuction.endDateTime ? new Date(selectedAuction.endDateTime).toLocaleString() : "" }, { label: "Time remaining", value: ending?.label }, { label: "Pickup deadline", value: selectedAuction.pickupDeadline ? new Date(selectedAuction.pickupDeadline).toLocaleString() : "" }, { label: "Pickup status", value: pickup?.label }, { label: "Location", value: selectedAuction.location }, { label: "Distance", value: selectedAuction.distance ? `${selectedAuction.distance} mi` : "" }]} /> },
         { title: "Bid intelligence", description: "Advisory only. The application never submits a bid.", children: <DetailList items={[{ label: "Maximum recommended bid", value: formatMinorMoney(selectedAuction.auctionIntelligence?.maximumRecommendedBid) }, { label: "Owner-entered maximum", value: formatCurrency(selectedAuction.myMaximumBid) }, { label: "Expected net proceeds", value: formatMinorMoney(selectedAuction.auctionIntelligence?.expectedNetProceeds) }, { label: "Profit at ceiling", value: formatMinorMoney(selectedAuction.auctionIntelligence?.profitAtMaximumBid) }, { label: "ROI at ceiling", value: formatBasisPoints(selectedAuction.auctionIntelligence?.roiAtMaximumBidBasisPoints) }, { label: "Confidence", value: selectedAuction.auctionIntelligence?.confidence || "Not analyzed" }, { label: "Valuation basis", value: selectedAuction.auctionIntelligence?.valuationBasis === "STRUCTURED_LOT_ANALYSIS" ? "Structured lot analysis" : selectedAuction.auctionIntelligence?.valuationBasis === "OWNER_MIDPOINT_ASSUMPTION" ? "Owner midpoint assumption" : "Not enough data" }, { label: "Explanation", value: selectedAuction.auctionIntelligence?.explanation || "Save the auction with enough assumptions to create an intelligence result." }]} /> },
@@ -124,14 +138,14 @@ export default function AuctionsScreen({ auctions, initialMode = "", onSave, onD
         { title: "Outcome and notes", description: "Watch status, result, and owner notes.", children: <DetailList items={[{ label: "Outcome", value: selectedAuction.outcome }, { label: "Expected lot value used", value: expectedLotValue }, { label: "Owner-entered resale range", value: ownerResaleRange || "Not recorded" }, { label: "Notes", value: selectedAuction.notes }]} /> },
       ]}
       timeline={[selectedAuction.startDate ? { id: "start", title: "Auction started", date: new Date(selectedAuction.startDate).toLocaleString() } : null, selectedAuction.endDateTime ? { id: "end", title: "Auction ends", date: new Date(selectedAuction.endDateTime).toLocaleString() } : null, selectedAuction.updatedAt ? { id: "updated", title: "Record updated", date: new Date(selectedAuction.updatedAt).toLocaleString() } : null].filter(Boolean)}
-      onBack={() => setSelectedAuction(null)}
+      onBack={() => { if (!saveInFlightRef.current) setSelectedAuction(null); }}
     />;
   }
 
   return (
     <div className="flip-screen">
       <section className="flip-section">
-        <SectionHeading eyebrow="Bid discipline" title="Auction Watch" detail="Track auction timing and calculate a ceiling from your own resale, cost, tax, profit, and ROI assumptions." actions={<button type="button" className="primary-button" onClick={() => { setForm(blankAuction()); setFormOpen((open) => !open); }}>{formOpen ? "Close form" : "Add Auction"}</button>} />
+        <SectionHeading eyebrow="Bid discipline" title="Auction Watch" detail="Track auction timing and calculate a ceiling from your own resale, cost, tax, profit, and ROI assumptions." actions={<button type="button" className="primary-button" disabled={saving} onClick={() => { if (saveInFlightRef.current) return; setForm(blankAuction()); setFormOpen((open) => !open); }}>{formOpen ? "Close form" : "Add Auction"}</button>} />
         {formOpen ? (
           <form className="flip-form" onSubmit={save}>
             <div className="flip-form-grid">
@@ -184,10 +198,10 @@ export default function AuctionsScreen({ auctions, initialMode = "", onSave, onD
               {intelligence.result?.warnings?.length ? <ul>{intelligence.result.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul> : null}
               {intelligence.result?.lotAnalysis ? <details className="code3-compatibility-calculation"><summary>Show lot scenarios</summary><div className="flip-record-facts"><span>Conservative <strong>{formatMinorMoney(intelligence.result.lotAnalysis.scenarios.conservative.netValue)}</strong></span><span>Expected <strong>{formatMinorMoney(intelligence.result.lotAnalysis.scenarios.expected.netValue)}</strong></span><span>Optimistic <strong>{formatMinorMoney(intelligence.result.lotAnalysis.scenarios.optimistic.netValue)}</strong></span></div><p>{intelligence.result.lotAnalysis.spreadDrivers.join(" ") || "No spread driver recorded."}</p></details> : null}
               <details className="code3-compatibility-calculation"><summary>Show previous calculation</summary><div className="flip-record-facts"><span>Previous ceiling <strong>{formatCurrency(result.maximumHammerBid)}</strong></span><span>Premium <strong>{formatCurrency(result.buyerPremiumAtMaximum)}</strong></span><span>Tax <strong>{formatCurrency(result.taxAtMaximum)}</strong></span><span>Total acquisition <strong>{formatCurrency(result.totalCostAtMaximum)}</strong></span></div></details>
-              <button type="button" className="secondary-button" disabled={!intelligence.result?.maximumRecommendedBid} onClick={() => set("myMaximumBid")(minorMoneyToMajorInput(intelligence.result.maximumRecommendedBid))}>Use {BRAND_CONFIG.applicationDisplayName} ceiling</button>
+              <button type="button" className="secondary-button" disabled={saving || !intelligence.result?.maximumRecommendedBid} onClick={() => set("myMaximumBid")(minorMoneyToMajorInput(intelligence.result.maximumRecommendedBid))}>Use {BRAND_CONFIG.applicationDisplayName} ceiling</button>
             </div>
             {message ? <p className="flip-form-message" role="status">{message}</p> : null}
-            <FormActions><button type="submit" className="primary-button">{form.id ? "Update auction" : "Save auction"}</button></FormActions>
+            <FormActions><button type="submit" className="primary-button" disabled={saving}>{saving ? "Saving…" : form.id ? "Update auction" : "Save auction"}</button></FormActions>
           </form>
         ) : message ? <p className="flip-form-message" role="status">{message}</p> : null}
       </section>
@@ -207,8 +221,8 @@ export default function AuctionsScreen({ auctions, initialMode = "", onSave, onD
             <div className="flip-risk-row">{ending ? <StatusPill tone={ending.tone}>{ending.label}</StatusPill> : null}{pickup ? <StatusPill tone={pickup.tone}>{pickup.label}</StatusPill> : null}<StatusPill>{auction.watchStatus}</StatusPill><StatusPill>{auction.outcome}</StatusPill></div>
             <div className="flip-record-facts"><span>Current <strong>{formatCurrency(auction.currentBid)}</strong></span><span>{BRAND_CONFIG.applicationDisplayName} max <strong>{formatMinorMoney(auction.auctionIntelligence?.maximumRecommendedBid)}</strong></span><span>{structuredValuation ? "Expected lot" : "Mid resale"} <strong>{expectedValue}</strong></span></div>
             {auction.url ? <a href={auction.url} target="_blank" rel="noreferrer">Open auction</a> : <p className="flip-muted-copy">No auction URL saved.</p>}
-            <PrimaryButton onClick={() => setSelectedAuction(auction)}>View Details</PrimaryButton>
-            <RecordActions onEdit={() => { setForm(toForm(auction)); setFormOpen(true); window.scrollTo?.({ top: 0, behavior: "smooth" }); }} onDelete={() => onDelete("auctions", auction.id, auction.title)} />
+            <PrimaryButton disabled={saving} onClick={() => setSelectedAuction(auction)}>View Details</PrimaryButton>
+            <RecordActions onEdit={() => { if (saveInFlightRef.current) return; setForm(toForm(auction)); setFormOpen(true); window.scrollTo?.({ top: 0, behavior: "smooth" }); }} onDelete={() => { if (!saveInFlightRef.current) return onDelete("auctions", auction.id, auction.title); return false; }} />
           </article>;
         })}</div> : <EmptyState title="No auctions tracked">Add a real auction manually. No auction source is connected in Phase 1.</EmptyState>}
       </section>

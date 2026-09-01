@@ -108,24 +108,35 @@ export default function FlipScoutPage({ onExit, onOpenRestocks, initialScreen = 
     setStorageMessage(error);
   }, []);
 
-  const saveRecord = useCallback((collection, record, activity) => {
-    const result = repository.upsert(collection, record);
-    let nextState = result.state;
-    if (activity?.title) {
-      const activityResult = repository.save({ ...nextState, activity: [createActivity(activity.title, activity.detail || "Sourcing record changed."), ...nextState.activity].slice(0, 150) });
-      nextState = activityResult.state;
-      result.error ||= activityResult.error;
+  const saveRecord = useCallback(async (collection, record, activity) => {
+    try {
+      const result = await repository.runLocked(() => {
+        return repository.upsert(collection, record, {
+          activityRecord: activity?.title ? createActivity(activity.title, activity.detail || "Sourcing record changed.") : null,
+        });
+      });
+      applySave(result.state, result.error);
+      return result.error ? null : result.record;
+    } catch (error) {
+      applySave(repository.load(), error?.message || "The record could not be saved safely.");
+      return null;
     }
-    applySave(nextState, result.error);
-    return result.record;
   }, [applySave, repository]);
 
-  const deleteRecord = useCallback((collection, id, label = "this record") => {
+  const deleteRecord = useCallback(async (collection, id, label = "this record") => {
     if (!window.confirm(`Delete ${label}? This removes it from the private sourcing workspace on this device.`)) return false;
-    const result = repository.remove(collection, id);
-    const activityResult = repository.save({ ...result.state, activity: [createActivity("Record deleted", `${label} removed from ${collection}.`), ...result.state.activity].slice(0, 150) });
-    applySave(activityResult.state, result.error || activityResult.error);
-    return true;
+    try {
+      const result = await repository.runLocked(() => {
+        return repository.remove(collection, id, {
+          activityRecord: createActivity("Record deleted", `${label} removed from ${collection}.`),
+        });
+      });
+      applySave(result.state, result.error);
+      return !result.error;
+    } catch (error) {
+      applySave(repository.load(), error?.message || "The record could not be deleted safely.");
+      return false;
+    }
   }, [applySave, repository]);
 
   const analysisStored = useCallback(() => {
@@ -145,56 +156,68 @@ export default function FlipScoutPage({ onExit, onOpenRestocks, initialScreen = 
     navigate("appraise");
   }, [navigate]);
 
-  const allocateLot = useCallback((lotId, method) => {
+  const allocateLot = useCallback(async (lotId, method) => {
     const lot = state.lots.find((row) => row.id === lotId);
     if (!lot) return;
     const lotItems = state.inventory.filter((item) => item.lotId === lotId);
     const allocated = allocateLotCost({ totalCost: lot.totalLotCost, items: lotItems, method });
     const allocatedById = new Map(allocated.map((item) => [item.id, item]));
-    const result = repository.save({
-      ...state,
-      inventory: state.inventory.map((item) => allocatedById.get(item.id) || item),
-      activity: [createActivity("Lot cost allocated", `${lot.title} used ${method.replace(/_/g, " ")} allocation.`), ...state.activity].slice(0, 150),
+    const result = await repository.runLocked(() => {
+      const current = repository.load();
+      return repository.save({
+        ...current,
+        inventory: current.inventory.map((item) => allocatedById.get(item.id) || item),
+        activity: [createActivity("Lot cost allocated", `${lot.title} used ${method.replace(/_/g, " ")} allocation.`), ...current.activity].slice(0, 150),
+      });
     });
     applySave(result.state, result.error);
   }, [applySave, repository, state]);
 
-  const mergeDiscoveries = useCallback((listings, checkedAt) => {
-    const merge = mergeProviderListings(state.providerListings, listings, checkedAt);
-    const result = repository.save({
-      ...state,
-      providerListings: merge.listings,
-      activity: [createActivity("eBay search checked", `${merge.added} new · ${merge.updated} updated · ${merge.expired} expired.`), ...state.activity].slice(0, 150),
+  const mergeDiscoveries = useCallback(async (listings, checkedAt) => {
+    const result = await repository.runLocked(() => {
+      const current = repository.load();
+      const merge = mergeProviderListings(current.providerListings, listings, checkedAt);
+      return { merge, write: repository.save({
+        ...current,
+        providerListings: merge.listings,
+        activity: [createActivity("eBay search checked", `${merge.added} new · ${merge.updated} updated · ${merge.expired} expired.`), ...current.activity].slice(0, 150),
+      }) };
     });
-    applySave(result.state, result.error);
-    return merge;
+    applySave(result.write.state, result.write.error);
+    return result.merge;
   }, [applySave, repository, state]);
 
-  const importDiscovery = useCallback((listing) => {
-    const existingDeal = findDealForProviderListing(state.deals, listing);
-    const deal = providerListingToDeal(listing, existingDeal);
-    const dealResult = repository.upsert("deals", deal);
-    const reviewedListings = dealResult.state.providerListings.map((record) => record.id === listing.id
-      ? { ...record, reviewStatus: "Imported", importedDealId: dealResult.record.id, reviewedAt: new Date().toISOString() }
-      : record);
-    const result = repository.save({
-      ...dealResult.state,
-      providerListings: reviewedListings,
-      activity: [createActivity(existingDeal ? "eBay deal refreshed" : "eBay deal imported", listing.title), ...dealResult.state.activity].slice(0, 150),
+  const importDiscovery = useCallback(async (listing) => {
+    const outcome = await repository.runLocked(() => {
+      const current = repository.load();
+      const existingDeal = findDealForProviderListing(current.deals, listing);
+      const deal = providerListingToDeal(listing, existingDeal);
+      const dealResult = repository.upsert("deals", deal);
+      if (dealResult.error) return { existingDeal, result: dealResult };
+      const reviewedListings = dealResult.state.providerListings.map((record) => record.id === listing.id
+        ? { ...record, reviewStatus: "Imported", importedDealId: dealResult.record.id, reviewedAt: new Date().toISOString() }
+        : record);
+      return { existingDeal, result: repository.save({
+        ...dealResult.state,
+        providerListings: reviewedListings,
+        activity: [createActivity(existingDeal ? "eBay deal refreshed" : "eBay deal imported", listing.title), ...dealResult.state.activity].slice(0, 150),
+      }), record: dealResult.record };
     });
-    applySave(result.state, dealResult.error || result.error);
-    return { record: dealResult.record, updated: Boolean(existingDeal) };
+    const result = outcome.result;
+    applySave(result.state, result.error);
+    return { record: outcome.record, updated: Boolean(outcome.existingDeal), error: result.error };
   }, [applySave, repository, state]);
 
   const exportJson = useCallback(() => downloadTextFile("private-business-hub-sourcing-backup.json", repository.exportJson(), "application/json;charset=utf-8"), [repository]);
-  const importJson = useCallback((raw) => {
-    const result = repository.importJson(raw);
+  const importJson = useCallback(async (raw) => {
+    const result = await repository.runLocked(() => repository.importJson(raw));
     applySave(result.state, result.error);
     return result;
   }, [applySave, repository]);
-  const reset = useCallback(() => {
-    const result = repository.replace(createEmptyFlipScoutState());
+  const reset = useCallback(async () => {
+    const result = await repository.runLocked(() => repository.replace(createEmptyFlipScoutState()));
     applySave(result.state, result.error);
+    return result;
   }, [applySave, repository]);
 
   const findNavigation = <div className="flip-find-navigation">

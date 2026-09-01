@@ -19,6 +19,8 @@ import {
   createPurchaseReceivingService,
   PURCHASE_RECEIVING_STORAGE_KEY,
 } from "../src/features/purchaseReceiving/index.js";
+import { createInventoryHarness, confirmFixturePurchase, exactDraft, receive } from "./inventory-creation-test-helpers.mjs";
+import { FLIP_SCOUT_STORAGE_KEY } from "../src/features/flipScout/constants.js";
 
 class MemoryStorage {
   constructor(values = {}, throwingKeys = []) {
@@ -441,6 +443,31 @@ const malformedShapeStorage = new MemoryStorage({
 const malformedShapeExport = await createVerifiedBackup({ localStorage: malformedShapeStorage, sessionStorage: new MemoryStorage(), createdAt: NOW });
 assert.equal(malformedShapeExport.coverageStatus, BACKUP_COVERAGE.FAILED, "a malformed registered source cannot be called complete");
 assert.equal(malformedShapeExport.verified, false);
+
+const managedInventoryHarness = createInventoryHarness();
+const managedInventoryPurchase = await confirmFixturePurchase(managedInventoryHarness.service, exactDraft({ id: "backup-managed-sale", totalMinorUnits: 1000 }));
+await receive(managedInventoryHarness.service, managedInventoryPurchase, { condition: "SEALED", id: "backup-managed-sale" });
+const managedInventoryCandidate = managedInventoryHarness.service.previewInventoryCreation(managedInventoryPurchase.id)[0];
+const managedInventoryResult = await managedInventoryHarness.service.confirmInventoryCreation(managedInventoryCandidate.candidateId, { expectedVersion: managedInventoryCandidate.expectedVersion });
+const tamperedManagedInventoryState = JSON.parse(managedInventoryHarness.inventoryStorage.getItem(FLIP_SCOUT_STORAGE_KEY));
+tamperedManagedInventoryState.sales.push({
+  id: "sale.backup-wrong-exact-cost.test",
+  inventoryItemId: managedInventoryResult.inventoryItem.id,
+  quantitySold: 1,
+  status: "Completed",
+  inventoryAllocationSequence: 1,
+  inventoryAllocationAt: NOW,
+  allocatedCostOfGoodsSoldMinorUnits: 999,
+  allocatedCostOfGoodsSold: 9.99,
+  costAuthority: "INTEGER_MINOR_UNITS",
+});
+const tamperedManagedInventoryExport = await createVerifiedBackup({
+  localStorage: new MemoryStorage({ [FLIP_SCOUT_STORAGE_KEY]: tamperedManagedInventoryState }),
+  sessionStorage: new MemoryStorage(),
+  createdAt: NOW,
+});
+assert.equal(tamperedManagedInventoryExport.coverageStatus, BACKUP_COVERAGE.FAILED, "backup validation rejects wrong exact COGS linked to owner-confirmed Inventory");
+assert.equal(tamperedManagedInventoryExport.verified, false);
 
 const malformedAccountOpsStorage = new MemoryStorage({
   "code3.account-ops.v1": {

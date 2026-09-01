@@ -88,6 +88,8 @@
     "test:code3-bot-ops-browser": "node --no-warnings scripts/test-code3-bot-ops-browser.cjs",
     "test:code3-purchase-receiving": "node --no-warnings scripts/test-code3-purchase-receiving-domain.mjs && node --no-warnings scripts/test-code3-purchase-receiving-money.mjs && node --no-warnings scripts/test-code3-purchase-receiving-history.mjs && node --no-warnings scripts/test-code3-purchase-receiving-security.mjs && node --no-warnings scripts/test-code3-purchase-receiving-fixtures.mjs && node --no-warnings scripts/test-code3-purchase-receiving-ui.mjs",
     "test:code3-purchase-receiving-browser": "node --no-warnings scripts/test-code3-purchase-receiving-browser.cjs",
+    "test:code3-inventory-creation": "node --no-warnings scripts/test-code3-inventory-creation-candidates.mjs && node --no-warnings scripts/test-code3-inventory-creation-costs.mjs && node --no-warnings scripts/test-code3-inventory-creation-history.mjs && node --no-warnings scripts/test-code3-inventory-creation-security.mjs && node --no-warnings scripts/test-code3-inventory-creation-fixtures.mjs && node --no-warnings scripts/test-code3-inventory-creation-ui.mjs",
+    "test:code3-inventory-creation-browser": "node --no-warnings scripts/test-code3-inventory-creation-browser.cjs",
     "test:code3-canonical": "npm --prefix backend run test:code3-canonical",
     "test:tier-foundation": "node --no-warnings scripts/test-tier-foundation.mjs",
     "test:quick-add": "node --no-warnings scripts/test-quick-add-routing.mjs",

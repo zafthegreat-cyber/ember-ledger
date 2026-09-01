@@ -25,7 +25,8 @@ for (const label of ["Correct", "Reject", "Confirm Purchase", "Receive Items", "
 for (const invariant of ["Order Candidate != Purchase", "Checkout Evidence != Purchase", "Purchase Draft != Purchase", "Receiving != Inventory"]) {
   has(page, new RegExp(invariant.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `${invariant} is explicit in the UI`);
 }
-has(page, /data-inventory-writer="false"/, "UI identifies that inventory writing is unavailable");
+has(page, /data-inventory-writer="owner-confirmed-only"/, "UI identifies the explicit owner-confirmed Inventory boundary");
+has(page, /Confirm Inventory Creation/, "Inventory mutation copy is explicit");
 has(page, /Inventory was not created/, "receiving success copy remains non-mutating");
 has(page, /Delivery evidence alone does not prove receipt/, "delivery is not treated as physical receiving");
 has(page, /Original evidence remains in history/, "correction copy preserves source evidence");

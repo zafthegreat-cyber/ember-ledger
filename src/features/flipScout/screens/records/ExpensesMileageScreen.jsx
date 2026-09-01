@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { EXPENSE_CATEGORIES } from "../../constants.js";
 import { formatCurrency } from "../../selectors.js";
 import {
@@ -47,6 +47,8 @@ export default function ExpensesMileageScreen({ view, state, onSave, onDelete })
   const [mileageForm, setMileageForm] = useState(blankMileage);
   const [formOpen, setFormOpen] = useState(false);
   const [message, setMessage] = useState("");
+  const saveInFlightRef = useRef(false);
+  const [saving, setSaving] = useState(false);
   const setExpense = (key) => (value) => setExpenseForm((current) => ({ ...current, [key]: value }));
   const setMileage = (key) => (value) => setMileageForm((current) => ({ ...current, [key]: value }));
   const relationOptions = (type) => {
@@ -54,22 +56,40 @@ export default function ExpensesMileageScreen({ view, state, onSave, onDelete })
     return (map[type] || []).map((record) => ({ value: record.id, label: record.title || record.name || record.id }));
   };
 
-  const saveExpense = (event) => {
+  const saveExpense = async (event) => {
     event.preventDefault();
     if (!expenseForm.description.trim() && !expenseForm.merchant.trim()) return setMessage("Add a merchant or description.");
-    onSave("expenses", expenseForm, { title: expenseForm.id ? "Expense updated" : "Expense recorded", detail: expenseForm.description || expenseForm.merchant });
-    setExpenseForm(blankExpense());
-    setFormOpen(false);
-    setMessage("Expense saved as a business record estimate.");
+    if (saveInFlightRef.current) return;
+    saveInFlightRef.current = true;
+    setSaving(true);
+    try {
+      const saved = await onSave("expenses", expenseForm, { title: expenseForm.id ? "Expense updated" : "Expense recorded", detail: expenseForm.description || expenseForm.merchant });
+      if (!saved) return setMessage("The expense was not saved. Your entries remain available to review and try again.");
+      setExpenseForm(blankExpense());
+      setFormOpen(false);
+      setMessage("Expense saved as a business record estimate.");
+    } finally {
+      saveInFlightRef.current = false;
+      setSaving(false);
+    }
   };
 
-  const saveMileage = (event) => {
+  const saveMileage = async (event) => {
     event.preventDefault();
     if (!mileageForm.purpose.trim()) return setMessage("Add the trip purpose.");
-    onSave("mileage", mileageForm, { title: mileageForm.id ? "Mileage updated" : "Mileage recorded", detail: `${mileageForm.purpose} - ${mileageForm.miles || 0} mi` });
-    setMileageForm(blankMileage());
-    setFormOpen(false);
-    setMessage("Mileage record saved. No tax-deduction claim is made.");
+    if (saveInFlightRef.current) return;
+    saveInFlightRef.current = true;
+    setSaving(true);
+    try {
+      const saved = await onSave("mileage", mileageForm, { title: mileageForm.id ? "Mileage updated" : "Mileage recorded", detail: `${mileageForm.purpose} - ${mileageForm.miles || 0} mi` });
+      if (!saved) return setMessage("The mileage record was not saved. Your entries remain available to review and try again.");
+      setMileageForm(blankMileage());
+      setFormOpen(false);
+      setMessage("Mileage record saved. No tax-deduction claim is made.");
+    } finally {
+      saveInFlightRef.current = false;
+      setSaving(false);
+    }
   };
 
   if (view === "expenses") {
@@ -80,7 +100,7 @@ export default function ExpensesMileageScreen({ view, state, onSave, onDelete })
             eyebrow="Bookkeeping estimate"
             title="Business expenses"
             detail="Track records for review. This application does not label entries as definitive tax deductions."
-            actions={<button type="button" className="primary-button" onClick={() => { setExpenseForm(blankExpense()); setFormOpen((open) => !open); }}>{formOpen ? "Close form" : "Add Expense"}</button>}
+            actions={<button type="button" className="primary-button" disabled={saving} onClick={() => { if (saveInFlightRef.current) return; setExpenseForm(blankExpense()); setFormOpen((open) => !open); }}>{formOpen ? "Close form" : "Add Expense"}</button>}
           />
           {formOpen ? (
             <form className="flip-form" onSubmit={saveExpense}>
@@ -97,7 +117,7 @@ export default function ExpensesMileageScreen({ view, state, onSave, onDelete })
                 <TextInput label="Receipt reference" value={expenseForm.receiptReference} onChange={setExpense("receiptReference")} />
                 <TextArea label="Notes" value={expenseForm.notes} onChange={setExpense("notes")} />
               </div>
-              <FormActions><button type="submit" className="primary-button">{expenseForm.id ? "Update expense" : "Save expense"}</button></FormActions>
+              <FormActions><button type="submit" className="primary-button" disabled={saving}>{saving ? "Saving…" : expenseForm.id ? "Update expense" : "Save expense"}</button></FormActions>
             </form>
           ) : null}
           {message ? <p className="flip-form-message" role="status">{message}</p> : null}
@@ -109,7 +129,7 @@ export default function ExpensesMileageScreen({ view, state, onSave, onDelete })
                 <article className="flip-record-card" key={expense.id}>
                   <div className="flip-record-card__head"><div><span>{expense.date} - {expense.category}</span><h3>{expense.description || expense.merchant}</h3></div><strong>{formatCurrency(expense.amount)}</strong></div>
                   <p>{expense.merchant || "Merchant not recorded"} - {expense.businessPercentage || 0}% business estimate</p>
-                  <RecordActions onEdit={() => { setExpenseForm({ ...blankExpense(), ...expense }); setFormOpen(true); }} onDelete={() => onDelete("expenses", expense.id, expense.description || expense.merchant)} />
+                  <RecordActions onEdit={() => { if (saveInFlightRef.current) return; setExpenseForm({ ...blankExpense(), ...expense }); setFormOpen(true); }} onDelete={() => { if (!saveInFlightRef.current) return onDelete("expenses", expense.id, expense.description || expense.merchant); return false; }} />
                 </article>
               ))}
             </div>
@@ -126,7 +146,7 @@ export default function ExpensesMileageScreen({ view, state, onSave, onDelete })
           eyebrow="Travel log"
           title="Mileage"
           detail="Keep a factual trip record with related sourcing activity. No tax treatment is asserted."
-          actions={<button type="button" className="primary-button" onClick={() => { setMileageForm(blankMileage()); setFormOpen((open) => !open); }}>{formOpen ? "Close form" : "Add Mileage"}</button>}
+          actions={<button type="button" className="primary-button" disabled={saving} onClick={() => { if (saveInFlightRef.current) return; setMileageForm(blankMileage()); setFormOpen((open) => !open); }}>{formOpen ? "Close form" : "Add Mileage"}</button>}
         />
         {formOpen ? (
           <form className="flip-form" onSubmit={saveMileage}>
@@ -140,7 +160,7 @@ export default function ExpensesMileageScreen({ view, state, onSave, onDelete })
               <SelectInput label="Related auction, purchase, sale, or item" value={mileageForm.relatedRecordId} onChange={setMileage("relatedRecordId")} options={[{ value: "", label: "No record selected" }, ...relationOptions(mileageForm.relatedRecordType)]} />
               <TextArea label="Notes" value={mileageForm.notes} onChange={setMileage("notes")} />
             </div>
-            <FormActions><button type="submit" className="primary-button">{mileageForm.id ? "Update mileage" : "Save mileage"}</button></FormActions>
+            <FormActions><button type="submit" className="primary-button" disabled={saving}>{saving ? "Saving…" : mileageForm.id ? "Update mileage" : "Save mileage"}</button></FormActions>
           </form>
         ) : null}
         {message ? <p className="flip-form-message" role="status">{message}</p> : null}
@@ -152,7 +172,7 @@ export default function ExpensesMileageScreen({ view, state, onSave, onDelete })
               <article className="flip-record-card" key={trip.id}>
                 <div className="flip-record-card__head"><div><span>{trip.date}</span><h3>{trip.purpose}</h3></div><strong>{trip.miles || 0} mi</strong></div>
                 <p>{[trip.startLocation, trip.destination].filter(Boolean).join(" to ") || "Locations not recorded"}</p>
-                <RecordActions onEdit={() => { setMileageForm({ ...blankMileage(), ...trip }); setFormOpen(true); }} onDelete={() => onDelete("mileage", trip.id, trip.purpose)} />
+                <RecordActions onEdit={() => { if (saveInFlightRef.current) return; setMileageForm({ ...blankMileage(), ...trip }); setFormOpen(true); }} onDelete={() => { if (!saveInFlightRef.current) return onDelete("mileage", trip.id, trip.purpose); return false; }} />
               </article>
             ))}
           </div>

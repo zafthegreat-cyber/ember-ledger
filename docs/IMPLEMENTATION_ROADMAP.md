@@ -17,7 +17,7 @@ The audit changes the conceptual “backend persistence first” phase into gate
 
 **Phase 2B1 — Secure Provider Runtime + Inbox / Order Intelligence Foundation**, **Phase 2B2-A — Preview Trusted Express/API Runtime**, and **Phase 2B2-B — Preview Owner Auth + Managed Provider State** are published through `b4848cb851b2be83093fbdc4ed4b976857f9d3ff`. The separate Phase 2B2-B.1 operational verification is paused. A Free Upstash resource and three branch-scoped Preview secrets exist, but Supabase owner/auth values and the remaining Preview CORS/activation/runtime values are not configured, no follow-up Preview was deployed, and `hostedRuntimeVerified=false`. Gmail, Outlook, IMAP, live Inbox ingestion, provider token use, Purchase import, migration, sync, and remote cutover remain inactive.
 
-**Phase 2D-A — Bot Integration Foundation** is published at `cdde7df506c94bc55b2ec7995596843ae1c2261a`, **Phase 2D-B1 — Provider Integration Discovery and Pilot Design** at `e832ab67a153c5e672f8a77dda5474aedb1395af`, and **Phase 2D-B2 — Stellar Task Export Preview** at `0b45c3584f7f15b4d951c5e4cddd1e42dcbeb5a3`. **Phase 2C-A — Purchase → Receiving → Inventory Foundation** is the current parallel local-only workstream. Hayha and Stellar remain `NOT_CONFIGURED`; no live provider, automatic evidence import, Inventory creation, credentials, task control, proxy connection, checkout, billing, remote persistence, or deployment is active.
+**Phase 2D-A — Bot Integration Foundation** is published at `cdde7df506c94bc55b2ec7995596843ae1c2261a`, **Phase 2D-B1 — Provider Integration Discovery and Pilot Design** at `e832ab67a153c5e672f8a77dda5474aedb1395af`, and **Phase 2D-B2 — Stellar Task Export Preview** at `0b45c3584f7f15b4d951c5e4cddd1e42dcbeb5a3`. **Phase 2C-A — Purchase → Receiving → Inventory Foundation** is published at `3b10644cf1be9498c08b876b5a3bbef98a24ee1c`; **Phase 2C-B — Owner-Confirmed Inventory Creation** is the current parallel local-only workstream. Hayha and Stellar remain `NOT_CONFIGURED`; no live provider, automatic evidence/Receiving-to-Inventory path, credentials, task control, proxy connection, checkout, billing, remote persistence, or deployment is active.
 
 The published Phase 1A runtime applies Code 3 through the centralized brand configuration and coordinated PWA/browser/offline metadata. Storage, database, route, module, environment, cache, history, compatibility, and imported-source identifiers remain unchanged. The legal/public business name and tagline remain separately configurable and unresolved.
 
@@ -175,7 +175,7 @@ No time estimates are provided. Complexity is relative: Small, Medium, Large, or
 
 ## Phase 2C-A — Purchase → Receiving → Inventory Foundation
 
-**Status:** Current local-only implementation from published baseline `0b45c3584f7f15b4d951c5e4cddd1e42dcbeb5a3`; publication is separately gated.
+**Status:** Published at `3b10644cf1be9498c08b876b5a3bbef98a24ee1c`.
 
 - **Objective:** add the explicit OWNER-reviewed boundary from external evidence to Purchase Draft, exactly-once local Purchase confirmation, append-only partial/discrepancy Receiving, and derived Inventory Handoff Preview without creating Inventory.
 - **Current code affected:** new `src/features/purchaseReceiving`; the verified-OWNER Business Purchases surface; Backup Format v1 source/validator; Restore and Migration Preview mapping; focused tests and documentation.
@@ -191,6 +191,28 @@ No time estimates are provided. Complexity is relative: Small, Medium, Large, or
 - **Complexity:** Large.
 
 See [PURCHASE_RECEIVING_CONTRACT.md](./PURCHASE_RECEIVING_CONTRACT.md).
+
+## Phase 2C-B — Owner-Confirmed Inventory Creation
+
+**Status:** Current local-only implementation candidate from published Phase 2C-A baseline `3b10644cf1be9498c08b876b5a3bbef98a24ee1c`; validation and publication are separately gated.
+
+- **Objective:** add the first explicit verified-OWNER boundary from confirmed Purchase/Receiving evidence to canonical local Business Inventory while preserving every upstream non-equivalence invariant.
+- **Current code affected:** `src/features/purchaseReceiving/inventoryCreation`, the existing Flip Scout/Business Inventory repository and protected record actions, `/business/purchases`, Backup/Restore Preview and migration classification, focused tests, and documentation.
+- **Data changes:** normalize `ember-and-tide.flip-scout.v1` to schema version 3; retain existing `inventory` authority and add `inventoryLots`, `inventoryCreationApplications`, `inventoryCreationEvents`, and `inventoryAdjustments`. Inventory Handoff Preview and Inventory Creation Candidate remain ephemeral. New migration paths are `REQUIRES_MAPPING`.
+- **Eligibility:** use only current positive owner-confirmed received quantities; block Purchase `RETURN_INITIATED`/`RETURNED`/`CANCELLED` and Receiving `RETURNED_TO_SENDER`/`CANCELLED`/`MISSING`/`NOT_RECEIVED`; exclude duplicate and unresolved-extra units. Require `MATCHED` or explicit `OWNER_RESOLVED` identity, reviewed condition/disposition, and exact Purchase cost reconciliation. Manual resolution must reference an existing local Inventory/product relationship and preserve a bounded reason. No title-based product creation.
+- **Money/lot behavior:** use integer minor units; allocate each Receiving event's exact cost slice in authoritative persisted append order so mutable timestamps/client IDs cannot reorder pennies; divide per unit by floor plus deterministic early-position remainder; create a separate acquisition item/lot even for an existing product so source cost/provenance is not averaged away. Exact slices feed existing Business/Flip Scout sales, COGS, summary, and valuation projections.
+- **Authority/idempotency:** OWNER gate before storage access; candidate re-derived within same-origin exclusive Web Lock; expected version plus deterministic application/item/lot/event IDs; one normalized whole-document write; exact read-back; compatible partial-write repair and conflict/stale fail-closed behavior.
+- **History/reversal:** append `INVENTORY_CREATED` and later reviewed adjustment records; generic edit/delete cannot change provenance-managed acquisitions; refund does not remove Inventory; reversal checks current version and available quantity after sales and never makes quantity negative. Only quantity/cost reversal is implemented; post-creation product-resolution correction is deferred to Phase 2C-C.
+- **Business boundary:** `Receiving != Inventory`; `Inventory Handoff Preview != Inventory`; `Inventory Creation Candidate != Inventory`. Only explicit confirmation creates Inventory, and email/Bot/delivery/evidence paths cannot reach the writer.
+- **Security:** reject client authority, payment/retailer/provider/proxy credentials, tokens/cookies/OAuth/OTPs, credential URLs, raw evidence/logs, dangerous keys, and unsafe structures. No payment credential is required.
+- **Backup/migration:** extend the existing safe Deal Finder section rather than create another source; require strict complete item/lot/application/event identity/cost reconciliation; candidates/previews remain excluded; Restore Preview stays zero-write; mixed `deal-finder.inventory` and new provenance paths remain `REQUIRES_MAPPING`; no remote Inventory cutover or schema application.
+- **External authorization:** none for local source and synthetic fixtures. No real business record, provider, Upstash/Supabase/Vercel auth change, schema, billing, Production action, or Phase 2D-B3 work is authorized.
+- **Test plan:** candidate/eligibility/product/condition; exact unit and partial-receipt allocation; owner confirmation; lot/merge behavior; repeated/interrupted/two-tab/stale idempotency; reversals/returns/refunds/sales bounds; generic edit/delete protection; security; backup/migration; Purchase/Receiving and Inventory/business/sales regressions; UI/browser/accessibility/build/full gate.
+- **Acceptance criteria:** only freshly re-derived eligible candidates can create one exact local result; retry repairs or deduplicates; no unavailable quantity is reversed; all provenance remains inspectable; `LOCAL_ONLY` stays authoritative and remote/provider/Production boundaries remain unchanged.
+- **Rollback:** revert the additive schema-3 collections/gateway/UI/docs after exporting any safe local acquisition metadata. No remote/provider/schema/Production rollback is required.
+- **Complexity:** Large.
+
+See [INVENTORY_CREATION_CONTRACT.md](./INVENTORY_CREATION_CONTRACT.md).
 
 ## Phase 2D-A — Bot Integration Foundation
 
@@ -413,4 +435,4 @@ Every implementation phase must:
 
 ## Exact next task recommendation
 
-The current authorized task is Phase 2D-B2 local Stellar task-export preview and its detailed report only. After that report, stop. Phase 2D-B3 and every live provider/import path remain unauthorized; the evidence still supports `NO_LIVE_BOT_PILOT_YET`. Phase 2B2-B.1 remains paused until the owner explicitly says `Supabase signed in.` and must not resume automatically. Do not deploy another Preview, create a bypass, connect a mailbox or Bot, begin provider OAuth, ingest a real export without a separate review, create/import a Bot Task or Purchase, activate `REMOTE_ACTIVE`, migrate owner data, upload file bytes, add billing, apply a schema, or modify Production without another explicit owner-approved specification.
+The current authorized task is Phase 2C-B local owner-confirmed Inventory creation and its detailed report only. After that report, stop. Phase 2C-C, Phase 2D-B3, and every live provider/import path remain unauthorized. Phase 2B2-B.1 remains paused until the owner explicitly says `Supabase signed in.` and must not resume automatically. Do not deploy another Preview, create a bypass, connect a mailbox or Bot, begin provider OAuth, use real Purchase/order data, activate `REMOTE_ACTIVE`, migrate owner data, add billing, apply a schema, or modify Production without another explicit owner-approved specification.

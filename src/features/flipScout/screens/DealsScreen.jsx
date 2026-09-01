@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   CONFIDENCE_LEVELS,
   DEAL_STATUSES,
@@ -78,6 +78,8 @@ export default function DealsScreen({ deals, initialMode = "", navigation = null
   const [sort, setSort] = useState("newest");
   const [message, setMessage] = useState("");
   const [selectedDeal, setSelectedDeal] = useState(null);
+  const saveInFlightRef = useRef(false);
+  const [saving, setSaving] = useState(false);
   const set = (key) => (value) => setForm((current) => ({ ...current, [key]: value }));
   const visibleDeals = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -89,12 +91,15 @@ export default function DealsScreen({ deals, initialMode = "", navigation = null
     return sortFlipScoutRecords(filtered, sort);
   }, [deals, query, sort, statusFilter]);
 
-  const save = (event) => {
+  const save = async (event) => {
     event.preventDefault();
     if (!form.title.trim() && !form.listingUrl.trim()) {
       setMessage("Add a title or listing URL before saving.");
       return;
     }
+    if (saveInFlightRef.current) return;
+    saveInFlightRef.current = true;
+    setSaving(true);
     const record = {
       ...form,
       title: form.title.trim() || "Untitled listing",
@@ -103,22 +108,45 @@ export default function DealsScreen({ deals, initialMode = "", navigation = null
       tags: form.tagsText.split(/[,\n]/).map((value) => value.trim()).filter(Boolean),
       landedCost: calculateLandedCost({ ...form, purchasePrice: form.askingPrice, purchaseTax: form.estimatedTax }),
     };
-    onSave("deals", record, { title: form.id ? "Listing updated" : "Listing added", detail: record.title });
-    setForm(blankDeal());
-    setFormOpen(false);
-    setMessage("Listing saved to the Deal Inbox.");
+    try {
+      const saved = await onSave("deals", record, { title: form.id ? "Listing updated" : "Listing added", detail: record.title });
+      if (!saved) {
+        setMessage("The listing was not saved. Your entries remain available to review and try again.");
+        return;
+      }
+      setForm(blankDeal());
+      setFormOpen(false);
+      setMessage("Listing saved to the Deal Inbox.");
+    } finally {
+      saveInFlightRef.current = false;
+      setSaving(false);
+    }
   };
 
   const edit = (deal) => {
+    if (saveInFlightRef.current) return;
     setForm(toForm(deal));
     setFormOpen(true);
     setMessage("");
     window.scrollTo?.({ top: 0, behavior: "smooth" });
   };
 
-  const updateStatus = (deal, status) => {
-    onSave("deals", { ...deal, status }, { title: `Listing marked ${status.toLowerCase()}`, detail: deal.title });
-    setMessage(`${deal.title || "Listing"} marked ${status}.`);
+  const updateStatus = async (deal, status) => {
+    if (saveInFlightRef.current) return;
+    saveInFlightRef.current = true;
+    setSaving(true);
+    try {
+      const saved = await onSave("deals", { ...deal, status }, { title: `Listing marked ${status.toLowerCase()}`, detail: deal.title });
+      if (!saved) {
+        setMessage("The listing status was not changed. Review the storage warning and try again.");
+        return;
+      }
+      setSelectedDeal(saved);
+      setMessage(`${deal.title || "Listing"} marked ${status}.`);
+    } finally {
+      saveInFlightRef.current = false;
+      setSaving(false);
+    }
   };
 
   if (selectedDeal) {
@@ -136,16 +164,16 @@ export default function DealsScreen({ deals, initialMode = "", navigation = null
         { label: "Projected profit", value: selectedDeal.projectedProfit || selectedDeal.expectedProfit ? formatCurrency(selectedDeal.projectedProfit || selectedDeal.expectedProfit) : "Not entered", numeric: true },
         { label: "Projected ROI", value: selectedDeal.projectedRoi || selectedDeal.expectedRoi ? formatPercent(selectedDeal.projectedRoi || selectedDeal.expectedRoi) : "Not entered", numeric: true },
       ]}
-      primaryAction={<PrimaryButton onClick={() => onAnalyze({ ...selectedDeal, purchasePrice: selectedDeal.askingPrice, purchaseTax: selectedDeal.estimatedTax })}>Analyze Deal</PrimaryButton>}
-      secondaryActions={<>{selectedDeal.listingUrl ? <a className="ops-button ops-button--secondary" href={selectedDeal.listingUrl} target="_blank" rel="noreferrer">Open Listing</a> : null}<QuietButton onClick={() => { edit(selectedDeal); setSelectedDeal(null); }}>Edit</QuietButton><QuietButton onClick={() => { if (onDelete("deals", selectedDeal.id, selectedDeal.title) !== false) setSelectedDeal(null); }}>Delete</QuietButton></>}
+      primaryAction={<PrimaryButton disabled={saving} onClick={() => onAnalyze({ ...selectedDeal, purchasePrice: selectedDeal.askingPrice, purchaseTax: selectedDeal.estimatedTax })}>Analyze Deal</PrimaryButton>}
+      secondaryActions={<>{selectedDeal.listingUrl ? <a className="ops-button ops-button--secondary" href={selectedDeal.listingUrl} target="_blank" rel="noreferrer">Open Listing</a> : null}<QuietButton disabled={saving} onClick={() => { edit(selectedDeal); setSelectedDeal(null); }}>Edit</QuietButton><QuietButton disabled={saving} onClick={async () => { if (saveInFlightRef.current) return; if (await onDelete("deals", selectedDeal.id, selectedDeal.title)) setSelectedDeal(null); }}>Delete</QuietButton></>}
       sections={[
-        { title: "Decision", description: "Update the saved review status.", children: <div className="flip-detail-actions"><QuietButton onClick={() => updateStatus(selectedDeal, "Watching")}>Save to Watching</QuietButton><QuietButton onClick={() => updateStatus(selectedDeal, "Passed")}>Pass</QuietButton></div> },
+        { title: "Decision", description: "Update the saved review status.", children: <div className="flip-detail-actions"><QuietButton disabled={saving} onClick={() => updateStatus(selectedDeal, "Watching")}>Save to Watching</QuietButton><QuietButton disabled={saving} onClick={() => updateStatus(selectedDeal, "Passed")}>Pass</QuietButton></div> },
         { title: "Listing", description: "Source-provided and manually entered details.", children: <DetailList items={[{ label: "Source", value: selectedDeal.marketplace }, { label: "External listing ID", value: selectedDeal.externalListingId }, { label: "Seller", value: selectedDeal.sellerName }, { label: "Seller rating", value: selectedDeal.sellerRating }, { label: "Listing type", value: selectedDeal.listingType }, { label: "Location", value: selectedDeal.location }, { label: "Distance", value: selectedDeal.distance ? `${selectedDeal.distance} mi` : "" }, { label: "Description", value: selectedDeal.description }]} /> },
         { title: "Costs and assumptions", description: "Active prices are not sold comparable records.", children: <DetailList items={[{ label: "Shipping", value: formatCurrency(selectedDeal.purchaseShipping) }, { label: "Estimated tax", value: formatCurrency(selectedDeal.estimatedTax) }, { label: "Buyer premium", value: formatCurrency(selectedDeal.buyerPremium) }, { label: "Pickup / travel", value: formatCurrency(selectedDeal.travelOrPickupCost) }, { label: "Preparation", value: formatCurrency(selectedDeal.preparationCost) }, { label: "Resale range", value: [selectedDeal.expectedResaleLow || selectedDeal.projectedResaleLow, selectedDeal.expectedResaleMid || selectedDeal.projectedResaleMid, selectedDeal.expectedResaleHigh || selectedDeal.projectedResaleHigh].filter(Boolean).map(formatCurrency).join(" / ") }, { label: "Confidence", value: selectedDeal.confidence }, { label: "Risk flags", value: (selectedDeal.riskFlags || []).join(", ") || "None recorded" }]} /> },
         { title: "Notes and source", description: "Why this record was surfaced and when it was checked.", children: <DetailList items={[{ label: "Why surfaced", value: selectedDeal.surfacedReason || selectedDeal.explanation }, { label: "Data source", value: selectedDeal.sourceDataExplanation }, { label: "Last checked", value: selectedDeal.lastCheckedAt ? new Date(selectedDeal.lastCheckedAt).toLocaleString() : "" }, { label: "Notes", value: selectedDeal.notes }]} /> },
       ]}
       timeline={[selectedDeal.listingCreatedAt ? { id: "listed", title: "Listing created", date: new Date(selectedDeal.listingCreatedAt).toLocaleString() } : null, selectedDeal.dateDiscovered ? { id: "discovered", title: "Listing discovered", date: new Date(selectedDeal.dateDiscovered).toLocaleDateString() } : null, selectedDeal.updatedAt ? { id: "updated", title: "Record updated", date: new Date(selectedDeal.updatedAt).toLocaleString() } : null].filter(Boolean)}
-      onBack={() => setSelectedDeal(null)}
+      onBack={() => { if (!saveInFlightRef.current) setSelectedDeal(null); }}
     />;
   }
 
@@ -162,7 +190,7 @@ export default function DealsScreen({ deals, initialMode = "", navigation = null
         {navigation}
         <SectionHeading
           title="Deal Feed"
-          actions={<button type="button" className="primary-button" onClick={() => { setForm(blankDeal()); setFormOpen((open) => !open); }}>{formOpen ? "Close form" : "Paste Listing"}</button>}
+          actions={<button type="button" className="primary-button" disabled={saving} onClick={() => { if (saveInFlightRef.current) return; setForm(blankDeal()); setFormOpen((open) => !open); }}>{formOpen ? "Close form" : "Paste Listing"}</button>}
         />
         {formOpen ? (
           <form className="flip-form" onSubmit={save}>
@@ -201,7 +229,7 @@ export default function DealsScreen({ deals, initialMode = "", navigation = null
             </div>
             <div className="flip-live-total"><span>Current landed-cost estimate</span><strong>{formatCurrency(calculateLandedCost({ ...form, purchasePrice: form.askingPrice, purchaseTax: form.estimatedTax }))}</strong></div>
             {message ? <p className="flip-form-message" role="status">{message}</p> : null}
-            <FormActions><button type="submit" className="primary-button">{form.id ? "Update listing" : "Save listing"}</button><button type="button" className="secondary-button" onClick={() => onAnalyze({ ...form, purchasePrice: form.askingPrice, purchaseTax: form.estimatedTax })}>Analyze assumptions</button></FormActions>
+            <FormActions><button type="submit" className="primary-button" disabled={saving}>{saving ? "Saving…" : form.id ? "Update listing" : "Save listing"}</button><button type="button" className="secondary-button" disabled={saving} onClick={() => onAnalyze({ ...form, purchasePrice: form.askingPrice, purchaseTax: form.estimatedTax })}>Analyze assumptions</button></FormActions>
           </form>
         ) : message ? <p className="flip-form-message" role="status">{message}</p> : null}
         {visibleDeals.length ? (
@@ -214,7 +242,7 @@ export default function DealsScreen({ deals, initialMode = "", navigation = null
                   <div className="flip-deal-summary"><span>{deal.currentBid ? "Current bid" : "Price"}<strong>{formatCurrency(deal.currentBid || deal.askingPrice)}</strong></span><span>Projected profit<strong>{deal.projectedProfit || deal.expectedProfit ? formatCurrency(deal.projectedProfit || deal.expectedProfit) : "Needs analysis"}</strong></span></div>
                   <p className="flip-deal-signal">{deal.confidence || "Unrated"} confidence · {deal.riskLevel || (deal.riskFlags?.length ? "Flagged" : "Unrated")} risk</p>
                   <time dateTime={deal.auctionEndTime || deal.listingCreatedAt || deal.dateDiscovered || deal.createdAt}>{listingTiming(deal)}</time>
-                  <button type="button" className="primary-button" onClick={() => setSelectedDeal(deal)}>Review</button>
+                  <button type="button" className="primary-button" disabled={saving} onClick={() => setSelectedDeal(deal)}>Review</button>
                 </div>
               </DealCard>
             ))}
