@@ -3,6 +3,7 @@ import {
   PRODUCT_MATCH_STATES,
   PURCHASE_CONFIDENCE_LEVELS,
   PURCHASE_DRAFT_STATES,
+  PURCHASE_EVENT_TYPES,
   PURCHASE_FULFILLMENT_TYPES,
   PURCHASE_LIFECYCLE_STATES,
   PURCHASE_PROVENANCE_TYPES,
@@ -346,6 +347,7 @@ export function normalizeReceivingEvent(value, options = {}) {
   return Object.freeze({
     ...system,
     purchaseId: boundedText(value.purchaseId, "purchaseId", { required: true }),
+    replacementEventId: boundedText(value.replacementEventId, "replacementEventId"),
     idempotencyKey: boundedText(value.idempotencyKey, "idempotencyKey", { required: true, maximum: 500 }),
     occurredAt: isoTimestamp(value.occurredAt, "occurredAt", { required: true }),
     confirmedAt: isoTimestamp(value.confirmedAt, "confirmedAt", { required: true }),
@@ -357,6 +359,48 @@ export function normalizeReceivingEvent(value, options = {}) {
     provenance: Object.freeze(normalizeProvenance(value.provenance, PURCHASE_PROVENANCE_TYPES.RECEIVING_CONFIRMATION)),
     createsInventory: false,
   });
+}
+
+/**
+ * Replacement receipts require a fully scoped, owner-confirmed Purchase event.
+ * Older reference-only replacement notes remain informational and cannot
+ * authorize quantity beyond the original order.
+ */
+export function deriveReplacementReceivingAuthorizations(purchase, purchaseEvents = []) {
+  const canonical = normalizeCanonicalPurchase(purchase, { persisted: true });
+  assertSafePurchaseReceivingInput(purchaseEvents);
+  if (!Array.isArray(purchaseEvents)) throw new PurchaseReceivingValidationError("INVALID_PURCHASE_EVENTS", "Purchase Events must be an array.");
+  const lineIds = new Set(canonical.lineItems.map((line) => line.lineItemId));
+  const relatedAdjustmentIds = new Set();
+  const authorizations = [];
+  for (const event of purchaseEvents.filter((entry) => entry?.purchaseId === canonical.id && entry?.type === PURCHASE_EVENT_TYPES.REPLACEMENT_NOTED)) {
+    const scopeValues = [event.lineItemId, event.quantity, event.relatedEventId];
+    const scopeCount = scopeValues.filter((value) => value != null && value !== "").length;
+    if (scopeCount === 0) continue;
+    if (scopeCount !== scopeValues.length || !event.replacementReference) {
+      throw new PurchaseReceivingValidationError("REPLACEMENT_AUTHORIZATION_INCOMPLETE", "Replacement authorization must bind a Purchase line, quantity, reference, and source return event.");
+    }
+    if (event.confirmationMethod !== "VERIFIED_OWNER_SESSION" || event.recordType !== "PURCHASE_EVENT") {
+      throw new PurchaseReceivingValidationError("REPLACEMENT_AUTHORITY_INVALID", "Replacement authorization must be owner-confirmed Purchase history.");
+    }
+    const lineItemId = boundedText(event.lineItemId, "replacement.lineItemId", { required: true });
+    const quantity = positiveInteger(event.quantity, "replacement.quantity", { minimum: 1 });
+    if (!lineIds.has(lineItemId)) throw new PurchaseReceivingValidationError("UNKNOWN_PURCHASE_LINE", "Replacement authorization references a line outside the Purchase.");
+    const relatedEventId = boundedText(event.relatedEventId, "replacement.relatedEventId", { required: true });
+    if (relatedAdjustmentIds.has(relatedEventId)) {
+      throw new PurchaseReceivingValidationError("DUPLICATE_REPLACEMENT_SOURCE", "One returned Inventory adjustment may authorize only one replacement receipt.");
+    }
+    relatedAdjustmentIds.add(relatedEventId);
+    authorizations.push(Object.freeze({
+      id: boundedText(event.id, "replacement.id", { required: true }),
+      purchaseId: canonical.id,
+      lineItemId,
+      quantity,
+      replacementReference: boundedText(event.replacementReference, "replacement.replacementReference", { required: true }),
+      relatedEventId,
+    }));
+  }
+  return Object.freeze(authorizations);
 }
 
 export function validateDraftForConfirmation(value) {
@@ -379,18 +423,37 @@ export function validateDraftForConfirmation(value) {
   return Object.freeze({ valid: blockers.length === 0, blockers: Object.freeze([...new Set(blockers)]), warnings: Object.freeze([...new Set(warnings)]) });
 }
 
-export function deriveReceivingProjection(purchase, receivingEvents = []) {
+export function deriveReceivingProjection(purchase, receivingEvents = [], purchaseEvents = []) {
   const canonical = normalizeCanonicalPurchase(purchase, { persisted: true });
   if (!Array.isArray(receivingEvents)) throw new PurchaseReceivingValidationError("INVALID_RECEIVING_EVENTS", "Receiving Events must be an array.");
   const events = receivingEvents.map((event) => normalizeReceivingEvent(event, { persisted: true })).filter((event) => event.purchaseId === canonical.id);
+  const replacementAuthorizations = deriveReplacementReceivingAuthorizations(canonical, purchaseEvents);
+  const replacementById = new Map(replacementAuthorizations.map((entry) => [entry.id, entry]));
+  const replacementReceived = new Map(replacementAuthorizations.map((entry) => [entry.id, 0]));
   const eventKeys = new Set();
   for (const event of events) {
     if (eventKeys.has(event.idempotencyKey)) throw new PurchaseReceivingValidationError("DUPLICATE_RECEIVING_EVENT", "Receiving Event idempotency keys must be unique per Purchase.");
     eventKeys.add(event.idempotencyKey);
+    if (event.replacementEventId) {
+      const authorization = replacementById.get(event.replacementEventId);
+      if (!authorization) throw new PurchaseReceivingValidationError("REPLACEMENT_AUTHORIZATION_REQUIRED", "Replacement Receiving must reference a scoped owner-confirmed replacement event.");
+      if (event.entries.some((entry) => entry.lineItemId !== authorization.lineItemId)) {
+        throw new PurchaseReceivingValidationError("REPLACEMENT_LINE_MISMATCH", "Replacement Receiving must match its authorized Purchase line.");
+      }
+      const eventQuantity = event.entries.reduce((sum, entry) => sum + entry.quantityReceived, 0);
+      const nextQuantity = replacementReceived.get(authorization.id) + eventQuantity;
+      if (nextQuantity > authorization.quantity) {
+        throw new PurchaseReceivingValidationError("REPLACEMENT_RECEIVING_EXCEEDS_AUTHORIZATION", "Replacement Receiving exceeds its owner-confirmed returned quantity.");
+      }
+      replacementReceived.set(authorization.id, nextQuantity);
+    }
   }
   const lines = canonical.lineItems.map((line) => {
     const relevant = events.flatMap((event) => event.entries.map((entry) => ({ event, entry }))).filter(({ entry }) => entry.lineItemId === line.lineItemId);
-    const receivedQuantity = relevant.reduce((sum, { entry }) => sum + entry.quantityReceived, 0);
+    const ordinary = relevant.filter(({ event }) => !event.replacementEventId);
+    const replacement = relevant.filter(({ event }) => Boolean(event.replacementEventId));
+    const receivedQuantity = ordinary.reduce((sum, { entry }) => sum + entry.quantityReceived, 0);
+    const replacementReceivedQuantity = replacement.reduce((sum, { entry }) => sum + entry.quantityReceived, 0);
     const accountableQuantity = line.quantityOrdered - line.cancellationQuantity;
     if (receivedQuantity > accountableQuantity) throw new PurchaseReceivingValidationError("RECEIVING_EXCEEDS_ORDERED", "Received quantity exceeds non-cancelled ordered quantity.", { lineItemId: line.lineItemId });
     return Object.freeze({
@@ -401,17 +464,21 @@ export function deriveReceivingProjection(purchase, receivingEvents = []) {
       cancellationQuantity: line.cancellationQuantity,
       accountableQuantity,
       receivedQuantity,
+      replacementReceivedQuantity,
+      totalPhysicalReceivedQuantity: receivedQuantity + replacementReceivedQuantity,
       remainingQuantity: accountableQuantity - receivedQuantity,
       discrepancies: Object.freeze(relevant.filter(({ entry }) => entry.discrepancy !== RECEIVING_DISCREPANCIES.NONE).map(({ event, entry }) => Object.freeze({
         eventId: event.id,
         occurredAt: event.occurredAt,
         discrepancy: entry.discrepancy,
         quantityAffected: entry.quantityAffected,
+        replacementEventId: event.replacementEventId,
       }))),
     });
   });
   const totalAccountable = lines.reduce((sum, line) => sum + line.accountableQuantity, 0);
   const totalReceived = lines.reduce((sum, line) => sum + line.receivedQuantity, 0);
+  const totalReplacementReceived = lines.reduce((sum, line) => sum + line.replacementReceivedQuantity, 0);
   const status = totalAccountable === 0
     ? PURCHASE_RECEIPT_STATES.CANCELLED
     : totalReceived === 0
@@ -425,14 +492,16 @@ export function deriveReceivingProjection(purchase, receivingEvents = []) {
     eventCount: events.length,
     totalAccountableQuantity: totalAccountable,
     totalReceivedQuantity: totalReceived,
+    totalReplacementReceivedQuantity: totalReplacementReceived,
+    replacementEventCount: events.filter((event) => event.replacementEventId).length,
     lineItems: Object.freeze(lines),
   });
 }
 
 /** Derived-only view of potential Inventory; no repository or Inventory writer is reachable here. */
-export function buildInventoryHandoffPreview(purchase, receivingEvents = []) {
+export function buildInventoryHandoffPreview(purchase, receivingEvents = [], purchaseEvents = []) {
   const canonical = normalizeCanonicalPurchase(purchase, { persisted: true });
-  const receiving = deriveReceivingProjection(canonical, receivingEvents);
+  const receiving = deriveReceivingProjection(canonical, receivingEvents, purchaseEvents);
   const lineMap = new Map(canonical.lineItems.map((line) => [line.lineItemId, line]));
   const rows = receiving.lineItems.filter((line) => line.receivedQuantity > 0).map((projection) => {
     const line = lineMap.get(projection.lineItemId);

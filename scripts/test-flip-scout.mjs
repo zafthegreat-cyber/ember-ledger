@@ -198,7 +198,7 @@ assert.deepEqual(malformed.state, createEmptyFlipScoutState(malformed.state.upda
 const imported = repository.importJson(JSON.stringify({ schemaVersion: 1, deals: [{ id: "deal-import", title: "Imported" }] }));
 assert.equal(imported.error, "");
 assert.equal(imported.state.deals[0].title, "Imported");
-assert.equal(imported.state.schemaVersion, 3, "Older backups migrate to the Phase 2C-B schema without changing the storage key");
+assert.equal(imported.state.schemaVersion, 4, "Older backups migrate to the Phase 2C-C schema without changing the storage key");
 assert.deepEqual(imported.state.inventoryLots, [], "older Business state receives an empty acquisition-lot collection");
 assert.deepEqual(imported.state.inventoryCreationEvents, [], "older Business state receives an empty Inventory creation history");
 assert.deepEqual(imported.state.providerListings, []);

@@ -9,7 +9,10 @@ import {
   verifyBackupEnvelope,
 } from "./backupFormat.js";
 import { findProhibitedData } from "./backupSecurity.js";
-import { validateBackupSourceData } from "./backupValidation.js";
+import {
+  validateBackupCrossSourceRelationships,
+  validateBackupSourceData,
+} from "./backupValidation.js";
 
 export const RESTORE_PREVIEW_RESULTS = Object.freeze({
   READY_FOR_FUTURE_RESTORE: "READY_FOR_FUTURE_RESTORE",
@@ -253,6 +256,7 @@ const PURCHASE_RECEIVING_REFERENCE_TARGETS = Object.freeze({
   draftId: ["purchaseDrafts"],
   purchaseId: ["purchases"],
   receivingEventId: ["receivingEvents"],
+  replacementEventId: ["purchaseEvents"],
 });
 
 const DEAL_FINDER_REFERENCE_TARGETS = Object.freeze({
@@ -262,6 +266,8 @@ const DEAL_FINDER_REFERENCE_TARGETS = Object.freeze({
   inventoryCreationEventId: ["inventoryCreationEvents"],
   receivingEventReferences: ["receivingEvents"],
   purchaseLineItemId: ["purchaseLineItems"],
+  replacementAuthorizationEventId: ["purchaseEvents"],
+  sourceReturnAdjustmentId: ["inventoryAdjustments"],
 });
 
 function isStaticAccountOpsReference(row, key, value) {
@@ -514,6 +520,7 @@ export async function previewBackupRestore(raw, options = {}) {
     excludedSources: backup.manifest.excludedSources || [],
   });
   const records = [];
+  const validatedSections = [];
 
   for (const section of backup.sections) {
     const source = getBackupSource(section.sourceId, sourceRegistry);
@@ -534,8 +541,12 @@ export async function previewBackupRestore(raw, options = {}) {
     const actualCount = countSourceRecords(section.data, source);
     preview.recordCounts[section.sourceId] = actualCount;
     if (actualCount !== section.recordCount) preview.errors.push(`Record count does not match for ${section.sourceId}.`);
+    validatedSections.push(section);
     records.push(...enumerateSectionRecords(section, source));
   }
+
+  const crossSourceValidation = validateBackupCrossSourceRelationships(validatedSections);
+  if (!crossSourceValidation.valid) preview.errors.push(...crossSourceValidation.errors);
 
   if (preview.unsupportedSchemas.length) {
     preview.schemaCompatibility = "UNSUPPORTED";

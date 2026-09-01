@@ -17,8 +17,16 @@ import {
   Toast,
 } from "../../components/operations/OperationsUI.jsx";
 import { OWNER_SESSION_STATES } from "../../services/ownerSession.js";
-import { RECEIVING_DISCREPANCIES } from "./constants.js";
+import { PURCHASE_EVENT_TYPES, RECEIVING_DISCREPANCIES } from "./constants.js";
 import { INVENTORY_CREATION_PRODUCT_CLASSIFICATIONS } from "./inventoryCreation/constants.js";
+import {
+  deriveEffectiveInventoryAdjustmentIds,
+  isPhysicalInventoryReturnAdjustment,
+} from "./inventoryCreation/contracts.js";
+import {
+  INVENTORY_CORRECTION_CATEGORIES,
+  INVENTORY_QUANTITY_CORRECTION_REASONS,
+} from "./inventoryCorrection/constants.js";
 import { createPurchaseReceivingService } from "./service.js";
 import "./purchase-receiving.css";
 
@@ -26,6 +34,20 @@ const SECTIONS = Object.freeze([
   { key: "drafts", label: "Drafts" },
   { key: "purchases", label: "Purchases" },
   { key: "receiving", label: "Receiving" },
+  { key: "corrections", label: "Corrections & Returns" },
+]);
+
+const CORRECTION_CATEGORY_OPTIONS = Object.freeze([
+  INVENTORY_CORRECTION_CATEGORIES.CONDITION_CORRECTION,
+  INVENTORY_CORRECTION_CATEGORIES.DAMAGED_AFTER_RECEIVING,
+  INVENTORY_CORRECTION_CATEGORIES.PRODUCT_RESOLUTION_CORRECTION,
+  INVENTORY_CORRECTION_CATEGORIES.WRONG_ITEM_RESOLUTION,
+  INVENTORY_CORRECTION_CATEGORIES.SUBSTITUTION_RESOLUTION,
+  INVENTORY_CORRECTION_CATEGORIES.RETURN_TO_RETAILER,
+  INVENTORY_CORRECTION_CATEGORIES.PARTIAL_RETURN,
+  INVENTORY_CORRECTION_CATEGORIES.QUANTITY_CORRECTION,
+  INVENTORY_CORRECTION_CATEGORIES.ACQUISITION_COST_CORRECTION,
+  INVENTORY_CORRECTION_CATEGORIES.REVERSAL_CORRECTION,
 ]);
 
 const EMPTY_SNAPSHOT = Object.freeze({
@@ -241,6 +263,109 @@ function ReceivingDialog({ purchase, receivingEvents = [], form, onChange, onClo
   );
 }
 
+function InventoryCorrectionCard({ item, adjustments = [], effectiveAdjustmentIds = new Set(), replacementReceivedSourceIds = new Set(), busy, onReview, onReplacement }) {
+  const itemAdjustments = adjustments.filter((entry) => entry.inventoryItemId === item.id);
+  const replacementEligible = itemAdjustments.find((entry) => isPhysicalInventoryReturnAdjustment(entry)
+    && effectiveAdjustmentIds.has(entry.id)
+    && !replacementReceivedSourceIds.has(entry.id));
+  return (
+    <RecordCard className="inventory-correction-card" data-record-kind="inventory-correction-source">
+      <div className="purchase-receiving-card__heading">
+        <div><SourceBadge>Canonical local Inventory</SourceBadge><h3>{item.productTitle || item.name || item.productReference}</h3><p>{item.inventoryLotId}</p></div>
+        <StatusBadge tone={item.quantity > 0 ? "success" : "neutral"}>{words(item.inventoryDispositionState || item.status)}</StatusBadge>
+      </div>
+      <Facts rows={[
+        { label: "Current quantity", value: item.quantity },
+        { label: "Condition", value: words(item.condition) },
+        { label: "Exact acquisition cost", value: moneyLabel({ minorUnits: item.acquisitionCostMinorUnits, currency: item.currency }) },
+        { label: "Append-only events", value: itemAdjustments.length },
+      ]} />
+      <p className="purchase-receiving-invariant">Inventory Correction Candidate != Inventory Mutation</p>
+      <div className="purchase-receiving-actions">
+        <PrimaryButton onClick={() => onReview(item, itemAdjustments)} disabled={busy}>Review Correction or Return</PrimaryButton>
+        {replacementEligible ? <SecondaryButton onClick={() => onReplacement(item, replacementEligible)} disabled={busy}>Record Replacement Receiving</SecondaryButton> : null}
+      </div>
+    </RecordCard>
+  );
+}
+
+function ReplacementReceivingDialog({ source, form, busy, onChange, onClose, onConfirm }) {
+  if (!source) return null;
+  const { item, adjustment } = source;
+  return <Dialog
+    open
+    title="Record Replacement Receiving"
+    description="Link a physically received replacement to the exact owner-confirmed return. This records new Receiving evidence; Inventory still requires a separate creation confirmation."
+    onClose={busy ? undefined : onClose}
+    actions={<><SecondaryButton onClick={onClose} disabled={busy}>Cancel</SecondaryButton><PrimaryButton onClick={onConfirm} disabled={busy || !String(form.replacementReference || "").trim()}>Record Replacement Receiving</PrimaryButton></>}
+  >
+    <div className="purchase-receiving-form" data-replacement-boundary="return-then-receiving-then-inventory">
+      <Facts rows={[
+        { label: "Purchase", value: item.purchaseId },
+        { label: "Purchase line", value: item.purchaseLineItemId },
+        { label: "Returned quantity", value: adjustment.quantity },
+        { label: "Exact returned cost", value: moneyLabel({ minorUnits: adjustment.totalCostMinorUnits, currency: adjustment.currency }) },
+      ]} />
+      <label><span>Replacement reference</span><input value={form.replacementReference || ""} onChange={(event) => onChange({ ...form, replacementReference: event.target.value })} maxLength={500} /></label>
+      <label><span>Condition physically received</span><select value={form.condition || item.condition || "UNKNOWN"} onChange={(event) => onChange({ ...form, condition: event.target.value })}><option value="NEW">New</option><option value="SEALED">Sealed</option><option value="OPEN_BOX">Open box</option><option value="DAMAGED">Damaged</option><option value="USED">Used</option><option value="UNKNOWN">Unknown</option></select></label>
+      <p className="purchase-receiving-form__wide purchase-receiving-invariant">Replacement Receiving != Inventory · the original acquisition and return remain append-only.</p>
+    </div>
+  </Dialog>;
+}
+
+function CorrectionState({ title, state }) {
+  if (!state) return null;
+  return <div className="inventory-correction-state"><strong>{title}</strong><Facts rows={[
+    { label: "Product", value: state.productTitle || state.productReference },
+    { label: "Condition", value: words(state.condition) },
+    { label: "Disposition", value: words(state.inventoryDispositionState) },
+    { label: "Quantity", value: state.quantity },
+    { label: "Exact cost", value: moneyLabel({ minorUnits: state.acquisitionCostMinorUnits, currency: state.currency }) },
+  ]} /></div>;
+}
+
+function InventoryCorrectionDialog({ item, form, candidate, managedInventory, adjustments, busy, onChange, onPreview, onConfirm, onClose }) {
+  if (!item) return null;
+  const category = form.category || INVENTORY_CORRECTION_CATEGORIES.CONDITION_CORRECTION;
+  const needsCondition = [INVENTORY_CORRECTION_CATEGORIES.CONDITION_CORRECTION, INVENTORY_CORRECTION_CATEGORIES.DAMAGED_AFTER_RECEIVING].includes(category);
+  const needsProduct = [INVENTORY_CORRECTION_CATEGORIES.PRODUCT_RESOLUTION_CORRECTION, INVENTORY_CORRECTION_CATEGORIES.WRONG_ITEM_RESOLUTION, INVENTORY_CORRECTION_CATEGORIES.SUBSTITUTION_RESOLUTION].includes(category);
+  const needsQuantity = [INVENTORY_CORRECTION_CATEGORIES.PARTIAL_RETURN, INVENTORY_CORRECTION_CATEGORIES.QUANTITY_CORRECTION].includes(category);
+  const needsCost = category === INVENTORY_CORRECTION_CATEGORIES.ACQUISITION_COST_CORRECTION;
+  const needsReversal = category === INVENTORY_CORRECTION_CATEGORIES.REVERSAL_CORRECTION;
+  const update = (patch) => onChange({ ...form, ...patch });
+  return (
+    <Dialog
+      open
+      title="Review Inventory Correction"
+      description="Preview the current state, proposed change, and downstream effect. Nothing changes until explicit owner confirmation succeeds."
+      onClose={busy ? undefined : onClose}
+      actions={<><SecondaryButton onClick={onClose} disabled={busy}>Cancel</SecondaryButton><PrimaryButton onClick={onPreview} disabled={busy}>Review Correction</PrimaryButton>{candidate ? <PrimaryButton onClick={onConfirm} disabled={busy || !candidate.eligible}>{[INVENTORY_CORRECTION_CATEGORIES.RETURN_TO_RETAILER, INVENTORY_CORRECTION_CATEGORIES.PARTIAL_RETURN].includes(category) ? "Confirm Return" : "Confirm Correction"}</PrimaryButton> : null}</>}
+    >
+      <div className="purchase-receiving-form inventory-correction-form" data-correction-authority="verified-owner-only">
+        <label><span>Correction or disposition</span><select value={category} onChange={(event) => {
+          const nextCategory = event.target.value;
+          update({
+            category: nextCategory,
+            targetCondition: nextCategory === INVENTORY_CORRECTION_CATEGORIES.DAMAGED_AFTER_RECEIVING ? "DAMAGED" : form.targetCondition,
+            targetDisposition: nextCategory === INVENTORY_CORRECTION_CATEGORIES.DAMAGED_AFTER_RECEIVING ? "ADD_AS_DAMAGED" : form.targetDisposition,
+          });
+        }}>{CORRECTION_CATEGORY_OPTIONS.map((value) => <option value={value} key={value}>{words(value)}</option>)}</select></label>
+        {needsCondition ? <><label><span>Reviewed condition</span><select value={form.targetCondition || (category === INVENTORY_CORRECTION_CATEGORIES.DAMAGED_AFTER_RECEIVING ? "DAMAGED" : "OPEN_BOX")} onChange={(event) => update({ targetCondition: event.target.value, targetDisposition: event.target.value === "DAMAGED" ? "ADD_AS_DAMAGED" : "ADD_TO_INVENTORY" })}><option value="NEW">New</option><option value="SEALED">Sealed</option><option value="OPEN_BOX">Open box</option><option value="DAMAGED">Damaged</option><option value="USED">Used</option><option value="UNKNOWN">Unknown</option></select></label><p className="purchase-receiving-form__wide purchase-receiving-invariant">Condition correction applies to this entire current acquisition lot. Sold or transferred units block it.</p></> : null}
+        {needsProduct ? <><label className="purchase-receiving-form__wide"><span>Existing product relationship</span><select value={form.targetProductReference || ""} onChange={(event) => update({ targetProductReference: event.target.value })}><option value="">Choose an existing product</option>{managedInventory.filter((entry) => entry.id !== item.id && entry.productReference !== item.productReference).map((entry) => <option key={entry.id} value={entry.productReference}>{entry.productTitle || entry.name || entry.productReference}</option>)}</select></label><p className="purchase-receiving-form__wide purchase-receiving-invariant">Product correction applies to the entire current lot and never creates a product automatically.</p></> : null}
+        {needsQuantity ? <label><span>Quantity physically affected</span><input type="number" inputMode="numeric" min="1" max={item.quantity} step="1" value={form.quantity || ""} onChange={(event) => update({ quantity: event.target.value })} /></label> : null}
+        {category === INVENTORY_CORRECTION_CATEGORIES.QUANTITY_CORRECTION ? <label><span>Quantity reason</span><select value={form.quantityReason || INVENTORY_QUANTITY_CORRECTION_REASONS.COUNT_CORRECTION} onChange={(event) => update({ quantityReason: event.target.value })}>{Object.values(INVENTORY_QUANTITY_CORRECTION_REASONS).filter((value) => value !== INVENTORY_QUANTITY_CORRECTION_REASONS.FOUND_EXTRA).map((value) => <option value={value} key={value}>{words(value)}</option>)}</select></label> : null}
+        {needsCost ? <label><span>Corrected total cost (minor units)</span><input type="number" inputMode="numeric" min="0" step="1" value={form.targetTotalCostMinorUnits ?? ""} onChange={(event) => update({ targetTotalCostMinorUnits: event.target.value })} /></label> : null}
+        {needsReversal ? <label className="purchase-receiving-form__wide"><span>Latest correction to reverse</span><select value={form.reversesAdjustmentId || ""} onChange={(event) => update({ reversesAdjustmentId: event.target.value })}><option value="">Choose an append-only event</option>{adjustments.filter((entry) => entry.previousState && entry.resultingState).sort((a, b) => (b.adjustmentSequence || 0) - (a.adjustmentSequence || 0)).map((entry) => <option value={entry.id} key={entry.id}>{words(entry.correctionCategory)} · event {entry.adjustmentSequence}</option>)}</select></label> : null}
+        <label className="purchase-receiving-form__wide"><span>Owner reason</span><textarea value={form.reason || ""} onChange={(event) => update({ reason: event.target.value })} maxLength={1000} /></label>
+      </div>
+      {candidate ? <div className="inventory-correction-preview" aria-label="Inventory correction impact preview"><CorrectionState title="Current State" state={candidate.current} /><span aria-hidden="true">→</span><CorrectionState title="Proposed Change" state={candidate.proposed} /><div className="inventory-correction-effect"><strong>Downstream Effect</strong><p>{candidate.quantityEffect} quantity · {candidate.costEffectMinorUnits} minor-unit cost effect</p><p>Original Purchase, Receiving, creation, sale, and transfer history remains append-only.</p></div></div> : null}
+      {candidate?.blockers?.length ? <ul className="purchase-receiving-warnings" data-correction-blocked="true">{candidate.blockers.map((entry) => <li key={entry}>{words(entry)}</li>)}</ul> : null}
+      {candidate?.warnings?.length ? <ul className="purchase-receiving-warnings">{candidate.warnings.map((entry) => <li key={entry}>{words(entry)}</li>)}</ul> : null}
+      <p className="purchase-receiving-invariant">Refund != Return · Refund != Inventory Removal · Replacement requires new Receiving and Inventory creation.</p>
+    </Dialog>
+  );
+}
+
 export default function PurchaseReceivingPage({
   session = { status: OWNER_SESSION_STATES.LOADING },
   onSignIn,
@@ -250,6 +375,7 @@ export default function PurchaseReceivingPage({
 }) {
   const authorized = session.status === OWNER_SESSION_STATES.AUTHORIZED;
   const authorizedRef = useRef(authorized);
+  const actionInFlightRef = useRef(false);
   authorizedRef.current = authorized;
   const [service, setService] = useState(null);
   const [snapshot, setSnapshot] = useState(EMPTY_SNAPSHOT);
@@ -261,6 +387,10 @@ export default function PurchaseReceivingPage({
   const [inventoryReviews, setInventoryReviews] = useState({});
   const [message, setMessage] = useState({ text: "", tone: "info" });
   const [busy, setBusy] = useState(false);
+  const [managedInventory, setManagedInventory] = useState([]);
+  const [inventoryAdjustments, setInventoryAdjustments] = useState([]);
+  const [correctionCandidate, setCorrectionCandidate] = useState(null);
+  const [replacementSource, setReplacementSource] = useState(null);
 
   useEffect(() => {
     if (!authorized) {
@@ -273,12 +403,19 @@ export default function PurchaseReceivingPage({
       setInventoryReviews({});
       setMessage({ text: "", tone: "info" });
       setBusy(false);
+      actionInFlightRef.current = false;
+      setManagedInventory([]);
+      setInventoryAdjustments([]);
+      setCorrectionCandidate(null);
+      setReplacementSource(null);
       return;
     }
     try {
       const nextService = createPurchaseReceivingService({ isOwnerAuthorized: () => authorizedRef.current });
       setService(nextService);
       setSnapshot(nextService.snapshot());
+      setManagedInventory(nextService.listManagedInventory());
+      setInventoryAdjustments(nextService.listInventoryAdjustments());
     } catch (error) {
       setService(null);
       setSnapshot(EMPTY_SNAPSHOT);
@@ -289,10 +426,19 @@ export default function PurchaseReceivingPage({
   const drafts = snapshot.purchaseDrafts || EMPTY_SNAPSHOT.purchaseDrafts;
   const purchases = snapshot.purchases || EMPTY_SNAPSHOT.purchases;
   const receivingEvents = snapshot.receivingEvents || EMPTY_SNAPSHOT.receivingEvents;
-  const receivingPurchases = purchases.filter((purchase) => (purchase.receivingStatus || purchase.status) !== "FULLY_RECEIVED");
+  const receivingPurchases = purchases.filter((purchase) => (purchase.receivingStatus || purchase.status) !== "FULLY_RECEIVED" || purchase.status === "REPLACEMENT_PENDING");
+  const replacementEventsById = new Map((snapshot.purchaseEvents || [])
+    .filter((entry) => entry.type === PURCHASE_EVENT_TYPES.REPLACEMENT_NOTED && entry.relatedEventId)
+    .map((entry) => [entry.id, entry]));
+  const replacementEventsBySource = new Map([...replacementEventsById.values()].map((entry) => [entry.relatedEventId, entry]));
+  const replacementReceivedSourceIds = new Set((snapshot.receivingEvents || [])
+    .map((entry) => replacementEventsById.get(entry.replacementEventId)?.relatedEventId)
+    .filter(Boolean));
+  const effectiveAdjustmentIds = new Set(deriveEffectiveInventoryAdjustmentIds(inventoryAdjustments));
 
   async function run(action, successMessage) {
-    if (!service || busy || !authorizedRef.current) return null;
+    if (!service || busy || actionInFlightRef.current || !authorizedRef.current) return null;
+    actionInFlightRef.current = true;
     setBusy(true);
     try {
       const result = await action();
@@ -301,12 +447,15 @@ export default function PurchaseReceivingPage({
         return null;
       }
       setSnapshot(result?.snapshot || service.snapshot());
+      setManagedInventory(service.listManagedInventory());
+      setInventoryAdjustments(service.listInventoryAdjustments());
       setMessage({ text: successMessage, tone: "success" });
       return result;
     } catch (error) {
       if (authorizedRef.current) setMessage({ text: error?.message || "The owner-reviewed action could not be completed.", tone: "error" });
       return null;
     } finally {
+      actionInFlightRef.current = false;
       setBusy(false);
     }
   }
@@ -400,6 +549,123 @@ export default function PurchaseReceivingPage({
     }
   }
 
+  function openInventoryCorrection(item, adjustments) {
+    setSelected(item);
+    setCorrectionCandidate(null);
+    setForm({
+      category: INVENTORY_CORRECTION_CATEGORIES.CONDITION_CORRECTION,
+      idempotencyKey: `owner-inventory-correction:${item.id}:${globalThis.crypto?.randomUUID?.() || Date.now()}`,
+      reason: "",
+      targetCondition: item.condition === "DAMAGED" ? "OPEN_BOX" : "DAMAGED",
+      targetDisposition: item.condition === "DAMAGED" ? "ADD_TO_INVENTORY" : "ADD_AS_DAMAGED",
+      latestAdjustmentId: [...adjustments].sort((a, b) => (b.adjustmentSequence || 0) - (a.adjustmentSequence || 0))[0]?.id || "",
+    });
+    setDialog("inventory-correction");
+  }
+
+  function openReplacementReceiving(item, adjustment) {
+    const existingEvent = replacementEventsBySource.get(adjustment.id) || null;
+    setReplacementSource({ item, adjustment, existingEvent });
+    setForm({
+      purchaseEventIdempotencyKey: existingEvent?.idempotencyKey || `owner-replacement-note:${adjustment.id}`,
+      receivingIdempotencyKey: `owner-replacement-receiving:${adjustment.id}`,
+      replacementReference: existingEvent?.replacementReference || "",
+      condition: item.condition || "UNKNOWN",
+    });
+    setDialog("replacement-receiving");
+  }
+
+  async function recordReplacementReceiving() {
+    if (!replacementSource) return;
+    const { item, adjustment } = replacementSource;
+    const result = await run(async () => {
+      const replacement = await service.recordPurchaseEvent(item.purchaseId, {
+        type: PURCHASE_EVENT_TYPES.REPLACEMENT_NOTED,
+        idempotencyKey: form.purchaseEventIdempotencyKey,
+        lineItemId: item.purchaseLineItemId,
+        quantity: adjustment.quantity,
+        relatedEventId: adjustment.id,
+        replacementReference: form.replacementReference,
+        summary: "Owner confirmed a replacement relationship for returned Inventory.",
+      });
+      return service.recordReceivingEvent(item.purchaseId, {
+        idempotencyKey: form.receivingIdempotencyKey,
+        replacementEventId: replacement.event.id,
+        entries: [{
+          lineItemId: item.purchaseLineItemId,
+          quantityReceived: adjustment.quantity,
+          quantityAffected: adjustment.quantity,
+          condition: form.condition,
+          discrepancy: RECEIVING_DISCREPANCIES.NONE,
+          note: "Owner confirmed physical receipt of the replacement.",
+        }],
+      });
+    }, "Replacement Receiving recorded. Inventory still requires explicit creation confirmation.");
+    if (result) {
+      const purchase = result.purchase;
+      setHandoff({ purchase, preview: service.previewInventoryHandoff(purchase.id), candidates: service.previewInventoryCreation(purchase.id) });
+      setInventoryReviews({});
+      setReplacementSource(null);
+      setDialog("");
+      setSection("receiving");
+    }
+  }
+
+  function correctionProposalFromForm() {
+    const category = form.category;
+    const proposal = {
+      category,
+      idempotencyKey: form.idempotencyKey,
+      reason: form.reason || "Owner reviewed the Inventory correction and its downstream effect.",
+    };
+
+    if ([INVENTORY_CORRECTION_CATEGORIES.CONDITION_CORRECTION, INVENTORY_CORRECTION_CATEGORIES.DAMAGED_AFTER_RECEIVING].includes(category)) {
+      proposal.targetCondition = form.targetCondition;
+      proposal.targetDisposition = form.targetDisposition;
+    }
+    if ([INVENTORY_CORRECTION_CATEGORIES.PRODUCT_RESOLUTION_CORRECTION, INVENTORY_CORRECTION_CATEGORIES.WRONG_ITEM_RESOLUTION, INVENTORY_CORRECTION_CATEGORIES.SUBSTITUTION_RESOLUTION].includes(category)) {
+      proposal.targetProductReference = form.targetProductReference;
+    }
+    if ([INVENTORY_CORRECTION_CATEGORIES.PARTIAL_RETURN, INVENTORY_CORRECTION_CATEGORIES.QUANTITY_CORRECTION].includes(category) && form.quantity !== "" && form.quantity != null) {
+      proposal.quantity = Number(form.quantity);
+    }
+    if (category === INVENTORY_CORRECTION_CATEGORIES.QUANTITY_CORRECTION) {
+      proposal.quantityReason = form.quantityReason || INVENTORY_QUANTITY_CORRECTION_REASONS.COUNT_CORRECTION;
+    }
+    if (category === INVENTORY_CORRECTION_CATEGORIES.ACQUISITION_COST_CORRECTION && form.targetTotalCostMinorUnits !== "" && form.targetTotalCostMinorUnits != null) {
+      proposal.targetTotalCostMinorUnits = Number(form.targetTotalCostMinorUnits);
+    }
+    if (category === INVENTORY_CORRECTION_CATEGORIES.REVERSAL_CORRECTION) {
+      proposal.reversesAdjustmentId = form.reversesAdjustmentId;
+    }
+    return proposal;
+  }
+
+  function previewInventoryCorrection() {
+    try {
+      setCorrectionCandidate(service.previewInventoryCorrection(selected.id, correctionProposalFromForm()));
+      setMessage({ text: "Correction impact previewed. No Inventory was changed.", tone: "info" });
+    } catch (error) {
+      setCorrectionCandidate(null);
+      setMessage({ text: error?.message || "Inventory correction could not be previewed.", tone: "error" });
+    }
+  }
+
+  async function confirmInventoryCorrection() {
+    if (!correctionCandidate) return;
+    const proposal = correctionProposalFromForm();
+    const result = await run(() => service.confirmInventoryCorrection(selected.id, correctionCandidate.candidateId, {
+      expectedVersion: correctionCandidate.expectedVersion,
+      proposal,
+    }), "Inventory correction recorded once. Original acquisition history remains append-only.");
+    if (result) {
+      setDialog("");
+      setSelected(null);
+      setCorrectionCandidate(null);
+      setForm({});
+    }
+  }
+
   if (session.status === OWNER_SESSION_STATES.LOADING) return <main className="purchase-receiving purchase-receiving--denied" data-page="purchase-receiving" data-owner-gate="loading"><LoadingState title="Checking owner access">Verifying the application session before loading Purchase records.</LoadingState></main>;
   if (session.status === OWNER_SESSION_STATES.SIGN_IN_REQUIRED) return <main className="purchase-receiving purchase-receiving--denied" data-page="purchase-receiving" data-owner-gate="sign-in"><ErrorState title="Sign In Required" action={<PrimaryButton onClick={onSignIn}>Sign In</PrimaryButton>}>Sign in with the approved owner account to review Purchases and Receiving.</ErrorState></main>;
   if (session.status === OWNER_SESSION_STATES.OWNER_ACCESS_REQUIRED) return <main className="purchase-receiving purchase-receiving--denied" data-page="purchase-receiving" data-owner-gate="required"><ErrorState title="Owner Access Required" action={<div className="purchase-receiving-actions"><PrimaryButton onClick={onReturnHome}>Return to Business</PrimaryButton><SecondaryButton onClick={onSignOut}>Sign Out</SecondaryButton></div>}>Business workspace access does not grant authority to confirm Purchases. No Purchase records were loaded.</ErrorState></main>;
@@ -431,11 +697,15 @@ export default function PurchaseReceivingPage({
 
       {section === "receiving" ? <section aria-label="Receiving"><SectionHeader title="Receiving" description="Record only physical receipt, including partial shipments and discrepancies." />{receivingPurchases.length ? <div className="purchase-receiving-grid">{receivingPurchases.map((purchase) => <PurchaseCard key={purchase.id} purchase={purchase} events={receivingEvents} busy={busy} onReceive={openReceiving} onPreview={previewHandoff} />)}</div> : <EmptyState title="Nothing awaiting receipt">There are no owner-confirmed Purchases waiting for receiving.</EmptyState>}<InventoryHandoff preview={handoff?.preview} purchase={handoff?.purchase} candidates={handoff?.candidates} reviews={inventoryReviews} busy={busy} onReview={updateInventoryReview} onConfirm={confirmInventory} onClose={() => { setHandoff(null); setInventoryReviews({}); }} /></section> : null}
 
+      {section === "corrections" ? <section aria-label="Inventory Corrections and Returns" data-correction-workflow="preview-then-owner-confirm"><SectionHeader title="Inventory Corrections & Returns" description="Review append-only condition, product, quantity, cost, return, and reversal events after Inventory creation. Refunds alone never remove Inventory." />{managedInventory.length ? <div className="purchase-receiving-grid">{managedInventory.map((item) => <InventoryCorrectionCard key={item.id} item={item} adjustments={inventoryAdjustments} effectiveAdjustmentIds={effectiveAdjustmentIds} replacementReceivedSourceIds={replacementReceivedSourceIds} busy={busy} onReview={openInventoryCorrection} onReplacement={openReplacementReceiving} />)}</div> : <EmptyState title="No owner-confirmed Inventory">Inventory must first pass Purchase, Receiving, candidate review, and explicit creation confirmation.</EmptyState>}<aside className="purchase-receiving-compatibility"><strong>Replacement and unexpected-extra boundary</strong><p>Replacement items require a new Receiving event and Inventory creation. Unexpected extras require separate identity and cost review. Neither mutates an existing lot automatically.</p></aside></section> : null}
+
       <aside className="purchase-receiving-compatibility"><strong>Legacy compatibility</strong><p>Existing Deal Finder records remain compatible. Owner-confirmed Inventory is written only to the established local Business Inventory authority as a separate provenance lot.</p>{onOpenLegacyPurchases ? <QuietButton onClick={onOpenLegacyPurchases}>Open Legacy Purchase Records</QuietButton> : null}</aside>
 
       <Dialog open={dialog === "correct"} title="Correct Purchase Draft" description="Corrections append provenance; they do not replace source evidence." onClose={() => setDialog("")} actions={<><SecondaryButton onClick={() => setDialog("")}>Cancel</SecondaryButton><PrimaryButton onClick={correctDraft} disabled={busy}>Save Correction</PrimaryButton></>}><div className="purchase-receiving-form"><label><span>Retailer or vendor</span><input value={form.retailerLabel || ""} onChange={(event) => setForm({ ...form, retailerLabel: event.target.value })} maxLength={500} /></label><label><span>External order reference</span><input value={form.externalOrderId || ""} onChange={(event) => setForm({ ...form, externalOrderId: event.target.value })} maxLength={256} /></label><label><span>Order date</span><input type="date" value={form.orderedAt || ""} onChange={(event) => setForm({ ...form, orderedAt: event.target.value })} /></label></div></Dialog>
       <Dialog open={dialog === "reject"} title="Reject Purchase Draft" description="Rejection preserves review history and creates no Purchase." onClose={() => setDialog("")} actions={<><SecondaryButton onClick={() => setDialog("")}>Cancel</SecondaryButton><PrimaryButton onClick={rejectDraft} disabled={busy}>Reject Draft</PrimaryButton></>}><div className="purchase-receiving-form"><label className="purchase-receiving-form__wide"><span>Reason</span><textarea value={form.reason || ""} onChange={(event) => setForm({ reason: event.target.value })} maxLength={1000} /></label></div></Dialog>
       <ReceivingDialog purchase={dialog === "receiving" ? selected : null} receivingEvents={receivingEvents} form={form} onChange={setForm} onClose={() => setDialog("")} onSubmit={recordReceiving} busy={busy} />
+      <InventoryCorrectionDialog item={dialog === "inventory-correction" ? selected : null} form={form} candidate={correctionCandidate} managedInventory={managedInventory} adjustments={inventoryAdjustments.filter((entry) => entry.inventoryItemId === selected?.id)} busy={busy} onChange={(next) => { setForm(next); setCorrectionCandidate(null); }} onPreview={previewInventoryCorrection} onConfirm={confirmInventoryCorrection} onClose={() => { if (!busy) { setDialog(""); setSelected(null); setCorrectionCandidate(null); setForm({}); } }} />
+      <ReplacementReceivingDialog source={dialog === "replacement-receiving" ? replacementSource : null} form={form} busy={busy} onChange={setForm} onConfirm={recordReplacementReceiving} onClose={() => { if (!busy) { setDialog(""); setReplacementSource(null); setForm({}); } }} />
     </main>
   );
 }

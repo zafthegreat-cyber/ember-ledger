@@ -5,6 +5,7 @@ import { PURCHASE_INVENTORY_MUTATION_LOCK } from "../persistence.js";
 import { assertSafePurchaseReceivingInput, sanitizePurchaseReceivingNote } from "../security.js";
 import {
   inventoryAdjustmentIdentityId,
+  inventoryAdjustmentSemanticDigest,
   inventoryCreationIdentityIds,
   normalizeInventoryAdjustmentIdempotencyKey,
   normalizeInventoryAcquisitionLot,
@@ -20,6 +21,11 @@ import {
   INVENTORY_CREATION_EVENT_TYPES,
   INVENTORY_CREATION_FORMAT,
 } from "./constants.js";
+import {
+  INVENTORY_CORRECTION_CATEGORIES,
+  INVENTORY_CORRECTION_DISPOSITIONS,
+  INVENTORY_CORRECTION_EVENT_KINDS,
+} from "../inventoryCorrection/constants.js";
 
 
 export class InventoryCreationGatewayError extends Error {
@@ -82,6 +88,9 @@ function expectedBundle(state, candidate, timestamp) {
     purchaseId: candidate.purchaseId,
     purchaseLineItemId: candidate.purchaseLineItemId,
     receivingEventReferences: candidate.receivingEventReferences,
+    replacementAuthorizationEventId: candidate.replacementAuthorizationEventId,
+    sourceReturnAdjustmentId: candidate.sourceReturnAdjustmentId,
+    sourceReturnUnitOffset: candidate.sourceReturnUnitOffset,
     productReference: candidate.productReference,
     purchaseProductReference: candidate.purchaseProductReference,
     receivedProductReference: candidate.receivedProductReference,
@@ -115,6 +124,9 @@ function expectedBundle(state, candidate, timestamp) {
     purchaseId: candidate.purchaseId,
     purchaseLineItemId: candidate.purchaseLineItemId,
     receivingEventReferences: candidate.receivingEventReferences,
+    replacementAuthorizationEventId: candidate.replacementAuthorizationEventId,
+    sourceReturnAdjustmentId: candidate.sourceReturnAdjustmentId,
+    sourceReturnUnitOffset: candidate.sourceReturnUnitOffset,
     productReference: candidate.productReference,
     purchaseProductReference: candidate.purchaseProductReference,
     receivedProductReference: candidate.receivedProductReference,
@@ -146,6 +158,9 @@ function expectedBundle(state, candidate, timestamp) {
     purchaseId: candidate.purchaseId,
     purchaseLineItemId: candidate.purchaseLineItemId,
     receivingEventReferences: [...candidate.receivingEventReferences],
+    replacementAuthorizationEventId: candidate.replacementAuthorizationEventId,
+    sourceReturnAdjustmentId: candidate.sourceReturnAdjustmentId,
+    sourceReturnUnitOffset: candidate.sourceReturnUnitOffset,
     inventoryItemId: ids.inventoryItemId,
     productReference: candidate.productReference,
     purchaseProductReference: candidate.purchaseProductReference,
@@ -184,6 +199,9 @@ function expectedBundle(state, candidate, timestamp) {
     purchaseId: candidate.purchaseId,
     purchaseLineItemId: candidate.purchaseLineItemId,
     receivingEventReferences: [...candidate.receivingEventReferences],
+    replacementAuthorizationEventId: candidate.replacementAuthorizationEventId,
+    sourceReturnAdjustmentId: candidate.sourceReturnAdjustmentId,
+    sourceReturnUnitOffset: candidate.sourceReturnUnitOffset,
     productReference: candidate.productReference,
     purchaseProductReference: candidate.purchaseProductReference,
     receivedProductReference: candidate.receivedProductReference,
@@ -220,6 +238,9 @@ function equivalentCreation(existing, candidate) {
     purchaseId: existing.purchaseId,
     purchaseLineItemId: existing.purchaseLineItemId,
     receivingEventReferences: existing.receivingEventReferences,
+    replacementAuthorizationEventId: existing.replacementAuthorizationEventId,
+    sourceReturnAdjustmentId: existing.sourceReturnAdjustmentId,
+    sourceReturnUnitOffset: existing.sourceReturnUnitOffset,
     productReference: existing.productReference,
     purchaseProductReference: existing.purchaseProductReference,
     receivedProductReference: existing.receivedProductReference,
@@ -237,6 +258,9 @@ function equivalentCreation(existing, candidate) {
     purchaseId: candidate.purchaseId,
     purchaseLineItemId: candidate.purchaseLineItemId,
     receivingEventReferences: candidate.receivingEventReferences,
+    replacementAuthorizationEventId: candidate.replacementAuthorizationEventId,
+    sourceReturnAdjustmentId: candidate.sourceReturnAdjustmentId,
+    sourceReturnUnitOffset: candidate.sourceReturnUnitOffset,
     productReference: candidate.productReference,
     purchaseProductReference: candidate.purchaseProductReference,
     receivedProductReference: candidate.receivedProductReference,
@@ -278,6 +302,9 @@ function immutableEventMatches(event, candidate, ids) {
     && event.purchaseId === candidate.purchaseId
     && event.purchaseLineItemId === candidate.purchaseLineItemId
     && canonicalStringify(event.receivingEventReferences) === references
+    && (event.replacementAuthorizationEventId ?? null) === (candidate.replacementAuthorizationEventId ?? null)
+    && (event.sourceReturnAdjustmentId ?? null) === (candidate.sourceReturnAdjustmentId ?? null)
+    && (event.sourceReturnUnitOffset ?? null) === (candidate.sourceReturnUnitOffset ?? null)
     && event.productReference === candidate.productReference
     && (event.purchaseProductReference ?? null) === (candidate.purchaseProductReference ?? null)
     && (event.receivedProductReference ?? null) === (candidate.receivedProductReference ?? null)
@@ -300,6 +327,9 @@ function immutableLotMatches(lot, candidate, ids) {
     && lot.purchaseId === candidate.purchaseId
     && lot.purchaseLineItemId === candidate.purchaseLineItemId
     && canonicalStringify(lot.receivingEventReferences) === canonicalStringify(candidate.receivingEventReferences)
+    && (lot.replacementAuthorizationEventId ?? null) === (candidate.replacementAuthorizationEventId ?? null)
+    && (lot.sourceReturnAdjustmentId ?? null) === (candidate.sourceReturnAdjustmentId ?? null)
+    && (lot.sourceReturnUnitOffset ?? null) === (candidate.sourceReturnUnitOffset ?? null)
     && lot.productReference === candidate.productReference
     && (lot.purchaseProductReference ?? null) === (candidate.purchaseProductReference ?? null)
     && (lot.receivedProductReference ?? null) === (candidate.receivedProductReference ?? null)
@@ -326,6 +356,9 @@ function immutableItemMatches(item, candidate, ids) {
     && item.purchaseId === candidate.purchaseId
     && item.purchaseLineItemId === candidate.purchaseLineItemId
     && canonicalStringify(item.receivingEventReferences) === canonicalStringify(candidate.receivingEventReferences)
+    && (item.replacementAuthorizationEventId ?? null) === (candidate.replacementAuthorizationEventId ?? null)
+    && (item.sourceReturnAdjustmentId ?? null) === (candidate.sourceReturnAdjustmentId ?? null)
+    && (item.sourceReturnUnitOffset ?? null) === (candidate.sourceReturnUnitOffset ?? null)
     && item.productReference === candidate.productReference
     && (item.purchaseProductReference ?? null) === (candidate.purchaseProductReference ?? null)
     && (item.receivedProductReference ?? null) === (candidate.receivedProductReference ?? null)
@@ -506,7 +539,39 @@ export function createInventoryCreationGateway(options = {}) {
       const reversedCost = reversedUnitCosts.reduce((sum, value) => sum + value, 0);
       const timestamp = isoNow(clock);
       const adjustmentId = inventoryAdjustmentIdentityId({ candidateId: application.candidateId, applicationId: application.id, idempotencyKey: normalizedIdempotencyKey });
-      const adjustment = normalizeInventoryAdjustment({
+      const relatedAdjustments = validated.adjustments.filter((entry) => entry.applicationId === application.id);
+      const adjustmentSequence = Math.max(
+        relatedAdjustments.length,
+        relatedAdjustments.reduce((maximum, entry) => Math.max(maximum, entry.adjustmentSequence || 0), 0),
+      ) + 1;
+      const previousState = {
+        productReference: item.productReference,
+        productTitle: item.productTitle,
+        productClassification: item.productClassification,
+        condition: item.condition,
+        disposition: item.disposition,
+        inventoryDispositionState: item.inventoryDispositionState,
+        quantity: item.quantity,
+        currency: item.currency,
+        acquisitionCostMinorUnits: item.acquisitionCostMinorUnits,
+        unitAcquisitionCostsMinorUnits: item.unitAcquisitionCostsMinorUnits,
+        inventoryStatus: item.status,
+        lotStatus: lot.status,
+      };
+      const nextQuantity = item.quantity - quantity;
+      const resultingDispositionState = nextQuantity === 0
+        ? INVENTORY_CORRECTION_DISPOSITIONS.DISPOSED
+        : item.inventoryDispositionState;
+      const resultingState = {
+        ...previousState,
+        inventoryDispositionState: resultingDispositionState,
+        quantity: nextQuantity,
+        acquisitionCostMinorUnits: remainingUnitCosts.reduce((sum, value) => sum + value, 0),
+        unitAcquisitionCostsMinorUnits: remainingUnitCosts,
+        inventoryStatus: nextQuantity === 0 ? "Disposed" : item.status,
+        lotStatus: nextQuantity === 0 ? "REVERSED" : "PARTIALLY_REVERSED",
+      };
+      const adjustmentDraft = {
         id: adjustmentId,
         format: INVENTORY_CREATION_FORMAT,
         recordType: "INVENTORY_ADJUSTMENT",
@@ -514,22 +579,40 @@ export function createInventoryCreationGateway(options = {}) {
         createdAt: timestamp,
         updatedAt: timestamp,
         adjustmentType: INVENTORY_ADJUSTMENT_TYPES.CREATION_REVERSAL,
+        correctionCategory: INVENTORY_CORRECTION_CATEGORIES.CREATION_REVERSAL,
+        eventKind: INVENTORY_CORRECTION_EVENT_KINDS.REVERSAL,
+        adjustmentSequence,
         provenanceManaged: true,
         confirmationMethod: "VERIFIED_OWNER_SESSION",
         idempotencyKey: normalizedIdempotencyKey,
+        candidateId: `${adjustmentId}:candidate`,
+        proposalDigest: `${adjustmentId}:proposal`,
         applicationId: application.id,
         inventoryCreationEventId: application.inventoryCreationEventId,
         purchaseId: application.purchaseId,
         receivingEventReferences: application.receivingEventReferences,
-        productReference: application.productReference,
+        productReference: item.productReference,
+        resultingProductReference: item.productReference,
         inventoryLotId: application.inventoryLotId,
         inventoryItemId: application.inventoryItemId,
         quantity,
+        quantityEffect: -quantity,
         currency: application.currency,
         totalCostMinorUnits: reversedCost,
+        costEffectMinorUnits: -reversedCost,
         unitCostsMinorUnits: reversedUnitCosts,
+        previousInventoryVersion: item.recordVersion,
+        resultingInventoryVersion: item.recordVersion + 1,
+        previousLotVersion: lot.recordVersion,
+        resultingLotVersion: lot.recordVersion + 1,
+        previousState,
+        resultingState,
         occurredAt: timestamp,
         reason: normalizedReason,
+      };
+      const adjustment = normalizeInventoryAdjustment({
+        ...adjustmentDraft,
+        semanticDigest: inventoryAdjustmentSemanticDigest(adjustmentDraft),
       });
       const updatedItem = {
         ...item,
@@ -537,6 +620,7 @@ export function createInventoryCreationGateway(options = {}) {
         quantity: item.quantity - quantity,
         acquisitionCostMinorUnits: remainingUnitCosts.reduce((sum, value) => sum + value, 0),
         unitAcquisitionCostsMinorUnits: remainingUnitCosts,
+        inventoryDispositionState: resultingDispositionState,
         status: item.quantity - quantity === 0 ? "Disposed" : item.status,
         updatedAt: timestamp,
       };
@@ -546,6 +630,7 @@ export function createInventoryCreationGateway(options = {}) {
         quantity: lot.quantity - quantity,
         acquisitionCostMinorUnits: remainingUnitCosts.reduce((sum, value) => sum + value, 0),
         unitAcquisitionCostsMinorUnits: remainingUnitCosts,
+        inventoryDispositionState: resultingDispositionState,
         status: lot.quantity - quantity === 0 ? "REVERSED" : "PARTIALLY_REVERSED",
         updatedAt: timestamp,
       };

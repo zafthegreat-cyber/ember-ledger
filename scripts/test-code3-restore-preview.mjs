@@ -24,6 +24,7 @@ import {
   exactDraft,
   receive,
 } from "./inventory-creation-test-helpers.mjs";
+import { createReplacementProvenanceFixture } from "./inventory-correction-test-helpers.mjs";
 
 class MemoryStorage {
   constructor(values = {}) {
@@ -344,6 +345,44 @@ assert.equal(crossPurchaseReceivingPreview.result, RESTORE_PREVIEW_RESULTS.BLOCK
 assert.ok(
   crossPurchaseReceivingPreview.brokenReferences.some((issue) => issue.path.includes("receivingEventReferences") && issue.severity === "ERROR"),
   "Restore Preview must block managed Inventory provenance that references another Purchase's Receiving Event",
+);
+
+const replacementFixture = await createReplacementProvenanceFixture({ id: "restore-cross-source" });
+const validReplacement = await mutateAndSeal((envelope) => {
+  envelope.sections.find((entry) => entry.sourceId === "deal-finder").data = structuredClone(replacementFixture.inventoryState);
+  envelope.sections.find((entry) => entry.sourceId === "purchase-receiving").data = structuredClone(replacementFixture.purchaseReceivingState);
+});
+const validReplacementPreview = await previewBackupRestore(JSON.stringify(validReplacement));
+assert.equal(validReplacementPreview.result, RESTORE_PREVIEW_RESULTS.READY_FOR_FUTURE_RESTORE);
+assert.equal(validReplacementPreview.brokenReferences.length, 0, "valid replacement references preview without unresolved provenance");
+const substitutedReplacement = await mutateAndSeal((envelope) => {
+  const inventory = structuredClone(replacementFixture.inventoryState);
+  const purchases = structuredClone(replacementFixture.purchaseReceivingState);
+  const application = inventory.inventoryCreationApplications
+    .find((entry) => entry.id === replacementFixture.replacementCreated.application.id);
+  for (const record of [
+    application,
+    inventory.inventoryCreationEvents.find((entry) => entry.id === application.inventoryCreationEventId),
+    inventory.inventoryLots.find((entry) => entry.id === application.inventoryLotId),
+    inventory.inventory.find((entry) => entry.id === application.inventoryItemId),
+  ]) {
+    record.replacementAuthorizationEventId = replacementFixture.secondAuthorization.event.id;
+    record.sourceReturnAdjustmentId = replacementFixture.secondReturn.result.adjustment.id;
+    record.sourceReturnUnitOffset = 0;
+  }
+  purchases.receivingEvents
+    .find((entry) => entry.id === replacementFixture.replacementReceiving.event.id)
+    .replacementEventId = replacementFixture.secondAuthorization.event.id;
+  envelope.sections.find((entry) => entry.sourceId === "deal-finder").data = inventory;
+  envelope.sections.find((entry) => entry.sourceId === "purchase-receiving").data = purchases;
+});
+const substitutedReplacementPreview = await previewBackupRestore(JSON.stringify(substitutedReplacement));
+assert.equal(substitutedReplacementPreview.result, RESTORE_PREVIEW_RESULTS.BLOCKED);
+assert.equal(substitutedReplacementPreview.writesPerformed, 0);
+assert.match(
+  substitutedReplacementPreview.errors.join(" "),
+  /REPLACEMENT_PURCHASE_PROVENANCE_INVALID/,
+  "Restore Preview must block a coherent replacement authorization substitution that passes isolated source validation",
 );
 
 const validAccountOps = await mutateAndSeal((envelope) => {

@@ -20,6 +20,7 @@ import {
   PURCHASE_RECEIVING_STORAGE_KEY,
 } from "../src/features/purchaseReceiving/index.js";
 import { createInventoryHarness, confirmFixturePurchase, exactDraft, receive } from "./inventory-creation-test-helpers.mjs";
+import { createReplacementProvenanceFixture } from "./inventory-correction-test-helpers.mjs";
 import { FLIP_SCOUT_STORAGE_KEY } from "../src/features/flipScout/constants.js";
 
 class MemoryStorage {
@@ -468,6 +469,51 @@ const tamperedManagedInventoryExport = await createVerifiedBackup({
 });
 assert.equal(tamperedManagedInventoryExport.coverageStatus, BACKUP_COVERAGE.FAILED, "backup validation rejects wrong exact COGS linked to owner-confirmed Inventory");
 assert.equal(tamperedManagedInventoryExport.verified, false);
+
+const replacementFixture = await createReplacementProvenanceFixture({ id: "backup-cross-source" });
+const validReplacementExport = await createVerifiedBackup({
+  localStorage: new MemoryStorage({
+    [FLIP_SCOUT_STORAGE_KEY]: replacementFixture.inventoryState,
+    [PURCHASE_RECEIVING_STORAGE_KEY]: replacementFixture.purchaseReceivingState,
+  }),
+  sessionStorage: new MemoryStorage(),
+  createdAt: NOW,
+});
+assert.equal(validReplacementExport.coverageStatus, BACKUP_COVERAGE.COMPLETE, "valid replacement provenance remains fully backup-eligible");
+assert.equal(validReplacementExport.verified, true);
+const substitutedReplacementInventory = structuredClone(replacementFixture.inventoryState);
+const replacementApplication = substitutedReplacementInventory.inventoryCreationApplications
+  .find((entry) => entry.id === replacementFixture.replacementCreated.application.id);
+for (const record of [
+  replacementApplication,
+  substitutedReplacementInventory.inventoryCreationEvents.find((entry) => entry.id === replacementApplication.inventoryCreationEventId),
+  substitutedReplacementInventory.inventoryLots.find((entry) => entry.id === replacementApplication.inventoryLotId),
+  substitutedReplacementInventory.inventory.find((entry) => entry.id === replacementApplication.inventoryItemId),
+]) {
+  record.replacementAuthorizationEventId = replacementFixture.secondAuthorization.event.id;
+  record.sourceReturnAdjustmentId = replacementFixture.secondReturn.result.adjustment.id;
+  record.sourceReturnUnitOffset = 0;
+}
+const substitutedReplacementPurchases = structuredClone(replacementFixture.purchaseReceivingState);
+substitutedReplacementPurchases.receivingEvents
+  .find((entry) => entry.id === replacementFixture.replacementReceiving.event.id)
+  .replacementEventId = replacementFixture.secondAuthorization.event.id;
+const substitutedReplacementExport = await createVerifiedBackup({
+  localStorage: new MemoryStorage({
+    [FLIP_SCOUT_STORAGE_KEY]: substitutedReplacementInventory,
+    [PURCHASE_RECEIVING_STORAGE_KEY]: substitutedReplacementPurchases,
+  }),
+  sessionStorage: new MemoryStorage(),
+  createdAt: NOW,
+});
+assert.equal(substitutedReplacementExport.coverageStatus, BACKUP_COVERAGE.FAILED, "backup validation rejects a coherent cross-source replacement substitution");
+assert.equal(substitutedReplacementExport.verified, false);
+assert.match(
+  substitutedReplacementExport.backup.manifest.excludedSources
+    .find((source) => source.sourceId === "inventory-purchase-provenance")?.reason || "",
+  /REPLACEMENT_PURCHASE_PROVENANCE_INVALID/,
+  "backup failure identifies the bounded cross-source provenance category without exposing record values",
+);
 
 const malformedAccountOpsStorage = new MemoryStorage({
   "code3.account-ops.v1": {

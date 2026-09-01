@@ -47,6 +47,7 @@ export function createInventoryHarness(options = {}) {
     isOwnerAuthorized: () => authority.allowed,
     idFactory: options.idFactory || ((prefix) => `${prefix}.phase2cb-${sequence += 1}.test`),
     now: options.now || (() => PHASE2CA_FIXED_NOW),
+    getTransferredQuantity: options.getTransferredQuantity,
   });
   return { authority, purchaseStorage, inventoryStorage, service };
 }

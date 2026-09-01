@@ -14,7 +14,10 @@ import {
   sanitizeBackupData,
   SECURITY_EXCLUSION_SUMMARY,
 } from "./backupSecurity.js";
-import { validateBackupSourceData } from "./backupValidation.js";
+import {
+  validateBackupCrossSourceRelationships,
+  validateBackupSourceData,
+} from "./backupValidation.js";
 
 export const CODE3_BACKUP_FORMAT = "code-3-backup";
 export const CODE3_BACKUP_FORMAT_VERSION = 1;
@@ -446,6 +449,18 @@ export async function createVerifiedBackup(options = {}) {
       excludedSources.push(failure);
       failedSources.push(failure);
     }
+  }
+
+  const crossSourceValidation = validateBackupCrossSourceRelationships(sections);
+  if (!crossSourceValidation.valid) {
+    const failure = {
+      sourceId: "inventory-purchase-provenance",
+      displayName: "Inventory and Purchase provenance",
+      reason: crossSourceValidation.errors.join(" "),
+      affectsCoverage: true,
+    };
+    excludedSources.push(failure);
+    failedSources.push(failure);
   }
 
   const coverageContext = { configuredSourceIds, hasFileReferences: fileReferences.total > fileReferences.embedded };

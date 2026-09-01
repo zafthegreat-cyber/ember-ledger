@@ -7,6 +7,7 @@ import { validateManagedInventorySales } from "../flipScout/exactInventoryCost.j
 import {
   validateInventoryCreationStateBundles,
 } from "../purchaseReceiving/inventoryCreation/contracts.js";
+import { validateReplacementInventoryPurchaseProvenance } from "../purchaseReceiving/service.js";
 
 function isJsonContainer(value) {
   return Boolean(value) && typeof value === "object";
@@ -119,9 +120,41 @@ export function validateBackupSourceData(source, data, { requireSupportedSchema 
   if (source?.validationAdapter === "purchase-receiving-v1") {
     errors.push(...validatePurchaseReceivingV1(source, data));
   }
-  if (source?.validationAdapter === "deal-finder-v3") {
+  if (["deal-finder-v3", "deal-finder-v4"].includes(source?.validationAdapter)) {
     errors.push(...validateDealFinderV3(source, data));
   }
 
   return { valid: errors.length === 0, errors, schemaVersion };
+}
+
+export function validateBackupCrossSourceRelationships(sections = []) {
+  const errors = [];
+  if (!Array.isArray(sections)) {
+    return { valid: false, errors: ["Backup sections must be an array for cross-source validation."] };
+  }
+  for (const sourceId of ["deal-finder", "purchase-receiving"]) {
+    if (sections.filter((section) => section?.sourceId === sourceId).length > 1) {
+      errors.push(`Backup contains duplicate ${sourceId} sections.`);
+    }
+  }
+  if (errors.length) return { valid: false, errors };
+  const sourceSections = new Map(
+    sections
+      .filter((section) => section?.sourceId)
+      .map((section) => [section.sourceId, section]),
+  );
+  const inventorySection = sourceSections.get("deal-finder");
+  if (!inventorySection) return { valid: true, errors };
+
+  try {
+    validateReplacementInventoryPurchaseProvenance(
+      inventorySection.data,
+      sourceSections.get("purchase-receiving")?.data || {},
+    );
+  } catch (error) {
+    const code = error?.code ? ` (${error.code})` : "";
+    errors.push(`Business Inventory replacement provenance does not match Purchase/Receiving history${code}.`);
+  }
+
+  return { valid: errors.length === 0, errors };
 }

@@ -31,6 +31,10 @@ function managedStateUnchanged(current, next) {
   return JSON.stringify(managedSnapshot(current)) === JSON.stringify(managedSnapshot(next));
 }
 
+function hasInventoryCreationBundles(state = {}) {
+  return MANAGED_COLLECTIONS.some((collection) => Array.isArray(state[collection]) && state[collection].length > 0);
+}
+
 function managedRevision(state) {
   return JSON.stringify(managedSnapshot(normalizeFlipScoutState(state)));
 }
@@ -140,7 +144,8 @@ function requireManagedSaleAppendAuthority(current, next, allowedSaleId) {
 }
 
 const MUTABLE_ACQUISITION_FIELDS = new Set([
-  "recordVersion", "updatedAt", "quantity", "acquisitionCostMinorUnits", "unitAcquisitionCostsMinorUnits", "status",
+  "recordVersion", "updatedAt", "productReference", "productTitle", "name", "productClassification", "condition", "disposition",
+  "inventoryDispositionState", "quantity", "acquisitionCostMinorUnits", "unitAcquisitionCostsMinorUnits", "status",
 ]);
 
 function immutableProjection(record, mutableFields = new Set()) {
@@ -159,7 +164,7 @@ function requirePreservedRecords(currentRows, nextRows, label, mutableFields = n
       const mutableChanged = JSON.stringify(Object.fromEntries(Object.entries(currentRecord).filter(([key]) => mutableFields.has(key) && key !== "recordVersion" && key !== "updatedAt")))
         !== JSON.stringify(Object.fromEntries(Object.entries(nextRecord).filter(([key]) => mutableFields.has(key) && key !== "recordVersion" && key !== "updatedAt")));
       const expectedVersion = currentRecord.recordVersion + (mutableChanged ? 1 : 0);
-      if (nextRecord.recordVersion !== expectedVersion || nextRecord.quantity > currentRecord.quantity) {
+      if (nextRecord.recordVersion !== expectedVersion) {
         throw new Error(`${label} quantity/version transition is invalid.`);
       }
       if (!mutableChanged && nextRecord.updatedAt !== currentRecord.updatedAt) throw new Error(`${label} cannot change its timestamp without a managed transition.`);
@@ -220,7 +225,7 @@ function validateManagedTransition(current, next) {
     ...nextBundles.lots,
     ...nextBundles.items,
   ].some((record) => !currentIds.has(record.id));
-  return { requiresSourceVerification };
+  return { requiresSourceVerification, requiresRecoveryJournal: !managedStateUnchanged(current, next) };
 }
 
 function makeId(prefix = "record") {
@@ -373,6 +378,10 @@ export function createFlipScoutRepository(storage = globalThis.localStorage, opt
       ? normalizeFlipScoutState({ ...mergeOwnerConfirmedInventory(current, requested), updatedAt: new Date().toISOString() })
       : requested;
     try {
+      if (allowOwnerConfirmedInventoryMutation || hasInventoryCreationBundles(current) || hasInventoryCreationBundles(normalized)) {
+        validateInventoryCreationStateBundles(current, { allowIncomplete: allowOwnerConfirmedInventoryMutation });
+        validateInventoryCreationStateBundles(normalized);
+      }
       requireManagedSalesPreserved(current, normalized);
       requireManagedSaleAppendAuthority(current, normalized, options.allowManagedSaleAppendId);
       validateManagedInventorySales(normalized);
@@ -381,6 +390,7 @@ export function createFlipScoutRepository(storage = globalThis.localStorage, opt
       return { state: current, error: lastError, writeAttempted: false };
     }
     let requiresSourceVerification = false;
+    let requiresRecoveryJournal = false;
     if (allowOwnerConfirmedInventoryMutation) {
       let transition;
       try {
@@ -390,6 +400,7 @@ export function createFlipScoutRepository(storage = globalThis.localStorage, opt
         return { state: current, error: lastError, writeAttempted: false };
       }
       requiresSourceVerification = transition.requiresSourceVerification;
+      requiresRecoveryJournal = transition.requiresRecoveryJournal;
       if (transition.requiresSourceVerification) {
         let sourceVerified = false;
         try {
@@ -410,7 +421,7 @@ export function createFlipScoutRepository(storage = globalThis.localStorage, opt
       return { state: current, error, writeAttempted: false };
     }
     let journal = null;
-    if (requiresSourceVerification) {
+    if (requiresRecoveryJournal) {
       journal = Object.freeze({
         format: INVENTORY_COMMIT_JOURNAL_FORMAT,
         status: "PREPARED",
@@ -449,6 +460,8 @@ export function createFlipScoutRepository(storage = globalThis.localStorage, opt
             return { state: load(), error: lastError, writeAttempted: true, fatal: true, rollbackFailed: true, recoveryPending: true };
           }
         }
+      }
+      if (requiresRecoveryJournal) {
         try {
           removePendingJournal();
         } catch (journalError) {

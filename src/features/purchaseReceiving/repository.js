@@ -244,8 +244,24 @@ export function normalizePurchaseReceivingState(value, options = {}) {
       if (event.entries.some((entry) => !lineIds.has(entry.lineItemId))) throw new PurchaseReceivingRepositoryError("MISSING_LINE_REFERENCE", "Receiving Event references an unknown Purchase line.", { eventId: event.id });
     }
   }
+  const scopedReplacementEvents = state.purchaseEvents.filter((event) => event.type === PURCHASE_EVENT_TYPES.REPLACEMENT_NOTED
+    && [event.lineItemId, event.quantity, event.relatedEventId].some((value) => value != null));
+  const replacementSourceIds = new Set();
+  for (const event of scopedReplacementEvents) {
+    if (!event.lineItemId || !event.quantity || !event.relatedEventId || !event.replacementReference) {
+      throw new PurchaseReceivingRepositoryError("REPLACEMENT_AUTHORIZATION_INCOMPLETE", "Replacement authorization must bind a line, quantity, reference, and source return event.");
+    }
+    const purchase = purchasesById.get(event.purchaseId);
+    if (!purchase?.lineItems.some((line) => line.lineItemId === event.lineItemId)) {
+      throw new PurchaseReceivingRepositoryError("MISSING_LINE_REFERENCE", "Replacement authorization references an unknown Purchase line.");
+    }
+    if (replacementSourceIds.has(event.relatedEventId)) {
+      throw new PurchaseReceivingRepositoryError("DUPLICATE_REPLACEMENT_SOURCE", "One returned Inventory adjustment may authorize only one replacement receipt.");
+    }
+    replacementSourceIds.add(event.relatedEventId);
+  }
   for (const purchase of state.purchases) {
-    const projection = deriveReceivingProjection(purchase, state.receivingEvents);
+    const projection = deriveReceivingProjection(purchase, state.receivingEvents, state.purchaseEvents);
     if (purchase.receivingStatus !== projection.status) {
       throw new PurchaseReceivingRepositoryError("RECEIVING_STATUS_MISMATCH", "Purchase receiving status must equal its append-only Receiving Event projection.", { purchaseId: purchase.id });
     }

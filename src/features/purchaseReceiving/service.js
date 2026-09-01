@@ -21,9 +21,21 @@ import {
 import { createPurchaseReceivingPersistence } from "./persistence.js";
 import { normalizePurchaseMoney } from "./money.js";
 import { assertSafePurchaseReceivingInput, safePurchaseReceivingClone, sanitizePurchaseReceivingNote } from "./security.js";
-import { deriveInventoryCreationCandidates } from "./inventoryCreation/contracts.js";
+import {
+  deriveEffectiveInventoryAdjustmentIds,
+  deriveInventoryCreationCandidates,
+  inventoryCandidateId,
+  isPhysicalInventoryReturnAdjustment,
+  validateInventoryCreationStateBundles,
+} from "./inventoryCreation/contracts.js";
 import { createInventoryCreationGateway } from "./inventoryCreation/gateway.js";
 import { INVENTORY_CREATION_SAFETY } from "./inventoryCreation/constants.js";
+import { assertManagedInventoryHasNoTransferUsage, createInventoryCorrectionGateway } from "./inventoryCorrection/gateway.js";
+import {
+  INVENTORY_CORRECTION_CATEGORIES,
+  INVENTORY_CORRECTION_SAFETY,
+  INVENTORY_QUANTITY_CORRECTION_REASONS,
+} from "./inventoryCorrection/constants.js";
 
 const PROHIBITED_OPTIONS = new Set([
   "mode", "persistenceMode", "remoteDataSource", "request", "remoteActive", "sync", "syncEngine",
@@ -45,6 +57,69 @@ export class PurchaseReceivingServiceError extends Error {
     this.code = code;
     this.details = details;
   }
+}
+
+function replacementReturnAdjustment(inventoryState, { purchaseId, lineItemId, relatedEventId, quantity }) {
+  const bundles = validateInventoryCreationStateBundles(inventoryState);
+  const adjustment = bundles.adjustments.find((entry) => entry.id === String(relatedEventId || ""));
+  const application = adjustment ? bundles.applications.find((entry) => entry.id === adjustment.applicationId) : null;
+  const effectiveAdjustmentIds = new Set(deriveEffectiveInventoryAdjustmentIds(bundles.adjustments));
+  if (!adjustment || !application || !isPhysicalInventoryReturnAdjustment(adjustment) || !effectiveAdjustmentIds.has(adjustment.id)
+    || adjustment.purchaseId !== purchaseId
+    || application.purchaseLineItemId !== lineItemId
+    || adjustment.quantity !== quantity) {
+    throw new PurchaseReceivingServiceError("REPLACEMENT_RETURN_SOURCE_INVALID", "Replacement authorization must reference the exact owner-confirmed returned Inventory quantity.");
+  }
+  return Object.freeze({ adjustment, application });
+}
+
+export function validateReplacementInventoryPurchaseProvenance(inventoryState, purchaseState) {
+  const bundles = validateInventoryCreationStateBundles(inventoryState);
+  const purchaseEvents = Array.isArray(purchaseState?.purchaseEvents) ? purchaseState.purchaseEvents : [];
+  const receivingEvents = Array.isArray(purchaseState?.receivingEvents) ? purchaseState.receivingEvents : [];
+  for (const application of bundles.applications) {
+    const receiving = application.receivingEventReferences.map((reference) => receivingEvents.find((entry) => entry.id === reference));
+    const replacementEventIds = new Set(receiving.map((event) => event?.replacementEventId).filter(Boolean));
+    const hasReplacementProvenance = Boolean(application.replacementAuthorizationEventId
+      || application.sourceReturnAdjustmentId || application.sourceReturnUnitOffset != null);
+    if (!hasReplacementProvenance && replacementEventIds.size === 0) continue;
+    const sourceAdjustment = bundles.adjustments.find((entry) => entry.id === application.sourceReturnAdjustmentId);
+    const authorization = purchaseEvents.find((entry) => entry.id === application.replacementAuthorizationEventId);
+    const receivedQuantity = receiving.flatMap((event) => event?.entries || [])
+      .filter((entry) => entry.lineItemId === application.purchaseLineItemId)
+      .reduce((sum, entry) => sum + entry.quantityReceived, 0);
+    const identityMatches = receiving.some((event) => event?.entries?.some((entry, receivingEntryIndex) => (
+      entry.lineItemId === application.purchaseLineItemId
+      && inventoryCandidateId({
+        purchaseId: application.purchaseId,
+        lineItemId: application.purchaseLineItemId,
+        receivingEventId: event.id,
+        receivingEntryIndex,
+        replacementAuthorizationEventId: application.replacementAuthorizationEventId,
+        sourceReturnAdjustmentId: application.sourceReturnAdjustmentId,
+      }) === application.candidateId
+    )));
+    if (!hasReplacementProvenance || replacementEventIds.size !== 1
+      || !replacementEventIds.has(application.replacementAuthorizationEventId)
+      || !sourceAdjustment || !authorization
+      || authorization.recordType !== "PURCHASE_EVENT"
+      || authorization.confirmationMethod !== "VERIFIED_OWNER_SESSION"
+      || authorization.type !== PURCHASE_EVENT_TYPES.REPLACEMENT_NOTED
+      || authorization.purchaseId !== application.purchaseId
+      || authorization.lineItemId !== application.purchaseLineItemId
+      || authorization.relatedEventId !== application.sourceReturnAdjustmentId
+      || authorization.quantity !== sourceAdjustment.quantity
+      || !identityMatches
+      || receiving.some((event) => !event
+        || event.recordType !== "RECEIVING_EVENT"
+        || event.confirmationMethod !== "VERIFIED_OWNER_SESSION"
+        || event.purchaseId !== application.purchaseId
+        || event.replacementEventId !== authorization.id)
+      || receivedQuantity !== application.quantity) {
+      throw new PurchaseReceivingServiceError("REPLACEMENT_PURCHASE_PROVENANCE_INVALID", "Replacement Inventory no longer reconciles to its owner-confirmed Purchase and Receiving provenance.");
+    }
+  }
+  return true;
 }
 
 function assertNoCallerMode(options) {
@@ -199,6 +274,15 @@ export function createPurchaseReceivingService(options = {}) {
     lockManager: options.inventoryLockManager,
     now,
     isOwnerAuthorized,
+  });
+  const inventoryCorrectionGateway = createInventoryCorrectionGateway({
+    storage: options.inventoryStorage,
+    repository: options.inventoryRepository,
+    lockManager: options.inventoryLockManager,
+    now,
+    isOwnerAuthorized,
+    getTransferredQuantity: options.getTransferredQuantity || assertManagedInventoryHasNoTransferUsage,
+    validateExternalProvenance: (inventoryState) => validateReplacementInventoryPurchaseProvenance(inventoryState, persistence.read()),
   });
 
   function assertOwner() {
@@ -472,7 +556,7 @@ export function createPurchaseReceivingService(options = {}) {
 
       if (type === PURCHASE_EVENT_TYPES.CANCELLATION_RECORDED) {
         if (lineIndex < 0 || quantity == null) throw new PurchaseReceivingServiceError("CANCELLATION_LINE_QUANTITY_REQUIRED", "Cancellation requires a Purchase line and positive quantity.");
-        const receiving = deriveReceivingProjection(purchase, state.receivingEvents);
+        const receiving = deriveReceivingProjection(purchase, state.receivingEvents, state.purchaseEvents);
         const received = receiving.lineItems.find((line) => line.lineItemId === lineItemId)?.receivedQuantity || 0;
         const line = lineItems[lineIndex];
         if (line.cancellationQuantity + quantity > line.quantityOrdered - received) {
@@ -512,6 +596,19 @@ export function createPurchaseReceivingService(options = {}) {
       if (type === PURCHASE_EVENT_TYPES.REPLACEMENT_NOTED) {
         const reference = String(input.replacementReference || "").trim();
         if (!reference) throw new PurchaseReceivingServiceError("REPLACEMENT_REFERENCE_REQUIRED", "Replacement history requires a safe reference.");
+        const scoped = [lineItemId, quantity, input.relatedEventId].filter((value) => value != null && value !== "").length;
+        if (scoped > 0 && scoped !== 3) throw new PurchaseReceivingServiceError("REPLACEMENT_AUTHORIZATION_INCOMPLETE", "Replacement authorization requires a Purchase line, quantity, and returned Inventory event.");
+        if (scoped === 3) {
+          replacementReturnAdjustment(inventoryGateway.load(), {
+            purchaseId: purchase.id,
+            lineItemId,
+            relatedEventId: input.relatedEventId,
+            quantity,
+          });
+          if (state.purchaseEvents.some((entry) => entry.type === PURCHASE_EVENT_TYPES.REPLACEMENT_NOTED && entry.relatedEventId === input.relatedEventId)) {
+            throw new PurchaseReceivingServiceError("DUPLICATE_REPLACEMENT_SOURCE", "Returned Inventory may authorize only one replacement workflow.");
+          }
+        }
         status = PURCHASE_LIFECYCLE_STATES.REPLACEMENT_PENDING;
       }
 
@@ -544,7 +641,7 @@ export function createPurchaseReceivingService(options = {}) {
         updatedAt: timestamp,
       }, { persisted: true });
       if (type === PURCHASE_EVENT_TYPES.CANCELLATION_RECORDED) {
-        const projection = deriveReceivingProjection(updatedPurchase, state.receivingEvents);
+        const projection = deriveReceivingProjection(updatedPurchase, state.receivingEvents, state.purchaseEvents);
         updatedPurchase = normalizeCanonicalPurchase({ ...updatedPurchase, receivingStatus: projection.status }, { persisted: true });
       }
       return {
@@ -587,13 +684,14 @@ export function createPurchaseReceivingService(options = {}) {
           occurredAt: entry.occurredAt,
           locationReference: entry.locationReference,
           status: entry.status,
+          replacementEventId: entry.replacementEventId,
           entries: entry.entries,
           notes: entry.notes,
         });
         if (canonicalStringify(fields(existing)) !== canonicalStringify(fields(retry))) {
           throw new PurchaseReceivingServiceError("IDEMPOTENCY_CONFLICT", "Receiving Event idempotency key was reused with different receiving data.");
         }
-        return { state, result: { event: existing, purchase, projection: deriveReceivingProjection(purchase, state.receivingEvents), deduplicated: true, wroteEvent: false } };
+        return { state, result: { event: existing, purchase, projection: deriveReceivingProjection(purchase, state.receivingEvents, state.purchaseEvents), deduplicated: true, wroteEvent: false } };
       }
       const eventId = String(idFactory("receiving-event"));
       let event = normalizeReceivingEvent(systemRecord({
@@ -609,7 +707,19 @@ export function createPurchaseReceivingService(options = {}) {
       const lineIds = new Set(purchase.lineItems.map((line) => line.lineItemId));
       const unknownLine = event.entries.find((entry) => !lineIds.has(entry.lineItemId));
       if (unknownLine) throw new PurchaseReceivingServiceError("UNKNOWN_PURCHASE_LINE", "Receiving Event references a line outside the Purchase.", { lineItemId: unknownLine.lineItemId });
-      const projected = deriveReceivingProjection(purchase, [...state.receivingEvents, event]);
+      if (event.replacementEventId) {
+        const authorization = state.purchaseEvents.find((entry) => entry.id === event.replacementEventId
+          && entry.purchaseId === purchase.id
+          && entry.type === PURCHASE_EVENT_TYPES.REPLACEMENT_NOTED);
+        if (!authorization) throw new PurchaseReceivingServiceError("REPLACEMENT_AUTHORIZATION_REQUIRED", "Replacement Receiving requires a scoped owner-confirmed replacement event.");
+        replacementReturnAdjustment(inventoryGateway.load(), {
+          purchaseId: purchase.id,
+          lineItemId: authorization.lineItemId,
+          relatedEventId: authorization.relatedEventId,
+          quantity: authorization.quantity,
+        });
+      }
+      const projected = deriveReceivingProjection(purchase, [...state.receivingEvents, event], state.purchaseEvents);
       const hasDiscrepancy = event.entries.some((entry) => entry.discrepancy !== RECEIVING_DISCREPANCIES.NONE);
       if (!hasDiscrepancy) {
         const normalizedStatus = projected.status === "FULLY_RECEIVED" ? RECEIVING_EVENT_STATES.FULLY_RECEIVED : RECEIVING_EVENT_STATES.PARTIALLY_RECEIVED;
@@ -638,7 +748,7 @@ export function createPurchaseReceivingService(options = {}) {
     assertOwner();
     const state = persistence.read();
     const purchase = requiredRecord(state, "purchases", purchaseId);
-    return buildInventoryHandoffPreview(purchase, state.receivingEvents);
+    return buildInventoryHandoffPreview(purchase, state.receivingEvents, state.purchaseEvents);
   }
 
   function previewInventoryCreation(purchaseId, reviews = {}) {
@@ -649,6 +759,7 @@ export function createPurchaseReceivingService(options = {}) {
     return deriveInventoryCreationCandidates({
       purchase,
       receivingEvents: sourceState.receivingEvents,
+      purchaseEvents: sourceState.purchaseEvents,
       inventoryState: inventoryGateway.load(),
       reviews,
     });
@@ -672,6 +783,7 @@ export function createPurchaseReceivingService(options = {}) {
           const candidate = deriveInventoryCreationCandidates({
             purchase,
             receivingEvents: sourceState.receivingEvents,
+            purchaseEvents: sourceState.purchaseEvents,
             inventoryState,
             reviews: { [candidateId]: review },
           }).find((entry) => entry.candidateId === candidateId);
@@ -692,6 +804,28 @@ export function createPurchaseReceivingService(options = {}) {
     return inventoryGateway.reverse({ applicationId, ...input });
   }
 
+  function previewInventoryCorrection(inventoryItemId, proposal = {}) {
+    assertOwner();
+    assertSafePurchaseReceivingInput(proposal);
+    return inventoryCorrectionGateway.preview(String(inventoryItemId), proposal);
+  }
+
+  async function confirmInventoryCorrection(inventoryItemId, candidateId, input = {}) {
+    assertOwner();
+    assertSafePurchaseReceivingInput(input);
+    const allowed = new Set(["expectedVersion", "proposal"]);
+    const unknown = Object.keys(input || {}).find((key) => !allowed.has(key));
+    if (unknown) throw new PurchaseReceivingServiceError("UNSUPPORTED_INVENTORY_CORRECTION_FIELD", `${unknown} cannot supply Inventory correction authority.`, { field: unknown });
+    const expectedVersion = String(input.expectedVersion || "").trim();
+    if (!expectedVersion) throw new PurchaseReceivingServiceError("EXPECTED_VERSION_REQUIRED", "Inventory correction confirmation requires the reviewed candidate version.");
+    return inventoryCorrectionGateway.confirm({
+      inventoryItemId: String(inventoryItemId),
+      candidateId: String(candidateId),
+      expectedVersion,
+      proposal: input.proposal || {},
+    });
+  }
+
   return Object.freeze({
     mode: "LOCAL_ONLY",
     authoritative: "LOCAL_ONLY",
@@ -702,6 +836,7 @@ export function createPurchaseReceivingService(options = {}) {
     automaticInventoryMutation: false,
     inventoryWriterAvailable: true,
     inventoryCreationSafety: INVENTORY_CREATION_SAFETY,
+    inventoryCorrectionSafety: INVENTORY_CORRECTION_SAFETY,
     storageKey: persistence.repository.storageKey,
     snapshot,
     loadSnapshot: snapshot,
@@ -726,6 +861,16 @@ export function createPurchaseReceivingService(options = {}) {
     previewInventoryCreation,
     confirmInventoryCreation,
     reverseInventoryCreation,
+    previewInventoryCorrection,
+    confirmInventoryCorrection,
+    listManagedInventory: () => {
+      assertOwner();
+      return safePurchaseReceivingClone(inventoryCorrectionGateway.load().inventory.filter((entry) => entry.provenanceManaged === true));
+    },
+    listInventoryAdjustments: () => {
+      assertOwner();
+      return safePurchaseReceivingClone(inventoryCorrectionGateway.load().inventoryAdjustments);
+    },
     listInventoryCreationApplications: () => {
       assertOwner();
       return safePurchaseReceivingClone(inventoryGateway.load().inventoryCreationApplications);

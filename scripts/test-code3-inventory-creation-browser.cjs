@@ -97,7 +97,7 @@ async function noOverflow(page, label) {
         await confirm.press("Enter");
         await page.getByText(/Inventory was created once/i).waitFor();
         const state = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)), INVENTORY_KEY);
-        equal(state.schemaVersion, 3, "canonical local Business Inventory uses schema v3");
+        equal(state.schemaVersion, 4, "canonical local Business Inventory uses schema v4");
         equal(state.inventory.length, 1, "one Inventory record is created");
         equal(state.inventoryLots.length, 1, "one acquisition lot is created");
         equal(state.inventoryCreationApplications.length, 1, "one idempotency application is created");

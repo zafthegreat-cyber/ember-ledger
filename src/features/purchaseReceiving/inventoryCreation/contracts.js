@@ -5,7 +5,12 @@ import {
   RECEIVING_DISCREPANCIES,
   RECEIVING_EVENT_STATES,
 } from "../constants.js";
-import { normalizeCanonicalPurchase, normalizeReceivingEvent } from "../contracts.js";
+import {
+  deriveReceivingProjection,
+  deriveReplacementReceivingAuthorizations,
+  normalizeCanonicalPurchase,
+  normalizeReceivingEvent,
+} from "../contracts.js";
 import { assertSafePurchaseReceivingInput, sanitizePurchaseReceivingNote } from "../security.js";
 import { allocateReceivingCostSlice, sumMinorUnits } from "./allocation.js";
 import {
@@ -20,6 +25,12 @@ import {
   INVENTORY_CREATION_ACTIVE_CLASSIFICATIONS,
   INVENTORY_CREATION_PRODUCT_CLASSIFICATIONS,
 } from "./constants.js";
+import {
+  INVENTORY_CORRECTION_CATEGORIES,
+  INVENTORY_CORRECTION_DISPOSITIONS,
+  INVENTORY_CORRECTION_EVENT_KINDS,
+  INVENTORY_QUANTITY_CORRECTION_REASONS,
+} from "../inventoryCorrection/constants.js";
 
 export class InventoryCreationValidationError extends Error {
   constructor(code, message, details = {}) {
@@ -87,6 +98,64 @@ function stableDigest(value) {
   return hash.toString(16).padStart(16, "0");
 }
 
+export function inventoryAdjustmentSemanticDigest(value = {}) {
+  return `inventory-adjustment-semantics:${stableDigest({
+    id: value.id,
+    adjustmentType: value.adjustmentType,
+    correctionCategory: value.correctionCategory,
+    eventKind: value.eventKind,
+    adjustmentSequence: value.adjustmentSequence,
+    idempotencyKey: value.idempotencyKey,
+    proposalDigest: value.proposalDigest,
+    candidateId: value.candidateId,
+    applicationId: value.applicationId,
+    inventoryCreationEventId: value.inventoryCreationEventId,
+    purchaseId: value.purchaseId,
+    receivingEventReferences: value.receivingEventReferences,
+    productReference: value.productReference,
+    resultingProductReference: value.resultingProductReference,
+    inventoryLotId: value.inventoryLotId,
+    inventoryItemId: value.inventoryItemId,
+    quantity: value.quantity,
+    quantityEffect: value.quantityEffect,
+    quantityReason: value.quantityReason ?? null,
+    currency: value.currency,
+    totalCostMinorUnits: value.totalCostMinorUnits,
+    costEffectMinorUnits: value.costEffectMinorUnits,
+    unitCostsMinorUnits: value.unitCostsMinorUnits,
+    previousInventoryVersion: value.previousInventoryVersion,
+    resultingInventoryVersion: value.resultingInventoryVersion,
+    previousLotVersion: value.previousLotVersion,
+    resultingLotVersion: value.resultingLotVersion,
+    previousState: value.previousState,
+    resultingState: value.resultingState,
+    reversesAdjustmentId: value.reversesAdjustmentId ?? null,
+    occurredAt: value.occurredAt,
+    reason: value.reason,
+  })}`;
+}
+
+export function inventoryCorrectionProposalSemanticDigest(normalizedProposal) {
+  return `inventory-correction-proposal:${stableDigest(normalizedProposal)}`;
+}
+
+function expectedQuantityCorrectionProposalDigest(value) {
+  return inventoryCorrectionProposalSemanticDigest({
+    category: INVENTORY_CORRECTION_CATEGORIES.QUANTITY_CORRECTION,
+    idempotencyKey: value.idempotencyKey,
+    reason: value.reason,
+    quantity: value.quantity,
+    quantityReason: value.quantityReason,
+    targetProductReference: null,
+    targetProductTitle: null,
+    targetCondition: null,
+    targetDisposition: null,
+    targetTotalCostMinorUnits: null,
+    reversesAdjustmentId: null,
+    extraCostTreatment: null,
+  });
+}
+
 export function inventoryCreationIdentityIds(candidateId) {
   const match = /^inventory-candidate:([a-f0-9]{16})$/i.exec(String(candidateId || ""));
   const suffix = match?.[1];
@@ -122,12 +191,17 @@ function inventoryRevision(state = {}) {
 }
 
 export function inventoryCandidateId(source) {
-  return `inventory-candidate:${stableDigest({
+  const identity = {
     purchaseId: source.purchaseId,
     lineItemId: source.lineItemId,
     receivingEventId: source.receivingEventId,
     receivingEntryIndex: source.receivingEntryIndex,
-  })}`;
+  };
+  if (source.replacementAuthorizationEventId || source.sourceReturnAdjustmentId) {
+    identity.replacementAuthorizationEventId = source.replacementAuthorizationEventId || null;
+    identity.sourceReturnAdjustmentId = source.sourceReturnAdjustmentId || null;
+  }
+  return `inventory-candidate:${stableDigest(identity)}`;
 }
 
 export function inventoryCandidateVersion(source) {
@@ -181,6 +255,9 @@ function applicationMatchesCandidateSource(application, candidate) {
     purchaseId: application.purchaseId,
     purchaseLineItemId: application.purchaseLineItemId,
     receivingEventReferences: application.receivingEventReferences,
+    replacementAuthorizationEventId: application.replacementAuthorizationEventId,
+    sourceReturnAdjustmentId: application.sourceReturnAdjustmentId,
+    sourceReturnUnitOffset: application.sourceReturnUnitOffset,
     productReference: application.productReference,
     purchaseProductReference: application.purchaseProductReference,
     receivedProductReference: application.receivedProductReference,
@@ -216,6 +293,23 @@ function assertDamageDispositionPair(condition, disposition, label = "Inventory"
       "DAMAGED_DISPOSITION_REQUIRED",
       `${label} must pair damaged condition with the reviewed damaged-Inventory disposition.`,
     );
+  }
+}
+
+export function assertInventoryProductClassificationCondition(productClassification, condition, label = "Inventory") {
+  if (!productClassification) {
+    throw new InventoryCreationValidationError("PRODUCT_CLASSIFICATION_REVIEW_REQUIRED", `${label} requires an explicit product classification.`);
+  }
+  if (!INVENTORY_CREATION_ACTIVE_CLASSIFICATIONS.includes(productClassification)) {
+    throw new InventoryCreationValidationError("PRODUCT_TYPE_CONDITION_WORKFLOW_REQUIRED", `${label} requires a supported product-type condition workflow.`);
+  }
+  if (productClassification === INVENTORY_CREATION_PRODUCT_CLASSIFICATIONS.SEALED_PRODUCT
+    && ![INVENTORY_CREATION_CONDITIONS.SEALED, INVENTORY_CREATION_CONDITIONS.OPEN_BOX, INVENTORY_CREATION_CONDITIONS.DAMAGED].includes(condition)) {
+    throw new InventoryCreationValidationError("PRODUCT_CLASSIFICATION_CONDITION_MISMATCH", `${label} condition is incompatible with sealed-product Inventory.`);
+  }
+  if (productClassification === INVENTORY_CREATION_PRODUCT_CLASSIFICATIONS.ACCESSORY
+    && ![INVENTORY_CREATION_CONDITIONS.NEW, INVENTORY_CREATION_CONDITIONS.OPEN_BOX, INVENTORY_CREATION_CONDITIONS.DAMAGED, INVENTORY_CREATION_CONDITIONS.USED].includes(condition)) {
+    throw new InventoryCreationValidationError("PRODUCT_CLASSIFICATION_CONDITION_MISMATCH", `${label} condition is incompatible with accessory Inventory.`);
   }
 }
 
@@ -255,14 +349,10 @@ function evaluateEligibility({ purchase, event, line, entry, review, productRefe
   if (review.productReference && existingInventoryReferences.length === 0) blockers.push("OWNER_RESOLUTION_REQUIRES_EXISTING_PRODUCT");
   if (review.productReference && !review.resolutionReason) blockers.push("OWNER_RESOLUTION_REASON_REQUIRED");
   if (condition === INVENTORY_CREATION_CONDITIONS.UNKNOWN) blockers.push("CONDITION_REVIEW_REQUIRED");
-  if (!productClassification) blockers.push("PRODUCT_CLASSIFICATION_REVIEW_REQUIRED");
-  else if (!INVENTORY_CREATION_ACTIVE_CLASSIFICATIONS.includes(productClassification)) blockers.push("PRODUCT_TYPE_CONDITION_WORKFLOW_REQUIRED");
-  else if (productClassification === INVENTORY_CREATION_PRODUCT_CLASSIFICATIONS.SEALED_PRODUCT
-    && ![INVENTORY_CREATION_CONDITIONS.SEALED, INVENTORY_CREATION_CONDITIONS.OPEN_BOX, INVENTORY_CREATION_CONDITIONS.DAMAGED].includes(condition)) {
-    blockers.push("PRODUCT_CLASSIFICATION_CONDITION_MISMATCH");
-  } else if (productClassification === INVENTORY_CREATION_PRODUCT_CLASSIFICATIONS.ACCESSORY
-    && ![INVENTORY_CREATION_CONDITIONS.NEW, INVENTORY_CREATION_CONDITIONS.OPEN_BOX, INVENTORY_CREATION_CONDITIONS.DAMAGED, INVENTORY_CREATION_CONDITIONS.USED].includes(condition)) {
-    blockers.push("PRODUCT_CLASSIFICATION_CONDITION_MISMATCH");
+  try {
+    assertInventoryProductClassificationCondition(productClassification, condition, "Inventory Creation Candidate");
+  } catch (error) {
+    blockers.push(error.code || "PRODUCT_CLASSIFICATION_CONDITION_MISMATCH");
   }
   if (entry.discrepancy === RECEIVING_DISCREPANCIES.WRONG_QUANTITY) warnings.push("WRONG_QUANTITY_REVIEWED_FROM_RECEIVING");
   return Object.freeze({ blockers: Object.freeze([...new Set(blockers)]), warnings: Object.freeze([...new Set(warnings)]) });
@@ -272,12 +362,18 @@ function evaluateEligibility({ purchase, event, line, entry, review, productRefe
  * Derives ephemeral candidates from authoritative Purchase + Receiving state.
  * No candidate is written to either local repository.
  */
-export function deriveInventoryCreationCandidates({ purchase, receivingEvents = [], inventoryState = {}, reviews = {} }) {
+export function deriveInventoryCreationCandidates({ purchase, receivingEvents = [], purchaseEvents = [], inventoryState = {}, reviews = {} }) {
   assertSafePurchaseReceivingInput(reviews);
   const canonical = normalizeCanonicalPurchase(purchase, { persisted: true });
   const events = receivingEvents
     .map((event) => normalizeReceivingEvent(event, { persisted: true }))
     .filter((event) => event.purchaseId === canonical.id);
+  deriveReceivingProjection(canonical, events, purchaseEvents);
+  const replacementAuthorizations = deriveReplacementReceivingAuthorizations(canonical, purchaseEvents);
+  const replacementById = new Map(replacementAuthorizations.map((entry) => [entry.id, entry]));
+  const replacementOffsets = new Map(replacementAuthorizations.map((entry) => [entry.id, 0]));
+  let managed = null;
+  let effectiveManagedAdjustmentIds = null;
   const lines = new Map(canonical.lineItems.map((line) => [line.lineItemId, line]));
   const receivedOffsets = new Map(canonical.lineItems.map((line) => [line.lineItemId, 0]));
   const candidates = [];
@@ -288,15 +384,53 @@ export function deriveInventoryCreationCandidates({ purchase, receivingEvents = 
       if (!line) throw new InventoryCreationValidationError("UNKNOWN_PURCHASE_LINE", "Receiving evidence references an unknown Purchase line.");
       if (entry.quantityReceived < 1) return;
       const accountableQuantity = line.quantityOrdered - line.cancellationQuantity;
-      const precedingReceivedQuantity = receivedOffsets.get(line.lineItemId) || 0;
-      const cost = allocateReceivingCostSlice({
-        totalMinorUnits: line.allocatedAcquisitionCost.minorUnits,
-        accountableQuantity,
-        precedingReceivedQuantity,
-        receivedQuantity: entry.quantityReceived,
-      });
-      receivedOffsets.set(line.lineItemId, precedingReceivedQuantity + entry.quantityReceived);
-      const source = { purchaseId: canonical.id, lineItemId: line.lineItemId, receivingEventId: event.id, receivingEntryIndex };
+      const replacementAuthorization = event.replacementEventId ? replacementById.get(event.replacementEventId) : null;
+      let sourceReturnAdjustment = null;
+      let cost;
+      if (event.replacementEventId) {
+        if (!replacementAuthorization) throw new InventoryCreationValidationError("REPLACEMENT_AUTHORIZATION_REQUIRED", "Replacement Inventory requires a scoped owner-confirmed replacement event.");
+        managed ||= validateInventoryCreationStateBundles(inventoryState);
+        effectiveManagedAdjustmentIds ||= new Set(deriveEffectiveInventoryAdjustmentIds(managed.adjustments));
+        sourceReturnAdjustment = managed.adjustments.find((adjustment) => adjustment.id === replacementAuthorization.relatedEventId);
+        const sourceApplication = sourceReturnAdjustment
+          ? managed.applications.find((application) => application.id === sourceReturnAdjustment.applicationId)
+          : null;
+        const physicalReturn = isPhysicalInventoryReturnAdjustment(sourceReturnAdjustment);
+        if (!sourceReturnAdjustment || !sourceApplication || !physicalReturn || !effectiveManagedAdjustmentIds.has(sourceReturnAdjustment.id)
+          || sourceReturnAdjustment.purchaseId !== canonical.id
+          || sourceApplication.purchaseLineItemId !== line.lineItemId
+          || sourceReturnAdjustment.quantity !== replacementAuthorization.quantity) {
+          throw new InventoryCreationValidationError("REPLACEMENT_RETURN_SOURCE_INVALID", "Replacement Inventory must reuse the exact cost of its owner-confirmed returned Inventory quantity.");
+        }
+        const replacementOffset = replacementOffsets.get(replacementAuthorization.id) || 0;
+        const unitCostsMinorUnits = Object.freeze(sourceReturnAdjustment.unitCostsMinorUnits.slice(replacementOffset, replacementOffset + entry.quantityReceived));
+        if (unitCostsMinorUnits.length !== entry.quantityReceived) {
+          throw new InventoryCreationValidationError("REPLACEMENT_COST_SLICE_INVALID", "Replacement Receiving exceeds the exact returned Inventory cost slice.");
+        }
+        cost = Object.freeze({
+          totalCostMinorUnits: sumMinorUnits(unitCostsMinorUnits),
+          unitCostsMinorUnits,
+          unitOffset: replacementOffset,
+        });
+        replacementOffsets.set(replacementAuthorization.id, replacementOffset + entry.quantityReceived);
+      } else {
+        const precedingReceivedQuantity = receivedOffsets.get(line.lineItemId) || 0;
+        cost = allocateReceivingCostSlice({
+          totalMinorUnits: line.allocatedAcquisitionCost.minorUnits,
+          accountableQuantity,
+          precedingReceivedQuantity,
+          receivedQuantity: entry.quantityReceived,
+        });
+        receivedOffsets.set(line.lineItemId, precedingReceivedQuantity + entry.quantityReceived);
+      }
+      const source = {
+        purchaseId: canonical.id,
+        lineItemId: line.lineItemId,
+        receivingEventId: event.id,
+        receivingEntryIndex,
+        replacementAuthorizationEventId: replacementAuthorization?.id || null,
+        sourceReturnAdjustmentId: sourceReturnAdjustment?.id || null,
+      };
       const candidateId = inventoryCandidateId(source);
       const review = reviewFor(candidateId, reviews);
       const receivedProductReference = boundedText(entry.substituteProductReference, "receivedProductReference");
@@ -351,6 +485,9 @@ export function deriveInventoryCreationCandidates({ purchase, receivingEvents = 
         vendorName: canonical.vendorName,
         accountReference: canonical.retailerAccountReference,
         receivedAt: event.occurredAt,
+        replacementAuthorizationEventId: replacementAuthorization?.id || null,
+        sourceReturnAdjustmentId: sourceReturnAdjustment?.id || null,
+        sourceReturnUnitOffset: sourceReturnAdjustment ? cost.unitOffset : null,
         existingInventoryReferences,
       });
       const candidateVersion = inventoryCandidateVersion({
@@ -363,6 +500,9 @@ export function deriveInventoryCreationCandidates({ purchase, receivingEvents = 
         purchaseId: canonical.id,
         purchaseLineItemId: line.lineItemId,
         receivingEventReferences: [event.id],
+        replacementAuthorizationEventId: replacementAuthorization?.id || null,
+        sourceReturnAdjustmentId: sourceReturnAdjustment?.id || null,
+        sourceReturnUnitOffset: sourceReturnAdjustment ? cost.unitOffset : null,
         productReference,
         purchaseProductReference: boundedText(line.productReference, "purchaseProductReference"),
         receivedProductReference: boundedText(entry.substituteProductReference, "receivedProductReference"),
@@ -412,6 +552,9 @@ export function deriveInventoryCreationCandidates({ purchase, receivingEvents = 
         totalAcquisitionCost: Object.freeze({ minorUnits: cost.totalCostMinorUnits, currency: canonical.currency }),
         unitAcquisitionCostsMinorUnits: cost.unitCostsMinorUnits,
         unitOffset: cost.unitOffset,
+        replacementAuthorizationEventId: replacementAuthorization?.id || null,
+        sourceReturnAdjustmentId: sourceReturnAdjustment?.id || null,
+        sourceReturnUnitOffset: sourceReturnAdjustment ? cost.unitOffset : null,
         purchaseCostComponents: Object.freeze({
           lineAcquisitionCostMinorUnits: line.allocatedAcquisitionCost.minorUnits,
           discountAllocationMinorUnits: line.discountAllocation?.minorUnits || 0,
@@ -421,7 +564,10 @@ export function deriveInventoryCreationCandidates({ purchase, receivingEvents = 
         }),
         resolutionReason,
         blockers: candidateBlockers,
-        warnings: eligibility.warnings,
+        warnings: Object.freeze([
+          ...eligibility.warnings,
+          ...(replacementAuthorization ? ["REPLACEMENT_COST_REUSED_FROM_RETURNED_INVENTORY"] : []),
+        ]),
         eligible: candidateBlockers.length === 0,
         existingInventoryReferences: Object.freeze(existingInventoryReferences),
         application: application ? Object.freeze({ id: application.id, status: applicationComplete && applicationMatchesSource ? application.status : "REPAIR_REQUIRED", inventoryItemId: application.inventoryItemId, inventoryLotId: application.inventoryLotId }) : null,
@@ -477,6 +623,9 @@ export function normalizeInventoryCreationApplication(value) {
     purchaseId: boundedText(value.purchaseId, "purchaseId", { required: true }),
     purchaseLineItemId: boundedText(value.purchaseLineItemId, "purchaseLineItemId", { required: true }),
     receivingEventReferences: references(value.receivingEventReferences, "receivingEventReferences"),
+    replacementAuthorizationEventId: boundedText(value.replacementAuthorizationEventId, "replacementAuthorizationEventId"),
+    sourceReturnAdjustmentId: boundedText(value.sourceReturnAdjustmentId, "sourceReturnAdjustmentId"),
+    sourceReturnUnitOffset: value.sourceReturnUnitOffset == null ? null : safeInteger(value.sourceReturnUnitOffset, "sourceReturnUnitOffset", 0),
     productReference: boundedText(value.productReference, "productReference", { required: true }),
     purchaseProductReference: boundedText(value.purchaseProductReference, "purchaseProductReference"),
     receivedProductReference: boundedText(value.receivedProductReference, "receivedProductReference"),
@@ -498,8 +647,15 @@ export function normalizeInventoryCreationApplication(value) {
   if (normalized.productMatchState === INVENTORY_CREATION_MATCH_STATES.OWNER_RESOLVED && !normalized.ownerResolutionReason) {
     throw new InventoryCreationValidationError("OWNER_RESOLUTION_REASON_REQUIRED", "Owner-resolved Inventory must retain a bounded resolution reason.");
   }
+  if (Boolean(normalized.replacementAuthorizationEventId) !== Boolean(normalized.sourceReturnAdjustmentId)) {
+    throw new InventoryCreationValidationError("REPLACEMENT_PROVENANCE_INCOMPLETE", "Replacement Inventory must retain both its authorization and physical-return source.");
+  }
+  if (Boolean(normalized.sourceReturnAdjustmentId) !== (normalized.sourceReturnUnitOffset != null)) {
+    throw new InventoryCreationValidationError("REPLACEMENT_COST_OFFSET_INCOMPLETE", "Replacement Inventory must retain its exact returned-cost slice offset.");
+  }
   if (!normalized.productClassification) throw new InventoryCreationValidationError("PRODUCT_CLASSIFICATION_REQUIRED", "Persisted Inventory must retain its reviewed product classification.");
   assertDamageDispositionPair(normalized.condition, normalized.disposition, "Inventory Creation Application");
+  assertInventoryProductClassificationCondition(normalized.productClassification, normalized.condition, "Inventory Creation Application");
   return rejectUnsupportedManagedFields(value, normalized, "Inventory Creation Application");
 }
 
@@ -520,11 +676,15 @@ export function normalizeInventoryCreationEvent(value) {
     provenanceManaged: true,
     eventType: enumValue(value.eventType, INVENTORY_CREATION_EVENT_TYPES, "eventType"),
     idempotencyKey: boundedText(value.idempotencyKey, "idempotencyKey", { required: true }),
+    proposalDigest: boundedText(value.proposalDigest, "proposalDigest"),
     applicationId: boundedText(value.applicationId, "applicationId", { required: true }),
     candidateId: boundedText(value.candidateId, "candidateId", { required: true }),
     purchaseId: boundedText(value.purchaseId, "purchaseId", { required: true }),
     purchaseLineItemId: boundedText(value.purchaseLineItemId, "purchaseLineItemId", { required: true }),
     receivingEventReferences: references(value.receivingEventReferences, "receivingEventReferences"),
+    replacementAuthorizationEventId: boundedText(value.replacementAuthorizationEventId, "replacementAuthorizationEventId"),
+    sourceReturnAdjustmentId: boundedText(value.sourceReturnAdjustmentId, "sourceReturnAdjustmentId"),
+    sourceReturnUnitOffset: value.sourceReturnUnitOffset == null ? null : safeInteger(value.sourceReturnUnitOffset, "sourceReturnUnitOffset", 0),
     productReference: boundedText(value.productReference, "productReference", { required: true }),
     purchaseProductReference: boundedText(value.purchaseProductReference, "purchaseProductReference"),
     receivedProductReference: boundedText(value.receivedProductReference, "receivedProductReference"),
@@ -546,8 +706,99 @@ export function normalizeInventoryCreationEvent(value) {
     warnings: warnings(value.warnings),
   };
   if (!normalized.productClassification) throw new InventoryCreationValidationError("PRODUCT_CLASSIFICATION_REQUIRED", "Persisted Inventory events must retain their reviewed product classification.");
+  if (Boolean(normalized.replacementAuthorizationEventId) !== Boolean(normalized.sourceReturnAdjustmentId)) {
+    throw new InventoryCreationValidationError("REPLACEMENT_PROVENANCE_INCOMPLETE", "Replacement Inventory events must retain both their authorization and physical-return source.");
+  }
+  if (Boolean(normalized.sourceReturnAdjustmentId) !== (normalized.sourceReturnUnitOffset != null)) {
+    throw new InventoryCreationValidationError("REPLACEMENT_COST_OFFSET_INCOMPLETE", "Replacement Inventory events must retain their exact returned-cost slice offset.");
+  }
   assertDamageDispositionPair(normalized.condition, normalized.disposition, "Inventory Creation Event");
+  assertInventoryProductClassificationCondition(normalized.productClassification, normalized.condition, "Inventory Creation Event");
   return rejectUnsupportedManagedFields(value, normalized, "Inventory Creation Event");
+}
+
+function signedSafeInteger(value, field) {
+  if (!Number.isSafeInteger(value)) throw new InventoryCreationValidationError("INVALID_INTEGER", `${field} must be a safe integer.`, { field });
+  return value;
+}
+
+function expectedCorrectionEventKind(category) {
+  if ([INVENTORY_CORRECTION_CATEGORIES.RETURN_TO_RETAILER, INVENTORY_CORRECTION_CATEGORIES.PARTIAL_RETURN, INVENTORY_CORRECTION_CATEGORIES.QUANTITY_CORRECTION].includes(category)) {
+    return INVENTORY_CORRECTION_EVENT_KINDS.DISPOSITION;
+  }
+  if ([INVENTORY_CORRECTION_CATEGORIES.CREATION_REVERSAL, INVENTORY_CORRECTION_CATEGORIES.REVERSAL_CORRECTION].includes(category)) {
+    return INVENTORY_CORRECTION_EVENT_KINDS.REVERSAL;
+  }
+  return INVENTORY_CORRECTION_EVENT_KINDS.CORRECTION;
+}
+
+export function isPhysicalInventoryReturnAdjustment(adjustment) {
+  return Boolean(adjustment && (
+    [INVENTORY_CORRECTION_CATEGORIES.RETURN_TO_RETAILER, INVENTORY_CORRECTION_CATEGORIES.PARTIAL_RETURN].includes(adjustment.correctionCategory)
+    || (adjustment.correctionCategory === INVENTORY_CORRECTION_CATEGORIES.QUANTITY_CORRECTION
+      && adjustment.quantityReason === INVENTORY_QUANTITY_CORRECTION_REASONS.RETURN)
+  ));
+}
+
+/**
+ * Replays the validated append-only reversal chain from newest to oldest. An
+ * active reversal suppresses its target; reversing that reversal reactivates
+ * the original target. Callers use the resulting IDs only after the canonical
+ * Inventory bundle has passed full chain validation.
+ */
+export function deriveEffectiveInventoryAdjustmentIds(adjustments = []) {
+  if (!Array.isArray(adjustments)) throw new InventoryCreationValidationError("INVALID_ADJUSTMENTS", "Inventory adjustments must be an array.");
+  const ordered = [...adjustments].sort((left, right) => {
+    const leftSequence = left.adjustmentSequence ?? -1;
+    const rightSequence = right.adjustmentSequence ?? -1;
+    if (leftSequence !== rightSequence) return leftSequence - rightSequence;
+    return `${left.occurredAt || ""}\u0000${left.id || ""}`.localeCompare(`${right.occurredAt || ""}\u0000${right.id || ""}`);
+  });
+  const inactive = new Set();
+  for (let index = ordered.length - 1; index >= 0; index -= 1) {
+    const adjustment = ordered[index];
+    if (inactive.has(adjustment.id)) continue;
+    if (adjustment.correctionCategory === INVENTORY_CORRECTION_CATEGORIES.REVERSAL_CORRECTION && adjustment.reversesAdjustmentId) {
+      inactive.add(adjustment.reversesAdjustmentId);
+    }
+  }
+  return Object.freeze(ordered.filter((adjustment) => !inactive.has(adjustment.id)).map((adjustment) => adjustment.id));
+}
+
+function normalizeAdjustmentStateSnapshot(value, field) {
+  if (value == null) return null;
+  assertSafePurchaseReceivingInput(value);
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new InventoryCreationValidationError("INVALID_ADJUSTMENT_STATE", `${field} must be an object.`);
+  const allowed = new Set([
+    "productReference", "productTitle", "productClassification", "condition", "disposition", "inventoryDispositionState",
+    "quantity", "currency", "acquisitionCostMinorUnits", "unitAcquisitionCostsMinorUnits", "inventoryStatus", "lotStatus",
+  ]);
+  const unsupported = Object.keys(value).find((key) => !allowed.has(key));
+  if (unsupported) throw new InventoryCreationValidationError("UNSUPPORTED_ADJUSTMENT_STATE_FIELD", `${field} contains an unsupported field.`, { field: unsupported });
+  const quantity = safeInteger(value.quantity, `${field}.quantity`, 0);
+  const acquisitionCostMinorUnits = safeMinorUnits(value.acquisitionCostMinorUnits, `${field}.acquisitionCostMinorUnits`);
+  const unitAcquisitionCostsMinorUnits = Object.freeze((value.unitAcquisitionCostsMinorUnits || []).map((entry, index) => safeMinorUnits(entry, `${field}.unitAcquisitionCostsMinorUnits[${index}]`)));
+  if (unitAcquisitionCostsMinorUnits.length !== quantity || sumMinorUnits(unitAcquisitionCostsMinorUnits) !== acquisitionCostMinorUnits) {
+    throw new InventoryCreationValidationError("ADJUSTMENT_STATE_COST_MISMATCH", `${field} exact costs do not reconcile.`);
+  }
+  const normalized = {
+    productReference: boundedText(value.productReference, `${field}.productReference`, { required: true }),
+    productTitle: boundedText(value.productTitle, `${field}.productTitle`, { maximum: INVENTORY_CREATION_LIMITS.maximumLabel }),
+    productClassification: normalizeProductClassification(value.productClassification),
+    condition: enumValue(value.condition, INVENTORY_CREATION_CONDITIONS, `${field}.condition`),
+    disposition: enumValue(value.disposition, INVENTORY_CREATION_DISPOSITIONS, `${field}.disposition`),
+    inventoryDispositionState: enumValue(value.inventoryDispositionState || INVENTORY_CORRECTION_DISPOSITIONS.AVAILABLE, INVENTORY_CORRECTION_DISPOSITIONS, `${field}.inventoryDispositionState`),
+    quantity,
+    currency: boundedText(value.currency, `${field}.currency`, { required: true, maximum: 3 }).toUpperCase(),
+    acquisitionCostMinorUnits,
+    unitAcquisitionCostsMinorUnits,
+    inventoryStatus: boundedText(value.inventoryStatus, `${field}.inventoryStatus`, { required: true, maximum: 128 }),
+    lotStatus: boundedText(value.lotStatus, `${field}.lotStatus`, { required: true, maximum: 128 }),
+  };
+  if (!normalized.productClassification) throw new InventoryCreationValidationError("PRODUCT_CLASSIFICATION_REQUIRED", `${field} must retain product classification.`);
+  assertDamageDispositionPair(normalized.condition, normalized.disposition, field);
+  assertInventoryProductClassificationCondition(normalized.productClassification, normalized.condition, field);
+  return Object.freeze(normalized);
 }
 
 export function normalizeInventoryAdjustment(value) {
@@ -556,32 +807,127 @@ export function normalizeInventoryAdjustment(value) {
   if (value.format !== INVENTORY_CREATION_FORMAT || value.recordType !== "INVENTORY_ADJUSTMENT" || value.provenanceManaged !== true || value.confirmationMethod !== "VERIFIED_OWNER_SESSION") {
     throw new InventoryCreationValidationError("ADJUSTMENT_AUTHORITY_MISMATCH", "Inventory Adjustment authority metadata is invalid.");
   }
-  const quantity = safeInteger(value.quantity, "quantity", 1);
+  const adjustmentType = enumValue(value.adjustmentType, INVENTORY_ADJUSTMENT_TYPES, "adjustmentType");
+  const quantity = safeInteger(value.quantity ?? 0, "quantity", adjustmentType === INVENTORY_ADJUSTMENT_TYPES.CREATION_REVERSAL ? 1 : 0);
   const totalCostMinorUnits = safeMinorUnits(value.totalCostMinorUnits, "totalCostMinorUnits");
   const unitCostsMinorUnits = Object.freeze((value.unitCostsMinorUnits || []).map((entry, index) => safeMinorUnits(entry, `unitCostsMinorUnits[${index}]`)));
-  if (unitCostsMinorUnits.length !== quantity || sumMinorUnits(unitCostsMinorUnits) !== totalCostMinorUnits) {
+  if (adjustmentType === INVENTORY_ADJUSTMENT_TYPES.CREATION_REVERSAL
+    && (unitCostsMinorUnits.length !== quantity || sumMinorUnits(unitCostsMinorUnits) !== totalCostMinorUnits)) {
     throw new InventoryCreationValidationError("INVENTORY_COST_MISMATCH", "Inventory Adjustment unit costs must reconcile exactly.");
+  }
+  const previousState = normalizeAdjustmentStateSnapshot(value.previousState, "previousState");
+  const resultingState = normalizeAdjustmentStateSnapshot(value.resultingState, "resultingState");
+  const isTypedCorrection = adjustmentType !== INVENTORY_ADJUSTMENT_TYPES.CREATION_REVERSAL || previousState || resultingState;
+  if (Boolean(previousState) !== Boolean(resultingState)) throw new InventoryCreationValidationError("ADJUSTMENT_STATE_PAIR_REQUIRED", "Inventory correction must retain both previous and resulting state.");
+  if (isTypedCorrection && (!previousState || !resultingState)) throw new InventoryCreationValidationError("ADJUSTMENT_STATE_REQUIRED", "Typed Inventory correction must retain bounded before/after state.");
+  const quantityEffect = value.quantityEffect == null ? -quantity : signedSafeInteger(value.quantityEffect, "quantityEffect");
+  const costEffectMinorUnits = value.costEffectMinorUnits == null ? -totalCostMinorUnits : signedSafeInteger(value.costEffectMinorUnits, "costEffectMinorUnits");
+  if (previousState && (resultingState.quantity - previousState.quantity !== quantityEffect
+    || resultingState.acquisitionCostMinorUnits - previousState.acquisitionCostMinorUnits !== costEffectMinorUnits)) {
+    throw new InventoryCreationValidationError("ADJUSTMENT_EFFECT_MISMATCH", "Inventory correction effects must match its before/after state.");
+  }
+  if (isTypedCorrection && (quantity !== Math.abs(quantityEffect) || totalCostMinorUnits !== Math.abs(costEffectMinorUnits))) {
+    throw new InventoryCreationValidationError("ADJUSTMENT_SUMMARY_MISMATCH", "Inventory correction summary values must match its signed effects.");
+  }
+  if (isTypedCorrection && quantity > 0
+    && (unitCostsMinorUnits.length !== quantity || sumMinorUnits(unitCostsMinorUnits) !== totalCostMinorUnits)) {
+    throw new InventoryCreationValidationError("ADJUSTMENT_UNIT_MISMATCH", "Inventory correction affected-unit costs must reconcile exactly to its quantity and cost effect.");
+  }
+  if (isTypedCorrection && quantity === 0 && unitCostsMinorUnits.length > 0) {
+    throw new InventoryCreationValidationError("ADJUSTMENT_UNIT_MISMATCH", "A zero-quantity Inventory correction cannot retain affected-unit costs.");
+  }
+  if (isTypedCorrection && previousState) {
+    const expectedAffectedUnitCosts = quantityEffect < 0
+      ? previousState.unitAcquisitionCostsMinorUnits.slice(resultingState.quantity)
+      : quantityEffect > 0
+        ? resultingState.unitAcquisitionCostsMinorUnits.slice(previousState.quantity)
+        : [];
+    if (canonicalStringify(unitCostsMinorUnits) !== canonicalStringify(expectedAffectedUnitCosts)) {
+      throw new InventoryCreationValidationError("ADJUSTMENT_UNIT_SLICE_MISMATCH", "Inventory correction affected-unit costs must exactly match the deterministic changed-unit slice.");
+    }
   }
   const normalized = {
     ...systemFields(value, "INVENTORY_ADJUSTMENT"),
     provenanceManaged: true,
-    adjustmentType: enumValue(value.adjustmentType, INVENTORY_ADJUSTMENT_TYPES, "adjustmentType"),
+    adjustmentType,
+    correctionCategory: value.correctionCategory == null ? null : enumValue(value.correctionCategory, INVENTORY_CORRECTION_CATEGORIES, "correctionCategory"),
+    eventKind: value.eventKind == null ? null : enumValue(value.eventKind, INVENTORY_CORRECTION_EVENT_KINDS, "eventKind"),
+    adjustmentSequence: value.adjustmentSequence == null ? null : safeInteger(value.adjustmentSequence, "adjustmentSequence", 1, Number.MAX_SAFE_INTEGER),
     idempotencyKey: boundedText(value.idempotencyKey, "idempotencyKey", { required: true }),
+    proposalDigest: boundedText(value.proposalDigest, "proposalDigest"),
+    semanticDigest: boundedText(value.semanticDigest, "semanticDigest"),
+    candidateId: boundedText(value.candidateId, "candidateId"),
     applicationId: boundedText(value.applicationId, "applicationId", { required: true }),
     inventoryCreationEventId: boundedText(value.inventoryCreationEventId, "inventoryCreationEventId", { required: true }),
     purchaseId: boundedText(value.purchaseId, "purchaseId", { required: true }),
     receivingEventReferences: references(value.receivingEventReferences, "receivingEventReferences"),
     productReference: boundedText(value.productReference, "productReference", { required: true }),
+    resultingProductReference: boundedText(value.resultingProductReference, "resultingProductReference"),
     inventoryLotId: boundedText(value.inventoryLotId, "inventoryLotId", { required: true }),
     inventoryItemId: boundedText(value.inventoryItemId, "inventoryItemId", { required: true }),
     quantity,
+    quantityEffect,
+    quantityReason: value.quantityReason == null ? null : enumValue(value.quantityReason, INVENTORY_QUANTITY_CORRECTION_REASONS, "quantityReason"),
     currency: boundedText(value.currency, "currency", { required: true, maximum: 3 }).toUpperCase(),
     totalCostMinorUnits,
+    costEffectMinorUnits,
     unitCostsMinorUnits,
+    previousInventoryVersion: value.previousInventoryVersion == null ? null : safeInteger(value.previousInventoryVersion, "previousInventoryVersion", 1, Number.MAX_SAFE_INTEGER),
+    resultingInventoryVersion: value.resultingInventoryVersion == null ? null : safeInteger(value.resultingInventoryVersion, "resultingInventoryVersion", 2, Number.MAX_SAFE_INTEGER),
+    previousLotVersion: value.previousLotVersion == null ? null : safeInteger(value.previousLotVersion, "previousLotVersion", 1, Number.MAX_SAFE_INTEGER),
+    resultingLotVersion: value.resultingLotVersion == null ? null : safeInteger(value.resultingLotVersion, "resultingLotVersion", 2, Number.MAX_SAFE_INTEGER),
+    previousState,
+    resultingState,
+    reversesAdjustmentId: boundedText(value.reversesAdjustmentId, "reversesAdjustmentId"),
     occurredAt: timestamp(value.occurredAt, "occurredAt"),
     reason: sanitizePurchaseReceivingNote(value.reason, "Owner-confirmed Inventory reversal."),
     confirmationMethod: "VERIFIED_OWNER_SESSION",
   };
+  if (isTypedCorrection) {
+    if (normalized.correctionCategory !== normalized.adjustmentType || !normalized.eventKind || !normalized.candidateId || !normalized.proposalDigest || !normalized.semanticDigest || !normalized.adjustmentSequence) {
+      throw new InventoryCreationValidationError("CORRECTION_METADATA_REQUIRED", "Typed Inventory correction metadata is incomplete.");
+    }
+    if (normalized.previousInventoryVersion + 1 !== normalized.resultingInventoryVersion
+      || normalized.previousLotVersion + 1 !== normalized.resultingLotVersion) {
+      throw new InventoryCreationValidationError("CORRECTION_VERSION_INVALID", "Inventory correction must advance item and lot versions exactly once.");
+    }
+    if (normalized.productReference !== previousState.productReference
+      || normalized.resultingProductReference !== resultingState.productReference) {
+      throw new InventoryCreationValidationError("CORRECTION_PRODUCT_MISMATCH", "Inventory correction product references must match its state transition.");
+    }
+    if (normalized.eventKind !== expectedCorrectionEventKind(normalized.correctionCategory)) {
+      throw new InventoryCreationValidationError("CORRECTION_EVENT_KIND_MISMATCH", "Inventory correction event kind must match its bounded correction category.");
+    }
+    if (normalized.correctionCategory === INVENTORY_CORRECTION_CATEGORIES.QUANTITY_CORRECTION && !normalized.quantityReason) {
+      throw new InventoryCreationValidationError("QUANTITY_REASON_REQUIRED", "Quantity correction must retain its bounded reason category.");
+    }
+    if (normalized.correctionCategory === INVENTORY_CORRECTION_CATEGORIES.QUANTITY_CORRECTION
+      && normalized.proposalDigest !== expectedQuantityCorrectionProposalDigest(normalized)) {
+      throw new InventoryCreationValidationError("CORRECTION_PROPOSAL_DIGEST_MISMATCH", "Inventory quantity-correction reason no longer matches its original confirmed proposal.");
+    }
+    if (normalized.correctionCategory !== INVENTORY_CORRECTION_CATEGORIES.QUANTITY_CORRECTION && normalized.quantityReason) {
+      throw new InventoryCreationValidationError("QUANTITY_REASON_NOT_ALLOWED", "Only quantity correction may retain a quantity reason.");
+    }
+    if (normalized.correctionCategory === INVENTORY_CORRECTION_CATEGORIES.REVERSAL_CORRECTION && !normalized.reversesAdjustmentId) {
+      throw new InventoryCreationValidationError("REVERSAL_TARGET_REQUIRED", "Inventory correction reversal must retain its target event.");
+    }
+    if (normalized.correctionCategory !== INVENTORY_CORRECTION_CATEGORIES.REVERSAL_CORRECTION && normalized.reversesAdjustmentId) {
+      throw new InventoryCreationValidationError("REVERSAL_TARGET_NOT_ALLOWED", "Only Inventory correction reversal may reference another correction.");
+    }
+    if (normalized.correctionCategory !== INVENTORY_CORRECTION_CATEGORIES.CREATION_REVERSAL) {
+      const expectedCandidateId = `inventory-correction-candidate:${stableDigest({
+        inventoryItemId: normalized.inventoryItemId,
+        category: normalized.correctionCategory,
+        idempotencyKey: normalized.idempotencyKey,
+      })}`;
+      if (normalized.candidateId !== expectedCandidateId) {
+        throw new InventoryCreationValidationError("CORRECTION_CANDIDATE_ID_MISMATCH", "Inventory correction candidate identity must be deterministic from its item, category, and idempotency key.");
+      }
+    }
+    if (normalized.semanticDigest !== inventoryAdjustmentSemanticDigest(normalized)) {
+      throw new InventoryCreationValidationError("CORRECTION_SEMANTIC_DIGEST_MISMATCH", "Inventory correction semantic metadata no longer matches its confirmed append-only event.");
+    }
+  }
   return rejectUnsupportedManagedFields(value, normalized, "Inventory Adjustment");
 }
 
@@ -591,7 +937,7 @@ function normalizeManagedAcquisitionRecord(value, recordType) {
     throw new InventoryCreationValidationError("MANAGED_INVENTORY_REQUIRED", `${recordType} must be a provenance-managed object.`);
   }
   const originalQuantity = safeInteger(value.originalQuantity, "originalQuantity", 1);
-  const quantity = safeInteger(value.quantity, "quantity", 0, originalQuantity);
+  const quantity = safeInteger(value.quantity, "quantity", 0, INVENTORY_CREATION_LIMITS.maximumQuantity);
   const originalUnitAcquisitionCostsMinorUnits = Object.freeze((value.originalUnitAcquisitionCostsMinorUnits || []).map((entry, index) => safeMinorUnits(entry, `originalUnitAcquisitionCostsMinorUnits[${index}]`)));
   const unitAcquisitionCostsMinorUnits = Object.freeze((value.unitAcquisitionCostsMinorUnits || []).map((entry, index) => safeMinorUnits(entry, `unitAcquisitionCostsMinorUnits[${index}]`)));
   const originalAcquisitionCostMinorUnits = safeMinorUnits(value.originalAcquisitionCostMinorUnits, "originalAcquisitionCostMinorUnits");
@@ -601,9 +947,6 @@ function normalizeManagedAcquisitionRecord(value, recordType) {
   }
   if (unitAcquisitionCostsMinorUnits.length !== quantity || sumMinorUnits(unitAcquisitionCostsMinorUnits) !== acquisitionCostMinorUnits) {
     throw new InventoryCreationValidationError("INVENTORY_CURRENT_COST_MISMATCH", "Current Inventory unit costs must reconcile exactly.");
-  }
-  if (canonicalStringify(unitAcquisitionCostsMinorUnits) !== canonicalStringify(originalUnitAcquisitionCostsMinorUnits.slice(0, quantity))) {
-    throw new InventoryCreationValidationError("INVENTORY_UNIT_PROVENANCE_MISMATCH", "Current Inventory unit costs must remain the deterministic prefix of the original allocation.");
   }
   if (value.costAuthority !== "INTEGER_MINOR_UNITS" || value.confirmationMethod !== "VERIFIED_OWNER_SESSION") {
     throw new InventoryCreationValidationError("INVENTORY_AUTHORITY_MISMATCH", "Inventory cost and confirmation authority are invalid.");
@@ -617,6 +960,9 @@ function normalizeManagedAcquisitionRecord(value, recordType) {
     purchaseId: boundedText(value.purchaseId, "purchaseId", { required: true }),
     purchaseLineItemId: boundedText(value.purchaseLineItemId, "purchaseLineItemId", { required: true }),
     receivingEventReferences: references(value.receivingEventReferences, "receivingEventReferences"),
+    replacementAuthorizationEventId: boundedText(value.replacementAuthorizationEventId, "replacementAuthorizationEventId"),
+    sourceReturnAdjustmentId: boundedText(value.sourceReturnAdjustmentId, "sourceReturnAdjustmentId"),
+    sourceReturnUnitOffset: value.sourceReturnUnitOffset == null ? null : safeInteger(value.sourceReturnUnitOffset, "sourceReturnUnitOffset", 0),
     inventoryItemId: boundedText(value.inventoryItemId, "inventoryItemId", { required: recordType === "INVENTORY_ACQUISITION_LOT" }),
     inventoryLotId: boundedText(value.inventoryLotId, "inventoryLotId", { required: recordType === "OWNED_INVENTORY_ITEM" }),
     productReference: boundedText(value.productReference, "productReference", { required: true }),
@@ -632,6 +978,11 @@ function normalizeManagedAcquisitionRecord(value, recordType) {
     ownedItemPurpose: boundedText(value.ownedItemPurpose, "ownedItemPurpose", { maximum: 128 }),
     condition: enumValue(value.condition, INVENTORY_CREATION_CONDITIONS, "condition"),
     disposition: enumValue(value.disposition, INVENTORY_CREATION_DISPOSITIONS, "disposition"),
+    inventoryDispositionState: enumValue(
+      value.inventoryDispositionState || (quantity === 0 ? INVENTORY_CORRECTION_DISPOSITIONS.DISPOSED : INVENTORY_CORRECTION_DISPOSITIONS.AVAILABLE),
+      INVENTORY_CORRECTION_DISPOSITIONS,
+      "inventoryDispositionState",
+    ),
     purchaseSource: boundedText(value.purchaseSource, "purchaseSource", { maximum: INVENTORY_CREATION_LIMITS.maximumLabel }),
     purchaseDate: boundedText(value.purchaseDate, "purchaseDate", { maximum: 10 }),
     originalQuantity,
@@ -646,7 +997,14 @@ function normalizeManagedAcquisitionRecord(value, recordType) {
     confirmationMethod: "VERIFIED_OWNER_SESSION",
   };
   if (!normalized.productClassification) throw new InventoryCreationValidationError("PRODUCT_CLASSIFICATION_REQUIRED", "Managed Inventory must retain its reviewed product classification.");
+  if (Boolean(normalized.replacementAuthorizationEventId) !== Boolean(normalized.sourceReturnAdjustmentId)) {
+    throw new InventoryCreationValidationError("REPLACEMENT_PROVENANCE_INCOMPLETE", "Replacement Inventory records must retain both their authorization and physical-return source.");
+  }
+  if (Boolean(normalized.sourceReturnAdjustmentId) !== (normalized.sourceReturnUnitOffset != null)) {
+    throw new InventoryCreationValidationError("REPLACEMENT_COST_OFFSET_INCOMPLETE", "Replacement Inventory records must retain their exact returned-cost slice offset.");
+  }
   assertDamageDispositionPair(normalized.condition, normalized.disposition, recordType);
+  assertInventoryProductClassificationCondition(normalized.productClassification, normalized.condition, recordType);
   return rejectUnsupportedManagedFields(value, normalized, recordType);
 }
 
@@ -732,7 +1090,7 @@ export function validateInventoryCreationStateBundles(state = {}, options = {}) 
       assertSame("Inventory creation-event idempotency", [event.idempotencyKey, `inventory-create:${candidateId}`]);
     }
     if (lot) {
-      const expectedLotStatus = lot.quantity === lot.originalQuantity ? "ACTIVE" : lot.quantity === 0 ? "REVERSED" : "PARTIALLY_REVERSED";
+      const expectedLotStatus = lot.quantity === 0 ? "REVERSED" : lot.quantity === lot.originalQuantity ? "ACTIVE" : lot.quantity < lot.originalQuantity ? "PARTIALLY_REVERSED" : "ADJUSTED";
       if (lot.status !== expectedLotStatus) throw new InventoryCreationValidationError("INVENTORY_LOT_STATUS_MISMATCH", "Inventory lot status must match its current quantity.");
       assertSame("Inventory acquisition-lot identity", [lot.id, ids.inventoryLotId]);
       assertSame("Inventory acquisition-lot application relation", [lot.inventoryCreationApplicationId, ids.applicationId]);
@@ -754,19 +1112,29 @@ export function validateInventoryCreationStateBundles(state = {}, options = {}) 
       assertSame("Purchase identity", present.map((entry) => entry.purchaseId));
       assertSame("Purchase line identity", present.map((entry) => entry.purchaseLineItemId));
       assertSame("Receiving identity", present.map((entry) => entry.receivingEventReferences));
-      assertSame("Product identity", present.map((entry) => entry.productReference));
+      assertSame("Replacement authorization identity", present.map((entry) => entry.replacementAuthorizationEventId));
+      assertSame("Returned Inventory source identity", present.map((entry) => entry.sourceReturnAdjustmentId));
+      assertSame("Returned Inventory unit offset", present.map((entry) => entry.sourceReturnUnitOffset));
       assertSame("Original Purchase product identity", present.map((entry) => entry.purchaseProductReference));
       assertSame("Received product identity", present.map((entry) => entry.receivedProductReference));
       assertSame("Owner product-resolution provenance", present.map((entry) => entry.ownerResolutionReason));
-      assertSame("Product classification", present.map((entry) => entry.productClassification));
       assertSame("Currency", present.map((entry) => entry.currency));
-      assertSame("Condition", present.map((entry) => entry.condition));
-      assertSame("Disposition", present.map((entry) => entry.disposition));
       assertSame("Original quantity", present.map((entry) => entry.originalQuantity ?? entry.quantity));
       assertSame("Original acquisition cost", present.map((entry) => entry.originalAcquisitionCostMinorUnits ?? entry.totalCostMinorUnits));
       assertSame("Original unit acquisition costs", present.map((entry) => entry.originalUnitAcquisitionCostsMinorUnits ?? entry.unitCostsMinorUnits));
     }
+    if (app && event) {
+      assertSame("Original product identity", [app.productReference, event.productReference]);
+      assertSame("Original product classification", [app.productClassification, event.productClassification]);
+      assertSame("Original condition", [app.condition, event.condition]);
+      assertSame("Original disposition", [app.disposition, event.disposition]);
+    }
     if (lot && item) {
+      assertSame("Current Inventory product", [lot.productReference, item.productReference]);
+      assertSame("Current Inventory classification", [lot.productClassification, item.productClassification]);
+      assertSame("Current Inventory condition", [lot.condition, item.condition]);
+      assertSame("Current Inventory disposition", [lot.disposition, item.disposition]);
+      assertSame("Current Inventory disposition state", [lot.inventoryDispositionState, item.inventoryDispositionState]);
       assertSame("Current Inventory quantity", [lot.quantity, item.quantity]);
       assertSame("Current Inventory cost", [lot.acquisitionCostMinorUnits, item.acquisitionCostMinorUnits]);
       assertSame("Current unit costs", [lot.unitAcquisitionCostsMinorUnits, item.unitAcquisitionCostsMinorUnits]);
@@ -781,20 +1149,20 @@ export function validateInventoryCreationStateBundles(state = {}, options = {}) 
     }
   }
   for (const adjustment of adjustments) {
-    if (adjustment.adjustmentType !== INVENTORY_ADJUSTMENT_TYPES.CREATION_REVERSAL) {
-      throw new InventoryCreationValidationError("INVENTORY_ADJUSTMENT_TYPE_UNSUPPORTED", "Only owner-confirmed creation reversals have active Inventory mutation semantics.");
-    }
     const application = appById.get(adjustment.applicationId);
     if (!application) throw new InventoryCreationValidationError("ADJUSTMENT_APPLICATION_MISSING", "Inventory adjustment application is missing.");
     const event = eventById.get(application.inventoryCreationEventId);
     if (!event) throw new InventoryCreationValidationError("ADJUSTMENT_EVENT_MISSING", "Inventory adjustment creation event is missing.");
     assertSame("Adjustment creation event", [adjustment.inventoryCreationEventId, application.inventoryCreationEventId, event.id]);
-    assertSame("Adjustment deterministic identity", [adjustment.id, inventoryAdjustmentIdentityId({ candidateId: application.candidateId, applicationId: application.id, idempotencyKey: adjustment.idempotencyKey })]);
+    const expectedAdjustmentId = adjustment.previousState && adjustment.adjustmentType !== INVENTORY_ADJUSTMENT_TYPES.CREATION_REVERSAL
+      ? `inventory-adjustment:correction:${stableDigest({ applicationId: application.id, candidateId: adjustment.candidateId })}`
+      : inventoryAdjustmentIdentityId({ candidateId: application.candidateId, applicationId: application.id, idempotencyKey: adjustment.idempotencyKey });
+    assertSame("Adjustment deterministic identity", [adjustment.id, expectedAdjustmentId]);
     assertSame("Adjustment Inventory item", [adjustment.inventoryItemId, application.inventoryItemId]);
     assertSame("Adjustment Inventory lot", [adjustment.inventoryLotId, application.inventoryLotId]);
     assertSame("Adjustment Purchase", [adjustment.purchaseId, application.purchaseId, event.purchaseId]);
     assertSame("Adjustment Receiving provenance", [adjustment.receivingEventReferences, application.receivingEventReferences, event.receivingEventReferences]);
-    assertSame("Adjustment product provenance", [adjustment.productReference, application.productReference, event.productReference]);
+    assertSame("Adjustment product provenance", [adjustment.productReference, adjustment.previousState?.productReference || application.productReference]);
     assertSame("Adjustment currency", [adjustment.currency, application.currency, event.currency]);
     assertSame("Adjustment confirmation authority", [adjustment.confirmationMethod, application.confirmationMethod, event.confirmationMethod]);
   }
@@ -802,16 +1170,170 @@ export function validateInventoryCreationStateBundles(state = {}, options = {}) 
     const item = itemById.get(application.inventoryItemId);
     const lot = lotById.get(application.inventoryLotId);
     if (!item || !lot) continue;
-    const related = adjustments.filter((entry) => entry.applicationId === application.id);
-    const reversedQuantity = related.reduce((total, entry) => total + entry.quantity, 0);
-    const reversedCost = related.reduce((total, entry) => total + entry.totalCostMinorUnits, 0);
-    if (application.quantity - item.quantity !== reversedQuantity || application.totalCostMinorUnits - item.acquisitionCostMinorUnits !== reversedCost) {
-      throw new InventoryCreationValidationError("INVENTORY_ADJUSTMENT_RECONCILIATION_FAILED", "Inventory reversals must reconcile exactly to current quantity and cost.");
+    const related = adjustments
+      .filter((entry) => entry.applicationId === application.id)
+      .sort((left, right) => {
+        const leftSequence = left.adjustmentSequence ?? -1;
+        const rightSequence = right.adjustmentSequence ?? -1;
+        if (leftSequence !== rightSequence) return leftSequence - rightSequence;
+        return `${left.occurredAt}\u0000${left.id}`.localeCompare(`${right.occurredAt}\u0000${right.id}`);
+      });
+    const firstTyped = related.find((entry) => entry.previousState);
+    let projection = Object.freeze({
+      productReference: application.productReference,
+      productTitle: firstTyped ? firstTyped.previousState.productTitle : item.productTitle,
+      productClassification: application.productClassification,
+      condition: application.condition,
+      disposition: application.disposition,
+      inventoryDispositionState: INVENTORY_CORRECTION_DISPOSITIONS.AVAILABLE,
+      quantity: application.quantity,
+      currency: application.currency,
+      acquisitionCostMinorUnits: application.totalCostMinorUnits,
+      unitAcquisitionCostsMinorUnits: application.unitCostsMinorUnits,
+      inventoryStatus: "In stock",
+      lotStatus: "ACTIVE",
+    });
+    let itemVersion = 1;
+    let lotVersion = 1;
+    const reversedTargets = new Set();
+    for (const [index, adjustment] of related.entries()) {
+      if (!adjustment.previousState) {
+        if (adjustment.adjustmentType !== INVENTORY_ADJUSTMENT_TYPES.CREATION_REVERSAL) {
+          throw new InventoryCreationValidationError("LEGACY_ADJUSTMENT_UNSUPPORTED", "Legacy Inventory adjustment type is unsupported.");
+        }
+        if (adjustment.quantity > projection.quantity) throw new InventoryCreationValidationError("INVENTORY_ADJUSTMENT_RECONCILIATION_FAILED", "Inventory reversal exceeds current quantity.");
+        const nextQuantity = projection.quantity - adjustment.quantity;
+        const removed = projection.unitAcquisitionCostsMinorUnits.slice(nextQuantity);
+        if (canonicalStringify(removed) !== canonicalStringify(adjustment.unitCostsMinorUnits)) {
+          throw new InventoryCreationValidationError("INVENTORY_ADJUSTMENT_UNIT_MISMATCH", "Inventory reversal unit costs do not match the deterministic trailing slice.");
+        }
+        projection = Object.freeze({
+          ...projection,
+          quantity: nextQuantity,
+          acquisitionCostMinorUnits: sumMinorUnits(projection.unitAcquisitionCostsMinorUnits.slice(0, nextQuantity)),
+          unitAcquisitionCostsMinorUnits: Object.freeze(projection.unitAcquisitionCostsMinorUnits.slice(0, nextQuantity)),
+          inventoryDispositionState: nextQuantity === 0 ? INVENTORY_CORRECTION_DISPOSITIONS.DISPOSED : INVENTORY_CORRECTION_DISPOSITIONS.AVAILABLE,
+          inventoryStatus: nextQuantity === 0 ? "Disposed" : "In stock",
+          lotStatus: nextQuantity === 0 ? "REVERSED" : "PARTIALLY_REVERSED",
+        });
+        itemVersion += 1;
+        lotVersion += 1;
+        continue;
+      }
+      if (adjustment.adjustmentSequence !== index + 1) throw new InventoryCreationValidationError("ADJUSTMENT_SEQUENCE_INVALID", "Inventory correction sequence must be contiguous and repository-assigned.");
+      if (canonicalStringify(adjustment.previousState) !== canonicalStringify(projection)) {
+        throw new InventoryCreationValidationError("ADJUSTMENT_PREVIOUS_STATE_MISMATCH", "Inventory correction does not begin at the prior canonical state.");
+      }
+      if (adjustment.previousInventoryVersion !== itemVersion || adjustment.previousLotVersion !== lotVersion
+        || adjustment.resultingInventoryVersion !== itemVersion + 1 || adjustment.resultingLotVersion !== lotVersion + 1) {
+        throw new InventoryCreationValidationError("ADJUSTMENT_VERSION_CHAIN_INVALID", "Inventory correction version chain is invalid.");
+      }
+      if ([INVENTORY_CORRECTION_CATEGORIES.REPLACEMENT_RECEIVED, INVENTORY_CORRECTION_CATEGORIES.UNEXPECTED_EXTRA_RESOLUTION].includes(adjustment.correctionCategory)) {
+        throw new InventoryCreationValidationError("CORRECTION_CATEGORY_NON_MUTATING", "Replacement and unexpected-extra review cannot mutate an existing acquisition lot.");
+      }
+      if ([INVENTORY_CORRECTION_CATEGORIES.PRODUCT_RESOLUTION_CORRECTION, INVENTORY_CORRECTION_CATEGORIES.WRONG_ITEM_RESOLUTION, INVENTORY_CORRECTION_CATEGORIES.SUBSTITUTION_RESOLUTION].includes(adjustment.correctionCategory)) {
+        assertSame("Product correction quantity", [adjustment.previousState.quantity, adjustment.resultingState.quantity]);
+        assertSame("Product correction cost", [adjustment.previousState.unitAcquisitionCostsMinorUnits, adjustment.resultingState.unitAcquisitionCostsMinorUnits]);
+      }
+      if ([INVENTORY_CORRECTION_CATEGORIES.CONDITION_CORRECTION, INVENTORY_CORRECTION_CATEGORIES.DAMAGED_AFTER_RECEIVING].includes(adjustment.correctionCategory)) {
+        assertSame("Condition correction product", [adjustment.previousState.productReference, adjustment.resultingState.productReference]);
+        assertSame("Condition correction quantity", [adjustment.previousState.quantity, adjustment.resultingState.quantity]);
+        assertSame("Condition correction cost", [adjustment.previousState.unitAcquisitionCostsMinorUnits, adjustment.resultingState.unitAcquisitionCostsMinorUnits]);
+      }
+      if ([INVENTORY_CORRECTION_CATEGORIES.CREATION_REVERSAL, INVENTORY_CORRECTION_CATEGORIES.RETURN_TO_RETAILER, INVENTORY_CORRECTION_CATEGORIES.PARTIAL_RETURN, INVENTORY_CORRECTION_CATEGORIES.QUANTITY_CORRECTION].includes(adjustment.correctionCategory)) {
+        if (adjustment.quantityEffect >= 0
+          || canonicalStringify(adjustment.resultingState.unitAcquisitionCostsMinorUnits) !== canonicalStringify(adjustment.previousState.unitAcquisitionCostsMinorUnits.slice(0, adjustment.resultingState.quantity))) {
+          throw new InventoryCreationValidationError("DISPOSITION_EFFECT_INVALID", "Inventory disposition must remove an exact trailing unit-cost slice.");
+        }
+      }
+      if (adjustment.correctionCategory === INVENTORY_CORRECTION_CATEGORIES.QUANTITY_CORRECTION) {
+        const expectedDisposition = adjustment.resultingState.quantity === 0
+          ? adjustment.quantityReason === INVENTORY_QUANTITY_CORRECTION_REASONS.RETURN
+            ? INVENTORY_CORRECTION_DISPOSITIONS.RETURNED
+            : adjustment.quantityReason === INVENTORY_QUANTITY_CORRECTION_REASONS.LOSS
+              ? INVENTORY_CORRECTION_DISPOSITIONS.LOST
+              : INVENTORY_CORRECTION_DISPOSITIONS.DISPOSED
+          : adjustment.previousState.inventoryDispositionState;
+        if (adjustment.resultingState.inventoryDispositionState !== expectedDisposition) {
+          throw new InventoryCreationValidationError("QUANTITY_DISPOSITION_MISMATCH", "Quantity correction disposition must match its structured reason.");
+        }
+      }
+      if (adjustment.correctionCategory === INVENTORY_CORRECTION_CATEGORIES.ACQUISITION_COST_CORRECTION) {
+        assertSame("Cost correction product", [adjustment.previousState.productReference, adjustment.resultingState.productReference]);
+        assertSame("Cost correction quantity", [adjustment.previousState.quantity, adjustment.resultingState.quantity]);
+      }
+      if (adjustment.correctionCategory === INVENTORY_CORRECTION_CATEGORIES.REVERSAL_CORRECTION) {
+        const target = related[index - 1];
+        if (!target?.previousState || reversedTargets.has(target.id)
+          || target.id !== adjustment.reversesAdjustmentId
+          || canonicalStringify(adjustment.previousState) !== canonicalStringify(target.resultingState)
+          || canonicalStringify(adjustment.resultingState) !== canonicalStringify(target.previousState)) {
+          throw new InventoryCreationValidationError("CORRECTION_REVERSAL_INVALID", "Inventory correction reversal must exactly invert the immediately preceding unreversed correction.");
+        }
+        reversedTargets.add(target.id);
+      }
+      projection = adjustment.resultingState;
+      itemVersion += 1;
+      lotVersion += 1;
     }
-    const removedUnits = application.unitCostsMinorUnits.slice(item.quantity);
-    const adjustedUnits = related.flatMap((entry) => entry.unitCostsMinorUnits).sort((left, right) => left - right);
-    if (canonicalStringify([...removedUnits].sort((left, right) => left - right)) !== canonicalStringify(adjustedUnits)) {
-      throw new InventoryCreationValidationError("INVENTORY_ADJUSTMENT_UNIT_MISMATCH", "Inventory reversal unit costs do not reconcile to the original deterministic allocation.");
+    const currentProjection = Object.freeze({
+      productReference: item.productReference,
+      productTitle: item.productTitle,
+      productClassification: item.productClassification,
+      condition: item.condition,
+      disposition: item.disposition,
+      inventoryDispositionState: item.inventoryDispositionState,
+      quantity: item.quantity,
+      currency: item.currency,
+      acquisitionCostMinorUnits: item.acquisitionCostMinorUnits,
+      unitAcquisitionCostsMinorUnits: item.unitAcquisitionCostsMinorUnits,
+      inventoryStatus: item.status,
+      lotStatus: lot.status,
+    });
+    if (canonicalStringify(projection) !== canonicalStringify(currentProjection)
+      || item.recordVersion !== itemVersion || lot.recordVersion !== lotVersion) {
+      throw new InventoryCreationValidationError("INVENTORY_ADJUSTMENT_RECONCILIATION_FAILED", "Append-only Inventory corrections do not reconcile to current item and lot state.");
+    }
+  }
+  const effectiveAdjustmentIds = new Set(deriveEffectiveInventoryAdjustmentIds(adjustments));
+  const replacementTotals = new Map();
+  for (const application of applications.filter((entry) => entry.sourceReturnAdjustmentId)) {
+    const source = adjustments.find((entry) => entry.id === application.sourceReturnAdjustmentId);
+    const sourceApplication = source
+      ? applications.find((entry) => entry.id === source.applicationId)
+      : null;
+    if (!source || !isPhysicalInventoryReturnAdjustment(source) || !effectiveAdjustmentIds.has(source.id)
+      || source.purchaseId !== application.purchaseId || !sourceApplication
+      || sourceApplication.purchaseLineItemId !== application.purchaseLineItemId
+      || source.currency !== application.currency) {
+      throw new InventoryCreationValidationError("REPLACEMENT_RETURN_SOURCE_INVALID", "Replacement Inventory must depend on an effective owner-confirmed physical return from the same Purchase.");
+    }
+    const offset = application.sourceReturnUnitOffset;
+    const expectedUnitCosts = source.unitCostsMinorUnits.slice(offset, offset + application.quantity);
+    if (expectedUnitCosts.length !== application.quantity
+      || canonicalStringify(expectedUnitCosts) !== canonicalStringify(application.unitCostsMinorUnits)) {
+      throw new InventoryCreationValidationError("REPLACEMENT_COST_SLICE_INVALID", "Replacement Inventory must retain the exact deterministic returned-cost slice.");
+    }
+    const totals = replacementTotals.get(source.id) || { quantity: 0, costMinorUnits: 0, unitIndexes: new Set() };
+    for (let index = offset; index < offset + application.quantity; index += 1) {
+      if (totals.unitIndexes.has(index)) {
+        throw new InventoryCreationValidationError("REPLACEMENT_SOURCE_OVERALLOCATED", "Replacement Inventory cannot reuse the same returned Inventory cost unit more than once.");
+      }
+      totals.unitIndexes.add(index);
+    }
+    totals.quantity += application.quantity;
+    totals.costMinorUnits += application.totalCostMinorUnits;
+    replacementTotals.set(source.id, totals);
+  }
+  for (const [sourceId, totals] of replacementTotals) {
+    const source = adjustments.find((entry) => entry.id === sourceId);
+    if (totals.quantity > source.quantity || totals.costMinorUnits > sumMinorUnits(source.unitCostsMinorUnits)) {
+      throw new InventoryCreationValidationError("REPLACEMENT_SOURCE_OVERALLOCATED", "Replacement Inventory cannot exceed the returned quantity or exact returned acquisition cost.");
+    }
+    for (let index = 0; index < totals.quantity; index += 1) {
+      if (!totals.unitIndexes.has(index)) {
+        throw new InventoryCreationValidationError("REPLACEMENT_COST_SLICE_INVALID", "Replacement Inventory cost slices must form the exact deterministic returned-unit prefix without gaps.");
+      }
     }
   }
   return Object.freeze({ applications, events, lots, items, adjustments });

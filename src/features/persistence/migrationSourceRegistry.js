@@ -54,7 +54,7 @@ function paths(entries) {
 const SOURCE_DECISIONS = Object.freeze({
   "deal-finder": {
     classification: C.MIGRATABLE,
-    adapterId: "deal-finder-v3-to-canonical-v1",
+    adapterId: "deal-finder-v4-to-canonical-v1",
     paths: paths([
       ["deals", D.DEAL],
       ["providerListings", D.DEAL_SNAPSHOT],
@@ -69,7 +69,7 @@ const SOURCE_DECISIONS = Object.freeze({
       ["inventoryCreationApplications", null, C.REQUIRES_MAPPING, { reason: "Local Inventory creation idempotency applications have no approved canonical mapping." }],
       ["inventoryCreationEvents", null, C.REQUIRES_MAPPING, { reason: "Owner-confirmed Inventory creation events require an approved canonical audit mapping." }],
       ["inventoryAdjustments", null, C.REQUIRES_MAPPING, { reason: "Append-only Inventory reversals require an approved canonical adjustment mapping." }],
-      ["sales", D.SALE],
+      ["sales", D.SALE, C.REQUIRES_MAPPING, { reason: "The mixed sales collection may contain exact-cost records linked to local acquisition lots and correction history that have no approved canonical provenance adapter." }],
       ["returns", D.RETURN],
       ["expenses", D.EXPENSE],
       ["mileage", D.MILEAGE_TRIP],
