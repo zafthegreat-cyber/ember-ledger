@@ -12,6 +12,12 @@ import {
   sealBackupEnvelope,
 } from "../src/features/backup/index.js";
 import { getPhase2dQaFixture } from "../src/features/botOps/fixtures/phase2dQaFixtures.js";
+import { createFixtureDraftInput } from "../src/features/purchaseReceiving/fixtures/phase2caFixtures.js";
+import {
+  createMemoryPurchaseReceivingStorage,
+  createPurchaseReceivingService,
+  PURCHASE_RECEIVING_STORAGE_KEY,
+} from "../src/features/purchaseReceiving/index.js";
 
 class MemoryStorage {
   constructor(values = {}) {
@@ -51,6 +57,34 @@ const baseDealState = {
   deals: [{ id: "deal-1", providerId: "ebay", externalListingId: "listing-1", askingPrice: 10, currency: "USD" }],
   appraisals: [], auctions: [], searchRules: [], purchases: [], lots: [], inventory: [], sales: [], expenses: [], mileage: [], activity: [], providerListings: [],
 };
+
+async function createPurchaseReceivingRestoreState() {
+  let sequence = 0;
+  const storage = createMemoryPurchaseReceivingStorage();
+  const service = createPurchaseReceivingService({
+    storage,
+    isOwnerAuthorized: () => true,
+    now: () => NOW,
+    idFactory: (prefix) => `${prefix}.restore-${sequence += 1}.test`,
+  });
+  const created = await service.createDraft(createFixtureDraftInput({ id: "purchase-draft.restore.test" }));
+  const readyDraft = await service.markDraftReady(created.draft.id, created.draft.recordVersion);
+  const confirmed = await service.confirmDraft(readyDraft.draft.id, { expectedVersion: readyDraft.draft.recordVersion });
+  await service.recordReceivingEvent(confirmed.purchase.id, {
+    idempotencyKey: "receiving.restore.test",
+    locationReference: "storage.restore.test",
+    entries: [{
+      lineItemId: confirmed.purchase.lineItems[0].lineItemId,
+      quantityReceived: 1,
+      quantityAffected: 1,
+      condition: "NEW",
+      discrepancy: "NONE",
+    }],
+  });
+  return JSON.parse(storage.getItem(PURCHASE_RECEIVING_STORAGE_KEY));
+}
+
+const validPurchaseReceivingState = await createPurchaseReceivingRestoreState();
 const localStorage = new MemoryStorage({ "ember-and-tide.flip-scout.v1": baseDealState });
 const sessionStorage = new MemoryStorage({ "private-business-hub.form-draft.purchase.new": { title: "Draft" } });
 const baseline = await createVerifiedBackup({ localStorage, sessionStorage, createdAt: NOW });
@@ -188,6 +222,74 @@ const unsafeBotOperationsPreview = await previewBackupRestore(JSON.stringify(uns
 assert.equal(unsafeBotOperationsPreview.result, RESTORE_PREVIEW_RESULTS.BLOCKED);
 assert.ok(unsafeBotOperationsPreview.prohibitedFields.some((path) => path.endsWith(".proxyPassword")));
 assert.match(unsafeBotOperationsPreview.errors.join(" "), /SECRET_FIELD_REJECTED|RAW_PROVIDER_DATA_REJECTED/);
+
+const validPurchaseReceiving = await mutateAndSeal((envelope) => {
+  const section = envelope.sections.find((entry) => entry.sourceId === "purchase-receiving");
+  section.data = structuredClone(validPurchaseReceivingState);
+});
+const validPurchaseReceivingPreview = await previewBackupRestore(JSON.stringify(validPurchaseReceiving));
+assert.equal(validPurchaseReceivingPreview.result, RESTORE_PREVIEW_RESULTS.READY_FOR_FUTURE_RESTORE);
+assert.equal(validPurchaseReceivingPreview.recordCounts["purchase-receiving"], 7);
+assert.equal(validPurchaseReceivingPreview.writesPerformed, 0, "Purchase/Receiving Restore Preview must remain zero-write");
+
+const unsafePurchaseReceiving = await mutateAndSeal((envelope) => {
+  const section = envelope.sections.find((entry) => entry.sourceId === "purchase-receiving");
+  section.data = structuredClone(validPurchaseReceivingState);
+  section.data.purchaseDrafts[0].retailerPassword = "synthetic-retailer-password-must-not-survive";
+  section.data.receivingEvents[0].rawSourcePayload = { token: "synthetic-raw-source-must-not-survive" };
+});
+const unsafePurchaseReceivingPreview = await previewBackupRestore(JSON.stringify(unsafePurchaseReceiving));
+assert.equal(unsafePurchaseReceivingPreview.result, RESTORE_PREVIEW_RESULTS.BLOCKED);
+assert.ok(unsafePurchaseReceivingPreview.prohibitedFields.some((path) => path.endsWith(".retailerPassword")));
+assert.ok(unsafePurchaseReceivingPreview.prohibitedFields.some((path) => path.endsWith(".rawSourcePayload")));
+
+const brokenPurchaseReceivingReference = await mutateAndSeal((envelope) => {
+  const section = envelope.sections.find((entry) => entry.sourceId === "purchase-receiving");
+  section.data = structuredClone(validPurchaseReceivingState);
+  section.data.purchaseEvents[0].purchaseId = "purchase.missing.test";
+});
+const brokenPurchaseReceivingPreview = await previewBackupRestore(JSON.stringify(brokenPurchaseReceivingReference));
+assert.equal(brokenPurchaseReceivingPreview.result, RESTORE_PREVIEW_RESULTS.BLOCKED);
+assert.ok(
+  brokenPurchaseReceivingPreview.errors.some((error) => /MISSING_PURCHASE_REFERENCE|Purchase\/Receiving persisted state is invalid/.test(error)),
+  "Restore Preview must block a Purchase Event whose Purchase does not exist",
+);
+
+const duplicatePurchaseSourceIdentity = await mutateAndSeal((envelope) => {
+  const section = envelope.sections.find((entry) => entry.sourceId === "purchase-receiving");
+  section.data = structuredClone(validPurchaseReceivingState);
+  section.data.purchaseDrafts.push({
+    ...section.data.purchaseDrafts[0],
+    id: "purchase-draft.restore-duplicate-source.test",
+    status: "DRAFT",
+    confirmedPurchaseId: null,
+    sourceIdentityKey: section.data.purchaseDrafts[0].sourceIdentityKey.toLowerCase(),
+  });
+});
+const duplicatePurchaseSourcePreview = await previewBackupRestore(JSON.stringify(duplicatePurchaseSourceIdentity));
+assert.equal(duplicatePurchaseSourcePreview.result, RESTORE_PREVIEW_RESULTS.BLOCKED);
+assert.ok(
+  duplicatePurchaseSourcePreview.errors.some((error) => /DUPLICATE_SOURCE_IDENTITY|Purchase\/Receiving persisted state is invalid/.test(error)),
+  "Restore Preview must block duplicate Purchase Draft source identities",
+);
+
+const duplicatePurchaseExternalIdentity = await mutateAndSeal((envelope) => {
+  const section = envelope.sections.find((entry) => entry.sourceId === "purchase-receiving");
+  section.data = structuredClone(validPurchaseReceivingState);
+  section.data.purchaseDrafts.push({
+    ...section.data.purchaseDrafts[0],
+    id: "purchase-draft.restore-duplicate-external.test",
+    status: "DRAFT",
+    confirmedPurchaseId: null,
+    sourceIdentityKey: "SYNTHETIC::UNIQUE-RESTORE-SOURCE.TEST",
+  });
+});
+const duplicatePurchaseExternalPreview = await previewBackupRestore(JSON.stringify(duplicatePurchaseExternalIdentity));
+assert.equal(duplicatePurchaseExternalPreview.result, RESTORE_PREVIEW_RESULTS.BLOCKED);
+assert.ok(
+  duplicatePurchaseExternalPreview.errors.some((error) => /DUPLICATE_EXTERNAL_ORDER_IDENTITY|Purchase\/Receiving persisted state is invalid/.test(error)),
+  "Restore Preview must block duplicate retailer/account/external-order identities",
+);
 
 const validAccountOps = await mutateAndSeal((envelope) => {
   const section = envelope.sections.find((entry) => entry.sourceId === "account-ops");

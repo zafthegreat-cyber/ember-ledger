@@ -382,7 +382,7 @@ export function BusinessWorkspace({ items = [], purchases = [], sales = [], expe
   const allSales = useMemo(() => mergeRecords(state.sales, sales), [sales, state.sales]);
   const allExpenses = useMemo(() => mergeRecords(state.expenses, expenses), [expenses, state.expenses]);
   const allMileage = useMemo(() => mergeRecords(state.mileage, mileage), [mileage, state.mileage]);
-  const businessDestinations = [{ key: "purchases", label: "Purchases", detail: "Acquisitions and lots" }, { key: "inventory", label: "Inventory", detail: "Items for resale" }, { key: "sales", label: "Sales", detail: "Proceeds and profit" }, { key: "money", label: "Money", detail: "Expenses and records" }, { key: "compliance", label: "Compliance", detail: "Registration, taxes, licenses, deadlines" }];
+  const businessDestinations = [{ key: "purchases", label: "Purchases", detail: "Owner-reviewed drafts and receiving" }, { key: "inventory", label: "Inventory", detail: "Items for resale" }, { key: "sales", label: "Sales", detail: "Proceeds and profit" }, { key: "money", label: "Money", detail: "Expenses and records" }, { key: "compliance", label: "Compliance", detail: "Registration, taxes, licenses, deadlines" }];
   const moneyTabs = [{ key: "expenses", label: "Expenses" }, { key: "mileage", label: "Mileage" }, { key: "reports", label: "Reports" }];
   const changeView = (next) => { setSelected(null); setView(next); onViewChange?.(next); };
   const findRecord = (type, record) => {

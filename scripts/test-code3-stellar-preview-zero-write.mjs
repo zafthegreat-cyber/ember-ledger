@@ -114,7 +114,7 @@ for (const sourceFile of sourceFiles) {
   excludes(source, /\b(?:console\.(?:debug|error|info|log|warn)|logger\.|analytics\.|telemetry\.)/, `${sourceFile} must not log raw or normalized preview input`);
 }
 
-equal(BACKUP_SOURCE_REGISTRY.length, 24, "Phase 2D-B2 must not add a backup source");
+equal(BACKUP_SOURCE_REGISTRY.length, 25, "Phase 2D-B2 preview remains source-free while Phase 2C-A adds its separately reviewed Purchase/Receiving source");
 equal(MIGRATION_SOURCE_REGISTRY.length, BACKUP_SOURCE_REGISTRY.length, "Phase 2D-B2 must not add a migration source");
 equal(BACKUP_SOURCE_REGISTRY.some((source) => /stellar.*preview|preview.*stellar/i.test(`${source.sourceId} ${source.storageKey || ""}`)), false);
 equal(MIGRATION_SOURCE_REGISTRY.some((source) => /stellar.*preview|preview.*stellar/i.test(`${source.sourceId} ${JSON.stringify(source.paths || [])}`)), false);

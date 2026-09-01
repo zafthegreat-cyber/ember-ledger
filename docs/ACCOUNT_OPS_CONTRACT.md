@@ -195,6 +195,8 @@ The local Bot document validates identifier shape without pretending that it can
 
 Both sources remain separate `LOCAL_ONLY` documents. Phase 2D-A stores only bounded cross-source IDs; any current or future relationship projection may be read only after the verified OWNER gate, and neither workspace can grant access to the other. See [BOT_INTEGRATION_CONTRACT.md](./BOT_INTEGRATION_CONTRACT.md).
 
+Phase 2C-A Purchase Drafts and Purchases may retain stable Account Ops profile/store-account reference IDs. They never copy passwords, aliases, addresses, credential references, sessions, or OWNER authority from Account Ops, and they never update Account Ops state. Missing, archived, or contradictory relationships remain explicit review findings. Business Purchase access does not weaken the separate Account Ops pre-storage OWNER gate. See [PURCHASE_RECEIVING_CONTRACT.md](./PURCHASE_RECEIVING_CONTRACT.md).
+
 ## Phase 2B1 inbox foundation
 
 Phase 2B1 implements minimized normalized-message contracts and deterministic synthetic processing under the separate `code3.inbox-order.v1` source. Categories include verification, order confirmation, shipped, delivered, cancelled, refund, return, pickup, password/security, retailer notice, other, and protected.
@@ -226,7 +228,7 @@ External text cannot create a purchase or inventory record automatically. Provid
 
 ## Backup and Restore Preview
 
-The Account Ops document is a registered browser backup source. Allowed metadata includes profiles, aliases, owner-created retailers, store accounts, account state, credential references, tasks, and activity. Phase 2B1 registers its separate minimized Inbox/Order source, and Phase 2D-A registers the separate sanitized Bot Operations source, rather than changing the strict Account Ops schema. Backup Format v1 therefore has 24 registered sources: 20 locally included and four excluded/conditional. Passwords, OTPs, tokens, sessions, OAuth state/codes/verifiers, raw protected/provider content, authorization fields, environment values, provider/Bot/retailer/payment/proxy secrets, and credential-bearing URLs are prohibited before persistence and remain prohibited by the backup sanitizer.
+The Account Ops document is a registered browser backup source. Allowed metadata includes profiles, aliases, owner-created retailers, store accounts, account state, credential references, tasks, and activity. Phase 2B1 registers its separate minimized Inbox/Order source, Phase 2D-A registers sanitized Bot Operations, and Phase 2C-A registers separate Purchase/Receiving metadata rather than changing the strict Account Ops schema. Backup Format v1 therefore has 25 registered sources: 21 locally included and four excluded/conditional. Passwords, OTPs, tokens, sessions, OAuth state/codes/verifiers, raw protected/provider content, authorization fields, environment values, provider/Bot/retailer/payment/proxy secrets, and credential-bearing URLs are prohibited before persistence and remain prohibited by the backup sanitizer.
 
 Restore Preview validates schema, counts, IDs, duplicate aliases, and relationships such as profile, alias, retailer, and store-account references. It remains JSON-only and zero-write. Account Ops has no restore-apply path.
 

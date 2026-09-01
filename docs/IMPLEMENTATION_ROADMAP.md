@@ -17,7 +17,7 @@ The audit changes the conceptual “backend persistence first” phase into gate
 
 **Phase 2B1 — Secure Provider Runtime + Inbox / Order Intelligence Foundation**, **Phase 2B2-A — Preview Trusted Express/API Runtime**, and **Phase 2B2-B — Preview Owner Auth + Managed Provider State** are published through `b4848cb851b2be83093fbdc4ed4b976857f9d3ff`. The separate Phase 2B2-B.1 operational verification is paused. A Free Upstash resource and three branch-scoped Preview secrets exist, but Supabase owner/auth values and the remaining Preview CORS/activation/runtime values are not configured, no follow-up Preview was deployed, and `hostedRuntimeVerified=false`. Gmail, Outlook, IMAP, live Inbox ingestion, provider token use, Purchase import, migration, sync, and remote cutover remain inactive.
 
-**Phase 2D-A — Bot Integration Foundation** is published at `cdde7df506c94bc55b2ec7995596843ae1c2261a`, and **Phase 2D-B1 — Provider Integration Discovery and Pilot Design** is published at `e832ab67a153c5e672f8a77dda5474aedb1395af`. **Phase 2D-B2 — Stellar Task Export Preview** is the current local-only workstream. It adds an offline, owner-selected, zero-write JSON preview with recursive security screening and strict safe-field normalization. Hayha and Stellar remain `NOT_CONFIGURED`; no live provider, import, persistence, credentials, task control, proxy connection, checkout, Purchase, receiving, Inventory mutation, billing, or deployment is active.
+**Phase 2D-A — Bot Integration Foundation** is published at `cdde7df506c94bc55b2ec7995596843ae1c2261a`, **Phase 2D-B1 — Provider Integration Discovery and Pilot Design** at `e832ab67a153c5e672f8a77dda5474aedb1395af`, and **Phase 2D-B2 — Stellar Task Export Preview** at `0b45c3584f7f15b4d951c5e4cddd1e42dcbeb5a3`. **Phase 2C-A — Purchase → Receiving → Inventory Foundation** is the current parallel local-only workstream. Hayha and Stellar remain `NOT_CONFIGURED`; no live provider, automatic evidence import, Inventory creation, credentials, task control, proxy connection, checkout, billing, remote persistence, or deployment is active.
 
 The published Phase 1A runtime applies Code 3 through the centralized brand configuration and coordinated PWA/browser/offline metadata. Storage, database, route, module, environment, cache, history, compatibility, and imported-source identifiers remain unchanged. The legal/public business name and tagline remain separately configurable and unresolved.
 
@@ -172,6 +172,25 @@ No time estimates are provided. Complexity is relative: Small, Medium, Large, or
 - **Acceptance criteria:** exact commit-attributed Preview, authenticated owner proof, non-owner/unauthenticated denial, CORS denial, healthy managed stores, no secret exposure, Gmail/Outlook still `NOT_CONFIGURED` unless a later task explicitly authorizes a provider.
 - **Rollback:** remove Preview-only values/resource access and retain `hostedRuntimeVerified=false`; no business-data rollback is required.
 - **Complexity:** Medium before any provider pilot; a live provider pilot is separately Large.
+
+## Phase 2C-A — Purchase → Receiving → Inventory Foundation
+
+**Status:** Current local-only implementation from published baseline `0b45c3584f7f15b4d951c5e4cddd1e42dcbeb5a3`; publication is separately gated.
+
+- **Objective:** add the explicit OWNER-reviewed boundary from external evidence to Purchase Draft, exactly-once local Purchase confirmation, append-only partial/discrepancy Receiving, and derived Inventory Handoff Preview without creating Inventory.
+- **Current code affected:** new `src/features/purchaseReceiving`; the verified-OWNER Business Purchases surface; Backup Format v1 source/validator; Restore and Migration Preview mapping; focused tests and documentation.
+- **Data changes:** one schema-versioned `code3.purchase-receiving.v1` browser source with `purchaseDrafts`, `purchases`, `purchaseEvents`, `receivingEvents`, and `activity`. The gateway is fixed to `LOCAL_ONLY`; Inventory Handoff Preview is not stored; every migration path is `REQUIRES_MAPPING`.
+- **Money/allocation:** safe integer minor units and explicit currency only; order-level discount/tax/shipping/fee pools allocate proportionally with BigInt floors and stable largest-remainder pennies, reconciling exactly to the source pool and Purchase total.
+- **Authority/idempotency:** verified OWNER before source construction/read; source records referenced, not copied; expected draft versions plus stable confirmation keys yield one Purchase; stable Receiving event IDs deduplicate retries while preserving distinct partial receipts.
+- **Business boundary:** `Order Candidate != Purchase`; `Checkout Evidence != Purchase`; `Purchase Draft != Purchase`; `Purchase != Received Inventory`; `Delivery != Receiving`; `Inventory Handoff Preview != Inventory`. No Inventory writer, quantity/cost mutation, or automatic importer exists.
+- **Security:** reject browser authority, passwords/tokens/cookies/OTPs, PAN/CVV/payment credentials, retailer/provider/proxy credentials, credential-bearing URLs, raw mail/Bot/provider content/logs and unsafe structures before persistence/backup.
+- **External authorization:** none for local code and synthetic fixtures. No real order, retailer, payment, mailbox, Bot, managed resource, schema, remote persistence, or Production action is authorized.
+- **Test plan:** drafts/corrections/rejection/confirmation; exact money and remainder allocation; cancellation/refund bounds; partial Receiving/discrepancies/idempotency; product match ambiguity; no Inventory mutation; security/backup/restore/migration; OWNER gate; responsive UI; upstream Account Ops/Inbox/Bot and business/inventory regression; full gate.
+- **Acceptance criteria:** explicit confirmation produces exactly one Purchase; delivery creates no Receiving; receiving produces only a handoff preview; no secret/source payload enters storage/backup; local/remote and paused-provider boundaries remain unchanged.
+- **Rollback:** remove the additive route/domain/backup/docs changes after exporting any safe owner-created local metadata. No remote, provider, Inventory, schema, or deployment rollback is required.
+- **Complexity:** Large.
+
+See [PURCHASE_RECEIVING_CONTRACT.md](./PURCHASE_RECEIVING_CONTRACT.md).
 
 ## Phase 2D-A — Bot Integration Foundation
 

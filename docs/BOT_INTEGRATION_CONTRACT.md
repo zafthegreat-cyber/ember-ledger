@@ -279,6 +279,8 @@ Bot Attempt
 
 Each arrow after Checkout Evidence is inactive. No automatic mutation is permitted, and no Bot Operations repository can reach a Purchase or Inventory writer.
 
+Phase 2C-A now supplies the separate local Purchase Draft, Purchase, Receiving, and Inventory Handoff Preview contracts, but it does not activate the Bot-to-draft arrow. A future owner-selected adapter may reference a stable Checkout Evidence ID/version only; it must not embed or mutate the evidence record. `Checkout Evidence != Purchase`, `Purchase Draft != Purchase`, and `Receiving != Inventory` remain mandatory. See [PURCHASE_RECEIVING_CONTRACT.md](./PURCHASE_RECEIVING_CONTRACT.md).
+
 ## Security rejection
 
 All record, fixture, import, event, and backup inputs pass the Bot Operations recursive security guard before hashing or persistence. It rejects:

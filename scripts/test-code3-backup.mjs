@@ -10,8 +10,15 @@ import {
   verifyBackupEnvelope,
   verifyBackupJson,
 } from "../src/features/backup/index.js";
+import { findProhibitedData, sanitizeBackupData } from "../src/features/backup/backupSecurity.js";
 import fs from "node:fs";
 import { getPhase2dQaFixture } from "../src/features/botOps/fixtures/phase2dQaFixtures.js";
+import { createFixtureDraftInput } from "../src/features/purchaseReceiving/fixtures/phase2caFixtures.js";
+import {
+  createMemoryPurchaseReceivingStorage,
+  createPurchaseReceivingService,
+  PURCHASE_RECEIVING_STORAGE_KEY,
+} from "../src/features/purchaseReceiving/index.js";
 
 class MemoryStorage {
   constructor(values = {}, throwingKeys = []) {
@@ -53,6 +60,89 @@ botOpsState.installations[0].accessToken = "phase2da-bot-token-must-not-export";
 botOpsState.proxyGroups[0].proxyPassword = "phase2da-proxy-password-must-not-export";
 botOpsState.attempts[0].rawProviderPayload = { cookie: "phase2da-cookie-must-not-export" };
 botOpsState.checkoutEvidence[0].cvv = "000";
+let purchaseIdSequence = 0;
+const purchaseReceivingStorage = createMemoryPurchaseReceivingStorage();
+const purchaseReceivingService = createPurchaseReceivingService({
+  storage: purchaseReceivingStorage,
+  isOwnerAuthorized: () => true,
+  now: () => NOW,
+  idFactory: (prefix) => `${prefix}.backup-${purchaseIdSequence += 1}.test`,
+});
+const createdPurchaseDraft = await purchaseReceivingService.createDraft(createFixtureDraftInput());
+const readyPurchaseDraft = await purchaseReceivingService.markDraftReady(createdPurchaseDraft.draft.id, createdPurchaseDraft.draft.recordVersion);
+const confirmedPurchase = await purchaseReceivingService.confirmDraft(readyPurchaseDraft.draft.id, { expectedVersion: readyPurchaseDraft.draft.recordVersion });
+await purchaseReceivingService.recordReceivingEvent(confirmedPurchase.purchase.id, {
+  idempotencyKey: "receiving.backup.test",
+  locationReference: "storage.backup.test",
+  entries: [{
+    lineItemId: confirmedPurchase.purchase.lineItems[0].lineItemId,
+    quantityReceived: 1,
+    quantityAffected: 1,
+    condition: "NEW",
+    discrepancy: "NONE",
+  }],
+});
+const purchaseReceivingState = JSON.parse(purchaseReceivingStorage.getItem(PURCHASE_RECEIVING_STORAGE_KEY));
+purchaseReceivingState.purchaseDrafts[0].retailerPassword = "phase2ca-retailer-password-must-not-export";
+purchaseReceivingState.purchases[0].paymentCardNumber = "phase2ca-card-number-must-not-export";
+purchaseReceivingState.receivingEvents[0].rawSourcePayload = { token: "phase2ca-raw-source-must-not-export" };
+purchaseReceivingState.inventoryHandoffPreview = { rows: [{ id: "phase2ca-handoff-must-not-export" }] };
+purchaseReceivingState.purchaseDrafts[0].pwd = "phase2ca-pwd-must-not-export";
+purchaseReceivingState.purchaseDrafts[0].rawBody = "phase2ca-raw-body-must-not-export";
+purchaseReceivingState.purchaseDrafts[0].credentialUri = "postgresql://synthetic-user@database.invalid/code3";
+
+const hostileBackupMetadata = {
+  pwd: "synthetic-password.invalid",
+  nested: { rawBody: "synthetic raw body" },
+  connectionHint: "rediss://synthetic-user:synthetic-password@redis.invalid:6379",
+  encodedConnectionHint: "https%3A%2F%2Fsynthetic-token%40service.invalid",
+  tokenQueryHint: "https://service.invalid/status?access_token=synthetic.invalid",
+  encodedTokenQueryHint: "https%3A%2F%2Fservice.invalid%2Fstatus%3Fapi_key%3Dsynthetic.invalid",
+  paymentHint: ["4111", "1111", "1111", "1111"].join(" "),
+  requestValue: "synthetic raw request",
+  myPwd: "synthetic-password.invalid",
+  subjectValue: "synthetic-owner-subject.invalid",
+  numericPaymentHint: 378282246310005,
+  passwordValue: "synthetic.invalid",
+  clientSecretValue: "synthetic.invalid",
+  apiKeyValue: "synthetic.invalid",
+  cardNumberValue: "synthetic.invalid",
+  cvvValue: "synthetic.invalid",
+  rawBodyValue: "synthetic raw body",
+  ownerSubjectValue: "synthetic-owner-subject.invalid",
+  ownerIdValue: "synthetic-owner-id.invalid",
+  malformedEncodedCredentialHint: "https://service.invalid/?access%5Ftoken=synthetic.invalid%ZZ",
+  deeplyEncodedCredentialHint: Array.from({ length: 4 }).reduce((value) => encodeURIComponent(value), "https://service.invalid/?access_token=synthetic.invalid"),
+  hyphenatedCredentialHint: "https://service.invalid/?access-token=synthetic.invalid",
+  semicolonCredentialHint: "https://service.invalid/?x=1;api-key=synthetic.invalid",
+  htmlCredentialHint: "https://service.invalid/?x=1&amp;access_token=synthetic.invalid",
+  encryptedPrivateKeyHint: "-----BEGIN ENCRYPTED PRIVATE KEY-----",
+  pgpPrivateKeyHint: "-----BEGIN PGP PRIVATE KEY BLOCK-----",
+  serializedCredentialHint: JSON.stringify({ [["access", "token"].join("_")]: "synthetic.invalid" }),
+  cookieHeaderHint: "Cookie: sessionid=synthetic.invalid",
+  setCookieHeaderHint: "Set-Cookie: auth=synthetic.invalid; HttpOnly",
+  supabaseSecretHint: ["sb", "secret", "A".repeat(24)].join("_"),
+  gitlabTokenHint: ["glpat", "A".repeat(24)].join("-"),
+  npmTokenHint: ["npm", "A".repeat(32)].join("_"),
+  sendgridTokenHint: ["SG", "A".repeat(16), "B".repeat(24)].join("."),
+  clientSecretQueryHint: "https://service.invalid/callback?client_secret=synthetic.invalid",
+  oauthStateQueryHint: "https://service.invalid/callback?oauth_state=synthetic.invalid",
+  codeVerifierQueryHint: "https://service.invalid/callback?code_verifier=synthetic.invalid",
+  pkceVerifierQueryHint: "https://service.invalid/callback?pkce_verifier=synthetic.invalid",
+  authorizationCodeQueryHint: "https://service.invalid/callback?authorization_code=synthetic.invalid",
+  idTokenQueryHint: "https://service.invalid/callback?id_token=synthetic.invalid",
+  signedUrlHint: "https://storage.invalid/file?X-Amz-Credential=synthetic.invalid&X-Amz-Signature=synthetic.invalid",
+  signatureUrlHint: "https://storage.invalid/file?signature=synthetic.invalid",
+};
+assert.equal(findProhibitedData(hostileBackupMetadata).length, 41, "backup scan finds aliases, authority, raw content, credentials, and payment-like values");
+const sanitizedHostileBackupMetadata = sanitizeBackupData(hostileBackupMetadata);
+assert.deepEqual(Object.keys(sanitizedHostileBackupMetadata.data), ["nested"], "backup sanitization retains only the harmless structural container");
+assert.deepEqual(Object.keys(sanitizedHostileBackupMetadata.data.nested), [], "backup sanitization removes the nested raw-content value");
+assert.equal(sanitizedHostileBackupMetadata.excludedPaths.length, 41, "backup sanitization reports every excluded hostile path without values");
+const safeProductChecksum = sanitizeBackupData({ upc: "4111111111111111", title: "Synthetic card identifier" });
+assert.equal(safeProductChecksum.data.upc, "4111111111111111", "allowlisted product checksum identifiers are not mistaken for payment credentials");
+const safeNumericProductChecksum = sanitizeBackupData({ upc: 378282246310005, title: "Synthetic numeric product identifier" });
+assert.equal(safeNumericProductChecksum.data.upc, 378282246310005, "numeric allowlisted product identifiers remain recoverable");
 const localStorage = new MemoryStorage({
   "ember-and-tide.flip-scout.v1": {
     schemaVersion: 2,
@@ -132,6 +222,7 @@ const localStorage = new MemoryStorage({
     })],
   },
   "code3.bot-ops.v1": botOpsState,
+  [PURCHASE_RECEIVING_STORAGE_KEY]: purchaseReceivingState,
   "et-tcg-beta-data": {
     items: [{
       id: "owned-1",
@@ -183,6 +274,13 @@ assert.equal(currentSources.sources["bot-operations"].installations[0].accessTok
 assert.equal(currentSources.sources["bot-operations"].proxyGroups[0].proxyPassword, undefined);
 assert.equal(currentSources.sources["bot-operations"].attempts[0].rawProviderPayload, undefined);
 assert.equal(currentSources.sources["bot-operations"].checkoutEvidence[0].cvv, undefined);
+assert.equal(currentSources.sources["purchase-receiving"].purchaseDrafts[0].retailerPassword, undefined);
+assert.equal(currentSources.sources["purchase-receiving"].purchases[0].paymentCardNumber, undefined);
+assert.equal(currentSources.sources["purchase-receiving"].receivingEvents[0].rawSourcePayload, undefined);
+assert.equal(currentSources.sources["purchase-receiving"].inventoryHandoffPreview, undefined);
+assert.equal(currentSources.sources["purchase-receiving"].purchaseDrafts[0].pwd, undefined);
+assert.equal(currentSources.sources["purchase-receiving"].purchaseDrafts[0].rawBody, undefined);
+assert.equal(currentSources.sources["purchase-receiving"].purchaseDrafts[0].credentialUri, undefined);
 assert.equal(currentSources.sources["legacy-core-business"].items[0].accessToken, undefined);
 assert.equal(localStorage.snapshot(), beforeLocal, "current-source reads must not write localStorage");
 assert.equal(sessionStorage.snapshot(), beforeSession, "current-source reads must not write sessionStorage");
@@ -214,6 +312,7 @@ const phase2Section = complete.backup.sections.find((section) => section.sourceI
 const accountOpsSection = complete.backup.sections.find((section) => section.sourceId === "account-ops");
 const inboxOrderSection = complete.backup.sections.find((section) => section.sourceId === "inbox-order-intelligence");
 const botOperationsSection = complete.backup.sections.find((section) => section.sourceId === "bot-operations");
+const purchaseReceivingSection = complete.backup.sections.find((section) => section.sourceId === "purchase-receiving");
 assert.equal(dealSection.recordCount, 1);
 assert.equal(ownerSection.recordCount, 1);
 assert.equal(phase2Section.recordCount, 3);
@@ -221,11 +320,22 @@ assert.equal(coreSection.recordCount, 1);
 assert.equal(accountOpsSection.recordCount, 8);
 assert.equal(inboxOrderSection.recordCount, 4);
 assert.equal(botOperationsSection.recordCount, 9);
+assert.equal(purchaseReceivingSection.recordCount, 7);
 assert.equal(botOperationsSection.data.installations[0].accessToken, undefined, "bot tokens must never enter backup data");
 assert.equal(botOperationsSection.data.proxyGroups[0].proxyPassword, undefined, "proxy credentials must never enter backup data");
 assert.equal(botOperationsSection.data.attempts[0].rawProviderPayload, undefined, "raw provider payloads must never enter backup data");
 assert.equal(botOperationsSection.data.checkoutEvidence[0].cvv, undefined, "payment security values must never enter backup data");
 assert.equal(botOperationsSection.data.checkoutEvidence[0].purchaseCreated, false, "Checkout Evidence must remain distinct from Purchase");
+assert.equal(purchaseReceivingSection.data.purchaseDrafts[0].automaticPurchaseCreationAllowed, false, "Purchase Draft must remain distinct from Purchase");
+assert.equal(purchaseReceivingSection.data.purchases[0].inventoryCreated, false, "Purchase must remain distinct from received Inventory");
+assert.equal(purchaseReceivingSection.data.receivingEvents[0].createsInventory, false, "Receiving must not create Inventory");
+assert.equal(purchaseReceivingSection.data.purchaseDrafts[0].retailerPassword, undefined, "retailer credentials must not enter Purchase backups");
+assert.equal(purchaseReceivingSection.data.purchases[0].paymentCardNumber, undefined, "payment credentials must not enter Purchase backups");
+assert.equal(purchaseReceivingSection.data.receivingEvents[0].rawSourcePayload, undefined, "raw evidence must not enter Purchase backups");
+assert.equal(purchaseReceivingSection.data.inventoryHandoffPreview, undefined, "derived Inventory Handoff Preview must not become a backup source");
+assert.equal(purchaseReceivingSection.data.purchaseDrafts[0].pwd, undefined, "password aliases must not enter Purchase backups");
+assert.equal(purchaseReceivingSection.data.purchaseDrafts[0].rawBody, undefined, "raw source aliases must not enter Purchase backups");
+assert.equal(purchaseReceivingSection.data.purchaseDrafts[0].credentialUri, undefined, "credential-bearing URI values must not enter Purchase backups");
 assert.equal(inboxOrderSection.data.messageEvents[0].accessToken, undefined, "provider tokens must be removed from normalized message metadata");
 assert.equal(inboxOrderSection.data.messageEvents[0].rawMessageContent, undefined, "raw protected message content must be removed");
 assert.equal(inboxOrderSection.data.orderCandidates[0].refreshToken, undefined, "refresh tokens must be removed from Order Candidates");
@@ -256,6 +366,7 @@ assert.doesNotMatch(complete.json, /phase2b1-(?:access-token|refresh-token|raw-m
 assert.doesNotMatch(complete.json, /phase2b2b-managed-reference-must-not-export/);
 assert.doesNotMatch(complete.json, /phase2da-(?:bot-token|proxy-password|cookie)-must-not-export/);
 assert.doesNotMatch(complete.json, /phase2da-payment-pan-must-not-export/);
+assert.doesNotMatch(complete.json, /phase2ca-(?:retailer-password|card-number|raw-source|handoff)-must-not-export/);
 assert.doesNotMatch(complete.json, /sb-example-auth-token/);
 assert.ok(complete.backup.manifest.securityExclusions.length >= 4);
 
@@ -369,7 +480,8 @@ assert.ok(BACKUP_SOURCE_REGISTRY.some((source) => source.sourceId === "authentic
 assert.ok(BACKUP_SOURCE_REGISTRY.some((source) => source.sourceId === "account-ops" && source.includedInPhase1AExport));
 assert.ok(BACKUP_SOURCE_REGISTRY.some((source) => source.sourceId === "inbox-order-intelligence" && source.includedInPhase1AExport));
 assert.ok(BACKUP_SOURCE_REGISTRY.some((source) => source.sourceId === "bot-operations" && source.includedInPhase1AExport));
-assert.equal(BACKUP_SOURCE_REGISTRY.length, 24);
-assert.equal(BACKUP_SOURCE_REGISTRY.filter((source) => source.includedInPhase1AExport).length, 20);
+assert.ok(BACKUP_SOURCE_REGISTRY.some((source) => source.sourceId === "purchase-receiving" && source.includedInPhase1AExport));
+assert.equal(BACKUP_SOURCE_REGISTRY.length, 25);
+assert.equal(BACKUP_SOURCE_REGISTRY.filter((source) => source.includedInPhase1AExport).length, 21);
 
 console.log(`Code 3 backup tests passed (${complete.backup.sections.length} sections, ${complete.backup.coverageSummary.recordCount} records).`);

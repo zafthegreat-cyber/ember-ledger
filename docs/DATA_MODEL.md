@@ -16,6 +16,8 @@ Phase 2D-A adds the separate versioned `code3.bot-ops.v1` browser source for pro
 
 Phase 2D-B2 adds no stored domain. `StellarTaskExportPreview` is an ephemeral inspection projection over one owner-selected JSON file; it is not a `BotTask`, `BotTaskGroup`, `ProductTarget`, import job, provider event, or migration source. Raw input and normalized preview data remain in memory only and are discarded on close, replacement, navigation, or refresh.
 
+Phase 2C-A adds a separate versioned `code3.purchase-receiving.v1` browser source for non-authoritative Purchase Drafts, owner-confirmed exact-money Purchases, append-only Purchase/Receiving history, and bounded activity. Inventory Handoff Preview remains a derived in-memory projection and is not a stored collection. The source neither changes the Phase 1B canonical schema nor creates Inventory. `LOCAL_ONLY` remains authoritative.
+
 This document distinguishes current persisted shapes, Phase 1B schema-only representations, and the future active canonical model. A table, migration file, repository interface, or dry-run result is not evidence that remote persistence is active.
 
 ## Modeling rules
@@ -170,6 +172,28 @@ Provider events use the stable scoped identity `providerKey + installationId + p
 
 All ten record paths are registered for Backup Format v1 and classified `REQUIRES_MAPPING`, because the Phase 1B schema has no Bot Operations domain. Preview proposes no canonical insert, update, archive, delete, Purchase, receiving, or Inventory action. Bot/provider, retailer, payment, and proxy credentials; raw provider payloads/logs; credential-bearing URLs; and browser authority fields are invalid before persistence and remain excluded from backup.
 
+### Purchase and Receiving repository
+
+Phase 2C-A stores schema version 1 under `code3.purchase-receiving.v1` through a persistence boundary fixed to `LOCAL_ONLY`.
+
+| Collection | Current purpose |
+|---|---|
+| `purchaseDrafts` | versioned, non-authoritative source proposals plus owner corrections and review state |
+| `purchases` | exactly-once OWNER-confirmed local Purchase records with exact line and order money |
+| `purchaseEvents` | append-only correction, rejection, confirmation, cancellation/refund, and repair history |
+| `receivingEvents` | append-only owner-confirmed partial/full receipt and discrepancy events |
+| `activity` | bounded nonsecret local workflow summaries |
+
+Draft source relationships carry only a stable source type/reference/version. An Order Candidate or Checkout Evidence record is not embedded, changed, or marked imported. `CONFIRMED` on upstream evidence is not Purchase authority. A stable confirmation identity plus expected draft version makes retry/repair return the same Purchase. External order identity is scoped by retailer/vendor, account/profile reference, and external order ID so another account may legitimately use the same external ID.
+
+Purchase line items retain ordered/cancelled/refunded/received/remaining quantities, product identifiers and match state, exact money allocations, warnings, and field provenance. Canonical money is integer minor units with one explicit currency. Order-level discount, tax, shipping, and fee pools use proportional BigInt floor allocation and stable largest-remainder distribution so allocated totals reconcile exactly. Invalid precision, cross-currency evidence, impossible refund/cancellation values, and zero-weight allocation are not silently coerced.
+
+Receiving Events do not modify original Purchase evidence. Multiple partial receipts are valid; replaying one submission ID is a no-op, and over-receipt is blocked. Shipped/delivered evidence never becomes receiving without an explicit owner-confirmed event. Damage, missing/wrong/extra items, replacements, returns, refunds, and cancellations remain history rather than destructive changes.
+
+`InventoryHandoffPreview` is derived from a confirmed Purchase plus confirmed Receiving Events. It may project eligible quantity, condition, allocated acquisition cost, Purchase/vendor reference, match state, and warnings. It is neither a collection nor an Inventory/Owned Item record, and no Phase 2C-A module imports or invokes an Inventory writer.
+
+All five persisted paths are registered for Backup Format v1 and classified `REQUIRES_MAPPING`. Restore Preview remains zero-write, and no migration action maps Receiving Events to Inventory. See [PURCHASE_RECEIVING_CONTRACT.md](./PURCHASE_RECEIVING_CONTRACT.md).
+
 #### Stellar task-export preview projection
 
 Phase 2D-B2 defines a non-persisted `StellarTaskExportPreview` with bounded summary fields only:
@@ -278,7 +302,7 @@ The backend-only normalized principal contains immutable `subject`, `provider`, 
 
 Each source descriptor contains `sourceId`, `displayName`, `storageType`, `schemaVersion`, supported versions, owner-data and security-state flags, Phase 1A inclusion, export/validation adapter identifiers, reference dependencies, record paths, coverage relevance, and an exclusion reason when omitted.
 
-The Phase 2D-A registry contains 24 sources: 20 locally included sources and four excluded or conditional sources. Included local sources cover Deal Finder schema 2, Owner Center schema 1, Account Ops schema 1, Inbox/Order Intelligence schema 1, Bot Operations schema 1, allowlisted legacy business and fallback documents, legacy restock/community and review sources, safe preferences, and safe workflow drafts. Phase 1B may also include a valid owner-authorized canonical PostgreSQL export. Legacy Supabase, other PostgreSQL/process-memory records, and file bytes remain registered exclusions. Authentication/session persistence is a prohibited source and is never exportable. Account Ops, Inbox/Order Intelligence, and Bot Operations permit only their validated nonsecret metadata. Plaintext passwords, OTPs, tokens, sessions, OAuth state/codes/verifiers, provider/Bot/retailer/payment/proxy secrets, raw provider/protected content, credential-bearing URLs, security links, and owner-authority fields remain prohibited. The Phase 2A.5 product-workspace preference remains inside the existing `safe-ui-preferences` key group, which does not affect coverage or add a separate source.
+The Phase 2C-A registry contains 25 sources: 21 locally included sources and four excluded or conditional sources. Included local sources cover Deal Finder schema 2, Owner Center schema 1, Account Ops schema 1, Inbox/Order Intelligence schema 1, Bot Operations schema 1, Purchase/Receiving schema 1, allowlisted legacy business and fallback documents, legacy restock/community and review sources, safe preferences, and safe workflow drafts. Phase 1B may also include a valid owner-authorized canonical PostgreSQL export. Legacy Supabase, other PostgreSQL/process-memory records, and file bytes remain registered exclusions. Authentication/session persistence is a prohibited source and is never exportable. Account Ops, Inbox/Order Intelligence, Bot Operations, and Purchase/Receiving permit only their validated nonsecret metadata. Plaintext passwords, OTPs, tokens, sessions, OAuth state/codes/verifiers, provider/Bot/retailer/payment/proxy secrets, raw provider/protected content, credential-bearing URLs, security links, and owner-authority fields remain prohibited. The Phase 2A.5 product-workspace preference remains inside the existing `safe-ui-preferences` key group, which does not affect coverage or add a separate source.
 
 ### BackupEnvelope version 1
 

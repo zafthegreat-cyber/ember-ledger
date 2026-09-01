@@ -1,19 +1,32 @@
 # Code 3 Implementation Status
 
-Last audited: 2026-08-31
+Last audited: 2026-09-01
 
-Published Phase 2D-B1 commit / Phase 2D-B2 starting HEAD: `e832ab67a153c5e672f8a77dda5474aedb1395af`
+Published Phase 2D-B2 commit / Phase 2C-A starting HEAD: `0b45c3584f7f15b4d951c5e4cddd1e42dcbeb5a3`
 
-Repository branch represented: `ui-104-final-product-ui-2` (Phase 2D-B2 local working copy prepared from a detached worktree at the published Phase 2D-B1 commit)
+Repository branch represented: `ui-104-final-product-ui-2` (Phase 2C-A local working copy prepared from a detached worktree at the published Phase 2D-B2 commit)
 
 Pull request: #1, Draft
-Deployment: Phase 2D-B1 is published on the existing Draft PR branch. The separate Phase 2B2-B.1 operational verification is paused; a Free Upstash resource and three branch-scoped Preview secrets exist, but remaining owner/CORS/activation values are absent, no follow-up provider-auth Preview was deployed, and `hostedRuntimeVerified=false`. Phase 2D-B2 is local only and makes no deployment or environment change.
+Deployment: Phase 2D-B2 is published on the existing Draft PR branch. The separate Phase 2B2-B.1 operational verification is paused; a Free Upstash resource and three branch-scoped Preview secrets exist, but remaining owner/CORS/activation values are absent, no follow-up provider-auth Preview was deployed, and `hostedRuntimeVerified=false`. Phase 2C-A is local only and makes no deployment or environment change.
 
 ## Current phase
 
-**Phase 2D-B2 — Stellar Task Export Preview** is the current local-only phase. It accepts one explicitly owner-selected JSON file into memory, applies bounded parsing, recursive fail-closed security screening and strict safe-field normalization, then offers review/discard only. It does not connect or control a Bot, use a real export or credential, create/import a Task, persist preview data, receive a provider event, create a Business Purchase, receive Inventory, change persistence, or deploy.
+**Phase 2C-A — Purchase → Receiving → Inventory Foundation** is the current local-only phase. It adds a non-authoritative Purchase Draft review boundary, exact-money owner-confirmed Purchases, append-only partial/discrepancy Receiving, and a derived Inventory Handoff Preview. It does not connect upstream evidence, use real order/payment data, create a Purchase automatically, create Inventory, resume provider verification, change remote persistence, or deploy.
 
 Phase 2B2-B.1 remains paused and independent. `LOCAL_ONLY` remains authoritative; `REMOTE_ACTIVE` is disabled; the Phase 1B schema remains `SCHEMA_ONLY`; no owner record moved; `hostedRuntimeVerified=false`.
+
+The Phase 2C-A local candidate adds:
+
+- `code3.purchase-receiving.v1` with non-authoritative drafts, confirmed Purchases, append-only Purchase/Receiving events, and bounded activity;
+- explicit verified-OWNER correction/rejection/confirmation and Receiving actions, with no pre-authorization storage read;
+- exact integer-minor-unit Purchase math and deterministic proportional cost allocation that reconciles every pool exactly;
+- stable source, confirmation, external-order, and Receiving idempotency plus interrupted-confirmation repair;
+- partial receiving and non-destructive damage/missing/wrong-item/cancellation/refund history;
+- conservative product matching and an ephemeral, zero-write Inventory Handoff Preview;
+- validated Backup Format v1 metadata, zero-write Restore Preview, and `REQUIRES_MAPPING` migration classification; and
+- synthetic-only domain/security/UI/browser fixtures and inherited regression gates.
+
+No normal-runtime fixture, upstream automatic importer, Inventory writer, remote adapter, provider credential, schema application, owner migration, or Production change is part of the candidate.
 
 ## Completed baseline
 
@@ -157,7 +170,7 @@ Published Phase 2D-B1 adds:
 
 See [BOT_PROVIDER_CAPABILITY_REVIEW.md](./BOT_PROVIDER_CAPABILITY_REVIEW.md). Public documentation is evidence about documented mechanisms, not proof of current provider health, permission for third-party use, completeness, or a live integration.
 
-The local Phase 2D-B2 candidate adds:
+The published Phase 2D-B2 checkpoint adds:
 
 - an OWNER-initiated JSON file picker under Bot Operations Tasks with no directory scan, file watcher, Stellar-folder access, provider process access, or network request;
 - 1 MiB and 500-record bounds plus conservative root/format recognition; current official guidance establishes JSON task-group transfer and same-version use but no stable root/fields/version marker, so `SUPPORTED` is reserved and never emitted;
@@ -249,13 +262,15 @@ The published Phase 2A.5 validation gate passed the frontend/backend builds and 
 
 Phase 2B1 focused validation passes 16/16 provider-runtime cases, 52 domain assertions, 25/25 synthetic fixtures with 56 assertions, 102 history/idempotency assertions, and 55 security/protected-message assertions. Frontend/backend builds, owner security 27/27, canonical backend 47/47, eBay 13/13, persistence/migration, and Backup/Restore Preview gates also pass; Backup Format v1 reports 19 included sections and 18 fixture records. Account Ops UI-contract coverage is 53 assertions after the Connections/Inbox/Orders additions, and its final browser matrix reports 20 fixtures, 30 captures, 249 assertions, no application errors, and no 360-pixel overflow. The bounded regression passes 28/28 scenarios in 444.527 seconds with zero retries and no open handles. The final local main `App` chunk is 2,347.64 kB minified and 589.36 kB gzip. Source-level tests and a frontend Preview are not evidence that a mailbox or hosted provider runtime is connected.
 
+The Phase 2C-A final local gate passes the frontend production build (563 modules), backend TypeScript build, owner security 27/27, canonical backend 47/47, Account Ops, Bot Operations, workspace, route, accessibility, and sequential light/dark viewport suites. Focused Purchase/Receiving evidence is 141 domain assertions, 68 exact-money/allocation assertions, 158 history/idempotency assertions, 192 security assertions, 41/41 deterministic fixtures with 1,207 assertions, and 47 UI-contract assertions. Its browser matrix passes 15/15 scenarios with 15 ignored captures and 331 assertions, zero application errors, zero external requests, and zero horizontal overflow. Backup Format v1 passes with 21 included sections and 34 fixture records; Restore Preview and Migration Preview remain zero-write, and every new migration source remains `REQUIRES_MAPPING`. The bounded regression passes 28/28 scenarios in 317.333 seconds with zero in-run retries and no open handles. The final main `App` chunk is 2,348.49 kB minified and 589.66 kB gzip; the lazy Purchase/Receiving chunk is 39.26 kB / 11.26 kB gzip and its CSS is 5.02 kB / 1.31 kB gzip. These results validate an unstaged local candidate only; they do not publish, deploy, connect upstream evidence, create Inventory, or change any provider/runtime configuration.
+
 ## Preview state
 
 - PR #1 remains Draft per the task baseline.
-- The published branch includes Phase 2D-B1 at `e832ab67a153c5e672f8a77dda5474aedb1395af`; Phase 2D-B2 changes are local only.
+- The published branch includes Phase 2D-B2 at `0b45c3584f7f15b4d951c5e4cddd1e42dcbeb5a3`; Phase 2C-A changes are local only.
 - The published Preview proves filesystem routing to Express and fail-closed authentication, not the complete owner-authorized managed-store proof.
 - `hostedRuntimeVerified=false` because no legitimate owner plus exact durable-store readiness response has been proven. The Free Upstash resource and three branch-scoped Preview secrets do not satisfy the missing Supabase owner/auth and remaining exact CORS/activation/runtime gate. Phase 2B2-B.1 is paused; required names are documented without values in [OWNER_AUTH_DECISION.md](./OWNER_AUTH_DECISION.md).
-- Phase 2D-B2 does not deploy a Preview, inspect or use the Upstash resource, resume Supabase sign-in, connect a provider, or change Production/Development configuration.
+- Phase 2C-A does not deploy a Preview, inspect or use the Upstash resource, resume Supabase sign-in, connect a provider, or change Production/Development configuration.
 - No production deployment is represented by this documentation.
 
 ## Known defects and debt
@@ -297,6 +312,6 @@ Phase 2B1 focused validation passes 16/16 provider-runtime cases, 52 domain asse
 
 ## Next recommended task
 
-After the Phase 2D-B2 local completion report, stop. Phase 2D-B3 is not authorized. The current evidence still supports no live pilot; credentials, real-export ingestion, persistence/import, file watching, Discord, WebSocket, network access, task control and checkout remain separate approvals. Phase 2B2-B.1 remains paused until the owner explicitly says `Supabase signed in.` Gmail/Outlook, mailbox reads, Purchase import, billing, renderer extraction, and disposable-database work remain separate approvals.
+After the Phase 2C-A local completion report, stop. Phase 2C-B and Phase 2D-B3 are not authorized. A future 2C-B may design the explicit Inventory creation boundary only after product identity, lot/cost, reversal, idempotency, server OWNER authorization and migration safety review. The Bot evidence still supports no live pilot. Phase 2B2-B.1 remains paused until the owner explicitly says `Supabase signed in.` Gmail/Outlook, mailbox reads, billing, renderer extraction, and disposable-database work remain separate approvals.
 
 Do not apply the schema to the owner or Production database, enable `REMOTE_ACTIVE`, migrate files, or execute a migration plan without a separately approved cutover task and verified backup.

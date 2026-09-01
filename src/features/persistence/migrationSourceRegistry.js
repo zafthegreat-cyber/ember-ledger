@@ -127,6 +127,17 @@ const SOURCE_DECISIONS = Object.freeze({
       ["activity", null, C.REQUIRES_MAPPING, { reason: "Local Bot Operations activity summaries are not canonical audit events." }],
     ]),
   },
+  "purchase-receiving": {
+    classification: C.REQUIRES_MAPPING,
+    adapterId: "purchase-receiving-v1-future-canonical-review",
+    paths: paths([
+      ["purchaseDrafts", null, C.REQUIRES_MAPPING, { reason: "Purchase Drafts are non-authoritative review records and have no approved canonical domain." }],
+      ["purchases", D.PURCHASE, C.REQUIRES_MAPPING, { reason: "Phase 2C-A Purchases require owner-review, exact allocation, receiving, and idempotency mapping beyond the generic Phase 1B Purchase envelope." }],
+      ["purchaseEvents", null, C.REQUIRES_MAPPING, { reason: "Append-only Purchase review and correction history has no approved canonical event mapping." }],
+      ["receivingEvents", null, C.REQUIRES_MAPPING, { reason: "Receiving Events are not Inventory or Inventory Adjustments and require a separately approved canonical Receiving domain." }],
+      ["activity", null, C.REQUIRES_MAPPING, { reason: "Local Purchase/Receiving activity summaries are not canonical audit events." }],
+    ]),
+  },
   "legacy-core-business": {
     classification: C.REQUIRES_MAPPING,
     adapterId: "legacy-core-v0-review",

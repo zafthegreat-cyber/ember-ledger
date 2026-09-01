@@ -1,6 +1,6 @@
 # Code 3 Integrations and Capability Matrix
 
-Phase 1C through Phase 2D-B1 is published through `e832ab67a153c5e672f8a77dda5474aedb1395af`. Phase 2D-B2 is a local-only offline Stellar task-export preview. No mailbox, OAuth app, Bot, retailer account, proxy, credential provider, billing provider, or checkout provider is connected. The separate Phase 2B2-B.1 operational verification remains paused; a Free Upstash resource exists but the remaining owner/CORS/activation configuration is incomplete and `hostedRuntimeVerified=false`.
+Phase 1C through Phase 2D-B2 is published through `0b45c3584f7f15b4d951c5e4cddd1e42dcbeb5a3`. Phase 2C-A is a parallel local-only Purchase/Receiving foundation. No mailbox, OAuth app, Bot, retailer account, proxy, credential provider, billing provider, or checkout provider is connected. The separate Phase 2B2-B.1 operational verification remains paused; a Free Upstash resource exists but the remaining owner/CORS/activation configuration is incomplete and `hostedRuntimeVerified=false`.
 
 ## Capability truth rules
 
@@ -18,6 +18,8 @@ Phase 1C through Phase 2D-B1 is published through `e832ab67a153c5e672f8a77dda547
 - A test-only mock adapter cannot establish normal-runtime provider health or activate a live capability.
 - A Gmail or Outlook provider definition is capability metadata only. `CONNECTED` or `HEALTHY` requires a trusted live provider check; Phase 2B2-B still has neither.
 - A normalized synthetic message or Order Candidate is not evidence that Code 3 read a mailbox, and it is never a Business Purchase.
+- A Purchase Draft source reference does not import or mutate the referenced Order Candidate or Checkout Evidence. Only explicit verified-OWNER confirmation can create one local Purchase.
+- Shipment or delivery evidence is not Receiving. A Receiving Event produces only a derived Inventory Handoff Preview; neither creates Inventory.
 
 Target capability statuses are `AVAILABLE`, `CONNECTED`, `MANUAL_IMPORT_ONLY`, `SHARE_IMPORT`, `EMAIL_IMPORT`, `OWNER_DATA_ONLY`, `AUTHORIZATION_REQUIRED`, `NOT_CONFIGURED`, `UNSUPPORTED`, and `TEMPORARILY_UNAVAILABLE`.
 
@@ -49,6 +51,8 @@ The current UI also uses closely related display statuses such as Available, Man
 | Authorized Account Ops Inbox | NOT_CONFIGURED | Phase 2B1 minimized normalization/protected-message/local evidence foundation | deterministic synthetic/owner-supplied fixtures only | no authorization, fetch, body mirror, webhook, polling, cursor, provider health, or background delivery | Phase 2B2 after approval |
 | Retail Order Candidate intelligence | AVAILABLE_LOCAL_ONLY | Phase 2B1 exact-money, matching, idempotency/reconciliation and owner-review services | deterministic synthetic/minimized local evidence | no live provider feed and no canonical mapping | Phase 2B1 local foundation |
 | Business Purchase import from Order Candidate | NOT_CONFIGURED | future mapping contract only | none | separately approved owner-confirmed mapping/idempotency/receiving workflow | Future after provider pilot |
+| Purchase Draft review and local confirmation | AVAILABLE_LOCAL_ONLY | `src/features/purchaseReceiving`, verified-OWNER Business Purchases UI | synthetic/manual source references and explicit owner review only | no live evidence adapter, server transaction, remote persistence, or automatic importer | Phase 2C-A foundation |
+| Receiving and Inventory Handoff Preview | AVAILABLE_LOCAL_ONLY | append-only local Receiving Events and derived preview | synthetic/local owner-confirmed receiving only | no delivery inference, Inventory writer, quantity/cost-basis mutation, or remote/canonical mapping | Phase 2C-A foundation; future Phase 2C-B for Inventory boundary |
 | Bot provider-neutral local foundation | AVAILABLE_LOCAL_ONLY | `src/features/botOps` registry/contracts, local metadata/evidence service, security/reconciliation, test-only mock adapter, static discovery evidence, and ephemeral Stellar JSON preview | owner-reviewed local metadata; synthetic test input; official-source research references; explicitly selected local JSON held in memory only | no SDK/network/bridge/webhook/export watcher, import/persistence path, credential store, live health or task command | Phase 2D-A foundation + Phase 2D-B1 discovery + Phase 2D-B2 preview |
 | Hayha Bot provider | NOT_CONFIGURED | static safe registry plus official-source capability review; all live capabilities false | none | no verified public read/status API or safe machine export; public docs/terms are old; written provider confirmation required | No live pilot; future separate approval only |
 | Stellar Bot provider | NOT_CONFIGURED | static safe registry plus official-source capability review; all live capabilities false | none | documented owner task-group export/import is JSON and same-version, but no stable root/fields/version marker is public; Discord is notification-only; documented WebSocket is input-to-Stellar rather than status egress | Offline zero-write task-export preview only; no live pilot or import |

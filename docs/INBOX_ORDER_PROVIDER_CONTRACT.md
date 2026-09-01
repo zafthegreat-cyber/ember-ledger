@@ -281,7 +281,21 @@ See [BOT_INTEGRATION_CONTRACT.md](./BOT_INTEGRATION_CONTRACT.md).
 
 ## Future Purchase mapping
 
-Phase 2B1 may describe a pure mapping preview from reviewed candidate fields to a future Purchase and Purchase Lot. It does not call the existing Business/Flip Scout purchase repository and does not write purchases, lots, inventory, receipts, sales, or files.
+Phase 2C-A introduces a separate, local Purchase Draft review target. A reviewed Order Candidate may be referenced by stable source type/reference/version in synthetic tests, but Phase 2B1 does not call the Purchase/Receiving service and neither source mutates the other. No automatic draft or Purchase creation is active.
+
+The reviewed future path is now:
+
+```text
+Order Candidate
+  -> explicit OWNER-selected Purchase Draft proposal
+  -> explicit OWNER confirmation
+  -> Purchase
+  -> explicit Receiving Event(s)
+  -> Inventory Handoff Preview
+  -> future separately approved Inventory creation
+```
+
+The first arrow remains inactive for live data. `Order Candidate != Purchase` and `Purchase Draft != Purchase`. See [PURCHASE_RECEIVING_CONTRACT.md](./PURCHASE_RECEIVING_CONTRACT.md).
 
 Actual import requires a later approved phase with:
 
@@ -303,7 +317,7 @@ The safe local source contains only:
 
 It uses the existing persistence gateway fixed to `LOCAL_ONLY`, stable IDs, validation, archive semantics where relevant, and record versions. Caller input cannot select remote mode, sync, owner authority, migration apply, or rollback execution.
 
-Backup Format v1 includes this validated non-secret source as the nineteenth local section. Phase 2D-A adds a separate twentieth local Bot Operations section, raising the registry to 24 total sources with four excluded/conditional. Both exclude provider/Bot/retailer/payment/proxy secrets, OAuth state/codes/verifiers, sessions, tokens, raw bodies/provider payloads/logs, protected content, OTPs, passwords, credential-bearing URLs, and security links. Restore Preview remains zero-write. Every Phase 2B1 and Phase 2D-A source path is `REQUIRES_MAPPING`; no canonical domain or migration is approved.
+Backup Format v1 includes this validated non-secret source as the nineteenth local section. Phase 2D-A adds the twentieth Bot Operations section and Phase 2C-A the twenty-first Purchase/Receiving section, raising the registry to 25 total sources with four excluded/conditional. These sources exclude provider/Bot/retailer/payment/proxy secrets, OAuth state/codes/verifiers, sessions, tokens, raw bodies/provider payloads/logs, protected content, OTPs, passwords, credential-bearing URLs, and security links. Restore Preview remains zero-write. Every Phase 2B1, Phase 2D-A, and Phase 2C-A source path is `REQUIRES_MAPPING`; no canonical domain or migration is approved.
 
 ## Disconnect and revocation
 

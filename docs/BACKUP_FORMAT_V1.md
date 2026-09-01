@@ -1,6 +1,6 @@
 # Code 3 Backup Format Version 1
 
-Status: Phase 1A format and later Account Ops, Inbox/Order, and Phase 2B2-B exclusions are published through `b4848cb851b2be83093fbdc4ed4b976857f9d3ff`. Phase 2D-A adds one sanitized Bot Operations source. Phase 2D-B2 adds no source: selected Stellar JSON, filename/path, preview model, normalized temporary tasks, warnings, metrics and source derivatives remain ephemeral and excluded. Managed provider/Bot credentials, connection secret envelopes, OAuth state/index/used markers, encryption keys, Redis credentials, runtime proof, raw provider data, and proxy authentication remain excluded. No owner data has migrated, no schema was applied, and no restore applies data.
+Status: Phase 1A format and later Account Ops, Inbox/Order, and Phase 2B2-B exclusions are published through `b4848cb851b2be83093fbdc4ed4b976857f9d3ff`. Phase 2D-A adds one sanitized Bot Operations source. Phase 2C-A adds one validated Purchase/Receiving metadata source. Phase 2D-B2 adds no source: selected Stellar JSON, filename/path, preview model, normalized temporary tasks, warnings, metrics and source derivatives remain ephemeral and excluded. Managed provider/Bot credentials, connection secret envelopes, OAuth state/index/used markers, encryption keys, Redis credentials, runtime proof, raw provider data, Inventory Handoff Preview, and proxy authentication remain excluded. No owner data has migrated, no schema was applied, and no restore applies data.
 
 ## Purpose and boundary
 
@@ -42,7 +42,7 @@ The manifest contains the included and excluded source inventory, record counts,
 
 `src/features/backup/backupSourceRegistry.js` is the versioned coverage registry. It records storage type, schema version, export and validation adapters, reference dependencies, security/session sensitivity, and whether an omission changes coverage.
 
-The Phase 2D-A registry contains 24 sources: 20 locally included sources and four excluded or conditional sources. When every registered local source is readable, the 20 included sections come from these source families:
+The Phase 2C-A registry contains 25 sources: 21 locally included sources and four excluded or conditional sources. When every registered local source is readable, the 21 included sections come from these source families:
 
 - Deal Finder / Deal Inbox, appraisals, auctions, Search Rules, purchases, lots, inventory, sales, expenses, mileage, activity, and provider-listing snapshots;
 - Owner Center restock profiles/events/predictions, visits, observations, import summaries, and local job summaries;
@@ -57,6 +57,7 @@ The Phase 2D-A registry contains 24 sources: 20 locally included sources and fou
 - Account Ops schema 1 metadata from `code3.account-ops.v1`: profile groups, profiles, email-domain metadata, aliases, owner-created retailers, store accounts, tasks, and bounded activity.
 - Inbox/Order Intelligence schema 1 metadata from `code3.inbox-order.v1`: minimized message events, Order Candidate projections, append-only candidate/review events, and sanitized activity.
 - Bot Operations schema 1 metadata from `code3.bot-ops.v1`: installations, Account Ops retailer-account links, Bot profiles, proxy metadata, product targets, task groups/tasks, append-only attempts/activity, and reviewable Checkout Evidence.
+- Purchase/Receiving schema 1 metadata from `code3.purchase-receiving.v1`: non-authoritative Purchase Drafts, owner-confirmed Purchases, append-only Purchase/Receiving events, and sanitized activity. Derived Inventory Handoff Preview is excluded.
 
 Historical storage keys remain unchanged. Their names are compatibility identifiers, not visible branding.
 
@@ -100,6 +101,8 @@ Registered legacy documents that mix business and security fields are exported o
 For Account Ops, prohibited data additionally includes plaintext/generated passwords, OTPs, retailer or mailbox sessions/tokens, payment-card/CVV data, provider credentials, browser-supplied owner/role/subject fields, and development impersonation state. `CredentialReference` metadata may be included because it contains only provider/reference/label/timestamp data; the referenced secret is never part of the envelope. A generated alias record remains metadata and cannot make a provider or mail-delivery source complete.
 
 For Bot Operations, every included value must pass the domain's recursive authority/credential/raw-provider guard and schema validator. Proxy type/provider/region/health/count/latency metadata may be included; proxy connection/authentication data may not. Static provider keys, normalized task/attempt states, or Checkout Evidence do not make a Bot connection, checkout, order, Purchase, receiving, or Inventory source complete.
+
+For Purchase/Receiving, every included value must pass the domain's recursive authority/credential/raw-source guard and exact-money schema validator. It may include nonsecret transaction metadata, source references, corrections, confirmation facts, and Receiving Events. It may not include payment credentials, retailer authentication, raw messages/provider payloads, client authority, or a derived Inventory Handoff Preview. A Receiving Event in backup is not an Inventory record and cannot make inventory coverage complete.
 
 ## Phase 2A Account Ops extension
 
@@ -158,6 +161,24 @@ Restore Preview validates schema/counts/stable IDs, provider/installation/event 
 
 All ten paths are `REQUIRES_MAPPING` because the Phase 1B canonical schema has no Bot Operations domain. No migration action, remote adapter, Purchase/Inventory handoff, or managed Bot-secret recovery is approved. `Bot Success != Purchase` and `Checkout Evidence != Purchase` remain mandatory.
 
+## Phase 2C-A Purchase and Receiving extension
+
+The `purchase-receiving` section uses source schema version 1 and the standard deterministic section/manifest rules. Its five declared record paths are:
+
+```text
+purchaseDrafts
+purchases
+purchaseEvents
+receivingEvents
+activity
+```
+
+The source validator accepts only bounded, nonsecret records conforming to the Purchase/Receiving domain. It validates stable IDs and versions, source references rather than embedded upstream evidence, integer-minor-unit money, currencies, quantities, confirmation identity, append-only event shape, and security exclusions. Inventory Handoff Preview is derived and therefore deliberately absent.
+
+Restore Preview checks schema/counts/IDs, duplicate source and external-order identity, Purchase/Draft/Receiving references, exact money, prohibited fields, and future mapping warnings entirely in memory. It cannot confirm a draft, repair a confirmation, receive an item, apply a discrepancy, create Inventory, or alter a cost basis.
+
+All five paths are `REQUIRES_MAPPING`. The Phase 1B schema's generic Purchase domains do not yet represent the richer owner-review and Receiving contract. No migration action maps Receiving to an Inventory or Inventory Adjustment domain, and no restore/import path is active.
+
 ## Phase 2D-B2 Stellar preview exclusion
 
 `StellarTaskExportPreview` is not a Backup Format v1 source and does not add a record path to `bot-operations`. The owner-selected JSON file, raw text/bytes, full path, basename, file metadata, source hash/fingerprint, parsed tree, normalized preview rows, duplicates, format state, recognized/ignored fields, security findings, warnings, retailer labels, and summary counts are component-memory data only.
@@ -168,7 +189,7 @@ Backup generation while a preview is open exports the same registered sources an
 
 ## Phase 2B2-B managed-provider exclusion
 
-Phase 2B2-B does not itself change registry totals. After Phase 2D-A's additive local section, the totals are **24 sources, 20 locally included, and four excluded or conditional**. Managed provider operational state is not a user-backup source.
+Phase 2B2-B does not itself change registry totals. After the additive Phase 2D-A Bot Operations section and Phase 2C-A Purchase/Receiving section, the totals are **25 sources, 21 locally included, and four excluded or conditional**. Managed provider operational state is not a user-backup source.
 
 The following remain prohibited even if a future Preview resource is provisioned:
 
@@ -179,7 +200,7 @@ The following remain prohibited even if a future Preview resource is provisioned
 - provider authorization codes, PKCE verifiers, access/refresh tokens, passwords, OTPs, sessions, or raw/protected mailbox content; and
 - runtime health/proof data that could be reconstructed from deployment state.
 
-Safe local `code3.inbox-order.v1` evidence remains the nineteenth included section, and `code3.bot-ops.v1` is the twentieth. A Free Upstash resource exists, but Phase 2B2-B.1 remains paused with incomplete owner/CORS/activation configuration and `hostedRuntimeVerified=false`; no provider connection/secret/OAuth state exists to export. Restore Preview stays browser-local and zero-write and cannot contact, seed, validate, or mutate a managed provider or Bot store.
+Safe local `code3.inbox-order.v1` evidence remains the nineteenth included section, `code3.bot-ops.v1` is the twentieth, and `code3.purchase-receiving.v1` is the twenty-first. A Free Upstash resource exists, but Phase 2B2-B.1 remains paused with incomplete owner/CORS/activation configuration and `hostedRuntimeVerified=false`; no provider connection/secret/OAuth state exists to export. Restore Preview stays browser-local and zero-write and cannot contact, seed, validate, or mutate a managed provider or Bot store.
 
 ## Coverage semantics
 

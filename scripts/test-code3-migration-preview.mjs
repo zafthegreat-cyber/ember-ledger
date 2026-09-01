@@ -66,6 +66,13 @@ const botOperationsMigrationSource = MIGRATION_SOURCE_REGISTRY.find((source) => 
 assert.equal(botOperationsMigrationSource.classification, MIGRATION_SOURCE_CLASSIFICATIONS.REQUIRES_MAPPING);
 assert.equal(botOperationsMigrationSource.paths.length, 10, "every Bot Operations recovery collection needs an explicit future mapping decision");
 assert.ok(botOperationsMigrationSource.paths.every((mapping) => mapping.classification === MIGRATION_SOURCE_CLASSIFICATIONS.REQUIRES_MAPPING && mapping.targetDomain === null));
+const purchaseReceivingMigrationSource = MIGRATION_SOURCE_REGISTRY.find((source) => source.sourceId === "purchase-receiving");
+assert.equal(purchaseReceivingMigrationSource.classification, MIGRATION_SOURCE_CLASSIFICATIONS.REQUIRES_MAPPING);
+assert.equal(purchaseReceivingMigrationSource.paths.length, 5, "every Purchase/Receiving recovery collection needs an explicit future mapping decision");
+assert.ok(purchaseReceivingMigrationSource.paths.every((mapping) => mapping.classification === MIGRATION_SOURCE_CLASSIFICATIONS.REQUIRES_MAPPING));
+assert.equal(purchaseReceivingMigrationSource.paths.find((mapping) => mapping.path === "purchases").targetDomain, CANONICAL_DOMAINS.PURCHASE, "owner-confirmed local Purchases still require an approved canonical mapping");
+assert.equal(purchaseReceivingMigrationSource.paths.find((mapping) => mapping.path === "receivingEvents").targetDomain, null, "Receiving must not map directly to Inventory");
+assert.ok(purchaseReceivingMigrationSource.paths.every((mapping) => mapping.targetDomain !== CANONICAL_DOMAINS.INVENTORY), "Phase 2C-A must not introduce an Inventory migration path");
 
 assert.deepEqual(previewMoneyToMinor(12.34, { currency: "USD" }).proposedAmountMinor, 1234);
 assert.deepEqual(previewMoneyToMinor(12.3, { currency: "USD" }).proposedAmountMinor, 1230);

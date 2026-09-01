@@ -569,6 +569,7 @@ const Scout = lazy(() => import("./pages/Scout"));
 const FlipScoutPage = lazy(() => import("./features/flipScout/FlipScoutPage"));
 const OwnerCenterPage = lazy(() => import("./features/ownerCenter/OwnerCenterPage"));
 const AccountOpsPage = lazy(() => import("./features/accountOps/AccountOpsPage"));
+const PurchaseReceivingPage = lazy(() => import("./features/purchaseReceiving/PurchaseReceivingPage"));
 const WorkspaceHomePage = lazy(() => import("./features/workspaces/WorkspaceHomePage"));
 const CollectionWorkspace = lazy(() => import("./pages/EverydayWorkspaces").then((module) => ({ default: module.CollectionWorkspace })));
 const BusinessWorkspace = lazy(() => import("./pages/EverydayWorkspaces").then((module) => ({ default: module.BusinessWorkspace })));
@@ -63815,7 +63816,18 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             />
           </LazyToolBoundary>
         )}
-        {!activeTabLocked && activeTab === "businessWorkspace" && (
+        {!activeTabLocked && activeTab === "businessWorkspace" && businessWorkspaceView === "purchases" && (
+          <LazyToolBoundary label="Loading Purchases & Receiving...">
+            <PurchaseReceivingPage
+              session={ownerSession}
+              onSignIn={() => { setAuthMode("login"); setGuestPreview(false); setActiveTab("account"); }}
+              onSignOut={signOut}
+              onReturnHome={() => navigateProductWorkspace(WORKSPACE_IDS.BUSINESS)}
+              onOpenLegacyPurchases={() => openFlipScoutView("records", "purchases")}
+            />
+          </LazyToolBoundary>
+        )}
+        {!activeTabLocked && activeTab === "businessWorkspace" && businessWorkspaceView !== "purchases" && (
           <LazyToolBoundary label="Loading Business...">
             <BusinessWorkspace
               items={workspaceItems}

@@ -34,6 +34,9 @@ const MONEY_FIELDS = new Set([
   "expectedProfit", "expected_profit", "realizedProfit", "realized_profit", "profit", "revenue", "budget", "deposit", "tax",
   "subtotal", "receiptTotal", "receipt_total", "unitPrice", "unit_price", "unitCost", "unit_cost", "lineTotal", "line_total",
   "marketValue", "market_value", "msrp", "minimumOffer", "minimum_offer", "maximumBid", "maximum_bid", "currentBid", "current_bid",
+  "grandTotal", "grand_total", "computedGrandTotal", "computed_grand_total", "discount", "coupon", "promotion", "shipping", "fees",
+  "refunded", "refund", "lineAmount", "line_amount", "discountAllocation", "discount_allocation", "taxAllocation", "tax_allocation",
+  "shippingAllocation", "shipping_allocation", "feeAllocation", "fee_allocation", "allocatedAcquisitionCost", "allocated_acquisition_cost",
 ]);
 
 const NEGATIVE_PROHIBITED_MONEY_FIELDS = new Set([...MONEY_FIELDS].filter((field) => ![
@@ -246,6 +249,12 @@ const BOT_OPS_REFERENCE_TARGETS = Object.freeze({
   orderCandidateId: ["orderCandidates"],
 });
 
+const PURCHASE_RECEIVING_REFERENCE_TARGETS = Object.freeze({
+  draftId: ["purchaseDrafts"],
+  purchaseId: ["purchases"],
+  receivingEventId: ["receivingEvents"],
+});
+
 function isStaticAccountOpsReference(row, key, value) {
   return row.sourceId === "account-ops"
     && key === "retailerId"
@@ -274,7 +283,9 @@ function inspectReferences(records) {
         ? ACCOUNT_OPS_REFERENCE_TARGETS
         : current.row.sourceId === "bot-operations"
           ? BOT_OPS_REFERENCE_TARGETS
-          : null;
+          : current.row.sourceId === "purchase-receiving"
+            ? PURCHASE_RECEIVING_REFERENCE_TARGETS
+            : null;
       const targets = sourceTargets?.[key] || REFERENCE_TARGETS[key];
       if (targets && value != null) {
         const references = Array.isArray(value) ? value : [value];
@@ -320,14 +331,15 @@ function inspectMoney(records) {
   const currencies = new Set();
 
   for (const row of records) {
-    const stack = [{ value: row.record, path: `${row.sourceId}.${row.collection}[${row.index}]` }];
+    const stack = [{ value: row.record, path: `${row.sourceId}.${row.collection}[${row.index}]`, parentKey: null }];
     while (stack.length) {
       const current = stack.pop();
       if (Array.isArray(current.value)) {
-        current.value.forEach((entry, index) => stack.push({ value: entry, path: `${current.path}[${index}]` }));
+        current.value.forEach((entry, index) => stack.push({ value: entry, path: `${current.path}[${index}]`, parentKey: current.parentKey }));
         continue;
       }
       if (!current.value || typeof current.value !== "object") continue;
+      if (current.parentKey === "roundingAdjustments") continue;
       let hasMoney = false;
       let currency = "";
       for (const currencyField of CURRENCY_FIELDS) {
@@ -338,8 +350,29 @@ function inspectMoney(records) {
       for (const [key, value] of Object.entries(current.value)) {
         if (MONEY_FIELDS.has(key) && value !== "" && value != null) {
           hasMoney = true;
-          const numeric = typeof value === "number" ? value : typeof value === "string" && value.trim() ? Number(value) : NaN;
-          if (!Number.isFinite(numeric)) invalidMoney.push({ path: `${current.path}.${key}`, reason: "Money value is not finite numeric data." });
+          const exactMinorMoney = value && typeof value === "object" && !Array.isArray(value)
+            && Object.prototype.hasOwnProperty.call(value, "minorUnits");
+          const numeric = exactMinorMoney
+            ? value.minorUnits
+            : typeof value === "number"
+              ? value
+              : typeof value === "string" && value.trim()
+                ? Number(value)
+                : NaN;
+          if (exactMinorMoney) {
+            const exactCurrency = typeof value.currency === "string" ? value.currency.trim().toUpperCase() : "";
+            if (exactCurrency) {
+              currency ||= exactCurrency;
+              currencies.add(exactCurrency);
+            }
+            if (!Number.isSafeInteger(numeric)) {
+              invalidMoney.push({ path: `${current.path}.${key}`, reason: "Exact money minorUnits must be a safe integer." });
+            }
+            if (Number.isSafeInteger(numeric) && NEGATIVE_PROHIBITED_MONEY_FIELDS.has(key) && numeric < 0) {
+              invalidMoney.push({ path: `${current.path}.${key}`, reason: "Negative value is not allowed for this money field." });
+            }
+            if (!exactCurrency) missingCurrency.push({ path: `${current.path}.${key}` });
+          } else if (!Number.isFinite(numeric)) invalidMoney.push({ path: `${current.path}.${key}`, reason: "Money value is not finite numeric data." });
           else {
             if (NEGATIVE_PROHIBITED_MONEY_FIELDS.has(key) && numeric < 0) {
               invalidMoney.push({ path: `${current.path}.${key}`, reason: "Negative value is not allowed for this money field." });
@@ -348,7 +381,7 @@ function inspectMoney(records) {
             if (precision > 2) unsupportedPrecision.push({ path: `${current.path}.${key}`, precision });
           }
         }
-        if (value && typeof value === "object") stack.push({ value, path: `${current.path}.${key}` });
+        if (value && typeof value === "object") stack.push({ value, path: `${current.path}.${key}`, parentKey: key });
       }
       if (hasMoney && !currency) missingCurrency.push({ path: current.path });
     }

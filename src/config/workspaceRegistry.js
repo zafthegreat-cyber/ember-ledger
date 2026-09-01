@@ -153,7 +153,7 @@ export const WORKSPACE_DEFINITIONS = deepFreeze({
     entitlementLabels: [ENTITLEMENT_LABELS.BUSINESS],
     navigation: [
       navItem({ key: "business-home", label: "Home", path: "/business", iconKey: "home", placement: NAV_PLACEMENTS.HOME }),
-      navItem({ key: "business-purchases", label: "Purchases", path: "/business/purchases", iconKey: "clipboard" }),
+      navItem({ key: "business-purchases", label: "Purchases", path: "/business/purchases", iconKey: "clipboard", requiredAuthority: AUTHORITY_REQUIREMENTS.VERIFIED_OWNER }),
       navItem({ key: "business-money", label: "Money", path: "/business/money/expenses", iconKey: "business" }),
       navItem({ key: "business-account-ops", label: "Account Ops", path: "/account-ops", iconKey: "account", placement: NAV_PLACEMENTS.SECONDARY, requiredAuthority: AUTHORITY_REQUIREMENTS.VERIFIED_OWNER }),
     ],
@@ -221,7 +221,7 @@ const CANONICAL_ROUTES = [
   route({ key: "bot-activity", path: "/bot/activity", classification: ROUTE_CLASSIFICATIONS.BOT, workspace: WORKSPACE_IDS.BOT, label: "Bot Activity", requiredAuthority: AUTHORITY_REQUIREMENTS.VERIFIED_OWNER }),
 
   route({ key: "account-ops", path: "/account-ops", match: ROUTE_MATCH_TYPES.PREFIX, classification: ROUTE_CLASSIFICATIONS.BUSINESS, workspace: WORKSPACE_IDS.BUSINESS, label: "Account Ops", requiredAuthority: AUTHORITY_REQUIREMENTS.VERIFIED_OWNER }),
-  route({ key: "business-purchases", path: "/business/purchases", match: ROUTE_MATCH_TYPES.PREFIX, classification: ROUTE_CLASSIFICATIONS.BUSINESS, workspace: WORKSPACE_IDS.BUSINESS, label: "Purchases" }),
+  route({ key: "business-purchases", path: "/business/purchases", match: ROUTE_MATCH_TYPES.PREFIX, classification: ROUTE_CLASSIFICATIONS.BUSINESS, workspace: WORKSPACE_IDS.BUSINESS, label: "Purchases & Receiving", requiredAuthority: AUTHORITY_REQUIREMENTS.VERIFIED_OWNER }),
   route({ key: "business-money", path: "/business/money", match: ROUTE_MATCH_TYPES.PREFIX, classification: ROUTE_CLASSIFICATIONS.BUSINESS, workspace: WORKSPACE_IDS.BUSINESS, label: "Money" }),
   route({ key: "business-home", path: "/business", classification: ROUTE_CLASSIFICATIONS.BUSINESS, workspace: WORKSPACE_IDS.BUSINESS, label: "Business Home" }),
   route({ key: "business-routes", path: "/business", match: ROUTE_MATCH_TYPES.PREFIX, classification: ROUTE_CLASSIFICATIONS.BUSINESS, workspace: WORKSPACE_IDS.BUSINESS, label: "Business" }),
@@ -243,7 +243,7 @@ const COMPATIBILITY_ROUTES = [
   route({ key: "legacy-sell", path: "/sell", classification: ROUTE_CLASSIFICATIONS.LEGACY_REDIRECT, workspace: WORKSPACE_IDS.SELL, label: "Sales", redirectTo: "/business/sales", visible: false, legacyCompatibility: true, implementation: ROUTE_IMPLEMENTATION_STATES.DEPRECATED_COMPATIBILITY }),
   route({ key: "legacy-sales", path: "/sales", classification: ROUTE_CLASSIFICATIONS.LEGACY_REDIRECT, workspace: WORKSPACE_IDS.SELL, label: "Sales", redirectTo: "/business/sales", visible: false, legacyCompatibility: true, implementation: ROUTE_IMPLEMENTATION_STATES.DEPRECATED_COMPATIBILITY }),
   route({ key: "legacy-inventory", path: "/inventory", classification: ROUTE_CLASSIFICATIONS.LEGACY_REDIRECT, workspace: WORKSPACE_IDS.SELL, label: "Inventory", redirectTo: "/business/inventory", visible: false, legacyCompatibility: true, implementation: ROUTE_IMPLEMENTATION_STATES.DEPRECATED_COMPATIBILITY }),
-  route({ key: "legacy-purchases", path: "/purchases", classification: ROUTE_CLASSIFICATIONS.LEGACY_REDIRECT, workspace: WORKSPACE_IDS.BUSINESS, label: "Purchases", redirectTo: "/business/purchases", visible: false, legacyCompatibility: true, implementation: ROUTE_IMPLEMENTATION_STATES.DEPRECATED_COMPATIBILITY }),
+  route({ key: "legacy-purchases", path: "/purchases", classification: ROUTE_CLASSIFICATIONS.LEGACY_REDIRECT, workspace: WORKSPACE_IDS.BUSINESS, label: "Purchases", redirectTo: "/business/purchases", requiredAuthority: AUTHORITY_REQUIREMENTS.VERIFIED_OWNER, visible: false, legacyCompatibility: true, implementation: ROUTE_IMPLEMENTATION_STATES.DEPRECATED_COMPATIBILITY }),
   route({ key: "legacy-flip-scout", path: "/scout/flip-scout", classification: ROUTE_CLASSIFICATIONS.LEGACY_REDIRECT, workspace: WORKSPACE_IDS.FIND, label: "Deals", redirectTo: "/find/deals", visible: false, legacyCompatibility: true, implementation: ROUTE_IMPLEMENTATION_STATES.DEPRECATED_COMPATIBILITY }),
   route({ key: "legacy-integrations", path: "/integrations", classification: ROUTE_CLASSIFICATIONS.LEGACY_REDIRECT, label: "Connections", redirectTo: "/owner-center/controls/connections", requiredAuthority: AUTHORITY_REQUIREMENTS.VERIFIED_OWNER, visible: false, legacyCompatibility: true, implementation: ROUTE_IMPLEMENTATION_STATES.DEPRECATED_COMPATIBILITY }),
   route({ key: "legacy-data-backup", path: "/data-backup", classification: ROUTE_CLASSIFICATIONS.LEGACY_REDIRECT, label: "Data & Backup", redirectTo: "/owner-center/controls/data-backup", requiredAuthority: AUTHORITY_REQUIREMENTS.VERIFIED_OWNER, visible: false, legacyCompatibility: true, implementation: ROUTE_IMPLEMENTATION_STATES.DEPRECATED_COMPATIBILITY }),

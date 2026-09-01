@@ -1,6 +1,7 @@
 import { normalizeAccountOpsState } from "../accountOps/repository.js";
 import { normalizeBotOpsState } from "../botOps/repository.js";
 import { normalizeInboxOrderState } from "../inboxOrder/repository.js";
+import { normalizePurchaseReceivingState } from "../purchaseReceiving/repository.js";
 
 function isJsonContainer(value) {
   return Boolean(value) && typeof value === "object";
@@ -38,6 +39,16 @@ function validateBotOperationsV1(source, data) {
   } catch (error) {
     const code = error?.code ? ` (${error.code})` : "";
     return [`Bot Operations persisted state is invalid${code}: ${error?.message || "validation failed"}`];
+  }
+}
+
+function validatePurchaseReceivingV1(source, data) {
+  try {
+    normalizePurchaseReceivingState(data, { now: () => "1970-01-01T00:00:00.000Z" });
+    return [];
+  } catch (error) {
+    const code = error?.code ? ` (${error.code})` : "";
+    return [`Purchase/Receiving persisted state is invalid${code}: ${error?.message || "validation failed"}`];
   }
 }
 
@@ -87,6 +98,9 @@ export function validateBackupSourceData(source, data, { requireSupportedSchema 
   }
   if (source?.validationAdapter === "bot-operations-v1") {
     errors.push(...validateBotOperationsV1(source, data));
+  }
+  if (source?.validationAdapter === "purchase-receiving-v1") {
+    errors.push(...validatePurchaseReceivingV1(source, data));
   }
 
   return { valid: errors.length === 0, errors, schemaVersion };

@@ -266,8 +266,9 @@ deepEqual(pendingDirectBot, { workspace: WORKSPACE_IDS.SELL, source: "AUTHORIZAT
 ok(!JSON.stringify(pendingDirectBot).includes(WORKSPACE_IDS.BOT), "pending authorization must not return Bot metadata");
 
 const safePreferenceSource = BACKUP_SOURCE_REGISTRY.find((source) => source.sourceId === "safe-ui-preferences");
-equal(BACKUP_SOURCE_REGISTRY.length, 24, "Bot Operations is registered without adding a separate workspace-preference source");
+equal(BACKUP_SOURCE_REGISTRY.length, 25, "Bot Operations and Purchase/Receiving are registered without adding a separate workspace-preference source");
 ok(BACKUP_SOURCE_REGISTRY.some((source) => source.sourceId === "bot-operations"), "safe Bot Operations metadata has an explicit backup source");
+ok(BACKUP_SOURCE_REGISTRY.some((source) => source.sourceId === "purchase-receiving"), "safe Purchase/Receiving metadata has an explicit backup source");
 ok(safePreferenceSource, "safe preference backup source must exist");
 ok(safePreferenceSource.storageKeys.includes(WORKSPACE_PREFERENCE_STORAGE_KEY), "workspace preference must use the existing safe preference source");
 equal(

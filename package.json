@@ -86,6 +86,8 @@
     "test:code3-stellar-preview-browser": "node --no-warnings scripts/test-code3-stellar-preview-browser.cjs",
     "test:code3-bot-ops": "node --no-warnings scripts/test-code3-bot-ops-provider.mjs && node --no-warnings scripts/test-code3-bot-ops-discovery.mjs && node --no-warnings scripts/test-code3-bot-ops-domain.mjs && node --no-warnings scripts/test-code3-bot-ops-history.mjs && node --no-warnings scripts/test-code3-bot-ops-fixtures.mjs && node --no-warnings scripts/test-code3-bot-ops-security.mjs && node --no-warnings scripts/test-code3-bot-ops-ui.mjs && npm run test:code3-stellar-preview",
     "test:code3-bot-ops-browser": "node --no-warnings scripts/test-code3-bot-ops-browser.cjs",
+    "test:code3-purchase-receiving": "node --no-warnings scripts/test-code3-purchase-receiving-domain.mjs && node --no-warnings scripts/test-code3-purchase-receiving-money.mjs && node --no-warnings scripts/test-code3-purchase-receiving-history.mjs && node --no-warnings scripts/test-code3-purchase-receiving-security.mjs && node --no-warnings scripts/test-code3-purchase-receiving-fixtures.mjs && node --no-warnings scripts/test-code3-purchase-receiving-ui.mjs",
+    "test:code3-purchase-receiving-browser": "node --no-warnings scripts/test-code3-purchase-receiving-browser.cjs",
     "test:code3-canonical": "npm --prefix backend run test:code3-canonical",
     "test:tier-foundation": "node --no-warnings scripts/test-tier-foundation.mjs",
     "test:quick-add": "node --no-warnings scripts/test-quick-add-routing.mjs",
