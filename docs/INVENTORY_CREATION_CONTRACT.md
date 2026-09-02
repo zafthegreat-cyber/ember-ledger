@@ -1,8 +1,8 @@
 # Owner-Confirmed Inventory Creation Contract
 
-Status: Phase 2C-B published at `bcff80042a15a29492ed32ba945291b50d35b5bb`. Phase 2C-C is a separate local candidate that extends post-creation adjustment semantics without weakening this creation boundary. Neither phase activates remote persistence, provider evidence ingestion, automatic product creation, or Production.
+Status: Phase 2C-B published at `bcff80042a15a29492ed32ba945291b50d35b5bb` and Phase 2C-C at `ef30033a3b30989737878252fb31354aaecf68a3`. Phase 2C-D is a separate local candidate that extends post-sale reconciliation semantics without weakening this creation boundary. No phase activates remote persistence, provider evidence ingestion, automatic product creation, or Production.
 
-Phase 2C-B starting baseline: `3b10644cf1be9498c08b876b5a3bbef98a24ee1c`. Phase 2C-C starting baseline: `bcff80042a15a29492ed32ba945291b50d35b5bb`.
+Phase 2C-B starting baseline: `3b10644cf1be9498c08b876b5a3bbef98a24ee1c`. Phase 2C-C starting baseline: `bcff80042a15a29492ed32ba945291b50d35b5bb`. Phase 2C-D starting baseline: `ef30033a3b30989737878252fb31354aaecf68a3`.
 
 ## Non-negotiable boundaries
 
@@ -29,6 +29,8 @@ Phase 2C-B reuses the writable local Business Inventory document at `ember-and-t
 - `inventoryAdjustments`: append-only reversal/disposition facts.
 
 Phase 2C-C retains that storage key and those collections while advancing the document to schema version 4. Typed append-only corrections/dispositions extend `inventoryAdjustments`; the original Inventory creation application and event remain immutable.
+
+Phase 2C-D retains the same Inventory authority and advances the document to schema version 5 with append-only `inventoryReconciliationEvents`. Original Sales, creation records, and correction records remain immutable. Reconciled effective COGS/product projections are derived from original facts plus confirmed signed events.
 
 Canonical Inventory remains represented by entries in the existing `inventory` collection. Each Phase 2C-B acquisition creates a new provenance-preserving Inventory item and acquisition lot, even when another item already references the same product. Existing inventory may be shown as a relationship, but acquisition costs are not silently averaged and prior lot history is not destroyed.
 
@@ -109,7 +111,7 @@ A refund without a physical return does not remove Inventory. Phase 2C-B impleme
 
 Reversal re-checks current Inventory version and quantity still available after sales. Sold, transferred, consumed, or otherwise unavailable quantity cannot be reversed into a negative balance. The reversal removes deterministic trailing unit-cost shares from current quantity/cost, updates current item/lot state, and appends one idempotent adjustment. Full reversal marks the local item disposed and the lot reversed; partial reversal preserves the remaining exact cost. Insufficient quantity fails for owner review.
 
-Phase 2C-C retains `Refund != Physical Return`: a physical return is a separate owner-confirmed disposition limited to unsold/untransferred availability. Whole-lot product/condition and acquisition-cost corrections stop after sales/transfers. Replacement items require a one-to-one link to an effective unreversed return, a new Receiving Event, and separate Inventory-creation confirmation. Their completed application/event/item/lot retain the authorization and return-source references, reuse the exact returned unit-cost slice instead of allocating Purchase cost twice, and block later reversal of the consumed return. Unexpected extras require a separate acquisition/cost review. Raw card and Graded card remain deferred.
+Phase 2C-C retains `Refund != Physical Return`: a physical return is a separate owner-confirmed disposition limited to unsold/untransferred availability. Whole-lot product/condition and acquisition-cost corrections stop after sales/transfers unless the separate Phase 2C-D reconciliation boundary can preserve immutable historical facts and exactly reconcile the downstream effect. Replacement items require a one-to-one link to an effective unreversed return, a new Receiving Event, and separate Inventory-creation confirmation. Their completed application/event/item/lot retain the authorization and return-source references, reuse the exact returned unit-cost slice instead of allocating Purchase cost twice, and block later reversal of the consumed return. Unexpected extras require a separate acquisition/cost review. Raw card and Graded card remain deferred.
 
 ## Security exclusions
 
@@ -117,14 +119,14 @@ Candidate, application, event, lot, adjustment, UI, log, backup, and migration b
 
 ## Backup, Restore Preview, and migration
 
-The existing Deal Finder Backup Format source recognizes Flip Scout schema versions through version 4. Safe `inventory`, `inventoryLots`, `inventoryCreationApplications`, `inventoryCreationEvents`, and typed `inventoryAdjustments` metadata may be included with the other sanitized Business collections. Validation requires complete application/event/item/lot/adjustment chains and strict identity, Purchase/line/Receiving/original-and-current product/condition/disposition, original/current quantity, and exact original/current cost reconciliation. Ephemeral handoff/creation/correction candidates and previews plus the private recovery journal remain excluded. Raw evidence, credentials, payments, sessions, tokens, and secret-bearing URLs remain prohibited.
+The existing Deal Finder Backup Format source recognizes Flip Scout schema versions through version 5. Safe `inventory`, `inventoryLots`, `inventoryCreationApplications`, `inventoryCreationEvents`, typed `inventoryAdjustments`, immutable managed Sales, and `inventoryReconciliationEvents` metadata may be included with the other sanitized Business collections. Validation requires complete application/event/item/lot/adjustment/reconciliation chains and strict identity, Purchase/line/Receiving/original-and-current product/condition/disposition, immutable Sale snapshots, original/current quantity, and exact original/current cost reconciliation. Ephemeral handoff/creation/correction/reconciliation candidates and previews plus the private recovery journal remain excluded. Raw evidence, credentials, payments, sessions, tokens, and secret-bearing URLs remain prohibited.
 
-Restore Preview remains zero-write and validates the extended schema, strict bundle/adjustment-chain shape, references, exact costs, protected provenance, and conflicts without applying anything. The mixed existing `deal-finder.inventory` path and acquisition-lot, application, creation-event, and adjustment paths are all `REQUIRES_MAPPING`; no Phase 2C-B/2C-C data is remote-authoritative and no canonical schema has been applied.
+Restore Preview remains zero-write and validates the extended schema, strict bundle/adjustment/reconciliation-chain shape, references, exact costs, protected provenance, immutable Sale snapshots, and conflicts without applying anything. The mixed existing `deal-finder.inventory` path and acquisition-lot, application, creation-event, adjustment, reconciliation-event, and managed-Sale paths are all `REQUIRES_MAPPING`; no Phase 2C-B/2C-C/2C-D data is remote-authoritative and no canonical schema has been applied.
 
 ## Operational and provider isolation
 
 `LOCAL_ONLY` remains authoritative and `REMOTE_ACTIVE` remains disabled. Phase 2B2-B.1 stays paused with `hostedRuntimeVerified=false`; existing Upstash, Supabase, and provider-auth Vercel configuration are untouched. Phase 2D-B3 is not started. Gmail, Outlook, Stellar, and Hayha remain unconfigured; no mailbox, Bot, retailer, proxy, payment, billing, or Production integration is used.
 
-## Phase 2C-B/2C-C non-goals
+## Phase 2C-B through Phase 2C-D non-goals
 
-Neither phase activates automatic Inventory creation, bulk auto-confirmation, automatic product/replacement/extra creation, Inventory creation from upstream evidence, Raw/Graded condition correction, remote sync, canonical database migration, provider configuration, real business records, Production deployment, or destructive history deletion. Phase 2C-C validation and publication remain separate checkpoints.
+No phase activates automatic Inventory creation, bulk auto-confirmation, automatic product/replacement/extra creation, Inventory creation from upstream evidence, Raw/Graded condition correction, remote sync, canonical database migration, provider configuration, real business records, Production deployment, or destructive history deletion. Phase 2C-D validation and publication remain separate checkpoints.

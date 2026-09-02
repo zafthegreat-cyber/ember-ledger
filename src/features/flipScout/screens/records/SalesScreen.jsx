@@ -3,7 +3,7 @@ import { SALE_STATUSES } from "../../constants.js";
 import { calculateSaleResults } from "../../calculations.js";
 import { validateSaleQuantity } from "../../inventory.js";
 import { suggestedInventorySaleCogsMajorUnits, suggestedInventorySaleCogsMinorUnits } from "../../exactInventoryCost.js";
-import { formatCurrency, formatPercent } from "../../selectors.js";
+import { formatCurrency, formatPercent, getSaleReportingProjection } from "../../selectors.js";
 import { EmptyState, FormActions, MoneyInput, NumberInput, RecordActions, SectionHeading, SelectInput, StatusPill, TextArea, TextInput } from "../../components/Fields.jsx";
 
 function blankSale() {
@@ -102,6 +102,19 @@ export default function SalesScreen({ state, onSave, onDelete }) {
         <FormActions><button type="submit" className="primary-button" disabled={saving}>{saving ? "Saving…" : form.id ? "Update sale" : "Save sale"}</button></FormActions>
       </form> : message ? <p className="flip-form-message" role="status">{message}</p> : null}
     </section>
-    <section className="flip-section">{state.sales.length ? <div className="flip-record-list">{state.sales.map((sale) => { const item = state.inventory.find((row) => row.id === sale.inventoryItemId); const saleResult = calculateSaleResults(sale); const managed = item?.provenanceManaged === true && !["draft", "cancelled"].includes(String(sale.status || "").toLowerCase()); return <article className="flip-record-card" key={sale.id}><div className="flip-record-card__head"><div><span>{sale.saleDate || "Date not set"} · {sale.salesChannel || "Channel not set"}</span><h3>{item?.name || "Inventory sale"}</h3></div><StatusPill tone={sale.status === "Completed" ? "good" : "muted"}>{sale.status}</StatusPill></div><div className="flip-record-facts"><span>Qty <strong>{sale.quantitySold}</strong></span><span>Gross <strong>{formatCurrency(sale.grossSalePrice)}</strong></span><span>Net <strong>{formatCurrency(sale.netProceeds ?? saleResult.netProceeds)}</strong></span><span>Profit <strong>{formatCurrency(sale.realizedProfit ?? saleResult.realizedProfit)}</strong></span><span>ROI <strong>{formatPercent(sale.realizedRoi ?? saleResult.realizedRoi)}</strong></span></div>{managed ? <p className="flip-warning-copy">Exact acquisition allocation is append-only; corrections require a dedicated owner workflow.</p> : <RecordActions onEdit={() => { if (saveInFlightRef.current) return; setForm({ ...blankSale(), ...sale }); setFormOpen(true); }} onDelete={() => { if (!saveInFlightRef.current) return onDelete("sales", sale.id, item?.name || "sale"); return false; }} />}</article>; })}</div> : <EmptyState title="No sales recorded">Record a completed sale or save a draft. Drafts leave inventory availability unchanged.</EmptyState>}</section>
+    <section className="flip-section">{state.sales.length ? <div className="flip-record-list">{state.sales.map((sale) => {
+      const item = state.inventory.find((row) => row.id === sale.inventoryItemId);
+      const saleResult = calculateSaleResults(sale);
+      const managed = item?.provenanceManaged === true && !["draft", "cancelled"].includes(String(sale.status || "").toLowerCase());
+      const reporting = managed ? getSaleReportingProjection(sale, state) : null;
+      const displayedProfit = reporting?.effectiveProfit ?? sale.realizedProfit ?? saleResult.realizedProfit;
+      const displayedRoi = reporting?.effectiveRoi ?? sale.realizedRoi ?? saleResult.realizedRoi;
+      return <article className="flip-record-card" key={sale.id}>
+        <div className="flip-record-card__head"><div><span>{sale.saleDate || "Date not set"} · {sale.salesChannel || "Channel not set"}</span><h3>{reporting?.productRelationshipAdjusted ? reporting.originalProductReference : item?.name || "Inventory sale"}</h3></div><StatusPill tone={sale.status === "Completed" ? "good" : "muted"}>{sale.status}</StatusPill></div>
+        <div className="flip-record-facts"><span>Qty <strong>{sale.quantitySold}</strong></span><span>Gross <strong>{formatCurrency(sale.grossSalePrice)}</strong></span><span>Net <strong>{formatCurrency(sale.netProceeds ?? saleResult.netProceeds)}</strong></span><span>Profit <strong>{formatCurrency(displayedProfit)}</strong></span><span>ROI <strong>{formatPercent(displayedRoi)}</strong></span></div>
+        {reporting?.hasReconciliation ? <div className="flip-record-facts" aria-label="Append-only Sale reconciliation"><span>Original COGS <strong>{formatCurrency(reporting.originalCogs)}</strong></span><span>COGS adjustment <strong>{formatCurrency(reporting.cogsAdjustment)}</strong></span><span>Effective COGS <strong>{formatCurrency(reporting.effectiveCogs)}</strong></span>{reporting.productRelationshipAdjusted ? <span>Historical product <strong>{reporting.originalProductReference}</strong><small>Current reporting relationship: {reporting.effectiveProductReference}</small></span> : null}</div> : null}
+        {managed ? <p className="flip-warning-copy">The Sale remains unchanged. Confirmed reconciliation events adjust current reporting without replacing its original COGS or product history.</p> : <RecordActions onEdit={() => { if (saveInFlightRef.current) return; setForm({ ...blankSale(), ...sale }); setFormOpen(true); }} onDelete={() => { if (!saveInFlightRef.current) return onDelete("sales", sale.id, item?.name || "sale"); return false; }} />}
+      </article>;
+    })}</div> : <EmptyState title="No sales recorded">Record a completed sale or save a draft. Drafts leave inventory availability unchanged.</EmptyState>}</section>
   </div>;
 }

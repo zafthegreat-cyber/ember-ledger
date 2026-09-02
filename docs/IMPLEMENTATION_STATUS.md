@@ -2,22 +2,30 @@
 
 Last audited: 2026-09-01
 
-Published Phase 2C-B commit / Phase 2C-C starting HEAD: `bcff80042a15a29492ed32ba945291b50d35b5bb`
+Published Phase 2C-C commit / Phase 2C-D starting HEAD: `ef30033a3b30989737878252fb31354aaecf68a3`
 
-Repository branch represented: `ui-104-final-product-ui-2` (Phase 2C-C local working copy prepared from a detached worktree at the published Phase 2C-B commit)
+Repository branch represented: `ui-104-final-product-ui-2` (Phase 2C-D local working copy prepared from a detached worktree at the published Phase 2C-C commit)
 
 Pull request: #1, Draft
-Deployment: Phase 2C-B is published on the existing Draft PR branch. The separate Phase 2B2-B.1 operational verification is paused; a Free Upstash resource and three branch-scoped Preview secrets exist, but remaining owner/CORS/activation values are absent, no follow-up provider-auth Preview was deployed, and `hostedRuntimeVerified=false`. Phase 2C-C is local only and makes no deployment or environment change.
+Deployment: Phase 2C-C is published on the existing Draft PR branch. The separate Phase 2B2-B.1 operational verification is paused; a Free Upstash resource and three branch-scoped Preview secrets exist, but remaining owner/CORS/activation values are absent, no follow-up provider-auth Preview was deployed, and `hostedRuntimeVerified=false`. Phase 2C-D is local only and makes no deployment or environment change.
 
 ## Current phase
 
-**Phase 2C-C — Inventory Correction and Disposition** is the current local-only phase. It extends published Phase 2C-B with an ephemeral impact preview and a separate explicit verified-OWNER confirmation for typed append-only correction, physical return, and disposition. It does not infer return from refund, create replacement/extra Inventory automatically, connect upstream evidence, use real order/payment data, resume provider verification, change remote persistence, or deploy.
+**Phase 2C-D — Historical COGS, Sale & Transfer Reconciliation** is the current local-only phase. It extends published Phase 2C-C with an ephemeral impact preview and a separate explicit verified-OWNER confirmation for append-only reconciliation when a correction affects immutable Sales or a future managed Transfer. It preserves original Sale/Transfer/Purchase/Receiving/creation/correction history, does not infer return from refund, create replacement Inventory automatically, begin Raw/Graded authority, connect upstream evidence, use real order/payment data, resume provider verification, change remote persistence, or deploy.
 
 Phase 2B2-B.1 remains paused and independent. `LOCAL_ONLY` remains authoritative; `REMOTE_ACTIVE` is disabled; the Phase 1B schema remains `SCHEMA_ONLY`; no owner record moved; `hostedRuntimeVerified=false`.
 
-The Phase 2C-C local candidate adds:
+The Phase 2C-D local candidate adds:
 
-- Flip Scout/Business Inventory schema version 4 under the unchanged `ember-and-tide.flip-scout.v1` key and unchanged collections;
+- Flip Scout/Business Inventory schema version 5 under the unchanged `ember-and-tide.flip-scout.v1` key, adding append-only `inventoryReconciliationEvents` to existing canonical Inventory authority;
+- ephemeral non-authoritative reconciliation candidates with bounded categories, explicit `READY_TO_CONFIRM`/`NEEDS_REVIEW`/`BLOCKED` state, exact impact preview, and no persistence;
+- immutable Sale records plus separately derived effective COGS/product/profit projections from confirmed signed reconciliation deltas;
+- deterministic partial-sale cost split between realized COGS and remaining Inventory with exact minor-unit conservation;
+- fail-closed transfer categories because no canonical managed-transfer collection exists; and
+- explicit future server transaction design without activating a schema, migration, or remote mode.
+
+It retains these published Phase 2C-C safeguards:
+
 - typed append-only `inventoryAdjustments` that reconcile immutable creation state to current item/lot product, condition, disposition, quantity, and exact cost;
 - explicit owner preview and confirmation with stable identity, expected versions, exclusive locking, private interruption journal, read-back, replay dedupe, and stale/conflicting failure;
 - whole-lot product/condition correction only when no unit was sold or transferred, with product resolution limited to an existing local relationship;
@@ -264,15 +272,15 @@ The published Phase 2A.5 validation gate passed the frontend/backend builds and 
 
 Phase 2B1 focused validation passes 16/16 provider-runtime cases, 52 domain assertions, 25/25 synthetic fixtures with 56 assertions, 102 history/idempotency assertions, and 55 security/protected-message assertions. Frontend/backend builds, owner security 27/27, canonical backend 47/47, eBay 13/13, persistence/migration, and Backup/Restore Preview gates also pass; Backup Format v1 reports 19 included sections and 18 fixture records. Account Ops UI-contract coverage is 53 assertions after the Connections/Inbox/Orders additions, and its final browser matrix reports 20 fixtures, 30 captures, 249 assertions, no application errors, and no 360-pixel overflow. The bounded regression passes 28/28 scenarios in 444.527 seconds with zero retries and no open handles. The final local main `App` chunk is 2,347.64 kB minified and 589.36 kB gzip. Source-level tests and a frontend Preview are not evidence that a mailbox or hosted provider runtime is connected.
 
-The published Phase 2C-A local gate passed the frontend production build (563 modules), backend TypeScript build, owner security 27/27, canonical backend 47/47, Account Ops, Bot Operations, workspace, route, accessibility, and sequential light/dark viewport suites. Focused Purchase/Receiving evidence was 141 domain assertions, 68 exact-money/allocation assertions, 158 history/idempotency assertions, 192 security assertions, 41/41 deterministic fixtures with 1,207 assertions, and 48 UI-contract assertions after the Phase 2C-B compatibility gate. Its browser matrix passed 15/15 scenarios with 331 assertions, zero application errors, zero external requests, and zero horizontal overflow. Published Phase 2C-B focused validation passed 48 candidate, 18 exact-cost, 67 idempotency/journal, 65 security, 39/39 fixture with 197, and 65 UI assertions; its dedicated browser gate passed four scenarios with 38 assertions. Backup (21 sections/34 records), Restore Preview, and Migration Preview remained zero-write. Frontend production build passed at 568 modules (main 2,348.48 kB minified / 589.62 kB gzip; lazy Purchase/Receiving 64.35 kB / 16.00 kB gzip), backend TypeScript built, and the complete regression passed 28/28 in 309.576 seconds with zero retries and no open handles. Phase 2C-C final validation is reported separately when its local gate completes.
+The published Phase 2C-A local gate passed the frontend production build (563 modules), backend TypeScript build, owner security 27/27, canonical backend 47/47, Account Ops, Bot Operations, workspace, route, accessibility, and sequential light/dark viewport suites. Focused Purchase/Receiving evidence was 141 domain assertions, 68 exact-money/allocation assertions, 158 history/idempotency assertions, 192 security assertions, 41/41 deterministic fixtures with 1,207 assertions, and 48 UI-contract assertions after the Phase 2C-B compatibility gate. Its browser matrix passed 15/15 scenarios with 331 assertions, zero application errors, zero external requests, and zero horizontal overflow. Published Phase 2C-B focused validation passed 48 candidate, 18 exact-cost, 67 idempotency/journal, 65 security, 39/39 fixture with 197, and 65 UI assertions; its dedicated browser gate passed four scenarios with 38 assertions. Published Phase 2C-C passed 480 focused assertions plus six browser scenarios with 45 assertions. The Phase 2C-D local gate passed 52 domain, 36 history/idempotency, 31 security, 35/35 fixture with 235, and 69 UI assertions; its browser gate passed five scenarios with 38 assertions. Backup (21 sections/34 records), zero-write Restore Preview, zero-write Migration Preview, OWNER/canonical/shared regressions, direct-load, accessibility, and light/dark 46-route matrices passed. The final frontend production build passed at 574 modules (main 2,348.53 kB minified / 589.66 kB gzip; lazy Purchase/Receiving 49.66 kB / 11.82 kB gzip), the backend TypeScript build passed, and the complete regression passed 28/28 in 317.378 seconds with zero retries and no open handles.
 
 ## Preview state
 
 - PR #1 remains Draft per the task baseline.
-- The published branch includes Phase 2C-B at `bcff80042a15a29492ed32ba945291b50d35b5bb`; Phase 2C-C changes are local only.
+- The published branch includes Phase 2C-C at `ef30033a3b30989737878252fb31354aaecf68a3`; Phase 2C-D changes are local only.
 - The published Preview proves filesystem routing to Express and fail-closed authentication, not the complete owner-authorized managed-store proof.
 - `hostedRuntimeVerified=false` because no legitimate owner plus exact durable-store readiness response has been proven. The Free Upstash resource and three branch-scoped Preview secrets do not satisfy the missing Supabase owner/auth and remaining exact CORS/activation/runtime gate. Phase 2B2-B.1 is paused; required names are documented without values in [OWNER_AUTH_DECISION.md](./OWNER_AUTH_DECISION.md).
-- Phase 2C-C does not deploy a Preview, inspect or use the Upstash resource, resume Supabase sign-in, connect a provider, or change Production/Development configuration.
+- Phase 2C-D does not deploy a Preview, inspect or use the Upstash resource, resume Supabase sign-in, connect a provider, or change Production/Development configuration.
 - No production deployment is represented by this documentation.
 
 ## Known defects and debt
@@ -311,12 +319,12 @@ The published Phase 2C-A local gate passed the frontend production build (563 mo
 32. The local Inbox/Order source requires a future canonical mapping. All four paths remain `REQUIRES_MAPPING`; its unencrypted local/backup metadata shares the existing device/download security limitation.
 33. The local Bot Operations source requires a future canonical mapping. All ten paths remain `REQUIRES_MAPPING`; its unencrypted local/backup metadata shares the device/download limitation, and no managed Bot credential store or Purchase/Inventory handoff is authorized.
 34. The Stellar task-export preview does not establish compatibility with a stable provider schema: public documentation does not publish a root/field contract or embedded version marker. Recognized synthetic-compatible input is at most `PARTIALLY_RECOGNIZED`, and no preview can be saved/imported.
-35. Phase 2C-C Inventory creation/correction remains browser-local. Same-origin Web Locks, deterministic IDs, the private journal, and read-back verification reduce local replay/interruption risk but do not provide a server transaction or multi-device serialization.
+35. Phase 2C-D Inventory creation/correction/reconciliation remains browser-local in the schema-5 document. Same-origin Web Locks, deterministic IDs, the private journal, and read-back verification reduce local replay/interruption risk but do not provide a server transaction or multi-device serialization.
 36. Provenance-managed Inventory acquisition records retain exact integer-minor-unit cost and separate lots. Older Inventory rows may retain legacy decimal projections and require an owner-reviewed mapping before remote cutover.
-37. Inventory corrections/dispositions are explicit local typed adjustments. Whole-lot product/condition and cost corrections stop after sales/transfers; returns are bounded by unsold/untransferred availability. Richer transfer/consumption reconciliation, Raw/Graded condition semantics, and remote transactional enforcement remain future work.
+37. Inventory corrections/dispositions are explicit local typed adjustments. Supported post-sale product/cost effects use separate append-only reconciliation events while original Sales remain immutable. Managed Transfer/multi-hop reconciliation, Raw/Graded condition semantics, and remote transactional enforcement remain future work.
 
 ## Next recommended task
 
-After the Phase 2C-C local completion report, stop. Publication, Phase 2D-B3, hosted transaction/multi-device authority, reviewed migration mapping, Raw/Graded correction, product creation, and every live provider/import path require separate authorization. The Bot evidence still supports no live pilot. Phase 2B2-B.1 remains paused until the owner explicitly says `Supabase signed in.` Gmail/Outlook, mailbox reads, billing, renderer extraction, and disposable-database work remain separate approvals.
+After the Phase 2C-D local completion report, stop. Publication, Phase 2D-B3, hosted transaction/multi-device authority, reviewed migration mapping, Raw/Graded correction, product creation, and every live provider/import path require separate authorization. The Bot evidence still supports no live pilot. Phase 2B2-B.1 remains paused until the owner explicitly says `Supabase signed in.` Gmail/Outlook, mailbox reads, billing, renderer extraction, and disposable-database work remain separate approvals.
 
 Do not apply the schema to the owner or Production database, enable `REMOTE_ACTIVE`, migrate files, or execute a migration plan without a separately approved cutover task and verified backup.

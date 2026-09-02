@@ -36,6 +36,8 @@ import {
   INVENTORY_CORRECTION_SAFETY,
   INVENTORY_QUANTITY_CORRECTION_REASONS,
 } from "./inventoryCorrection/constants.js";
+import { createInventoryReconciliationGateway } from "./inventoryReconciliation/gateway.js";
+import { INVENTORY_RECONCILIATION_SAFETY } from "./inventoryReconciliation/constants.js";
 
 const PROHIBITED_OPTIONS = new Set([
   "mode", "persistenceMode", "remoteDataSource", "request", "remoteActive", "sync", "syncEngine",
@@ -75,10 +77,49 @@ function replacementReturnAdjustment(inventoryState, { purchaseId, lineItemId, r
 
 export function validateReplacementInventoryPurchaseProvenance(inventoryState, purchaseState) {
   const bundles = validateInventoryCreationStateBundles(inventoryState);
+  const purchases = Array.isArray(purchaseState?.purchases) ? purchaseState.purchases : [];
   const purchaseEvents = Array.isArray(purchaseState?.purchaseEvents) ? purchaseState.purchaseEvents : [];
   const receivingEvents = Array.isArray(purchaseState?.receivingEvents) ? purchaseState.receivingEvents : [];
   for (const application of bundles.applications) {
+    const purchase = purchases.find((entry) => entry.id === application.purchaseId);
+    const purchaseLine = purchase?.lineItems?.find((entry) => entry.lineItemId === application.purchaseLineItemId);
     const receiving = application.receivingEventReferences.map((reference) => receivingEvents.find((entry) => entry.id === reference));
+    const sourceEntries = receiving.flatMap((event) => (event?.entries || []).map((entry, receivingEntryIndex) => ({
+      event,
+      entry,
+      receivingEntryIndex,
+    })));
+    const sourceMatches = sourceEntries.filter(({ event, entry, receivingEntryIndex }) => (
+      entry.lineItemId === application.purchaseLineItemId
+      && inventoryCandidateId({
+        purchaseId: application.purchaseId,
+        lineItemId: application.purchaseLineItemId,
+        receivingEventId: event.id,
+        receivingEntryIndex,
+        replacementAuthorizationEventId: application.replacementAuthorizationEventId,
+        sourceReturnAdjustmentId: application.sourceReturnAdjustmentId,
+      }) === application.candidateId
+    ));
+    if (!purchase || purchase.recordType !== "PURCHASE" || purchase.confirmationMethod !== "VERIFIED_OWNER_SESSION"
+      || !purchaseLine || purchase.currency !== application.currency
+      || purchaseLine.productReference !== application.purchaseProductReference
+      || receiving.some((event) => !event
+        || event.recordType !== "RECEIVING_EVENT"
+        || event.confirmationMethod !== "VERIFIED_OWNER_SESSION"
+        || event.purchaseId !== application.purchaseId)
+      || sourceMatches.length !== 1
+      || sourceMatches[0].entry.quantityReceived !== application.quantity
+      || (sourceMatches[0].entry.substituteProductReference || null) !== (application.receivedProductReference || null)) {
+      const replacementSource = Boolean(application.replacementAuthorizationEventId
+        || application.sourceReturnAdjustmentId || application.sourceReturnUnitOffset != null
+        || receiving.some((event) => event?.replacementEventId));
+      throw new PurchaseReceivingServiceError(
+        replacementSource ? "REPLACEMENT_PURCHASE_PROVENANCE_INVALID" : "INVENTORY_PURCHASE_PROVENANCE_INVALID",
+        replacementSource
+          ? "Replacement Inventory no longer reconciles to its owner-confirmed Purchase and Receiving provenance."
+          : "Inventory no longer reconciles to its owner-confirmed Purchase and Receiving provenance.",
+      );
+    }
     const replacementEventIds = new Set(receiving.map((event) => event?.replacementEventId).filter(Boolean));
     const hasReplacementProvenance = Boolean(application.replacementAuthorizationEventId
       || application.sourceReturnAdjustmentId || application.sourceReturnUnitOffset != null);
@@ -282,6 +323,14 @@ export function createPurchaseReceivingService(options = {}) {
     now,
     isOwnerAuthorized,
     getTransferredQuantity: options.getTransferredQuantity || assertManagedInventoryHasNoTransferUsage,
+    validateExternalProvenance: (inventoryState) => validateReplacementInventoryPurchaseProvenance(inventoryState, persistence.read()),
+  });
+  const inventoryReconciliationGateway = createInventoryReconciliationGateway({
+    storage: options.inventoryStorage,
+    repository: options.inventoryRepository,
+    lockManager: options.inventoryLockManager,
+    now,
+    isOwnerAuthorized,
     validateExternalProvenance: (inventoryState) => validateReplacementInventoryPurchaseProvenance(inventoryState, persistence.read()),
   });
 
@@ -826,6 +875,28 @@ export function createPurchaseReceivingService(options = {}) {
     });
   }
 
+  function previewInventoryReconciliation(inventoryItemId, proposal = {}) {
+    assertOwner();
+    assertSafePurchaseReceivingInput(proposal);
+    return inventoryReconciliationGateway.preview(String(inventoryItemId), proposal);
+  }
+
+  async function confirmInventoryReconciliation(inventoryItemId, candidateId, input = {}) {
+    assertOwner();
+    assertSafePurchaseReceivingInput(input);
+    const allowed = new Set(["expectedVersion", "proposal"]);
+    const unknown = Object.keys(input || {}).find((key) => !allowed.has(key));
+    if (unknown) throw new PurchaseReceivingServiceError("UNSUPPORTED_INVENTORY_RECONCILIATION_FIELD", `${unknown} cannot supply historical reconciliation authority.`, { field: unknown });
+    const expectedVersion = String(input.expectedVersion || "").trim();
+    if (!expectedVersion) throw new PurchaseReceivingServiceError("EXPECTED_VERSION_REQUIRED", "Historical reconciliation confirmation requires the reviewed candidate version.");
+    return inventoryReconciliationGateway.confirm({
+      inventoryItemId: String(inventoryItemId),
+      candidateId: String(candidateId),
+      expectedVersion,
+      proposal: input.proposal || {},
+    });
+  }
+
   return Object.freeze({
     mode: "LOCAL_ONLY",
     authoritative: "LOCAL_ONLY",
@@ -837,6 +908,7 @@ export function createPurchaseReceivingService(options = {}) {
     inventoryWriterAvailable: true,
     inventoryCreationSafety: INVENTORY_CREATION_SAFETY,
     inventoryCorrectionSafety: INVENTORY_CORRECTION_SAFETY,
+    inventoryReconciliationSafety: INVENTORY_RECONCILIATION_SAFETY,
     storageKey: persistence.repository.storageKey,
     snapshot,
     loadSnapshot: snapshot,
@@ -863,6 +935,12 @@ export function createPurchaseReceivingService(options = {}) {
     reverseInventoryCreation,
     previewInventoryCorrection,
     confirmInventoryCorrection,
+    previewInventoryReconciliation,
+    confirmInventoryReconciliation,
+    listInventoryReconciliationEvents: () => {
+      assertOwner();
+      return safePurchaseReceivingClone(inventoryReconciliationGateway.listEvents());
+    },
     listManagedInventory: () => {
       assertOwner();
       return safePurchaseReceivingClone(inventoryCorrectionGateway.load().inventory.filter((entry) => entry.provenanceManaged === true));

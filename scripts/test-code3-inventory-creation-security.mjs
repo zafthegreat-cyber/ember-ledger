@@ -144,7 +144,7 @@ equal(JSON.stringify(created).includes("synthetic-secret.invalid"), false);
 
 {
   const backup = getBackupSource("deal-finder");
-  equal(backup.schemaVersion, 4);
+  equal(backup.schemaVersion, 5);
   for (const path of ["inventoryLots", "inventoryCreationApplications", "inventoryCreationEvents", "inventoryAdjustments"]) {
     equal(backup.recordPaths.includes(path), true, `${path} is registered as safe Business metadata`);
   }

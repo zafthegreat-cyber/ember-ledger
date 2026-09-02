@@ -13,7 +13,7 @@ export default function ResultsScreen({ state }) {
         <div><span>Projected profit</span><strong>{formatCurrency(row.projectedProfit)}</strong><small>{formatPercent(row.projectedRoi)} ROI</small></div>
         <div><span>Recommended max</span><strong>{formatCurrency(row.recommendedMaximumPurchasePrice)}</strong><small>Original ceiling</small></div>
         <div><span>Actual purchase</span><strong>{formatCurrency(row.actualPurchasePrice)}</strong><small>Recorded cost</small></div>
-        <div><span>Actual sales proceeds</span><strong>{formatCurrency(row.actualSalesProceeds)}</strong><small>{formatCurrency(row.actualCosts)} recorded costs</small></div>
+        <div><span>Actual sales proceeds</span><strong>{formatCurrency(row.actualSalesProceeds)}</strong><small>{formatCurrency(row.actualCosts)} effective recorded costs{row.realizedCogsAdjustment ? ` · ${formatCurrency(row.realizedCogsAdjustment)} append-only COGS adjustment` : ""}</small></div>
         <div><span>Actual profit</span><strong className={row.actualProfit >= 0 ? "flip-positive" : "flip-negative"}>{formatCurrency(row.actualProfit)}</strong><small>{formatPercent(row.realizedRoi)} realized ROI</small></div>
         <div><span>Prediction difference</span><strong className={row.profitDifference >= 0 ? "flip-positive" : "flip-negative"}>{formatCurrency(row.profitDifference)}</strong><small>{row.roiDifference === null ? "ROI unavailable" : `${formatPercent(row.roiDifference)} ROI difference`}</small></div>
         <div><span>Days to sell</span><strong>{row.daysToSell === null ? "—" : row.daysToSell}</strong><small>{row.soldQuantity} sold</small></div>

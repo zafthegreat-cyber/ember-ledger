@@ -55,7 +55,7 @@ export default function DashboardScreen({ state, onNavigate }) {
           <MetricCard label="Strong opportunities" value={summary.strongDeals || "—"} helper={summary.strongDeals ? "Based on saved deal status" : "No strong statuses saved"} />
           <MetricCard label="Inventory cost" value={state.inventory.length ? formatCurrency(summary.inventoryCost) : "—"} helper={state.inventory.length ? "Allocated cost basis" : "No inventory records"} />
           <MetricCard label="Realized revenue" value={state.sales.length ? formatCurrency(summary.realizedSalesRevenue) : "—"} helper={state.sales.length ? "Completed sales" : "No completed sales"} />
-          <MetricCard label="Realized profit" value={state.sales.length ? formatCurrency(summary.realizedProfit) : "—"} helper={state.sales.length ? "After recorded costs" : "No realized profit"} />
+          <MetricCard label="Realized profit" value={state.sales.length ? formatCurrency(summary.realizedProfit) : "—"} helper={state.sales.length ? summary.realizedCogsAdjustment ? `Includes ${formatCurrency(summary.realizedCogsAdjustment)} append-only COGS adjustment` : "After recorded costs" : "No realized profit"} />
         </div>
         <p className="flip-data-truth"><SourceBadge>Saved records</SourceBadge><StatusBadge tone="neutral">No automatic purchasing or bidding</StatusBadge></p>
       </section>

@@ -132,7 +132,7 @@ const ok = (value, message) => { assert.ok(value, message); assertions += 1; };
 {
   const harness = await createManagedInventory({ id: "transfer-default-proof" });
   const state = storedInventory(harness.inventoryStorage);
-  equal(assertManagedInventoryHasNoTransferUsage(harness.created.inventoryItem.id, state), 0, "schema-4 default proves managed transfers are unavailable from canonical state");
+  equal(assertManagedInventoryHasNoTransferUsage(harness.created.inventoryItem.id, state), 0, "schema-5 default proves managed transfers are unavailable from canonical state");
   assert.throws(
     () => assertManagedInventoryHasNoTransferUsage(harness.created.inventoryItem.id, { ...state, inventoryTransfers: [] }),
     (error) => error.code === "TRANSFER_RECONCILIATION_REQUIRED",
@@ -250,11 +250,11 @@ const ok = (value, message) => { assert.ok(value, message); assertions += 1; };
   );
   const state = storedInventory(harness.inventoryStorage);
   const backupSource = getBackupSource("deal-finder");
-  equal(backupSource.schemaVersion, 4, "Business Inventory backup declares the correction-ledger schema");
+  equal(backupSource.schemaVersion, 5, "Business Inventory backup declares the reconciliation-ledger schema");
   ok(backupSource.supportedSchemaVersions.includes(3), "the prior acquisition schema remains explicitly supported");
   ok(backupSource.recordPaths.includes("inventoryAdjustments"), "safe append-only correction events remain under existing Inventory backup authority");
   ok(!backupSource.recordPaths.some((path) => /candidate|preview|journal/i.test(path)), "candidate, preview, and undo-journal state are not backup sources");
-  equal(validateBackupSourceData(backupSource, state).valid, true, "schema-4 correction history passes the strict backup validator");
+  equal(validateBackupSourceData(backupSource, state).valid, true, "schema-5 correction history passes the strict backup validator");
   ok(!JSON.stringify(state).includes('"recordType":"INVENTORY_CORRECTION_CANDIDATE"'), "the non-authoritative candidate is never persisted");
   ok(!JSON.stringify(state).includes(completed.candidate.expectedVersion), "the ephemeral review version is not retained in canonical business state");
   ok(![...harness.inventoryStorage.values.keys()].some((key) => /commit-journal/i.test(key)), "the private undo journal is cleared after verified success");

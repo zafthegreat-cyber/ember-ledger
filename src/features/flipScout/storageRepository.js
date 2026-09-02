@@ -5,6 +5,7 @@ import {
   createEmptyFlipScoutState,
 } from "./constants.js";
 import { validateInventoryCreationStateBundles } from "../purchaseReceiving/inventoryCreation/contracts.js";
+import { validateInventoryReconciliationState } from "../purchaseReceiving/inventoryReconciliation/contracts.js";
 import { assertSafePurchaseReceivingInput } from "../purchaseReceiving/security.js";
 import { soldQuantityForInventory } from "./inventory.js";
 import { validateManagedInventorySales } from "./exactInventoryCost.js";
@@ -14,7 +15,13 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-const MANAGED_COLLECTIONS = Object.freeze(["inventoryLots", "inventoryCreationApplications", "inventoryCreationEvents", "inventoryAdjustments"]);
+const MANAGED_COLLECTIONS = Object.freeze([
+  "inventoryLots",
+  "inventoryCreationApplications",
+  "inventoryCreationEvents",
+  "inventoryAdjustments",
+  "inventoryReconciliationEvents",
+]);
 const MANAGED_SALE_STATUS_BY_KEY = Object.freeze({ draft: "Draft", completed: "Completed", refunded: "Refunded", cancelled: "Cancelled" });
 const INVENTORY_COMMIT_JOURNAL_FORMAT = "code3.inventory-creation-commit-journal.v1";
 const INVENTORY_COMMIT_JOURNAL_KEY = `${FLIP_SCOUT_STORAGE_KEY}.inventory-creation-commit-journal.v1`;
@@ -36,7 +43,11 @@ function hasInventoryCreationBundles(state = {}) {
 }
 
 function managedRevision(state) {
-  return JSON.stringify(managedSnapshot(normalizeFlipScoutState(state)));
+  const normalized = normalizeFlipScoutState(state);
+  return JSON.stringify({
+    managed: managedSnapshot(normalized),
+    protectedSales: normalized.sales.filter((sale) => saleCountsAgainstManagedInventory(normalized, sale)),
+  });
 }
 
 function mergeOwnerConfirmedInventory(current, requested) {
@@ -85,6 +96,7 @@ function normalizeManagedSnapshot(value) {
     activity: value.activity,
   });
   validateInventoryCreationStateBundles(state, { allowIncomplete: true });
+  validateInventoryReconciliationState(state, { allowIncomplete: true, allowMissingSales: true });
   assertSafePurchaseReceivingInput(state.activity);
   return managedSnapshot(state);
 }
@@ -175,9 +187,22 @@ function requirePreservedRecords(currentRows, nextRows, label, mutableFields = n
 function validateManagedTransition(current, next) {
   const currentBundles = validateInventoryCreationStateBundles(current, { allowIncomplete: true });
   const nextBundles = validateInventoryCreationStateBundles(next);
+  const currentReconciliation = validateInventoryReconciliationState(current, { allowIncomplete: true });
+  const nextReconciliation = validateInventoryReconciliationState(next);
   requirePreservedRecords(currentBundles.applications, nextBundles.applications, "Inventory creation applications");
   requirePreservedRecords(currentBundles.events, nextBundles.events, "Inventory creation events");
   requirePreservedRecords(currentBundles.adjustments, nextBundles.adjustments, "Inventory adjustments");
+  requirePreservedRecords(currentReconciliation.events, nextReconciliation.events, "Inventory reconciliation events");
+  const currentReconciliationIds = new Set(currentReconciliation.events.map((record) => record.id));
+  for (const event of nextReconciliation.events.filter((record) => !currentReconciliationIds.has(record.id))) {
+    const saleIds = (next.sales || [])
+      .filter((sale) => sale.inventoryItemId === event.inventoryItemId && saleCountsAgainstManagedInventory(next, sale))
+      .sort((left, right) => Number(left.inventoryAllocationSequence) - Number(right.inventoryAllocationSequence))
+      .map((sale) => sale.id);
+    if (JSON.stringify(saleIds) !== JSON.stringify(event.affectedSales.map((effect) => effect.saleId))) {
+      throw new Error("A new Inventory reconciliation must snapshot every immutable Sale allocated before confirmation.");
+    }
+  }
   requirePreservedRecords(currentBundles.lots, nextBundles.lots, "Inventory acquisition lots", MUTABLE_ACQUISITION_FIELDS);
   requirePreservedRecords(currentBundles.items, nextBundles.items, "Managed Inventory items", MUTABLE_ACQUISITION_FIELDS);
 
@@ -218,12 +243,14 @@ function validateManagedTransition(current, next) {
     ...currentBundles.events.map((record) => record.id),
     ...currentBundles.lots.map((record) => record.id),
     ...currentBundles.items.map((record) => record.id),
+    ...currentReconciliation.events.map((record) => record.id),
   ]);
   const requiresSourceVerification = [
     ...nextBundles.applications,
     ...nextBundles.events,
     ...nextBundles.lots,
     ...nextBundles.items,
+    ...nextReconciliation.events,
   ].some((record) => !currentIds.has(record.id));
   return { requiresSourceVerification, requiresRecoveryJournal: !managedStateUnchanged(current, next) };
 }
@@ -381,6 +408,8 @@ export function createFlipScoutRepository(storage = globalThis.localStorage, opt
       if (allowOwnerConfirmedInventoryMutation || hasInventoryCreationBundles(current) || hasInventoryCreationBundles(normalized)) {
         validateInventoryCreationStateBundles(current, { allowIncomplete: allowOwnerConfirmedInventoryMutation });
         validateInventoryCreationStateBundles(normalized);
+        validateInventoryReconciliationState(current, { allowIncomplete: allowOwnerConfirmedInventoryMutation });
+        validateInventoryReconciliationState(normalized);
       }
       requireManagedSalesPreserved(current, normalized);
       requireManagedSaleAppendAuthority(current, normalized, options.allowManagedSaleAppendId);
@@ -590,7 +619,7 @@ export function createFlipScoutRepository(storage = globalThis.localStorage, opt
     const parsed = deserializeFlipScoutState(raw);
     if (parsed.error) return { state: load(), error: parsed.error };
     const current = load();
-    for (const collection of ["inventory", "inventoryLots", "inventoryCreationApplications", "inventoryCreationEvents", "inventoryAdjustments"]) {
+    for (const collection of ["inventory", ...MANAGED_COLLECTIONS]) {
       const protectedRows = current[collection].filter((record) => record.provenanceManaged === true || collection !== "inventory");
       if (protectedRows.some((record) => JSON.stringify(parsed.state[collection].find((entry) => entry.id === record.id) || null) !== JSON.stringify(record))) {
         return { state: current, error: "Owner-confirmed acquisition history cannot be replaced by generic Business import." };

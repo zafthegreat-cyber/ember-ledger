@@ -1,5 +1,10 @@
 import { nonNegative } from "./calculations.js";
 import { hasValidManagedExactCost, soldQuantityForInventory } from "./inventory.js";
+import {
+  effectiveManagedSaleCogsMinorUnits,
+  managedSaleReconciliationProjection,
+  validateInventoryReconciliationState,
+} from "../purchaseReceiving/inventoryReconciliation/contracts.js";
 
 function exactUnitCosts(item = {}) {
   if (item.provenanceManaged !== true || !hasValidManagedExactCost(item)) return null;
@@ -49,6 +54,12 @@ export function suggestedInventorySaleCogsMinorUnits(item = {}, sales = [], quan
 }
 
 export function validateManagedInventorySales(state = {}) {
+  // Legacy exact-cost Inventory may predate the Phase 2C-B provenance bundle.
+  // It remains valid for immutable Sale allocation, but it cannot participate in
+  // Phase 2C-D reconciliation until a complete managed acquisition chain exists.
+  const reconciliation = (state.inventoryReconciliationEvents || []).length
+    ? validateInventoryReconciliationState(state, { allowIncomplete: true })
+    : { events: [] };
   const managedItems = new Map((state.inventory || []).filter((item) => item.provenanceManaged === true).map((item) => [item.id, item]));
   const linkedSales = (state.sales || []).filter((sale) => managedItems.has(sale.inventoryItemId));
   const linkedIds = linkedSales.map((sale) => String(sale.id || "").trim());
@@ -72,15 +83,28 @@ export function validateManagedInventorySales(state = {}) {
         throw new Error("A completed sale exceeds owner-confirmed Inventory availability.");
       }
       const expectedMinorUnits = sum(exact.slice(offset, offset + quantity));
+      const effectiveMinorUnits = effectiveManagedSaleCogsMinorUnits(sale, reconciliation.events);
       if (sale.costAuthority !== "INTEGER_MINOR_UNITS"
-        || sale.allocatedCostOfGoodsSoldMinorUnits !== expectedMinorUnits
-        || exactMajorUnitsToMinorUnits(sale.allocatedCostOfGoodsSold) !== expectedMinorUnits) {
-        throw new Error("A completed sale must retain the exact owner-confirmed Inventory cost slice.");
+        || exactMajorUnitsToMinorUnits(sale.allocatedCostOfGoodsSold) !== sale.allocatedCostOfGoodsSoldMinorUnits
+        || effectiveMinorUnits !== expectedMinorUnits) {
+        throw new Error("A completed sale and its append-only reconciliation must retain the exact owner-confirmed Inventory cost slice.");
       }
       offset += quantity;
     }
   }
   return true;
+}
+
+/**
+ * Derived accounting projection. The immutable Sale remains unchanged; callers
+ * may display/report the append-only COGS delta without replacing its original
+ * recorded cost or profit fields.
+ */
+export function inventorySaleAccountingProjection(sale = {}, state = {}) {
+  const reconciliation = (state.inventoryReconciliationEvents || []).length
+    ? validateInventoryReconciliationState(state, { allowIncomplete: true })
+    : { events: [] };
+  return managedSaleReconciliationProjection(sale, reconciliation.events);
 }
 
 export function hasExactInventoryCost(item) {

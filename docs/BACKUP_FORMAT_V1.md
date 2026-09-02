@@ -1,6 +1,6 @@
 # Code 3 Backup Format Version 1
 
-Status: Phase 1A format and later Account Ops, Inbox/Order, Bot Operations, Purchase/Receiving, and Phase 2C-B Inventory creation are published. Phase 2C-C adds no source; it advances the existing Deal Finder source to schema version 4 with safe typed Inventory correction/disposition/reversal metadata. Selected Stellar JSON, Inventory Handoff/Creation/Correction previews and candidates, the private Inventory journal, managed provider/Bot credentials, connection secret envelopes, OAuth state/index/used markers, encryption keys, Redis credentials, runtime proof, raw provider data, and proxy authentication remain excluded. No owner data has migrated, no canonical schema was applied, and no restore applies data.
+Status: Phase 1A format and later Account Ops, Inbox/Order, Bot Operations, Purchase/Receiving, and Inventory creation/correction are published. Phase 2C-D adds no source; it advances the existing Deal Finder source to schema version 5 with safe typed Inventory correction/disposition/reversal and confirmed reconciliation metadata. Selected Stellar JSON, Inventory Handoff/Creation/Correction/Reconciliation previews and candidates, the private Inventory journal, managed provider/Bot credentials, connection secret envelopes, OAuth state/index/used markers, encryption keys, Redis credentials, runtime proof, raw provider data, and proxy authentication remain excluded. No owner data has migrated, no canonical schema was applied, and no restore applies data.
 
 ## Purpose and boundary
 
@@ -42,9 +42,9 @@ The manifest contains the included and excluded source inventory, record counts,
 
 `src/features/backup/backupSourceRegistry.js` is the versioned coverage registry. It records storage type, schema version, export and validation adapters, reference dependencies, security/session sensitivity, and whether an omission changes coverage.
 
-The Phase 2C-C registry remains 25 sources: 21 locally included sources and four excluded or conditional sources. When every registered local source is readable, the 21 included sections come from these source families:
+The Phase 2C-D registry remains 25 sources: 21 locally included sources and four excluded or conditional sources. When every registered local source is readable, the 21 included sections come from these source families:
 
-- Deal Finder / Deal Inbox schema 4: appraisals, auctions, Search Rules, purchases, legacy lots/cost allocations, Inventory, owner-confirmed acquisition lots/applications/events/typed adjustments, sales/returns, expenses, mileage, activity, and provider-listing snapshots;
+- Deal Finder / Deal Inbox schema 5: appraisals, auctions, Search Rules, purchases, legacy lots/cost allocations, Inventory, owner-confirmed acquisition lots/applications/events/typed adjustments/reconciliation events, immutable sales/returns, expenses, mileage, activity, and provider-listing snapshots;
 - Owner Center restock profiles/events/predictions, visits, observations, import summaries, and local job summaries;
 - allowlisted legacy collection/business records;
 - legacy restock/store and private community records;
@@ -104,7 +104,7 @@ For Bot Operations, every included value must pass the domain's recursive author
 
 For Purchase/Receiving, every included value must pass the domain's recursive authority/credential/raw-source guard and exact-money schema validator. It may include nonsecret transaction metadata, source references, corrections, confirmation facts, and Receiving Events. It may not include payment credentials, retailer authentication, raw messages/provider payloads, client authority, a derived Inventory Handoff Preview, or an ephemeral Inventory Creation Candidate. A Receiving Event in backup is not an Inventory record and cannot make inventory coverage complete.
 
-For Phase 2C-C Inventory provenance, every included schema-4 Deal Finder value must pass the recursive security guard and exact integer-minor-unit record validator. Safe applications, creation events, acquisition lots, typed adjustments, and provenance-managed Inventory rows may retain stable Purchase/Receiving/product/lot references, original/current product and condition state, quantities, dispositions, currency, original/current costs, owner-confirmation method, idempotency facts, and bounded summaries. They may not embed candidate/preview state, the private recovery journal, client authority, credentials, payment authentication, raw source evidence, or arbitrary provider data.
+For Phase 2C-D Inventory provenance, every included schema-5 Deal Finder value must pass the recursive security guard and exact integer-minor-unit record validator. Safe applications, creation events, acquisition lots, typed adjustments, confirmed reconciliation events, immutable managed Sales, and provenance-managed Inventory rows may retain stable Purchase/Receiving/product/lot/Sale references, original/current product and condition state, quantities, dispositions, currency, original/current costs, exact signed COGS deltas, owner-confirmation method, idempotency facts, and bounded summaries. They may not embed candidate/preview state, the private recovery journal, client authority, credentials, payment authentication, raw source evidence, or arbitrary provider data.
 
 ## Phase 2A Account Ops extension
 
@@ -183,20 +183,21 @@ All five paths are `REQUIRES_MAPPING`. The Phase 1B schema's generic Purchase do
 
 ## Phase 2C-B Inventory creation extension
 
-Phase 2C-B did not add a 26th source or another Inventory section. Phase 2C-C keeps the same paths and storage key while advancing the existing `deal-finder` source to schema version 4:
+Phase 2C-B did not add a 26th source or another Inventory section. Phase 2C-D keeps the same paths and storage key while advancing the existing `deal-finder` source to schema version 5:
 
 ```text
 inventoryLots
 inventoryCreationApplications
 inventoryCreationEvents
 inventoryAdjustments
+inventoryReconciliationEvents
 ```
 
-Provenance-managed rows in the existing `inventory` path are also validated for exact cost and protected provenance. The schema-4 validator requires a complete application/event/item/lot bundle for every source identity, unique deterministic IDs, reciprocal item/lot links, and strict reconciliation of Purchase, line, Receiving, immutable creation facts, typed adjustment sequence, current product/condition/disposition, original/current quantity, total cost, and per-unit arrays. Adjustments must reference their application/item/lot/Purchase bundle and form one valid append-only before/after chain. Generic edits/deletes cannot be inferred from a backup record.
+Provenance-managed rows in the existing `inventory` path are also validated for exact cost and protected provenance. The schema-5 validator requires a complete application/event/item/lot bundle for every source identity, unique deterministic IDs, reciprocal item/lot links, and strict reconciliation of Purchase, line, Receiving, immutable creation facts, typed adjustment sequence, current product/condition/disposition, original/current quantity, total cost, per-unit arrays, immutable managed Sales, and confirmed reconciliation deltas. Adjustments must reference their application/item/lot/Purchase bundle and form one valid append-only before/after chain. Reconciliation events must reference immutable Sale snapshots and prove original COGS plus ordered deltas equals the corrected current unit-cost slice. Transfer references remain empty until a canonical managed-transfer authority exists. Generic edits/deletes cannot be inferred from a backup record.
 
-`InventoryHandoffPreview`, `InventoryCreationCandidate`, and Inventory correction/disposition previews and candidates are pure in-memory projections and never appear as paths, records, metrics, filenames, or derivatives. The private journal used to detect/recover interrupted local writes is likewise not a registered source. Backup generation does not confirm a candidate, repair a write, correct/return/reverse Inventory, or change any source.
+`InventoryHandoffPreview`, `InventoryCreationCandidate`, and Inventory correction/disposition/reconciliation previews and candidates are pure in-memory projections and never appear as paths, records, metrics, filenames, or derivatives. The private journal used to detect/recover interrupted local writes is likewise not a registered source. Backup generation does not confirm a candidate, repair a write, correct/return/reverse/reconcile Inventory, or change any source.
 
-Restore Preview validates schema/counts/IDs, complete application/event/item/lot bundles, typed adjustment references/order/before-after chains, exact current/original unit sums, duplicate source identity, protected provenance, and migration warnings with zero writes. Replacement Inventory is also checked across the Deal Finder and Purchase/Receiving sections so its owner-confirmed replacement event, physical-return adjustment, Receiving event, Purchase line, quantity, and deterministic source identity cannot be coherently substituted while remaining individually well formed. A cross-section mismatch blocks Restore Preview and makes a newly generated backup fail coverage verification. Restore Preview cannot create, correct, return, or reverse Inventory. Migration Preview classifies the mixed existing `inventory` collection plus `inventoryLots`, `inventoryCreationApplications`, `inventoryCreationEvents`, and `inventoryAdjustments` as `REQUIRES_MAPPING`; it does not activate remote Inventory, apply the canonical schema, map Receiving automatically, or treat a refund as a return.
+Restore Preview validates schema/counts/IDs, complete application/event/item/lot bundles, typed adjustment and reconciliation references/order/before-after chains, immutable Sale snapshots, exact original/current/signed-delta unit sums, duplicate source identity, protected provenance, and migration warnings with zero writes. Replacement Inventory is also checked across the Deal Finder and Purchase/Receiving sections so its owner-confirmed replacement event, physical-return adjustment, Receiving event, Purchase line, quantity, and deterministic source identity cannot be coherently substituted while remaining individually well formed. A cross-section mismatch blocks Restore Preview and makes a newly generated backup fail coverage verification. Restore Preview cannot create, correct, return, reverse, or reconcile Inventory. Migration Preview classifies the mixed existing `inventory` collection plus `inventoryLots`, `inventoryCreationApplications`, `inventoryCreationEvents`, `inventoryAdjustments`, `inventoryReconciliationEvents`, and managed Sales as `REQUIRES_MAPPING`; it does not activate remote Inventory, apply the canonical schema, map Receiving automatically, or treat a refund as a return.
 
 ## Phase 2D-B2 Stellar preview exclusion
 

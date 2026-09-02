@@ -186,7 +186,7 @@ async function main() {
     await assertNoHorizontalOverflow(page, "eBay Search at 360px");
 
     const savedState = await page.evaluate(() => JSON.parse(localStorage.getItem("ember-and-tide.flip-scout.v1") || "{}"));
-    assert.equal(savedState.schemaVersion, 4);
+    assert.equal(savedState.schemaVersion, 5);
     assert.equal(savedState.deals.length, 1);
     assert.equal(savedState.deals[0].listingUrl, "https://example.com/real-manual-listing");
     await page.getByRole("button", { name: "Back to Deals", exact: true }).click();

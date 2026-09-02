@@ -1,6 +1,6 @@
 # Code 3 Inventory Correction and Disposition Contract
 
-Status: Phase 2C-C local implementation candidate. Phase 2C-B is published at `bcff80042a15a29492ed32ba945291b50d35b5bb`. Publication, remote activation, migration, and Production deployment remain separately gated.
+Status: Phase 2C-C published at `ef30033a3b30989737878252fb31354aaecf68a3`. Phase 2C-D is the separate local-only historical reconciliation candidate. Remote activation, migration, and Production deployment remain separately gated.
 
 ## Purpose
 
@@ -51,6 +51,8 @@ Phase 2C-C supports explicit preview and confirmation for the implemented schema
 
 Product and condition corrections apply to the entire current acquisition lot. They are blocked after any unit has been sold or transferred because Phase 2C-C does not rewrite historical sale, transfer, tax-lot, or cost-of-goods identity.
 
+Phase 2C-D does not weaken that rule. It introduces a separately reviewed reconciliation candidate/event for the supported post-sale cases. The original Sale remains unchanged; exact signed COGS and product projection deltas are appended. Transfer categories remain blocked because no managed Transfer authority exists. See [Historical Inventory Reconciliation Contract](./INVENTORY_RECONCILIATION_CONTRACT.md).
+
 Physical return quantity is limited to current unsold and untransferred availability. A partial return must leave a positive available quantity. Quantity corrections retain a bounded structured reason (`COUNT_CORRECTION`, `RETURN`, `DAMAGE_DISPOSITION`, `LOSS`, or `REVERSAL_REPAIR`) in addition to the owner note; only a `RETURN` reason produces returned disposition semantics. Quantity and exact cost effects use the existing deterministic unit-cost prefix; they cannot make quantity negative or remove units already committed to sales or transfers.
 
 Acquisition-cost correction is blocked after any sale or transfer and when no quantity remains. It uses exact integer minor units and redistributes only the current remaining unit allocation. It does not rewrite realized cost of goods.
@@ -67,7 +69,7 @@ Raw-card and graded-card product/condition correction remains deferred. Phase 2C
 
 ## Backup, restore, and migration
 
-No new backup source is created. Backup Format v1 continues to include the safe Deal Finder section, now at schema version 4, with validated item/lot/application/event/typed-adjustment metadata.
+No new backup source is created. Backup Format v1 continues to include the safe Deal Finder section, advanced by Phase 2C-D to schema version 5, with validated item/lot/application/event/typed-adjustment/reconciliation metadata.
 
 Ephemeral correction previews/candidates and the private crash-recovery journal are not backup sources. Credentials, browser authority, raw evidence, provider payloads, and other prohibited security fields remain excluded.
 

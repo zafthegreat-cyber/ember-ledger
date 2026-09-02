@@ -32,7 +32,7 @@ has(page, /Original Purchase, Receiving, creation, sale, and transfer history re
 
 has(service, /function previewInventoryCorrection[\s\S]*assertOwner\(\);[\s\S]*inventoryCorrectionGateway\.preview/, "OWNER authorization precedes preview storage access");
 has(service, /allowed = new Set\(\["expectedVersion", "proposal"\]\)/, "confirmation rejects extra browser authority fields");
-has(service, /getTransferredQuantity: options\.getTransferredQuantity \|\| assertManagedInventoryHasNoTransferUsage/, "production correction service explicitly proves the schema-4 no-transfer invariant");
+has(service, /getTransferredQuantity: options\.getTransferredQuantity \|\| assertManagedInventoryHasNoTransferUsage/, "production correction service explicitly proves the managed no-transfer invariant");
 has(page, /service\.recordPurchaseEvent[\s\S]*PURCHASE_EVENT_TYPES\.REPLACEMENT_NOTED[\s\S]*service\.recordReceivingEvent/, "replacement workflow records scoped Purchase history before new physical Receiving");
 has(page, /relatedEventId: adjustment\.id/, "replacement Receiving is bound to the exact return disposition");
 has(page, /deriveEffectiveInventoryAdjustmentIds\(inventoryAdjustments\)/, "replacement actions use the effective append-only reversal chain");

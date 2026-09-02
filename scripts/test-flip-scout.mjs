@@ -15,9 +15,10 @@ import { availableInventoryCostMajorUnits, inventoryRecordCostMajorUnits, sugges
 import { escapeCsvValue, recordsToCsv } from "../src/features/flipScout/csv.js";
 import { FLIP_SCOUT_STORAGE_KEY, createEmptyFlipScoutState } from "../src/features/flipScout/constants.js";
 import { createFlipScoutRepository, deserializeFlipScoutState, normalizeFlipScoutState, serializeFlipScoutState } from "../src/features/flipScout/storageRepository.js";
-import { getDashboardSummary } from "../src/features/flipScout/selectors.js";
+import { getActualVsProjectedRows, getDashboardSummary, getSaleReportingProjection } from "../src/features/flipScout/selectors.js";
 import { findDealForProviderListing, mergeProviderListings, providerListingToDeal } from "../src/features/flipScout/ebayDiscovery.js";
 import { pathFromActiveTab, routeStateFromPath } from "../src/utils/appRouteState.js";
+import { confirmReconciliation, costProposal, createSoldManagedInventory } from "./inventory-reconciliation-test-helpers.mjs";
 
 function closeTo(actual, expected, tolerance = 1e-9) {
   assert.ok(Math.abs(actual - expected) <= tolerance, `Expected ${actual} to be within ${tolerance} of ${expected}`);
@@ -198,7 +199,7 @@ assert.deepEqual(malformed.state, createEmptyFlipScoutState(malformed.state.upda
 const imported = repository.importJson(JSON.stringify({ schemaVersion: 1, deals: [{ id: "deal-import", title: "Imported" }] }));
 assert.equal(imported.error, "");
 assert.equal(imported.state.deals[0].title, "Imported");
-assert.equal(imported.state.schemaVersion, 4, "Older backups migrate to the Phase 2C-C schema without changing the storage key");
+assert.equal(imported.state.schemaVersion, 5, "Older backups migrate to the Phase 2C-D schema without changing the storage key");
 assert.deepEqual(imported.state.inventoryLots, [], "older Business state receives an empty acquisition-lot collection");
 assert.deepEqual(imported.state.inventoryCreationEvents, [], "older Business state receives an empty Inventory creation history");
 assert.deepEqual(imported.state.providerListings, []);
@@ -342,6 +343,30 @@ const exactDashboard = getDashboardSummary({
   sales: [{ id: "sale-exact-dashboard", inventoryItemId: exactInventory.id, quantitySold: 1, status: "Completed" }],
 });
 assert.equal(exactDashboard.inventoryCost, 6.66, "dashboard cost preserves unsold exact minor-unit provenance");
+
+{
+  const reportingHarness = await createSoldManagedInventory({ id: "reporting-projection", quantity: 3, totalMinorUnits: 1000, soldQuantity: 1 });
+  const originalSaleBytes = JSON.stringify(reportingHarness.repository.load().sales);
+  await confirmReconciliation(reportingHarness.service, reportingHarness.inventoryItem, costProposal("reporting-projection", 1100));
+  const reportingState = reportingHarness.repository.load();
+  const historicalSale = reportingState.sales[0];
+  const reporting = getSaleReportingProjection(historicalSale, reportingState);
+  assert.equal(reporting.originalCogs, 3.34, "reporting retains the Sale's original exact COGS");
+  assert.equal(reporting.cogsAdjustment, 0.33, "reporting exposes the confirmed signed COGS adjustment separately");
+  assert.equal(reporting.effectiveCogs, 3.67, "reporting derives effective COGS without overwriting the Sale");
+  assert.equal(reporting.originalProfit, 16.66, "reporting retains original realized profit");
+  assert.equal(reporting.effectiveProfit, 16.33, "reporting subtracts a positive COGS adjustment from realized profit");
+  assert.equal(reporting.profitAdjustment, -0.33, "profit adjustment is the inverse of its COGS delta");
+  assert.equal(JSON.stringify(reportingState.sales), originalSaleBytes, "reporting projection leaves canonical Sale bytes unchanged");
+
+  const reportingDashboard = getDashboardSummary(reportingState);
+  assert.equal(reportingDashboard.realizedCogs, 3.67, "dashboard uses effective COGS");
+  assert.equal(reportingDashboard.realizedCogsAdjustment, 0.33, "dashboard exposes append-only COGS delta");
+  assert.equal(reportingDashboard.realizedProfit, 16.33, "dashboard profit includes confirmed reconciliation deltas");
+  const [reportingRow] = getActualVsProjectedRows(reportingState);
+  assert.equal(reportingRow.actualProfit, 16.33, "results projection uses reconciled realized profit");
+  assert.equal(reportingRow.realizedCogsAdjustment, 0.33, "results projection keeps reporting delta visible");
+}
 
 {
   const storage = new MemoryStorage({ [FLIP_SCOUT_STORAGE_KEY]: JSON.stringify(exactManagedState()) });

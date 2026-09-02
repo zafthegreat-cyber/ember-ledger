@@ -14,3 +14,6 @@ export * from "./inventoryCreation/gateway.js";
 export * from "./inventoryCorrection/constants.js";
 export * from "./inventoryCorrection/contracts.js";
 export * from "./inventoryCorrection/gateway.js";
+export * from "./inventoryReconciliation/constants.js";
+export * from "./inventoryReconciliation/contracts.js";
+export * from "./inventoryReconciliation/gateway.js";

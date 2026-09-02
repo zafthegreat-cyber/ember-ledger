@@ -17,7 +17,7 @@ The audit changes the conceptual “backend persistence first” phase into gate
 
 **Phase 2B1 — Secure Provider Runtime + Inbox / Order Intelligence Foundation**, **Phase 2B2-A — Preview Trusted Express/API Runtime**, and **Phase 2B2-B — Preview Owner Auth + Managed Provider State** are published through `b4848cb851b2be83093fbdc4ed4b976857f9d3ff`. The separate Phase 2B2-B.1 operational verification is paused. A Free Upstash resource and three branch-scoped Preview secrets exist, but Supabase owner/auth values and the remaining Preview CORS/activation/runtime values are not configured, no follow-up Preview was deployed, and `hostedRuntimeVerified=false`. Gmail, Outlook, IMAP, live Inbox ingestion, provider token use, Purchase import, migration, sync, and remote cutover remain inactive.
 
-**Phase 2D-A — Bot Integration Foundation** is published at `cdde7df506c94bc55b2ec7995596843ae1c2261a`, **Phase 2D-B1 — Provider Integration Discovery and Pilot Design** at `e832ab67a153c5e672f8a77dda5474aedb1395af`, and **Phase 2D-B2 — Stellar Task Export Preview** at `0b45c3584f7f15b4d951c5e4cddd1e42dcbeb5a3`. **Phase 2C-A — Purchase → Receiving → Inventory Foundation** is published at `3b10644cf1be9498c08b876b5a3bbef98a24ee1c`, and **Phase 2C-B — Owner-Confirmed Inventory Creation** at `bcff80042a15a29492ed32ba945291b50d35b5bb`; **Phase 2C-C — Inventory Correction and Disposition** is the current parallel local-only workstream. Hayha and Stellar remain `NOT_CONFIGURED`; no live provider, automatic evidence/Receiving-to-Inventory path, credentials, task control, proxy connection, checkout, billing, remote persistence, or deployment is active.
+**Phase 2D-A — Bot Integration Foundation** is published at `cdde7df506c94bc55b2ec7995596843ae1c2261a`, **Phase 2D-B1 — Provider Integration Discovery and Pilot Design** at `e832ab67a153c5e672f8a77dda5474aedb1395af`, and **Phase 2D-B2 — Stellar Task Export Preview** at `0b45c3584f7f15b4d951c5e4cddd1e42dcbeb5a3`. **Phase 2C-A — Purchase → Receiving → Inventory Foundation** is published at `3b10644cf1be9498c08b876b5a3bbef98a24ee1c`, **Phase 2C-B — Owner-Confirmed Inventory Creation** at `bcff80042a15a29492ed32ba945291b50d35b5bb`, and **Phase 2C-C — Inventory Correction and Disposition** at `ef30033a3b30989737878252fb31354aaecf68a3`; **Phase 2C-D — Historical COGS, Sale & Transfer Reconciliation** is the current parallel local-only workstream. Hayha and Stellar remain `NOT_CONFIGURED`; no live provider, automatic evidence/Receiving-to-Inventory path, destructive historical edit, credentials, task control, proxy connection, checkout, billing, remote persistence, or deployment is active.
 
 The published Phase 1A runtime applies Code 3 through the centralized brand configuration and coordinated PWA/browser/offline metadata. Storage, database, route, module, environment, cache, history, compatibility, and imported-source identifiers remain unchanged. The legal/public business name and tagline remain separately configurable and unresolved.
 
@@ -216,7 +216,7 @@ See [INVENTORY_CREATION_CONTRACT.md](./INVENTORY_CREATION_CONTRACT.md).
 
 ## Phase 2C-C — Inventory Correction and Disposition
 
-**Status:** Current local-only implementation candidate from published Phase 2C-B baseline `bcff80042a15a29492ed32ba945291b50d35b5bb`; publication is separately gated.
+**Status:** Published at `ef30033a3b30989737878252fb31354aaecf68a3`.
 
 - **Objective:** add explicit preview and OWNER confirmation for safe post-creation correction, physical return, and disposition while retaining immutable Purchase/Receiving/creation/sale/transfer history.
 - **Current code affected:** `src/features/purchaseReceiving/inventoryCorrection`, the existing Purchase/Receiving UI/service, schema-v4 Inventory contracts/repository, Deal Finder backup/preview/migration validation, focused tests, and documentation.
@@ -232,6 +232,25 @@ See [INVENTORY_CREATION_CONTRACT.md](./INVENTORY_CREATION_CONTRACT.md).
 - **Complexity:** Large.
 
 See [INVENTORY_CORRECTION_DISPOSITION_CONTRACT.md](./INVENTORY_CORRECTION_DISPOSITION_CONTRACT.md).
+
+## Phase 2C-D — Historical COGS, Sale & Transfer Reconciliation
+
+**Status:** Current local-only implementation candidate from published Phase 2C-C baseline `ef30033a3b30989737878252fb31354aaecf68a3`; publication is separately gated.
+
+- **Objective:** preserve completed Sale/Transfer truth while adding explicit append-only reconciliation for post-sale acquisition-cost/product/provenance corrections.
+- **Current code affected:** `src/features/purchaseReceiving/inventoryReconciliation`, schema-v5 Flip Scout Inventory, exact managed COGS projections, Purchase/Receiving reconciliation UI/service, Deal Finder backup/Restore Preview/migration validation, focused tests, and documentation.
+- **Data changes:** keep `ember-and-tide.flip-scout.v1`; add `inventoryReconciliationEvents`; preserve immutable Sale rows and typed adjustment history. Candidates/previews and the private recovery journal remain non-domain state.
+- **COGS behavior:** compare original repository-assigned Sale slices with corrected deterministic slices; append exact signed realized-COGS deltas; apply the unsold suffix to current Inventory cost; require sold plus remaining effects to equal the total lot-cost delta exactly.
+- **Product/reporting behavior:** retain Sale-time product, COGS, profit, and ROI. Show original facts plus explicit reconciled projections and correction-period metadata; do not rewrite original Sales or prior-period source dates.
+- **Transfer behavior:** no canonical managed-transfer collection exists, so transfer categories and multi-hop cases remain honest `NEEDS_REVIEW`/blocked states. Legacy movement is not promoted into authority.
+- **Authority/idempotency:** verified OWNER before reads, current Inventory/lot/Sale/Purchase/Receiving re-read inside the existing Web Lock, exact recomputation, quantity/cost conservation, deterministic semantic identity, private-journal persistence, readback, replay dedupe, and stale/conflicting fail-closed behavior.
+- **Security/backup/migration:** reject client authority and every credential/raw-source category; extend the existing Deal Finder safe section without adding a source; candidates/previews/journal excluded; Restore Preview zero-write; all affected paths `REQUIRES_MAPPING`; no server transaction, remote schema, or cutover.
+- **Explicit deferrals:** Raw/Graded card authority, canonical managed Transfers, multi-device transactions, product creation, automatic refund/return/replacement behavior, provider work, billing, and Production.
+- **Acceptance criteria:** original Sale bytes remain identical; confirmed deltas reconcile current exact cost; negative deltas are valid; partial sales preserve allocation order; transfer cases fail closed; repeated/interrupted/two-tab submissions produce one effect; full inherited regression passes.
+- **Rollback:** remove the additive schema-v5 reconciliation layer after exporting safe local metadata. Original Sale/Transfer/Purchase/Receiving/creation/correction facts remain intact; no provider, remote schema, billing, or Production rollback is required.
+- **Complexity:** Large.
+
+See [INVENTORY_RECONCILIATION_CONTRACT.md](./INVENTORY_RECONCILIATION_CONTRACT.md).
 
 ## Phase 2D-A — Bot Integration Foundation
 
@@ -454,4 +473,4 @@ Every implementation phase must:
 
 ## Exact next task recommendation
 
-The current authorized task is Phase 2C-C local Inventory correction/disposition and its detailed report only. After that report, stop. Phase 2D-B3 and every live provider/import path remain unauthorized. Phase 2B2-B.1 remains paused until the owner explicitly says `Supabase signed in.` and must not resume automatically. Do not deploy another Preview, create a bypass, connect a mailbox or Bot, begin provider OAuth, use real Purchase/order data, activate `REMOTE_ACTIVE`, migrate owner data, add billing, apply a schema, or modify Production without another explicit owner-approved specification.
+The current authorized task is Phase 2C-D local Historical COGS, Sale & Transfer Reconciliation and its detailed report only. After that report, stop. Phase 2D-B3 and every live provider/import path remain unauthorized. Phase 2B2-B.1 remains paused until the owner explicitly says `Supabase signed in.` and must not resume automatically. Do not deploy another Preview, create a bypass, connect a mailbox or Bot, begin provider OAuth, use real Purchase/order data, activate `REMOTE_ACTIVE`, migrate owner data, add billing, apply a schema, begin Raw/Graded authority, or modify Production without another explicit owner-approved specification.

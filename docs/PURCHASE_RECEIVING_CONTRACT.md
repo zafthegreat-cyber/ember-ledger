@@ -1,6 +1,6 @@
 # Purchase, Receiving, and Inventory Handoff Contract
 
-Status: Phase 2C-A and Phase 2C-B are published; Phase 2C-C is the local-only Inventory correction/disposition extension. This contract defines the OWNER-reviewed Purchase Draft boundary, canonical local Purchase, append-only Receiving, derived Inventory previews, and separate explicit Inventory creation/correction confirmation boundaries. Inbox/Order Intelligence and Bot Operations remain disconnected from every writer.
+Status: Phase 2C-A, Phase 2C-B, and Phase 2C-C are published; Phase 2C-D is the local-only historical Inventory/Sale reconciliation extension. This contract defines the OWNER-reviewed Purchase Draft boundary, canonical local Purchase, append-only Receiving, derived Inventory previews, and separate explicit Inventory creation/correction/reconciliation confirmation boundaries. Inbox/Order Intelligence and Bot Operations remain disconnected from every writer.
 
 Phase 2C-B published commit: `bcff80042a15a29492ed32ba945291b50d35b5bb`.
 
@@ -15,10 +15,12 @@ Delivery != Receiving
 Inventory Handoff Preview != Inventory
 Inventory Creation Candidate != Inventory
 Inventory Correction Candidate != Inventory Mutation
+
+Inventory Reconciliation Candidate != Historical Mutation
 Receiving != Inventory
 ```
 
-No upstream evidence record, delivery status, refund, synthetic provider result, or local UI state can bypass these boundaries. Phase 2C-B adds one narrowly scoped local Inventory writer after fresh authoritative re-derivation and explicit verified-OWNER confirmation. Phase 2C-C adds a separate preview/confirmation path for supported append-only correction and physical-return disposition. Neither adds an automatic Purchase importer, Receiving inference, replacement/extra Inventory creator, remote adapter, or synchronization path.
+No upstream evidence record, delivery status, refund, synthetic provider result, or local UI state can bypass these boundaries. Phase 2C-B adds one narrowly scoped local Inventory writer after fresh authoritative re-derivation and explicit verified-OWNER confirmation. Phase 2C-C adds a separate preview/confirmation path for supported append-only correction and physical-return disposition. Phase 2C-D adds a separate preview/confirmation path for append-only historical reconciliation while retaining original Sale/Transfer facts. None adds an automatic Purchase importer, Receiving inference, replacement/extra Inventory creator, remote adapter, or synchronization path.
 
 ## Future pipeline
 
@@ -39,11 +41,11 @@ Order Candidate or Checkout Evidence
   -> typed append-only Inventory adjustment
 ```
 
-Phase 2C-A implements the local review portion through Inventory Handoff Preview. Phase 2C-B adds the owner-confirmed local handoff. Phase 2C-C adds only the post-creation correction/disposition path and never rewrites the earlier records. Source relationships are stable references; raw messages, Bot payloads, and copied source records are prohibited. See [Owner-Confirmed Inventory Creation Contract](./INVENTORY_CREATION_CONTRACT.md) and [Inventory Correction and Disposition Contract](./INVENTORY_CORRECTION_DISPOSITION_CONTRACT.md).
+Phase 2C-A implements the local review portion through Inventory Handoff Preview. Phase 2C-B adds the owner-confirmed local handoff. Phase 2C-C adds only the post-creation correction/disposition path. Phase 2C-D reconciles downstream historical effects without rewriting the earlier records. Source relationships are stable references; raw messages, Bot payloads, and copied source records are prohibited. See [Owner-Confirmed Inventory Creation Contract](./INVENTORY_CREATION_CONTRACT.md), [Inventory Correction and Disposition Contract](./INVENTORY_CORRECTION_DISPOSITION_CONTRACT.md), and [Historical Inventory Reconciliation Contract](./INVENTORY_RECONCILIATION_CONTRACT.md).
 
 ## Authority and persistence
 
-The Purchase/Receiving browser document remains schema version 1 at `code3.purchase-receiving.v1`. Owner-confirmed Inventory writes reuse the existing `ember-and-tide.flip-scout.v1` Business Inventory source, advanced by Phase 2C-C to schema version 4 under the same storage key. `LOCAL_ONLY` is fixed and authoritative. Callers cannot select `REMOTE_ACTIVE`, supply an owner subject, role, session, entitlement, migration executor, sync adapter, or substitute inventory writer.
+The Purchase/Receiving browser document remains schema version 1 at `code3.purchase-receiving.v1`. Owner-confirmed Inventory writes reuse the existing `ember-and-tide.flip-scout.v1` Business Inventory source, advanced by Phase 2C-D to schema version 5 under the same storage key. `LOCAL_ONLY` is fixed and authoritative. Callers cannot select `REMOTE_ACTIVE`, supply an owner subject, role, session, entitlement, migration executor, sync adapter, or substitute inventory writer.
 
 The new service and storage document may be constructed or read only after the existing server-verified owner session reports `AUTHORIZED`. A query parameter, header controlled by the browser, localStorage flag, client role object, or record field never establishes OWNER authority. Session downgrade clears the mounted service and snapshot.
 
@@ -130,6 +132,8 @@ Phase 2C-B exact unit allocation uses integer minor units. It divides each Recei
 
 Phase 2C-B implements explicit append-only quantity/cost reversal after creation. Phase 2C-C extends the same protected history with typed correction and disposition records. A refund alone never removes Inventory. Physical return is explicit and limited to unsold/untransferred quantity; the full-return category consumes all available units and partial return uses its separate category. Product/condition and cost corrections are blocked after sales/transfers. A replacement requires one scoped, idempotently resumable owner-confirmed note linked to an effective unreversed return adjustment, then a new Receiving Event and Inventory-creation review. Replacement quantity is separate from ordinary order receipt totals, its new acquisition reuses the exact returned unit-cost slice, and completed replacement provenance blocks reversal of the consumed return. Unexpected extras require a separate acquisition/cost review. Provenance-managed acquisition items and lots cannot be generically edited, deleted, or imported over.
 
+Phase 2C-D does not turn those blockers into destructive edits. Where supported, it preserves the original Sale and appends an exact signed COGS/product reconciliation event plus any current unsold Inventory cost correction. The original allocation sequence remains authoritative. Transfer categories remain blocked because the current document has no canonical managed-transfer authority. Refund remains separate from both return and Inventory removal.
+
 ## Idempotency and history
 
 - Draft identity is scoped by source type and stable source reference/version.
@@ -147,14 +151,14 @@ Safe records may keep non-secret business metadata and stable references only. E
 
 ## Backup, Restore Preview, and migration
 
-Backup Format v1 may include validated safe `purchaseDrafts`, `purchases`, `purchaseEvents`, `receivingEvents`, and `activity` metadata from the separate source. The existing Deal Finder source may include safe schema-4 Inventory, acquisition-lot, application, creation-event, and typed-adjustment metadata. Inventory Handoff/Creation/Correction previews and candidates plus the private Inventory journal are not backup collections. The sanitizer independently removes prohibited authentication, payment, source-content, provider, and proxy fields.
+Backup Format v1 may include validated safe `purchaseDrafts`, `purchases`, `purchaseEvents`, `receivingEvents`, and `activity` metadata from the separate source. The existing Deal Finder source may include safe schema-5 Inventory, acquisition-lot, application, creation-event, typed-adjustment, immutable Sale, and confirmed reconciliation metadata. Inventory Handoff/Creation/Correction/Reconciliation previews and candidates plus the private Inventory journal are not backup collections. The sanitizer independently removes prohibited authentication, payment, source-content, provider, and proxy fields.
 
-Restore Preview validates schema, IDs, references, exact money, complete item/lot/application/event/typed-adjustment-chain reconciliation, protected provenance, security exclusions, and duplicate conflicts but performs zero writes. Every Phase 2C-A path remains `REQUIRES_MAPPING`; the mixed existing `deal-finder.inventory` path and Phase 2C-B/2C-C lot/application/event/adjustment paths are also `REQUIRES_MAPPING`. The existing canonical Phase 1B domains do not represent the richer review/receiving/inventory-provenance contract, and the schema remains unapplied.
+Restore Preview validates schema, IDs, references, exact money, complete item/lot/application/event/typed-adjustment/reconciliation chains, immutable managed Sale snapshots, protected provenance, security exclusions, and duplicate conflicts but performs zero writes. Every Phase 2C-A path remains `REQUIRES_MAPPING`; the mixed existing `deal-finder.inventory` path and Phase 2C-B/2C-C/2C-D lot/application/event/adjustment/reconciliation and managed-Sale paths are also `REQUIRES_MAPPING`. The existing canonical Phase 1B domains do not represent the richer review/receiving/inventory-provenance contract, and the schema remains unapplied.
 
-## Phase 2C-B/2C-C non-goals
+## Phase 2C-B through Phase 2C-D non-goals
 
-Neither phase connects a mailbox, Bot, retailer account, payment service, Supabase owner store, or managed provider store. They do not automatically create Inventory, infer return from refund, create products/replacements/extras, enable Raw/Graded correction, resume Phase 2B2-B.1, begin Phase 2D-B3, enable billing, activate `REMOTE_ACTIVE`, apply a schema, migrate owner data/files, or deploy Production. Gmail, Outlook, Stellar, and Hayha remain unconfigured; `hostedRuntimeVerified=false`.
+These phases connect no mailbox, Bot, retailer account, payment service, Supabase owner store, or managed provider store. They do not automatically create Inventory, infer return from refund, create products/replacements/extras, enable Raw/Graded correction, resume Phase 2B2-B.1, begin Phase 2D-B3, enable billing, activate `REMOTE_ACTIVE`, apply a schema, migrate owner data/files, or deploy Production. Gmail, Outlook, Stellar, and Hayha remain unconfigured; `hostedRuntimeVerified=false`.
 
 ## Future hosted/canonical gate
 
-A future phase may add hosted transactions, remote migration mapping, Raw/Graded type-specific correction, richer transfer/consumption reconciliation, or separately reviewed product creation only after server-side OWNER authorization, multi-device conflict handling, backup/cutover safety, and canonical schema approval. It must not weaken any evidence, Purchase, Receiving, candidate, correction, or Inventory-separation invariant above.
+A future phase may add hosted transactions, remote migration mapping, Raw/Graded type-specific correction, canonical managed-transfer authority, or separately reviewed product creation only after server-side OWNER authorization, multi-device conflict handling, backup/cutover safety, and canonical schema approval. It must not weaken any evidence, Purchase, Receiving, candidate, correction, reconciliation, or Inventory-separation invariant above.

@@ -101,7 +101,7 @@ async function noOverflow(page, label) {
         await confirm.press("Enter");
         await page.getByText(/Inventory correction recorded once/i).waitFor();
         const saved = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)), INVENTORY_KEY);
-        equal(saved.schemaVersion, 4, "correction state uses schema 4");
+        equal(saved.schemaVersion, 5, "correction state uses schema 5");
         equal(saved.inventory.length, 1, "correction does not create a second Inventory record");
         equal(saved.inventory[0].condition, "DAMAGED", "condition correction updates current projection");
         equal(saved.inventory[0].quantity, 2, "condition correction preserves quantity");

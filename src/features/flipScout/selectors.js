@@ -1,6 +1,10 @@
 import { calculateSaleResults, nonNegative, safeNumber } from "./calculations.js";
 import { soldQuantityForInventory } from "./inventory.js";
-import { availableInventoryCostMajorUnits, inventoryRecordCostMajorUnits } from "./exactInventoryCost.js";
+import {
+  availableInventoryCostMajorUnits,
+  inventoryRecordCostMajorUnits,
+  inventorySaleAccountingProjection,
+} from "./exactInventoryCost.js";
 
 export function formatCurrency(value, options = {}) {
   const parsed = safeNumber(value, 0);
@@ -33,6 +37,70 @@ export function timingIndicator(value, kind = "ending", now = new Date()) {
 const riskRank = { low: 1, medium: 2, high: 3, unknown: 4 };
 const confidenceRank = { high: 3, medium: 2, low: 1 };
 
+function saleProductReconciliation(saleId, events = []) {
+  const effects = events
+    .slice()
+    .sort((left, right) => Number(left.reconciliationSequence || 0) - Number(right.reconciliationSequence || 0))
+    .flatMap((event) => (event.affectedSales || []).filter((effect) => effect.saleId === saleId));
+  if (!effects.length) return Object.freeze({ adjusted: false, originalProductReference: null, effectiveProductReference: null });
+  const originalProductReference = effects[0].originalProductReference;
+  const effectiveProductReference = effects.at(-1).correctedProductReference;
+  return Object.freeze({
+    adjusted: originalProductReference !== effectiveProductReference,
+    originalProductReference,
+    effectiveProductReference,
+  });
+}
+
+/**
+ * Reporting-only Sale projection. Canonical Sale bytes remain the historical
+ * record; confirmed reconciliation events contribute a signed COGS delta to
+ * current reports without replacing the original cost or profit.
+ */
+export function getSaleReportingProjection(sale = {}, state = {}) {
+  const calculated = calculateSaleResults(sale);
+  const originalCogs = nonNegative(sale.allocatedCostOfGoodsSold ?? calculated.costOfGoodsSold);
+  const originalProfit = safeNumber(sale.realizedProfit ?? calculated.realizedProfit);
+  const originalRoi = sale.realizedRoi == null ? calculated.realizedRoi : safeNumber(sale.realizedRoi);
+  const base = {
+    originalCogs,
+    cogsAdjustment: 0,
+    effectiveCogs: originalCogs,
+    originalProfit,
+    profitAdjustment: 0,
+    effectiveProfit: originalProfit,
+    originalRoi,
+    effectiveRoi: originalRoi,
+    hasReconciliation: false,
+    originalProductReference: null,
+    effectiveProductReference: null,
+    productRelationshipAdjusted: false,
+  };
+  if (sale.costAuthority !== "INTEGER_MINOR_UNITS" || !Number.isSafeInteger(sale.allocatedCostOfGoodsSoldMinorUnits)) {
+    return Object.freeze(base);
+  }
+  const accounting = inventorySaleAccountingProjection(sale, state);
+  const product = saleProductReconciliation(String(sale.id || ""), state.inventoryReconciliationEvents || []);
+  const effectiveCogs = accounting.effectiveCogsMinorUnits / 100;
+  const effectiveProfit = accounting.effectiveRealizedProfitMinorUnits == null
+    ? safeNumber(sale.netProceeds ?? calculated.netProceeds) - effectiveCogs
+    : accounting.effectiveRealizedProfitMinorUnits / 100;
+  return Object.freeze({
+    originalCogs: accounting.originalCogsMinorUnits / 100,
+    cogsAdjustment: accounting.cogsAdjustmentMinorUnits / 100,
+    effectiveCogs,
+    originalProfit,
+    profitAdjustment: -(accounting.cogsAdjustmentMinorUnits / 100),
+    effectiveProfit,
+    originalRoi,
+    effectiveRoi: effectiveCogs > 0 ? effectiveProfit / effectiveCogs : null,
+    hasReconciliation: accounting.cogsAdjustmentMinorUnits !== 0 || product.adjusted,
+    originalProductReference: product.originalProductReference,
+    effectiveProductReference: product.effectiveProductReference,
+    productRelationshipAdjusted: product.adjusted,
+  });
+}
+
 export function sortFlipScoutRecords(records = [], sort = "newest") {
   return [...records].sort((a, b) => {
     if (sort === "ending_soon") {
@@ -53,8 +121,10 @@ export function getActualVsProjectedRows(state = {}, now = new Date()) {
   return (state.inventory || []).map((item) => {
     const itemSales = sales.filter((sale) => sale.inventoryItemId === item.id && String(sale.status || "").toLowerCase() === "completed");
     const actualSalesProceeds = itemSales.reduce((total, sale) => total + safeNumber(sale.netProceeds ?? calculateSaleResults(sale).netProceeds), 0);
-    const actualProfit = itemSales.reduce((total, sale) => total + safeNumber(sale.realizedProfit ?? calculateSaleResults(sale).realizedProfit), 0);
-    const actualCosts = itemSales.reduce((total, sale) => total + nonNegative(sale.allocatedCostOfGoodsSold) + nonNegative(sale.actualOutboundShipping) + nonNegative(sale.packaging) + nonNegative(sale.sellingFees) + nonNegative(sale.paymentFees) + nonNegative(sale.otherCosts), 0);
+    const accounting = itemSales.map((sale) => getSaleReportingProjection(sale, state));
+    const actualProfit = accounting.reduce((total, projection) => total + projection.effectiveProfit, 0);
+    const actualCosts = itemSales.reduce((total, sale, index) => total + accounting[index].effectiveCogs + nonNegative(sale.actualOutboundShipping) + nonNegative(sale.packaging) + nonNegative(sale.sellingFees) + nonNegative(sale.paymentFees) + nonNegative(sale.otherCosts), 0);
+    const realizedCogsAdjustment = accounting.reduce((total, projection) => total + projection.cogsAdjustment, 0);
     const projectedProfit = safeNumber(item.originalProjectedProfit ?? item.projectedProfit);
     const projectedRoiInput = safeNumber(item.originalProjectedRoi ?? item.projectedRoi);
     const projectedRoi = Math.abs(projectedRoiInput) > 1 ? projectedRoiInput / 100 : projectedRoiInput;
@@ -77,6 +147,7 @@ export function getActualVsProjectedRows(state = {}, now = new Date()) {
       actualSalesProceeds,
       actualCosts,
       actualProfit,
+      realizedCogsAdjustment,
       realizedRoi,
       profitDifference: actualProfit - projectedProfit,
       roiDifference: realizedRoi === null ? null : realizedRoi - projectedRoi,
@@ -104,7 +175,10 @@ export function getDashboardSummary(state = {}, now = new Date()) {
     return total + nonNegative(item.projectedResaleMid) * available;
   }, 0);
   const realizedSalesRevenue = completedSales.reduce((total, sale) => total + nonNegative(sale.grossSalePrice), 0);
-  const realizedProfit = completedSales.reduce((total, sale) => total + safeNumber(sale.realizedProfit ?? calculateSaleResults(sale).realizedProfit), 0);
+  const saleAccounting = completedSales.map((sale) => getSaleReportingProjection(sale, state));
+  const realizedProfit = saleAccounting.reduce((total, projection) => total + projection.effectiveProfit, 0);
+  const realizedCogs = saleAccounting.reduce((total, projection) => total + projection.effectiveCogs, 0);
+  const realizedCogsAdjustment = saleAccounting.reduce((total, projection) => total + projection.cogsAdjustment, 0);
   const expenseTotal = expenses.reduce((total, expense) => total + nonNegative(expense.amount) * Math.min(1, nonNegative(expense.businessPercentage || 100) / 100), 0);
   const agingCount = inventory.filter((item) => {
     if (soldQuantityForInventory(item.id, sales) >= nonNegative(item.quantity)) return false;
@@ -126,6 +200,8 @@ export function getDashboardSummary(state = {}, now = new Date()) {
     projectedInventoryValue,
     realizedSalesRevenue,
     realizedProfit,
+    realizedCogs,
+    realizedCogsAdjustment,
     expenseTotal,
     agingCount,
   };

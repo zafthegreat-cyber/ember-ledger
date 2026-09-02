@@ -261,9 +261,12 @@ const PURCHASE_RECEIVING_REFERENCE_TARGETS = Object.freeze({
 
 const DEAL_FINDER_REFERENCE_TARGETS = Object.freeze({
   inventoryLotId: ["inventoryLots"],
+  acquisitionLotId: ["inventoryLots"],
   inventoryCreationApplicationId: ["inventoryCreationApplications"],
   applicationId: ["inventoryCreationApplications"],
   inventoryCreationEventId: ["inventoryCreationEvents"],
+  sourceInventoryAdjustmentId: ["inventoryAdjustments"],
+  reversesReconciliationEventId: ["inventoryReconciliationEvents"],
   receivingEventReferences: ["receivingEvents"],
   purchaseLineItemId: ["purchaseLineItems"],
   replacementAuthorizationEventId: ["purchaseEvents"],

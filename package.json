@@ -92,6 +92,8 @@
     "test:code3-inventory-creation-browser": "node --no-warnings scripts/test-code3-inventory-creation-browser.cjs",
     "test:code3-inventory-correction": "node --no-warnings scripts/test-code3-inventory-correction-domain.mjs && node --no-warnings scripts/test-code3-inventory-correction-history.mjs && node --no-warnings scripts/test-code3-inventory-correction-security.mjs && node --no-warnings scripts/test-code3-inventory-correction-fixtures.mjs && node --no-warnings scripts/test-code3-inventory-correction-ui.mjs",
     "test:code3-inventory-correction-browser": "node --no-warnings scripts/test-code3-inventory-correction-browser.cjs",
+    "test:code3-inventory-reconciliation": "node --no-warnings scripts/test-code3-inventory-reconciliation-domain.mjs && node --no-warnings scripts/test-code3-inventory-reconciliation-history.mjs && node --no-warnings scripts/test-code3-inventory-reconciliation-security.mjs && node --no-warnings scripts/test-code3-inventory-reconciliation-fixtures.mjs && node --no-warnings scripts/test-code3-inventory-reconciliation-ui.mjs",
+    "test:code3-inventory-reconciliation-browser": "node --no-warnings scripts/test-code3-inventory-reconciliation-browser.cjs",
     "test:code3-canonical": "npm --prefix backend run test:code3-canonical",
     "test:tier-foundation": "node --no-warnings scripts/test-tier-foundation.mjs",
     "test:quick-add": "node --no-warnings scripts/test-quick-add-routing.mjs",

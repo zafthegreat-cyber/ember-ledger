@@ -7,6 +7,7 @@ import { validateManagedInventorySales } from "../flipScout/exactInventoryCost.j
 import {
   validateInventoryCreationStateBundles,
 } from "../purchaseReceiving/inventoryCreation/contracts.js";
+import { validateInventoryReconciliationState } from "../purchaseReceiving/inventoryReconciliation/contracts.js";
 import { validateReplacementInventoryPurchaseProvenance } from "../purchaseReceiving/service.js";
 
 function isJsonContainer(value) {
@@ -58,11 +59,12 @@ function validatePurchaseReceivingV1(source, data) {
   }
 }
 
-function validateDealFinderV3(source, data) {
+function validateDealFinderState(source, data) {
   try {
     const normalized = normalizeFlipScoutState(data, "1970-01-01T00:00:00.000Z");
     validateInventoryCreationStateBundles(normalized);
     validateManagedInventorySales(normalized);
+    validateInventoryReconciliationState(normalized);
     return [];
   } catch (error) {
     const code = error?.code ? ` (${error.code})` : "";
@@ -120,8 +122,8 @@ export function validateBackupSourceData(source, data, { requireSupportedSchema 
   if (source?.validationAdapter === "purchase-receiving-v1") {
     errors.push(...validatePurchaseReceivingV1(source, data));
   }
-  if (["deal-finder-v3", "deal-finder-v4"].includes(source?.validationAdapter)) {
-    errors.push(...validateDealFinderV3(source, data));
+  if (["deal-finder-v3", "deal-finder-v4", "deal-finder-v5"].includes(source?.validationAdapter)) {
+    errors.push(...validateDealFinderState(source, data));
   }
 
   return { valid: errors.length === 0, errors, schemaVersion };
@@ -154,6 +156,53 @@ export function validateBackupCrossSourceRelationships(sections = []) {
   } catch (error) {
     const code = error?.code ? ` (${error.code})` : "";
     errors.push(`Business Inventory replacement provenance does not match Purchase/Receiving history${code}.`);
+  }
+
+  const reconciliationEvents = Array.isArray(inventorySection.data?.inventoryReconciliationEvents)
+    ? inventorySection.data.inventoryReconciliationEvents
+    : [];
+  if (reconciliationEvents.length) {
+    const purchaseState = sourceSections.get("purchase-receiving")?.data;
+    try {
+      if (!purchaseState || typeof purchaseState !== "object" || Array.isArray(purchaseState)
+        || !Array.isArray(purchaseState.purchases) || !Array.isArray(purchaseState.receivingEvents)
+        || !Array.isArray(inventorySection.data?.inventoryCreationApplications)) {
+        throw Object.assign(new Error("Purchase/Receiving history is required for Inventory reconciliation provenance."), { code: "RECONCILIATION_PURCHASE_PROVENANCE_REQUIRED" });
+      }
+      const purchases = new Map(purchaseState.purchases.map((purchase) => [String(purchase?.id || ""), purchase]));
+      const receivingEvents = new Map(purchaseState.receivingEvents.map((event) => [String(event?.id || ""), event]));
+      const applications = new Map(inventorySection.data.inventoryCreationApplications.map((application) => [String(application?.id || ""), application]));
+      for (const event of reconciliationEvents) {
+        const purchaseId = String(event?.purchaseId || "");
+        const application = applications.get(String(event?.applicationId || ""));
+        const purchase = purchases.get(purchaseId);
+        const eventReceivingIds = Array.isArray(event?.receivingEventReferences) ? event.receivingEventReferences.map(String) : [];
+        const applicationReceivingIds = Array.isArray(application?.receivingEventReferences)
+          ? application.receivingEventReferences.map(String)
+          : [];
+        if (!application || !purchase || String(application.purchaseId || "") !== purchaseId) {
+          throw Object.assign(new Error("Inventory reconciliation Purchase provenance does not match its acquisition application."), { code: "RECONCILIATION_PURCHASE_PROVENANCE_INVALID" });
+        }
+        const purchaseLineId = String(application.purchaseLineItemId || "");
+        if (!purchaseLineId || !(purchase.lineItems || []).some((line) => String(line?.lineItemId || "") === purchaseLineId)) {
+          throw Object.assign(new Error("Inventory reconciliation Purchase-line provenance is invalid."), { code: "RECONCILIATION_PURCHASE_LINE_INVALID" });
+        }
+        if (JSON.stringify([...eventReceivingIds].sort()) !== JSON.stringify([...applicationReceivingIds].sort())) {
+          throw Object.assign(new Error("Inventory reconciliation Receiving provenance does not match its acquisition application."), { code: "RECONCILIATION_RECEIVING_PROVENANCE_INVALID" });
+        }
+        for (const receivingEventId of eventReceivingIds) {
+          const receivingEvent = receivingEvents.get(receivingEventId);
+          if (!receivingEvent
+            || String(receivingEvent.purchaseId || "") !== purchaseId
+            || !(receivingEvent.entries || []).some((entry) => String(entry?.lineItemId || "") === purchaseLineId)) {
+            throw Object.assign(new Error("Inventory reconciliation Receiving provenance is invalid."), { code: "RECONCILIATION_RECEIVING_PROVENANCE_INVALID" });
+          }
+        }
+      }
+    } catch (error) {
+      const code = error?.code ? ` (${error.code})` : "";
+      errors.push(`Inventory reconciliation provenance does not match Purchase/Receiving history${code}.`);
+    }
   }
 
   return { valid: errors.length === 0, errors };

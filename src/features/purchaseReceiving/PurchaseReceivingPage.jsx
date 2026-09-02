@@ -27,6 +27,7 @@ import {
   INVENTORY_CORRECTION_CATEGORIES,
   INVENTORY_QUANTITY_CORRECTION_REASONS,
 } from "./inventoryCorrection/constants.js";
+import { INVENTORY_RECONCILIATION_CATEGORIES } from "./inventoryReconciliation/constants.js";
 import { createPurchaseReceivingService } from "./service.js";
 import "./purchase-receiving.css";
 
@@ -84,6 +85,13 @@ function moneyLabel(value, fallbackCurrency = "USD") {
   } catch {
     return `${value.minorUnits} ${value.currency || fallbackCurrency} minor units`;
   }
+}
+
+function signedMoneyLabel(minorUnits, currency = "USD") {
+  if (!Number.isSafeInteger(minorUnits)) return "Not available";
+  if (minorUnits === 0) return moneyLabel({ minorUnits: 0, currency });
+  const sign = minorUnits > 0 ? "+" : "−";
+  return `${sign}${moneyLabel({ minorUnits: Math.abs(minorUnits), currency })}`;
 }
 
 function recordMoney(record, field) {
@@ -263,8 +271,9 @@ function ReceivingDialog({ purchase, receivingEvents = [], form, onChange, onClo
   );
 }
 
-function InventoryCorrectionCard({ item, adjustments = [], effectiveAdjustmentIds = new Set(), replacementReceivedSourceIds = new Set(), busy, onReview, onReplacement }) {
+function InventoryCorrectionCard({ item, adjustments = [], reconciliationEvents = [], effectiveAdjustmentIds = new Set(), replacementReceivedSourceIds = new Set(), busy, onReview, onReplacement, onReconcile }) {
   const itemAdjustments = adjustments.filter((entry) => entry.inventoryItemId === item.id);
+  const itemReconciliations = reconciliationEvents.filter((entry) => entry.inventoryItemId === item.id);
   const replacementEligible = itemAdjustments.find((entry) => isPhysicalInventoryReturnAdjustment(entry)
     && effectiveAdjustmentIds.has(entry.id)
     && !replacementReceivedSourceIds.has(entry.id));
@@ -279,10 +288,12 @@ function InventoryCorrectionCard({ item, adjustments = [], effectiveAdjustmentId
         { label: "Condition", value: words(item.condition) },
         { label: "Exact acquisition cost", value: moneyLabel({ minorUnits: item.acquisitionCostMinorUnits, currency: item.currency }) },
         { label: "Append-only events", value: itemAdjustments.length },
+        { label: "Historical reconciliations", value: itemReconciliations.length },
       ]} />
       <p className="purchase-receiving-invariant">Inventory Correction Candidate != Inventory Mutation</p>
       <div className="purchase-receiving-actions">
         <PrimaryButton onClick={() => onReview(item, itemAdjustments)} disabled={busy}>Review Correction or Return</PrimaryButton>
+        {itemReconciliations.length ? <SecondaryButton onClick={() => onReconcile(item, itemReconciliations)} disabled={busy}>Review Reconciliation Reversal</SecondaryButton> : null}
         {replacementEligible ? <SecondaryButton onClick={() => onReplacement(item, replacementEligible)} disabled={busy}>Record Replacement Receiving</SecondaryButton> : null}
       </div>
     </RecordCard>
@@ -324,43 +335,119 @@ function CorrectionState({ title, state }) {
   ]} /></div>;
 }
 
-function InventoryCorrectionDialog({ item, form, candidate, managedInventory, adjustments, busy, onChange, onPreview, onConfirm, onClose }) {
+function correctionNeedsHistoricalReconciliation(candidate) {
+  const returnAfterSale = Number(candidate?.soldQuantity || 0) > 0 && [
+    INVENTORY_CORRECTION_CATEGORIES.RETURN_TO_RETAILER,
+    INVENTORY_CORRECTION_CATEGORIES.PARTIAL_RETURN,
+  ].includes(candidate?.category);
+  return returnAfterSale || (candidate?.blockers || []).some((blocker) => /COGS|SALE|TRANSFER|RECONCILIATION/.test(String(blocker || "")));
+}
+
+function reconciliationConfirmLabel(candidate) {
+  const category = String(candidate?.category || "");
+  if (/TRANSFER/.test(category)) return "Confirm Transfer Reconciliation";
+  if (/COGS|SALE_COST|ACCOUNTING/.test(category)) return "Confirm COGS Adjustment";
+  if (/PRIOR_CORRECTION_REVERSAL/.test(category)) return "Confirm Reconciliation Reversal";
+  return "Confirm Reconciliation";
+}
+
+function HistoricalReconciliationPreview({ candidate, busy, onConfirm }) {
+  if (!candidate) return null;
+  const currency = candidate.current?.currency || candidate.proposed?.currency || "USD";
+  const sales = candidate.affectedSales || [];
+  const transfers = candidate.affectedTransfers || [];
+  const transferBlocked = (candidate.blockers || []).some((entry) => /TRANSFER/.test(String(entry || "")));
+  return (
+    <section className="inventory-reconciliation-preview" aria-labelledby="inventory-reconciliation-title" aria-busy={busy ? "true" : "false"} data-reconciliation-status={candidate.status || (candidate.eligible ? "READY_TO_CONFIRM" : "NEEDS_REVIEW")}>
+      <div className="inventory-reconciliation-heading">
+        <div><SourceBadge>Append-only historical review</SourceBadge><h3 id="inventory-reconciliation-title">Historical Reconciliation</h3><p>Original completed records remain unchanged. Confirming appends a reviewed reconciliation and updates only current projections.</p></div>
+        <StatusBadge tone={candidate.eligible ? "success" : "warning"}>{words(candidate.status || (candidate.eligible ? "READY_TO_CONFIRM" : "NEEDS_REVIEW"))}</StatusBadge>
+      </div>
+      <div className="inventory-reconciliation-state-flow">
+        <CorrectionState title="Original Historical State" state={candidate.current} />
+        <span aria-hidden="true">→</span>
+        <CorrectionState title="Proposed Correction" state={candidate.proposed} />
+      </div>
+      <div className="inventory-reconciliation-effects" aria-label="Accounting and inventory consequences">
+        <strong>Accounting & Inventory Consequences</strong>
+        <Facts rows={[
+          { label: "Realized COGS adjustment", value: signedMoneyLabel(candidate.saleCogsEffectMinorUnits, currency) },
+          { label: "Remaining Inventory cost", value: signedMoneyLabel(candidate.remainingInventoryCostEffectMinorUnits, currency) },
+          { label: "Total acquisition change", value: signedMoneyLabel(candidate.costEffectMinorUnits, currency) },
+          { label: "Quantity effect", value: candidate.quantityEffect ?? 0 },
+        ]} />
+        <p>Historical Sale, Transfer, Purchase, Receiving, creation, and prior correction records remain append-only.</p>
+      </div>
+      <div className="inventory-reconciliation-records" aria-label="Affected historical records">
+        <strong>Affected Records</strong>
+        {sales.length ? <div className="inventory-reconciliation-record-list">{sales.map((sale, index) => (
+          <article key={sale.saleId || index} className="inventory-reconciliation-record">
+            <div><span>Sale {sale.allocationSequence || index + 1}</span><small>{sale.saleId || "Stable sale reference"}</small></div>
+            <Facts rows={[
+              { label: "Quantity", value: sale.quantity },
+              { label: "Original COGS", value: moneyLabel({ minorUnits: sale.originalCogsMinorUnits, currency }) },
+              { label: "Currently effective COGS", value: moneyLabel({ minorUnits: sale.priorEffectiveCogsMinorUnits, currency }) },
+              { label: "Corrected COGS", value: moneyLabel({ minorUnits: sale.correctedCogsMinorUnits, currency }) },
+              { label: "Adjustment", value: signedMoneyLabel(sale.cogsDeltaMinorUnits, currency) },
+              { label: "Original product", value: sale.originalProductReference },
+              { label: "Corrected relationship", value: sale.correctedProductReference },
+            ]} />
+          </article>
+        ))}</div> : <p>No completed Sale requires an accounting adjustment.</p>}
+        {transfers.length ? <div className="inventory-reconciliation-record-list">{transfers.map((transfer, index) => <article key={transfer.transferId || index} className="inventory-reconciliation-record"><strong>Transfer {index + 1}</strong><small>{transfer.transferId || "Stable transfer reference"}</small></article>)}</div> : null}
+        {transferBlocked ? <p className="inventory-reconciliation-blocked" role="status">Transfer reconciliation needs review because canonical managed Transfer authority is not available. No Transfer or Inventory history can be changed from this preview.</p> : null}
+      </div>
+      {candidate.blockers?.length ? <ul className="purchase-receiving-warnings" data-reconciliation-blocked="true">{candidate.blockers.map((entry) => <li key={entry}>{words(entry)}</li>)}</ul> : null}
+      {candidate.warnings?.length ? <ul className="purchase-receiving-warnings">{candidate.warnings.map((entry) => <li key={entry}>{words(entry)}</li>)}</ul> : null}
+      <p className="purchase-receiving-invariant">Inventory Reconciliation Candidate != Historical Mutation</p>
+      <div className="purchase-receiving-actions">
+        <PrimaryButton onClick={onConfirm} disabled={busy || !candidate.eligible}>{busy ? "Confirming Reconciliation…" : reconciliationConfirmLabel(candidate)}</PrimaryButton>
+      </div>
+    </section>
+  );
+}
+
+function InventoryCorrectionDialog({ item, form, candidate, reconciliationCandidate, managedInventory, adjustments, reconciliationEvents, busy, onChange, onPreview, onPreviewReconciliation, onConfirm, onConfirmReconciliation, onClose }) {
   if (!item) return null;
+  const reconciliationOnly = form.reconciliationOnly === true;
   const category = form.category || INVENTORY_CORRECTION_CATEGORIES.CONDITION_CORRECTION;
   const needsCondition = [INVENTORY_CORRECTION_CATEGORIES.CONDITION_CORRECTION, INVENTORY_CORRECTION_CATEGORIES.DAMAGED_AFTER_RECEIVING].includes(category);
   const needsProduct = [INVENTORY_CORRECTION_CATEGORIES.PRODUCT_RESOLUTION_CORRECTION, INVENTORY_CORRECTION_CATEGORIES.WRONG_ITEM_RESOLUTION, INVENTORY_CORRECTION_CATEGORIES.SUBSTITUTION_RESOLUTION].includes(category);
   const needsQuantity = [INVENTORY_CORRECTION_CATEGORIES.PARTIAL_RETURN, INVENTORY_CORRECTION_CATEGORIES.QUANTITY_CORRECTION].includes(category);
   const needsCost = category === INVENTORY_CORRECTION_CATEGORIES.ACQUISITION_COST_CORRECTION;
   const needsReversal = category === INVENTORY_CORRECTION_CATEGORIES.REVERSAL_CORRECTION;
+  const requiresReconciliation = correctionNeedsHistoricalReconciliation(candidate);
   const update = (patch) => onChange({ ...form, ...patch });
   return (
     <Dialog
       open
-      title="Review Inventory Correction"
-      description="Preview the current state, proposed change, and downstream effect. Nothing changes until explicit owner confirmation succeeds."
+      title={reconciliationOnly ? "Review Historical Reconciliation Reversal" : "Review Inventory Correction"}
+      description={reconciliationOnly ? "Review an append-only reversal of the latest historical reconciliation. The original event remains in history." : "Preview the current state, proposed change, and downstream effect. Nothing changes until explicit owner confirmation succeeds."}
       onClose={busy ? undefined : onClose}
-      actions={<><SecondaryButton onClick={onClose} disabled={busy}>Cancel</SecondaryButton><PrimaryButton onClick={onPreview} disabled={busy}>Review Correction</PrimaryButton>{candidate ? <PrimaryButton onClick={onConfirm} disabled={busy || !candidate.eligible}>{[INVENTORY_CORRECTION_CATEGORIES.RETURN_TO_RETAILER, INVENTORY_CORRECTION_CATEGORIES.PARTIAL_RETURN].includes(category) ? "Confirm Return" : "Confirm Correction"}</PrimaryButton> : null}</>}
+      actions={<><SecondaryButton onClick={onClose} disabled={busy}>Cancel</SecondaryButton>{!reconciliationOnly ? <PrimaryButton onClick={onPreview} disabled={busy}>Review Correction</PrimaryButton> : null}{reconciliationOnly || (candidate && requiresReconciliation) ? <PrimaryButton onClick={onPreviewReconciliation} disabled={busy}>Review Historical Effect</PrimaryButton> : null}{candidate && !requiresReconciliation && !reconciliationOnly ? <PrimaryButton onClick={onConfirm} disabled={busy || !candidate.eligible}>{[INVENTORY_CORRECTION_CATEGORIES.RETURN_TO_RETAILER, INVENTORY_CORRECTION_CATEGORIES.PARTIAL_RETURN].includes(category) ? "Confirm Return" : "Confirm Correction"}</PrimaryButton> : null}</>}
     >
-      <div className="purchase-receiving-form inventory-correction-form" data-correction-authority="verified-owner-only">
-        <label><span>Correction or disposition</span><select value={category} onChange={(event) => {
+      <div className="purchase-receiving-form inventory-correction-form" data-correction-authority="verified-owner-only" aria-busy={busy ? "true" : "false"}>
+        {reconciliationOnly ? <div className="purchase-receiving-form__wide"><Facts rows={[{ label: "Reviewed action", value: "Reverse latest historical reconciliation" }, { label: "History policy", value: "Append-only" }]} /></div> : <label><span>Correction or disposition</span><select value={category} disabled={busy} onChange={(event) => {
           const nextCategory = event.target.value;
           update({
             category: nextCategory,
             targetCondition: nextCategory === INVENTORY_CORRECTION_CATEGORIES.DAMAGED_AFTER_RECEIVING ? "DAMAGED" : form.targetCondition,
             targetDisposition: nextCategory === INVENTORY_CORRECTION_CATEGORIES.DAMAGED_AFTER_RECEIVING ? "ADD_AS_DAMAGED" : form.targetDisposition,
           });
-        }}>{CORRECTION_CATEGORY_OPTIONS.map((value) => <option value={value} key={value}>{words(value)}</option>)}</select></label>
-        {needsCondition ? <><label><span>Reviewed condition</span><select value={form.targetCondition || (category === INVENTORY_CORRECTION_CATEGORIES.DAMAGED_AFTER_RECEIVING ? "DAMAGED" : "OPEN_BOX")} onChange={(event) => update({ targetCondition: event.target.value, targetDisposition: event.target.value === "DAMAGED" ? "ADD_AS_DAMAGED" : "ADD_TO_INVENTORY" })}><option value="NEW">New</option><option value="SEALED">Sealed</option><option value="OPEN_BOX">Open box</option><option value="DAMAGED">Damaged</option><option value="USED">Used</option><option value="UNKNOWN">Unknown</option></select></label><p className="purchase-receiving-form__wide purchase-receiving-invariant">Condition correction applies to this entire current acquisition lot. Sold or transferred units block it.</p></> : null}
-        {needsProduct ? <><label className="purchase-receiving-form__wide"><span>Existing product relationship</span><select value={form.targetProductReference || ""} onChange={(event) => update({ targetProductReference: event.target.value })}><option value="">Choose an existing product</option>{managedInventory.filter((entry) => entry.id !== item.id && entry.productReference !== item.productReference).map((entry) => <option key={entry.id} value={entry.productReference}>{entry.productTitle || entry.name || entry.productReference}</option>)}</select></label><p className="purchase-receiving-form__wide purchase-receiving-invariant">Product correction applies to the entire current lot and never creates a product automatically.</p></> : null}
-        {needsQuantity ? <label><span>Quantity physically affected</span><input type="number" inputMode="numeric" min="1" max={item.quantity} step="1" value={form.quantity || ""} onChange={(event) => update({ quantity: event.target.value })} /></label> : null}
-        {category === INVENTORY_CORRECTION_CATEGORIES.QUANTITY_CORRECTION ? <label><span>Quantity reason</span><select value={form.quantityReason || INVENTORY_QUANTITY_CORRECTION_REASONS.COUNT_CORRECTION} onChange={(event) => update({ quantityReason: event.target.value })}>{Object.values(INVENTORY_QUANTITY_CORRECTION_REASONS).filter((value) => value !== INVENTORY_QUANTITY_CORRECTION_REASONS.FOUND_EXTRA).map((value) => <option value={value} key={value}>{words(value)}</option>)}</select></label> : null}
-        {needsCost ? <label><span>Corrected total cost (minor units)</span><input type="number" inputMode="numeric" min="0" step="1" value={form.targetTotalCostMinorUnits ?? ""} onChange={(event) => update({ targetTotalCostMinorUnits: event.target.value })} /></label> : null}
-        {needsReversal ? <label className="purchase-receiving-form__wide"><span>Latest correction to reverse</span><select value={form.reversesAdjustmentId || ""} onChange={(event) => update({ reversesAdjustmentId: event.target.value })}><option value="">Choose an append-only event</option>{adjustments.filter((entry) => entry.previousState && entry.resultingState).sort((a, b) => (b.adjustmentSequence || 0) - (a.adjustmentSequence || 0)).map((entry) => <option value={entry.id} key={entry.id}>{words(entry.correctionCategory)} · event {entry.adjustmentSequence}</option>)}</select></label> : null}
-        <label className="purchase-receiving-form__wide"><span>Owner reason</span><textarea value={form.reason || ""} onChange={(event) => update({ reason: event.target.value })} maxLength={1000} /></label>
+        }}>{CORRECTION_CATEGORY_OPTIONS.map((value) => <option value={value} key={value}>{words(value)}</option>)}</select></label>}
+        {needsCondition ? <><label><span>Reviewed condition</span><select value={form.targetCondition || (category === INVENTORY_CORRECTION_CATEGORIES.DAMAGED_AFTER_RECEIVING ? "DAMAGED" : "OPEN_BOX")} disabled={busy} onChange={(event) => update({ targetCondition: event.target.value, targetDisposition: event.target.value === "DAMAGED" ? "ADD_AS_DAMAGED" : "ADD_TO_INVENTORY" })}><option value="NEW">New</option><option value="SEALED">Sealed</option><option value="OPEN_BOX">Open box</option><option value="DAMAGED">Damaged</option><option value="USED">Used</option><option value="UNKNOWN">Unknown</option></select></label><p className="purchase-receiving-form__wide purchase-receiving-invariant">Condition correction applies to this entire current acquisition lot. Sold or transferred units require historical reconciliation.</p></> : null}
+        {needsProduct ? <><label className="purchase-receiving-form__wide"><span>Existing product relationship</span><select value={form.targetProductReference || ""} disabled={busy} onChange={(event) => update({ targetProductReference: event.target.value })}><option value="">Choose an existing product</option>{managedInventory.filter((entry) => entry.id !== item.id && entry.productReference !== item.productReference).map((entry) => <option key={entry.id} value={entry.productReference}>{entry.productTitle || entry.name || entry.productReference}</option>)}</select></label><p className="purchase-receiving-form__wide purchase-receiving-invariant">Product correction applies to the current relationship and never creates a product automatically. Historical Sales remain unchanged.</p></> : null}
+        {needsQuantity ? <label><span>Quantity physically affected</span><input type="number" inputMode="numeric" min="1" max={item.quantity} step="1" value={form.quantity || ""} disabled={busy} onChange={(event) => update({ quantity: event.target.value })} /></label> : null}
+        {category === INVENTORY_CORRECTION_CATEGORIES.QUANTITY_CORRECTION ? <label><span>Quantity reason</span><select value={form.quantityReason || INVENTORY_QUANTITY_CORRECTION_REASONS.COUNT_CORRECTION} disabled={busy} onChange={(event) => update({ quantityReason: event.target.value })}>{Object.values(INVENTORY_QUANTITY_CORRECTION_REASONS).filter((value) => value !== INVENTORY_QUANTITY_CORRECTION_REASONS.FOUND_EXTRA).map((value) => <option value={value} key={value}>{words(value)}</option>)}</select></label> : null}
+        {needsCost ? <label><span>Corrected total cost (minor units)</span><input type="number" inputMode="numeric" min="0" step="1" value={form.targetTotalCostMinorUnits ?? ""} disabled={busy} onChange={(event) => update({ targetTotalCostMinorUnits: event.target.value })} /></label> : null}
+        {needsReversal && reconciliationOnly ? <label className="purchase-receiving-form__wide"><span>Latest reconciliation to reverse</span><select value={form.reversesReconciliationEventId || ""} disabled={busy} onChange={(event) => update({ reversesReconciliationEventId: event.target.value })}><option value="">Choose an append-only reconciliation</option>{[...reconciliationEvents].sort((a, b) => (b.reconciliationSequence || 0) - (a.reconciliationSequence || 0)).map((entry) => <option value={entry.id} key={entry.id}>{words(entry.category)} · event {entry.reconciliationSequence}</option>)}</select></label> : null}
+        {needsReversal && !reconciliationOnly ? <label className="purchase-receiving-form__wide"><span>Latest correction to reverse</span><select value={form.reversesAdjustmentId || ""} disabled={busy} onChange={(event) => update({ reversesAdjustmentId: event.target.value })}><option value="">Choose an append-only event</option>{adjustments.filter((entry) => entry.previousState && entry.resultingState).sort((a, b) => (b.adjustmentSequence || 0) - (a.adjustmentSequence || 0)).map((entry) => <option value={entry.id} key={entry.id}>{words(entry.correctionCategory)} · event {entry.adjustmentSequence}</option>)}</select></label> : null}
+        <label className="purchase-receiving-form__wide"><span>Owner reason</span><textarea value={form.reason || ""} disabled={busy} onChange={(event) => update({ reason: event.target.value })} maxLength={1000} /></label>
       </div>
       {candidate ? <div className="inventory-correction-preview" aria-label="Inventory correction impact preview"><CorrectionState title="Current State" state={candidate.current} /><span aria-hidden="true">→</span><CorrectionState title="Proposed Change" state={candidate.proposed} /><div className="inventory-correction-effect"><strong>Downstream Effect</strong><p>{candidate.quantityEffect} quantity · {candidate.costEffectMinorUnits} minor-unit cost effect</p><p>Original Purchase, Receiving, creation, sale, and transfer history remains append-only.</p></div></div> : null}
       {candidate?.blockers?.length ? <ul className="purchase-receiving-warnings" data-correction-blocked="true">{candidate.blockers.map((entry) => <li key={entry}>{words(entry)}</li>)}</ul> : null}
       {candidate?.warnings?.length ? <ul className="purchase-receiving-warnings">{candidate.warnings.map((entry) => <li key={entry}>{words(entry)}</li>)}</ul> : null}
+      <HistoricalReconciliationPreview candidate={reconciliationCandidate} busy={busy} onConfirm={onConfirmReconciliation} />
       <p className="purchase-receiving-invariant">Refund != Return · Refund != Inventory Removal · Replacement requires new Receiving and Inventory creation.</p>
     </Dialog>
   );
@@ -389,7 +476,9 @@ export default function PurchaseReceivingPage({
   const [busy, setBusy] = useState(false);
   const [managedInventory, setManagedInventory] = useState([]);
   const [inventoryAdjustments, setInventoryAdjustments] = useState([]);
+  const [inventoryReconciliationEvents, setInventoryReconciliationEvents] = useState([]);
   const [correctionCandidate, setCorrectionCandidate] = useState(null);
+  const [reconciliationCandidate, setReconciliationCandidate] = useState(null);
   const [replacementSource, setReplacementSource] = useState(null);
 
   useEffect(() => {
@@ -406,7 +495,9 @@ export default function PurchaseReceivingPage({
       actionInFlightRef.current = false;
       setManagedInventory([]);
       setInventoryAdjustments([]);
+      setInventoryReconciliationEvents([]);
       setCorrectionCandidate(null);
+      setReconciliationCandidate(null);
       setReplacementSource(null);
       return;
     }
@@ -416,6 +507,7 @@ export default function PurchaseReceivingPage({
       setSnapshot(nextService.snapshot());
       setManagedInventory(nextService.listManagedInventory());
       setInventoryAdjustments(nextService.listInventoryAdjustments());
+      setInventoryReconciliationEvents(nextService.listInventoryReconciliationEvents?.() || []);
     } catch (error) {
       setService(null);
       setSnapshot(EMPTY_SNAPSHOT);
@@ -449,6 +541,7 @@ export default function PurchaseReceivingPage({
       setSnapshot(result?.snapshot || service.snapshot());
       setManagedInventory(service.listManagedInventory());
       setInventoryAdjustments(service.listInventoryAdjustments());
+      setInventoryReconciliationEvents(service.listInventoryReconciliationEvents?.() || []);
       setMessage({ text: successMessage, tone: "success" });
       return result;
     } catch (error) {
@@ -552,6 +645,7 @@ export default function PurchaseReceivingPage({
   function openInventoryCorrection(item, adjustments) {
     setSelected(item);
     setCorrectionCandidate(null);
+    setReconciliationCandidate(null);
     setForm({
       category: INVENTORY_CORRECTION_CATEGORIES.CONDITION_CORRECTION,
       idempotencyKey: `owner-inventory-correction:${item.id}:${globalThis.crypto?.randomUUID?.() || Date.now()}`,
@@ -559,6 +653,21 @@ export default function PurchaseReceivingPage({
       targetCondition: item.condition === "DAMAGED" ? "OPEN_BOX" : "DAMAGED",
       targetDisposition: item.condition === "DAMAGED" ? "ADD_TO_INVENTORY" : "ADD_AS_DAMAGED",
       latestAdjustmentId: [...adjustments].sort((a, b) => (b.adjustmentSequence || 0) - (a.adjustmentSequence || 0))[0]?.id || "",
+    });
+    setDialog("inventory-correction");
+  }
+
+  function openInventoryReconciliationReversal(item, events) {
+    const latest = [...events].sort((a, b) => (b.reconciliationSequence || 0) - (a.reconciliationSequence || 0))[0];
+    setSelected(item);
+    setCorrectionCandidate(null);
+    setReconciliationCandidate(null);
+    setForm({
+      category: INVENTORY_CORRECTION_CATEGORIES.REVERSAL_CORRECTION,
+      reconciliationOnly: true,
+      idempotencyKey: `owner-inventory-reconciliation-reversal:${item.id}:${globalThis.crypto?.randomUUID?.() || Date.now()}`,
+      reversesReconciliationEventId: latest?.id || "",
+      reason: "",
     });
     setDialog("inventory-correction");
   }
@@ -641,13 +750,72 @@ export default function PurchaseReceivingPage({
     return proposal;
   }
 
+  function reconciliationProposalFromForm(candidate = correctionCandidate) {
+    const correctionCategory = form.category;
+    const transferBlocked = (candidate?.blockers || []).some((blocker) => /TRANSFER/.test(String(blocker || "")));
+    let category = INVENTORY_RECONCILIATION_CATEGORIES.LOT_PROVENANCE_RECONCILIATION;
+    if (transferBlocked) {
+      category = INVENTORY_RECONCILIATION_CATEGORIES.TRANSFER_PROVENANCE_RECONCILIATION;
+    } else if (correctionCategory === INVENTORY_CORRECTION_CATEGORIES.ACQUISITION_COST_CORRECTION) {
+      category = INVENTORY_RECONCILIATION_CATEGORIES.COGS_RECONCILIATION;
+    } else if ([
+      INVENTORY_CORRECTION_CATEGORIES.PRODUCT_RESOLUTION_CORRECTION,
+      INVENTORY_CORRECTION_CATEGORIES.WRONG_ITEM_RESOLUTION,
+      INVENTORY_CORRECTION_CATEGORIES.SUBSTITUTION_RESOLUTION,
+    ].includes(correctionCategory)) {
+      category = INVENTORY_RECONCILIATION_CATEGORIES.SALE_PRODUCT_RECONCILIATION;
+    } else if ([
+      INVENTORY_CORRECTION_CATEGORIES.RETURN_TO_RETAILER,
+      INVENTORY_CORRECTION_CATEGORIES.PARTIAL_RETURN,
+    ].includes(correctionCategory)) {
+      category = INVENTORY_RECONCILIATION_CATEGORIES.RETURN_AFTER_SALE_RECONCILIATION;
+    } else if (correctionCategory === INVENTORY_CORRECTION_CATEGORIES.REVERSAL_CORRECTION
+      && (form.reversesReconciliationEventId || form.reversesAdjustmentId)) {
+      category = INVENTORY_RECONCILIATION_CATEGORIES.PRIOR_CORRECTION_REVERSAL;
+    }
+
+    const proposal = {
+      category,
+      idempotencyKey: form.idempotencyKey,
+      reason: form.reason || "Owner reviewed the historical reconciliation and its downstream effect.",
+    };
+    if (category === INVENTORY_RECONCILIATION_CATEGORIES.COGS_RECONCILIATION && form.targetTotalCostMinorUnits !== "" && form.targetTotalCostMinorUnits != null) {
+      proposal.targetTotalCostMinorUnits = Number(form.targetTotalCostMinorUnits);
+    }
+    if (category === INVENTORY_RECONCILIATION_CATEGORIES.SALE_PRODUCT_RECONCILIATION) {
+      proposal.targetProductReference = form.targetProductReference;
+    }
+    if (category === INVENTORY_RECONCILIATION_CATEGORIES.RETURN_AFTER_SALE_RECONCILIATION && form.quantity !== "" && form.quantity != null) {
+      proposal.quantity = Number(form.quantity);
+    } else if (category === INVENTORY_RECONCILIATION_CATEGORIES.RETURN_AFTER_SALE_RECONCILIATION && correctionCategory === INVENTORY_CORRECTION_CATEGORIES.RETURN_TO_RETAILER) {
+      proposal.quantity = candidate?.availableQuantity;
+    }
+    if (category === INVENTORY_RECONCILIATION_CATEGORIES.PRIOR_CORRECTION_REVERSAL) {
+      if (form.reversesReconciliationEventId) proposal.reversesReconciliationEventId = form.reversesReconciliationEventId;
+      else proposal.reversesAdjustmentId = form.reversesAdjustmentId;
+    }
+    return proposal;
+  }
+
   function previewInventoryCorrection() {
     try {
       setCorrectionCandidate(service.previewInventoryCorrection(selected.id, correctionProposalFromForm()));
+      setReconciliationCandidate(null);
       setMessage({ text: "Correction impact previewed. No Inventory was changed.", tone: "info" });
     } catch (error) {
       setCorrectionCandidate(null);
       setMessage({ text: error?.message || "Inventory correction could not be previewed.", tone: "error" });
+    }
+  }
+
+  function previewInventoryReconciliation() {
+    try {
+      const candidate = service.previewInventoryReconciliation(selected.id, reconciliationProposalFromForm());
+      setReconciliationCandidate(candidate);
+      setMessage({ text: candidate.eligible ? "Historical effect reviewed. No record was changed." : "Historical reconciliation needs review and cannot be confirmed.", tone: candidate.eligible ? "info" : "error" });
+    } catch (error) {
+      setReconciliationCandidate(null);
+      setMessage({ text: error?.message || "Historical reconciliation could not be previewed.", tone: "error" });
     }
   }
 
@@ -662,6 +830,23 @@ export default function PurchaseReceivingPage({
       setDialog("");
       setSelected(null);
       setCorrectionCandidate(null);
+      setReconciliationCandidate(null);
+      setForm({});
+    }
+  }
+
+  async function confirmInventoryReconciliation() {
+    if (!reconciliationCandidate) return;
+    const proposal = reconciliationProposalFromForm();
+    const result = await run(() => service.confirmInventoryReconciliation(selected.id, reconciliationCandidate.candidateId, {
+      expectedVersion: reconciliationCandidate.expectedVersion,
+      proposal,
+    }), "Historical reconciliation recorded once. Completed Sale and Transfer history remains unchanged.");
+    if (result) {
+      setDialog("");
+      setSelected(null);
+      setCorrectionCandidate(null);
+      setReconciliationCandidate(null);
       setForm({});
     }
   }
@@ -697,14 +882,14 @@ export default function PurchaseReceivingPage({
 
       {section === "receiving" ? <section aria-label="Receiving"><SectionHeader title="Receiving" description="Record only physical receipt, including partial shipments and discrepancies." />{receivingPurchases.length ? <div className="purchase-receiving-grid">{receivingPurchases.map((purchase) => <PurchaseCard key={purchase.id} purchase={purchase} events={receivingEvents} busy={busy} onReceive={openReceiving} onPreview={previewHandoff} />)}</div> : <EmptyState title="Nothing awaiting receipt">There are no owner-confirmed Purchases waiting for receiving.</EmptyState>}<InventoryHandoff preview={handoff?.preview} purchase={handoff?.purchase} candidates={handoff?.candidates} reviews={inventoryReviews} busy={busy} onReview={updateInventoryReview} onConfirm={confirmInventory} onClose={() => { setHandoff(null); setInventoryReviews({}); }} /></section> : null}
 
-      {section === "corrections" ? <section aria-label="Inventory Corrections and Returns" data-correction-workflow="preview-then-owner-confirm"><SectionHeader title="Inventory Corrections & Returns" description="Review append-only condition, product, quantity, cost, return, and reversal events after Inventory creation. Refunds alone never remove Inventory." />{managedInventory.length ? <div className="purchase-receiving-grid">{managedInventory.map((item) => <InventoryCorrectionCard key={item.id} item={item} adjustments={inventoryAdjustments} effectiveAdjustmentIds={effectiveAdjustmentIds} replacementReceivedSourceIds={replacementReceivedSourceIds} busy={busy} onReview={openInventoryCorrection} onReplacement={openReplacementReceiving} />)}</div> : <EmptyState title="No owner-confirmed Inventory">Inventory must first pass Purchase, Receiving, candidate review, and explicit creation confirmation.</EmptyState>}<aside className="purchase-receiving-compatibility"><strong>Replacement and unexpected-extra boundary</strong><p>Replacement items require a new Receiving event and Inventory creation. Unexpected extras require separate identity and cost review. Neither mutates an existing lot automatically.</p></aside></section> : null}
+      {section === "corrections" ? <section aria-label="Inventory Corrections and Returns" data-correction-workflow="preview-then-owner-confirm"><SectionHeader title="Inventory Corrections & Returns" description="Review append-only condition, product, quantity, cost, return, and historical reconciliation events after Inventory creation. Refunds alone never remove Inventory." />{managedInventory.length ? <div className="purchase-receiving-grid">{managedInventory.map((item) => <InventoryCorrectionCard key={item.id} item={item} adjustments={inventoryAdjustments} reconciliationEvents={inventoryReconciliationEvents} effectiveAdjustmentIds={effectiveAdjustmentIds} replacementReceivedSourceIds={replacementReceivedSourceIds} busy={busy} onReview={openInventoryCorrection} onReplacement={openReplacementReceiving} onReconcile={openInventoryReconciliationReversal} />)}</div> : <EmptyState title="No owner-confirmed Inventory">Inventory must first pass Purchase, Receiving, candidate review, and explicit creation confirmation.</EmptyState>}<aside className="purchase-receiving-compatibility"><strong>Historical reconciliation boundary</strong><p>Completed Sales and Transfers remain immutable. A reviewed reconciliation may append exact accounting or provenance effects, but it never pretends the original transaction did not happen.</p></aside><aside className="purchase-receiving-compatibility"><strong>Replacement and unexpected-extra boundary</strong><p>Replacement items require a new Receiving event and Inventory creation. Unexpected extras require separate identity and cost review. Neither mutates an existing lot automatically.</p></aside></section> : null}
 
       <aside className="purchase-receiving-compatibility"><strong>Legacy compatibility</strong><p>Existing Deal Finder records remain compatible. Owner-confirmed Inventory is written only to the established local Business Inventory authority as a separate provenance lot.</p>{onOpenLegacyPurchases ? <QuietButton onClick={onOpenLegacyPurchases}>Open Legacy Purchase Records</QuietButton> : null}</aside>
 
       <Dialog open={dialog === "correct"} title="Correct Purchase Draft" description="Corrections append provenance; they do not replace source evidence." onClose={() => setDialog("")} actions={<><SecondaryButton onClick={() => setDialog("")}>Cancel</SecondaryButton><PrimaryButton onClick={correctDraft} disabled={busy}>Save Correction</PrimaryButton></>}><div className="purchase-receiving-form"><label><span>Retailer or vendor</span><input value={form.retailerLabel || ""} onChange={(event) => setForm({ ...form, retailerLabel: event.target.value })} maxLength={500} /></label><label><span>External order reference</span><input value={form.externalOrderId || ""} onChange={(event) => setForm({ ...form, externalOrderId: event.target.value })} maxLength={256} /></label><label><span>Order date</span><input type="date" value={form.orderedAt || ""} onChange={(event) => setForm({ ...form, orderedAt: event.target.value })} /></label></div></Dialog>
       <Dialog open={dialog === "reject"} title="Reject Purchase Draft" description="Rejection preserves review history and creates no Purchase." onClose={() => setDialog("")} actions={<><SecondaryButton onClick={() => setDialog("")}>Cancel</SecondaryButton><PrimaryButton onClick={rejectDraft} disabled={busy}>Reject Draft</PrimaryButton></>}><div className="purchase-receiving-form"><label className="purchase-receiving-form__wide"><span>Reason</span><textarea value={form.reason || ""} onChange={(event) => setForm({ reason: event.target.value })} maxLength={1000} /></label></div></Dialog>
       <ReceivingDialog purchase={dialog === "receiving" ? selected : null} receivingEvents={receivingEvents} form={form} onChange={setForm} onClose={() => setDialog("")} onSubmit={recordReceiving} busy={busy} />
-      <InventoryCorrectionDialog item={dialog === "inventory-correction" ? selected : null} form={form} candidate={correctionCandidate} managedInventory={managedInventory} adjustments={inventoryAdjustments.filter((entry) => entry.inventoryItemId === selected?.id)} busy={busy} onChange={(next) => { setForm(next); setCorrectionCandidate(null); }} onPreview={previewInventoryCorrection} onConfirm={confirmInventoryCorrection} onClose={() => { if (!busy) { setDialog(""); setSelected(null); setCorrectionCandidate(null); setForm({}); } }} />
+      <InventoryCorrectionDialog item={dialog === "inventory-correction" ? selected : null} form={form} candidate={correctionCandidate} reconciliationCandidate={reconciliationCandidate} managedInventory={managedInventory} adjustments={inventoryAdjustments.filter((entry) => entry.inventoryItemId === selected?.id)} reconciliationEvents={inventoryReconciliationEvents.filter((entry) => entry.inventoryItemId === selected?.id)} busy={busy} onChange={(next) => { setForm(next); setCorrectionCandidate(null); setReconciliationCandidate(null); }} onPreview={previewInventoryCorrection} onPreviewReconciliation={previewInventoryReconciliation} onConfirm={confirmInventoryCorrection} onConfirmReconciliation={confirmInventoryReconciliation} onClose={() => { if (!busy) { setDialog(""); setSelected(null); setCorrectionCandidate(null); setReconciliationCandidate(null); setForm({}); } }} />
       <ReplacementReceivingDialog source={dialog === "replacement-receiving" ? replacementSource : null} form={form} busy={busy} onChange={setForm} onConfirm={recordReplacementReceiving} onClose={() => { if (!busy) { setDialog(""); setReplacementSource(null); setForm({}); } }} />
     </main>
   );
