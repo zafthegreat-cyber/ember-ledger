@@ -17,7 +17,7 @@ The audit changes the conceptual “backend persistence first” phase into gate
 
 **Phase 2B1 — Secure Provider Runtime + Inbox / Order Intelligence Foundation**, **Phase 2B2-A — Preview Trusted Express/API Runtime**, and **Phase 2B2-B — Preview Owner Auth + Managed Provider State** are published through `b4848cb851b2be83093fbdc4ed4b976857f9d3ff`. The separate Phase 2B2-B.1 operational verification is paused. A Free Upstash resource and three branch-scoped Preview secrets exist, but Supabase owner/auth values and the remaining Preview CORS/activation/runtime values are not configured, no follow-up Preview was deployed, and `hostedRuntimeVerified=false`. Gmail, Outlook, IMAP, live Inbox ingestion, provider token use, Purchase import, migration, sync, and remote cutover remain inactive.
 
-**Phase 2D-A — Bot Integration Foundation** is published at `cdde7df506c94bc55b2ec7995596843ae1c2261a`, **Phase 2D-B1 — Provider Integration Discovery and Pilot Design** at `e832ab67a153c5e672f8a77dda5474aedb1395af`, and **Phase 2D-B2 — Stellar Task Export Preview** at `0b45c3584f7f15b4d951c5e4cddd1e42dcbeb5a3`. **Phase 2C-A — Purchase → Receiving → Inventory Foundation** is published at `3b10644cf1be9498c08b876b5a3bbef98a24ee1c`, **Phase 2C-B — Owner-Confirmed Inventory Creation** at `bcff80042a15a29492ed32ba945291b50d35b5bb`, and **Phase 2C-C — Inventory Correction and Disposition** at `ef30033a3b30989737878252fb31354aaecf68a3`; **Phase 2C-D — Historical COGS, Sale & Transfer Reconciliation** is the current parallel local-only workstream. Hayha and Stellar remain `NOT_CONFIGURED`; no live provider, automatic evidence/Receiving-to-Inventory path, destructive historical edit, credentials, task control, proxy connection, checkout, billing, remote persistence, or deployment is active.
+**Phase 2D-A — Bot Integration Foundation** is published at `cdde7df506c94bc55b2ec7995596843ae1c2261a`, **Phase 2D-B1 — Provider Integration Discovery and Pilot Design** at `e832ab67a153c5e672f8a77dda5474aedb1395af`, and **Phase 2D-B2 — Stellar Task Export Preview** at `0b45c3584f7f15b4d951c5e4cddd1e42dcbeb5a3`. **Phase 2C-A — Purchase → Receiving → Inventory Foundation** is published at `3b10644cf1be9498c08b876b5a3bbef98a24ee1c`, **Phase 2C-B — Owner-Confirmed Inventory Creation** at `bcff80042a15a29492ed32ba945291b50d35b5bb`, **Phase 2C-C — Inventory Correction and Disposition** at `ef30033a3b30989737878252fb31354aaecf68a3`, and **Phase 2C-D — Historical COGS, Sale & Transfer Reconciliation** at `5eef5ae59e79dccb7cbb341f42ca6bda7468a762`. **Phase 2C-E — Accountant Review & Prior-Period Adjustment Preview** is the current local-only, read-only workstream. Hayha and Stellar remain `NOT_CONFIGURED`; no live provider, automatic business mutation, accounting/tax writer, managed Transfer, Raw/Graded authority, billing, remote persistence, or deployment is active.
 
 The published Phase 1A runtime applies Code 3 through the centralized brand configuration and coordinated PWA/browser/offline metadata. Storage, database, route, module, environment, cache, history, compatibility, and imported-source identifiers remain unchanged. The legal/public business name and tagline remain separately configurable and unresolved.
 
@@ -235,7 +235,7 @@ See [INVENTORY_CORRECTION_DISPOSITION_CONTRACT.md](./INVENTORY_CORRECTION_DISPOS
 
 ## Phase 2C-D — Historical COGS, Sale & Transfer Reconciliation
 
-**Status:** Current local-only implementation candidate from published Phase 2C-C baseline `ef30033a3b30989737878252fb31354aaecf68a3`; publication is separately gated.
+**Status:** Published at `5eef5ae59e79dccb7cbb341f42ca6bda7468a762`.
 
 - **Objective:** preserve completed Sale/Transfer truth while adding explicit append-only reconciliation for post-sale acquisition-cost/product/provenance corrections.
 - **Current code affected:** `src/features/purchaseReceiving/inventoryReconciliation`, schema-v5 Flip Scout Inventory, exact managed COGS projections, Purchase/Receiving reconciliation UI/service, Deal Finder backup/Restore Preview/migration validation, focused tests, and documentation.
@@ -251,6 +251,26 @@ See [INVENTORY_CORRECTION_DISPOSITION_CONTRACT.md](./INVENTORY_CORRECTION_DISPOS
 - **Complexity:** Large.
 
 See [INVENTORY_RECONCILIATION_CONTRACT.md](./INVENTORY_RECONCILIATION_CONTRACT.md).
+
+## Phase 2C-E — Accountant Review & Prior-Period Adjustment Preview
+
+**Status:** Current local-only, read-only implementation candidate from published Phase 2C-D baseline `5eef5ae59e79dccb7cbb341f42ca6bda7468a762`; publication is separately gated.
+
+- **Objective:** help the OWNER identify when confirmed reconciliation effects occur in a different calendar month, quarter, or year from their immutable Sale while keeping original and current-effective exact values visibly separate.
+- **Current code affected:** a pure `src/features/purchaseReceiving/accountantReview` projection boundary, the existing OWNER-gated `/business/purchases` UI, focused tests, and documentation. No repository, API, backup source, export writer, note store, or accounting ledger is added.
+- **Derived model:** ephemeral frozen `AccountantReviewItem` rows over validated Sales, Purchase/Receiving provenance, Inventory lots, correction/disposition history, and confirmed reconciliation events. Categories, flags, severity, groups, and filters are review metadata only.
+- **Period behavior:** treat an exact Sale `YYYY-MM-DD` as recorded; classify ISO reconciliation instants by UTC calendar date; validate dates strictly; derive month/quarter/year without browser-local time shifts. No authoritative owner-business time zone or filed-period status exists, so the projection discloses its basis and fixes filing status to `FILING_STATUS_UNKNOWN`.
+- **Money/reporting behavior:** integer minor units only; display original recorded COGS, signed reconciliation adjustment, and current effective COGS separately. Derive exact original/effective profit only when exact net proceeds exist. Count each Sale and event effect once, retain reversals visibly, and label period totals as current projections including later corrections.
+- **Refund/return behavior:** refund money and physical Inventory movement remain independent; Purchase return events alone do not prove Inventory disposition. No refund, return, or review row mutates a business record.
+- **Tax-language boundary:** attention flags may say that an item may warrant accountant review. The feature cannot infer filing status, tax treatment, deductibility, an error, or a need to amend a return.
+- **Security/authority:** verified OWNER before source reads; reject client authority/session fields and every existing credential/raw-evidence category; perform no network request and require no provider or payment credential.
+- **Backup/migration:** review items are regenerable and add no Backup Format section or migration mapping. Existing schema-5 Inventory/Sale/reconciliation and Purchase/Receiving paths remain `REQUIRES_MAPPING`; Restore Preview stays zero-write; `LOCAL_ONLY` remains authoritative.
+- **Explicit deferrals:** accounting/journal posting, tax filing/amendment, review notes, accountant export, prior-period tax policy, managed Transfer, server transactions, Raw/Graded card authority, providers, billing, and Production.
+- **Acceptance criteria:** original dates/Sales/COGS remain immutable; original and effective projections cannot be confused; period and exact-money summaries are deterministic and count deltas once; reversals net without disappearing; the UI exposes no mutation action; all paused provider/remote/Production boundaries remain unchanged.
+- **Rollback:** remove the derived module/UI/docs. No canonical record, backup source, migration path, provider configuration, or remote state requires rollback.
+- **Complexity:** Medium.
+
+See [ACCOUNTANT_REVIEW_CONTRACT.md](./ACCOUNTANT_REVIEW_CONTRACT.md).
 
 ## Phase 2D-A — Bot Integration Foundation
 
@@ -473,4 +493,4 @@ Every implementation phase must:
 
 ## Exact next task recommendation
 
-The current authorized task is Phase 2C-D local Historical COGS, Sale & Transfer Reconciliation and its detailed report only. After that report, stop. Phase 2D-B3 and every live provider/import path remain unauthorized. Phase 2B2-B.1 remains paused until the owner explicitly says `Supabase signed in.` and must not resume automatically. Do not deploy another Preview, create a bypass, connect a mailbox or Bot, begin provider OAuth, use real Purchase/order data, activate `REMOTE_ACTIVE`, migrate owner data, add billing, apply a schema, begin Raw/Graded authority, or modify Production without another explicit owner-approved specification.
+The current authorized task is Phase 2C-E local read-only Accountant Review & Prior-Period Adjustment Preview and its detailed report only. After that report, stop. Accounting posting, tax filing/amendment, managed Transfer, Phase 2D-B3, and every live provider/import path remain unauthorized. Phase 2B2-B.1 remains paused until the owner explicitly says `Supabase signed in.` and must not resume automatically. Do not deploy another Preview, create a bypass, connect a mailbox or Bot, begin provider OAuth, use real Purchase/order/tax data, activate `REMOTE_ACTIVE`, migrate owner data, add billing, apply a schema, begin Raw/Graded authority, or modify Production without another explicit owner-approved specification.

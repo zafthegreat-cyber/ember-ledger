@@ -1,0 +1,159 @@
+.accountant-review {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+
+.accountant-review-boundary,
+.accountant-review-guidance {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 16px;
+  border: 1px solid var(--border-subtle, rgba(127, 145, 168, 0.32));
+  border-radius: 16px;
+  background: var(--surface-raised, rgba(255, 255, 255, 0.05));
+}
+
+.accountant-review-boundary { justify-items: start; }
+.accountant-review-boundary p,
+.accountant-review-boundary small,
+.accountant-review-guidance p { margin: 0; overflow-wrap: anywhere; }
+.accountant-review-boundary p { font-weight: 800; }
+.accountant-review-boundary small,
+.accountant-review-guidance p { color: var(--text-muted, #8b9bb0); }
+
+.accountant-review-summary,
+.accountant-review-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 12px;
+  min-width: 0;
+}
+
+.accountant-review-groups,
+.accountant-review-group { display: grid; gap: 14px; min-width: 0; }
+.accountant-review-group > h3 { margin: 0; }
+
+.accountant-review-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+  gap: 12px;
+  min-width: 0;
+  margin: 0;
+  padding: 16px;
+  border: 1px solid var(--border-subtle, rgba(127, 145, 168, 0.32));
+  border-radius: 16px;
+}
+
+.accountant-review-filters legend { padding: 0 6px; font-weight: 850; }
+.accountant-review-filters label { display: grid; gap: 6px; min-width: 0; color: var(--text-muted, #8b9bb0); font-size: 0.84rem; font-weight: 750; }
+.accountant-review-filters select {
+  width: 100%;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 9px 11px;
+  border: 1px solid var(--border-subtle, rgba(127, 145, 168, 0.4));
+  border-radius: 10px;
+  background: var(--surface-raised, rgba(255, 255, 255, 0.05));
+  color: inherit;
+  font: inherit;
+}
+
+.accountant-review-filter-actions {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--text-muted, #8b9bb0);
+  font-weight: 750;
+}
+
+.accountant-review-card { display: grid; gap: 14px; min-width: 0; }
+.accountant-review-card__heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; min-width: 0; }
+.accountant-review-card__heading > div { min-width: 0; }
+.accountant-review-card__heading h3,
+.accountant-review-card__heading h4 { margin: 6px 0 0; overflow-wrap: anywhere; }
+.accountant-review-card__eyebrow { color: var(--text-muted, #8b9bb0); font-size: 0.75rem; font-weight: 850; letter-spacing: 0.035em; text-transform: uppercase; overflow-wrap: anywhere; }
+
+.accountant-review-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.accountant-review-facts div { min-width: 0; }
+.accountant-review-facts dt { color: var(--text-muted, #8b9bb0); font-size: 0.74rem; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase; }
+.accountant-review-facts dd { margin: 3px 0 0; font-weight: 750; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+
+.accountant-review-money-flow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.accountant-review-money-flow > div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border-subtle, rgba(127, 145, 168, 0.28));
+  border-radius: 12px;
+  background: var(--surface-raised, rgba(255, 255, 255, 0.04));
+}
+
+.accountant-review-money-flow span { color: var(--text-muted, #8b9bb0); font-size: 0.78rem; font-weight: 750; }
+.accountant-review-money-flow strong { font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.accountant-review-money-flow small { color: var(--text-muted, #8b9bb0); font-size: 0.72rem; overflow-wrap: anywhere; }
+.accountant-review-money-flow > [aria-hidden="true"] { color: var(--text-muted, #8b9bb0); font-size: 1.1rem; font-weight: 900; }
+
+.accountant-review-attention,
+.accountant-review-history-note {
+  margin: 0;
+  padding: 11px 12px;
+  border-radius: 12px;
+  overflow-wrap: anywhere;
+}
+
+.accountant-review-attention { background: var(--warning-surface, rgba(216, 164, 72, 0.12)); color: var(--warning-text, #d8a448); font-weight: 750; }
+.accountant-review-history-note { background: var(--surface-raised, rgba(255, 255, 255, 0.04)); color: var(--text-muted, #8b9bb0); }
+
+.accountant-review-chain { display: grid; gap: 8px; min-width: 0; }
+.accountant-review-chain ol { display: grid; gap: 8px; margin: 0; padding-left: 22px; }
+.accountant-review-chain li { min-width: 0; padding-left: 4px; }
+.accountant-review-chain li span,
+.accountant-review-chain li strong,
+.accountant-review-chain li small { display: block; overflow-wrap: anywhere; }
+.accountant-review-chain li strong { margin-top: 3px; font-variant-numeric: tabular-nums; }
+.accountant-review-chain li small { margin-top: 3px; color: var(--text-muted, #8b9bb0); }
+
+.accountant-review button:focus-visible,
+.accountant-review select:focus-visible {
+  outline: 3px solid var(--focus-ring, #60a5fa);
+  outline-offset: 3px;
+}
+
+@media (max-width: 700px) {
+  .accountant-review { gap: 14px; }
+  .accountant-review-facts { grid-template-columns: minmax(0, 1fr); }
+  .accountant-review-card__heading { flex-direction: column; }
+  .accountant-review-money-flow { grid-template-columns: minmax(0, 1fr); }
+  .accountant-review-money-flow > [aria-hidden="true"] { justify-self: center; transform: rotate(90deg); }
+  .accountant-review-filter-actions .ops-button { flex: 1 1 min(100%, 160px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .accountant-review *,
+  .accountant-review *::before,
+  .accountant-review *::after {
+    scroll-behavior: auto !important;
+    transition: none !important;
+    animation: none !important;
+  }
+}

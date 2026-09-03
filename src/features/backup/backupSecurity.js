@@ -99,6 +99,22 @@ const PROHIBITED_NORMALIZED_KEYS = new Set([
   "inventorycorrectioncommitjournal",
   "inventoryreconciliationcandidate",
   "inventoryreconciliationpreview",
+  "accountantreviewitem",
+  "accountantreviewitems",
+  "accountantreviewcandidate",
+  "accountantreviewcandidates",
+  "accountantreviewpreview",
+  "accountantreviewpreviews",
+  "accountantreviewfilter",
+  "accountantreviewfilters",
+  "accountantreviewgroup",
+  "accountantreviewgroups",
+  "accountantreviewsummary",
+  "accountantreviewsummaries",
+  "accountantreviewperiodsummary",
+  "accountantreviewperiodsummaries",
+  "accountantreviewimpactprojection",
+  "accountantreviewimpactprojections",
   "inventoryreconciliationcommitjournal",
   "inventorycommitjournal",
   "inventorycorrectionjournal",
@@ -137,7 +153,7 @@ const PROHIBITED_NORMALIZED_KEYS = new Set([
 ]);
 const SAFE_REFERENCE_KEYS = new Set(["credentialreference", "credentialprovider", "credentialreferenceid"]);
 const SAFE_BUSINESS_IDENTIFIER_KEYS = new Set(["cardnumber"]);
-const PROHIBITED_KEY_FRAGMENT_PATTERN = /(?:password(?:hash)?|passwordreset(?:link|token)|passphrase|(?:^|user|my)(?:pwd|passwd|pass)(?:value|field|data)?|(?:security|account)?pin(?:code|value|field|data)?|secret|managedreference|apikey|privatekey|(?:session|api|payment|license)?token(?:value|field|data)?|cookie(?:value|field|data)?|otp(?:code|token)?|oauth(?:code|state)|authorizationcode|codeverifier|security(?:code|answers?)|loginlink|retailer(?:password|cookie)|paymentcredentials?|inventoryhandoffpreview|handoffpreview|inventorycreationcandidate|inventorycreationpreview|inventorycorrectioncandidate|inventorycorrectionpreview|inventoryreconciliationcandidate|inventoryreconciliationpreview|inventory(?:creation|correction|reconciliation)(?:commit)?journal|inventorycommitjournal|rawmessage(?:body|content)|rawemail(?:body|content)?|rawbotpayload|rawsourcepayload|rawprovider(?:payload|request|response|logs?)|raw(?:body|html|headers|payload|request|response|logs?)|(?:email|message|body)(?:html|content)|(?:original)?(?:message|email)(?:data|body|content|html)?|(?:source|response|request|provider)(?:data|payload|body|headers|content|value|field)|http(?:response|request)(?:data|body|headers|content)?|(?:emailhtml|htmlbody|mimebody|headers|request|response|sourcepayload|providerdata)(?:value|field|data)?|protectedcontent|(?:credit|debit|payment)cardnumber|primaryaccountnumber|pan|cvv|cvc|credentials?|(?:accesskey|authkey|clientkey|providerkey|sessionkey|bankrouting|routingno|accountnumber|iban)(?:value|field|data)?|proxy(?:user|pass|username|password|auth|authentication|url|endpoint|host|hostname|ip|ipaddress)|captcha(?:response|token)?|verificationcode)$/i;
+const PROHIBITED_KEY_FRAGMENT_PATTERN = /(?:password(?:hash)?|passwordreset(?:link|token)|passphrase|(?:^|user|my)(?:pwd|passwd|pass)(?:value|field|data)?|(?:security|account)?pin(?:code|value|field|data)?|secret|managedreference|apikey|privatekey|(?:session|api|payment|license)?token(?:value|field|data)?|cookie(?:value|field|data)?|otp(?:code|token)?|oauth(?:code|state)|authorizationcode|codeverifier|security(?:code|answers?)|loginlink|retailer(?:password|cookie)|paymentcredentials?|inventoryhandoffpreview|handoffpreview|inventorycreationcandidate|inventorycreationpreview|inventorycorrectioncandidate|inventorycorrectionpreview|inventoryreconciliationcandidate|inventoryreconciliationpreview|accountantreview[a-z0-9]*|inventory(?:creation|correction|reconciliation)(?:commit)?journal|inventorycommitjournal|rawmessage(?:body|content)|rawemail(?:body|content)?|rawbotpayload|rawsourcepayload|rawprovider(?:payload|request|response|logs?)|raw(?:body|html|headers|payload|request|response|logs?)|(?:email|message|body)(?:html|content)|(?:original)?(?:message|email)(?:data|body|content|html)?|(?:source|response|request|provider)(?:data|payload|body|headers|content|value|field)|http(?:response|request)(?:data|body|headers|content)?|(?:emailhtml|htmlbody|mimebody|headers|request|response|sourcepayload|providerdata)(?:value|field|data)?|protectedcontent|(?:credit|debit|payment)cardnumber|primaryaccountnumber|pan|cvv|cvc|credentials?|(?:accesskey|authkey|clientkey|providerkey|sessionkey|bankrouting|routingno|accountnumber|iban)(?:value|field|data)?|proxy(?:user|pass|username|password|auth|authentication|url|endpoint|host|hostname|ip|ipaddress)|captcha(?:response|token)?|verificationcode)$/i;
 const PROHIBITED_AUTHORITY_KEY_PATTERN = /^(?:(?:owner|auth|user)(?:principal|subject|privilege|privileges)|(?:principal|subject|privilege|privileges)(?:value|field|data)|(?:account|client|browser|current|supplied|requested)(?:role|authority|permission|session|owner)|(?:admin|owner|role|authority|entitlement|session|principal|privilege)(?:flag|status|level|plan|data|value|field)|is(?:authenticated|owner|admin|authorized|superuser))$/i;
 const PROHIBITED_SENSITIVE_SUFFIX_PATTERN = /(?:accesstoken|refreshtoken|idtoken|authtoken|bearertoken|clientsecret|providersecret|apikey|privatekey|authorizationcode|codeverifier|oauthstate|password|passwordhash|passphrase|credential|credentials|cookie|sessioncookie|otp|onetimecode|securitycode|securityanswer|recoverycode|verificationcode|cardnumber|paymentcardnumber|primaryaccountnumber|cvv|cvc|bankaccount|routingnumber|proxyauth|proxypassword|proxyusername|proxyurl|licensekey|encryptionkey|signingkey|seedphrase)(?:value|field|data)?$/i;
 const PROHIBITED_RAW_SUFFIX_PATTERN = /(?:rawbody|rawcontent|rawdata|rawmessage|rawemail|rawpayload|rawrequest|rawresponse|rawheaders|rawlogs?|rawproviderpayload|rawsourcepayload|providerpayload|sourcepayload|emailbody|messagebody|emailhtml|htmlbody|mimebody|requestbody|responsebody|requestheaders|responseheaders)(?:value|field|data)?$/i;

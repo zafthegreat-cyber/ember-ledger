@@ -38,6 +38,10 @@ import {
 } from "./inventoryCorrection/constants.js";
 import { createInventoryReconciliationGateway } from "./inventoryReconciliation/gateway.js";
 import { INVENTORY_RECONCILIATION_SAFETY } from "./inventoryReconciliation/constants.js";
+import {
+  ACCOUNTANT_REVIEW_SAFETY,
+  deriveAccountantReviewPreview,
+} from "./accountantReview/index.js";
 
 const PROHIBITED_OPTIONS = new Set([
   "mode", "persistenceMode", "remoteDataSource", "request", "remoteActive", "sync", "syncEngine",
@@ -897,6 +901,15 @@ export function createPurchaseReceivingService(options = {}) {
     });
   }
 
+  function previewAccountantReview(filters = {}) {
+    assertOwner();
+    assertSafePurchaseReceivingInput(filters);
+    const inventoryState = inventoryCorrectionGateway.load();
+    const purchaseReceivingState = persistence.read();
+    validateReplacementInventoryPurchaseProvenance(inventoryState, purchaseReceivingState);
+    return deriveAccountantReviewPreview({ inventoryState, purchaseReceivingState }, filters);
+  }
+
   return Object.freeze({
     mode: "LOCAL_ONLY",
     authoritative: "LOCAL_ONLY",
@@ -909,6 +922,7 @@ export function createPurchaseReceivingService(options = {}) {
     inventoryCreationSafety: INVENTORY_CREATION_SAFETY,
     inventoryCorrectionSafety: INVENTORY_CORRECTION_SAFETY,
     inventoryReconciliationSafety: INVENTORY_RECONCILIATION_SAFETY,
+    accountantReviewSafety: ACCOUNTANT_REVIEW_SAFETY,
     storageKey: persistence.repository.storageKey,
     snapshot,
     loadSnapshot: snapshot,
@@ -937,6 +951,7 @@ export function createPurchaseReceivingService(options = {}) {
     confirmInventoryCorrection,
     previewInventoryReconciliation,
     confirmInventoryReconciliation,
+    previewAccountantReview,
     listInventoryReconciliationEvents: () => {
       assertOwner();
       return safePurchaseReceivingClone(inventoryReconciliationGateway.listEvents());

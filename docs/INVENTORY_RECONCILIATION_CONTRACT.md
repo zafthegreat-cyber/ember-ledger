@@ -1,6 +1,6 @@
 # Historical Inventory Reconciliation Contract
 
-Status: Phase 2C-D local-only foundation. Starting baseline: `ef30033a3b30989737878252fb31354aaecf68a3`.
+Status: Phase 2C-D local-only foundation published at `5eef5ae59e79dccb7cbb341f42ca6bda7468a762`. Phase 2C-E consumes it through a separate read-only derived review boundary.
 
 Phase 2C-D adds a reviewed reconciliation layer for acquisition corrections that affect completed Sales or managed Transfers. It does not rewrite historical transactions, connect an external provider, activate remote persistence, or authorize Production.
 
@@ -100,7 +100,15 @@ The existing private Inventory undo journal is reused. Tentative state is hidden
 
 Confirmed reconciliations are append-only `INVENTORY_RECONCILIATION_EVENT` records in the existing Business Inventory document. Events retain stable source references, category, original/corrected bounded projections, exact signed effects, affected Sale references, owner confirmation, timestamps, provenance, and semantic digest. Affected Transfer references remain empty in this phase because no managed Transfer authority exists. Events contain no raw email, provider, Bot, retailer-authentication, payment, session, or proxy data.
 
-Reporting derives current effective COGS, profit, product relationship, and Inventory valuation from immutable transactions plus confirmed reconciliation events. Sale/source dates remain immutable and each reconciliation retains its own timestamp. Dedicated prior-period/accountant reporting remains future work; historical transaction bytes are not rewritten.
+Reporting derives current effective COGS, profit, product relationship, and Inventory valuation from immutable transactions plus confirmed reconciliation events. Sale/source dates remain immutable and each reconciliation retains its own timestamp. Phase 2C-E may derive a separate ephemeral Accountant Review that compares the original Sale period with the reconciliation's UTC calendar period and shows original, signed adjustment, and current effective exact-money values. It does not rewrite transaction bytes or post accounting data.
+
+## Phase 2C-E read-only consumer boundary
+
+Accountant Review consumes only validated confirmed events and their immutable affected-Sale snapshots. It counts original COGS once per Sale and exact event/Sale deltas once; event-level and affected-Sale views are never added together. Reversal events remain visible and their signed inverse contributes to the current effective projection.
+
+The review may classify current- or prior-month/quarter/year attention and use cautious `may warrant accountant review` wording. `FILING_STATUS_UNKNOWN` is mandatory because no filing-status authority exists. Sale `YYYY-MM-DD` values remain as recorded; ISO reconciliation instants use a disclosed UTC date basis because no owner-business time-zone contract exists.
+
+`Accountant Review != Accounting Mutation`. Phase 2C-E adds no accounting ledger, journal entry, tax filing/amendment, export, note, backup source, migration source, or mutation path. Transfer review remains blocked without canonical managed-Transfer authority. See [ACCOUNTANT_REVIEW_CONTRACT.md](./ACCOUNTANT_REVIEW_CONTRACT.md).
 
 ## Backup, Restore Preview, and migration
 
@@ -110,6 +118,6 @@ The mixed Inventory, Sales, and reconciliation paths remain `REQUIRES_MAPPING`. 
 
 ## Explicit exclusions
 
-Phase 2C-D does not add Raw-card or Graded-card condition authority, product creation, historical Sale or Transfer editing, negative Inventory, automatic refund disposition, automatic replacement Inventory, provider integrations, OAuth, billing, owner-data migration, remote persistence, or Production deployment.
+Phase 2C-D and its Phase 2C-E read-only consumer do not add Raw-card or Graded-card condition authority, product creation, historical Sale or Transfer editing, negative Inventory, automatic refund disposition, automatic replacement Inventory, accounting posting, tax filing/amendment, provider integrations, OAuth, billing, owner-data migration, remote persistence, or Production deployment.
 
 `LOCAL_ONLY` remains authoritative. Phase 2B2-B.1 remains paused with `hostedRuntimeVerified=false`. Phase 2D-B3 is not started. Gmail, Outlook, Stellar, and Hayha remain `NOT_CONFIGURED`.

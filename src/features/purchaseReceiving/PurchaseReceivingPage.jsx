@@ -28,6 +28,7 @@ import {
   INVENTORY_QUANTITY_CORRECTION_REASONS,
 } from "./inventoryCorrection/constants.js";
 import { INVENTORY_RECONCILIATION_CATEGORIES } from "./inventoryReconciliation/constants.js";
+import AccountantReviewPanel from "./accountantReview/AccountantReviewPanel.jsx";
 import { createPurchaseReceivingService } from "./service.js";
 import "./purchase-receiving.css";
 
@@ -36,6 +37,7 @@ const SECTIONS = Object.freeze([
   { key: "purchases", label: "Purchases" },
   { key: "receiving", label: "Receiving" },
   { key: "corrections", label: "Corrections & Returns" },
+  { key: "accountant-review", label: "Accountant Review" },
 ]);
 
 const CORRECTION_CATEGORY_OPTIONS = Object.freeze([
@@ -480,6 +482,7 @@ export default function PurchaseReceivingPage({
   const [correctionCandidate, setCorrectionCandidate] = useState(null);
   const [reconciliationCandidate, setReconciliationCandidate] = useState(null);
   const [replacementSource, setReplacementSource] = useState(null);
+  const [accountantReview, setAccountantReview] = useState(null);
 
   useEffect(() => {
     if (!authorized) {
@@ -499,6 +502,8 @@ export default function PurchaseReceivingPage({
       setCorrectionCandidate(null);
       setReconciliationCandidate(null);
       setReplacementSource(null);
+      setAccountantReview(null);
+      setSection("drafts");
       return;
     }
     try {
@@ -542,6 +547,7 @@ export default function PurchaseReceivingPage({
       setManagedInventory(service.listManagedInventory());
       setInventoryAdjustments(service.listInventoryAdjustments());
       setInventoryReconciliationEvents(service.listInventoryReconciliationEvents?.() || []);
+      setAccountantReview(null);
       setMessage({ text: successMessage, tone: "success" });
       return result;
     } catch (error) {
@@ -550,6 +556,26 @@ export default function PurchaseReceivingPage({
     } finally {
       actionInFlightRef.current = false;
       setBusy(false);
+    }
+  }
+
+  function selectSection(nextSection) {
+    setSection(nextSection);
+    if (nextSection !== "accountant-review") {
+      setAccountantReview(null);
+      return;
+    }
+    if (!service) {
+      setAccountantReview(null);
+      setMessage({ text: "Accountant Review is not ready yet.", tone: "error" });
+      return;
+    }
+    try {
+      setAccountantReview(service.previewAccountantReview());
+      setMessage({ text: "Read-only accounting projections regenerated from current local history. No record was changed.", tone: "info" });
+    } catch (error) {
+      setAccountantReview(null);
+      setMessage({ text: error?.message || "Accountant Review could not be derived safely.", tone: "error" });
     }
   }
 
@@ -861,10 +887,10 @@ export default function PurchaseReceivingPage({
       <PageHeader
         eyebrow="Business · Owner review"
         title="Purchases & Receiving"
-        description="Review Purchases, confirm physical Receiving, and explicitly create local Inventory only after every boundary passes."
+        description="Review Purchases, physical Receiving, explicit local Inventory actions, and read-only accounting effects after every boundary passes."
         actions={onOpenLegacyPurchases ? <QuietButton onClick={onOpenLegacyPurchases}>Legacy Purchase Records</QuietButton> : null}
       />
-      <p className="purchase-receiving-boundary">Order Candidate != Purchase · Checkout Evidence != Purchase · Purchase Draft != Purchase · Receiving != Inventory · Inventory Creation Candidate != Inventory</p>
+      <p className="purchase-receiving-boundary">Order Candidate != Purchase · Checkout Evidence != Purchase · Purchase Draft != Purchase · Receiving != Inventory · Inventory Creation Candidate != Inventory · Accountant Review != Accounting Mutation</p>
       {message.text ? <Toast tone={message.tone}>{message.text}</Toast> : null}
       <div className="purchase-receiving-metrics" aria-label="Purchase and Receiving summary">
         <MetricCard label="Drafts" value={drafts.length} helper="Non-authoritative review records" />
@@ -873,7 +899,7 @@ export default function PurchaseReceivingPage({
         <MetricCard label="Receiving events" value={receivingEvents.length} helper="Append-only confirmations" />
       </div>
       <nav className="purchase-receiving-tabs" aria-label="Purchase workflow sections">
-        {SECTIONS.map((item) => <button key={item.key} type="button" data-purchase-section={item.key} className={section === item.key ? "is-active" : ""} aria-current={section === item.key ? "page" : undefined} onClick={() => setSection(item.key)}>{item.label}</button>)}
+        {SECTIONS.map((item) => <button key={item.key} type="button" data-purchase-section={item.key} className={section === item.key ? "is-active" : ""} aria-current={section === item.key ? "page" : undefined} onClick={() => selectSection(item.key)}>{item.label}</button>)}
       </nav>
 
       {section === "drafts" ? <section aria-label="Purchase Drafts"><SectionHeader title="Purchase Drafts" description="Correct, reject, or explicitly confirm reviewed evidence. Nothing upstream creates a Purchase automatically." />{drafts.length ? <div className="purchase-receiving-grid">{drafts.map((draft) => <DraftCard key={draft.id} draft={draft} busy={busy} onCorrect={openCorrection} onReject={openRejection} onConfirm={confirmDraft} />)}</div> : <EmptyState title="No Purchase Drafts">No synthetic or owner-reviewed draft is waiting. Order Candidates and Checkout Evidence remain separate records.</EmptyState>}</section> : null}
@@ -883,6 +909,10 @@ export default function PurchaseReceivingPage({
       {section === "receiving" ? <section aria-label="Receiving"><SectionHeader title="Receiving" description="Record only physical receipt, including partial shipments and discrepancies." />{receivingPurchases.length ? <div className="purchase-receiving-grid">{receivingPurchases.map((purchase) => <PurchaseCard key={purchase.id} purchase={purchase} events={receivingEvents} busy={busy} onReceive={openReceiving} onPreview={previewHandoff} />)}</div> : <EmptyState title="Nothing awaiting receipt">There are no owner-confirmed Purchases waiting for receiving.</EmptyState>}<InventoryHandoff preview={handoff?.preview} purchase={handoff?.purchase} candidates={handoff?.candidates} reviews={inventoryReviews} busy={busy} onReview={updateInventoryReview} onConfirm={confirmInventory} onClose={() => { setHandoff(null); setInventoryReviews({}); }} /></section> : null}
 
       {section === "corrections" ? <section aria-label="Inventory Corrections and Returns" data-correction-workflow="preview-then-owner-confirm"><SectionHeader title="Inventory Corrections & Returns" description="Review append-only condition, product, quantity, cost, return, and historical reconciliation events after Inventory creation. Refunds alone never remove Inventory." />{managedInventory.length ? <div className="purchase-receiving-grid">{managedInventory.map((item) => <InventoryCorrectionCard key={item.id} item={item} adjustments={inventoryAdjustments} reconciliationEvents={inventoryReconciliationEvents} effectiveAdjustmentIds={effectiveAdjustmentIds} replacementReceivedSourceIds={replacementReceivedSourceIds} busy={busy} onReview={openInventoryCorrection} onReplacement={openReplacementReceiving} onReconcile={openInventoryReconciliationReversal} />)}</div> : <EmptyState title="No owner-confirmed Inventory">Inventory must first pass Purchase, Receiving, candidate review, and explicit creation confirmation.</EmptyState>}<aside className="purchase-receiving-compatibility"><strong>Historical reconciliation boundary</strong><p>Completed Sales and Transfers remain immutable. A reviewed reconciliation may append exact accounting or provenance effects, but it never pretends the original transaction did not happen.</p></aside><aside className="purchase-receiving-compatibility"><strong>Replacement and unexpected-extra boundary</strong><p>Replacement items require a new Receiving event and Inventory creation. Unexpected extras require separate identity and cost review. Neither mutates an existing lot automatically.</p></aside></section> : null}
+
+      {section === "accountant-review" ? (accountantReview
+        ? <AccountantReviewPanel preview={accountantReview} />
+        : <section aria-label="Accountant Review unavailable"><SectionHeader eyebrow="Read-only accounting review" title="Accountant Review" description="The projection could not be derived safely. No accounting or business record was changed." /><EmptyState title="Accountant Review unavailable">Return to this section after the current local history can be validated.</EmptyState></section>) : null}
 
       <aside className="purchase-receiving-compatibility"><strong>Legacy compatibility</strong><p>Existing Deal Finder records remain compatible. Owner-confirmed Inventory is written only to the established local Business Inventory authority as a separate provenance lot.</p>{onOpenLegacyPurchases ? <QuietButton onClick={onOpenLegacyPurchases}>Open Legacy Purchase Records</QuietButton> : null}</aside>
 

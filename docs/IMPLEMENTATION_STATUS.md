@@ -1,30 +1,30 @@
 # Code 3 Implementation Status
 
-Last audited: 2026-09-01
+Last audited: 2026-09-02
 
-Published Phase 2C-C commit / Phase 2C-D starting HEAD: `ef30033a3b30989737878252fb31354aaecf68a3`
+Published Phase 2C-D commit / Phase 2C-E starting HEAD: `5eef5ae59e79dccb7cbb341f42ca6bda7468a762`
 
-Repository branch represented: `ui-104-final-product-ui-2` (Phase 2C-D local working copy prepared from a detached worktree at the published Phase 2C-C commit)
+Repository branch represented: `ui-104-final-product-ui-2` (Phase 2C-E local working copy prepared from a detached worktree at the published Phase 2C-D commit)
 
 Pull request: #1, Draft
-Deployment: Phase 2C-C is published on the existing Draft PR branch. The separate Phase 2B2-B.1 operational verification is paused; a Free Upstash resource and three branch-scoped Preview secrets exist, but remaining owner/CORS/activation values are absent, no follow-up provider-auth Preview was deployed, and `hostedRuntimeVerified=false`. Phase 2C-D is local only and makes no deployment or environment change.
+Deployment: Phase 2C-D is published on the existing Draft PR branch. The separate Phase 2B2-B.1 operational verification is paused; a Free Upstash resource and three branch-scoped Preview secrets exist, but remaining owner/CORS/activation values are absent, no follow-up provider-auth Preview was deployed, and `hostedRuntimeVerified=false`. Phase 2C-E is local only and makes no deployment or environment change.
 
 ## Current phase
 
-**Phase 2C-D — Historical COGS, Sale & Transfer Reconciliation** is the current local-only phase. It extends published Phase 2C-C with an ephemeral impact preview and a separate explicit verified-OWNER confirmation for append-only reconciliation when a correction affects immutable Sales or a future managed Transfer. It preserves original Sale/Transfer/Purchase/Receiving/creation/correction history, does not infer return from refund, create replacement Inventory automatically, begin Raw/Graded authority, connect upstream evidence, use real order/payment data, resume provider verification, change remote persistence, or deploy.
+**Phase 2C-E — Accountant Review & Prior-Period Adjustment Preview** is the current local-only, read-only phase. It derives OWNER-only review items from published Phase 2C-D Sales and append-only reconciliation history, classifies original and correction calendar periods, and keeps original recorded values visibly separate from current effective exact-money projections. It posts no journal/accounting entry, infers no tax treatment or filing status, mutates no Purchase/Sale/Inventory/Transfer, adds no export or note store, and does not begin managed Transfer or Raw/Graded authority, connect upstream evidence, use real business/tax data, resume provider verification, change remote persistence, or deploy.
 
 Phase 2B2-B.1 remains paused and independent. `LOCAL_ONLY` remains authoritative; `REMOTE_ACTIVE` is disabled; the Phase 1B schema remains `SCHEMA_ONLY`; no owner record moved; `hostedRuntimeVerified=false`.
 
-The Phase 2C-D local candidate adds:
+The Phase 2C-E local candidate adds:
 
-- Flip Scout/Business Inventory schema version 5 under the unchanged `ember-and-tide.flip-scout.v1` key, adding append-only `inventoryReconciliationEvents` to existing canonical Inventory authority;
-- ephemeral non-authoritative reconciliation candidates with bounded categories, explicit `READY_TO_CONFIRM`/`NEEDS_REVIEW`/`BLOCKED` state, exact impact preview, and no persistence;
-- immutable Sale records plus separately derived effective COGS/product/profit projections from confirmed signed reconciliation deltas;
-- deterministic partial-sale cost split between realized COGS and remaining Inventory with exact minor-unit conservation;
-- fail-closed transfer categories because no canonical managed-transfer collection exists; and
-- explicit future server transaction design without activating a schema, migration, or remote mode.
+- an ephemeral frozen `AccountantReviewItem` projection over validated schema-5 Inventory/Sale/reconciliation history plus existing Purchase/Receiving provenance;
+- bounded prior/current-period COGS, product, Inventory cost, refund, return, reversal, Sale-reporting, and blocked-Transfer review categories;
+- strict calendar month/quarter/year derivation using Sale dates as recorded and ISO reconciliation instants on a disclosed UTC date basis;
+- exact original, signed-adjustment, and current-effective COGS/profit projections that count each Sale/event effect once and keep reversal chains visible;
+- `FILING_STATUS_UNKNOWN`, cautious accountant-review language, and no tax/legal conclusion; and
+- a read-only OWNER UI with in-memory filters only and no ledger, journal entry, tax filing/amendment, export, note, backup, migration, or remote-authority path.
 
-It retains these published Phase 2C-C safeguards:
+It retains these published Phase 2C-D safeguards:
 
 - typed append-only `inventoryAdjustments` that reconcile immutable creation state to current item/lot product, condition, disposition, quantity, and exact cost;
 - explicit owner preview and confirmation with stable identity, expected versions, exclusive locking, private interruption journal, read-back, replay dedupe, and stale/conflicting failure;
@@ -34,9 +34,9 @@ It retains these published Phase 2C-C safeguards:
 - separate Receiving/Inventory-creation handling for replacements and separate acquisition/cost review for unexpected extras;
 - continued Raw card and Graded card deferral until a type-specific condition/slab contract exists;
 - generic edit/delete/import protection, strict Backup/zero-write Restore Preview chain validation, and `REQUIRES_MAPPING` for every remote Inventory path; and
-- synthetic-only correction/disposition/idempotency/security/UI/browser coverage, with final validation and publication remaining separate.
+- synthetic-only correction/disposition/reconciliation foundations; Phase 2C-E validation and publication remain separate.
 
-No normal-runtime fixture, upstream automatic importer, automatic Receiving-to-Inventory path, refund inference, automatic product/replacement/extra creator, remote adapter, provider credential, schema application, owner migration, or Production change is part of the candidate. Manual product resolution is limited to an existing local Inventory/product relationship and preserves its reason as provenance. The private recovery journal is not a backup or migration source.
+No normal-runtime fixture, upstream automatic importer, automatic Receiving-to-Inventory path, refund inference, automatic product/replacement/extra creator, accounting/tax writer, remote adapter, provider credential, schema application, owner migration, or Production change is part of the candidate. Review projections never become accounting authority. The private recovery journal and all Accountant Review items remain outside backup and migration sources.
 
 ## Completed baseline
 
@@ -277,10 +277,10 @@ The published Phase 2C-A local gate passed the frontend production build (563 mo
 ## Preview state
 
 - PR #1 remains Draft per the task baseline.
-- The published branch includes Phase 2C-C at `ef30033a3b30989737878252fb31354aaecf68a3`; Phase 2C-D changes are local only.
+- The published branch includes Phase 2C-D at `5eef5ae59e79dccb7cbb341f42ca6bda7468a762`; Phase 2C-E changes are local only.
 - The published Preview proves filesystem routing to Express and fail-closed authentication, not the complete owner-authorized managed-store proof.
 - `hostedRuntimeVerified=false` because no legitimate owner plus exact durable-store readiness response has been proven. The Free Upstash resource and three branch-scoped Preview secrets do not satisfy the missing Supabase owner/auth and remaining exact CORS/activation/runtime gate. Phase 2B2-B.1 is paused; required names are documented without values in [OWNER_AUTH_DECISION.md](./OWNER_AUTH_DECISION.md).
-- Phase 2C-D does not deploy a Preview, inspect or use the Upstash resource, resume Supabase sign-in, connect a provider, or change Production/Development configuration.
+- Phase 2C-E does not deploy a Preview, inspect or use the Upstash resource, resume Supabase sign-in, connect a provider, or change Production/Development configuration.
 - No production deployment is represented by this documentation.
 
 ## Known defects and debt
@@ -322,9 +322,10 @@ The published Phase 2C-A local gate passed the frontend production build (563 mo
 35. Phase 2C-D Inventory creation/correction/reconciliation remains browser-local in the schema-5 document. Same-origin Web Locks, deterministic IDs, the private journal, and read-back verification reduce local replay/interruption risk but do not provide a server transaction or multi-device serialization.
 36. Provenance-managed Inventory acquisition records retain exact integer-minor-unit cost and separate lots. Older Inventory rows may retain legacy decimal projections and require an owner-reviewed mapping before remote cutover.
 37. Inventory corrections/dispositions are explicit local typed adjustments. Supported post-sale product/cost effects use separate append-only reconciliation events while original Sales remain immutable. Managed Transfer/multi-hop reconciliation, Raw/Graded condition semantics, and remote transactional enforcement remain future work.
+38. Accountant Review is derived and read-only. Its period classification uses Sale dates as recorded and reconciliation instants on a disclosed UTC basis because no authoritative owner-business time zone or filed-period authority exists. Existing tax summaries remain distinct; the review cannot claim tax treatment or post an adjustment.
 
 ## Next recommended task
 
-After the Phase 2C-D local completion report, stop. Publication, Phase 2D-B3, hosted transaction/multi-device authority, reviewed migration mapping, Raw/Graded correction, product creation, and every live provider/import path require separate authorization. The Bot evidence still supports no live pilot. Phase 2B2-B.1 remains paused until the owner explicitly says `Supabase signed in.` Gmail/Outlook, mailbox reads, billing, renderer extraction, and disposable-database work remain separate approvals.
+After the Phase 2C-E local completion report, stop. Publication, accounting posting, tax filing/amendment, managed Transfer, Phase 2D-B3, hosted transaction/multi-device authority, reviewed migration mapping, Raw/Graded correction, product creation, and every live provider/import path require separate authorization. The Bot evidence still supports no live pilot. Phase 2B2-B.1 remains paused until the owner explicitly says `Supabase signed in.` Gmail/Outlook, mailbox reads, billing, renderer extraction, and disposable-database work remain separate approvals.
 
 Do not apply the schema to the owner or Production database, enable `REMOTE_ACTIVE`, migrate files, or execute a migration plan without a separately approved cutover task and verified backup.

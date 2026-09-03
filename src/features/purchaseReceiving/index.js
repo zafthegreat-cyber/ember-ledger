@@ -17,3 +17,4 @@ export * from "./inventoryCorrection/gateway.js";
 export * from "./inventoryReconciliation/constants.js";
 export * from "./inventoryReconciliation/contracts.js";
 export * from "./inventoryReconciliation/gateway.js";
+export * from "./accountantReview/index.js";

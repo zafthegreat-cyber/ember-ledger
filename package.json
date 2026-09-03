@@ -94,6 +94,8 @@
     "test:code3-inventory-correction-browser": "node --no-warnings scripts/test-code3-inventory-correction-browser.cjs",
     "test:code3-inventory-reconciliation": "node --no-warnings scripts/test-code3-inventory-reconciliation-domain.mjs && node --no-warnings scripts/test-code3-inventory-reconciliation-history.mjs && node --no-warnings scripts/test-code3-inventory-reconciliation-security.mjs && node --no-warnings scripts/test-code3-inventory-reconciliation-fixtures.mjs && node --no-warnings scripts/test-code3-inventory-reconciliation-ui.mjs",
     "test:code3-inventory-reconciliation-browser": "node --no-warnings scripts/test-code3-inventory-reconciliation-browser.cjs",
+    "test:code3-accountant-review": "node --no-warnings scripts/test-code3-accountant-review-periods.mjs && node --no-warnings scripts/test-code3-accountant-review-money.mjs && node --no-warnings scripts/test-code3-accountant-review-domain.mjs && node --no-warnings scripts/test-code3-accountant-review-security.mjs && node --no-warnings scripts/test-code3-accountant-review-fixtures.mjs && node --no-warnings scripts/test-code3-accountant-review-zero-write.mjs && node --no-warnings scripts/test-code3-accountant-review-ui.mjs",
+    "test:code3-accountant-review-browser": "node --no-warnings scripts/test-code3-accountant-review-browser.cjs",
     "test:code3-canonical": "npm --prefix backend run test:code3-canonical",
     "test:tier-foundation": "node --no-warnings scripts/test-tier-foundation.mjs",
     "test:quick-add": "node --no-warnings scripts/test-quick-add-routing.mjs",
