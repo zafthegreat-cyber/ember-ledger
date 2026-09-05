@@ -1,0 +1,5 @@
+{
+  "access_token": "TEST_APPLICATION_TOKEN_NOT_A_REAL_CREDENTIAL",
+  "expires_in": 7200,
+  "token_type": "Application Access Token"
+}

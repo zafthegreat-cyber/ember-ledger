@@ -1,0 +1,820 @@
+/* Controls */
+.app :where(input, select, textarea) {
+  min-width: 0;
+  min-height: 42px;
+  border: 1px solid var(--et-border);
+  border-radius: var(--et-radius-sm);
+  color: var(--et-text);
+  background: var(--et-control-bg);
+  padding: 9px 11px;
+}
+
+.app :where(textarea) {
+  min-height: 104px;
+  resize: vertical;
+}
+
+.app :where(input::placeholder, textarea::placeholder) {
+  color: color-mix(in srgb, var(--et-muted) 76%, transparent);
+}
+
+.app :where(label, .form-field) {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.app :where(label > span, .form-field > span, .field-label) {
+  color: var(--et-heading);
+  font-size: 0.76rem;
+  font-weight: 850;
+}
+
+.app :where(button),
+.secondary-button,
+.ghost-button,
+.auth-text-button,
+.drawer-link,
+.et-mockup-button {
+  min-width: 0;
+  border: 1px solid var(--et-border);
+  border-radius: var(--et-radius-sm);
+  color: var(--et-heading);
+  background: color-mix(in srgb, var(--et-surface) 78%, transparent);
+  font-weight: 850;
+  line-height: 1.1;
+}
+
+.app :where(main button:not(.secondary-button):not(.ghost-button):not(.delete-button):not(.drawer-link):not(.web-command-nav-item):not(.web-command-tool):not(.web-command-more-item):not(.topbar-brand):not(.app-search-toggle):not(.menu-button):not(.mobile-dock-item):not(.mobile-dock-add):not(.back-to-top-button):not(.modal-close-button):not(.modal-icon-close)) {
+  color: var(--et-on-accent);
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--et-ember), var(--et-gold));
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--et-ember) 18%, transparent);
+}
+
+.app-kidsprogram :where(main button:not(.secondary-button):not(.ghost-button):not(.delete-button):not(.drawer-link):not(.mobile-dock-item):not(.mobile-dock-add)) {
+  background: linear-gradient(135deg, #8b67e8, #6f55d4);
+  box-shadow: 0 12px 26px rgba(116, 86, 217, 0.2);
+}
+
+.admin-view-mode :where(main button:not(.secondary-button):not(.ghost-button):not(.delete-button):not(.drawer-link)),
+.admin-edit-mode :where(main button:not(.secondary-button):not(.ghost-button):not(.delete-button):not(.drawer-link)),
+.app-adminreview :where(main button:not(.secondary-button):not(.ghost-button):not(.delete-button):not(.drawer-link)) {
+  background: linear-gradient(135deg, #7657df, #4c2bb3);
+  box-shadow: 0 12px 26px rgba(118, 87, 223, 0.24);
+}
+
+.secondary-button,
+.et-mockup-button-secondary,
+.ghost-button,
+.drawer-link,
+.auth-text-button {
+  color: var(--et-heading) !important;
+  background: color-mix(in srgb, var(--et-surface) 78%, transparent) !important;
+  box-shadow: none !important;
+}
+
+.ghost-button {
+  background: transparent !important;
+}
+
+.chip-row button,
+.catalog-chip-row button,
+.standard-page-header-tabs button,
+.app-main-tabs button,
+.tcg-command-tabs button,
+.catalog-view-toggle button,
+.segmented-control button,
+.sales-view-mode-grid button,
+.vault-showcase-toggle button,
+.store-map-retailer-chips button,
+.regional-city-chip-row button,
+.spark-stepper button,
+.market-category-tabs button,
+.market-mockup-category-grid button,
+.scout-filter-row button {
+  color: var(--et-heading) !important;
+  border-color: var(--et-border) !important;
+  background: color-mix(in srgb, var(--et-surface) 78%, transparent) !important;
+  box-shadow: none !important;
+}
+
+.chip-row button.active,
+.catalog-chip-row button.active,
+.standard-page-header-tabs button.active,
+.app-main-tabs button.active,
+.tcg-command-tabs button.active,
+.catalog-view-toggle button.active,
+.segmented-control button.active,
+.sales-view-mode-grid button.active,
+.vault-showcase-toggle button.active,
+.store-map-retailer-chips button.active,
+.regional-city-chip-row button.active,
+.spark-stepper button.active,
+.market-category-tabs button.active,
+.market-mockup-category-grid button.active,
+.scout-filter-row button.active,
+.chip-row button[aria-selected="true"],
+.standard-page-header-tabs button[aria-selected="true"],
+.tcg-command-tabs button[aria-selected="true"],
+.catalog-view-toggle button[aria-selected="true"],
+.segmented-control button[aria-selected="true"] {
+  color: var(--et-on-accent) !important;
+  border-color: color-mix(in srgb, var(--et-accent) 62%, var(--et-border)) !important;
+  background: linear-gradient(135deg, var(--et-accent), var(--et-accent-2)) !important;
+}
+
+.delete-button,
+.danger,
+.status-badge.danger {
+  --et-accent: var(--et-red);
+}
+
+.delete-button {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(135deg, #d44b3e, #9f2f31) !important;
+}
+
+.quick-actions,
+.compact-actions,
+.app-confirmation-actions,
+.flow-form-footer,
+.spark-flow-actions,
+.catalog-detail-primary-actions,
+.catalog-detail-secondary-actions,
+.collection-manager-actions,
+.store-map-card-actions,
+.marketplace-nav-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.quick-actions > *,
+.compact-actions > *,
+.flow-form-footer > *,
+.spark-flow-actions > * {
+  min-height: 40px;
+  padding-inline: 13px;
+}
+
+.summary-pill-row,
+.chip-row,
+.catalog-chip-row,
+.active-filter-chips,
+.trust-badge-row,
+.store-profile-badge-row,
+.scout-safety-strip,
+.scout-header-trust-row,
+.spark-gift-type-cloud,
+.spark-program-support-cloud,
+.collector-event-type-cloud,
+.forge-intro-benefits,
+.forge-mockup-guardrail-strip,
+.market-mockup-rule-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  min-width: 0;
+}
+
+.status-badge,
+.trust-badge,
+.neon-chip,
+.catalog-pill,
+.et-mockup-pill,
+.market-status-pill,
+.confidence-badge {
+  min-width: 0;
+  max-width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 5px 9px;
+  border: 1px solid color-mix(in srgb, var(--et-accent) 28%, var(--et-border));
+  border-radius: 999px;
+  color: var(--et-heading);
+  background: color-mix(in srgb, var(--et-accent) 11%, var(--et-surface));
+  font-size: 0.72rem;
+  font-weight: 850;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.status-badge.success,
+.trust-badge--verified,
+.trust-badge--fair {
+  --et-accent: var(--et-green);
+}
+
+.status-badge.warning,
+.trust-badge--kid {
+  --et-accent: var(--et-gold);
+}
+
+.status-badge.error,
+.status-badge.danger,
+.trust-badge--secure {
+  --et-accent: var(--et-red);
+}
+
+/* Shared panels and cards */
+.panel,
+.card,
+.compact-card,
+.glass-card,
+.glass-panel,
+.standard-page-header,
+.drawer-info-card,
+.utility-card,
+.et-mockup-page-hero,
+.et-mockup-section-card,
+.et-mockup-right-rail,
+.et-mockup-stat-card,
+.et-mockup-action-card,
+.et-mockup-empty-state,
+.flow-next-action-card,
+.vault-display-case-panel,
+.item-compare-table-card,
+.vault-manual-condition-panel,
+.small-empty-state,
+.empty-state,
+.market-home-product-card,
+.catalog-result-card,
+.catalog-picker-card,
+.scout-report-compact-card,
+.tidepool-post-card,
+.tidepool-preview-card,
+.spark-section-card,
+.spark-support-card,
+.spark-kid-pack,
+.spark-event,
+.spark-mission-card,
+.forge-preview-card,
+.command-hearth-card,
+.command-hearth-action,
+.command-hearth-queue-row,
+.admin-command-card,
+.admin-command-section-card,
+.admin-review-foundation-card,
+.admin-review-decision-card,
+.admin-overview-tile,
+.admin-control-map-card,
+.admin-queue-card,
+.store-map-card,
+.store-map-filters,
+.store-map-canvas,
+.collector-showcase-card,
+.collector-flip-card,
+.catalog-detail-body,
+.catalog-detail-media-panel,
+.catalog-detail-drawer {
+  min-width: 0;
+  border: 1px solid var(--et-border);
+  border-radius: var(--et-radius-md);
+  color: var(--et-text);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--et-card) 96%, white 4%), var(--et-card));
+  box-shadow: var(--et-shadow-card);
+}
+
+.app-theme-dark :where(.panel, .card, .compact-card, .glass-card, .glass-panel, .standard-page-header, .drawer-info-card, .utility-card, .et-mockup-page-hero, .et-mockup-section-card, .et-mockup-right-rail, .et-mockup-stat-card, .et-mockup-action-card, .et-mockup-empty-state, .flow-next-action-card, .vault-display-case-panel, .item-compare-table-card, .vault-manual-condition-panel, .small-empty-state, .empty-state, .market-home-product-card, .catalog-result-card, .catalog-picker-card, .scout-report-compact-card, .tidepool-post-card, .tidepool-preview-card, .spark-section-card, .forge-preview-card, .command-hearth-card, .command-hearth-action, .command-hearth-queue-row, .admin-command-card, .admin-command-section-card, .store-map-card, .collector-showcase-card, .collector-flip-card, .catalog-detail-body, .catalog-detail-media-panel, .catalog-detail-drawer) {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--et-card) 92%, white 3%), var(--et-card));
+  box-shadow: var(--et-shadow-dark);
+}
+
+.panel,
+.standard-page-header,
+.et-mockup-section-card,
+.et-mockup-right-rail,
+.empty-state,
+.drawer-info-card,
+.utility-card {
+  padding: 16px;
+}
+
+.card,
+.compact-card,
+.small-empty-state,
+.vault-display-case-panel,
+.item-compare-table-card,
+.vault-manual-condition-panel,
+.et-mockup-stat-card,
+.et-mockup-action-card,
+.catalog-result-card,
+.store-map-card,
+.admin-review-foundation-card,
+.admin-review-decision-card,
+.admin-control-map-card {
+  padding: 12px;
+}
+
+.flow-next-action-card,
+.vault-display-case-panel,
+.item-compare-table-card,
+.vault-manual-condition-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.flow-next-action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.et-mockup-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.compact-card-header,
+.et-mockup-section-heading,
+.et-mockup-rail-heading,
+.catalog-result-group-header,
+.catalog-detail-header,
+.collection-manager-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  margin-bottom: 12px;
+}
+
+.compact-card-header > div,
+.et-mockup-section-heading > div,
+.et-mockup-rail-heading > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.compact-card-header h2,
+.compact-card-header h3,
+.et-mockup-section-heading h2,
+.et-mockup-rail-heading h2,
+.standard-page-header-copy h2 {
+  font-size: 1.18rem;
+}
+
+.compact-card-header p,
+.et-mockup-section-heading p,
+.et-mockup-rail-heading p,
+.standard-page-header-copy p,
+.compact-subtitle {
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.section-kicker {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--et-accent);
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.dashboard-layout,
+.et-mockup-page,
+.home-clean-layout,
+.scout-dashboard-overview,
+.vault-page,
+.market-home-foundation,
+.forge-business-command-panel,
+.store-map-page,
+.tidepool-community-page,
+.admin-ops-dashboard,
+.spark-program-layout {
+  display: grid;
+  gap: var(--et-gap);
+  min-width: 0;
+}
+
+.et-mockup-page {
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 360px);
+  align-items: start;
+}
+
+.et-mockup-main-column {
+  min-width: 0;
+  display: grid;
+  gap: var(--et-gap);
+}
+
+.et-mockup-page > *,
+.et-mockup-main-column > *,
+.et-mockup-section-card > *,
+.et-mockup-right-rail > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.et-mockup-right-rail {
+  position: sticky;
+  top: calc(var(--et-topbar) + 14px);
+  display: grid;
+  gap: 12px;
+}
+
+.et-mockup-page-hero {
+  position: relative;
+  min-height: 205px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(210px, 32%);
+  gap: 14px;
+  overflow: hidden;
+  padding: 18px;
+  color: #fff4df;
+  border-color: color-mix(in srgb, var(--et-accent) 34%, rgba(255, 255, 255, 0.14));
+  background:
+    linear-gradient(90deg, rgba(6, 18, 31, 0.9), rgba(8, 26, 44, 0.58)),
+    image-set(url("/assets/brand/ember-tide-promo-hero.png") 1x),
+    linear-gradient(135deg, #0b2037, #102a44);
+  background-size: cover;
+  background-position: center;
+  box-shadow: var(--et-shadow);
+}
+
+.et-mockup-page-hero::after {
+  content: "";
+  position: absolute;
+  inset: auto 16px 16px auto;
+  width: 78px;
+  height: 78px;
+  border: 1px solid rgba(231, 182, 87, 0.6);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 40% 38%, rgba(231, 182, 87, 0.75), transparent 10%),
+    radial-gradient(circle at 50% 50%, transparent 40%, rgba(231, 182, 87, 0.15) 42%, transparent 62%);
+  pointer-events: none;
+}
+
+.et-mockup-hero-copy,
+.et-mockup-hero-status {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+}
+
+.et-mockup-hero-copy {
+  display: grid;
+  align-content: center;
+  gap: 10px;
+}
+
+.et-mockup-brand-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #f8d487;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.et-mockup-brand-row img {
+  width: 28px;
+  height: 28px;
+}
+
+.et-mockup-page-hero h1 {
+  max-width: 18ch;
+  color: #fff3d8;
+  font-size: 2rem;
+}
+
+.et-mockup-page-hero p {
+  max-width: 52ch;
+  color: rgba(255, 244, 224, 0.82);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.et-mockup-today-action {
+  width: min(420px, 100%);
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  text-align: left;
+  border: 1px solid rgba(231, 182, 87, 0.35);
+  border-radius: var(--et-radius-md);
+  color: #fff5df !important;
+  background: rgba(9, 24, 42, 0.72) !important;
+  box-shadow: none !important;
+}
+
+.et-mockup-today-action span,
+.et-mockup-today-action b {
+  color: #f8c56b;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.et-mockup-today-action strong {
+  color: #fff4df;
+}
+
+.et-mockup-hero-status {
+  display: grid;
+  align-content: end;
+  justify-items: end;
+  gap: 10px;
+}
+
+.et-mockup-points-card {
+  min-width: 116px;
+  display: grid;
+  gap: 2px;
+  padding: 12px;
+  border: 1px solid rgba(231, 182, 87, 0.35);
+  border-radius: var(--et-radius-md);
+  background: rgba(5, 15, 27, 0.7);
+}
+
+.et-mockup-points-card strong {
+  color: #f9c96d;
+  font-size: 1.3rem;
+}
+
+.et-mockup-points-card small {
+  color: rgba(255, 244, 224, 0.72);
+}
+
+.et-mockup-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.et-mockup-action-grid,
+.quick-action-card-grid,
+.cards,
+.mini-cards,
+.preview-grid,
+.catalog-detail-grid,
+.et-mockup-stat-grid,
+.admin-command-grid,
+.admin-command-section-grid,
+.admin-review-foundation-grid,
+.admin-review-decision-grid,
+.admin-control-map-grid,
+.spark-rule-grid,
+.spark-learning-grid,
+.spark-status-strip,
+.marketplace-grid,
+.store-profile-activity-grid,
+.regional-browse-grid,
+.catalog-results-grid,
+.vault-detail-grid,
+.collections-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+
+.et-mockup-action-card,
+.quick-action-card,
+.global-search-destination-card,
+.guided-option-card,
+.guided-quick-choice,
+.add-anything-option {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+}
+
+.et-mockup-action-copy,
+.et-mockup-action-card > span:not(.et-mockup-icon),
+.quick-action-card span,
+.home-list-row span,
+.app-search-result-main span {
+  min-width: 0;
+}
+
+.et-mockup-action-card strong,
+.quick-action-card strong,
+.home-list-row strong,
+.catalog-result-card strong,
+.store-map-card strong {
+  display: block;
+  overflow-wrap: anywhere;
+  font-size: 0.92rem;
+  line-height: 1.18;
+}
+
+.et-mockup-action-card small,
+.quick-action-card small,
+.home-list-row small,
+.catalog-result-card small,
+.store-map-card small {
+  display: block;
+  margin-top: 3px;
+  font-size: 0.76rem;
+  line-height: 1.32;
+}
+
+.et-mockup-action-card b {
+  color: var(--et-accent);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.et-mockup-stat-card,
+.card,
+.stat-tile,
+.collections-summary-tile,
+.admin-overview-tile {
+  display: grid;
+  gap: 4px;
+  text-align: left;
+}
+
+.et-mockup-stat-card span,
+.card p,
+.stat-tile span,
+.admin-overview-tile span {
+  color: var(--et-muted);
+  font-size: 0.74rem;
+  font-weight: 850;
+}
+
+.et-mockup-stat-card strong,
+.card h2,
+.stat-tile strong,
+.admin-overview-tile strong {
+  color: var(--et-heading);
+  font-family: var(--et-font-display);
+  font-size: 1.38rem;
+  line-height: 1.05;
+}
+
+.et-mockup-empty-state,
+.empty-state,
+.small-empty-state {
+  display: grid;
+  justify-items: start;
+  gap: 9px;
+}
+
+.empty-state h3,
+.small-empty-state strong,
+.et-mockup-empty-state strong {
+  color: var(--et-heading);
+  font-size: 1rem;
+}
+
+.home-list,
+.inventory-list,
+.compact-inventory-list,
+.catalog-results-list,
+.app-search-list,
+.admin-compact-list,
+.scout-watch-store-list,
+.collector-event-list,
+.store-map-card-list,
+.tidepool-note-list {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.home-list-row,
+.inventory-list-row,
+.catalog-result-card,
+.app-search-result,
+.admin-compact-row,
+.drawer-link,
+.scout-watch-store-row,
+.spark-gift-ledger-row,
+.spark-kid-pack-row,
+.spark-event-support-row {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--et-border);
+  border-radius: var(--et-radius-sm);
+  color: var(--et-text);
+  background: color-mix(in srgb, var(--et-surface) 72%, transparent);
+  text-align: left;
+}
+
+.home-list-row b,
+.inventory-list-row b,
+.app-search-result b {
+  flex: 0 0 auto;
+  color: var(--et-accent);
+  font-size: 0.8rem;
+}
+
+.standard-page-header-tabs,
+.app-main-tabs,
+.tcg-command-tabs,
+.catalog-view-toggle,
+.segmented-control,
+.sales-view-mode-grid,
+.vault-showcase-toggle,
+.store-map-retailer-chips,
+.regional-city-chip-row,
+.spark-stepper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  min-width: 0;
+}
+
+.standard-page-header-tabs button,
+.app-main-tabs button,
+.tcg-command-tabs button,
+.catalog-view-toggle button,
+.segmented-control button,
+.sales-view-mode-grid button,
+.vault-showcase-toggle button,
+.store-map-retailer-chips button,
+.regional-city-chip-row button,
+.spark-stepper button {
+  min-height: 36px;
+  padding: 7px 11px;
+  border: 1px solid var(--et-border);
+  color: var(--et-heading);
+  background: color-mix(in srgb, var(--et-surface) 72%, transparent);
+  box-shadow: none;
+}
+
+.standard-page-header-tabs button.active,
+.app-main-tabs button.active,
+.tcg-command-tabs button.active,
+.catalog-view-toggle button.active,
+.segmented-control button.active,
+.segmented-control button.selected,
+.sales-view-mode-grid button.active,
+.vault-showcase-toggle button.active,
+.store-map-retailer-chips button.active,
+.regional-city-chip-row button.active,
+.spark-stepper button.active {
+  border-color: color-mix(in srgb, var(--et-accent) 45%, var(--et-border));
+  color: var(--et-heading);
+  background: color-mix(in srgb, var(--et-accent) 17%, var(--et-surface));
+}
+
+.checkbox-row,
+.inline-toggle,
+.checkbox-grid label,
+.store-map-watch-toggle {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 10px;
+  border: 1px solid var(--et-border);
+  border-radius: var(--et-radius-sm);
+  background: color-mix(in srgb, var(--et-surface) 70%, transparent);
+}
+
+.checkbox-row input,
+.inline-toggle input,
+.checkbox-grid input {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  margin-top: 1px;
+  accent-color: var(--et-accent);
+}
+
+.form,
+.compact-form-grid,
+.auth-form,
+.admin-store-draft-form,
+.kid-pack-builder-form,
+.beta-form-card,
+.store-map-filters {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.inline-input-grid,
+.auth-name-grid,
+.breakdown-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
