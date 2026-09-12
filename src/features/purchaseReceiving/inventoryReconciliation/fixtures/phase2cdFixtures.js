@@ -1,0 +1,48 @@
+const fixture = (id, scenario, expected = {}) => Object.freeze({
+  id,
+  scenario,
+  synthetic: true,
+  sourceReference: `reconciliation.${id}.test`,
+  expected: Object.freeze(expected),
+});
+
+/** Reserved-only QA descriptors. They are never loaded as application data. */
+export const PHASE2CD_QA_FIXTURES = Object.freeze([
+  fixture("cost-increase-after-full-sale", "FULL_SALE_COST_INCREASE", { cogsDeltaMinorUnits: 1000 }),
+  fixture("cost-decrease-after-full-sale", "FULL_SALE_COST_DECREASE", { cogsDeltaMinorUnits: -1000 }),
+  fixture("cost-correction-partial-sale", "PARTIAL_SALE_COST", { exact: true }),
+  fixture("cost-correction-remaining-inventory", "REMAINING_COST", { exact: true }),
+  fixture("three-unit-penny-remainder-sale", "PENNY_REMAINDER", { exact: true }),
+  fixture("product-correction-before-sale", "PRODUCT_BEFORE_SALE", { standardCorrectionRequired: true }),
+  fixture("product-correction-after-sale", "PRODUCT_AFTER_SALE", { eligible: true }),
+  fixture("product-correction-partial-sale", "PRODUCT_PARTIAL_SALE", { eligible: true }),
+  fixture("product-correction-after-transfer", "PRODUCT_AFTER_TRANSFER", { status: "NEEDS_REVIEW" }),
+  fixture("cost-correction-after-transfer", "COST_AFTER_TRANSFER", { status: "NEEDS_REVIEW" }),
+  fixture("source-destination-transfer", "TRANSFER_CHAIN", { status: "NEEDS_REVIEW" }),
+  fixture("multi-hop-transfer", "MULTI_HOP_TRANSFER", { status: "NEEDS_REVIEW" }),
+  fixture("over-return-after-sale", "OVER_RETURN", { blocked: true }),
+  fixture("valid-return-remaining", "RETURN_REMAINING", { eligible: true }),
+  fixture("refund-after-sale", "REFUND_AFTER_SALE", { inventoryMutation: false }),
+  fixture("refund-without-return", "REFUND_ONLY", { inventoryMutation: false }),
+  fixture("refund-acquisition-economics", "REFUND_COST_EFFECT", { ownerReview: true }),
+  fixture("replacement-after-partial-sale", "REPLACEMENT_PARTIAL_SALE", { automaticInventory: false }),
+  fixture("incorrect-reconciliation-reversed", "PRIOR_CORRECTION_REVERSAL", { appendOnly: true }),
+  fixture("duplicate-reconciliation", "DUPLICATE_IDEMPOTENCY", { canonicalEffects: 1 }),
+  fixture("double-click", "DUPLICATE_SUBMIT", { canonicalEffects: 1 }),
+  fixture("stale-candidate", "STALE_VERSION", { blocked: true }),
+  fixture("interrupted-write", "WRITE_INTERRUPTION", { retrySafe: true }),
+  fixture("repair-after-interruption", "JOURNAL_REPAIR", { retrySafe: true }),
+  fixture("two-tab-collision", "CONCURRENT_CONFIRM", { canonicalEffects: 1 }),
+  fixture("sale-during-preview", "SALE_VERSION_CHANGE", { blocked: true }),
+  fixture("transfer-during-preview", "TRANSFER_VERSION_CHANGE", { status: "NEEDS_REVIEW" }),
+  fixture("exact-cogs-adjustment", "EXACT_MINOR_UNITS", { exact: true }),
+  fixture("negative-cogs-adjustment", "NEGATIVE_COGS", { exact: true }),
+  fixture("tax-reporting-effect", "TAX_PROJECTION", { appendOnly: true }),
+  fixture("prior-period-adjustment", "PRIOR_PERIOD", { provenance: true }),
+  fixture("secret-bearing-payload", "SECRET_REJECTION", { rejected: true }),
+  fixture("prototype-pollution", "PROTOTYPE_POLLUTION", { rejected: true }),
+  fixture("impossible-quantity-conservation", "QUANTITY_CONSERVATION", { blocked: true }),
+  fixture("impossible-cost-conservation", "COST_CONSERVATION", { blocked: true }),
+]);
+
+export const PHASE2CD_FIXTURE_COUNT = PHASE2CD_QA_FIXTURES.length;

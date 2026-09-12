@@ -17,6 +17,8 @@ import {
 } from "../api";
 import SmartCatalogSearchBox from "../components/SmartCatalogSearchBox";
 import OverflowMenu from "../components/OverflowMenu";
+import ScoutTileMap from "../components/ScoutTileMap";
+import { AppNavIcon, CommandBoardSection, CommandBoardV4, CommandMetricGrid } from "../components/command-system";
 import { getStoreGroup, normalizeStoreGroup, STORE_GROUP_ORDER } from "../utils/storeGroupingUtils";
 import { dedupeStoresByChainAddress, flagStoreImportIssues, normalizeImportedStore, normalizeStateLabel, normalizeVirginiaRegion, parseStoreCsv } from "../utils/storeImportUtils";
 import { storeMatchesSearch, sortStores } from "../utils/storeSearchUtils";
@@ -480,7 +482,8 @@ function getStoreDistanceMiles(store = {}, location = {}, zip = "") {
   const storeLng = Number(store.lng ?? store.longitude);
   const userLat = Number(location.lat);
   const userLng = Number(location.lng);
-  const hasStoreCoordinates = store.lat !== undefined || store.latitude !== undefined || store.lng !== undefined || store.longitude !== undefined;
+  const hasStoreCoordinates = [store.lat ?? store.latitude, store.lng ?? store.longitude]
+    .every((value) => value !== null && value !== undefined && String(value).trim() !== "");
   const hasUserCoordinates = location.lat !== null && location.lat !== undefined && location.lat !== "" && location.lng !== null && location.lng !== undefined && location.lng !== "";
   if (hasStoreCoordinates && hasUserCoordinates && Number.isFinite(storeLat) && Number.isFinite(storeLng) && Number.isFinite(userLat) && Number.isFinite(userLng)) {
     const toRad = (value) => (value * Math.PI) / 180;
@@ -518,6 +521,31 @@ function getStoreLastReportLabel(storeReports = []) {
   return latestReport ? friendlyScoutTimestamp(latestReport) : "No reports yet";
 }
 
+function scoutSignalConfidencePercent(report = {}) {
+  const rawScore = Number(report.confidenceScore ?? report.confidence_score);
+  if (Number.isFinite(rawScore) && rawScore > 0) return Math.max(12, Math.min(98, rawScore));
+  const confidence = String(report.confidence || report.confidenceLevel || report.confidence_level || "").toLowerCase();
+  const verification = String(report.verificationStatus || report.verification_status || "").toLowerCase();
+  if (report.verified || verification.includes("verified")) return 88;
+  if (confidence.includes("strong") || confidence.includes("high") || confidence.includes("likely")) return 76;
+  if (confidence.includes("possible") || confidence.includes("moderate")) return 58;
+  if (confidence.includes("guess") || confidence.includes("low")) return 36;
+  return 48;
+}
+
+function scoutSignalConfidenceLabel(score = 0) {
+  if (score >= 82) return "Strong";
+  if (score >= 64) return "Moderate";
+  if (score >= 44) return "Low";
+  return "Needs proof";
+}
+
+function scoutSignalTone(score = 0) {
+  if (score >= 82) return "strong";
+  if (score >= 64) return "medium";
+  return "low";
+}
+
 function dayName(dateString) {
   if (!dateString) return "";
   const date = new Date(`${dateString}T00:00:00`);
@@ -535,20 +563,19 @@ function getMostCommon(values) {
 
 const styles = {
   page: {
-    minHeight: "100vh",
-    background:
-      "linear-gradient(180deg, #fff7ed 0%, #fef3c7 45%, #f0fdfa 100%)",
-    padding: "10px",
+    minHeight: "auto",
+    background: "transparent",
+    padding: "0",
     fontFamily:
-      'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-    color: "#0f172a",
+      'var(--cmd-font-ui, Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif)',
+    color: "var(--cmd-text)",
   },
   shell: {
-    width: "min(100%, 920px)",
-    maxWidth: "920px",
+    width: "100%",
+    maxWidth: "none",
     margin: "0 auto",
     display: "grid",
-    gap: "14px",
+    gap: "clamp(14px, 1.55vw, 22px)",
   },
   hero: {
     background: "linear-gradient(135deg, #2a2522 0%, #7c2d12 50%, #0f766e 100%)",
@@ -572,25 +599,25 @@ const styles = {
   statsRow: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-    gap: "12px",
-    marginTop: "20px",
+    gap: "10px",
+    marginTop: "14px",
   },
   statCard: {
-    background: "#ffffff",
-    border: "1px solid #e5e7eb",
-    borderRadius: "16px",
+    background: "var(--cmd-card)",
+    border: "1px solid var(--cmd-line)",
+    borderRadius: "var(--cmd-radius-md)",
     padding: "12px",
-    boxShadow: "0 8px 20px rgba(15, 23, 42, 0.06)",
+    boxShadow: "var(--cmd-inset)",
   },
   statLabel: {
     fontSize: "12px",
-    color: "#64748b",
+    color: "var(--cmd-muted)",
     marginBottom: "6px",
   },
   statValue: {
     fontSize: "18px",
     fontWeight: 800,
-    color: "#0f172a",
+    color: "var(--cmd-heading)",
   },
   mainGrid: {
     display: "grid",
@@ -603,17 +630,17 @@ const styles = {
     gap: "20px",
   },
   card: {
-    background: "#ffffff",
-    borderRadius: "16px",
-    padding: "14px",
-    boxShadow: "0 12px 32px rgba(15, 23, 42, 0.08)",
-    border: "1px solid #e5e7eb",
+    background: "var(--cmd-card)",
+    borderRadius: "var(--cmd-radius-lg)",
+    padding: "clamp(14px, 1.45vw, 20px)",
+    boxShadow: "var(--cmd-shadow-soft), var(--cmd-inset)",
+    border: "1px solid var(--cmd-line)",
   },
   sectionTitle: {
     margin: "0 0 14px 0",
     fontSize: "19px",
     fontWeight: 800,
-    color: "#111827",
+    color: "var(--cmd-heading)",
   },
   formGrid: {
     display: "grid",
@@ -624,49 +651,53 @@ const styles = {
     minHeight: "46px",
     padding: "12px 14px",
     borderRadius: "14px",
-    border: "1px solid #d1d5db",
+    border: "1px solid var(--cmd-line)",
     outline: "none",
     fontSize: "14px",
-    background: "#fff",
+    background: "var(--cmd-panel-strong)",
+    color: "var(--cmd-heading)",
     boxSizing: "border-box",
   },
   textarea: {
     width: "100%",
     padding: "12px 14px",
     borderRadius: "14px",
-    border: "1px solid #d1d5db",
+    border: "1px solid var(--cmd-line)",
     outline: "none",
     fontSize: "16px",
-    background: "#fff",
+    background: "var(--cmd-panel-strong)",
+    color: "var(--cmd-heading)",
     minHeight: "90px",
     resize: "vertical",
     boxSizing: "border-box",
   },
   buttonPrimary: {
-    background: "linear-gradient(135deg, #f97316 0%, #0f766e 100%)",
-    color: "#fff",
-    border: "none",
-    borderRadius: "14px",
+    background: "linear-gradient(180deg, var(--cmd-accent-ember-2), var(--cmd-accent-ember))",
+    color: "#fff8ec",
+    border: "1px solid color-mix(in srgb, var(--cmd-accent-ember) 48%, transparent)",
+    borderRadius: "var(--cmd-radius-md)",
     minHeight: "46px",
     padding: "12px 14px",
-    fontWeight: 700,
+    fontWeight: 850,
     cursor: "pointer",
+    boxShadow: "0 14px 30px color-mix(in srgb, var(--cmd-accent-ember) 22%, transparent)",
   },
   buttonSoft: {
-    background: "#fff7ed",
-    color: "#2a2522",
-    border: "1px solid #fed7aa",
-    borderRadius: "12px",
+    background: "color-mix(in srgb, var(--cmd-card) 82%, transparent)",
+    color: "var(--cmd-heading)",
+    border: "1px solid var(--cmd-line)",
+    borderRadius: "var(--cmd-radius-md)",
     minHeight: "44px",
     padding: "10px 12px",
-    fontWeight: 600,
+    fontWeight: 800,
     cursor: "pointer",
+    boxShadow: "var(--cmd-inset)",
   },
   buttonDanger: {
-    background: "#fff1f2",
-    color: "#be123c",
-    border: "1px solid #fecdd3",
-    borderRadius: "12px",
+    background: "color-mix(in srgb, var(--cmd-danger) 13%, var(--cmd-card))",
+    color: "var(--cmd-heading)",
+    border: "1px solid color-mix(in srgb, var(--cmd-danger) 38%, var(--cmd-line))",
+    borderRadius: "var(--cmd-radius-md)",
     minHeight: "44px",
     padding: "10px 12px",
     fontWeight: 700,
@@ -686,26 +717,26 @@ const styles = {
     borderRadius: "999px",
     fontSize: "12px",
     fontWeight: 700,
-    border: "1px solid #e5e7eb",
-    background: "#f8fafc",
-    color: "#334155",
+    border: "1px solid var(--cmd-line)",
+    background: "color-mix(in srgb, var(--cmd-panel-soft) 84%, transparent)",
+    color: "var(--cmd-heading)",
   },
   badgeFound: {
-    background: "#ecfdf5",
-    border: "1px solid #a7f3d0",
-    color: "#047857",
+    background: "color-mix(in srgb, var(--cmd-ok) 13%, var(--cmd-card))",
+    border: "1px solid color-mix(in srgb, var(--cmd-ok) 35%, var(--cmd-line))",
+    color: "var(--cmd-heading)",
   },
   badgeNeutral: {
-    background: "#f8fafc",
-    border: "1px solid #e5e7eb",
-    color: "#334155",
+    background: "color-mix(in srgb, var(--cmd-panel-soft) 84%, transparent)",
+    border: "1px solid var(--cmd-line)",
+    color: "var(--cmd-heading)",
   },
   listCard: {
-    border: "1px solid #e5e7eb",
-    borderRadius: "18px",
+    border: "1px solid var(--cmd-line)",
+    borderRadius: "var(--cmd-radius-lg)",
     padding: "14px",
     marginBottom: "12px",
-    background: "#fff",
+    background: "var(--cmd-panel-soft)",
   },
   reportGrid: {
     display: "grid",
@@ -713,17 +744,17 @@ const styles = {
     gap: "12px",
   },
   calloutCard: {
-    border: "1px solid #bae6fd",
-    borderRadius: "16px",
+    border: "1px solid var(--cmd-line-cool)",
+    borderRadius: "var(--cmd-radius-lg)",
     padding: "14px",
     marginBottom: "12px",
-    background: "linear-gradient(135deg, #f0f9ff 0%, #fff7ed 100%)",
+    background: "linear-gradient(145deg, color-mix(in srgb, var(--cmd-accent-teal) 10%, var(--cmd-card)), color-mix(in srgb, var(--cmd-accent-ember) 7%, var(--cmd-card)))",
   },
   alertCard: {
-    border: "1px solid #e2e8f0",
-    borderRadius: "14px",
+    border: "1px solid var(--cmd-line)",
+    borderRadius: "var(--cmd-radius-md)",
     padding: "10px",
-    background: "#ffffff",
+    background: "var(--cmd-card)",
     display: "grid",
     gap: "6px",
   },
@@ -733,37 +764,37 @@ const styles = {
     alignItems: "center",
     gap: "14px",
     padding: "12px 0",
-    borderBottom: "1px solid #f1f5f9",
+    borderBottom: "1px solid var(--cmd-line)",
   },
   switchButton: {
     width: "48px",
     minWidth: "48px",
     height: "28px",
     borderRadius: "999px",
-    border: "1px solid #cbd5e1",
+    border: "1px solid var(--cmd-line)",
     padding: "3px",
-    background: "#e2e8f0",
+    background: "color-mix(in srgb, var(--cmd-card) 78%, transparent)",
     cursor: "pointer",
     display: "flex",
     alignItems: "center",
   },
   switchButtonOn: {
-    background: "#0f766e",
-    borderColor: "#0f766e",
+    background: "var(--cmd-accent-tide)",
+    borderColor: "var(--cmd-accent-teal)",
     justifyContent: "flex-end",
   },
   switchKnob: {
     width: "20px",
     height: "20px",
     borderRadius: "999px",
-    background: "#ffffff",
-    boxShadow: "0 1px 4px rgba(15, 23, 42, 0.22)",
+    background: "var(--cmd-heading)",
+    boxShadow: "0 1px 4px rgba(0, 0, 0, 0.28)",
   },
   storeChoiceCard: {
-    border: "1px solid #e5e7eb",
-    borderRadius: "16px",
+    border: "1px solid var(--cmd-line)",
+    borderRadius: "var(--cmd-radius-lg)",
     padding: "12px",
-    background: "#fff",
+    background: "var(--cmd-card)",
     cursor: "pointer",
   },
   storeRow: {
@@ -783,9 +814,9 @@ const styles = {
     width: "40px",
     height: "40px",
     borderRadius: "999px",
-    border: "1px solid #e5e7eb",
-    background: "#fff",
-    color: "#0f172a",
+    border: "1px solid var(--cmd-line)",
+    background: "var(--cmd-card)",
+    color: "var(--cmd-heading)",
     fontWeight: 900,
     cursor: "pointer",
   },
@@ -794,7 +825,7 @@ const styles = {
     justifyContent: "space-between",
     gap: "12px",
     padding: "9px 0",
-    borderBottom: "1px solid #f1f5f9",
+    borderBottom: "1px solid var(--cmd-line)",
   },
   inlineFormRow: {
     display: "grid",
@@ -803,17 +834,17 @@ const styles = {
     alignItems: "center",
   },
   storeGroup: {
-    border: "1px solid #e5e7eb",
-    borderRadius: "18px",
+    border: "1px solid var(--cmd-line)",
+    borderRadius: "var(--cmd-radius-lg)",
     overflow: "hidden",
     marginBottom: "12px",
-    background: "#fff",
+    background: "var(--cmd-card)",
   },
   storeGroupHeader: {
     width: "100%",
     minHeight: "48px",
     border: "none",
-    background: "#f8fafc",
+    background: "color-mix(in srgb, var(--cmd-panel-soft) 88%, transparent)",
     padding: "12px 14px",
     display: "flex",
     justifyContent: "space-between",
@@ -821,7 +852,7 @@ const styles = {
     gap: "10px",
     fontWeight: 800,
     cursor: "pointer",
-    color: "#0f172a",
+    color: "var(--cmd-heading)",
   },
   storeGroupBody: {
     padding: "12px",
@@ -830,7 +861,7 @@ const styles = {
   },
   tiny: {
     fontSize: "12px",
-    color: "#64748b",
+    color: "var(--cmd-muted)",
     marginTop: "6px",
   },
   empty: {
@@ -901,10 +932,10 @@ function StatusBadge({ value }) {
 
 function Metric({ label, value }) {
   return (
-    <div style={styles.statCard}>
-      <div style={styles.statLabel}>{label}</div>
-      <div style={styles.statValue}>{value}</div>
-    </div>
+    <article className="command-metric-card scout-metric-card">
+      <span className="scout-metric-label">{label}</span>
+      <strong className="scout-metric-value">{value}</strong>
+    </article>
   );
 }
 
@@ -1235,11 +1266,16 @@ export default function Scout({
   isSupabaseConfigured = false,
   mapCatalogRow = (row) => row,
   money = formatScoutMoney,
+  openBeaconCenter = null,
+  openCompassSearch = null,
   onQuickReport = null,
+  onOpenFlipScout = null,
 }) {
   const [stores, setStores] = useState([]);
   const [scoutSubTab, setScoutSubTab] = useState("overview");
   const [selectedStoreId, setSelectedStoreId] = useState("");
+  const [selectedMapStoreId, setSelectedMapStoreId] = useState("");
+  const [scoutOverviewView, setScoutOverviewView] = useState("map");
   const [selectedState, setSelectedState] = useState(VIRGINIA_STORE_STATE);
   const [selectedChain, setSelectedChain] = useState("All");
   const [selectedRegion, setSelectedRegion] = useState(DEFAULT_VIRGINIA_REGION);
@@ -1261,6 +1297,7 @@ export default function Scout({
   );
   const [reports, setReports] = useState([]);
   const [allReports, setAllReports] = useState([]);
+  const [showAllRestockHistory, setShowAllRestockHistory] = useState(false);
   const [tidepoolReports, setTidepoolReports] = useState([]);
   const [tidepoolFilter, setTidepoolFilter] = useState("Latest");
   const [tidepoolEvents, setTidepoolEvents] = useState([]);
@@ -3860,8 +3897,10 @@ async function handleUpdateStore(e) {
   }
 
   function openStoreDetail(storeId) {
-    setSelectedStoreId(storeId);
+    const canonicalStore = stores.find((store) => String(store.id).toLowerCase() === String(storeId).toLowerCase());
+    setSelectedStoreId(canonicalStore?.id || storeId);
     setStoreDirectoryView("detail");
+    setScoutSubTab("stores");
   }
 
   function openStoreReport(storeId, reportType = "Store Restock Report") {
@@ -3970,6 +4009,88 @@ async function handleUpdateStore(e) {
       return acc;
     }, {});
   }, [visibleAllReports]);
+
+  const trustedShopProfiles = useMemo(() => {
+    const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+    return stores
+      .filter((store) => isStoreActiveForViewer(store, { admin: adminMode }))
+      .map((store) => {
+        const normalized = normalizeStoreExpansionFields(store);
+        const storeReports = reportsByStore[store.id] || [];
+        const reportCount = storeReports.length;
+        const verifiedCount = storeReports.filter((report) => (
+          report.verified ||
+          String(report.verificationStatus || report.verification_status || "").toLowerCase().includes("verified")
+        )).length;
+        const proofCount = storeReports.filter((report) => getScoutReportPhotoUrls(report).length || (report.evidence || []).length).length;
+        const recentCount = storeReports.filter((report) => getStoreReportTimestamp(report) >= sevenDaysAgo).length;
+        const localShop = /local|game|card|comic|collect/i.test(`${normalized.locationType || ""} ${getStoreGroup(normalized)} ${normalized.name || ""}`);
+        const familyApproved = Boolean(normalized.familyFriendlyApproved || normalized.supportsKidsAccess);
+        const pricingFriendly = Boolean(normalized.supportsMsrpOrReasonablePricing || normalized.strictLimits || normalized.purchaseLimits || normalized.limitPolicy);
+        const eventFriendly = Boolean(normalized.hostsEvents || normalized.supportsEvents || normalized.supportsKidsAccess || localShop);
+        const donationPartner = Boolean(normalized.supportsKidsAccess || normalized.familyFriendlyApproved || normalized.acceptsDonations || normalized.donationDropoff);
+        const baseScore = 32
+          + Math.min(reportCount * 4, 20)
+          + Math.min(verifiedCount * 6, 18)
+          + Math.min(proofCount * 4, 12)
+          + (recentCount ? 8 : 0)
+          + (familyApproved ? 12 : 0)
+          + (pricingFriendly ? 6 : 0)
+          + (eventFriendly ? 4 : 0)
+          + (normalized.favorite || normalized.watched ? 4 : 0)
+          + (localShop ? 4 : 0);
+        const trustScore = Math.min(98, Math.max(24, baseScore));
+        const confidence = trustScore >= 82 ? "Strong" : trustScore >= 66 ? "Moderate" : trustScore >= 48 ? "Building" : "Low";
+        const activity = recentCount ? `${recentCount} recent` : reportCount ? `${reportCount} total` : "Needs reports";
+        const trustBadge = familyApproved ? "Trusted family shop" : localShop ? "Local shop candidate" : "Shared store";
+        const demandLabel = reportCount >= 5 || recentCount >= 2 ? "Local demand high" : reportCount >= 2 ? "Normal demand" : "Needs signal";
+        const lastReportLabel = getStoreLastReportLabel(storeReports);
+        return {
+          store,
+          trustScore,
+          confidence,
+          reportCount,
+          verifiedCount,
+          proofCount,
+          recentCount,
+          activity,
+          trustBadge,
+          demandLabel,
+          lastReportLabel,
+          localShop,
+          familyApproved,
+          eventFriendly,
+          donationPartner,
+          pricingFriendly,
+          locationLabel: [normalized.city || "Unknown area", normalizeVirginiaRegion(normalized.region || "") || normalizeStateLabel(normalized.state || VIRGINIA_STORE_STATE)].filter(Boolean).join(" / "),
+        };
+      })
+      .sort((a, b) => {
+        if (b.trustScore !== a.trustScore) return b.trustScore - a.trustScore;
+        if (b.recentCount !== a.recentCount) return b.recentCount - a.recentCount;
+        return getStoreDisplayName(a.store).localeCompare(getStoreDisplayName(b.store));
+      });
+  }, [stores, reportsByStore, adminMode]);
+
+  const topTrustedShopProfiles = useMemo(() => trustedShopProfiles.slice(0, 4), [trustedShopProfiles]);
+
+  const scoutReliabilitySummary = useMemo(() => {
+    const strong = trustedShopProfiles.filter((profile) => profile.confidence === "Strong").length;
+    const moderate = trustedShopProfiles.filter((profile) => profile.confidence === "Moderate").length;
+    const familySafe = trustedShopProfiles.filter((profile) => profile.familyApproved).length;
+    const proofBacked = trustedShopProfiles.filter((profile) => profile.proofCount > 0).length;
+    return [
+      { label: "Strong stores", value: strong, detail: "trusted report history" },
+      { label: "Moderate stores", value: moderate, detail: "usable but still building" },
+      { label: "Family-safe shops", value: familySafe, detail: "approved or kid-supportive" },
+      { label: "Proof-backed", value: proofBacked, detail: "photos or evidence saved" },
+    ];
+  }, [trustedShopProfiles]);
+
+  const selectedTrustedShopProfile = useMemo(() => {
+    if (!selectedStore) return null;
+    return trustedShopProfiles.find((profile) => String(profile.store.id) === String(selectedStore.id)) || null;
+  }, [selectedStore, trustedShopProfiles]);
 
   const reportRetailerCards = useMemo(() => {
     const counts = stores.reduce((acc, store) => {
@@ -4294,9 +4415,9 @@ async function handleUpdateStore(e) {
         const aDate = `${getReportDate(a)}T${getReportTime(a) || "00:00"}`;
         const bDate = `${getReportDate(b)}T${getReportTime(b) || "00:00"}`;
         return new Date(bDate) - new Date(aDate);
-      })
-      .slice(0, 20);
+      });
   }, [visibleAllReports]);
+  const displayedRestockHistory = showAllRestockHistory ? restockHistory : restockHistory.slice(0, 20);
 
   const enrichedTidepoolReports = useMemo(() => {
     return tidepoolReports
@@ -4444,23 +4565,435 @@ async function handleUpdateStore(e) {
     { key: "verifiedOnly", label: "Verified-only alerts", description: "Only surface higher-confidence reports." },
     { key: "quietHours", label: "Quiet hours", description: "Pause non-urgent alerts during quiet time later." },
   ];
+  const watchedStoreOverviewRows = sortStores(stores.filter((store) =>
+    isStoreActiveForViewer(store, { admin: adminMode }) && (store.favorite || store.watched)
+  ), "distance").slice(0, 3);
+  const watchedStoreSlotLimit = 3;
+  const watchedStoreUsagePercent = Math.min(100, Math.round((watchedStoreOverviewRows.length / watchedStoreSlotLimit) * 100));
+  const scoutOverviewReportRows = [...visibleAllReports]
+    .sort((a, b) => getStoreReportTimestamp(b) - getStoreReportTimestamp(a))
+    .slice(0, 3)
+    .map((report, index) => {
+      const store = getReportStore(report);
+      const reportItems = normalizeReportItemsForForm(report).filter((item) => String(item.productName || "").trim());
+      const confidenceScore = scoutSignalConfidencePercent(report);
+      const proofCount = getScoutReportPhotoUrls(report).length + (Array.isArray(report.evidence) ? report.evidence.length : 0);
+      const stockStatus = scoutStockStatusLabel(report.stockStatus || report.stock_status || report.reportStatus || report.report_status);
+      return {
+        key: report.id || report.reportId || report.report_id || `scout-overview-report-${index}`,
+        storeName: getStoreDisplayName(store) || report.storeName || report.store_name || "Local store",
+        retailer: store.chain || store.retailer || report.retailer || getStoreGroup(store) || "Scout signal",
+        area: [store.city || report.city, normalizeVirginiaRegion(store.region || report.region)].filter(Boolean).join(" / "),
+        summary: reportItems[0]
+          ? summarizeReportItem(reportItems[0], money)
+          : report.productName || report.product_name || report.note || report.notes || stockStatus || "Store signal needs details",
+        status: stockStatus || scoutReportStatusLabel(report),
+        freshness: scoutFreshnessLabel(report),
+        confidenceScore,
+        confidenceLabel: scoutSignalConfidenceLabel(confidenceScore),
+        confidenceTone: scoutSignalTone(confidenceScore),
+        proofLabel: proofCount ? `${proofCount} proof item${proofCount === 1 ? "" : "s"}` : "Proof needed",
+      };
+    });
+  const scoutOverviewLeadReport = scoutOverviewReportRows[0];
+  const scoutOverviewTopProfile = topTrustedShopProfiles[0] || null;
+  const scoutOverviewMapRows = useMemo(() => {
+    const seen = new Set();
+    const hasExactCoordinates = (row = {}) => {
+      const store = row.store || row.profile?.store || row;
+      const lat = store.latitude ?? store.lat ?? row.latitude ?? row.lat;
+      const lng = store.longitude ?? store.lng ?? row.longitude ?? row.lng;
+      return [lat, lng].every((value) => value !== null && value !== undefined && String(value).trim() !== "" && Number.isFinite(Number(value)));
+    };
+    const addMapRow = (row = {}, meta = {}) => {
+      const store = row.store || meta.store || row.profile?.store || {};
+      const id = String(
+        meta.id ||
+        row.id ||
+        row.reportId ||
+        row.report_id ||
+        store.id ||
+        store.storeId ||
+        store.store_id ||
+        `${meta.name || row.name || store.name || store.storeName || "store"}-${meta.area || store.city || row.city || seen.size}`
+      ).trim();
+      if (!id || seen.has(id)) return null;
+      seen.add(id);
+      const name = meta.name || row.name || getStoreDisplayName(store) || row.storeName || row.store_name || "Scout store";
+      const retailer = meta.retailer || row.retailer || store.retailer || store.chain || getStoreGroup(store) || "Store";
+      const area = meta.area || row.area || [store.city || row.city, normalizeVirginiaRegion(store.region || row.region)].filter(Boolean).join(" / ") || "Area protected";
+      return {
+        ...row,
+        ...meta,
+        id,
+        store,
+        name,
+        retailer,
+        area,
+        watchlisted: Boolean(meta.watchlisted || row.watchlisted || store.favorite || store.watched),
+      };
+    };
+
+    const activeStoreRows = sortStores(
+      stores.filter((store) => isStoreActiveForViewer(store, { admin: adminMode })),
+      "distance"
+    );
+    const regionalStoreRows = activeStoreRows.filter((store) =>
+      selectedRegion === "All" || normalizeVirginiaRegion(store.region) === selectedRegion
+    );
+    const mapDirectoryRows = [...(regionalStoreRows.length ? regionalStoreRows : activeStoreRows)].sort((left, right) => {
+      const leftHasCoordinates = hasExactCoordinates(left);
+      const rightHasCoordinates = hasExactCoordinates(right);
+      if (leftHasCoordinates !== rightHasCoordinates) return rightHasCoordinates ? 1 : -1;
+      return String(getStoreDisplayName(left)).localeCompare(String(getStoreDisplayName(right)));
+    });
+    const topProfileStore = scoutOverviewTopProfile?.store || null;
+    const mapTopProfile = topProfileStore && (
+      selectedRegion === "All" || normalizeVirginiaRegion(topProfileStore.region) === selectedRegion
+    ) ? scoutOverviewTopProfile : null;
+    const candidateRows = [
+      ...watchedStoreOverviewRows.map((store) => addMapRow(store, {
+        id: store.id,
+        store,
+        watchlisted: true,
+        area: [store.city, normalizeVirginiaRegion(store.region)].filter(Boolean).join(" / "),
+      })),
+      mapTopProfile ? addMapRow(mapTopProfile.store, {
+        id: mapTopProfile.store.id,
+        store: mapTopProfile.store,
+        trusted: true,
+        area: mapTopProfile.areaLabel,
+      }) : null,
+      ...visibleAllReports.slice(0, 8).map((report) => {
+        const store = getReportStore(report);
+        return addMapRow({ ...report, store }, {
+          id: report.id || report.reportId || report.report_id || store.id,
+          name: getStoreDisplayName(store) || report.storeName || report.store_name,
+          retailer: store.chain || store.retailer || report.retailer,
+          area: [store.city || report.city, normalizeVirginiaRegion(store.region || report.region)].filter(Boolean).join(" / "),
+          reportStatus: scoutReportStatusLabel(report),
+          watchlisted: Boolean(store.favorite || store.watched || report.favoriteStore),
+        });
+      }),
+      ...mapDirectoryRows.slice(0, 16).map((store) => addMapRow(store, {
+        id: store.id,
+        store,
+        area: [store.city, normalizeVirginiaRegion(store.region)].filter(Boolean).join(" / "),
+      })),
+    ].filter(Boolean);
+    return candidateRows
+      .sort((left, right) => {
+        const coordinateDifference = Number(hasExactCoordinates(right)) - Number(hasExactCoordinates(left));
+        if (coordinateDifference) return coordinateDifference;
+        const priorityDifference = Number(Boolean(right.watchlisted || right.trusted)) - Number(Boolean(left.watchlisted || left.trusted));
+        if (priorityDifference) return priorityDifference;
+        return String(left.name || "").localeCompare(String(right.name || ""));
+      })
+      .slice(0, 18);
+  }, [adminMode, scoutOverviewTopProfile, selectedRegion, stores, visibleAllReports, watchedStoreOverviewRows]);
+  useEffect(() => {
+    if (selectedMapStoreId && !scoutOverviewMapRows.some((row) => String(row.id) === String(selectedMapStoreId))) {
+      setSelectedMapStoreId("");
+    }
+  }, [scoutOverviewMapRows, selectedMapStoreId]);
+  const selectedMapStore = scoutOverviewMapRows.find((row) => String(row.id) === String(selectedMapStoreId)) || null;
+  const selectedMapStoreCoordinates = selectedMapStore
+    ? {
+      lat: Number(selectedMapStore.latitude ?? selectedMapStore.lat ?? selectedMapStore.store?.latitude ?? selectedMapStore.store?.lat),
+      lng: Number(selectedMapStore.longitude ?? selectedMapStore.lng ?? selectedMapStore.store?.longitude ?? selectedMapStore.store?.lng),
+    }
+    : null;
+  const selectedMapStoreHasCoordinates = Boolean(
+    selectedMapStoreCoordinates &&
+    Number.isFinite(selectedMapStoreCoordinates.lat) &&
+    Number.isFinite(selectedMapStoreCoordinates.lng)
+  );
+  const scoutOverviewMapMarkers = [
+    { key: "you", label: "You", x: 48, y: 52, tone: "you" },
+    ...scoutOverviewReportRows.map((row, index) => ({
+      key: `report-${row.key}`,
+      label: row.confidenceLabel,
+      x: [28, 68, 62][index] || 42,
+      y: [34, 28, 66][index] || 60,
+      tone: row.confidenceTone,
+    })),
+    ...(scoutOverviewTopProfile ? [{ key: "trusted-shop", label: "Trusted", x: 24, y: 64, tone: "trusted" }] : []),
+  ];
+  const scoutOverviewStats = [
+    { label: "Current reports", value: visibleAllReports.length, detail: "area-level signals" },
+    { label: "Watched stores", value: `${watchedStoreOverviewRows.length}/${watchedStoreSlotLimit}`, detail: "free launch slots" },
+    { label: "Trusted shops", value: topTrustedShopProfiles.length, detail: "ranked by proof" },
+    { label: "Active alerts", value: visibleScoutAlerts.length, detail: "Scout and drops" },
+  ];
+  const scoutOverviewEventRows = filteredTidepoolEvents.slice(0, 3).map((event, index) => {
+    const eventDate = event.startDate || event.date || "";
+    const eventMs = eventDate ? new Date(`${eventDate}T00:00:00`).getTime() : 0;
+    const daysUntil = eventMs ? Math.ceil((eventMs - Date.now()) / 86400000) : null;
+    const urgency = daysUntil !== null && daysUntil <= 2 ? "live" : daysUntil !== null && daysUntil <= 14 ? "soon" : "planned";
+    return {
+      key: event.eventId || event.id || `scout-event-${index}`,
+      label: daysUntil === null ? "Calendar" : daysUntil <= 0 ? "Today" : `${daysUntil}d`,
+      title: event.eventTitle || event.title || "Local event",
+      detail: [event.eventType, event.locationName || event.city || "Scout calendar"].filter(Boolean).join(" | "),
+      urgency,
+    };
+  });
+  const scoutOverviewAlertRows = visibleScoutAlerts.slice(0, 3).map((alert, index) => ({
+    key: alert.reportId || alert.alertId || `scout-alert-release-${index}`,
+    label: /best buy|online/i.test(`${alert.sourceType} ${alert.storeName}`) ? "Online" : "Alert",
+    title: alert.productName || alert.title || alert.reportType || "Saved Scout alert",
+    detail: [alert.storeName || "Scout", alert.reportType || alert.sourceType || "Watch signal"].filter(Boolean).join(" | "),
+    urgency: index === 0 ? "soon" : "planned",
+  }));
+  const scoutOverviewReleaseRows = scoutOverviewEventRows.length
+    ? scoutOverviewEventRows
+    : scoutOverviewAlertRows.length
+      ? scoutOverviewAlertRows
+      : [{
+        key: "scout-release-empty",
+        label: "Watch",
+        title: "Release calendar ready",
+        detail: "Approved drops, shop events, and donation drives will appear here.",
+        urgency: "planned",
+      }];
+  const scoutOverviewRegionLabel = selectedRegion === "All" ? "Virginia" : selectedRegion;
+  const scoutCommandAreaLabel = scoutOverviewRegionLabel.replace(/\s*\/\s*757$/i, "");
+  const scoutOverviewLocalStoreCount = scoutOverviewMapRows.length;
+  const scoutOverviewMappedStoreCount = Math.min(scoutOverviewLocalStoreCount, 12);
+  const scoutCommandStatus = [
+    { key: "region", icon: "workspace", label: "Area", value: scoutCommandAreaLabel, detail: "manual location" },
+    { key: "stores", icon: "scout", label: "Mapped stores", value: scoutOverviewMappedStoreCount, detail: "coordinate-backed" },
+    { key: "reports", icon: "data", label: "Recent reports", value: totals.reports, detail: "proof and confidence" },
+    { key: "watched", icon: "bell", label: "Watched stores", value: `${watchedStoreOverviewRows.length}/${watchedStoreSlotLimit}`, detail: "alert priority" },
+    { key: "safety", icon: "admin", label: "Family guard", value: "Protected", detail: "area-only location" },
+  ];
+  const scoutCommandPlan = [
+    { key: "map", icon: "scout", label: "Check local map", detail: `${scoutOverviewMappedStoreCount} stores mapped`, action: () => setScoutOverviewView("map") },
+    { key: "watch", icon: "bell", label: "Watch stores", detail: `${watchedStoreOverviewRows.length}/${watchedStoreSlotLimit} active`, action: () => setScoutSubTab("stores") },
+    { key: "report", icon: "clipboard", label: "Add a report", detail: "Store, product, proof", action: () => setScoutSubTab("reports") },
+    { key: "verify", icon: "admin", label: "Review trust", detail: topTrustedShopProfiles.length ? `${topTrustedShopProfiles.length} shop signals` : "Proof needed", action: () => setScoutSubTab("overview") },
+  ];
+  const scoutCommandRoutes = [
+    { key: "overview", icon: "scout", label: "Overview", title: "Radar and proof", detail: "Map, reports, trust", ariaLabel: "Overview", active: scoutSubTab === "overview", action: () => setScoutSubTab("overview") },
+    { key: "stores", icon: "workspace", label: "Stores", title: "Store Directory", detail: `${directoryStats.totalStores} saved rows`, ariaLabel: "Stores", active: scoutSubTab === "stores", action: () => setScoutSubTab("stores") },
+    { key: "reports", icon: "clipboard", label: "Reports", title: "Submit Report", detail: "Product, time, proof", ariaLabel: "Reports", active: scoutSubTab === "reports", action: () => setScoutSubTab("reports") },
+    { key: "route", icon: "map", label: "Route", title: "Route Planner", detail: "Safe store checks", ariaLabel: "Route Planner", active: scoutSubTab === "route", action: () => setScoutSubTab("route") },
+    { key: "online", icon: "market", label: "Online", title: "Online Drops", detail: "Retailer source checks", ariaLabel: "Online Drops", active: scoutSubTab === "online", action: () => setScoutSubTab("online") },
+    { key: "alerts", icon: "bell", label: "Alerts", title: "Watch Alerts", detail: "Store and product alerts", ariaLabel: "Alerts", active: scoutSubTab === "alerts", action: () => setScoutSubTab("alerts") },
+  ];
 
   return (
-    <div style={styles.page}>
-      <div style={styles.shell}>
-        {!compact ? <div style={styles.hero}>
-          <h1 style={styles.heroTitle}>Scout</h1>
-          <p style={styles.heroSub}>
-            Find stores, log sightings, and track restock intelligence.
-          </p>
+    <div className={`scout-route-polish ${!compact ? "scout-command-route-v5" : ""}`.trim()}>
+      <div className="scout-route-shell">
+        {!compact && scoutSubTab === "overview" ? (
+          <CommandBoardV4
+            accent="scout"
+            className="scout-command-board-v5"
+            ariaLabel="Scout Intelligence"
+            label="Scout"
+            title="Scout Intelligence"
+            description="Real store signals, trusted reports, restock targets, and protected family location data."
+            primaryAction={{ label: "Add Report", icon: "scout", onClick: () => setScoutSubTab("reports") }}
+            secondaryActions={[
+              { label: "Store Directory", icon: "search", onClick: () => setScoutSubTab("stores") },
+              { label: "Watch Alerts", icon: "bell", onClick: () => setScoutSubTab("alerts") },
+              ...(onOpenFlipScout ? [{ label: "Flip Scout", icon: "market", onClick: onOpenFlipScout }] : []),
+            ]}
+            utilityActions={[
+              { label: "Compass", icon: "search", onClick: () => openCompassSearch?.("scout_compass") },
+              { label: "Beacon", icon: "bell", onClick: () => openBeaconCenter?.("scout_beacon") },
+            ]}
+            statusItems={scoutCommandStatus}
+            plan={{
+              label: "Scout Plan",
+              title: "Verify signals",
+              items: scoutCommandPlan,
+              actions: [
+                { label: "Add Report", icon: "plus", onClick: () => setScoutSubTab("reports") },
+                { label: "Store Directory", icon: "search", onClick: () => setScoutSubTab("stores") },
+              ],
+            }}
+            routes={scoutCommandRoutes}
+          >
+            <div className="scout-command-workspace" aria-label="Scout command content">
+              <section className="scout-command-radar" aria-label="Local Scout radar">
+                <div className="scout-command-heading">
+                  <div>
+                    <span>Local Restock Radar</span>
+                    <h2>{scoutOverviewRegionLabel} Restock Radar</h2>
+                    <p>Nearby stores, trusted reports, watched locations, and privacy-safe restock signals.</p>
+                  </div>
+                  <strong>{scoutOverviewMappedStoreCount} mapped</strong>
+                </div>
+                <div className="scout-command-map-stage">
+                  {scoutOverviewView === "map" ? (
+                    <ScoutTileMap
+                      className="scout-command-real-map scout-command-map"
+                      rows={scoutOverviewMapRows}
+                      compact={compact}
+                      label="Scout local restock map"
+                      mapLabel={`${scoutOverviewRegionLabel} Scout Radar`}
+                      emptyTitle="No coordinate-backed Scout stores yet"
+                      emptyDetail="Add or import stores with coordinates to plot real pins."
+                      maxPins={12}
+                      interactive
+                      selectedId={selectedMapStoreId}
+                      focusFirstPin={!selectedMapStoreId}
+                      onPinSelect={(pin) => setSelectedMapStoreId(pin.id)}
+                      showFacts={false}
+                      showAttributionLink={false}
+                    />
+                  ) : (
+                    <div className="scout-command-map-list" aria-label="Nearby mapped stores">
+                      {scoutOverviewMapRows.slice(0, 8).map((row, index) => (
+                        <button
+                          type="button"
+                          className={String(row.id) === String(selectedMapStoreId) ? "is-selected" : ""}
+                          key={row.id || `mapped-store-${index}`}
+                          onClick={() => setSelectedMapStoreId(row.id)}
+                        >
+                          <span>{index + 1}</span>
+                          <strong>{row.name || getStoreDisplayName(row.store || row)}</strong>
+                          <small>{row.area || [row.city, row.region].filter(Boolean).join(" / ") || "Area protected"}</small>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <div className="scout-command-map-tools" role="group" aria-label="Scout map views and filters">
+                    <button type="button" className={scoutOverviewView === "map" ? "is-active" : ""} aria-pressed={scoutOverviewView === "map"} onClick={() => setScoutOverviewView("map")}><AppNavIcon kind="scout" />Map</button>
+                    <button type="button" className={scoutOverviewView === "list" ? "is-active" : ""} aria-pressed={scoutOverviewView === "list"} onClick={() => setScoutOverviewView("list")}><AppNavIcon kind="data" />Store list</button>
+                    <button type="button" onClick={() => setScoutSubTab("stores")}><AppNavIcon kind="bell" />Watched {watchedStoreOverviewRows.length}</button>
+                    <button type="button" onClick={() => setScoutSubTab("stores")}><AppNavIcon kind="secure" />Trusted {topTrustedShopProfiles.length}</button>
+                  </div>
+                </div>
+                {selectedMapStore ? (
+                  <div className="scout-command-selected" aria-live="polite">
+                    <span><b>{selectedMapStore.name || getStoreDisplayName(selectedMapStore.store || selectedMapStore)}</b><small>{selectedMapStore.area || "Area protected"}</small></span>
+                    <button type="button" onClick={() => openStoreDetail(selectedMapStore.store?.id || selectedMapStore.id)}>Open Store</button>
+                    <button type="button" onClick={() => openStoreReport(selectedMapStore.store?.id || selectedMapStore.id)}>Add Report</button>
+                    {selectedMapStoreHasCoordinates ? (
+                      <button type="button" onClick={() => {
+                        if (!onLocationRequired("external-store-map")) return;
+                        window.open(
+                          `https://www.openstreetmap.org/?mlat=${selectedMapStoreCoordinates.lat}&mlon=${selectedMapStoreCoordinates.lng}#map=16/${selectedMapStoreCoordinates.lat}/${selectedMapStoreCoordinates.lng}`,
+                          "_blank",
+                          "noopener,noreferrer"
+                        );
+                      }}>Open Map</button>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div className="scout-command-map-footer">
+                    <span>{scoutOverviewRegionLabel}</span>
+                    <span>{scoutOverviewMappedStoreCount} mapped stores</span>
+                    <span>{topTrustedShopProfiles.length} trusted shops</span>
+                    <span>No inventory guarantee</span>
+                  </div>
+                )}
+              </section>
 
-          <div style={styles.statsRow}>
-            <Metric label="Stores" value={totals.stores} />
-            <Metric label="Found" value={totals.found} />
-            <Metric label="Reports" value={totals.reports} />
-            <Metric label="Tracked Items" value={totals.items} />
-          </div>
-        </div> : null}
+              <aside className="scout-command-side-rail" aria-label="Scout intelligence rail">
+                <article className="scout-command-signal-card">
+                  <header><AppNavIcon kind="scout" /><span>Current Signal</span><b>{scoutOverviewLeadReport?.confidenceLabel || "Waiting"}</b></header>
+                  <strong>{scoutOverviewLeadReport ? scoutOverviewLeadReport.storeName : "No current report"}</strong>
+                  <p>{scoutOverviewLeadReport ? `${scoutOverviewLeadReport.summary} | ${scoutOverviewLeadReport.confidenceLabel} confidence` : "Submit a Scout report to start local confidence."}</p>
+                  <div className="scout-command-confidence" aria-label={`${scoutOverviewLeadReport?.confidenceScore || 0}% confidence`}><i style={{ width: `${scoutOverviewLeadReport?.confidenceScore || 0}%` }} /></div>
+                  <button type="button" onClick={() => setScoutSubTab("reports")}>Submit Report</button>
+                </article>
+                <article className="scout-command-watch-card">
+                  <header><AppNavIcon kind="bell" /><span>Watched Stores</span><b>{watchedStoreOverviewRows.length}/{watchedStoreSlotLimit}</b></header>
+                  <strong>{watchedStoreOverviewRows.length}/{watchedStoreSlotLimit}</strong>
+                  <div className="scout-usage-meter-track"><b style={{ width: `${watchedStoreUsagePercent}%` }} /></div>
+                  <p>{watchedStoreOverviewRows.length ? "Selected stores are prioritized for alerts." : "Choose stores to turn on local signals."}</p>
+                  <button type="button" onClick={() => setScoutSubTab("stores")}>Manage Stores</button>
+                </article>
+                <article className="scout-command-safety-card">
+                  <header><AppNavIcon kind="admin" /><span>Family Safety</span><b>Protected</b></header>
+                  <strong>Area-only location</strong>
+                  <div className="scout-command-safety-list">
+                    <span><AppNavIcon kind="workspace" />Coordinates masked</span>
+                    <span><AppNavIcon kind="admin" />No inventory guarantee</span>
+                  </div>
+                  <p>Directions and precise location remain behind a safety gate.</p>
+                  <button type="button" onClick={() => setScoutSubTab("stores")}>Review Safe Stores</button>
+                </article>
+              </aside>
+
+              <CommandMetricGrid
+                className="scout-command-metrics"
+                ariaLabel="Scout intelligence metrics"
+                items={[
+                  { key: "reports", label: "Nearby reports", value: totals.reports, detail: "proof-backed signals" },
+                  { key: "confidence", label: "Lead confidence", value: scoutOverviewLeadReport?.confidenceLabel || "No data", detail: scoutOverviewLeadReport ? `${scoutOverviewLeadReport.confidenceScore}% signal strength` : "add the first report" },
+                  { key: "trusted", label: "Trusted shops", value: topTrustedShopProfiles.length, detail: "reviewed store profiles" },
+                  { key: "alerts", label: "Active alerts", value: visibleScoutAlerts.length, detail: "stores and releases" },
+                ]}
+              />
+
+              <section className="scout-command-lower" aria-label="Scout supporting content">
+                <article className="scout-command-feed-card">
+                  <div className="scout-command-heading compact">
+                    <div>
+                      <span>Report Feed</span>
+                      <h3>Recent proof-backed signals</h3>
+                    </div>
+                    <button type="button" onClick={() => setScoutSubTab("reports")}>Open Reports</button>
+                  </div>
+                  <div className="scout-command-feed">
+                    {scoutOverviewReportRows.slice(0, 3).map((report) => (
+                      <button type="button" key={report.id || report.reportId || `${report.storeName}-${report.summary}`} onClick={() => setScoutSubTab("reports")}>
+                        <span>{report.confidenceLabel || "Confidence"}</span>
+                        <strong>{report.storeName || "Store report"}</strong>
+                        <small>{report.summary || report.productName || "Product spotted"}</small>
+                      </button>
+                    ))}
+                    {!scoutOverviewReportRows.length ? (
+                      <p>No current Scout reports yet. Add one report to start the local intel trail.</p>
+                    ) : null}
+                  </div>
+                </article>
+                <article className="scout-command-trust-card">
+                  <div className="scout-command-heading compact">
+                    <div>
+                      <span>Trusted Shops</span>
+                      <h3>Family-safe store profiles</h3>
+                    </div>
+                    <button type="button" onClick={() => setScoutSubTab("stores")}>Open Stores</button>
+                  </div>
+                  <div className="scout-command-feed">
+                    {topTrustedShopProfiles.slice(0, 3).map((profile, index) => (
+                      <button type="button" key={profile.store?.id || profile.id || `trusted-shop-${index}`} onClick={() => openStoreDetail(profile.store?.id || profile.id)}>
+                        <span>{profile.trustLabel || "Trust"}</span>
+                        <strong>{getStoreDisplayName(profile.store || profile) || "Trusted shop"}</strong>
+                        <small>{profile.locationLabel || profile.areaLabel || profile.area || "Area protected"}</small>
+                      </button>
+                    ))}
+                    {!topTrustedShopProfiles.length ? (
+                      <p>Trusted shop profiles will appear after stores have enough proof and review history.</p>
+                    ) : null}
+                  </div>
+                </article>
+                <article className="scout-command-release-card">
+                  <div className="scout-command-heading compact">
+                    <div>
+                      <span>Release Watch</span>
+                      <h3>Upcoming local opportunities</h3>
+                    </div>
+                    <button type="button" onClick={() => setScoutSubTab("alerts")}>Watch Center</button>
+                  </div>
+                  <div className="scout-command-release-list">
+                    {scoutOverviewReleaseRows.slice(0, 2).map((release) => (
+                      <button type="button" key={release.key} onClick={() => setScoutSubTab("alerts")}>
+                        <b>{release.label}</b>
+                        <span><strong>{release.title}</strong><small>{release.detail}</small></span>
+                      </button>
+                    ))}
+                  </div>
+                </article>
+              </section>
+            </div>
+          </CommandBoardV4>
+        ) : null}
 
         {error ? (
           <div
@@ -4529,94 +5062,279 @@ async function handleUpdateStore(e) {
           </div>
         ) : null}
 
-        {!compact ? <div style={styles.pageHeader}>
-          <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", alignItems: "center" }}>
+        {scoutSubTab === "overview" && compact ? (
+          <>
+        <section className="scout-local-command-card scout-overview-intelligence-board" aria-label="Scout local intelligence">
+          <div className="scout-overview-intelligence-header">
             <div>
-              <h2 style={{ ...styles.sectionTitle, marginBottom: "4px" }}>Scout Dashboard</h2>
-              <p style={{ ...styles.empty, padding: 0 }}>Stores, restock reports, Best Buy stock, routes, location, score, and alerts in focused views.</p>
+              <p className="section-kicker">Local Intelligence</p>
+              <h2>Local restock intelligence with proof, confidence, and protected timing.</h2>
+              <p>
+                Scout shows current area-level signals, trusted shops, watched-store usage, and release/drop context.
+                It should help families decide whether a trip is worth it without exposing raw patterns or private location.
+              </p>
+            </div>
+            <div className="scout-overview-safety-banner">
+              <strong>Data rules</strong>
+              <span>Area-level location</span>
+              <span>No inventory guarantee</span>
             </div>
           </div>
-          <div style={styles.row}>
-            <button type="button" style={styles.buttonSoft} onClick={() => setScoutSubTab("stores")}>Stores</button>
-            <button type="button" style={styles.buttonSoft} onClick={() => setScoutSubTab("reports")}>Submit Report</button>
-            <button type="button" style={styles.buttonSoft} onClick={() => setScoutSubTab("alerts")}>Alerts</button>
-            <button type="button" style={styles.buttonSoft} onClick={() => setScoutSubTab("reports")}>My Reports</button>
-            <button type="button" style={styles.buttonSoft} onClick={() => setScoutSubTab("overview")}>Scout Score</button>
+
+          <div className="scout-overview-data-rule-grid" aria-label="Scout data rules">
+            <article>
+              <span>Source</span>
+              <strong>Store and report backed</strong>
+              <small>Signals come from saved stores, Scout reports, Best Buy source checks, or approved events.</small>
+            </article>
+            <article>
+              <span>Confidence</span>
+              <strong>Visible on every signal</strong>
+              <small>Reports show freshness, proof status, and confidence instead of pretending stock is guaranteed.</small>
+            </article>
+            <article>
+              <span>Safety</span>
+              <strong>Location protected</strong>
+              <small>Child and family contexts use store or area-level location, not private coordinates.</small>
+            </article>
+            <article>
+              <span>Action</span>
+              <strong>Plan the next check</strong>
+              <small>Watch stores, submit proof, open alerts, or review trusted shop profiles.</small>
+            </article>
           </div>
-          {false ? <div style={styles.row}>
-            <button type="button" style={styles.buttonSoft} onClick={() => setScoutSubTab("route")}>Build Route</button>
-            <button type="button" style={styles.buttonSoft} onClick={() => setScoutSubTab("stores")}>Add Store</button>
-            <button type="button" style={styles.buttonSoft} onClick={() => setScoutSubTab("online")}>Online Drops</button>
-          </div> : null}
-          <div style={styles.subTabs}>
-            {[
-              ["overview", "Overview"],
-              ["stores", "Stores"],
-              ["reports", "Reports"],
-              ["route", "Route Planner"],
-              ["online", "Online Drops"],
-              ["alerts", "Alerts"],
-            ].map(([key, label]) => (
-              <button key={key} type="button" style={scoutSubTab === key ? styles.buttonPrimary : styles.buttonSoft} onClick={() => setScoutSubTab(key)}>
-                {label}
+
+          <div className="scout-command-map-shell scout-overview-map-shell">
+            <div className="scout-command-map-card scout-command-real-map-card" aria-label="Local Scout map">
+              <ScoutTileMap
+                className="scout-command-real-map scout-overview-real-map"
+                rows={scoutOverviewMapRows}
+                compact={compact}
+                label="Scout local restock map"
+                mapLabel="Virginia Scout Radar"
+                emptyTitle="No coordinate-backed Scout stores yet"
+                emptyDetail="Add or import stores with coordinates to plot real pins."
+                maxPins={12}
+                onPinSelect={(pin) => {
+                  if (pin.store?.id) {
+                    openStoreDetail(pin.store.id);
+                    return;
+                  }
+                  setScoutSubTab("stores");
+                }}
+                showFacts={false}
+                showAttributionLink={false}
+              />
+              <div className="scout-command-map-caption">
+                <span>Priority signal</span>
+                <strong>{scoutOverviewLeadReport ? scoutOverviewLeadReport.storeName : "No current report yet"}</strong>
+                <small>{scoutOverviewLeadReport ? `${scoutOverviewLeadReport.summary} | ${scoutOverviewLeadReport.confidenceLabel} confidence` : "Add a Scout report to start local intelligence."}</small>
+              </div>
+            </div>
+
+            <div className="scout-command-side-stack">
+              <div className="scout-usage-meter-card" aria-label="Watched stores usage">
+                <span>Watched stores</span>
+                <strong>{watchedStoreOverviewRows.length}/{watchedStoreSlotLimit}</strong>
+                <div className="scout-usage-meter-track"><b style={{ width: `${watchedStoreUsagePercent}%` }} /></div>
+                <small>{watchedStoreOverviewRows.length ? "Selected stores are prioritized for alerts." : "Choose stores to turn on local signals."}</small>
+              </div>
+              <button type="button" className="scout-release-watch-card" onClick={() => setScoutSubTab("alerts")}>
+                <span>Release / drop watch</span>
+                <strong>{scoutOverviewReleaseRows[0]?.title || "Calendar ready"}</strong>
+                <small>{scoutOverviewReleaseRows[0]?.detail || "Approved release rows appear here."}</small>
+              </button>
+              <button type="button" className="scout-trusted-shop-card" onClick={() => { setScoutSubTab("stores"); if (scoutOverviewTopProfile) openStoreDetail(scoutOverviewTopProfile.store.id); }}>
+                <span>Trusted shop</span>
+                <strong>{scoutOverviewTopProfile ? getStoreDisplayName(scoutOverviewTopProfile.store) : "Build trust"}</strong>
+                <small>{scoutOverviewTopProfile ? `${scoutOverviewTopProfile.confidence} confidence | ${scoutOverviewTopProfile.demandLabel}` : "Proof-backed profiles appear after reports."}</small>
+              </button>
+            </div>
+          </div>
+
+          <div className="scout-overview-stat-grid" aria-label="Scout local intelligence stats">
+            {scoutOverviewStats.map((stat) => (
+              <article key={stat.label}>
+                <span>{stat.label}</span>
+                <strong>{stat.value}</strong>
+                <small>{stat.detail}</small>
+              </article>
+            ))}
+          </div>
+
+          <div className="scout-overview-report-grid" aria-label="Current Scout signals">
+            {scoutOverviewReportRows.length ? scoutOverviewReportRows.map((report) => (
+              <article className={`scout-command-report-card scout-command-report-card--${report.confidenceTone}`} key={report.key}>
+                <div className="scout-home-report-top">
+                  <span className="scout-report-store-mark" aria-hidden="true">{report.retailer.slice(0, 2).toUpperCase()}</span>
+                  <span>
+                    <strong>{report.storeName}</strong>
+                    <span>{report.area || report.retailer}</span>
+                  </span>
+                  <b>{report.freshness}</b>
+                </div>
+                <p className="scout-overview-report-summary">{report.summary}</p>
+                <div className="scout-command-confidence-row">
+                  <span>{report.confidenceLabel}</span>
+                  <i aria-hidden="true"><b style={{ width: `${report.confidenceScore}%` }} /></i>
+                </div>
+                <div className="scout-command-status-row">
+                  <span>{report.status}</span>
+                  <span>{report.proofLabel}</span>
+                  <span>Area-level only</span>
+                </div>
+              </article>
+            )) : (
+              <div className="small-empty-state scout-overview-empty">
+                <strong>No current Scout reports yet.</strong>
+                <span>Add a report or choose watched stores to start the local signal board.</span>
+              </div>
+            )}
+          </div>
+
+          <div className="scout-release-countdown-strip scout-overview-release-strip" aria-label="Release and drop watch preview">
+            {scoutOverviewReleaseRows.map((release) => (
+              <button type="button" className={`scout-release-countdown-card scout-release-countdown-card--${release.urgency}`} key={release.key} onClick={() => setScoutSubTab("alerts")}>
+                <span>{release.label}</span>
+                <strong>{release.title}</strong>
+                <small>{release.detail}</small>
               </button>
             ))}
           </div>
-        </div> : null}
 
-        {scoutSubTab === "overview" ? (
-          <>
-        <div style={styles.card}>
-          <h2 style={styles.sectionTitle}>Virginia Scout Directory</h2>
-          <p style={styles.empty}>
-            Scout is ready for statewide Virginia coverage. Hampton Roads / 757 remains the default home region, and every Virginia region can be imported, searched, watched, reported, and reviewed.
-          </p>
-          <div style={styles.statsRow}>
-            <Metric label="Total Stores" value={directoryStats.totalStores} />
-            <Metric label="Virginia Regions" value={`${directoryStats.virginiaRegions}/${VIRGINIA_REGIONS.length}`} />
-            <Metric label="Home Region Stores" value={directoryStats.hamptonRoadsStores} />
-            <Metric label="Retail Chains" value={directoryStats.retailChains} />
-            <Metric label="Military/Exchange Stores" value={directoryStats.militaryStores} />
+          <div className="scout-overview-action-row">
+            <button type="button" style={styles.buttonPrimary} onClick={() => setScoutSubTab("reports")}>Submit report</button>
+            <button type="button" style={styles.buttonSoft} onClick={() => setScoutSubTab("stores")}>Review stores</button>
+            <button type="button" style={styles.buttonSoft} onClick={() => setScoutSubTab("alerts")}>Manage alerts</button>
           </div>
+        </section>
+
+        <CommandBoardSection
+          className="scout-directory-coverage-card"
+          kicker="Directory Coverage"
+          title="Virginia store coverage powers the Scout map."
+          detail="Scout uses reviewed store rows as the foundation for map pins, watched stores, report history, trusted shops, and family-safe route planning. Hampton Roads / 757 remains the default home region."
+          action={<button type="button" className="secondary-button" onClick={() => setScoutSubTab("stores")}>Open directory</button>}
+        >
+          <CommandMetricGrid
+            ariaLabel="Scout directory coverage"
+            items={[
+              { key: "stores", label: "Total Stores", value: directoryStats.totalStores, detail: "Saved directory rows" },
+              { key: "regions", label: "Virginia Regions", value: `${directoryStats.virginiaRegions}/${VIRGINIA_REGIONS.length}`, detail: "Area coverage" },
+              { key: "home", label: "Home Region", value: directoryStats.hamptonRoadsStores, detail: "Hampton Roads / 757" },
+              { key: "chains", label: "Retail Chains", value: directoryStats.retailChains, detail: "Retailer groups" },
+              { key: "military", label: "Exchange Stores", value: directoryStats.militaryStores, detail: "Military / exchange" },
+            ]}
+          />
           {adminMode ? (
-            <div style={styles.calloutCard}>
+            <div className="scout-command-callout-card">
               <strong>Admin Review Center queues</strong>
-              <div style={{ ...styles.row, marginTop: "8px" }}>
-                {STORE_REVIEW_QUEUE_LABELS.map((label) => <span key={label} style={styles.badge}>{label}</span>)}
+              <div className="scout-command-chip-row">
+                {STORE_REVIEW_QUEUE_LABELS.map((label) => <span key={label}>{label}</span>)}
               </div>
             </div>
           ) : null}
-          <div style={styles.row}>
+          <div className="scout-command-chip-row">
             {VIRGINIA_STORE_SEED_STATUS.map((batch) => (
-              <span key={batch.source} style={styles.badge}>{batch.region}: {batch.count}</span>
+              <span key={batch.source}>{batch.region}: {batch.count}</span>
             ))}
           </div>
-        </div>
-        <div style={styles.reportGrid}>
-          <div style={styles.card}>
-            <h2 style={styles.sectionTitle}>My Scout Score</h2>
-            <div style={styles.statsRow}>
-              <Metric label="Trust Score" value={scoutProfile.trustScore} />
-              <Metric label="Verified" value={scoutProfile.verifiedReportCount} />
-              <Metric label="Rewards" value={scoutProfile.rewardPoints} />
-              <Metric label="Streak" value={scoutProfile.reportStreak} />
-            </div>
-            <p style={styles.empty}>Badge: {scoutBadge}</p>
-            {scoutProfile.warningCount ? <p style={styles.tiny}>Warnings: {scoutProfile.warningCount}</p> : null}
-            {scoutProfile.cooldownUntil ? <p style={styles.tiny}>Cooldown until: {scoutProfile.cooldownUntil}</p> : null}
-          </div>
+        </CommandBoardSection>
 
-          <div style={styles.card}>
-            <h2 style={styles.sectionTitle}>Rewards</h2>
-            <p style={styles.empty}>Earn points for verified, helpful, photo-supported, and first-at-store reports.</p>
-            <div style={styles.row}>
-              <span style={styles.badge}>New Scout</span>
-              <span style={styles.badge}>Trusted Scout</span>
-              <span style={styles.badge}>Verified Scout</span>
-              <span style={styles.badge}>Deal Finder</span>
+        <section className="scout-trusted-shop-command-card" aria-label="Trusted Shop Intelligence">
+          <div className="scout-trusted-shop-header">
+            <div>
+              <p className="section-kicker">Trusted Shop Intelligence</p>
+              <h2>Reliable local shops, proof-backed reports, and safer store profiles.</h2>
+              <p>
+                Scout ranks stores by recent reports, verification, proof, family-safe signals, and local demand.
+                Use this before watching a shop, reporting a restock, or planning a safe family visit.
+              </p>
             </div>
-            <p style={styles.tiny}>Bad reports use warnings, lower trust, photo review, cooldowns, and admin review first. No automatic permanent bans in beta.</p>
+            <button type="button" className="secondary-button" onClick={() => setScoutSubTab("stores")}>Open Stores</button>
           </div>
+          <div className="scout-reliability-stat-grid" aria-label="Scout reliability summary">
+            {scoutReliabilitySummary.map((stat) => (
+              <article key={stat.label}>
+                <span>{stat.label}</span>
+                <strong>{stat.value}</strong>
+                <small>{stat.detail}</small>
+              </article>
+            ))}
+          </div>
+          <div className="scout-trusted-shop-grid">
+            {topTrustedShopProfiles.map((profile) => (
+              <article className="scout-trusted-shop-profile-card" key={profile.store.id}>
+                <div className="scout-trusted-shop-card-top">
+                  <div>
+                    <span>{profile.trustBadge}</span>
+                    <strong>{getStoreDisplayName(profile.store)}</strong>
+                    <small>{profile.store.chain || profile.store.retailer || getStoreGroup(profile.store)} | {profile.locationLabel}</small>
+                  </div>
+                  <b>{profile.trustScore}</b>
+                </div>
+                <div className="scout-trust-meter" aria-label={`${getStoreDisplayName(profile.store)} trust score`}>
+                  <i style={{ width: `${profile.trustScore}%` }} />
+                </div>
+                <div className="scout-trusted-shop-chip-row">
+                  <span>{profile.confidence} confidence</span>
+                  <span>{profile.demandLabel}</span>
+                  <span>{profile.activity}</span>
+                </div>
+                <div className="scout-trusted-shop-proof-row">
+                  <span>Verified {profile.verifiedCount}</span>
+                  <span>Proof {profile.proofCount}</span>
+                  <span>Last {profile.lastReportLabel}</span>
+                </div>
+                <div className="scout-trusted-shop-actions">
+                  <button type="button" className="secondary-button" onClick={() => { setScoutSubTab("stores"); openStoreDetail(profile.store.id); }}>Open profile</button>
+                  <button type="button" className="secondary-button" onClick={() => openStoreReport(profile.store.id)}>Submit report</button>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <div className="scout-command-two-column">
+          <CommandBoardSection
+            className="scout-score-command-card"
+            kicker="Scout Profile"
+            title="Trust grows through accurate local help."
+            detail={`Current badge: ${scoutBadge}. Verified, useful, proof-supported reports raise confidence while warnings and cooldowns stay transparent.`}
+          >
+            <CommandMetricGrid
+              ariaLabel="Scout score metrics"
+              items={[
+                { key: "trust", label: "Trust Score", value: scoutProfile.trustScore, detail: "Report reliability" },
+                { key: "verified", label: "Verified", value: scoutProfile.verifiedReportCount, detail: "Confirmed signals" },
+                { key: "rewards", label: "Rewards", value: scoutProfile.rewardPoints, detail: "Community points" },
+                { key: "streak", label: "Streak", value: scoutProfile.reportStreak, detail: "Helpful activity" },
+              ]}
+            />
+            <div className="scout-command-chip-row">
+              <span>Badge: {scoutBadge}</span>
+              {scoutProfile.warningCount ? <span>Warnings: {scoutProfile.warningCount}</span> : null}
+              {scoutProfile.cooldownUntil ? <span>Cooldown until: {scoutProfile.cooldownUntil}</span> : null}
+            </div>
+          </CommandBoardSection>
+
+          <CommandBoardSection
+            className="scout-rewards-command-card"
+            kicker="Reliability"
+            title="Rewards reinforce proof, not hype."
+            detail="Earn points for verified, helpful, photo-supported, and first-at-store reports. Bad reports use warnings, lower trust, photo review, cooldowns, and admin review first."
+          >
+            <div className="scout-command-chip-row">
+              <span>New Scout</span>
+              <span>Trusted Scout</span>
+              <span>Verified Scout</span>
+              <span>Deal Finder</span>
+            </div>
+            <div className="scout-command-callout-card">
+              <strong>Family-safe rule</strong>
+              <small>No automatic permanent bans in beta. No exact child location. No inventory guarantee.</small>
+            </div>
+          </CommandBoardSection>
         </div>
 
         <div style={styles.reportGrid}>
@@ -5029,6 +5747,7 @@ async function handleUpdateStore(e) {
                       key={option.key}
                       type="button"
                       className={`scout-report-choice-card ${selectedReportTypeOption.key === option.key ? "selected" : ""}`}
+                      aria-pressed={selectedReportTypeOption.key === option.key}
                       disabled={option.confidence === "guess" && !canSubmitLegacyScoutGuess}
                       onClick={() => selectReportTypeOption(option)}
                     >
@@ -5053,6 +5772,7 @@ async function handleUpdateStore(e) {
                       key={card.retailer}
                       type="button"
                       className={`scout-report-retailer-card ${card.selected ? "selected" : ""}`}
+                      aria-pressed={card.selected}
                       onClick={() => selectReportRetailer(card.retailer)}
                     >
                       <span className="scout-report-retailer-icon">{reportRetailerInitials(card.retailer)}</span>
@@ -5168,6 +5888,7 @@ async function handleUpdateStore(e) {
                         key={option.value}
                         type="button"
                         className={`scout-stock-status-button ${reportForm.stockStatus === option.value ? "selected" : ""}`}
+                        aria-pressed={reportForm.stockStatus === option.value}
                         onClick={() => setReportForm((current) => ({
                           ...current,
                           stockStatus: option.value,
@@ -5284,6 +6005,20 @@ async function handleUpdateStore(e) {
                   placeholder="Notes, shelf status, employee quote, limit, or context"
                 />
                 <div className="scout-report-detail-grid">
+                  <label>
+                    Date seen
+                    <input
+                      style={styles.input}
+                      type="date"
+                      value={reportForm.reportDate}
+                      onChange={(e) => setReportForm((current) => ({
+                        ...current,
+                        reportDate: e.target.value,
+                        reportedAt: "",
+                        reportTimeManuallyEdited: true,
+                      }))}
+                    />
+                  </label>
                   <label>
                     Time seen
                     <input
@@ -5544,7 +6279,7 @@ async function handleUpdateStore(e) {
 
         ) : null}
 
-        {scoutSubTab === "overview" || (!compact && scoutSubTab === "reports") ? (
+        {(compact && scoutSubTab === "overview") || (!compact && scoutSubTab === "reports") ? (
         <div style={styles.reportGrid}>
           <div style={styles.card}>
             <h2 style={styles.sectionTitle}>Daily Scout Report</h2>
@@ -5584,11 +6319,18 @@ async function handleUpdateStore(e) {
           </div>
 
           <div style={styles.card}>
-            <h2 style={styles.sectionTitle}>Restock History</h2>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
+              <h2 style={styles.sectionTitle}>Restock History</h2>
+              {restockHistory.length > 20 ? (
+                <button type="button" style={styles.buttonSoft} onClick={() => setShowAllRestockHistory((current) => !current)}>
+                  {showAllRestockHistory ? "Show recent reports" : "View all reports"}
+                </button>
+              ) : null}
+            </div>
             {restockHistory.length === 0 ? (
               <p style={styles.empty}>No restock history yet. Add a Scout report after checking a store so future predictions get smarter.</p>
             ) : (
-              restockHistory.map((report) => renderCompactReportCard(report, { compact: true }))
+              displayedRestockHistory.map((report) => renderCompactReportCard(report, { compact: true }))
             )}
           </div>
         </div>
@@ -6065,10 +6807,10 @@ async function handleUpdateStore(e) {
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", gap: "12px", flexWrap: "wrap" }}>
                     <div>
                       <h2 style={{ ...styles.sectionTitle, marginBottom: "6px" }}>{selectedStore.nickname || selectedStore.name}</h2>
-                      {selectedStore.nickname ? <p style={{ margin: "0 0 6px 0", color: "#475569" }}>{selectedStore.name}</p> : null}
-                      <p style={{ margin: "0 0 6px 0", color: "#334155", fontWeight: 800 }}>{selectedStore.chain || selectedStore.retailer || getStoreGroup(selectedStore)} | {selectedStore.city || "Unknown area"} | {normalizeVirginiaRegion(selectedStore.region || "") || VIRGINIA_STORE_STATE}</p>
-                      <p style={{ margin: 0, color: "#475569" }}>{selectedStore.address || "No address"}</p>
-                      <p style={{ margin: "4px 0 0 0", color: "#475569" }}>{normalizeStateLabel(selectedStore.state || VIRGINIA_STORE_STATE)} {selectedStore.zipCode || selectedStore.zip ? `${selectedStore.zipCode || selectedStore.zip}` : ""} {selectedStore.phone ? `| ${selectedStore.phone}` : ""}</p>
+                      {selectedStore.nickname ? <p style={{ margin: "0 0 6px 0", color: "var(--cmd-muted)" }}>{selectedStore.name}</p> : null}
+                      <p style={{ margin: "0 0 6px 0", color: "var(--cmd-heading)", fontWeight: 800 }}>{selectedStore.chain || selectedStore.retailer || getStoreGroup(selectedStore)} | {selectedStore.city || "Unknown area"} | {normalizeVirginiaRegion(selectedStore.region || "") || VIRGINIA_STORE_STATE}</p>
+                      <p style={{ margin: 0, color: "var(--cmd-muted)" }}>{selectedStore.address || "No address"}</p>
+                      <p style={{ margin: "4px 0 0 0", color: "var(--cmd-muted)" }}>{normalizeStateLabel(selectedStore.state || VIRGINIA_STORE_STATE)} {selectedStore.zipCode || selectedStore.zip ? `${selectedStore.zipCode || selectedStore.zip}` : ""} {selectedStore.phone ? `| ${selectedStore.phone}` : ""}</p>
                       {renderStoreExpansionBadges(selectedStore)}
                     </div>
                     <span style={styles.badge}>{selectedStore.favorite || selectedStore.watched ? "Watching" : "Shared Virginia store"}</span>
@@ -6150,6 +6892,77 @@ async function handleUpdateStore(e) {
                     </details>
                   ) : null}
                 </div>
+
+                {selectedTrustedShopProfile ? (
+                  <section className="scout-store-trust-profile-card" aria-label="Trusted Shop Profile">
+                    <div className="scout-store-trust-hero">
+                      <div>
+                        <p className="section-kicker">Trusted Shop Profile</p>
+                        <h2>{getStoreDisplayName(selectedTrustedShopProfile.store)}</h2>
+                        <p>
+                          {selectedTrustedShopProfile.trustBadge} with {selectedTrustedShopProfile.confidence.toLowerCase()} Scout confidence,
+                          {` ${selectedTrustedShopProfile.reportCount}`} report{selectedTrustedShopProfile.reportCount === 1 ? "" : "s"},
+                          and {selectedTrustedShopProfile.proofCount} proof-backed signal{selectedTrustedShopProfile.proofCount === 1 ? "" : "s"}.
+                        </p>
+                      </div>
+                      <div className="scout-store-trust-score">
+                        <span>Trust score</span>
+                        <strong>{selectedTrustedShopProfile.trustScore}</strong>
+                        <small>{selectedTrustedShopProfile.demandLabel}</small>
+                      </div>
+                    </div>
+                    <div className="scout-store-trust-grid">
+                      <article>
+                        <span>Trust status</span>
+                        <strong>{selectedTrustedShopProfile.trustBadge}</strong>
+                        <p>{selectedTrustedShopProfile.familyApproved ? "Family-friendly signal is approved or kid-supportive." : "Shared store profile; needs more family-safe confirmation."}</p>
+                      </article>
+                      <article>
+                        <span>Report reliability</span>
+                        <strong>{selectedTrustedShopProfile.confidence}</strong>
+                        <p>{selectedTrustedShopProfile.verifiedCount} verified report{selectedTrustedShopProfile.verifiedCount === 1 ? "" : "s"} and {selectedTrustedShopProfile.proofCount} proof item{selectedTrustedShopProfile.proofCount === 1 ? "" : "s"}.</p>
+                      </article>
+                      <article>
+                        <span>Shop activity</span>
+                        <strong>{selectedTrustedShopProfile.activity}</strong>
+                        <p>Last signal: {selectedTrustedShopProfile.lastReportLabel}.</p>
+                      </article>
+                    </div>
+                    <div className="scout-store-trust-chip-row">
+                      <span>{selectedTrustedShopProfile.eventFriendly ? "Event candidate" : "Event status unknown"}</span>
+                      <span>{selectedTrustedShopProfile.donationPartner ? "Donation drop-off candidate" : "Donation status unknown"}</span>
+                      <span>{selectedTrustedShopProfile.pricingFriendly ? "Fair-access signal" : "Pricing signal needed"}</span>
+                      <span>{selectedTrustedShopProfile.localShop ? "Local shop" : "Retail location"}</span>
+                    </div>
+                    <div className="scout-store-activity-timeline">
+                      <article>
+                        <span>1</span>
+                        <div>
+                          <strong>Recent reports</strong>
+                          <p>{selectedTrustedShopProfile.recentCount ? `${selectedTrustedShopProfile.recentCount} recent signal${selectedTrustedShopProfile.recentCount === 1 ? "" : "s"}` : "No recent signal yet"}</p>
+                        </div>
+                      </article>
+                      <article>
+                        <span>2</span>
+                        <div>
+                          <strong>Proof trail</strong>
+                          <p>{selectedTrustedShopProfile.proofCount ? "Photos, evidence, or verified reports are helping this profile." : "Add photos or proof with the next Scout report."}</p>
+                        </div>
+                      </article>
+                      <article>
+                        <span>3</span>
+                        <div>
+                          <strong>Next safe action</strong>
+                          <p>Watch the shop, submit a current report, or suggest corrections before others rely on old intel.</p>
+                        </div>
+                      </article>
+                    </div>
+                    <div className="scout-store-trust-actions">
+                      <button type="button" className="secondary-button" onClick={() => openStoreReport(selectedStore.id)}>Submit current report</button>
+                      <button type="button" className="secondary-button" onClick={toggleSelectedStoreFavorite}>{selectedStore.favorite || selectedStore.watched ? "Watching" : "Watch this shop"}</button>
+                    </div>
+                  </section>
+                ) : null}
 
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))", gap: "16px" }}>
                   <div style={styles.card}>
@@ -6354,7 +7167,10 @@ async function handleUpdateStore(e) {
               </div>
               <div className="location-modal-actions modal-sticky-footer">
                 {(isUserOwnedScoutReport(selectedReportTarget) || adminMode) ? (
-                  <button type="button" onClick={() => startEditingReport(selectedReportTarget)}>{adminMode ? "Edit details" : "Add details"}</button>
+                  <button type="button" onClick={() => {
+                    startEditingReport(selectedReportTarget);
+                    setSelectedReportTarget(null);
+                  }}>{adminMode ? "Edit details" : "Add details"}</button>
                 ) : null}
                 {adminMode ? <button type="button" className="delete-button" onClick={() => setDeleteReportTarget(selectedReportTarget)}>Delete</button> : null}
                 <button type="button" className="secondary-button" onClick={() => setSelectedReportTarget(null)}>Close</button>

@@ -1,0 +1,497 @@
+/* Modals, drawers, overlays */
+.location-modal-backdrop,
+.app-confirmation-backdrop,
+.ai-assist-review-backdrop,
+.collection-manager-backdrop,
+.collection-utility-backdrop,
+.catalog-detail-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(3, 8, 17, 0.68);
+  backdrop-filter: blur(10px);
+}
+
+.purchaser-manager-backdrop {
+  z-index: 1510;
+}
+
+.location-modal,
+.flow-modal,
+.scanner-review-modal,
+.feedback-modal,
+.ai-assist-review-modal,
+.collection-manager-modal,
+.collection-utility-drawer,
+.catalog-detail-drawer,
+.app-confirmation-copy {
+  width: min(760px, 100%);
+  max-height: calc(100dvh - 36px);
+  overflow: auto;
+  padding: 16px;
+  border: 1px solid var(--et-border-strong);
+  border-radius: var(--et-radius-lg);
+  color: var(--et-text);
+  background: var(--et-card-strong);
+  box-shadow: var(--et-shadow);
+}
+
+.flow-modal[data-flow="addActionSheet"],
+.flow-modal[data-flow="multiDestinationAdd"] {
+  height: calc(100dvh - 36px);
+  max-height: calc(100dvh - 36px);
+}
+
+.flow-modal-large,
+.catalog-detail-drawer {
+  width: min(1040px, 100%);
+}
+
+.modal-close-button,
+.modal-icon-close {
+  width: 34px;
+  height: 34px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.flow-modal-footer,
+.modal-sticky-footer {
+  position: sticky;
+  bottom: 0;
+  margin: 14px -16px -16px;
+  padding: 12px 16px;
+  background: color-mix(in srgb, var(--et-card-strong) 92%, transparent);
+  border-top: 1px solid var(--et-border);
+}
+
+.app-toast-viewport {
+  position: fixed;
+  right: 18px;
+  bottom: 96px;
+  z-index: 180;
+  display: grid;
+  gap: 8px;
+  width: min(420px, calc(100vw - 32px));
+}
+
+.app-toast-message {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid var(--et-border);
+  border-radius: var(--et-radius-md);
+  color: var(--et-text);
+  background: var(--et-card-strong);
+  box-shadow: var(--et-shadow);
+}
+
+.ember-assist-fab,
+.mobile-quick-add-fab,
+.back-to-top-button {
+  position: fixed;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  color: #fff;
+  border: 0;
+  background: linear-gradient(135deg, var(--et-ember), var(--et-gold));
+  box-shadow: 0 16px 36px rgba(232, 100, 34, 0.28);
+}
+
+.ember-assist-fab {
+  right: 22px;
+  bottom: 92px;
+  min-height: 50px;
+  padding: 0 18px;
+}
+
+.mobile-quick-add-fab {
+  right: 20px;
+  bottom: 96px;
+  width: 56px;
+  height: 56px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(10px);
+}
+
+.mobile-quick-add-fab.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.back-to-top-button {
+  right: 20px;
+  bottom: 158px;
+  min-height: 40px;
+  padding: 0 13px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.back-to-top-button.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.mobile-bottom-nav {
+  position: fixed;
+  left: 50%;
+  bottom: 12px;
+  z-index: 100;
+  display: none;
+  width: min(680px, calc(100vw - 24px));
+  transform: translateX(-50%);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+  padding: 7px;
+  border: 1px solid rgba(255, 239, 210, 0.16);
+  border-radius: 22px;
+  background: rgba(8, 24, 40, 0.95);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(16px);
+}
+
+.mobile-dock-item,
+.mobile-dock-add {
+  min-width: 0;
+  min-height: 54px;
+  display: grid;
+  place-items: center;
+  gap: 2px;
+  padding: 5px;
+  border: 1px solid transparent;
+  border-radius: 16px;
+  color: rgba(255, 244, 224, 0.78);
+  background: transparent;
+  box-shadow: none;
+}
+
+.mobile-dock-item b,
+.mobile-dock-add b {
+  color: currentColor;
+  font-size: 0.66rem;
+  line-height: 1;
+}
+
+.mobile-dock-item.active,
+.mobile-dock-add.active {
+  color: #f9c96d;
+  border-color: rgba(249, 201, 109, 0.48);
+  background: rgba(249, 201, 109, 0.12);
+}
+
+.mobile-dock-add .mobile-tab-icon {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--et-ember), var(--et-gold));
+}
+
+/* Search, catalog, cards with images */
+.global-search-destination-grid,
+.app-search-local-results,
+.catalog-selector-results,
+.catalog-results-toolbar,
+.catalog-result-meta-badges,
+.catalog-result-group,
+.catalog-result-groups {
+  display: grid;
+  gap: 8px;
+}
+
+.global-search-destination-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.catalog-results-toolbar,
+.admin-queue-toolbar {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.collector-showcase-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  gap: 10px;
+}
+
+.collector-showcase-card,
+.collector-flip-card {
+  position: relative;
+  min-width: 0;
+  contain: layout paint style;
+  contain-intrinsic-size: 240px 340px;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+  overflow: hidden;
+  perspective: 900px;
+}
+
+.collector-showcase-stage,
+.collector-flip-front,
+.collector-flip-back {
+  display: grid;
+  gap: 8px;
+  backface-visibility: hidden;
+}
+
+.sealed-product-shelf-card,
+.vault-gallery-tile {
+  min-width: 0;
+  contain: layout paint style;
+  contain-intrinsic-size: 190px 280px;
+  overflow: hidden;
+}
+
+.collector-showcase-stage,
+.sealed-product-shelf-card,
+.vault-gallery-tile {
+  border-radius: var(--et-radius-md);
+  border: 1px solid var(--et-border);
+  background:
+    radial-gradient(circle at 14% 10%, color-mix(in srgb, var(--et-accent) 12%, transparent), transparent 6rem),
+    var(--et-card);
+}
+
+.collector-showcase-pack,
+.collector-showcase-booster-box,
+.collector-showcase-tin,
+.collector-showcase-bundle,
+.collector-showcase-supply,
+.collector-showcase-set,
+.collector-showcase-wishlist,
+.collector-showcase-unknown {
+  border-color: color-mix(in srgb, var(--et-accent) 26%, var(--et-border));
+}
+
+.collector-showcase-mini .collector-showcase-shine {
+  content-visibility: auto;
+  contain-intrinsic-size: 64px 64px;
+  opacity: 0.28;
+  transform: translate3d(0, 0, 0);
+}
+
+.collector-showcase-edge,
+.collector-showcase-face {
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
+.collector-showcase-fallback,
+.collector-showcase-card--fallback,
+.collector-showcase-card.is-fallback .collector-showcase-face {
+  background:
+    radial-gradient(circle at 28% 18%, color-mix(in srgb, var(--et-gold) 20%, transparent), transparent 7rem),
+    linear-gradient(145deg, color-mix(in srgb, var(--et-surface-2) 80%, transparent), var(--et-card));
+}
+
+.collector-showcase-fallback::after,
+.collector-showcase-card--fallback::after {
+  content: "Manual visual";
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  color: var(--et-heading);
+  background: color-mix(in srgb, var(--et-gold) 18%, var(--et-surface));
+  font-size: 0.66rem;
+  font-weight: 800;
+}
+
+.collector-showcase-fallback-note {
+  color: var(--et-muted);
+  font-size: 0.78rem;
+}
+
+button.collector-showcase-card:focus-visible,
+.collector-flip-card > summary:focus-visible,
+.vault-gallery-tile:focus-visible {
+  outline: none;
+  box-shadow: var(--et-focus);
+}
+
+.collector-sealed-frame-booster-pack,
+.collector-sealed-frame-booster-box,
+.collector-sealed-frame-etb,
+.collector-sealed-frame-tin,
+.collector-sealed-frame-bundle,
+.collector-sealed-frame-collection-box,
+.collector-sealed-frame-unknown {
+  border-color: color-mix(in srgb, var(--et-gold) 34%, var(--et-border));
+}
+
+.collector-sealed-chip {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 22px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  color: var(--et-heading);
+  background: color-mix(in srgb, var(--et-gold) 15%, var(--et-surface));
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.sealed-product-shelf-object {
+  position: relative;
+  isolation: isolate;
+}
+
+.sealed-product-shelf-object::before,
+.sealed-product-shelf-object::after {
+  content: "";
+  position: absolute;
+  inset: auto 10% 8% 10%;
+  height: 12%;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--et-shadow, rgba(0, 0, 0, 0.2)) 40%, transparent);
+  z-index: -1;
+}
+
+.sealed-product-shelf-object::after {
+  inset: 8% 12% auto 12%;
+  height: 2px;
+  background: color-mix(in srgb, var(--et-gold) 48%, transparent);
+}
+
+.sealed-shelf-booster-pack .sealed-product-shelf-object {
+  aspect-ratio: 2 / 3;
+}
+
+.sealed-shelf-booster-box .sealed-product-shelf-object,
+.sealed-shelf-etb .sealed-product-shelf-object {
+  aspect-ratio: 4 / 3;
+}
+
+.sealed-shelf-tin .sealed-product-shelf-object {
+  aspect-ratio: 1 / 1;
+}
+
+.collector-rarity-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  max-width: 100%;
+  min-height: 24px;
+  padding: 3px 8px;
+  border: 1px solid var(--et-border);
+  border-radius: 999px;
+  color: var(--et-heading);
+  background: color-mix(in srgb, var(--et-surface) 86%, transparent);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.collector-rarity-common,
+.collector-rarity-chip-neutral {
+  border-color: color-mix(in srgb, var(--et-muted) 32%, var(--et-border));
+}
+
+.collector-rarity-uncommon {
+  border-color: color-mix(in srgb, var(--et-green) 36%, var(--et-border));
+  color: color-mix(in srgb, var(--et-green) 76%, var(--et-heading));
+}
+
+.collector-rarity-holo,
+.collector-rarity-reverse {
+  border-color: color-mix(in srgb, var(--et-tide) 44%, var(--et-border));
+  color: color-mix(in srgb, var(--et-tide) 82%, var(--et-heading));
+}
+
+.collector-rarity-promo {
+  border-color: color-mix(in srgb, var(--et-purple) 42%, var(--et-border));
+  color: color-mix(in srgb, var(--et-purple) 78%, var(--et-heading));
+}
+
+.collector-rarity-secret {
+  border-color: color-mix(in srgb, var(--et-gold) 52%, var(--et-border));
+  color: color-mix(in srgb, var(--et-gold) 72%, var(--et-heading));
+}
+
+.market-showcase-preview .collector-rarity-chip,
+.quick-add-showcase-preview .collector-rarity-chip {
+  font-size: 0.68rem;
+  min-height: 22px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .collector-showcase-card,
+  .collector-flip-card,
+  .collector-showcase-stage,
+  .collector-flip-front,
+  .collector-flip-back {
+    animation: none;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* Data-heavy routes */
+.store-map-layout,
+.catalog-detail-core-grid,
+.catalog-detail-body,
+.collection-manager-body,
+.beta-users-dashboard,
+.admin-selected-queue-panel--top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 380px);
+  gap: 12px;
+  min-width: 0;
+}
+
+.store-map-canvas {
+  position: relative;
+  min-height: 360px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--et-accent) 16%, transparent), transparent 45%),
+    linear-gradient(135deg, color-mix(in srgb, var(--et-surface) 70%, var(--et-bg)), var(--et-surface-2));
+}
+
+.store-map-pin {
+  position: absolute;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--et-border-strong);
+  border-radius: 50%;
+  color: var(--et-on-accent);
+  background: var(--et-accent);
+  transform: translate(-50%, -50%);
+}
+
+.store-map-canvas-summary {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  display: grid;
+  gap: 3px;
+  padding: 10px;
+  border: 1px solid var(--et-border);
+  border-radius: var(--et-radius-sm);
+  background: color-mix(in srgb, var(--et-card-strong) 82%, transparent);
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* Responsive */
