@@ -8,6 +8,7 @@ import {
   isLikelyChunkLoadError,
   shouldExposeFallbackErrorDetails,
 } from "../src/utils/appFallbackContent.js";
+import { BRAND_CONFIG } from "../src/config/brand.js";
 
 const root = process.cwd();
 const read = (filePath) => fs.readFileSync(path.join(root, filePath), "utf8");
@@ -19,8 +20,8 @@ const app = read("src/App.jsx");
 const pkg = JSON.parse(read("package.json"));
 
 const loadingCopy = getAppLoadFallbackCopy("loading");
-assert.equal(loadingCopy.title, "Loading Ember & Tide...");
-assert.equal(loadingCopy.body, "Preparing your command center.");
+assert.equal(loadingCopy.title, `Loading ${BRAND_CONFIG.shortName}...`);
+assert.equal(loadingCopy.body, "Preparing your business workspace.");
 
 const updatingCopy = getAppLoadFallbackCopy("updating");
 assert.match(updatingCopy.title, /updating/i);
@@ -37,15 +38,15 @@ assert.equal(isLikelyChunkLoadError(new Error("regular form validation error")),
 assert.equal(shouldExposeFallbackErrorDetails("production"), false);
 assert.equal(shouldExposeFallbackErrorDetails("development"), true);
 
-assert.match(indexHtml, /Loading Ember & Tide\.\.\./);
+assert.match(indexHtml, /Loading __BRAND_SHORT_NAME__\.\.\./);
 assert.match(indexHtml, /If this takes more than a few seconds, refresh the page\./);
-assert.doesNotMatch(indexHtml, /Ember & Tide is updating/);
+assert.doesNotMatch(indexHtml, /Ember & Tide/);
 assert.match(indexHtml, /Refresh app/);
 assert.match(indexHtml, /Go to homepage/);
 assert.match(indexHtml, /<noscript>/);
 assert.doesNotMatch(indexHtml, /stack trace|ChunkLoadError/i);
 
-assert.match(main, /class EmberTideErrorBoundary/);
+assert.match(main, /class AppErrorBoundary/);
 assert.match(main, /getDerivedStateFromError/);
 assert.match(main, /AppLoadFallback/);
 assert.match(main, /shouldExposeFallbackErrorDetails\(import\.meta\.env\.MODE\)/);
@@ -59,8 +60,8 @@ assert.match(fallbackComponent, /showDetails/);
 assert.doesNotMatch(fallbackComponent, /error\.stack/);
 
 assert.match(app, /function RouteChunkFallback/);
-assert.match(app, /Loading Ember & Tide/);
-assert.match(app, /Preparing your command center/);
+assert.match(app, /Loading \$\{BRAND_CONFIG\.shortName\}/);
+assert.match(app, /Preparing this workspace/);
 
 assert.equal(pkg.scripts?.["test:app-fallbacks"], "node --no-warnings scripts/test-app-fallbacks.mjs");
 

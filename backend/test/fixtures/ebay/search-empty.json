@@ -1,0 +1,7 @@
+{
+  "href": "https://api.ebay.com/buy/browse/v1/item_summary/search?q=no-results&limit=25&offset=0",
+  "total": 0,
+  "limit": 25,
+  "offset": 0,
+  "itemSummaries": []
+}
