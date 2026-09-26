@@ -1,25 +1,27 @@
+import { BRAND_CONFIG } from "../config/brand.js";
+
 export const APP_LOAD_FALLBACK_COPY = {
   loading: {
-    eyebrow: "Ember & Tide",
-    title: "Loading Ember & Tide...",
-    body: "Preparing your command center.",
-    helper: "Thanks for hanging tight while the app gets ready.",
+    eyebrow: BRAND_CONFIG.applicationDisplayName,
+    title: `Loading ${BRAND_CONFIG.shortName}...`,
+    body: "Preparing your business workspace.",
+    helper: "Your records will be ready in a moment.",
   },
   updating: {
-    eyebrow: "Ember & Tide",
-    title: "Ember & Tide is updating",
-    body: "We're refreshing the app so everything stays smooth.",
+    eyebrow: BRAND_CONFIG.applicationDisplayName,
+    title: `${BRAND_CONFIG.shortName} is updating`,
+    body: "We are refreshing the application.",
     helper: "Please try again in a moment. If this keeps happening, close and reopen the app.",
   },
   error: {
-    eyebrow: "Ember & Tide",
+    eyebrow: BRAND_CONFIG.applicationDisplayName,
     title: "We couldn't load this screen",
-    body: "Ember & Tide had trouble opening this part of the app.",
+    body: "The application had trouble opening this part of the workspace.",
     helper: "Refresh the app, return home, or send feedback if it keeps happening.",
   },
   chunk: {
-    eyebrow: "Ember & Tide",
-    title: "Ember & Tide may have just updated",
+    eyebrow: BRAND_CONFIG.applicationDisplayName,
+    title: `${BRAND_CONFIG.shortName} may have just updated`,
     body: "Refresh to load the newest version.",
     helper: "This can happen when an older app screen is open during a new release.",
   },

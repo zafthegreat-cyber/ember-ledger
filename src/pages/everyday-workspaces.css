@@ -1,0 +1,426 @@
+.everyday-workspace {
+  display: grid;
+  gap: var(--space-5);
+  min-width: 0;
+  padding: var(--space-4);
+}
+
+.everyday-action-section,
+.everyday-attention,
+.everyday-workspace > section {
+  min-width: 0;
+}
+
+.everyday-attention {
+  padding: var(--space-4);
+  border: 1px solid color-mix(in srgb, var(--status-warning) 35%, var(--border-subtle));
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--status-warning) 7%, var(--surface-primary));
+}
+
+.everyday-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.everyday-toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.everyday-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  padding: 2px 2px var(--space-2);
+}
+
+.everyday-tabs button {
+  min-height: 44px;
+  min-width: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-primary);
+  color: var(--text-secondary);
+  font: inherit;
+  font-weight: 700;
+  padding: 0 var(--space-4);
+}
+
+.everyday-tabs button.is-active {
+  border-color: var(--brand-primary);
+  background: var(--brand-primary-soft, var(--surface-secondary));
+  color: var(--brand-primary);
+}
+
+.compatibility-note {
+  border: 1px solid var(--border-subtle);
+  border-left: 4px solid var(--status-info);
+  border-radius: var(--radius-md);
+  background: var(--surface-secondary);
+  color: var(--text-secondary);
+  padding: var(--space-3) var(--space-4);
+  line-height: 1.5;
+}
+
+.owned-item-list,
+.everyday-record-list,
+.everyday-group-list,
+.reconciliation-list {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.everyday-record-card {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: var(--space-3);
+  padding: var(--space-3);
+}
+
+.everyday-record-card > img,
+.everyday-record-placeholder {
+  width: 76px;
+  aspect-ratio: 1;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+  background: var(--surface-secondary);
+}
+
+.everyday-record-placeholder {
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.everyday-record-card__body,
+.everyday-record-card__heading > div {
+  min-width: 0;
+}
+
+.everyday-record-card__heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.everyday-record-card__heading span {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.everyday-record-card h3,
+.everyday-group-list h3,
+.reconciliation-list h3 {
+  margin: 2px 0 0;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.everyday-record-card dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+}
+
+.everyday-record-card dt,
+.everyday-record-card dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.everyday-record-card dt {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.everyday-record-card dd {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.everyday-card-actions,
+.related-record-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.everyday-group-list .ops-record-card,
+.reconciliation-list .ops-record-card {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.everyday-group-list p,
+.reconciliation-list p {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.purpose-action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.purpose-action-grid button {
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-primary);
+  color: var(--text-secondary);
+  font: 700 13px/1.2 var(--font-ui);
+}
+
+.purpose-action-grid button.is-active {
+  border-color: var(--brand-primary);
+  background: color-mix(in srgb, var(--brand-primary) 9%, var(--surface-primary));
+  color: var(--brand-primary);
+}
+
+.sale-result-preview {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.sale-result-preview span {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-secondary);
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.sale-result-preview strong {
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.owned-item-card {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: var(--space-3);
+  padding: var(--space-3);
+}
+
+.owned-item-card > img,
+.owned-item-placeholder {
+  width: 76px;
+  aspect-ratio: 1;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+  background: var(--surface-secondary);
+}
+
+.owned-item-placeholder {
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.owned-item-card__body,
+.owned-item-card__heading > div {
+  min-width: 0;
+}
+
+.owned-item-card__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.owned-item-card h3,
+.owned-item-card p {
+  margin: 0;
+}
+
+.owned-item-card h3 {
+  overflow-wrap: anywhere;
+}
+
+.owned-item-card p,
+.owned-item-card dt {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.owned-item-card dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+}
+
+.owned-item-card dl div {
+  min-width: 0;
+}
+
+.owned-item-card dt,
+.owned-item-card dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.owned-item-card dd {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+@media (min-width: 860px) {
+  .everyday-workspace { padding: var(--space-6); }
+  .everyday-tabs { display: flex; flex-wrap: wrap; }
+  .everyday-tabs button { flex: 0 0 auto; }
+  .owned-item-list,
+  .everyday-record-list,
+  .everyday-group-list,
+  .reconciliation-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .everyday-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+@media (max-width: 859px) {
+  .everyday-workspace {
+    padding-bottom: calc(124px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (max-width: 420px) {
+  .everyday-record-card,
+  .everyday-record-card .ops-button {
+    scroll-margin-block-end: calc(104px + env(safe-area-inset-bottom, 0px));
+  }
+  .owned-item-card { grid-template-columns: 64px minmax(0, 1fr); }
+  .owned-item-card > img,
+  .owned-item-placeholder { width: 64px; }
+  .owned-item-card__heading { display: grid; }
+  .owned-item-card dl { grid-template-columns: 1fr; }
+  .everyday-record-card { grid-template-columns: 60px minmax(0, 1fr); }
+  .everyday-record-card > img,
+  .everyday-record-placeholder { width: 60px; }
+  .everyday-record-card__heading { display: grid; }
+  .everyday-record-card dl,
+  .sale-result-preview,
+  .purpose-action-grid { grid-template-columns: 1fr; }
+  .everyday-card-actions .ops-button { flex: 1 1 auto; padding-inline: 10px; }
+}
+
+/* Declutter pass */
+.everyday-workspace { gap: var(--space-4); }
+.everyday-secondary-navigation,
+.everyday-money-navigation { display: flex; align-items: center; gap: var(--space-2); }
+.everyday-secondary-navigation > button,
+.everyday-more-menu > summary,
+.everyday-back-button { min-height: 44px; display: flex; align-items: center; padding: 0 var(--space-3); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); background: var(--surface-primary); color: var(--text-secondary); font: 750 13px/1 var(--font-ui); cursor: pointer; }
+.everyday-secondary-navigation > button.is-active { border-color: var(--brand-primary); color: var(--brand-primary); background: color-mix(in srgb, var(--brand-primary) 7%, var(--surface-primary)); }
+.everyday-more-menu { position: relative; }
+.everyday-more-menu > summary { list-style: none; }
+.everyday-more-menu > summary::-webkit-details-marker { display: none; }
+.everyday-more-menu > div { position: absolute; z-index: 20; top: calc(100% + 5px); right: 0; min-width: 180px; display: grid; padding: 5px; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--surface-elevated); box-shadow: var(--shadow-2); }
+.everyday-more-menu button { min-height: 44px; padding: 8px 10px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text-primary); text-align: left; }
+.everyday-more-menu button:hover,
+.everyday-more-menu button:focus-visible { background: var(--surface-secondary); }
+.everyday-review-queue { min-height: 44px; padding: 8px 0; border: 0; border-bottom: 1px solid var(--status-warning); background: transparent; color: var(--status-warning); font-weight: 800; text-align: left; }
+.everyday-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: var(--space-2); }
+.everyday-toolbar .ops-search-field { min-width: 0; }
+.everyday-metrics { gap: 1px; overflow: hidden; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--border-subtle); }
+.everyday-metrics .ops-metric-card { min-height: 76px; border: 0; border-radius: 0; box-shadow: none; }
+.everyday-record-card { border: 0; border-bottom: 1px solid var(--border-subtle); border-radius: 0; box-shadow: none; }
+.everyday-record-card dl { margin: var(--space-2) 0; }
+.everyday-card-actions .ops-button { width: auto; min-height: 44px; }
+.business-destination-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+.app.app-command-shell .business-destination-grid button { min-height: 82px; display: grid; align-content: center; gap: 5px; padding: var(--space-3); border: 1px solid var(--border-subtle) !important; border-radius: var(--radius-md); background: var(--surface-primary) !important; color: var(--text-primary) !important; text-align: left; box-shadow: none !important; }
+.business-destination-grid button strong { font-size: 16px; }
+.business-destination-grid button span { color: var(--text-muted); font-size: 12px; }
+.business-attention-section { display: grid; gap: var(--space-2); margin-top: var(--space-2); }
+.business-attention-list { display: grid; }
+.app.app-command-shell .business-attention-list button { min-height: 48px; display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: var(--space-2); padding: 4px 0; border: 0 !important; border-bottom: 1px solid var(--border-subtle) !important; background: transparent !important; color: var(--text-primary) !important; text-align: left; }
+.business-attention-list button strong { color: var(--status-warning); font-variant-numeric: tabular-nums; }
+.everyday-money-navigation .everyday-tabs { flex: 1; padding: 0; }
+
+@media (min-width: 860px) {
+  .business-destination-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .everyday-workspace > .ops-page-header { margin-bottom: 0; }
+}
+
+@media (max-width: 420px) {
+  .everyday-workspace { gap: var(--space-3); padding-inline: 16px; }
+  .everyday-toolbar { grid-template-columns: minmax(0, 1fr) auto; }
+  .everyday-record-card { grid-template-columns: 56px minmax(0, 1fr); padding-inline: 0; }
+  .everyday-record-card > img,
+  .everyday-record-placeholder { width: 56px; }
+  .everyday-record-card dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .everyday-card-actions .ops-button { width: 100%; }
+}
+
+/* Mobile-first minimal pass: searchable rows first, utilities behind More. */
+.everyday-collection-summary { display: flex; align-items: stretch; justify-content: space-between; gap: var(--space-2); }
+.everyday-collection-summary .everyday-metrics { flex: 1; }
+.everyday-collection-summary .everyday-more-menu > summary { height: 100%; min-height: 58px; }
+.app.app-command-shell .everyday-record-card {
+  width: 100%;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border: 0 !important;
+  border-bottom: 1px solid var(--border-subtle) !important;
+  border-radius: 0;
+  background: transparent !important;
+  color: var(--text-primary) !important;
+  box-shadow: none !important;
+  font: inherit;
+  text-align: left;
+}
+.everyday-record-card > img,
+.everyday-record-placeholder { width: 64px; border-radius: var(--radius-sm); }
+.everyday-record-placeholder { color: transparent; }
+.everyday-record-placeholder::after { content: ""; width: 20px; height: 20px; border: 1px solid var(--border-strong); border-radius: 5px; }
+.everyday-record-card h3 { display: -webkit-box; overflow: hidden; font-size: 15px; line-height: 1.25; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.everyday-record-card dl { margin: 6px 0 0; }
+.everyday-record-chevron { color: var(--text-muted); font-size: 22px; }
+.business-destination-grid { gap: 0; border-block: 1px solid var(--border-subtle); }
+.app.app-command-shell .business-destination-grid button { min-height: 70px; padding: 10px 12px; border: 0 !important; border-radius: 0; background: transparent !important; }
+.business-destination-grid button:nth-child(odd) { border-right: 1px solid var(--border-subtle) !important; }
+.business-destination-grid button:nth-child(-n+2) { border-bottom: 1px solid var(--border-subtle) !important; }
+
+@media (max-width: 859px) {
+  .everyday-workspace { gap: 12px; padding: 12px 16px calc(96px + env(safe-area-inset-bottom, 0px)); }
+  .everyday-workspace[data-testid="collection-workspace"] > .ops-page-header,
+  .everyday-workspace[data-testid="business-workspace"] > .ops-page-header { display: none; }
+  .everyday-toolbar { order: -2; }
+  .everyday-collection-summary { order: -1; }
+  .everyday-metrics { border: 0; border-radius: 0; background: transparent; }
+  .everyday-metrics .ops-metric-card { min-height: 58px; padding: 8px 10px; border-right: 1px solid var(--border-subtle); background: transparent; }
+  .everyday-metrics .ops-metric-card:first-child { padding-left: 0; }
+  .everyday-metrics .ops-metric-card > strong { font-size: 18px; }
+  .everyday-record-list { gap: 0; }
+  .everyday-record-card__heading { align-items: center; }
+  .everyday-record-card__heading .ops-status-badge { font-size: 10px; }
+}
+
+@media (max-width: 420px) {
+  .app.app-command-shell .everyday-record-card { grid-template-columns: 56px minmax(0, 1fr) auto; }
+  .everyday-record-card > img,
+  .everyday-record-placeholder { width: 56px; }
+  .everyday-record-card dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .business-destination-grid button strong { font-size: 15px; }
+}

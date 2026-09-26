@@ -5,19 +5,50 @@ import path from "node:path";
 const root = process.cwd();
 const appPath = path.join(root, "src", "App.jsx");
 const cssPath = path.join(root, "src", "App.css");
+const appStylesDir = path.join(root, "src", "styles", "app");
+const routeStatePath = path.join(root, "src", "utils", "appRouteState.js");
+const pageSourceDir = path.join(root, "src", "pages");
 const commandSurfacePath = path.join(root, "src", "components", "command-system", "CommandSurface.jsx");
 const commandSystemCssPath = path.join(root, "src", "styles", "command-system.css");
 const betaReadinessPath = path.join(root, "src", "services", "betaReadinessService.js");
+const workspaceRegistryPath = path.join(root, "src", "config", "workspaceRegistry.js");
+const workspaceSwitcherPath = path.join(root, "src", "features", "workspaces", "WorkspaceSwitcher.jsx");
+const workspaceHomePath = path.join(root, "src", "features", "workspaces", "WorkspaceHomePage.jsx");
 const appFileSource = fs.readFileSync(appPath, "utf8");
+const routeStateSource = fs.existsSync(routeStatePath) ? fs.readFileSync(routeStatePath, "utf8") : "";
+const pageSource = fs.existsSync(pageSourceDir)
+  ? fs.readdirSync(pageSourceDir)
+    .filter((fileName) => fileName.endsWith(".jsx"))
+    .sort((a, b) => a.localeCompare(b))
+    .map((fileName) => fs.readFileSync(path.join(pageSourceDir, fileName), "utf8"))
+    .join("\n")
+  : "";
 const commandSurfaceSource = fs.existsSync(commandSurfacePath) ? fs.readFileSync(commandSurfacePath, "utf8") : "";
-const appSource = `${appFileSource}\n${commandSurfaceSource}`;
-const appCssSource = fs.readFileSync(cssPath, "utf8");
+const appSource = `${appFileSource}\n${pageSource}\n${commandSurfaceSource}\n${routeStateSource}`;
+const splitAppCssSource = fs.existsSync(appStylesDir)
+  ? fs.readdirSync(appStylesDir)
+    .filter((fileName) => fileName.endsWith(".css"))
+    .sort((a, b) => a.localeCompare(b))
+    .map((fileName) => fs.readFileSync(path.join(appStylesDir, fileName), "utf8"))
+    .join("\n")
+  : "";
+const appCssSource = `${fs.readFileSync(cssPath, "utf8")}\n${splitAppCssSource}`;
 const commandSystemCssSource = fs.existsSync(commandSystemCssPath) ? fs.readFileSync(commandSystemCssPath, "utf8") : "";
 const cssSource = `${appCssSource}\n${commandSystemCssSource}`;
 const betaReadinessSource = fs.readFileSync(betaReadinessPath, "utf8");
 const publicTrustSource = `${appSource}\n${betaReadinessSource}`;
+const workspaceRegistrySource = fs.readFileSync(workspaceRegistryPath, "utf8");
+const workspaceSwitcherSource = fs.readFileSync(workspaceSwitcherPath, "utf8");
+const workspaceHomeSource = fs.readFileSync(workspaceHomePath, "utf8");
 
 const expectedRoutes = [
+  ['section === "collect"', 'productWorkspaceHome: WORKSPACE_IDS.COLLECT'],
+  ['section === "find" && subSection === "home"', 'productWorkspaceHome: WORKSPACE_IDS.FIND'],
+  ['section === "sell" && subSection === "home"', 'productWorkspaceHome: WORKSPACE_IDS.SELL'],
+  ['section === "bot"', 'productWorkspaceHome: WORKSPACE_IDS.BOT'],
+  ['section === "collection"', 'activeTab: "collectionWorkspace"'],
+  ['section === "owner-center"', 'activeTab: "ownerCenter"'],
+  ['section === "account-ops"', 'activeTab: "accountOps"'],
   ['section === "today" || section === "daily-tide"', 'activeTab: "dailyTide"'],
   ['section === "whats-new" || section === "changelog"', 'activeTab: "whatsNew"'],
   ['section === "coming-soon" || section === "roadmap"', 'activeTab: "comingSoon"'],
@@ -26,7 +57,7 @@ const expectedRoutes = [
   ['section === "settings"', 'activeTab: "settings"'],
   ['section === "account"', 'activeTab: "account"'],
   ['section === "collections" || section === "workspaces"', 'activeTab: "collections"'],
-  ['section === "data-backup" || section === "backup"', 'activeTab: "dataBackup"'],
+  ['section === "data-backup" || section === "backup"', 'ownerCenterSubview: "data-backup"'],
   ['section === "tcg-os"', 'activeTab: "tcgOs"'],
   ['section === "help" || section === "support"', 'activeTab: "help"'],
   ['section === "menu" || section === "more"', 'activeTab: "settings"'],
@@ -48,10 +79,24 @@ for (const [routeFragment, activeTabFragment] of expectedRoutes) {
 }
 
 const expectedRenderers = [
+  'activeTab === "workspaceHome" && (',
+  '<WorkspaceHomePage',
+  'activeTab === "collectionWorkspace" && (',
+  '<CollectionWorkspace',
+  'activeTab === "businessWorkspace" && businessWorkspaceView === "purchases" && (',
+  '<PurchaseReceivingPage',
+  'activeTab === "businessWorkspace" && businessWorkspaceView !== "purchases" && (',
+  '<BusinessWorkspace',
+  'activeTab === "ownerCenter" && (',
+  '<OwnerCenterPage',
+  'activeTab === "accountOps" && (',
+  '<AccountOpsPage',
   'activeTab === "dailyTide" && renderTodaysTideCommandCenter()',
-  'activeTab === "dashboard" && renderHearthHomeCommandView()',
+  'activeTab === "dashboard" && (',
+  '<OperationsHomePage {...hearthPageProps} />',
   'activeTab === "tidepool" && renderTidepoolCommunity()',
-  'activeTab === "kidsProgram" && renderKidsProgramPage()',
+  'activeTab === "kidsProgram" && (',
+  '<SparkPage {...sparkPageProps} />',
   'activeTab === "parentCenter" && renderParentCenterPage()',
   'activeTab === "sponsor" && renderSponsorInterestPage()',
   'activeTab === "trust" && renderTrustPages()',
@@ -59,7 +104,8 @@ const expectedRenderers = [
   'activeTab === "whatsNew" && renderWhatsNewPage()',
   'activeTab === "knownLimitations" && renderKnownLimitationsPage()',
   'activeTab === "comingSoon" && renderComingSoonPage()',
-  'activeTab === "settings" && renderSettingsPage()',
+  'activeTab === "settings" && (',
+  '<MenuPage {...settingsPageProps} />',
   'activeTab === "account" && renderAccountPage()',
   'activeTab === "collections" && renderCollectionsPage()',
   'activeTab === "dataBackup" && renderDataBackupPage()',
@@ -93,9 +139,11 @@ for (const alias of expectedUtilityAliases) {
 }
 
 const expectedMenuDestinations = [
+  'key: "owner-center", label: "Owner Center"',
+  'key: "account-ops", label: "Account Ops"',
   'quickAdd: { key: "quickAdd"',
   'scanProduct: { key: "scanProduct"',
-  'emberAssist: { key: "emberAssist"',
+  'emberAssist: ownerFeatureControls.businessAssistant ? { key: "emberAssist", label: "Business Assistant"',
   'privacySafety: { key: "privacySafety"',
   'parentCenter: { key: "parentCenter"',
   'publicBetaFeedback: { key: "publicBetaFeedback"',
@@ -111,8 +159,53 @@ for (const destination of expectedMenuDestinations) {
 }
 
 assert.ok(
-  appSource.includes('if (activeTab === "membership") return "/membership";'),
-  "Membership should keep a stable /membership URL instead of serializing back to settings."
+  appSource.includes('if (activeTab === "membership") return "/settings/plans";'),
+  "Membership should use the canonical settings URL while retaining its compatibility route."
+);
+
+assert.ok(
+  appSource.includes('if (activeTab === "accountOps") return accountOpsSection === "overview" ? "/account-ops" : `/account-ops/${encodeURIComponent(accountOpsSection)}`;'),
+  "Account Ops should retain canonical section URLs."
+);
+
+assert.ok(
+  appFileSource.includes("const availableProductWorkspaces = getAvailableWorkspaces") &&
+    appFileSource.includes("const workspaceNavItems = getWorkspaceNavigation") &&
+    appFileSource.includes("<WorkspaceSwitcher") &&
+    workspaceSwitcherSource.includes("Switch Code 3 workspace"),
+  "Global navigation should use the central workspace registry and accessible switcher."
+);
+assert.ok(
+  workspaceRegistrySource.includes('homePath: "/collect"') &&
+    workspaceRegistrySource.includes('homePath: "/find/home"') &&
+    workspaceRegistrySource.includes('homePath: "/sell/home"') &&
+    workspaceRegistrySource.includes('homePath: "/bot"') &&
+    workspaceRegistrySource.includes('homePath: "/business"'),
+  "All five product workspaces should have compatibility-safe homes."
+);
+assert.ok(
+  workspaceRegistrySource.includes('key: "account-ops"') &&
+    workspaceRegistrySource.includes("workspace: WORKSPACE_IDS.BUSINESS") &&
+    workspaceRegistrySource.includes("requiredAuthority: AUTHORITY_REQUIREMENTS.VERIFIED_OWNER"),
+  "Account Ops should remain Business-associated and owner-protected."
+);
+assert.ok(
+  appFileSource.includes("ownerCenterAuthorized ? { key: \"owner-center\"") &&
+    appFileSource.includes("shellRouteOwnership?.classification === ROUTE_CLASSIFICATIONS.OWNER") &&
+    !/id:\s*WORKSPACE_IDS\.OWNER/.test(workspaceRegistrySource),
+  "Owner Center should remain an owner affordance outside the product switcher."
+);
+assert.ok(
+  workspaceHomeSource.includes('import("../botOps/BotOperationsPage.jsx")') &&
+    workspaceHomeSource.includes("session?.status !== OWNER_SESSION_STATES.AUTHORIZED"),
+  "Bot Operations should remain lazy and verified-owner gated."
+);
+assert.equal(
+  /label:\s*["'](?:Inbox|Orders|Stellar|Hayha|Valor|Upgrade|Billing)["']/.test(
+    workspaceRegistrySource.slice(0, workspaceRegistrySource.indexOf("const CANONICAL_ROUTES"))
+  ),
+  false,
+  "Unimplemented Inbox, provider-specific live connection, order, and billing destinations must stay out of workspace navigation."
 );
 
 assert.ok(
@@ -350,16 +443,17 @@ assert.ok(
   "Mobile Scan Anything and Review/Add flows should receive full-page modal treatment."
 );
 assert.ok(
-  appSource.includes("function FlowNextActionCard") &&
+    appSource.includes("function FlowNextActionCard") &&
     appSource.includes('eyebrow="Vault next action"') &&
     appSource.includes('eyebrow="After Price Memory"') &&
-    appSource.includes('eyebrow="After Trade Compass"') &&
     appSource.includes('eyebrow="Next Spark action"') &&
     appSource.includes('eyebrow="After Grade Assist"') &&
     appSource.includes("Grade Assist checklist saved") &&
     appSource.includes("Use the manual checklist as a prompt, not a grade.") &&
     appSource.includes("Saved prices are manual research notes.") &&
-    appSource.includes("Forge does not edit Vault unless you choose a separate Vault action.") &&
+    pageSource.includes("const pageNextAction") &&
+    pageSource.includes("Inventory stays unchanged unless reviewed") &&
+    pageSource.includes("No fake commerce") &&
     appSource.includes("No payment, fulfillment, shipping, or private child messaging is connected."),
   "Flow cleanup should add safe next-action handoffs for Vault, Market, Forge, Spark, Grade Assist, and Hearth."
 );

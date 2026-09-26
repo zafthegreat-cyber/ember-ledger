@@ -1,19 +1,21 @@
+import { BRAND_CONFIG } from "../config/brand.js";
+
 export const EMBER_TIDE_PRODUCT_STANDARD = Object.freeze({
-  name: "Ember & Tide",
-  definition: "Warm premium collector command center",
+  name: BRAND_CONFIG.applicationDisplayName,
+  definition: "Private collecting and business operations application",
   referenceRoute: "Dark Hearth",
-  promise: "Find it. Track it. Trade fairly. Protect the spark.",
-  brandLine: "Trading-card collector command center",
+  promise: BRAND_CONFIG.tagline,
+  brandLine: BRAND_CONFIG.tagline,
 });
 
 export const BRAND_ASSETS = Object.freeze({
-  mark: "/assets/brand/ember-tide-monogram.svg",
-  logo: "/assets/brand/ember-tide-logo-horizontal.svg",
-  appIcon: "/assets/brand/ember-tide-app-icon.svg",
-  loadingMark: "/assets/brand/ember-tide-monogram.svg",
-  promoHero: "/assets/brand/ember-tide-promo-hero.png",
-  linkBioHeader: "/assets/brand/link-bio-header.png",
-  pwaInstallPromo: "/assets/brand/pwa-install-promo.png",
+  mark: BRAND_CONFIG.logoReference,
+  logo: BRAND_CONFIG.logoReference,
+  appIcon: BRAND_CONFIG.faviconReference,
+  loadingMark: BRAND_CONFIG.logoReference,
+  promoHero: BRAND_CONFIG.logoReference,
+  linkBioHeader: BRAND_CONFIG.logoReference,
+  pwaInstallPromo: BRAND_CONFIG.logoReference,
 });
 
 export const ROUTE_PRODUCT_STANDARDS = Object.freeze({

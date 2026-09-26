@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="code3-title code3-description">
+  <title id="code3-title">Code 3</title>
+  <desc id="code3-description">Code 3 application mark</desc>
+  <rect width="128" height="128" rx="24" fill="#315f55" />
+  <rect x="16" y="16" width="96" height="96" rx="16" fill="none" stroke="#ffffff" stroke-opacity="0.28" stroke-width="3" />
+  <text x="64" y="78" fill="#ffffff" font-family="Inter, system-ui, sans-serif" font-size="48" font-weight="800" text-anchor="middle">C3</text>
+</svg>

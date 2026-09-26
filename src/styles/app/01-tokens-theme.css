@@ -1,0 +1,445 @@
+/*
+  Ember & Tide product UI system.
+  This file intentionally replaces the old layered app CSS with one route-aware
+  foundation for adult light, adult dark, kids, and admin surfaces.
+*/
+
+:root {
+  --et-font-ui: Inter, "Segoe UI", Roboto, Arial, sans-serif;
+  --et-font-display: Georgia, "Times New Roman", ui-serif, serif;
+
+  --et-ember: #e86422;
+  --et-ember-2: #ff8a2f;
+  --et-gold: #e7b657;
+  --et-tide: #2f95b1;
+  --et-navy: #0b2037;
+  --et-navy-2: #071624;
+  --et-sand: #f4e5cf;
+  --et-cream: #fff9ee;
+  --et-cream-2: #f9eedc;
+  --et-green: #2fa667;
+  --et-red: #d44b3e;
+  --et-purple: #7456d9;
+
+  --et-radius-xs: 6px;
+  --et-radius-sm: 8px;
+  --et-radius-md: 12px;
+  --et-radius-lg: 16px;
+
+  --et-shell-max: 1410px;
+  --et-sidebar: 214px;
+  --et-topbar: 74px;
+  --et-gap: 14px;
+  --et-shadow-light: 0 18px 45px rgba(65, 42, 18, 0.14);
+  --et-shadow-card: 0 10px 28px rgba(24, 34, 48, 0.12);
+  --et-shadow-dark: 0 22px 55px rgba(0, 0, 0, 0.34);
+  --et-focus: 0 0 0 3px color-mix(in srgb, var(--et-accent) 34%, transparent);
+}
+
+html,
+body,
+#root {
+  min-width: 0;
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  overflow-x: hidden;
+}
+
+html {
+  scrollbar-gutter: stable;
+  background: #071624;
+}
+
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+  font-family: var(--et-font-ui);
+  color: #172338;
+  background: #071624;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  letter-spacing: 0;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.app {
+  --et-bg: #fff7ea;
+  --et-bg-2: #f4e5cf;
+  --et-surface: rgba(255, 250, 241, 0.94);
+  --et-surface-2: rgba(249, 238, 220, 0.92);
+  --et-surface-3: rgba(240, 225, 202, 0.86);
+  --et-card: rgba(255, 252, 246, 0.94);
+  --et-card-strong: #ffffff;
+  --et-text: #1b2a3d;
+  --et-muted: #667386;
+  --et-heading: #132338;
+  --et-border: rgba(96, 68, 36, 0.17);
+  --et-border-strong: rgba(96, 68, 36, 0.28);
+  --et-shadow: var(--et-shadow-light);
+  --et-accent: var(--et-ember);
+  --et-accent-2: var(--et-gold);
+  --et-on-accent: #fffaf2;
+  --et-control-bg: rgba(255, 255, 255, 0.82);
+  min-height: 100vh;
+  min-height: 100dvh;
+  color: var(--et-text);
+  background:
+    radial-gradient(circle at 18% 8%, rgba(232, 100, 34, 0.13), transparent 24rem),
+    radial-gradient(circle at 86% 12%, rgba(47, 149, 177, 0.12), transparent 22rem),
+    linear-gradient(180deg, var(--et-bg) 0%, #f9eddb 58%, #eddcc2 100%);
+}
+
+.app-theme-dark {
+  --et-bg: #07111e;
+  --et-bg-2: #0b1b2c;
+  --et-surface: rgba(13, 28, 45, 0.92);
+  --et-surface-2: rgba(16, 35, 55, 0.9);
+  --et-surface-3: rgba(8, 18, 31, 0.96);
+  --et-card: rgba(14, 29, 47, 0.9);
+  --et-card-strong: rgba(19, 40, 62, 0.96);
+  --et-text: #edf2f4;
+  --et-muted: #a8b5c3;
+  --et-heading: #fff0d5;
+  --et-border: rgba(255, 239, 210, 0.13);
+  --et-border-strong: rgba(255, 239, 210, 0.23);
+  --et-shadow: var(--et-shadow-dark);
+  --et-control-bg: rgba(5, 15, 27, 0.72);
+  color-scheme: dark;
+  background:
+    radial-gradient(circle at 24% 10%, rgba(232, 100, 34, 0.16), transparent 24rem),
+    radial-gradient(circle at 88% 6%, rgba(47, 149, 177, 0.16), transparent 24rem),
+    linear-gradient(180deg, #07111e 0%, #081827 52%, #040a12 100%);
+}
+
+.app-scout,
+.app-tidepool {
+  --et-accent: var(--et-tide);
+  --et-accent-2: #79c7d6;
+}
+
+.app-market {
+  --et-accent: #6656d9;
+  --et-accent-2: var(--et-tide);
+}
+
+.app-vault {
+  --et-accent: var(--et-gold);
+  --et-accent-2: #586c42;
+}
+
+.app-forge,
+.app-inventory,
+.app-sales,
+.app-expenses,
+.app-reports {
+  --et-accent: var(--et-ember);
+  --et-accent-2: var(--et-gold);
+}
+
+.app-kidsprogram {
+  --et-bg: #fff8ee;
+  --et-bg-2: #fcebd8;
+  --et-surface: rgba(255, 251, 244, 0.94);
+  --et-surface-2: rgba(255, 241, 225, 0.95);
+  --et-surface-3: rgba(250, 230, 248, 0.9);
+  --et-card: rgba(255, 252, 247, 0.96);
+  --et-card-strong: #ffffff;
+  --et-text: #2c2455;
+  --et-muted: #776c8f;
+  --et-heading: #39207a;
+  --et-border: rgba(116, 86, 217, 0.18);
+  --et-border-strong: rgba(116, 86, 217, 0.32);
+  --et-accent: #7b5bdc;
+  --et-accent-2: #f3ae3b;
+  --et-on-accent: #fff;
+  --et-shadow: 0 16px 40px rgba(90, 50, 170, 0.13);
+  color-scheme: light;
+  background:
+    radial-gradient(circle at 16% 10%, rgba(255, 180, 73, 0.22), transparent 18rem),
+    radial-gradient(circle at 82% 14%, rgba(123, 91, 220, 0.14), transparent 20rem),
+    linear-gradient(180deg, #fff9f1 0%, #fff2e4 54%, #f8e1ef 100%);
+}
+
+.app-adminreview,
+.admin-view-mode,
+.admin-edit-mode {
+  --et-bg: #050b14;
+  --et-bg-2: #091523;
+  --et-surface: rgba(10, 20, 34, 0.94);
+  --et-surface-2: rgba(15, 28, 45, 0.92);
+  --et-surface-3: rgba(21, 21, 39, 0.92);
+  --et-card: rgba(11, 23, 38, 0.92);
+  --et-card-strong: rgba(16, 32, 52, 0.96);
+  --et-text: #f1f5f9;
+  --et-muted: #a9b5c4;
+  --et-heading: #fff5e5;
+  --et-border: rgba(255, 244, 225, 0.12);
+  --et-border-strong: rgba(166, 135, 255, 0.28);
+  --et-accent: #7657df;
+  --et-accent-2: #f0a43c;
+  --et-shadow: var(--et-shadow-dark);
+  color-scheme: dark;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(118, 87, 223, 0.22), transparent 24rem),
+    radial-gradient(circle at 82% 4%, rgba(232, 100, 34, 0.12), transparent 24rem),
+    linear-gradient(180deg, #050b14 0%, #091523 58%, #030811 100%);
+}
+
+/* Role modes: every product surface has light and dark mode tokens. */
+.app-role-collector {
+  --et-role-name: "Collector";
+  --et-accent: #e86422;
+  --et-accent-2: #e7b657;
+  --et-role-glow: rgba(232, 100, 34, 0.16);
+  --et-role-glow-2: rgba(47, 149, 177, 0.13);
+  --et-role-band: linear-gradient(135deg, rgba(232, 100, 34, 0.15), rgba(231, 182, 87, 0.11));
+}
+
+.app-theme-dark.app-role-collector {
+  --et-role-glow: rgba(232, 100, 34, 0.22);
+  --et-role-glow-2: rgba(47, 149, 177, 0.18);
+  --et-role-band: linear-gradient(135deg, rgba(232, 100, 34, 0.2), rgba(47, 149, 177, 0.12));
+}
+
+.app-role-kids {
+  --et-role-name: "Kids";
+  --et-accent: #7b5bdc;
+  --et-accent-2: #f3ae3b;
+  --et-role-glow: rgba(123, 91, 220, 0.2);
+  --et-role-glow-2: rgba(243, 174, 59, 0.18);
+  --et-role-band: linear-gradient(135deg, rgba(123, 91, 220, 0.16), rgba(243, 174, 59, 0.12));
+}
+
+.app-theme-dark.app-role-kids {
+  --et-bg: #090d1f;
+  --et-bg-2: #11172b;
+  --et-surface: rgba(20, 23, 48, 0.94);
+  --et-surface-2: rgba(31, 31, 63, 0.9);
+  --et-card: rgba(18, 22, 48, 0.92);
+  --et-card-strong: rgba(25, 29, 59, 0.96);
+  --et-text: #f7f0ff;
+  --et-muted: #c9bedf;
+  --et-heading: #fff1cb;
+  --et-border: rgba(246, 211, 132, 0.15);
+  --et-role-glow: rgba(123, 91, 220, 0.25);
+  --et-role-glow-2: rgba(243, 174, 59, 0.18);
+}
+
+.app-role-parent {
+  --et-role-name: "Parent";
+  --et-accent: #4c7a4b;
+  --et-accent-2: #d9a448;
+  --et-role-glow: rgba(76, 122, 75, 0.17);
+  --et-role-glow-2: rgba(217, 164, 72, 0.13);
+  --et-role-band: linear-gradient(135deg, rgba(76, 122, 75, 0.14), rgba(217, 164, 72, 0.1));
+}
+
+.app-theme-dark.app-role-parent {
+  --et-bg: #07130f;
+  --et-bg-2: #0c1d18;
+  --et-surface: rgba(13, 31, 26, 0.93);
+  --et-surface-2: rgba(18, 42, 34, 0.9);
+  --et-card: rgba(15, 34, 29, 0.92);
+  --et-card-strong: rgba(19, 42, 35, 0.96);
+  --et-heading: #fff0cf;
+  --et-border: rgba(222, 184, 103, 0.16);
+  --et-role-glow: rgba(76, 122, 75, 0.24);
+  --et-role-glow-2: rgba(217, 164, 72, 0.18);
+}
+
+.app-role-seller {
+  --et-role-name: "Seller";
+  --et-accent: #d86a2e;
+  --et-accent-2: #dca64e;
+  --et-role-glow: rgba(216, 106, 46, 0.18);
+  --et-role-glow-2: rgba(11, 32, 55, 0.14);
+  --et-role-band: linear-gradient(135deg, rgba(216, 106, 46, 0.16), rgba(11, 32, 55, 0.08));
+}
+
+.app-theme-dark.app-role-seller {
+  --et-bg: #080f18;
+  --et-bg-2: #101a26;
+  --et-surface: rgba(17, 28, 41, 0.94);
+  --et-surface-2: rgba(27, 36, 48, 0.9);
+  --et-card: rgba(18, 29, 43, 0.92);
+  --et-card-strong: rgba(25, 37, 52, 0.96);
+  --et-heading: #ffe8c5;
+  --et-border: rgba(232, 156, 82, 0.16);
+}
+
+.app-role-store-partner {
+  --et-role-name: "Partner";
+  --et-accent: #2f95b1;
+  --et-accent-2: #e7b657;
+  --et-role-glow: rgba(47, 149, 177, 0.18);
+  --et-role-glow-2: rgba(231, 182, 87, 0.12);
+  --et-role-band: linear-gradient(135deg, rgba(47, 149, 177, 0.15), rgba(231, 182, 87, 0.1));
+}
+
+.app-theme-dark.app-role-store-partner {
+  --et-bg: #06131a;
+  --et-bg-2: #0a2029;
+  --et-surface: rgba(12, 31, 40, 0.94);
+  --et-surface-2: rgba(16, 43, 54, 0.9);
+  --et-card: rgba(12, 31, 42, 0.92);
+  --et-card-strong: rgba(18, 43, 56, 0.96);
+  --et-heading: #fff0c9;
+  --et-border: rgba(121, 199, 214, 0.18);
+}
+
+.app-role-supporter {
+  --et-role-name: "Supporter";
+  --et-accent: #d96f45;
+  --et-accent-2: #f0b84d;
+  --et-role-glow: rgba(217, 111, 69, 0.18);
+  --et-role-glow-2: rgba(240, 184, 77, 0.14);
+  --et-role-band: linear-gradient(135deg, rgba(217, 111, 69, 0.15), rgba(240, 184, 77, 0.12));
+}
+
+.app-theme-dark.app-role-supporter {
+  --et-bg: #130c12;
+  --et-bg-2: #1e141c;
+  --et-surface: rgba(36, 24, 32, 0.94);
+  --et-surface-2: rgba(49, 30, 40, 0.9);
+  --et-card: rgba(37, 25, 34, 0.92);
+  --et-card-strong: rgba(52, 32, 43, 0.96);
+  --et-heading: #fff1cf;
+  --et-border: rgba(240, 184, 77, 0.18);
+}
+
+.app-role-admin {
+  --et-role-name: "Admin";
+  --et-accent: #7657df;
+  --et-accent-2: #f0a43c;
+  --et-role-glow: rgba(118, 87, 223, 0.23);
+  --et-role-glow-2: rgba(240, 164, 60, 0.13);
+  --et-role-band: linear-gradient(135deg, rgba(118, 87, 223, 0.18), rgba(240, 164, 60, 0.1));
+}
+
+.app-role-guest {
+  --et-role-name: "Guest";
+  --et-accent: #e86422;
+  --et-accent-2: #2f95b1;
+  --et-role-glow: rgba(232, 100, 34, 0.13);
+  --et-role-glow-2: rgba(47, 149, 177, 0.13);
+  --et-role-band: linear-gradient(135deg, rgba(232, 100, 34, 0.12), rgba(47, 149, 177, 0.11));
+}
+
+.app-theme-dark.app-role-guest {
+  --et-bg: #07111e;
+  --et-bg-2: #0b1828;
+  --et-surface: rgba(14, 26, 42, 0.94);
+  --et-card: rgba(14, 26, 42, 0.94);
+  --et-card-strong: rgba(20, 35, 54, 0.96);
+  --et-heading: #fff0d5;
+  --et-role-glow: rgba(232, 100, 34, 0.19);
+  --et-role-glow-2: rgba(47, 149, 177, 0.18);
+}
+
+.app-role-collector,
+.app-role-kids,
+.app-role-parent,
+.app-role-seller,
+.app-role-store-partner,
+.app-role-supporter,
+.app-role-admin,
+.app-role-guest {
+  background:
+    radial-gradient(circle at 15% 9%, var(--et-role-glow), transparent 23rem),
+    radial-gradient(circle at 86% 8%, var(--et-role-glow-2), transparent 24rem),
+    linear-gradient(180deg, var(--et-bg) 0%, var(--et-bg-2) 100%);
+}
+
+.app :where(.standard-page-header, .et-mockup-page-hero, .auth-card, .hearth-command-hero) {
+  background:
+    radial-gradient(circle at 12% 0%, var(--et-role-glow), transparent 13rem),
+    radial-gradient(circle at 92% 10%, var(--et-role-glow-2), transparent 14rem),
+    linear-gradient(145deg, color-mix(in srgb, var(--et-card-strong) 88%, transparent), color-mix(in srgb, var(--et-surface-2) 82%, transparent));
+}
+
+.app :where(.web-command-brand, .topbar-brand, .mobile-bottom-nav) {
+  border-color: color-mix(in srgb, var(--et-accent) 22%, var(--et-border));
+}
+
+.app :where(.web-command-nav-item.active, .mobile-dock-item.active, .mobile-dock-add, .topbar-primary-action) {
+  border-color: color-mix(in srgb, var(--et-accent) 46%, var(--et-border));
+}
+
+.app :where(h1, h2, h3, h4, h5, h6, p, figure, blockquote, dl, dd) {
+  margin: 0;
+}
+
+.app :where(h1, h2, h3) {
+  color: var(--et-heading);
+  font-family: var(--et-font-display);
+  font-weight: 760;
+  line-height: 1.08;
+  letter-spacing: 0;
+}
+
+.app :where(h4, h5, h6, strong, b, label, dt, summary) {
+  color: var(--et-heading);
+  letter-spacing: 0;
+}
+
+.app :where(p, small, dd, li, em) {
+  color: var(--et-muted);
+}
+
+.app :where(ul, ol) {
+  margin-block: 0;
+  padding-left: 1.1rem;
+}
+
+.app :where(button, a, input, textarea, select):focus-visible {
+  outline: none;
+  box-shadow: var(--et-focus);
+}
+

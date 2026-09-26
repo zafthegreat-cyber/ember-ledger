@@ -6,13 +6,20 @@
   "scripts": {
     "dev": "tsx src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "test:ebay": "npm run build && node --test --test-isolation=none test/ebayBrowse.service.test.mjs",
+    "test:owner-security": "npm run build && node --test --test-isolation=none test/ownerSecurity.test.mjs",
+    "test:code3-canonical": "npm run build && node --test --test-isolation=none test/code3Canonical.repository.test.mjs test/code3Canonical.routes.test.mjs test/code3Canonical.schema.test.mjs",
+    "test:provider-runtime": "npm run build && node --test --test-isolation=none test/providerRuntime.test.mjs",
+    "test:preview-runtime": "npm run build && node --test --test-isolation=none test/previewRuntime.test.mjs",
+    "test:provider-managed-stores": "npm run build && node --test --test-isolation=none test/managedProviderStores.test.mjs"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@supabase/supabase-js": "^2.103.3",
+    "@upstash/redis": "^1.35.7",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
