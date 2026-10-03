@@ -1,0 +1,10 @@
+{
+  "errors": [
+    {
+      "errorId": 2001,
+      "domain": "API_BROWSE",
+      "category": "REQUEST",
+      "message": "Too many requests"
+    }
+  ]
+}

@@ -6,6 +6,7 @@ import cors from "cors";
 import { randomUUID } from "crypto";
 import { pool, testDbConnection } from "./db";
 import { bestBuyRouter } from "./routes/bestbuy.routes";
+import { ebayRouter } from "./routes/ebay.routes";
 import { catalogRouter } from "./routes/catalog.routes";
 import { forgeRouter } from "./routes/forge.routes";
 import { inventoryRouter } from "./routes/inventory.routes";
@@ -15,17 +16,32 @@ import { scoutRouter } from "./routes/scout.routes";
 import { storeReportsRouter, tidepoolRouter } from "./routes/tidepool.routes";
 import { storesRouter } from "./routes/stores.routes";
 import { vaultRouter } from "./routes/vault.routes";
+import { authRouter } from "./routes/auth.routes";
+import { createProtectedCors } from "./security/corsPolicy";
+import { code3Router } from "./routes/code3.routes";
+import { providerConnectionsRouter } from "./routes/providerConnections.routes";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-app.use(cors());
+const protectedCors = createProtectedCors();
+// The provider route authenticates before parsing a deliberately tiny JSON body.
+// Legacy APIs retain their existing larger parser until they are separately hardened.
+app.use("/api/account-ops/provider-connections", protectedCors, providerConnectionsRouter);
+
 app.use(express.json({ limit: "10mb" }));
+app.use("/api/auth", protectedCors, authRouter);
+app.use("/api/ebay", protectedCors, ebayRouter);
+app.use("/api/code3", protectedCors, code3Router);
+
+// Legacy routes retain their existing behavior until they are migrated behind
+// the owner boundary. Protected Code 3 routes are mounted before this policy.
+app.use(cors());
 
 app.get("/api/health", (_req: Request, res: Response) => {
   res.json({
     status: "ok",
-    message: "Ember & Tide API is running",
+    message: "API is running",
   });
 });
 
