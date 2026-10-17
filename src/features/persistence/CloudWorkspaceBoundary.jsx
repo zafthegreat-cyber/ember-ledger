@@ -12,6 +12,7 @@ import { exportLegacyCloudBackup, inspectLegacyCloudBackup, restoreLegacyCloudBa
 import { confirmAccountOperation, consumeAccountConfirmation } from "../../services/accountSessionService.js";
 import WorkspaceRecoverySignIn from "./WorkspaceRecoverySignIn.jsx";
 import WorkspaceSupportDetails from "./WorkspaceSupportDetails.jsx";
+import WorkspaceSyncNotice from "./WorkspaceSyncNotice.jsx";
 import "../../styles/theme.css";
 import "./cloud-workspace.css";
 
@@ -289,7 +290,7 @@ export default function CloudWorkspaceBoundary({ children, client = supabase, co
   if (screen.phase === "signedout") return <CloudWorkspaceContext.Provider value={null}><WorkspaceLease onError={fail}>{children}</WorkspaceLease></CloudWorkspaceContext.Provider>;
   if (screen.phase === "restore") return <WorkspaceScreen title="Recover your saved records"><WorkspaceRestorePanel userId={screen.user.id} onRestore={restore} onRestoreCloud={restoreCloud} onCancel={() => window.location.reload()} /></WorkspaceScreen>;
   if (screen.phase === "ready") return <CloudWorkspaceContext.Provider value={value}><WorkspaceLease onError={fail}>{children}
-    {["REMOTE_AVAILABLE", "CONFLICT"].includes(syncState.status) && <aside className="cloud-workspace-notice" role="status"><strong>{syncState.status === "CONFLICT" ? "Saved changes need review" : "New changes from another device"}</strong><span>{syncState.status === "CONFLICT" ? "Both versions are preserved. Review Cloud saving in Settings." : "Finish any open edits, then load the newer copy."}</span>{syncState.status === "REMOTE_AVAILABLE" && <button type="button" onClick={value.loadNewer}>Load saved changes</button>}</aside>}
+    <WorkspaceSyncNotice status={syncState} ownerId={screen.user.id} onLoadNewer={value.loadNewer} />
   </WorkspaceLease></CloudWorkspaceContext.Provider>;
   if (screen.phase === "checking" || screen.phase === "operation") return <WorkspaceScreen title={screen.phase === "operation" ? "Protecting and updating your records" : "Checking your account"}><p>Please keep this page open.</p></WorkspaceScreen>;
   return <WorkspaceScreen title={screen.phase === "claim" ? "Keep your existing records" : screen.phase === "switch" ? "Open this account’s records" : storageFailure(screen.code) ? "Device storage needs attention" : screen.code === "RECOVERY_REQUIRED" ? "Your saved records need recovery" : "Your records are safe"}>
