@@ -1,3 +1,5 @@
+import "./add-anything.css";
+
 // App owns state, authority and handlers; only this existing renderer is deferred.
 export default function AddAnythingContent({ scope }) {
   const {
@@ -329,9 +331,12 @@ export default function AddAnythingContent({ scope }) {
               <small>Ask for a catalog item when search cannot find it.</small>
             </button>
           </div>
-          <div className="scan-anything-coming-soon-grid" aria-label="Scan modes coming later">
-            {comingLaterScanModes.map(renderComingLaterTile)}
-          </div>
+          <details className="scan-anything-unavailable">
+            <summary>Coming later <span>{comingLaterScanModes.length} scan modes</span></summary>
+            <div className="scan-anything-coming-soon-grid" aria-label="Scan modes coming later">
+              {comingLaterScanModes.map(renderComingLaterTile)}
+            </div>
+          </details>
           <p className="quick-add-missing-help">Unknown items route to search, manual entry, or Request Missing Item. Nothing is auto-submitted.</p>
         </div>
       );
