@@ -1,0 +1,55 @@
+/* Add/Scan keeps its header visible; only the form body scrolls. */
+html body .app[data-theme] .flow-modal[data-flow="addActionSheet"] {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+html body .app[data-theme] .flow-modal[data-flow="addActionSheet"] > .modal-title-row {
+  flex: 0 0 auto;
+  margin: 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+html body .app[data-theme] .flow-modal[data-flow="addActionSheet"] > .flow-modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding: 12px 3px 3px;
+}
+.flow-modal[data-flow="addActionSheet"] .add-anything-flow { display: grid; gap: 14px; }
+.flow-modal[data-flow="addActionSheet"] .add-anything-path-header { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 12px; }
+.flow-modal[data-flow="addActionSheet"] .add-anything-path-header > button { min-width: 44px; min-height: 44px; margin: 0; padding: 8px 10px; }
+.flow-modal[data-flow="addActionSheet"] .add-anything-path-header strong { display: block; color: var(--text-primary); font-size: 15px; line-height: 1.4; }
+.flow-modal[data-flow="addActionSheet"] .add-anything-path-header p { margin: 4px 0 0; color: var(--text-secondary); font-size: 13px; line-height: 1.5; }
+.flow-modal[data-flow="addActionSheet"] .scan-anything-principle-card { padding: 12px; border: 1px solid var(--border-subtle); border-radius: 10px; background: var(--surface-secondary); }
+.flow-modal[data-flow="addActionSheet"] .scan-anything-principle-card strong { color: var(--text-primary); font-size: 14px; }
+.flow-modal[data-flow="addActionSheet"] .scan-anything-principle-card p,
+.flow-modal[data-flow="addActionSheet"] .quick-add-missing-help { margin: 5px 0 0; color: var(--text-secondary); font: 400 13px/1.5 var(--font-ui); }
+
+/* Explicit placement stops helper text from falling into the narrow icon column. */
+html body .app[data-theme] .flow-modal[data-flow="addActionSheet"] .add-anything-option {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  align-items: start;
+  gap: 4px 10px;
+  padding: 12px 8px !important;
+  text-align: left;
+  white-space: normal;
+}
+html body .app[data-theme] .flow-modal[data-flow="addActionSheet"] .add-anything-option > .command-icon { grid-column: 1; grid-row: 1; align-self: start; }
+html body .app[data-theme] .flow-modal[data-flow="addActionSheet"] .add-anything-option > strong,
+html body .app[data-theme] .flow-modal[data-flow="addActionSheet"] .add-anything-option > small,
+html body .app[data-theme] .flow-modal[data-flow="addActionSheet"] .add-anything-option > em { grid-column: 2; min-width: 0; margin: 0; overflow-wrap: anywhere; }
+html body .app[data-theme] .flow-modal[data-flow="addActionSheet"] .add-anything-option > strong { grid-row: 1; align-self: center; font-weight: 600; line-height: 1.4; }
+html body .app[data-theme] .flow-modal[data-flow="addActionSheet"] .add-anything-option > small { grid-row: 2; font-size: 13px !important; font-weight: 400; line-height: 1.5 !important; }
+html body .app[data-theme] .flow-modal[data-flow="addActionSheet"] .add-anything-option > em { grid-row: 3; justify-self: start; margin-top: 4px; padding: 3px 8px; border: 1px solid var(--border-subtle); border-radius: 5px; background: var(--surface-secondary); color: var(--text-secondary); font: 500 11px/1.4 var(--font-ui); }
+html body .app[data-theme] .flow-modal[data-flow="addActionSheet"] .add-anything-option--locked:disabled { opacity: 1; cursor: not-allowed; }
+.flow-modal[data-flow="addActionSheet"] .scan-anything-unavailable { border: 1px solid var(--border-subtle); border-radius: 10px; }
+.flow-modal[data-flow="addActionSheet"] .scan-anything-unavailable > summary { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 10px 12px; color: var(--text-primary); font: 600 14px/1.4 var(--font-ui); cursor: pointer; list-style: none; }
+.flow-modal[data-flow="addActionSheet"] .scan-anything-unavailable > summary::-webkit-details-marker { display: none; }
+.flow-modal[data-flow="addActionSheet"] .scan-anything-unavailable > summary > span { flex: 1; color: var(--text-secondary); font-size: 12px; font-weight: 400; text-align: right; }
+.flow-modal[data-flow="addActionSheet"] .scan-anything-unavailable > summary::after { content: ""; flex: 0 0 6px; width: 6px; height: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); }
+.flow-modal[data-flow="addActionSheet"] .scan-anything-unavailable[open] > summary::after { transform: rotate(225deg); }
+.flow-modal[data-flow="addActionSheet"] .scan-anything-coming-soon-grid { display: grid; grid-template-columns: minmax(0, 1fr); padding: 0 6px 6px; }
+html body .app[data-theme] .flow-modal[data-flow="addActionSheet"] .scan-anything-coming-soon-grid > .add-anything-option:last-child { border-bottom: 0 !important; }
