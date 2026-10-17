@@ -7,7 +7,7 @@ import {
   INTELLIGENCE_CONFIDENCE,
   VALUE_EVIDENCE_TYPE,
 } from "./constants.js";
-import { confidenceScore, evaluateConfidence } from "./confidence.js";
+import { evaluateConfidence } from "./confidence.js";
 import {
   addMoney,
   assertMoney,

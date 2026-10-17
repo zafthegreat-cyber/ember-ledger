@@ -70,11 +70,12 @@ const SOURCE_DECISIONS = Object.freeze({
       ["inventoryCreationEvents", null, C.REQUIRES_MAPPING, { reason: "Owner-confirmed Inventory creation events require an approved canonical audit mapping." }],
       ["inventoryAdjustments", null, C.REQUIRES_MAPPING, { reason: "Append-only Inventory reversals require an approved canonical adjustment mapping." }],
       ["inventoryReconciliationEvents", null, C.REQUIRES_MAPPING, { reason: "Append-only historical Sale, COGS, and transfer reconciliation events require an approved transactional audit and accounting mapping." }],
-      ["sales", D.SALE, C.REQUIRES_MAPPING, { reason: "The mixed sales collection may contain exact-cost records linked to local acquisition lots and correction history that have no approved canonical provenance adapter." }],
+      ["sales", D.SALE, C.REQUIRES_MAPPING, { reason: "Sales may contain exact-cost acquisition links, immutable inspected-return refunds, restored-unit allocations and append-only corrections or reversals. These histories require an approved lossless canonical provenance and accounting adapter." }],
       ["returns", D.RETURN],
       ["expenses", D.EXPENSE],
       ["mileage", D.MILEAGE_TRIP],
       ["activity", null, C.LEGACY_ONLY, { reason: "Local activity summaries are not canonical audit events." }],
+      ["manualLifecycles", null, C.REQUIRES_MAPPING, { reason: "Manual binder, grading, event, reservation and fulfillment histories retain existing physical record IDs and require a lossless canonical relationship mapping." }],
     ]),
   },
   "owner-center": {

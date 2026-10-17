@@ -1,11 +1,16 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import { fileURLToPath } from "node:url";
+import { readDeferredAppSource } from "./helpers/read-deferred-app-source.mjs";
 
-const appSource = fs.readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
+// Follow the mounted lazy renderers so their accessible labels and honest
+// capability copy remain subject to the same assertions after code splitting.
+const appSource = readDeferredAppSource(fileURLToPath(new URL("../src/App.jsx", import.meta.url)));
 const operationsSource = fs.readFileSync(new URL("../src/components/operations/OperationsUI.jsx", import.meta.url), "utf8");
 const ownerCenterSource = fs.readFileSync(new URL("../src/features/ownerCenter/OwnerCenterPage.jsx", import.meta.url), "utf8");
 const ownerCenterCss = fs.readFileSync(new URL("../src/features/ownerCenter/owner-center.css", import.meta.url), "utf8");
 const everydaySource = fs.readFileSync(new URL("../src/pages/EverydayWorkspaces.jsx", import.meta.url), "utf8");
+const workspaceTabsSource = fs.readFileSync(new URL("../src/components/operations/WorkspaceTabs.jsx", import.meta.url), "utf8");
 const workspaceSwitcherSource = fs.readFileSync(new URL("../src/features/workspaces/WorkspaceSwitcher.jsx", import.meta.url), "utf8");
 const workspaceHomeSource = fs.readFileSync(new URL("../src/features/workspaces/WorkspaceHomePage.jsx", import.meta.url), "utf8");
 const botOperationsSource = fs.readFileSync(new URL("../src/features/botOps/BotOperationsPage.jsx", import.meta.url), "utf8");
@@ -36,9 +41,22 @@ assert.match(cssSource, /\[role="button"\]/);
 assert.match(cssSource, /outline: 3px solid/);
 assert.match(cssSource, /min-height: 44px/);
 
-const reducedMotionStart = cssSource.lastIndexOf("@media (prefers-reduced-motion: reduce)");
-assert.ok(reducedMotionStart > 0, "Reduced-motion media query should exist.");
-const reducedMotionSource = cssSource.slice(reducedMotionStart);
+// Component-specific motion rules can follow the shared accessibility layer.
+// Inspect the contents of all reduce queries instead of assuming the last one
+// contains every global rule (and accidentally inspecting unrelated later CSS).
+const reducedMotionBlocks = [...cssSource.matchAll(/@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{/g)].map((match) => {
+  const start = match.index + match[0].length;
+  let depth = 1;
+  let end = start;
+  for (; end < cssSource.length && depth; end += 1) {
+    if (cssSource[end] === "{") depth += 1;
+    if (cssSource[end] === "}") depth -= 1;
+  }
+  assert.equal(depth, 0, "Reduced-motion block must be closed.");
+  return cssSource.slice(start, end - 1);
+});
+assert.ok(reducedMotionBlocks.length > 0, "Reduced-motion media query should exist.");
+const reducedMotionSource = reducedMotionBlocks.join("\n");
 assert.match(reducedMotionSource, /scroll-behavior: auto/);
 assert.match(reducedMotionSource, /transition-duration: 0\.001ms/);
 assert.match(reducedMotionSource, /animation-duration: 0\.001ms/);
@@ -56,7 +74,8 @@ assert.match(operationsSource, /aria-current=\{item\.key === activeKey && !item\
 assert.match(ownerCenterSource, /role="tablist" aria-label=\{label\}/);
 assert.match(ownerCenterSource, /role="tab" aria-selected=\{active === item\.key\}/);
 assert.match(ownerCenterSource, /<label className="owner-field">/);
-assert.match(everydaySource, /role="tab"/);
+assert.match(everydaySource, /import WorkspaceTabs, \{ WorkspaceTabPanel \} from "\.\.\/components\/operations\/WorkspaceTabs\.jsx"/);
+assert.match(workspaceTabsSource, /role="tab"/);
 assert.match(ownerCenterCss, /min-height: 44px/);
 assert.match(ownerCenterCss, /@media \(max-width: 420px\)/);
 

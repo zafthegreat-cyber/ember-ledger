@@ -14,7 +14,10 @@ import {
   StatusBadge,
 } from "../../components/operations/OperationsUI.jsx";
 import { OWNER_SESSION_STATES } from "../../services/ownerSession.js";
+import { ACCOUNT_OPS_STORAGE_KEY } from "./constants.js";
+import { ACCOUNT_OPS_RESTORE_JOURNAL_KEY, AccountOpsRecoveryError, assertAccountOpsRecoveryClear } from "./recoveryState.js";
 import {
+  ACCOUNT_OPS_OPERATING_AREAS,
   ACCOUNT_HEALTH_STATES,
   ACCOUNT_SETUP_STAGES,
   ACCOUNT_TASK_PRIORITIES,
@@ -29,21 +32,34 @@ import {
   VERIFICATION_STATES,
   createAccountOpsService,
   deriveAccountHealth,
+  retailerDirectory,
+  searchAccountOps,
+  summarizeAccountOps,
 } from "./index.js";
+import AccountOpsOperationsPanel from "./operationsFoundation/AccountOpsOperationsPanel.jsx";
+import { accountOpsStatusTone as statusTone } from "./operationsFoundation/presentation.js";
 import "./account-ops.css";
+import "./account-ops-polish.css";
 
 const InboxOrderFoundation = lazy(() => import("./InboxOrderFoundation.jsx"));
 
-const SECTIONS = Object.freeze([
-  { key: "overview", label: "Overview" },
-  { key: "profiles", label: "Profiles" },
-  { key: "emails", label: "Emails" },
-  { key: "accounts", label: "Store Accounts" },
-  { key: "tasks", label: "Tasks" },
-  { key: "connections", label: "Connections" },
-  { key: "inbox", label: "Inbox" },
-  { key: "orders", label: "Orders" },
-]);
+const LEGACY_SECTIONS = Object.freeze(["profiles", "emails", "tasks", "connections", "inbox"]);
+const SECTION_KEYS = new Set([...ACCOUNT_OPS_OPERATING_AREAS.map((item) => item.key), ...LEGACY_SECTIONS]);
+const LEGACY_AREA_MAP = Object.freeze({ profiles: "identity", emails: "identity", tasks: "activity", connections: "automation", inbox: "verification" });
+const LEGACY_SEARCH_LABELS = Object.freeze({ profiles: "Profiles", emails: "Email Aliases", tasks: "Account Tasks", connections: "Provider Connections", inbox: "Inbox" });
+
+function normalizeSection(value) {
+  const candidate = String(value || "overview").toLowerCase();
+  return SECTION_KEYS.has(candidate) ? candidate : "overview";
+}
+
+function areaForSection(section) {
+  return LEGACY_AREA_MAP[section] || section;
+}
+
+function searchLabelForSection(section) {
+  return LEGACY_SEARCH_LABELS[section] || ACCOUNT_OPS_OPERATING_AREAS.find((item) => item.key === areaForSection(section))?.label || "Account Ops";
+}
 
 const EMPTY_SNAPSHOT = Object.freeze({
   schemaVersion: 1,
@@ -79,36 +95,24 @@ function dateLabel(value, empty = "Not recorded") {
   return new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(new Date(value));
 }
 
-function statusTone(value) {
-  const normalized = String(value || "").toUpperCase();
-  if (/HEALTHY|READY|ACTIVE|VERIFIED|DONE|RECEIVING_CONFIRMED|PROVIDER_PROVISIONED/.test(normalized)) return "success";
-  if (/PROBLEM|LOCKED|ERROR|FAILED|DISABLED/.test(normalized)) return "danger";
-  if (/NEEDS|PENDING|UNKNOWN|SETUP|PREPARED|INSUFFICIENT/.test(normalized)) return "warning";
-  return "neutral";
-}
-
 function byId(rows, id) {
   return (rows || []).find((row) => row.id === id) || null;
 }
 
-function AccountOpsTabs({ active, onChange }) {
-  const primary = SECTIONS.slice(0, 3);
-  const overflow = SECTIONS.slice(3);
-  const choose = (key, event) => {
-    const disclosure = event.currentTarget.closest(".account-ops-tabs")?.querySelector("details");
-    if (disclosure) disclosure.open = false;
-    onChange(key);
-  };
+function AccountOpsNavigation({ active, onChange }) {
+  const activeArea = areaForSection(active);
   return (
-    <nav className="account-ops-tabs" aria-label="Account Ops sections">
-      {primary.map((item) => (
-        <button key={item.key} type="button" className={active === item.key ? "is-active" : ""} aria-current={active === item.key ? "page" : undefined} onClick={(event) => choose(item.key, event)}>{item.label}</button>
-      ))}
-      <details className="account-ops-tabs-more">
-        <summary>More</summary>
-        <div>{overflow.map((item) => <button key={item.key} type="button" className={active === item.key ? "is-active" : ""} aria-current={active === item.key ? "page" : undefined} onClick={(event) => choose(item.key, event)}>{item.label}</button>)}</div>
-      </details>
-    </nav>
+    <>
+      <label className="account-ops-area-picker">
+        <span>Account Ops area</span>
+        <select value={activeArea} onChange={(event) => onChange(event.target.value)}>
+          {ACCOUNT_OPS_OPERATING_AREAS.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}
+        </select>
+      </label>
+      <nav className="account-ops-area-nav" aria-label="Account Ops areas">
+        {ACCOUNT_OPS_OPERATING_AREAS.map((item) => <button key={item.key} type="button" className={activeArea === item.key ? "is-active" : ""} aria-current={activeArea === item.key ? "page" : undefined} onClick={() => onChange(item.key)}><strong>{item.label}</strong>{" "}<small>{item.description}</small></button>)}
+      </nav>
+    </>
   );
 }
 
@@ -196,7 +200,17 @@ function retailerDraft(record = {}) {
   return { displayName: record.displayName || "", website: record.website || "", signupUrl: record.signupUrl || "", accountUrl: record.accountUrl || "", orderHistoryUrl: record.orderHistoryUrl || "", notes: record.notes || "", iconMetadata: {}, capabilities: ["MANUAL_OWNER_ASSISTED_SETUP"], accountRulesMetadata: {}, automatedProvisioningSupported: false, custom: true, status: record.status || "ACTIVE" };
 }
 
-export default function AccountOpsPage({
+export default function AccountOpsPage(props) {
+  const [reloadRevision, setReloadRevision] = useState(0);
+  const session = props.session;
+  const lifetime = session?.status === OWNER_SESSION_STATES.AUTHORIZED
+    ? JSON.stringify([session.provider || "", session.identityKey || session.userId || session.user?.id || session.displayIdentity || "owner"])
+    : "restricted";
+  return <AccountOpsPageContent key={`${lifetime}:${reloadRevision}`} {...props} onReloadAccountOps={() => setReloadRevision((revision) => revision + 1)} />;
+}
+
+function AccountOpsPageContent({
+  onReloadAccountOps,
   session = { status: OWNER_SESSION_STATES.LOADING },
   initialSection = "overview",
   onSectionChange,
@@ -205,13 +219,48 @@ export default function AccountOpsPage({
   onReturnHome,
 }) {
   const authorized = session.status === OWNER_SESSION_STATES.AUTHORIZED;
-  const [service, setService] = useState(null);
-  const [snapshot, setSnapshot] = useState(EMPTY_SNAPSHOT);
-  const [section, setSection] = useState(SECTIONS.some((item) => item.key === initialSection) ? initialSection : "overview");
+  const [initialRecords] = useState(() => {
+    if (!authorized) return {};
+    try {
+      const service = createAccountOpsService();
+      return { service, snapshot: service.loadSnapshot() };
+    } catch (error) {
+      return { error };
+    }
+  });
+  const service = initialRecords.service || null;
+  const [snapshot, setSnapshot] = useState(initialRecords.snapshot || EMPTY_SNAPSHOT);
+  const [recoveryError, setRecoveryError] = useState(initialRecords.error || null);
+  useEffect(() => {
+    if (!authorized || !service) return undefined;
+    let active = true;
+    const checkRecovery = (event) => {
+      if (!active) return;
+      if (event.key !== null && event.key !== ACCOUNT_OPS_RESTORE_JOURNAL_KEY && event.key !== ACCOUNT_OPS_STORAGE_KEY) return;
+      try {
+        const storage = window.localStorage;
+        if (event.storageArea && event.storageArea !== storage) return;
+        assertAccountOpsRecoveryClear(storage);
+        if (event.storageArea === storage && event.key === ACCOUNT_OPS_RESTORE_JOURNAL_KEY && event.newValue !== null) {
+          throw new AccountOpsRecoveryError("RECOVERY_REQUIRED", "Account Ops recovery changed in another tab. Reload to check its saved records before continuing.");
+        }
+        if (event.key === null || event.key === ACCOUNT_OPS_STORAGE_KEY) {
+          // Read the current guarded value, not event.newValue: an older event
+          // can arrive after a newer save. Keep the dialog and draft untouched.
+          setSnapshot(service.loadSnapshot());
+        }
+      }
+      catch (error) { active = false; setRecoveryError(error); }
+    };
+    window.addEventListener("storage", checkRecovery);
+    return () => { active = false; window.removeEventListener("storage", checkRecovery); };
+  }, [authorized, service]);
+  const [section, setSection] = useState(normalizeSection(initialSection));
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState({ ...EMPTY_FILTERS });
   const [dialog, setDialog] = useState("");
   const [editingId, setEditingId] = useState("");
+  const [editingVersion, setEditingVersion] = useState(undefined);
   const [form, setForm] = useState({});
   const [aliasDraft, setAliasDraft] = useState(null);
   const [generatedPassword, setGeneratedPassword] = useState("");
@@ -219,29 +268,19 @@ export default function AccountOpsPage({
   const [message, setMessage] = useState({ text: "", tone: "info" });
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    setSection(SECTIONS.some((item) => item.key === initialSection) ? initialSection : "overview");
-  }, [initialSection]);
+  const [previousSection, setPreviousSection] = useState(initialSection);
+  if (previousSection !== initialSection) {
+    setPreviousSection(initialSection);
+    setSection(normalizeSection(initialSection));
+  }
 
-  useEffect(() => {
-    if (!authorized) {
-      setService(null);
-      setSnapshot(EMPTY_SNAPSHOT);
-      setSelectedAccountIds(new Set());
-      setGeneratedPassword("");
-      return;
-    }
-    const nextService = createAccountOpsService();
-    setService(nextService);
-    setSnapshot(nextService.loadSnapshot());
-    return () => setGeneratedPassword("");
-  }, [authorized]);
-
-  const retailers = useMemo(() => service?.listRetailers?.() || [], [service, snapshot.retailers]);
+  const retailers = useMemo(() => service ? retailerDirectory(snapshot.retailers) : [], [service, snapshot.retailers]);
+  const allRetailers = useMemo(() => service ? retailerDirectory(snapshot.retailers, { includeArchived: true }) : [], [service, snapshot.retailers]);
   const archiveFilter = filters.recordScope === "archived" ? true : filters.recordScope === "all" ? undefined : false;
   const searchResults = useMemo(() => {
     if (!service) return { profiles: [], aliases: [], accounts: [], tasks: [] };
-    return service.search(query, {
+    return searchAccountOps(snapshot, query, {
+      retailers: allRetailers,
       archived: archiveFilter,
       profileGroupId: filters.profileGroupId || undefined,
       aliasStatus: filters.aliasStatus || undefined,
@@ -252,22 +291,22 @@ export default function AccountOpsPage({
       verification: filters.verification || undefined,
       taskStatus: filters.taskStatus || undefined,
     });
-  }, [service, snapshot, query, filters, archiveFilter, retailers]);
+  }, [service, snapshot, query, filters, archiveFilter, allRetailers]);
 
   const healthByAccount = useMemo(() => new Map((snapshot.storeAccounts || []).map((account) => [account.id, deriveAccountHealth(account, { ...snapshot, retailers })])), [snapshot, retailers]);
-  const summary = useMemo(() => service?.summary?.() || { storeAccounts: 0, ready: 0, needsAttention: 0, problem: 0, emailAliases: 0, tasks: 0 }, [service, snapshot]);
+  const summary = useMemo(() => service ? summarizeAccountOps(snapshot, { retailers: allRetailers }) : { storeAccounts: 0, ready: 0, needsAttention: 0, problem: 0, emailAliases: 0, tasks: 0 }, [service, snapshot, allRetailers]);
   const profileMap = useMemo(() => new Map((snapshot.profiles || []).map((row) => [row.id, row])), [snapshot.profiles]);
   const aliasMap = useMemo(() => new Map((snapshot.emailAliases || []).map((row) => [row.id, row])), [snapshot.emailAliases]);
   const retailerMap = useMemo(() => new Map(retailers.map((row) => [row.id, row])), [retailers]);
 
   function showMessage(text, tone = "info") { setMessage({ text, tone }); }
   function chooseSection(next, nextFilters = null) { setSection(next); setQuery(""); setFilters(nextFilters ? { ...EMPTY_FILTERS, ...nextFilters } : { ...EMPTY_FILTERS }); onSectionChange?.(next); }
-  function closeDialog() { setDialog(""); setEditingId(""); setForm({}); setAliasDraft(null); setGeneratedPassword(""); }
+  function closeDialog() { setDialog(""); setEditingId(""); setEditingVersion(undefined); setForm({}); setAliasDraft(null); setGeneratedPassword(""); }
   function changeForm(field, value) { setForm((current) => ({ ...current, [field]: value })); }
   function changeAddress(kind, field, value) { setForm((current) => ({ ...current, [kind]: { ...(current[kind] || {}), [field]: value } })); }
 
   async function run(action, successMessage) {
-    if (!service || busy) return null;
+    if (!service || busy || recoveryError) return null;
     setBusy(true);
     try {
       const result = await action();
@@ -275,6 +314,7 @@ export default function AccountOpsPage({
       if (successMessage) showMessage(successMessage, "success");
       return result;
     } catch (error) {
+      if (error instanceof AccountOpsRecoveryError) setRecoveryError(error);
       showMessage(error?.message || "Account Ops could not complete that action.", "error");
       return null;
     } finally {
@@ -282,14 +322,14 @@ export default function AccountOpsPage({
     }
   }
 
-  function openProfile(record = null) { setEditingId(record?.id || ""); setForm(profileDraft(record || {})); setDialog("profile"); }
-  function openDomain(record = null) { setEditingId(record?.id || ""); setForm(domainDraft(record || {})); setDialog("domain"); }
+  function openProfile(record = null) { setEditingId(record?.id || ""); setEditingVersion(record?.recordVersion); setForm(profileDraft(record || {})); setDialog("profile"); }
+  function openDomain(record = null) { setEditingId(record?.id || ""); setEditingVersion(record?.recordVersion); setForm(domainDraft(record || {})); setDialog("domain"); }
   function openAliasGenerator() { setEditingId(""); setForm(aliasGeneratorDraft()); setAliasDraft(null); setDialog("alias-generator"); }
-  function openAliasEditor(record) { setEditingId(record.id); setForm({ profileId: record.profileId || "", retailerId: record.retailerId || "", purpose: record.purpose || "", notes: record.notes || "" }); setDialog("alias-edit"); }
-  function openAccount(record = null) { setEditingId(record?.id || ""); setForm(accountDraft(record || {})); setGeneratedPassword(""); setDialog("account"); }
+  function openAliasEditor(record) { setEditingId(record.id); setEditingVersion(record.recordVersion); setForm({ profileId: record.profileId || "", retailerId: record.retailerId || "", purpose: record.purpose || "", notes: record.notes || "" }); setDialog("alias-edit"); }
+  function openAccount(record = null) { setEditingId(record?.id || ""); setEditingVersion(record?.recordVersion); setForm(accountDraft(record || {})); setGeneratedPassword(""); setDialog("account"); }
   function openSetup(record) { setEditingId(record.id); setForm({ credentialProvider: record.credentialReference?.provider || CREDENTIAL_REFERENCE_PROVIDERS.UNAVAILABLE, credentialReferenceId: record.credentialReference?.referenceId || "", credentialLabel: record.credentialReference?.label || "" }); setGeneratedPassword(""); setDialog("setup"); }
-  function openTask(record = null, related = {}) { setEditingId(record?.id || ""); setForm(taskDraft(record || {}, related)); setDialog("task"); }
-  function openRetailer(record = null) { setEditingId(record?.id || ""); setForm(retailerDraft(record || {})); setDialog("retailer"); }
+  function openTask(record = null, related = {}) { setEditingId(record?.id || ""); setEditingVersion(record?.recordVersion); setForm(taskDraft(record || {}, related)); setDialog("task"); }
+  function openRetailer(record = null) { setEditingId(record?.id || ""); setEditingVersion(record?.recordVersion); setForm(retailerDraft(record || {})); setDialog("retailer"); }
 
   async function archive(kind, record) {
     if (!window.confirm(`Archive ${record.displayName || record.aliasAddress || record.accountDisplayName || record.title || "this record"}?`)) return;
@@ -303,9 +343,11 @@ export default function AccountOpsPage({
   if (session.status === OWNER_SESSION_STATES.OWNER_ACCESS_REQUIRED) return <main className="account-ops account-ops--denied"><ErrorState title="Owner Access Required" action={<div className="account-ops-inline-actions"><PrimaryButton onClick={onReturnHome}>Return Home</PrimaryButton><SecondaryButton onClick={onSignOut}>Sign Out</SecondaryButton></div>}>This signed-in account is not authorized for Account Ops.</ErrorState></main>;
   if (!authorized) return <main className="account-ops account-ops--denied"><ErrorState title="Owner access unavailable" action={<PrimaryButton onClick={onReturnHome}>Return Home</PrimaryButton>}>Owner authorization could not be verified. No Account Ops records were loaded.</ErrorState></main>;
 
+  if (recoveryError) return <main className="account-ops account-ops--denied"><ErrorState title={recoveryError.code === "RECOVERY_REQUIRED" ? "Account Ops recovery required" : "Account Ops unavailable"} action={<PrimaryButton onClick={onReloadAccountOps}>Reload Account Ops</PrimaryButton>}>{recoveryError.message || "Account Ops records could not be loaded safely."} Reloading will discard this view's unsaved form and check your saved records again.</ErrorState></main>;
+
   const renderToolbar = () => (
     <div className="account-ops-toolbar">
-      <SearchField label={`Search ${SECTIONS.find((item) => item.key === section)?.label || "Account Ops"}`} value={query} onChange={setQuery} placeholder="Search records" />
+      <SearchField label={`Search ${searchLabelForSection(section)}`} value={query} onChange={setQuery} placeholder="Search records" />
       <details>
         <summary className="account-ops-filter-summary">Filter</summary>
         <div className="account-ops-filter-row">
@@ -321,21 +363,28 @@ export default function AccountOpsPage({
 
   return (
     <main className="account-ops" data-testid="account-ops">
-      <PageHeader eyebrow="Owner workspace" title="Account Ops" description="Manage legitimate profiles, aliases, retailer accounts, and follow-up tasks." actions={<StatusBadge tone="warning">Owner Only</StatusBadge>} />
+      <PageHeader eyebrow="Owner workspace" title="Account Ops" description="Accounts, profiles, and follow-ups. One organized workspace." actions={<StatusBadge tone="warning">Owner Only · Local Foundation</StatusBadge>} />
       {session.localDevelopment ? <div className="account-ops-local-development" role="status">Local development identity</div> : null}
-      <AccountOpsTabs active={section} onChange={chooseSection} />
-      {message.text ? <p className={`account-ops-message${message.tone === "error" ? " is-error" : message.tone === "warning" ? " is-warning" : ""}`} role={message.tone === "error" ? "alert" : "status"}>{message.text}</p> : null}
+      <div className="account-ops-area-shell">
+        <AccountOpsNavigation active={section} onChange={chooseSection} />
+        <div className="account-ops-area-content">
+          {message.text ? <p className={`account-ops-message${message.tone === "error" ? " is-error" : message.tone === "warning" ? " is-warning" : ""}`} role={message.tone === "error" ? "alert" : "status"}>{message.text}</p> : null}
 
-      {section === "overview" ? renderOverview() : null}
-      {section === "profiles" ? renderProfiles() : null}
-      {section === "emails" ? renderEmails() : null}
-      {section === "accounts" ? renderAccounts() : null}
-      {section === "tasks" ? renderTasks() : null}
-      {section === "connections" || section === "inbox" || section === "orders" ? (
-        <Suspense fallback={<LoadingState title="Loading provider foundation">Preparing the owner-only Account Ops view.</LoadingState>}>
-          <InboxOrderFoundation section={section} localDevelopment={session.localDevelopment === true} />
-        </Suspense>
-      ) : null}
+          {section === "overview" ? <><AccountOpsOperationsPanel area="overview" accountOpsSnapshot={snapshot} retailers={retailers} onNavigate={chooseSection} onRequestAccountDraft={() => openAccount()} /><details className="account-ops-help account-ops-summary-details"><summary>Detailed account summary</summary>{renderOverview()}</details></> : null}
+          {section === "accounts" ? <><AccountOpsOperationsPanel area="accounts" accountOpsSnapshot={snapshot} retailers={retailers} onNavigate={chooseSection} onRequestAccountDraft={() => openAccount()} /><section id="account-ops-store-accounts" tabIndex={-1} aria-label="Store account list">{renderAccounts()}</section></> : null}
+          {["identity", "payment", "network", "verification", "automation", "infrastructure"].includes(section) ? <AccountOpsOperationsPanel area={section} accountOpsSnapshot={snapshot} retailers={retailers} onNavigate={chooseSection} onRequestAccountDraft={() => openAccount()} /> : null}
+          {section === "activity" ? <><AccountOpsOperationsPanel area="activity" accountOpsSnapshot={snapshot} retailers={retailers} onNavigate={chooseSection} />{renderTasks()}</> : null}
+          {section === "profiles" ? renderProfiles() : null}
+          {section === "emails" ? renderEmails() : null}
+          {section === "tasks" ? renderTasks() : null}
+          {section === "orders" ? <><AccountOpsOperationsPanel area="orders" accountOpsSnapshot={snapshot} retailers={retailers} onNavigate={chooseSection} /><Suspense fallback={<LoadingState title="Loading order foundation">Preparing the owner-only relationship view.</LoadingState>}><InboxOrderFoundation section="orders" localDevelopment={session.localDevelopment === true} /></Suspense></> : null}
+          {section === "connections" || section === "inbox" ? (
+            <Suspense fallback={<LoadingState title="Loading provider foundation">Preparing the owner-only Account Ops view.</LoadingState>}>
+              <InboxOrderFoundation section={section} localDevelopment={session.localDevelopment === true} />
+            </Suspense>
+          ) : null}
+        </div>
+      </div>
 
       {renderDialogs()}
     </main>
@@ -365,7 +414,7 @@ export default function AccountOpsPage({
       <section className="account-ops-section">
         <SectionHeader title="Profiles" description="Reusable owner-managed identity records. Profiles never authorize Code 3." actions={<div className="account-ops-inline-actions"><SecondaryButton onClick={() => { setEditingId(""); setForm({ displayName: "", description: "", status: "ACTIVE" }); setDialog("group"); }}>New Group</SecondaryButton><PrimaryButton onClick={() => openProfile()}>Create Profile</PrimaryButton></div>} />
         {renderToolbar()}
-        {(snapshot.profileGroups || []).length ? <details className="account-ops-management"><summary>Manage profile groups</summary><div>{(snapshot.profileGroups || []).map((group) => <div className="account-ops-management-row" key={group.id}><span><strong>{group.displayName}</strong>{group.description ? ` — ${group.description}` : ""}</span><div className="account-ops-inline-actions"><SecondaryButton onClick={() => { setEditingId(group.id); setForm({ displayName: group.displayName, description: group.description || "", status: group.status }); setDialog("group"); }}>Edit</SecondaryButton>{group.status !== "ARCHIVED" ? <QuietButton onClick={() => { if (window.confirm(`Archive ${group.displayName}?`)) run(() => service.archiveProfileGroup(group.id), "Profile group archived."); }}>Archive</QuietButton> : null}</div></div>)}</div></details> : null}
+        {(snapshot.profileGroups || []).length ? <details className="account-ops-management"><summary>Manage profile groups</summary><div>{(snapshot.profileGroups || []).map((group) => <div className="account-ops-management-row" key={group.id}><span><strong>{group.displayName}</strong>{group.description ? ` — ${group.description}` : ""}</span><div className="account-ops-inline-actions"><SecondaryButton onClick={() => { setEditingId(group.id); setEditingVersion(group.recordVersion); setForm({ displayName: group.displayName, description: group.description || "", status: group.status }); setDialog("group"); }}>Edit</SecondaryButton>{group.status !== "ARCHIVED" ? <QuietButton onClick={() => { if (window.confirm(`Archive ${group.displayName}?`)) run(() => service.archiveProfileGroup(group.id), "Profile group archived."); }}>Archive</QuietButton> : null}</div></div>)}</div></details> : null}
         {profiles.length ? <div className="account-ops-list account-ops-list--cards">{profiles.map((profile) => {
           const aliases = (snapshot.emailAliases || []).filter((row) => row.profileId === profile.id && row.status !== EMAIL_ALIAS_STATUSES.ARCHIVED).length;
           const accounts = (snapshot.storeAccounts || []).filter((row) => row.profileId === profile.id && row.status !== STORE_ACCOUNT_STATUSES.ARCHIVED).length;
@@ -443,7 +492,7 @@ export default function AccountOpsPage({
             })}</div></section>;
           })}</div>
           <div className="account-ops-desktop-table"><DesktopDataTable caption="Store accounts" rows={searchResults.accounts} columns={[
-            { key: "select", label: "Select", render: (account) => <input type="checkbox" checked={selectedAccountIds.has(account.id)} onChange={() => toggleSelected(account.id)} aria-label={`Select ${account.accountDisplayName || "store account"}`} /> },
+            { key: "select", label: "Select", render: (account) => <label className="account-ops-table-select"><input type="checkbox" checked={selectedAccountIds.has(account.id)} onChange={() => toggleSelected(account.id)} aria-label={`Select ${account.accountDisplayName || "store account"}`} /></label> },
             { key: "account", label: "Account", render: (account) => <><strong>{account.accountDisplayName || "Store account"}</strong><small>{retailerMap.get(account.retailerId)?.displayName || "Missing retailer"}</small></> },
             { key: "profile", label: "Profile", render: (account) => profileMap.get(account.profileId)?.displayName || "Missing" },
             { key: "email", label: "Email", render: (account) => <span className="account-ops-alias">{aliasMap.get(account.aliasId)?.aliasAddress || account.username || "Not recorded"}</span> },
@@ -475,17 +524,17 @@ export default function AccountOpsPage({
     const currentAccount = byId(snapshot.storeAccounts, editingId);
     const submitGroup = async () => {
       const payload = { displayName: form.displayName || "", description: form.description || "", status: "ACTIVE" };
-      const result = await run(() => editingId ? service.updateProfileGroup(editingId, payload) : service.createProfileGroup(payload), editingId ? "Profile group updated." : "Profile group created.");
+      const result = await run(() => editingId ? service.updateProfileGroup(editingId, payload, editingVersion) : service.createProfileGroup(payload), editingId ? "Profile group updated." : "Profile group created.");
       if (result) closeDialog();
     };
     const submitProfile = async () => {
       const payload = { ...form, profileGroupId: form.profileGroupId || null, status: form.status === "ARCHIVED" ? "ARCHIVED" : "ACTIVE" };
-      const result = await run(() => editingId ? service.updateProfile(editingId, payload) : service.createProfile(payload), editingId ? "Profile updated." : "Profile created.");
+      const result = await run(() => editingId ? service.updateProfile(editingId, payload, editingVersion) : service.createProfile(payload), editingId ? "Profile updated." : "Profile created.");
       if (result) closeDialog();
     };
     const submitDomain = async () => {
       const payload = { domain: form.domain || "", mode: form.mode || EMAIL_DOMAIN_MODES.LOCAL_METADATA_ONLY, providerId: form.providerId || "", notes: form.notes || "" };
-      const result = await run(() => editingId ? service.updateEmailDomain(editingId, payload) : service.createEmailDomain(payload), editingId ? "Email domain updated." : "Email domain added.");
+      const result = await run(() => editingId ? service.updateEmailDomain(editingId, payload, editingVersion) : service.createEmailDomain(payload), editingId ? "Email domain updated." : "Email domain added.");
       if (result) closeDialog();
     };
     const makeAliasDraft = () => {
@@ -500,26 +549,26 @@ export default function AccountOpsPage({
       if (result) closeDialog();
     };
     const submitAliasEdit = async () => {
-      const result = await run(() => service.updateEmailAlias(editingId, { profileId: form.profileId || null, retailerId: form.retailerId || null, purpose: form.purpose || "", notes: form.notes || "" }), "Alias metadata updated.");
+      const result = await run(() => service.updateEmailAlias(editingId, { profileId: form.profileId || null, retailerId: form.retailerId || null, purpose: form.purpose || "", notes: form.notes || "" }, editingVersion), "Alias metadata updated.");
       if (result) closeDialog();
     };
     const submitRetailer = async () => {
       const payload = retailerDraft(form);
-      const result = await run(() => editingId ? service.updateRetailer(editingId, payload) : service.createRetailer(payload), editingId ? "Retailer updated." : "Custom retailer added.");
+      const result = await run(() => editingId ? service.updateRetailer(editingId, payload, editingVersion) : service.createRetailer(payload), editingId ? "Retailer updated." : "Custom retailer added.");
       if (result) closeDialog();
     };
     const submitAccount = async () => {
       const existing = editingId ? byId(snapshot.storeAccounts, editingId) : null;
       const payload = { retailerId: form.retailerId || "", profileId: form.profileId || "", aliasId: form.aliasId || null, username: form.username || "", accountDisplayName: form.accountDisplayName || "", notes: form.notes || "", ...(editingId && form.status && form.status !== existing?.status ? { status: form.status } : {}) };
       const action = editingId
-        ? () => service.updateStoreAccount(editingId, payload)
+        ? () => service.updateStoreAccount(editingId, payload, editingVersion)
         : () => service.createStoreAccount({ ...payload, phoneVerificationRequired: form.phoneVerificationRequired === true, credentialReference: { provider: CREDENTIAL_REFERENCE_PROVIDERS.UNAVAILABLE, referenceId: null, label: "", lastUpdatedAt: null } });
       const result = await run(action, editingId ? "Store account updated." : "Store account prepared. Verification remains owner-controlled.");
       if (result) { closeDialog(); openSetup(result.record); }
     };
     const submitTask = async () => {
       const payload = { type: form.type || ACCOUNT_TASK_TYPES.CUSTOM, title: form.title || "", priority: form.priority || ACCOUNT_TASK_PRIORITIES.NORMAL, dueAt: form.dueAt ? new Date(form.dueAt).toISOString() : null, profileId: form.profileId || null, accountId: form.accountId || null, retailerId: form.retailerId || null, source: form.source || "OWNER", notes: form.notes || "" };
-      const result = await run(() => editingId ? service.updateTask(editingId, payload) : service.createTask(payload), editingId ? "Task updated." : "Task created.");
+      const result = await run(() => editingId ? service.updateTask(editingId, payload, editingVersion) : service.createTask(payload), editingId ? "Task updated." : "Task created.");
       if (result) closeDialog();
     };
     const generatePassword = () => {

@@ -13,6 +13,9 @@ const providerApi = read("src/services/accountOpsProviderApi.js");
 const styles = read("src/features/accountOps/account-ops.css");
 const app = read("src/App.jsx");
 const routes = read("src/utils/appRouteState.js");
+const operationsPanel = read("src/features/accountOps/operationsFoundation/AccountOpsOperationsPanel.jsx");
+const operationsStyles = read("src/features/accountOps/operationsFoundation/account-ops-operations.css");
+const operationsContracts = read("src/features/accountOps/operationsFoundation/contracts.js");
 
 let assertions = 0;
 function matches(value, pattern, message) {
@@ -73,18 +76,19 @@ assertions += 2;
 matches(app, /lazy\(\(\) => import\("\.\/features\/accountOps\/AccountOpsPage"\)\)/, "Account Ops should remain route-split");
 matches(app, /<AccountOpsPage[\s\S]*session=\{ownerSession\}/, "Account Ops should receive the verified owner session");
 matches(app, /ownerCenterAuthorized \? \{ key: "account-ops", label: "Account Ops"/, "Account Ops navigation should require verified owner authorization");
-matches(routes, /\["overview", "profiles", "emails", "accounts", "tasks", "connections", "inbox", "orders"\]/, "Account Ops should expose the approved sections and honest provider foundations");
+matches(routes, /\["overview", "accounts", "identity", "payment", "network", "verification", "automation", "orders", "infrastructure", "activity", "profiles", "emails", "tasks", "connections", "inbox"\]/, "Account Ops should expose the unified operating areas and legacy direct routes");
 matches(routes, /return \{ activeTab: "accountOps", accountOpsSection \}/, "direct Account Ops routes should restore section state");
 
 matches(page, /OWNER_SESSION_STATES\.SIGN_IN_REQUIRED[\s\S]*title="Sign In Required"/, "the sign-in-required state should be compact and explicit");
 matches(page, /OWNER_SESSION_STATES\.OWNER_ACCESS_REQUIRED[\s\S]*title="Owner Access Required"/, "the non-owner state should be compact and explicit");
 matches(page, /if \(!authorized\)[\s\S]*No Account Ops records were loaded/, "private Account Ops data should stay unloaded without verified authorization");
-matches(page, /if \(!authorized\) \{[\s\S]*setService\(null\)[\s\S]*return;[\s\S]*createAccountOpsService\(\)/, "the local service should be constructed only after authorization");
+matches(page, /if \(!authorized\) return \{\};[\s\S]*createAccountOpsService\(\)/, "the local service should be constructed only after authorization");
 matches(page, /lazy\(\(\) => import\("\.\/InboxOrderFoundation\.jsx"\)\)/, "provider and order foundations should remain lazy inside the Account Ops route");
 matches(page, /if \(!authorized\) return[\s\S]*<InboxOrderFoundation section=\{section\}/, "the provider foundation should render only after the existing verified-owner return boundary");
 
-matches(page, /SECTIONS\.slice\(0, 3\)/, "mobile section navigation should keep three primary choices");
-matches(page, /<summary>More<\/summary>/, "secondary Account Ops sections should use progressive disclosure on mobile");
+matches(page, /<select value=\{activeArea\} onChange=\{\(event\) => onChange\(event\.target\.value\)\}>/, "mobile Account Ops navigation should use one compact area picker");
+matches(page, /aria-label="Account Ops areas"/, "wide Account Ops navigation should expose one consistent operating-area rail");
+matches(page, /ACCOUNT_OPS_OPERATING_AREAS\.map/, "the same operating-area source should drive compact and wide navigation");
 matches(page, /title="Account Ops"/, "the workspace should use the approved Code 3 name");
 matches(page, /Store Accounts[\s\S]*Ready[\s\S]*Needs Attention[\s\S]*Problem[\s\S]*Email Aliases[\s\S]*Tasks/, "overview metrics should be derived from Account Ops records");
 matches(page, /Generate email alias/, "the alias generator should be present");
@@ -125,5 +129,22 @@ excludes(providerApi, /export async function accountOpsProviderRequest/, "the ra
 excludes(page, /(?:bulk|mass)[ -](?:signup|registration|account creation)/i, "Phase 2A must not expose bulk retailer signup");
 excludes(page, /(?:persist|save|store)[A-Za-z]*(?:Password|Secret)\s*\(/, "plaintext password persistence helpers must not be introduced");
 excludes(page, /REMOTE_ACTIVE|OWNER_CONFIRMED_CUTOVER/, "the presentation layer must not activate persistence cutover modes");
+
+matches(operationsPanel, /title="Account Creation Assistant"/, "the local Account Creation Assistant should be present");
+matches(operationsPanel, /title="Account Health Center"/, "the Account Health Center should be present");
+matches(operationsPanel, /title="Verification Inbox"[\s\S]*title="CAPTCHA Center"/, "human-required verification should share one bounded inbox");
+matches(operationsPanel, /title="Virtual Cards & Billing Profiles"/, "payment metadata should have a reference-only area");
+matches(operationsPanel, /title="Proxy Groups"/, "credential-free proxy metadata should have a review area");
+matches(operationsPanel, /title="Bot Export Center"[\s\S]*title="Webhook Hub"/, "automation should combine provider readiness with webhook metadata");
+matches(operationsPanel, /title="Unified Order Tracker"/, "orders should use the existing canonical relationship shell");
+matches(operationsPanel, /title="Server Manager"[\s\S]*title="Cloud Instance Templates"[\s\S]*title="Remote Sessions"[\s\S]*title="Browser Sessions"/, "infrastructure foundations should remain grouped");
+matches(operationsPanel, /title="Attention Center"[\s\S]*title="Notification foundation"[\s\S]*title="Private search & command center"/, "activity should combine attention, notification preferences, and safe search");
+matches(operationsContracts, /persisted:\s*false[\s\S]*authoritative:\s*false/, "operations projections should remain ephemeral and non-authoritative");
+matches(operationsContracts, /providerCapabilityVerified:\s*false[\s\S]*liveConnection:\s*false[\s\S]*directExportAllowed:\s*false/, "provider export readiness must not imply a live capability");
+excludes(operationsPanel, />\s*(?:Send to|Connect|Provision|Start Server|Stop Server|Solve CAPTCHA)\s*</i, "the foundation must expose no live provider, server, or CAPTCHA action");
+excludes(operationsPanel, /dangerouslySetInnerHTML/, "operations metadata should not render as raw HTML");
+matches(operationsStyles, /min-height:\s*52px/, "operations controls should exceed the 44px touch-target minimum");
+matches(operationsStyles, /@media \(max-width:\s*430px\)/, "operations layouts should explicitly adapt on phones");
+matches(operationsStyles, /@media \(prefers-reduced-motion:\s*reduce\)/, "operations layouts should respect reduced motion");
 
 console.log(`Code 3 Account Ops UI contract passed: ${assertions} assertions.`);

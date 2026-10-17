@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { routeStateFromPath } from "../src/utils/appRouteState.js";
 
 const migrationPath = path.join(process.cwd(), "supabase", "migrations", "20260523151114_secure_beta_invites.sql");
 const migration = fs.readFileSync(migrationPath, "utf8");
@@ -64,7 +65,9 @@ assert.match(service, /admin_revoke_beta_invite/, "frontend service should call 
 assert.match(service, /claim_beta_invite/, "frontend service should call claim invite RPC");
 assert.match(service, /betaInviteClaimErrorMessage/, "friendly invite claim errors should be mapped");
 
-assert.match(app, /section === "invite"/, "/invite/:token route should be recognized");
+assert.match(app, /routeStateFromPath,\s*\} from "\.\/utils\/appRouteState"/, "App should use the current route parser");
+assert.deepEqual(routeStateFromPath("/invite/synthetic%2Finvite-token"), { activeTab: "invite", inviteToken: "synthetic/invite-token" }, "/invite/:token should preserve the decoded token");
+assert.deepEqual(routeStateFromPath("/beta/invite/synthetic-invite-token"), { activeTab: "invite", inviteToken: "synthetic-invite-token" }, "the existing beta invite alias should remain compatible");
 assert.match(app, /BETA_INVITE_SESSION_KEY/, "invite token should be stored session-only while signing in");
 assert.match(app, /claimBetaInvite\(token\)/, "signed-in invite route should claim through backend RPC");
 assert.match(app, /renderAdminBetaInviteManagement/, "admin invite UI should be rendered in Admin tools");

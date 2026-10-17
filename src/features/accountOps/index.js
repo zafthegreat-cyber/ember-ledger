@@ -12,4 +12,5 @@ export * from "./futureContracts.js";
 export * from "./repository.js";
 export * from "./persistence.js";
 export * from "./service.js";
+export * from "./operationsFoundation/index.js";
 export * from "./fixtures/index.js";

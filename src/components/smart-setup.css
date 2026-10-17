@@ -1,0 +1,105 @@
+/* Setup owns its scroll area; actions never overlay the choices. */
+.smart-setup-backdrop { --smart-setup-gutter: 16px; }
+html body .app[data-theme] .smart-setup-backdrop,
+html body .app[data-theme]:has(.app-toast-viewport) .location-modal-backdrop.smart-setup-backdrop {
+  padding: max(var(--smart-setup-gutter), env(safe-area-inset-top, 0px)) max(var(--smart-setup-gutter), env(safe-area-inset-right, 0px)) max(var(--smart-setup-gutter), env(safe-area-inset-bottom, 0px)) max(var(--smart-setup-gutter), env(safe-area-inset-left, 0px));
+  place-items: center;
+  z-index: 1800;
+  backdrop-filter: none;
+}
+/* A previous save notification must not consume the setup's scroll space. */
+html body .app[data-theme]:has(.app-toast-viewport) .smart-setup-backdrop > .smart-setup-modal[role="dialog"] { max-height: none; }
+html body .app[data-theme] .smart-setup-modal {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  width: min(680px, 100%);
+  height: min(800px, calc(100dvh - 32px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)));
+  min-width: 0;
+  min-height: 0;
+  max-height: none;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  background: var(--surface-primary);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-3);
+  text-align: left;
+}
+.smart-setup-modal > * { min-width: 0; }
+.smart-setup-header { display: grid; grid-template-columns: minmax(0, 1fr) 44px; gap: 12px; align-items: center; padding: 20px 24px 16px; }
+.smart-setup-header > div { min-width: 0; }
+html body .app[data-theme] .smart-setup-eyebrow { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 0 0 6px; color: var(--text-secondary); font: 600 0.75rem/1.4 var(--font-ui); letter-spacing: 0.05em; text-transform: uppercase; }
+.smart-setup-eyebrow span { font-weight: 400; letter-spacing: normal; text-transform: none; }
+html body .app[data-theme] .smart-setup-header h2 { margin: 0; color: var(--text-primary); font: 650 1.25rem/1.3 var(--font-display); overflow-wrap: anywhere; }
+html body .app[data-theme] .smart-setup-close { display: grid; place-items: center; width: 44px; height: 44px; min-width: 44px; padding: 0; border: 1px solid var(--border-strong); border-radius: 8px; color: var(--text-secondary); background: var(--surface-primary); font: 400 1.625rem/1 var(--font-ui); box-shadow: none; }
+.smart-setup-progress { display: flex; gap: 4px; padding: 0 24px 16px; }
+.smart-setup-progress > span { flex: 1; height: 3px; border-radius: 2px; background: var(--border-subtle); }
+.smart-setup-progress > span.active { background: var(--action-primary); }
+.smart-setup-body { min-height: 0; overflow: auto; overscroll-behavior: contain; scroll-padding-block: 16px; }
+.smart-setup-body > .smart-setup-step { padding: 4px 24px 24px; }
+.smart-setup-step { display: grid; gap: 12px; min-width: 0; }
+html body .app[data-theme] .smart-setup-step h3 { margin: 0; color: var(--text-primary); font: 650 1.25rem/1.35 var(--font-display); overflow-wrap: anywhere; }
+html body .app[data-theme] .smart-setup-step p { margin: 0; color: var(--text-secondary); font: 400 0.875rem/1.55 var(--font-ui); overflow-wrap: anywhere; }
+.smart-setup-chip-grid, .smart-setup-card-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+html body .app[data-theme] .smart-setup-modal :is(.smart-setup-chip, .smart-setup-choice) {
+  position: relative;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: center;
+  gap: 4px 12px;
+  width: 100%;
+  min-width: 0;
+  min-height: 52px;
+  height: auto;
+  padding: 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface-primary);
+  color: var(--text-primary);
+  font: 500 0.9375rem/1.4 var(--font-ui);
+  text-align: left;
+  text-transform: none;
+  white-space: normal;
+  box-shadow: none;
+  transform: none;
+}
+.smart-setup-modal :is(.smart-setup-chip, .smart-setup-choice)::before { content: ""; grid-column: 1; grid-row: 1; width: 18px; height: 18px; border: 1px solid var(--border-strong); border-radius: 4px; background: var(--surface-primary); text-align: center; font: 700 13px/18px var(--font-ui); }
+.smart-setup-modal .smart-setup-choice::before { border-radius: 50%; }
+html body .app[data-theme] .smart-setup-modal :is(.smart-setup-chip, .smart-setup-choice).selected { border-color: var(--action-primary); background: var(--selection-background); }
+.smart-setup-modal :is(.smart-setup-chip, .smart-setup-choice).selected::before { content: "✓"; border-color: var(--action-primary); background: var(--action-primary); color: var(--on-primary); }
+.smart-setup-modal :is(.smart-setup-chip, .smart-setup-choice) strong { grid-column: 2; font: inherit; color: inherit; overflow-wrap: anywhere; }
+.smart-setup-modal :is(.smart-setup-chip, .smart-setup-choice) small { grid-column: 2; color: var(--text-secondary); font: 400 0.8125rem/1.4 var(--font-ui); }
+html body .app[data-theme] .smart-setup-modal :is(button, input):focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
+.smart-setup-theme-panel { display: grid; gap: 12px; margin-top: 4px; padding-top: 16px; border-top: 1px solid var(--border-subtle); }
+.smart-setup-theme-panel strong { display: block; margin-bottom: 4px; font: 600 0.9375rem/1.4 var(--font-ui); }
+.smart-setup-modal .theme-choice-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+html body .app[data-theme] .smart-setup-modal .theme-choice-card { display: grid; align-content: start; gap: 4px; min-width: 0; min-height: 72px; padding: 12px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface-primary); color: var(--text-primary); box-shadow: none; text-align: left; white-space: normal; }
+html body .app[data-theme] .smart-setup-modal .theme-choice-card.is-selected { border-color: var(--action-primary); box-shadow: inset 0 -3px 0 var(--action-primary); }
+.smart-setup-modal .theme-choice-card strong { margin: 0; }
+.smart-setup-modal .theme-choice-card small { color: var(--text-secondary); font: 400 0.8125rem/1.45 var(--font-ui); overflow-wrap: anywhere; }
+.smart-setup-modal .theme-choice-preview { display: none; }
+.smart-setup-modal .settings-field-group { display: grid; gap: 6px; min-width: 0; color: var(--text-primary); font: 500 0.9375rem/1.4 var(--font-ui); }
+html body .app[data-theme] .smart-setup-modal .drawer-field { width: 100%; min-height: 48px; padding: 12px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface-primary); color: var(--text-primary); font-size: 1rem; }
+.smart-setup-modal .checkbox-row { display: flex; align-items: center; gap: 12px; min-height: 44px; font: 400 0.9375rem/1.5 var(--font-ui); }
+.smart-setup-modal .checkbox-row input { flex: 0 0 auto; width: 20px; height: 20px; accent-color: var(--action-primary); }
+.smart-setup-summary-grid { display: grid; gap: 12px; }
+.smart-setup-summary-grid article { display: grid; gap: 8px; padding: 16px; border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--surface-secondary); font: 400 0.875rem/1.5 var(--font-ui); }
+.smart-setup-summary-grid article strong { color: var(--text-primary); }
+.smart-setup-summary-grid article span { color: var(--text-secondary); }
+html body .app[data-theme] .smart-setup-footer { position: static; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 12px 24px; border-top: 1px solid var(--border-subtle); background: var(--surface-primary); }
+html body .app[data-theme] .smart-setup-footer > button { min-width: 0; min-height: 44px; padding: 10px 12px; border-radius: 8px; white-space: normal; overflow-wrap: anywhere; font: 600 0.875rem/1.4 var(--font-ui); }
+html body .app[data-theme] .smart-setup-footer > .smart-setup-footer-link { border: 1px solid transparent; background: transparent; color: var(--text-secondary); box-shadow: none; font-weight: 400; }
+@media (min-width: 600px) { .smart-setup-chip-grid, .smart-setup-card-grid, .smart-setup-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) {
+  .smart-setup-backdrop { --smart-setup-gutter: 0px; }
+  html body .app[data-theme] .smart-setup-modal { height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); width: 100%; border: 0; border-radius: 0; }
+  .smart-setup-header { padding: 16px 16px 12px; }
+  .smart-setup-progress { padding: 0 16px 16px; }
+  .smart-setup-body > .smart-setup-step { padding: 4px 16px 20px; }
+  html body .app[data-theme] .smart-setup-footer { padding: 12px 16px; }
+}
+@media (max-height: 480px) {
+  html body .app[data-theme] .smart-setup-modal { display: block; overflow: auto; }
+  .smart-setup-body { overflow: visible; }
+}

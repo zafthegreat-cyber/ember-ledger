@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CONFIDENCE_LEVELS, PRODUCT_CLASSIFICATIONS } from "../constants.js";
+import { PRODUCT_CLASSIFICATIONS } from "../constants.js";
 import { analyzeListing } from "../calculations.js";
 import { formatCurrency, formatPercent } from "../selectors.js";
 import { CheckField, FormActions, MoneyInput, SectionHeading, SelectInput, StatusPill, TextArea, TextInput } from "../components/Fields.jsx";
@@ -321,7 +321,7 @@ function IntelligenceResult({ result, history = [], comparison = null, ownerConf
 }
 
 export default function AppraiserScreen({ seed, onSave, repository = null, analysisHistory: suppliedAnalysisHistory = null, analysisRecords = [], onAnalysisStored }) {
-  const draft = useMemo(loadDraft, []);
+  const draft = useMemo(() => loadDraft(), []);
   const resumedAnalysis = !seed && draft.analysisId
     ? analysisRecords.find((record) => record.id === draft.analysisId && record.recordType === "CODE3_INTELLIGENCE_ANALYSIS") || null
     : null;
@@ -330,38 +330,42 @@ export default function AppraiserScreen({ seed, onSave, repository = null, analy
   const [step, setStep] = useState(draft.step);
   const [savedMessage, setSavedMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const [intelligenceResult, setIntelligenceResult] = useState(() => resumedAnalysisMatchesDraft ? resumedAnalysis?.systemResult || null : null);
-  const [intelligenceError, setIntelligenceError] = useState("");
+  const [calculatedIntelligenceResult, setIntelligenceResult] = useState(() => resumedAnalysisMatchesDraft ? resumedAnalysis?.systemResult || null : null);
+  const [calculationError, setIntelligenceError] = useState("");
   const [currentAnalysis, setCurrentAnalysis] = useState(() => resumedAnalysis);
   const [comparison, setComparison] = useState(null);
-  const pendingResumeAnalysisIdRef = useRef(!seed && !resumedAnalysis ? draft.analysisId : null);
+  const [pendingResumeAnalysisId, setPendingResumeAnalysisId] = useState(!seed && !resumedAnalysis ? draft.analysisId : null);
   const analysisRequestIdRef = useRef(0);
   const openSavedRequestIdRef = useRef(0);
   const saveInFlightRef = useRef(false);
   const pipeline = useMemo(() => createCardAnalysisPipeline(), []);
   const analysisHistory = useMemo(() => suppliedAnalysisHistory || (repository ? createLocalAnalysisHistory({ repository }) : null), [repository, suppliedAnalysisHistory]);
-  useEffect(() => {
-    const pendingId = pendingResumeAnalysisIdRef.current;
-    if (!pendingId || currentAnalysis) return;
-    const record = analysisRecords.find((candidate) => candidate.id === pendingId && candidate.recordType === "CODE3_INTELLIGENCE_ANALYSIS");
-    if (!record) return;
-    const matchesStoredView = formMatchesStoredAnalysis(form, record);
-    if (matchesStoredView) {
-      analysisRequestIdRef.current += 1;
-      setIntelligenceResult(record.systemResult || null);
-    }
-    pendingResumeAnalysisIdRef.current = null;
-    setCurrentAnalysis(record);
-  }, [analysisRecords, currentAnalysis, form]);
-  useEffect(() => {
+  const [previousSeed, setPreviousSeed] = useState(null);
+  if (previousSeed !== seed) {
+    setPreviousSeed(seed);
     if (seed) {
-      pendingResumeAnalysisIdRef.current = null;
+      setPendingResumeAnalysisId(null);
       setForm((current) => ({ ...current, ...seed }));
       setStep(0);
       setCurrentAnalysis(null);
       setComparison(null);
     }
-  }, [seed]);
+  }
+  if (pendingResumeAnalysisId && !currentAnalysis && !seed) {
+    const record = analysisRecords.find((candidate) => candidate.id === pendingResumeAnalysisId && candidate.recordType === "CODE3_INTELLIGENCE_ANALYSIS");
+    if (record) {
+      setPendingResumeAnalysisId(null);
+      setCurrentAnalysis(record);
+      if (formMatchesStoredAnalysis(form, record)) setIntelligenceResult(record.systemResult || null);
+    }
+  }
+  const matchesCurrentAnalysis = Boolean(currentAnalysis && formMatchesStoredAnalysis(form, currentAnalysis));
+  const analysisInput = useMemo(() => {
+    try { return { value: buildCardAnalysisInput(form), error: "" }; }
+    catch (error) { return { value: null, error: error?.message || "Review the analysis inputs." }; }
+  }, [form]);
+  const intelligenceResult = matchesCurrentAnalysis ? currentAnalysis.systemResult || null : analysisInput.error ? null : calculatedIntelligenceResult;
+  const intelligenceError = matchesCurrentAnalysis ? "" : analysisInput.error || calculationError;
   useEffect(() => {
     try {
       window.sessionStorage?.setItem(DRAFT_KEY, JSON.stringify({ form, step, analysisId: currentAnalysis?.id || null }));
@@ -372,29 +376,19 @@ export default function AppraiserScreen({ seed, onSave, repository = null, analy
   useEffect(() => {
     const requestId = analysisRequestIdRef.current + 1;
     analysisRequestIdRef.current = requestId;
-    if (currentAnalysis && formMatchesStoredAnalysis(form, currentAnalysis)) {
-      setIntelligenceResult(currentAnalysis.systemResult || null);
-      setIntelligenceError("");
-      return undefined;
-    }
+    if (matchesCurrentAnalysis || analysisInput.error) return undefined;
     let active = true;
-    try {
-      const input = buildCardAnalysisInput(form);
-      pipeline.analyze(input).then((next) => {
-        if (!active || requestId !== analysisRequestIdRef.current) return;
-        setIntelligenceResult(next);
-        setIntelligenceError("");
-      }).catch((error) => {
-        if (!active || requestId !== analysisRequestIdRef.current) return;
-        setIntelligenceResult(null);
-        setIntelligenceError(error?.message || "The intelligence result could not be calculated.");
-      });
-    } catch (error) {
+    pipeline.analyze(analysisInput.value).then((next) => {
+      if (!active || requestId !== analysisRequestIdRef.current) return;
+      setIntelligenceResult(next);
+      setIntelligenceError("");
+    }).catch((error) => {
+      if (!active || requestId !== analysisRequestIdRef.current) return;
       setIntelligenceResult(null);
-      setIntelligenceError(error?.message || "Review the analysis inputs.");
-    }
+      setIntelligenceError(error?.message || "The intelligence result could not be calculated.");
+    });
     return () => { active = false; };
-  }, [currentAnalysis, form, pipeline]);
+  }, [analysisInput, matchesCurrentAnalysis, pipeline]);
   const result = useMemo(() => analyzeListing(form), [form]);
   const currentHistory = useMemo(() => currentAnalysis
     ? analysisRecords.filter((record) => record.analysisSeriesId === currentAnalysis.analysisSeriesId).sort((left, right) => Number(right.revision) - Number(left.revision))
@@ -429,7 +423,7 @@ export default function AppraiserScreen({ seed, onSave, repository = null, analy
     const openRequestId = openSavedRequestIdRef.current + 1;
     openSavedRequestIdRef.current = openRequestId;
     analysisRequestIdRef.current += 1;
-    pendingResumeAnalysisIdRef.current = null;
+    setPendingResumeAnalysisId(null);
     setCurrentAnalysis(record);
     setForm(formFromStoredAnalysis(record));
     setIntelligenceResult(record.systemResult || null);
@@ -522,7 +516,7 @@ export default function AppraiserScreen({ seed, onSave, repository = null, analy
   const clear = () => {
     if (saveInFlightRef.current) return;
     openSavedRequestIdRef.current += 1;
-    pendingResumeAnalysisIdRef.current = null;
+    setPendingResumeAnalysisId(null);
     setForm(blankAppraisal());
     setStep(0);
     setSavedMessage("");

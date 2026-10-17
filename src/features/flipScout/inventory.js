@@ -1,4 +1,5 @@
 import { nonNegative, safeNumber } from "./calculations.js";
+import { returnedQuantity } from "../manualLifecycles/returnLedger.js";
 
 export function hasValidManagedExactCost(item = {}) {
   if (item.provenanceManaged !== true) return true;
@@ -50,9 +51,9 @@ export function soldQuantityForInventory(inventoryItemId, sales = [], editingSal
   return sales.reduce((total, sale) => {
     if (sale.id === editingSaleId || sale.inventoryItemId !== inventoryItemId) return total;
     // A refund does not prove that the physical item returned to Inventory.
-    // Only a draft or cancelled sale is non-consuming; restock requires an explicit disposition workflow.
+    // Only an immutable inspected-return application can release consumed units.
     if (["draft", "cancelled"].includes(String(sale.status || "").trim().toLowerCase())) return total;
-    return total + nonNegative(sale.quantitySold);
+    return total + nonNegative(sale.quantitySold) - returnedQuantity(sale);
   }, 0);
 }
 

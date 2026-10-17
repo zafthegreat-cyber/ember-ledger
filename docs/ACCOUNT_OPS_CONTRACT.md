@@ -1,6 +1,6 @@
 # Code 3 Account Ops Contract
 
-Status: Phase 2A local-first implementation, Phase 2A.5 workspace placement, Phase 2B1 provider/Inbox/Order Candidate foundation, and Phase 2B2-B managed-store source are published through `b4848cb851b2be83093fbdc4ed4b976857f9d3ff`. Phase 2D-A adds reference-only relationships from Bot Operations to Account Ops; it does not connect a Bot or mailbox and does not authorize canonical persistence, database migration, synchronization, retailer automation, purchasing, or Production deployment.
+Status: the published Account Ops, provider/Inbox, Bot-reference, and Business-reference foundations are unchanged. Phase 2A.6-A is an additive local-only product/UX candidate over baseline `ba68b2eb5f4fe027f5234cf207a44f8c07514ea2`; its operations models are derived, non-authoritative, non-persisted, synthetic-only, and network-disabled. It does not connect a retailer, mailbox, Bot, proxy, webhook, server, remote session, or payment provider and does not authorize canonical persistence, migration, synchronization, retailer automation, purchasing, billing, or Production deployment.
 
 Starting baseline: `af21199f610cc91e31d9dee59af6f0a2f748ab79`.
 
@@ -50,9 +50,33 @@ Under the Phase 2A.5 product-workspace architecture, Account Ops is associated w
 
 Account Ops is not part of Bot, and moving between workspaces does not move or duplicate its records. Phase 2D-A Bot assignments may reference stable Account Ops profile and store-account IDs, but Bot Operations cannot copy credentials, use those records as authorization, or change Account Ops state. The global product-workspace switcher cannot bypass either gate. Owner Center remains a separate private administration surface. See [WORKSPACE_ARCHITECTURE_CONTRACT.md](./WORKSPACE_ARCHITECTURE_CONTRACT.md).
 
-The internal sections are Overview, Profiles, Emails, Store Accounts, and Tasks. Mobile uses compact cards, bounded search/filter controls, progressive disclosure, 44-pixel targets, and safe wrapping for long aliases and retailer names. Desktop may use a compact table, but it does not add extra dashboards merely to fill space.
+Phase 2A.6-A organizes the existing private route into ten coherent operating areas: Overview, Accounts, Identity, Payment Metadata, Network, Verification, Automation, Orders, Infrastructure, and Activity. It does not create duplicate top-level workspaces. Existing Profile, Email, Store Account, Task, Connection, Inbox, and Order capabilities are placed or projected within that structure; the Orders area also renders the published Inbox/Order foundation rather than copying it.
 
-Inbox and Orders are contract-only in Phase 2A and do not appear as working navigation destinations.
+Mobile uses compact cards, bounded search/filter controls, progressive disclosure, 44-pixel targets, and safe wrapping for long labels. Desktop may use denser cards/rows, but it does not gain additional authority or live actions.
+
+## Phase 2A.6-A operations foundation
+
+The versioned operations contract is `code3.account-ops.operations-foundation.v1`. It normalizes a deeply frozen in-memory snapshot containing bounded synthetic/reference-only projections for account creation plans, phone resources, payment-card metadata, verification actions, proxy-group views, provider export readiness, webhook metadata, server records, cloud templates, remote-access records, browser workspaces, unified-order views, notification preferences, and navigation-only cross-workspace references. A private object-identity boundary makes normalization idempotent only for snapshots created and frozen by the contract; caller-supplied `persisted` or `authoritative` flags cannot bypass recursive screening and strict allowlists.
+
+Every operations snapshot fixes:
+
+- `authoritative=false`;
+- `persisted=false`; and
+- all live account, CAPTCHA/MFA, mailbox, Bot, export, webhook, server, remote-session, fingerprint-evasion, secret-storage, remote-persistence, and Production capabilities to false.
+
+The composed operations view separately fixes `writesAllowed=false` and `networkAllowed=false`.
+
+Existing `code3.account-ops.v1` records remain the only Account Ops data authority. The operations layer derives account-creation, detailed health, duplicate-warning, Verification Inbox, per-Profile retailer/provider compatibility review, export-readiness, Attention Center, notification, search, and order-relationship views without writing them back. Bounded cross-workspace references can point search or Attention to Bot, Purchase, Receiving, Inventory, or Accountant Review records without copying or authorizing those records. Attention Center, notification preferences, and global search results are navigation/review aids only: they send nothing and expose no destructive command.
+
+The Account Creation Assistant prepares one legitimate owner-controlled draft; it does not create an account. Detailed health states include healthy, verification/reset-required, unverified contact, MFA/CAPTCHA-required, locked, disabled, and unknown states, but `networkChecked=false` and no state is provider attestation. Duplicate detection uses normalized safe metadata to prevent accidental duplication and explicitly forbids retailer-limit evasion.
+
+Verification remains human-controlled. Code 3 may show and pause for CAPTCHA, MFA, email, SMS, security-prompt, terms, or password-reset actions. It never solves a challenge, harvests/reuses a CAPTCHA token, intercepts or retains an OTP/MFA value, accepts terms, or resumes a live workflow in Phase 2A.6-A. See [VERIFICATION_CENTER_CONTRACT.md](./VERIFICATION_CENTER_CONTRACT.md).
+
+Identity/profile projections reuse existing Account Ops references. Phone records contain labels and availability—not real numbers or codes. Virtual-card records allow only metadata such as alias/provider, last four, bounded expiry, status, safe assignment, and exact minor-unit spending-limit metadata; full PAN, CVV, PIN, bank login, or payment token is prohibited. Proxy views contain group/provider/type/region/count/declared health/latency/assignment/expiry metadata only—never host/IP, endpoint, username, password, or authenticated URL.
+
+Provider export readiness is preview planning only. Stellar and Hayha remain `NOT_CONFIGURED`; Shikari, Valor, and Refract remain unreviewed/unsupported; all records force provider capability unverified, live connection false, and direct export false. No file, transform output, task, webhook, provider request, or send-to-Bot action is created. The existing Stellar feature remains an inbound offline preview under its separate strict contract. See [AUTOMATION_EXPORT_CONTRACT.md](./AUTOMATION_EXPORT_CONTRACT.md).
+
+Unified Order views are references/projections over the existing Account Ops, Inbox/Order Candidate, Purchase/Receiving, shipment, Receiving, and Inventory lifecycle. They neither duplicate those canonical/local authorities nor infer that order evidence is a Purchase. Webhook, server, cloud-template, remote-session, and browser-session records are synthetic metadata with no endpoint, secret, provider call, provisioning, telemetry, connection, cookie/session harvesting, or fingerprint spoofing. See [ACCOUNT_LIFECYCLE_CONTRACT.md](./ACCOUNT_LIFECYCLE_CONTRACT.md) and [INFRASTRUCTURE_MANAGER_CONTRACT.md](./INFRASTRUCTURE_MANAGER_CONTRACT.md).
 
 ## Local data source
 
@@ -228,7 +252,7 @@ External text cannot create a purchase or inventory record automatically. Provid
 
 ## Backup and Restore Preview
 
-The Account Ops document is a registered browser backup source. Allowed metadata includes profiles, aliases, owner-created retailers, store accounts, account state, credential references, tasks, and activity. Phase 2B1 registers its separate minimized Inbox/Order source, Phase 2D-A registers sanitized Bot Operations, and Phase 2C-A registers separate Purchase/Receiving metadata rather than changing the strict Account Ops schema. Backup Format v1 therefore has 25 registered sources: 21 locally included and four excluded/conditional. Passwords, OTPs, tokens, sessions, OAuth state/codes/verifiers, raw protected/provider content, authorization fields, environment values, provider/Bot/retailer/payment/proxy secrets, and credential-bearing URLs are prohibited before persistence and remain prohibited by the backup sanitizer.
+The Account Ops document is a registered browser backup source. Allowed metadata includes profiles, aliases, owner-created retailers, store accounts, account state, credential references, tasks, and activity. Phase 2B1 registers its separate minimized Inbox/Order source, Phase 2D-A registers sanitized Bot Operations, and Phase 2C-A registers separate Purchase/Receiving metadata rather than changing the strict Account Ops schema. Backup Format v1 therefore has 25 registered sources: 21 locally included and four excluded/conditional. Phase 2A.6-A adds no source: operations snapshots, account-creation plans, detailed health, verification actions, phone/payment/proxy/server/session metadata, readiness, Attention items, search results, filters, and synthetic fixtures remain derived and excluded. Passwords, OTPs, tokens, sessions, OAuth state/codes/verifiers, raw protected/provider content, authorization fields, environment values, provider/Bot/retailer/payment/proxy secrets, and credential-bearing URLs are prohibited before persistence and remain prohibited by the backup sanitizer.
 
 Restore Preview validates schema, counts, IDs, duplicate aliases, and relationships such as profile, alias, retailer, and store-account references. It remains JSON-only and zero-write. Account Ops has no restore-apply path.
 
@@ -242,7 +266,7 @@ No payment-card/CVV data, plaintext password, OTP, provider token, Code 3 owner 
 
 ## Explicit non-goals
 
-Phase 2A does not implement:
+Phase 2A and Phase 2A.6-A do not implement:
 
 - mass account generation or farming;
 - automatic or bulk retailer signup;
@@ -254,8 +278,12 @@ Phase 2A does not implement:
 - provider-managed alias provisioning;
 - canonical database domains, migration execution, remote persistence, sync, or Production deployment.
 
+They also do not create a live Webhook Hub, provision servers/cloud resources, establish remote/browser sessions, send notifications/provider exports, perform anti-detection fingerprint changes, or add a new storage/backup/migration source.
+
 ## Future acceptance gates
 
 Phase 2B2-B managed-store source is published, but the separate Phase 2B2-B.1 operational verification is paused pending the owner's explicit `Supabase signed in.` confirmation. A Free Upstash resource and three branch-scoped Preview secrets exist; remaining owner/CORS/activation configuration and the authenticated-owner readiness proof do not. That workstream remains independent from Bot Operations and cannot supply Bot credentials or business persistence.
 
 A separately approved Phase 2D-B may evaluate one Bot provider/integration mode only after provider terms and anti-abuse review, server-only credential/revocation design where required, an owner-controlled test environment, provider-specific normalization, and explicit confirmation that Account Ops references remain nonsecret/non-authoritative. It must preserve `Bot Success != Purchase`, owner review before any Purchase, and every retailer-security/checkout prohibition. Phase 2D-A does not authorize Phase 2D-B.
+
+Phase 2A.6-A does not resume that work. Phase 2B2-B.1 remains paused, `hostedRuntimeVerified=false`, `LOCAL_ONLY` remains authoritative, `REMOTE_ACTIVE` remains disabled, and the canonical remote schema remains unapplied. Owner data/files remain unmigrated. Gmail, Outlook, Stellar, and Hayha remain `NOT_CONFIGURED`; `NO_LIVE_BOT_PILOT_YET` remains unchanged. Phase 2D-B3 has not started, and billing, Upstash/Supabase/provider-auth configuration, and Production remain untouched.

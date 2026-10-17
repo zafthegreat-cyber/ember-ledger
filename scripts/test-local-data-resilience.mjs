@@ -124,7 +124,8 @@ assert.deepEqual(cleanedTidepool.posts.map((post) => post.postId), ["post-real"]
 assert.deepEqual(cleanedTidepool.trustedCircle.map((entry) => entry.id), ["circle-real"]);
 
 const cleanedMarketCache = safeReadBrowserJson(cleanupStorage, BETA_LOCAL_STORAGE_KEYS.marketPrices, {});
-assert.deepEqual(cleanedMarketCache, { prices: [], lastSync: "", failedMatches: [] });
+assert.equal(cleanupStorage.getItem(BETA_LOCAL_STORAGE_KEYS.marketPrices), "{bad-json", "Cleanup must preserve malformed saved bytes for recovery.");
+assert.deepEqual(cleanedMarketCache, {}, "Safe rendering may still use the caller's fallback without rewriting storage.");
 
 assert.deepEqual(sanitizeAppLocalData("bad input").items, []);
 assert.deepEqual(sanitizeScoutLocalData("bad input").stores, []);

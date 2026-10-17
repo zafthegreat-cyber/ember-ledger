@@ -38,3 +38,15 @@ export function secureUuid(randomSource = globalThis.crypto) {
   const hex = [...bytes].map((value) => value.toString(16).padStart(2, "0"));
   return `${hex.slice(0, 4).join("")}-${hex.slice(4, 6).join("")}-${hex.slice(6, 8).join("")}-${hex.slice(8, 10).join("")}-${hex.slice(10).join("")}`;
 }
+
+// Internal record IDs must not resemble payment-card values to the unchanged
+// metadata scanner. This bijection retains every UUID bit without retries or
+// weakening validation of supplied/imported IDs. Existing IDs are never recoded.
+export function secureRecordSuffix(randomSource = globalThis.crypto) {
+  const uuid = secureUuid(randomSource);
+  if (typeof uuid !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(uuid)) {
+    throw new AccountOpsSecurityError("SECURE_RANDOM_FAILED", "The secure random source did not produce a valid record identifier.");
+  }
+  const alphabet = "abcdefghijklmnop";
+  return `r${[...uuid.replaceAll("-", "").toLowerCase()].map((digit) => alphabet[Number.parseInt(digit, 16)]).join("")}`;
+}

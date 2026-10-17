@@ -33,6 +33,7 @@ export function routeStateFromPath(pathname = "") {
     return { activeTab: "workspaceHome", productWorkspaceHome: WORKSPACE_IDS.BOT, botOpsSection };
   }
   if (section === "find") {
+    if (subSection === "buy-offer") return { activeTab: "flipScout", flipScoutView: "buy-offer" };
     const view = subSection === "deal-feed" || subSection === "deals"
       ? "deals"
       : subSection === "ebay" || subSection === "ebay-search"
@@ -51,7 +52,7 @@ export function routeStateFromPath(pathname = "") {
     return { activeTab: "flipScout", flipScoutView: view };
   }
   if (section === "collection") {
-    const view = ["collection", "sets", "wishlist", "grading"].includes(subSection) ? subSection : "collection";
+    const view = ["collection", "sets", "wishlist", "grading", "unassigned"].includes(subSection) ? subSection : "collection";
     return { activeTab: "collectionWorkspace", collectionWorkspaceView: view };
   }
   if (section === "purchases") return { activeTab: "businessWorkspace", businessWorkspaceView: "purchases" };
@@ -63,11 +64,11 @@ export function routeStateFromPath(pathname = "") {
     return { activeTab: "businessWorkspace", businessWorkspaceView: ["expenses", "mileage", "reports", "reconciliation"].includes(subSection) ? "money" : businessView, businessMoneyView: moneyView };
   }
   if (section === "owner-center") {
-    const ownerCenterSection = ["overview", "sourcing", "restocks", "performance", "controls"].includes(subSection) ? subSection : "overview";
+    const ownerCenterSection = ["overview", "sourcing", "restocks", "performance", "controls", "records"].includes(subSection) ? subSection : "overview";
     return { activeTab: "ownerCenter", ownerCenterSection, ownerCenterSubview: detailId || "" };
   }
   if (section === "account-ops") {
-    const accountOpsSection = ["overview", "profiles", "emails", "accounts", "tasks", "connections", "inbox", "orders"].includes(subSection) ? subSection : "overview";
+    const accountOpsSection = ["overview", "accounts", "identity", "payment", "network", "verification", "automation", "orders", "infrastructure", "activity", "profiles", "emails", "tasks", "connections", "inbox"].includes(subSection) ? subSection : "overview";
     return { activeTab: "accountOps", accountOpsSection };
   }
   if (section === "kids-community") {
@@ -211,6 +212,7 @@ export function pathFromActiveTab(activeTab = "dashboard", state = {}) {
       rules: "/find/saved-searches",
       ebay: "/find/ebay",
       appraise: "/find/deal-analysis",
+      "buy-offer": "/find/buy-offer",
       sources: "/find/sources",
     };
     return routeByView[state.flipScoutView] || "/find/deals";
@@ -225,7 +227,7 @@ export function pathFromActiveTab(activeTab = "dashboard", state = {}) {
     return state.ownerCenterSubview ? `/owner-center/${encodeURIComponent(section)}/${encodeURIComponent(state.ownerCenterSubview)}` : `/owner-center/${encodeURIComponent(section)}`;
   }
   if (activeTab === "accountOps") {
-    const section = ["profiles", "emails", "accounts", "tasks", "connections", "inbox", "orders"].includes(state.accountOpsSection) ? state.accountOpsSection : "overview";
+    const section = ["accounts", "identity", "payment", "network", "verification", "automation", "orders", "infrastructure", "activity", "profiles", "emails", "tasks", "connections", "inbox"].includes(state.accountOpsSection) ? state.accountOpsSection : "overview";
     return section === "overview" ? "/account-ops" : `/account-ops/${encodeURIComponent(section)}`;
   }
   if (activeTab === "scout") return state.scoutView ? `/scout/${encodeURIComponent(state.scoutView)}` : "/scout";

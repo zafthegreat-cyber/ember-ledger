@@ -141,6 +141,7 @@ function FindHome({ onNavigate }) {
       <section className="code3-workspace-actions" aria-label="Find actions">
         <PrimaryButton onClick={() => onNavigate("/find/deals")}>Review Deals</PrimaryButton>
         <SecondaryButton onClick={() => onNavigate("/find/auctions")}>Auctions</SecondaryButton>
+        <SecondaryButton onClick={() => onNavigate("/find/buy-offer")}>Buy Offer</SecondaryButton>
       </section>
       <RecentList
         title="Sourcing activity"

@@ -1,0 +1,32 @@
+.manual-lifecycles { display: grid; gap: var(--space-4); min-width: 0; padding: var(--space-4); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--surface-primary); color: var(--text-primary); }
+.manual-lifecycle-tabs, .manual-lifecycle-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.manual-lifecycle-tabs [aria-current="page"] { color: var(--brand-primary); border-color: var(--brand-primary); background: var(--brand-primary-soft, var(--surface-secondary)); }
+.manual-lifecycle-form, .manual-lifecycle-review, .manual-lifecycle-list { display: grid; gap: var(--space-4); min-width: 0; }
+.manual-lifecycle-form fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.manual-lifecycle-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: var(--space-3); }
+.manual-lifecycle-fields input, .manual-lifecycle-fields select, .manual-lifecycle-fields textarea { min-height: 44px; max-width: 100%; }
+.manual-lifecycles button { min-height: 44px; }
+.manual-lifecycle-card { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); width: 100%; text-align: left; font: inherit; color: var(--text-primary); background: var(--surface-secondary); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: var(--space-3); }
+.manual-lifecycle-card > span { display: grid; gap: var(--space-1); min-width: 0; }
+.manual-lifecycle-card small, .manual-lifecycle-note { color: var(--text-secondary); font-size: 14px; line-height: 1.6; }
+.manual-lifecycles :is(p, span, strong, small, dd, li) { overflow-wrap: anywhere; }
+.manual-lifecycles button:focus-visible, .manual-lifecycles summary:focus-visible { outline: 3px solid var(--brand-primary); outline-offset: 3px; }
+.manual-lifecycle-error { color: var(--status-danger, var(--text-primary)); border-inline-start: 3px solid currentColor; padding-inline-start: var(--space-3); }
+.manual-lifecycle-review summary { cursor: pointer; padding: var(--space-3) 0; min-height: 44px; }
+.manual-lifecycle-history { display: grid; gap: var(--space-4); padding-inline-start: var(--space-4); }
+.manual-binder-preview { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); padding: 0; list-style: none; }
+.manual-binder-preview li { display: grid; align-content: start; gap: var(--space-2); min-height: 120px; padding: var(--space-3); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--surface-secondary); }
+.manual-binder-preview small, .manual-binder-preview span { font-size: 13px; color: var(--text-secondary); }
+.manual-label { display: grid; gap: var(--space-3); min-width: 0; padding: var(--space-4); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); overflow-wrap: anywhere; }
+.manual-lifecycle-detail { display: grid; gap: var(--space-4); min-width: 0; padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px)); }
+.manual-lifecycle-detail > .ops-record-detail { padding-bottom: var(--space-4); }
+.manual-return-settlement { display: grid; gap: var(--space-3); min-width: 0; padding: var(--space-4); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--surface-secondary); }
+.manual-return-confirm { display: flex; align-items: center; gap: var(--space-3); min-height: 44px; cursor: pointer; line-height: 1.5; }
+.manual-return-confirm input { flex: 0 0 24px; width: 24px; height: 24px; accent-color: var(--brand-primary); }
+.manual-return-confirm input:focus-visible { outline: 3px solid var(--brand-primary); outline-offset: 3px; }
+.manual-return-correction { display: grid; gap: var(--space-3); min-width: 0; border-top: 1px solid var(--border-subtle); padding-top: var(--space-4); }
+.manual-return-comparison { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: var(--space-3); }
+.manual-return-comparison > section { min-width: 0; padding: var(--space-3); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--surface-primary); }
+.manual-return-comparison h3 { margin: 0 0 var(--space-3); font-size: 16px; }
+.manual-return-history > summary { cursor: pointer; min-height: 44px; padding-block: var(--space-3); }
+@media (max-width: 420px) { .manual-lifecycle-card { align-items: start; flex-direction: column; } .manual-binder-preview { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

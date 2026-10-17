@@ -61,6 +61,18 @@ export function createPersistenceGateway(options = {}) {
     persistenceTarget: mode === PERSISTENCE_MODES.REMOTE_ACTIVE ? "REMOTE" : "LOCAL",
     list: (...args) => activeDataSource.list(...args),
     getById: (...args) => activeDataSource.getById(...args),
+    // Queuing is an explicit outcome, never a fallback disguised as a saved
+    // server record. Existing direct CRUD contracts remain unchanged.
+    queueMutation: (command) => {
+      if (mode !== PERSISTENCE_MODES.REMOTE_ACTIVE || !options.offlineQueue) {
+        throw new PersistenceModeError("OFFLINE_QUEUE_NOT_ACTIVE", "Pending server mutations require an explicitly activated remote gateway and reviewed queue.");
+      }
+      return options.offlineQueue.enqueue(command);
+    },
+    listPendingMutations: () => {
+      if (mode !== PERSISTENCE_MODES.REMOTE_ACTIVE || !options.offlineQueue) return Promise.resolve([]);
+      return options.offlineQueue.list();
+    },
     getRemoteSnapshot: async (...args) => {
       if (!remoteDataSource) return { status: "UNAVAILABLE", records: [] };
       const result = await remoteDataSource.list(...args);

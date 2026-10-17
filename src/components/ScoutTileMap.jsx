@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 const TILE_SIZE = 256;
 const PAN_DRAG_THRESHOLD = 4;
@@ -313,9 +313,11 @@ export default function ScoutTileMap({
   const mapUnavailable = Boolean(map.tiles.length && currentTileErrorCount >= Math.min(4, map.tiles.length));
   const pannable = Boolean(interactive && hasPins);
 
-  useEffect(() => {
+  const [panOrigin, setPanOrigin] = useState({ selectedId, zoomAdjustment });
+  if (panOrigin.selectedId !== selectedId || panOrigin.zoomAdjustment !== zoomAdjustment) {
+    setPanOrigin({ selectedId, zoomAdjustment });
     setPanOffset({ x: 0, y: 0 });
-  }, [selectedId, zoomAdjustment]);
+  }
 
   function clampPan(nextPan) {
     const bounds = canvasRef.current?.getBoundingClientRect();

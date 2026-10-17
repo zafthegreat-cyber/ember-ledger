@@ -81,7 +81,7 @@ export default function SparkPage(props) {
       "Submit",
     ];
     const requestAccessSummary = kidsProgramForm.requestedAccess.length ? kidsProgramForm.requestedAccess.join(", ") : "Not selected yet";
-    const scrollToSparkRequest = () => document.getElementById("spark-request-flow")?.scrollIntoView({ behavior: "smooth", block: "start" });
+
     const scrollToSparkRules = () => document.getElementById("spark-safety-rules")?.scrollIntoView({ behavior: "smooth", block: "start" });
     const scrollToSparkDetails = () => document.getElementById("spark-program-sections")?.scrollIntoView({ behavior: "smooth", block: "start" });
     const openSparkDonate = () => setSparkFlowView("donate");
@@ -167,31 +167,8 @@ export default function SparkPage(props) {
         status: "Admin first",
       },
     ];
-    const sparkSupportRouteCards = [
-      {
-        title: "Item donation",
-        detail: "Cards, packs, sealed product, binders, sleeves, storage, or prizes.",
-        action: "Log a Gift",
-        onClick: () => openSparkGiftFlow({ source: "spark-review-center" }),
-      },
-      {
-        title: "Build kid packs",
-        detail: "Turn reviewed support into starter, birthday, event, or family support packs.",
-        action: "Build Pack",
-        onClick: () => openSparkKidPackFlow({ source: "spark-review-center" }),
-      },
-      {
-        title: "Event support",
-        detail: "Plan snacks, volunteers, shop help, learning tables, and supplies.",
-        action: "Add Event Support",
-        onClick: () => openSparkEventSupportFlow({ source: "spark-review-center" }),
-      },
-    ];
-    const sparkReviewStatusRows = [
-      { label: "Payment", value: "Off", detail: "No checkout or in-app cash donation flow." },
-      { label: "Privacy", value: "On", detail: "No public child profile, private address, or private messaging." },
-      { label: "Receipt", value: "Later", detail: "Tax receipts need approved legal/payment structure first." },
-    ];
+
+
     const renderSparkGiftRow = (gift) => (
       <article className="spark-gift-ledger-row" key={gift.id || `${gift.giftName}-${gift.createdAt}`}>
         <div>

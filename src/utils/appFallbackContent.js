@@ -1,11 +1,34 @@
 import { BRAND_CONFIG } from "../config/brand.js";
 
+export const APP_LOAD_SLOW_THRESHOLD_MS = 12000;
+
+export function readAppLoadFallbackTheme() {
+  if (typeof window === "undefined") return "light";
+  try {
+    const inspectionTheme = new URLSearchParams(window.location.search).get("themeInspect");
+    if (inspectionTheme === "light" || inspectionTheme === "dark") return inspectionTheme;
+    const direct = window.localStorage.getItem("et-tcg-app-theme");
+    if (direct) return direct.trim().toLowerCase() === "dark" ? "dark" : "light";
+    const saved = JSON.parse(window.localStorage.getItem("et-tcg-beta-data") || "{}");
+    const choice = saved?.appThemeChoice || saved?.themeChoice || saved?.settings?.appThemeChoice;
+    return String(choice || "").trim().toLowerCase() === "dark" ? "dark" : "light";
+  } catch {
+    return "light";
+  }
+}
+
 export const APP_LOAD_FALLBACK_COPY = {
   loading: {
     eyebrow: BRAND_CONFIG.applicationDisplayName,
     title: `Loading ${BRAND_CONFIG.shortName}...`,
     body: "Preparing your business workspace.",
-    helper: "Your records will be ready in a moment.",
+    helper: "This usually takes a few seconds.",
+  },
+  slow: {
+    eyebrow: BRAND_CONFIG.applicationDisplayName,
+    title: "Still loading your workspace",
+    body: "This is taking longer than usual.",
+    helper: "Check your connection, then try refreshing the app.",
   },
   updating: {
     eyebrow: BRAND_CONFIG.applicationDisplayName,

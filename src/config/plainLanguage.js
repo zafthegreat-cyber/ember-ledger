@@ -24,7 +24,7 @@ const EXACT_VISIBLE_LABELS = new Map([
 const VISIBLE_PHRASE_REPLACEMENTS = [
   [/Ember\s*(?:&|and)\s*Tide/gi, BRAND_CONFIG.applicationDisplayName],
   [/Private Business Hub/gi, BRAND_CONFIG.applicationDisplayName],
-  [/Ask Ember/gi, "Business Assistant"],
+  [/Ask Ember(?: Assist)?/gi, "Business Assistant"],
   [/Ember Assist/gi, "Business Assistant"],
   [/Flip Scout/gi, "Deal Finder"],
   [/The Spark/gi, "Kids & Community"],

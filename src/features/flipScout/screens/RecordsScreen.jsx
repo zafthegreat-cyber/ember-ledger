@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import PurchasesInventoryScreen from "./records/PurchasesInventoryScreen.jsx";
 import SalesScreen from "./records/SalesScreen.jsx";
 import ExpensesMileageScreen from "./records/ExpensesMileageScreen.jsx";
@@ -15,7 +15,11 @@ const TABS = [
 
 export default function RecordsScreen({ state, initialSubview = "", onSave, onDelete, onAllocateLot }) {
   const [view, setView] = useState(initialSubview || "purchases");
-  useEffect(() => { if (initialSubview && TABS.some(([key]) => key === initialSubview)) setView(initialSubview); }, [initialSubview]);
+  const [previousSubview, setPreviousSubview] = useState(initialSubview);
+  if (previousSubview !== initialSubview) {
+    setPreviousSubview(initialSubview);
+    if (initialSubview && TABS.some(([key]) => key === initialSubview)) setView(initialSubview);
+  }
   return <div className="flip-screen">
     <nav className="flip-subnav" aria-label="Business records">{TABS.map(([key, label]) => <button type="button" key={key} className={view === key ? "active" : ""} aria-current={view === key ? "page" : undefined} onClick={() => setView(key)}>{label}</button>)}</nav>
     {view === "purchases" || view === "inventory" ? <PurchasesInventoryScreen view={view} state={state} onSave={onSave} onDelete={onDelete} onAllocateLot={onAllocateLot} /> : null}

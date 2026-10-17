@@ -2,7 +2,6 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import express, { Request, Response } from "express";
-import cors from "cors";
 import { randomUUID } from "crypto";
 import { pool, testDbConnection } from "./db";
 import { bestBuyRouter } from "./routes/bestbuy.routes";
@@ -18,8 +17,11 @@ import { storesRouter } from "./routes/stores.routes";
 import { vaultRouter } from "./routes/vault.routes";
 import { authRouter } from "./routes/auth.routes";
 import { createProtectedCors } from "./security/corsPolicy";
+import { createLegacyApiBoundary } from "./security/legacyApiBoundary";
 import { code3Router } from "./routes/code3.routes";
 import { providerConnectionsRouter } from "./routes/providerConnections.routes";
+import { createPrivateFilesRouter } from "./routes/privateFiles.routes";
+import { createOwnerSessionsRouter } from "./routes/ownerSessions.routes";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -28,15 +30,17 @@ const protectedCors = createProtectedCors();
 // The provider route authenticates before parsing a deliberately tiny JSON body.
 // Legacy APIs retain their existing larger parser until they are separately hardened.
 app.use("/api/account-ops/provider-connections", protectedCors, providerConnectionsRouter);
+// Private file routes authenticate before their bounded raw-body parser. Storage
+// remains explicitly unavailable until a reviewed private store is supplied.
+app.use("/api/code3/private-files", protectedCors, createPrivateFilesRouter());
+app.use("/api/code3/owner-sessions", protectedCors, createOwnerSessionsRouter());
 
+// Authenticate legacy private reads and mutations before their parser or handlers run.
+app.use(createLegacyApiBoundary());
 app.use(express.json({ limit: "10mb" }));
 app.use("/api/auth", protectedCors, authRouter);
 app.use("/api/ebay", protectedCors, ebayRouter);
 app.use("/api/code3", protectedCors, code3Router);
-
-// Legacy routes retain their existing behavior until they are migrated behind
-// the owner boundary. Protected Code 3 routes are mounted before this policy.
-app.use(cors());
 
 app.get("/api/health", (_req: Request, res: Response) => {
   res.json({

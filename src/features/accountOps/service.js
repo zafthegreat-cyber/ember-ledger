@@ -50,12 +50,38 @@ function normalizedNow(now) {
 }
 
 export function createAccountOpsService(options = {}) {
+  const persistence = createAccountOpsPersistence(options);
+  const raw = createAccountOpsServiceInsideOperation({ ...options, repository: persistence.repository });
+  if (!persistence.repository.transact) return raw;
+  return Object.freeze(Object.fromEntries(Object.entries(raw).map(([name, value]) => [name,
+    typeof value === "function" && ACCOUNT_OPS_MUTATION_NAMES.includes(name)
+      ? (...args) => persistence.repository.transact((scoped) => createAccountOpsServiceInsideOperation({ ...options, repository: scoped })[name](...args))
+      : value,
+  ])));
+}
+
+export const ACCOUNT_OPS_MUTATION_NAMES = Object.freeze([
+  "createProfileGroup", "updateProfileGroup", "archiveProfileGroup", "createProfile", "updateProfile", "archiveProfile",
+  "createEmailDomain", "updateEmailDomain", "confirmCatchAllDomain", "archiveEmailDomain", "createEmailAlias", "saveGeneratedAlias",
+  "updateEmailAlias", "confirmCatchAllReceiving", "disableEmailAlias", "archiveEmailAlias", "createRetailer", "updateRetailer", "archiveRetailer",
+  "createStoreAccount", "updateStoreAccount", "openStoreAccountSignup", "confirmAccountEmailVerified", "confirmAccountPhoneVerified",
+  "confirmCredentialStored", "confirmStoreAccountTested", "confirmStoreAccountReady", "archiveStoreAccount", "createTask", "updateTask",
+  "completeTask", "dismissTask", "archiveTask", "generateAccountHealthTasks", "bulkAssignProfileGroup", "bulkAssignRetailer", "bulkArchive", "bulkCreateTasks",
+]);
+
+function createAccountOpsServiceInsideOperation(options = {}) {
   const now = options.now || (() => new Date().toISOString());
   const randomSource = options.randomSource || globalThis.crypto;
   const persistence = createAccountOpsPersistence(options);
   const { repository, collections } = persistence;
 
-  function loadSnapshot() { return repository.load(); }
+  function loadSnapshot() {
+    const snapshot = repository.load();
+    if (repository.getLastError?.()) {
+      throw new AccountOpsServiceError("LOCAL_READ_FAILED", "Saved Account Ops records could not be read. Existing data has been kept; resolve the storage problem before continuing.");
+    }
+    return snapshot;
+  }
   function listRetailers(listOptions = {}) { return retailerDirectory(loadSnapshot().retailers, listOptions); }
   function getRetailer(retailerId) { return getRetailerById(retailerId, loadSnapshot().retailers); }
   function getRecord(collection, recordId) {

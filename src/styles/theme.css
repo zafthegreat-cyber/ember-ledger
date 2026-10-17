@@ -1,0 +1,126 @@
+/* Code 3 TCG semantic palette. Theme selection remains owned by app preferences. */
+@font-face {
+  font-family: "Code 3 Display";
+  src: url("/assets/fonts/SpaceGrotesk-Variable.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+}
+:root, .app[data-theme] {
+  --font-ui: "Segoe UI Variable Text", "Segoe UI", Inter, Roboto, Arial, sans-serif;
+  --font-display: "Code 3 Display", "Segoe UI Variable Display", "Segoe UI", sans-serif;
+  --font-mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  --app-background: #F5F7FA;
+  --surface-primary: #FFFFFF;
+  --surface-secondary: #EEF2F6;
+  --surface-inset: #E9EEF3;
+  --surface-elevated: #FFFFFF;
+  --text-primary: #202A35;
+  --text-secondary: #5C6878;
+  --text-muted: var(--text-secondary);
+  --action-primary: #0F766E;
+  --action-hover: #0C625C;
+  --on-primary: #FFFFFF;
+  --border-subtle: #DCE3EA;
+  --border-strong: #7B8796;
+  --status-success: #247348;
+  --status-warning: #92590D;
+  --status-danger: #B33636;
+  --status-info: #326987;
+  --focus-ring: var(--action-primary);
+  --shadow-1: 0 1px 2px rgb(16 21 28 / 4%);
+  --shadow-2: 0 4px 16px rgb(16 21 28 / 6%);
+  --shadow-3: 0 8px 28px rgb(16 21 28 / 10%);
+  --shadow-panel: 0 2px 12px rgb(16 21 28 / 5%);
+  color-scheme: light;
+}
+.app[data-theme="dark"], [data-theme="dark"], :root:has(.app[data-theme="dark"]) {
+  --app-background: #10151C;
+  --surface-primary: #1A222D;
+  --surface-secondary: #242F3C;
+  --surface-inset: #121922;
+  --surface-elevated: #273342;
+  --text-primary: #F2F5F9;
+  --text-secondary: #ACB8C8;
+  --action-primary: #67C8BB;
+  --action-hover: #82D5CA;
+  --on-primary: #102C27;
+  --border-subtle: #344253;
+  --border-strong: #7F91A6;
+  --status-success: #81CEA0;
+  --status-warning: #E9BA72;
+  --status-danger: #F09692;
+  --status-info: #8BC3DF;
+  color-scheme: dark;
+}
+/* Compatibility aliases let existing components share this palette. */
+.app[data-theme] {
+  --surface-navigation: var(--app-background);
+  --edge-accent: color-mix(in srgb, var(--action-primary) 38%, var(--border-subtle));
+  --brand-primary: var(--action-primary);
+  --brand-hover: var(--action-hover);
+  --brand-primary-hover: var(--action-hover);
+  --brand-secondary: var(--text-secondary);
+  --selection-background: color-mix(in srgb, var(--action-primary) 9%, var(--surface-primary));
+  --danger-background: color-mix(in srgb, var(--status-danger) 8%, var(--surface-primary));
+}
+html body .app[data-theme] {
+  --et-bg: var(--app-background);
+  --et-bg-2: var(--surface-secondary);
+  --et-surface: var(--surface-primary);
+  --et-surface-2: var(--surface-secondary);
+  --et-surface-3: var(--surface-secondary);
+  --et-card: var(--surface-primary);
+  --et-card-strong: var(--surface-elevated);
+  --et-control-bg: var(--surface-primary);
+  --et-text: var(--text-primary);
+  --et-heading: var(--text-primary);
+  --et-muted: var(--text-secondary);
+  --et-border: var(--border-subtle);
+  --et-border-strong: var(--border-strong);
+  --et-accent: var(--action-primary);
+  --et-accent-2: var(--action-primary);
+  --et-on-accent: var(--on-primary);
+  --et-ember: var(--action-primary);
+  --et-ember-2: var(--action-primary);
+  --et-tide: var(--action-primary);
+  --et-green: var(--status-success);
+  --et-red: var(--status-danger);
+  --et-font-display: var(--font-display);
+  --et-font-ui: var(--font-ui);
+  --et-lock-panel: var(--surface-primary);
+  --et-lock-panel-strong: var(--surface-secondary);
+  --et-lock-text: var(--text-primary);
+  --et-lock-muted: var(--text-secondary);
+  --et-lock-line: var(--border-subtle);
+  --et-lock-line-strong: var(--border-strong);
+  --et-lock-ember: var(--action-primary);
+  --et-lock-tide: var(--action-primary);
+  --et-lock-tide-strong: var(--action-hover);
+  --et-shadow: var(--shadow-1);
+  --et-shadow-light: var(--shadow-2);
+  --et-shadow-dark: var(--shadow-2);
+  --et-shadow-card: var(--shadow-1);
+}
+html body .app[data-theme] .command-board-v4 {
+  --cb-bg: var(--app-background);
+  --cb-stage: var(--app-background);
+  --cb-panel: var(--surface-primary);
+  --cb-panel-raised: var(--surface-secondary);
+  --cb-panel-strong: var(--surface-secondary);
+  --cb-control: var(--surface-primary);
+  --cb-ink: var(--text-primary);
+  --cb-text: var(--text-primary);
+  --cb-muted: var(--text-secondary);
+  --cb-line: var(--border-subtle);
+  --cb-line-strong: var(--border-strong);
+  --cb-line-cool: var(--border-subtle);
+  --cb-teal: var(--action-primary);
+  --cb-orange: var(--action-primary);
+  --cb-orange-2: var(--action-primary);
+  --cb-positive: var(--status-success);
+  --cb-danger: var(--status-danger);
+  --cb-shadow: var(--shadow-2);
+  --cb-gold: var(--status-warning);
+  --cb-card-shadow: var(--shadow-1);
+}

@@ -115,9 +115,9 @@ match(homeSource, /session\?\.status !== OWNER_SESSION_STATES\.AUTHORIZED/, "Bot
 match(appSource, /items=\{workspaceItems\}/, "Workspace homes should consume shared item records");
 match(appSource, /<CollectionWorkspace[\s\S]*items=\{workspaceItems\}/);
 match(appSource, /<BusinessWorkspace[\s\S]*items=\{workspaceItems\}/);
-match(collectionWorkspaceSource, /useEffect\(\(\) => \{[\s\S]*setView\(initialView\);[\s\S]*setSelected\(null\);[\s\S]*setForm\(null\);[\s\S]*\}, \[initialView\]\);/, "Collection route changes should replace stale detail and form content");
-match(businessWorkspaceSource, /useEffect\(\(\) => \{[\s\S]*setView\(initialView\);[\s\S]*setSelected\(null\);[\s\S]*setForm\(null\);[\s\S]*\}, \[initialView\]\);/, "Business route changes should replace stale detail and form content");
-match(businessWorkspaceSource, /useEffect\(\(\) => \{\s*setMoneyViewState\(initialMoneyView\);\s*\}, \[initialMoneyView\]\);/, "Business Money deep links should synchronize the rendered subview");
+match(collectionWorkspaceSource, /if \(previousView !== initialView\) \{[\s\S]*setPreviousView\(initialView\);[\s\S]*setView\(initialView\);[\s\S]*setSelected\(null\);[\s\S]*setForm\(null\);/, "Collection route changes should replace stale detail and form content");
+match(businessWorkspaceSource, /if \(previousView !== initialView\) \{[\s\S]*setPreviousView\(initialView\);[\s\S]*setView\(initialView\);[\s\S]*setSelected\(null\);[\s\S]*setForm\(null\);/, "Business route changes should replace stale detail and form content");
+match(businessWorkspaceSource, /if \(previousMoneyView !== initialMoneyView\) \{\s*setPreviousMoneyView\(initialMoneyView\);\s*setMoneyViewState\(initialMoneyView\);/, "Business Money deep links should synchronize the rendered subview");
 match(appSource, /updateOwnedItemPurpose\(item, OWNED_ITEM_PURPOSES\.FOR_RESALE/);
 match(appSource, /updateOwnedItemPurpose\(item, OWNED_ITEM_PURPOSES\.PERSONAL_COLLECTION/);
 doesNotMatch(homeSource, /localStorage|sessionStorage|indexedDB/i, "Workspace homes must not create a parallel record store");

@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   getStores,
   createStore,
   updateStore,
-  deleteStore,
+
   getReports,
   createReport,
   updateReport,
@@ -20,7 +20,7 @@ import OverflowMenu from "../components/OverflowMenu";
 import ScoutTileMap from "../components/ScoutTileMap";
 import { AppNavIcon, CommandBoardSection, CommandBoardV4, CommandMetricGrid } from "../components/command-system";
 import { getStoreGroup, normalizeStoreGroup, STORE_GROUP_ORDER } from "../utils/storeGroupingUtils";
-import { dedupeStoresByChainAddress, flagStoreImportIssues, normalizeImportedStore, normalizeStateLabel, normalizeVirginiaRegion, parseStoreCsv } from "../utils/storeImportUtils";
+import { dedupeStoresByChainAddress, normalizeImportedStore, normalizeStateLabel, normalizeVirginiaRegion } from "../utils/storeImportUtils";
 import { storeMatchesSearch, sortStores } from "../utils/storeSearchUtils";
 import {
   COMMUNITY_MOTTO_COPY,
@@ -39,7 +39,7 @@ import { safeReadBrowserJson, sanitizeScoutLocalData } from "../utils/betaDataCl
 import { DEFAULT_VIRGINIA_REGION, POKEMON_STOCK_LIKELIHOOD_OPTIONS, VIRGINIA_REGIONS, VIRGINIA_RETAILERS, VIRGINIA_STORE_STATE } from "../data/storeGroups";
 import { VIRGINIA_STORES_SEED, VIRGINIA_STORE_SEED_STATUS, loadVirginiaStoresSeed } from "../data/virginiaStoresSeed";
 import { BEST_BUY_ALERT_TYPES, BEST_BUY_NIGHTLY_DEFAULTS, BEST_BUY_STOCK_STATUSES } from "../data/bestBuyStockSeed";
-import { SCOUT_CONFIDENCE_LEVELS, SCOUT_HISTORICAL_INTEL_SEED, SCOUT_SOURCE_TYPES, SCOUT_STORE_ALIASES, SCOUT_VISIBILITY_COPY, SCOUT_VISIBILITY_LEVELS, buildScoutRestockPatterns } from "../data/scoutRestockIntelSeed";
+import { SCOUT_CONFIDENCE_LEVELS, SCOUT_HISTORICAL_INTEL_SEED, SCOUT_SOURCE_TYPES, SCOUT_STORE_ALIASES, SCOUT_VISIBILITY_COPY, buildScoutRestockPatterns } from "../data/scoutRestockIntelSeed";
 import { DROP_RADAR_GUESS_LOCKED_MESSAGE, MIN_SCOUT_POINTS_FOR_GUESS, canSubmitScoutGuess, getScoutPoints, shouldUseDropRadarSeed } from "../utils/dropRadarUtils.mjs";
 import {
   cacheBestBuyStockResult,
@@ -57,16 +57,6 @@ const SCOUT_STORAGE_KEY = "et-tcg-beta-scout";
 const AUTO_OPEN_DROP_WEBSITE_STORAGE_KEY = "autoOpenDropWebsite";
 const LOCAL_SCOUT_USER_ID = "local-beta-scout";
 
-const TIDEPOOL_REPORT_TYPES = [
-  "Restock sighting",
-  "Product sighting",
-  "Nothing in stock",
-  "Store limit update",
-  "Price/deal sighting",
-  "Online drop alert",
-  "Store condition/update",
-  "General tip",
-];
 
 const TIDEPOOL_FILTERS = [
   "Latest",
@@ -302,41 +292,7 @@ function getDropWebsiteUrl(drop = {}) {
   return "https://www.bestbuy.com/";
 }
 
-function makeTidepoolReport(overrides = {}) {
-  const now = new Date().toISOString();
-  const hasPhoto = Boolean(overrides.photoUrl);
-  const verificationStatus = overrides.verificationStatus || "pending";
-  return {
-    reportId: overrides.reportId || makeScoutId("tidepool"),
-    userId: overrides.userId || LOCAL_SCOUT_USER_ID,
-    displayName: overrides.displayName || "Verified Scout",
-    anonymous: Boolean(overrides.anonymous),
-    storeId: overrides.storeId || "",
-    storeName: overrides.storeName || "Online / Unknown store",
-    catalogItemId: overrides.catalogItemId || "",
-    productName: overrides.productName || "",
-    reportType: overrides.reportType || "General tip",
-    reportText: overrides.reportText || "",
-    photoUrl: overrides.photoUrl || "",
-    quantitySeen: overrides.quantitySeen || "",
-    price: overrides.price || "",
-    purchaseLimit: overrides.purchaseLimit || "",
-    reportTime: overrides.reportTime || now,
-    city: overrides.city || "",
-    state: overrides.state || "VA",
-    zip: overrides.zip || "",
-    distanceMiles: overrides.distanceMiles || "",
-    verificationStatus,
-    confidenceScore: overrides.confidenceScore ?? (verificationStatus === "verified" ? 82 : hasPhoto ? 70 : 48),
-    verifiedByCount: overrides.verifiedByCount || 0,
-    disputedByCount: overrides.disputedByCount || 0,
-    helpfulVotes: overrides.helpfulVotes || 0,
-    sourceType: overrides.sourceType || (hasPhoto ? "photo" : "user"),
-    favoriteStore: Boolean(overrides.favoriteStore),
-    watchlistItem: Boolean(overrides.watchlistItem),
-    lastUpdated: overrides.lastUpdated || now,
-  };
-}
+
 
 function makeTidepoolEvent(overrides = {}) {
   const now = new Date().toISOString();
@@ -405,6 +361,41 @@ function getReportRetailer(store = {}) {
 function readScoutLocalStorage(fallback = {}) {
   if (typeof localStorage === "undefined") return sanitizeScoutLocalData(fallback);
   return sanitizeScoutLocalData(safeReadBrowserJson(localStorage, SCOUT_STORAGE_KEY, fallback));
+}
+
+function readScoutStoreEnvelope() {
+  const raw = localStorage.getItem(SCOUT_STORAGE_KEY);
+  const saved = raw === null ? {} : JSON.parse(raw);
+  if (!saved || typeof saved !== "object" || Array.isArray(saved)
+    || (saved.stores !== undefined && (!Array.isArray(saved.stores)
+      || saved.stores.some((store) => !store || typeof store !== "object" || Array.isArray(store))))) {
+    throw new Error("The saved store directory could not be read.");
+  }
+  return saved;
+}
+
+function normalizeStoreDetailRecord(store) {
+  const record = normalizeImportedStore(store);
+  const active = store.active ?? store.isActive ?? store.is_active;
+  return {
+    ...record,
+    ...(active !== undefined ? { active, isActive: active } : {}),
+    ...(store.reviewStatus !== undefined ? { reviewStatus: store.reviewStatus } : {}),
+    ...(store.review_status !== undefined ? { review_status: store.review_status } : {}),
+  };
+}
+
+function resolveScoutStoreRecord(storeId, stores, detailRecords, adminMode) {
+  const id = String(storeId || "");
+  if (!id) return undefined;
+  const candidates = [...stores, ...detailRecords.map((entry) => entry.record)];
+  const exact = candidates.find((store) => String(store.id) === id);
+  const caseMatches = exact ? [] : candidates.filter((store) => String(store.id).toLowerCase() === id.toLowerCase());
+  const matchedIds = new Set(caseMatches.map((store) => String(store.id)));
+  const record = exact || (matchedIds.size === 1 ? caseMatches[0] : undefined);
+  const source = record && detailRecords.find((entry) => String(entry.record.id) === String(record.id));
+  return record && isStoreActiveForViewer(record, { admin: adminMode })
+    && (!source || isStoreActiveForViewer(source.record, { admin: adminMode })) ? record : undefined;
 }
 
 function normalizeReportRetailer(value = "") {
@@ -916,19 +907,6 @@ const styles = {
   },
 };
 
-function StatusBadge({ value }) {
-  const found = value === "Found";
-  return (
-    <span
-      style={{
-        ...styles.badge,
-        ...(found ? styles.badgeFound : styles.badgeNeutral),
-      }}
-    >
-      {value || "Unknown"}
-    </span>
-  );
-}
 
 function Metric({ label, value }) {
   return (
@@ -1257,6 +1235,18 @@ function addAdminReviewDisclosure(record = {}, disclosedAt = new Date().toISOStr
   };
 }
 
+function isUserOwnedScoutReport(report = {}) {
+    const owner = String(report.userId || report.user_id || report.reportedBy || report.reported_by || "");
+    return !owner || owner.includes(LOCAL_SCOUT_USER_ID) || owner.includes("Zena") || owner.includes("Local Scout") || BETA_LOCAL_SCOUT;
+  }
+
+function canViewerSeeScoutReport(report = {}, adminMode = false) {
+    if (!isScoutVisibilityPrivateFromUsers(report)) return true;
+    if (isUserOwnedScoutReport(report)) return true;
+    if (adminMode && hasAdminReviewDisclosure(report)) return true;
+    return false;
+  }
+
 export default function Scout({
   targetSubTab = { tab: "overview", id: 0 },
   compact = false,
@@ -1269,11 +1259,16 @@ export default function Scout({
   openBeaconCenter = null,
   openCompassSearch = null,
   onQuickReport = null,
+  onReturnToReport = null,
   onOpenFlipScout = null,
 }) {
   const [stores, setStores] = useState([]);
+  // A deduped directory can omit a saved record ID that still owns reports and sightings.
+  const [storeDetailRecords, setStoreDetailRecords] = useState([]);
   const [scoutSubTab, setScoutSubTab] = useState("overview");
-  const [selectedStoreId, setSelectedStoreId] = useState("");
+  const [selectedStoreTargetId, setSelectedStoreId] = useState("");
+  const selectedStore = resolveScoutStoreRecord(selectedStoreTargetId, stores, storeDetailRecords, adminMode);
+  const selectedStoreId = selectedStore?.id || selectedStoreTargetId;
   const [selectedMapStoreId, setSelectedMapStoreId] = useState("");
   const [scoutOverviewView, setScoutOverviewView] = useState("map");
   const [selectedState, setSelectedState] = useState(VIRGINIA_STORE_STATE);
@@ -1290,11 +1285,8 @@ export default function Scout({
   const [storePage, setStorePage] = useState(1);
   const [storeDirectoryView, setStoreDirectoryView] = useState("landing");
   const [storeMoreFiltersOpen, setStoreMoreFiltersOpen] = useState(false);
-  const [storeImportText, setStoreImportText] = useState("");
-  const [storeImportPreview, setStoreImportPreview] = useState([]);
-  const [openStoreGroups, setOpenStoreGroups] = useState(() =>
-    Object.fromEntries(STORE_GROUP_ORDER.map((group) => [group, true]))
-  );
+
+
   const [reports, setReports] = useState([]);
   const [allReports, setAllReports] = useState([]);
   const [showAllRestockHistory, setShowAllRestockHistory] = useState(false);
@@ -1319,17 +1311,7 @@ export default function Scout({
   const scoutGuessPoints = getScoutPoints(scoutProfile);
   const canSubmitLegacyScoutGuess = canSubmitScoutGuess({ scoutPoints: scoutGuessPoints });
   const [alertSettings, setAlertSettings] = useState(createDefaultAlertSettings);
-  const [tidepoolForm, setTidepoolForm] = useState({
-    displayName: "Local Scout",
-    anonymous: false,
-    reportType: "Restock sighting",
-    reportText: "",
-    productName: "",
-    quantitySeen: "",
-    price: "",
-    purchaseLimit: "",
-    photoUrl: "",
-  });
+
   const [eventForm, setEventForm] = useState({
     eventTitle: "",
     eventType: "Kid-friendly Pokemon meetup",
@@ -1402,7 +1384,7 @@ export default function Scout({
   const [intelImportText, setIntelImportText] = useState("");
   const [intelImportPreview, setIntelImportPreview] = useState([]);
   const [restockIntel, setRestockIntel] = useState([]);
-  const [restockPatterns, setRestockPatterns] = useState([]);
+  const [, setRestockPatterns] = useState([]);
   const hasAutoOpenedDropRef = useRef(false);
 
   const [storeForm, setStoreForm] = useState(createBlankStoreForm);
@@ -1413,90 +1395,27 @@ export default function Scout({
   const targetSubTabProductId = typeof targetSubTab === "string" ? "" : targetSubTab?.productId || "";
   const targetSubTabProductSnapshot = typeof targetSubTab === "string" ? null : targetSubTab?.productSnapshot || null;
   const targetSubTabReportId = typeof targetSubTab === "string" ? "" : targetSubTab?.reportId || "";
-  const handledTargetSubTabRef = useRef("");
+  const targetSubTabStoreId = typeof targetSubTab === "string" ? "" : targetSubTab?.storeId || "";
+  const [handledTargetSubTab, setHandledTargetSubTab] = useState({ token: "", reportPending: false });
 
-  useEffect(() => {
-    if (!targetSubTabKey) return;
-    const targetToken = [
-      targetSubTabKey,
-      targetSubTabId,
-      targetSubTabAction,
-      targetSubTabProductId,
-      targetSubTabProductName,
-      targetSubTabReportId,
-    ].join("|");
-    if (handledTargetSubTabRef.current === targetToken) return;
 
-    const nextSubTab = targetSubTabKey === "whatDidISee" ? "reports" : targetSubTabKey;
-    setScoutSubTab(nextSubTab);
-
-    if (targetSubTabKey === "reports" && targetSubTabAction === "editReport") {
-      const saved = BETA_LOCAL_SCOUT ? readScoutLocalStorage() : {};
-      const report = [...(allReports || []), ...(saved.reports || [])].find((entry) => String(entry.id || entry.reportId || entry.report_id || "") === String(targetSubTabReportId));
-      if (report) {
-        setSelectedStoreId(report.storeId || report.store_id || selectedStoreId);
-        startEditingReport(report);
-        handledTargetSubTabRef.current = targetToken;
-      }
-      return;
-    }
-
-    if (targetSubTabKey === "stores") {
-      setStoreDirectoryView("landing");
-    }
-    if (targetSubTabKey === "stores" && targetSubTabAction === "missingStore") {
-      setMissingStoreModalOpen(true);
-    }
-    if ((targetSubTabKey === "reports" || targetSubTabKey === "whatDidISee") && targetSubTabAction === "productSighting") {
-      const seededItem = makeBlankReportItem({
-        productId: targetSubTabProductId,
-        productName: targetSubTabProductName,
-        catalogProductSnapshot: targetSubTabProductSnapshot,
-        manualItemEntry: !targetSubTabProductId,
-      });
-      setReportForm((current) => ({
-        ...current,
-        reportType: "Product Sighting / What Did I See",
-        itemName: targetSubTabProductName || current.itemName,
-        catalogProductId: targetSubTabProductId,
-        catalogProductSnapshot: targetSubTabProductSnapshot,
-        manualItemEntry: !targetSubTabProductId,
-        itemsSeen: [seededItem],
-      }));
-      if (targetSubTabProductName) setReportProductSearch(targetSubTabProductName);
-    }
-    if (targetSubTabKey === "reports" && targetSubTabAction === "storeCorrection") {
-      setReportForm((current) => ({ ...current, reportType: "Store Correction" }));
-    }
-    if (targetSubTabKey === "reports" && targetSubTabAction === "addGuess") {
-      if (!canSubmitLegacyScoutGuess) {
-        setError(`${DROP_RADAR_GUESS_LOCKED_MESSAGE} Current Scout points: ${scoutGuessPoints}/${MIN_SCOUT_POINTS_FOR_GUESS}.`);
-        handledTargetSubTabRef.current = targetToken;
-        return;
-      }
-      setReportInputMethod("Manual");
-      setReportForm((current) => ({
-        ...current,
-        reportType: "Restock Pattern Suggestion",
-        sourceType: "manual_prediction",
-        confidence: "guess",
-        visibility: "private",
-        stockStatus: current.stockStatus || "unknown",
-      }));
-    }
-    if (targetSubTabKey === "reports" && targetSubTabAction === "importIntel") {
-      setReportInputMethod("Import Intel");
-    }
-    handledTargetSubTabRef.current = targetToken;
-  }, [targetSubTabKey, targetSubTabId, targetSubTabAction, targetSubTabProductName, targetSubTabProductId, targetSubTabProductSnapshot, targetSubTabReportId, allReports, canSubmitLegacyScoutGuess, scoutGuessPoints]);
-
-  useEffect(() => {
+  const storeFilterKey = JSON.stringify([selectedState, selectedChain, selectedRegion, selectedCity, selectedStoreType, selectedCounty, selectedConfidence, storeQuickFilter, storeSearch, storeSort]);
+  const [previousStoreFilterKey, setPreviousStoreFilterKey] = useState(storeFilterKey);
+  if (previousStoreFilterKey !== storeFilterKey) {
+    setPreviousStoreFilterKey(storeFilterKey);
     setStorePage(1);
-  }, [selectedState, selectedChain, selectedRegion, selectedCity, selectedStoreType, selectedCounty, selectedConfidence, storeQuickFilter, storeSearch, storeSort]);
+  }
+
+  const [scoutNow, setScoutNow] = useState(Date.now);
+  useEffect(() => {
+    const interval = window.setInterval(() => setScoutNow(Date.now()), 60_000);
+    return () => window.clearInterval(interval);
+  }, []);
 
   const [editStoreForm, setEditStoreForm] = useState(createBlankStoreForm);
+  const [editStoreSource, setEditStoreSource] = useState(selectedStore);
 
-  const [reportForm, setReportForm] = useState({
+  const [reportForm, setReportForm] = useState(() => ({
     reportType: "Store Restock Report",
     itemName: "",
     quantitySeen: "",
@@ -1525,7 +1444,7 @@ export default function Scout({
     catalogProductSnapshot: null,
     manualItemEntry: false,
     itemsSeen: [makeBlankReportItem()],
-  });
+  }));
   const [reportProductSearch, setReportProductSearch] = useState("");
   const [reportProductSearchCloseSignal, setReportProductSearchCloseSignal] = useState(0);
   const [reportInputMethod, setReportInputMethod] = useState("Manual");
@@ -1661,7 +1580,7 @@ export default function Scout({
       return;
     }
 
-    const store = stores.find((candidate) => candidate.id === activeStoreId) || {};
+    const store = findStoreRecord(activeStoreId) || {};
     const now = new Date();
     const reportDate = now.toISOString().slice(0, 10);
     const reportTime = now.toTimeString().slice(0, 5);
@@ -1778,9 +1697,18 @@ export default function Scout({
 
   async function loadStores() {
     if (BETA_LOCAL_SCOUT) {
-      const saved = readScoutLocalStorage();
       const statewideSeedStores = await loadVirginiaStoresSeed().catch(() => STATEWIDE_SEED_STORES);
-      const savedStores = dedupeStoresByChainAddress(saved.stores?.length ? [...statewideSeedStores, ...saved.stores] : statewideSeedStores)
+      let storageError = null;
+      let envelope = {};
+      try { envelope = readScoutStoreEnvelope(); } catch (error) { storageError = error; }
+      const saved = sanitizeScoutLocalData(envelope);
+      const sourceStores = [...statewideSeedStores, ...(saved.stores || [])];
+      const detailRecords = new Map();
+      sourceStores.forEach((store, index) => {
+        const record = normalizeStoreDetailRecord(store);
+        detailRecords.set(String(record.id), { record, saved: index >= statewideSeedStores.length });
+      });
+      const savedStores = dedupeStoresByChainAddress(sourceStores)
         .map((store) => normalizeImportedStore(store));
       const savedReports = saved.reports || [];
       const savedTidepoolReports = saved.tidepoolReports || [];
@@ -1795,11 +1723,12 @@ export default function Scout({
       const savedAlertSettings = { ...createDefaultAlertSettings(), ...(saved.alertSettings || {}) };
       const savedRestockIntel = saved.restockIntel?.length ? saved.restockIntel : shouldUseDropRadarSeed(saved) ? SCOUT_HISTORICAL_INTEL_SEED : [];
       const savedRestockPatterns = saved.restockPatterns?.length ? saved.restockPatterns : buildScoutRestockPatterns(savedRestockIntel);
-      if (!saved.stores?.length) {
+      try {
+      if (!storageError && !saved.stores?.length) {
         localStorage.setItem(
           SCOUT_STORAGE_KEY,
           JSON.stringify({
-            ...saved,
+            ...envelope,
             stores: savedStores,
             reports: savedReports,
             tidepoolReports: savedTidepoolReports,
@@ -1819,17 +1748,19 @@ export default function Scout({
             routes: saved.routes || [],
           })
         );
-      } else if (shouldUseDropRadarSeed(saved) && (!saved.restockIntel?.length || !saved.restockPatterns?.length)) {
+      } else if (!storageError && shouldUseDropRadarSeed(saved) && (!saved.restockIntel?.length || !saved.restockPatterns?.length)) {
         localStorage.setItem(
           SCOUT_STORAGE_KEY,
           JSON.stringify({
-            ...saved,
+            ...envelope,
             restockIntel: savedRestockIntel,
             restockPatterns: savedRestockPatterns,
             storeAliases: saved.storeAliases?.length ? saved.storeAliases : SCOUT_STORE_ALIASES,
           })
         );
       }
+      } catch (error) { storageError = error; }
+      setStoreDetailRecords([...detailRecords.values()]);
       setStores(savedStores);
       setAllReports(savedReports);
       setTidepoolReports(savedTidepoolReports);
@@ -1845,7 +1776,7 @@ export default function Scout({
       setRestockIntel(savedRestockIntel);
       setRestockPatterns(savedRestockPatterns);
       setRoutes(saved.routes || []);
-      setError("");
+      setError(storageError ? "Saved Scout data could not be loaded or updated. Existing data was left unchanged; the public store directory is still available." : "");
       setLoading(false);
 
       return;
@@ -1912,7 +1843,9 @@ export default function Scout({
     return () => window.removeEventListener("keydown", handleScoutEscape);
   }, [deleteReportTarget, selectedReportTarget]);
 
-  const selectedStore = stores.find((s) => s.id === selectedStoreId);
+  function findStoreRecord(storeId) {
+    return resolveScoutStoreRecord(storeId, stores, storeDetailRecords, adminMode);
+  }
 
   function renderStoreExpansionBadges(store = {}, options = {}) {
     const normalized = normalizeStoreExpansionFields(store);
@@ -2031,7 +1964,7 @@ export default function Scout({
     const itemName = report.itemName || report.item_name || report.manualItemName || "";
     const itemsSeen = normalizeReportItemsForForm(report);
     const reportStoreId = getReportStoreId(report);
-    const reportStore = stores.find((store) => String(store.id) === String(reportStoreId));
+    const reportStore = findStoreRecord(reportStoreId);
     if (reportStoreId) setSelectedStoreId(reportStoreId);
     setReportRetailer(normalizeReportRetailer(getReportRetailer(reportStore || report)));
     setReportStoreSearch("");
@@ -2073,25 +2006,8 @@ export default function Scout({
     setReportProductSearch(itemName || itemsSeen[0]?.productName || "");
   }
 
-  function selectReportCatalogProduct(suggestion) {
-    selectReportCatalogProductForItem(0, suggestion);
-  }
 
-  function updateReportProductSearch(value) {
-    setReportProductSearch(value);
-    updateReportItem(0, {
-      productName: value,
-      productId: "",
-      catalogProductSnapshot: null,
-      manualItemEntry: true,
-    });
-  }
 
-  function clearReportCatalogProduct() {
-    updateReportItem(0, makeBlankReportItem());
-    setReportProductSearch("");
-    setReportProductSearchCloseSignal((value) => value + 1);
-  }
 
   function enableManualReportItem() {
     updateReportItem(0, {
@@ -2206,6 +2122,39 @@ function saveLocalScout(next) {
   localStorage.setItem(SCOUT_STORAGE_KEY, JSON.stringify({ ...saved, ...next }));
 }
 
+function saveStoreDetailPatch(storeId, makePatch) {
+  try {
+    const listed = stores.find((store) => String(store.id) === String(storeId));
+    const source = storeDetailRecords.find((entry) => String(entry.record.id) === String(storeId))
+      || (listed ? { record: listed, saved: true } : null);
+    if (!source || !isStoreActiveForViewer(source.record, { admin: adminMode })) throw new Error("This store is unavailable.");
+    const saved = readScoutStoreEnvelope();
+    const savedStores = saved.stores || [];
+    const matches = savedStores.filter((store) => String(normalizeImportedStore(store).id) === String(storeId));
+    if (matches.length > 1) throw new Error("This store has duplicate saved IDs. Review the directory before saving.");
+    if (!matches.length && source.saved) throw new Error("This saved store was removed. Reload the directory before saving.");
+    const current = matches[0] || source.record;
+    if (!isStoreActiveForViewer(current, { admin: adminMode })) throw new Error("This store is unavailable.");
+    const nextRecord = { ...current, ...makePatch(current) };
+    for (const key of ["id", "storeId", "store_id"]) {
+      if (Object.prototype.hasOwnProperty.call(current, key)) nextRecord[key] = current[key];
+    }
+    const nextStores = matches.length
+      ? savedStores.map((store) => store === current ? nextRecord : store)
+      : [...savedStores, nextRecord];
+    saveLocalScout({ ...saved, stores: nextStores });
+    const record = normalizeStoreDetailRecord(nextRecord);
+    setStoreDetailRecords((records) => records.some((entry) => String(entry.record.id) === String(storeId))
+      ? records.map((entry) => String(entry.record.id) === String(storeId) ? { record, saved: true } : entry)
+      : [...records, { record, saved: true }]);
+    setStores((records) => records.map((store) => String(store.id) === String(storeId) ? record : store));
+    return true;
+  } catch (error) {
+    setError(`Store changes were not saved. ${error.message || "Please try again."}`);
+    return false;
+  }
+}
+
 function submitSharedDataSuggestion(input, setMessage) {
   const disclosedAt = new Date().toISOString();
   const result = submitSuggestion({
@@ -2227,20 +2176,7 @@ function submitSharedDataSuggestion(input, setMessage) {
   return result.suggestion;
 }
 
-function previewStatewideStoreImport() {
-  const rows = parseStoreCsv(storeImportText).map((row) => normalizeImportedStore(row, { state: VIRGINIA_STORE_STATE, source: "manual-csv" }));
-  setStoreImportPreview(rows);
-}
 
-function confirmStatewideStoreImport() {
-  if (!storeImportPreview.length) return;
-  const saved = readScoutLocalStorage();
-  const nextStores = dedupeStoresByChainAddress([...(saved.stores || stores), ...storeImportPreview]);
-  saveLocalScout({ stores: nextStores });
-  setStores(nextStores);
-  setStoreImportPreview([]);
-  setStoreImportText("");
-}
 
 function submitMissingStoreForReview(event) {
   event.preventDefault();
@@ -2382,7 +2318,7 @@ async function syncBestBuyStock(mode = "search") {
       : await searchBestBuyProductsApi(bestBuyForm.query || "pokemon tcg");
     pulled = extractBestBuyApiRows(payload);
     liveSourceUsed = pulled.some((item) => item.sourceStatus === "live" || item.sourceType === "bestbuy_api");
-  } catch (error) {
+  } catch {
     pulled = [];
   }
 
@@ -2468,9 +2404,6 @@ function generateBestBuyNightlyReportNow() {
   setBestBuyMessage(delivery.message);
 }
 
-function updateTidepoolForm(field, value) {
-  setTidepoolForm((current) => ({ ...current, [field]: value }));
-}
 
 function updateEventForm(field, value) {
   setEventForm((current) => ({ ...current, [field]: value }));
@@ -2576,61 +2509,6 @@ function adminSetTidepoolEventStatus(eventId, eventStatus, verificationStatus = 
   }));
 }
 
-function submitTidepoolReport(event) {
-  event.preventDefault();
-  if (scoutProfile.cooldownUntil && new Date(scoutProfile.cooldownUntil) > new Date()) {
-    setError("Reporting is paused until your cooldown ends.");
-    return;
-  }
-  if (!tidepoolForm.reportText.trim()) {
-    setError("Add report details before submitting to Tidepool.");
-    return;
-  }
-
-  const selected = selectedStore || {};
-  const report = makeTidepoolReport({
-    userId: LOCAL_SCOUT_USER_ID,
-    displayName: tidepoolForm.anonymous ? "Anonymous Scout" : tidepoolForm.displayName || scoutProfile.displayName,
-    anonymous: tidepoolForm.anonymous,
-    storeId: selected.id || "",
-    storeName: selected.name || "Online / Unknown store",
-    productName: tidepoolForm.productName,
-    reportType: tidepoolForm.reportType,
-    reportText: tidepoolForm.reportText,
-    photoUrl: tidepoolForm.photoUrl,
-    quantitySeen: tidepoolForm.quantitySeen,
-    price: tidepoolForm.price,
-    purchaseLimit: tidepoolForm.purchaseLimit,
-    city: selected.city || "",
-    state: selected.state || "VA",
-    zip: selected.zip || "",
-    verificationStatus: "pending",
-    confidenceScore: tidepoolForm.photoUrl ? 68 : Math.max(30, Math.min(95, scoutProfile.trustScore - 10)),
-    sourceType: tidepoolForm.photoUrl ? "photo" : "user",
-  });
-  const nextReports = [report, ...tidepoolReports];
-  const nextProfile = {
-    ...scoutProfile,
-    displayName: tidepoolForm.displayName || scoutProfile.displayName,
-    reportStreak: Number(scoutProfile.reportStreak || 0) + 1,
-    rewardPoints: Number(scoutProfile.rewardPoints || 0) + 2,
-    lastReportDate: new Date().toISOString(),
-  };
-  saveTidepoolReports(nextReports);
-  saveScoutProfile(nextProfile);
-  setTidepoolForm({
-    displayName: nextProfile.displayName,
-    anonymous: false,
-    reportType: "Restock sighting",
-    reportText: "",
-    productName: "",
-    quantitySeen: "",
-    price: "",
-    purchaseLimit: "",
-    photoUrl: "",
-  });
-  setError("");
-}
 
 function updateTidepoolReport(reportId, updater) {
   const nextReports = tidepoolReports.map((report) =>
@@ -2697,14 +2575,6 @@ function adminSetTidepoolStatus(reportId, verificationStatus) {
   }));
 }
 
-function toggleRouteStore(storeId) {
-  setRouteForm((current) => {
-    const selected = current.selectedStoreIds.includes(storeId)
-      ? current.selectedStoreIds.filter((id) => id !== storeId)
-      : [...current.selectedStoreIds, storeId];
-    return { ...current, selectedStoreIds: selected };
-  });
-}
 
 function updateRouteForm(field, value) {
   setRouteForm((current) => ({ ...current, [field]: value }));
@@ -2854,21 +2724,9 @@ function routeMapUrl(route) {
     .join("/")}`;
 }
 
-function openInForge(item) {
-  const forgeBaseUrl = window.location.origin || "/";
-
-  const params = new URLSearchParams({
-    productName: item.name || "",
-    store: selectedStore?.name || "",
-    barcode: item.upc || "",
-    sku: item.sku || "",
-    productUrl: item.productUrl || "",
-    productType: item.category || "",
-  });
-
-  window.open(`${forgeBaseUrl}?${params.toString()}`, "_blank");
-}
-  useEffect(() => {
+  // The draft follows a newly selected saved record, not every render.
+  if (editStoreSource !== selectedStore) {
+    setEditStoreSource(selectedStore);
     if (selectedStore) {
       const normalizedSelectedStore = normalizeStoreExpansionFields(selectedStore);
       setEditStoreForm({
@@ -2915,7 +2773,8 @@ function openInForge(item) {
         notes: normalizedSelectedStore.notes || "",
       });
     }
-  }, [selectedStore]);
+
+  }
 
 function buildStorePayloadFromForm(form = {}, overrides = {}) {
   const retailer = normalizeImportedStore({
@@ -3047,16 +2906,14 @@ async function handleUpdateStore(e) {
       updatedAt: new Date().toISOString(),
       userEdited: true,
     }));
-    const nextStores = stores.map((store) => String(store.id) === String(selectedStoreId) ? { ...store, ...submittedData } : store);
-    saveLocalScout({ stores: nextStores });
-    setStores(nextStores);
+    if (!saveStoreDetailPatch(selectedStoreId, () => submittedData)) return;
     setIsEditingStore(false);
     setError("Store metadata updated locally for admin review.");
     return;
   }
 
   if (!adminMode) {
-    const currentStore = stores.find((store) => String(store.id) === String(selectedStoreId));
+    const currentStore = findStoreRecord(selectedStoreId);
     const submittedData = normalizeStoreGroup(buildStorePayloadFromForm({
       ...(currentStore || {}),
       ...editStoreForm,
@@ -3147,7 +3004,7 @@ async function handleUpdateStore(e) {
     const reportedAt = reportForm.reportTimeManuallyEdited
       ? reportForm.reportedAt || `${reportDate}T${reportTime}:00`
       : nowParts.iso;
-    const storeForPayload = stores.find((store) => String(store.id) === String(activeStoreId)) || {};
+    const storeForPayload = findStoreRecord(activeStoreId) || {};
     const visibilityForPayload = reportForm.visibility || "public";
     const adminOnlyReport = reportForm.visibility === "admin_only";
     const evidence = [
@@ -3306,150 +3163,6 @@ async function handleUpdateStore(e) {
     }
   }
 
-  function handleSaveScreenshotTip(event) {
-    event.preventDefault();
-    const activeStoreId = selectedStoreId;
-
-    if (!activeStoreId) {
-      setError("Select or create a store before saving a screenshot.");
-      return;
-    }
-
-    if (!tipImport.screenshotPreview) {
-      setError("Upload a screenshot before saving.");
-      return;
-    }
-
-    if (!tipImport.productName && !tipImport.notes) {
-      setError("Add a product name or notes before saving a screenshot.");
-      return;
-    }
-
-    const saved = readScoutLocalStorage();
-    const reportDate = tipImport.reportDate || new Date().toISOString().slice(0, 10);
-    const nowParts = getScoutReportNowParts();
-    const reportTime = tipImport.reportTime || nowParts.time;
-    const screenshotLocalId = tipImport.keepScreenshot ? makeScoutId("screenshot") : "";
-    const screenshotItemsSeen = tipImport.productName
-      ? [
-          makeBlankReportItem({
-            productName: tipImport.productName,
-            productType: tipImport.productCategory || "Sealed product",
-            quantity: tipImport.quantitySeen,
-            price: tipImport.price,
-            note: tipImport.limitInfo ? `Limit: ${tipImport.limitInfo}` : "",
-            manualItemEntry: true,
-          }),
-        ]
-      : [];
-    const newReport = {
-      id: makeScoutId("report"),
-      storeId: activeStoreId,
-      itemName: tipImport.productName || "",
-      productName: tipImport.productName || "",
-      productCategory: tipImport.productCategory || "Pokemon",
-      note: [
-        tipImport.notes,
-        tipImport.quantitySeen ? `Seen: ${tipImport.quantitySeen}` : "",
-        tipImport.quantityRemaining ? `Remaining: ${tipImport.quantityRemaining}` : "",
-        tipImport.limitInfo ? `Limit: ${tipImport.limitInfo}` : "",
-      ]
-        .filter(Boolean)
-        .join(" | "),
-      reportDate,
-      reportTime,
-      reportedAt: `${reportDate}T${reportTime}:00`,
-      reported_at: `${reportDate}T${reportTime}:00`,
-      submittedAt: nowParts.iso,
-      submitted_at: nowParts.iso,
-      timezone: nowParts.timezone,
-      dayOfWeek: dayName(reportDate),
-      reportedBy: "Screenshot",
-      verified: tipImport.verified,
-      verificationStatus: tipImport.verified ? "verified" : "needs_review",
-      reportType: "facebook_screenshot",
-      report_type: "facebook_screenshot",
-      sourceFormat: "facebook_screenshot",
-      source_format: "facebook_screenshot",
-      sourceName: tipImport.sourceName,
-      source_name: tipImport.sourceName,
-      sourceType: "text_screenshot",
-      source_type: "text_screenshot",
-      confidence: tipImport.verified ? "confirmed" : "likely",
-      visibility: "private",
-      adminReviewVisible: true,
-      admin_review_visible: true,
-      adminVisibilityDisclosedAt: nowParts.iso,
-      admin_visibility_disclosed_at: nowParts.iso,
-      stockStatus: tipImport.stockStatus,
-      stock_status: tipImport.stockStatus,
-      quantitySeen: tipImport.quantitySeen,
-      quantity_seen: tipImport.quantitySeen,
-      itemsSeen: screenshotItemsSeen,
-      items_seen: screenshotItemsSeen,
-      aiDetectedItems: [],
-      ai_detected_items: [],
-      needsReview: !tipImport.productName || !tipImport.verified,
-      needs_review: !tipImport.productName || !tipImport.verified,
-      quantityRemaining: tipImport.quantityRemaining,
-      quantity_remaining: tipImport.quantityRemaining,
-      limitInfo: tipImport.limitInfo,
-      limit_info: tipImport.limitInfo,
-      extractionConfidence: tipImport.extractionConfidence,
-      extraction_confidence: tipImport.extractionConfidence,
-      userVerifiedExtraction: true,
-      user_verified_extraction: true,
-      originalText: "",
-      original_text: "",
-      extractedJson: {
-        betaMode: true,
-        aiExtractionConfigured: false,
-        source: "manual_review",
-      },
-      extracted_json: {
-        betaMode: true,
-        aiExtractionConfigured: false,
-        source: "manual_review",
-      },
-      createdFromScreenshot: true,
-      created_from_screenshot: true,
-      screenshotLocalId,
-      screenshot_local_id: screenshotLocalId,
-      imageUrl: tipImport.keepScreenshot ? tipImport.screenshotPreview : "",
-      photoUrls: tipImport.keepScreenshot && tipImport.screenshotPreview ? [tipImport.screenshotPreview] : [],
-      photo_urls: tipImport.keepScreenshot && tipImport.screenshotPreview ? [tipImport.screenshotPreview] : [],
-      rawProductText: tipImport.productName || tipImport.notes || "",
-      raw_product_text: tipImport.productName || tipImport.notes || "",
-      matchedProducts: [],
-      matched_products: [],
-      needsCatalogReview: Boolean(tipImport.productName),
-      needs_catalog_review: Boolean(tipImport.productName),
-      evidence: [{
-        type: "screenshot",
-        url: tipImport.keepScreenshot ? tipImport.screenshotPreview : "",
-        transcript: tipImport.notes,
-        submittedBy: "user",
-        private: true,
-        adminReviewVisible: true,
-      }],
-      createdAt: new Date().toISOString(),
-    };
-
-    const nextReports = [newReport, ...(saved.reports || [])];
-    const nextStores = (saved.stores || stores).map((store) =>
-      store.id === activeStoreId
-        ? { ...store, status: tipImport.stockStatus === "sold_out" ? "Sold Out" : "Found", lastRestock: reportDate }
-        : store
-    );
-
-    saveLocalScout({ stores: nextStores, reports: nextReports });
-    setStores(nextStores);
-    setAllReports(nextReports);
-    setSelectedStoreId(activeStoreId);
-    setReports(nextReports.filter((report) => getReportStoreId(report) === activeStoreId));
-    resetTipImport();
-    setError("");
-  }
 
   function applyScreenshotTipToReportForm() {
     const noteParts = [
@@ -3646,31 +3359,6 @@ async function handleUpdateStore(e) {
     }
   }
 
-  async function handleDeleteStore(storeId) {
-    if (BETA_LOCAL_SCOUT) {
-      const saved = readScoutLocalStorage();
-      const nextStores = (saved.stores || []).filter((store) => store.id !== storeId);
-      const nextReports = (saved.reports || []).filter((report) => report.storeId !== storeId);
-      const nextItems = (saved.items || []).filter((item) => item.storeId !== storeId);
-      saveLocalScout({ stores: nextStores, reports: nextReports, items: nextItems });
-      setStores(nextStores);
-      setAllReports(nextReports);
-      setSelectedStoreId(nextStores[0]?.id || "");
-      setReports([]);
-      setItems([]);
-      return;
-    }
-
-    try {
-      await deleteStore(storeId);
-      setSelectedStoreId("");
-      setReports([]);
-      setItems([]);
-      await loadStores();
-    } catch (err) {
-      setError(err.message || "Failed to delete store");
-    }
-  }
 
   async function handleMarkItemInStock(itemId) {
     if (!selectedStoreId) return;
@@ -3730,10 +3418,6 @@ async function handleUpdateStore(e) {
     }
   }
 
-  const chainOptions = useMemo(() => {
-    const chains = Array.from(new Set([...VIRGINIA_RETAILERS, ...stores.map((s) => s.chain || s.retailer).filter(Boolean)]));
-    return ["All", ...chains.sort()];
-  }, [stores]);
 
   const retailerCards = useMemo(() => {
     const preferredRetailers = [
@@ -3795,15 +3479,7 @@ async function handleUpdateStore(e) {
     return ["All", ...cities.sort()];
   }, [stores]);
 
-  const countyOptions = useMemo(() => {
-    const counties = Array.from(new Set(stores.map((s) => s.county).filter(Boolean)));
-    return ["All", ...counties.sort()];
-  }, [stores]);
 
-  const confidenceOptions = useMemo(() => {
-    const confidence = Array.from(new Set(stores.map((s) => s.pokemonStockLikelihood || s.pokemon_stock_likelihood || s.pokemonConfidence).filter(Boolean)));
-    return ["All", ...confidence.sort()];
-  }, [stores]);
 
   const storeTypeOptions = useMemo(() => {
     const types = Array.from(new Set([
@@ -3814,7 +3490,7 @@ async function handleUpdateStore(e) {
   }, [stores]);
 
   const filteredStores = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = new Date(scoutNow).toISOString().slice(0, 10);
     return sortStores(stores.filter((store) => {
       const normalizedStore = normalizeStoreExpansionFields(store);
       const storeType = normalizedStore.locationType || "";
@@ -3845,41 +3521,11 @@ async function handleUpdateStore(e) {
         (storeQuickFilter === "strictLimits" && normalizedStore.strictLimits);
       return matchesSearch && matchesState && matchesChain && matchesRegion && matchesCity && matchesType && matchesCounty && matchesConfidence && matchesExpansion && quickMatch;
     }), storeSort);
-  }, [stores, selectedState, selectedChain, selectedRegion, selectedCity, selectedStoreType, selectedCounty, selectedConfidence, storeFamilyFilter, storeQuickFilter, storeSearch, storeSort, adminMode]);
+  }, [stores, selectedState, selectedChain, selectedRegion, selectedCity, selectedStoreType, selectedCounty, selectedConfidence, storeFamilyFilter, storeQuickFilter, storeSearch, storeSort, adminMode, scoutNow]);
 
-  const groupedFilteredStores = useMemo(() => {
-    const groups = filteredStores.reduce((acc, store) => {
-      const group = getStoreGroup(store);
-      acc[group] = [...(acc[group] || []), store];
-      return acc;
-    }, {});
-
-    return STORE_GROUP_ORDER
-      .map((group) => ({
-        group,
-        stores: sortStores(groups[group] || [], storeSort),
-      }))
-      .filter((entry) => entry.stores.length > 0);
-  }, [filteredStores, storeSort]);
 
   const pagedFilteredStores = useMemo(() => getScoutPagedItems(filteredStores, storePage, SCOUT_LIST_PAGE_SIZE), [filteredStores, storePage]);
-  const groupedPagedStores = useMemo(() => {
-    const groups = pagedFilteredStores.items.reduce((acc, store) => {
-      const group = getStoreGroup(store);
-      acc[group] = [...(acc[group] || []), store];
-      return acc;
-    }, {});
-    return STORE_GROUP_ORDER
-      .map((group) => ({
-        group,
-        stores: sortStores(groups[group] || [], storeSort),
-      }))
-      .filter((entry) => entry.stores.length > 0);
-  }, [pagedFilteredStores.items, storeSort]);
 
-  function toggleStoreGroup(group) {
-    setOpenStoreGroups((current) => ({ ...current, [group]: current[group] === false }));
-  }
 
   function openRetailerPage(retailer) {
     setSelectedChain(retailer === "More" ? "All" : retailer);
@@ -3897,14 +3543,14 @@ async function handleUpdateStore(e) {
   }
 
   function openStoreDetail(storeId) {
-    const canonicalStore = stores.find((store) => String(store.id).toLowerCase() === String(storeId).toLowerCase());
+    const canonicalStore = findStoreRecord(storeId);
     setSelectedStoreId(canonicalStore?.id || storeId);
     setStoreDirectoryView("detail");
     setScoutSubTab("stores");
   }
 
   function openStoreReport(storeId, reportType = "Store Restock Report") {
-    const store = stores.find((candidate) => String(candidate.id) === String(storeId));
+    const store = findStoreRecord(storeId);
     if (typeof onQuickReport === "function") {
       onQuickReport({ store, storeId, reportType });
       return;
@@ -3935,25 +3581,28 @@ async function handleUpdateStore(e) {
 
   function toggleStoreFavorite(storeId) {
     if (!storeId) return;
+    if (BETA_LOCAL_SCOUT) {
+      if (saveStoreDetailPatch(storeId, (store) => ({ favorite: !(store.favorite || store.watched), watched: !(store.favorite || store.watched), lastUpdated: new Date().toISOString() }))) {
+        setError("Favorite saved.");
+      }
+      return;
+    }
     const nextStores = stores.map((store) =>
       store.id === storeId
         ? { ...store, favorite: !store.favorite, watched: !store.favorite, lastUpdated: new Date().toISOString() }
         : store
     );
-    if (BETA_LOCAL_SCOUT) {
-      saveLocalScout({ stores: nextStores });
-    }
     setStores(nextStores);
     setError("Favorite saved.");
   }
 
   const visibleAllReports = useMemo(
-    () => allReports.filter((report) => canViewerSeeScoutReport(report)),
+    () => allReports.filter((report) => canViewerSeeScoutReport(report, adminMode)),
     [allReports, adminMode]
   );
 
   const visibleReports = useMemo(
-    () => reports.filter((report) => canViewerSeeScoutReport(report)),
+    () => reports.filter((report) => canViewerSeeScoutReport(report, adminMode)),
     [reports, adminMode]
   );
 
@@ -3985,21 +3634,16 @@ async function handleUpdateStore(e) {
     [stores]
   );
 
-  const reportStoreOptionGroups = useMemo(() => {
-    const groups = stores.filter((store) => isStoreActiveForViewer(store, { admin: adminMode })).reduce((acc, store) => {
-      const retailer = store.chain || store.retailer || getStoreGroup(store) || "Other";
-      const city = store.city || "No city";
-      const label = `${retailer} / ${city}`;
-      acc[label] = [...(acc[label] || []), store];
-      return acc;
-    }, {});
-    return Object.entries(groups)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([label, groupStores]) => ({
-        label,
-        stores: sortStores(groupStores, "nickname"),
-      }));
-  }, [stores, adminMode]);
+
+  const getReportStore = useCallback((report = {}) => {
+    const storeId = getReportStoreId(report);
+    return reportStoreMap[storeId] || {
+      name: report.storeName || report.store_name || "",
+      chain: report.retailer || report.chain || "",
+      city: report.city || "",
+      region: report.region || "",
+    };
+  }, [reportStoreMap]);
 
   const reportsByStore = useMemo(() => {
     return visibleAllReports.reduce((acc, report) => {
@@ -4011,7 +3655,7 @@ async function handleUpdateStore(e) {
   }, [visibleAllReports]);
 
   const trustedShopProfiles = useMemo(() => {
-    const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+    const sevenDaysAgo = scoutNow - (7 * 24 * 60 * 60 * 1000);
     return stores
       .filter((store) => isStoreActiveForViewer(store, { admin: adminMode }))
       .map((store) => {
@@ -4070,7 +3714,7 @@ async function handleUpdateStore(e) {
         if (b.recentCount !== a.recentCount) return b.recentCount - a.recentCount;
         return getStoreDisplayName(a.store).localeCompare(getStoreDisplayName(b.store));
       });
-  }, [stores, reportsByStore, adminMode]);
+  }, [stores, reportsByStore, adminMode, scoutNow]);
 
   const topTrustedShopProfiles = useMemo(() => trustedShopProfiles.slice(0, 4), [trustedShopProfiles]);
 
@@ -4153,7 +3797,7 @@ async function handleUpdateStore(e) {
   }, [reportForm.reportType, reportForm.stockStatus, reportForm.sourceType]);
 
   const selectedReportStoreCard = useMemo(() => {
-    const store = stores.find((candidate) => String(candidate.id) === String(selectedStoreId));
+    const store = selectedStore;
     if (!store) return null;
     const storeReports = reportsByStore[store.id] || [];
     return {
@@ -4164,7 +3808,7 @@ async function handleUpdateStore(e) {
       lastReportLabel: getStoreLastReportLabel(storeReports),
       restockWindow: getStoreRestockWindow(store),
     };
-  }, [stores, selectedStoreId, reportsByStore, reportForm.lat, reportForm.lng, reportZip]);
+  }, [selectedStore, reportsByStore, reportForm.lat, reportForm.lng, reportZip]);
 
   const reportReviewItems = useMemo(() => (
     normalizeReportItemsForForm(reportForm).filter((item) => (
@@ -4172,27 +3816,11 @@ async function handleUpdateStore(e) {
     ))
   ), [reportForm]);
 
-  function isUserOwnedScoutReport(report = {}) {
-    const owner = String(report.userId || report.user_id || report.reportedBy || report.reported_by || "");
-    return !owner || owner.includes(LOCAL_SCOUT_USER_ID) || owner.includes("Zena") || owner.includes("Local Scout") || BETA_LOCAL_SCOUT;
-  }
 
-  function canViewerSeeScoutReport(report = {}) {
-    if (!isScoutVisibilityPrivateFromUsers(report)) return true;
-    if (isUserOwnedScoutReport(report)) return true;
-    if (adminMode && hasAdminReviewDisclosure(report)) return true;
-    return false;
-  }
 
-  function getReportStore(report = {}) {
-    const storeId = getReportStoreId(report);
-    return reportStoreMap[storeId] || {
-      name: report.storeName || report.store_name || "",
-      chain: report.retailer || report.chain || "",
-      city: report.city || "",
-      region: report.region || "",
-    };
-  }
+
+
+
 
   function renderCompactReportCard(report, options = {}) {
     const store = getReportStore(report);
@@ -4296,7 +3924,7 @@ async function handleUpdateStore(e) {
   }
 
   const dailyLocalReport = useMemo(() => {
-    const today = new Date();
+    const today = new Date(scoutNow);
     const todayName = today.toLocaleDateString(undefined, { weekday: "long" });
 
     return stores
@@ -4352,7 +3980,7 @@ async function handleUpdateStore(e) {
       })
       .sort((a, b) => b.score - a.score)
       .slice(0, 5);
-  }, [stores, reportsByStore]);
+  }, [stores, reportsByStore, scoutNow]);
 
   const routeCandidates = useMemo(() => {
     return stores.map((store) => {
@@ -4370,7 +3998,7 @@ async function handleUpdateStore(e) {
       const recentConfirmed = tidepoolMatches.some((report) => report.verificationStatus === "verified" || report.verifiedByCount > 0);
       const strictLimit = /limit|one per|1 per|strict/i.test(`${store.limitPolicy || ""} ${store.notes || ""}`);
       const distance = numericDistance(store);
-      const reportCountToday = storeReports.filter((report) => getReportDate(report) === new Date().toISOString().slice(0, 10)).length;
+      const reportCountToday = storeReports.filter((report) => getReportDate(report) === new Date(scoutNow).toISOString().slice(0, 10)).length;
       const lastReportTime = latestReport ? `${getReportDate(latestReport)} ${getReportTime(latestReport)}`.trim() : "";
       const valueScore = (recentConfirmed ? 25 : 0) + tidepoolScore + (store.priority || store.favorite ? 12 : 0) - (strictLimit ? 5 : 0);
       return {
@@ -4387,7 +4015,7 @@ async function handleUpdateStore(e) {
         latestReport,
       };
     }).filter(Boolean);
-  }, [stores, reportsByStore, tidepoolReports, dailyLocalReport, routeForm.region]);
+  }, [stores, reportsByStore, tidepoolReports, dailyLocalReport, routeForm.region, scoutNow]);
 
   const suggestedRouteStops = useMemo(() => {
     return buildSuggestedRoute(routeCandidates, {
@@ -4422,7 +4050,7 @@ async function handleUpdateStore(e) {
   const enrichedTidepoolReports = useMemo(() => {
     return tidepoolReports
       .map((report) => {
-        const ageHours = (Date.now() - new Date(report.reportTime || report.lastUpdated || Date.now()).getTime()) / 3600000;
+        const ageHours = (scoutNow - new Date(report.reportTime || report.lastUpdated || scoutNow).getTime()) / 3600000;
         const expired = ageHours > 6 && ["Restock sighting", "Product sighting", "Online drop alert"].includes(report.reportType);
         const status = expired && report.verificationStatus !== "verified" ? "expired" : report.verificationStatus;
         const weightedScore =
@@ -4433,7 +4061,7 @@ async function handleUpdateStore(e) {
         return { ...report, computedStatus: status, weightedScore: Math.max(0, Math.min(100, weightedScore)) };
       })
       .sort((a, b) => new Date(b.reportTime || b.lastUpdated || 0) - new Date(a.reportTime || a.lastUpdated || 0));
-  }, [tidepoolReports]);
+  }, [tidepoolReports, scoutNow]);
 
   const filteredTidepoolReports = useMemo(() => {
     return enrichedTidepoolReports.filter((report) => {
@@ -4450,7 +4078,7 @@ async function handleUpdateStore(e) {
   }, [enrichedTidepoolReports, tidepoolFilter]);
 
   const filteredTidepoolEvents = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = new Date(scoutNow).toISOString().slice(0, 10);
     return tidepoolEvents
       .filter((event) => {
         if (tidepoolEventFilter === "Upcoming") return !event.startDate || event.startDate >= today;
@@ -4465,7 +4093,7 @@ async function handleUpdateStore(e) {
         return true;
       })
       .sort((a, b) => `${a.startDate || ""}T${a.startTime || "00:00"}`.localeCompare(`${b.startDate || ""}T${b.startTime || "00:00"}`));
-  }, [tidepoolEvents, tidepoolEventFilter]);
+  }, [tidepoolEvents, tidepoolEventFilter, scoutNow]);
 
   const tidepoolAlerts = useMemo(() => {
     const reportAlerts = enrichedTidepoolReports
@@ -4502,10 +4130,6 @@ async function handleUpdateStore(e) {
     return { inStock, pickup, needsReview, deadStock };
   }, [bestBuyStockResults, bestBuyStoreStock]);
   const isBestBuyRetailerSelected = /best buy/i.test(selectedChain);
-  const bestBuyRetailerStores = useMemo(
-    () => sortStores(stores.filter((store) => /best buy/i.test(`${store.chain || ""} ${store.name || ""} ${store.retailer || ""}`)), storeSort),
-    [stores, storeSort]
-  );
   const bestBuyLastChecked = bestBuyStockResults[0]?.lastChecked || bestBuyStockHistory[0]?.checkedAt || "Not checked in beta yet";
   const bestBuySourceStatus = bestBuyStockResults[0]?.sourceStatus || bestBuyStockResults[0]?.sourceType || "unavailable";
 
@@ -4690,12 +4314,10 @@ async function handleUpdateStore(e) {
         return String(left.name || "").localeCompare(String(right.name || ""));
       })
       .slice(0, 18);
-  }, [adminMode, scoutOverviewTopProfile, selectedRegion, stores, visibleAllReports, watchedStoreOverviewRows]);
-  useEffect(() => {
-    if (selectedMapStoreId && !scoutOverviewMapRows.some((row) => String(row.id) === String(selectedMapStoreId))) {
-      setSelectedMapStoreId("");
-    }
-  }, [scoutOverviewMapRows, selectedMapStoreId]);
+  }, [adminMode, scoutOverviewTopProfile, selectedRegion, stores, visibleAllReports, watchedStoreOverviewRows, getReportStore]);
+  if (selectedMapStoreId && !scoutOverviewMapRows.some((row) => String(row.id) === String(selectedMapStoreId))) {
+    setSelectedMapStoreId("");
+  }
   const selectedMapStore = scoutOverviewMapRows.find((row) => String(row.id) === String(selectedMapStoreId)) || null;
   const selectedMapStoreCoordinates = selectedMapStore
     ? {
@@ -4708,17 +4330,6 @@ async function handleUpdateStore(e) {
     Number.isFinite(selectedMapStoreCoordinates.lat) &&
     Number.isFinite(selectedMapStoreCoordinates.lng)
   );
-  const scoutOverviewMapMarkers = [
-    { key: "you", label: "You", x: 48, y: 52, tone: "you" },
-    ...scoutOverviewReportRows.map((row, index) => ({
-      key: `report-${row.key}`,
-      label: row.confidenceLabel,
-      x: [28, 68, 62][index] || 42,
-      y: [34, 28, 66][index] || 60,
-      tone: row.confidenceTone,
-    })),
-    ...(scoutOverviewTopProfile ? [{ key: "trusted-shop", label: "Trusted", x: 24, y: 64, tone: "trusted" }] : []),
-  ];
   const scoutOverviewStats = [
     { label: "Current reports", value: visibleAllReports.length, detail: "area-level signals" },
     { label: "Watched stores", value: `${watchedStoreOverviewRows.length}/${watchedStoreSlotLimit}`, detail: "free launch slots" },
@@ -4728,7 +4339,7 @@ async function handleUpdateStore(e) {
   const scoutOverviewEventRows = filteredTidepoolEvents.slice(0, 3).map((event, index) => {
     const eventDate = event.startDate || event.date || "";
     const eventMs = eventDate ? new Date(`${eventDate}T00:00:00`).getTime() : 0;
-    const daysUntil = eventMs ? Math.ceil((eventMs - Date.now()) / 86400000) : null;
+    const daysUntil = eventMs ? Math.ceil((eventMs - scoutNow) / 86400000) : null;
     const urgency = daysUntil !== null && daysUntil <= 2 ? "live" : daysUntil !== null && daysUntil <= 14 ? "soon" : "planned";
     return {
       key: event.eventId || event.id || `scout-event-${index}`,
@@ -4781,6 +4392,78 @@ async function handleUpdateStore(e) {
     { key: "online", icon: "market", label: "Online", title: "Online Drops", detail: "Retailer source checks", ariaLabel: "Online Drops", active: scoutSubTab === "online", action: () => setScoutSubTab("online") },
     { key: "alerts", icon: "bell", label: "Alerts", title: "Watch Alerts", detail: "Store and product alerts", ariaLabel: "Alerts", active: scoutSubTab === "alerts", action: () => setScoutSubTab("alerts") },
   ];
+
+  function applyTargetSubTab() {
+    const nextSubTab = targetSubTabKey === "whatDidISee" ? "reports" : targetSubTabKey;
+    setScoutSubTab(nextSubTab);
+
+    if (targetSubTabKey === "reports" && targetSubTabAction === "editReport") {
+      const report = targetReport;
+      if (report) {
+        setSelectedStoreId(report.storeId || report.store_id || selectedStoreId);
+        startEditingReport(report);
+      }
+      return;
+    }
+
+    if (targetSubTabKey === "stores") {
+      if (targetSubTabStoreId) openStoreDetail(targetSubTabStoreId);
+      else setStoreDirectoryView("landing");
+    }
+    if (targetSubTabKey === "stores" && targetSubTabAction === "missingStore") {
+      setMissingStoreModalOpen(true);
+    }
+    if ((targetSubTabKey === "reports" || targetSubTabKey === "whatDidISee") && targetSubTabAction === "productSighting") {
+      const seededItem = makeBlankReportItem({
+        rowId: `handoff-${targetToken}`,
+        productId: targetSubTabProductId,
+        productName: targetSubTabProductName,
+        catalogProductSnapshot: targetSubTabProductSnapshot,
+        manualItemEntry: !targetSubTabProductId,
+      });
+      setReportForm((current) => ({
+        ...current,
+        reportType: "Product Sighting / What Did I See",
+        itemName: targetSubTabProductName || current.itemName,
+        catalogProductId: targetSubTabProductId,
+        catalogProductSnapshot: targetSubTabProductSnapshot,
+        manualItemEntry: !targetSubTabProductId,
+        itemsSeen: [seededItem],
+      }));
+      if (targetSubTabProductName) setReportProductSearch(targetSubTabProductName);
+    }
+    if (targetSubTabKey === "reports" && targetSubTabAction === "storeCorrection") {
+      setReportForm((current) => ({ ...current, reportType: "Store Correction" }));
+    }
+    if (targetSubTabKey === "reports" && targetSubTabAction === "addGuess") {
+      if (!canSubmitLegacyScoutGuess) {
+        setError(`${DROP_RADAR_GUESS_LOCKED_MESSAGE} Current Scout points: ${scoutGuessPoints}/${MIN_SCOUT_POINTS_FOR_GUESS}.`);
+        return;
+      }
+      setReportInputMethod("Manual");
+      setReportForm((current) => ({
+        ...current,
+        reportType: "Restock Pattern Suggestion",
+        sourceType: "manual_prediction",
+        confidence: "guess",
+        visibility: "private",
+        stockStatus: current.stockStatus || "unknown",
+      }));
+    }
+    if (targetSubTabKey === "reports" && targetSubTabAction === "importIntel") {
+      setReportInputMethod("Import Intel");
+    }
+  }
+  const targetToken = [targetSubTabKey, targetSubTabId, targetSubTabAction, targetSubTabProductId, targetSubTabProductName, targetSubTabReportId, targetSubTabStoreId].join("|");
+  const targetReport = targetSubTabKey === "reports" && targetSubTabAction === "editReport"
+    ? allReports.find((entry) => String(entry.id || entry.reportId || entry.report_id || "") === String(targetSubTabReportId))
+    : null;
+  // Apply a new parent handoff once, before committing the view. Report edits
+  // wait for the existing data loader without resetting an unrelated draft.
+  if (targetSubTabKey && (handledTargetSubTab.token !== targetToken || (handledTargetSubTab.reportPending && targetReport))) {
+    setHandledTargetSubTab({ token: targetToken, reportPending: targetSubTabAction === "editReport" && !targetReport });
+    applyTargetSubTab();
+  }
 
   return (
     <div className={`scout-route-polish ${!compact ? "scout-command-route-v5" : ""}`.trim()}>
@@ -6502,7 +6185,7 @@ async function handleUpdateStore(e) {
         ) : null}
 
         {scoutSubTab === "stores" ? (
-          <div style={styles.col}>
+          <div className={storeDirectoryView === "detail" ? "scout-store-record" : undefined} style={styles.col}>
             {storeDirectoryView === "landing" ? (
               <>
                 <div className="scout-directory-card" style={styles.card}>
@@ -6800,11 +6483,21 @@ async function handleUpdateStore(e) {
               </>
             ) : null}
 
+            {storeDirectoryView === "detail" && !selectedStore ? (
+              <section style={styles.card} role="status">
+                <h2 style={styles.sectionTitle}>{loading ? "Loading store details" : "Store unavailable"}</h2>
+                <p style={styles.empty}>{loading ? "Checking the saved store directory." : "This store is not in the current directory. Browse stores to choose another location."}</p>
+                {onReturnToReport ? <button type="button" style={styles.buttonSoft} onClick={onReturnToReport}>Return to report</button> : null}
+                {!loading ? <button type="button" style={styles.buttonSoft} onClick={backToStoresLanding}>Browse stores</button> : null}
+              </section>
+            ) : null}
+
             {storeDirectoryView === "detail" && selectedStore ? (
               <>
-                <div style={styles.card}>
-                  <p style={styles.tiny}>Scout &gt; Stores &gt; {selectedStore.chain || getStoreGroup(selectedStore)} &gt; {selectedStore.nickname || selectedStore.name}</p>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", gap: "12px", flexWrap: "wrap" }}>
+                <div className="scout-store-record-header" style={styles.card}>
+                  {onReturnToReport ? <button type="button" className="scout-store-action-secondary" style={styles.buttonSoft} onClick={onReturnToReport}>Return to report</button> : null}
+                  <p className="scout-store-record-breadcrumb" style={styles.tiny}>Scout &gt; Stores &gt; {selectedStore.chain || getStoreGroup(selectedStore)} &gt; {selectedStore.nickname || selectedStore.name}</p>
+                  <div className="scout-store-record-heading" style={{ display: "flex", justifyContent: "space-between", alignItems: "start", gap: "12px", flexWrap: "wrap" }}>
                     <div>
                       <h2 style={{ ...styles.sectionTitle, marginBottom: "6px" }}>{selectedStore.nickname || selectedStore.name}</h2>
                       {selectedStore.nickname ? <p style={{ margin: "0 0 6px 0", color: "var(--cmd-muted)" }}>{selectedStore.name}</p> : null}
@@ -6815,7 +6508,7 @@ async function handleUpdateStore(e) {
                     </div>
                     <span style={styles.badge}>{selectedStore.favorite || selectedStore.watched ? "Watching" : "Shared Virginia store"}</span>
                   </div>
-                  <div style={styles.statsRow}>
+                  <div className="scout-store-record-metrics" style={styles.statsRow}>
                     <Metric label="Restock likelihood" value={selectedStore.restockConfidence || (selectedStore.carriesPokemon || selectedStore.carriesPokemonLikely || selectedStore.carriesTCG ? "Likely" : "Unknown")} />
                     <Metric label="Pokemon likelihood" value={selectedStore.pokemonStockLikelihood || selectedStore.pokemon_stock_likelihood || selectedStore.pokemonConfidenceLevel || selectedStore.pokemonConfidence || "Unknown"} />
                     <Metric label="Last restock" value={selectedStore.lastRestock || selectedStore.lastReportedStockDate || selectedStore.lastReportDate || reports[0]?.reportDate || "Unknown"} />
@@ -6832,10 +6525,10 @@ async function handleUpdateStore(e) {
                       {normalizeStoreExpansionFields(selectedStore).agreedToCommunityMotto ? <p>{COMMUNITY_MOTTO_COPY}</p> : null}
                     </div>
                   ) : null}
-                  <div style={styles.row}>
-                    <button type="button" style={styles.buttonPrimary} onClick={() => openStoreReport(selectedStore.id)}>Submit Report</button>
-                    <button type="button" style={styles.buttonSoft} onClick={toggleSelectedStoreFavorite}>{selectedStore.favorite || selectedStore.watched ? "Unwatch" : "Watch / Favorite"}</button>
-                    <button type="button" style={styles.buttonSoft} onClick={() => submitSharedDataSuggestion({
+                  <div className="scout-store-record-actions" style={styles.row}>
+                    <button type="button" className="scout-store-action-primary" style={styles.buttonPrimary} onClick={() => openStoreReport(selectedStore.id)}>Submit Report</button>
+                    <button type="button" className="scout-store-action-secondary" style={styles.buttonSoft} onClick={toggleSelectedStoreFavorite}>{selectedStore.favorite || selectedStore.watched ? "Unwatch" : "Watch / Favorite"}</button>
+                    <button type="button" className="scout-store-action-secondary" style={styles.buttonSoft} onClick={() => submitSharedDataSuggestion({
                       suggestionType: SUGGESTION_TYPES.EDIT_STORE_DETAILS,
                       targetTable: "stores",
                       targetRecordId: selectedStore.id,
@@ -6844,9 +6537,9 @@ async function handleUpdateStore(e) {
                       notes: "Correction requested from Store Detail.",
                     }, setError)}>Suggest Correction</button>
                     {selectedStore.address ? (
-                      <a style={styles.buttonSoft} href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${selectedStore.name} ${selectedStore.address} ${selectedStore.city || ""} ${selectedStore.state || ""}`)}`} target="_blank" rel="noreferrer">Open Directions</a>
+                      <a className="scout-store-action-secondary" style={styles.buttonSoft} href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${selectedStore.name} ${selectedStore.address} ${selectedStore.city || ""} ${selectedStore.state || ""}`)}`} target="_blank" rel="noreferrer">Open Directions</a>
                     ) : null}
-                    <button type="button" style={styles.buttonSoft} onClick={() => {
+                    <button type="button" className="scout-store-action-secondary" style={styles.buttonSoft} onClick={() => {
                       setSelectedStoreId("");
                       setStoreDirectoryView("retailer");
                     }}>Back to Retailer</button>
@@ -6887,7 +6580,7 @@ async function handleUpdateStore(e) {
                           ))}
                         </select>
                         <textarea style={styles.textarea} value={editStoreForm.notes} onChange={(e) => setEditStoreForm((current) => ({ ...current, notes: e.target.value }))} placeholder="Notes" />
-                        <button type="submit" style={styles.buttonPrimary}>Save Store Metadata</button>
+                        <button type="submit" className="scout-store-action-primary" style={styles.buttonPrimary}>Save Store Metadata</button>
                       </form>
                     </details>
                   ) : null}
@@ -6964,36 +6657,36 @@ async function handleUpdateStore(e) {
                   </section>
                 ) : null}
 
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))", gap: "16px" }}>
-                  <div style={styles.card}>
+                <div className="scout-store-record-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))", gap: "16px" }}>
+                  <div className="scout-store-record-section scout-store-record-reports" style={styles.card}>
                     <h2 style={styles.sectionTitle}>Recent Reports</h2>
                     {visibleReports.length === 0 ? (
                       <div style={styles.calloutCard}>
                         <p style={{ ...styles.empty, padding: 0 }}>No store reports yet. Submit a report to help improve Scout predictions.</p>
-                        <button type="button" style={styles.buttonPrimary} onClick={() => openStoreReport(selectedStore.id)}>Submit First Report</button>
+                        <button type="button" className="scout-store-action-primary" style={styles.buttonPrimary} onClick={() => openStoreReport(selectedStore.id)}>Submit First Report</button>
                       </div>
                     ) : (
                       visibleReports.slice(0, 6).map((report) => renderCompactReportCard(report, { compact: true }))
                     )}
                   </div>
 
-                  <div style={styles.card}>
+                  <div className="scout-store-record-section scout-store-record-sightings" style={styles.card}>
                     <h2 style={styles.sectionTitle}>Tracked Products / Sightings</h2>
                     <p style={{ ...styles.empty, paddingTop: 0 }}>Track products seen at this store or add UPC/SKU details.</p>
-                    <div style={styles.row}>
-                      <button type="button" style={styles.buttonPrimary} onClick={() => { resetTrackedItemForm(); setTrackedProductsModalOpen(true); }}>Add Product Sighting</button>
-                      <button type="button" style={styles.buttonSoft} onClick={() => setError("Tracked items are shown below in this beta view.")}>View Tracked Items</button>
+                    <div className="scout-store-record-actions" style={styles.row}>
+                      <button type="button" className="scout-store-action-primary" style={styles.buttonPrimary} onClick={() => { resetTrackedItemForm(); setTrackedProductsModalOpen(true); }}>Add Product Sighting</button>
+                      <button type="button" className="scout-store-action-secondary" style={styles.buttonSoft} onClick={() => setError("Tracked items are shown below in this beta view.")}>View Tracked Items</button>
                     </div>
                     {items.length === 0 ? <p style={styles.empty}>No tracked Scout items yet.</p> : null}
                     {items.slice(0, 5).map((item) => (
                       <div key={item.id} className="scout-tracked-item-card" style={styles.listCard}>
                         <strong>{item.name}</strong>
                         <p style={styles.tiny}>Item #: {item.retailerItemNumber || "Unknown"} | SKU: {item.sku || "Unknown"} | UPC: {item.upc || "Unknown"}</p>
-                        <div style={styles.row}>
+                        <div className="scout-store-record-actions" style={styles.row}>
                           <span style={styles.badge}>{item.status}</span>
-                          <button type="button" onClick={() => handleMarkItemInStock(item.id)} style={styles.buttonSoft}>Mark In Stock</button>
-                          <button type="button" onClick={() => startEditingTrackedItem(item)} style={styles.buttonSoft}>Edit</button>
-                          <button type="button" onClick={() => handleDeleteTrackedItem(item.id)} style={styles.buttonDanger}>Delete</button>
+                          <button type="button" onClick={() => handleMarkItemInStock(item.id)} className="scout-store-action-secondary" style={styles.buttonSoft}>Mark In Stock</button>
+                          <button type="button" onClick={() => startEditingTrackedItem(item)} className="scout-store-action-secondary" style={styles.buttonSoft}>Edit</button>
+                          <button type="button" onClick={() => handleDeleteTrackedItem(item.id)} className="scout-store-action-danger" style={styles.buttonDanger}>Delete</button>
                           <OverflowMenu onEdit={() => startEditingTrackedItem(item)} onDelete={() => handleDeleteTrackedItem(item.id)} />
                         </div>
                       </div>
@@ -7001,17 +6694,17 @@ async function handleUpdateStore(e) {
                   </div>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 240px), 1fr))", gap: "16px" }}>
-                  <div style={styles.card}>
+                <div className="scout-store-record-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 240px), 1fr))", gap: "16px" }}>
+                  <div className="scout-store-record-section scout-store-record-intelligence" style={styles.card}>
                     <h2 style={styles.sectionTitle}>Store Intelligence</h2>
-                    <div style={styles.intelligenceRow}><span>Reported restock days</span><strong>{selectedStore.restockDays || selectedStore.stockDays || "Unknown"}</strong></div>
-                    <div style={styles.intelligenceRow}><span>Common report days</span><strong>{getMostCommon(visibleReports.map((report) => dayName(report.reportDate || report.report_date)))[0] || "Unknown"}</strong></div>
-                    <div style={styles.intelligenceRow}><span>Truck days</span><strong>{selectedStore.truckDays || selectedStore.truckDay || "Unknown"}</strong></div>
-                    <div style={styles.intelligenceRow}><span>Purchase limits</span><strong>{selectedStore.purchaseLimits || selectedStore.limitPolicy || "Unknown"}</strong></div>
-                    <div style={{ ...styles.intelligenceRow, borderBottom: "none" }}><span>Last verified</span><strong>{selectedStore.lastVerifiedDate || selectedStore.lastVerified || "Unknown"}</strong></div>
+                    <div className="scout-store-record-fact" style={styles.intelligenceRow}><span>Reported restock days</span><strong>{selectedStore.restockDays || selectedStore.stockDays || "Unknown"}</strong></div>
+                    <div className="scout-store-record-fact" style={styles.intelligenceRow}><span>Common report days</span><strong>{getMostCommon(visibleReports.map((report) => dayName(report.reportDate || report.report_date)))[0] || "Unknown"}</strong></div>
+                    <div className="scout-store-record-fact" style={styles.intelligenceRow}><span>Truck days</span><strong>{selectedStore.truckDays || selectedStore.truckDay || "Unknown"}</strong></div>
+                    <div className="scout-store-record-fact" style={styles.intelligenceRow}><span>Purchase limits</span><strong>{selectedStore.purchaseLimits || selectedStore.limitPolicy || "Unknown"}</strong></div>
+                    <div className="scout-store-record-fact" style={{ ...styles.intelligenceRow, borderBottom: "none" }}><span>Last verified</span><strong>{selectedStore.lastVerifiedDate || selectedStore.lastVerified || "Unknown"}</strong></div>
                     {selectedStore.stockNotes || selectedStore.userTips || selectedStore.notes ? <p style={styles.tiny}>Notes: {selectedStore.stockNotes || selectedStore.userTips || selectedStore.notes}</p> : null}
-                    <div style={styles.row}>
-                      <button type="button" style={styles.buttonSoft} onClick={() => submitSharedDataSuggestion({
+                    <div className="scout-store-record-actions" style={styles.row}>
+                      <button type="button" className="scout-store-action-secondary" style={styles.buttonSoft} onClick={() => submitSharedDataSuggestion({
                         suggestionType: SUGGESTION_TYPES.SUGGEST_RESTOCK_PATTERN,
                         targetTable: "store_intelligence",
                         targetRecordId: selectedStore.id,
@@ -7019,7 +6712,7 @@ async function handleUpdateStore(e) {
                         currentDataSnapshot: selectedStore,
                         notes: "User suggested restock pattern review.",
                       }, setError)}>Suggest Restock Pattern</button>
-                      <button type="button" style={styles.buttonSoft} onClick={() => submitSharedDataSuggestion({
+                      <button type="button" className="scout-store-action-secondary" style={styles.buttonSoft} onClick={() => submitSharedDataSuggestion({
                         suggestionType: SUGGESTION_TYPES.SUGGEST_PURCHASE_LIMIT,
                         targetTable: "store_intelligence",
                         targetRecordId: selectedStore.id,
@@ -7029,10 +6722,10 @@ async function handleUpdateStore(e) {
                       }, setError)}>Suggest Purchase Limit</button>
                     </div>
                   </div>
-                  <div style={styles.card}>
+                  <div className="scout-store-record-section scout-store-record-corrections" style={styles.card}>
                     <h2 style={styles.sectionTitle}>Corrections</h2>
                     <p style={{ ...styles.empty, paddingTop: 0 }}>Missing info? Suggest edits, flag duplicates, or update store details.</p>
-                    <button type="button" style={styles.buttonSoft} onClick={() => submitSharedDataSuggestion({
+                    <button type="button" className="scout-store-action-secondary" style={styles.buttonSoft} onClick={() => submitSharedDataSuggestion({
                       suggestionType: SUGGESTION_TYPES.EDIT_STORE_DETAILS,
                       targetTable: "stores",
                       targetRecordId: selectedStore.id,
@@ -7040,7 +6733,7 @@ async function handleUpdateStore(e) {
                       currentDataSnapshot: selectedStore,
                       notes: "User suggested a store correction.",
                     }, setError)}>Suggest Correction</button>
-                    <button type="button" style={styles.buttonSoft} onClick={() => submitSharedDataSuggestion({
+                    <button type="button" className="scout-store-action-secondary" style={styles.buttonSoft} onClick={() => submitSharedDataSuggestion({
                       suggestionType: SUGGESTION_TYPES.FLAG_DUPLICATE_STORE,
                       targetTable: "stores",
                       targetRecordId: selectedStore.id,
@@ -7048,7 +6741,7 @@ async function handleUpdateStore(e) {
                       currentDataSnapshot: selectedStore,
                       notes: "User flagged possible duplicate store.",
                     }, setError)}>Flag Duplicate</button>
-                    <button type="button" style={styles.buttonSoft} onClick={() => submitSharedDataSuggestion({
+                    <button type="button" className="scout-store-action-secondary" style={styles.buttonSoft} onClick={() => submitSharedDataSuggestion({
                       suggestionType: SUGGESTION_TYPES.REPORT_CLOSED_STORE,
                       targetTable: "stores",
                       targetRecordId: selectedStore.id,
@@ -7056,7 +6749,7 @@ async function handleUpdateStore(e) {
                       currentDataSnapshot: selectedStore,
                       notes: "User reported this store may be closed.",
                     }, setError)}>Report Closed Store</button>
-                    <button type="button" style={styles.buttonSoft} onClick={() => submitSharedDataSuggestion({
+                    <button type="button" className="scout-store-action-secondary" style={styles.buttonSoft} onClick={() => submitSharedDataSuggestion({
                       suggestionType: SUGGESTION_TYPES.SUGGEST_POKEMON_STOCK_LIKELIHOOD,
                       targetTable: "stores",
                       targetRecordId: selectedStore.id,
@@ -7070,7 +6763,7 @@ async function handleUpdateStore(e) {
                   </div>
                 </div>
 
-                <div style={styles.card}>
+                <div className="scout-store-record-section scout-store-record-history" style={styles.card}>
                   <h2 style={styles.sectionTitle}>Store History</h2>
                   {visibleReports.length === 0 ? <p style={styles.empty}>No history yet. Reports, corrections, and restock confirmations will appear here.</p> : null}
                   {visibleReports.slice(0, 8).map((report) => renderCompactReportCard(report, { compact: true }))}

@@ -25,7 +25,7 @@ for (const section of ["bots", "task-groups", "tasks", "accounts", "profiles", "
 }
 
 matches(page, /OWNER_SESSION_STATES\.AUTHORIZED/, "the page derives authorization from the verified session contract");
-matches(page, /if \(!authorized\)[\s\S]*setService\(null\)[\s\S]*return/, "Bot storage stays unloaded before authorization");
+matches(page, /if \(!authorized\) return undefined;[\s\S]*createBotOpsService\(\)/, "Bot storage stays unloaded before authorization");
 matches(page, /createBotOpsService\(/, "authorized Bot Operations reuses the domain service");
 matches(page, /Overview[\s\S]*Bots[\s\S]*Task Groups[\s\S]*Tasks[\s\S]*Accounts[\s\S]*Profiles[\s\S]*Proxies[\s\S]*Activity/, "the approved workflow sections are represented");
 matches(page, /Hayha[\s\S]*Stellar/, "registered provider foundations are visible");

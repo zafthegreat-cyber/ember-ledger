@@ -12,7 +12,7 @@ for (const state of ["loading", "sign-in", "required", "authorized"]) {
   has(page, new RegExp(`data-owner-gate="${state}"`), `owner gate exposes ${state} state`);
 }
 has(page, /session\.status === OWNER_SESSION_STATES\.AUTHORIZED/, "owner authorization is derived from canonical session state");
-has(page, /if \(!authorized\)[\s\S]*setService\(null\)[\s\S]*setSnapshot\(EMPTY_SNAPSHOT\)/, "downgrade clears service and protected state before rendering");
+has(page, /<PurchaseReceivingPageContent key=\{lifetime\}[\s\S]*if \(!authorized\) return \{\};/, "downgrade clears service and protected state before rendering");
 has(page, /createPurchaseReceivingService\(\{ isOwnerAuthorized:/, "service receives a fresh owner-authority callback");
 has(page, /data-owner-gate="required"[\s\S]*No Purchase records were loaded/, "unauthorized UI states disclose no purchase records");
 

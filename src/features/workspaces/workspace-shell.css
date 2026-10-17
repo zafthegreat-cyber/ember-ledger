@@ -10,9 +10,9 @@
   align-items: center;
   gap: 8px;
   padding: 5px 10px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 10px;
-  background: var(--surface-primary);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
   color: var(--text-primary);
   list-style: none;
   cursor: pointer;
@@ -37,6 +37,8 @@
   font-size: 14px;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-family: var(--font-display);
+  font-weight: 600;
 }
 
 .code3-workspace-switcher__chevron { color: var(--text-muted); }
@@ -61,7 +63,8 @@
   padding: 7px 9px 5px;
   color: var(--text-muted);
   font-size: 11px;
-  font-weight: 800;
+  font-family: var(--font-mono);
+  font-weight: 500;
   letter-spacing: .04em;
   text-transform: uppercase;
 }

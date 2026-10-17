@@ -1,4 +1,6 @@
 import { canonicalStringify } from "../../backup/canonicalJson.js";
+import { exactMinor, exactSum, returnApplications, returnCorrections, returnMoneyProjection, returnedQuantity, saleNetMinor } from "../../manualLifecycles/returnLedger.js";
+import { validateReturnState } from "../../manualLifecycles/returnSettlement.js";
 import {
   deriveEffectiveInventoryAdjustmentIds,
   isPhysicalInventoryReturnAdjustment,
@@ -184,6 +186,7 @@ function saleDate(sale) {
 }
 
 function saleNetProceedsMinorUnits(sale) {
+  if (returnApplications(sale).length) return saleNetMinor(sale);
   if (Number.isSafeInteger(sale.netProceedsMinorUnits)) return safeInteger(sale.netProceedsMinorUnits, "Sale net proceeds", { signed: true });
   return optionalExactMajorToMinor(sale.netProceeds, "Sale net proceeds");
 }
@@ -191,6 +194,47 @@ function saleNetProceedsMinorUnits(sale) {
 function saleGrossRevenueMinorUnits(sale) {
   if (Number.isSafeInteger(sale.grossSalePriceMinorUnits)) return safeInteger(sale.grossSalePriceMinorUnits, "Sale revenue", { signed: true });
   return optionalExactMajorToMinor(sale.grossSalePrice, "Sale revenue");
+}
+
+function saleReviewProjection(sale, events) {
+  return managedSaleReconciliationProjection(sale.costAuthority === "INTEGER_MINOR_UNITS" ? sale : { ...sale, allocatedCostOfGoodsSoldMinorUnits: exactMinor(sale.allocatedCostOfGoodsSold, "Original sale cost") }, events);
+}
+
+function customerReturnReviewItems(state) {
+  return (state.sales || []).flatMap((sale) => {
+    const inventory = state.inventory.find((item) => item.id === sale.inventoryItemId);
+    const original = returnApplications(sale);
+    const changes = returnCorrections(sale).map((event) => ({ ...event, quantity: Math.abs(event.stockDelta), refundMinor: event.refundDeltaMinor, refundReference: event.after.refundReference, restockedQuantity: event.stockDelta, cogsReversalMinor: event.cogsDeltaMinor, inspection: event.reason, isCorrection: true }));
+    return [...original, ...changes].map((event) => {
+      const period = compareReportingPeriods(saleDate(sale), event.appliedAt);
+      const projection = saleReviewProjection(sale, state.inventoryReconciliationEvents || []);
+      const originalNet = saleNetProceedsMinorUnits(sale);
+      const product = inventory.productReference || inventory.catalogItemId || inventory.id;
+      return {
+        id: `accountant-review:${event.id}`, recordType: "ACCOUNTANT_REVIEW_ITEM", authoritative: false, persisted: false, readOnly: true,
+        sourceKind: event.isCorrection ? "CUSTOMER_RETURN_CORRECTION" : "CUSTOMER_RETURN", category: event.refundMinor ? ACCOUNTANT_REVIEW_CATEGORIES.REFUND_ACCOUNTING_REVIEW : ACCOUNTANT_REVIEW_CATEGORIES.RETURN_ACCOUNTING_REVIEW,
+        severity: period.severity, taxReviewFlag: period.primaryFlag, taxReviewFlags: period.flags, accountantReviewRecommended: true, filingStatus: ACCOUNTANT_REVIEW_FILING_STATUSES.UNKNOWN,
+        originalPeriod: period.original, correctionPeriod: period.correction,
+        periodComparison: { sameDay: period.sameDay, sameMonth: period.sameMonth, sameQuarter: period.sameQuarter, sameYear: period.sameYear, priorPeriodRelevant: period.priorPeriodRelevant },
+        saleId: sale.id, saleDate: saleDate(sale), originalTransactionDate: saleDate(sale), correctionDate: event.appliedAt,
+        reconciliationEventId: event.id, reconciliationCategory: event.isCorrection ? "CUSTOMER_RETURN_CORRECTION" : "CUSTOMER_RETURN_APPLICATION", purchaseId: inventory.purchaseId || null, receivingEventReferences: inventory.receivingEventReferences || [],
+        inventoryItemId: inventory.id, inventoryLotId: inventory.provenanceManaged ? inventory.inventoryLotId : null, lotId: inventory.provenanceManaged ? inventory.inventoryLotId : null,
+        retailer: inventory.vendorName || null, productReference: product, originalProductReference: product, effectiveProductReference: product, productTitle: inventory.productTitle || inventory.name || null,
+        quantity: event.quantity, currency: inventory.currency || "USD", grossRevenueMinorUnits: saleGrossRevenueMinorUnits(sale), netProceedsMinorUnits: originalNet,
+        originalCogsMinorUnits: projection.originalCogsMinorUnits, originalRecordedCogsMinorUnits: projection.originalCogsMinorUnits,
+        reconciliationAdjustmentMinorUnits: -event.cogsReversalMinor, cogsAdjustmentMinorUnits: -event.cogsReversalMinor, reconciliationAdjustment: { minorUnits: -event.cogsReversalMinor, currency: inventory.currency || "USD" },
+        effectiveCogsMinorUnits: projection.effectiveCogsMinorUnits, currentEffectiveCogsMinorUnits: projection.effectiveCogsMinorUnits,
+        originalProfitMinorUnits: originalNet == null ? null : exactSum([originalNet, -projection.originalCogsMinorUnits]),
+        profitAdjustmentMinorUnits: exactSum([event.cogsReversalMinor, -event.refundMinor]),
+        effectiveProfitMinorUnits: projection.effectiveRealizedProfitMinorUnits, currentEffectiveProfitMinorUnits: projection.effectiveRealizedProfitMinorUnits,
+        refundAmountMinorUnits: event.refundMinor, refundReference: event.refundReference, restoredQuantity: event.restockedQuantity,
+        realizedCogsEffectMinorUnits: -event.cogsReversalMinor, remainingInventoryEffectMinorUnits: event.cogsReversalMinor,
+        movementClassification: event.isCorrection ? (event.stockDelta ? "RETURN_STOCK_CORRECTION" : event.refundMinor ? "REFUND_RECORD_CORRECTION" : "RETURN_RECORD_CORRECTION") : event.restockedQuantity ? (event.refundMinor ? "REFUND_AND_RETURN" : "RETURN_ONLY") : "REFUND_ONLY",
+        physicalInventoryMoved: event.restockedQuantity !== 0, reason: event.inspection, warnings: ["MANUAL_REFUND_RECORD_ONLY"], reversalChain: event.isCorrection ? [event.applicationId] : [], reversesReconciliationEventId: event.isCorrection ? event.applicationId : null,
+        returnApplicationId: event.isCorrection ? event.applicationId : event.id, correctionBefore: event.before || null, correctionAfter: event.after || null,
+      };
+    });
+  });
 }
 
 function reviewCategoryFor(event, effect, period) {
@@ -326,7 +370,7 @@ function saleReconciliationItems(reconciliation, state, context) {
         : safeSum([netProceedsMinorUnits, -effect.correctedCogsMinorUnits], "resultingEffectiveProfit");
       const currentEffectiveProfitMinorUnits = netProceedsMinorUnits == null
         ? null
-        : safeSum([netProceedsMinorUnits, -projection.effectiveCogsMinorUnits], "currentEffectiveProfit");
+        : safeSum([netProceedsMinorUnits, -projection.refundMinorUnits, -projection.effectiveCogsMinorUnits], "currentEffectiveProfit");
       const forceReturn = event.category === INVENTORY_RECONCILIATION_CATEGORIES.RETURN_AFTER_SALE_RECONCILIATION
         || RETURN_CORRECTION_CATEGORIES.has(event.sourceCorrectionCategory);
       const movementClassification = movementForPurchase(event.purchaseId, context, { forceReturn });
@@ -615,7 +659,7 @@ function buildSaleReviews(items, refs, events) {
   const reviews = [];
   for (const [saleId, related] of bySale) {
     const sale = refs.sales.get(saleId);
-    const projection = managedSaleReconciliationProjection(sale, events);
+    const projection = saleReviewProjection(sale, events);
     const netProceedsMinorUnits = saleNetProceedsMinorUnits(sale);
     const grossRevenueMinorUnits = saleGrossRevenueMinorUnits(sale);
     const chain = chainForSale(saleId, events);
@@ -632,21 +676,25 @@ function buildSaleReviews(items, refs, events) {
       netProceedsMinorUnits,
       originalCogsMinorUnits: projection.originalCogsMinorUnits,
       originalRecordedCogsMinorUnits: projection.originalCogsMinorUnits,
-      reconciliationAdjustmentMinorUnits: projection.cogsAdjustmentMinorUnits,
-      cogsAdjustmentMinorUnits: projection.cogsAdjustmentMinorUnits,
-      reconciliationAdjustment: { minorUnits: projection.cogsAdjustmentMinorUnits, currency: latest.currency },
+      reconciliationAdjustmentMinorUnits: projection.cogsAdjustmentMinorUnits - projection.restoredCogsMinorUnits,
+      cogsAdjustmentMinorUnits: projection.cogsAdjustmentMinorUnits - projection.restoredCogsMinorUnits,
+      reconciliationAdjustment: { minorUnits: projection.cogsAdjustmentMinorUnits - projection.restoredCogsMinorUnits, currency: latest.currency },
+      refundAmountMinorUnits: projection.refundMinorUnits,
+      returnApplicationIds: returnMoneyProjection(sale).applicationIds,
+      returnCorrectionIds: returnMoneyProjection(sale).correctionIds,
+      effectiveNetProceedsMinorUnits: projection.effectiveNetProceedsMinorUnits,
       effectiveCogsMinorUnits: projection.effectiveCogsMinorUnits,
       currentEffectiveCogsMinorUnits: projection.effectiveCogsMinorUnits,
       originalProfitMinorUnits: netProceedsMinorUnits == null
         ? null
         : safeSum([netProceedsMinorUnits, -projection.originalCogsMinorUnits], "Sale original profit"),
-      profitAdjustmentMinorUnits: -projection.cogsAdjustmentMinorUnits,
+      profitAdjustmentMinorUnits: -projection.cogsAdjustmentMinorUnits + projection.restoredCogsMinorUnits - projection.refundMinorUnits,
       effectiveProfitMinorUnits: netProceedsMinorUnits == null
         ? null
-        : safeSum([netProceedsMinorUnits, -projection.effectiveCogsMinorUnits], "Sale effective profit"),
+        : safeSum([netProceedsMinorUnits, -projection.refundMinorUnits, -projection.effectiveCogsMinorUnits], "Sale effective profit"),
       currentEffectiveProfitMinorUnits: netProceedsMinorUnits == null
         ? null
-        : safeSum([netProceedsMinorUnits, -projection.effectiveCogsMinorUnits], "Sale effective profit"),
+        : safeSum([netProceedsMinorUnits, -projection.refundMinorUnits, -projection.effectiveCogsMinorUnits], "Sale effective profit"),
       originalPeriod: related[0].originalPeriod,
       latestCorrectionPeriod: latest.correctionPeriod,
       severity: maxSeverity(related.map((entry) => entry.severity)),
@@ -689,10 +737,12 @@ function buildLotReviews(items, refs, events, adjustments) {
     ));
     const relatedItems = items.filter((item) => item.inventoryLotId === lotId);
     const relatedSales = [...refs.sales.values()].filter((sale) => sale.lotId === lotId || sale.inventoryItemId === lot.inventoryItemId);
-    const soldQuantity = safeSum(relatedSales.map((sale) => safeInteger(Number(sale.quantitySold), "Sale quantity")), "Lot sold quantity");
+    const soldQuantity = safeSum(relatedSales.map((sale) => safeInteger(Number(sale.quantitySold), "Sale quantity") - returnedQuantity(sale)), "Lot sold quantity");
     const costDelta = safeSum(relatedEvents.map((event) => event.costEffectMinorUnits), "Lot cost adjustments");
     const realizedDelta = safeSum(relatedEvents.map((event) => event.saleCogsEffectMinorUnits), "Lot realized COGS adjustments");
     const remainingDelta = safeSum(relatedEvents.map((event) => event.remainingInventoryCostEffectMinorUnits), "Lot remaining cost adjustments");
+    const customerReturnedCost = safeSum(relatedSales.map((sale) => returnMoneyProjection(sale).cogsReversalMinor), "Lot customer-return cost");
+    const customerRefunds = safeSum(relatedSales.map((sale) => returnMoneyProjection(sale).refundMinor), "Lot customer refunds");
     const latestReconciliationDate = relatedEvents
       .map((event) => event.occurredAt)
       .sort((left, right) => Date.parse(left) - Date.parse(right))
@@ -732,8 +782,10 @@ function buildLotReviews(items, refs, events, adjustments) {
       laterInventoryAdjustmentMinorUnits: otherInventoryAdjustmentMinorUnits,
       totalEffectiveAdjustmentMinorUnits,
       effectiveLotCostMinorUnits: lot.acquisitionCostMinorUnits,
-      realizedCogsEffectMinorUnits: realizedDelta,
-      remainingInventoryEffectMinorUnits: remainingDelta,
+      realizedCogsEffectMinorUnits: realizedDelta - customerReturnedCost,
+      remainingInventoryEffectMinorUnits: remainingDelta + customerReturnedCost,
+      customerReturnCogsReversalMinorUnits: customerReturnedCost,
+      customerRefundMinorUnits: customerRefunds,
       originalQuantity: lot.originalQuantity,
       currentQuantity: lot.quantity,
       soldQuantity,
@@ -915,6 +967,7 @@ export function deriveAccountantReviewPreview(input = {}, inputFilters = {}) {
   const unknownInput = Object.keys(input).find((key) => !["inventoryState", "purchaseReceivingState"].includes(key));
   if (unknownInput) throw new AccountantReviewValidationError("UNSUPPORTED_REVIEW_INPUT", `${unknownInput} cannot supply Accountant Review authority.`, { field: unknownInput });
   assertRelevantInventorySecurity(input.inventoryState);
+  validateReturnState(input.inventoryState);
   const reconciliation = validateInventoryReconciliationState(input.inventoryState, { allowIncomplete: true });
   const normalizedPurchaseState = input.purchaseReceivingState == null
     ? null
@@ -925,6 +978,7 @@ export function deriveAccountantReviewPreview(input = {}, inputFilters = {}) {
   const refs = inventoryReferences(reconciliation, input.inventoryState);
   const allItems = deepFreeze([
     ...saleReconciliationItems(reconciliation, input.inventoryState, context),
+    ...customerReturnReviewItems(input.inventoryState),
     ...inventoryAdjustmentReviewItems(reconciliation, context, physicalReturns, inventoryCostCorrections),
     ...purchaseReviewItems(context, reconciliation.bundles),
   ].sort((left, right) => Date.parse(right.correctionDate) - Date.parse(left.correctionDate) || left.id.localeCompare(right.id)));

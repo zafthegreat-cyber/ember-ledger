@@ -417,6 +417,213 @@
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
 }
 
+/* The legacy Sales route shares Forge's header, but not its command-board markup.
+   Keep its complete record workflow readable without changing other Forge pages. */
+html body .app[data-theme]:has(.sales-records-summary-panel) .forge-mockup-header {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+html body .app[data-theme]:has(.sales-records-summary-panel) :is(.forge-sales-context, .forge-mockup-header, .sales-records-summary-panel, .sales-grouped-list, .sales-record-card) {
+  min-width: 0;
+  color: var(--text-primary);
+  font: 400 14px/1.5 var(--font-ui);
+}
+
+html body .app[data-theme]:has(.sales-records-summary-panel) :is(.forge-sales-context, .forge-mockup-header, .sales-records-summary-panel, .sales-grouped-list, .sales-record-card) :is(p, small, label, .compact-subtitle) {
+  max-height: none;
+  overflow: visible;
+  color: var(--text-secondary);
+  font: 400 13px/1.5 var(--font-ui);
+  white-space: normal;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+  -webkit-line-clamp: unset;
+}
+
+html body .app[data-theme]:has(.sales-records-summary-panel) :is(.forge-sales-context, .forge-mockup-header, .sales-records-summary-panel, .sales-grouped-list, .sales-record-card) :is(h1, h2, h3) {
+  margin: 0;
+  color: var(--text-primary);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+html body .app[data-theme]:has(.sales-records-summary-panel) :is(.forge-sales-context, .forge-mockup-header, .sales-records-summary-panel, .sales-grouped-list, .sales-record-card) :is(h2, h3) { font-size: 20px; }
+
+html body .app[data-theme]:has(.sales-records-summary-panel) :is(.forge-sales-context, .forge-mockup-header, .sales-records-summary-panel, .sales-grouped-list, .sales-record-card, .small-empty-state) :is(button, summary, input) {
+  min-width: 44px;
+  min-height: 44px;
+  height: auto;
+  padding: 10px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  color: var(--text-primary);
+  background: var(--surface-primary);
+  box-shadow: none;
+  font: 600 14px/1.4 var(--font-ui);
+  text-align: left;
+  text-shadow: none;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  scroll-margin-block: 84px 116px;
+}
+
+html body .app[data-theme]:has(.sales-records-summary-panel) .forge-sales-context { display: grid; gap: 12px; margin-bottom: 20px; }
+html body .app[data-theme]:has(.sales-records-summary-panel) .forge-sales-overview { border: 1px solid var(--border-subtle); border-radius: 10px; background: var(--surface-primary); }
+html body .app[data-theme]:has(.sales-records-summary-panel) .forge-sales-overview > summary { cursor: pointer; border: 0; }
+html body .app[data-theme]:has(.sales-records-summary-panel) .forge-sales-overview[open] > summary { border-bottom: 1px solid var(--border-subtle); border-radius: 10px 10px 0 0; }
+html body .app[data-theme]:has(.sales-records-summary-panel) .forge-sales-overview .forge-mockup-header { margin-bottom: 0; padding: 14px; }
+
+html body .app[data-theme]:has(.sales-records-summary-panel) .et-mockup-page-hero {
+  min-height: 0;
+  grid-template-columns: minmax(0, 1fr) minmax(200px, 25%);
+  gap: 20px;
+  padding: 20px;
+  border-radius: 12px;
+  color: var(--text-primary);
+  background: var(--surface-primary);
+}
+
+html body .app[data-theme]:has(.sales-records-summary-panel) .et-mockup-page-hero::after { content: none; }
+html body .app[data-theme]:has(.sales-records-summary-panel) .et-mockup-hero-copy { gap: 8px; align-content: start; }
+html body .app[data-theme]:has(.sales-records-summary-panel) .et-mockup-brand-row { color: var(--text-secondary); font-size: 12px; }
+html body .app[data-theme]:has(.sales-records-summary-panel) .et-mockup-brand-row img { width: 24px; height: 24px; }
+html body .app[data-theme]:has(.sales-records-summary-panel) .et-mockup-page-hero h1 { max-width: none; font-size: 26px; }
+html body .app[data-theme]:has(.sales-records-summary-panel) .et-mockup-page-hero p { max-width: 70ch; margin: 0; }
+html body .app[data-theme]:has(.sales-records-summary-panel) .et-mockup-today-action {
+  width: 100%;
+  margin-top: 4px;
+  gap: 4px;
+  border-color: var(--border-strong);
+  color: var(--text-primary) !important;
+  background: var(--surface-secondary) !important;
+}
+html body .app[data-theme]:has(.sales-records-summary-panel) .et-mockup-today-action :is(span, b) { color: var(--action-primary); font-size: 12px; line-height: 1.5; text-transform: none; }
+html body .app[data-theme]:has(.sales-records-summary-panel) .et-mockup-today-action strong { color: var(--text-primary); font-size: 14px; line-height: 1.4; }
+html body .app[data-theme]:has(.sales-records-summary-panel) .et-mockup-hero-status { align-content: center; justify-items: stretch; gap: 12px; }
+html body .app[data-theme]:has(.sales-records-summary-panel) .et-mockup-points-card {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+html body .app[data-theme]:has(.sales-records-summary-panel) .et-mockup-points-card strong { color: var(--text-primary); font: 600 22px/1.3 var(--font-display); }
+html body .app[data-theme]:has(.sales-records-summary-panel) .et-mockup-pill-row { justify-content: start; align-items: center; }
+html body .app[data-theme]:has(.sales-records-summary-panel) :is(.et-mockup-pill, .status-badge) {
+  padding: 5px 8px;
+  color: var(--text-secondary);
+  background: var(--surface-secondary);
+  border: 1px solid var(--border-subtle);
+  font: 600 12px/1.4 var(--font-ui);
+}
+
+html body .app[data-theme]:has(.sales-records-summary-panel) .forge-mockup-navigation {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  background: var(--surface-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  box-shadow: var(--shadow-1);
+}
+html body .app[data-theme]:has(.sales-records-summary-panel) :is(.et-mockup-section-heading, .compact-card-header) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 0;
+}
+html body .app[data-theme]:has(.sales-records-summary-panel) :is(.et-mockup-section-heading, .compact-card-header) > div { min-width: 0; flex: 1 1 240px; gap: 6px; }
+html body .app[data-theme]:has(.sales-records-summary-panel) :is(.et-mockup-section-heading, .compact-card-header) p { margin: 4px 0 0; }
+html body .app[data-theme]:has(.sales-records-summary-panel) .forge-mockup-summary-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+html body .app[data-theme]:has(.sales-records-summary-panel) :is(.et-mockup-stat-card, .sales-summary-grid > div, .sales-record-metrics > div) {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  min-width: 0;
+  min-height: 0;
+  padding: 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--surface-secondary);
+  box-shadow: none;
+}
+html body .app[data-theme]:has(.sales-records-summary-panel) :is(.et-mockup-stat-card, .sales-summary-grid > div, .sales-record-metrics > div) > span { color: var(--text-secondary); font: 500 13px/1.4 var(--font-ui); }
+html body .app[data-theme]:has(.sales-records-summary-panel) :is(.et-mockup-stat-card, .sales-summary-grid > div, .sales-record-metrics > div) > strong {
+  color: var(--text-primary);
+  font: 600 22px/1.3 var(--font-display);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+html body .app[data-theme]:has(.sales-records-summary-panel) .forge-section-tabs {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+html body .app[data-theme]:has(.sales-records-summary-panel) .forge-section-tab { display: grid; align-content: start; gap: 3px; }
+html body .app[data-theme]:has(.sales-records-summary-panel) .forge-section-tab.is-active { color: var(--action-primary); border-color: var(--action-primary); background: var(--selection-background); }
+html body .app[data-theme]:has(.sales-records-summary-panel) .forge-mockup-guardrail-strip { padding-top: 12px; border-top: 1px solid var(--border-subtle); gap: 6px 16px; color: var(--text-secondary); font-size: 12px; }
+
+html body .app[data-theme]:has(.sales-records-summary-panel) :is(.sales-records-summary-panel, .sales-grouped-list, .panel:has(> .sales-record-card), .panel:has(> .small-empty-state)) { display: grid; gap: 20px; padding: 20px; border-radius: 12px; }
+html body .app[data-theme]:has(.sales-records-summary-panel) .sales-records-summary-panel .drawer-inline-actions { display: flex; flex: 0 1 auto; flex-wrap: wrap; gap: 8px; }
+html body .app[data-theme]:has(.sales-records-summary-panel) .sales-records-summary-panel .drawer-inline-actions > button:first-child { color: var(--on-primary); border-color: var(--action-primary); background: var(--action-primary); }
+html body .app[data-theme]:has(.sales-records-summary-panel) .sales-summary-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+html body .app[data-theme]:has(.sales-records-summary-panel) .sales-review-controls { display: grid; gap: 16px; }
+html body .app[data-theme]:has(.sales-records-summary-panel) .sales-view-mode-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; overflow: visible; }
+html body .app[data-theme]:has(.sales-records-summary-panel) .sales-view-mode-grid button { display: grid; gap: 3px; align-content: start; }
+html body .app[data-theme]:has(.sales-records-summary-panel) .sales-view-mode-grid button { color: var(--text-primary) !important; border-color: var(--border-strong) !important; background: var(--surface-primary) !important; }
+html body .app[data-theme]:has(.sales-records-summary-panel) .sales-view-mode-grid button span { color: var(--text-secondary); font: 400 13px/1.4 var(--font-ui); }
+html body .app[data-theme]:has(.sales-records-summary-panel) .sales-view-mode-grid button.active { border-color: var(--action-primary) !important; color: var(--action-primary) !important; background: var(--selection-background) !important; }
+html body .app[data-theme]:has(.sales-records-summary-panel) .sales-date-range-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; }
+html body .app[data-theme]:has(.sales-records-summary-panel) .sales-date-range-controls > label { display: grid; gap: 6px; flex: 1 1 160px; }
+html body .app[data-theme]:has(.sales-records-summary-panel) .sales-date-range-controls input { width: 100%; }
+html body .app[data-theme]:has(.sales-records-summary-panel) .sales-analytics-disclosure summary { cursor: pointer; }
+html body .app[data-theme]:has(.sales-records-summary-panel) .tax-record-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; padding-top: 16px; }
+html body .app[data-theme]:has(.sales-records-summary-panel) .tax-record-card { min-width: 0; padding: 12px; border: 1px solid var(--border-subtle); border-radius: 8px; }
+html body .app[data-theme]:has(.sales-records-summary-panel) .tax-record-card p:has(> strong) { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
+html body .app[data-theme]:has(.sales-records-summary-panel) :is(.sales-group-card, .sales-record-card) { display: grid; gap: 16px; padding: 16px; border: 1px solid var(--border-subtle); border-radius: 10px; background: var(--surface-primary); box-shadow: none; }
+html body .app[data-theme]:has(.sales-records-summary-panel) .sales-group-details { display: grid; gap: 12px; }
+html body .app[data-theme]:has(.sales-records-summary-panel) .sales-record-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+html body .app[data-theme]:has(.sales-records-summary-panel) .sales-group-card > .sales-record-metrics { grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr)); }
+html body .app[data-theme]:has(.sales-records-summary-panel) .sales-record-metrics > div > strong { font-size: 18px; }
+html body .app[data-theme]:has(.sales-records-summary-panel) .sales-group-toggle { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+html body .app[data-theme]:has(.sales-records-summary-panel) .sales-group-toggle > span { display: grid; gap: 4px; }
+html body .app[data-theme]:has(.sales-records-summary-panel) .sales-group-toggle > b { flex: 0 0 auto; color: var(--action-primary); }
+html body .app[data-theme]:has(.sales-records-summary-panel) .sales-record-card { grid-template-columns: minmax(0, 1fr) auto; }
+html body .app[data-theme]:has(.sales-records-summary-panel) .sales-record-card > :not(.sales-receipt-actions):not(.overflow-menu) { grid-column: 1 / -1; }
+html body .app[data-theme]:has(.sales-records-summary-panel) .sales-receipt-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+html body .app[data-theme]:has(.sales-records-summary-panel) .overflow-menu { position: relative; align-self: end; }
+html body .app[data-theme]:has(.sales-records-summary-panel) .overflow-menu-list { position: absolute; right: 0; bottom: calc(100% + 8px); z-index: 30; display: grid; gap: 8px; width: 180px; padding: 8px; border: 1px solid var(--border-subtle); border-radius: 10px; background: var(--surface-elevated); box-shadow: var(--shadow-2); }
+html body .app[data-theme]:has(.sales-records-summary-panel) .small-empty-state { display: grid; justify-items: start; gap: 10px; padding: 20px; color: var(--text-secondary); background: var(--surface-secondary); }
+html body .app[data-theme]:has(.sales-records-summary-panel) .sales-records-summary-panel { margin-bottom: 20px; }
+html body .app[data-theme]:has(.sales-records-summary-panel) .sales-records-summary-panel h1 { font-size: 24px; }
+
+@media (max-width: 1180px) {
+  html body .app[data-theme]:has(.sales-records-summary-panel) .sales-summary-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  html body .app[data-theme]:has(.sales-records-summary-panel) .main { padding-bottom: calc(112px + env(safe-area-inset-bottom)); }
+}
+
+@media (max-width: 640px) {
+  html body .app[data-theme]:has(.sales-records-summary-panel) :is(.forge-mockup-navigation, .sales-records-summary-panel, .sales-grouped-list, .panel:has(> .sales-record-card), .panel:has(> .small-empty-state)) { padding: 14px; gap: 16px; }
+  html body .app[data-theme]:has(.sales-records-summary-panel) .et-mockup-page-hero { grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 14px; }
+  html body .app[data-theme]:has(.sales-records-summary-panel) .et-mockup-page-hero h1 { font-size: 24px; }
+  html body .app[data-theme]:has(.sales-records-summary-panel) .et-mockup-hero-status { gap: 8px; }
+  html body .app[data-theme]:has(.sales-records-summary-panel) :is(.forge-mockup-summary-grid, .forge-section-tabs, .sales-summary-grid, .sales-view-mode-grid, .sales-record-metrics) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html body .app[data-theme]:has(.sales-records-summary-panel) .sales-group-card > .sales-record-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html body .app[data-theme]:has(.sales-records-summary-panel) .sales-summary-grid > div:last-child { grid-column: 1 / -1; }
+  html body .app[data-theme]:has(.sales-records-summary-panel) .sales-records-summary-panel .drawer-inline-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); flex: 1 1 100%; }
+  html body .app[data-theme]:has(.sales-records-summary-panel) .sales-records-summary-panel .drawer-inline-actions > button:first-child { grid-column: 1 / -1; text-align: center; }
+  html body .app[data-theme]:has(.sales-records-summary-panel) .tax-record-grid { grid-template-columns: minmax(0, 1fr); }
+  html body .app[data-theme]:has(.sales-records-summary-panel) :is(.sales-record-card, .sales-group-card) { padding: 12px; gap: 12px; }
+  html body .app[data-theme]:has(.sales-records-summary-panel) :is(.et-mockup-stat-card, .sales-summary-grid > div, .sales-record-metrics > div) { padding: 10px; }
+  html body .app[data-theme]:has(.sales-records-summary-panel) .et-mockup-stat-card > strong { font-size: 18px; }
+}
+
 .spark-mockup-rebuild {
   grid-template-columns: minmax(0, 1fr) minmax(270px, 360px);
 }
@@ -688,3 +895,419 @@
   background: color-mix(in srgb, var(--et-accent) 16%, var(--et-surface)) !important;
 }
 
+/* A persistent, non-blocking warning for protected legacy local data. */
+.app[data-theme] .local-storage-save-warning {
+  margin: 0 0 18px;
+  padding: 16px 18px;
+  border: 1px solid var(--border-subtle);
+  border-inline-start: 4px solid var(--status-warning);
+  border-radius: 8px;
+  background: var(--surface-primary);
+  color: var(--text-primary);
+  font: 400 14px/1.6 var(--font-ui);
+  overflow-wrap: anywhere;
+}
+.app[data-theme] .local-storage-save-warning strong { color: var(--status-warning); }
+.app[data-theme] .local-storage-save-warning p { margin: 4px 0 0; }
+
+/* Full Scout store record: presentation only; directory and overview stay separate. */
+html body .app[data-theme] .scout-store-record {
+  min-width: 0;
+  gap: 18px !important;
+  color: var(--text-primary);
+  line-height: 1.5;
+  --cmd-heading: var(--text-primary);
+  --cmd-muted: var(--text-secondary);
+  --cmd-line: var(--border-subtle);
+}
+html body .app[data-theme] .scout-store-record :is(.scout-store-record-header, .scout-store-record-section) {
+  min-width: 0;
+  padding: clamp(16px, 2vw, 24px) !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: 12px !important;
+  background: var(--surface-primary) !important;
+  box-shadow: var(--shadow-1) !important;
+}
+html body .app[data-theme] .scout-store-record .scout-store-record-breadcrumb {
+  margin: 0 0 16px;
+  color: var(--text-secondary);
+  font: 400 13px/1.6 var(--font-ui) !important;
+  overflow-wrap: anywhere;
+}
+html body .app[data-theme] .scout-store-record .scout-store-record-heading h2 {
+  font-size: clamp(24px, 2.5vw, 32px) !important;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+}
+html body .app[data-theme] .scout-store-record .scout-store-record-heading > span {
+  color: var(--text-secondary) !important;
+  background: var(--surface-secondary) !important;
+  border-color: var(--border-subtle) !important;
+  border-radius: 6px !important;
+  font-size: 13px !important;
+}
+html body .app[data-theme] .scout-store-record .scout-store-record-metrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  margin: 22px 0 18px !important;
+}
+html body .app[data-theme] .scout-store-record .scout-metric-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: 8px;
+  background: var(--surface-secondary) !important;
+  box-shadow: none !important;
+}
+html body .app[data-theme] .scout-store-record .scout-metric-card::before,
+html body .app[data-theme] .scout-store-record .scout-metric-card::after { content: none !important; }
+html body .app[data-theme] .scout-store-record .scout-metric-label {
+  color: var(--text-secondary) !important;
+  font: 500 13px/1.4 var(--font-ui) !important;
+  letter-spacing: 0;
+  text-transform: none;
+}
+html body .app[data-theme] .scout-store-record .scout-metric-value {
+  grid-column: 1;
+  grid-row: auto;
+  justify-self: start;
+  color: var(--text-primary) !important;
+  font: 600 20px/1.3 var(--font-display);
+  overflow-wrap: anywhere;
+}
+html body .app[data-theme] .scout-store-record .scout-store-record-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  align-items: start;
+  gap: 18px !important;
+}
+html body .app[data-theme] .scout-store-record .scout-store-record-section > h2 {
+  margin: 0 0 16px !important;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary) !important;
+  font-size: 19px !important;
+  line-height: 1.4;
+}
+html body .app[data-theme] .scout-store-record :is(.scout-store-record-section > p, .scout-store-record-reports > div > p) {
+  color: var(--text-secondary) !important;
+  font-size: 14px !important;
+  line-height: 1.6;
+}
+html body .app[data-theme] .scout-store-record .scout-store-record-actions {
+  gap: 8px !important;
+  align-items: center;
+}
+html body .app[data-theme] .scout-store-record :is(button, a.scout-store-action-secondary),
+html body .app[data-theme] .scout-route-polish:has(.scout-store-record) :is(.scout-report-detail-sheet, .scout-delete-confirm-sheet) :is(button, summary) {
+  min-height: 44px !important;
+  min-width: 44px;
+  padding: 10px 13px !important;
+  border: 1px solid var(--border-strong) !important;
+  border-radius: 7px !important;
+  background: var(--surface-primary) !important;
+  color: var(--text-primary) !important;
+  font: 600 13px/1.4 var(--font-ui) !important;
+  text-shadow: none !important;
+  box-shadow: none !important;
+  white-space: normal;
+  text-decoration: none;
+}
+html body .app[data-theme] .scout-store-record a.scout-store-action-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+html body .app[data-theme] .scout-store-record button.scout-store-action-primary {
+  background: var(--action-primary) !important;
+  border-color: var(--action-primary) !important;
+  color: var(--on-primary) !important;
+}
+html body .app[data-theme] .scout-store-record button:is(.scout-store-action-danger, .overflow-menu-delete) {
+  background: var(--danger-background) !important;
+  border-color: var(--status-danger) !important;
+  color: var(--status-danger) !important;
+}
+html body .app[data-theme] .scout-route-polish:has(.scout-store-record) :is(.scout-report-detail-sheet, .scout-delete-confirm-sheet) :is(.delete-button, .overflow-menu-delete) {
+  background: var(--danger-background) !important;
+  border-color: var(--status-danger) !important;
+  color: var(--status-danger) !important;
+}
+html body .app[data-theme] .scout-store-record button:hover:not(:disabled) { filter: brightness(0.97); }
+html body .app[data-theme] .scout-store-record .scout-store-record-corrections > button { margin: 0 8px 8px 0; }
+html body .app[data-theme] .scout-store-record .scout-store-record-fact {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  padding: 11px 0 !important;
+  border-color: var(--border-subtle) !important;
+  font-size: 13px;
+}
+html body .app[data-theme] .scout-store-record .scout-store-record-fact span { color: var(--text-secondary); }
+html body .app[data-theme] .scout-store-record .scout-store-record-fact strong { text-align: right; overflow-wrap: anywhere; }
+html body .app[data-theme] .scout-store-record .scout-tracked-item-card {
+  margin: 16px 0 0 !important;
+  padding: 16px !important;
+  background: var(--surface-secondary) !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: 8px !important;
+  overflow-wrap: anywhere;
+}
+html body .app[data-theme] .scout-store-record .scout-tracked-item-card > p {
+  margin: 8px 0 12px;
+  color: var(--text-secondary) !important;
+  font: 400 13px/1.7 var(--font-mono) !important;
+}
+html body .app[data-theme] .scout-store-record .scout-tracked-item-card .scout-store-record-actions > span {
+  border-radius: 6px !important;
+  color: var(--text-secondary) !important;
+  background: var(--surface-primary) !important;
+  font-size: 13px !important;
+}
+html body .app[data-theme] .scout-store-record .scout-store-record-intelligence > p { font-size: 13px !important; }
+html body .app[data-theme] .scout-route-polish:has(.scout-store-record) .scout-page-report-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  margin: 0 0 14px;
+  padding: 16px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--surface-secondary);
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+html body .app[data-theme] .scout-route-polish:has(.scout-store-record) .scout-page-report-card:last-child { margin-bottom: 0; }
+html body .app[data-theme] .scout-route-polish:has(.scout-store-record) .scout-report-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  justify-content: space-between;
+  gap: 10px;
+}
+html body .app[data-theme] .scout-route-polish:has(.scout-store-record) .scout-report-title-row h3 { margin: 0; font-size: 16px; line-height: 1.4; }
+html body .app[data-theme] .scout-route-polish:has(.scout-store-record) .scout-report-title-row p { margin: 4px 0 0; color: var(--text-secondary); font-size: 13px; }
+html body .app[data-theme] .scout-route-polish:has(.scout-store-record) .scout-report-status {
+  padding: 4px 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  background: var(--surface-primary);
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+html body .app[data-theme] .scout-route-polish:has(.scout-store-record) .scout-report-human-summary { display: grid; gap: 4px; margin: 14px 0; font-size: 13px; }
+html body .app[data-theme] .scout-route-polish:has(.scout-store-record) .scout-report-human-summary strong { font-size: 15px; }
+html body .app[data-theme] .scout-route-polish:has(.scout-store-record) .scout-report-meta { display: flex; flex-wrap: wrap; gap: 6px 16px; padding-top: 12px; border-top: 1px solid var(--border-subtle); color: var(--text-secondary); font-size: 13px; line-height: 1.6; }
+html body .app[data-theme] .scout-route-polish:has(.scout-store-record) .scout-signal-badge-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
+html body .app[data-theme] .scout-route-polish:has(.scout-store-record) .scout-signal-badge-row .mini-badge { padding: 4px 8px; border: 1px solid var(--border-subtle); border-radius: 6px; background: var(--surface-primary); color: var(--text-secondary); font-size: 13px; }
+html body .app[data-theme] .scout-route-polish:has(.scout-store-record) .scout-report-items { padding: 12px; border-left: 2px solid var(--action-primary); border-radius: 0 6px 6px 0; background: var(--surface-primary); font-size: 13px; }
+html body .app[data-theme] .scout-route-polish:has(.scout-store-record) .scout-report-items p { margin: 6px 0 0; }
+html body .app[data-theme] .scout-route-polish:has(.scout-store-record) .scout-report-side { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--text-secondary); font-size: 13px; }
+html body .app[data-theme] .scout-route-polish:has(.scout-store-record) .scout-report-side img { width: 72px; height: 72px; object-fit: cover; border-radius: 6px; }
+html body .app[data-theme] .scout-route-polish:has(.scout-store-record) .overflow-menu { position: relative; flex-shrink: 0; }
+html body .app[data-theme] .scout-route-polish:has(.scout-store-record) .overflow-menu-list { position: absolute; z-index: 60; right: 0; bottom: calc(100% + 6px); display: grid; gap: 6px; width: 180px; padding: 8px; border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--surface-elevated); box-shadow: var(--shadow-2); }
+html body .app[data-theme] .scout-route-polish:has(.scout-store-record) .overflow-menu-list button { width: 100%; text-align: left; }
+html body .app[data-theme] .scout-route-polish:has(.scout-store-record) .scout-report-detail-sheet { width: min(720px, calc(100vw - 24px)); max-height: calc(100dvh - 32px); padding: 20px; border: 1px solid var(--border-subtle); border-radius: 12px; background: var(--surface-primary); color: var(--text-primary); overflow-y: auto; }
+html body .app[data-theme] .scout-route-polish:has(.scout-store-record) .scout-report-detail-sheet .modal-title-row { display: flex; align-items: start; justify-content: space-between; gap: 16px; padding-bottom: 16px; }
+html body .app[data-theme] .scout-route-polish:has(.scout-store-record) .scout-report-detail-sheet .modal-close-button { flex-shrink: 0; }
+html body .app[data-theme] .scout-route-polish:has(.scout-store-record) .scout-report-detail-breakdown { display: grid; gap: 10px; }
+html body .app[data-theme] .scout-route-polish:has(.scout-store-record) .scout-report-detail-section { border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--surface-secondary); }
+html body .app[data-theme] .scout-route-polish:has(.scout-store-record) .scout-report-detail-section summary { cursor: pointer; border: 0 !important; background: transparent !important; }
+html body .app[data-theme] .scout-route-polish:has(.scout-store-record) .scout-report-detail-section summary small { display: block; padding-top: 4px; color: var(--text-secondary); font-size: 13px; font-weight: 400; }
+html body .app[data-theme] .scout-route-polish:has(.scout-store-record) :is(.scout-report-detail-item, .scout-report-detail-row) { display: grid; gap: 6px; padding: 12px; font-size: 13px; }
+html body .app[data-theme] .scout-route-polish:has(.scout-store-record) .scout-report-detail-sheet .location-modal-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-subtle); background: var(--surface-primary); }
+@media (max-width: 700px) {
+  html body .app[data-theme] .scout-store-record { padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px)); }
+  html body .app[data-theme] .scout-store-record .scout-store-record-grid { grid-template-columns: minmax(0, 1fr) !important; }
+  html body .app[data-theme] .scout-store-record .scout-store-record-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  html body .app[data-theme] .scout-store-record .scout-store-record-header { padding: 16px !important; }
+  html body .app[data-theme] .scout-store-record .scout-metric-value { font-size: 18px; }
+  html body .app[data-theme] .scout-route-polish:has(.scout-store-record) .scout-page-report-card { padding: 12px; }
+  html body .app[data-theme] .scout-route-polish:has(.scout-store-record) .scout-report-detail-sheet { padding: 14px; }
+}
+
+/* Legacy Collection records. Keep the shared Vault navigation and other tabs intact. */
+html body .app[data-theme] .vault-v4-detail-board .vault-collection-panel {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+  padding: clamp(16px, 2vw, 24px) !important;
+  color: var(--text-primary);
+  background: var(--surface-primary) !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: 12px !important;
+}
+html body .app[data-theme] .vault-collection-panel :is(h2, h3, h4, p) { margin-top: 0; }
+html body .app[data-theme] .vault-collection-panel :is(p, small, label) { color: var(--text-secondary); font-size: 13px !important; line-height: 1.6; }
+html body .app[data-theme] .vault-collection-panel .vault-collection-heading {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: start !important;
+  gap: 18px !important;
+  margin: 0 !important;
+  padding: 0 0 18px;
+}
+html body .app[data-theme] .vault-collection-panel .vault-collection-heading h2 { margin: 4px 0 10px; font-size: clamp(22px, 2vw, 28px) !important; }
+html body .app[data-theme] .vault-collection-panel .vault-collection-heading p { margin-bottom: 0; max-width: 65ch; }
+html body .app[data-theme] .vault-collection-panel .vault-heading-actions { margin: 0; }
+html body .app[data-theme] .vault-collection-panel :is(button, input, select, summary) {
+  min-width: 44px;
+  min-height: 44px !important;
+  font: 600 13px/1.4 var(--font-ui) !important;
+}
+html body .app[data-theme] .vault-collection-panel button {
+  padding: 10px 13px !important;
+  background: var(--surface-primary) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-strong) !important;
+  border-radius: 7px !important;
+  text-shadow: none !important;
+  box-shadow: none !important;
+  white-space: normal !important;
+}
+html body .app[data-theme] .vault-collection-panel .vault-heading-actions > button:not(.secondary-button),
+html body .app[data-theme] .vault-collection-panel .vault-empty-action-card .quick-actions > button:first-child {
+  color: var(--on-primary) !important;
+  background: var(--action-primary) !important;
+  border-color: var(--action-primary) !important;
+}
+html body .app[data-theme] .vault-collection-panel button:is(.delete-button, .overflow-menu-delete) {
+  color: var(--status-danger) !important;
+  background: var(--danger-background) !important;
+  border-color: var(--status-danger) !important;
+}
+html body .app[data-theme] .vault-collection-panel :is(.vault-showcase-toggle, .vault-view-strip) button:is(.active, [aria-pressed="true"]) {
+  color: var(--action-primary) !important;
+  border-color: var(--action-primary) !important;
+  background: var(--selection-background) !important;
+}
+html body .app[data-theme] .vault-collection-panel :is(.vault-collection-summary, .vault-home-preview-grid) {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+  margin: 0 !important;
+}
+html body .app[data-theme] .vault-collection-panel :is(.vault-collection-summary > div, .vault-home-preview-card) {
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  gap: 7px;
+  min-width: 0;
+  padding: 16px !important;
+  border-radius: 9px !important;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+html body .app[data-theme] .vault-collection-panel .vault-collection-summary > div {
+  background: var(--surface-secondary) !important;
+  border-color: var(--border-subtle) !important;
+}
+html body .app[data-theme] .vault-collection-panel :is(.vault-collection-summary, .vault-home-preview-grid) span { color: var(--text-secondary) !important; font-size: 13px !important; }
+html body .app[data-theme] .vault-collection-panel .vault-collection-summary strong { font: 600 23px/1.2 var(--font-display) !important; color: var(--text-primary); }
+html body .app.app-command-shell.ops-app-shell[data-theme] .vault-collection-panel .vault-home-preview-card strong { font: 600 15px/1.4 var(--font-display) !important; color: var(--text-primary); }
+html body .app[data-theme] .vault-collection-panel :is(.vault-home-preview-card, .vault-collection-summary > div) small { color: var(--text-secondary); font-weight: 400; }
+html body .app[data-theme] .vault-collection-panel :is(.vault-detail-disclosure, .vault-mobile-filter-drawer) {
+  min-width: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--surface-primary);
+}
+html body .app[data-theme] .vault-collection-panel summary { padding: 12px 14px; cursor: pointer; color: var(--text-primary); box-sizing: border-box; }
+html body .app[data-theme] .vault-collection-panel :is(.vault-insight-panel, .vault-filter-panel) { padding: 16px; border-top: 1px solid var(--border-subtle); }
+html body .app[data-theme] .vault-collection-panel .vault-filter-panel { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: end; }
+html body .app[data-theme] .vault-collection-panel .vault-filter-field { display: grid; gap: 7px; min-width: 0; }
+html body .app[data-theme] .vault-collection-panel .vault-filter-field > span { color: var(--text-secondary); }
+html body .app[data-theme] .vault-collection-panel :is(input, select) { width: 100%; max-width: 100%; padding: 10px 12px; background: var(--surface-primary); color: var(--text-primary); border: 1px solid var(--border-strong); border-radius: 7px; box-sizing: border-box; font-weight: 400 !important; }
+html body .app[data-theme] .vault-collection-panel :is(.vault-active-filter-chips, .inventory-prompt-row) { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 0 0; }
+html body .app[data-theme] .vault-collection-panel :is(.vault-active-filter-chips > span, .inventory-data-prompt) { display: inline-flex; padding: 5px 9px; border: 1px solid var(--border-subtle); border-radius: 6px; background: var(--surface-primary); color: var(--text-secondary); font-size: 13px; line-height: 1.5; }
+html body .app[data-theme] .vault-collection-panel .inventory-data-prompt.warning { color: var(--status-warning); }
+html body .app[data-theme] .vault-collection-panel .inventory-data-prompt.success { color: var(--status-success); }
+html body .app[data-theme] .vault-collection-panel .vault-view-strip { padding-top: 2px; }
+html body .app[data-theme] .vault-collection-panel .inventory-list { display: grid; gap: 16px; min-width: 0; }
+html body .app[data-theme] .vault-collection-panel .vault-item-card {
+  min-width: 0;
+  padding: 18px !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: 10px !important;
+  background: var(--surface-secondary) !important;
+  color: var(--text-primary) !important;
+}
+html body .app[data-theme] .vault-collection-panel .vault-card-topline { display: flex; align-items: start; justify-content: space-between; gap: 14px; }
+html body .app[data-theme] .vault-collection-panel .vault-card-topline h3 { margin: 0 0 5px; font-size: 20px; }
+html body .app[data-theme] .vault-collection-panel .vault-card-topline .compact-subtitle { margin: 0; }
+html body .app[data-theme] .vault-collection-panel .vault-card-topline > span { flex-shrink: 0; max-width: 100%; padding: 5px 9px; border: 1px solid var(--border-subtle); border-radius: 6px; font-size: 13px !important; line-height: 1.5; white-space: normal; background: var(--surface-primary); color: var(--text-primary); }
+html body .app[data-theme] .vault-collection-panel .vault-card-main { display: grid; grid-template-columns: 112px minmax(0, 1fr); align-items: center; gap: 18px; margin: 18px 0; }
+html body .app[data-theme] .vault-collection-panel .premium-card-image { display: grid; place-items: center; width: 112px; min-width: 0; min-height: 140px; margin: 0; border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--surface-primary); overflow: hidden; }
+html body .app[data-theme] .vault-collection-panel .premium-card-image img { display: block; width: 100%; max-height: 156px; object-fit: contain; }
+html body .app[data-theme] .vault-collection-panel .premium-card-placeholder-art { display: grid; gap: 8px; padding: 12px; text-align: center; color: var(--text-secondary); }
+html body .app[data-theme] .vault-collection-panel .premium-card-placeholder-art strong { font-size: 13px; overflow-wrap: anywhere; }
+html body .app[data-theme] .vault-collection-panel .premium-card-crest { justify-self: center; width: 22px; height: 29px; border: 1px solid var(--border-strong); border-radius: 4px; }
+html body .app[data-theme] .vault-collection-panel .vault-card-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 18px; min-width: 0; }
+html body .app[data-theme] .vault-collection-panel .vault-card-facts p { display: grid; align-content: start; gap: 5px; margin: 0; min-width: 0; }
+html body .app[data-theme] .vault-collection-panel .vault-card-facts span { color: var(--text-secondary); }
+html body .app[data-theme] .vault-collection-panel .vault-card-facts strong { color: var(--text-primary); font-weight: 600; overflow-wrap: anywhere; }
+html body .app[data-theme] .vault-collection-panel .vault-card-condition-note { display: grid; gap: 6px; margin: 14px 0; padding: 12px; border-left: 2px solid var(--action-primary); border-radius: 0 6px 6px 0; background: var(--surface-primary); color: var(--text-primary); }
+html body .app[data-theme] .vault-collection-panel .vault-card-condition-note :is(span, em) { color: var(--text-secondary); font-size: 13px; font-style: normal; }
+html body .app[data-theme] .vault-collection-panel .vault-card-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border-subtle); }
+html body .app[data-theme] .vault-collection-panel .overflow-menu { position: relative; }
+html body .app[data-theme] .vault-collection-panel .overflow-menu-list { position: absolute; z-index: 50; left: 0; bottom: calc(100% + 8px); display: grid; gap: 6px; width: min(240px, calc(100vw - 56px)); max-height: min(460px, 65dvh); overflow-y: auto; padding: 8px; border: 1px solid var(--border-subtle); border-radius: 9px; background: var(--surface-elevated); box-shadow: var(--shadow-2); }
+html body .app[data-theme] .vault-collection-panel .overflow-menu-list button { width: 100%; text-align: left; }
+html body .app[data-theme] .vault-collection-panel .vault-empty-action-card { margin: 0; }
+html body .app[data-theme] .vault-collection-panel .empty-state { padding: 24px; border: 1px solid var(--border-subtle); border-radius: 10px; background: var(--surface-secondary); }
+html body .app[data-theme] .vault-collection-panel :is(.inventory-insight-grid, .inventory-insight-split, .price-reliability-card-row) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+html body .app[data-theme] .vault-collection-panel :is(.inventory-insight-card, .price-reliability-card, .inventory-mini-list p) { display: grid; gap: 6px; padding: 12px; background: var(--surface-secondary); border: 1px solid var(--border-subtle); border-radius: 7px; }
+html body .app[data-theme] .vault-collection-panel .inventory-insight-card strong { font: 600 22px/1.3 var(--font-display); }
+html body .app[data-theme] .vault-collection-panel .price-reliability-summary { margin: 18px 0; }
+@media (max-width: 1000px) {
+  html body .app[data-theme] .vault-collection-panel .vault-collection-heading { grid-template-columns: minmax(0, 1fr) !important; }
+  html body .app[data-theme] .vault-collection-panel :is(.vault-collection-summary, .vault-home-preview-grid) { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  html body .app[data-theme] .vault-collection-panel .vault-filter-panel { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 600px) {
+  html body .app[data-theme] .vault-v4-detail-board .vault-collection-panel { padding: 14px !important; gap: 16px; }
+  html body .app[data-theme] .vault-collection-panel :is(.vault-collection-summary > div, .vault-home-preview-card) { padding: 12px !important; }
+  html body .app[data-theme] .vault-collection-panel .vault-showcase-toggle { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  html body .app[data-theme] .vault-collection-panel .vault-card-topline { flex-wrap: wrap; }
+  html body .app[data-theme] .vault-collection-panel .vault-card-main { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  html body .app[data-theme] .vault-collection-panel .premium-card-image { width: 100%; min-height: 110px; }
+  html body .app[data-theme] .vault-collection-panel .premium-card-placeholder-art { padding: 14px; }
+  html body .app[data-theme] .vault-collection-panel .vault-card-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html body .app[data-theme] .vault-collection-panel .vault-filter-panel { grid-template-columns: minmax(0, 1fr); }
+  html body .app[data-theme] .vault-collection-panel :is(.inventory-insight-grid, .inventory-insight-split, .price-reliability-card-row) { grid-template-columns: minmax(0, 1fr); }
+  html body .app[data-theme] .vault-collection-panel .overflow-menu-list { left: auto; right: 0; }
+}
+
+/* Role management uses the shared neutral surfaces while preserving every action. */
+html body .app[data-theme] .role-management-panel { display: grid; gap: 20px; min-width: 0; max-width: 100%; }
+html body .app[data-theme] .role-management-panel :is(h3, h4) { margin: 0; color: var(--text-primary); font: 600 18px/1.4 var(--font-display); }
+html body .app[data-theme] .role-management-panel :is(p, small) { margin: 0; color: var(--text-secondary); font: 400 14px/1.55 var(--font-ui); overflow-wrap: anywhere; white-space: normal; overflow: visible; text-overflow: clip; }
+html body .app[data-theme] .role-management-panel :is(button, input) { min-height: 44px; min-width: 44px; font: 600 14px/1.4 var(--font-ui); }
+html body .app[data-theme] .role-management-panel button { padding: 10px 12px; border-radius: 8px; white-space: normal; }
+html body .app[data-theme] .role-management-panel .compact-card-header { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px; min-width: 0; }
+html body .app[data-theme] .role-management-panel .compact-card-header > div { flex: 1 1 240px; min-width: 0; display: grid; gap: 6px; }
+html body .app[data-theme] .role-management-overview { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+html body .app[data-theme] .role-management-overview article { display: grid; gap: 6px; min-width: 0; padding: 14px; border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--surface-primary); }
+html body .app[data-theme] .role-management-overview span { color: var(--text-secondary); font: 400 13px/1.4 var(--font-ui); }
+html body .app[data-theme] .role-management-overview strong { color: var(--text-primary); font: 600 24px/1.2 var(--font-display); }
+html body .app[data-theme] .role-management-panel .beta-users-toolbar { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(0, 2fr); gap: 12px; }
+html body .app[data-theme] .role-management-panel .beta-users-toolbar input { width: 100%; min-width: 0; padding: 10px 12px; font-weight: 400; }
+html body .app[data-theme] .role-management-panel .segmented-control { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+html body .app[data-theme] .role-management-panel .segmented-control button { flex: 1 1 auto; }
+html body .app[data-theme] .role-management-panel .segmented-control button.active { border-color: var(--action-primary) !important; background: var(--action-primary) !important; color: var(--on-primary) !important; box-shadow: none; }
+html body .app[data-theme] .role-management-panel .role-warning { padding: 12px; border: 1px solid var(--border-subtle); border-left: 3px solid var(--status-warning); border-radius: 6px; background: var(--surface-primary); }
+html body .app[data-theme] .role-management-user-grid { display: grid; gap: 14px; }
+html body .app[data-theme] .role-user-card { display: grid; gap: 16px; min-width: 0; padding: 16px; border: 1px solid var(--border-subtle); border-radius: 10px; background: var(--surface-primary); }
+html body .app[data-theme] .role-user-card-main { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 10px; min-width: 0; }
+html body .app[data-theme] .role-user-card-main > div { flex: 1 1 220px; min-width: 0; display: grid; gap: 4px; }
+html body .app[data-theme] .role-user-card-main strong { color: var(--text-primary); font: 600 16px/1.4 var(--font-ui); overflow-wrap: anywhere; }
+html body .app[data-theme] .role-action-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+html body .app[data-theme] .role-audit-panel { display: grid; gap: 12px; min-width: 0; padding-top: 16px; border-top: 1px solid var(--border-subtle); }
+html body .app[data-theme] .role-audit-panel .small-empty-state { display: grid; gap: 6px; padding: 16px; border: 1px solid var(--border-subtle); border-radius: 8px; color: var(--text-primary); background: var(--surface-primary); }
+html body .app[data-theme] .role-audit-panel .small-empty-state span { color: var(--text-secondary); font: 400 14px/1.5 var(--font-ui); }
+@media (max-width: 700px) {
+  html body .app[data-theme] .role-management-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html body .app[data-theme] .role-management-panel .beta-users-toolbar { grid-template-columns: minmax(0, 1fr); }
+}

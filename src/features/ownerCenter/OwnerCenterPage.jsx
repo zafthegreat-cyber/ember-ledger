@@ -27,6 +27,8 @@ import { createOwnerCenterRepository } from "./ownerCenterRepository.js";
 import { createEmptyOwnerCenterState } from "./ownerCenterRepository.js";
 import { OWNER_SESSION_STATES } from "../../services/ownerSession.js";
 import BackupRecoveryPanel from "../backup/BackupRecoveryPanel.jsx";
+import RecordSearchPanel from "../recordSearch/RecordSearchPanel.jsx";
+import OwnerSessionPanel from "../security/OwnerSessionPanel.jsx";
 import {
   asNumber,
   buildOpportunityFeed,
@@ -220,6 +222,11 @@ function StoreProfile({ store, events, visits, onBack }) {
 }
 
 function OwnerRestocks({ data, purchases, initialTab }) {
+  const [observedAt, setObservedAt] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setObservedAt(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
   const [tab, setTab] = useState(initialTab || "live");
   const [selectedStore, setSelectedStore] = useState(null);
   const tabs = [{ key: "live", label: "Live" }, { key: "stores", label: "Stores" }, { key: "products", label: "Products" }, { key: "patterns", label: "Patterns" }];
@@ -239,7 +246,7 @@ function OwnerRestocks({ data, purchases, initialTab }) {
       </div>
       <p className="owner-helper">{pattern.intelligence.recommendation}</p>
       <details className="owner-filter-disclosure"><summary>Why this likelihood</summary><div className="owner-filter-panel"><p>{pattern.intelligence.supportingObservations.length} supporting observation{pattern.intelligence.supportingObservations.length === 1 ? "" : "s"}; {pattern.intelligence.contradictoryEvidence.length} contradictory observation{pattern.intelligence.contradictoryEvidence.length === 1 ? "" : "s"}.</p>{pattern.intelligence.warnings.length ? <ul>{pattern.intelligence.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul> : <p>No recorded warning. Always confirm current store conditions before traveling.</p>}<p>Precision policy: coarse bands only. No decimal probability is produced.</p></div></details>
-      <div className="owner-metric-strip"><MetricCard label="Confirmed today" value={confirmed.filter((event) => timestamp(event.eventTime) && Date.now() - timestamp(event.eventTime) < 86_400_000).length} /><MetricCard label="Likely windows" value={data.predictions.filter((row) => /high|moderate/i.test(row.confidence || "")).length} /><MetricCard label="Stale reports" value={data.events.filter((event) => timestamp(event.eventTime) && Date.now() - timestamp(event.eventTime) > 7 * 86_400_000).length} /><EmptyMetric label="Last confirmation" value={confirmed.length ? displayDate([...confirmed].sort((a, b) => timestamp(b.eventTime) - timestamp(a.eventTime))[0]?.eventTime) : null} /></div>{data.events.length ? <div className="owner-record-list">{data.events.slice(0, 12).map((event) => <RecordCard key={event.id}><div className="owner-card-badges"><StatusBadge tone={isConfirmedRestockStatus(event.confirmationStatus) ? "success" : "warning"}>{event.confirmationStatus || "Unconfirmed"}</StatusBadge><StatusBadge tone="neutral">{event.reliability || "Reliability not rated"}</StatusBadge></div><h3>{event.product || "Product not recorded"}</h3><p>{event.store || "Store not recorded"} · {displayDate(event.eventTime)}</p><p>{event.notes || "No notes"}</p></RecordCard>)}</div> : <EmptyState title="No restock reports">Use existing local store reports or add a confirmed observation before calculating a pattern.</EmptyState>}</section> : null}
+      <div className="owner-metric-strip"><MetricCard label="Confirmed today" value={confirmed.filter((event) => timestamp(event.eventTime) && observedAt - timestamp(event.eventTime) < 86_400_000).length} /><MetricCard label="Likely windows" value={data.predictions.filter((row) => /high|moderate/i.test(row.confidence || "")).length} /><MetricCard label="Stale reports" value={data.events.filter((event) => timestamp(event.eventTime) && observedAt - timestamp(event.eventTime) > 7 * 86_400_000).length} /><EmptyMetric label="Last confirmation" value={confirmed.length ? displayDate([...confirmed].sort((a, b) => timestamp(b.eventTime) - timestamp(a.eventTime))[0]?.eventTime) : null} /></div>{data.events.length ? <div className="owner-record-list">{data.events.slice(0, 12).map((event) => <RecordCard key={event.id}><div className="owner-card-badges"><StatusBadge tone={isConfirmedRestockStatus(event.confirmationStatus) ? "success" : "warning"}>{event.confirmationStatus || "Unconfirmed"}</StatusBadge><StatusBadge tone="neutral">{event.reliability || "Reliability not rated"}</StatusBadge></div><h3>{event.product || "Product not recorded"}</h3><p>{event.store || "Store not recorded"} · {displayDate(event.eventTime)}</p><p>{event.notes || "No notes"}</p></RecordCard>)}</div> : <EmptyState title="No restock reports">Use existing local store reports or add a confirmed observation before calculating a pattern.</EmptyState>}</section> : null}
     {tab === "stores" ? <section><SectionHeader title="Stores" description="Profiles combine saved store details with real report history." />{data.profiles.length ? <div className="owner-record-list">{data.profiles.map((store) => { const storeEvents = data.events.filter((event) => matchesRestockStore(event, store)); const storePattern = restockPatternSummary({ events: storeEvents }); return <RecordCard key={store.id || store.store}><h3>{store.store || store.name}</h3><p>{store.retailer} · {store.address || "Address not recorded"}</p><div className="owner-card-badges"><StatusBadge tone="neutral">{storePattern.patternStability}</StatusBadge><StatusBadge tone="info">{storePattern.supportingReportCount} reports</StatusBadge></div><QuietButton onClick={() => setSelectedStore(store)}>View Store Profile</QuietButton></RecordCard>; })}</div> : <EmptyState title="No store profiles">Saved local stores will appear here. A store directory alone does not count as a confirmed restock.</EmptyState>}</section> : null}
     {tab === "products" ? <section><SectionHeader title="Products" description="Observed product details only—no assumed stock or resale value." />{observations.length ? <div className="owner-record-list">{observations.map((row) => <RecordCard key={row.id}><h3>{row.product || "Product not recorded"}</h3><dl className="owner-definition-list"><div><dt>UPC / SKU</dt><dd>{row.upc || row.sku || "Not recorded"}</dd></div><div><dt>MSRP</dt><dd>{displayMoney(row.msrp, "Not recorded")}</dd></div><div><dt>Store</dt><dd>{row.store || row.retailer || "Not recorded"}</dd></div><div><dt>Last seen</dt><dd>{displayDate(row.dateSeen)}</dd></div><div><dt>Quantity</dt><dd>{row.quantity ?? "Not recorded"}</dd></div><div><dt>Sellout status</dt><dd>{row.selloutStatus || "Not recorded"}</dd></div><div><dt>Target quantity</dt><dd>{row.targetQuantity ?? "Not recorded"}</dd></div></dl></RecordCard>)}</div> : <EmptyState title="No product observations">Products appear only after a real store report or observation includes them.</EmptyState>}</section> : null}
     {tab === "patterns" ? <section data-testid="restock-patterns"><SectionHeader title="Patterns" description="Calculated only from stored confirmations, predictions, visits, and attributed profit records." /><div className="owner-metric-strip"><EmptyMetric label="Most common restock weekday" value={pattern.mostCommonWeekday} /><EmptyMetric label="Most common time window" value={pattern.mostCommonTimeWindow} /><EmptyMetric label="Average interval" value={pattern.averageIntervalDays == null ? null : `${pattern.averageIntervalDays.toFixed(1)} days`} /><MetricCard label="Pattern stability" value={pattern.patternStability} /><EmptyMetric label="Average sellout time" /><EmptyMetric label="Best historical arrival time" /><EmptyMetric label="Prediction accuracy" value={pattern.predictionAccuracy == null ? null : displayPercent(pattern.predictionAccuracy)} /><EmptyMetric label="Average timing error" value={pattern.averageTimingErrorHours == null ? null : `${pattern.averageTimingErrorHours.toFixed(1)} hours`} /><EmptyMetric label="Successful trip rate" value={pattern.successfulTripRate == null ? null : displayPercent(pattern.successfulTripRate)} /><EmptyMetric label="Profit per trip" value={pattern.profitPerTrip == null ? null : displayMoney(pattern.profitPerTrip)} /><EmptyMetric label="Profit per mile" value={pattern.profitPerMile == null ? null : displayMoney(pattern.profitPerMile)} /><EmptyMetric label="Profit per hour" value={pattern.profitPerHour == null ? null : displayMoney(pattern.profitPerHour)} /></div>{pattern.missingProfitRequirements.length ? <div className="compatibility-note"><strong>Missing requirements:</strong> {pattern.missingProfitRequirements.join(", ")}. Profit efficiency will not display as zero.</div> : null}</section> : null}
@@ -270,15 +277,17 @@ function OwnerPerformance({ flipState, restocks, initialTab }) {
   </div>;
 }
 
-function OwnerControls({ state, onSave, onOpenFind, ebayHealth, initialSection = "", onSectionChange, localDevelopment = false }) {
-  const sectionKeys = ["connections", "search-rules", "schedules", "scoring", "notifications", "imports", "data-backup", "system"];
+function OwnerControls({ state, onSave, onOpenFind, ebayHealth, initialSection = "", onSectionChange, localDevelopment = false, session }) {
+  const sectionKeys = ["connections", "search-rules", "schedules", "scoring", "notifications", "imports", "data-backup", "security", "system"];
   const [section, setSection] = useState(sectionKeys.includes(initialSection) ? initialSection : "connections");
   const [scoring, setScoring] = useState(state.controls.scoring);
   const [features, setFeatures] = useState(state.controls.features);
-  useEffect(() => {
+  const [previousSection, setPreviousSection] = useState(initialSection);
+  if (previousSection !== initialSection) {
+    setPreviousSection(initialSection);
     if (sectionKeys.includes(initialSection)) setSection(initialSection);
-  }, [initialSection]);
-  const sections = ["Connections", "Search Rules", "Schedules", "Scoring", "Notifications", "Imports", "Data & Backup", "System"];
+  }
+  const sections = ["Connections", "Search Rules", "Schedules", "Scoring", "Notifications", "Imports", "Data & Backup", "Security", "System"];
   const save = (next = {}) => onSave({ ...state, controls: { scoring, features, ...next } });
   const chooseSection = (key) => { setSection(key); onSectionChange?.(key); };
   return <div className="owner-section-stack"><div className="owner-control-nav" aria-label="Control sections">{sections.map((label) => { const key = label.toLowerCase().replaceAll(" ", "-").replace("&-", ""); return <button key={key} type="button" className={section === key ? "is-active" : ""} onClick={() => chooseSection(key)}>{label}</button>; })}</div>
@@ -289,11 +298,23 @@ function OwnerControls({ state, onSave, onOpenFind, ebayHealth, initialSection =
     {section === "notifications" ? <section><SectionHeader title="Notifications" description="Background notifications are not configured." /><EmptyState title="No notification service">Unavailable functionality remains visibly inactive.</EmptyState></section> : null}
     {section === "imports" ? <section><SectionHeader title="Imports" description="Review gates remain required for eBay and manual source imports." /><PrimaryButton onClick={() => onOpenFind?.("ebay")}>Open Import Review</PrimaryButton></section> : null}
     {section === "data-backup" ? <BackupRecoveryPanel localDevelopment={localDevelopment} /> : null}
+    {section === "security" ? <OwnerSessionPanel session={session} /> : null}
     {section === "system" ? <section><SectionHeader title="Feature Controls" description="Hide unfinished modules from everyday navigation without claiming they are active." /><div className="owner-feature-list">{Object.entries({ ebaySearch: "eBay Search", auctions: "Auctions", restocks: "Restocks", collection: "Collection", grading: "Grading", kidsCommunity: "Kids & Community", businessAssistant: "Business Assistant", aiImageAnalysis: "AI Image Analysis", emailImports: "Email Imports" }).map(([key, label]) => <label key={key}><span><strong>{label}</strong><small>{features[key] ? "Visible when supported" : "Hidden from everyday navigation"}</small></span><input type="checkbox" checked={Boolean(features[key])} onChange={(event) => setFeatures((current) => ({ ...current, [key]: event.target.checked }))} /></label>)}</div><PrimaryButton onClick={() => save()}>Save Feature Controls</PrimaryButton></section> : null}
   </div>;
 }
 
-export default function OwnerCenterPage({
+export default function OwnerCenterPage(props) {
+  const session = props.session;
+  const lifetime = session?.status === OWNER_SESSION_STATES.AUTHORIZED
+    ? JSON.stringify([session.provider || "", session.identityKey || session.userId || session.user?.id || session.displayIdentity || "owner"])
+    : "restricted";
+  if (session?.status === OWNER_SESSION_STATES.AUTHORIZED && props.initialSection === "records") {
+    return <RecordSearchPanel key={lifetime} session={session} query={new URLSearchParams(globalThis.location.search).get("recordQ") || ""} fullPage />;
+  }
+  return <OwnerCenterPageContent key={lifetime} {...props} />;
+}
+
+function OwnerCenterPageContent({
   session = { status: OWNER_SESSION_STATES.LOADING },
   initialSection = "overview",
   initialSubsection = "",
@@ -310,29 +331,23 @@ export default function OwnerCenterPage({
   const flipRepository = useMemo(() => createFlipScoutRepository(), []);
   const ownerRepository = useMemo(() => createOwnerCenterRepository(), []);
   const authorized = session.status === OWNER_SESSION_STATES.AUTHORIZED;
-  const [flipState, setFlipState] = useState(() => createEmptyFlipScoutState());
-  const [ownerState, setOwnerState] = useState(() => createEmptyOwnerCenterState());
+  const [flipState, setFlipState] = useState(() => authorized ? flipRepository.load() : createEmptyFlipScoutState());
+  const [ownerState, setOwnerState] = useState(() => authorized ? ownerRepository.load() : createEmptyOwnerCenterState());
   const [section, setSection] = useState(OWNER_SECTIONS.some((item) => item.key === initialSection) ? initialSection : "overview");
   const [subsection, setSubsection] = useState(initialSubsection);
   const [ebayHealth, setEbayHealth] = useState(null);
   const [healthError, setHealthError] = useState("");
   const restocks = useMemo(() => adaptRestockData(ownerState, scoutSnapshot, storeDirectory), [ownerState, scoutSnapshot, storeDirectory]);
 
-  useEffect(() => {
+  const [previousDestination, setPreviousDestination] = useState({ initialSection, initialSubsection });
+  if (previousDestination.initialSection !== initialSection || previousDestination.initialSubsection !== initialSubsection) {
+    setPreviousDestination({ initialSection, initialSubsection });
     setSection(OWNER_SECTIONS.some((item) => item.key === initialSection) ? initialSection : "overview");
     setSubsection(initialSubsection || "");
-  }, [initialSection, initialSubsection]);
+  }
 
   useEffect(() => {
-    if (!authorized) {
-      setFlipState(createEmptyFlipScoutState());
-      setOwnerState(createEmptyOwnerCenterState());
-      setEbayHealth(null);
-      setHealthError("");
-      return undefined;
-    }
-    setFlipState(flipRepository.load());
-    setOwnerState(ownerRepository.load());
+    if (!authorized) return undefined;
     let active = true;
     getEbayHealth().then((result) => { if (active) setEbayHealth(result); }).catch((error) => {
       if (!active) return;
@@ -385,7 +400,7 @@ export default function OwnerCenterPage({
       {section === "sourcing" ? <OwnerSourcing flipState={flipState} setFlipState={setFlipState} repository={flipRepository} initialTab={subsection} onOpenFind={onOpenFind} onReview={review} /> : null}
       {section === "restocks" ? <OwnerRestocks data={restocks} purchases={flipState.purchases || []} initialTab={subsection} /> : null}
       {section === "performance" ? <OwnerPerformance flipState={flipState} restocks={restocks} initialTab={subsection} /> : null}
-      {section === "controls" ? <OwnerControls state={ownerState} onSave={saveOwnerState} onOpenFind={onOpenFind} ebayHealth={ebayHealth} initialSection={subsection} onSectionChange={(next) => { setSubsection(next); onSubsectionChange?.(next); }} localDevelopment={session.localDevelopment === true} /> : null}
+      {section === "controls" ? <OwnerControls state={ownerState} onSave={saveOwnerState} onOpenFind={onOpenFind} ebayHealth={ebayHealth} initialSection={subsection} onSectionChange={(next) => { setSubsection(next); onSubsectionChange?.(next); }} localDevelopment={session.localDevelopment === true} session={session} /> : null}
     </main>
   );
 }

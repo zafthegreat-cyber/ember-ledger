@@ -103,6 +103,14 @@ export function createLocalCollectionDataSource(options = {}) {
     return { state, rows: state[collection] };
   }
 
+  async function saveState(state) {
+    // Existing repositories either throw or return an error when storage rejects a write.
+    const result = await repository.save(state);
+    if (result?.error) {
+      throw new DataSourceError("LOCAL_SAVE_FAILED", "The record could not be saved on this device.");
+    }
+  }
+
   const adapter = {
     kind: "LOCAL",
     collection,
@@ -138,7 +146,7 @@ export function createLocalCollectionDataSource(options = {}) {
         throw new DataSourceError("DUPLICATE_ID", `A record with ID ${id} already exists.`);
       }
       const record = { ...clone(input), id, recordVersion: 1, createdAt: input.createdAt || timestamp, updatedAt: timestamp };
-      repository.save({ ...state, [collection]: [...rows, record] });
+      await saveState({ ...state, [collection]: [...rows, record] });
       return clone(record);
     },
     async update(id, input, expectedVersion) {
@@ -165,7 +173,7 @@ export function createLocalCollectionDataSource(options = {}) {
       };
       const nextRows = [...rows];
       nextRows[index] = updated;
-      repository.save({ ...state, [collection]: nextRows });
+      await saveState({ ...state, [collection]: nextRows });
       return clone(updated);
     },
     async archive(id, expectedVersion) {

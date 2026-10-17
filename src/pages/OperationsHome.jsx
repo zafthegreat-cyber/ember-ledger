@@ -1,7 +1,9 @@
 import { useMemo } from "react";
-import { OfflineState, PrimaryButton, SectionHeader, SecondaryButton } from "../components/operations/OperationsUI.jsx";
+import { OfflineState, PageHeader, PrimaryButton, SectionHeader, SecondaryButton } from "../components/operations/OperationsUI.jsx";
+import { AppNavIcon } from "../components/command-system/AppNavIcon.jsx";
 import { createFlipScoutRepository } from "../features/flipScout/storageRepository.js";
 import { formatCurrency, getDashboardSummary } from "../features/flipScout/selectors.js";
+import "./home-layout.css";
 
 const FIND_DESTINATION_KEY = "private-business-hub.flip-scout.destination";
 
@@ -15,7 +17,20 @@ function latestDate(record = {}) {
   return record.updatedAt || record.createdAt || record.dateDiscovered || record.purchaseDate || record.saleDate || "";
 }
 
-export default function OperationsHome({ setActiveTab, isOffline }) {
+function CollectibleMotif() {
+  return <svg className="home-collectible-motif" viewBox="0 0 224 208" fill="none" aria-hidden="true" focusable="false">
+    <path className="home-motif-guides" d="M12 104h200M112 8v192M15 36V20h16m162 0h16v16M15 172v16h16m162 0h16v-16" />
+    <rect className="home-motif-back" x="42" y="40" width="106" height="150" rx="10" transform="rotate(-14 95 115)" />
+    <rect className="home-motif-middle" x="80" y="31" width="106" height="150" rx="10" transform="rotate(11 133 106)" />
+    <rect className="home-motif-front" x="68" y="22" width="112" height="164" rx="11" />
+    <rect className="home-motif-window" x="79" y="34" width="90" height="110" rx="5" />
+    <path className="home-motif-crystal" d="m124 50 28 39-28 39-28-39 28-39Zm0 0v78M96 89h56m-42-20 14 10 14-10m-28 40 14-10 14 10" />
+    <path className="home-motif-detail" d="M80 155h48m-48 8h35m43-8h10v10h-10z" />
+    <path className="home-motif-accent" d="M82 22h24M180 38v18" />
+  </svg>;
+}
+
+export default function OperationsHome({ setActiveTab, isOffline, onOpenBusiness }) {
   const repository = useMemo(() => createFlipScoutRepository(), []);
   const state = useMemo(() => repository.load(), [repository]);
   const summary = useMemo(() => getDashboardSummary(state), [state]);
@@ -53,11 +68,30 @@ export default function OperationsHome({ setActiveTab, isOffline }) {
   const monthProfit = monthSalesWithProfit.reduce((sum, sale) => sum + Number(sale.realizedProfit ?? sale.actualProfit ?? 0), 0);
   const showBusinessSummary = sourcingBudget > 0 || inventoryWithCost.length > 0 || monthSalesWithRevenue.length > 0 || monthSalesWithProfit.length > 0;
 
-  return <div className="ops-home-page">
+  return <div className="ops-home-page home-layout">
+    <PageHeader eyebrow="Code 3 TCG · Home" title="Welcome back." description="Great finds. Well-kept collections. Everything in its place." />
     {isOffline ? <OfflineState action={<SecondaryButton onClick={() => window.location.reload()}>Try again</SecondaryButton>} /> : null}
-    <section className="ops-home-section ops-attention-panel">
+    <section className={`ops-home-section ops-attention-panel ${attentionRows.length ? "home-attention-pending" : "home-attention-clear"}`}>
       <SectionHeader title="Needs Attention" />
-      {attentionRows.length ? <div className="ops-attention-list">{attentionRows.map((row) => <button type="button" key={row.key} onClick={row.action} aria-label={`${row.label}: ${row.count}. ${row.detail}`}><span className="ops-attention-count">{row.count}</span><span><strong>{row.label}</strong><small>{row.detail}</small></span><span aria-hidden="true">›</span></button>)}</div> : <p className="ops-compact-success"><span aria-hidden="true">✓</span> Nothing needs attention.</p>}
+      {attentionRows.length ? <div className="ops-attention-list">{attentionRows.map((row) => <button type="button" key={row.key} onClick={row.action} aria-label={`${row.label}: ${row.count}. ${row.detail}`}><span className="ops-attention-count">{row.count}</span><span><strong>{row.label}</strong><small>{row.detail}</small></span><span aria-hidden="true">›</span></button>)}</div> : <p className="ops-compact-success"><span className="home-status-check" aria-hidden="true">✓</span><span>Nothing needs attention.</span></p>}
+    </section>
+    <section className="ops-home-section home-workspaces">
+      <SectionHeader title="Your everyday work" description="Discover something new, or keep your records in order." />
+      <nav className="home-workspace-layout" aria-label="Workspace shortcuts">
+        <button type="button" className="home-discover-card" onClick={() => openFind("deals")} aria-label="Find. Review deals and upcoming auctions.">
+          <span className="home-discover-topline"><span className="home-shortcut-icon"><AppNavIcon kind="find" /></span><span>Discover</span></span>
+          <span className="home-discover-body"><span className="home-discover-copy"><strong>Find your next<br />great addition.</strong><span>Review deals, compare opportunities, and follow upcoming auctions.</span></span><span className="home-discover-visual"><CollectibleMotif /></span></span>
+          <span className="home-discover-action">Open Find<span aria-hidden="true">↗</span></span>
+        </button>
+        <div className="home-records-group">
+          <div className="home-records-heading"><p className="home-group-label">Keep it organized</p><AppNavIcon kind="workspace" /></div>
+          {[
+            { label: "Purchases", detail: "From ordered to received", action: () => onOpenBusiness("purchases"), icon: "clipboard" },
+            { label: "Inventory", detail: "Items, stock, and recorded costs", action: () => onOpenBusiness("inventory"), icon: "inventory" },
+            { label: "Sales", detail: "Sales and shipping progress", action: () => onOpenBusiness("sales"), icon: "sell" },
+          ].map((item) => <button type="button" className="home-record-shortcut" key={item.label} onClick={item.action} aria-label={`${item.label}. ${item.detail}.`}><span className="home-shortcut-icon"><AppNavIcon kind={item.icon} /></span><span className="home-shortcut-copy"><strong>{item.label}</strong><span>{item.detail}</span></span><span className="home-shortcut-arrow" aria-hidden="true">→</span></button>)}
+        </div>
+      </nav>
     </section>
     {bestDeal ? <section className="ops-home-section">
       <SectionHeader title="Best Opportunity" />

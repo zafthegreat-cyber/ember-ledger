@@ -1,0 +1,11 @@
+.record-search { display: grid; gap: 1rem; min-width: 0; color: var(--text-primary); }
+.record-search form { display: flex; flex-wrap: wrap; gap: .75rem; align-items: end; }
+.record-search__group { border-top: 1px solid var(--border-subtle); padding-top: .75rem; }
+.record-search__group h4 { margin: 0 0 .5rem; font-size: .875rem; }
+.record-search__group ul { list-style: none; padding: 0; margin: 0; }
+.record-search__group a { display: flex; flex-direction: column; gap: .25rem; min-height: 44px; padding: .625rem; border-radius: .5rem; color: inherit; text-decoration: none; overflow-wrap: anywhere; }
+.record-search__group a:hover { background: var(--surface-secondary); }
+.record-search__group a:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.record-search__group a span, .record-search p { color: var(--text-secondary); font-size: .875rem; }
+.record-search__server { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
+.record-search button { min-height: 44px; }

@@ -226,41 +226,114 @@ export function sanitizeAppLocalData(value = {}) {
   };
 }
 
+function isRecordObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function isRecordArray(value) {
+  return Array.isArray(value) && value.every(isRecordObject);
+}
+
+// Presentation fallbacks are deliberately forgiving. Cleanup is a write, so it
+// must first establish that the original bytes describe a supported envelope.
+function isCleanupEnvelope(value, sanitize) {
+  if (sanitize === filterDemoArray) return isRecordArray(value);
+  if (!isRecordObject(value)) return false;
+  const defaults = sanitize({});
+  for (const [field, fallback] of Object.entries(defaults)) {
+    if (!Array.isArray(fallback) || !Object.hasOwn(value, field)) continue;
+    const valid = field === "storeAliases" || field === "failedMatches"
+      ? Array.isArray(value[field])
+      : isRecordArray(value[field]);
+    if (!valid) return false;
+  }
+  if (sanitize === sanitizeAppLocalData) {
+    if (Object.hasOwn(value, "trades") && !isRecordArray(value.trades)) return false;
+    if (Object.hasOwn(value, "marketPriceCache") && !isCleanupEnvelope(value.marketPriceCache, sanitizeMarketPriceCache)) return false;
+  }
+  return true;
+}
+
+export function isSupportedAppLocalData(value) {
+  if (!isCleanupEnvelope(value, sanitizeAppLocalData)) return false;
+  for (const field of ["purchasers", "userSearchAliases"]) {
+    if (Object.hasOwn(value, field) && !isRecordArray(value[field])) return false;
+  }
+  if (Object.hasOwn(value, "marketplaceSavedIds") && (!Array.isArray(value.marketplaceSavedIds)
+    || !value.marketplaceSavedIds.every((id) => typeof id === "string" || (typeof id === "number" && Number.isFinite(id))))) return false;
+  for (const field of ["settings", "forgeModeSettings", "dealForm", "homeStatsEnabled", "dashboardLayout", "appSetupPersonalization", "locationSettings", "subscriptionProfile", "profile"]) {
+    if (Object.hasOwn(value, field) && !isRecordObject(value[field])) return false;
+  }
+  if (value.dashboardLayout && Object.hasOwn(value.dashboardLayout, "sections") && !isRecordArray(value.dashboardLayout.sections)) return false;
+  if (value.locationSettings && Object.hasOwn(value.locationSettings, "savedLocations") && (!Array.isArray(value.locationSettings.savedLocations)
+    || !value.locationSettings.savedLocations.every((location) => typeof location === "string"))) return false;
+  return true;
+}
+
 export function cleanupBrowserBetaStorage(storage = globalThis.localStorage) {
   if (!storage) return { changed: false, summary: [] };
   const summary = [];
-
-  const appData = sanitizeAppLocalData(safeReadBrowserJson(storage, BETA_LOCAL_STORAGE_KEYS.app, {}));
-  safeWriteBrowserJson(storage, BETA_LOCAL_STORAGE_KEYS.app, appData);
-  summary.push({ key: BETA_LOCAL_STORAGE_KEYS.app, status: "sanitized" });
-
-  const scoutData = sanitizeScoutLocalData(safeReadBrowserJson(storage, BETA_LOCAL_STORAGE_KEYS.scout, {}));
-  safeWriteBrowserJson(storage, BETA_LOCAL_STORAGE_KEYS.scout, scoutData);
-  summary.push({ key: BETA_LOCAL_STORAGE_KEYS.scout, status: "sanitized" });
-
-  const tidepoolData = sanitizeTidepoolLocalData(safeReadBrowserJson(storage, BETA_LOCAL_STORAGE_KEYS.tidepool, emptyTidepoolData()));
-  safeWriteBrowserJson(storage, BETA_LOCAL_STORAGE_KEYS.tidepool, tidepoolData);
-  summary.push({ key: BETA_LOCAL_STORAGE_KEYS.tidepool, status: "sanitized" });
-
-  const marketPrices = sanitizeMarketPriceCache(safeReadBrowserJson(storage, BETA_LOCAL_STORAGE_KEYS.marketPrices, {}));
-  safeWriteBrowserJson(storage, BETA_LOCAL_STORAGE_KEYS.marketPrices, marketPrices);
-  summary.push({ key: BETA_LOCAL_STORAGE_KEYS.marketPrices, status: "sanitized" });
-
-  const suggestions = filterDemoArray(safeReadBrowserJson(storage, BETA_LOCAL_STORAGE_KEYS.suggestions, []));
-  safeWriteBrowserJson(storage, BETA_LOCAL_STORAGE_KEYS.suggestions, suggestions);
-  summary.push({ key: BETA_LOCAL_STORAGE_KEYS.suggestions, status: "sanitized" });
-
-  const feedback = filterDemoArray(safeReadBrowserJson(storage, BETA_LOCAL_STORAGE_KEYS.feedback, []));
-  safeWriteBrowserJson(storage, BETA_LOCAL_STORAGE_KEYS.feedback, feedback);
-  summary.push({ key: BETA_LOCAL_STORAGE_KEYS.feedback, status: "sanitized" });
-
-  const adminReviewLog = filterDemoArray(safeReadBrowserJson(storage, BETA_LOCAL_STORAGE_KEYS.adminReviewLog, []));
-  safeWriteBrowserJson(storage, BETA_LOCAL_STORAGE_KEYS.adminReviewLog, adminReviewLog);
-  summary.push({ key: BETA_LOCAL_STORAGE_KEYS.adminReviewLog, status: "sanitized" });
-
-  const whatDidISee = filterDemoArray(safeReadBrowserJson(storage, BETA_LOCAL_STORAGE_KEYS.whatDidISee, []));
-  safeWriteBrowserJson(storage, BETA_LOCAL_STORAGE_KEYS.whatDidISee, whatDidISee);
-  summary.push({ key: BETA_LOCAL_STORAGE_KEYS.whatDidISee, status: "sanitized" });
-
-  return { changed: true, summary };
+  const targets = [
+    [BETA_LOCAL_STORAGE_KEYS.app, sanitizeAppLocalData],
+    [BETA_LOCAL_STORAGE_KEYS.scout, sanitizeScoutLocalData],
+    [BETA_LOCAL_STORAGE_KEYS.tidepool, sanitizeTidepoolLocalData],
+    [BETA_LOCAL_STORAGE_KEYS.marketPrices, sanitizeMarketPriceCache],
+    [BETA_LOCAL_STORAGE_KEYS.suggestions, filterDemoArray],
+    [BETA_LOCAL_STORAGE_KEYS.feedback, filterDemoArray],
+    [BETA_LOCAL_STORAGE_KEYS.adminReviewLog, filterDemoArray],
+    [BETA_LOCAL_STORAGE_KEYS.whatDidISee, filterDemoArray],
+  ];
+  for (const [key, sanitize] of targets) {
+    let raw;
+    try {
+      raw = storage.getItem(key);
+    } catch {
+      summary.push({ key, status: "read-failed" });
+      continue;
+    }
+    if (raw === null || raw === undefined) {
+      summary.push({ key, status: "absent" });
+      continue;
+    }
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      summary.push({ key, status: "invalid" });
+      continue;
+    }
+    let next;
+    let unchanged;
+    try {
+      if (!(sanitize === sanitizeAppLocalData ? isSupportedAppLocalData(parsed) : isCleanupEnvelope(parsed, sanitize))) {
+        summary.push({ key, status: "invalid" });
+        continue;
+      }
+      const sanitized = sanitize(parsed);
+      next = Array.isArray(parsed) ? sanitized : { ...parsed, ...sanitized };
+      if (sanitize === sanitizeAppLocalData && isRecordObject(parsed.marketPriceCache)) {
+        next.marketPriceCache = { ...parsed.marketPriceCache, ...sanitized.marketPriceCache };
+      }
+      unchanged = JSON.stringify(next) === JSON.stringify(parsed);
+    } catch {
+      summary.push({ key, status: "invalid" });
+      continue;
+    }
+    // Do not rewrite formatting alone, and do not replace a newer snapshot.
+    if (unchanged) {
+      summary.push({ key, status: "unchanged" });
+      continue;
+    }
+    try {
+      if (storage.getItem(key) !== raw) {
+        summary.push({ key, status: "changed-during-read" });
+        continue;
+      }
+    } catch {
+      summary.push({ key, status: "read-failed" });
+      continue;
+    }
+    summary.push({ key, status: safeWriteBrowserJson(storage, key, next) ? "sanitized" : "write-failed" });
+  }
+  return { changed: summary.some(({ status }) => status === "sanitized"), summary };
 }

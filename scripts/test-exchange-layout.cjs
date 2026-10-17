@@ -97,7 +97,7 @@ async function readLayout(page) {
       commandContent: rect(".exchange-v4-command-content"),
       signals: rect(".exchange-v4-signal-grid"),
       lower: rect(".exchange-v4-lower-grid"),
-      mobileDock: rect(".command-board-v4-mobile-dock, .mobile-bottom-nav, .ets-bottom-nav"),
+      mobileDock: rect(".ops-mobile-nav") || rect(".command-board-v4-mobile-dock, .mobile-bottom-nav, .ets-bottom-nav"),
       bodyChildren,
       internalScrollers,
       clippedHeadings,
@@ -120,20 +120,24 @@ function validateLayout(layout, viewport) {
   if (viewport.name === "desktop") {
     if (!layout.lower || layout.lower.display === "none") failures.push("desktop lower decision band is hidden");
     if (layout.board && layout.lower && layout.board.bottom - layout.lower.bottom > 34) failures.push(`desktop dead zone ${layout.board.bottom - layout.lower.bottom}px`);
-    if (layout.document.scrollHeight > viewport.height + 2) failures.push("desktop page scrolls");
+    if (layout.lower && layout.board && layout.lower.bottom > layout.board.bottom + 2) failures.push("desktop lower decision band extends outside its board");
   }
 
   if (viewport.name === "tablet") {
     const lastVisibleChild = layout.bodyChildren.at(-1);
     if (layout.board && lastVisibleChild && layout.board.bottom - lastVisibleChild.bottom > 34) failures.push(`tablet dead zone ${layout.board.bottom - lastVisibleChild.bottom}px`);
-    if (layout.document.scrollHeight > viewport.height + 2) failures.push("tablet page scrolls");
+    if (lastVisibleChild && layout.board && lastVisibleChild.bottom > layout.board.bottom + 2) failures.push("tablet content extends outside its board");
   }
 
   if (viewport.name === "mobile") {
     const gaps = layout.bodyChildren.slice(1).map((item, index) => item.top - layout.bodyChildren[index].bottom);
     if (gaps.some((gap) => gap > 32)) failures.push(`mobile body gap ${Math.max(...gaps)}px`);
-    if (!layout.mobileDock || layout.mobileDock.display === "none") failures.push("mobile dock is hidden");
+    if (!layout.mobileDock || layout.mobileDock.display === "none" || layout.mobileDock.height < 44) failures.push("mobile dock is hidden or too small");
   }
+
+  // Normal vertical scrolling preserves full text; reserve only the dock clearance.
+  const emptyTail = layout.document.scrollHeight - Math.max(viewport.height, layout.board?.bottom || 0);
+  if (emptyTail > 144) failures.push(`${emptyTail}px of empty space after the board`);
 
   if (failures.length) {
     const geometry = {

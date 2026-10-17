@@ -1,4 +1,5 @@
 import { canonicalStringify } from "../../backup/canonicalJson.js";
+import { hasAppliedReturns, returnMoneyProjection, saleNetMinor } from "../../manualLifecycles/returnLedger.js";
 import { assertSafePurchaseReceivingInput, sanitizePurchaseReceivingNote } from "../security.js";
 import { allocateAcquisitionCostToUnits, sumMinorUnits } from "../inventoryCreation/allocation.js";
 import {
@@ -7,8 +8,6 @@ import {
 } from "../inventoryCreation/contracts.js";
 import {
   INVENTORY_CORRECTION_CATEGORIES,
-  INVENTORY_CORRECTION_EVENT_KINDS,
-  INVENTORY_QUANTITY_CORRECTION_REASONS,
 } from "../inventoryCorrection/constants.js";
 import {
   currentInventoryProjection,
@@ -414,8 +413,9 @@ export function effectiveManagedSaleCogsMinorUnits(sale, events = []) {
 export function managedSaleReconciliationProjection(sale, events = []) {
   const originalCogsMinorUnits = safeInteger(Number(sale?.allocatedCostOfGoodsSoldMinorUnits), "allocatedCostOfGoodsSoldMinorUnits");
   const cogsAdjustmentMinorUnits = reconciliationDeltaForSale(String(sale?.id || ""), events);
-  const effectiveCogsMinorUnits = safeSum([originalCogsMinorUnits, cogsAdjustmentMinorUnits], "effectiveSaleCogs");
-  const netProceedsMinorUnits = Number.isSafeInteger(sale?.netProceedsMinorUnits)
+  const returns = returnMoneyProjection(sale);
+  const effectiveCogsMinorUnits = safeSum([originalCogsMinorUnits, cogsAdjustmentMinorUnits, -returns.cogsReversalMinor], "effectiveSaleCogs");
+  const netProceedsMinorUnits = returns.applicationIds.length ? saleNetMinor(sale) : Number.isSafeInteger(sale?.netProceedsMinorUnits)
     ? sale.netProceedsMinorUnits
     : exactMajorUnitsToMinorUnits(sale?.netProceeds);
   return Object.freeze({
@@ -424,7 +424,10 @@ export function managedSaleReconciliationProjection(sale, events = []) {
     cogsAdjustmentMinorUnits,
     effectiveCogsMinorUnits,
     effectiveCogsMajorUnits: effectiveCogsMinorUnits / 100,
-    effectiveRealizedProfitMinorUnits: Number.isSafeInteger(netProceedsMinorUnits) ? netProceedsMinorUnits - effectiveCogsMinorUnits : null,
+    refundMinorUnits: returns.refundMinor,
+    restoredCogsMinorUnits: returns.cogsReversalMinor,
+    effectiveNetProceedsMinorUnits: Number.isSafeInteger(netProceedsMinorUnits) ? safeSum([netProceedsMinorUnits, -returns.refundMinor], "effectiveNetProceeds") : null,
+    effectiveRealizedProfitMinorUnits: Number.isSafeInteger(netProceedsMinorUnits) ? safeSum([netProceedsMinorUnits, -returns.refundMinor, -effectiveCogsMinorUnits], "effectiveRealizedProfit") : null,
   });
 }
 
@@ -466,6 +469,7 @@ function affectedSalesForTransition(state, item, current, proposed, events) {
  * are bounded intent and expected-version input only.
  */
 export function deriveInventoryReconciliationCandidate({ inventoryState = {}, inventoryItemId, proposal: inputProposal }) {
+  if (hasAppliedReturns(String(inventoryItemId), inventoryState.sales)) throw new InventoryReconciliationValidationError("CUSTOMER_RETURN_RECONCILIATION_REQUIRED", "This Inventory has applied customer returns. A return-aware historical correction is required; existing stock, costs and return events have been preserved.");
   const validated = validateInventoryReconciliationState(inventoryState);
   const proposal = normalizeInventoryReconciliationProposal(inputProposal);
   const item = validated.bundles.items.find((entry) => entry.id === String(inventoryItemId));

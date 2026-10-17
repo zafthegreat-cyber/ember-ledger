@@ -40,7 +40,7 @@ export default function SearchRulesScreen({ rules, onSave, onDelete, onOpenEbay 
       ? current.productClassifications.filter((value) => value !== classification)
       : [...current.productClassifications, classification],
   }));
-  const useTemplate = (template) => {
+  const applyTemplate = (template) => {
     if (saveInFlightRef.current) return;
     setForm({ ...blankRule(), ...template, id: undefined, templateId: template.id, enabled: false });
     setFormOpen(true);
@@ -111,7 +111,7 @@ export default function SearchRulesScreen({ rules, onSave, onDelete, onOpenEbay 
 
       <section className="flip-section">
         <SectionHeading eyebrow="Optional templates" title="Pokémon sourcing ideas" detail="Templates are examples only. They are inactive and contain no marketplace results." />
-        <div className="flip-template-grid">{SEARCH_RULE_TEMPLATES.map((template) => <article key={template.id}><span>Inactive template</span><h3>{template.ruleName}</h3><p>{template.notes}</p><button type="button" className="secondary-button" disabled={saving} onClick={() => useTemplate(template)}>Use template</button></article>)}</div>
+        <div className="flip-template-grid">{SEARCH_RULE_TEMPLATES.map((template) => <article key={template.id}><span>Inactive template</span><h3>{template.ruleName}</h3><p>{template.notes}</p><button type="button" className="secondary-button" disabled={saving} onClick={() => applyTemplate(template)}>Use template</button></article>)}</div>
       </section>
     </div>
   );

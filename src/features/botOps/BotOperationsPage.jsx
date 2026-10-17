@@ -190,7 +190,15 @@ function ActivitySection({ snapshot }) {
   return <section><SectionHeader eyebrow="Append-only history" title="Activity" description="Only bounded normalized events are retained. Raw provider logs, request bodies, cookies, and tokens are prohibited." />{rows.length ? <div className="bot-ops-activity-list">{rows.map((row) => <RecordCard key={row.id} className="bot-ops-record"><div className="bot-ops-card-heading"><div><p className="eyebrow">{dateLabel(row.occurredAt)}</p><h3>{words(row.normalizedEvent)}</h3></div><StatusBadge tone={statusTone(row.runtimeStatus)}>{words(row.runtimeStatus)}</StatusBadge></div><p>{row.message || "No additional safe summary was retained."}</p><Facts rows={[{ label: "Provider", value: words(row.provider) }, { label: "Task", value: row.taskId }, { label: "Revision", value: row.eventRevision }]} /><WarningList warnings={row.warnings} /></RecordCard>)}</div> : <EmptyState title="No activity">No bot attempts have been observed. Normal runtime does not seed synthetic history.</EmptyState>}{snapshot.checkoutEvidence.length ? <div className="bot-ops-evidence"><SectionHeader eyebrow="Owner review required" title="Checkout Evidence" description="Evidence is not a Purchase and cannot mutate receiving or inventory." />{snapshot.checkoutEvidence.map((row) => <RecordCard key={row.id} className="bot-ops-record"><div className="bot-ops-card-heading"><h3>{row.externalOrderReference || "Checkout evidence"}</h3><StatusBadge tone={statusTone(row.reviewState)}>{words(row.reviewState)}</StatusBadge></div><Facts rows={[{ label: "Retailer", value: row.retailerId }, { label: "Quantity", value: row.quantity }, { label: "Expected amount", value: row.expectedAmount ? formatMoneyForDisplay(row.expectedAmount) : "Not supplied" }, { label: "Occurred", value: dateLabel(row.occurredAt) }]} /><p className="bot-ops-invariant">Owner review required · Purchase not created · Inventory not created</p><WarningList warnings={row.warnings} /></RecordCard>)}</div> : null}</section>;
 }
 
-export default function BotOperationsPage({
+export default function BotOperationsPage(props) {
+  const session = props.session;
+  const lifetime = session?.status === OWNER_SESSION_STATES.AUTHORIZED
+    ? JSON.stringify([session.provider || "", session.userId || session.user?.id || session.displayIdentity || "owner"])
+    : "restricted";
+  return <BotOperationsPageContent key={lifetime} {...props} />;
+}
+
+function BotOperationsPageContent({
   session = { status: OWNER_SESSION_STATES.LOADING },
   initialSection = "overview",
   onSectionChange,
@@ -201,20 +209,15 @@ export default function BotOperationsPage({
   const [section, setSection] = useState(SECTIONS.some((item) => item.key === initialSection) ? initialSection : "overview");
   const [error, setError] = useState("");
 
-  useEffect(() => {
+  const [previousSection, setPreviousSection] = useState(initialSection);
+  if (previousSection !== initialSection) {
+    setPreviousSection(initialSection);
     setSection(SECTIONS.some((item) => item.key === initialSection) ? initialSection : "overview");
-  }, [initialSection]);
+  }
 
   useEffect(() => {
-    if (!authorized) {
-      setService(null);
-      setSnapshot(EMPTY_SNAPSHOT);
-      setError("");
-      return undefined;
-    }
+    if (!authorized) return undefined;
     let cancelled = false;
-    setService(null);
-    setError("");
     const load = async () => {
       try {
         const nextService = createBotOpsService();

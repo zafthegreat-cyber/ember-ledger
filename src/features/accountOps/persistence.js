@@ -6,7 +6,7 @@ import {
 import { ACCOUNT_OPS_COLLECTIONS } from "./constants.js";
 import { createAccountOpsRepository } from "./repository.js";
 import { assertSafeAccountOpsInput } from "./security.js";
-import { secureUuid } from "./secureRandom.js";
+import { secureRecordSuffix } from "./secureRandom.js";
 import { ACCOUNT_OPS_RECORD_NORMALIZERS, AccountOpsValidationError } from "./validators.js";
 
 const CALLER_MODE_FIELDS = new Set([
@@ -54,7 +54,7 @@ function createValidatedCollectionGateway(collection, options) {
     repository: options.repository,
     collection,
     now: options.now,
-    idFactory: () => String(options.idFactory?.(collection) || `${collection}:${secureUuid(options.randomSource)}`),
+    idFactory: () => String(options.idFactory?.(collection) || `${collection}:${secureRecordSuffix(options.randomSource)}`),
   });
   const gateway = createPersistenceGateway({ mode: PERSISTENCE_MODES.LOCAL_ONLY, localDataSource: base });
 
@@ -94,12 +94,19 @@ function createValidatedCollectionGateway(collection, options) {
 
 export function createAccountOpsPersistence(options = {}) {
   rejectCallerPersistenceSelection(options);
-  const repository = options.repository || createAccountOpsRepository(options.storage, { now: options.now });
+  const repository = options.repository || createAccountOpsRepository(options.storage, { now: options.now, locks: options.locks, requireCrossTabLock: options.requireCrossTabLock });
   const now = options.now || (() => new Date().toISOString());
   const randomSource = options.randomSource || globalThis.crypto;
   const collections = Object.fromEntries(ACCOUNT_OPS_COLLECTIONS.map((collection) => [
     collection,
-    createValidatedCollectionGateway(collection, { repository, now, randomSource, idFactory: options.idFactory }),
+    (() => {
+      const settings = { repository, now, randomSource, idFactory: options.idFactory };
+      const gateway = createValidatedCollectionGateway(collection, settings);
+      if (!repository.transact) return gateway;
+      return Object.freeze({ ...gateway, ...Object.fromEntries(["create", "update", "archive"].map((method) => [method,
+        (...args) => repository.transact((scoped) => createValidatedCollectionGateway(collection, { ...settings, repository: scoped })[method](...args)),
+      ])) });
+    })(),
   ]));
   return Object.freeze({
     mode: PERSISTENCE_MODES.LOCAL_ONLY,

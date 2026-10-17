@@ -32,6 +32,7 @@ function safeSessionState(overrides = {}) {
     ownerAuthorized: false,
     provider: "",
     displayIdentity: "",
+    identityKey: "",
     expiresAt: "",
     configurationState: "unavailable",
     localDevelopment: false,
@@ -61,6 +62,7 @@ export async function resolveOwnerSession({
       ownerAuthorized: true,
       provider: "local-development",
       displayIdentity: "Local development identity",
+      identityKey: "code3-local-development-owner",
       configurationState: "local-development",
       localDevelopment: true,
     });
@@ -120,6 +122,7 @@ export async function resolveOwnerSession({
       ownerAuthorized: true,
       provider: payload.provider || "supabase",
       displayIdentity: payload.displayIdentity || "Owner",
+      identityKey: /^[a-f0-9]{64}$/.test(payload.identityKey || "") ? payload.identityKey : "",
       expiresAt: payload.expiresAt || "",
       configurationState: payload.configurationState || "configured",
     });

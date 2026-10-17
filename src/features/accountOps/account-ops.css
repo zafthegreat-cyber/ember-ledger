@@ -21,6 +21,36 @@
   font-weight: 750;
 }
 
+.account-ops-area-shell,
+.account-ops-area-content {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-4);
+}
+
+.account-ops-area-picker {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.account-ops-area-picker select {
+  min-width: 0;
+  width: 100%;
+  min-height: 44px;
+  padding: 9px 34px 9px 11px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-primary);
+  color: var(--text-primary);
+  font: inherit;
+}
+
+.account-ops-area-nav { display: none; }
+
 .account-ops-tabs {
   position: relative;
   display: grid;
@@ -163,6 +193,7 @@ button.account-ops-row { width: 100%; cursor: pointer; }
 
 .account-ops-filter-summary {
   min-height: 44px;
+  min-width: 44px;
   display: flex;
   align-items: center;
   width: fit-content;
@@ -176,6 +207,9 @@ button.account-ops-row { width: 100%; cursor: pointer; }
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-2);
 }
+
+.account-ops-toolbar > details[open] { grid-column: 1 / -1; }
+.account-ops-toolbar > details[open] .account-ops-filter-row { margin-top: var(--space-2); }
 
 .account-ops-field {
   min-width: 0;
@@ -192,7 +226,7 @@ button.account-ops-row { width: 100%; cursor: pointer; }
 .account-ops-field textarea {
   min-width: 0;
   width: 100%;
-  min-height: 44px;
+  min-height: 46px;
   padding: 9px 11px;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
@@ -204,6 +238,8 @@ button.account-ops-row { width: 100%; cursor: pointer; }
 .account-ops-field input:focus-visible,
 .account-ops-field select:focus-visible,
 .account-ops-field textarea:focus-visible,
+.account-ops-area-picker select:focus-visible,
+.account-ops-area-nav button:focus-visible,
 .account-ops-tabs button:focus-visible,
 .account-ops-tabs summary:focus-visible,
 .account-ops-row:focus-visible,
@@ -259,6 +295,10 @@ button.account-ops-row { width: 100%; cursor: pointer; }
   color: inherit;
 }
 .account-ops-select > span { min-width: 0; }
+.account-ops-table-select { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; cursor: pointer; }
+html[data-theme="dark"] .app.app-command-shell .account-ops .ops-button--primary {
+  color: #102e28 !important;
+}
 .account-ops-select input,
 .account-ops-desktop-table input[type="checkbox"] {
   width: 20px;
@@ -497,6 +537,41 @@ button.account-ops-row { width: 100%; cursor: pointer; }
 }
 
 @media (min-width: 980px) {
+  .account-ops-area-shell {
+    grid-template-columns: minmax(190px, 220px) minmax(0, 1fr);
+    align-items: start;
+    gap: var(--space-6);
+  }
+  .account-ops-area-picker { display: none; }
+  .account-ops-area-nav {
+    position: sticky;
+    top: var(--space-4);
+    display: grid;
+    gap: 3px;
+    padding-right: var(--space-3);
+    border-right: 1px solid var(--border-subtle);
+  }
+  .account-ops-area-nav button {
+    min-width: 0;
+    min-height: 52px;
+    display: grid;
+    gap: 2px;
+    padding: 8px 10px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    text-align: left;
+  }
+  .account-ops-area-nav button strong,
+  .account-ops-area-nav button small { overflow-wrap: anywhere; }
+  .account-ops-area-nav button small { color: var(--text-muted); font-size: 11px; line-height: 1.35; }
+  .account-ops-area-nav button.is-active {
+    border-color: color-mix(in srgb, var(--brand-primary) 28%, var(--border-subtle));
+    background: color-mix(in srgb, var(--brand-primary) 8%, var(--surface-primary));
+    color: var(--brand-primary);
+  }
   .account-ops-mobile-list { display: none; }
   .account-ops-desktop-table { display: block; }
 }
@@ -506,11 +581,13 @@ button.account-ops-row { width: 100%; cursor: pointer; }
     gap: 12px;
     padding: 12px 16px calc(96px + env(safe-area-inset-bottom, 0px));
   }
-  .account-ops > .ops-page-header { display: none; }
+  .account-ops > .ops-page-header { gap: 8px; }
+  .account-ops > .ops-page-header h1 { font-size: clamp(24px, 8vw, 32px); }
+  .account-ops > .ops-page-header p { max-width: 42ch; font-size: 13px; }
   .account-ops-tabs > button,
   .account-ops-tabs-more > summary { padding-inline: 5px; font-size: 12px; }
   .account-ops-toolbar { grid-template-columns: minmax(0, 1fr) auto; }
-  .account-ops-toolbar .ops-field > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+  .account-ops-toolbar .ops-field > span:not(.ops-input-wrap) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
   .account-ops-card-actions .ops-button,
   .account-ops-form-actions .ops-button { flex: 1 1 130px; }
 }

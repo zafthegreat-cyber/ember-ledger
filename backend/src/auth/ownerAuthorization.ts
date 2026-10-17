@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
+import { createHash } from "node:crypto";
 import type { AuthPrincipal, IdentityProvider } from "./authPrincipal";
 import { readBearerToken } from "./authPrincipal";
 import { detectRuntimeKind, isLoopbackAddress, type RuntimeKind } from "./runtimeEnvironment";
@@ -22,6 +23,7 @@ type SessionInspection = {
     ownerAuthorized: boolean;
     provider?: string;
     displayIdentity?: string;
+    identityKey?: string;
     expiresAt?: string;
     configurationState: "READY" | "AUTH_NOT_CONFIGURED" | "OWNER_NOT_CONFIGURED";
     error?: { code: string; message: string };
@@ -84,6 +86,10 @@ function safeDisplayIdentity(principal: AuthPrincipal): string {
   return `${name.slice(0, 1)}***@${domain}`;
 }
 
+export function ownerViewIdentityKey(principal: AuthPrincipal): string {
+  return createHash("sha256").update(`code3-owner-view-v1:${principal.provider}:${principal.subject}`).digest("hex");
+}
+
 function configurationState(provider: IdentityProvider, env: RuntimeEnvironment, runtimeKind: RuntimeKind): SessionInspection["body"]["configurationState"] {
   if (localAdapterAllowed(env, runtimeKind)) return "READY";
   if (testAdapterAllowed(env, runtimeKind)) return "READY";
@@ -109,6 +115,7 @@ export function createOwnerSecurity(options: OwnerSecurityOptions = {}) {
           ownerAuthorized: true,
           provider: localPrincipal.provider,
           displayIdentity: safeDisplayIdentity(localPrincipal),
+          identityKey: ownerViewIdentityKey(localPrincipal),
           expiresAt: new Date(localPrincipal.expiresAt * 1_000).toISOString(),
           configurationState: state,
         },
@@ -127,6 +134,7 @@ export function createOwnerSecurity(options: OwnerSecurityOptions = {}) {
             ownerAuthorized: true,
             provider: principal.provider,
             displayIdentity: safeDisplayIdentity(principal),
+            identityKey: ownerViewIdentityKey(principal),
             expiresAt: new Date(principal.expiresAt * 1_000).toISOString(),
             configurationState: state,
           },
@@ -173,6 +181,7 @@ export function createOwnerSecurity(options: OwnerSecurityOptions = {}) {
         ownerAuthorized,
         provider: result.principal.provider,
         displayIdentity: safeDisplayIdentity(result.principal),
+        identityKey: ownerViewIdentityKey(result.principal),
         expiresAt: new Date(result.principal.expiresAt * 1_000).toISOString(),
         configurationState: state,
       },

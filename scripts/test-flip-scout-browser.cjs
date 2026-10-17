@@ -25,11 +25,11 @@ async function assertCode3Branding(page, label) {
       .filter(Boolean)
       .join("\n"),
   }));
-  assert.match(visibleBranding.title, /^Code 3(?: — .+)?$/, `${label} should use the centralized browser title`);
+  assert.match(visibleBranding.title, /^Code 3 TCG(?: — .+)?$/, `${label} should use the centralized browser title`);
   assert.doesNotMatch(`${visibleBranding.text}\n${visibleBranding.attributes}`, /Ember\s*(?:&|and)\s*Tide|Private Business Hub/i, `${label} must not expose retired visible branding`);
   const manifest = await page.evaluate(async () => (await fetch("/manifest.webmanifest")).json());
-  assert.equal(manifest.name, "Code 3");
-  assert.equal(manifest.short_name, "Code 3");
+  assert.equal(manifest.name, "Code 3 TCG");
+  assert.equal(manifest.short_name, "Code 3 TCG");
 }
 
 async function openFindMore(page) {
@@ -186,7 +186,7 @@ async function main() {
     await assertNoHorizontalOverflow(page, "eBay Search at 360px");
 
     const savedState = await page.evaluate(() => JSON.parse(localStorage.getItem("ember-and-tide.flip-scout.v1") || "{}"));
-    assert.equal(savedState.schemaVersion, 5);
+    assert.equal(savedState.schemaVersion, 8);
     assert.equal(savedState.deals.length, 1);
     assert.equal(savedState.deals[0].listingUrl, "https://example.com/real-manual-listing");
     await page.getByRole("button", { name: "Back to Deals", exact: true }).click();
@@ -195,7 +195,7 @@ async function main() {
     const detailMore = page.locator(".ops-detail-more");
     await detailMore.locator("summary").click();
     await detailMore.getByRole("button", { name: "Delete", exact: true }).click();
-    await page.getByRole("heading", { name: "No listings match", exact: true }).waitFor();
+    await page.getByRole("heading", { name: "Your next find starts here", exact: true }).waitFor();
     const stateAfterDelete = await page.evaluate(() => JSON.parse(localStorage.getItem("ember-and-tide.flip-scout.v1") || "{}"));
     assert.equal(stateAfterDelete.deals.length, 0, "Deal Inbox deletion should remove only the confirmed listing record");
     await page.screenshot({ path: path.join(process.cwd(), "artifacts", "qa", "flip-scout-phase2-ebay-mobile.png"), fullPage: true });

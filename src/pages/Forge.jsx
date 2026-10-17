@@ -1,9 +1,9 @@
-import { EXCHANGE_SECTION_TABS, normalizeExchangeSection } from "../utils/appRouteState";
+import { normalizeExchangeSection } from "../utils/appRouteState";
 import { AppNavIcon, CommandBoardV4 } from "../components/command-system";
 
 export default function ForgePage(props) {
   const {
-    commandDeskSellerAccess,
+
     editMarketplaceListing,
     exchangeSection,
     forgeInventoryItems = [],
@@ -18,19 +18,19 @@ export default function ForgePage(props) {
     openMarketplaceCreate,
     openProductAddFlow,
     openTradeCompassFlow,
-    renderExchangeMarketCatalogSearchSection,
-    renderForgeAccessState,
-    renderForgeHeader,
-    renderItemCompareTableSection,
-    renderMarketHomeFoundation,
-    renderMarketIntelligencePanel,
-    renderMarketPriceMemorySection,
-    renderMarketplaceSection,
-    renderPageChrome,
-    renderWishlistIsoPlanningSection,
+
+
+
+
+
+
+
+
+
+
     setActiveTab,
     setForgeSubTab,
-    updateMarketplaceListingStatus,
+
     workspaceMarketplaceListings = [],
     workspaceSales = [],
     workspaceTradeRecords = [],

@@ -2,6 +2,7 @@ import { useEffect, useId, useRef } from "react";
 import { BRAND_CONFIG } from "../../config/brand.js";
 import { AppNavIcon } from "../command-system/AppNavIcon.jsx";
 import "./operations-ui.css";
+import { useModalFocus } from "./useModalFocus.js";
 
 function cx(...parts) {
   return parts.filter(Boolean).join(" ");
@@ -13,12 +14,13 @@ export function AppShell({ children, className = "", ...props }) {
 
   useEffect(() => {
     const viewport = window.visualViewport;
-    if (!viewport || !shellRef.current) return undefined;
+    const shell = shellRef.current;
+    if (!viewport || !shell) return undefined;
     const updateViewport = () => {
       const keyboardOffset = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
-      shellRef.current?.style.setProperty("--ops-visual-viewport-height", `${viewport.height}px`);
-      shellRef.current?.style.setProperty("--ops-keyboard-offset", `${keyboardOffset}px`);
-      shellRef.current?.setAttribute("data-keyboard-open", keyboardOffset > 120 ? "true" : "false");
+      shell.style.setProperty("--ops-visual-viewport-height", `${viewport.height}px`);
+      shell.style.setProperty("--ops-keyboard-offset", `${keyboardOffset}px`);
+      shell.setAttribute("data-keyboard-open", keyboardOffset > 120 ? "true" : "false");
     };
     updateViewport();
     viewport.addEventListener("resize", updateViewport);
@@ -26,7 +28,7 @@ export function AppShell({ children, className = "", ...props }) {
     return () => {
       viewport.removeEventListener("resize", updateViewport);
       viewport.removeEventListener("scroll", updateViewport);
-      shellRef.current?.removeAttribute("data-keyboard-open");
+      shell.removeAttribute("data-keyboard-open");
     };
   }, []);
 
@@ -60,6 +62,7 @@ export function DesktopSidebar({ items = [], secondaryItems = [], activeKey = ""
         <span className="ops-brand-mark" aria-hidden="true">{BRAND_CONFIG.monogram}</span>
         <span><strong>{BRAND_CONFIG.applicationDisplayName}</strong><small>{BRAND_CONFIG.businessDisplayName}</small></span>
       </button>
+      <span className="ops-navigation-label">Workspace</span>
       <nav>
         {items.map((item) => item.children?.length ? (
           <details key={item.key} open={item.key === activeKey || item.children.some((child) => child.key === activeKey)}>
@@ -197,55 +200,6 @@ export function OfflineState({ action }) { return <StatePanel kind="offline" tit
 export function ProviderStatus({ name, status, detail, checkedAt = "" }) {
   const tone = /available|connected|healthy/i.test(status) ? "success" : /required|error|rate/i.test(status) ? "danger" : "warning";
   return <RecordCard className="ops-provider-status"><div><SourceBadge>{name}</SourceBadge><h3>{status}</h3><p>{detail}</p>{checkedAt ? <small>Last checked {checkedAt}</small> : null}</div><StatusBadge tone={tone}>{status}</StatusBadge></RecordCard>;
-}
-
-const MODAL_FOCUS_SELECTOR = "button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex]:not([tabindex='-1'])";
-
-function useModalFocus(open, onClose) {
-  const dialogRef = useRef(null);
-  const previousFocusRef = useRef(null);
-
-  useEffect(() => {
-    if (!open) return undefined;
-    previousFocusRef.current = document.activeElement;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const frame = window.requestAnimationFrame(() => {
-      const first = dialogRef.current?.querySelector(MODAL_FOCUS_SELECTOR);
-      (first || dialogRef.current)?.focus?.({ preventScroll: true });
-    });
-    return () => {
-      window.cancelAnimationFrame(frame);
-      document.body.style.overflow = previousOverflow;
-      previousFocusRef.current?.focus?.({ preventScroll: true });
-    };
-  }, [open]);
-
-  const onKeyDown = (event) => {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      onClose?.();
-      return;
-    }
-    if (event.key !== "Tab" || !dialogRef.current) return;
-    const focusable = [...dialogRef.current.querySelectorAll(MODAL_FOCUS_SELECTOR)].filter((node) => node.offsetParent !== null);
-    if (!focusable.length) {
-      event.preventDefault();
-      dialogRef.current.focus();
-      return;
-    }
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  };
-
-  return { dialogRef, onKeyDown };
 }
 
 export function BottomSheet({ open, title, children, onClose }) {

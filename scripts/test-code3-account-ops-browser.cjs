@@ -114,6 +114,8 @@ async function assertMinimumTarget(locator, label) {
 }
 
 async function verifyFixtureScenario(page, fixture, consoleMessages) {
+  const accountSummary = page.locator(".account-ops-summary-details > summary");
+  if (await accountSummary.count()) await accountSummary.click();
   const body = await page.locator("body").innerText();
   const section = SECTION_BY_FIXTURE[fixture.id];
 
@@ -246,15 +248,11 @@ async function inspectFixture(browser, fixture, theme, { scenario = true } = {})
     equal(await page.locator("html").getAttribute("data-theme"), theme, `${fixture.id} should render the requested ${theme} theme`);
     equal(await root.locator("h1", { hasText: /^Account Ops$/ }).count(), 1, "Account Ops should have one workspace content heading");
     await page.getByText("Local development identity", { exact: true }).waitFor();
-    const nav = page.locator("nav[aria-label='Account Ops sections']");
-    await nav.waitFor();
-    await assertMinimumTarget(nav.getByRole("button", { name: "Overview", exact: true }), "Overview tab");
-    const moreControl = nav.getByText("More", { exact: true });
-    await assertMinimumTarget(moreControl, "More section control");
-    await moreControl.click();
-    const expandedNavText = await nav.innerText();
-    match(expandedNavText, /Connections[\s\S]*Inbox[\s\S]*Orders/, "provider foundations should remain secondary Account Ops navigation");
-    await moreControl.click();
+    const areaPicker = page.getByRole("combobox", { name: "Account Ops area", exact: true });
+    await areaPicker.waitFor();
+    await assertMinimumTarget(areaPicker, "Account Ops area picker");
+    const areaLabels = await areaPicker.locator("option").allTextContents();
+    equal(areaLabels.join("|"), "Overview|Accounts|Identity|Payment Metadata|Network|Verification|Automation|Orders|Infrastructure|Activity", "the mobile picker should expose the complete unified operating map");
 
     if (scenario) await verifyFixtureScenario(page, fixture, consoleMessages);
     const metrics = await assertNoHorizontalOverflow(page, `${fixture.id} (${theme}) at 360px`);

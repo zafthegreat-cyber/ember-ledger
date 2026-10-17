@@ -6,6 +6,7 @@ type RuntimeEnvironment = Record<string, string | undefined>;
 type CorsOptions = {
   env?: RuntimeEnvironment;
   runtimeKind?: RuntimeKind;
+  allowDelete?: boolean;
 };
 
 function canonicalOrigin(value: unknown): string | null {
@@ -72,7 +73,9 @@ export function createProtectedCors(options: CorsOptions = {}) {
       });
     }
     if (origin) response.setHeader("Access-Control-Allow-Origin", origin);
-    response.setHeader("Access-Control-Allow-Methods", "GET, POST, PATCH, PUT, OPTIONS");
+    response.setHeader("Access-Control-Allow-Methods", options.allowDelete
+      ? "GET, POST, PATCH, PUT, DELETE, OPTIONS"
+      : "GET, POST, PATCH, PUT, OPTIONS");
     const allowedHeaders = runtimeKind === "local-development" || runtimeKind === "automated-test"
       ? "Authorization, Content-Type, X-Code3-Local-Dev"
       : "Authorization, Content-Type";

@@ -24,7 +24,7 @@ function deepFreeze(value, seen = new Set()) {
 export function stellarPreviewBasename(value, maximumLength = STELLAR_PREVIEW_LIMITS.maximumFilenameLength) {
   const segments = String(value || "").split(/[\\/]/);
   const basename = (segments.at(-1) || "selected-export.json")
-    .replace(/[\u0000-\u001f\u007f]/g, "")
+    .split("").filter((character) => { const code = character.charCodeAt(0); return code > 31 && code !== 127; }).join("")
     .trim() || "selected-export.json";
   if (basename.length <= maximumLength) return basename;
   const extension = basename.toLowerCase().endsWith(".json") ? ".json" : "";

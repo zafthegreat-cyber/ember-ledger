@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import {
   ConfidenceIndicator,
   Dialog,
@@ -455,7 +455,15 @@ function InventoryCorrectionDialog({ item, form, candidate, reconciliationCandid
   );
 }
 
-export default function PurchaseReceivingPage({
+export default function PurchaseReceivingPage(props) {
+  const session = props.session;
+  const lifetime = session?.status === OWNER_SESSION_STATES.AUTHORIZED
+    ? JSON.stringify([session.provider || "", session.userId || session.user?.id || session.displayIdentity || "owner"])
+    : "restricted";
+  return <PurchaseReceivingPageContent key={lifetime} {...props} />;
+}
+
+function PurchaseReceivingPageContent({
   session = { status: OWNER_SESSION_STATES.LOADING },
   onSignIn,
   onSignOut,
@@ -463,62 +471,43 @@ export default function PurchaseReceivingPage({
   onOpenLegacyPurchases,
 }) {
   const authorized = session.status === OWNER_SESSION_STATES.AUTHORIZED;
-  const authorizedRef = useRef(authorized);
+  const [authorizationLifetime] = useState(() => {
+    let active = authorized;
+    return { isAuthorized: () => active, update: (value) => { active = value; } };
+  });
+  useLayoutEffect(() => {
+    authorizationLifetime.update(authorized);
+    return () => authorizationLifetime.update(false);
+  }, [authorizationLifetime, authorized]);
   const actionInFlightRef = useRef(false);
-  authorizedRef.current = authorized;
-  const [service, setService] = useState(null);
-  const [snapshot, setSnapshot] = useState(EMPTY_SNAPSHOT);
+  const [initialRecords] = useState(() => {
+    if (!authorized) return {};
+    try {
+      const service = createPurchaseReceivingService({ isOwnerAuthorized: authorizationLifetime.isAuthorized });
+      return { service, snapshot: service.snapshot(), managedInventory: service.listManagedInventory(), inventoryAdjustments: service.listInventoryAdjustments(), inventoryReconciliationEvents: service.listInventoryReconciliationEvents?.() || [] };
+    } catch (error) {
+      return { error: error?.message || "Purchase and Receiving records could not be loaded." };
+    }
+  });
+  const service = initialRecords.service || null;
+  const [snapshot, setSnapshot] = useState(initialRecords.snapshot || EMPTY_SNAPSHOT);
   const [section, setSection] = useState("drafts");
   const [dialog, setDialog] = useState("");
   const [selected, setSelected] = useState(null);
   const [form, setForm] = useState({});
   const [handoff, setHandoff] = useState(null);
   const [inventoryReviews, setInventoryReviews] = useState({});
-  const [message, setMessage] = useState({ text: "", tone: "info" });
+  const [message, setMessage] = useState({ text: initialRecords.error || "", tone: initialRecords.error ? "error" : "info" });
   const [busy, setBusy] = useState(false);
-  const [managedInventory, setManagedInventory] = useState([]);
-  const [inventoryAdjustments, setInventoryAdjustments] = useState([]);
-  const [inventoryReconciliationEvents, setInventoryReconciliationEvents] = useState([]);
+  const [managedInventory, setManagedInventory] = useState(initialRecords.managedInventory || []);
+  const [inventoryAdjustments, setInventoryAdjustments] = useState(initialRecords.inventoryAdjustments || []);
+  const [inventoryReconciliationEvents, setInventoryReconciliationEvents] = useState(initialRecords.inventoryReconciliationEvents || []);
   const [correctionCandidate, setCorrectionCandidate] = useState(null);
   const [reconciliationCandidate, setReconciliationCandidate] = useState(null);
   const [replacementSource, setReplacementSource] = useState(null);
   const [accountantReview, setAccountantReview] = useState(null);
 
-  useEffect(() => {
-    if (!authorized) {
-      setService(null);
-      setSnapshot(EMPTY_SNAPSHOT);
-      setDialog("");
-      setSelected(null);
-      setForm({});
-      setHandoff(null);
-      setInventoryReviews({});
-      setMessage({ text: "", tone: "info" });
-      setBusy(false);
-      actionInFlightRef.current = false;
-      setManagedInventory([]);
-      setInventoryAdjustments([]);
-      setInventoryReconciliationEvents([]);
-      setCorrectionCandidate(null);
-      setReconciliationCandidate(null);
-      setReplacementSource(null);
-      setAccountantReview(null);
-      setSection("drafts");
-      return;
-    }
-    try {
-      const nextService = createPurchaseReceivingService({ isOwnerAuthorized: () => authorizedRef.current });
-      setService(nextService);
-      setSnapshot(nextService.snapshot());
-      setManagedInventory(nextService.listManagedInventory());
-      setInventoryAdjustments(nextService.listInventoryAdjustments());
-      setInventoryReconciliationEvents(nextService.listInventoryReconciliationEvents?.() || []);
-    } catch (error) {
-      setService(null);
-      setSnapshot(EMPTY_SNAPSHOT);
-      setMessage({ text: error?.message || "Purchase and Receiving records could not be loaded.", tone: "error" });
-    }
-  }, [authorized]);
+
 
   const drafts = snapshot.purchaseDrafts || EMPTY_SNAPSHOT.purchaseDrafts;
   const purchases = snapshot.purchases || EMPTY_SNAPSHOT.purchases;
@@ -534,12 +523,12 @@ export default function PurchaseReceivingPage({
   const effectiveAdjustmentIds = new Set(deriveEffectiveInventoryAdjustmentIds(inventoryAdjustments));
 
   async function run(action, successMessage) {
-    if (!service || busy || actionInFlightRef.current || !authorizedRef.current) return null;
+    if (!service || busy || actionInFlightRef.current || !authorizationLifetime.isAuthorized()) return null;
     actionInFlightRef.current = true;
     setBusy(true);
     try {
       const result = await action();
-      if (!authorizedRef.current) {
+      if (!authorizationLifetime.isAuthorized()) {
         setSnapshot(EMPTY_SNAPSHOT);
         return null;
       }
@@ -551,7 +540,7 @@ export default function PurchaseReceivingPage({
       setMessage({ text: successMessage, tone: "success" });
       return result;
     } catch (error) {
-      if (authorizedRef.current) setMessage({ text: error?.message || "The owner-reviewed action could not be completed.", tone: "error" });
+      if (authorizationLifetime.isAuthorized()) setMessage({ text: error?.message || "The owner-reviewed action could not be completed.", tone: "error" });
       return null;
     } finally {
       actionInFlightRef.current = false;

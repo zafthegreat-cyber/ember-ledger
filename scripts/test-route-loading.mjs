@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
+import { readDeferredAppSource } from "./helpers/read-deferred-app-source.mjs";
 
 const root = process.cwd();
 const read = (filePath) => fs.readFileSync(path.join(root, filePath), "utf8");
@@ -12,6 +13,7 @@ function check(label, passed, details = "") {
 }
 
 const app = read("src/App.jsx");
+const mountedAppSource = readDeferredAppSource(path.join(root, "src/App.jsx"));
 const main = read("src/main.jsx");
 const routeState = read("src/utils/appRouteState.js");
 const appCss = read("src/App.css");
@@ -99,7 +101,7 @@ check(
   !app.includes("function renderHearthHomeCommandView") &&
     routePages.operationsHome.includes("export default function OperationsHome") &&
     routePages.operationsHome.includes("ops-home-page") &&
-    app.includes("<OperationsHomePage {...hearthPageProps} />")
+    /<OperationsHomePage\s+\{\.\.\.hearthPageProps\}/.test(app)
 );
 
 check(
@@ -117,12 +119,12 @@ check(
     routePages.market.includes("Product Compare") &&
     routePages.market.includes("Watch Center") &&
     routePages.market.includes("No checkout, no seller matching") &&
-    app.includes("<VaultPage renderHeader={renderVaultHeader} showDashboard={vaultSubTab === \"overview\"} {...vaultDashboardProps}>") &&
+    mountedAppSource.includes("<VaultPage renderHeader={renderVaultHeader} showDashboard={vaultSubTab === \"overview\"} {...vaultDashboardProps}>") &&
     app.includes("<MarketPage {...marketPageProps} />")
 );
 
 check(
-  "Forge Exchange body, Spark, and Menu route mounts are delegated to V4 page modules",
+  "Forge, Spark, and Settings remain delegated to their page modules",
   routePages.forge.includes("export default function ForgePage") &&
     routePages.forge.includes("exchange-page-final") &&
     routePages.forge.includes("CommandBoardV4") &&
@@ -133,8 +135,9 @@ check(
     routePages.spark.includes("FlowNextActionCard") &&
     routePages.spark.includes("submitKidsProgramApplication") &&
     routePages.menu.includes("export default function MenuPage") &&
-    routePages.menu.includes("function renderSettingsPage") &&
-    routePages.menu.includes("CommandBoardV4") &&
+    routePages.menu.includes("settings-layout") &&
+    routePages.menu.includes("renderSettingsPreferencesCard") &&
+    routePages.menu.includes("renderSettingsPrivacySafetyCard") &&
     routePages.menu.includes("hideCommandHeader: true") &&
     !app.includes("function renderExchangePage") &&
     !app.includes("function renderKidsProgramPage") &&
@@ -252,7 +255,8 @@ check(
 check(
   "Shared search box no longer pulls catalog seed into the main bundle",
   !smartSearch.includes("pokemonProductCatalog") &&
-    /localCatalogProducts\s*=\s*\[\]/.test(smartSearch)
+    /const EMPTY_OPTIONS\s*=\s*Object\.freeze\(\[\]\)/.test(smartSearch) &&
+    /localCatalogProducts\s*=\s*EMPTY_OPTIONS/.test(smartSearch)
 );
 
 check(

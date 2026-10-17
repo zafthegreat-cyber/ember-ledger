@@ -4,8 +4,10 @@ import path from "node:path";
 import process from "node:process";
 
 import {
+  APP_LOAD_SLOW_THRESHOLD_MS,
   getAppLoadFallbackCopy,
   isLikelyChunkLoadError,
+  readAppLoadFallbackTheme,
   shouldExposeFallbackErrorDetails,
 } from "../src/utils/appFallbackContent.js";
 import { BRAND_CONFIG } from "../src/config/brand.js";
@@ -22,6 +24,26 @@ const pkg = JSON.parse(read("package.json"));
 const loadingCopy = getAppLoadFallbackCopy("loading");
 assert.equal(loadingCopy.title, `Loading ${BRAND_CONFIG.shortName}...`);
 assert.equal(loadingCopy.body, "Preparing your business workspace.");
+assert.doesNotMatch(loadingCopy.helper, /records will be ready/);
+assert.equal(APP_LOAD_SLOW_THRESHOLD_MS, 12000);
+assert.match(getAppLoadFallbackCopy("slow").helper, /connection.*refreshing/);
+
+// Theme reads must preserve the existing direct/legacy preferences and tolerate unavailable storage.
+assert.equal(readAppLoadFallbackTheme(), "light");
+for (const [direct, legacy, search, expected] of [
+  ["light", '{"themeChoice":"dark"}', "", "light"],
+  [" DARK ", "{}", "", "dark"],
+  [null, '{"settings":{"appThemeChoice":"dark"}}', "", "dark"],
+  [null, "broken JSON", "", "light"],
+  [null, "null", "", "light"],
+  ["dark", "{}", "?themeInspect=light", "light"],
+]) {
+  globalThis.window = { location: { search }, localStorage: { getItem: (key) => key === "et-tcg-app-theme" ? direct : legacy } };
+  assert.equal(readAppLoadFallbackTheme(), expected);
+}
+globalThis.window = { location: { search: "" }, get localStorage() { throw new Error("Storage unavailable"); } };
+assert.equal(readAppLoadFallbackTheme(), "light");
+delete globalThis.window;
 
 const updatingCopy = getAppLoadFallbackCopy("updating");
 assert.match(updatingCopy.title, /updating/i);
@@ -39,10 +61,10 @@ assert.equal(shouldExposeFallbackErrorDetails("production"), false);
 assert.equal(shouldExposeFallbackErrorDetails("development"), true);
 
 assert.match(indexHtml, /Loading __BRAND_SHORT_NAME__\.\.\./);
-assert.match(indexHtml, /If this takes more than a few seconds, refresh the page\./);
+assert.match(indexHtml, /If loading takes longer, check your connection or refresh\./);
 assert.doesNotMatch(indexHtml, /Ember & Tide/);
 assert.match(indexHtml, /Refresh app/);
-assert.match(indexHtml, /Go to homepage/);
+assert.match(indexHtml, /Return home/);
 assert.match(indexHtml, /<noscript>/);
 assert.doesNotMatch(indexHtml, /stack trace|ChunkLoadError/i);
 
@@ -58,6 +80,8 @@ assert.match(fallbackComponent, /Refresh app/);
 assert.match(fallbackComponent, /Return home/);
 assert.match(fallbackComponent, /showDetails/);
 assert.doesNotMatch(fallbackComponent, /error\.stack/);
+assert.doesNotMatch(fallbackComponent, /refreshEmberTideApp|clearEmberTideAppCaches/);
+assert.match(fallbackComponent, /window\.location\.reload\(\)/);
 
 assert.match(app, /function RouteChunkFallback/);
 assert.match(app, /Loading \$\{BRAND_CONFIG\.shortName\}/);

@@ -1,4 +1,5 @@
 import { Request, Router } from "express";
+import { timingSafeEqual } from "node:crypto";
 import { bestBuyService } from "../services/bestbuy.service";
 import { restockMonitorService } from "../services/restockMonitor.service";
 
@@ -8,12 +9,13 @@ function isMonitorEnabled() {
   return String(process.env.BESTBUY_MONITOR_ENABLED || "").toLowerCase() === "true";
 }
 
-function isMonitorAuthorized(req: Request) {
-  const secret = process.env.BESTBUY_MONITOR_SECRET || "";
-  if (!secret) return true;
+export function isMonitorAuthorized(req: Pick<Request, "headers">, env = process.env) {
+  const secret = env.BESTBUY_MONITOR_SECRET || "";
+  if (!secret) return false;
   const auth = String(req.headers.authorization || "");
-  const querySecret = String(req.query.secret || "");
-  return auth === `Bearer ${secret}` || querySecret === secret;
+  const expected = Buffer.from(`Bearer ${secret}`);
+  const received = Buffer.from(auth);
+  return received.length === expected.length && timingSafeEqual(received, expected);
 }
 
 function extractProducts(payload: unknown): Record<string, unknown>[] {

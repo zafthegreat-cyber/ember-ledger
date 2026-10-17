@@ -10,6 +10,7 @@ import "./flipScout.css";
 
 const DashboardScreen = lazy(() => import("./screens/DashboardScreen.jsx"));
 const AppraiserScreen = lazy(() => import("./screens/AppraiserScreen.jsx"));
+const BuyOfferScreen = lazy(() => import("./screens/BuyOfferScreen.jsx"));
 const AuctionsScreen = lazy(() => import("./screens/AuctionsScreen.jsx"));
 const SearchRulesScreen = lazy(() => import("./screens/SearchRulesScreen.jsx"));
 const RecordsScreen = lazy(() => import("./screens/RecordsScreen.jsx"));
@@ -29,6 +30,7 @@ const SCREEN_TITLES = {
   ebay: "eBay Search",
   rules: "Saved Searches",
   appraise: "Deal Analysis",
+  "buy-offer": "Buy Offer",
   auctions: "Auctions",
   records: "Business Records",
   sources: "Sources",
@@ -51,6 +53,7 @@ function readInitialDestination(fallback = {}) {
   const routeView = segments[0] === "find" ? {
     "deal-feed": "deals", deals: "deals", ebay: "ebay", "ebay-search": "ebay",
     "saved-searches": "rules", rules: "rules", "deal-analysis": "appraise", analyze: "appraise",
+    "buy-offer": "buy-offer",
     auctions: "auctions", restocks: "restocks", sources: "sources", integrations: "sources",
   }[segments[1]] : "";
   const queryView = new URLSearchParams(window.location.search).get("view") || "";
@@ -62,16 +65,13 @@ function createActivity(title, detail) {
   return { id: `activity-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, title, detail, createdAt: new Date().toISOString() };
 }
 
-export default function FlipScoutPage({ onExit, onOpenRestocks, initialScreen = "deals", initialSubview = "", onViewChange, featureControls = EMPTY_FEATURE_CONTROLS }) {
-  const repositoryRef = useRef(null);
+export default function FlipScoutPage({ onOpenRestocks, initialScreen = "deals", initialSubview = "", onViewChange, featureControls = EMPTY_FEATURE_CONTROLS }) {
+  const [repository] = useState(() => createFlipScoutRepository());
   const moreMenuRef = useRef(null);
-  if (!repositoryRef.current) repositoryRef.current = createFlipScoutRepository();
-  const repository = repositoryRef.current;
   const [state, setState] = useState(() => repository.load());
-  const initialDestinationRef = useRef(null);
-  if (!initialDestinationRef.current) initialDestinationRef.current = readInitialDestination({ screen: initialScreen, subview: initialSubview });
-  const [activeScreen, setActiveScreen] = useState(initialDestinationRef.current.screen);
-  const [subview, setSubview] = useState(initialDestinationRef.current.subview);
+  const [initialDestination] = useState(() => readInitialDestination({ screen: initialScreen, subview: initialSubview }));
+  const [activeScreen, setActiveScreen] = useState(initialDestination.screen);
+  const [subview, setSubview] = useState(initialDestination.subview);
   const [appraisalSeed, setAppraisalSeed] = useState(null);
   const [storageMessage, setStorageMessage] = useState(repository.getLastError());
   const activeTitle = useMemo(() => SCREEN_TITLES[activeScreen] || "Find", [activeScreen]);
@@ -185,7 +185,7 @@ export default function FlipScoutPage({ onExit, onOpenRestocks, initialScreen = 
     });
     applySave(result.write.state, result.write.error);
     return result.merge;
-  }, [applySave, repository, state]);
+  }, [applySave, repository]);
 
   const importDiscovery = useCallback(async (listing) => {
     const outcome = await repository.runLocked(() => {
@@ -206,7 +206,7 @@ export default function FlipScoutPage({ onExit, onOpenRestocks, initialScreen = 
     const result = outcome.result;
     applySave(result.state, result.error);
     return { record: outcome.record, updated: Boolean(outcome.existingDeal), error: result.error };
-  }, [applySave, repository, state]);
+  }, [applySave, repository]);
 
   const exportJson = useCallback(() => downloadTextFile("private-business-hub-sourcing-backup.json", repository.exportJson(), "application/json;charset=utf-8"), [repository]);
   const importJson = useCallback(async (raw) => {
@@ -227,6 +227,7 @@ export default function FlipScoutPage({ onExit, onOpenRestocks, initialScreen = 
       <div>
         <button type="button" onClick={() => navigate("rules")}>Saved</button>
         <button type="button" onClick={() => navigate("appraise")}>Deal Analysis</button>
+        <button type="button" onClick={() => navigate("buy-offer")}>Buy Offer</button>
         {featureControls.ebaySearch !== false ? <button type="button" onClick={() => navigate("ebay")}>eBay Search</button> : null}
         {featureControls.ebaySearch !== false ? <button type="button" onClick={() => navigate("ebay")}>Import Review</button> : null}
         <button type="button" onClick={() => navigate("sources")}>Sources</button>
@@ -240,6 +241,7 @@ export default function FlipScoutPage({ onExit, onOpenRestocks, initialScreen = 
       <PageHeader
         eyebrow="Sourcing"
         title="Find"
+        description="Discover your next good find. Compare listings and keep the ones worth a closer look."
       />
       {activeScreen !== "deals" && PRIMARY_NAV_ITEMS.some(([key]) => key === activeScreen) ? findNavigation : null}
       {!PRIMARY_NAV_ITEMS.some(([key]) => key === activeScreen) ? <div className="flip-context-bar"><button type="button" onClick={() => navigate("deals")}>Back to Deals</button><strong>{activeTitle}</strong></div> : null}
@@ -250,6 +252,7 @@ export default function FlipScoutPage({ onExit, onOpenRestocks, initialScreen = 
         {activeScreen === "deals" ? <DealsScreen deals={state.deals} initialMode={subview} navigation={findNavigation} onSave={saveRecord} onDelete={deleteRecord} onAnalyze={analyzeDeal} /> : null}
         {activeScreen === "restocks" ? <RestocksScreen onOpenRestocks={onOpenRestocks} /> : null}
         {activeScreen === "appraise" ? <AppraiserScreen seed={appraisalSeed} onSave={saveRecord} repository={repository} analysisRecords={intelligenceAnalyses} onAnalysisStored={analysisStored} /> : null}
+        {activeScreen === "buy-offer" ? <BuyOfferScreen /> : null}
         {activeScreen === "auctions" ? <AuctionsScreen auctions={state.auctions} initialMode={subview} onSave={saveRecord} onDelete={deleteRecord} /> : null}
         {activeScreen === "rules" ? <SearchRulesScreen rules={state.searchRules} onSave={saveRecord} onDelete={deleteRecord} onOpenEbay={(ruleId) => navigate("ebay", ruleId)} /> : null}
         {activeScreen === "ebay" ? <EbayDiscoveryScreen state={state} initialRuleId={subview} onMerge={mergeDiscoveries} onImport={importDiscovery} onUpdate={saveRecord} onNavigate={navigate} /> : null}

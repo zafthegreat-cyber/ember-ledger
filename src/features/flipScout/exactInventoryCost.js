@@ -1,5 +1,6 @@
 import { nonNegative } from "./calculations.js";
 import { hasValidManagedExactCost, soldQuantityForInventory } from "./inventory.js";
+import { exactSum, hasAppliedReturns, inventoryUnitLedger, nextReturnSaleAllocation } from "../manualLifecycles/returnLedger.js";
 import {
   effectiveManagedSaleCogsMinorUnits,
   managedSaleReconciliationProjection,
@@ -39,6 +40,9 @@ function exactMajorUnitsToMinorUnits(value) {
 }
 
 export function suggestedInventorySaleCogsMinorUnits(item = {}, sales = [], quantity = 0, editingSaleId = "") {
+  if (hasAppliedReturns(item.id, sales)) {
+    try { return exactSum(nextReturnSaleAllocation(item, sales.filter((sale) => sale.id !== editingSaleId), quantity).unitCostsMinor); } catch { return null; }
+  }
   const exact = exactUnitCosts(item);
   if (!exact || !Number.isSafeInteger(quantity) || quantity < 1) return null;
   const active = sales
@@ -73,16 +77,17 @@ export function validateManagedInventorySales(state = {}) {
       .filter((sale) => sale.inventoryItemId === item.id && countsAgainstInventory(sale))
       .sort(saleOrder);
     let offset = 0;
+    const returnLedger = hasAppliedReturns(item.id, state.sales) ? inventoryUnitLedger(item, state.sales) : null;
     for (const [index, sale] of active.entries()) {
       const quantity = Number(sale.quantitySold);
       if (sale.inventoryAllocationSequence !== index + 1
         || !Number.isFinite(new Date(sale.inventoryAllocationAt).getTime())) {
         throw new Error("A completed sale must retain its repository-assigned Inventory allocation order.");
       }
-      if (!Number.isSafeInteger(quantity) || quantity < 1 || offset + quantity > exact.length) {
+      if (!Number.isSafeInteger(quantity) || quantity < 1 || (!returnLedger && offset + quantity > exact.length)) {
         throw new Error("A completed sale exceeds owner-confirmed Inventory availability.");
       }
-      const expectedMinorUnits = sum(exact.slice(offset, offset + quantity));
+      const expectedMinorUnits = returnLedger ? exactSum(returnLedger.allocations.get(sale.id).map((unit) => exact[unit])) : sum(exact.slice(offset, offset + quantity));
       const effectiveMinorUnits = effectiveManagedSaleCogsMinorUnits(sale, reconciliation.events);
       if (sale.costAuthority !== "INTEGER_MINOR_UNITS"
         || exactMajorUnitsToMinorUnits(sale.allocatedCostOfGoodsSold) !== sale.allocatedCostOfGoodsSoldMinorUnits
@@ -120,6 +125,10 @@ export function inventoryRecordCostMajorUnits(item = {}) {
 }
 
 export function availableInventoryCostMajorUnits(item = {}, sales = []) {
+  if (hasAppliedReturns(item.id, sales)) {
+    const ledger = inventoryUnitLedger(item, sales);
+    return exactSum(ledger.available.map((unit) => ledger.costs[unit])) / 100;
+  }
   const exact = exactUnitCosts(item);
   const sold = soldQuantityForInventory(item.id, sales);
   if (exact) {
@@ -133,9 +142,9 @@ export function availableInventoryCostMajorUnits(item = {}, sales = []) {
 }
 
 export function suggestedInventorySaleCogsMajorUnits(item = {}, sales = [], quantity = 0, editingSaleId = "") {
+  if (hasAppliedReturns(item.id, sales)) return (suggestedInventorySaleCogsMinorUnits(item, sales, quantity, editingSaleId) ?? 0) / 100;
   const exact = exactUnitCosts(item);
   if (exact) return (suggestedInventorySaleCogsMinorUnits(item, sales, quantity, editingSaleId) ?? 0) / 100;
-  const sold = soldQuantityForInventory(item.id, sales, editingSaleId);
   if (item.provenanceManaged === true) return 0;
   const stocked = nonNegative(item.quantity);
   return stocked > 0 ? (inventoryRecordCostMajorUnits(item) / stocked) * nonNegative(quantity) : 0;

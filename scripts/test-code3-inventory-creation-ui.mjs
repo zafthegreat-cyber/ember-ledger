@@ -40,7 +40,7 @@ match(service, /allowed = new Set\(\["expectedVersion", "review"\]\)/, "browser 
 
 match(business, /record\.provenanceManaged === true/);
 match(business, /append-only correction workflow/);
-match(business, /inventoryRecordCostMajorUnits/, "Business Inventory renders exact minor-unit provenance through the shared projection helper");
+match(business, /if \(record\.provenanceManaged === true\) return availableInventoryCostMajorUnits\(record, sales\)/, "Business Inventory renders exact remaining minor-unit provenance through its active shared projection helper");
 match(business, /suggestedInventorySaleCogsMajorUnits/, "Business Sales consumes deterministic unit-cost slices");
 match(css, /@media \(max-width: 700px\)/);
 match(css, /min-height: 44px/);

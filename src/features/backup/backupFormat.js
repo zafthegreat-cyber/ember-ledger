@@ -18,6 +18,7 @@ import {
   validateBackupCrossSourceRelationships,
   validateBackupSourceData,
 } from "./backupValidation.js";
+import { readAccountOpsRecoveryGuardedRaw } from "../accountOps/recoveryState.js";
 
 export const CODE3_BACKUP_FORMAT = "code-3-backup";
 export const CODE3_BACKUP_FORMAT_VERSION = 1;
@@ -70,7 +71,10 @@ function readSourceData(source, context) {
 
   if (source.exportAdapter === "json-key" || source.exportAdapter === "allowlisted-json-key") {
     if (isProhibitedStorageKey(source.storageKey)) throw new Error("Prohibited storage keys cannot be exported.");
-    const parsed = parseStoredValue(readRaw(storage, source.storageKey), source.emptyValue);
+    const raw = source.sourceId === "account-ops"
+      ? readAccountOpsRecoveryGuardedRaw(storage)
+      : readRaw(storage, source.storageKey);
+    const parsed = parseStoredValue(raw, source.emptyValue);
     return source.exportAdapter === "allowlisted-json-key"
       ? pickAllowedFields(parsed, source.allowedFields)
       : parsed;

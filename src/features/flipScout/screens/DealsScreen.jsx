@@ -165,7 +165,7 @@ export default function DealsScreen({ deals, initialMode = "", navigation = null
         { label: "Projected ROI", value: selectedDeal.projectedRoi || selectedDeal.expectedRoi ? formatPercent(selectedDeal.projectedRoi || selectedDeal.expectedRoi) : "Not entered", numeric: true },
       ]}
       primaryAction={<PrimaryButton disabled={saving} onClick={() => onAnalyze({ ...selectedDeal, purchasePrice: selectedDeal.askingPrice, purchaseTax: selectedDeal.estimatedTax })}>Analyze Deal</PrimaryButton>}
-      secondaryActions={<>{selectedDeal.listingUrl ? <a className="ops-button ops-button--secondary" href={selectedDeal.listingUrl} target="_blank" rel="noreferrer">Open Listing</a> : null}<QuietButton disabled={saving} onClick={() => { edit(selectedDeal); setSelectedDeal(null); }}>Edit</QuietButton><QuietButton disabled={saving} onClick={async () => { if (saveInFlightRef.current) return; if (await onDelete("deals", selectedDeal.id, selectedDeal.title)) setSelectedDeal(null); }}>Delete</QuietButton></>}
+      secondaryActions={<>{selectedDeal.listingUrl ? <a className="ops-button ops-button--secondary" href={selectedDeal.listingUrl} target="_blank" rel="noreferrer">Open Listing</a> : null}<QuietButton disabled={saving} onClick={() => { edit(selectedDeal); setSelectedDeal(null); }}>Edit</QuietButton><QuietButton className="ops-button--danger" disabled={saving} onClick={async () => { if (saveInFlightRef.current) return; if (await onDelete("deals", selectedDeal.id, selectedDeal.title)) setSelectedDeal(null); }}>Delete</QuietButton></>}
       sections={[
         { title: "Decision", description: "Update the saved review status.", children: <div className="flip-detail-actions"><QuietButton disabled={saving} onClick={() => updateStatus(selectedDeal, "Watching")}>Save to Watching</QuietButton><QuietButton disabled={saving} onClick={() => updateStatus(selectedDeal, "Passed")}>Pass</QuietButton></div> },
         { title: "Listing", description: "Source-provided and manually entered details.", children: <DetailList items={[{ label: "Source", value: selectedDeal.marketplace }, { label: "External listing ID", value: selectedDeal.externalListingId }, { label: "Seller", value: selectedDeal.sellerName }, { label: "Seller rating", value: selectedDeal.sellerRating }, { label: "Listing type", value: selectedDeal.listingType }, { label: "Location", value: selectedDeal.location }, { label: "Distance", value: selectedDeal.distance ? `${selectedDeal.distance} mi` : "" }, { label: "Description", value: selectedDeal.description }]} /> },
@@ -193,7 +193,10 @@ export default function DealsScreen({ deals, initialMode = "", navigation = null
           actions={<button type="button" className="primary-button" disabled={saving} onClick={() => { if (saveInFlightRef.current) return; setForm(blankDeal()); setFormOpen((open) => !open); }}>{formOpen ? "Close form" : "Paste Listing"}</button>}
         />
         {formOpen ? (
-          <form className="flip-form" onSubmit={save}>
+          <form className="flip-form flip-listing-form" onSubmit={save}>
+            <p className="flip-listing-form__intro">A title or listing URL is enough to save. Add the remaining details as you review the listing.</p>
+            <fieldset className="flip-listing-form__group">
+            <legend><span aria-hidden="true">01</span> Listing details</legend>
             <div className="flip-form-grid">
               <TextInput label="Marketplace / source" value={form.marketplace} onChange={set("marketplace")} placeholder="eBay, local auction, Facebook Marketplace…" />
               <TextInput label="External listing ID" value={form.externalListingId} onChange={set("externalListingId")} />
@@ -204,6 +207,13 @@ export default function DealsScreen({ deals, initialMode = "", navigation = null
               <TextInput label="Seller rating" helper="Only enter a rating supplied by the source or entered by you." value={form.sellerRating} onChange={set("sellerRating")} />
               <SelectInput label="Listing type" value={form.listingType} onChange={set("listingType")} options={LISTING_TYPES} />
               <SelectInput label="Product classification" value={form.productClassification} onChange={set("productClassification")} options={PRODUCT_CLASSIFICATIONS} />
+              <TextArea label="Images or image references" helper="One URL or local reference per line. No image files are copied into seed data." value={form.imageReferencesText} onChange={set("imageReferencesText")} />
+            </div>
+            </fieldset>
+            <fieldset className="flip-listing-form__group">
+            <legend><span aria-hidden="true">02</span> Price &amp; costs</legend>
+            <p className="flip-listing-form__hint">Include the costs you know. The estimate below updates as you enter amounts.</p>
+            <div className="flip-form-grid">
               <MoneyInput label="Asking price" value={form.askingPrice} onChange={set("askingPrice")} />
               <MoneyInput label="Purchase shipping" value={form.purchaseShipping} onChange={set("purchaseShipping")} />
               <MoneyInput label="Estimated tax" value={form.estimatedTax} onChange={set("estimatedTax")} />
@@ -212,7 +222,12 @@ export default function DealsScreen({ deals, initialMode = "", navigation = null
               <MoneyInput label="Pickup or travel cost" value={form.travelOrPickupCost} onChange={set("travelOrPickupCost")} />
               <MoneyInput label="Preparation / cleaning cost" value={form.preparationCost} onChange={set("preparationCost")} />
               <MoneyInput label="Other acquisition costs" value={form.otherAcquisitionCosts} onChange={set("otherAcquisitionCosts")} />
-              <TextArea label="Images or image references" helper="One URL or local reference per line. No image files are copied into seed data." value={form.imageReferencesText} onChange={set("imageReferencesText")} />
+            </div>
+            <div className="flip-live-total"><span>Current landed-cost estimate</span><strong>{formatCurrency(calculateLandedCost({ ...form, purchasePrice: form.askingPrice, purchaseTax: form.estimatedTax }))}</strong></div>
+            </fieldset>
+            <fieldset className="flip-listing-form__group">
+            <legend><span aria-hidden="true">03</span> Timing &amp; pickup</legend>
+            <div className="flip-form-grid">
               <TextInput label="Location" value={form.location} onChange={set("location")} />
               <NumberInput label="Distance (miles)" value={form.distance} onChange={set("distance")} />
               <TextInput label="Date discovered" type="date" value={form.dateDiscovered} onChange={set("dateDiscovered")} />
@@ -221,13 +236,18 @@ export default function DealsScreen({ deals, initialMode = "", navigation = null
               <MoneyInput label="Current bid" value={form.currentBid} onChange={set("currentBid")} />
               <NumberInput label="Number of bids" value={form.numberOfBids} onChange={set("numberOfBids")} step="1" />
               <CheckField label="Local pickup available" checked={form.localPickupAvailable} onChange={set("localPickupAvailable")} />
+            </div>
+            </fieldset>
+            <fieldset className="flip-listing-form__group">
+            <legend><span aria-hidden="true">04</span> Review &amp; notes</legend>
+            <div className="flip-form-grid">
               <SelectInput label="Status" value={form.status} onChange={set("status")} options={DEAL_STATUSES} />
               <SelectInput label="Confidence" value={form.confidence} onChange={set("confidence")} options={CONFIDENCE_LEVELS} />
               <TextArea label="Risk flags" helper="Separate flags with commas or new lines." value={form.riskFlagsText} onChange={set("riskFlagsText")} />
               <TextArea label="Tags" helper="Separate tags with commas." value={form.tagsText} onChange={set("tagsText")} />
               <TextArea label="Notes" value={form.notes} onChange={set("notes")} />
             </div>
-            <div className="flip-live-total"><span>Current landed-cost estimate</span><strong>{formatCurrency(calculateLandedCost({ ...form, purchasePrice: form.askingPrice, purchaseTax: form.estimatedTax }))}</strong></div>
+            </fieldset>
             {message ? <p className="flip-form-message" role="status">{message}</p> : null}
             <FormActions><button type="submit" className="primary-button" disabled={saving}>{saving ? "Saving…" : form.id ? "Update listing" : "Save listing"}</button><button type="button" className="secondary-button" disabled={saving} onClick={() => onAnalyze({ ...form, purchasePrice: form.askingPrice, purchaseTax: form.estimatedTax })}>Analyze assumptions</button></FormActions>
           </form>
@@ -247,7 +267,7 @@ export default function DealsScreen({ deals, initialMode = "", navigation = null
               </DealCard>
             ))}
           </div>
-        ) : <EmptyState title="No listings match">Paste a real listing or adjust the current filters. This workspace does not seed fake marketplace results.</EmptyState>}
+        ) : <EmptyState title={deals.length ? "No listings match" : "Your next find starts here"}>{deals.length ? "Try another search or adjust the filters to find a saved listing." : "Paste a listing to save its details, compare the price, and decide whether it belongs in your collection."}</EmptyState>}
       </section>
     </div>
   );

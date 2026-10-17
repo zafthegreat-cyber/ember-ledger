@@ -7,6 +7,7 @@ import { PrimaryButton, QuietButton } from "../../../components/operations/Opera
 import { DetailList, RecordDetailPage } from "../../../components/operations/RecordExperience.jsx";
 import { BRAND_CONFIG } from "../../../config/brand.js";
 import { analyzeAuctionForm, formatBasisPoints, formatMinorMoney, minorMoneyToMajorInput } from "../intelligenceFormAdapter.js";
+import ManualLifecycles from "../../manualLifecycles/ManualLifecycles.jsx";
 
 function blankAuction() {
   return {
@@ -226,6 +227,7 @@ export default function AuctionsScreen({ auctions, initialMode = "", onSave, onD
           </article>;
         })}</div> : <EmptyState title="No auctions tracked">Add a real auction manually. No auction source is connected in Phase 1.</EmptyState>}
       </section>
+      <ManualLifecycles types={["event", "auctionLink", "visit"]} title="Events, pickup & sourcing visits" />
     </div>
   );
 }

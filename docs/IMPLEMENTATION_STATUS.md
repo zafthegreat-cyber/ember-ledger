@@ -1,42 +1,59 @@
-# Code 3 Implementation Status
+# Code 3 TCG Implementation Status
 
-Last audited: 2026-09-02
+Last local audit: 2026-09-16
 
-Published Phase 2C-D commit / Phase 2C-E starting HEAD: `5eef5ae59e79dccb7cbb341f42ca6bda7468a762`
+Published Phase 2C-E commit / Phase 2A.6-A starting HEAD: `ba68b2eb5f4fe027f5234cf207a44f8c07514ea2`
 
-Repository branch represented: `ui-104-final-product-ui-2` (Phase 2C-E local working copy prepared from a detached worktree at the published Phase 2C-D commit)
+Repository branch represented: `ui-104-final-product-ui-2` (Phase 2A.6-A local working copy prepared from a detached worktree at the published Phase 2C-E commit)
 
 Pull request: #1, Draft
-Deployment: Phase 2C-D is published on the existing Draft PR branch. The separate Phase 2B2-B.1 operational verification is paused; a Free Upstash resource and three branch-scoped Preview secrets exist, but remaining owner/CORS/activation values are absent, no follow-up provider-auth Preview was deployed, and `hostedRuntimeVerified=false`. Phase 2C-E is local only and makes no deployment or environment change.
+Deployment: Phase 2C-E is published on the existing Draft PR branch. The separate Phase 2B2-B.1 operational verification is paused; existing Upstash/Supabase/provider-auth state is untouched and `hostedRuntimeVerified=false`. Phase 2A.6-A is local only and makes no deployment or environment change.
 
 ## Current phase
 
-**Phase 2C-E — Accountant Review & Prior-Period Adjustment Preview** is the current local-only, read-only phase. It derives OWNER-only review items from published Phase 2C-D Sales and append-only reconciliation history, classifies original and correction calendar periods, and keeps original recorded values visibly separate from current effective exact-money projections. It posts no journal/accounting entry, infers no tax treatment or filing status, mutates no Purchase/Sale/Inventory/Transfer, adds no export or note store, and does not begin managed Transfer or Raw/Graded authority, connect upstream evidence, use real business/tax data, resume provider verification, change remote persistence, or deploy.
+**Latest local continuation:** [NEXT_TEN_LOCAL_REPORT.md](./NEXT_TEN_LOCAL_REPORT.md) supersedes the preceding checkpoint below for R02 and R04–R12. It implements zero-warning React cleanup/lazy views, mapped migration rehearsal, coordinated Account Ops recovery/receipts, private byte/session service foundations, an offline queue, authorized record search and manual Find/Collection/Business lifecycles. It records current verification and remaining integration limits. No commit, deployment, provider activation or owner-data cutover occurred; ten areas receiving local work does not equal ten completed release requirements.
+
+The following checkpoint paragraphs retain their historical evidence. Their 74-warning and absent Account Ops coordinator/receipt statements are superseded by the latest report.
+
+**Current implementation objective: finish the app against an explicit acceptance inventory.** The latest local checkpoint completes the standard Collection spacing pass, fixes toast/confirmation and Role Management presentation, integrates Account Ops recovery-status gates, improves React component lifetimes, protects shared Scout writes, and removes reference-proven retired code. The corrected production build, **28/28 full regressions, 30/30 theme cases**, keyboard contracts and whitespace check pass against an unchanged 667-file candidate fingerprint. Complete-source lint now passes with **0 errors / 74 warnings**, down from 302 errors / 92 warnings. Backend TypeScript and 60 security tests also pass. See [the latest local completion review](./LOCAL_COMPLETION_REVIEW.md), [machine-readable verification](../artifacts/qa/release-readiness/completion-verification.json), and the [48-image current gallery](../artifacts/qa/release-readiness/REVIEW.html).
+
+**Still open:** 74 dependency warnings, the large App bundle, coordinated recovery/reauthentication, canonical cloud adoption and remaining roadmap lifecycles. Hosted owner proof needs access to the owning Vercel account; physical-device/screen-reader checks remain unverified. The recovery gates pass 52 scenarios but do not enable Restore Apply or provide whole-operation transactions. Current active save-handler coverage is 69 checks; the older 78-case result included a now-removed uncalled Kids helper and remains historical evidence. [RELEASE_ACCEPTANCE.md](./RELEASE_ACCEPTANCE.md) and the [hosted audit](./HOSTED_READINESS_AUDIT.md) distinguish these gaps from completed foundations. Source remains local and uncommitted; no publication, provider activation or owner-data migration occurred. This is not a 100% product-completion claim.
+
+**Latest completed local UI refinement checkpoint:** the user authorized continued improvement until stopped. The verified checkpoint covers listing forms, shared records, sign-in/signup, Account Ops responsive cards, Search keyboard behavior, dialog targets, legacy Collection/Forge/Scout typography, Account/Help/Notifications, and readable, balanced Settings detail pages. Build, backend type check, 28/28 full regression scenarios, 3 relevant Vault/Forge follow-up scenarios, 30 theme checks, 24+18 legacy presentation cases, 12 Search cases, and focused workflows passed. Viewport readiness was corrected after some earlier screenshots captured loading placeholders; the strengthened **46 light + 46 dark** checks pass with actual rendered content. The Settings follow-up passed 20 readability cases, 6 desktop navigation cases and 8 Profile/Plans organization cases. The expanded **68-image review gallery** is verified. Existing lint debt and the large-bundle warning remain. See [ONGOING_UI_REVIEW.md](./ONGOING_UI_REVIEW.md) for the branch baseline, actual results, screenshots and limits. All changes remain local and uncommitted; no publication is authorized.
+
+**Latest local visual review candidate:** the color refinement replaces green-tinted neutrals with graphite and cool off-white, retains teal actions, separates inset/elevated surfaces, and corrects accent-button foregrounds. Final build, backend type check, 30 theme/contrast browser combinations, 46 light + 46 dark viewport checks, keyboard contracts, and workspace navigation passed. Existing lint debt remains. See [COLOR_REVIEW.md](./COLOR_REVIEW.md) for current palette, screenshots, and verification limits. Changes remain local until separately approved.
+
+**Completed precision interface refinement:** geometric heading typography, an original collectible motif, clearer surface depth, compact navigation, and stronger Collection/Settings hierarchy. Build, backend type check, 28 regression scenarios, 46 light + 46 dark viewport checks, semantic themes, and 926 Account Ops browser assertions passed in that phase. Sources, screenshots, and limitations are recorded in [FUTURE_UI_REVIEW.md](./FUTURE_UI_REVIEW.md).
+
+**Completed layout foundation:** Home, Settings, Collection, Find, Business, and the shared shell received the preceding layout/grouping pass. Its evidence remains in [UI_LAYOUT_REVIEW.md](./UI_LAYOUT_REVIEW.md).
+
+**Semantic theme foundation:** the user-specified neutral light/dark palette is centralized in semantic tokens and applied through the existing shared components. See [SEMANTIC_THEME_REVIEW.md](./SEMANTIC_THEME_REVIEW.md). This refinement is separate from the publication recorded below.
+
+**Latest publication:** the local Account Ops and whole-app UI candidate, including the corrected Code 3 login page, is now deployed to https://code3tcg.app via deployment dpl_49xffrPzHXSEvaq8JgUtLLYx7bG6. Production build and all six live login checks passed. Source remains locally uncommitted. See [LOGIN_REFRESH_DEPLOYMENT.md](./LOGIN_REFRESH_DEPLOYMENT.md). Earlier unpublished notes below describe the pre-deployment state; hosted provider activation remains separate.
+
+**Whole-app UI refresh:** shared typography, cards, buttons, forms, mobile headings, Business destinations, Home shortcuts, and legacy navigation/settings presentation are updated locally. Build, 28/28 regression, 46 light + 46 dark viewport checks, keyboard/accessibility contracts, workspace contracts, and 926 Account Ops browser assertions passed. See [WHOLE_APP_UI_REFRESH.md](./WHOLE_APP_UI_REFRESH.md) for scope and evidence. Changes remain uncommitted and unpublished.
+
+**Latest local UI update:** the [Account Ops UI refresh](./ACCOUNT_OPS_UI_REFRESH.md) addresses the product review findings and reorganizes the workspace with clearer navigation, readable record labels, a working account-list shortcut, and an isolated sample-order preview. Its focused tests, frontend build, 926 foundation browser assertions, and 20-fixture workflow suite passed. It remains unpublished.
+
+**Phase 2A.6-A local completion gate passed on 2026-09-14.** Changes remain unstaged/uncommitted at the detached baseline; no publication or hosted activation occurred. See [PHASE_2A6A_COMPLETION_REPORT.md](./PHASE_2A6A_COMPLETION_REPORT.md) for the current result: builds, 28/28 regression, 914 foundation browser assertions, existing Account Ops workflows, direct routes, security/backup checks, and both 46-check viewport matrices passed. Resume from this completed local candidate rather than rebuilding it.
+
+**Phase 2A.6-A — Account Ops & Automation Product/UX Foundation** is the current mobile-safe, local-only phase. It organizes existing OWNER-only Account Ops capabilities plus synthetic/reference projections into one ten-area operations surface. It creates no real retailer account, performs no CAPTCHA/MFA/OTP action, connects no email/SMS/Bot/proxy/webhook/server/session/payment provider, sends no export or notification, provisions no resource, and adds no business mutation, persistence/backup/migration source, remote authority, billing, or deployment.
 
 Phase 2B2-B.1 remains paused and independent. `LOCAL_ONLY` remains authoritative; `REMOTE_ACTIVE` is disabled; the Phase 1B schema remains `SCHEMA_ONLY`; no owner record moved; `hostedRuntimeVerified=false`.
 
-The Phase 2C-E local candidate adds:
+The Phase 2A.6-A local candidate adds:
 
-- an ephemeral frozen `AccountantReviewItem` projection over validated schema-5 Inventory/Sale/reconciliation history plus existing Purchase/Receiving provenance;
-- bounded prior/current-period COGS, product, Inventory cost, refund, return, reversal, Sale-reporting, and blocked-Transfer review categories;
-- strict calendar month/quarter/year derivation using Sale dates as recorded and ISO reconciliation instants on a disclosed UTC date basis;
-- exact original, signed-adjustment, and current-effective COGS/profit projections that count each Sale/event effect once and keep reversal chains visible;
-- `FILING_STATUS_UNKNOWN`, cautious accountant-review language, and no tax/legal conclusion; and
-- a read-only OWNER UI with in-memory filters only and no ledger, journal entry, tax filing/amendment, export, note, backup, migration, or remote-authority path.
+- a ten-area `/account-ops` information architecture: Overview, Accounts, Identity, Payment Metadata, Network, Verification, Automation, Orders, Infrastructure, and Activity;
+- an ephemeral, deeply frozen `code3.account-ops.operations-foundation.v1` contract whose snapshots force `authoritative=false`, `persisted=false`, and every live-capability flag false, while the composed view forces `writesAllowed=false` and `networkAllowed=false`;
+- Account Creation Assistant, detailed Account Health, safe duplicate detection, Verification Inbox/CAPTCHA Center, email/profile/phone, virtual-card and proxy metadata, provider export readiness, unified-order relationships, Webhook Hub, server/cloud/remote/browser metadata, Attention Center, notification preferences, and bounded search projections;
+- strict source reuse: existing Account Ops, Inbox/Order Candidate, Purchase/Receiving, Inventory, and Bot domains retain authority; the new UI references or projects them without copying, importing, or mutating them;
+- human-only verification wording and states: Code 3 may display/pause but cannot solve CAPTCHA, intercept/store/replay OTP/MFA, accept terms, create/login/verify an account, or resume a live workflow;
+- no-secret schemas: no password, token, cookie, session, OTP, CAPTCHA response, full payment card/CVV/PIN, proxy endpoint/credentials, Bot license, raw provider content, or browser authority field; and
+- responsive progressive-disclosure cards/rows and navigation-only Attention/search actions, with no notification delivery or destructive command.
 
-It retains these published Phase 2C-D safeguards:
+The candidate adds no repository collection, browser storage key, Backup/Restore source, Migration Preview source, remote schema, adapter, environment/configuration change, or Production artifact. Stellar and Hayha remain `NOT_CONFIGURED`; Shikari, Valor, and Refract remain unsupported/unreviewed; provider capability stays unverified and direct export is disabled. Gmail and Outlook remain `NOT_CONFIGURED`, `NO_LIVE_BOT_PILOT_YET` remains unchanged, and Phase 2D-B3 has not started.
 
-- typed append-only `inventoryAdjustments` that reconcile immutable creation state to current item/lot product, condition, disposition, quantity, and exact cost;
-- explicit owner preview and confirmation with stable identity, expected versions, exclusive locking, private interruption journal, read-back, replay dedupe, and stale/conflicting failure;
-- whole-lot product/condition correction only when no unit was sold or transferred, with product resolution limited to an existing local relationship;
-- physical return and quantity disposition bounded by unsold/untransferred availability, while `Refund != Physical Return` remains explicit;
-- acquisition-cost correction only before any sale/transfer and with exact integer-minor-unit allocation;
-- separate Receiving/Inventory-creation handling for replacements and separate acquisition/cost review for unexpected extras;
-- continued Raw card and Graded card deferral until a type-specific condition/slab contract exists;
-- generic edit/delete/import protection, strict Backup/zero-write Restore Preview chain validation, and `REQUIRES_MAPPING` for every remote Inventory path; and
-- synthetic-only correction/disposition/reconciliation foundations; Phase 2C-E validation and publication remain separate.
-
-No normal-runtime fixture, upstream automatic importer, automatic Receiving-to-Inventory path, refund inference, automatic product/replacement/extra creator, accounting/tax writer, remote adapter, provider credential, schema application, owner migration, or Production change is part of the candidate. Review projections never become accounting authority. The private recovery journal and all Accountant Review items remain outside backup and migration sources.
+See [ACCOUNT_LIFECYCLE_CONTRACT.md](./ACCOUNT_LIFECYCLE_CONTRACT.md), [VERIFICATION_CENTER_CONTRACT.md](./VERIFICATION_CENTER_CONTRACT.md), [AUTOMATION_EXPORT_CONTRACT.md](./AUTOMATION_EXPORT_CONTRACT.md), and [INFRASTRUCTURE_MANAGER_CONTRACT.md](./INFRASTRUCTURE_MANAGER_CONTRACT.md).
 
 ## Completed baseline
 
@@ -277,10 +294,10 @@ The published Phase 2C-A local gate passed the frontend production build (563 mo
 ## Preview state
 
 - PR #1 remains Draft per the task baseline.
-- The published branch includes Phase 2C-D at `5eef5ae59e79dccb7cbb341f42ca6bda7468a762`; Phase 2C-E changes are local only.
+- The published branch includes Phase 2C-E at `ba68b2eb5f4fe027f5234cf207a44f8c07514ea2`; Phase 2A.6-A changes are local only.
 - The published Preview proves filesystem routing to Express and fail-closed authentication, not the complete owner-authorized managed-store proof.
 - `hostedRuntimeVerified=false` because no legitimate owner plus exact durable-store readiness response has been proven. The Free Upstash resource and three branch-scoped Preview secrets do not satisfy the missing Supabase owner/auth and remaining exact CORS/activation/runtime gate. Phase 2B2-B.1 is paused; required names are documented without values in [OWNER_AUTH_DECISION.md](./OWNER_AUTH_DECISION.md).
-- Phase 2C-E does not deploy a Preview, inspect or use the Upstash resource, resume Supabase sign-in, connect a provider, or change Production/Development configuration.
+- Phase 2A.6-A does not deploy a Preview, inspect or use the Upstash resource, resume Supabase sign-in, connect a provider, create an account, provision infrastructure, or change Production/Development configuration.
 - No production deployment is represented by this documentation.
 
 ## Known defects and debt
@@ -323,9 +340,11 @@ The published Phase 2C-A local gate passed the frontend production build (563 mo
 36. Provenance-managed Inventory acquisition records retain exact integer-minor-unit cost and separate lots. Older Inventory rows may retain legacy decimal projections and require an owner-reviewed mapping before remote cutover.
 37. Inventory corrections/dispositions are explicit local typed adjustments. Supported post-sale product/cost effects use separate append-only reconciliation events while original Sales remain immutable. Managed Transfer/multi-hop reconciliation, Raw/Graded condition semantics, and remote transactional enforcement remain future work.
 38. Accountant Review is derived and read-only. Its period classification uses Sale dates as recorded and reconciliation instants on a disclosed UTC basis because no authoritative owner-business time zone or filed-period authority exists. Existing tax summaries remain distinct; the review cannot claim tax treatment or post an adjustment.
+39. Phase 2A.6-A operations models are synthetic/derived and non-persisted. Their declared account health, phone availability, proxy/server health, webhook state, remote/browser session state, and provider readiness are not live provider observations.
+40. Phase 2A.6-A does not add a secure secret store, payment authority, live notification, provider export, cloud control, remote-session protocol, or universal cross-domain command authority. Those require separate server/provider/security specifications; navigation and readiness must not be mistaken for action.
 
 ## Next recommended task
 
-After the Phase 2C-E local completion report, stop. Publication, accounting posting, tax filing/amendment, managed Transfer, Phase 2D-B3, hosted transaction/multi-device authority, reviewed migration mapping, Raw/Graded correction, product creation, and every live provider/import path require separate authorization. The Bot evidence still supports no live pilot. Phase 2B2-B.1 remains paused until the owner explicitly says `Supabase signed in.` Gmail/Outlook, mailbox reads, billing, renderer extraction, and disposable-database work remain separate approvals.
+After the Phase 2A.6-A local completion report, stop. Publication, Phase 2A.6-B, retailer account creation/login, CAPTCHA/MFA automation, live mailbox/SMS/Bot/proxy/webhook/cloud/remote-session work, provider export/send, managed Transfer, Phase 2D-B3, and every other implementation phase require separate authorization. The Bot evidence still supports no live pilot. Phase 2B2-B.1 remains paused. Gmail/Outlook, billing, remote persistence, schema/migration work, and Production remain separate approvals.
 
 Do not apply the schema to the owner or Production database, enable `REMOTE_ACTIVE`, migrate files, or execute a migration plan without a separately approved cutover task and verified backup.

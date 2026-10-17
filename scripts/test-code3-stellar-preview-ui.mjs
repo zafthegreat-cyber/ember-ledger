@@ -18,7 +18,7 @@ function equal(actual, expected, message) { assert.equal(actual, expected, messa
 matches(page, /import StellarTaskExportPreview from "\.\/importPreview\/StellarTaskExportPreview\.jsx"/, "the preview is a dedicated Bot Operations feature boundary");
 matches(page, /function TasksSection[\s\S]*<StellarTaskExportPreview \/>[\s\S]*title="Tasks"/, "the preview is placed in the existing owner-only Tasks section");
 matches(page, /<StellarTaskExportPreview \/>/, "the preview receives no repository, persistence, import, or writer callback");
-matches(page, /if \(!authorized\)[\s\S]*setService\(null\)[\s\S]*return undefined/, "the existing owner gate remains before Bot storage initialization");
+matches(page, /if \(!authorized\) return undefined;[\s\S]*createBotOpsService\(\)/, "the existing owner gate remains before Bot storage initialization");
 matches(routes, /path:\s*"\/bot\/tasks"[\s\S]*requiredAuthority:\s*AUTHORITY_REQUIREMENTS\.VERIFIED_OWNER/, "the containing route remains verified-owner only");
 
 matches(component, /eyebrow="Offline Preview"/, "the flow is explicitly labeled offline");

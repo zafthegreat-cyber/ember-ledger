@@ -4,6 +4,7 @@ const path = require("node:path");
 const { chromium } = require("@playwright/test");
 
 const APP_BASE_URL = new URL(process.env.APP_URL || "http://127.0.0.1:5200/");
+assert.ok(["http:", "https:"].includes(APP_BASE_URL.protocol) && ["127.0.0.1", "localhost", "[::1]"].includes(APP_BASE_URL.hostname), "Workspace fixtures require a local app and disposable browser storage");
 const ARTIFACT_DIR = path.join(process.cwd(), "artifacts", "qa", "code3-phase2a5-workspaces", "current");
 const APP_STORAGE_KEY = "et-tcg-beta-data";
 const FLIP_SCOUT_STORAGE_KEY = "ember-and-tide.flip-scout.v1";
@@ -357,13 +358,13 @@ async function verifyFixture(page, fixture) {
       await page.getByTestId("collect-workspace-home").waitFor();
       match(await body(), /Items\s*1[\s\S]*Moonlit Dragon Card/i, "Collect populated state should use shared collection records");
       await page.getByRole("button", { name: "Sets", exact: true }).first().click();
-      await page.getByRole("heading", { name: "Sets & Binders", exact: true }).waitFor();
+      await page.getByTestId("collection-workspace").getByRole("heading", { level: 1, name: "Sets & Binders", exact: true }).waitFor();
       equal(new URL(page.url()).pathname, "/collection/sets", "Collect Sets action should update the visible route");
       await page.getByRole("navigation", { name: "Primary navigation" }).getByRole("button", { name: "Collection", exact: true }).click();
       await page.getByLabel("Search collection", { exact: true }).waitFor();
       equal(new URL(page.url()).pathname, "/collection", "Collection dock action should update the visible view and URL");
       await page.goBack();
-      await page.getByRole("heading", { name: "Sets & Binders", exact: true }).waitFor();
+      await page.getByTestId("collection-workspace").getByRole("heading", { level: 1, name: "Sets & Binders", exact: true }).waitFor();
       equal(new URL(page.url()).pathname, "/collection/sets", "browser Back should restore the Sets view");
       await page.goBack();
       await page.getByTestId("collect-workspace-home").waitFor();

@@ -26,8 +26,7 @@
 .ai-assist-review-modal,
 .collection-manager-modal,
 .collection-utility-drawer,
-.catalog-detail-drawer,
-.app-confirmation-copy {
+.catalog-detail-drawer {
   width: min(760px, 100%);
   max-height: calc(100dvh - 36px);
   overflow: auto;
@@ -72,26 +71,77 @@
 
 .app-toast-viewport {
   position: fixed;
-  right: 18px;
-  bottom: 96px;
-  z-index: 180;
+  right: max(18px, env(safe-area-inset-right, 0px));
+  bottom: max(18px, env(safe-area-inset-bottom, 0px));
+  z-index: 1700;
   display: grid;
   gap: 8px;
   width: min(420px, calc(100vw - 32px));
+  max-height: calc(100dvh - 140px);
+  overflow: auto;
+  padding: 4px;
+  pointer-events: none;
 }
 
-.app-toast-message {
+html body .app[data-theme] .app-toast {
+  --toast-status: var(--status-info);
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) auto;
-  gap: 10px;
+  grid-template-columns: 24px minmax(0, 1fr) 44px;
+  gap: 8px 10px;
   align-items: start;
+  min-width: 0;
   padding: 12px;
-  border: 1px solid var(--et-border);
-  border-radius: var(--et-radius-md);
-  color: var(--et-text);
-  background: var(--et-card-strong);
-  box-shadow: var(--et-shadow);
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--toast-status);
+  border-radius: 10px;
+  color: var(--text-primary);
+  background: var(--surface-elevated);
+  box-shadow: var(--shadow-2);
+  pointer-events: auto;
 }
+html body .app[data-theme] .app-toast--success { --toast-status: var(--status-success); }
+html body .app[data-theme] .app-toast--error { --toast-status: var(--status-danger); }
+html body .app[data-theme] .app-toast--warning { --toast-status: var(--status-warning); }
+html body .app[data-theme] .app-toast-icon { display: grid; place-items: center; width: 24px; height: 24px; margin-top: 2px; border: 1px solid currentColor; border-radius: 50%; color: var(--toast-status); font: 700 14px/1 var(--font-ui); }
+html body .app[data-theme] .app-toast-copy { display: grid; gap: 4px; min-width: 0; overflow-wrap: anywhere; }
+html body .app[data-theme] .app-toast-title { color: var(--text-primary); font: 650 15px/1.4 var(--font-ui); }
+html body .app[data-theme] .app-toast-message { display: block; color: var(--text-secondary); font: 400 13px/1.5 var(--font-ui); }
+html body .app[data-theme] .app-toast :is(.app-toast-action, .app-toast-dismiss) { min-width: 44px; min-height: 44px; padding: 8px 12px; border: 1px solid var(--border-strong); border-radius: 7px; background: var(--surface-primary); color: var(--text-primary); box-shadow: none; font: 600 13px/1.4 var(--font-ui); }
+html body .app[data-theme] .app-toast-action { grid-column: 2 / -1; justify-self: start; color: var(--action-primary); }
+html body .app[data-theme] .app-toast .app-toast-dismiss { grid-column: 3; grid-row: 1; width: 44px; padding: 6px; font-size: 20px; }
+
+/* Keep the entire confirmation, including its actions, on one surface. */
+html body .app[data-theme] .app-confirmation-backdrop { backdrop-filter: none; }
+html body .app[data-theme] .app-confirmation-dialog { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 16px 12px; width: min(520px, 100%); max-height: calc(100dvh - 32px); overflow: auto; padding: 20px; border: 1px solid var(--border-subtle); border-radius: 12px; background: var(--surface-elevated); color: var(--text-primary); box-shadow: var(--shadow-3); }
+html body .app[data-theme] .app-confirmation-mark { display: grid; place-items: center; width: 32px; height: 32px; border: 1px solid var(--status-success); border-radius: 50%; color: var(--status-success); font: 700 18px/1 var(--font-ui); }
+html body .app[data-theme] .app-confirmation-dialog--danger .app-confirmation-mark { border-color: var(--status-danger); color: var(--status-danger); }
+html body .app[data-theme] .app-confirmation-copy { display: grid; gap: 8px; min-width: 0; overflow-wrap: anywhere; }
+html body .app[data-theme] .app-confirmation-copy h2 { margin: 0; color: var(--text-primary); font-size: 21px; line-height: 1.3; }
+html body .app[data-theme] .app-confirmation-copy p { margin: 0; color: var(--text-secondary); font: 400 14px/1.55 var(--font-ui); }
+html body .app[data-theme] .app-confirmation-actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; padding-top: 16px; border-top: 1px solid var(--border-subtle); }
+html body .app[data-theme] .app-confirmation-actions button { min-width: 44px; min-height: 44px; padding: 10px 14px; border-radius: 8px; font: 600 14px/1.4 var(--font-ui); }
+
+html body .app[data-theme] .role-change-modal { display: grid; gap: 16px; width: min(620px, 100%); padding: 20px; background: var(--surface-elevated); color: var(--text-primary); }
+html body .app[data-theme] .role-change-modal :is(h2, p) { margin: 0; overflow-wrap: anywhere; }
+html body .app[data-theme] .role-change-modal h2 { font-size: 21px; line-height: 1.35; color: var(--text-primary); }
+html body .app[data-theme] .role-change-modal p { font: 400 14px/1.5 var(--font-ui); color: var(--text-secondary); }
+html body .app[data-theme] .role-change-modal .modal-header { display: grid; grid-template-columns: minmax(0, 1fr) 44px; align-items: start; gap: 12px; }
+html body .app[data-theme] .role-change-modal :is(button, textarea) { min-width: 44px; min-height: 44px; font: 600 14px/1.4 var(--font-ui); }
+html body .app[data-theme] .role-change-modal button { padding: 10px 14px; }
+html body .app[data-theme] .role-change-modal .modal-close-button { width: 44px; padding: 8px; border-radius: 8px; background: var(--surface-primary); color: var(--text-primary); border: 1px solid var(--border-strong); }
+html body .app[data-theme] .role-change-modal > label { display: grid; gap: 8px; color: var(--text-primary); font-size: 14px; }
+html body .app[data-theme] .role-change-modal textarea { width: 100%; min-height: 84px; padding: 10px; font-weight: 400; }
+html body .app[data-theme] .role-change-modal .field-label-row { font: 600 14px/1.4 var(--font-ui); }
+html body .app[data-theme] .role-change-modal .ember-gradient-button { border: 1px solid var(--action-primary); background: var(--action-primary); color: var(--on-primary); box-shadow: none; }
+html body .app[data-theme] .location-modal-backdrop:has(.role-change-modal) { backdrop-filter: none; }
+
+/* Errors remain readable while a dialog is open. Wide dialogs can reach the
+   screen edge too, so reserve feedback space at every viewport width. */
+html body .app[data-theme]:has([role="dialog"]):has(.app-toast-viewport) { --feedback-modal-clearance: clamp(160px, 30dvh, 240px); }
+html body .app[data-theme]:has([role="dialog"]) .app-toast-viewport { top: max(16px, env(safe-area-inset-top, 0px)); bottom: auto; }
+html body .app[data-theme]:has([role="dialog"]) .app-toast-viewport { max-height: calc(var(--feedback-modal-clearance) - 16px); }
+html body .app[data-theme]:has(.app-toast-viewport) :is(.app-confirmation-backdrop, .location-modal-backdrop, .flow-modal-backdrop) { padding-top: calc(var(--feedback-modal-clearance) + env(safe-area-inset-top, 0px)); }
+html body .app[data-theme]:has(.app-toast-viewport) :is(.app-confirmation-backdrop, .location-modal-backdrop, .flow-modal-backdrop) > [role="dialog"] { max-height: calc(100dvh - var(--feedback-modal-clearance) - 32px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); }
 
 .ember-assist-fab,
 .mobile-quick-add-fab,
@@ -492,6 +542,644 @@ button.collector-showcase-card:focus-visible,
   justify-content: center;
   gap: 8px;
   margin-top: 12px;
+}
+
+/* Scout report wizard: scoped presentation, shared semantic theme tokens. */
+.scout-report-wizard {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.scout-report-wizard :is(button, input, select, textarea) {
+  min-width: 0;
+  min-height: 44px;
+  border-radius: 8px;
+  font: inherit;
+  scroll-margin-block: 16px 92px;
+}
+
+.scout-report-wizard button {
+  padding: 10px 14px;
+  white-space: normal;
+  background: var(--surface-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-strong);
+  box-shadow: none;
+}
+
+.scout-report-wizard button:hover:not(:disabled) {
+  background: var(--surface-secondary);
+}
+
+.scout-report-wizard :is(label, .scout-report-step-card, .scout-report-store-list, .scout-report-essential-panel) {
+  display: grid;
+  min-width: 0;
+  gap: 12px;
+}
+
+.scout-report-wizard label {
+  gap: 7px;
+  font-weight: 600;
+}
+
+.scout-report-wizard label > span { font-size: 14px; }
+
+.scout-report-wizard :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+}
+
+.scout-report-wizard :is(p, small) {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.scout-report-wizard .scout-report-progress {
+  display: grid;
+  gap: 10px;
+}
+
+.scout-report-wizard .scout-report-progress > div:first-child {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 16px;
+}
+
+.scout-report-wizard :is(.scout-report-progress-track, .scout-points-meter) {
+  height: 4px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--surface-inset);
+}
+
+.scout-report-wizard :is(.scout-report-progress-track, .scout-points-meter) > i {
+  display: block;
+  height: 100%;
+  background: var(--action-primary);
+}
+
+.scout-report-wizard .scout-report-stepper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.scout-report-wizard .scout-report-step-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 120px;
+  gap: 7px;
+  padding-inline: 10px;
+}
+
+.scout-report-wizard .scout-report-step-pill em {
+  font-size: 13px;
+  font-style: normal;
+}
+
+.scout-report-wizard :is(.scout-report-step-pill.active, .scout-report-date-presets button.selected) {
+  background: var(--selection-background);
+  color: var(--action-primary);
+  border-color: var(--action-primary);
+  font-weight: 600;
+}
+
+.scout-report-wizard :is(.scout-current-selection-strip, .scout-required-checklist) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.scout-report-wizard .scout-current-selection-strip {
+  padding-block: 12px;
+  border-block: 1px solid var(--border-subtle);
+}
+
+.scout-report-wizard .scout-current-selection-strip > strong {
+  flex-basis: 100%;
+  color: var(--text-primary);
+}
+
+.scout-report-wizard .scout-required-checklist .is-ready { color: var(--status-success); }
+.scout-report-wizard .scout-required-checklist .needs-review { color: var(--status-warning); }
+
+.scout-report-wizard .scout-flow-guidance-card {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border-radius: 8px;
+  background: var(--surface-secondary);
+}
+
+.scout-report-wizard .scout-flow-guidance-card > div:first-child {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.scout-report-wizard .scout-report-step-header {
+  display: grid;
+  gap: 6px;
+  padding-block: 4px 8px;
+}
+
+.scout-report-wizard .scout-report-step-header > span {
+  color: var(--text-secondary);
+  font: 500 13px/1.5 var(--font-mono);
+}
+
+.scout-report-wizard .scout-report-step-header h3 {
+  margin: 0 0 6px;
+  font-size: 21px;
+  line-height: 1.3;
+}
+
+.scout-report-wizard :is(.scout-report-store-tools, .scout-location-trust-note) {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+}
+
+.scout-report-wizard .scout-location-trust-note {
+  padding-block: 2px 4px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.scout-report-wizard .scout-location-trust-note strong { color: var(--text-primary); }
+
+.scout-report-wizard .scout-review-location-card > div {
+  display: grid;
+  gap: 6px;
+}
+
+.scout-report-wizard .scout-report-review-grid,
+.scout-quick-report-sent .scout-submit-confirmation-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 24px;
+}
+
+.scout-report-wizard .scout-report-review-grid > div,
+.scout-quick-report-sent .scout-submit-confirmation-grid > div {
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-subtle);
+  overflow-wrap: anywhere;
+}
+
+.scout-report-wizard .scout-report-review-grid > div > span,
+.scout-quick-report-sent .scout-submit-confirmation-grid > div > span {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.scout-report-wizard .scout-report-store-card {
+  display: grid;
+  min-width: 0;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--surface-primary);
+  box-shadow: var(--shadow-1);
+  overflow-wrap: anywhere;
+}
+
+.scout-report-wizard .scout-report-store-card.selected {
+  border-color: var(--action-primary);
+  border-inline-start-width: 3px;
+}
+
+.scout-report-wizard :is(.scout-report-store-top, .scout-report-store-main) {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+}
+
+.scout-report-wizard :is(.scout-report-store-top, .scout-report-store-main) > div {
+  display: grid;
+  flex: 1 1 180px;
+  gap: 5px;
+  min-width: 0;
+}
+
+.scout-report-wizard :is(.scout-report-store-top, .scout-report-store-main) strong {
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.scout-report-wizard :is(.scout-store-type-badge, .scout-store-temperature, .scout-selection-badge) {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  padding: 3px 8px;
+  border-radius: 5px;
+  background: var(--surface-secondary);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.scout-report-wizard .scout-selection-badge {
+  background: var(--selection-background);
+  color: var(--action-primary);
+}
+
+.scout-report-wizard .scout-report-store-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.scout-report-wizard .scout-report-store-meta > span + span {
+  padding-inline-start: 12px;
+  border-inline-start: 1px solid var(--border-subtle);
+}
+
+.scout-report-wizard .scout-report-store-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.scout-report-wizard .scout-report-store-actions .ghost-button {
+  color: var(--action-primary);
+  border-color: transparent;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.scout-report-wizard .scout-selected-store-confirmation {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.scout-report-wizard :is(.scout-report-detail-grid, .scout-report-essential-grid) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 16px;
+  min-width: 0;
+}
+
+.scout-report-wizard .scout-report-time-grid {
+  padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.scout-report-wizard .scout-report-date-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.scout-report-wizard .scout-report-date-presets > button { flex: 1 1 80px; }
+
+.scout-report-wizard .scout-wizard-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding-block: 12px;
+  background: var(--surface-primary);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.scout-report-wizard .scout-wizard-footer > button {
+  flex: 0 1 140px;
+}
+
+.scout-report-wizard .scout-wizard-footer > button:not(.secondary-button) {
+  background: var(--action-primary);
+  border-color: var(--action-primary);
+  color: var(--on-primary);
+}
+
+.flow-modal[data-flow="scoutSubmit"]:has(> .flow-modal-footer--scout-inline) .scout-report-wizard .scout-wizard-footer {
+  /* Hide the duplicate only when the modal already provides sticky actions. */
+  display: none;
+}
+
+/* The existing sticky action bar is a sibling of the wizard form. */
+.flow-modal[data-flow="scoutSubmit"] > .flow-modal-footer--scout-inline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--surface-primary);
+  border-color: var(--border-subtle);
+  backdrop-filter: none;
+}
+
+.flow-modal[data-flow="scoutSubmit"] > .flow-modal-footer--scout-inline > button {
+  flex: 0 1 140px;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 10px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  color: var(--text-primary);
+  background: var(--surface-primary);
+  box-shadow: none;
+  font: 600 14px/1.5 var(--font-ui);
+}
+
+.flow-modal[data-flow="scoutSubmit"] > .flow-modal-footer--scout-inline > button:not(.secondary-button) {
+  border-color: var(--action-primary);
+  color: var(--on-primary);
+  background: var(--action-primary);
+}
+
+/* Confirmation keeps the saved facts distinct from optional follow-up actions. */
+.scout-quick-report-sent {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+  padding-bottom: 12px;
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.scout-quick-report-sent :is(.scout-quick-report-success, .scout-post-submit-actions) {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+}
+
+.scout-quick-report-sent .scout-quick-report-success > span {
+  color: var(--status-success);
+  font: 500 13px/1.5 var(--font-mono);
+}
+
+.scout-quick-report-sent .scout-quick-report-success > h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 22px;
+  line-height: 1.3;
+}
+
+.scout-quick-report-sent :is(p, small) {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.scout-quick-report-sent .scout-quick-report-success > small {
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--surface-secondary);
+}
+
+.scout-quick-report-sent .scout-post-submit-actions > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.scout-quick-report-sent .quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.scout-quick-report-sent .quick-actions > button { flex: 1 1 160px; }
+
+.scout-quick-report-sent button {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  color: var(--text-primary);
+  background: var(--surface-primary);
+  box-shadow: none;
+  font: 600 14px/1.5 var(--font-ui);
+  white-space: normal;
+  overflow-wrap: anywhere;
+  scroll-margin-block: 16px 92px;
+}
+
+.scout-quick-report-sent .quick-actions > button:not(.secondary-button) {
+  border-color: var(--action-primary);
+  color: var(--on-primary);
+  background: var(--action-primary);
+}
+
+@media (max-width: 600px) {
+  .scout-report-wizard .scout-report-store-card { padding: 14px; }
+  .scout-report-wizard :is(.scout-report-detail-grid, .scout-report-essential-grid, .scout-report-review-grid) { grid-template-columns: minmax(0, 1fr); }
+  .scout-report-wizard .scout-report-store-actions > button { flex: 1 1 140px; }
+  .scout-quick-report-sent .scout-submit-confirmation-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Market Compare's existing standalone Deal Finder dialog. */
+.deal-finder-modal {
+  color: var(--text-primary);
+  background: var(--surface-primary);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.deal-finder-modal > .modal-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.deal-finder-modal > .modal-title-row > div { min-width: 0; }
+.deal-finder-modal > .modal-title-row h2 { margin: 0 0 6px; font-size: 24px; line-height: 1.25; }
+
+.deal-finder-modal :is(p, small, .status-badge, .field-label-row, .field-label-row > span) {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.deal-finder-modal :is(p, small) {
+  margin: 0;
+  color: var(--text-secondary);
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.deal-finder-modal .tidetradr-deal-panel .compact-card-header p {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.deal-finder-modal .tidetradr-deal-panel {
+  display: grid;
+  gap: 18px;
+  padding: 0 0 12px;
+  border: 0;
+  border-radius: 0;
+  background: var(--surface-primary);
+  box-shadow: none;
+}
+
+.deal-finder-modal .compact-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.deal-finder-modal .compact-card-header > div { flex: 1 1 300px; min-width: 0; }
+.deal-finder-modal .compact-card-header h2 { margin: 0 0 6px; font-size: 18px; line-height: 1.35; }
+
+.deal-finder-modal .status-badge {
+  justify-content: flex-start;
+  padding: 5px 9px;
+  border-color: var(--border-subtle);
+  border-radius: 6px;
+  background: var(--surface-secondary);
+  color: var(--text-primary);
+  font-weight: 500;
+  text-align: left;
+}
+
+.deal-finder-modal .form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  min-width: 0;
+}
+
+.deal-finder-modal .tidetradr-deal-panel > .form > :is(label:nth-of-type(-n + 2), details, button),
+.deal-finder-modal details .form > label:last-child { grid-column: 1 / -1; }
+
+.deal-finder-modal .form label {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-width: 0;
+}
+
+.deal-finder-modal :is(button, input, select, summary) {
+  min-width: 44px;
+  min-height: 44px;
+  box-sizing: border-box;
+  font: 500 14px/1.5 var(--font-ui);
+  scroll-margin-block: 16px 92px;
+}
+
+.deal-finder-modal :is(input, select) {
+  width: 100%;
+  max-width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+}
+
+.deal-finder-modal button {
+  padding: 10px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface-primary);
+  color: var(--text-primary);
+  box-shadow: none;
+  white-space: normal;
+}
+
+.deal-finder-modal .modal-close-button {
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+}
+
+.deal-finder-modal .tidetradr-deal-panel > .form > button {
+  background: var(--action-primary);
+  border-color: var(--action-primary);
+  color: var(--on-primary);
+  font-weight: 600;
+}
+
+.deal-finder-modal .scout-score-guidelines {
+  min-width: 0;
+  padding: 0 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--surface-secondary);
+}
+
+.deal-finder-modal .scout-score-guidelines > summary {
+  padding-block: 10px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.deal-finder-modal .scout-score-guidelines[open] { padding-bottom: 12px; }
+.deal-finder-modal .scout-score-guidelines[open] > summary { margin-bottom: 8px; }
+
+.deal-finder-modal :is(.empty-state, .deal-results-grid .card) {
+  padding: 14px;
+  background: var(--surface-secondary);
+  border-color: var(--border-subtle);
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.deal-finder-modal .empty-state h3 { margin: 0; font-size: 14px; line-height: 1.5; font-weight: 500; }
+
+.deal-finder-modal .deal-results-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.deal-finder-modal .deal-results-grid .card { min-width: 0; overflow-wrap: anywhere; }
+.deal-finder-modal .deal-results-grid h2 { margin: 6px 0 0; font-size: 18px; line-height: 1.35; }
+.deal-finder-modal .home-list-row > span { display: grid; min-width: 0; gap: 4px; }
+.deal-finder-modal .home-list-row { gap: 12px; overflow-wrap: anywhere; }
+
+.deal-finder-modal > .modal-sticky-footer {
+  display: flex;
+  gap: 12px;
+  background: var(--surface-primary);
+  border-color: var(--border-subtle);
+  backdrop-filter: none;
+}
+
+@media (max-width: 600px) {
+  .deal-finder-modal details .form { grid-template-columns: minmax(0, 1fr); }
+  .deal-finder-modal .deal-results-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .deal-finder-modal > .modal-sticky-footer > button { flex: 1; }
 }
 
 /* Responsive */

@@ -3,7 +3,6 @@ import { CommandBoardV4 } from "../components/command-system";
 export default function VaultPage(props) {
   const {
     children,
-    renderHeader,
     showDashboard,
     activeWorkspaceName,
     activeVaultCardItems,
@@ -55,7 +54,6 @@ export default function VaultPage(props) {
     vaultItemTotalMarketValue,
     vaultMarketValueDisplay,
     vaultSearch,
-    vaultSetCompletionRows,
     vaultStatusLabel,
     vaultSubTab,
     vaultTypeFilter,
@@ -93,7 +91,6 @@ export default function VaultPage(props) {
       // TODO: Replace folder health and binder reminders with a reviewed read-only Vault summary contract when available.
       const cardQuantity = activeVaultCardItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
       const sealedQuantity = activeVaultSealedItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
-      const topSet = vaultSetCompletionRows.find((row) => row.ownedCount > 0 && (row.totalCards > 0 || row.catalogCards.length));
       const knownValueCount = activeVaultItems.filter((item) => Number(vaultItemTotalMarketValue(item) || item.marketPrice || item.marketValue || 0) > 0).length;
       const vaultItemHasNotes = (item) => [
         item.collectorNotes,

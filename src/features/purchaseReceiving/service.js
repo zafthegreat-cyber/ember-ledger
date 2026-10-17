@@ -32,9 +32,7 @@ import { createInventoryCreationGateway } from "./inventoryCreation/gateway.js";
 import { INVENTORY_CREATION_SAFETY } from "./inventoryCreation/constants.js";
 import { assertManagedInventoryHasNoTransferUsage, createInventoryCorrectionGateway } from "./inventoryCorrection/gateway.js";
 import {
-  INVENTORY_CORRECTION_CATEGORIES,
   INVENTORY_CORRECTION_SAFETY,
-  INVENTORY_QUANTITY_CORRECTION_REASONS,
 } from "./inventoryCorrection/constants.js";
 import { createInventoryReconciliationGateway } from "./inventoryReconciliation/gateway.js";
 import { INVENTORY_RECONCILIATION_SAFETY } from "./inventoryReconciliation/constants.js";

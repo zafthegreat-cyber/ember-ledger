@@ -3,22 +3,69 @@
   <head>
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="__BRAND_ACCENT__" />
-    <meta name="background-color" content="#f6f3ed" />
+    <meta name="background-color" content="#f5f7fa" />
     <meta name="description" content="__BRAND_TAGLINE__" />
     <meta name="application-name" content="__BRAND_NAME__" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="__BRAND_SHORT_NAME__" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <link rel="apple-touch-icon" href="__BRAND_FAVICON__" />
+    <link rel="apple-touch-icon" sizes="180x180" href="__BRAND_APPLE_TOUCH_ICON__" />
     <link rel="icon" href="__BRAND_FAVICON__" type="image/svg+xml" />
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>__BRAND_NAME__</title>
+    <script>
+      // Read the existing preference before the first paint; never write app records here.
+      try {
+        const inspectionTheme = new URLSearchParams(window.location.search).get("themeInspect");
+        if (inspectionTheme === "light" || inspectionTheme === "dark") {
+          document.documentElement.dataset.bootTheme = inspectionTheme;
+        } else {
+          const direct = localStorage.getItem("et-tcg-app-theme");
+          const saved = !direct ? JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}") : null;
+          const stored = direct || saved?.appThemeChoice || saved?.themeChoice || saved?.settings?.appThemeChoice;
+          document.documentElement.dataset.bootTheme = String(stored || "").trim().toLowerCase() === "dark" ? "dark" : "light";
+        }
+      } catch {
+        document.documentElement.dataset.bootTheme = "light";
+      }
+    </script>
     <style>
-      html,
-      body {
-        background: #f6f3ed;
+      html, body {
+        margin: 0;
+        background: #f5f7fa;
+      }
+
+      :root,
+      .app-load-fallback[data-boot-theme="light"] {
+        --boot-background: #f5f7fa;
+        --boot-surface: #ffffff;
+        --boot-text: #202a35;
+        --boot-muted: #5c6878;
+        --boot-border: #dce3ea;
+        --boot-accent: #0f766e;
+        --boot-on-accent: #ffffff;
+        --boot-track: #e9eef3;
+        --boot-color-scheme: light;
+      }
+
+      :root[data-boot-theme="dark"],
+      .app-load-fallback[data-boot-theme="dark"] {
+        --boot-background: #10151c;
+        --boot-surface: #1a222d;
+        --boot-text: #f2f5f9;
+        --boot-muted: #acb8c8;
+        --boot-border: #344253;
+        --boot-accent: #67c8bb;
+        --boot-on-accent: #102c27;
+        --boot-track: #242f3c;
+        --boot-color-scheme: dark;
+      }
+
+      .app-load-fallback,
+      .app-load-fallback * {
+        box-sizing: border-box;
       }
 
       .app-load-fallback {
@@ -26,134 +73,180 @@
         min-height: 100dvh;
         display: grid;
         place-items: center;
-        padding: 24px;
-        color: #202521;
-        background: #f6f3ed;
-        font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+        color: var(--boot-text);
+        background: var(--boot-background);
+        font-family: "Segoe UI", Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+        line-height: 1.5;
         text-align: center;
+        color-scheme: var(--boot-color-scheme);
       }
 
       .app-load-fallback-card {
-        width: min(460px, 100%);
+        width: min(440px, 100%);
+        min-width: 0;
         display: grid;
         justify-items: center;
         gap: 12px;
         padding: 28px;
-        border: 1px solid #dedfd9;
-        border-radius: 18px;
-        background: #ffffff;
-        box-shadow: 0 18px 50px rgba(24, 31, 27, 0.12);
+        border: 1px solid var(--boot-border);
+        border-radius: 16px;
+        background: var(--boot-surface);
+        box-shadow: 0 4px 16px rgb(16 21 28 / 6%);
       }
 
       .app-load-fallback-brand {
-        width: 74px;
-        height: 74px;
+        width: 48px;
+        height: 48px;
         display: grid;
         place-items: center;
-        border-radius: 18px;
-        background: __BRAND_ACCENT__;
-        color: #ffffff;
-        font-weight: 950;
-        font-size: 1.45rem;
+        border-radius: 12px;
+        background: var(--boot-accent);
+        color: var(--boot-on-accent);
+        font-weight: 750;
+        font-size: 1.2rem;
         box-shadow: none;
       }
 
-      .app-load-fallback-eyebrow {
+      .app-load-fallback .app-load-fallback-eyebrow {
         margin: 0;
-        color: __BRAND_ACCENT__;
-        font-size: 0.78rem;
-        font-weight: 900;
-        letter-spacing: 0.12em;
+        color: var(--boot-accent);
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
         text-transform: uppercase;
       }
 
       .app-load-fallback h1 {
         margin: 0;
-        color: #202521;
-        font-size: clamp(1.75rem, 8vw, 2.85rem);
-        line-height: 1.02;
-        letter-spacing: 0;
+        color: var(--boot-text);
+        font-size: clamp(1.5rem, 6vw, 1.875rem);
+        font-weight: 700;
+        line-height: 1.2;
+        letter-spacing: -0.02em;
+        overflow-wrap: anywhere;
       }
 
       .app-load-fallback p,
       .app-load-fallback small {
         margin: 0;
-        color: #4f5952;
+        max-width: 34ch;
+        color: var(--boot-muted);
+        line-height: 1.5;
       }
 
-      .app-load-fallback p {
-        font-size: 1rem;
+      .app-load-fallback p { font-size: 1rem; }
+      .app-load-fallback small { font-size: 0.875rem; }
+
+      .app-load-fallback-progress {
+        width: min(180px, 100%);
+        height: 4px;
+        margin-top: 8px;
+        overflow: hidden;
+        border-radius: 2px;
+        background: var(--boot-track);
       }
 
-      .app-load-fallback small {
-        max-width: 32rem;
-        font-size: 0.9rem;
+      .app-load-fallback-progress span {
+        display: block;
+        width: 45%;
+        height: 100%;
+        border-radius: inherit;
+        background: var(--boot-accent);
+        animation: app-load-progress 1.5s ease-in-out infinite alternate;
+      }
+
+      @keyframes app-load-progress {
+        from { transform: translateX(-50%); }
+        to { transform: translateX(170%); }
       }
 
       .app-load-fallback-actions {
+        width: 100%;
         display: flex;
         flex-wrap: wrap;
         justify-content: center;
         gap: 10px;
-        margin-top: 4px;
+        margin-top: 8px;
       }
 
       .app-load-fallback button,
       .app-load-fallback a {
         min-height: 44px;
-        border: 0;
-        border-radius: 10px;
-        padding: 0 18px;
+        min-width: 0;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        padding: 10px 16px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        color: #ffffff;
-        background: __BRAND_ACCENT__;
+        color: var(--boot-on-accent);
+        background: var(--boot-accent);
         font: inherit;
-        font-weight: 900;
+        font-weight: 650;
+        line-height: 1.4;
         cursor: pointer;
         text-decoration: none;
       }
 
-      .app-load-fallback a.app-load-fallback-secondary {
-        color: #202521;
-        background: #ffffff;
-        border: 1px solid #b8beb7;
+      .app-load-fallback .app-load-fallback-secondary {
+        color: var(--boot-text);
+        background: var(--boot-surface);
+        border-color: var(--boot-border);
+      }
+
+      .app-load-fallback :is(button, a, summary):focus-visible {
+        outline: 3px solid var(--boot-accent);
+        outline-offset: 3px;
+      }
+
+      .app-load-fallback-details {
+        width: 100%;
+        min-width: 0;
+        margin-top: 8px;
+        text-align: left;
+        color: var(--boot-muted);
+      }
+
+      .app-load-fallback-details summary {
+        min-height: 44px;
+        padding-block: 10px;
+        cursor: pointer;
+      }
+
+      .app-load-fallback-details pre {
+        max-height: 160px;
+        overflow: auto;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
       }
 
       @media (max-width: 520px) {
-        .app-load-fallback {
-          padding: 16px;
-        }
+        .app-load-fallback-card { padding: 24px 20px; }
+        .app-load-fallback button, .app-load-fallback a { width: 100%; }
+      }
 
-        .app-load-fallback-card {
-          padding: 22px;
-          border-radius: 18px;
-        }
-
-        .app-load-fallback-actions,
-        .app-load-fallback button,
-        .app-load-fallback a {
-          width: 100%;
-        }
+      @media (prefers-reduced-motion: reduce) {
+        .app-load-fallback-progress span { animation: none; transform: none; }
       }
     </style>
   </head>
   <body>
     <div id="root">
-      <div class="app-load-fallback" aria-label="Loading __BRAND_NAME__">
+      <main class="app-load-fallback" role="status" aria-live="polite" aria-label="Loading __BRAND_NAME__">
         <div class="app-load-fallback-card">
           <div class="app-load-fallback-brand" aria-hidden="true">__BRAND_MONOGRAM__</div>
           <p class="app-load-fallback-eyebrow">__BRAND_NAME__</p>
           <h1>Loading __BRAND_SHORT_NAME__...</h1>
           <p>Preparing your business workspace.</p>
-          <small>If this takes more than a few seconds, refresh the page.</small>
+          <small>If loading takes longer, check your connection or refresh.</small>
+          <div class="app-load-fallback-progress" aria-hidden="true"><span></span></div>
           <div class="app-load-fallback-actions">
             <button type="button" onclick="window.location.reload()">Refresh app</button>
-            <a class="app-load-fallback-secondary" href="/">Go to homepage</a>
+            <a class="app-load-fallback-secondary" href="/">Return home</a>
           </div>
         </div>
-      </div>
+      </main>
       <noscript>
         <style>
           #root > .app-load-fallback:not(.app-load-fallback-noscript) {

@@ -10,6 +10,10 @@ import { assertSafePurchaseReceivingInput } from "../purchaseReceiving/security.
 import { soldQuantityForInventory } from "./inventory.js";
 import { validateManagedInventorySales } from "./exactInventoryCost.js";
 import { PURCHASE_INVENTORY_MUTATION_LOCK } from "../purchaseReceiving/persistence.js";
+import { validateLifecycleRecord, validateLifecycleTransition } from "../manualLifecycles/contracts.js";
+import { buildSaleReturnApplication, previewSaleReturn as deriveSaleReturnPreview, validateReturnState, validateReturnTransition } from "../manualLifecycles/returnSettlement.js";
+import { buildReturnCorrection, previewReturnCorrection as deriveReturnCorrectionPreview } from "../manualLifecycles/returnCorrections.js";
+import { completedSale, hasAppliedReturns, nextReturnSaleAllocation } from "../manualLifecycles/returnLedger.js";
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -124,10 +128,19 @@ function saleCountsAgainstManagedInventory(state, sale) {
   return state.inventory.some((item) => item.id === sale?.inventoryItemId && item.provenanceManaged === true);
 }
 
-function requireManagedSalesPreserved(current, next) {
+function requireManagedSalesPreserved(current, next, returnApplicationId = "", returnCorrectionId = "") {
   const nextById = new Map((next.sales || []).map((sale) => [sale.id, sale]));
   for (const sale of (current.sales || []).filter((record) => saleCountsAgainstManagedInventory(current, record))) {
-    if (JSON.stringify(nextById.get(sale.id) || null) !== JSON.stringify(sale)) {
+    const candidate = nextById.get(sale.id);
+    let comparable = returnApplicationId && candidate?.returnApplications?.at(-1)?.id === returnApplicationId
+      ? { ...candidate, ...(sale.returnApplications ? { returnApplications: sale.returnApplications } : {}) } : candidate;
+    if (comparable !== candidate && !sale.returnApplications) delete comparable.returnApplications;
+    if (returnCorrectionId && candidate?.returnCorrections?.at(-1)?.id === returnCorrectionId) {
+      comparable = { ...comparable };
+      if (sale.returnCorrections) comparable.returnCorrections = sale.returnCorrections;
+      else delete comparable.returnCorrections;
+    }
+    if (JSON.stringify(comparable || null) !== JSON.stringify(sale)) {
       throw new Error("Completed sales of owner-confirmed Inventory are append-only and require a dedicated correction workflow.");
     }
   }
@@ -267,12 +280,17 @@ export function normalizeFlipScoutState(value, now = new Date().toISOString()) {
     throw new Error("This Business inventory data uses a newer unsupported schema.");
   }
   const normalized = { ...empty, schemaVersion: FLIP_SCOUT_SCHEMA_VERSION };
+  if (value.manualLifecycles != null && (!Array.isArray(value.manualLifecycles) || value.manualLifecycles.some((record) => !record || typeof record !== "object" || Array.isArray(record)))) {
+    throw new Error("Operational records cannot be read safely.");
+  }
   RECORD_COLLECTIONS.forEach((collection) => {
     normalized[collection] = Array.isArray(value[collection])
       ? value[collection].filter((record) => record && typeof record === "object" && !Array.isArray(record)).map((record) => ({ ...record }))
       : [];
   });
   normalized.updatedAt = typeof value.updatedAt === "string" ? value.updatedAt : now;
+  for (const record of normalized.manualLifecycles) validateLifecycleRecord(record, normalized);
+  validateReturnState(normalized);
   return normalized;
 }
 
@@ -405,13 +423,15 @@ export function createFlipScoutRepository(storage = globalThis.localStorage, opt
       ? normalizeFlipScoutState({ ...mergeOwnerConfirmedInventory(current, requested), updatedAt: new Date().toISOString() })
       : requested;
     try {
+      validateLifecycleTransition(current, normalized);
+      validateReturnTransition(current, normalized, { applicationId: options.returnApplicationId, correctionId: options.returnCorrectionId, saleAppendId: options.allowReturnSaleAppendId });
       if (allowOwnerConfirmedInventoryMutation || hasInventoryCreationBundles(current) || hasInventoryCreationBundles(normalized)) {
         validateInventoryCreationStateBundles(current, { allowIncomplete: allowOwnerConfirmedInventoryMutation });
         validateInventoryCreationStateBundles(normalized);
         validateInventoryReconciliationState(current, { allowIncomplete: allowOwnerConfirmedInventoryMutation });
         validateInventoryReconciliationState(normalized);
       }
-      requireManagedSalesPreserved(current, normalized);
+      requireManagedSalesPreserved(current, normalized, options.returnApplicationId, options.returnCorrectionId);
       requireManagedSaleAppendAuthority(current, normalized, options.allowManagedSaleAppendId);
       validateManagedInventorySales(normalized);
     } catch (error) {
@@ -549,6 +569,8 @@ export function createFlipScoutRepository(storage = globalThis.localStorage, opt
       updatedAt: now,
     };
     const managedTarget = current.inventory.find((item) => item.id === nextRecord.inventoryItemId && item.provenanceManaged === true);
+    const returnTarget = collection === "sales" && completedSale(nextRecord) && current.inventory.find((item) => item.id === nextRecord.inventoryItemId && hasAppliedReturns(item.id, current.sales));
+    if (collection === "sales" && (record.returnApplications || record.returnCorrections || record.returnSaleAllocation)) throw new Error("Return authority is assigned only by the reviewed return and sale workflows.");
     if (collection === "sales" && managedTarget) {
       const canonicalStatus = MANAGED_SALE_STATUS_BY_KEY[String(nextRecord.status || "").trim().toLowerCase()];
       if (!canonicalStatus) throw new Error("Owner-confirmed Inventory sales require a supported canonical status.");
@@ -562,6 +584,7 @@ export function createFlipScoutRepository(storage = globalThis.localStorage, opt
       delete nextRecord.inventoryAllocationSequence;
       delete nextRecord.inventoryAllocationAt;
     }
+    if (returnTarget) nextRecord.returnSaleAllocation = nextReturnSaleAllocation(returnTarget, current.sales.filter((sale) => sale.id !== nextRecord.id), Number(nextRecord.quantitySold));
     const rows = current[collection];
     const nextRows = rows.some((row) => row.id === nextRecord.id)
       ? rows.map((row) => row.id === nextRecord.id ? { ...row, ...nextRecord } : row)
@@ -570,8 +593,8 @@ export function createFlipScoutRepository(storage = globalThis.localStorage, opt
       ? [options.activityRecord, ...current.activity].slice(0, 150)
       : current.activity;
     const nextState = { ...current, [collection]: nextRows, activity: nextActivity };
-    const result = collection === "sales" && createsManagedAllocation
-      ? persist(nextState, { allowManagedSaleAppendId: nextRecord.id })
+    const result = collection === "sales" && (createsManagedAllocation || returnTarget)
+      ? persist(nextState, { allowManagedSaleAppendId: createsManagedAllocation ? nextRecord.id : undefined, allowReturnSaleAppendId: returnTarget ? nextRecord.id : undefined })
       : save(nextState);
     return { ...result, record: nextRecord };
   }
@@ -598,6 +621,57 @@ export function createFlipScoutRepository(storage = globalThis.localStorage, opt
 
   function save(nextState) {
     return persist(nextState);
+  }
+
+  function assertReturnOwner(isOwnerAuthorized) {
+    if (typeof isOwnerAuthorized !== "function" || isOwnerAuthorized() !== true) throw new Error("A verified OWNER session is required before reviewing or applying a stock/refund return.");
+  }
+  function previewSaleReturn(returnId, { isOwnerAuthorized } = {}) {
+    assertReturnOwner(isOwnerAuthorized);
+    const state = load();
+    if (lastError) throw new Error(lastError);
+    assertReturnOwner(isOwnerAuthorized);
+    return deriveSaleReturnPreview(state, returnId);
+  }
+  function applySaleReturn(command, { isOwnerAuthorized, now = () => new Date().toISOString() } = {}) {
+    assertReturnOwner(isOwnerAuthorized);
+    return runLocked(() => {
+      assertReturnOwner(isOwnerAuthorized);
+      const state = load();
+      if (lastError) throw new Error(lastError);
+      const result = buildSaleReturnApplication(state, command, now());
+      assertReturnOwner(isOwnerAuthorized);
+      if (result.alreadyApplied) return result;
+      const saved = persist(result.state, { returnApplicationId: result.application.id });
+      if (saved.error) throw new Error(saved.error);
+      const verified = load();
+      if (lastError || JSON.stringify(verified) !== JSON.stringify(saved.state)) throw new Error("The return save could not be verified. Reload its recorded application before trying again; no second application will be created.");
+      return { state: verified, application: result.application, alreadyApplied: false };
+    });
+  }
+
+  function previewReturnCorrection(returnId, proposal, { isOwnerAuthorized } = {}) {
+    assertReturnOwner(isOwnerAuthorized);
+    const state = load();
+    if (lastError) throw new Error(lastError);
+    assertReturnOwner(isOwnerAuthorized);
+    return deriveReturnCorrectionPreview(state, returnId, proposal);
+  }
+  function applyReturnCorrection(command, { isOwnerAuthorized, now = () => new Date().toISOString() } = {}) {
+    assertReturnOwner(isOwnerAuthorized);
+    return runLocked(() => {
+      assertReturnOwner(isOwnerAuthorized);
+      const state = load();
+      if (lastError) throw new Error(lastError);
+      const result = buildReturnCorrection(state, command, now());
+      assertReturnOwner(isOwnerAuthorized);
+      if (result.alreadyApplied) return result;
+      const saved = persist(result.state, { returnCorrectionId: result.correction.id });
+      if (saved.error) throw new Error(saved.error);
+      const verified = load();
+      if (lastError || JSON.stringify(verified) !== JSON.stringify(saved.state)) throw new Error("The correction save could not be verified. Reload its recorded history before retrying the same correction identity.");
+      return { state: verified, correction: result.correction, alreadyApplied: false };
+    });
   }
 
   function commitOwnerConfirmedInventory(nextState, options = {}) {
@@ -646,6 +720,10 @@ export function createFlipScoutRepository(storage = globalThis.localStorage, opt
     exportJson,
     importJson,
     runLocked,
+    previewSaleReturn,
+    applySaleReturn,
+    previewReturnCorrection,
+    applyReturnCorrection,
     snapshot: () => clone(load()),
     getLastError: () => lastError,
   };

@@ -42,7 +42,7 @@ function readAlias(record, aliases, warnings) {
 function normalizeBoundedText(value, limits, maximum = limits.maximumFieldLength) {
   if (typeof value !== "string") return { value: null, state: STELLAR_PREVIEW_FIELD_STATES.INVALID };
   const text = value.trim();
-  if (!text || text.length > maximum || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(text)) {
+  if (!text || text.length > maximum || Array.from(text).some((character) => { const code = character.charCodeAt(0); return (code <= 31 && ![9, 10, 13].includes(code)) || code === 127; })) {
     return { value: null, state: STELLAR_PREVIEW_FIELD_STATES.INVALID };
   }
   return { value: text, state: STELLAR_PREVIEW_FIELD_STATES.RECOGNIZED };

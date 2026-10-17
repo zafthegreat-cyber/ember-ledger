@@ -1,6 +1,6 @@
 # Code 3 Bot Integration Contract
 
-Status: Phase 2D-A local-only Bot Integration Foundation, Phase 2D-B1 provider capability discovery, and Phase 2D-B2 offline Stellar task-export preview. The foundation defines provider-neutral records, capability truth, synthetic adapters and fixtures, owner-only workflows, security rejection, backup/Restore Preview treatment, and a responsive Bot Operations UI. Phase 2D-B1 adds evidence-backed integration-mode and pilot-readiness contracts without connecting a Bot. Phase 2D-B2 adds an owner-selected, memory-only JSON inspection path; it is not an import and cannot write a Task or any other domain record. These phases do not operate a retailer account, control a task, automate checkout, create a Purchase, receive Inventory, configure credentials, activate remote persistence, or deploy Production.
+Status: Phase 2D-A local-only Bot Integration Foundation, Phase 2D-B1 provider capability discovery, and Phase 2D-B2 offline Stellar task-export preview remain published and unchanged. Phase 2A.6-A adds only an Account Ops provider-export readiness projection over this boundary; it does not connect a Bot, verify a schema/capability, create an outbound export, or write a Task. These phases do not operate a retailer account, control a task, automate checkout, create a Purchase, receive Inventory, configure credentials, activate remote persistence, or deploy Production.
 
 Starting baseline: `b4848cb851b2be83093fbdc4ed4b976857f9d3ff`.
 
@@ -182,6 +182,24 @@ Retailer identity is extensible and may represent Target, Walmart, Best Buy, or 
 `botProfiles` represents nonsecret checkout-profile configuration metadata. It may reference an Account Ops profile plus shipping, billing, or phone/profile reference IDs, retailer compatibility, Bot assignments, and active state. It never stores raw addresses merely to duplicate Account Ops, and it never stores payment-card credentials.
 
 An Account Ops profile, retailer account, alias, Bot profile, or local label is never an `AuthPrincipal`, owner allowlist entry, or authorization input.
+
+## Phase 2A.6-A Account Ops readiness relationship
+
+The Account Ops Automation area may show a non-authoritative readiness record for Stellar, Hayha, Shikari, Valor, or Refract. It may count safe local profile/account/proxy references and explain blockers, but it cannot change this Bot registry, infer retailer coverage, resolve a credential, create a provider profile/task, or write to `code3.bot-ops.v1`.
+
+Every readiness result fixes:
+
+```text
+providerCapabilityVerified = false
+liveConnection = false
+directExportAllowed = false
+```
+
+Stellar and Hayha remain `NOT_CONFIGURED`. Shikari, Valor, and Refract remain unsupported/unreviewed. `READY_FOR_PREVIEW`, if reached by a future safe record, would mean only that owner review can begin; it would not mean a verified format, connected provider, import/export permission, or live capability.
+
+The existing Stellar task-export feature is an inbound owner-selected, memory-only JSON preview. Phase 2A.6-A does not turn that parser into an outbound format, does not emit the reserved Stellar `SUPPORTED` compatibility state, and does not add a Send, Sync, Upload, Create Tasks, Start, Stop, Restart, Connect, webhook, file-export, or provider-network action.
+
+Account Ops proxy views mirror only safe group/provider/type/region/count/declared-health/latency/assignment/expiry metadata. They never copy an IP, hostname, endpoint, username, password, authentication URL, session, or live-health result from Bot Operations. Provider-readiness, proxy views, Attention items, notifications, and search results remain ephemeral/navigation-only and are not Bot records, backup sources, or migration sources. See [AUTOMATION_EXPORT_CONTRACT.md](./AUTOMATION_EXPORT_CONTRACT.md).
 
 ## Proxy metadata
 
@@ -377,7 +395,7 @@ Phase 2D-B2 does not inspect, configure, use, test, or mutate that resource or t
 
 ## Explicit non-goals
 
-The Phase 2D-A foundation, Phase 2D-B1 discovery, and Phase 2D-B2 offline preview do not:
+The Phase 2D-A foundation, Phase 2D-B1 discovery, Phase 2D-B2 offline preview, and Phase 2A.6-A readiness projection do not:
 
 - connect, authenticate, discover, operate, or reverse engineer Hayha, Stellar, or any other Bot;
 - request or store Bot, retailer, payment, or proxy credentials;

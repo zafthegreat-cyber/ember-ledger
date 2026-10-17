@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import { readDeferredAppSource } from "./helpers/read-deferred-app-source.mjs";
 
 import {
   PLAN_IDS,
@@ -123,13 +124,14 @@ assert.match(tierAnswer.answer, /Shop Basic at \$19\/month and Shop Plus at \$39
 assert.match(tierAnswer.answer, /checkout is not live/i);
 assert.match(tierAnswer.answer, /not raw Scout history or restock pattern tools/i);
 
-const appSource = fs.readFileSync("src/App.jsx", "utf8");
+const appSource = readDeferredAppSource();
 assert.match(appSource, /Upgrade Value Preview/, "upgrade preview label should render in app source");
 assert.match(appSource, /What upgrading unlocks next/, "Hearth should explain upgrade value");
 assert.match(appSource, /Local beta/, "upgrade previews should be honest about local beta status");
 assert.match(appSource, /Available in upgraded plans when enabled/, "upgrade previews should avoid live entitlement promises");
 assert.match(appSource, /Coming with connected accounts/, "connected-account-dependent value should be labeled as future backend work");
-assert.match(appSource, /No payment flow is connected/, "plan comparison should state that payment is not connected");
+assert.match(appSource, /No add-on checkout is connected\. Upgrades and seller\/shop access remain reviewed beta actions\./, "the active Membership page should state that checkout is not connected");
+assert.match(appSource, /label: "Checkout",\s+value: "Not live"/, "the active Membership status should keep checkout unavailable");
 
 const unsafeUpgradeClaimPatterns = [
   /Live alerts are enabled/i,

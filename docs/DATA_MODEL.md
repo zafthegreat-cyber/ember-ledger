@@ -8,6 +8,8 @@ Phase 1C is published through `af21199f610cc91e31d9dee59af6f0a2f748ab79` and add
 
 Phase 2A Account Ops is published at `c76e3e4bc668c08d9a0908c9bb2cd96444610297`. It adds a separate versioned Account Ops browser document and migration classification only. It does not add a canonical Account Ops domain, apply a schema, provision email, activate remote persistence, or migrate owner records.
 
+Phase 2A.6-A adds no persisted model. Its `code3.account-ops.operations-foundation.v1` contract produces only deeply frozen, synthetic/reference-only projections over the existing Account Ops and related domains. It does not change `code3.account-ops.v1` schema version 1 or add a collection, local/session storage key, IndexedDB store, backup source, migration path, remote record, or canonical schema object.
+
 Phase 2A.5 is published at `4c6c7891a123777acec8f326793f30aee61f3de6`. It adds a bounded product-workspace preference and route metadata, not a domain entity or feature-data migration.
 
 Phase 2B1 is published at `2f49a5ed97cec827184c6080e4ada0f4c8194451` and adds a separate versioned `code3.inbox-order.v1` browser source for minimized message evidence, Order Candidate projections, append-only candidate events, and sanitized activity. Phase 2B2-B is published at `b4848cb851b2be83093fbdc4ed4b976857f9d3ff`; its separate Preview operational verification remains paused and does not add canonical business data. A Free Upstash resource and three branch-scoped Preview secrets exist, but the remaining owner/CORS/activation configuration is absent, no follow-up Preview was deployed, and `hostedRuntimeVerified=false`.
@@ -110,6 +112,42 @@ A store account references metadata only. Its status is `SETUP`, `NEEDS_VERIFICA
 `CredentialReference` contains provider, reference ID, label, and last-updated time only. Plaintext passwords, OTPs, sessions, tokens, payment-card data, and provider secrets are invalid record content. Password generation is ephemeral and is never persisted or backed up.
 
 Account Ops task status is `OPEN`, `DONE`, or `DISMISSED`. Phase 2B1 keeps Inbox/order evidence in the separate source below rather than widening this strict eight-collection document. Any future Purchase import still requires a separately approved, explicit owner action.
+
+#### Phase 2A.6-A derived operations models
+
+The following are view models, not persisted Account Ops collections:
+
+| Projection | Safe purpose | Authority boundary |
+|---|---|---|
+| `AccountCreationPlan` | retailer/account label plus safe email, phone, shipping, billing, credential-reference and verification-requirement links | `authoritative=false`; no signup submission |
+| detailed Account Health | explainable health, last owner-recorded check, pending action and relationship labels | `networkChecked=false`; no retailer attestation |
+| duplicate warning | normalized same-retailer email/phone/profile/owner-label conflict | warning only; no merge or retailer-limit evasion |
+| Profile compatibility review | existing Profile plus retailer relationships and all five Bot-provider readiness states | derived/non-authoritative; every provider relationship remains unverified |
+| `PhoneResource` | provider/region/assignment/availability/expiry metadata | no real number and no OTP value |
+| `PaymentCardMetadata` | alias/provider/last-four/expiry/status/assignment/limit metadata | no PAN, CVV, PIN, bank login, or payment token |
+| `VerificationAction` | human CAPTCHA/MFA/email/SMS/security/terms/reset action state | no challenge/code value and no provider continuation |
+| proxy-group view | type/provider/region/count/declared health/latency/assignment/expiry metadata | no host/IP/endpoint/auth URL/user/password |
+| export readiness | provider/schema/readiness/count/warning projection | capability unverified, disconnected, direct export forbidden |
+| webhook metadata | provider/direction/event labels/declared health | disabled; no endpoint, signing secret, send, receive, or event log |
+| server/cloud/remote/browser view | infrastructure planning and safe session labels | no provisioning, telemetry, connection, cookie/token, or fingerprint action |
+| unified order view | references from retailer account through evidence, Purchase, shipment, Receiving, and Inventory | read-only; each existing source retains authority |
+| notification preference | future category/channel preference projection | non-persisted and sends nothing |
+| Attention/search result | bounded priority/category/label/navigation target | navigation only; no destructive action |
+| workspace reference | bounded Bot/task/Purchase/Inventory/Receiving/Accountant Review reference and safe label | ephemeral navigation/attention projection; source domain retains authority |
+
+The normalized operations snapshot has bounded strict collections named `accountCreationPlans`, `phoneResources`, `paymentCards`, `verificationActions`, `proxyGroupViews`, `exportReadiness`, `webhookIntegrations`, `serverRecords`, `cloudTemplates`, `remoteAccessRecords`, `browserWorkspaces`, `orderViews`, `notificationPreferences`, and `workspaceReferences`. These names describe in-memory collections only. The snapshot fixes `persisted=false`, `authoritative=false`, and all automation capability flags false; the composed view fixes `writesAllowed=false` and `networkAllowed=false`. Only exact snapshots held in the contract's private identity set may take the idempotent normalization path; public flags never establish trust.
+
+No secret-bearing value belongs in any projection. Recursive screening and strict record allowlists reject passwords, tokens, cookies, OTP/MFA/CAPTCHA values, authorization/session fields, full payment-card data, proxy credentials/endpoints, retailer sessions, Bot license secrets, raw provider content, unsafe objects, and prototype-pollution keys. Source authorities remain separate:
+
+```text
+code3.account-ops.v1                  -> profiles, aliases, retailer-account metadata
+code3.inbox-order.v1                  -> minimized message/order evidence and Order Candidates
+code3.purchase-receiving.v1           -> Purchase/Receiving lifecycle
+code3.bot-ops.v1                      -> disconnected Bot metadata/evidence
+operations-foundation view model      -> reference-only owner presentation
+```
+
+See [ACCOUNT_LIFECYCLE_CONTRACT.md](./ACCOUNT_LIFECYCLE_CONTRACT.md), [VERIFICATION_CENTER_CONTRACT.md](./VERIFICATION_CENTER_CONTRACT.md), [AUTOMATION_EXPORT_CONTRACT.md](./AUTOMATION_EXPORT_CONTRACT.md), and [INFRASTRUCTURE_MANAGER_CONTRACT.md](./INFRASTRUCTURE_MANAGER_CONTRACT.md).
 
 ### Inbox and Order Intelligence repository
 

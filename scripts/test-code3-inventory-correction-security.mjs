@@ -250,7 +250,7 @@ const ok = (value, message) => { assert.ok(value, message); assertions += 1; };
   );
   const state = storedInventory(harness.inventoryStorage);
   const backupSource = getBackupSource("deal-finder");
-  equal(backupSource.schemaVersion, 5, "Business Inventory backup declares the reconciliation-ledger schema");
+  equal(backupSource.schemaVersion, 8, "Business Inventory backup declares the return correction schema");
   ok(backupSource.supportedSchemaVersions.includes(3), "the prior acquisition schema remains explicitly supported");
   ok(backupSource.recordPaths.includes("inventoryAdjustments"), "safe append-only correction events remain under existing Inventory backup authority");
   ok(!backupSource.recordPaths.some((path) => /candidate|preview|journal/i.test(path)), "candidate, preview, and undo-journal state are not backup sources");

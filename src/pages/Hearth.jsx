@@ -12,7 +12,6 @@ import {
   EtMockupRightRail,
   EtMockupSectionCard,
   EtMockupStatCard,
-  FlowNextActionCard,
 } from "../components/command-system";
 
 export default function HearthPage(props) {
@@ -21,7 +20,7 @@ export default function HearthPage(props) {
     GRADE_ASSIST_LOCAL_STORAGE_KEY,
     HEARTH_FOUNDATION_SCREEN,
     HEARTH_FOUNDATION_TRUST_MESSAGE,
-    PUBLIC_APP_VERSION_LABEL,
+
     REVIEW_SECTION_LABELS,
     accountEmail,
     activeVaultItems,
@@ -30,22 +29,21 @@ export default function HearthPage(props) {
     adminEditModeActive,
     adminToolsVisible,
     adminViewingAsAdmin,
-    appUpdate,
+
     bestMarketMover,
     bestScoutStore,
-    betaAccessAllowed,
+
     betaReadinessData,
     buildAdminCommandCenterSummary,
     buildStoreMapRows,
     canShowAnnouncement,
-    catalogImportStatus,
     collectorEventPlans,
     createQuickAddWizardState,
     currentUserProfile,
     dailyTideToday,
     featureAllowed,
     forgeInventoryItems,
-    forgeReceiptRecords,
+
     forgeReceiptsNeedingReviewCount,
     getLocalDateKey,
     getPersistedNotificationRows,
@@ -57,12 +55,11 @@ export default function HearthPage(props) {
     isEmberAssistSuggestion,
     isOffline,
     isWatchedEmberStore,
-    items,
+
     latestVaultActivityItem,
-    marketPriceCache,
     marketPriceMemories,
     missingSalePriceItems,
-    missingSetCardCount,
+
     money,
     monthlyProfitLoss,
     needsMarketCheckItems,
@@ -103,8 +100,8 @@ export default function HearthPage(props) {
     setDailyTide,
     setHearthDetailsExpanded,
     setQuickAddWizard,
-    setTideTradrSubTab,
-    setVaultSubTab,
+
+
     shopReviewBadges,
     shorelineState,
     shortDate,
@@ -118,16 +115,15 @@ export default function HearthPage(props) {
     subscriptionProfile,
     suggestions,
     summarizeCollectorEventPlans,
-    supabaseImportStatus,
     tidepoolPosts,
     tidepoolTrustedCircle,
-    totalBusinessMiles,
+
     totalSalesRevenue,
     tradeRecords,
     user,
     vaultCollectionSets,
     vaultItemDisplayImage,
-    vaultStatusLabel,
+
     vaultValue,
     visibleReceiptRecords,
     visibleVaultDisplayCase,
@@ -135,7 +131,7 @@ export default function HearthPage(props) {
     wishlistIsoPlannerItems,
     workspaceExpenses,
     workspaceMarketplaceListings,
-    workspaceMileageTrips,
+
     workspaceSales,
     workspaceTradeRecords,
     workspaceWatchlist,
@@ -147,7 +143,7 @@ export default function HearthPage(props) {
       const hearthAdaptiveState = adminToolsVisible
         ? { ...adaptiveUiState, showAdminTools: true, showModeratorTools: true, showSellerTools: false }
         : adaptiveUiState;
-      const hearthModeLabel = adminToolsVisible ? "Admin command view" : adaptiveUiState.modeLabel;
+
       const activeAnnouncements = getPersistedNotificationRows().filter(canShowAnnouncement).slice(0, 3);
       const currentScopedUserId = String(currentUserProfile?.userId || currentUserProfile?.id || user?.id || "local-beta");
       const currentScopedEmail = String(accountEmail() || "").trim().toLowerCase();
@@ -269,59 +265,9 @@ export default function HearthPage(props) {
           onSecondary: () => setActiveTab(hearthSmartGuidance.key === "start_collection" ? "market" : "scout"),
         };
       };
-      const catalogFreshnessSource = supabaseImportStatus.lastPriceChecked || catalogImportStatus.lastImportedAt || marketPriceCache.lastSync || "";
-      const catalogFreshnessLabel = catalogFreshnessSource ? shortDate(catalogFreshnessSource) : "";
-      const getStartedCards = [
-        {
-          key: "start-collection",
-          eyebrow: "Vault",
-          title: "Start your collection",
-          detail: "Add your first card or sealed product so the app can track what you own.",
-          cta: "Add to Vault",
-          onClick: () => openQuickAddAction("vaultItem"),
-          accent: "vault",
-        },
-        {
-          key: "follow-stores",
-          eyebrow: "Scout",
-          title: "Follow stores near you",
-          detail: "Scout gets smarter when your nearby stores and reports are in one place.",
-          cta: "Open Scout",
-          onClick: () => setActiveTab("scout"),
-          accent: "scout",
-        },
-        {
-          key: "market-alert",
-          eyebrow: "Market Watch",
-          title: "Try one Market search",
-          detail: "Research a card or sealed product without checkout, live-stock, or guaranteed-price pressure.",
-          cta: "Open Market",
-          onClick: () => {
-            setActiveTab("market");
-            setTideTradrSubTab("overview");
-          },
-          accent: "market",
-        },
-        {
-          key: "kids-access",
-          eyebrow: "Spark",
-          title: "Request Kids Program access",
-          detail: "Parent-safe requests and kid-focused collecting stay separate from selling tools.",
-          cta: "Open Kids Program",
-          onClick: () => setActiveTab("kidsProgram"),
-          accent: "spark",
-        },
-        {
-          key: "first-receipt",
-          eyebrow: "Forge",
-          title: "Add your first receipt",
-          detail: "Receipts keep profit, inventory cost, and seller reporting accurate.",
-          cta: "Add Receipt",
-          onClick: () => openQuickAddAction("receipt"),
-          accent: "forge",
-          sellerOnly: true,
-        },
-      ].filter((card) => !card.sellerOnly || sellerAccessVisible);
+
+
+
       const bestAction = (() => {
         if (hearthMode === "admin") {
           if (pendingBetaRequests) return {
@@ -472,58 +418,12 @@ export default function HearthPage(props) {
         }));
         openFlowModal("addActionSheet", { size: "medium", source });
       };
-      const quickActionByKey = {
-        scanProduct: { key: "scan-product", label: "Scan Product/Card", helper: "Review before saving.", icon: "scan", onClick: () => openQuickAddAction("scanProduct") },
-        quickAdd: { key: "quick-add", label: "Quick Add", helper: "Add anything.", icon: "plus", onClick: () => openAddActionSheet("hearth") },
-        scoutReport: { key: "scout-report", label: "Add Scout Report", helper: "Share a current find.", icon: "scout", onClick: () => openQuickAddAction("storeReport") },
-        vault: { key: "vault", label: "View Vault", helper: "Review your collection.", icon: "vault", onClick: () => setActiveTab("vault") },
-        market: { key: "market", label: "Search Market", helper: "Check fair prices.", icon: "market", onClick: () => setActiveTab("market") },
-        spark: { key: "spark", label: "The Spark", helper: "Family support.", icon: "spark", onClick: () => setActiveTab("kidsProgram") },
-        emberAssist: { key: "ember-assist", label: "Ask Ember", helper: "Get a guided next step.", icon: "spark", onClick: () => openEmberAssistPanel("hearth_quick_action") },
-        betaFeedback: { key: "beta-feedback", label: "Join / Feedback", helper: "Request a state or share beta feedback.", icon: "bell", onClick: () => openPublicBetaFeedback({ page: "Hearth" }) },
-        forge: { key: "forge", label: "Open Forge", helper: "My business.", icon: "forge", onClick: () => setActiveTab("inventory") },
-        addSale: { key: "add-sale", label: "Add Sale", helper: "Record revenue.", icon: "forge", onClick: () => openQuickAddAction("sale") },
-        addReceipt: { key: "add-receipt", label: "Add Receipt", helper: "Track cost.", icon: "receipt", onClick: () => openQuickAddAction("receipt") },
-        admin: { key: "admin", label: "Admin", helper: "Review queue.", icon: "settings", onClick: () => setActiveTab("adminReview") },
-      };
-      const modePriorityCards = {
-        admin: [
-          { key: "beta", eyebrow: "Beta Access", title: "Access requests", value: pendingBetaRequests, detail: "Pending or paused beta access rows.", cta: "Review", onClick: () => { setAdminReviewFilter("Beta Access"); setActiveTab("adminReview"); }, accent: "admin" },
-          { key: "kids", eyebrow: "Kids Program", title: "Family requests", value: pendingKidsRequests, detail: "Little Sparks and family access review.", cta: "Review", onClick: () => { setAdminReviewFilter("Kids Program Applications"); setActiveTab("adminReview"); }, accent: "spark" },
-          { key: "scout-review", eyebrow: "Scout", title: "Reports needing moderation", value: scoutNeedsReviewReports.length, detail: "Review unusual, conflicting, flagged, or hidden reports.", cta: "Open Queue", onClick: () => { setAdminReviewFilter("Scout Report Review"); setActiveTab("adminReview"); }, accent: "scout" },
-          { key: "market-flags", eyebrow: "Market Watch", title: "Market review", value: marketReviewCount, detail: "Flagged, stale, or pending market data review.", cta: "Open Market", onClick: () => setActiveTab("market"), accent: "market" },
-          { key: "feedback", eyebrow: "Support", title: "Feedback and bugs", value: pendingFeedbackCount + pendingSuggestionCount, detail: "Feedback, app errors, and shared data suggestions.", cta: "Open Admin", onClick: () => setActiveTab("adminReview"), accent: "tide" },
-          catalogFreshnessLabel ? { key: "catalog-freshness", eyebrow: "Catalog", title: "Pricing freshness", value: catalogFreshnessLabel, detail: "Latest loaded catalog or market-price status available to admin tools.", cta: "Open Admin", onClick: () => setActiveTab("adminReview"), accent: "gold" } : null,
-        ],
-        seller: [
-          { key: "forge", eyebrow: "Forge Workshop", title: "Inventory health", value: `${forgeInventoryItems.length} items`, detail: `${forgeReviewCount} item${forgeReviewCount === 1 ? "" : "s"} need receipt, price, or listing review.`, cta: "Open Forge", onClick: () => setActiveTab("inventory"), accent: "forge" },
-          { key: "receipts", eyebrow: "Receipts", title: "Receipt review", value: receiptsNeedingReviewCount, detail: "Review receipts to keep cost basis accurate.", cta: "Add Receipt", onClick: () => openQuickAddAction("receipt"), accent: "forge" },
-          { key: "mileage", eyebrow: "Mileage", title: "Business miles", value: totalBusinessMiles.toFixed(1), detail: `${workspaceMileageTrips.length} trip${workspaceMileageTrips.length === 1 ? "" : "s"} logged.`, cta: "Open Mileage", onClick: () => setActiveTab("mileage"), accent: "tide" },
-          { key: "sales", eyebrow: "Sales", title: "Profit snapshot", value: money(monthlyProfitLoss), detail: `${workspaceSales.length} sale${workspaceSales.length === 1 ? "" : "s"} and ${workspaceExpenses.length} expense${workspaceExpenses.length === 1 ? "" : "s"} in this workspace.`, cta: "Open Reports", onClick: () => setActiveTab("reports"), accent: "gold" },
-        ],
-        simple: [
-          { key: "scout", eyebrow: "Scout Signals", title: latestScoutStoreName || "Nearby signals", value: followedStores.length ? `${followedStores.length} followed` : scoutReportRows.length || 0, detail: latestScoutReport ? `${latestScoutItem}${latestScoutTime ? ` reported ${latestScoutTime}` : " reported recently"}.` : "No verified signals nearby yet.", cta: "Open Scout", onClick: () => setActiveTab("scout"), accent: "scout" },
-          { key: "spark", eyebrow: "Kids Program", title: "The Spark", value: kidsApplication?.status || "Ready", detail: kidsApplication ? "Your Kids Program request is tracked here." : "Parent-approved access, requests, and safety rules.", cta: "Open Spark", onClick: () => setActiveTab("kidsProgram"), accent: "spark" },
-          { key: "vault", eyebrow: "Vault", title: "Collection basics", value: `${activeVaultItems.length} items`, detail: activeVaultItems.length ? "Keep owned items organized for fair trades and family planning." : "Start with one saved card or sealed product.", cta: "Add Item", onClick: () => openQuickAddAction("vaultItem"), accent: "vault" },
-        ],
-        collector: [
-          { key: "vault", eyebrow: "Vault", title: "Collection summary", value: money(vaultValue), detail: `${activeVaultItems.length} active item${activeVaultItems.length === 1 ? "" : "s"} tracked.`, cta: activeVaultItems.length ? "Open Vault" : "Add Item", onClick: () => activeVaultItems.length ? setActiveTab("vault") : openQuickAddAction("vaultItem"), accent: "vault" },
-          { key: "recent", eyebrow: "Recent Additions", title: latestVaultActivityItem?.name || "No additions yet", value: latestVaultActivityItem ? `Qty ${latestVaultActivityItem.quantity || 1}` : "0", detail: latestVaultActivityItem ? `${vaultStatusLabel(normalizeVaultStatus(latestVaultActivityItem))} in your Vault.` : "Add items to build your collection history.", cta: "Open Vault", onClick: () => setActiveTab("vault"), accent: "vault" },
-          { key: "sets", eyebrow: "Sets", title: "Missing set cards", value: missingSetCardCount, detail: missingSetCardCount ? "Open Vault Sets to continue completion tracking." : "Set completion will appear as your collection grows.", cta: "Open Sets", onClick: () => { setActiveTab("vault"); setVaultSubTab("sets"); }, accent: "tide" },
-          { key: "market", eyebrow: "Market Watch", title: bestMarketMover?.name || bestMarketMover?.productName || "No watched deals yet", value: bestMarketMover ? money(bestMarketMover.marketPrice || bestMarketMover.marketValue || 0) : workspaceWatchlist.length, detail: bestMarketMover ? "Compare current market value before buying or trading." : "Create a watchlist to track fair prices.", cta: "Open Market", onClick: () => setActiveTab("market"), accent: "market" },
-        ],
-      };
-      const priorityCards = (modePriorityCards[hearthMode] || modePriorityCards.collector).filter(Boolean);
-      const visiblePriorityCards = hearthDetailsExpanded ? priorityCards : priorityCards.slice(0, 3);
-      const hiddenPriorityCount = Math.max(0, priorityCards.length - visiblePriorityCards.length);
-      const fallbackCards = getStartedCards.filter((card) => {
-        if (card.key === "start-collection") return !hearthHasVaultItems;
-        if (card.key === "follow-stores") return !(scoutSnapshot.reports || []).length;
-        if (card.key === "market-alert") return !workspaceWatchlist.length;
-        if (card.key === "kids-access") return hearthMode === "simple" && !kidsApplication;
-        if (card.key === "first-receipt") return sellerAccessVisible && !workspaceExpenses.length && !forgeReceiptRecords.length;
-        return false;
-      });
+
+
+
+
+
+
       const recentRows = homeRecentActivity.length ? homeRecentActivity.slice(0, 3) : [];
       const rawHearthName = String(
         currentUserProfile?.firstName ||
@@ -537,17 +437,10 @@ export default function HearthPage(props) {
       const hearthGreetingName = rawHearthFirstName && !unsafeHearthName ? rawHearthFirstName : "";
       const hearthHour = new Date().getHours();
       const hearthGreeting = hearthHour < 12 ? "Good morning" : hearthHour < 18 ? "Good afternoon" : "Good evening";
-      const hearthAvatarInitial = (hearthGreetingName || "E").slice(0, 1).toUpperCase();
-      const hearthScoutTrustScore = Number.isFinite(Number(scoutSnapshot.scoutProfile?.trustScore)) ? Number(scoutSnapshot.scoutProfile.trustScore) : 0;
-      const hearthHeroStats = [
-        { key: "fresh", label: "Fresh reports", value: hearthFreshReports || scoutReportRows.length || 0, tone: "tide" },
-        { key: "trust", label: "Trusted Scout", value: hearthScoutTrustScore ? `Level ${Math.max(1, Math.ceil(hearthScoutTrustScore / 20))}` : "Needs data", tone: "verified" },
-      ];
-      const hearthSnapshotLabel = hearthMode === "seller"
-        ? `${forgeInventoryItems.length} Forge items`
-        : hearthMode === "admin"
-          ? `${pendingBetaRequests + pendingKidsRequests + scoutNeedsReviewReports.length} review items`
-          : `${activeVaultItems.length} Vault items`;
+
+
+
+
       const hearthVaultValueLabel = vaultValue > 0 ? `${money(vaultValue)} estimated value` : "Value unavailable";
       const hearthModeChipLabel = hearthMode === "admin"
         ? "Admin"
@@ -562,16 +455,8 @@ export default function HearthPage(props) {
       const hearthTodayMessage = bestAction?.badge ? `${bestAction.badge}: ${bestAction.title}` : bestAction.title;
       const hearthIsNewUser = !activeVaultItems.length && !scoutReportRows.length && !workspaceWatchlist.length && !recentRows.length;
       const hearthOnboardingPanel = shouldRenderFirstRunOnboarding() ? renderOnboardingPanel() : null;
-      const hearthSupportRows = [
-        { label: "Beta", value: betaAccessAllowed() ? "Approved" : "Limited", helper: "Features may change during beta." },
-        { label: "App", value: PUBLIC_APP_VERSION_LABEL, helper: appUpdate.available ? "Update available." : "Current build loaded." },
-        { label: "Support", value: "Feedback ready", helper: "Bug, missing item, wrong store, bad report, or feature request." },
-      ];
-      const hearthKnownIssues = [
-        "Catalog and photos are still being expanded.",
-        "Forecasts are limited during beta.",
-        "Some stores and regions are still being added.",
-      ];
+
+
       const hearthTodayKey = getLocalDateKey();
       const isTodayRecord = (value) => {
         if (!value) return false;
@@ -615,18 +500,7 @@ export default function HearthPage(props) {
       const hearthCanUseVault = featureAllowed("vault_basic") || featureAllowed("collection_basic") || BETA_LOCAL_MODE || activeVaultItems.length > 0;
       const hearthSparkRelevant = Boolean(hearthMode === "simple" || adaptiveUiState.familyMode || kidsApplication || pendingKidsRequests || adminToolsVisible);
       const hearthSellerRelevant = Boolean(sellerAccessVisible || forgeInventoryItems.length || workspaceSales.length || workspaceExpenses.length || visibleReceiptRecords.length);
-      const quickActions = [
-        hearthCanUseVault ? "scanProduct" : null,
-        hearthCanUseScout ? "scoutReport" : null,
-        hearthCanUseVault ? "vault" : null,
-        "market",
-        hearthSparkRelevant ? "spark" : null,
-        "betaFeedback",
-        "emberAssist",
-      ]
-        .map((key) => quickActionByKey[key])
-        .filter(Boolean)
-        .slice(0, 4);
+
       const openSparkManualSeed = (kind) => {
         const donation = kind === "donation";
         openQuickAddPathFromHearth("manual", {
@@ -639,47 +513,10 @@ export default function HearthPage(props) {
             : "Build or prepare a kid pack for The Spark.",
         }, `hearth-spark-${kind}`);
       };
-      const foundationJourneyItems = (HEARTH_FOUNDATION_SCREEN.sections || []).find((section) => section.title === "Today's Journey")?.items || [];
+
       const foundationQuickActionItems = (HEARTH_FOUNDATION_SCREEN.sections || []).find((section) => section.title === "Quick Actions")?.items || [];
       const foundationTradeSourceItem = activeVaultItems.find((item) => item?.id);
-      const hearthFoundationJourneyCards = [
-        {
-          key: "foundation-restock",
-          title: foundationJourneyItems[0]?.title || "Scout current signals",
-          detail: foundationJourneyItems[0]?.detail || "Proof-first store notes, not raw patterns.",
-          meta: foundationJourneyItems[0]?.status || "Worth checking",
-          icon: "scout",
-          tone: "scout",
-          onClick: () => setActiveTab("scout"),
-        },
-        {
-          key: "foundation-forge",
-          title: foundationJourneyItems[1]?.title || "Review a pending trade",
-          detail: foundationJourneyItems[1]?.detail || "Compare exact copies before anyone commits.",
-          meta: foundationJourneyItems[1]?.meta || "+50 pts",
-          icon: "forge",
-          tone: "forge",
-          onClick: () => foundationTradeSourceItem ? openTradeValueFlow(foundationTradeSourceItem, { source: "hearth-foundation" }) : setActiveTab("vault"),
-        },
-        {
-          key: "foundation-event",
-          title: foundationJourneyItems[2]?.title || "Kids Trade Night",
-          detail: foundationJourneyItems[2]?.detail || "Parent-managed Spark planning.",
-          meta: foundationJourneyItems[2]?.status || "Family friendly",
-          icon: "calendar",
-          tone: "spark",
-          onClick: () => setActiveTab("kidsProgram"),
-        },
-        {
-          key: "foundation-vault-reminder",
-          title: "Sleeve one Vault item",
-          detail: "Add a card, slab, binder page, or sealed product after review.",
-          meta: "Protected",
-          icon: "vault",
-          tone: "vault",
-          onClick: () => openQuickAddAction("vaultItem"),
-        },
-      ];
+
       const hearthFoundationQuickActions = [
         {
           key: "foundation-scan-card",

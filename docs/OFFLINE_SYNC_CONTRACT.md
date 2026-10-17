@@ -1,6 +1,6 @@
 # Code 3 Offline and Sync Contract
 
-Status: future contract. Phase 1B defines persistence modes and conflict semantics but does not implement a full sync engine.
+Status on 2026-09-16: a bounded persistent queue is implemented in `src/features/persistence/offlineQueue.js`, with owner/session isolation, Web Locks, validated commands, dependency ordering, stable idempotency keys, strict acknowledgements, bounded retry/backoff and explicit conflict resolution. The [next-ten report](./NEXT_TEN_LOCAL_REPORT.md) records local proof. It is explicitly injected through the persistence host; production server idempotency, cache adoption, queue/conflict UI and cross-device integration are not connected. This remains a contract for a complete sync engine, not a live sync claim.
 
 Phase 1B starting baseline: `26d30b9a0b1379d53778c0bc5c92887cc0ae744f`.
 

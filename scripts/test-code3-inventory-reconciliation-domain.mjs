@@ -122,7 +122,7 @@ const ok = (value, message) => { assert.ok(value, message); assertions += 1; };
 
 {
   const state = storedInventory((await createSoldManagedInventory({ id: "schema-five" })).inventoryStorage);
-  equal(state.schemaVersion, 5, "same Business storage key normalizes to schema 5");
+  equal(state.schemaVersion, 8, "same Business storage key normalizes to return correction schema 8");
   ok(Array.isArray(state.inventoryReconciliationEvents), "schema 5 has one append-only reconciliation collection");
 }
 

@@ -411,6 +411,64 @@
 .flip-live-total { border-color: var(--border-strong); border-radius: 10px; color: var(--text-secondary); background: var(--surface-primary); }
 .flip-live-total strong { color: var(--text-primary); font-variant-numeric: tabular-nums; }
 
+/* Listing intake keeps every field visible in four readable groups. */
+.flip-form.flip-listing-form {
+  gap: 24px;
+  padding: 24px;
+  background: var(--surface-primary);
+  border-radius: 12px;
+}
+.flip-listing-form__intro,
+.flip-listing-form__hint {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+  max-width: 68ch;
+}
+.flip-listing-form .flip-listing-form__group {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.flip-listing-form__group legend {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 0 0 16px;
+  font: 600 17px/1.4 var(--font-display);
+}
+.flip-listing-form__group legend > span {
+  color: var(--action-primary);
+  font: 500 11px/1 var(--font-mono);
+}
+.flip-listing-form__group + .flip-listing-form__group {
+  padding-top: 24px;
+  border-top: 1px solid var(--border-subtle);
+}
+.flip-listing-form__hint { margin-bottom: 16px; }
+.flip-listing-form .flip-form-grid { gap: 18px 20px; }
+.flip-listing-form .flip-field > span { font-size: 13px; font-weight: 600; }
+.flip-listing-form .flip-field :is(input, select, textarea) { font-size: 15px; }
+.flip-listing-form .flip-live-total {
+  margin-top: 18px;
+  background: var(--surface-inset);
+  border-color: var(--border-subtle);
+}
+.flip-listing-form .flip-live-total strong { color: var(--action-primary); }
+.flip-listing-form > .flip-form-actions {
+  padding-top: 20px;
+  border-top: 1px solid var(--border-subtle);
+}
+@media (max-width: 600px) {
+  .flip-form.flip-listing-form { padding: 18px 14px; }
+  .flip-listing-form .flip-field :is(input, select, textarea) { font-size: 16px; }
+  .flip-listing-form .flip-live-total { align-items: start; flex-direction: column; gap: 6px; }
+  .flip-listing-form > .flip-form-actions > button { width: 100%; min-height: 44px; }
+}
+
 .flip-filter-bar { gap: 9px; }
 .flip-record-list, .flip-comparison-list { min-width: 0; gap: 12px; }
 .flip-record-card, .flip-comparison-list > article { min-width: 0; padding: 14px; border-color: var(--border-subtle); border-radius: 13px; background: var(--surface-primary); box-shadow: var(--shadow-1); }
@@ -591,7 +649,7 @@
 .flip-deal-feed .ops-deal-card > .ops-product-placeholder { height: 100%; min-height: 150px; aspect-ratio: auto; }
 .flip-deal-card__body { gap: 8px; padding: 10px 12px; }
 .flip-deal-card__body h3 { margin: 0; overflow-wrap: anywhere; font-size: 16px; }
-.flip-deal-source { color: var(--text-muted); font-size: 11px; font-weight: 750; text-transform: uppercase; }
+.flip-deal-source { color: var(--text-muted); font-family: var(--font-mono); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .035em; }
 .flip-deal-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .flip-deal-summary span { display: grid; gap: 2px; color: var(--text-muted); font-size: 11px; }
 .flip-deal-summary strong { color: var(--text-primary); font-size: 15px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
@@ -626,9 +684,17 @@
 
 /* Mobile-first minimal pass: search and records lead, secondary tools recede. */
 .flip-find-navigation { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px; margin-bottom: 10px; }
-.flip-find-navigation .flip-main-nav { padding: 0; }
+.flip-find-navigation .flip-main-nav { padding: 0; margin-inline: 0; gap: 0; }
 .flip-find-navigation .flip-more-menu { margin: 0; }
 .flip-deal-workspace { display: grid; gap: 10px; }
+.app.app-command-shell .flip-deal-workspace { gap: 20px; }
+.app.app-command-shell .flip-deal-workspace .flip-section-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.app.app-command-shell .flip-deal-workspace .flip-section-heading h2 { font-size: 20px; letter-spacing: -.02em; }
+html body .app[data-theme] .flip-find-navigation .flip-main-nav button { flex: 0 0 auto; min-width: 0; padding-inline: 24px; background: transparent !important; border: 0 !important; border-bottom: 2px solid transparent !important; border-radius: 0; font-weight: 550; }
+html body .app[data-theme] .flip-find-navigation .flip-main-nav button.active { border-bottom-color: var(--action-primary) !important; color: var(--action-primary) !important; }
+html body .app[data-theme] .flip-find-navigation { border-bottom: 1px solid var(--border-subtle); padding-bottom: 0; }
+html body .app[data-theme] .flip-deal-workspace .flip-empty-state { display: grid; justify-items: center; align-content: center; min-height: 280px; padding: 32px; border-radius: 12px; box-shadow: var(--shadow-panel); }
+.flip-deal-workspace .flip-empty-state p { max-width: 44ch; }
 .flip-deal-workspace .flip-filter-bar,
 .flip-deal-workspace .flip-find-navigation,
 .flip-deal-workspace .flip-section-heading { margin-bottom: 0; }
@@ -646,7 +712,7 @@
   .flip-scout-main { padding: 12px 16px calc(96px + env(safe-area-inset-bottom, 0px)); }
   .flip-scout-page > .flip-find-navigation { margin: 12px 16px 0; }
   .flip-main-nav { gap: 2px; }
-  .flip-main-nav button { min-height: 44px; padding-inline: 5px; }
+  html body .app[data-theme] .flip-find-navigation .flip-main-nav button { min-height: 44px; padding-inline: 8px; }
   .flip-more-menu > summary { min-height: 44px; padding-inline: 10px; border-color: transparent; background: transparent; }
   .flip-deal-workspace .flip-section-heading h2 { font-size: 17px; }
   .flip-deal-feed { gap: 0; }
@@ -657,7 +723,7 @@
   .flip-deal-card__body h3 { display: -webkit-box; overflow: hidden; font-size: 14px; line-height: 1.25; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
   .flip-deal-summary { gap: 6px; }
   .flip-deal-summary strong { font-size: 14px; }
-  .flip-deal-card__body > .primary-button { min-width: 76px; min-height: 40px; padding: 7px 11px; }
+  .flip-deal-card__body > .primary-button { min-width: 76px; min-height: 44px; padding: 7px 11px; }
   .flip-empty-state { min-height: 0; padding: 14px 0; border: 0; background: transparent; }
   .flip-empty-state > span { display: none; }
   .flip-analysis-workflow .flip-form { padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }

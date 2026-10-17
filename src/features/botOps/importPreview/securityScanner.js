@@ -62,7 +62,12 @@ const PRIVATE_KEY_TEXT = /-----BEGIN (?:EC |ENCRYPTED |OPENSSH |PGP |RSA )?PRIVA
 const HIGH_CONFIDENCE_TOKEN_TEXT = /\b(?:(?:AKIA|ASIA)[A-Z0-9]{16}|gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|(?:sk|rk)_live_[A-Za-z0-9]{16,}|AIza[0-9A-Za-z_-]{20,}|xox[baprs]-[A-Za-z0-9-]{10,})\b/;
 const DISCORD_WEBHOOK_TEXT = /https:\/\/(?:canary\.|ptb\.)?discord(?:app)?\.com\/api\/webhooks\/\d+\/[A-Za-z0-9._-]+/i;
 const CARD_CANDIDATE = /(?:^|\D)(\d(?:[ -]?\d){12,18})(?=\D|$)/g;
-const UNSAFE_KEY_TEXT = /[\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]/;
+function containsUnsafeKeyText(value) {
+    return Array.from(value).some((character) => {
+      const code = character.charCodeAt(0);
+      return code <= 31 || code === 127 || (code >= 0x202a && code <= 0x202e) || (code >= 0x2066 && code <= 0x2069);
+    });
+}
 
 function normalizeKey(value) {
   return String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -241,7 +246,7 @@ export function scanStellarTaskExportSecurity(value, limitOverrides = {}) {
         addFinding(STELLAR_PREVIEW_SECURITY_CATEGORIES.INPUT_LIMIT_EXCEEDED);
         continue;
       }
-      if (UNSAFE_KEY_TEXT.test(key)) {
+      if (containsUnsafeKeyText(key)) {
         addFinding(STELLAR_PREVIEW_SECURITY_CATEGORIES.UNSAFE_OBJECT_STRUCTURE);
         continue;
       }

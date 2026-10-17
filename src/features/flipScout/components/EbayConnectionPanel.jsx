@@ -12,33 +12,32 @@ function healthPresentation(health) {
 }
 
 export default function EbayConnectionPanel({ onStatus }) {
-  const [health, setHealth] = useState(null);
-  const [checking, setChecking] = useState(false);
-  const loadHealth = useCallback(async (verify = false) => {
-    setChecking(true);
-    try {
-      const next = await getEbayHealth({ verify });
-      setHealth(next);
-      onStatus?.(next);
-    } catch (error) {
-      const routeUnavailable = error?.status === 404;
-      const next = routeUnavailable
-        ? {
-            configured: false,
-            healthy: false,
-            missing: [],
-            message: "The server-side eBay connector is not available in this frontend session.",
-            checkedAt: new Date().toISOString(),
-          }
+  const [status, setStatus] = useState({ callback: onStatus, health: null, checking: true });
+  const health = status.callback === onStatus ? status.health : null;
+  const checking = status.callback !== onStatus || status.checking;
+  const fetchHealth = useCallback(async (verify = false) => {
+    try { return await getEbayHealth({ verify }); }
+    catch (error) {
+      return error?.status === 404
+        ? { configured: false, healthy: false, missing: [], message: "The server-side eBay connector is not available in this frontend session.", checkedAt: new Date().toISOString() }
         : { configured: true, healthy: false, error: { code: error.code, message: error.message }, checkedAt: new Date().toISOString() };
-      setHealth(next);
-      onStatus?.(next);
-    } finally {
-      setChecking(false);
     }
-  }, [onStatus]);
-
-  useEffect(() => { loadHealth(false); }, [loadHealth]);
+  }, []);
+  const loadHealth = useCallback(async () => {
+    setStatus((current) => ({ ...current, checking: true }));
+    const next = await fetchHealth(true);
+    setStatus({ callback: onStatus, health: next, checking: false });
+    onStatus?.(next);
+  }, [fetchHealth, onStatus]);
+  useEffect(() => {
+    let active = true;
+    fetchHealth(false).then((next) => {
+      if (!active) return;
+      setStatus({ callback: onStatus, health: next, checking: false });
+      onStatus?.(next);
+    });
+    return () => { active = false; };
+  }, [fetchHealth, onStatus]);
   const presentation = healthPresentation(health);
   return (
     <article className="flip-ebay-connection" aria-live="polite">

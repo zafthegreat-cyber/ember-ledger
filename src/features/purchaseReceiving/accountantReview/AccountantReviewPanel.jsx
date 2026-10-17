@@ -22,6 +22,7 @@ const FILTER_KEYS = Object.freeze([
 ]);
 
 const EMPTY_FILTERS = Object.freeze(Object.fromEntries(FILTER_KEYS.map((key) => [key, ""])));
+const EMPTY_RECORDS = Object.freeze([]);
 
 const FILTER_LABELS = Object.freeze({
   year: "Year",
@@ -427,12 +428,12 @@ function Summary({ preview, visibleCount, summary: suppliedSummary }) {
 }
 
 export default function AccountantReviewPanel({ preview = {}, onFiltersChange }) {
-  const allItems = Array.isArray(preview.items) ? preview.items : [];
-  const saleReviews = Array.isArray(preview.saleReviews) ? preview.saleReviews : [];
-  const lotReviews = Array.isArray(preview.lotReviews) ? preview.lotReviews : [];
-  const periodSummaries = Array.isArray(preview.periodSummaries)
+  const allItems = Array.isArray(preview.items) ? preview.items : EMPTY_RECORDS;
+  const saleReviews = Array.isArray(preview.saleReviews) ? preview.saleReviews : EMPTY_RECORDS;
+  const lotReviews = Array.isArray(preview.lotReviews) ? preview.lotReviews : EMPTY_RECORDS;
+  const periodSummaries = useMemo(() => Array.isArray(preview.periodSummaries)
     ? preview.periodSummaries
-    : ["months", "quarters", "years"].flatMap((key) => Array.isArray(preview.periodSummaries?.[key]) ? preview.periodSummaries[key] : []);
+    : ["months", "quarters", "years"].flatMap((key) => Array.isArray(preview.periodSummaries?.[key]) ? preview.periodSummaries[key] : []), [preview.periodSummaries]);
   const allFilterableRecords = useMemo(() => [...allItems, ...saleReviews, ...lotReviews, ...periodSummaries], [allItems, saleReviews, lotReviews, periodSummaries]);
   const [filters, setFilters] = useState(() => normalizedFilterSeed(preview.activeFilters));
 

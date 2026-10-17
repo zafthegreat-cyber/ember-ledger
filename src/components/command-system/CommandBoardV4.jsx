@@ -321,8 +321,20 @@ export function CommandBoardPlan({ label = "Plan", title, items = [], actions = 
 }
 
 export function CommandBoardRouteStrip({ routes = [] }) {
+  const revealFocusedRoute = (event) => {
+    const nav = event.currentTarget;
+    const button = event.target.closest("button");
+    if (!button || button.parentElement !== nav || nav.scrollWidth <= nav.clientWidth) return;
+    const navBounds = nav.getBoundingClientRect();
+    const buttonBounds = button.getBoundingClientRect();
+    const visibleLeft = navBounds.left + nav.clientLeft + 8;
+    const visibleRight = navBounds.left + nav.clientLeft + nav.clientWidth - 8;
+    if (buttonBounds.left < visibleLeft) nav.scrollLeft += buttonBounds.left - visibleLeft;
+    else if (buttonBounds.right > visibleRight) nav.scrollLeft += buttonBounds.right - visibleRight;
+  };
+
   return (
-    <nav className="command-board-v4-route-strip" aria-label="Routes and connections">
+    <nav className="command-board-v4-route-strip" aria-label="Routes and connections" onFocus={revealFocusedRoute}>
       {routes.map((route, index) => (
         <button
           type="button"

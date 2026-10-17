@@ -1,0 +1,731 @@
+/* Shared typography and surfaces. Workspace behavior remains in its page. */
+html body .app[data-theme] :is(h1, h2, h3) { font-family: var(--font-display) !important; }
+html body .app[data-theme] .command-board-v4 :where(button) {
+  background: var(--surface-primary) !important;
+  color: var(--text-primary) !important;
+  box-shadow: none !important;
+  border-color: var(--border-strong) !important;
+}
+html body .app[data-theme] .command-board-v4 :is(.command-board-v4-primary-action, .primary-button) {
+  background: var(--action-primary) !important;
+  color: var(--on-primary) !important;
+}
+html body .app[data-theme] :is(.command-board-v4, .command-board-v4-frame, .command-board-v4-rail, .command-board-v4-body) {
+  background: var(--app-background) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+html body .app[data-theme] .command-board-v4 :where(article) {
+  background: var(--surface-primary) !important;
+  border-color: var(--border-subtle) !important;
+  box-shadow: var(--shadow-1) !important;
+}
+html body .app[data-theme] { background: var(--app-background) !important; color: var(--text-primary); }
+html body .app.app-command-shell[data-theme]:has(.command-board-v4) { background: var(--app-background) !important; }
+html body .app[data-theme] .scout-command-metrics strong { font-family: var(--font-display); font-variant-numeric: tabular-nums; }
+html:has(.app[data-theme]), body:has(.app[data-theme]) { background: var(--app-background); }
+html body .app[data-theme] :is(.topbar, .ops-desktop-sidebar, .ops-mobile-nav, .panel, .flow-modal, .ops-bottom-sheet, .ops-data-table, .ops-record-card) {
+  background: var(--surface-primary);
+  border-color: var(--border-subtle);
+  box-shadow: var(--shadow-1);
+  backdrop-filter: none;
+}
+html body .app[data-theme] :is(.auth-login-story-panel, .signed-out-auth-card) {
+  background: var(--surface-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  box-shadow: var(--shadow-1);
+}
+html body .app[data-theme] :is(.auth-login-scene-copy h2, .auth-login-promise strong) { color: var(--text-primary); }
+html body .app[data-theme] :is(.auth-login-scene-copy p, .auth-login-promise p) { color: var(--text-secondary); }
+html body .app[data-theme] .auth-login-promise { border-color: var(--border-subtle); }
+html body .app[data-theme] :is(.ops-button--primary, .primary-button, .command-board-v4-primary-action, .auth-form button[type="submit"]) {
+  background: var(--action-primary) !important;
+  color: var(--on-primary) !important;
+  border: 1px solid var(--action-primary) !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+html body .app[data-theme] :is(.ops-button--primary, .primary-button, .command-board-v4-primary-action, .auth-form button[type="submit"]):hover:not(:disabled) {
+  background: var(--action-hover) !important;
+}
+html body .app[data-theme] :is(.ops-button--secondary, .secondary-button, .command-board-v4-secondary-action, .auth-text-button) {
+  background: var(--surface-primary) !important;
+  border: 1px solid var(--border-strong) !important;
+  color: var(--text-primary) !important;
+  box-shadow: none !important;
+}
+html body .app[data-theme] :is(.danger-button, .delete-button, .button-danger, .ops-button--danger, .drawer-danger-link, .overflow-menu-delete, button[data-tone="danger"]) {
+  background: var(--danger-background) !important;
+  border: 1px solid var(--status-danger) !important;
+  color: var(--status-danger) !important;
+}
+html body .app[data-theme] :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea) {
+  color: var(--text-primary);
+  background-color: var(--surface-primary);
+  border-color: var(--border-strong);
+}
+html body .app[data-theme] :is(input, textarea)::placeholder { color: var(--text-secondary); opacity: 1; }
+html body .app[data-theme] :is(button, a, input, select, textarea, summary):focus-visible {
+  outline: 3px solid var(--focus-ring) !important;
+  outline-offset: 3px;
+}
+html body .app[data-theme] :is(.ops-desktop-sidebar, .ops-mobile-nav) button.is-active {
+  color: var(--action-primary) !important;
+  background: var(--selection-background) !important;
+}
+html body .app[data-theme] :is(.ops-data-table, .data-table, .flip-table) :is(th, td) { border-color: var(--border-subtle); }
+html body .app[data-theme] :is(.ops-data-table, .data-table, .flip-table) th { background: var(--surface-secondary); color: var(--text-secondary); }
+html body .app[data-theme] :is(.ops-state, .flip-empty-state) { background: var(--surface-primary); border-color: var(--border-subtle); }
+html body .app[data-theme] .route-loading-card[role="status"] {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  align-content: center;
+  gap: 5px 14px;
+  min-height: 110px;
+  padding: 24px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--surface-primary);
+  color: var(--text-primary);
+}
+html body .app[data-theme] .route-loading-card[role="status"] .route-loading-spinner {
+  grid-column: 1;
+  grid-row: 1 / 3;
+  align-self: center;
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--border-subtle);
+  border-top-color: var(--action-primary);
+  border-radius: 50%;
+  animation: route-loading-turn 1s linear infinite;
+}
+html body .app[data-theme] .route-loading-card[role="status"] strong { grid-column: 2; font: 600 16px/1.4 var(--font-display); }
+html body .app[data-theme] .route-loading-card[role="status"] small { grid-column: 2; font: 400 13px/1.5 var(--font-ui); color: var(--text-secondary); }
+@keyframes route-loading-turn { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  html body .app[data-theme] .route-loading-card[role="status"] .route-loading-spinner { animation: none; }
+}
+html body .app[data-theme] :is(.ops-brand-mark, .ops-mobile-nav__action-icon) { color: var(--on-primary); }
+html body .app[data-theme] :is(.primary-button, .secondary-button, .danger-button, .command-board-v4-primary-action, .command-board-v4-secondary-action) { min-height: 44px; border-radius: 8px; }
+html body .app[data-theme] :is(.ops-button--primary, .primary-button, .command-board-v4-primary-action) :is(span, b, strong, small) { color: inherit !important; }
+html body .app[data-theme] :is(.you-v4-profile-metrics, .you-v4-safety-list) > * { background: var(--surface-secondary); border-color: var(--border-subtle); }
+
+/* A quieter frame gives the records and primary actions visual priority. */
+html body .app[data-theme] :is(.topbar, .ops-desktop-sidebar) {
+  background: var(--surface-navigation) !important;
+  box-shadow: none !important;
+}
+html body .app[data-theme] .ops-desktop-sidebar .ops-brand strong {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -.035em;
+}
+html body .app[data-theme] .ops-brand-mark { font-family: var(--font-mono); border-radius: 10px; }
+html body .app[data-theme] .ops-desktop-sidebar nav > button { position: relative; font-weight: 550; }
+html body .app[data-theme] .ops-desktop-sidebar nav > button.is-active::before {
+  content: "";
+  position: absolute;
+  inset: 12px auto 12px 0;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--action-primary);
+}
+html body .app[data-theme] .ops-sidebar-footer { font-size: 11px; line-height: 1.6; }
+html body .app[data-theme] .ops-eyebrow { font-family: var(--font-mono); font-weight: 500; letter-spacing: .09em; }
+html body .app[data-theme] .ops-page-header h1 { font-weight: 600; letter-spacing: -.045em; }
+html body .app[data-theme] :is(.ops-dialog, .ops-bottom-sheet, .app-search-results) { background: var(--surface-elevated); box-shadow: var(--shadow-panel); }
+html body .app[data-theme] :is(.ops-record-card, .ops-data-table) { box-shadow: var(--shadow-panel); }
+html body .app[data-theme] :is(.ops-data-table, .data-table, .flip-table) th { font-family: var(--font-mono); font-weight: 500; letter-spacing: .015em; }
+html body .app[data-theme] :is(.ops-metric-card > strong, .everyday-record-card dd) { font-variant-numeric: tabular-nums; }
+html body .app[data-theme] .topbar-command-actions > button { font-weight: 550; }
+html body .app[data-theme] .topbar-quick-add-button .action-icon {
+  color: inherit;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+html body .app[data-theme] .ops-mobile-nav { border-radius: 16px; box-shadow: var(--shadow-panel); }
+html body .app[data-theme] .ops-mobile-nav button { border-radius: 10px; }
+html body .app[data-theme] .ops-mobile-nav__action-icon { border-radius: 14px; }
+html body .app[data-theme] :is(.ops-field, .ops-search-field) :is(input, select, textarea):focus {
+  border-color: var(--action-primary);
+}
+html body .app[data-theme] .back-to-top-button {
+  visibility: hidden;
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-panel);
+  text-shadow: none;
+  font: 600 13px/1.35 var(--font-ui);
+}
+html body .app[data-theme] .back-to-top-button.is-visible { visibility: visible; }
+html body .app[data-theme] .back-to-top-button:hover { background: var(--surface-secondary); }
+
+/* Legacy workspaces use the same readable type scale and neutral surfaces. */
+html body .app[data-theme] :is(.scout-command-board-v5, .market-command-board, .exchange-command-board, .spark-command-board, .vault-v4-dashboard, .vault-v4-detail-board) :is(h1, h2, h3) {
+  line-height: 1.2 !important;
+  max-height: none;
+  white-space: normal;
+  text-overflow: clip;
+}
+html body .app[data-theme] :is(.scout-command-board-v5, .market-command-board, .exchange-command-board, .spark-command-board, .vault-v4-dashboard, .vault-v4-detail-board) :is(p, small, label) {
+  font-size: 13px !important;
+  line-height: 1.5;
+}
+html body .app[data-theme] :is(.scout-command-board-v5, .market-command-board, .exchange-command-board, .spark-command-board, .vault-v4-dashboard, .vault-v4-detail-board) :is(p, small, label) :is(span, b, strong, em) { font-size: inherit !important; line-height: inherit; }
+html body .app[data-theme] :is(.scout-command-board-v5, .market-command-board, .exchange-command-board, .spark-command-board, .vault-v4-dashboard, .vault-v4-detail-board) :is(button, button b, button span) {
+  font-family: var(--font-ui);
+  font-size: 13px !important;
+  line-height: 1.35;
+}
+html body .app[data-theme] :is(.scout-command-board-v5, .market-command-board, .exchange-command-board, .spark-command-board, .vault-v4-dashboard, .vault-v4-detail-board) button {
+  min-height: 44px !important;
+}
+html body .app[data-theme] :is(.command-board-v4-hero-copy > span, .command-board-v4-plan-heading > span, .command-board-v4-status-strip span, .command-metric-card > span, .scout-command-heading span, .market-v4-lower-grid span, .exchange-v4-signal-grid span, .exchange-v4-hub-card > span, .spark-v4-category-rack > span, .trust-badge) {
+  font-size: 12px !important;
+  line-height: 1.4;
+}
+html body .app[data-theme] :is(.scout-command-board-v5, .market-command-board, .exchange-command-board, .spark-command-board, .vault-v4-dashboard, .vault-v4-detail-board) .command-board-v4-hero-copy p {
+  max-height: none;
+  overflow: visible;
+  white-space: normal;
+  -webkit-line-clamp: unset;
+}
+html body .app[data-theme] :is(.market-v4-side-rail, .exchange-v4-side-rail) p {
+  display: block;
+  overflow: visible;
+  -webkit-line-clamp: unset;
+}
+html body .app[data-theme] .exchange-v4-hub-card :is(span, strong, small, p) {
+  display: block;
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible;
+  white-space: normal;
+  -webkit-line-clamp: unset;
+  line-height: 1.4;
+}
+html body .app[data-theme] .exchange-decision-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 6px;
+  padding: 12px;
+}
+html body .app[data-theme] .exchange-decision-row > span { color: var(--text-secondary); font-size: 12px; }
+html body .app[data-theme] .exchange-decision-row > strong { font-family: var(--font-display); font-size: 17px; }
+html body .app[data-theme] .exchange-proof-timeline > span { font-size: 13px; line-height: 1.5; }
+html body .app[data-theme] .exchange-proof-timeline b { flex: 0 0 26px; }
+
+html body .app.app-command-shell.ops-app-shell[data-theme] :is(.scout-command-board-v5, .market-command-board, .exchange-command-board, .spark-command-board, .vault-v4-dashboard, .vault-v4-detail-board),
+html body .app.app-command-shell.ops-app-shell[data-theme] :is(.scout-command-board-v5, .market-command-board, .exchange-command-board, .spark-command-board, .vault-v4-dashboard, .vault-v4-detail-board) :is(.command-board-v4-frame, .command-board-v4-stage, .command-board-v4-body, .command-board-v4-hero, .command-board-v4-plan-card) {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+html body .app.app-command-shell.ops-app-shell[data-theme] :is(.scout-command-board-v5, .market-command-board, .exchange-command-board, .spark-command-board, .vault-v4-dashboard, .vault-v4-detail-board) :is(.command-board-v4-stage, .command-board-v4-body, .command-board-v4-hero) {
+  grid-template-rows: auto !important;
+}
+html body .app[data-theme] :is(.market-v4-panel-heading, .exchange-v4-panel-heading, .spark-v4-panel-heading, .scout-command-heading) { align-items: start; }
+html body .app[data-theme] :is(.market-v4-panel-heading, .exchange-v4-panel-heading, .spark-v4-panel-heading) p {
+  overflow: visible;
+  white-space: normal;
+  text-overflow: clip;
+}
+html body .app[data-theme] :is(.market-v4-panel-heading, .exchange-v4-panel-heading, .spark-v4-panel-heading) > :is(strong, .trust-badge) { flex: 0 0 auto; font-size: 12px; }
+html body .app[data-theme] :is(.market-v4-rule-list, .exchange-v4-rule-list, .spark-v4-rule-list) > * { background: var(--surface-secondary); }
+html body .app[data-theme] .command-board-v4-plan-grid :is(span, small, strong) { white-space: normal; overflow: visible; text-overflow: clip; }
+html body .app.app-command-shell.ops-app-shell[data-theme] .scout-command-board-v5 :is(.scout-command-workspace, .scout-command-radar, .scout-command-lower) {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  grid-template-rows: auto !important;
+  overflow: visible !important;
+}
+html body .app.app-command-shell.ops-app-shell[data-theme] .scout-command-board-v5 .scout-command-radar { grid-template-rows: auto auto auto !important; background: var(--surface-primary) !important; }
+html body .app[data-theme] .scout-command-board-v5 :is(.scout-command-map-footer span, .scout-command-safety-list span, .scout-command-heading > strong) { font-size: 12px !important; line-height: 1.4; }
+html body .app[data-theme] .scout-command-map-footer { background: var(--surface-secondary); }
+html body .app[data-theme] .scout-command-lower > article { height: auto !important; min-height: 150px !important; padding: 12px !important; }
+html body .app[data-theme] .scout-command-lower button { height: auto !important; }
+html body .app[data-theme] .exchange-decision-row > strong { line-height: 1.3; min-width: 0; overflow-wrap: anywhere; }
+html body .app.app-command-shell.ops-app-shell[data-theme] :is(.scout-command-board-v5, .market-command-board, .exchange-command-board, .spark-command-board, .vault-v4-dashboard, .vault-v4-detail-board) :is(button b, button strong, .command-board-v4-hero-copy p) { font-size: 13px !important; }
+html body .app.app-command-shell.ops-app-shell[data-theme] :is(.scout-command-board-v5, .market-command-board, .exchange-command-board, .spark-command-board, .vault-v4-dashboard, .vault-v4-detail-board) :is(.command-board-v4-actions button, .command-board-v4-profile-action) { height: auto !important; min-height: 44px !important; }
+html body .app.app-command-shell.ops-app-shell[data-theme] .scout-command-board-v5 .command-board-v4-status-strip span { font-size: 12px !important; }
+html body .app[data-theme] :is(.command-board-v4-guard b, .command-board-v4-status-strip strong, .market-v4-value-ribbon > span, .exchange-value-ribbon > span, .market-v4-panel-heading span, .exchange-v4-panel-heading span, .spark-v4-panel-heading span, .spark-v4-panel-heading em, .scout-command-side-rail > article > header span, .scout-command-side-rail > article > header b) { font-size: 12px !important; }
+html body .app[data-theme] .scout-command-lower button :is(strong, small) { white-space: normal; overflow: visible; text-overflow: clip; }
+html body .app.app-command-shell.ops-app-shell[data-theme] :is(.scout-command-board-v5, .market-command-board, .exchange-command-board, .spark-command-board, .vault-v4-dashboard, .vault-v4-detail-board) .command-board-v4-hero-copy h1 { height: auto !important; max-height: none !important; line-height: 1.2 !important; }
+html body .app.app-command-shell.ops-app-shell[data-theme] .exchange-command-board :is(.exchange-v4-lower-grid, .exchange-v4-lower-grid > article) { height: auto !important; min-height: 0 !important; max-height: none !important; overflow: visible !important; }
+
+@media (max-width: 1180px) {
+  html:has(.ops-mobile-nav) { scroll-padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px)); }
+  html body .app.app-command-shell.ops-app-shell[data-theme]:has(.ops-mobile-nav) .command-board-v4-mobile-dock { display: none !important; }
+  html body .app.app-command-shell.ops-app-shell[data-theme]:has(.command-board-v4) .main { padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px)) !important; }
+  html body .app.app-command-shell.ops-app-shell[data-theme] :is(.scout-command-board-v5, .market-command-board, .exchange-command-board, .spark-command-board, .vault-v4-dashboard, .vault-v4-detail-board) :is(.command-board-v4-stage, .command-board-v4-frame) { padding-bottom: 0 !important; }
+  html body .app[data-theme] .command-board-v4 :is(button, a, input, select, textarea) { scroll-margin-block: 12px calc(112px + env(safe-area-inset-bottom, 0px)); }
+  html body .app[data-theme] .command-board-v4-route-strip { scroll-padding-inline: 12px; scroll-snap-type: none; }
+  html body .app[data-theme] .command-board-v4-route-strip > * { scroll-margin-inline: 12px; }
+  html body .app[data-theme] .command-board-v4-mobile-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  html body .app.app-command-shell.ops-app-shell[data-theme] .command-board-v4-mobile-brand { flex: 1 1 110px; min-height: 44px !important; }
+  html body .app[data-theme] .command-board-v4-mobile-tools { display: flex; gap: 4px; }
+  html body .app.app-command-shell.ops-app-shell[data-theme] .command-board-v4-mobile-tools > * { flex: 0 0 44px; width: 44px !important; min-width: 44px !important; height: 44px !important; min-height: 44px !important; padding: 8px; }
+}
+
+@media (max-width: 700px) {
+  html body .app.app-command-shell.ops-app-shell[data-theme] .scout-command-side-rail article > header { grid-template-columns: 16px minmax(0, 1fr) !important; align-items: start; }
+  html body .app.app-command-shell.ops-app-shell[data-theme] .scout-command-side-rail article > header span { overflow: visible; text-overflow: clip; white-space: normal; line-height: 1.35; }
+  html body .app.app-command-shell.ops-app-shell[data-theme] .scout-command-side-rail article > header b { grid-column: 2 !important; grid-row: 2 !important; justify-self: start !important; }
+  html body .app.app-command-shell.ops-app-shell[data-theme] :is(.market-command-board, .exchange-command-board, .spark-command-board) :is(.market-v4-command-content, .exchange-v4-command-content, .exchange-v4-decision-panel, .exchange-v4-signal-grid, .exchange-v4-lower-grid, .spark-v4-command-content) {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    grid-template-rows: auto !important;
+    overflow: visible !important;
+  }
+  html body .app[data-theme] :is(.exchange-v4-hub-grid, .exchange-decision-row-list) { grid-template-columns: minmax(0, 1fr) !important; }
+  html body .app[data-theme] .exchange-v4-hub-card { min-height: 0; padding: 12px; }
+  html body .app[data-theme] :is(.market-v4-panel-heading, .exchange-v4-panel-heading, .spark-v4-panel-heading) { flex-wrap: wrap; gap: 10px; }
+  html body .app.app-command-shell.ops-app-shell[data-theme] :is(.scout-command-board-v5, .market-command-board, .exchange-command-board, .spark-command-board, .vault-v4-dashboard, .vault-v4-detail-board) .command-board-v4-plan-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  html body .app[data-theme] .command-board-v4-plan-grid button { justify-items: start; text-align: left; padding: 10px; }
+  html body .app.app-command-shell.ops-app-shell[data-theme] .scout-command-board-v5 :is(.scout-command-map-stage, .scout-command-map-stage > .scout-tile-map, .scout-command-map-stage .scout-tile-map-canvas) { height: 260px !important; min-height: 260px !important; max-height: 260px !important; }
+}
+
+@media (min-width: 1181px) {
+  html body .app[data-theme] .scout-command-heading { min-height: 0; }
+  html body .app.app-command-shell.ops-app-shell[data-theme] .scout-command-board-v5 .scout-command-radar { grid-template-rows: max-content minmax(260px, 1fr) max-content !important; }
+  html body .app.app-command-shell.ops-app-shell[data-theme] .scout-command-board-v5 :is(.scout-command-map-stage, .scout-command-map-stage > .scout-tile-map, .scout-command-map-stage .scout-tile-map-canvas) { height: 100% !important; min-height: 260px !important; max-height: none !important; }
+}
+
+/* Collection's legacy dashboard uses content-sized summaries at the shared scale. */
+html body .app.app-command-shell.ops-app-shell[data-theme] .command-board-v4 .command-board-v4-profile-action b { font-size: 13px !important; }
+html body .app.app-command-shell.ops-app-shell[data-theme] .vault-v4-dashboard :is(.vault-command-overview-card, .vault-command-board-grid, .vault-command-board-grid > article, .vault-collection-intelligence-card) {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+html body .app[data-theme] .vault-v4-dashboard .command-board-v4-plan-card { background: var(--surface-primary) !important; }
+html body .app[data-theme] .vault-v4-dashboard .command-board-v4-body { gap: 20px; }
+html body .app[data-theme] .vault-v4-dashboard .command-board-section-heading { flex-wrap: wrap; gap: 12px; }
+html body .app[data-theme] .vault-v4-dashboard :is(.command-board-section-heading p, .compact-card-header p) {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  max-height: none;
+  -webkit-line-clamp: unset;
+}
+html body .app[data-theme] .vault-v4-dashboard .vault-command-board-grid { align-items: start; gap: 12px; }
+html body .app.app-command-shell.ops-app-shell[data-theme] .vault-v4-dashboard .vault-command-board-grid > article { padding: 16px; border-radius: 10px; }
+html body .app[data-theme] .vault-v4-dashboard :is(.vault-portfolio-breakdown-row, .vault-health-checklist > *, .vault-recommendation-reasons > *) {
+  min-height: 64px;
+  padding: 10px;
+  gap: 6px;
+  background: var(--surface-secondary);
+}
+html body .app[data-theme] .vault-v4-dashboard :is(.vault-portfolio-breakdown-row, .vault-health-checklist) :is(span, small) {
+  font-size: 12px !important;
+  line-height: 1.4;
+  white-space: normal;
+  overflow: visible;
+  text-transform: none;
+}
+html body .app[data-theme] .vault-v4-dashboard :is(.vault-health-checklist, .vault-portfolio-breakdown-row) strong { font-size: 15px; }
+html body .app[data-theme] .vault-v4-dashboard :is(.vault-portfolio-breakdown-row, .vault-health-checklist > *) small { grid-column: 1 / -1; }
+html body .app[data-theme] .vault-v4-dashboard .vault-portfolio-breakdown-row i { background: var(--border-subtle); }
+html body .app[data-theme] .vault-v4-dashboard .vault-portfolio-breakdown-row i b { display: block; height: 100%; background: var(--action-primary); }
+html body .app[data-theme] .vault-v4-dashboard .vault-status-chip-row { flex-wrap: wrap; gap: 6px; overflow: visible; }
+html body .app[data-theme] .vault-v4-dashboard :is(.vault-status-chip-row > *, .vault-recommendation-reasons > *, .vault-command-heading-pills > *) { font-size: 12px !important; line-height: 1.4; white-space: normal; }
+html body .app[data-theme] .vault-v4-dashboard .vault-recommendation-reasons > * { display: block; min-height: 0; }
+html body .app[data-theme] .vault-v4-dashboard .vault-command-heading-pills { flex-wrap: wrap; }
+html body .app[data-theme] .vault-v4-dashboard .et-mockup-pill { font-size: 12px !important; }
+html body .app[data-theme] .vault-v4-dashboard :is(.vault-portfolio-donut, .vault-command-health-ring) { flex: 0 0 76px; width: 76px; height: 76px; }
+html body .app[data-theme] .vault-v4-dashboard .vault-portfolio-donut small { font-size: 12px !important; }
+html body .app[data-theme] .vault-v4-dashboard .vault-command-score-row { grid-template-columns: 76px minmax(0, 1fr); gap: 14px; }
+html body .app[data-theme] .vault-v4-dashboard .vault-value-range-ribbon { border-radius: 8px; }
+html body .app[data-theme] .vault-v4-dashboard .vault-value-range-ribbon > * { font-size: 12px; }
+html body .app.app-command-shell.ops-app-shell[data-theme] .vault-v4-dashboard .vault-collection-intelligence-grid { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 8px; }
+html body .app[data-theme] .vault-v4-dashboard .vault-collection-intelligence-grid > * { padding: 12px; }
+html body .app[data-theme] .vault-v4-dashboard .vault-collection-intelligence-grid :is(span, small) { font-size: 12px !important; line-height: 1.4; white-space: normal; overflow: visible; }
+html body .app[data-theme] .vault-v4-dashboard .vault-collection-intelligence-grid strong { font-size: 22px !important; }
+html body .app.app-command-shell.ops-app-shell[data-theme] .vault-v4-dashboard .vault-command-recommendation-card > button {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--action-primary) !important;
+  color: var(--on-primary) !important;
+  border-color: var(--action-primary) !important;
+}
+html body .app[data-theme] .vault-v4-detail-board .command-board-v4-plan-card { background: var(--surface-primary) !important; }
+html body .app[data-theme] .vault-v4-detail-board :is(.vault-v4-detail-surface, .vault-collection-panel) { height: auto; min-height: 0; max-height: none; }
+html body .app[data-theme] .vault-v4-detail-board .vault-collection-heading { flex-wrap: wrap; gap: 18px; padding-bottom: 18px; margin-bottom: 18px; border-bottom: 1px solid var(--border-subtle); }
+html body .app[data-theme] .vault-v4-detail-board .vault-collection-heading p { white-space: normal; overflow: visible; text-overflow: clip; }
+html body .app[data-theme] .vault-v4-detail-board .vault-heading-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+html body .app[data-theme] .vault-v4-detail-board .vault-showcase-toggle { display: flex; flex-wrap: wrap; gap: 6px; }
+html body .app[data-theme] .vault-v4-detail-board .vault-showcase-toggle button[aria-pressed="true"] { border-color: var(--action-primary) !important; color: var(--action-primary) !important; background: var(--selection-background) !important; }
+html body .app[data-theme] .vault-v4-detail-board .vault-empty-action-card { padding: 20px; margin-bottom: 18px; border: 1px solid var(--border-subtle); border-radius: 10px; background: var(--surface-secondary) !important; }
+html body .app[data-theme] .vault-v4-detail-board .vault-empty-action-card h3 { margin: 10px 0; }
+html body .app[data-theme] .vault-v4-detail-board .vault-empty-action-card p { max-width: 72ch; }
+html body .app[data-theme] .vault-v4-detail-board .quick-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+html body .app[data-theme] .vault-v4-detail-board .vault-view-strip { display: flex; flex-wrap: wrap; gap: 8px; }
+html body .app[data-theme] .vault-v4-detail-board .vault-empty-action-card .quick-actions > button:first-child { background: var(--action-primary) !important; color: var(--on-primary) !important; border-color: var(--action-primary) !important; }
+
+/* Forge's supporting summaries keep labels, values and proof states readable. */
+html body .app.app-command-shell[data-theme] .forge-page-command-route :is(.exchange-v4-decision-panel, .command-board-v4-plan-card) { background: var(--surface-primary) !important; }
+html body .app[data-theme] .forge-v4-operations-strip > article { grid-template-columns: minmax(0, 1fr); align-content: start; gap: 7px; padding: 14px; }
+html body .app[data-theme] .forge-v4-operations-strip :is(span, small) { font-size: 12px !important; line-height: 1.4; white-space: normal; overflow: visible; }
+html body .app[data-theme] .forge-v4-operations-strip strong { grid-column: 1; grid-row: 2; }
+html body .app[data-theme] .forge-v4-command-matrix { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; align-items: start; gap: 12px; }
+html body .app[data-theme] .forge-v4-command-matrix > section { height: auto; min-height: 0; padding: 16px; overflow: visible; }
+html body .app[data-theme] .forge-v4-matrix-heading span { font-size: 12px !important; line-height: 1.4; }
+html body .app[data-theme] :is(.forge-v4-priority-list, .forge-v4-decision-meter-list, .forge-v4-proof-grid, .forge-v4-guardrail-list) { gap: 8px; margin-top: 12px; }
+html body .app[data-theme] :is(.forge-v4-priority-list, .forge-v4-decision-meter-list, .forge-v4-proof-grid, .forge-v4-guardrail-list) > * {
+  padding: 10px;
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+html body .app[data-theme] .forge-v4-command-matrix :is(small, span, em, b) { font-size: 12px !important; line-height: 1.4; }
+html body .app[data-theme] .forge-v4-proof-grid strong { font-size: 13px !important; }
+html body .app[data-theme] .forge-v4-command-matrix .forge-v4-priority-list button { font-weight: 400; }
+html body .app[data-theme] .forge-v4-command-matrix .forge-v4-priority-list button strong { font-weight: 600; }
+html body .app[data-theme] .forge-v4-range-ribbon { border-radius: 8px; }
+html body .app[data-theme] .forge-v4-range-ribbon > * { font-size: 12px; }
+html body .app[data-theme] .forge-page-command-route .exchange-value-ribbon > b { font-size: 12px !important; }
+
+@media (max-width: 1180px) {
+  html body .app[data-theme] :is(.vault-v4-dashboard, .vault-v4-detail-board, .forge-page-command-route) .command-board-v4-mobile-brand strong { font-size: 14px; }
+  html body .app[data-theme] :is(.vault-v4-dashboard, .vault-v4-detail-board) .command-board-v4-mobile-brand small { font-size: 12px !important; white-space: normal; line-height: 1.3; text-transform: none; letter-spacing: 0; }
+}
+@media (max-width: 700px) {
+  html body .app.app-command-shell.ops-app-shell[data-theme] .vault-v4-dashboard .vault-command-board-grid { grid-template-columns: minmax(0, 1fr) !important; }
+  html body .app[data-theme] .forge-v4-command-matrix { grid-template-columns: minmax(0, 1fr) !important; }
+}
+
+/* Search keeps its existing entry points; expanded content has its own readable layout. */
+html body .app.app-command-shell.ops-app-shell[data-theme]:has(.command-board-v4) > .topbar.topbar-search-open { display: contents !important; }
+html body .app.app-command-shell.ops-app-shell[data-theme]:has(.command-board-v4) > .topbar.topbar-search-open > :not(.app-search) { display: none !important; }
+@media (min-width: 921px) {
+  html body .app.app-command-shell.ops-app-shell[data-theme]:has(.command-board-v4) .app-search.expanded {
+    position: fixed;
+    z-index: 1200;
+    top: 16px;
+    right: 24px;
+    display: grid !important;
+    gap: 12px;
+    width: min(720px, calc(100vw - 48px));
+    padding: 16px;
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    background: var(--surface-elevated);
+    box-shadow: var(--shadow-panel);
+  }
+  html body .app.app-command-shell.ops-app-shell[data-theme]:has(.command-board-v4) .app-search.expanded .app-search-results { position: static; width: auto; max-height: calc(100dvh - 128px); overflow-y: auto; border: 0; box-shadow: none; }
+}
+html body .app[data-theme] .app-search-mobile-header { display: none; }
+html body .app[data-theme] .app-search > input { min-height: 48px; font-size: 16px; }
+html body .app[data-theme] .app-search-results {
+  padding: 18px;
+  border-color: var(--border-strong);
+  border-radius: 12px;
+  overscroll-behavior: contain;
+  scroll-padding-block: 10px;
+}
+html body .app[data-theme] .app-search-results :is(p, small) { font-size: 13px; font-weight: 400; line-height: 1.5; }
+html body .app[data-theme] .app-search-results .compact-card-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+html body .app[data-theme] .app-search-results .compact-card-header h3 { margin: 0 0 6px; font-size: 20px; line-height: 1.2; }
+html body .app[data-theme] .app-search-results .compact-card-header > div { min-width: 0; }
+html body .app[data-theme] .app-search-results .compact-card-header p { margin: 0; max-height: none; overflow: visible; text-overflow: clip; white-space: normal; -webkit-line-clamp: unset; }
+html body .app[data-theme] .app-search-results .compact-card-header > button { flex: 0 0 auto; padding-inline: 12px; }
+html body .app[data-theme] .global-search-destination-stack { display: grid; gap: 20px; }
+html body .app[data-theme] .global-search-destination-group h4 {
+  margin: 0 0 10px;
+  color: var(--text-secondary);
+  font: 500 12px/1.5 var(--font-mono);
+}
+html body .app[data-theme] .global-search-destination-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+html body .app[data-theme] .global-search-destination-card {
+  grid-template-columns: 32px minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
+  align-items: start;
+  gap: 3px 10px;
+  min-width: 0;
+  min-height: 88px;
+  padding: 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface-primary);
+  color: var(--text-primary);
+  box-shadow: none;
+}
+html body .app[data-theme] .global-search-destination-card:hover { border-color: var(--action-primary); background: var(--selection-background); }
+html body .app[data-theme] .global-search-destination-card .action-icon { grid-column: 1; grid-row: 1 / 3; width: 32px; height: 32px; }
+html body .app[data-theme] .global-search-destination-card strong { grid-column: 2; grid-row: 1; font-size: 14px; font-weight: 600; line-height: 1.35; }
+html body .app[data-theme] .global-search-destination-card small { grid-column: 2; grid-row: 2; overflow-wrap: anywhere; }
+html body .app[data-theme] .app-search-foundation-note { margin-top: 18px; padding: 12px; border-radius: 8px; background: var(--surface-inset); }
+html body .app[data-theme] .app-search-foundation-note strong { font-size: 14px; font-weight: 600; }
+html body .app[data-theme] .app-search-foundation-note p { margin: 5px 0 0; }
+html body .app[data-theme] .app-search-results > .compact-subtitle { margin: 16px 0 0; }
+html body .app[data-theme] .app-search-local-results { margin-top: 24px; }
+html body .app[data-theme] .app-search-local-results .compact-card-header { margin-bottom: 4px; }
+html body .app[data-theme] .app-search-result { flex-wrap: wrap; background: var(--surface-primary); }
+html body .app[data-theme] .app-search-result-main {
+  flex: 1 1 200px;
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  text-align: left;
+  border-color: var(--border-strong);
+  background: var(--surface-primary);
+}
+html body .app[data-theme] .app-search-result-main > span { color: var(--text-secondary); font: 500 12px/1.4 var(--font-mono); }
+html body .app[data-theme] .app-search-result-main > strong { font-size: 15px; font-weight: 600; line-height: 1.35; }
+html body .app[data-theme] .app-search-result-main > :is(strong, small) { overflow-wrap: anywhere; }
+html body .app[data-theme] .app-search-result-main:has(.app-search-thumb) { grid-template-columns: 44px minmax(0, 1fr); }
+html body .app[data-theme] .app-search-result-main .app-search-thumb { grid-column: 1; grid-row: 1 / 4; width: 44px; }
+html body .app[data-theme] .app-search-result-main:has(.app-search-thumb) > :is(span, strong, small) { grid-column: 2; }
+html body .app[data-theme] .app-search-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+html body .app[data-theme] .app-search-actions button { min-height: 44px; padding: 8px 12px; }
+
+@media (max-width: 920px) {
+  html body .app[data-theme] .topbar-search-open { z-index: 1200; }
+  /* The mobile shell hides .app-search; only an explicitly opened search overrides it. */
+  html body .app.app-command-shell[data-theme] .app-search.expanded {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    display: grid !important;
+    grid-template-rows: auto 48px minmax(0, 1fr);
+    gap: 14px;
+    height: 100dvh;
+    padding: max(12px, env(safe-area-inset-top)) 16px max(12px, env(safe-area-inset-bottom));
+    background: var(--app-background);
+  }
+  html body .app[data-theme] .app-search-mobile-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  html body .app[data-theme] .app-search-mobile-header strong { font: 600 21px/1.2 var(--font-display); letter-spacing: -.03em; }
+  html body .app[data-theme] .app-search-mobile-header button { flex: 0 0 44px; width: 44px; height: 44px; border-color: var(--border-strong); background: var(--surface-primary); }
+  html body .app[data-theme] .app-search.expanded .app-search-toggle { display: none; }
+  html body .app[data-theme] .app-search-results { position: static; min-height: 0; max-height: none; padding: 6px 4px 12px; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+  html body .app[data-theme] .app-search-results > .compact-card-header > button { display: none; }
+  html body .app[data-theme] .app-search-results .compact-card-header h3 { font-size: 18px; }
+}
+
+@media (max-width: 520px) {
+  html body .app[data-theme] .global-search-destination-grid { grid-template-columns: minmax(0, 1fr); }
+  html body .app[data-theme] .global-search-destination-card { min-height: 80px; }
+}
+
+/* The Add sheet keeps its compact list and makes the existing disclosure visible. */
+html body .app[data-theme] .flow-modal-backdrop:has(.flow-modal[data-flow="addActionSheet"]) { backdrop-filter: none; }
+html body .app[data-theme] .flow-modal[data-flow="addActionSheet"] .add-anything-more > summary { justify-content: space-between; gap: 12px; padding-inline: 8px; }
+html body .app[data-theme] .flow-modal[data-flow="addActionSheet"] .add-anything-more > summary::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  margin-right: 4px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg);
+}
+html body .app[data-theme] .flow-modal[data-flow="addActionSheet"] .add-anything-more[open] > summary::after { transform: rotate(225deg); }
+
+/* Settings utilities and Notifications: compact headers, readable support, contained alerts. */
+html body .app[data-theme] :is(.account-utility-page, .help-utility-page) :is(.utility-page-command-board, .command-board-v4-frame, .command-board-v4-stage) {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  padding-bottom: 0 !important;
+  overflow: visible !important;
+}
+html body .app[data-theme] :is(.account-utility-page, .help-utility-page) .command-board-v4-stage { display: block !important; }
+html body .app[data-theme] :is(.account-utility-page, .help-utility-page) .command-board-v4-frame { grid-template-columns: minmax(0, 1fr) !important; }
+html body .app[data-theme] :is(.account-utility-page, .help-utility-page) .command-board-v4-rail { display: none !important; }
+html body .app[data-theme] :is(.account-utility-page, .help-utility-page) .command-board-v4-mobile-bar { background: var(--app-background); backdrop-filter: none; }
+html body .app[data-theme] :is(.account-utility-page, .help-utility-page) :is(.command-board-v4-mobile-brand small, .command-board-v4-route-strip span) { font-size: 12px; }
+html body .app[data-theme] :is(.account-utility-page, .help-utility-page) :is(.command-board-v4-actions button, .command-board-v4-profile-action) { height: auto !important; min-height: 44px !important; }
+html body .app[data-theme] :is(.account-utility-page, .help-utility-page) .command-board-v4-hero-copy p { font-size: 13px !important; line-height: 1.5; max-height: none; overflow: visible; white-space: normal; -webkit-line-clamp: unset; }
+html body .app[data-theme] :is(.account-utility-page, .help-utility-page) .utility-page-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; margin-top: 20px; }
+html body .app[data-theme] :is(.account-utility-page, .help-utility-page) .utility-card { align-content: start; padding: 18px; border: 1px solid var(--border-subtle); border-radius: 12px; background: var(--surface-primary); box-shadow: var(--shadow-panel); }
+html body .app[data-theme] :is(.account-utility-page, .help-utility-page) .utility-card :is(p, small) { font-size: 13px; line-height: 1.5; }
+html body .app[data-theme] :is(.account-utility-page, .help-utility-page) .compact-card-header { align-items: start; gap: 12px; }
+html body .app[data-theme] :is(.account-utility-page, .help-utility-page) .compact-card-header > div { min-width: 0; }
+html body .app[data-theme] :is(.account-utility-page, .help-utility-page) .compact-card-header > .status-badge { flex: 0 0 auto; white-space: nowrap; }
+html body .app[data-theme] :is(.account-utility-page, .help-utility-page) .compact-card-header p { overflow: visible; white-space: normal; text-overflow: clip; }
+html body .app[data-theme] :is(.account-utility-page, .help-utility-page) .section-kicker { font: 500 12px/1.5 var(--font-mono); }
+html body .app[data-theme] :is(.account-utility-page, .help-utility-page) .status-badge { width: fit-content; font-size: 12px; white-space: normal; }
+html body .app[data-theme] :is(.account-utility-page, .help-utility-page) .drawer-status-list { display: grid; gap: 10px; margin: 0; }
+html body .app[data-theme] :is(.account-utility-page, .help-utility-page) .drawer-status-list > div { display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 12px; }
+html body .app[data-theme] :is(.account-utility-page, .help-utility-page) .drawer-status-list :is(dt, dd) { margin: 0; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+html body .app[data-theme] :is(.account-utility-page, .help-utility-page) .drawer-status-list dt { color: var(--text-secondary); }
+html body .app[data-theme] :is(.account-utility-page, .help-utility-page) .drawer-status-list dd { color: var(--text-primary); }
+html body .app[data-theme] :is(.account-utility-page, .help-utility-page) .drawer-inline-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+html body .app[data-theme] :is(.account-utility-page, .help-utility-page) .utility-card :is(button, summary) { min-height: 44px; }
+html body .app[data-theme] :is(.account-utility-page, .help-utility-page) .utility-card summary { align-content: center; }
+html body .app[data-theme] .account-utility-page :is(.account-setup-tier-grid, .account-setup-workspace-grid) { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 18px; }
+html body .app[data-theme] .account-utility-page .account-setup-mini-card { display: grid; align-content: start; gap: 4px; }
+html body .app[data-theme] .account-utility-page .account-setup-mini-card > span { color: var(--text-secondary); font-size: 12px; }
+html body .app[data-theme] .account-utility-page .account-setup-mini-card p { margin: 0; }
+html body .app[data-theme] .help-utility-page .settings-stacked-list { display: grid; gap: 14px; }
+html body .app[data-theme] .help-utility-page .settings-list-row :is(strong, small) { display: block; }
+html body .app[data-theme] .help-utility-page .settings-list-row small { margin-top: 4px; }
+html body .app[data-theme] .help-utility-page .settings-section-grid { display: grid; gap: 14px; }
+html body .app[data-theme] .help-utility-page .settings-section-card { display: grid; gap: 5px; }
+html body .app[data-theme] .help-utility-page .settings-feedback-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+html body .app[data-theme] .help-utility-page .settings-feedback-option {
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  min-height: 76px;
+  padding: 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface-primary);
+  color: var(--text-primary);
+  box-shadow: none;
+  text-align: left;
+}
+html body .app[data-theme] .help-utility-page .settings-feedback-option strong { color: var(--text-primary); font-size: 14px; line-height: 1.4; }
+html body .app[data-theme] .help-utility-page .settings-feedback-option span { color: var(--text-secondary); font-size: 13px; font-weight: 400; line-height: 1.5; }
+html body .app[data-theme] .help-utility-page .settings-feedback-option:hover { background: var(--selection-background); border-color: var(--action-primary); }
+
+html body .app[data-theme] .topbar:has(.notification-center-panel) { z-index: 1250; }
+html body .app.app-command-shell.ops-app-shell[data-theme]:has(.command-board-v4) > .topbar:has(.notification-center-panel),
+html body .app.app-command-shell.ops-app-shell[data-theme]:has(.command-board-v4) > .topbar:has(.notification-center-panel) > .topbar-command-actions,
+html body .app.app-command-shell.ops-app-shell[data-theme]:has(.command-board-v4) > .topbar:has(.notification-center-panel) .notification-center-shell { display: contents !important; }
+html body .app.app-command-shell.ops-app-shell[data-theme]:has(.command-board-v4) > .topbar:has(.notification-center-panel) > :not(.topbar-command-actions),
+html body .app.app-command-shell.ops-app-shell[data-theme]:has(.command-board-v4) > .topbar:has(.notification-center-panel) > .topbar-command-actions > :not(.notification-center-shell),
+html body .app.app-command-shell.ops-app-shell[data-theme]:has(.command-board-v4) > .topbar:has(.notification-center-panel) .notification-bell-button { display: none !important; }
+html body .app[data-theme] .notification-center-panel {
+  position: fixed;
+  z-index: 1250;
+  top: 84px;
+  right: 16px;
+  width: min(440px, calc(100vw - 32px));
+  max-height: calc(100dvh - 100px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  scroll-padding-block: 8px;
+  padding: 18px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-panel);
+}
+html body .app[data-theme] .notification-center-panel .compact-card-header { display: flex; gap: 14px; align-items: start; justify-content: space-between; margin-bottom: 18px; }
+html body .app[data-theme] .notification-center-panel .compact-card-header > div { min-width: 0; }
+html body .app[data-theme] .notification-center-panel .compact-card-header > .quick-actions { flex: 0 0 auto; }
+html body .app[data-theme] .notification-center-panel h3 { margin: 0; font-size: 20px; line-height: 1.3; }
+html body .app[data-theme] .notification-center-panel :is(p, small) { font-size: 13px; line-height: 1.5; white-space: normal; overflow: visible; text-overflow: clip; }
+html body .app[data-theme] .notification-center-panel .compact-card-header p { margin-top: 6px; }
+html body .app[data-theme] .notification-center-panel button { display: inline-flex !important; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; padding: 8px 12px; font-size: 13px; line-height: 1.35; }
+html body .app[data-theme] .notification-center-panel .guided-empty-state { padding: 16px; background: var(--surface-inset); border: 0; box-shadow: none; }
+html body .app[data-theme] .notification-center-panel .guided-empty-state h3 { font-size: 16px; }
+html body .app[data-theme] .notification-center-panel .guided-empty-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+html body .app[data-theme] .notification-center-panel .guided-empty-actions > button:not(.secondary-button) { background: var(--action-primary); border-color: var(--action-primary); color: var(--on-primary); }
+html body .app[data-theme] .notification-list { display: grid; gap: 12px; }
+html body .app[data-theme] .notification-center-panel .notification-card { padding: 14px; border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--surface-primary); }
+html body .app[data-theme] .notification-center-panel .notification-card-heading { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+html body .app[data-theme] .notification-center-panel .notification-card.unread { border-left: 3px solid var(--action-primary); }
+
+@media (max-width: 920px) {
+  html body .app[data-theme] .notification-center-panel { top: max(12px, env(safe-area-inset-top)); right: 12px; width: calc(100vw - 24px); max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px)); }
+}
+@media (min-width: 1181px) {
+  html body .app.app-command-shell.ops-app-shell[data-theme]:has(.account-utility-page, .help-utility-page) > .main { width: calc(100% - 236px) !important; margin-left: 236px !important; }
+  html body .app[data-theme] :is(.account-utility-page, .help-utility-page) .utility-page-layout { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html body .app[data-theme] :is(.account-utility-page, .help-utility-page) .utility-card-wide { grid-column: 1 / -1; }
+  html body .app[data-theme] .help-utility-page .settings-feedback-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* Settings detail pages keep explanations and plan limits at a readable scale. */
+html body .app.app-command-shell.ops-app-shell[data-theme] :is(.you-profile-command-card, .membership-v4-command-board, .trust-v4-command-board),
+html body .app.app-command-shell.ops-app-shell[data-theme] :is(.you-profile-command-card, .membership-v4-command-board, .trust-v4-command-board) :is(.command-board-v4-frame, .command-board-v4-stage, .command-board-v4-body, .command-board-v4-hero, .command-board-v4-plan-card) {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+html body .app.app-command-shell.ops-app-shell[data-theme] :is(.you-profile-command-card, .membership-v4-command-board, .trust-v4-command-board) :is(.command-board-v4-stage, .command-board-v4-body, .command-board-v4-hero) { grid-template-rows: auto !important; }
+html body .app[data-theme] :is(.you-profile-command-card, .membership-v4-command-board, .trust-v4-command-board) :is(p, li) { font-size: 13px !important; line-height: 1.5; }
+html body .app[data-theme] :is(.you-profile-command-card, .membership-v4-command-board, .trust-v4-command-board) :is(span, small) { font-size: 12px !important; line-height: 1.45; }
+html body .app[data-theme] :is(.you-profile-command-card, .membership-v4-command-board, .trust-v4-command-board) :is(p, small, span, strong) { white-space: normal; overflow: visible; text-overflow: clip; max-height: none; -webkit-line-clamp: unset; }
+html body .app[data-theme] :is(.you-profile-command-card, .membership-v4-command-board, .trust-v4-command-board) :is(button, button b, button strong) { font-size: 13px !important; line-height: 1.4; }
+html body .app.app-command-shell.ops-app-shell[data-theme] :is(.you-profile-command-card, .membership-v4-command-board, .trust-v4-command-board) :is(button, .command-board-v4-profile-action) { height: auto !important; min-height: 44px !important; }
+html body .app.app-command-shell[data-theme] :is(.you-profile-command-card, .membership-v4-command-board, .trust-v4-command-board) .command-board-v4-plan-grid button :is(span, small) { font-size: 12px !important; overflow-wrap: anywhere; }
+html body .app[data-theme] :is(.you-profile-command-card, .membership-v4-command-board, .trust-v4-command-board) .command-board-v4-mobile-bar { background: var(--app-background); backdrop-filter: none; }
+html body .app[data-theme] :is(.you-profile-command-card, .membership-v4-command-board, .trust-v4-command-board) .command-board-v4-mobile-brand strong { font-size: 14px; }
+html body .app[data-theme] :is(.you-profile-command-card, .membership-v4-command-board, .trust-v4-command-board) .command-board-v4-mobile-brand small { letter-spacing: 0; text-transform: none; }
+html body .app[data-theme] :is(.you-profile-command-card, .membership-v4-command-board, .trust-v4-command-board) .command-board-v4-body { gap: 20px; }
+html body .app[data-theme] :is(.you-profile-command-card, .membership-v4-command-board, .trust-v4-command-board) :is(.command-board-section-heading, .you-v4-panel-heading) { flex-wrap: wrap; align-items: start; gap: 12px; margin-bottom: 16px; }
+html body .app[data-theme] :is(.you-profile-command-card, .membership-v4-command-board, .trust-v4-command-board) :is(.command-board-section-heading, .you-v4-panel-heading) > div { min-width: 0; flex: 1 1 220px; }
+html body .app[data-theme] :is(.you-profile-command-card, .membership-v4-command-board, .trust-v4-command-board) .command-board-section-heading > .command-board-section-action { flex: 0 0 auto; max-width: 100%; }
+html body .app[data-theme] :is(.you-profile-command-card, .membership-v4-command-board, .trust-v4-command-board) .status-badge { width: fit-content; }
+html body .app[data-theme] :is(.you-profile-command-card, .membership-v4-command-board, .trust-v4-command-board) :is(.command-board-section-heading, .you-v4-panel-heading) > :is(.status-badge, .trust-badge) { flex: 0 0 auto; max-width: 100%; }
+html body .app[data-theme] :is(.you-profile-command-card, .membership-v4-command-board, .trust-v4-command-board) .command-board-section { padding: 16px; }
+html body .app[data-theme] :is(.you-profile-command-card, .membership-v4-command-board, .trust-v4-command-board) .command-board-v4-body :is(article, section) { height: auto; min-height: 0; max-height: none; overflow: visible; }
+html body .app[data-theme] :is(.membership-v4-command-board, .trust-v4-command-board) .command-metric-card { grid-template-columns: minmax(0, 1fr); align-content: start; gap: 6px; padding: 12px; }
+html body .app[data-theme] :is(.membership-v4-command-board, .trust-v4-command-board) .command-metric-card strong { grid-column: 1; grid-row: 2; justify-self: start; font-size: 20px; }
+html body .app[data-theme] :is(.membership-v4-command-board, .trust-v4-command-board) .command-metric-card small { grid-row: 3; }
+html body .app[data-theme] :is(.membership-v4-status-grid, .trust-v4-lantern-metrics) { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+html body .app[data-theme] :is(.membership-v4-feature-grid, .membership-v4-plan-grid, .membership-v4-lock-grid, .membership-v4-admin-grid, .trust-v4-guardrail-grid, .trust-v4-pathway-grid, .trust-v4-risk-grid, .trust-v4-record-grid) { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); align-items: start; gap: 16px; }
+html body .app[data-theme] :is(.membership-v4-feature-card, .membership-v4-plan-card, .membership-v4-lock-card, .membership-v4-admin-card, .trust-v4-guardrail-card, .trust-v4-pathway-card, .trust-v4-risk-card, .trust-v4-meetup-card, .trust-v4-lesson-card, .trust-v4-route-card, .trust-v4-record-card) { display: grid; align-content: start; gap: 6px; min-width: 0; }
+html body .app[data-theme] :is(.membership-v4-feature-card, .membership-v4-plan-card, .membership-v4-lock-card, .membership-v4-admin-card, .trust-v4-guardrail-card, .trust-v4-pathway-card, .trust-v4-risk-card, .trust-v4-meetup-card, .trust-v4-lesson-card, .trust-v4-route-card, .trust-v4-record-card) > strong { font-size: 15px; line-height: 1.4; }
+html body .app[data-theme] :is(.membership-v4-feature-card, .membership-v4-plan-card, .membership-v4-lock-card, .membership-v4-admin-card, .trust-v4-guardrail-card, .trust-v4-pathway-card, .trust-v4-risk-card, .trust-v4-meetup-card, .trust-v4-lesson-card, .trust-v4-route-card, .trust-v4-record-card) p { margin: 0; color: var(--text-secondary); }
+html body .app[data-theme] .membership-v4-plan-card { padding: 16px; border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--surface-secondary); }
+html body .app[data-theme] .membership-v4-plan-card.current { border-color: var(--action-primary); }
+html body .app[data-theme] .membership-v4-plan-card > div:first-child { display: grid; gap: 4px; }
+html body .app[data-theme] .membership-v4-plan-card > div:first-child strong { font-size: 18px; }
+html body .app[data-theme] .membership-v4-plan-card h3 { margin: 6px 0; font-size: 18px; line-height: 1.4; }
+html body .app[data-theme] .membership-v4-plan-card ul { display: grid; gap: 8px; margin: 8px 0; padding-left: 18px; }
+html body .app[data-theme] .membership-v4-plan-card button { margin-top: 8px; white-space: normal; }
+html body .app[data-theme] :is(.membership-v4-guardrail-rack, .membership-v4-plan-rules, .membership-v4-addon-row) { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 10px; }
+html body .app[data-theme] :is(.membership-v4-guardrail-rack, .membership-v4-plan-rules, .membership-v4-addon-row) > span { color: var(--text-secondary); }
+html body .app[data-theme] :is(.membership-v4-lower-grid, .trust-v4-split-grid, .trust-v4-meetup-layout) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 20px; }
+html body .app[data-theme] :is(.trust-v4-checklist-list, .trust-v4-meetup-list, .trust-v4-lesson-list, .trust-v4-route-list, .trust-v4-proof-grid) { display: grid; gap: 16px; }
+html body .app[data-theme] .trust-v4-check-row { display: grid; grid-template-columns: 24px minmax(0, 1fr); align-items: baseline; gap: 10px; }
+html body .app[data-theme] .trust-v4-check-row p { margin: 0; }
+html body .app[data-theme] .trust-v4-proof-grid > div { display: grid; gap: 4px; }
+html body .app[data-theme] .trust-v4-legal-footer { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
+html body .app[data-theme] .you-profile-command-card :is(.you-v4-command-content, .you-v4-operations-grid, .you-v4-lower-grid) { height: auto !important; min-height: 0 !important; max-height: none !important; grid-template-rows: auto !important; align-items: start; background: transparent !important; }
+html body .app[data-theme] .you-profile-command-card .you-v4-usage-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+html body .app[data-theme] .you-profile-command-card .you-v4-usage-grid > article { padding: 12px; gap: 6px; }
+html body .app[data-theme] .you-profile-command-card .you-profile-command-tile { display: grid; align-content: start; gap: 10px; padding: 16px; }
+html body .app[data-theme] .you-profile-command-card .you-profile-command-tile > div { display: flex; flex-wrap: wrap; gap: 8px; }
+html body .app[data-theme] .you-profile-command-card .you-v4-mini-list { display: grid; gap: 8px; }
+html body .app[data-theme] .settings-layout__detail-content .compact-subtitle { font-size: 13px; white-space: normal; overflow: visible; text-overflow: clip; max-height: none; -webkit-line-clamp: unset; }
+html body .app.app-command-shell[data-theme] .settings-layout__detail-content :is(.status-badge, .settings-preference-panel > span) { font-size: 12px; line-height: 1.5; }
+
+@media (min-width: 1181px) {
+  html body .app.app-command-shell.ops-app-shell[data-theme] .you-profile-command-card .you-v4-command-content { grid-template-columns: minmax(0, 1fr) !important; gap: 16px; }
+  html body .app[data-theme] .you-profile-command-card .you-v4-side-rail { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 0; }
+  html body .app[data-theme] .you-profile-command-card .you-v4-side-rail > article { padding: 16px; }
+  html body .app[data-theme] :is(.membership-v4-feature-grid, .membership-v4-plan-grid) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  html body .app[data-theme] .membership-v4-plan-grid { align-items: stretch; }
+  html body .app[data-theme] .membership-v4-plan-card { grid-template-rows: auto auto auto auto 1fr auto; }
+}
+@media (min-width: 1400px) {
+  html body .app[data-theme] :is(.membership-v4-feature-grid, .membership-v4-plan-grid) { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+@media (max-width: 1180px) {
+  html body .app.app-command-shell.ops-app-shell[data-theme] :is(.you-profile-command-card, .membership-v4-command-board, .trust-v4-command-board) :is(.command-board-v4-frame, .command-board-v4-stage) { padding-bottom: 0 !important; }
+}
+@media (max-width: 700px) {
+  html body .app[data-theme] :is(.you-profile-command-card, .membership-v4-command-board, .trust-v4-command-board) .command-board-v4-plan-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  html body .app[data-theme] :is(.membership-v4-lower-grid, .trust-v4-split-grid, .trust-v4-meetup-layout) { grid-template-columns: minmax(0, 1fr); }
+}

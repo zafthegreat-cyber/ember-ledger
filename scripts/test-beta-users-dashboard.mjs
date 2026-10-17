@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { readDeferredAppSource } from "./helpers/read-deferred-app-source.mjs";
+import { readLocalCss } from "./helpers/read-local-css.mjs";
 
 const root = process.cwd();
-const app = fs.readFileSync(path.join(root, "src", "App.jsx"), "utf8");
-const css = fs.readFileSync(path.join(root, "src", "App.css"), "utf8");
+const app = readDeferredAppSource(path.join(root, "src", "App.jsx"));
+const css = readLocalCss(path.join(root, "src", "App.css"));
 const service = fs.readFileSync(path.join(root, "src", "services", "shorelineAccessService.js"), "utf8");
 const adminUtils = fs.readFileSync(path.join(root, "src", "utils", "adminCommandCenterUtils.js"), "utf8");
 const packageJson = fs.readFileSync(path.join(root, "package.json"), "utf8");
@@ -52,7 +54,8 @@ assert.match(app, /sent_admin_support_message/, "Admin support message activity 
 
 assert.match(adminUtils, /"Beta Users"/, "Admin Command Center filters should include Beta Users");
 assert.match(css, /\.beta-users-dashboard/, "Beta Users dashboard CSS should exist");
-assert.match(css, /\.beta-user-detail-drawer/, "Beta user detail drawer CSS should exist");
+assert.match(app, /className="location-modal beta-user-detail-drawer"/, "Beta user detail drawer should use the shared modal surface");
+assert.match(css, /\.location-modal\b/, "the active shared drawer surface CSS should exist");
 assert.match(packageJson, /"test:beta-users-dashboard"/, "package script should include test:beta-users-dashboard");
 
 console.log("Beta Users dashboard tests passed.");

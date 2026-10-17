@@ -25,7 +25,7 @@ export default function MarketPage(props) {
     submitCatalogSearch,
     supabaseCatalogStatus,
     tideTradrCatalogResults,
-    useCatalogProductInDeal,
+    applyCatalogProductToDeal,
     workspaceWatchlist,
   } = props;
   const marketResultCount = Number(supabaseCatalogStatus.totalCount ?? tideTradrCatalogResults.length ?? 0);
@@ -242,7 +242,7 @@ export default function MarketPage(props) {
                     </div>
                     <div className="market-v4-result-actions">
                       <button type="button" onClick={() => openCatalogDetails(product.id || product.productId)}>Details</button>
-                      <button type="button" onClick={() => useCatalogProductInDeal(product.productId || product.id)}>Compare</button>
+                      <button type="button" onClick={() => applyCatalogProductToDeal(product.productId || product.id)}>Compare</button>
                       <button type="button" onClick={() => openMarketProductAddFlow(product, "market-result", { defaultDestination: "vault" })}>Add to Vault</button>
                     </div>
                   </article>

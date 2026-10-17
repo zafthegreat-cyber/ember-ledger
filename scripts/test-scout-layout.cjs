@@ -73,7 +73,7 @@ async function readLayout(page) {
       sideRail: rect(".scout-command-side-rail"),
       metrics: rect(".scout-command-metrics"),
       lower: rect(".scout-command-lower"),
-      mobileDock: rect(".mobile-bottom-nav, .ets-bottom-nav, .command-board-v4-mobile-dock"),
+      mobileDock: rect(".ops-mobile-nav") || rect(".mobile-bottom-nav, .ets-bottom-nav, .command-board-v4-mobile-dock"),
       shellChildren,
       tileCount: document.querySelectorAll(".scout-tile-map-tile").length,
       pinCount: document.querySelectorAll(".scout-tile-map-pin").length,
@@ -108,10 +108,13 @@ function validateLayout(layout, viewport, theme) {
 
   if (viewport.name === "mobile") {
     if (layout.document.scrollHeight > 1500) failures.push(`mobile page is too long (${layout.document.scrollHeight}px)`);
-    if (!layout.mobileDock) failures.push("mobile dock is missing");
+    if (!layout.mobileDock || layout.mobileDock.height < 44) failures.push("mobile dock is missing or too small");
   } else {
-    if (layout.document.scrollHeight > viewport.height + 2) failures.push(`${viewport.name} page scrolls (${layout.document.scrollHeight}px)`);
-    if (!layout.metrics || !layout.lower) failures.push(`${viewport.name} supporting intelligence is missing`);
+    // Readable cards may extend below the fold; keep them inside a scrollable page.
+    if (!layout.metrics?.height || !layout.lower?.height) failures.push(`${viewport.name} supporting intelligence is missing`);
+    if (layout.lower && layout.board && layout.lower.bottom > layout.board.bottom + 2) failures.push(`${viewport.name} supporting intelligence extends outside its board`);
+    const emptyTail = layout.document.scrollHeight - Math.max(viewport.height, layout.board?.bottom || 0);
+    if (emptyTail > 144) failures.push(`${viewport.name} has ${emptyTail}px of empty space after the board`);
   }
 
   if (failures.length) throw new Error(`${theme}/${viewport.name}: ${failures.join("; ")}`);

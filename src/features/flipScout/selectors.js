@@ -1,5 +1,6 @@
 import { calculateSaleResults, nonNegative, safeNumber } from "./calculations.js";
 import { soldQuantityForInventory } from "./inventory.js";
+import { exactMinor, exactSum, returnMoneyProjection, saleNetMinor } from "../manualLifecycles/returnLedger.js";
 import {
   availableInventoryCostMajorUnits,
   inventoryRecordCostMajorUnits,
@@ -59,19 +60,26 @@ function saleProductReconciliation(saleId, events = []) {
  */
 export function getSaleReportingProjection(sale = {}, state = {}) {
   const calculated = calculateSaleResults(sale);
+  const returns = returnMoneyProjection(sale);
+  const additionalRefund = returns.refundMinor / 100;
+  const restoredCogs = returns.cogsReversalMinor / 100;
+  const effectiveNetProceeds = returns.applicationIds.length ? exactSum([saleNetMinor(sale), -returns.refundMinor]) / 100 : safeNumber(sale.netProceeds ?? calculated.netProceeds);
   const originalCogs = nonNegative(sale.allocatedCostOfGoodsSold ?? calculated.costOfGoodsSold);
   const originalProfit = safeNumber(sale.realizedProfit ?? calculated.realizedProfit);
   const originalRoi = sale.realizedRoi == null ? calculated.realizedRoi : safeNumber(sale.realizedRoi);
+  const returnedCogs = returns.applicationIds.length ? exactSum([exactMinor(sale.allocatedCostOfGoodsSold, "Original sale cost"), -returns.cogsReversalMinor]) / 100 : originalCogs;
+  const returnedProfit = returns.applicationIds.length ? exactSum([saleNetMinor(sale), -returns.refundMinor, -exactMinor(sale.allocatedCostOfGoodsSold, "Original sale cost"), returns.cogsReversalMinor]) / 100 : originalProfit;
   const base = {
     originalCogs,
-    cogsAdjustment: 0,
-    effectiveCogs: originalCogs,
+    cogsAdjustment: -restoredCogs,
+    effectiveCogs: returnedCogs,
     originalProfit,
-    profitAdjustment: 0,
-    effectiveProfit: originalProfit,
+    profitAdjustment: restoredCogs - additionalRefund,
+    effectiveProfit: returnedProfit,
     originalRoi,
-    effectiveRoi: originalRoi,
-    hasReconciliation: false,
+    effectiveRoi: returnedCogs > 0 ? returnedProfit / returnedCogs : null,
+    hasReconciliation: returns.applicationIds.length > 0,
+    additionalRefund, restoredCogs, effectiveNetProceeds, returnApplications: returns.applicationIds.length,
     originalProductReference: null,
     effectiveProductReference: null,
     productRelationshipAdjusted: false,
@@ -87,14 +95,15 @@ export function getSaleReportingProjection(sale = {}, state = {}) {
     : accounting.effectiveRealizedProfitMinorUnits / 100;
   return Object.freeze({
     originalCogs: accounting.originalCogsMinorUnits / 100,
-    cogsAdjustment: accounting.cogsAdjustmentMinorUnits / 100,
+    cogsAdjustment: accounting.cogsAdjustmentMinorUnits / 100 - restoredCogs,
     effectiveCogs,
     originalProfit,
-    profitAdjustment: -(accounting.cogsAdjustmentMinorUnits / 100),
+    profitAdjustment: -(accounting.cogsAdjustmentMinorUnits / 100) + restoredCogs - additionalRefund,
     effectiveProfit,
     originalRoi,
     effectiveRoi: effectiveCogs > 0 ? effectiveProfit / effectiveCogs : null,
-    hasReconciliation: accounting.cogsAdjustmentMinorUnits !== 0 || product.adjusted,
+    hasReconciliation: accounting.cogsAdjustmentMinorUnits !== 0 || product.adjusted || returns.applicationIds.length > 0,
+    additionalRefund, restoredCogs, effectiveNetProceeds, returnApplications: returns.applicationIds.length,
     originalProductReference: product.originalProductReference,
     effectiveProductReference: product.effectiveProductReference,
     productRelationshipAdjusted: product.adjusted,
@@ -120,8 +129,8 @@ export function getActualVsProjectedRows(state = {}, now = new Date()) {
   const sales = Array.isArray(state.sales) ? state.sales : [];
   return (state.inventory || []).map((item) => {
     const itemSales = sales.filter((sale) => sale.inventoryItemId === item.id && String(sale.status || "").toLowerCase() === "completed");
-    const actualSalesProceeds = itemSales.reduce((total, sale) => total + safeNumber(sale.netProceeds ?? calculateSaleResults(sale).netProceeds), 0);
     const accounting = itemSales.map((sale) => getSaleReportingProjection(sale, state));
+    const actualSalesProceeds = accounting.reduce((total, projection) => total + projection.effectiveNetProceeds, 0);
     const actualProfit = accounting.reduce((total, projection) => total + projection.effectiveProfit, 0);
     const actualCosts = itemSales.reduce((total, sale, index) => total + accounting[index].effectiveCogs + nonNegative(sale.actualOutboundShipping) + nonNegative(sale.packaging) + nonNegative(sale.sellingFees) + nonNegative(sale.paymentFees) + nonNegative(sale.otherCosts), 0);
     const realizedCogsAdjustment = accounting.reduce((total, projection) => total + projection.cogsAdjustment, 0);
@@ -174,7 +183,7 @@ export function getDashboardSummary(state = {}, now = new Date()) {
     const available = Math.max(0, nonNegative(item.quantity) - soldQuantityForInventory(item.id, sales));
     return total + nonNegative(item.projectedResaleMid) * available;
   }, 0);
-  const realizedSalesRevenue = completedSales.reduce((total, sale) => total + nonNegative(sale.grossSalePrice), 0);
+  const realizedSalesRevenue = completedSales.reduce((total, sale) => total + nonNegative(sale.grossSalePrice) - nonNegative(sale.refunds) - returnMoneyProjection(sale).refundMinor / 100, 0);
   const saleAccounting = completedSales.map((sale) => getSaleReportingProjection(sale, state));
   const realizedProfit = saleAccounting.reduce((total, projection) => total + projection.effectiveProfit, 0);
   const realizedCogs = saleAccounting.reduce((total, projection) => total + projection.effectiveCogs, 0);

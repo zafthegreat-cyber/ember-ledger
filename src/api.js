@@ -1,14 +1,34 @@
 import { sanitizeUserProfileUpdates } from "./constants/plans";
+import { getOwnerRequestHeaders, isLocalDevelopmentIdentityEnabled } from "./services/ownerSession.js";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
+const PRIVATE_READ_ROUTES = [
+  "/api/inventory", "/api/vault", "/api/sales", "/api/expenses", "/api/scout/alerts",
+  "/api/store-reports", "/api/tidepool/reports", "/stores", "/predictions/week",
+  "/user-inventory", "/contacts", "/notifications", "/db-test", "/sync", "/seed", "/seed-757",
+];
+
+function requiresOwnerHeaders(path, method) {
+  if (!["GET", "HEAD", "OPTIONS"].includes(String(method || "GET").toUpperCase())) return true;
+  const pathname = String(path).split(/[?#]/, 1)[0].toLowerCase();
+  return PRIVATE_READ_ROUTES.some(prefix => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
 
 async function request(path, options = {}) {
+  const protectedRequest = requiresOwnerHeaders(path, options.method);
+  const headers = new Headers(options.headers);
+  if (!headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+  if (protectedRequest) {
+    const queryEnabled = new URLSearchParams(globalThis.location?.search || "").get("betaLocalMode") === "true";
+    const ownerHeaders = await getOwnerRequestHeaders({
+      localDevelopment: isLocalDevelopmentIdentityEnabled({ queryEnabled }),
+    });
+    new Headers(ownerHeaders).forEach((value, name) => headers.set(name, value));
+  }
   const response = await fetch(`${API_BASE}${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
     ...options,
+    headers,
+    ...(protectedRequest ? { cache: "no-store" } : {}),
   });
 
   const contentType = response.headers.get("content-type") || "";
@@ -17,10 +37,10 @@ async function request(path, options = {}) {
     : await response.text();
 
   if (!response.ok) {
-    const message =
-      typeof payload === "object" && payload !== null
-        ? payload.message || payload.error
-        : payload;
+    const candidates = typeof payload === "object" && payload !== null
+      ? [payload.error?.message, payload.message, payload.error]
+      : [payload];
+    const message = candidates.find(value => typeof value === "string" && value.trim());
     throw new Error(message || `Request failed: ${response.status}`);
   }
 

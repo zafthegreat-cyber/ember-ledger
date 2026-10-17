@@ -1,0 +1,9 @@
+.git
+.env*
+artifacts/
+node_modules/
+**/node_modules/
+dist/
+backend/dist/
+*.log
+.local-parking/

@@ -13,6 +13,7 @@ import {
   validateRemoteBackupExport,
 } from "../src/features/persistence/index.js";
 import { createVerifiedBackup, hashCanonicalJson } from "../src/features/backup/index.js";
+import { createFlipScoutRepository } from "../src/features/flipScout/storageRepository.js";
 
 class MemoryStorage {
   constructor(values = {}) {
@@ -92,6 +93,69 @@ const archived = await local.archive("record-c", 2);
 assert.equal(archived.recordVersion, 3);
 assert.ok(archived.archivedAt);
 assert.equal(archived.status, "ARCHIVED");
+
+// Exercise the real repository's returned-error contract, not just throwing test doubles.
+const quotaStorage = new MemoryStorage();
+let rejectStorageWrite = false;
+const writeQuotaStorage = quotaStorage.setItem.bind(quotaStorage);
+quotaStorage.setItem = (key, value) => {
+  if (rejectStorageWrite) throw new Error("Synthetic storage quota exceeded");
+  writeQuotaStorage(key, value);
+};
+const quotaRepository = createFlipScoutRepository(quotaStorage);
+const quotaSource = createLocalCollectionDataSource({
+  repository: quotaRepository,
+  collection: "appraisals",
+  now: () => "2026-08-20T10:10:00.000Z",
+  idFactory: () => "analysis-storage-failure",
+});
+const analysisInput = Object.freeze({ title: "Analysis awaiting durable save", metadata: Object.freeze({ reviewed: false }) });
+rejectStorageWrite = true;
+const emptyStorageBeforeFailure = quotaStorage.snapshot();
+await assert.rejects(() => quotaSource.create(analysisInput), (error) => error.code === "LOCAL_SAVE_FAILED");
+assert.equal(quotaStorage.snapshot(), emptyStorageBeforeFailure, "failed create must not change stored bytes");
+assert.deepEqual(quotaRepository.load().appraisals, [], "failed create must not appear in repository reads");
+assert.deepEqual(analysisInput, { title: "Analysis awaiting durable save", metadata: { reviewed: false } }, "failed create must preserve caller input");
+
+rejectStorageWrite = false;
+const savedAnalysis = await quotaSource.create(analysisInput);
+assert.equal(savedAnalysis.recordVersion, 1);
+const storedAnalysisBeforeFailure = quotaStorage.snapshot();
+const analysisBeforeFailure = await quotaSource.getById(savedAnalysis.id);
+rejectStorageWrite = true;
+const analysisPatch = Object.freeze({ title: "This update must not be reported as saved" });
+await assert.rejects(() => quotaSource.update(savedAnalysis.id, analysisPatch, 1), (error) => error.code === "LOCAL_SAVE_FAILED");
+assert.equal(quotaStorage.snapshot(), storedAnalysisBeforeFailure, "failed update must not change stored bytes");
+assert.deepEqual(await quotaSource.getById(savedAnalysis.id), analysisBeforeFailure, "failed update must retain the saved record and version");
+assert.deepEqual(analysisPatch, { title: "This update must not be reported as saved" }, "failed update must preserve caller input");
+await assert.rejects(() => quotaSource.archive(savedAnalysis.id, 1), (error) => error.code === "LOCAL_SAVE_FAILED");
+assert.equal(quotaStorage.snapshot(), storedAnalysisBeforeFailure, "failed archive must not change stored bytes");
+assert.deepEqual(await quotaSource.getById(savedAnalysis.id), analysisBeforeFailure, "failed archive must leave the record active at its saved version");
+assert.deepEqual(savedAnalysis, analysisBeforeFailure, "failed mutations must not mutate a previously returned record");
+
+rejectStorageWrite = false;
+const savedAfterFailure = await quotaSource.update(savedAnalysis.id, { title: "Saved after storage recovers" }, 1);
+assert.equal(savedAfterFailure.recordVersion, 2, "failed writes must not consume a stored version");
+assert.equal((await quotaSource.archive(savedAnalysis.id, 2)).recordVersion, 3);
+
+for (const asynchronousFailure of [false, true]) {
+  const throwingRepository = new StateRepository({ records: [{ id: "kept-record", recordVersion: 1, title: "Kept" }] });
+  const beforeFailure = throwingRepository.load();
+  const failure = new Error(`Synthetic ${asynchronousFailure ? "async" : "sync"} repository failure`);
+  throwingRepository.save = () => {
+    if (asynchronousFailure) return Promise.reject(failure);
+    throw failure;
+  };
+  const throwingSource = createLocalCollectionDataSource({ repository: throwingRepository, collection: "records", idFactory: () => "new-record" });
+  for (const mutation of [
+    () => throwingSource.create({ title: "Not saved" }),
+    () => throwingSource.update("kept-record", { title: "Not saved" }, 1),
+    () => throwingSource.archive("kept-record", 1),
+  ]) {
+    await assert.rejects(mutation, (error) => error === failure, "repository failures must reject the operation without being swallowed");
+    assert.deepEqual(throwingRepository.load(), beforeFailure, "repository failure must preserve caller-visible records");
+  }
+}
 
 const previewGateway = createPersistenceGateway({ mode: PERSISTENCE_MODES.MIGRATION_PREVIEW, localDataSource: local });
 const writesBeforePreview = repository.writes;
@@ -283,4 +347,4 @@ assert.equal(backupWithMalformedRemote.backup.coverageSummary.serverDataIncluded
 assert.equal(localStorage.writes, 0);
 assert.equal(sessionStorage.writes, 0);
 
-console.log("Code 3 client persistence tests passed (local default, explicit remote gate, archive contract, concurrency, and remote backup coverage).");
+console.log("Code 3 client persistence tests passed (local default, save-failure handling, explicit remote gate, archive contract, concurrency, and remote backup coverage).");

@@ -11,7 +11,6 @@ import {
   assertInventoryProductClassificationCondition,
   deriveEffectiveInventoryAdjustmentIds,
   inventoryCorrectionProposalSemanticDigest,
-  isPhysicalInventoryReturnAdjustment,
   normalizeInventoryAcquisitionLot,
   normalizeProvenanceManagedInventoryItem,
   validateInventoryCreationStateBundles,

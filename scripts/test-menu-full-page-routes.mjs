@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { readDeferredAppSource } from "./helpers/read-deferred-app-source.mjs";
 
 const root = process.cwd();
 const appPath = path.join(root, "src", "App.jsx");
@@ -14,7 +15,7 @@ const betaReadinessPath = path.join(root, "src", "services", "betaReadinessServi
 const workspaceRegistryPath = path.join(root, "src", "config", "workspaceRegistry.js");
 const workspaceSwitcherPath = path.join(root, "src", "features", "workspaces", "WorkspaceSwitcher.jsx");
 const workspaceHomePath = path.join(root, "src", "features", "workspaces", "WorkspaceHomePage.jsx");
-const appFileSource = fs.readFileSync(appPath, "utf8");
+const appFileSource = readDeferredAppSource(appPath);
 const routeStateSource = fs.existsSync(routeStatePath) ? fs.readFileSync(routeStatePath, "utf8") : "";
 const pageSource = fs.existsSync(pageSourceDir)
   ? fs.readdirSync(pageSourceDir)
@@ -93,7 +94,7 @@ const expectedRenderers = [
   '<AccountOpsPage',
   'activeTab === "dailyTide" && renderTodaysTideCommandCenter()',
   'activeTab === "dashboard" && (',
-  '<OperationsHomePage {...hearthPageProps} />',
+  '<OperationsHomePage {...hearthPageProps}',
   'activeTab === "tidepool" && renderTidepoolCommunity()',
   'activeTab === "kidsProgram" && (',
   '<SparkPage {...sparkPageProps} />',

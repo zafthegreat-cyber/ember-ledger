@@ -14,6 +14,11 @@ const brandReplacements = {
   __BRAND_ACCENT__: BRAND_CONFIG.primaryAccent,
   __BRAND_LOGO__: BRAND_CONFIG.logoReference,
   __BRAND_FAVICON__: BRAND_CONFIG.faviconReference,
+  __BRAND_APPLE_TOUCH_ICON__: BRAND_CONFIG.appleTouchIconReference,
+  __BRAND_PWA_ICON_192__: BRAND_CONFIG.pwaIcon192Reference,
+  __BRAND_PWA_ICON_512__: BRAND_CONFIG.pwaIcon512Reference,
+  __BRAND_PWA_MASKABLE_ICON__: BRAND_CONFIG.pwaMaskableIconReference,
+  __BRAND_PWA_BACKGROUND__: BRAND_CONFIG.pwaBackgroundColor,
   __BRAND_MONOGRAM__: BRAND_CONFIG.monogram,
 };
 
@@ -28,18 +33,7 @@ function brandMetadataPlugin() {
     configureServer(server) {
       server.middlewares.use("/manifest.webmanifest", (_request, response) => {
         response.setHeader("Content-Type", "application/manifest+json; charset=utf-8");
-        response.end(applyBrandReplacements(JSON.stringify({
-          name: BRAND_CONFIG.pwaName,
-          short_name: BRAND_CONFIG.pwaShortName || BRAND_CONFIG.shortName,
-          description: BRAND_CONFIG.tagline,
-          id: "/",
-          start_url: "/",
-          scope: "/",
-          display: "standalone",
-          background_color: "#f6f3ed",
-          theme_color: BRAND_CONFIG.primaryAccent,
-          icons: [{ src: BRAND_CONFIG.logoReference, sizes: "any", type: "image/svg+xml", purpose: "any maskable" }],
-        }, null, 2)));
+        response.end(applyBrandReplacements(readFileSync(new URL("./public/manifest.webmanifest", import.meta.url), "utf8")));
       });
     },
     generateBundle(_options, bundle) {

@@ -46,10 +46,14 @@ function statusTone(value) {
 function ProviderConnections({ localDevelopment }) {
   const [attempt, setAttempt] = useState(0);
   const [runtime, setRuntime] = useState(EMPTY_RUNTIME);
+  const [request, setRequest] = useState({ attempt, localDevelopment });
+  if (request.attempt !== attempt || request.localDevelopment !== localDevelopment) {
+    setRequest({ attempt, localDevelopment });
+    setRuntime((current) => ({ ...current, status: "loading", errorCode: "" }));
+  }
 
   useEffect(() => {
     const controller = new AbortController();
-    setRuntime((current) => ({ ...current, status: "loading", errorCode: "" }));
     fetchAccountOpsProviderConnections({
       localDevelopment,
       signal: controller.signal,

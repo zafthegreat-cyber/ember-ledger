@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   PrimaryButton,
   SecondaryButton,
@@ -15,6 +15,10 @@ import {
   readCurrentBackupSources,
 } from "./index.js";
 import MigrationReadinessPanel from "./MigrationReadinessPanel.jsx";
+import AccountOpsRecoveryPanel from "./AccountOpsRecoveryPanel.jsx";
+import { createPrivateFileClient } from "../privateFiles/privateFileClient.js";
+import BackupReviewFindings from "./BackupReviewFindings.jsx";
+import { createBackupReviewReport, displayReviewValue, downloadBackupReviewReport, RESTORE_FINDING_GROUPS } from "./reviewPresentation.js";
 
 function statusTone(status) {
   if (status === BACKUP_COVERAGE.COMPLETE || status === "READY_FOR_FUTURE_RESTORE") return "success";
@@ -33,14 +37,21 @@ function downloadJson(fileName, json) {
 }
 
 function StatusRow({ label, value, children }) {
-  return <div className="backup-status-row"><span>{label}</span><strong>{value}</strong>{children}</div>;
+  return <div className="backup-status-row"><span>{label}</span><strong>{displayReviewValue(value, value === "" ? "" : "Not available")}</strong>{children}</div>;
 }
 
-export default function BackupRecoveryPanel({ localDevelopment = false }) {
+function BackupRecoveryContent({ localDevelopment }) {
   const inputRef = useRef(null);
+  const lifetime = useRef(0);
+  const pending = useRef(false);
+  const previewTriggerRef = useRef(null);
+  const previewHeadingRef = useRef(null);
+  const focusPreview = useRef(false);
+  useEffect(() => () => { lifetime.current++; }, []);
   const [busy, setBusy] = useState("");
   const [exportResult, setExportResult] = useState(null);
   const [preview, setPreview] = useState(null);
+  const [previewInfo, setPreviewInfo] = useState(null);
   const [message, setMessage] = useState("");
   const [activity, setActivity] = useState([]);
   const remoteAdapter = useMemo(() => createRemoteBackupExportAdapter({
@@ -48,12 +59,34 @@ export default function BackupRecoveryPanel({ localDevelopment = false }) {
   }), [localDevelopment]);
 
   const recordActivity = (entry) => setActivity((current) => [entry, ...current].slice(0, 10));
+  useLayoutEffect(() => {
+    if (preview && focusPreview.current) { previewHeadingRef.current?.focus(); focusPreview.current = false; }
+  }, [preview]);
+
+  async function exportFiles() {
+    if (pending.current) return;
+    pending.current = true;
+    const request = ++lifetime.current;
+    setBusy("files"); setMessage("");
+    try {
+      const client = createPrivateFileClient({ request: (path, init) => code3OwnerRequest(path, init, { localDevelopment }) });
+      const backup = await client.exportBackup();
+      if (request !== lifetime.current) return;
+      downloadJson("code-3-private-files.json", JSON.stringify(backup, null, 2));
+      setMessage("Private file backup downloaded separately. Keep it with the record backup; this file does not include the rest of the app.");
+    } catch (error) { if (request === lifetime.current) setMessage(error.message || "Private file backup is unavailable."); }
+    finally { pending.current = false; if (request === lifetime.current) setBusy(""); }
+  }
 
   async function exportBackup() {
+    if (pending.current) return;
+    pending.current = true;
+    const request = ++lifetime.current;
     setBusy("export");
     setMessage("");
     try {
       const remoteExportResult = await remoteAdapter.inspect();
+      if (request !== lifetime.current) return;
       const result = await createVerifiedBackup({
         localStorage: globalThis.localStorage,
         sessionStorage: globalThis.sessionStorage,
@@ -62,6 +95,7 @@ export default function BackupRecoveryPanel({ localDevelopment = false }) {
         configuredSourceIds: isSupabaseConfigured ? ["supabase-owner-data"] : [],
         remoteExportResult,
       });
+      if (request !== lifetime.current) return;
       setExportResult(result);
       recordActivity(result.activity);
       if (!result.verified) {
@@ -75,37 +109,51 @@ export default function BackupRecoveryPanel({ localDevelopment = false }) {
         ? "Backup verified and downloaded."
         : "Partial backup verified and downloaded with the listed exclusions.");
     } catch {
+      if (request !== lifetime.current) return;
       setExportResult(null);
       setMessage("Backup export failed safely. No records were changed.");
     } finally {
-      setBusy("");
+      pending.current = false;
+      if (request === lifetime.current) setBusy("");
     }
   }
 
   async function previewFile(event) {
     const file = event.target.files?.[0];
     event.target.value = "";
-    if (!file) return;
+    if (!file || pending.current) return;
+    pending.current = true;
+    const request = ++lifetime.current;
     setBusy("preview");
     setMessage("");
+    setPreview(null); setPreviewInfo(null);
+    const publish = (result) => {
+      if (request !== lifetime.current) return;
+      focusPreview.current = document.activeElement === previewTriggerRef.current || document.activeElement === inputRef.current || document.activeElement === document.body;
+      setPreviewInfo({ reviewedAt: new Date().toISOString(), sourceFileName: file.name });
+      setPreview(result);
+    };
     try {
       if (file.size > BACKUP_PARSE_LIMITS.maxBytes) {
         throw new Error(`The selected JSON file exceeds the ${Math.floor(BACKUP_PARSE_LIMITS.maxBytes / 1024 / 1024)} MB preview limit.`);
       }
       const raw = await file.text();
+      if (request !== lifetime.current) return;
       const currentSnapshot = readCurrentBackupSources({
         localStorage: globalThis.localStorage,
         sessionStorage: globalThis.sessionStorage,
       });
       const result = await previewBackupRestore(raw, { currentSources: currentSnapshot.sources });
+      if (request !== lifetime.current) return;
       if (currentSnapshot.warnings.length) {
         result.warnings = [...(result.warnings || []), ...currentSnapshot.warnings.map((warning) => warning.message)];
         if (result.result === "READY_FOR_FUTURE_RESTORE") result.result = "READY_WITH_WARNINGS";
       }
-      setPreview(result);
+      publish(result);
       recordActivity(result.activity);
       setMessage("Restore preview finished. No data was changed.");
     } catch (error) {
+      if (request !== lifetime.current) return;
       const result = {
         result: "BLOCKED",
         warnings: [],
@@ -115,10 +163,11 @@ export default function BackupRecoveryPanel({ localDevelopment = false }) {
         recordCounts: {},
         writesPerformed: 0,
       };
-      setPreview(result);
+      publish(result);
       setMessage("Restore preview was blocked. No data was changed.");
     } finally {
-      setBusy("");
+      pending.current = false;
+      if (request === lifetime.current) setBusy("");
     }
   }
 
@@ -130,8 +179,8 @@ export default function BackupRecoveryPanel({ localDevelopment = false }) {
       </header>
       <div className="backup-actions">
         <PrimaryButton onClick={exportBackup} disabled={Boolean(busy)}>{busy === "export" ? "Verifying…" : "Export verified backup"}</PrimaryButton>
-        <SecondaryButton onClick={() => inputRef.current?.click()} disabled={Boolean(busy)}>{busy === "preview" ? "Inspecting…" : "Preview restore"}</SecondaryButton>
-        <input ref={inputRef} className="sr-only" type="file" accept="application/json,.json" onChange={previewFile} aria-label="Select a Code 3 JSON backup for restore preview" />
+        <SecondaryButton ref={previewTriggerRef} onClick={() => inputRef.current?.click()} disabled={Boolean(busy)}>{busy === "preview" ? "Inspecting…" : "Preview restore"}</SecondaryButton>
+        <input ref={inputRef} hidden tabIndex={-1} type="file" accept="application/json,.json" onChange={previewFile} aria-label="Select a Code 3 JSON backup for restore preview" disabled={Boolean(busy)} />
       </div>
       <p className="backup-no-write"><strong>No data will be changed during restore preview.</strong> JSON files stay in this browser and are not uploaded.</p>
       {message ? <p className="backup-message" role="status">{message}</p> : null}
@@ -148,7 +197,9 @@ export default function BackupRecoveryPanel({ localDevelopment = false }) {
         <details><summary>Coverage and validation details</summary><div className="backup-details"><h3>Excluded sources</h3>{exportResult.backup.manifest.excludedSources.length ? <ul>{exportResult.backup.manifest.excludedSources.map((source) => <li key={source.sourceId}><strong>{source.displayName}</strong>: {source.reason}</li>)}</ul> : <p>None.</p>}<h3>Known limitations</h3><ul>{exportResult.backup.manifest.knownLimitations.map((warning) => <li key={warning}>{warning}</li>)}</ul></div></details>
       </div> : null}
 
-      {preview ? <div className="backup-result" aria-label="Restore preview result">
+      {preview ? <div className="backup-result" role="region" aria-label="Restore preview result">
+        <h3 ref={previewHeadingRef} tabIndex={-1} className="backup-review-focus">Restore preview</h3>
+        <p className="backup-review-report-note">{previewInfo?.sourceFileName} · Reviewed {previewInfo?.reviewedAt ? new Date(previewInfo.reviewedAt).toLocaleString() : "just now"}. This result describes the file and saved records at the time of review.</p>
         <StatusRow label="Preview result" value=""><StatusBadge tone={statusTone(preview.result)}>{String(preview.result || "BLOCKED").replaceAll("_", " ")}</StatusBadge></StatusRow>
         <StatusRow label="Format recognized" value={preview.formatRecognized ? "Yes" : "No"} />
         <StatusRow label="Format version" value={preview.formatVersion ?? "Not recognized"} />
@@ -162,25 +213,29 @@ export default function BackupRecoveryPanel({ localDevelopment = false }) {
         <StatusRow label="Potential updates" value={preview.potentialUpdates ?? 0} />
         <StatusRow label="Writes performed" value={preview.writesPerformed ?? 0} />
         <details open={(preview.errors || []).length > 0}><summary>Validation details</summary><div className="backup-details">
-          <h3>Source coverage</h3>
-          {preview.includedSources?.length ? <ul>{preview.includedSources.map((source) => <li key={source.sourceId}><strong>{source.displayName || source.sourceId}</strong>: {preview.recordCounts?.[source.sourceId] ?? source.recordCount ?? 0} records</li>)}</ul> : <p>No registered sources were included.</p>}
-          {preview.excludedSources?.length ? <><h3>Excluded sources</h3><ul>{preview.excludedSources.map((source) => <li key={source.sourceId}><strong>{source.displayName || source.sourceId}</strong>: {source.reason || "Not included"}</li>)}</ul></> : null}
+          <details><summary>Source coverage</summary><div className="backup-details">
+          {Array.isArray(preview.includedSources) && preview.includedSources.length ? <ul>{preview.includedSources.map((source, index) => <li key={index}><strong>{displayReviewValue(source?.displayName, displayReviewValue(source?.sourceId))}</strong>: {displayReviewValue((typeof source?.sourceId === "string" ? preview.recordCounts?.[source.sourceId] : undefined) ?? source?.recordCount ?? 0)} records</li>)}</ul> : <p>No registered sources were included.</p>}
+          <BackupReviewFindings title="Excluded sources" findings={preview.excludedSources} />
+          </div></details>
           <h3>Structured findings</h3>
-          <ul className="backup-finding-counts">
-            {[
-              ["Duplicate IDs", preview.duplicateIds], ["ID collisions", preview.idCollisions], ["Duplicate provider listings", preview.duplicateProviderListings], ["Duplicate certifications", preview.duplicateCertifications],
-              ["Broken references", preview.brokenReferences], ["Unknown sources", preview.unknownSources], ["Unsupported schemas", preview.unsupportedSchemas], ["Invalid money", preview.invalidMoney],
-              ["Unsupported precision", preview.unsupportedPrecision], ["Missing fields", preview.missingFields], ["Missing currency", preview.missingCurrency], ["Currency mismatches", preview.currencyMismatches], ["Prohibited fields", preview.prohibitedFields],
-            ].map(([label, findings]) => <li key={label}><span>{label}</span><strong>{findings?.length ?? 0}</strong></li>)}
-          </ul>
-          {preview.errors?.length ? <><h3>Errors</h3><ul>{preview.errors.map((error, index) => <li key={`${index}-${error}`}>{error}</li>)}</ul></> : null}
-          {preview.warnings?.length ? <><h3>Warnings</h3><ul>{preview.warnings.map((warning, index) => <li key={`${index}-${warning}`}>{warning}</li>)}</ul></> : null}
+          {RESTORE_FINDING_GROUPS.map(([title, field]) => <BackupReviewFindings key={field} title={title} findings={preview[field]} />)}
+          {!RESTORE_FINDING_GROUPS.some(([, field]) => preview[field]?.length) ? <p>No structured record findings were returned. Review the validation messages below.</p> : null}
+          <BackupReviewFindings title="Errors" findings={preview.errors} open />
+          <BackupReviewFindings title="Warnings" findings={preview.warnings} />
           {!preview.errors?.length && !preview.warnings?.length ? <p>No validation errors or warnings were found.</p> : null}
         </div></details>
+        <div className="backup-actions"><SecondaryButton disabled={Boolean(busy)} onClick={() => downloadBackupReviewReport(createBackupReviewReport({ kind: "restore-preview", result: { ...preview, sourceFileName: previewInfo?.sourceFileName }, reviewedAt: previewInfo?.reviewedAt }))}>Download review report</SecondaryButton></div>
+        <p className="backup-review-report-note">The report contains bounded findings and record references, not recoverable records or file bytes. Keep your original backup. Review reports can contain private IDs and paths.</p>
       </div> : null}
 
       {activity.length ? <details className="backup-activity"><summary>Session activity</summary><ul>{activity.map((entry, index) => <li key={`${entry?.type}-${index}`}>{entry?.type === "BACKUP_EXPORT_COMPLETED" ? "Export completed" : "Restore preview completed"}: {entry?.coverageStatus || entry?.result || "Recorded"}</li>)}</ul><p>Activity is kept in memory only so preview remains zero-write.</p></details> : null}
       <MigrationReadinessPanel remoteAdapter={remoteAdapter} />
+      <AccountOpsRecoveryPanel />
+      <section className="backup-result" aria-label="Private file backup"><h3>Private files</h3><p>Export verified attachment bytes separately from the record backup. Missing or damaged files prevent a successful file backup.</p><SecondaryButton disabled={Boolean(busy)} onClick={exportFiles}>{busy === "files" ? "Verifying files…" : "Export private files"}</SecondaryButton></section>
     </section>
   );
+}
+
+export default function BackupRecoveryPanel({ localDevelopment = false }) {
+  return <BackupRecoveryContent key={localDevelopment ? "local" : "connected"} localDevelopment={localDevelopment} />;
 }

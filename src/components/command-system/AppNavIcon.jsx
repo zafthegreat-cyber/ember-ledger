@@ -12,6 +12,7 @@ export function AppNavIcon({ kind, className = "" }) {
     strokeLinecap: "round",
     strokeLinejoin: "round",
     "aria-hidden": true,
+    focusable: false,
     className: iconClass,
   };
 
@@ -137,6 +138,14 @@ export function AppNavIcon({ kind, className = "" }) {
           <path d="M12 8v6" />
         </svg>
       );
+    case "history":
+      return (
+        <svg {...common}>
+          <path d="M3 11a9 9 0 1 1 2.6 7.4" />
+          <path d="M3 4v7h7" />
+          <path d="M12 7v5l3 2" />
+        </svg>
+      );
     case "calendar":
       return (
         <svg {...common}>
@@ -196,6 +205,7 @@ export function AppNavIcon({ kind, className = "" }) {
           <path d="M8 13h8" />
         </svg>
       );
+    case "store":
     case "map":
       return (
         <svg {...common}>
@@ -255,6 +265,7 @@ export function AppNavIcon({ kind, className = "" }) {
           <path d="M12 3l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.3 6.8 19l1-5.8-4.2-4.1 5.8-.8z" />
         </svg>
       );
+    case "secure":
     case "admin":
       return (
         <svg {...common}>
