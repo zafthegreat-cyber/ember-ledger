@@ -1,4 +1,28 @@
 /* Home's collectible geometry and panel hierarchy share the saved app theme. */
+.app.app-command-shell .home-layout .home-restock-hero { display: grid; grid-template-columns: minmax(0, 1fr) 190px; gap: 30px; align-items: center; border: 1px solid var(--border-strong); border-top: 2px solid var(--action-primary); background: var(--surface-primary); }
+.app.app-command-shell .home-restock-copy { min-width: 0; }
+.app.app-command-shell .home-restock-copy h2 { margin: 8px 0 12px; color: var(--text-primary); font-size: clamp(25px, 3vw, 34px); line-height: 1.2; letter-spacing: -.025em; }
+.app.app-command-shell .home-restock-copy p { max-width: 54ch; margin: 0 0 18px; color: var(--text-secondary); font: 400 14px/1.6 var(--font-ui); }
+.app.app-command-shell .home-restock-copy > small { display: block; margin-top: 12px; color: var(--text-secondary); font: 400 12px/1.5 var(--font-ui); }
+.app.app-command-shell .home-restock-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.app.app-command-shell .home-restock-actions > button { min-height: 46px; padding: 10px 16px; font-size: 14px; }
+.app.app-command-shell .home-restock-art { display: grid; place-items: center; opacity: .85; }
+.app.app-command-shell .home-personal-heading { display: flex; align-items: start; justify-content: space-between; gap: 16px; }
+.app.app-command-shell .home-personal-heading > button { flex: none; min-height: 44px; font-size: 13px; }
+.app.app-command-shell .home-personal-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.app.app-command-shell .home-personal-card { display: flex; flex-direction: column; align-items: start; min-width: 0; padding: 18px; border: 1px solid var(--border-subtle); border-radius: 12px; background: var(--surface-primary); }
+.app.app-command-shell .home-personal-card h3 { margin: 12px 0 6px; color: var(--text-primary); font: 600 16px/1.4 var(--font-ui); }
+.app.app-command-shell .home-personal-card p { margin: 0 0 16px; color: var(--text-secondary); font: 400 13px/1.6 var(--font-ui); }
+.app.app-command-shell .home-personal-card > button, .app.app-command-shell .home-personal-card > .home-business-links { margin-top: auto; }
+.app.app-command-shell .home-personal-card button { min-height: 44px; font-size: 13px; }
+.app.app-command-shell .home-business-links { display: flex; flex-wrap: wrap; gap: 8px; }
+@media (max-width: 700px) {
+  .app.app-command-shell .home-layout .home-restock-hero { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .app.app-command-shell .home-restock-art { display: none; }
+  .app.app-command-shell .home-personal-grid { grid-template-columns: minmax(0, 1fr); }
+  .app.app-command-shell .home-personal-heading { flex-wrap: wrap; }
+  .app.app-command-shell .home-restock-actions > button { flex: 1 1 140px; }
+}
 .app.app-command-shell .home-layout {
   width: min(1160px, 100%);
   padding-top: 34px;
@@ -255,8 +279,10 @@ html body .app.app-command-shell .home-layout .home-record-shortcut:hover { back
   html body .app.app-command-shell .home-layout .home-discover-card { min-height: 0; }
 }
 @media (max-width: 700px) {
-  .app.app-command-shell .home-layout { padding-top: 24px; }
-  .app.app-command-shell .home-layout > .ops-page-header { margin-bottom: 22px; }
+  .app.app-command-shell .home-layout { padding-top: 16px; }
+  .app.app-command-shell .home-layout > .ops-page-header { margin-bottom: 16px; }
+  .app.app-command-shell .home-layout > .ops-page-header h1 { margin: 6px 0; }
+  .app.app-command-shell .home-layout .home-restock-hero { padding: 18px; }
   .app.app-command-shell .home-layout > .ops-page-header p { max-width: 33ch; font-size: 14px; }
   .app.app-command-shell .home-layout .home-attention-clear { flex-wrap: wrap; gap: 8px 20px; padding: 0 0 20px; }
   .app.app-command-shell .home-layout .home-workspace-layout { grid-template-columns: minmax(0, 1fr); gap: 16px; }

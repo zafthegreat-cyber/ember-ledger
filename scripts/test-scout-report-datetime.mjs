@@ -2,13 +2,16 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 
 const app = fs.readFileSync("src/App.jsx", "utf8");
+const scoutSubmit = fs.readFileSync("src/features/deferredViews/ScoutSubmitContent.jsx", "utf8");
+const reportRowsSelector = app.match(/const scoutReportRows = useMemo\([\s\S]*?;/)?.[0] || "";
 const dropRadar = fs.readFileSync("src/utils/dropRadarUtils.mjs", "utf8");
 const migration = fs.readFileSync("supabase/migrations/20260523201500_scout_report_observed_at.sql", "utf8");
 const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
 
-assert.match(app, /Visit date &amp; time/, "Scout report flow should label the visit datetime field");
-assert.match(app, /Use this if you are backfilling a store visit from earlier\./, "Scout flow should explain backfill use");
-assert.match(app, /type="datetime-local"/, "Scout report creation/editing should use native datetime-local inputs");
+assert.match(scoutSubmit, /<span>Observed time<\/span>/, "Scout report flow should label the observed datetime field");
+assert.match(scoutSubmit, /Use this if you are backfilling a store visit from earlier\./, "Scout flow should explain backfill use");
+assert.match(scoutSubmit, /type="datetime-local"/, "Scout report creation should use native datetime-local inputs");
+assert.match(app, /type="datetime-local"/, "Scout report editing should use native datetime-local inputs");
 assert.match(app, /function validateScoutVisitDateTime/, "Scout report datetime validation helper should exist");
 assert.match(app, /SCOUT_VISIT_TIME_FUTURE_GRACE_MS/, "future visit times should use a small grace window");
 assert.match(app, /function scoutReportObservedAt/, "Scout reports should have an observed-time resolver");
@@ -18,7 +21,7 @@ assert.match(app, /adminEditModeActive/, "datetime edits should be limited to ad
 assert.match(app, /scout_report_datetime_updated/, "datetime edits should be audit-tracked when possible");
 assert.match(app, /observed_at: observedAt/, "Supabase Scout report writes should include observed_at");
 assert.match(app, /\.order\("observed_at"/, "Scout backend load should sort by observed_at");
-assert.match(app, /return scoutReportSortTime\(b\) - scoutReportSortTime\(a\)/, "Scout report sorting should use observed-at helper");
+assert.match(reportRowsSelector, /\.sort\(\(a, b\) => scoutReportSortTime\(b\) - scoutReportSortTime\(a\)\)/, "Visible Scout reports should sort newest first using the observed-at helper");
 assert.match(app, /createdAt: submittedAt/, "Scout create flow should preserve created/submitted time separately from observed time");
 assert.match(app, /Submitted: \{submittedLabel\}/, "admin/detail views should expose submitted time separately");
 

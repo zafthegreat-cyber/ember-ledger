@@ -65,7 +65,7 @@ function createActivity(title, detail) {
   return { id: `activity-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, title, detail, createdAt: new Date().toISOString() };
 }
 
-export default function FlipScoutPage({ onOpenRestocks, initialScreen = "deals", initialSubview = "", onViewChange, featureControls = EMPTY_FEATURE_CONTROLS }) {
+export default function FlipScoutPage({ onOpenRestocks, onReportRestock, initialScreen = "deals", initialSubview = "", onViewChange, featureControls = EMPTY_FEATURE_CONTROLS }) {
   const [repository] = useState(() => createFlipScoutRepository());
   const moreMenuRef = useRef(null);
   const [state, setState] = useState(() => repository.load());
@@ -250,7 +250,7 @@ export default function FlipScoutPage({ onOpenRestocks, initialScreen = "deals",
         <Suspense fallback={<LoadingState title={`Loading ${activeTitle}`} description="Preparing this workspace." />}>
         {activeScreen === "dashboard" ? <DashboardScreen state={state} onNavigate={navigate} /> : null}
         {activeScreen === "deals" ? <DealsScreen deals={state.deals} initialMode={subview} navigation={findNavigation} onSave={saveRecord} onDelete={deleteRecord} onAnalyze={analyzeDeal} /> : null}
-        {activeScreen === "restocks" ? <RestocksScreen onOpenRestocks={onOpenRestocks} /> : null}
+        {activeScreen === "restocks" ? <RestocksScreen onOpenRestocks={onOpenRestocks} onReportRestock={onReportRestock} /> : null}
         {activeScreen === "appraise" ? <AppraiserScreen seed={appraisalSeed} onSave={saveRecord} repository={repository} analysisRecords={intelligenceAnalyses} onAnalysisStored={analysisStored} /> : null}
         {activeScreen === "buy-offer" ? <BuyOfferScreen /> : null}
         {activeScreen === "auctions" ? <AuctionsScreen auctions={state.auctions} initialMode={subview} onSave={saveRecord} onDelete={deleteRecord} /> : null}

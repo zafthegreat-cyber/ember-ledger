@@ -1,0 +1,66 @@
+html body .app[data-theme] .scout-reports-landing {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+  width: min(1040px, 100%);
+  margin: 0 auto;
+  padding: 18px 12px max(100px, calc(28px + env(safe-area-inset-bottom)));
+}
+.scout-reports-landing__header { display: flex; align-items: start; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
+.scout-reports-landing__header > div { flex: 1 1 300px; }
+.scout-reports-landing__header > div > span { color: var(--text-secondary); font-size: 12px; font-weight: 600; }
+html body .app[data-theme] .scout-reports-landing__header h2 { margin: 6px 0 8px; color: var(--text-primary); font-size: clamp(22px, 3vw, 28px); line-height: 1.3; }
+.scout-reports-landing__header p { max-width: 65ch; margin: 0; color: var(--text-secondary); font-size: 14px; line-height: 1.6; }
+.scout-reports-landing__feed { display: grid; gap: 12px; min-width: 0; }
+html body .app[data-theme] .scout-reports-landing .scout-page-report-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 112px;
+  gap: 16px 20px;
+  margin: 0;
+  padding: 18px;
+  min-width: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--surface-primary);
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.scout-reports-landing .scout-report-card-main { display: grid; gap: 14px; min-width: 0; }
+.scout-reports-landing .scout-report-title-row { display: flex; flex-wrap: wrap; align-items: start; justify-content: space-between; gap: 10px; }
+.scout-reports-landing .scout-report-title-row > div { min-width: 0; flex: 1 1 180px; }
+html body .app[data-theme] .scout-reports-landing .scout-report-title-row h3 { margin: 0; color: var(--text-primary); font-size: 17px; line-height: 1.4; }
+.scout-reports-landing .scout-report-title-row p { margin: 4px 0 0; color: var(--text-secondary); font-size: 13px; line-height: 1.5; }
+html body .app[data-theme] .scout-reports-landing .scout-report-status { flex: 0 1 auto; padding: 4px 8px; border: 1px solid var(--border-subtle); border-radius: 6px; background: var(--surface-secondary); color: var(--text-primary); font: 600 12px/1.5 var(--font-ui); white-space: normal; }
+.scout-reports-landing .scout-report-human-summary { display: grid; gap: 5px; margin: 0; color: var(--text-secondary); font-size: 13px; line-height: 1.5; }
+.scout-reports-landing .scout-report-human-summary strong { color: var(--text-primary); font-size: 15px; line-height: 1.5; }
+.scout-reports-landing .scout-report-human-summary > span { display: block; }
+.scout-reports-landing .scout-report-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px 16px; padding-top: 12px; border-top: 1px solid var(--border-subtle); color: var(--text-secondary); font-size: 13px; line-height: 1.5; }
+.scout-reports-landing .scout-report-meta > span { display: block; min-width: 0; }
+.scout-reports-landing .scout-signal-badge-row { display: flex; flex-wrap: wrap; gap: 7px; margin: 0; }
+html body .app[data-theme] .scout-reports-landing .scout-signal-badge-row .mini-badge { display: inline-flex; align-items: center; padding: 4px 8px; border: 1px solid var(--border-subtle); border-radius: 5px; background: var(--surface-secondary); color: var(--text-secondary); font: 500 12px/1.5 var(--font-ui); white-space: normal; }
+.scout-reports-landing .scout-report-items { display: grid; gap: 6px; padding: 12px; border: 1px solid var(--border-subtle); border-radius: 7px; background: var(--surface-secondary); color: var(--text-primary); font-size: 13px; line-height: 1.6; }
+.scout-reports-landing .scout-report-items > strong { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+.scout-reports-landing .scout-report-items p { margin: 0; }
+.scout-reports-landing .scout-report-historical-note { margin: 0; color: var(--text-secondary); font-size: 13px; line-height: 1.5; }
+.scout-reports-landing .scout-report-side { display: flex; flex-direction: column; align-items: end; gap: 12px; min-width: 0; color: var(--text-secondary); font-size: 12px; line-height: 1.5; }
+.scout-reports-landing .scout-report-side img { display: block; width: 112px; max-width: 100%; height: 112px; object-fit: cover; border-radius: 7px; }
+.scout-reports-landing .scout-report-card-action { grid-column: 1 / -1; display: flex; justify-content: flex-start; padding-top: 12px; border-top: 1px solid var(--border-subtle); }
+html body .app[data-theme] .scout-reports-landing button { min-width: 44px !important; min-height: 44px !important; white-space: normal; }
+html body .app[data-theme] .scout-reports-landing .scout-page-report-card button { padding: 10px 13px !important; border: 1px solid var(--border-strong) !important; border-radius: 7px !important; background: var(--surface-primary) !important; color: var(--text-primary) !important; font: 600 13px/1.4 var(--font-ui) !important; text-shadow: none !important; box-shadow: none !important; }
+html body .app[data-theme] .scout-reports-landing .scout-page-report-card .overflow-menu-delete { border-color: var(--status-danger) !important; color: var(--status-danger) !important; background: var(--danger-background) !important; }
+.scout-reports-landing .overflow-menu { position: relative; flex-shrink: 0; }
+.scout-reports-landing .overflow-menu-list { position: absolute; z-index: 60; right: 0; bottom: calc(100% + 6px); display: grid; gap: 6px; width: min(200px, calc(100vw - 72px)); padding: 8px; border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--surface-elevated); box-shadow: var(--shadow-2); }
+.scout-reports-landing .overflow-menu-list button { width: 100%; text-align: left; }
+.scout-reports-landing button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
+.scout-reports-landing__empty { padding: 24px 18px; border: 1px solid var(--border-subtle); border-radius: 10px; background: var(--surface-primary); }
+.scout-reports-landing__empty > svg { color: var(--action-primary); }
+.scout-reports-landing__empty h3 { margin: 12px 0 6px; color: var(--text-primary); font-size: 17px; }
+.scout-reports-landing__empty p { max-width: 60ch; margin: 0; color: var(--text-secondary); font-size: 14px; line-height: 1.6; }
+.scout-reports-landing > .ops-button { justify-self: start; }
+@media (max-width: 600px) {
+  .scout-reports-landing__header > .ops-button { width: 100%; }
+  html body .app[data-theme] .scout-reports-landing .scout-page-report-card { grid-template-columns: minmax(0, 1fr); padding: 14px; gap: 14px; }
+  .scout-reports-landing .scout-report-meta { grid-template-columns: minmax(0, 1fr); }
+  .scout-reports-landing .scout-report-side { flex-direction: row; align-items: center; justify-content: space-between; }
+  .scout-reports-landing .scout-report-side img { width: 72px; height: 72px; }
+}

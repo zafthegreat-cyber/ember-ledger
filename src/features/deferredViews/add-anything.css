@@ -18,6 +18,7 @@ html body .app[data-theme] .flow-modal[data-flow="addActionSheet"] > .flow-modal
   padding: 12px 3px 3px;
 }
 .flow-modal[data-flow="addActionSheet"] .add-anything-flow { display: grid; gap: 14px; }
+html body .app[data-theme] .flow-modal[data-flow="addActionSheet"] .add-anything-report { border: 1px solid var(--action-primary) !important; border-radius: 10px !important; background: var(--surface-secondary) !important; padding: 14px 12px !important; }
 .flow-modal[data-flow="addActionSheet"] .add-anything-path-header { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 12px; }
 .flow-modal[data-flow="addActionSheet"] .add-anything-path-header > button { min-width: 44px; min-height: 44px; margin: 0; padding: 8px 10px; }
 .flow-modal[data-flow="addActionSheet"] .add-anything-path-header strong { display: block; color: var(--text-primary); font-size: 15px; line-height: 1.4; }
