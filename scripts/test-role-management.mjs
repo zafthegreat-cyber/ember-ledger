@@ -40,7 +40,12 @@ assert.equal(canAssignAppRole({ userId: "admin", appRole: "admin" }, { userId: "
 assert.equal(canAssignAppRole({ userId: "admin", appRole: "admin" }, { userId: "target" }, "admin"), false);
 assert.equal(canAssignAppRole({ userId: "owner", appRole: "owner" }, { userId: "target" }, "admin"), true);
 assert.equal(canAssignAppRole({ userId: "owner", appRole: "owner" }, { userId: "owner" }, "user"), false);
-assert.equal(isOfficialAdminProfile({ displayName: "official admin ember" }), true);
+assert.equal(isOfficialAdminProfile({ displayName: "official admin ember" }), false);
+for (const key of ["displayName", "fullName", "username", "publicUsername", "public_username"]) {
+  assert.equal(appRoleForProfile({ [key]: "official admin tide" }), APP_ROLES.USER, `${key} cannot grant admin access`);
+}
+assert.equal(appRoleForProfile({ user_metadata: { role: "owner", is_admin: true } }), APP_ROLES.USER);
+assert.equal(appRoleForProfile({ app_metadata: { role: "owner" } }), APP_ROLES.OWNER);
 assert.equal(isOfficialAdminProfile({ displayName: "Local Scout" }), false);
 
 assert.match(migration, /add column if not exists app_role text not null default 'user'/i, "profiles.app_role should be added");

@@ -1,4 +1,7 @@
 import DeferredModalBoundary from "./features/deferredViews/DeferredModalBoundary";
+import CloudSyncPanel from "./features/persistence/CloudSyncPanel.jsx";
+import { useCloudWorkspace } from "./features/persistence/CloudWorkspaceContext.js";
+import { canUseHostedAppSupplement, selectHostedAppSupplement } from "./features/persistence/hostedAppSupplement.js";
 import { focusFlowModalContent } from "./features/deferredViews/flowModalFocus.js";
 import { lazy, Suspense, useCallback, useDeferredValue, useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import "./App.css";
@@ -6751,6 +6754,7 @@ function scrollToPageTop() {
   }
 
 export default function App() {
+  const cloudWorkspace = useCloudWorkspace();
   const initialRouteStateRef = useRef(null);
   if (!initialRouteStateRef.current) initialRouteStateRef.current = loadInitialRouteState();
   const initialRouteState = initialRouteStateRef.current;
@@ -7369,6 +7373,7 @@ export default function App() {
   const [bulkImportText, setBulkImportText] = useState("");
   const [bulkImportPreview, setBulkImportPreview] = useState([]);
   const [localDataLoaded, setLocalDataLoaded] = useState(false);
+  const [hostedSupplementOwner, setHostedSupplementOwner] = useState("");
   const [localAppStorageGuard] = useState(createLegacyAppStorageGuard);
   const localAppStorageError = useSyncExternalStore(localAppStorageGuard.subscribe, localAppStorageGuard.getError, localAppStorageGuard.getError);
   const [scoutSnapshot, setScoutSnapshot] = useState(createEmptyScoutSnapshot);
@@ -16642,6 +16647,50 @@ export default function App() {
   }, [user?.id, currentUserProfile?.id, currentUserProfile?.userId, currentUserProfile?.appAccess, currentUserProfile?.app_access, currentUserProfile?.betaStatus, currentUserProfile?.beta_status, currentUserProfile?.betaAccessStatus, currentUserProfile?.beta_access_status, shorelineState.betaRequest?.status, betaAccessForEffects, profileReadyForEffects, user]);
 
   useEffect(() => {
+    if (!canUseHostedAppSupplement({ localDevelopment: BETA_LOCAL_MODE, contextOwnerId: cloudWorkspace?.user?.id,
+      sessionOwnerId: user?.id, guestPreview: guestPreviewActive, profileReady: profileReadyForEffects, appAccess: betaAccessForEffects })) return;
+    if (hostedSupplementOwner === user.id) return;
+    // The outer cloud boundary has already attributed and hydrated this device.
+    // Read only supplemental fields: hosted financial/inventory rows keep their
+    // existing table authority and are never imported from this cache.
+    const loaded = localAppStorageGuard.load(localStorage);
+    if (loaded.error) return;
+    const saved = selectHostedAppSupplement(loaded.data);
+    setPurchasers(Array.isArray(saved.purchasers) ? saved.purchasers.map((entry) => ({ ...(normalizePurchasers([entry])[0] || {}), ...entry })) : []);
+    setTideTradrWatchlist(Array.isArray(saved.tideTradrWatchlist) ? saved.tideTradrWatchlist : []);
+    setTideTradrLookupId(saved.tideTradrLookupId || "");
+    setMarketPriceCache(saved.marketPriceCache || loadPriceCache());
+    setMarketPriceMemories(Array.isArray(saved.marketPriceMemories) ? saved.marketPriceMemories.map(normalizeMarketPriceMemoryEntry) : []);
+    setItemComparisons(Array.isArray(saved.itemComparisons) ? saved.itemComparisons.map(normalizeItemComparisonEntry) : []);
+    setVaultCollectionSets(Array.isArray(saved.vaultCollectionSets) ? saved.vaultCollectionSets.map(normalizeVaultCollectionSetEntry) : []);
+    setVaultDisplayCase(Array.isArray(saved.vaultDisplayCase) ? saved.vaultDisplayCase.map(normalizeVaultDisplayCaseEntry) : []);
+    setUserSearchAliases(Array.isArray(saved.userSearchAliases) ? saved.userSearchAliases : []);
+    setTradeRecords(Array.isArray(saved.tradeRecords) ? saved.tradeRecords : []);
+    setSparkGifts(Array.isArray(saved.sparkGifts) ? saved.sparkGifts.map((gift) => ({ ...gift, ...normalizeSparkGiftDraft(gift) })) : []);
+    setSparkKidPacks(Array.isArray(saved.sparkKidPacks) ? saved.sparkKidPacks.map((pack) => ({ ...pack, ...normalizeSparkKidPackDraft(pack) })) : []);
+    setSparkEventPlans(Array.isArray(saved.sparkEventPlans) ? saved.sparkEventPlans.map((plan) => ({ ...plan, ...normalizeSparkEventSupportDraft(plan) })) : []);
+    setCollectorEventPlans(Array.isArray(saved.collectorEventPlans) ? saved.collectorEventPlans.map((plan) => ({ ...plan, ...normalizeCollectorEventPlanDraft(plan) })) : []);
+    if (saved.dealForm) setDealForm((current) => ({ ...current, ...saved.dealForm }));
+    if (saved.locationSettings) setLocationSettings((current) => ({ ...current, ...saved.locationSettings }));
+    if (saved.dashboardCardStyle) setDashboardCardStyle(normalizeDashboardCardStyle(saved.dashboardCardStyle));
+    // Keep saved choices intact while account toolsets finish loading. Rendering
+    // already normalizes these preferences against the current access context.
+    if (saved.appSetupPersonalization) setAppSetupPersonalization(saved.appSetupPersonalization);
+    setHostedSupplementOwner(user.id);
+  }, [cloudWorkspace?.user?.id, user?.id, guestPreviewActive, profileReadyForEffects, betaAccessForEffects, hostedSupplementOwner, localAppStorageGuard]);
+
+  useEffect(() => {
+    if (!canUseHostedAppSupplement({ localDevelopment: BETA_LOCAL_MODE, contextOwnerId: cloudWorkspace?.user?.id,
+      sessionOwnerId: user?.id, guestPreview: guestPreviewActive, profileReady: profileReadyForEffects, appAccess: betaAccessForEffects })
+      || hostedSupplementOwner !== user.id) return;
+    localAppStorageGuard.save(localStorage, selectHostedAppSupplement({ purchasers, tideTradrWatchlist, tideTradrLookupId,
+      marketPriceCache, marketPriceMemories, itemComparisons, vaultCollectionSets, vaultDisplayCase, userSearchAliases,
+      tradeRecords, sparkGifts, sparkKidPacks, sparkEventPlans, collectorEventPlans, dealForm, locationSettings, dashboardCardStyle, appSetupPersonalization }));
+  }, [cloudWorkspace?.user?.id, user?.id, guestPreviewActive, profileReadyForEffects, betaAccessForEffects, hostedSupplementOwner,
+    localAppStorageGuard, purchasers, tideTradrWatchlist, tideTradrLookupId, marketPriceCache, marketPriceMemories, itemComparisons,
+    vaultCollectionSets, vaultDisplayCase, userSearchAliases, tradeRecords, sparkGifts, sparkKidPacks, sparkEventPlans, collectorEventPlans, dealForm, locationSettings, dashboardCardStyle, appSetupPersonalization]);
+
+  useEffect(() => {
     if (BETA_LOCAL_MODE || !user || user.id === "local-beta" || !isSupabaseConfigured || !supabase) return undefined;
     if (!profileReadyForEffects || !betaAccessForEffects) {
       const fallbackForUser = createDefaultWorkspaceBundle(user);
@@ -17247,7 +17296,7 @@ export default function App() {
     const text = String(message || "").trim();
     if (!text) return "Sign-up is temporarily unavailable. Try again.";
     if (/already registered|already exists|user already/i.test(text)) return "Email already registered. Try logging in.";
-    if (/password/i.test(text) && /(weak|short|least|minimum|6)/i.test(text)) return "Password must be at least 6 characters.";
+    if (/password/i.test(text) && /(weak|short|least|minimum|6|8)/i.test(text)) return "Use a strong password with at least 8 characters.";
     if (/invalid.*email|email.*invalid/i.test(text)) return "Enter a valid email address.";
     if (/signup|sign-up|signups|disabled|not allowed/i.test(text)) return "Sign-up is temporarily unavailable.";
     return text;
@@ -17456,8 +17505,8 @@ export default function App() {
       setAuthError("Enter your password.");
       return;
     }
-    if (authMode === "signup" && password.length < 6) {
-      setAuthError("Password must be at least 6 characters.");
+    if (authMode === "signup" && password.length < 8) {
+      setAuthError("Password must be at least 8 characters.");
       return;
     }
     const signupFirstName = normalizePersonName(authFirstName);
@@ -17587,7 +17636,11 @@ export default function App() {
 
   async function signOut() {
     if (isSupabaseConfigured && supabase && user?.id !== "local-beta") {
-      await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut({ scope: "local" });
+      if (error) {
+        setVaultToast("Could not sign out securely. Please reconnect and try again.");
+        return;
+      }
     }
     if (BETA_LOCAL_MODE) {
       setUser({ id: "local-beta", email: "local beta mode" });
@@ -17596,7 +17649,6 @@ export default function App() {
       return;
     }
 
-    if (isSupabaseConfigured && supabase) await supabase.auth.signOut();
     setUser(null);
   }
 
@@ -47258,11 +47310,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
     return renderUtilityPageShell({
       title: "Data Safety & Export",
-      subtitle: "Review local browser storage, export/import beta data, clear private beta data, and submit privacy requests.",
+      subtitle: "Manage saved records, download backups, recover missing records, and review privacy options.",
       className: "data-backup-utility-page",
       children: (
         <>
-          <div className="drawer-info-card utility-card">
+          {!cloudWorkspace && <div className="drawer-info-card utility-card">
             <strong>Optional Cloud Sync</strong>
             <p className="compact-subtitle">{BETA_LOCAL_MODE ? "Your beta data is stored locally in this browser. Clearing browser data may remove it; export before switching devices. Cloud sync requires backend support later." : isSupabaseConfigured ? "Cloud sync is enabled for QA. Sign in to save Phase 2 workflows to Supabase." : "Cloud sync is enabled for QA, but Supabase URL/key configuration is missing."}</p>
             <dl className="drawer-status-list">
@@ -47273,9 +47325,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <button type="button" className={cloudSyncPreference === "local" ? "drawer-link active" : "drawer-link"} onClick={() => updateCloudSyncPreference("local")}>Keep Private Beta Local</button>
               <button type="button" className={cloudSyncPreference === "cloud" ? "drawer-link active" : "drawer-link"} onClick={() => updateCloudSyncPreference("cloud")}>Request Cloud Sync Access</button>
             </div>
-          </div>
+          </div>}
+          <CloudSyncPanel />
           {renderArchiveProofHistoryPanel()}
-          <div className="utility-card-wide">
+          {!cloudWorkspace && <div className="utility-card-wide">
             <LazyToolBoundary label="Loading backup tools...">
               <BackupExportImport
                 storageStatus={storageStatus}
@@ -47287,7 +47340,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 onClearDemoData={resetBetaLocalData}
               />
             </LazyToolBoundary>
-          </div>
+          </div>}
           <div className="drawer-info-card utility-card">
             <strong>Collection transfer and bulk add</strong>
             <p className="compact-subtitle">Bring in a CSV, copied list, seller list, or manually staged batch. Every row goes through review before anything is saved.</p>
@@ -51214,7 +51267,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       ) : null}
 
       <main className={`main app-shell-themed app-shell-${resolvedAppTheme} dashboard-card-style-${dashboardCardStyle}`} data-theme={resolvedAppTheme} tabIndex={-1}>
-        {BETA_LOCAL_MODE && localAppStorageError ? (
+        {localAppStorageError ? (
           <aside className="local-storage-save-warning" role="alert">
             <strong>Local data needs attention</strong>
             <p>{localAppStorageError}</p>

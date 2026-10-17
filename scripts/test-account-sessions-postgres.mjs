@@ -1,0 +1,175 @@
+import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import pg from "pg";
+
+// This suite creates and removes only its uniquely named disposable loopback DB.
+const database = `code3_test_accounts_${randomUUID().replaceAll("-", "")}`;
+const connection = { host: "127.0.0.1", port: Number(process.env.CODE3_TEST_PG_PORT || 55439), user: process.env.CODE3_TEST_PG_USER || "code3qa", database: "postgres" };
+const admin = new pg.Client(connection);
+await admin.connect();
+await admin.query(`create database ${database}`);
+const db = new pg.Client({ ...connection, database });
+let checks = 0;
+try {
+  await db.connect();
+  await db.query(`
+    do $$ begin create role anon; exception when duplicate_object then null; end $$;
+    do $$ begin create role authenticated; exception when duplicate_object then null; end $$;
+    create schema auth;
+    create table auth.users(id uuid primary key, email_confirmed_at timestamptz, deleted_at timestamptz, banned_until timestamptz);
+    create table auth.sessions(id uuid primary key, user_id uuid references auth.users, not_after timestamptz);
+    create function auth.jwt() returns jsonb language sql stable as $$ select coalesce(nullif(current_setting('request.jwt.claims',true),''),'{}')::jsonb $$;
+    create function auth.uid() returns uuid language sql stable as $$ select (auth.jwt()->>'sub')::uuid $$;
+    grant usage on schema auth to authenticated,anon;
+    create table public.profiles(id uuid primary key references auth.users, display_name text, app_role text default 'user', user_role text default 'user', tier text default 'free', plan_tier text default 'free', beta_status text default 'not_requested', beta_access_status text default 'approved', app_access boolean default false, updated_at timestamptz default now());
+    create function public.current_app_role() returns text language sql stable as $$ select coalesce(auth.jwt()->'app_metadata'->>'app_role',(select app_role from public.profiles where id=auth.uid()),'user') $$;
+    create function public.normalized_app_role(value text) returns text language sql stable as $$ select case when value in ('owner','admin','moderator','beta_user') then value else 'user' end $$;
+    create function public.prevent_profile_role_tier_self_update() returns trigger language plpgsql as $$ begin return new; end $$;
+    create trigger prevent_profile_role_tier_self_update before update on public.profiles for each row execute function public.prevent_profile_role_tier_self_update();
+    create function public.prevent_self_access_escalation() returns trigger language plpgsql as $$ begin
+      if old.id=auth.uid() and public.current_app_role() not in ('owner','admin','moderator') then
+        new.beta_status:=old.beta_status; new.beta_access_status:=old.beta_access_status; new.app_access:=old.app_access;
+      end if; return new; end $$;
+    create trigger prevent_self_access_escalation before update on public.profiles for each row execute function public.prevent_self_access_escalation();
+    alter table public.profiles enable row level security;
+    grant select,insert,update on public.profiles to authenticated;
+    create policy own_select on public.profiles for select to authenticated using(id=auth.uid());
+    create policy own_insert on public.profiles for insert to authenticated with check(id=auth.uid());
+    create policy own_update on public.profiles for update to authenticated using(id=auth.uid()) with check(id=auth.uid());
+    create table public.store_user_watchlist(id uuid primary key default gen_random_uuid(),user_id uuid,notes text);
+    create table public.saved_listings(like public.store_user_watchlist including all);
+    alter table public.store_user_watchlist enable row level security;
+    alter table public.saved_listings enable row level security;
+    grant select,insert,update,delete on public.store_user_watchlist,public.saved_listings to authenticated;
+    create policy own_rows on public.store_user_watchlist for all to authenticated using(user_id=auth.uid()) with check(user_id=auth.uid());
+    create policy own_rows on public.saved_listings for all to authenticated using(user_id=auth.uid()) with check(user_id=auth.uid());
+    create function public.test_admin_role_update(target uuid, new_role text) returns void language plpgsql security definer set search_path='' as $$
+    begin
+      if public.current_app_role() not in ('owner','admin') then raise exception 'Admin required'; end if;
+      update public.profiles set app_role=new_role,user_role=case when new_role in ('owner','admin') then 'admin' when new_role='moderator' then 'moderator' else 'user' end where id=target;
+    end $$;
+    create schema storage;
+    create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text,owner_id text,owner uuid,name text);
+    alter table storage.objects enable row level security;
+    grant usage on schema storage to authenticated,anon;
+    grant select,insert,update,delete on storage.objects to authenticated;
+    grant select on storage.objects to anon;
+    create policy legacy_receipts_read on storage.objects for select to public using(bucket_id='receipts');
+    create policy legacy_receipts_write on storage.objects for all to authenticated using(bucket_id='receipts') with check(bucket_id='receipts');
+  `);
+  const userA = randomUUID(); const userB = randomUUID(); const userC = randomUUID();
+  const sidA = randomUUID(); const sidA2 = randomUUID(); const sidFresh = randomUUID(); const sidB = randomUUID();
+  await db.query("insert into auth.users(id,email_confirmed_at) values($1,now()),($2,now()),($3,now())", [userA,userB,userC]);
+  await db.query("insert into auth.sessions values($1,$2,null),($3,$2,null),($4,$2,null),($5,$6,null)", [sidA,userA,sidA2,sidFresh,sidB,userB]);
+  await db.query("insert into public.profiles(id,display_name) values($1,'Existing collector'),($2,'Existing seller')", [userA,userB]);
+  const original = (await db.query("select * from public.profiles order by id")).rows;
+  const migration = await readFile(new URL("../supabase/migrations/20261017192845_code3_account_sessions_and_role_protection.sql", import.meta.url), "utf8");
+  await db.query(migration);
+  assert.deepEqual((await db.query("select * from public.profiles order by id")).rows,original); checks++;
+  async function claims(user=userA,sid=sidA,overrides={}) {
+    await db.query("reset role");
+    await db.query("select set_config('request.jwt.claims',$1,false)", [JSON.stringify({sub:user,session_id:sid,role:"authenticated",exp:Date.now()/1000+3600,amr:[{method:"password",timestamp:Math.floor(Date.now()/1000)}],...overrides})]);
+    await db.query("set role authenticated");
+  }
+  async function rpc(name,args=[]) {
+    const placeholders=args.map((_,index)=>`$${index+1}`).join(",");
+    return (await db.query(`select public.${name}(${placeholders}) as value`,args)).rows[0].value;
+  }
+  await claims(); assert.equal(await rpc("code3_current_session_valid"),true); checks++;
+  for (const table of ["store_user_watchlist","saved_listings"]) await db.query(`insert into public.${table}(user_id,notes) values($1,'existing')`,[userA]);
+  await db.query("insert into storage.objects(bucket_id,owner_id,name) values('receipts',$1,'original-owned-file')",[userA]);
+  await claims(userB,sidB);
+  assert.equal((await db.query("update storage.objects set name='stolen'")).rowCount,0); checks++;
+  assert.equal((await db.query("delete from storage.objects")).rowCount,0); checks++;
+  await assert.rejects(db.query("insert into storage.objects(bucket_id,owner_id,name) values('receipts',$1,'forged')",[userA]),/row-level security/); checks++;
+  await claims();
+  assert.equal((await db.query("update storage.objects set name='original-owned-file-updated'")).rowCount,1); checks++;
+  const deviceA=await rpc("code3_register_account_session",["Desktop"]);
+  await claims(userA,sidA2); const deviceA2=await rpc("code3_register_account_session",["Phone"]);
+  await claims(userB,sidB); await rpc("code3_register_account_session",["Other account"]);
+  assert.equal((await rpc("code3_list_account_sessions")).length,1); checks++;
+  await assert.rejects(db.query("select * from code3_private.account_sessions"),/permission denied/); checks++;
+  await claims(); assert.equal((await rpc("code3_list_account_sessions")).length,2); checks++;
+  const digest="a".repeat(64);
+  const challenge=await rpc("code3_prepare_account_confirmation",["BACKUP_RECOVERY",digest]);
+  await assert.rejects(rpc("code3_complete_account_confirmation",[challenge.challengeId]),/new password/); checks++;
+  await claims(userB,sidB); await assert.rejects(rpc("code3_complete_account_confirmation",[challenge.challengeId]),/new password/); checks++;
+  await claims(userA,sidFresh,{amr:[{method:"password",timestamp:Math.floor(Date.now()/1000)-600}]});
+  await assert.rejects(rpc("code3_complete_account_confirmation",[challenge.challengeId]),/Fresh password/); checks++;
+  await claims(userA,sidFresh); const proof=await rpc("code3_complete_account_confirmation",[challenge.challengeId]);
+  await assert.rejects(rpc("code3_complete_account_confirmation",[challenge.challengeId]),/new password/); checks++;
+  await assert.rejects(rpc("code3_consume_account_confirmation",[proof.challengeId,proof.grant,"BACKUP_RECOVERY",digest]),/different operation/); checks++;
+  await claims();
+  await assert.rejects(rpc("code3_consume_account_confirmation",[proof.challengeId,proof.grant,null,null]),/different operation/); checks++;
+  await assert.rejects(rpc("code3_consume_account_confirmation",[proof.challengeId,proof.grant,"CLOUD_RESTORE",digest]),/different operation/); checks++;
+  await assert.rejects(rpc("code3_consume_account_confirmation",[proof.challengeId,proof.grant,"BACKUP_RECOVERY","b".repeat(64)]),/different operation/); checks++;
+  assert.equal(await rpc("code3_consume_account_confirmation",[proof.challengeId,proof.grant,"BACKUP_RECOVERY",digest]),true); checks++;
+  await assert.rejects(rpc("code3_consume_account_confirmation",[proof.challengeId,proof.grant,"BACKUP_RECOVERY",digest]),/different operation/); checks++;
+  const revokeDigest=(await db.query("select encode(sha256(convert_to($1,'UTF8')),'hex') as value",[JSON.stringify({action:"REVOKE_APP_SESSION",targetSessionId:deviceA2.id})])).rows[0].value;
+  const revokeChallenge=await rpc("code3_prepare_account_confirmation",["SESSION_REVOKE",revokeDigest]);
+  await claims(userA,sidFresh); const revokeProof=await rpc("code3_complete_account_confirmation",[revokeChallenge.challengeId]);
+  await claims(); assert.equal(await rpc("code3_revoke_account_session",[deviceA2.id,revokeProof.challengeId,revokeProof.grant]),true); checks++;
+  await claims(userA,sidA2); assert.equal(await rpc("code3_current_session_valid"),false); checks++;
+  await claims(userA,sidA2,{app_metadata:{app_role:"admin",role:"admin",is_admin:true,tier:"founder"}});
+  assert.equal(await rpc("current_app_role"),"user"); checks++;
+  assert.equal(await rpc("is_admin"),false); checks++;
+  assert.equal(await rpc("is_admin_or_moderator"),false); checks++;
+  assert.equal(await rpc("has_full_app_access"),false); checks++;
+  await assert.rejects(rpc("test_admin_role_update",[userB,"moderator"]),/Admin required/); checks++;
+  assert.equal((await db.query("select * from public.profiles")).rows.length,0); checks++;
+  assert.equal((await db.query("update public.profiles set display_name='revoked write'")).rowCount,0); checks++;
+  for (const table of ["store_user_watchlist","saved_listings"]) {
+    assert.equal((await db.query(`select * from public.${table}`)).rowCount,0); checks++;
+    assert.equal((await db.query(`update public.${table} set notes='revoked'`)).rowCount,0); checks++;
+    await assert.rejects(db.query(`insert into public.${table}(user_id,notes) values($1,'revoked')`,[userA]),/row-level security/); checks++;
+  }
+  assert.equal((await db.query("select * from storage.objects")).rows.length,0); checks++;
+  await assert.rejects(db.query("insert into storage.objects(bucket_id,owner_id,name) values('receipts',$1,'revoked')",[userA]),/row-level security/); checks++;
+  await assert.rejects(rpc("code3_register_account_session",["Revived"]),/current confirmed/); checks++;
+  await claims(userA,randomUUID()); assert.equal(await rpc("code3_current_session_valid"),false); checks++;
+  await claims(userA,sidA,{exp:Date.now()/1000-2}); assert.equal(await rpc("code3_current_session_valid"),false); checks++;
+  await claims(userA,sidB); assert.equal(await rpc("code3_current_session_valid"),false); checks++;
+  await claims();
+  await assert.rejects(db.query("update public.profiles set app_role='owner' where id=$1",[userA]),/authorized administrator/); checks++;
+  await assert.rejects(db.query("update public.profiles set plan_tier='founder' where id=$1",[userA]),/trusted billing/); checks++;
+  await assert.rejects(db.query("update public.profiles set id=$1 where id=$2",[userC,userA]),/ownership cannot be changed/); checks++;
+  await db.query("update public.profiles set display_name='Updated collector' where id=$1",[userA]); checks++;
+  await db.query("update public.profiles set app_access=true,beta_status='approved' where id=$1",[userA]);
+  assert.deepEqual((await db.query("select app_access,beta_status from public.profiles where id=$1",[userA])).rows[0],{app_access:false,beta_status:"not_requested"}); checks++;
+  await claims(userA,sidA,{app_metadata:{app_role:"admin"}});
+  await rpc("test_admin_role_update",[userB,"moderator"]); checks++;
+  // A definer RPC cannot bypass the legacy role column with an ordinary admin.
+  await db.query("reset role");
+  await db.query("create function public.test_legacy_admin_role_update(target uuid) returns void language sql security definer as $$ update public.profiles set user_role='admin' where id=target $$");
+  await claims(userA,sidA,{app_metadata:{app_role:"admin"}});
+  await assert.rejects(rpc("test_legacy_admin_role_update",[userB]),/authorized administrator/); checks++;
+  await assert.rejects(rpc("test_admin_role_update",[userA,"owner"]),/authorized administrator/); checks++;
+  await assert.rejects(rpc("test_admin_role_update",[userB,"owner"]),/authorized administrator/); checks++;
+  await claims(userA,sidA,{app_metadata:{app_role:"owner"}});
+  await rpc("test_admin_role_update",[userB,"admin"]); checks++;
+  await claims();
+  await db.query("reset role");
+  const sidC=randomUUID();
+  await db.query("insert into auth.sessions values($1,$2,null)",[sidC,userC]);
+  await claims(userC,sidC);
+  await assert.rejects(db.query("insert into public.profiles(id,app_role) values($1,'owner')",[userC]),/default role/); checks++;
+  await assert.rejects(db.query("insert into public.profiles(id,app_access) values($1,true)",[userC]),/default role/); checks++;
+  await db.query("insert into public.profiles(id) values($1)",[userC]);
+  assert.equal((await db.query("select beta_access_status from public.profiles where id=$1",[userC])).rows[0].beta_access_status,"not_requested"); checks++;
+  await db.query("reset role"); await db.query("set role anon");
+  await assert.rejects(rpc("code3_current_session_valid"),/permission denied/); checks++;
+  assert.equal((await db.query("select * from storage.objects")).rows.length,1); checks++;
+  await db.query("reset role");
+  assert.equal((await db.query("select count(*)::int as count from public.profiles")).rows[0].count,3); checks++;
+  await db.query("update auth.users set banned_until=now()+interval '1 hour' where id=$1",[userA]);
+  await claims(); assert.equal(await rpc("code3_current_session_valid"),false); checks++;
+  await db.query("reset role"); await db.query("update auth.users set banned_until=null,deleted_at=now() where id=$1",[userA]);
+  await claims(); assert.equal(await rpc("code3_current_session_valid"),false); checks++;
+  console.log(JSON.stringify({passed:checks,database,realPostgres:true,realProviderCredentialsUsed:false,existingProfilesPreserved:true}));
+} finally {
+  await db.end().catch(()=>{});
+  if (!/^code3_test_accounts_[a-f0-9]{32}$/.test(database)) throw new Error("Unsafe test database cleanup refused");
+  await admin.query(`drop database ${database}`);
+  await admin.end();
+}

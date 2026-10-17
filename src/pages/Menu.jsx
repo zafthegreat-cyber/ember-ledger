@@ -1,5 +1,7 @@
 import { AppNavIcon } from "../components/command-system/AppNavIcon.jsx";
 import { PageHeader, SecondaryButton } from "../components/operations/OperationsUI.jsx";
+import CloudSyncPanel from "../features/persistence/CloudSyncPanel.jsx";
+import { useCloudWorkspace } from "../features/persistence/CloudWorkspaceContext.js";
 import "./settings-layout.css";
 
 function SettingsArrow() {
@@ -40,6 +42,7 @@ function SettingsGroup({ id, title, children }) {
 }
 
 export default function MenuPage(props) {
+  const cloudWorkspace = useCloudWorkspace();
   const {
     activeWorkspaceName = "",
     adaptiveUiState = {},
@@ -123,6 +126,7 @@ export default function MenuPage(props) {
             </SettingsGroup>
 
             <SettingsGroup id="settings-support-heading" title="Records & support">
+              {cloudWorkspace && <SettingsDisclosure icon="data" title="Cloud saving & recovery" description="Account backups, device sync, and signed-in devices"><CloudSyncPanel /></SettingsDisclosure>}
               <SettingsRow icon="data" title="Archive & backups" description="Receipts, proof, exports, and private records" status={commandDeskSellerAccess ? "Seller records" : undefined} onClick={() => openUtilityPage("dataBackup")} />
               <SettingsRow icon="help" title="Help & app status" description="Get help, share feedback, or check known issues" onClick={() => openUtilityPage("help")} />
               {typeof renderAppBuildDetails === "function" ? (

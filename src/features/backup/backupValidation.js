@@ -73,6 +73,7 @@ function validateDealFinderState(source, data) {
 }
 
 export function resolveSourceSchemaVersion(source, data) {
+  if (source.validationAdapter === "business-compliance-v1" && Object.hasOwn(data || {}, "version")) return data.version;
   if (Object.prototype.hasOwnProperty.call(data || {}, "schemaVersion")) {
     const version = data.schemaVersion;
     if (!Number.isInteger(version)) throw new Error(`${source.displayName} has an invalid schemaVersion.`);
@@ -124,6 +125,13 @@ export function validateBackupSourceData(source, data, { requireSupportedSchema 
   }
   if (["deal-finder-v3", "deal-finder-v4", "deal-finder-v5"].includes(source?.validationAdapter)) {
     errors.push(...validateDealFinderState(source, data));
+  }
+  if (source?.validationAdapter === "business-compliance-v1") {
+    if (data?.version !== 1 || !Number.isFinite(Date.parse(data?.updatedAt))) errors.push("Business compliance version and update time are required.");
+    if (!data?.profile || typeof data.profile !== "object" || Array.isArray(data.profile)) errors.push("Business compliance profile must be an object.");
+    for (const field of ["setup", "deadlines", "documents"]) {
+      if (!Array.isArray(data?.[field]) || data[field].some((record) => !record || typeof record !== "object" || Array.isArray(record) || typeof record.id !== "string" || !record.id.trim())) errors.push(`Business compliance ${field} requires records with stable IDs.`);
+    }
   }
 
   return { valid: errors.length === 0, errors, schemaVersion };

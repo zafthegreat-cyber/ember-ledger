@@ -97,10 +97,12 @@ async function requestJson(baseUrl, path, options = {}) {
 
 test("Supabase verification calls getUser and returns a normalized principal", async () => {
   const calls = [];
-  const token = makeJwt({ sub: "owner-subject", iat: NOW_SECONDS - 10, exp: NOW_SECONDS + 600 });
+  const sessionId = "10000000-0000-4000-8000-000000000001";
+  const token = makeJwt({ sub: "owner-subject", iat: NOW_SECONDS - 10, exp: NOW_SECONDS + 600, session_id: sessionId });
   const provider = createSupabaseIdentityProvider({
     env: { SUPABASE_URL: "https://example.supabase.co", SUPABASE_ANON_KEY: "public-anon-test-key" },
     client: {
+      async rpc(name) { assert.equal(name, "code3_current_session_valid"); return { data: true, error: null }; },
       auth: {
         async getUser(receivedToken) {
           calls.push(receivedToken);
@@ -119,7 +121,30 @@ test("Supabase verification calls getUser and returns a normalized principal", a
   assert.equal(result.principal.subject, "owner-subject");
   assert.equal(result.principal.provider, "supabase");
   assert.equal(result.principal.emailVerified, true);
+  assert.equal(result.principal.providerSessionId, sessionId);
   assert.equal(Object.isFrozen(result.principal), true);
+});
+
+test("Supabase verification rejects signed-out sessions and fails closed if the session RPC is unavailable", async () => {
+  const token = makeJwt({ sub: "owner-subject", iat: NOW_SECONDS - 10, exp: NOW_SECONDS + 600, session_id: "10000000-0000-4000-8000-000000000001" });
+  for (const [response,reason] of [[{data:false,error:null},"invalid"],[{data:null,error:{code:"PGRST202"}},"unavailable"]]) {
+    const provider = createSupabaseIdentityProvider({
+      env: { VITE_SUPABASE_URL: "https://example.supabase.co", VITE_SUPABASE_ANON_KEY: "public-anon-test-key" },
+      client: { auth: { async getUser() { return { data: { user: { id: "owner-subject" } }, error:null }; } }, async rpc() { return response; } },
+      now: () => NOW_MS,
+    });
+    assert.equal(provider.isConfigured(),true);
+    assert.deepEqual(await provider.verifyAccessToken(token),{ok:false,reason});
+  }
+});
+
+test("Supabase verification rejects tokens without a verified provider session identifier", async () => {
+  const provider = createSupabaseIdentityProvider({
+    env: { SUPABASE_URL:"https://example.supabase.co",SUPABASE_ANON_KEY:"public-anon-test-key" },
+    client: { auth: { async getUser() { return { data: { user: { id:"owner-subject" } }, error:null }; } } },
+    now: () => NOW_MS,
+  });
+  assert.deepEqual(await provider.verifyAccessToken(makeJwt({sub:"owner-subject",iat:NOW_SECONDS-10,exp:NOW_SECONDS+600})),{ok:false,reason:"invalid"});
 });
 
 test("Supabase verification rejects expired tokens before getUser", async () => {

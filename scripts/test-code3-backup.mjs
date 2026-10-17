@@ -554,7 +554,7 @@ assert.ok(BACKUP_SOURCE_REGISTRY.some((source) => source.sourceId === "account-o
 assert.ok(BACKUP_SOURCE_REGISTRY.some((source) => source.sourceId === "inbox-order-intelligence" && source.includedInPhase1AExport));
 assert.ok(BACKUP_SOURCE_REGISTRY.some((source) => source.sourceId === "bot-operations" && source.includedInPhase1AExport));
 assert.ok(BACKUP_SOURCE_REGISTRY.some((source) => source.sourceId === "purchase-receiving" && source.includedInPhase1AExport));
-assert.equal(BACKUP_SOURCE_REGISTRY.length, 25);
-assert.equal(BACKUP_SOURCE_REGISTRY.filter((source) => source.includedInPhase1AExport).length, 21);
+assert.equal(BACKUP_SOURCE_REGISTRY.length, 26);
+assert.equal(BACKUP_SOURCE_REGISTRY.filter((source) => source.includedInPhase1AExport).length, 22);
 
 console.log(`Code 3 backup tests passed (${complete.backup.sections.length} sections, ${complete.backup.coverageSummary.recordCount} records).`);

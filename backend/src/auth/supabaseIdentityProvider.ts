@@ -3,7 +3,7 @@ import type { AuthPrincipal, IdentityProvider, IdentityVerificationResult } from
 
 type RuntimeEnvironment = Record<string, string | undefined>;
 
-type SupabaseAuthClient = Pick<SupabaseClient, "auth">;
+type SupabaseAuthClient = Pick<SupabaseClient, "auth"> & Partial<Pick<SupabaseClient, "rpc">>;
 
 type SupabaseProviderOptions = {
   env?: RuntimeEnvironment;
@@ -15,6 +15,7 @@ type TokenClaims = {
   sub?: unknown;
   iat?: unknown;
   exp?: unknown;
+  session_id?: unknown;
 };
 
 function decodeClaims(token: string): TokenClaims | null {
@@ -46,14 +47,16 @@ function normalizedPrincipal(user: User, claims: TokenClaims): AuthPrincipal | n
     emailVerified: Boolean(user.email_confirmed_at),
     issuedAt,
     expiresAt,
+    ...(typeof claims.session_id === "string" && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(claims.session_id)
+      ? { providerSessionId: claims.session_id } : {}),
   });
 }
 
 export function createSupabaseIdentityProvider(options: SupabaseProviderOptions = {}): IdentityProvider {
   const env = options.env || process.env;
   const now = options.now || Date.now;
-  const supabaseUrl = String(env.SUPABASE_URL || "").trim();
-  const supabaseAnonKey = String(env.SUPABASE_ANON_KEY || "").trim();
+  const supabaseUrl = String(env.SUPABASE_URL || env.VITE_SUPABASE_URL || "").trim();
+  const supabaseAnonKey = String(env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY || "").trim();
   const configured = Boolean(supabaseUrl && supabaseAnonKey);
   const client = options.client || (configured
     ? createClient(supabaseUrl, supabaseAnonKey, {
@@ -74,7 +77,20 @@ export function createSupabaseIdentityProvider(options: SupabaseProviderOptions 
         const { data, error } = await client.auth.getUser(token);
         if (error || !data?.user) return { ok: false, reason: "invalid" };
         const principal = normalizedPrincipal(data.user, claims);
-        return principal ? { ok: true, principal } : { ok: false, reason: "invalid" };
+        if (!principal?.providerSessionId) return { ok: false, reason: "invalid" };
+        // Check provider revocation when a real session identifier is available.
+        // The RPC runs as this user's JWT, never as a privileged service key.
+        if (principal.providerSessionId) {
+          const sessionClient = options.client || createClient(supabaseUrl, supabaseAnonKey, {
+            auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+            global: { headers: { Authorization: `Bearer ${token}` } },
+          });
+          if (!sessionClient.rpc) return { ok: false, reason: "unavailable" };
+          const current = await sessionClient.rpc("code3_current_session_valid");
+          if (current.error) return { ok: false, reason: "unavailable" };
+          if (current.data !== true) return { ok: false, reason: "invalid" };
+        }
+        return { ok: true, principal };
       } catch {
         return { ok: false, reason: "unavailable" };
       }

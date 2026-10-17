@@ -1,0 +1,21 @@
+.cloud-workspace-screen { min-height: 100dvh; display: grid; place-items: center; padding: max(24px, env(safe-area-inset-top)) 20px; background: var(--app-background); color: var(--text-primary); }
+.cloud-workspace-card { width: min(100%, 560px); padding: clamp(24px, 5vw, 40px); border: 1px solid var(--border-subtle); border-radius: 18px; background: var(--surface-primary); box-shadow: 0 8px 30px #0000000a; }
+.cloud-workspace-eyebrow { color: var(--text-secondary); font-size: .8rem; font-weight: 650; }
+.cloud-workspace-card h1 { font-size: clamp(1.5rem, 5vw, 2rem); line-height: 1.2; margin: 12px 0 18px; }
+.cloud-workspace-card p { line-height: 1.6; overflow-wrap: anywhere; }
+.cloud-workspace-card button, .cloud-workspace-panel button, .cloud-workspace-notice button { min-height: 44px; padding: 10px 16px; border-radius: 9px; border: 1px solid var(--action-primary); background: var(--action-primary); color: var(--on-primary); font: inherit; font-weight: 650; cursor: pointer; margin: 8px 8px 0 0; }
+.cloud-workspace-card button:focus-visible, .cloud-workspace-panel button:focus-visible, .cloud-workspace-notice button:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 3px; }
+.cloud-workspace-card .cloud-secondary, .cloud-workspace-panel .cloud-secondary { background: transparent; color: inherit; border-color: var(--border-strong); }
+.cloud-workspace-panel { display: grid; gap: 12px; }
+.cloud-workspace-panel h3, .cloud-workspace-panel p { margin: 0; }
+.cloud-workspace-panel p { line-height: 1.55; }
+.cloud-workspace-card, .cloud-workspace-panel { font-family: var(--font-ui); box-sizing: border-box; min-width: 0; }
+.cloud-workspace-card input:not([type="radio"]), .cloud-workspace-panel input:not([type="radio"]) { display: block; box-sizing: border-box; width: 100%; min-height: 44px; margin: 8px 0 16px; padding: 10px 12px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface-primary); color: var(--text-primary); font: inherit; }
+.cloud-workspace-card input:focus-visible, .cloud-workspace-panel input:focus-visible, .cloud-workspace-panel summary:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 3px; }
+.cloud-workspace-panel summary, .cloud-workspace-card summary { cursor: pointer; padding: 12px 0; min-height: 44px; box-sizing: border-box; }
+.cloud-workspace-panel fieldset { min-width: 0; margin: 12px 0; border: 1px solid var(--border-subtle); border-radius: 8px; }
+.cloud-workspace-panel fieldset label { display: flex; align-items: center; gap: 10px; min-height: 44px; }
+.cloud-workspace-panel button:disabled, .cloud-workspace-card button:disabled { cursor: wait; opacity: .65; }
+.cloud-workspace-panel li, .cloud-workspace-card li { overflow-wrap: anywhere; }
+.cloud-workspace-status { padding: 14px; border: 1px solid var(--border-subtle); border-radius: 10px; }
+.cloud-workspace-notice { position: fixed; z-index: 1100; right: 16px; bottom: calc(86px + env(safe-area-inset-bottom)); display: grid; gap: 6px; max-width: min(360px, calc(100vw - 32px)); padding: 16px; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--surface-primary); color: var(--text-primary); box-shadow: 0 8px 30px #0002; font-size: .9rem; }
