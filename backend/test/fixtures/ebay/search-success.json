@@ -1,0 +1,52 @@
+{
+  "href": "https://api.ebay.com/buy/browse/v1/item_summary/search?q=pokemon&limit=2&offset=0",
+  "next": "https://api.ebay.com/buy/browse/v1/item_summary/search?q=pokemon&limit=2&offset=2",
+  "total": 3,
+  "limit": 2,
+  "offset": 0,
+  "itemSummaries": [
+    {
+      "itemId": "v1|123456789012|0",
+      "legacyItemId": "123456789012",
+      "title": "Vintage Pokemon binder collection",
+      "shortDescription": "Binder with mixed vintage cards.",
+      "itemWebUrl": "https://www.ebay.com/itm/123456789012",
+      "itemCreationDate": "2026-08-13T12:00:00.000Z",
+      "itemOriginDate": "2026-08-13T12:00:00.000Z",
+      "itemEndDate": "2026-08-20T12:00:00.000Z",
+      "price": { "value": "125.50", "currency": "USD" },
+      "buyingOptions": ["FIXED_PRICE", "BEST_OFFER"],
+      "condition": "Used",
+      "conditionId": "3000",
+      "listingMarketplaceId": "EBAY_US",
+      "image": { "imageUrl": "https://i.ebayimg.com/images/test-primary.jpg" },
+      "thumbnailImages": [{ "imageUrl": "https://i.ebayimg.com/images/test-thumb.jpg" }],
+      "itemLocation": { "city": "Norfolk", "stateOrProvince": "VA", "postalCode": "23510", "country": "US" },
+      "seller": { "username": "fixture-seller", "feedbackPercentage": "99.8", "feedbackScore": 4812 },
+      "shippingOptions": [{ "shippingCostType": "FIXED", "shippingCost": { "value": "12.95", "currency": "USD" } }]
+    },
+    {
+      "itemId": "v1|123456789012|0",
+      "title": "Duplicate fixture result",
+      "itemWebUrl": "https://www.ebay.com/itm/123456789012",
+      "itemCreationDate": "2026-08-13T12:00:00.000Z",
+      "price": { "value": "125.50", "currency": "USD" }
+    },
+    {
+      "itemId": "v1|987654321098|0",
+      "legacyItemId": "987654321098",
+      "title": "PSA 9 Pokemon card auction",
+      "itemWebUrl": "https://www.ebay.com/itm/987654321098",
+      "itemCreationDate": "2026-08-13T13:00:00.000Z",
+      "itemEndDate": "2026-08-14T13:00:00.000Z",
+      "price": { "value": "42.00", "currency": "USD" },
+      "currentBidPrice": { "value": "42.00", "currency": "USD" },
+      "bidCount": 5,
+      "buyingOptions": ["AUCTION"],
+      "condition": "Graded",
+      "image": { "imageUrl": "https://i.ebayimg.com/images/test-slab.jpg" },
+      "itemLocation": { "stateOrProvince": "CA", "country": "US" },
+      "seller": { "username": "fixture-auctions", "feedbackPercentage": "100.0", "feedbackScore": 225 }
+    }
+  ]
+}

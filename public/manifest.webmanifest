@@ -1,81 +1,37 @@
 {
-  "name": "Ember & Tide",
-  "short_name": "Ember & Tide",
-  "description": "Warm premium collector command center for Pokemon collections, Scout reports, private ledgers, and family-safe collecting.",
+  "name": "__BRAND_PWA_NAME__",
+  "short_name": "__BRAND_PWA_SHORT_NAME__",
+  "description": "__BRAND_TAGLINE__",
   "id": "/",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone", "browser"],
-  "background_color": "#04111f",
-  "theme_color": "#04111f",
+  "background_color": "#f6f3ed",
+  "theme_color": "__BRAND_ACCENT__",
   "orientation": "portrait-primary",
   "categories": ["productivity", "utilities", "lifestyle"],
   "lang": "en-US",
   "icons": [
     {
-      "src": "/assets/brand/ember-tide-app-icon.svg",
-      "sizes": "512x512",
+      "src": "__BRAND_LOGO__",
+      "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/favicon-16x16.png",
-      "sizes": "16x16",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/favicon-32x32.png",
-      "sizes": "32x32",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/apple-touch-icon.png",
-      "sizes": "180x180",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/icon-maskable-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/icon-maskable-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
       "purpose": "any maskable"
     }
   ],
   "shortcuts": [
     {
-      "name": "Open Scout",
-      "short_name": "Scout",
-      "description": "Open Scout and Tidepool reports.",
-      "url": "/?tab=scout",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+      "name": "Open Find",
+      "short_name": "Find",
+      "description": "Review sourcing opportunities and saved searches.",
+      "url": "/find"
     },
     {
-      "name": "Open TideTradr",
-      "short_name": "TideTradr",
-      "description": "Search catalog and market values.",
-      "url": "/?tab=market",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+      "name": "Open Inventory",
+      "short_name": "Inventory",
+      "description": "Review collection and resale inventory.",
+      "url": "/inventory"
     }
   ]
 }

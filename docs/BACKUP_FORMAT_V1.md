@@ -1,0 +1,330 @@
+# Code 3 Backup Format Version 1
+
+Status: Phase 1A format and later Account Ops, Inbox/Order, Bot Operations, Purchase/Receiving, and Inventory creation/correction/reconciliation are published. Phase 2C-E adds no source: Accountant Review items, filters, period groups, and summaries are derived read-only state and remain excluded. Selected Stellar JSON, Inventory Handoff/Creation/Correction/Reconciliation previews and candidates, the private Inventory journal, managed provider/Bot credentials, connection secret envelopes, OAuth state/index/used markers, encryption keys, Redis credentials, runtime proof, raw provider data, and proxy authentication remain excluded. No owner data has migrated, no canonical schema was applied, and no restore applies data.
+
+## Purpose and boundary
+
+Version 1 creates a deterministic JSON recovery artifact for Code 3's registered records before any database migration. Its published source set is browser-held; Phase 1B may add a validated, owner-authorized canonical server section when the gated export is available. It is an export and inspection contract, not a cloud backup, database migration, or restore-apply mechanism.
+
+The format identifier is `code-3-backup`; the format version is `1`. The implementation generates neutral filenames in the form `code-3-backup-YYYY-MM-DD-HHmm.json`.
+
+## Envelope
+
+```text
+BackupEnvelope
+  format
+  formatVersion
+  createdAt
+  applicationVersion
+  sourceCommit
+  coverageStatus
+  coverageSummary
+  manifest
+  sections[]
+  integrity
+```
+
+Each section contains:
+
+```text
+BackupSection
+  sourceId
+  schemaVersion
+  recordCount
+  data
+  warnings[]
+  sha256
+```
+
+The manifest contains the included and excluded source inventory, record counts, schema versions, file-reference summary, security exclusions, known limitations, section hash index, and manifest hash.
+
+## Registered sources
+
+`src/features/backup/backupSourceRegistry.js` is the versioned coverage registry. It records storage type, schema version, export and validation adapters, reference dependencies, security/session sensitivity, and whether an omission changes coverage.
+
+The Phase 2C-E registry remains 25 sources: 21 locally included sources and four excluded or conditional sources. When every registered local source is readable, the 21 included sections come from these source families:
+
+- Deal Finder / Deal Inbox schema 5: appraisals, auctions, Search Rules, purchases, legacy lots/cost allocations, Inventory, owner-confirmed acquisition lots/applications/events/typed adjustments/reconciliation events, immutable sales/returns, expenses, mileage, activity, and provider-listing snapshots;
+- Owner Center restock profiles/events/predictions, visits, observations, import summaries, and local job summaries;
+- allowlisted legacy collection/business records;
+- legacy restock/store and private community records;
+- feedback, suggestions, administrative review summaries, and product sightings;
+- manual/cached price records;
+- allowlisted Phase 2 local fallback records, including receipt references and workflow records;
+- beta-readiness, grading-assistance, Business Assistant thread, and daily-progress records;
+- safe display preferences;
+- safe workflow drafts from exact registered session-storage keys/prefixes.
+- Account Ops schema 1 metadata from `code3.account-ops.v1`: profile groups, profiles, email-domain metadata, aliases, owner-created retailers, store accounts, tasks, and bounded activity.
+- Inbox/Order Intelligence schema 1 metadata from `code3.inbox-order.v1`: minimized message events, Order Candidate projections, append-only candidate/review events, and sanitized activity.
+- Bot Operations schema 1 metadata from `code3.bot-ops.v1`: installations, Account Ops retailer-account links, Bot profiles, proxy metadata, product targets, task groups/tasks, append-only attempts/activity, and reviewable Checkout Evidence.
+- Purchase/Receiving schema 1 metadata from `code3.purchase-receiving.v1`: non-authoritative Purchase Drafts, owner-confirmed Purchases, append-only Purchase/Receiving events, and sanitized activity. Derived Inventory Handoff Preview is excluded.
+
+Historical storage keys remain unchanged. Their names are compatibility identifiers, not visible branding.
+
+## Registered exclusions
+
+Version 1 still registers but does not fetch or embed:
+
+- configured Supabase owner records;
+- legacy PostgreSQL, Express process-memory, or other server-held records outside the Phase 1B canonical export;
+- receipt, listing, evidence, or product file bytes;
+- authentication/session persistence and any credentials.
+
+Phase 1B canonical PostgreSQL records can be included through the bounded owner-authorized export described below. Any other configured server source keeps coverage `PARTIAL` when omitted. Referenced but unembedded file bytes make coverage `PARTIAL`. Authentication/session state is always prohibited but does not reduce coverage because it must never be restored as business data.
+
+## Phase 1B server-export extension
+
+Phase 1B defines a `code-3-server-export` version 1 adapter contract so an owner-authorized backup can include canonical remote records when that gated source is configured. The adapter is a bounded read interface with uppercase backend domain keys, `sourceHash`, `coverageStatus`, owner authorization, cursor pagination, record counts, sanitized data, and validation warnings. Server export reads all PostgreSQL domains inside one `REPEATABLE READ READ ONLY` transaction (or an isolated memory-repository snapshot in tests), preventing a nominally complete export from mixing unrelated points in time. Before treating it as available, the client deterministically canonicalizes `domains`, recomputes SHA-256, and requires an exact match with `sourceHash`. A response claiming `COMPLETE` is accepted only when every canonical domain key is present and no domain is truncated. The client migration registry uses the same canonical keys for comparison. The adapter does not grant generic table access and cannot accept a client-supplied owner subject.
+
+Data & Backup supplies `createRemoteBackupExportAdapter` with the owner-authorized request helper in `src/services/code3OwnerApi.js`. When a valid server export is available, its sanitized records become a versioned backup section and `serverDataIncluded` is true. An unavailable or rejected export is not silently treated as an empty section. Until canonical remote records can be fetched, counted, validated, and hashed successfully, their registered source remains excluded and coverage stays `PARTIAL`. An authentication failure, authorization failure, unavailable database, unsupported schema, or incomplete page cannot be converted into an empty successful section.
+
+Remote records, when included in the Phase 1B envelope, use the same canonical section and SHA-256 manifest rules as local sections. File metadata and file bytes remain distinct; a metadata record cannot make referenced bytes complete.
+
+Phase 1B Migration Preview may consume an integrity-verified backup hash as plan provenance. It never modifies the backup and never treats plan readiness as restore readiness.
+
+## Prohibited data
+
+An export must exclude:
+
+- access, refresh, ID, provider, session, and eBay tokens;
+- authorization headers and cookies;
+- passwords, private keys, API keys, provider secrets, and environment values;
+- Supabase auth persistence;
+- owner allowlists;
+- local-development identity or impersonation state;
+- invitation/session tokens and cached credentials.
+- OAuth authorization codes/state/PKCE verifiers, reset/login links or tokens, security codes, raw/protected message bodies or content, and managed provider-secret references.
+- Bot/provider API tokens, passwords, cookies or sessions; retailer passwords/OTPs/security answers; payment-card/PAN/CVV values; proxy hosts/IPs/endpoints/authentication URLs/usernames/passwords; raw provider payloads/request-response bodies/logs/headers; and credential-bearing URLs or text.
+
+Registered legacy documents that mix business and security fields are exported only through explicit allowlists. A recursive sanitizer removes prohibited field names and records a warning count without writing raw values to logs.
+
+For Account Ops, prohibited data additionally includes plaintext/generated passwords, OTPs, retailer or mailbox sessions/tokens, payment-card/CVV data, provider credentials, browser-supplied owner/role/subject fields, and development impersonation state. `CredentialReference` metadata may be included because it contains only provider/reference/label/timestamp data; the referenced secret is never part of the envelope. A generated alias record remains metadata and cannot make a provider or mail-delivery source complete.
+
+For Bot Operations, every included value must pass the domain's recursive authority/credential/raw-provider guard and schema validator. Proxy type/provider/region/health/count/latency metadata may be included; proxy connection/authentication data may not. Static provider keys, normalized task/attempt states, or Checkout Evidence do not make a Bot connection, checkout, order, Purchase, receiving, or Inventory source complete.
+
+For Purchase/Receiving, every included value must pass the domain's recursive authority/credential/raw-source guard and exact-money schema validator. It may include nonsecret transaction metadata, source references, corrections, confirmation facts, and Receiving Events. It may not include payment credentials, retailer authentication, raw messages/provider payloads, client authority, a derived Inventory Handoff Preview, or an ephemeral Inventory Creation Candidate. A Receiving Event in backup is not an Inventory record and cannot make inventory coverage complete.
+
+For Phase 2C-D Inventory provenance, every included schema-5 Deal Finder value must pass the recursive security guard and exact integer-minor-unit record validator. Safe applications, creation events, acquisition lots, typed adjustments, confirmed reconciliation events, immutable managed Sales, and provenance-managed Inventory rows may retain stable Purchase/Receiving/product/lot/Sale references, original/current product and condition state, quantities, dispositions, currency, original/current costs, exact signed COGS deltas, owner-confirmation method, idempotency facts, and bounded summaries. They may not embed candidate/preview state, the private recovery journal, client authority, credentials, payment authentication, raw source evidence, or arbitrary provider data.
+
+## Phase 2A Account Ops extension
+
+The Account Ops section uses source schema version 1 and the same deterministic section/manifest hash rules as every other Backup Format v1 section. Allowed records are counted from the eight declared paths:
+
+```text
+profileGroups
+profiles
+emailDomains
+emailAliases
+retailers
+storeAccounts
+tasks
+activity
+```
+
+Restore Preview validates the Account Ops schema, bounded records, stable IDs, duplicate aliases, and profile/alias/retailer/store-account/task relationships without mutation. Unknown or invalid relationships are diagnostics; preview never repairs or applies them. Every writable store remains unchanged after inspection.
+
+All eight Account Ops record paths are `REQUIRES_MAPPING` in Migration Preview because the Phase 1B canonical schema has no Account Ops domain. This classification creates no canonical action and does not authorize a schema, migration, restore, or remote write.
+
+## Phase 2B1 Inbox / Order Intelligence extension
+
+The `inbox-order-intelligence` section uses source schema version 1 and the same deterministic section/manifest rules. Its four declared record paths are:
+
+```text
+messageEvents
+orderCandidates
+candidateEvents
+activity
+```
+
+The source validator accepts only minimized normalized metadata. It rejects provider secrets, OAuth state/codes/verifiers, tokens, sessions, authority fields, raw/protected message content, OTPs, reset/login links, unsafe prototype keys, malformed IDs/references, invalid collection shape, and unsupported schema versions. Restore Preview remains in memory and zero-write; it cannot contact a provider, repair a candidate, apply an owner correction, or create a Purchase.
+
+All four paths are `REQUIRES_MAPPING` because the Phase 1B canonical schema has no Inbox/Order Intelligence domain. The backup section is local evidence only. It does not include a server provider connection, prove a mailbox is connected, make provider secrets recoverable, or authorize canonical persistence.
+
+## Phase 2D-A Bot Operations extension
+
+The `bot-operations` section uses source schema version 1 and the same deterministic section/manifest rules. Its ten declared record paths are:
+
+```text
+installations
+retailerAccountLinks
+botProfiles
+proxyGroups
+productTargets
+taskGroups
+tasks
+attempts
+checkoutEvidence
+activity
+```
+
+The source validator accepts only bounded nonsecret metadata. It rejects provider/Bot/retailer/payment/proxy credentials, cookies/sessions/OTPs/security answers, payment-card/PAN/CVV data, proxy connection/authentication data, raw provider payloads/logs/request-response bodies/headers, credential-bearing URLs/text, unsafe prototype keys, browser authority, malformed IDs/references, invalid collection shape, and unsupported schema versions.
+
+Restore Preview validates schema/counts/stable IDs, provider/installation/event scoped identities, Account Ops reference shapes, task-group/product/task/attempt/evidence relationships, duplicate/conflicting event identity and prohibited fields in memory with zero writes. It cannot contact a Bot/provider, invoke the test mock, repair a task, reconcile an order, create a Purchase, receive Inventory, or mutate any source.
+
+All ten paths are `REQUIRES_MAPPING` because the Phase 1B canonical schema has no Bot Operations domain. No migration action, remote adapter, Purchase/Inventory handoff, or managed Bot-secret recovery is approved. `Bot Success != Purchase` and `Checkout Evidence != Purchase` remain mandatory.
+
+## Phase 2C-A Purchase and Receiving extension
+
+The `purchase-receiving` section uses source schema version 1 and the standard deterministic section/manifest rules. Its five declared record paths are:
+
+```text
+purchaseDrafts
+purchases
+purchaseEvents
+receivingEvents
+activity
+```
+
+The source validator accepts only bounded, nonsecret records conforming to the Purchase/Receiving domain. It validates stable IDs and versions, source references rather than embedded upstream evidence, integer-minor-unit money, currencies, quantities, confirmation identity, append-only event shape, and security exclusions. Inventory Handoff Preview is derived and therefore deliberately absent.
+
+Restore Preview checks schema/counts/IDs, duplicate source and external-order identity, Purchase/Draft/Receiving references, exact money, prohibited fields, and future mapping warnings entirely in memory. It cannot confirm a draft, repair a confirmation, receive an item, apply a discrepancy, create Inventory, or alter a cost basis.
+
+All five paths are `REQUIRES_MAPPING`. The Phase 1B schema's generic Purchase domains do not yet represent the richer owner-review and Receiving contract. No migration action maps Receiving to an Inventory or Inventory Adjustment domain, and no restore/import path is active.
+
+## Phase 2C-B Inventory creation extension
+
+Phase 2C-B did not add a 26th source or another Inventory section. Phase 2C-D keeps the same paths and storage key while advancing the existing `deal-finder` source to schema version 5:
+
+```text
+inventoryLots
+inventoryCreationApplications
+inventoryCreationEvents
+inventoryAdjustments
+inventoryReconciliationEvents
+```
+
+Provenance-managed rows in the existing `inventory` path are also validated for exact cost and protected provenance. The schema-5 validator requires a complete application/event/item/lot bundle for every source identity, unique deterministic IDs, reciprocal item/lot links, and strict reconciliation of Purchase, line, Receiving, immutable creation facts, typed adjustment sequence, current product/condition/disposition, original/current quantity, total cost, per-unit arrays, immutable managed Sales, and confirmed reconciliation deltas. Adjustments must reference their application/item/lot/Purchase bundle and form one valid append-only before/after chain. Reconciliation events must reference immutable Sale snapshots and prove original COGS plus ordered deltas equals the corrected current unit-cost slice. Transfer references remain empty until a canonical managed-transfer authority exists. Generic edits/deletes cannot be inferred from a backup record.
+
+`InventoryHandoffPreview`, `InventoryCreationCandidate`, and Inventory correction/disposition/reconciliation previews and candidates are pure in-memory projections and never appear as paths, records, metrics, filenames, or derivatives. The private journal used to detect/recover interrupted local writes is likewise not a registered source. Backup generation does not confirm a candidate, repair a write, correct/return/reverse/reconcile Inventory, or change any source.
+
+Restore Preview validates schema/counts/IDs, complete application/event/item/lot bundles, typed adjustment and reconciliation references/order/before-after chains, immutable Sale snapshots, exact original/current/signed-delta unit sums, duplicate source identity, protected provenance, and migration warnings with zero writes. Replacement Inventory is also checked across the Deal Finder and Purchase/Receiving sections so its owner-confirmed replacement event, physical-return adjustment, Receiving event, Purchase line, quantity, and deterministic source identity cannot be coherently substituted while remaining individually well formed. A cross-section mismatch blocks Restore Preview and makes a newly generated backup fail coverage verification. Restore Preview cannot create, correct, return, reverse, or reconcile Inventory. Migration Preview classifies the mixed existing `inventory` collection plus `inventoryLots`, `inventoryCreationApplications`, `inventoryCreationEvents`, `inventoryAdjustments`, `inventoryReconciliationEvents`, and managed Sales as `REQUIRES_MAPPING`; it does not activate remote Inventory, apply the canonical schema, map Receiving automatically, or treat a refund as a return.
+
+## Phase 2C-E Accountant Review exclusion
+
+`AccountantReviewItem` is regenerated from already validated schema-5 Inventory/Sale/reconciliation history and the existing Purchase/Receiving source after verified OWNER authorization. Its original/correction period labels, review categories, filing-status placeholder, attention levels, exact original/effective projections, filters, groups, and summary cards are not canonical records.
+
+Phase 2C-E registers no source, section, record path, filename, export artifact, note, or migration mapping. Backup generation is byte- and record-equivalent whether Accountant Review is open or closed. Restore Preview validates the canonical inputs but cannot restore or apply an Accountant Review projection. Migration Preview does not classify derived review items, and every existing mixed Inventory, Sale, reconciliation, and Purchase/Receiving path remains `REQUIRES_MAPPING`.
+
+## Phase 2D-B2 Stellar preview exclusion
+
+`StellarTaskExportPreview` is not a Backup Format v1 source and does not add a record path to `bot-operations`. The owner-selected JSON file, raw text/bytes, full path, basename, file metadata, source hash/fingerprint, parsed tree, normalized preview rows, duplicates, format state, recognized/ignored fields, security findings, warnings, retailer labels, and summary counts are component-memory data only.
+
+The preview reads one explicitly selected JSON file of at most 1 MiB and 500 candidate records. Recursive security screening and strict allowlisted normalization happen before display, but even a safe preview is never passed to the persistence gateway or backup registry. Discard, replacement, route exit, or refresh removes it and requires owner reselection.
+
+Backup generation while a preview is open exports the same registered sources and records it would export without the preview. Restore Preview cannot populate, validate, revive, or apply a Stellar preview. Migration Preview cannot classify or map it. `Stellar Export Preview != Bot Task Import`; `Previewed Task != Task`; no Task, Attempt, Activity, Checkout Evidence, Order Candidate, Purchase, Receiving, or Inventory record is created.
+
+## Phase 2B2-B managed-provider exclusion
+
+Phase 2B2-B and Phase 2C-B do not change registry totals. After the additive Phase 2D-A Bot Operations and Phase 2C-A Purchase/Receiving sections, the totals remain **25 sources, 21 locally included, and four excluded or conditional**. Managed provider operational state is not a user-backup source.
+
+The following remain prohibited even if a future Preview resource is provisioned:
+
+- managed Redis endpoint credentials and server environment values;
+- the Code 3 AES-256-GCM encryption key or key-version control state;
+- encrypted provider-secret envelopes and secret references used only by the trusted runtime;
+- OAuth state values or digests, owner/redirect binding hashes, expiry indexes, used-state replay markers, and ephemeral managed-store readiness keys;
+- provider authorization codes, PKCE verifiers, access/refresh tokens, passwords, OTPs, sessions, or raw/protected mailbox content; and
+- runtime health/proof data that could be reconstructed from deployment state.
+
+Safe local `code3.inbox-order.v1` evidence remains the nineteenth included section, `code3.bot-ops.v1` is the twentieth, and `code3.purchase-receiving.v1` is the twenty-first. A Free Upstash resource exists, but Phase 2B2-B.1 remains paused with incomplete owner/CORS/activation configuration and `hostedRuntimeVerified=false`; no provider connection/secret/OAuth state exists to export. Restore Preview stays browser-local and zero-write and cannot contact, seed, validate, or mutate a managed provider or Bot store.
+
+## Coverage semantics
+
+| State | Meaning |
+|---|---|
+| `COMPLETE` | Every coverage-relevant registered source for the current context was read and included; no referenced external file bytes or configured server sources are omitted |
+| `PARTIAL` | All included sections passed integrity checks, but one or more relevant registered sources are intentionally excluded, such as configured server data or referenced file bytes |
+| `FAILED` | A required registered source could not be read or validated |
+
+`PARTIAL` does not mean corrupted. It means the artifact is valid but is not a complete recovery point. A partial artifact may be downloaded only with that limitation visible. `FAILED` must never be labeled verified. Independently, any self-verification failure prevents the verified-success claim even if the precomputed coverage state was complete or partial.
+
+## Deterministic serialization
+
+`src/features/backup/canonicalJson.js` canonicalizes JSON before hashing:
+
+- object keys are sorted;
+- array order is preserved;
+- negative zero becomes zero;
+- cyclic, non-finite, unsupported, and non-plain-object values are rejected;
+- prohibited prototype keys are rejected.
+
+Canonical serialization is used for integrity hashes, while the downloadable artifact may be pretty-printed JSON.
+
+## Integrity
+
+SHA-256 is computed with Web Crypto or an injected equivalent in tests.
+
+The section hash covers exactly:
+
+- `sourceId`;
+- `schemaVersion`;
+- `recordCount`;
+- `data`;
+- `warnings`.
+
+The manifest stores a section index of source, schema, count, and section hash. The manifest hash covers the complete manifest except its own `manifestHash` field. The envelope integrity block identifies `SHA-256`, repeats the manifest hash, and records whether immediate self-verification passed.
+
+Changing section data, count, schema, warning set, section order/index, included/excluded source inventory, or the manifest invalidates verification.
+
+## Export sequence
+
+1. Enumerate the registry.
+2. Read only the registered storage keys and prefixes.
+3. Parse and bound each source.
+4. Apply allowlists and remove prohibited security/session fields.
+5. Count records using the source's declared record paths.
+6. summarize file references without fetching them.
+7. Create sections and coverage details.
+8. Hash each canonical section.
+9. Build and hash the manifest.
+10. Serialize the envelope.
+11. Parse the generated JSON as untrusted input.
+12. Recalculate every section and manifest hash.
+13. Serialize the self-verification result and verify again.
+14. Expose success only if integrity verification passes and coverage is not `FAILED`.
+
+The UI must say `Backup verified` only after this immediate round trip succeeds. It must display `PARTIAL` separately from integrity success.
+
+## Record counts
+
+Counts are source-specific and come from declared record paths rather than arbitrary object-key counts. They are inventory aids, not financial reconciliation. A later migration rehearsal must also reconcile IDs, quantities, currency totals, audit history, and file hashes.
+
+## File-reference summary
+
+The manifest distinguishes:
+
+- embedded `data:` references;
+- ephemeral `blob:` references;
+- signed or expiring remote URLs;
+- ordinary remote URLs;
+- unresolved/local references.
+
+Version 1 does not fetch any reference or assert that it remains recoverable. Any nonembedded referenced file keeps coverage partial.
+
+## Money
+
+Version 1 preserves current values exactly. It does not round, convert, or migrate floating-point money. Restore Preview diagnoses nonnumeric values, non-finite spellings, forbidden negatives, excess precision, missing currency, and currency mismatches. Minor-unit conversion is deferred to a separately approved migration with record-level reconciliation.
+
+## Activity summary
+
+Export may return a safe in-memory activity summary containing event type, time, coverage, record count, integrity result, warning count, and error count. It must not contain records, hashes treated as secrets, tokens, identity claims, or raw backup data. Durable activity logging is deferred until an owner-authorized audit store exists.
+
+## Compatibility and future versions
+
+Restore Preview accepts only recognized, supported versions. New formats require a new version and explicit compatibility adapter; version 1 must not be silently reinterpreted. Unknown sources and unsupported section schemas are reported rather than automatically discarded or changed.
+
+## Known limitations
+
+- The export is generated in the browser and inherits the browser's ability to read local records.
+- Only a successfully validated Phase 1B canonical server export can be included; legacy Supabase, other server/process-memory data, and unavailable or truncated canonical records remain excluded or partial.
+- File bytes are not embedded.
+- A valid partial backup is not a complete disaster-recovery artifact.
+- There is no encryption layer in the JSON format; the owner must protect downloaded files.
+- No restore is applied in Phase 1A.
+- No cloud backup, retention schedule, or backup verification history is implemented.
+- No durable audit entry is written during export or preview.
+- Phase 1B remote export is a real read-only integration, but its hosted source is gated/not active by default and it does not make backup coverage complete when any registered source or file byte remains omitted.
+- Phase 2A Account Ops metadata can include personal and operational identity data. It is sanitized but not encrypted by Backup Format v1, and no provider secret, plaintext password, OTP, mailbox content, or retailer session is recoverable from it.
+- Phase 2B1 Inbox/Order Intelligence metadata can include retailer, alias/account relationship and order evidence. It is sanitized but not encrypted; raw/protected content, OAuth/provider secrets, and live connection state are intentionally unrecoverable, and no Purchase restore/import exists.
+- Phase 2D-A Bot Operations metadata can include provider/installation/task/product/account/profile/proxy-metadata relationships, attempts and Checkout Evidence. It is sanitized but not encrypted; all credentials/raw provider data/live connection state are intentionally unrecoverable, and no task control, order reconciliation, Purchase, receiving, or Inventory restore/import exists.
+- Phase 2C-B Inventory acquisition metadata can include exact cost, product, Purchase/Receiving, lot, application/event, and adjustment relationships. It is sanitized but not encrypted. Restore Preview cannot apply it, every new remote path requires mapping, and same-origin local idempotency is not server/multi-device durability.

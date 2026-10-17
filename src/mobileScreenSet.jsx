@@ -24,6 +24,7 @@ import {
   UpgradePrompt,
 } from "./components/ember-ui";
 import { emberTideData } from "./mock/emberTideData";
+import { BRAND_CONFIG } from "./config/brand";
 import "./mobileScreenSet.css";
 
 function flattenTokens(source, prefix = "--ets") {
@@ -599,11 +600,11 @@ function MobileScreenSet() {
   return (
     <div className="ets-screen-set" style={tokenVars}>
       <header className="ets-board-header">
-        <div className="ets-logo-mark" aria-hidden="true"><span /></div>
+        <div className="ets-logo-mark" role="img" aria-label={BRAND_CONFIG.accessibleLogoText}><span /></div>
         <div>
           <p className="ets-kicker">Full UI perfection preview</p>
-          <h1>Ember & Tide</h1>
-          <p>Warm, premium, family-first TCG collecting without scalper-friendly pattern exposure.</p>
+          <h1>{BRAND_CONFIG.applicationDisplayName}</h1>
+          {BRAND_CONFIG.tagline ? <p>{BRAND_CONFIG.tagline}</p> : null}
           <RoleSwitcher selectedRole={selectedRole} onRoleChange={setSelectedRole} />
         </div>
       </header>
@@ -633,7 +634,7 @@ function MobileScreenSet() {
 
       <CoverageChecklist />
 
-      <section className="ets-phone-groups" aria-label="All Ember and Tide preview screens">
+      <section className="ets-phone-groups" aria-label={`All ${BRAND_CONFIG.applicationDisplayName} preview screens`}>
         {Object.entries(groupedScreens).map(([group, screens]) => (
           <div className="ets-screen-group" key={group}>
             <div className="ets-group-heading">
@@ -652,8 +653,8 @@ function MobileScreenSet() {
       </section>
 
       <footer className="ets-board-footer">
-        <strong>Ember & Tide</strong>
-        <span>Collect. Connect. Give.</span>
+        <strong>{BRAND_CONFIG.applicationDisplayName}</strong>
+        {BRAND_CONFIG.tagline ? <span>{BRAND_CONFIG.tagline}</span> : null}
       </footer>
     </div>
   );

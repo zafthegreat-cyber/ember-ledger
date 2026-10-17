@@ -2,26 +2,23 @@
 <html lang="en">
   <head>
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#04111f" />
-    <meta name="background-color" content="#04111f" />
-    <meta name="description" content="Pokémon collecting, inventory, Scout reports, and kid-friendly community access." />
-    <meta name="application-name" content="Ember & Tide" />
+    <meta name="theme-color" content="__BRAND_ACCENT__" />
+    <meta name="background-color" content="#f6f3ed" />
+    <meta name="description" content="__BRAND_TAGLINE__" />
+    <meta name="application-name" content="__BRAND_NAME__" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-title" content="Ember & Tide" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-    <link rel="icon" href="/favicon.ico" sizes="any" />
-    <link rel="icon" href="/favicon-32x32.png" sizes="32x32" type="image/png" />
-    <link rel="icon" href="/favicon-16x16.png" sizes="16x16" type="image/png" />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta name="apple-mobile-web-app-title" content="__BRAND_SHORT_NAME__" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <link rel="apple-touch-icon" href="__BRAND_FAVICON__" />
+    <link rel="icon" href="__BRAND_FAVICON__" type="image/svg+xml" />
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Ember & Tide</title>
+    <title>__BRAND_NAME__</title>
     <style>
       html,
       body {
-        background: #04111f;
+        background: #f6f3ed;
       }
 
       .app-load-fallback {
@@ -30,11 +27,8 @@
         display: grid;
         place-items: center;
         padding: 24px;
-        color: #f8fafc;
-        background:
-          radial-gradient(circle at 18% 12%, rgba(255, 106, 19, 0.3), transparent 18rem),
-          radial-gradient(circle at 82% 10%, rgba(56, 189, 248, 0.24), transparent 20rem),
-          linear-gradient(135deg, #061426, #04111f 58%, #020814);
+        color: #202521;
+        background: #f6f3ed;
         font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         text-align: center;
       }
@@ -45,10 +39,10 @@
         justify-items: center;
         gap: 12px;
         padding: 28px;
-        border: 1px solid rgba(132, 226, 255, 0.22);
-        border-radius: 24px;
-        background: rgba(7, 18, 34, 0.88);
-        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
+        border: 1px solid #dedfd9;
+        border-radius: 18px;
+        background: #ffffff;
+        box-shadow: 0 18px 50px rgba(24, 31, 27, 0.12);
       }
 
       .app-load-fallback-brand {
@@ -56,17 +50,17 @@
         height: 74px;
         display: grid;
         place-items: center;
-        border-radius: 22px;
-        background: linear-gradient(135deg, rgba(255, 106, 19, 0.95), rgba(56, 189, 248, 0.9)), #0f2138;
-        color: #03101e;
+        border-radius: 18px;
+        background: __BRAND_ACCENT__;
+        color: #ffffff;
         font-weight: 950;
         font-size: 1.45rem;
-        box-shadow: 0 18px 42px rgba(255, 106, 19, 0.18);
+        box-shadow: none;
       }
 
       .app-load-fallback-eyebrow {
         margin: 0;
-        color: #84e2ff;
+        color: __BRAND_ACCENT__;
         font-size: 0.78rem;
         font-weight: 900;
         letter-spacing: 0.12em;
@@ -75,7 +69,7 @@
 
       .app-load-fallback h1 {
         margin: 0;
-        color: #ffffff;
+        color: #202521;
         font-size: clamp(1.75rem, 8vw, 2.85rem);
         line-height: 1.02;
         letter-spacing: 0;
@@ -84,7 +78,7 @@
       .app-load-fallback p,
       .app-load-fallback small {
         margin: 0;
-        color: rgba(248, 250, 252, 0.78);
+        color: #4f5952;
       }
 
       .app-load-fallback p {
@@ -108,13 +102,13 @@
       .app-load-fallback a {
         min-height: 44px;
         border: 0;
-        border-radius: 999px;
+        border-radius: 10px;
         padding: 0 18px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        color: #04111f;
-        background: linear-gradient(135deg, #ff8a3d, #84e2ff);
+        color: #ffffff;
+        background: __BRAND_ACCENT__;
         font: inherit;
         font-weight: 900;
         cursor: pointer;
@@ -122,9 +116,9 @@
       }
 
       .app-load-fallback a.app-load-fallback-secondary {
-        color: #f8fafc;
-        background: rgba(255, 255, 255, 0.1);
-        border: 1px solid rgba(132, 226, 255, 0.24);
+        color: #202521;
+        background: #ffffff;
+        border: 1px solid #b8beb7;
       }
 
       @media (max-width: 520px) {
@@ -147,12 +141,12 @@
   </head>
   <body>
     <div id="root">
-      <div class="app-load-fallback" aria-label="Loading Ember & Tide">
+      <div class="app-load-fallback" aria-label="Loading __BRAND_NAME__">
         <div class="app-load-fallback-card">
-          <div class="app-load-fallback-brand" aria-hidden="true">ET</div>
-          <p class="app-load-fallback-eyebrow">Ember & Tide</p>
-          <h1>Loading Ember & Tide...</h1>
-          <p>Getting your Hearth ready.</p>
+          <div class="app-load-fallback-brand" aria-hidden="true">__BRAND_MONOGRAM__</div>
+          <p class="app-load-fallback-eyebrow">__BRAND_NAME__</p>
+          <h1>Loading __BRAND_SHORT_NAME__...</h1>
+          <p>Preparing your business workspace.</p>
           <small>If this takes more than a few seconds, refresh the page.</small>
           <div class="app-load-fallback-actions">
             <button type="button" onclick="window.location.reload()">Refresh app</button>
@@ -166,11 +160,11 @@
             display: none;
           }
         </style>
-        <div class="app-load-fallback app-load-fallback-noscript" aria-label="Ember & Tide needs JavaScript">
+        <div class="app-load-fallback app-load-fallback-noscript" aria-label="__BRAND_NAME__ needs JavaScript">
           <div class="app-load-fallback-card">
-            <div class="app-load-fallback-brand" aria-hidden="true">ET</div>
-            <p class="app-load-fallback-eyebrow">Ember & Tide</p>
-            <h1>Ember & Tide needs JavaScript</h1>
+            <div class="app-load-fallback-brand" aria-hidden="true">__BRAND_MONOGRAM__</div>
+            <p class="app-load-fallback-eyebrow">__BRAND_NAME__</p>
+            <h1>__BRAND_NAME__ needs JavaScript</h1>
             <p>Please enable JavaScript, then refresh the app.</p>
           </div>
         </div>

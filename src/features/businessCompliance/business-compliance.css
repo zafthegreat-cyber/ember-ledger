@@ -1,0 +1,148 @@
+.business-compliance-page {
+  display: grid;
+  gap: 1rem;
+  width: min(100%, 1120px);
+  margin: 0 auto;
+  padding: clamp(0.75rem, 2vw, 1.5rem);
+}
+
+.compliance-privacy-note {
+  margin: 0;
+  padding: 0.8rem 0.95rem;
+  border: 1px solid var(--border-subtle, rgba(127, 127, 127, 0.24));
+  border-radius: 0.9rem;
+  background: var(--surface-raised, rgba(127, 127, 127, 0.06));
+  color: var(--text-secondary, inherit);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.compliance-tabs {
+  display: flex;
+  gap: 0.45rem;
+  overflow-x: auto;
+  padding: 0.15rem 0 0.35rem;
+  scrollbar-width: thin;
+}
+
+.compliance-tabs button {
+  min-height: 44px;
+  flex: 0 0 auto;
+  border: 1px solid var(--border-subtle, rgba(127, 127, 127, 0.24));
+  border-radius: 999px;
+  background: var(--surface-raised, transparent);
+  color: inherit;
+  padding: 0.55rem 0.9rem;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.compliance-tabs button.is-active {
+  border-color: var(--accent, currentColor);
+  background: var(--surface-selected, rgba(127, 127, 127, 0.12));
+}
+
+.compliance-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.compliance-list {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.compliance-card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin-bottom: 0.55rem;
+}
+
+.compliance-card-heading span {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-secondary, inherit);
+}
+
+.compliance-card-heading h3 {
+  margin: 0.15rem 0 0;
+  font-size: 1rem;
+}
+
+.compliance-inline-fields,
+.compliance-form-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.7rem;
+  margin-top: 0.75rem;
+}
+
+.compliance-form-grid .is-wide,
+.compliance-inline-fields .is-wide {
+  grid-column: 1 / -1;
+}
+
+.compliance-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+}
+
+.compliance-compact-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.compliance-compact-list button {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  border: 1px solid var(--border-subtle, rgba(127, 127, 127, 0.24));
+  border-radius: 0.8rem;
+  background: var(--surface-raised, transparent);
+  color: inherit;
+  padding: 0.7rem 0.85rem;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+@media (max-width: 800px) {
+  .compliance-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .compliance-inline-fields,
+  .compliance-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .business-compliance-page {
+    padding: 0.75rem;
+  }
+
+  .compliance-inline-fields,
+  .compliance-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .compliance-form-grid .is-wide,
+  .compliance-inline-fields .is-wide {
+    grid-column: auto;
+  }
+
+  .compliance-card-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
