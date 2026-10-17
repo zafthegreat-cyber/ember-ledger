@@ -11,6 +11,7 @@ import { planWorkspaceRestore } from "../backup/workspaceRestorePlan.js";
 import { exportLegacyCloudBackup, inspectLegacyCloudBackup, restoreLegacyCloudBackup } from "../backup/legacyCloudBackup.js";
 import { confirmAccountOperation, consumeAccountConfirmation } from "../../services/accountSessionService.js";
 import WorkspaceRecoverySignIn from "./WorkspaceRecoverySignIn.jsx";
+import WorkspaceSupportDetails from "./WorkspaceSupportDetails.jsx";
 import "../../styles/theme.css";
 import "./cloud-workspace.css";
 
@@ -24,9 +25,17 @@ function assertNoPendingWrites() {
     throw Object.assign(new Error("An interrupted save still needs recovery. Keep this app’s stored data and retry safely before editing records."), { code: "RECOVERY_REQUIRED" });
   }
 }
-function bounded(request) {
+function bounded(request, stage, abort) {
   let timer;
-  return Promise.race([request, new Promise((_, reject) => { timer = setTimeout(() => reject(new Error("The account service is taking too long. Your saved records are unchanged. Retry when your connection returns.")), 15000); })]).finally(() => clearTimeout(timer));
+  return Promise.race([request, new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      reject(Object.assign(new Error("Account verification did not finish in time. Your saved records are unchanged. Retry safely to check again."), { stage, code: `${stage}_TIMEOUT` }));
+      abort?.abort();
+    }, 15000);
+  })]).catch((error) => {
+    // Keep the failing step available without exposing any session details.
+    throw Object.assign(error instanceof Error ? error : new Error("Account verification could not finish."), { stage });
+  }).finally(() => clearTimeout(timer));
 }
 
 function WorkspaceLease({ children, onError }) {
@@ -71,13 +80,15 @@ export default function CloudWorkspaceBoundary({ children, client = supabase, co
     unsubscribe.current?.(); unsubscribe.current = null;
     controller.current?.close(); controller.current = null;
   }, []);
-  const fail = useCallback((error) => setScreen((value) => ({ ...value, phase: "error", code: typeof error.code === "string" ? error.code : error.name || "", message: error.message || "Your records could not be opened safely. They have been preserved." })), []);
+  const fail = useCallback((error) => setScreen((value) => ({ ...value, phase: "error", stage: error.stage, code: typeof error.code === "string" ? error.code : error.name || "", message: error.message || "Your records could not be opened safely. They have been preserved." })), []);
 
   const verify = useCallback(async (expectedId) => {
-    const result = await bounded(client.auth.getUser());
-    if (result.error || !result.data?.user || result.data.user.is_anonymous || (expectedId && result.data.user.id !== expectedId)) throw new Error("Sign in to the same account to open these records.");
-    const checked = await bounded(client.rpc("code3_current_session_valid"));
-    if (checked.error || checked.data !== true) throw new Error("Your account session could not be verified. Sign in again, or retry when your connection returns.");
+    const result = await bounded(client.auth.getUser(), "VERIFY_ACCOUNT");
+    if (result.error || !result.data?.user || result.data.user.is_anonymous || (expectedId && result.data.user.id !== expectedId)) throw Object.assign(new Error("Sign in to the same account to open these records."), { stage: "VERIFY_ACCOUNT" });
+    const abort = new AbortController();
+    const request = client.rpc("code3_current_session_valid");
+    const checked = await bounded(typeof request.abortSignal === "function" ? request.abortSignal(abort.signal) : request, "VERIFY_SESSION", abort);
+    if (checked.error || checked.data !== true) throw Object.assign(new Error("Your account session could not be verified. Sign in again, or retry safely."), { stage: "VERIFY_SESSION" });
     return result.data.user;
   }, [client]);
 
@@ -127,6 +138,7 @@ export default function CloudWorkspaceBoundary({ children, client = supabase, co
     let active = true;
     const epoch = generation;
     let initialReceived = false;
+    let receiveTimer = null;
     function receive(session, force = false) {
       if (!active) return;
       initialReceived = true;
@@ -134,10 +146,14 @@ export default function CloudWorkspaceBoundary({ children, client = supabase, co
       if (!force && id === identity.current && controller.current) return;
       identity.current = id;
       const ticket = ++generation.current;
+      clearTimeout(receiveTimer);
       stop();
       setScreen({ phase: "checking", user: null, message: "" });
-      // Keep Supabase calls outside the auth callback to avoid its session lock.
-      queueMicrotask(async () => {
+      // Leave the SDK's callback/lock lifecycle and coalesce initial auth events
+      // before making provider calls. A microtask can run inside that lifecycle.
+      receiveTimer = setTimeout(async () => {
+        receiveTimer = null;
+        if (!active || ticket !== generation.current || identity.current !== id) return;
         try {
           if (!id) {
             // Signing out cannot bypass recovery: the regular login lives inside
@@ -155,14 +171,15 @@ export default function CloudWorkspaceBoundary({ children, client = supabase, co
           const user = await verify(id); if (active && ticket === generation.current) await open(user, ticket);
         }
         catch (error) { if (active && ticket === generation.current) fail(error); }
-      });
+      }, 0);
     }
     const { data } = client.auth.onAuthStateChange((event, session) => receive(session, event === "SIGNED_OUT"));
-    bounded(client.auth.getSession()).then(({ data: sessionData, error }) => {
-      if (!active || initialReceived) return;
+    const initialTicket = generation.current;
+    bounded(client.auth.getSession(), "READ_SESSION").then(({ data: sessionData, error }) => {
+      if (!active || initialReceived || initialTicket !== generation.current) return;
       if (error) fail(error); else receive(sessionData.session);
-    }).catch((error) => { if (active) fail(error); });
-    return () => { active = false; epoch.current++; data.subscription.unsubscribe(); stop(); };
+    }).catch((error) => { if (active && !initialReceived && initialTicket === generation.current) fail(error); });
+    return () => { active = false; clearTimeout(receiveTimer); epoch.current++; data.subscription.unsubscribe(); stop(); };
   }, [client, configured, development, fail, open, stop, verify]);
 
   useEffect(() => {
@@ -280,5 +297,6 @@ export default function CloudWorkspaceBoundary({ children, client = supabase, co
       : screen.phase === "switch" ? <><p>This browser’s current records or drafts belong to a different account. We’ll retain that account’s device copy before opening <strong>{screen.user.email}</strong>.</p><button type="button" onClick={() => runExclusive(async ({ user, assertCurrent }) => { if (!readWorkspaceBinding(localStorage)) await claimWorkspaceOwner({ storage: localStorage, ownerId: user.id, confirmed: true, assertCurrent }); else await switchWorkspaceOwner({ storage: localStorage, ownerId: user.id, confirmed: true, assertCurrent }); await switchSessionDraftOwner({ storage: sessionStorage, ownerId: user.id, assertCurrent }); })}>Preserve and switch accounts</button></>
         : <><p role="alert">{screen.message}</p>{storageFailure(screen.code) && <p>Keep this app’s stored data. Close other Code 3 TCG tabs, then retry. Do not clear app data or uninstall while this device has unsynced records.</p>}<button type="button" onClick={() => window.location.reload()}>Retry safely</button></>}
     <button type="button" className="cloud-secondary" onClick={() => { void client.auth.signOut({ scope: "local" }).then(({ error }) => { if (error) fail(error); }); }}>Sign out</button>
+    {screen.phase === "error" && <WorkspaceSupportDetails stage={screen.stage} code={screen.code} />}
   </WorkspaceScreen>;
 }
