@@ -106,6 +106,9 @@ export default function MenuDrawerContent({ scope }) {
     locationSettings,
     menuCommandSections,
     menuLocation,
+    menuCurrentWorkspaceId,
+    switcherWorkspaces,
+    navigateProductWorkspace,
     menuDashboardSectionRows,
     menuHomeStatRows,
     navigateMainTab,
@@ -252,10 +255,10 @@ export default function MenuDrawerContent({ scope }) {
 
           <aside ref={dialogRef} className="drawer menu-drawer navigation-drawer code3-menu-drawer open" role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} onKeyDown={onKeyDown}>
             <div className="drawer-header">
-              <div><p>{BRAND_CONFIG.applicationDisplayName}</p><h2 id={titleId}>Menu</h2></div>
+              <div className="menu-brand-heading"><img src={BRAND_CONFIG.logoReference} alt="" /><div><p>{BRAND_CONFIG.applicationDisplayName}</p><h2 id={titleId}>Menu</h2></div></div>
               <button type="button" className="secondary-button drawer-close-button" aria-label="Close menu" onClick={() => setMenuOpen(false)}><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 6 12 12M18 6 6 18" /></svg></button>
             </div>
-            <MenuNavigation sections={menuCommandSections} NavIcon={AppNavIcon} isItemActive={isMenuItemActive} onSelect={openMenuItem} onAdd={() => openAddActionSheet("menu")} modeLabel={adaptiveUiState.modeLabel}>
+            <MenuNavigation sections={menuCommandSections} NavIcon={AppNavIcon} isItemActive={isMenuItemActive} onSelect={openMenuItem} onAdd={() => openAddActionSheet("menu")} modeLabel={adaptiveUiState.modeLabel} workspaces={switcherWorkspaces} currentWorkspaceId={menuCurrentWorkspaceId} onSelectWorkspace={workspace => runMenuAction(() => navigateProductWorkspace(workspace.id))}>
               {renderMenuPullDown("account", "Account", "App version, sign-in, private beta status, and account actions", (
                 <div className="drawer-links">
                   <div className="drawer-info-card account-status-card">
