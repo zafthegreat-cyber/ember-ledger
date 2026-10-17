@@ -37,6 +37,7 @@
     "test:cloud-workspace-postgres": "node scripts/test-cloud-workspace-postgres.mjs",
     "test:workspace-invite-sessions-postgres": "node scripts/test-workspace-invite-sessions-postgres.mjs",
     "test:account-sessions": "node scripts/test-account-session-client.mjs",
+    "test:account-startup-browser": "node scripts/test-account-lock-browser.cjs",
     "test:account-sessions-postgres": "node scripts/test-account-sessions-postgres.mjs",
     "test:session-draft-isolation": "node scripts/test-session-draft-isolation.mjs",
     "test:workspace-recovery": "node --no-warnings scripts/test-workspace-recovery.mjs",

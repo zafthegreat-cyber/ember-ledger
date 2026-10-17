@@ -1,0 +1,11 @@
+.workspace-support-details { margin-top: 24px; border-top: 1px solid var(--border-subtle); color: var(--text-secondary); font-size: .875rem; }
+.workspace-support-details > summary { min-height: 44px; box-sizing: border-box; padding: 12px 0; cursor: pointer; color: var(--text-primary); font-weight: 600; }
+.workspace-support-details > summary:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 3px; border-radius: 4px; }
+.workspace-support-details dl { display: grid; gap: 12px; margin: 8px 0 16px; }
+.workspace-support-details dl > div { display: grid; grid-template-columns: minmax(90px, .8fr) minmax(0, 1.5fr); gap: 12px; align-items: start; }
+.workspace-support-details dt, .workspace-support-details dd { margin: 0; min-width: 0; line-height: 1.5; overflow-wrap: anywhere; }
+.workspace-support-details dd { color: var(--text-primary); }
+.workspace-support-details code { font-size: .875em; }
+.workspace-support-details__built { display: block; color: var(--text-secondary); font-size: .85em; }
+.workspace-support-details > p { margin: 0 0 8px; font-size: .85em; }
+@media (max-width: 380px) { .workspace-support-details dl > div { grid-template-columns: 1fr; gap: 2px; } }
