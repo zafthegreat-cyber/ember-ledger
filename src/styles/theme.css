@@ -32,6 +32,7 @@
   --shadow-2: 0 4px 16px rgb(16 21 28 / 6%);
   --shadow-3: 0 8px 28px rgb(16 21 28 / 10%);
   --shadow-panel: 0 2px 12px rgb(16 21 28 / 5%);
+  --overlay-backdrop: rgb(8 15 21 / 45%);
   color-scheme: light;
 }
 .app[data-theme="dark"], [data-theme="dark"], :root:has(.app[data-theme="dark"]) {

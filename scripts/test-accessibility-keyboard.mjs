@@ -6,6 +6,7 @@ import { readDeferredAppSource } from "./helpers/read-deferred-app-source.mjs";
 // Follow the mounted lazy renderers so their accessible labels and honest
 // capability copy remain subject to the same assertions after code splitting.
 const appSource = readDeferredAppSource(fileURLToPath(new URL("../src/App.jsx", import.meta.url)));
+const menuNavigationSource = fs.readFileSync(new URL("../src/features/deferredViews/MenuNavigation.jsx", import.meta.url), "utf8");
 const operationsSource = fs.readFileSync(new URL("../src/components/operations/OperationsUI.jsx", import.meta.url), "utf8");
 const ownerCenterSource = fs.readFileSync(new URL("../src/features/ownerCenter/OwnerCenterPage.jsx", import.meta.url), "utf8");
 const ownerCenterCss = fs.readFileSync(new URL("../src/features/ownerCenter/owner-center.css", import.meta.url), "utf8");
@@ -64,7 +65,9 @@ assert.match(reducedMotionSource, /collector-showcase-shine/);
 assert.match(reducedMotionSource, /hearth-skeleton-card/);
 assert.match(reducedMotionSource, /transform: none !important/);
 
-assert.match(appSource, /aria-label=\{`\$\{item\.label\}\. \$\{item\.helper \|\| "Open this workspace area\."\}`\}/);
+// Menu rows now live in the renderer's imported navigation component.
+assert.match(appSource, /<MenuNavigation sections=\{menuCommandSections\}/);
+assert.match(menuNavigationSource, /aria-label=\{`\$\{item\.label\}\. \$\{item\.helper \|\| "Open this workspace area\."\}`\}/);
 assert.match(appSource, /aria-label="Scout screenshot or photo review\. Try text extraction, then review before saving a Scout report\."/);
 assert.match(appSource, /aria-label="Scan page of cards\. Manual multi-card review\. Automatic card detection is not live yet\."/);
 assert.match(appSource, /aria-label="Manual entry\. Add a record now and correct details before saving\."/);
