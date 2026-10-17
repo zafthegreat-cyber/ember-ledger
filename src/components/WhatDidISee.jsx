@@ -132,7 +132,10 @@ export default function WhatDidISee({
   const [results, setResults] = useState([]);
   const [totalCount, setTotalCount] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [searchError, setError] = useState("");
+  const error = !isSupabaseConfigured || !supabase
+    ? "Supabase catalog search is not configured. Imported catalog data cannot be searched from this screen yet."
+    : searchError;
   const [selectedItems, setSelectedItems] = useState({});
   const [storeName, setStoreName] = useState("");
   const [visitDate, setVisitDate] = useState(today());
@@ -145,8 +148,11 @@ export default function WhatDidISee({
 
   const reportDefaults = useMemo(() => ({ storeName, visitDate, visitTime }), [storeName, visitDate, visitTime]);
 
-  useEffect(() => {
-    if (!initialProduct?.id) return;
+  const initialProductId = initialProduct?.id;
+  const [previousProductId, setPreviousProductId] = useState(null);
+  if (previousProductId !== initialProductId) {
+    setPreviousProductId(initialProductId);
+    if (initialProductId) {
     setResults((current) => [initialProduct, ...current.filter((product) => String(product.id) !== String(initialProduct.id))]);
     setSelectedItems((current) => {
       if (current[initialProduct.id]) return current;
@@ -158,14 +164,15 @@ export default function WhatDidISee({
         },
       };
     });
-  }, [initialProduct?.id]);
+    }
+  }
 
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) {
-      setError("Supabase catalog search is not configured. Imported catalog data cannot be searched from this screen yet.");
       return;
     }
 
+    let active = true;
     const timer = window.setTimeout(async () => {
       const cleanedQuery = String(query || "").trim().replace(/[,%()'"]/g, " ").slice(0, 120);
       if (cleanedQuery.length < 2 && filter === "All") {
@@ -196,9 +203,11 @@ export default function WhatDidISee({
           pageSize: RESULT_LIMIT,
           force: cleanedQuery.length >= 2 || filter !== "All",
         });
+        if (!active) return;
         setResults((result.rows || []).map((row) => mapCatalogRow(row)));
         setTotalCount(result.count ?? null);
       } catch (searchError) {
+        if (!active) return;
         setError(searchError.message);
         setResults([]);
         setTotalCount(null);
@@ -206,12 +215,14 @@ export default function WhatDidISee({
       setLoading(false);
     }, query.trim() ? 350 : 100);
 
-    return () => window.clearTimeout(timer);
-  }, [filter, initialProduct?.id, isSupabaseConfigured, mapCatalogRow, page, query, sort, supabase]);
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [filter, initialProduct, isSupabaseConfigured, mapCatalogRow, page, query, sort, supabase]);
 
-  useEffect(() => {
+  const [paginationInputs, setPaginationInputs] = useState({ filter, query, sort });
+  if (paginationInputs.filter !== filter || paginationInputs.query !== query || paginationInputs.sort !== sort) {
+    setPaginationInputs({ filter, query, sort });
     setPage(1);
-  }, [filter, query, sort]);
+  }
 
   function toggleItem(product) {
     setSelectedItems((current) => {

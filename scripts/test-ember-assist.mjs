@@ -14,7 +14,7 @@ import {
 const appSource = fs.readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
 
 assert.match(appSource, /Collector Guide/, "Ember Assist should include the Collector Guide section");
-assert.match(appSource, /Quick Help for Ember & Tide/, "Collector Guide should frame quick help clearly");
+assert.match(appSource, /<h3>Quick business help<\/h3>/, "Collector Guide should frame its current business help clearly");
 assert.match(appSource, /Gentle Guidance/, "Collector Guide should use safe guidance language");
 [
   "Add to Vault",

@@ -1,8 +1,9 @@
 import fs from "node:fs";
 import assert from "node:assert/strict";
+import { readLocalCss } from "./helpers/read-local-css.mjs";
 
 const app = fs.readFileSync("src/App.jsx", "utf8");
-const css = fs.readFileSync("src/App.css", "utf8");
+const css = readLocalCss("src/App.css");
 const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
 
 assert.match(app, /function normalizeToastPayload/, "toast payload normalization should exist");
@@ -27,7 +28,7 @@ assert.match(app, /confirmDestructive\(\{\s*title: deleteContext\.title/s, "item
 assert.match(app, /Delete sale\?/, "sale deletion should use a visible confirmation");
 assert.match(app, /Delete expense\?/, "expense deletion should use a visible confirmation");
 assert.match(app, /Revoke invite\?/, "invite revocation should use a visible confirmation");
-assert.match(app, /Reset selected Drop Radar data\?/, "Drop Radar reset should use a visible confirmation");
+assert.doesNotMatch(app, /function runDropRadarReset\(/, "the retired, unreachable Drop Radar reset must not retain an unused destructive handler");
 
 assert.match(css, /\.app-toast-viewport/, "toast viewport CSS should exist");
 assert.match(css, /bottom: calc\(104px \+ env\(safe-area-inset-bottom, 0px\)\)/, "mobile toasts should sit above bottom nav and safe area");

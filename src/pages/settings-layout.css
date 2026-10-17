@@ -1,0 +1,197 @@
+/* Settings owns its composition; colors continue to come from the shared theme. */
+html body .app.app-command-shell .settings-layout-shell {
+  max-width: none;
+  min-width: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+html body .app.app-command-shell .settings-layout-shell > .utility-page-layout {
+  display: block;
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+
+html body .app.app-command-shell .settings-layout {
+  width: min(100%, 1120px);
+  margin: 0 auto;
+  display: grid;
+  gap: 28px;
+  padding: 12px 0 24px;
+  color: var(--text-primary);
+  font: 400 14px/1.5 var(--font-ui);
+}
+
+html body .app.app-command-shell .settings-layout :is(h2, p, dl, dd) { margin: 0; }
+html body .app.app-command-shell .settings-layout .ops-page-header { margin: 0; }
+html body .app.app-command-shell .settings-layout .ops-page-header h1 { font-family: var(--font-display, var(--font-ui)) !important; font-size: clamp(30px, 3vw, 40px); font-weight: 650; line-height: 1.08; letter-spacing: -.045em; }
+html body .app.app-command-shell .settings-layout .ops-page-header p { margin-top: 8px; font-size: 15px; line-height: 1.5; }
+html body .app.app-command-shell .settings-layout .ops-page-header .ops-button { font-size: 13px; }
+html body .app.app-command-shell .settings-layout .ops-eyebrow { color: var(--action-primary); font: 500 10px/1.5 var(--font-mono, monospace); letter-spacing: .1em; }
+
+html body .app.app-command-shell .settings-layout__account {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 20px;
+  padding: 26px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--surface-primary);
+  box-shadow: inset 0 2px 0 var(--edge-accent, var(--border-subtle)), var(--shadow-panel, var(--shadow-1));
+}
+
+html body .app.app-command-shell .settings-layout__avatar {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border: 1px solid var(--edge-accent, var(--border-subtle));
+  border-radius: 10px;
+  background: var(--surface-inset, var(--surface-secondary));
+  color: var(--action-primary);
+}
+html body .app.app-command-shell .settings-layout__avatar svg { width: 28px; height: 28px; stroke-width: 1.5; }
+html body .app.app-command-shell .settings-layout__eyebrow { color: var(--text-secondary); font: 500 10px/1.5 var(--font-mono, monospace); letter-spacing: .08em; text-transform: uppercase; }
+html body .app.app-command-shell .settings-layout__identity h2 { margin: 5px 0 10px; font-family: var(--font-display, var(--font-ui)) !important; font-size: clamp(21px, 2vw, 26px); line-height: 1.2; font-weight: 600; letter-spacing: -.035em; overflow-wrap: anywhere; }
+html body .app.app-command-shell .settings-layout__identity p { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; color: var(--text-secondary); font-size: 12px; }
+html body .app.app-command-shell .settings-layout__account-type { padding: 3px 7px; border: 1px solid var(--border-subtle); border-radius: 4px; color: var(--text-primary); background: var(--surface-inset, var(--surface-secondary)); font: 500 10px/1.5 var(--font-mono, monospace); }
+html body .app.app-command-shell .settings-layout__account-meta {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  margin: 4px -26px -26px !important;
+  padding: 18px 26px;
+  border-radius: 0 0 10px 10px;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--surface-inset, var(--surface-secondary));
+}
+html body .app.app-command-shell .settings-layout__account-meta dt { color: var(--text-secondary); font: 500 10px/1.5 var(--font-mono, monospace); letter-spacing: .025em; }
+html body .app.app-command-shell .settings-layout__account-meta dd { margin-top: 5px; color: var(--text-primary); font-size: 14px; font-weight: 600; }
+html body .app.app-command-shell .settings-layout__account-meta dd span { display: block; margin-top: 2px; color: var(--text-secondary); font-size: 12px; font-weight: 400; }
+
+html body .app.app-command-shell .settings-layout__columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+html body .app.app-command-shell .settings-layout__column { display: grid; gap: 28px; min-width: 0; }
+html body .app.app-command-shell .settings-layout__group { min-width: 0; }
+html body .app.app-command-shell .settings-layout__group > h2 { display: flex; align-items: center; gap: 14px; margin: 0 0 12px 2px; font-size: 15px; font-weight: 600; line-height: 1.4; letter-spacing: -.02em; }
+html body .app.app-command-shell .settings-layout__group > h2::after { content: ""; flex: 1; height: 1px; background: var(--border-subtle); }
+html body .app.app-command-shell .settings-layout__group-body { border: 1px solid var(--border-subtle); border-radius: 10px; background: var(--surface-primary); box-shadow: var(--shadow-panel, var(--shadow-1)); }
+html body .app.app-command-shell .settings-layout .settings-layout__group-body > * + * { border-top: 1px solid var(--border-subtle) !important; }
+
+html body .app.app-command-shell .settings-layout :is(.settings-layout__row, .settings-layout__disclosure > summary) {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 78px;
+  margin: 0;
+  padding: 14px 18px;
+  border: 0;
+  border-radius: 0;
+  background: transparent !important;
+  color: var(--text-primary) !important;
+  box-shadow: none !important;
+  text-shadow: none;
+  text-align: left;
+  white-space: normal;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  transform: none;
+  list-style: none;
+  transition: background-color 140ms ease, box-shadow 140ms ease;
+}
+html body .app.app-command-shell .settings-layout__disclosure > summary::-webkit-details-marker { display: none; }
+html body .app.app-command-shell .settings-layout__group-body > :first-child { border-top-left-radius: 10px; border-top-right-radius: 10px; }
+html body .app.app-command-shell .settings-layout__group-body > :last-child { border-bottom-left-radius: 10px; border-bottom-right-radius: 10px; }
+html body .app.app-command-shell .settings-layout :is(.settings-layout__row, .settings-layout__disclosure > summary):hover { background: var(--surface-inset, var(--surface-secondary)) !important; }
+html body .app.app-command-shell .settings-layout :is(.settings-layout__row, .settings-layout__disclosure > summary):active { box-shadow: inset 2px 0 0 var(--action-primary) !important; }
+html body .app.app-command-shell .settings-layout__row-icon { display: grid; place-items: center; width: 34px; height: 34px; flex: 0 0 34px; border: 1px solid var(--border-subtle); border-radius: 7px; background: var(--surface-inset, var(--surface-secondary)); color: var(--text-secondary); }
+html body .app.app-command-shell .settings-layout__row-icon svg { width: 18px; height: 18px; }
+html body .app.app-command-shell .settings-layout__row-copy { display: grid; gap: 4px; flex: 1; min-width: 0; }
+html body .app.app-command-shell .settings-layout__row-copy strong { color: var(--text-primary); font-size: 14px; line-height: 1.4; font-weight: 600; letter-spacing: -.012em; text-transform: none; }
+html body .app.app-command-shell .settings-layout__row-copy > span { color: var(--text-secondary); font-size: 12px; line-height: 1.5; font-weight: 400; }
+html body .app.app-command-shell .settings-layout__row-status { max-width: 92px; color: var(--text-secondary); font: 400 10px/1.5 var(--font-mono, monospace); text-align: right; }
+html body .app.app-command-shell .settings-layout__arrow { display: inline-block; flex: 0 0 16px; width: 16px; height: 16px; color: var(--text-secondary); transition: transform 140ms ease; }
+html body .app.app-command-shell .settings-layout__disclosure[open] > summary { background: var(--surface-inset, var(--surface-secondary)) !important; box-shadow: inset 2px 0 0 var(--action-primary) !important; }
+html body .app.app-command-shell .settings-layout__disclosure[open] > summary .settings-layout__row-icon { color: var(--action-primary); border-color: var(--edge-accent, var(--border-subtle)); background: var(--selection-background); }
+html body .app.app-command-shell .settings-layout__disclosure[open] > summary .settings-layout__arrow { transform: rotate(90deg); }
+html body .app.app-command-shell .settings-layout__detail-content { padding: 0 18px 18px; background: var(--surface-inset, var(--surface-secondary)); }
+html body .app.app-command-shell .settings-layout__detail-content > .utility-card { display: block; width: 100%; margin: 0; padding: 16px 0 0; border: 0; border-top: 1px solid var(--border-subtle); border-radius: 0; box-shadow: none; background: transparent; }
+html body .app.app-command-shell .settings-layout__detail-content :is(.settings-preference-grid, .settings-section-grid) { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+html body .app.app-command-shell .settings-layout__detail-content .settings-preference-panel { display: grid; gap: 8px; min-width: 0; padding: 12px 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+html body .app.app-command-shell .settings-layout__detail-content .settings-preference-panel + .settings-preference-panel { border-top: 1px solid var(--border-subtle); }
+html body .app.app-command-shell .settings-layout__detail-content :is(input, select, textarea) { min-width: 0; max-width: 100%; }
+html body .app.app-command-shell .settings-layout__detail-content .compact-card-header { display: flex; flex-wrap: wrap; gap: 10px; align-items: start; margin-bottom: 18px; }
+html body .app.app-command-shell .settings-layout__detail-content .compact-card-header > div { flex: 1; min-width: 180px; }
+html body .app.app-command-shell .settings-layout__detail-content .compact-card-header strong { display: block; font-size: 15px; line-height: 1.4; }
+html body .app.app-command-shell .settings-layout__detail-content .compact-subtitle { margin-top: 5px; color: var(--text-secondary); font-size: 12px; line-height: 1.6; }
+html body .app.app-command-shell .settings-layout__detail-content .status-badge { width: fit-content; padding: 4px 8px; border-radius: 4px; font: 400 10px/1.5 var(--font-mono, monospace); background: var(--surface-primary); color: var(--text-secondary); border-color: var(--border-subtle); }
+html body .app.app-command-shell .settings-layout__detail-content .settings-preference-panel > :is(span, strong) { display: block; }
+html body .app.app-command-shell .settings-layout__detail-content .settings-preference-panel > span { font: 500 10px/1.5 var(--font-mono, monospace); letter-spacing: .04em; color: var(--text-secondary); }
+html body .app.app-command-shell .settings-layout__detail-content .settings-preference-panel > strong { font-size: 15px; line-height: 1.4; }
+html body .app.app-command-shell .settings-layout__detail-content .settings-preference-panel > p { font-size: 13px; line-height: 1.6; color: var(--text-secondary); }
+html body .app.app-command-shell .settings-layout__detail-content .drawer-inline-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+html body .app.app-command-shell .settings-layout__detail-content :is(.drawer-link, .secondary-button) { width: auto; min-height: 44px; padding: 10px 12px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface-primary) !important; box-shadow: none; color: var(--text-primary); font-size: 12px; line-height: 1.4; text-align: center; }
+html body .app.app-command-shell .settings-layout__detail-content .drawer-link.active { background: var(--selection-background) !important; border-color: var(--action-primary); color: var(--action-primary); box-shadow: inset 0 -2px 0 var(--action-primary); }
+html body .app.app-command-shell .settings-layout__detail-content .drawer-field { min-height: 44px; width: 100%; padding: 10px 12px; border: 1px solid var(--border-strong); border-radius: 8px; font-size: 14px; }
+html body .app.app-command-shell .settings-layout__detail-content .theme-choice-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+html body .app.app-command-shell .settings-layout__detail-content .theme-choice-card { position: relative; display: grid; gap: 6px; min-height: 90px; padding: 14px; border: 1px solid var(--border-strong); border-radius: 8px; color: var(--text-primary) !important; background: var(--surface-primary) !important; box-shadow: none !important; text-align: left; }
+html body .app.app-command-shell .settings-layout__detail-content .theme-choice-card.is-selected { border-color: var(--action-primary); background: var(--surface-primary) !important; box-shadow: inset 0 -3px 0 var(--action-primary) !important; }
+html body .app.app-command-shell .settings-layout__detail-content .theme-choice-card.is-selected::after { content: "✓"; position: absolute; top: 14px; right: 12px; color: var(--action-primary); font-size: 13px; line-height: 1.4; }
+html body .app.app-command-shell .settings-layout__detail-content .theme-choice-card strong { display: block; font-size: 14px; line-height: 1.4; }
+html body .app.app-command-shell .settings-layout__detail-content .theme-choice-card small { display: block; color: var(--text-secondary); font-size: 12px; font-weight: 400; line-height: 1.5; }
+html body .app.app-command-shell .settings-layout__detail-content .theme-choice-preview { display: none; }
+html body .app.app-command-shell .settings-layout__detail-content .settings-toggle-stack { display: grid; gap: 0; }
+html body .app.app-command-shell .settings-layout__detail-content .toggle-row { display: grid; grid-template-columns: minmax(0, 1fr) 44px; align-items: center; gap: 12px; min-height: 68px; padding: 12px 0; border: 0; border-bottom: 1px solid var(--border-subtle); border-radius: 0; }
+html body .app.app-command-shell .settings-layout__detail-content .toggle-row > span { display: grid; gap: 5px; }
+html body .app.app-command-shell .settings-layout__detail-content .toggle-row strong { display: block; color: var(--text-primary); font-size: 13px; line-height: 1.4; }
+html body .app.app-command-shell .settings-layout__detail-content .toggle-row small { display: block; color: var(--text-secondary); font-size: 12px; font-weight: 400; line-height: 1.5; }
+html body .app.app-command-shell .settings-layout__detail-content input[type="checkbox"] { appearance: auto; width: 20px; height: 20px; min-height: 20px; margin: 12px; padding: 0; accent-color: var(--action-primary); transform: none; }
+html body .app.app-command-shell .settings-layout__detail-content :is(.settings-section-card, .settings-active-workspace-card) { display: grid; gap: 8px; padding: 14px; background: var(--surface-secondary); border: 1px solid var(--border-subtle); border-radius: 8px; }
+html body .app.app-command-shell .settings-layout__detail-content :is(.settings-section-card, .settings-active-workspace-card) strong { font-size: 14px; line-height: 1.4; }
+html body .app.app-command-shell .settings-layout__detail-content :is(.settings-section-card, .settings-active-workspace-card) > :is(span, small) { color: var(--text-secondary); font-size: 12px; line-height: 1.6; }
+html body .app.app-command-shell .settings-layout__detail-content .drawer-status-list { display: grid; gap: 12px; margin: 18px 0; }
+html body .app.app-command-shell .settings-layout__detail-content .drawer-status-list > div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+html body .app.app-command-shell .settings-layout__detail-content .drawer-status-list dt { color: var(--text-secondary); font-size: 12px; line-height: 1.5; }
+html body .app.app-command-shell .settings-layout__detail-content .drawer-status-list dd { font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+html body .app.app-command-shell .settings-layout__detail-content .app-version-details > summary { min-height: 44px; padding: 12px 0; font-size: 13px; cursor: pointer; }
+html body .app.app-command-shell .settings-layout__detail-content .app-version-details code { display: block; margin-top: 8px; color: var(--text-secondary); font-size: 12px; overflow-wrap: anywhere; }
+
+html body .app.app-command-shell .settings-layout__note { display: flex; gap: 16px; align-items: start; padding: 18px 4px 10px; border-top: 1px solid var(--border-subtle); }
+html body .app.app-command-shell .settings-layout__note-icon { display: grid; place-items: center; flex: 0 0 36px; height: 36px; color: var(--action-primary); background: var(--selection-background); border: 1px solid var(--edge-accent, var(--border-subtle)); border-radius: 8px; }
+html body .app.app-command-shell .settings-layout__note-icon svg { width: 21px; height: 21px; }
+html body .app.app-command-shell .settings-layout__note h2 { font-size: 17px; line-height: 1.4; letter-spacing: -.02em; }
+html body .app.app-command-shell .settings-layout__note p { margin-top: 8px; max-width: 45ch; font-size: 13px; line-height: 1.65; color: var(--text-secondary); }
+html body .app.app-command-shell .settings-layout__note summary { display: list-item; width: fit-content; min-height: 44px; padding: 12px 0 8px; color: var(--action-primary); font-size: 13px; font-weight: 600; cursor: pointer; }
+html body .app.app-command-shell .settings-layout__note ol { display: grid; gap: 14px; margin: 8px 0 0; padding-left: 20px; color: var(--text-secondary); font-size: 13px; }
+html body .app.app-command-shell .settings-layout__note li { padding-left: 4px; }
+html body .app.app-command-shell .settings-layout__note li strong { color: var(--text-primary); font-weight: 600; }
+html body .app.app-command-shell .settings-layout__note li span { display: block; margin-top: 3px; }
+html body .app.app-command-shell .settings-layout__footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding-top: 16px; border-top: 1px solid var(--border-subtle); color: var(--text-secondary); font: 400 10px/1.5 var(--font-mono, monospace); letter-spacing: .025em; }
+
+@media (max-width: 760px) {
+  html body .app.app-command-shell .settings-layout { gap: 24px; padding: 6px 0 20px; }
+  html body .app.app-command-shell .settings-layout__columns { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  html body .app.app-command-shell .settings-layout__column { gap: 24px; }
+  html body .app.app-command-shell .settings-layout__account { grid-template-columns: 44px minmax(0, 1fr); padding: 18px; gap: 14px; }
+  html body .app.app-command-shell .settings-layout__avatar { width: 44px; height: 44px; border-radius: 8px; }
+  html body .app.app-command-shell .settings-layout__avatar svg { width: 24px; height: 24px; }
+  html body .app.app-command-shell .settings-layout__identity h2 { font-size: 20px; }
+  html body .app.app-command-shell .settings-layout__identity p { gap: 6px 8px; }
+  html body .app.app-command-shell .settings-layout__account > .ops-button { grid-column: 1 / -1; justify-self: start; }
+  html body .app.app-command-shell .settings-layout__account-meta { grid-template-columns: minmax(0, 1fr); gap: 14px; margin: 2px -18px -18px !important; padding: 16px 18px; }
+  html body .app.app-command-shell .settings-layout__account-meta > div { display: grid; grid-template-columns: 102px minmax(0, 1fr); gap: 12px; align-items: baseline; }
+  html body .app.app-command-shell .settings-layout__account-meta dd { margin-top: 0; }
+  html body .app.app-command-shell .settings-layout :is(.settings-layout__row, .settings-layout__disclosure > summary) { gap: 10px; padding: 14px 12px; }
+  html body .app.app-command-shell .settings-layout__row-status { max-width: 60px; }
+  html body .app.app-command-shell .settings-layout__row-icon { width: 30px; height: 32px; flex-basis: 30px; }
+  html body .app.app-command-shell .settings-layout__detail-content { padding: 0 14px 14px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html body .app.app-command-shell .settings-layout :is(.settings-layout__row, .settings-layout__disclosure > summary, .settings-layout__arrow) { transition: none; }
+}

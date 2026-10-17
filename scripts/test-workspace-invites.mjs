@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { routeStateFromPath } from "../src/utils/appRouteState.js";
 
 const appPath = path.join(process.cwd(), "src", "App.jsx");
 const packagePath = path.join(process.cwd(), "package.json");
@@ -49,7 +50,9 @@ assert.match(app, /invite_role: role/, "frontend should submit role");
 assert.match(app, /workspaceInviteSending/, "frontend should expose invite loading state");
 assert.match(app, /Email is not configured - copy and send this invite link/, "frontend should not claim email was sent when no sender exists");
 assert.match(app, /Copy invite link/, "frontend should expose copy invite link action");
-assert.match(app, /section === "workspace-invite"/, "workspace invite route should be recognized");
+assert.deepEqual(routeStateFromPath("/workspace-invite/qa%3Ainvite"), { activeTab: "workspaceInvite", workspaceInviteId: "qa:invite" }, "workspace invite route should retain its decoded exact ID through the active parser");
+assert.deepEqual(routeStateFromPath("/workspace-invite"), { activeTab: "workspaceInvite", workspaceInviteId: "" }, "missing invite IDs should remain on the handled invite page");
+assert.match(app, /from "\.\/utils\/appRouteState"/, "App must consume the tested route module");
 assert.match(app, /WORKSPACE_INVITE_SESSION_KEY/, "workspace invite id should be stored only in session while signing in");
 assert.match(app, /supabase\.rpc\("accept_workspace_invite"/, "workspace invite route should accept through backend RPC");
 assert.match(app, /This workspace invite was made for a different email/, "workspace invite email mismatch should be clear");

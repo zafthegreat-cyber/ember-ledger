@@ -1,0 +1,19 @@
+.private-files { display: grid; align-content: start; align-items: start; gap: 12px; min-width: 0; color: var(--text-primary); }
+.private-files h3, .private-files p { margin: 0; }
+.private-files p { color: var(--text-secondary); font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.private-files__heading { display: flex; width: 100%; justify-content: space-between; align-items: start; gap: 16px; }
+.private-files__heading h3 { margin-bottom: 4px; }
+.private-files label { font-size: 14px; font-weight: 650; }
+.private-files input { width: 100%; min-width: 0; max-width: 100%; min-height: 44px; border: 1px solid var(--border-strong); padding: 8px; border-radius: var(--radius-sm); color: var(--text-primary); background: var(--surface-primary); }
+.private-files__list { display: grid; width: 100%; list-style: none; padding: 0; margin: 0; }
+.private-files__list li { display: flex; flex-wrap: wrap; align-items: start; gap: 16px; justify-content: space-between; padding: 16px 0; border-top: 1px solid var(--border-subtle); }
+.private-files__list strong { display: block; overflow-wrap: anywhere; max-width: 100%; }
+.private-files__list li > div { min-width: 0; }
+.private-files__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.private-files__confirmation { display: grid; gap: 8px; }
+.private-files .private-files__error { color: var(--status-danger, var(--text-primary)); }
+.private-files .private-files__message { color: var(--text-primary); }
+.private-files__delete { min-height: 44px; border: 1px solid currentColor; color: var(--status-danger, var(--text-primary)); background: var(--surface-primary); border-radius: var(--radius-sm); padding: 8px 16px; font: inherit; font-weight: 650; }
+.private-files button:focus-visible, .private-files input:focus-visible { outline: 3px solid var(--brand-primary); outline-offset: 3px; }
+.private-files button:disabled, .private-files input:disabled { opacity: .55; cursor: not-allowed; }
+@media (max-width: 480px) { .private-files__heading { flex-direction: column; } .private-files__list li { display: grid; } }

@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { readLocalCss } from "./helpers/read-local-css.mjs";
+import { readDeferredAppSource } from "./helpers/read-deferred-app-source.mjs";
 import {
   APP_ROLES,
   appRoleForProfile,
@@ -14,8 +16,8 @@ import {
 } from "../src/utils/rolePermissions.js";
 
 const root = process.cwd();
-const app = fs.readFileSync(path.join(root, "src", "App.jsx"), "utf8");
-const css = fs.readFileSync(path.join(root, "src", "App.css"), "utf8");
+const app = readDeferredAppSource(path.join(root, "src", "App.jsx"));
+const css = readLocalCss(path.join(root, "src", "App.css"));
 const packageJson = fs.readFileSync(path.join(root, "package.json"), "utf8");
 const service = fs.readFileSync(path.join(root, "src", "services", "shorelineAccessService.js"), "utf8");
 const featureGates = fs.readFileSync(path.join(root, "src", "services", "featureGates.js"), "utf8");

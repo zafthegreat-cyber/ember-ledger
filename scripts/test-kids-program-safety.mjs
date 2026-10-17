@@ -7,7 +7,7 @@ import {
   validateSparkApplication,
 } from "../src/utils/kidsProgramSafety.js";
 
-const appSource = fs.readFileSync("src/App.jsx", "utf8");
+const sparkSource = fs.readFileSync("src/pages/Spark.jsx", "utf8");
 
 const baseRequest = {
   parentName: "Parent",
@@ -45,8 +45,9 @@ assert.equal(normalizeSparkProgramStatus("waitlist"), "waitlisted");
 assert.equal(normalizeSparkProgramStatus("denied"), "not_available_yet");
 assert.equal(sparkProgramStatusLabel("fulfilled"), "Fulfilled");
 assert.equal(sparkProgramStatusLabel("not_available_yet"), "Not Available Yet");
-assert.match(appSource, /Igniting the spark within them/, "The Spark page should carry the current mission language");
-assert.match(appSource, /Other family collecting support/, "The Spark page should list broader support categories beyond bulk cards");
-assert.match(appSource, /Volunteer time/, "The Spark support examples should include non-product help");
+assert.match(sparkSource, /Parent-managed access support, kid-pack planning, donations, proof, and family-safe event help/, "The active Spark page should explain its family support purpose");
+assert.match(sparkSource, /No direct child messaging, public child profiles, or payment processing/, "The active Spark mission should retain its safety boundaries");
+assert.match(sparkSource, /Other family collecting support/, "The Spark page should list broader support categories beyond bulk cards");
+assert.match(sparkSource, /Volunteer time/, "The Spark support examples should include non-product help");
 
 console.log("Kids Program safety tests passed.");

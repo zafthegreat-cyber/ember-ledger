@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import {
   detectCatalogSearchMode,
   getCachedCatalogRecommendations,
@@ -14,6 +14,8 @@ import {
   getProductSetLabel,
   getProductTypeLabel,
 } from "../utils/productDisplayUtils";
+
+const EMPTY_OPTIONS = Object.freeze([]);
 
 function renderHighlighted(label, query) {
   const text = String(label || "");
@@ -118,11 +120,11 @@ export default function SmartCatalogSearchBox({
   money = (amount) => `$${Number(amount || 0).toFixed(2)}`,
   autoFocus = false,
   inputLabel = "",
-  localCatalogProducts = [],
+  localCatalogProducts = EMPTY_OPTIONS,
   includeScopeSuggestions = false,
-  searchCategories = [],
-  scopeSets = [],
-  scopeProductTypes = [],
+  searchCategories = EMPTY_OPTIONS,
+  scopeSets = EMPTY_OPTIONS,
+  scopeProductTypes = EMPTY_OPTIONS,
   suppressSuggestions = false,
   timingStatusLabel = "",
 }) {
@@ -148,7 +150,7 @@ export default function SmartCatalogSearchBox({
     return getProductTypeLabel(product) || "Product";
   }
 
-  function buildLocalSuggestions(queryValue = "") {
+  const buildLocalSuggestions = useCallback((queryValue = "") => {
     if (!Array.isArray(localCatalogProducts) || !localCatalogProducts.length) return [];
     return searchCatalog(queryValue, localCatalogProducts, Math.max(maxSuggestions, 8))
       .map((result, index) => {
@@ -172,9 +174,9 @@ export default function SmartCatalogSearchBox({
           product,
         };
       });
-  }
+  }, [localCatalogProducts, maxSuggestions]);
 
-  function buildScopeSuggestions(queryValue = "") {
+  const buildScopeSuggestions = useCallback((queryValue = "") => {
     if (!includeScopeSuggestions) return [];
     const labelQuery = String(queryValue || "").trim();
     const normalized = normalizeCatalogQuery(labelQuery);
@@ -285,7 +287,7 @@ export default function SmartCatalogSearchBox({
     });
 
     return suggestions.slice(0, 5);
-  }
+  }, [includeScopeSuggestions, scopeProductTypes, scopeSets, searchCategories]);
 
   function dedupeSuggestionList(list = []) {
     const seen = new Set();
@@ -310,87 +312,57 @@ export default function SmartCatalogSearchBox({
     mapRowRef.current = mapRow;
   }, [mapRow]);
 
-  useEffect(() => {
+  const searchInputs = [cleanedValue, dataFilter, deferredValue, includeScopeSuggestions, isSupabaseConfigured, localCatalogProducts, maxSuggestions, productGroup, scopeProductTypes, scopeSets, searchCategories, supabase, suggestionFilter, suppressSuggestions];
+  const [previousSearchInputs, setPreviousSearchInputs] = useState(null);
+  const [previousCloseSignal, setPreviousCloseSignal] = useState(closeSignal);
+  if (previousCloseSignal !== closeSignal) {
+    setPreviousCloseSignal(closeSignal);
     setOpen(false);
     setActiveIndex(-1);
-  }, [closeSignal]);
-
-  useEffect(() => {
-    if (!suppressSuggestions) return;
-    setOpen(false);
-    setActiveIndex(-1);
-    setLoading(false);
-  }, [suppressSuggestions]);
-
-  useEffect(() => {
-    if (suppressSuggestions) {
+  }
+  const exactIdentifier = ["barcode", "id"].includes(detectCatalogSearchMode(deferredValue));
+  const canSearch = Boolean(cleanedValue && (cleanedValue.length >= 2 || exactIdentifier));
+  if (!previousSearchInputs || searchInputs.some((input, index) => !Object.is(input, previousSearchInputs[index]))) {
+    setPreviousSearchInputs(searchInputs);
+    setErrorMessage("");
+    if (suppressSuggestions || !canSearch) {
+      if (!canSearch) setSuggestionsIfChanged([]);
+      setLoading(false);
       setOpen(false);
       setActiveIndex(-1);
-      setLoading(false);
-      return;
-    }
-    const mode = detectCatalogSearchMode(deferredValue);
-    const exactIdentifier = ["barcode", "id"].includes(mode);
-    if (!cleanedValue || (cleanedValue.length < 2 && !exactIdentifier)) {
-      setSuggestionsIfChanged([]);
-      setLoading(false);
-      setErrorMessage("");
-      setOpen(false);
-      setActiveIndex(-1);
-      return;
-    }
-
-    if (!isSupabaseConfigured || !supabase) {
+    } else if (!isSupabaseConfigured || !supabase) {
       const localSuggestions = dedupeSuggestionList([
-        ...buildScopeSuggestions(deferredValue),
-        ...buildLocalSuggestions(deferredValue),
+        ...buildScopeSuggestions(deferredValue), ...buildLocalSuggestions(deferredValue),
       ]).slice(0, maxSuggestions);
       setSuggestionsIfChanged(localSuggestions);
       setLoading(false);
-      setErrorMessage("");
       setOpen(true);
       setActiveIndex(localSuggestions.length ? 0 : -1);
       setLastTimingIfChanged({ sourceName: "catalog seed", cacheState: "local", searchPhase: "local" });
-      return;
+    } else {
+      const cached = getCachedCatalogRecommendations({ query: deferredValue, productGroup, dataFilter, limit: maxSuggestions });
+      const filtered = cached ? (typeof suggestionFilter === "function" ? (cached.suggestions || []).filter(suggestionFilter) : cached.suggestions || []) : [];
+      setSuggestionsIfChanged(cached ? dedupeSuggestionList([
+        ...buildScopeSuggestions(deferredValue), ...buildLocalSuggestions(deferredValue), ...filtered,
+      ]).slice(0, maxSuggestions) : []);
+      setLoading(!cached);
+      setOpen(true);
+      setActiveIndex(-1);
+      if (cached) setLastTimingIfChanged({ elapsedMs: cached.elapsedMs, sourceName: cached.sourceName, cacheState: "hit", searchPhase: cached.searchPhase });
     }
+  }
 
+  useEffect(() => {
+    if (suppressSuggestions || !canSearch || !isSupabaseConfigured || !supabase) return;
     const currentRequestId = requestId.current + 1;
     requestId.current = currentRequestId;
     abortRef.current?.abort?.();
     const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
     abortRef.current = controller;
-
-    const cached = getCachedCatalogRecommendations({
-      query: deferredValue,
-      productGroup,
-      dataFilter,
-      limit: maxSuggestions,
-    });
-    if (cached) {
-      const filteredSuggestions = typeof suggestionFilter === "function"
-        ? (cached.suggestions || []).filter((suggestion) => suggestionFilter(suggestion))
-        : (cached.suggestions || []);
-      const nextSuggestions = dedupeSuggestionList([
-        ...buildScopeSuggestions(deferredValue),
-        ...buildLocalSuggestions(deferredValue),
-        ...filteredSuggestions,
-      ]).slice(0, maxSuggestions);
-      setSuggestionsIfChanged(nextSuggestions);
-      setLoading(false);
-      setErrorMessage("");
-      setOpen(true);
-      setActiveIndex(nextSuggestions.length ? 0 : -1);
-      setLastTimingIfChanged({ elapsedMs: cached.elapsedMs, sourceName: cached.sourceName, cacheState: "hit", searchPhase: cached.searchPhase });
-    }
-
-    if (!cached) setSuggestionsIfChanged([]);
-    setLoading(!cached);
-    setErrorMessage("");
-    setOpen(true);
-    setActiveIndex(-1);
+    let active = true;
 
     const timer = window.setTimeout(async () => {
-      if (requestId.current !== currentRequestId) return;
+      if (!active || requestId.current !== currentRequestId) return;
       try {
         const result = await getCatalogRecommendations({
           supabase,
@@ -401,7 +373,7 @@ export default function SmartCatalogSearchBox({
           limit: maxSuggestions,
           signal: controller?.signal,
         });
-        if (requestId.current !== currentRequestId) return;
+        if (!active || requestId.current !== currentRequestId) return;
         const filteredSuggestions = typeof suggestionFilter === "function"
           ? (result.suggestions || []).filter((suggestion) => suggestionFilter(suggestion))
           : (result.suggestions || []);
@@ -416,22 +388,23 @@ export default function SmartCatalogSearchBox({
         setErrorMessage("");
         setLastTimingIfChanged({ elapsedMs: result.elapsedMs, sourceName: result.sourceName, cacheState: result.cached ? "hit" : result.cacheState, searchPhase: result.searchPhase });
       } catch (error) {
-        if (requestId.current !== currentRequestId) return;
+        if (!active || requestId.current !== currentRequestId) return;
         if (error?.name === "AbortError") return;
         setSuggestionsIfChanged([]);
         setOpen(true);
         setErrorMessage(error?.message || "Catalog search is unavailable. Try again.");
         setActiveIndex(-1);
       } finally {
-        if (requestId.current === currentRequestId) setLoading(false);
+        if (active && requestId.current === currentRequestId) setLoading(false);
       }
     }, 180);
 
     return () => {
+      active = false;
       window.clearTimeout(timer);
       controller?.abort?.();
     };
-  }, [cleanedValue, dataFilter, deferredValue, includeScopeSuggestions, isSupabaseConfigured, localCatalogProducts, maxSuggestions, productGroup, scopeProductTypes, scopeSets, searchCategories, supabase, suggestionFilter, suppressSuggestions]);
+  }, [buildLocalSuggestions, buildScopeSuggestions, canSearch, cleanedValue, dataFilter, deferredValue, isSupabaseConfigured, maxSuggestions, productGroup, supabase, suggestionFilter, suppressSuggestions]);
 
   const groupedSuggestions = useMemo(() => {
     return suggestions.reduce((groups, suggestion, index) => {

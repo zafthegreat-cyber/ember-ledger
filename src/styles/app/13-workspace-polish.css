@@ -1,0 +1,301 @@
+/* Shared presentation layer for current and legacy workspaces.
+   Specificity keeps lazy-loaded route styles from restoring old glow treatments. */
+html body .app.app-signed-out {
+  min-height: 100dvh;
+  padding: 32px 24px;
+  background: var(--app-background);
+  color: var(--text-primary);
+  font: 400 15px/1.6 var(--font-ui);
+}
+html body .app.app-signed-out > .header {
+  display: block;
+  width: min(1040px, 100%);
+  margin: 0 auto 32px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+.app.app-signed-out .auth-brand-lockup { display: flex; align-items: center; gap: 12px; }
+.app.app-signed-out .auth-brand-mark { width: 40px; height: 40px; object-fit: contain; }
+.app.app-signed-out .auth-brand-wordmark { font-family: var(--font-display, var(--font-ui)); font-size: 18px; font-weight: 650; letter-spacing: -.025em; }
+html body .app.app-signed-out .auth-main {
+  width: min(1040px, 100%);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 472px);
+  align-items: start;
+  gap: 56px;
+  margin: 0 auto;
+  padding: 0;
+}
+html body .app.app-signed-out .auth-login-story-panel {
+  min-width: 0;
+  padding: 56px 18px 32px 0;
+  border: 0 !important;
+  border-radius: 0;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--text-primary);
+}
+.app.app-signed-out .auth-login-scene { display: grid; align-content: start; gap: 36px; }
+html body .app.app-signed-out .auth-login-scene-copy h2 { max-width: 21ch; margin: 0 0 20px; color: inherit; font-family: var(--font-display, var(--font-ui)) !important; font-size: clamp(28px, 3vw, 38px); font-weight: 600; line-height: 1.15; letter-spacing: -.04em; text-wrap: balance; }
+.app.app-signed-out .auth-login-scene-copy p { margin: 0; color: var(--text-secondary); line-height: 1.7; }
+.app.app-signed-out .auth-login-promise-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.app.app-signed-out .auth-login-promise { min-width: 0; padding-top: 14px; border-top: 1px solid var(--border-subtle); }
+.app.app-signed-out .auth-login-promise strong { color: var(--text-primary); font: 500 11px/1.5 var(--font-mono, monospace); letter-spacing: .06em; text-transform: uppercase; }
+.app.app-signed-out .auth-login-promise p { color: var(--text-secondary); font-size: 13px; margin: 6px 0 0; }
+.app.app-signed-out .auth-login-promise-icon { display: none; }
+html body .app.app-signed-out .signed-out-auth-card {
+  min-width: 0;
+  margin: 0;
+  padding: 32px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: var(--surface-primary);
+  box-shadow: var(--shadow-panel, var(--shadow-1));
+}
+.app.app-signed-out .auth-card-brand { display: none; }
+html body .app.app-signed-out .auth-card-welcome h2,
+html body .app.app-signed-out .auth-access-card > h2 { font-family: var(--font-display, var(--font-ui)) !important; font-size: 30px; font-weight: 600; line-height: 1.2; letter-spacing: -.035em; margin: 0 0 10px; color: var(--text-primary); }
+.app.app-signed-out .auth-card-welcome p { margin: 0 0 14px; color: var(--text-secondary); }
+.app.app-signed-out .auth-mode-title { display: none; }
+.app.app-signed-out .compact-subtitle { color: var(--text-secondary); font-size: 13px; line-height: 1.6; margin: 0 0 20px; }
+.app.app-signed-out .auth-form { display: grid; gap: 18px; }
+.app.app-signed-out .auth-form label { display: grid; gap: 7px; font-size: 13px; font-weight: 650; }
+.app.app-signed-out .auth-form input:not([type="checkbox"]) { width: 100%; min-width: 0; min-height: 48px; padding: 10px 12px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface-primary); color: var(--text-primary); font: 400 16px/1.5 var(--font-ui); }
+.app.app-signed-out .auth-name-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 16px 12px; }
+.app.app-signed-out .auth-name-grid > :is(label:nth-of-type(n + 3), .auth-name-helper, .account-setup-rule-card) { grid-column: 1 / -1; }
+.app.app-signed-out .auth-name-grid .auth-name-helper { margin: 0; }
+.app.app-signed-out .auth-name-grid .account-setup-rule-card { padding: 14px 16px; border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--surface-inset); color: var(--text-secondary); font-size: 12px; line-height: 1.65; }
+.app.app-signed-out .account-setup-rule-card strong { color: var(--text-primary); font-size: 13px; }
+.app.app-signed-out .account-setup-rule-card p { margin: 5px 0 0; }
+.app.app-signed-out .account-setup-rule-card ul { margin: 10px 0 0; padding-left: 18px; }
+.app.app-signed-out .account-setup-rule-card li + li { margin-top: 5px; }
+.app.app-signed-out .signup-consent-box { display: grid; gap: 16px; padding: 16px; border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--surface-inset); }
+html body .app.app-signed-out .signup-consent-box .checkbox-row { display: grid; grid-template-columns: 20px minmax(0, 1fr); align-items: start; gap: 10px; min-height: 44px; padding: 0; margin: 0; border: 0; border-radius: 0; background: transparent; font-size: 12px; font-weight: 400; line-height: 1.6; }
+.app.app-signed-out .signup-consent-box input[type="checkbox"] { width: 18px; height: 18px; min-height: 18px; margin: 2px 0 0; padding: 0; accent-color: var(--action-primary); }
+html body .app.app-signed-out .signup-consent-box .inline-text-button { display: block; min-height: 44px; width: fit-content; padding: 10px 0; background: transparent !important; border: 0 !important; color: var(--action-primary) !important; font-size: 12px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.app.app-signed-out button { min-height: 44px; border-radius: 8px; font: 650 13px/1.5 var(--font-ui); cursor: pointer; box-shadow: none !important; }
+.app.app-signed-out .auth-form button[type="submit"] { min-height: 48px; padding: 10px 16px; border: 0; background: var(--action-primary); color: var(--on-primary); }
+.app.app-signed-out button:disabled { opacity: .55; cursor: not-allowed; }
+html body .app.app-signed-out .auth-form button[type="submit"]:disabled { opacity: 1; background: var(--surface-secondary) !important; color: var(--text-secondary) !important; border-color: var(--border-subtle) !important; }
+.app.app-signed-out .auth-beta-note { margin: 20px 0 12px; padding-top: 18px; border-top: 1px solid var(--border-subtle); color: var(--text-secondary); font-size: 12px; line-height: 1.6; }
+.app.app-signed-out .auth-link-stack { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 8px; }
+.app.app-signed-out .auth-text-button { padding: 8px; background: var(--surface-primary); color: var(--text-primary); border: 1px solid var(--border-subtle); }
+html body .app.app-signed-out .auth-link-stack .auth-text-button { padding: 10px 3px; border: 1px solid transparent !important; background: transparent !important; color: var(--action-primary) !important; font-size: 12px; font-weight: 600; }
+html body .app.app-signed-out .auth-link-stack .auth-text-button:hover { background: var(--surface-secondary) !important; text-decoration: underline; text-underline-offset: 3px; }
+html body .app.app-signed-out .auth-link-stack .auth-preview-link { border-color: var(--border-strong) !important; color: var(--text-primary) !important; background: var(--surface-primary) !important; }
+.app.app-signed-out .auth-access-card > .auth-text-button { margin-top: 16px; }
+.app.app-signed-out :is(input, button):focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 3px; }
+@media (max-width: 760px) {
+  html body .app.app-signed-out { padding: 24px 16px; }
+  html body .app.app-signed-out > .header { margin-bottom: 24px; }
+  html body .app.app-signed-out .auth-main { max-width: 480px; grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  html body .app.app-signed-out .signed-out-auth-card { padding: 22px 20px; order: -1; }
+  html body .app.app-signed-out .auth-login-story-panel { padding: 12px 6px 8px; }
+  html body .app.app-signed-out .auth-login-scene-copy h2 { margin-bottom: 12px; font-size: 24px; }
+  .app.app-signed-out .auth-name-grid { grid-template-columns: minmax(0, 1fr); }
+  .app.app-signed-out .auth-login-promise-grid { display: none; }
+}
+.app.app-command-shell {
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  font-family: var(--font-ui);
+}
+.app.app-command-shell :where(button, input, select, textarea) { font-family: inherit; }
+html body .app.app-command-shell button { box-shadow: none !important; text-shadow: none !important; }
+.app.app-command-shell :where(button, a, summary, input, select, textarea):focus-visible {
+  outline: 3px solid var(--focus-ring) !important;
+  outline-offset: 3px;
+}
+.app.app-command-shell :where(h1, h2, h3) { text-shadow: none !important; text-wrap: balance; }
+.app.app-command-shell .ops-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 8px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.app.app-command-shell .ops-page-header h1 {
+  margin: 5px 0 0;
+  color: var(--text-primary);
+  font-size: clamp(26px, 2.5vw, 34px);
+  font-weight: 750;
+  line-height: 1.2;
+  letter-spacing: -.035em;
+}
+.app.app-command-shell .ops-page-header p {
+  max-width: 65ch;
+  margin: 10px 0 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.65;
+}
+.app.app-command-shell .ops-eyebrow { color: var(--text-secondary); font-size: 11px; letter-spacing: .1em; }
+.app.app-command-shell .ops-section-header h2 { font-size: 18px; line-height: 1.4; letter-spacing: -.02em; }
+.app.app-command-shell .ops-section-header p { font-size: 13px; line-height: 1.6; }
+.app.app-command-shell .ops-button {
+  min-height: 44px;
+  border-radius: 8px !important;
+  background-image: none !important;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+.app.app-command-shell .ops-button--primary { background: var(--brand-primary) !important; color: var(--on-primary) !important; border: 1px solid transparent !important; }
+.app.app-command-shell[data-theme="dark"] .ops-button--primary { color: var(--on-primary) !important; }
+.app.app-command-shell .ops-button--primary:hover { background: var(--brand-primary-hover) !important; }
+.app.app-command-shell .ops-button--secondary { background: var(--surface-primary) !important; color: var(--text-primary) !important; border: 1px solid var(--border-strong) !important; }
+.app.app-command-shell .ops-button--quiet,
+.app.app-command-shell .ops-button--icon { background: transparent !important; color: var(--text-secondary) !important; border: 1px solid transparent !important; }
+.app.app-command-shell .ops-button:disabled { opacity: .55; cursor: not-allowed; }
+.app.app-command-shell :where(.ops-field input, .ops-field select, .ops-field textarea, .ops-search-field input) {
+  min-height: 44px;
+  border-radius: 8px;
+  color: var(--text-primary);
+  background-color: var(--surface-primary);
+}
+.app.app-command-shell :where(.ops-state, .ops-record-card, .ops-metric-card) {
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: var(--surface-primary);
+  box-shadow: none;
+}
+.app.app-command-shell .ops-state { padding: 24px; }
+.app.app-command-shell .ops-state h3 { font-size: 17px; line-height: 1.4; }
+.app.app-command-shell .ops-state p { color: var(--text-secondary); line-height: 1.65; }
+.app.app-command-shell .ops-state .ops-button { margin-top: 8px; }
+.app.app-command-shell .ops-metric-card > strong { letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.app.app-command-shell .ops-home-page { width: min(1180px, 100%); padding-top: 24px; }
+.app.app-command-shell .ops-home-section {
+  padding: 24px;
+  margin-bottom: 20px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  background: var(--surface-primary);
+}
+.app.app-command-shell .ops-home-section .ops-section-header p { display: block; }
+.app.app-command-shell .ops-workspace-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  border: 0;
+}
+.app.app-command-shell .ops-workspace-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 18px; }
+.app.app-command-shell .ops-workspace-grid button {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-width: 0;
+  min-height: 140px;
+  padding: 20px;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: 12px;
+  background: var(--surface-primary) !important;
+  color: var(--text-primary) !important;
+  text-align: left;
+  cursor: pointer;
+}
+.app.app-command-shell .ops-workspace-grid button:hover {
+  border-color: var(--brand-primary) !important;
+  background: var(--surface-secondary) !important;
+}
+.app.app-command-shell .ops-workspace-grid strong { font-size: 16px; font-weight: 700; }
+.app.app-command-shell .ops-workspace-grid button > span { color: var(--text-secondary); font-size: 13px; font-weight: 400; line-height: 1.6; }
+.app.app-command-shell .ops-workspace-grid .ops-workspace-icon { font-size: 22px; color: var(--brand-primary); }
+.app.app-command-shell .ops-workspace-grid .ops-workspace-link { margin-top: 6px; font-size: 12px; font-weight: 650; color: var(--brand-primary); }
+.app.app-command-shell .ops-desktop-sidebar { border-right: 1px solid var(--border-subtle); box-shadow: none; }
+.app.app-command-shell .ops-desktop-sidebar button { border-radius: 8px; }
+/* Find and the older command boards share the same visual vocabulary. */
+html body .app.app-command-shell .flip-main-nav { justify-content: start; }
+html body .app.app-command-shell .flip-main-nav button {
+  min-height: 44px;
+  background: var(--surface-primary) !important;
+  color: var(--text-secondary) !important;
+  border: 1px solid var(--border-subtle) !important;
+  font-size: 13px;
+}
+html body .app.app-command-shell .flip-main-nav button.active {
+  background: var(--surface-secondary) !important;
+  border-color: var(--brand-primary) !important;
+  color: var(--brand-primary) !important;
+}
+html body .app.app-command-shell .flip-empty-state {
+  min-height: 160px;
+  padding: 24px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: var(--surface-primary);
+}
+html body .app.app-command-shell .command-board-v4 {
+  --cb-bg: var(--app-background);
+  --cb-panel: var(--surface-primary);
+  --cb-panel-raised: var(--surface-secondary);
+  --cb-control: var(--surface-primary);
+  --cb-ink: var(--text-primary);
+  --cb-text: var(--text-secondary);
+  --cb-line: var(--border-subtle);
+  --cb-card-shadow: none;
+}
+html body .app.app-command-shell .command-board-v4-stage { background: var(--app-background) !important; }
+html body .app.app-command-shell .command-board-v4-hero-copy h1 { font-size: clamp(26px, 2.5vw, 34px); line-height: 1.2; letter-spacing: -.03em; }
+html body .app.app-command-shell .command-board-v4-plan-grid button,
+html body .app.app-command-shell .command-board-v4-route-strip button {
+  min-height: 44px;
+  background: var(--surface-primary) !important;
+  color: var(--text-primary) !important;
+}
+html body .app.app-command-shell .command-board-v4-plan-grid button span,
+html body .app.app-command-shell .command-board-v4-route-strip button span { font-size: 11px; line-height: 1.4; color: var(--text-primary); }
+html body .app.app-command-shell .command-board-v4-plan-grid button small { font-size: 11px; line-height: 1.4; color: var(--text-secondary); }
+html body .app.app-command-shell .command-board-v4-route-strip button.is-active { background: var(--surface-secondary) !important; border-bottom: 2px solid var(--brand-primary); }
+html body .app.app-command-shell .you-v4-quick-links button {
+  min-height: 116px;
+  padding: 16px;
+  border: 1px solid var(--border-subtle) !important;
+  background: var(--surface-primary) !important;
+  color: var(--text-primary) !important;
+}
+html body .app.app-command-shell .you-v4-quick-links button strong { color: var(--text-primary); font-size: 15px; }
+html body .app.app-command-shell .you-v4-quick-links button small,
+html body .app.app-command-shell .you-v4-profile-metrics small { color: var(--text-secondary); font-size: 12px; line-height: 1.5; }
+html body .app.app-command-shell .you-v4-quick-links button > span { color: var(--brand-primary); font-size: 11px; }
+html body .app.app-command-shell .command-board-v4-hero-copy p,
+html body .app.app-command-shell .you-v4-panel-heading p,
+html body .app.app-command-shell .you-v4-profile-identity p { color: var(--text-secondary); font-size: 13px; line-height: 1.6; }
+html body .app.app-command-shell .you-v4-profile-metrics strong { font-size: 13px; }
+@media (max-width: 859px) {
+  html body .app.app-command-shell .command-board-v4-plan-grid button {
+    height: auto !important;
+    min-height: 72px !important;
+    max-height: none !important;
+    grid-template-rows: auto auto !important;
+  }
+  html body .app.app-command-shell .command-board-v4-plan-grid button span {
+    display: block !important;
+    max-height: none !important;
+    height: auto !important;
+    -webkit-line-clamp: unset;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    font-size: 11px !important;
+    line-height: 1.45 !important;
+  }
+  .app.app-command-shell .ops-workspace-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .app.app-command-shell .ops-home-page { padding-top: 20px; }
+  .app.app-command-shell .ops-home-section { padding: 18px; }
+}
+@media (max-width: 480px) {
+  .app.app-command-shell .ops-page-header { gap: 14px; padding-bottom: 18px; }
+  .app.app-command-shell .ops-home-section { padding: 16px; }
+  .app.app-command-shell .ops-workspace-grid { grid-template-columns: minmax(0, 1fr); }
+  .app.app-command-shell .ops-workspace-grid button { min-height: 0; grid-template-columns: 30px minmax(0, 1fr); gap: 4px 12px; padding: 16px; }
+  .app.app-command-shell .ops-workspace-grid .ops-workspace-icon { grid-row: span 3; }
+  .app.app-command-shell .ops-workspace-grid button > span:not(.ops-workspace-icon) { grid-column: 2; }
+  .app.app-command-shell .ops-state { padding: 20px; }
+}

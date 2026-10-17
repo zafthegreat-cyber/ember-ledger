@@ -23,3 +23,5 @@ supabase/.temp/
 .DS_Store
 
 artifacts/
+.vercel
+.env*

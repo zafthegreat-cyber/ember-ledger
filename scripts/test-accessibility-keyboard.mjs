@@ -1,8 +1,36 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import { fileURLToPath } from "node:url";
+import { readDeferredAppSource } from "./helpers/read-deferred-app-source.mjs";
 
-const appSource = fs.readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
-const cssSource = fs.readFileSync(new URL("../src/App.css", import.meta.url), "utf8");
+// Follow the mounted lazy renderers so their accessible labels and honest
+// capability copy remain subject to the same assertions after code splitting.
+const appSource = readDeferredAppSource(fileURLToPath(new URL("../src/App.jsx", import.meta.url)));
+const operationsSource = fs.readFileSync(new URL("../src/components/operations/OperationsUI.jsx", import.meta.url), "utf8");
+const ownerCenterSource = fs.readFileSync(new URL("../src/features/ownerCenter/OwnerCenterPage.jsx", import.meta.url), "utf8");
+const ownerCenterCss = fs.readFileSync(new URL("../src/features/ownerCenter/owner-center.css", import.meta.url), "utf8");
+const everydaySource = fs.readFileSync(new URL("../src/pages/EverydayWorkspaces.jsx", import.meta.url), "utf8");
+const workspaceTabsSource = fs.readFileSync(new URL("../src/components/operations/WorkspaceTabs.jsx", import.meta.url), "utf8");
+const workspaceSwitcherSource = fs.readFileSync(new URL("../src/features/workspaces/WorkspaceSwitcher.jsx", import.meta.url), "utf8");
+const workspaceHomeSource = fs.readFileSync(new URL("../src/features/workspaces/WorkspaceHomePage.jsx", import.meta.url), "utf8");
+const botOperationsSource = fs.readFileSync(new URL("../src/features/botOps/BotOperationsPage.jsx", import.meta.url), "utf8");
+const workspaceCss = fs.readFileSync(new URL("../src/features/workspaces/workspace-shell.css", import.meta.url), "utf8");
+
+function readCssGraph(url, seen = new Set()) {
+  const key = url.href;
+  if (seen.has(key)) return "";
+  seen.add(key);
+
+  const source = fs.readFileSync(url, "utf8");
+  const imports = [...source.matchAll(/@import\s+["']([^"']+)["'];/g)]
+    .map((match) => readCssGraph(new URL(match[1], url), seen));
+  return `${imports.join("\n")}\n${source}`;
+}
+
+const cssSource = [
+  fs.readFileSync(new URL("../src/index.css", import.meta.url), "utf8"),
+  readCssGraph(new URL("../src/App.css", import.meta.url)),
+].join("\n");
 
 assert.match(cssSource, /Accessibility final layer: keyboard focus, tap comfort, and reduced motion\./);
 assert.match(cssSource, /:focus-visible/);
@@ -13,9 +41,22 @@ assert.match(cssSource, /\[role="button"\]/);
 assert.match(cssSource, /outline: 3px solid/);
 assert.match(cssSource, /min-height: 44px/);
 
-const reducedMotionStart = cssSource.lastIndexOf("@media (prefers-reduced-motion: reduce)");
-assert.ok(reducedMotionStart > 0, "Reduced-motion media query should exist.");
-const reducedMotionSource = cssSource.slice(reducedMotionStart);
+// Component-specific motion rules can follow the shared accessibility layer.
+// Inspect the contents of all reduce queries instead of assuming the last one
+// contains every global rule (and accidentally inspecting unrelated later CSS).
+const reducedMotionBlocks = [...cssSource.matchAll(/@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{/g)].map((match) => {
+  const start = match.index + match[0].length;
+  let depth = 1;
+  let end = start;
+  for (; end < cssSource.length && depth; end += 1) {
+    if (cssSource[end] === "{") depth += 1;
+    if (cssSource[end] === "}") depth -= 1;
+  }
+  assert.equal(depth, 0, "Reduced-motion block must be closed.");
+  return cssSource.slice(start, end - 1);
+});
+assert.ok(reducedMotionBlocks.length > 0, "Reduced-motion media query should exist.");
+const reducedMotionSource = reducedMotionBlocks.join("\n");
 assert.match(reducedMotionSource, /scroll-behavior: auto/);
 assert.match(reducedMotionSource, /transition-duration: 0\.001ms/);
 assert.match(reducedMotionSource, /animation-duration: 0\.001ms/);
@@ -23,11 +64,39 @@ assert.match(reducedMotionSource, /collector-showcase-shine/);
 assert.match(reducedMotionSource, /hearth-skeleton-card/);
 assert.match(reducedMotionSource, /transform: none !important/);
 
-assert.match(appSource, /aria-label=\{`\$\{item\.label\}\. \$\{item\.helper \|\| "Open this Ember & Tide area\."\}`\}/);
+assert.match(appSource, /aria-label=\{`\$\{item\.label\}\. \$\{item\.helper \|\| "Open this workspace area\."\}`\}/);
 assert.match(appSource, /aria-label="Scout screenshot or photo review\. Try text extraction, then review before saving a Scout report\."/);
 assert.match(appSource, /aria-label="Scan page of cards\. Manual multi-card review\. Automatic card detection is not live yet\."/);
 assert.match(appSource, /aria-label="Manual entry\. Add a record now and correct details before saving\."/);
 assert.match(appSource, /aria-label=\{`\$\{mode\.title\}\. \$\{mode\.helper\} Coming later\.`\}/);
+assert.match(operationsSource, /aria-label="Primary navigation"/);
+assert.match(operationsSource, /aria-current=\{item\.key === activeKey && !item\.isAction \? "page"/);
+assert.match(ownerCenterSource, /role="tablist" aria-label=\{label\}/);
+assert.match(ownerCenterSource, /role="tab" aria-selected=\{active === item\.key\}/);
+assert.match(ownerCenterSource, /<label className="owner-field">/);
+assert.match(everydaySource, /import WorkspaceTabs, \{ WorkspaceTabPanel \} from "\.\.\/components\/operations\/WorkspaceTabs\.jsx"/);
+assert.match(workspaceTabsSource, /role="tab"/);
+assert.match(ownerCenterCss, /min-height: 44px/);
+assert.match(ownerCenterCss, /@media \(max-width: 420px\)/);
+
+assert.match(workspaceSwitcherSource, /<details/);
+assert.match(workspaceSwitcherSource, /<summary aria-label=\{`\$\{contextLabel\}\. Switch Code 3 workspace`\}>/);
+assert.match(workspaceSwitcherSource, /aria-current=\{workspace\.id === currentWorkspaceId \? "page" : undefined\}/);
+assert.match(workspaceSwitcherSource, /event\.key !== "Escape"/);
+assert.match(workspaceSwitcherSource, /querySelector\("summary"\)\?\.focus\(\)/);
+assert.match(workspaceCss, /\.code3-workspace-switcher > summary \{[\s\S]*min-height: 44px/);
+assert.match(workspaceCss, /\.code3-workspace-switcher__menu button \{[\s\S]*min-height: 52px/);
+assert.match(workspaceCss, /\.code3-workspace-switcher > summary:focus-visible/);
+assert.match(workspaceCss, /\.code3-workspace-switcher__menu button:focus-visible/);
+assert.match(workspaceCss, /@media \(prefers-reduced-motion: reduce\)/);
+assert.match(workspaceCss, /\.code3-workspace-switcher__chevron \{ transition: none; \}/);
+assert.match(workspaceCss, /env\(safe-area-inset-bottom, 0px\)/);
+assert.match(workspaceHomeSource, /<section className=\{`code3-workspace-home/);
+assert.doesNotMatch(workspaceHomeSource, /<main\b/, "workspace homes must not nest a second main landmark inside the application shell");
+assert.match(workspaceHomeSource, /<button key=\{record\.id/);
+assert.match(workspaceHomeSource, /session\?\.status !== OWNER_SESSION_STATES\.AUTHORIZED/);
+assert.match(botOperationsSource, /aria-label="Bot Operations safety state"/);
+assert.match(botOperationsSource, /<StatusBadge tone="neutral">Owner only<\/StatusBadge>/);
 
 assert.match(appSource, /role="status" aria-live="polite" aria-label=\{`Grade Assist readiness status: \$\{gradeAssistReadiness\.label\}`\}/);
 assert.match(appSource, /aria-label=\{`Grade Assist \$\{field\.label\}`\}/);

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import fs from "node:fs";
+import { readDeferredAppSource } from "./helpers/read-deferred-app-source.mjs";
 import {
   applyEmberAssistMessageStatus,
   applyShopReviewPatch,
@@ -13,7 +13,7 @@ import {
   shopReviewBadges,
 } from "../src/utils/adminCommandCenterUtils.js";
 
-const app = fs.readFileSync("src/App.jsx", "utf8");
+const app = readDeferredAppSource();
 
 const confirmedReport = {
   id: "report-1",
@@ -109,7 +109,7 @@ for (const label of [
   "Stores & Products",
   "Spark & Partners",
   "Store / Product Management",
-  "Spark Donations Admin",
+  "Kids Donations Admin",
   "Waitlist by State",
   "Affected item",
 ]) {

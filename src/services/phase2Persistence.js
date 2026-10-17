@@ -65,12 +65,20 @@ export function loadLocalPhase2Data() {
 }
 
 export function saveLocalPhase2Data(updater) {
-  const current = loadLocalPhase2Data();
+  // Reads for rendering may fall back, but a mutation must never replace unreadable saved data.
+  if (typeof localStorage === "undefined") throw new Error("Local storage is unavailable.");
+  const raw = localStorage.getItem(PHASE2_STORAGE_KEY);
+  const parsed = raw === null ? {} : JSON.parse(raw);
+  const defaults = createEmptyPhase2Data();
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)
+    || Object.entries(defaults).some(([key, value]) => Array.isArray(value)
+      && parsed[key] !== undefined && !Array.isArray(parsed[key]))) {
+    throw new Error("Saved Phase 2 data is invalid and was not changed.");
+  }
+  const current = { ...defaults, ...parsed };
   const next = typeof updater === "function" ? updater(current) : { ...current, ...updater };
   const payload = { ...createEmptyPhase2Data(), ...next, updatedAt: new Date().toISOString() };
-  if (typeof localStorage !== "undefined") {
-    localStorage.setItem(PHASE2_STORAGE_KEY, JSON.stringify(payload));
-  }
+  localStorage.setItem(PHASE2_STORAGE_KEY, JSON.stringify(payload));
   return payload;
 }
 
