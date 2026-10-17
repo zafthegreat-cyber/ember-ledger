@@ -1,0 +1,208 @@
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const { chromium, expect } = require("@playwright/test");
+
+const base = new URL(process.env.APP_URL || "http://127.0.0.1:5242/");
+assert.ok(["127.0.0.1", "localhost", "[::1]"].includes(base.hostname), "Synthetic restock checks must run locally");
+const output = path.resolve(process.env.QA_OUTPUT_DIR || "artifacts/qa/restock-report");
+fs.mkdirSync(output, { recursive: true });
+const widths = (process.env.QA_RESTOCK_WIDTHS || "320,390,1440").split(",").map(Number);
+const cases = widths.flatMap(width => ["light", "dark"].filter(theme => !process.env.QA_RESTOCK_THEME || theme === process.env.QA_RESTOCK_THEME).map(theme => ({ width, height: width === 320 ? 568 : width === 390 ? 844 : 900, theme })));
+
+async function snapshot(page) {
+  return page.evaluate(() => {
+    const scout = JSON.parse(localStorage.getItem("et-tcg-beta-scout"));
+    const data = JSON.parse(localStorage.getItem("et-tcg-beta-data"));
+    return { stores: scout.stores, reports: scout.reports, items: scout.items, collection: data.items, sales: data.sales, expenses: data.expenses };
+  });
+}
+
+async function checkPresentation(page, modal, name, result) {
+  const body = modal.locator(".flow-modal-body");
+  const footer = modal.locator(".flow-modal-footer--scout-inline");
+  await expect(footer).toBeVisible();
+  const metrics = await modal.evaluate(dialog => {
+    const visible = element => element.getClientRects().length && getComputedStyle(element).visibility !== "hidden";
+    const rect = element => { const value = element.getBoundingClientRect(); return { x: value.x, y: value.y, width: value.width, height: value.height, right: value.right, bottom: value.bottom }; };
+    const foot = dialog.querySelector(".flow-modal-footer--scout-inline");
+    const bodyElement = dialog.querySelector(".flow-modal-body");
+    return {
+      overflow: Math.max(dialog.scrollWidth - dialog.clientWidth, bodyElement.scrollWidth - bodyElement.clientWidth),
+      controls: [...dialog.querySelectorAll("button, input, select, summary")].filter(visible).map(element => ({ name: element.textContent.trim() || element.type, ...rect(element) })),
+      footer: rect(foot), body: rect(bodyElement), header: rect(dialog.querySelector(".modal-title-row")),
+      choices: [...dialog.querySelectorAll(".scout-report-choice-card")].filter(visible).map(element => ({ label: element.querySelector("strong").textContent, row: rect(element), title: rect(element.querySelector("strong")), helper: rect(element.querySelector(":scope > span")) })),
+      overflowElements: [...bodyElement.querySelectorAll("*")].filter(visible).filter(element => element.clientWidth && element.scrollWidth - element.clientWidth > 1).map(element => ({ className: element.className, tag: element.tagName, overflow: element.scrollWidth - element.clientWidth, text: element.textContent.slice(0, 70) })),
+    };
+  });
+  result.presentation[name] = metrics;
+  assert.ok(metrics.overflow <= 1, `${name}: no horizontal overflow (${metrics.overflow}px)`);
+  assert.ok(metrics.header.y >= -1 && metrics.footer.bottom <= result.height + 1, `${name}: header and actions stay in the viewport`);
+  assert.ok(metrics.body.bottom <= metrics.footer.y + 1, `${name}: body clears the fixed action bar`);
+  for (const control of metrics.controls) {
+    if (control.name === "checkbox") continue;
+    assert.ok(control.width >= 44 && control.height >= 44, `${name}: ${control.name} has a 44px target (${control.width}x${control.height})`);
+    assert.ok(control.x >= -1 && control.right <= result.width + 1, `${name}: ${control.name} stays inside viewport`);
+  }
+  for (const choice of metrics.choices) {
+    assert.ok(choice.helper.y >= choice.title.bottom - 1, `${choice.label}: description sits below title`);
+    assert.ok(choice.helper.right <= choice.row.right + 1, `${choice.label}: description stays in card`);
+  }
+  const before = await modal.locator(".modal-close-button").boundingBox();
+  await body.evaluate(element => { element.scrollTop = element.scrollHeight; });
+  const after = await modal.locator(".modal-close-button").boundingBox();
+  assert.equal(before.y, after.y, "Close stays fixed while the body scrolls");
+  await body.evaluate(element => { element.scrollTop = 0; });
+  await page.screenshot({ path: path.join(output, `${result.width}-${result.theme}-${name}.png`) });
+  result.presentation[name] = metrics;
+}
+
+(async () => {
+  const browser = await chromium.launch({ headless: true });
+  const results = [];
+  try {
+    for (const testCase of cases) {
+      const { width, height, theme } = testCase;
+      const context = await browser.newContext({ viewport: { width, height }, reducedMotion: "reduce", serviceWorkers: "block" });
+      const blockedWrites = [];
+      await context.route("**/*", route => {
+        const request = route.request(); const url = new URL(request.url());
+        if (!["GET", "HEAD"].includes(request.method())) { blockedWrites.push(`${request.method()} ${url.pathname}`); return route.abort(); }
+        if (url.origin !== base.origin) return route.abort();
+        if (url.pathname.startsWith("/api/")) return route.fulfill({ contentType: "application/json", body: '{"configured":false}' });
+        return route.continue();
+      });
+      await context.addInitScript(({ theme }) => {
+        if (localStorage.getItem("__qa_restock_seeded")) return;
+        localStorage.setItem("__qa_restock_seeded", "true");
+        localStorage.setItem("et-tcg-app-theme", theme);
+        localStorage.setItem("et-tcg-beta-data", JSON.stringify({ items: [{ id: "retained-card", name: "Retained collection card", quantity: 3 }], sales: [], expenses: [] }));
+        localStorage.setItem("et-tcg-beta-scout", JSON.stringify({
+          stores: [
+            { id: "restock-fixture-north", name: "North Collectibles", nickname: "North Collectibles", retailer: "Target", chain: "Target", city: "Norfolk", state: "VA", address: "1 Fixture North Way", zip: "23510" },
+            { id: "restock-fixture-south", name: "South Collectibles", nickname: "South Collectibles", retailer: "Target", chain: "Target", city: "Norfolk", state: "VA", address: "2 Fixture South Way", zip: "23510" },
+          ],
+          reports: [{ id: "retained-observation", storeId: "restock-fixture-south", storeName: "South Collectibles", productName: "Retained pack observation", note: "Keep this existing report", reportedAt: "2026-09-14T13:00:00.000Z", stockStatus: "in_stock" }],
+          items: [{ id: "retained-sighting", storeId: "restock-fixture-south", name: "Retained tracked pack" }], dropRadarSeedDisabled: true,
+        }));
+      }, { theme });
+      const page = await context.newPage(); const errors = [];
+      page.setDefaultTimeout(10000);
+      page.on("pageerror", error => errors.push(error.message));
+      page.on("dialog", dialog => dialog.accept());
+      const result = { ...testCase, presentation: {}, blockedWrites };
+      try {
+        await page.goto(new URL(`/?betaLocalMode=true&themeInspect=${theme}`, base).href);
+        const homeReport = page.locator(".home-restock-hero").getByRole("button", { name: "Report a restock", exact: true });
+        await expect(homeReport).toBeVisible({ timeout: 30000 });
+        await homeReport.click();
+        const entryModal = page.locator('.flow-modal[data-flow="scoutSubmit"]');
+        await expect(entryModal.locator(".scout-where-step")).toBeVisible();
+        await entryModal.locator(".modal-close-button").focus();
+        await page.keyboard.press("Escape");
+        await expect(entryModal).toHaveCount(0);
+        await page.getByRole("button", { name: "Open global Add menu", exact: true }).filter({ visible: true }).first().click();
+        await page.getByRole("button", { name: "Report a restock. Share what you saw at a store.", exact: true }).click();
+        await expect(entryModal.locator(".scout-where-step")).toBeVisible();
+        await entryModal.locator(".modal-close-button").click();
+        await expect(entryModal).toHaveCount(0);
+        result.homeAndAddEntry = true;
+        await page.goto(new URL(`/scout/stores/restock-fixture-north?betaLocalMode=true&themeInspect=${theme}`, base).href);
+        await expect(page.getByRole("heading", { name: "North Collectibles", exact: true }).first()).toBeVisible({ timeout: 30000 });
+        const original = await snapshot(page);
+        await page.getByRole("button", { name: "Submit Report", exact: true }).first().click();
+        const modal = page.locator('.flow-modal[data-flow="scoutSubmit"]');
+        await expect(modal).toBeVisible();
+        await expect(modal.locator(".scout-report-step-pill")).toHaveCount(3);
+        await expect(modal.locator(".scout-flow-guidance-card")).toHaveCount(0);
+        const continueButton = modal.getByRole("button", { name: "Continue", exact: true });
+        await expect(continueButton).toHaveCount(1);
+        const next = () => continueButton.filter({ visible: true });
+        const observed = modal.locator('input[type="datetime-local"]');
+        const observedTime = await page.evaluate(() => { const date = new Date(Date.now() - 3600000); date.setMinutes(date.getMinutes() - date.getTimezoneOffset()); return date.toISOString().slice(0, 16); });
+        await observed.fill(observedTime);
+        await checkPresentation(page, modal, "store", result);
+
+        if (width === 320 && theme === "dark") {
+          const future = await page.evaluate(() => { const date = new Date(Date.now() + 172800000); date.setMinutes(date.getMinutes() - date.getTimezoneOffset()); return date.toISOString().slice(0, 16); });
+          await observed.fill(future); await next().click();
+          await expect(modal.locator(".scout-where-step")).toBeVisible();
+          await expect(modal.locator(".form-error").first()).toBeVisible();
+          await observed.fill(observedTime);
+          await modal.getByRole("button", { name: "Change store", exact: true }).click();
+          await modal.getByLabel("Find your store", { exact: true }).fill("No matching fixture location");
+          await modal.getByRole("button", { name: "Can't find store?", exact: true }).click();
+          await modal.getByPlaceholder("Store name, city, or general location", { exact: true }).fill("Fixture Corner Shop, Norfolk VA");
+          await next().click();
+          await expect(modal.locator(".form-error").first()).toContainText("Confirm the manual store/location");
+          await modal.getByRole("checkbox").check();
+          await next().click();
+          await expect(modal.locator(".scout-proof-step")).toBeVisible();
+          await modal.getByRole("button", { name: "Back", exact: true }).filter({ visible: true }).click();
+          await expect(observed).toHaveValue(observedTime);
+          await modal.getByRole("button", { name: "Change store", exact: true }).click();
+          await modal.getByLabel("Find your store", { exact: true }).fill("North Collectibles");
+          await modal.locator(".scout-report-store-card--result").filter({ hasText: "North Collectibles" }).getByRole("button", { name: "Select store", exact: true }).click();
+          result.dateAndManualGuards = true;
+        }
+        await next().click();
+        await expect(modal.getByRole("heading", { name: "What did you see?", exact: true })).toBeVisible();
+        await expect(modal.getByRole("group", { name: "Shelf status", exact: true }).getByRole("button")).toHaveCount(4);
+        await expect(modal.locator(".scout-proof-disclosure")).not.toHaveAttribute("open", "");
+        const observations = modal.getByText("Other shelf observations", { exact: true });
+        await observations.click();
+        await expect(modal.getByRole("group", { name: "Other shelf observations", exact: true }).getByRole("button")).toHaveCount(5);
+        await modal.getByRole("button", { name: /^Behind counter/ }).click();
+        await expect(modal.getByRole("button", { name: /^Behind counter/ })).toHaveAttribute("aria-pressed", "true");
+        await modal.getByRole("button", { name: /^Low stock/ }).click();
+        await modal.getByRole("group", { name: /report item category/i }).getByRole("button").first().click();
+        await modal.getByLabel("Product name (optional)", { exact: true }).fill("Fixture booster bundle");
+        await modal.getByLabel("Useful details (optional)", { exact: true }).fill("Three bundles near customer service.");
+        await checkPresentation(page, modal, "details", result);
+        if (width === 320 && theme === "dark") {
+          await modal.locator(".scout-report-wizard").evaluate(form => {
+            const styles = [...form.querySelectorAll("h3, h4, p, label, button, strong, span, small, summary")].map(node => [node, parseFloat(getComputedStyle(node).fontSize)]);
+            for (const [node, size] of styles) node.style.setProperty("font-size", `${size * 2}px`, "important");
+          });
+          await checkPresentation(page, modal, "details-text200", result);
+          await modal.locator(".scout-report-wizard").evaluate(form => { for (const node of form.querySelectorAll("[style]")) node.style.removeProperty("font-size"); });
+          result.text200Verified = true;
+        }
+        await modal.getByRole("button", { name: "Review report", exact: true }).filter({ visible: true }).click();
+        await expect(modal.getByRole("heading", { name: "Ready to share this report?", exact: true })).toBeVisible();
+        await expect(modal.getByText("1 Fixture North Way", { exact: false }).first()).toBeVisible();
+        await expect(modal.getByText("Shared with", { exact: true })).toBeVisible();
+        await checkPresentation(page, modal, "review", result);
+        assert.deepEqual(await snapshot(page), original, "Reviewing a report cannot write any records");
+        await modal.getByRole("button", { name: "Back", exact: true }).filter({ visible: true }).click();
+        await expect(modal.getByLabel("Product name (optional)", { exact: true })).toHaveValue("Fixture booster bundle");
+        await expect(modal.getByRole("button", { name: /^Low stock/ })).toHaveAttribute("aria-pressed", "true");
+        await modal.getByRole("button", { name: "Review report", exact: true }).filter({ visible: true }).click();
+        const save = modal.getByRole("button", { name: "Save Report", exact: true }).filter({ visible: true });
+        await save.focus();
+        const focus = await save.evaluate(element => ({ outline: parseFloat(getComputedStyle(element).outlineWidth), bottom: element.getBoundingClientRect().bottom }));
+        assert.ok(focus.outline >= 2 && focus.bottom <= height, "Save has a visible keyboard focus ring inside viewport");
+        await save.evaluate(button => { button.click(); button.click(); });
+        await expect(modal.locator(".scout-quick-report-success")).toBeVisible();
+        await expect(modal.locator(".scout-quick-report-success")).toContainText("Saved locally");
+        const saved = await snapshot(page);
+        assert.equal(saved.reports.length, original.reports.length + 1, "Repeated save adds only one report");
+        assert.equal(saved.reports.filter(report => report.productName === "Fixture booster bundle").length, 1);
+        assert.deepEqual(saved.reports.find(report => report.id === "retained-observation"), original.reports.find(report => report.id === "retained-observation"));
+        for (const key of ["stores", "items", "collection", "sales", "expenses"]) assert.deepEqual(saved[key], original[key], `${key} are preserved`);
+        await checkPresentation(page, modal, "saved", result);
+        await modal.locator(".flow-modal-footer--scout-inline").getByRole("button", { name: "Close", exact: true }).click();
+        await expect(modal).toHaveCount(0);
+        assert.deepEqual(errors, [], "No browser runtime errors");
+        result.passed = true;
+        console.log(`PASS restock ${width} ${theme}: three steps, optional proof, review, Back, guarded local save, original records preserved`);
+      } catch (error) {
+        result.passed = false; result.error = error.message; result.errors = errors;
+        fs.writeFileSync(path.join(output, `${width}-${theme}-failure.html`), await page.content());
+        await page.screenshot({ path: path.join(output, `${width}-${theme}-failure.png`) }).catch(() => {});
+        console.error(`FAIL restock ${width} ${theme}: ${error.message}`);
+      } finally { results.push(result); await context.close(); }
+    }
+  } finally { await browser.close(); fs.writeFileSync(path.join(output, "results.json"), JSON.stringify(results, null, 2)); }
+  assert.ok(results.every(result => result.passed), "Restock browser checks failed; see artifacts/qa/restock-report/results.json");
+})().catch(error => { console.error(error); process.exitCode = 1; });

@@ -19,6 +19,8 @@ import SmartCatalogSearchBox from "../components/SmartCatalogSearchBox";
 import OverflowMenu from "../components/OverflowMenu";
 import ScoutTileMap from "../components/ScoutTileMap";
 import { AppNavIcon, CommandBoardSection, CommandBoardV4, CommandMetricGrid } from "../components/command-system";
+import { PrimaryButton, SecondaryButton } from "../components/operations/OperationsUI.jsx";
+import "./scout-reports.css";
 import { getStoreGroup, normalizeStoreGroup, STORE_GROUP_ORDER } from "../utils/storeGroupingUtils";
 import { dedupeStoresByChainAddress, normalizeImportedStore, normalizeStateLabel, normalizeVirginiaRegion } from "../utils/storeImportUtils";
 import { storeMatchesSearch, sortStores } from "../utils/storeSearchUtils";
@@ -1397,6 +1399,10 @@ export default function Scout({
   const targetSubTabReportId = typeof targetSubTab === "string" ? "" : targetSubTab?.reportId || "";
   const targetSubTabStoreId = typeof targetSubTab === "string" ? "" : targetSubTab?.storeId || "";
   const [handledTargetSubTab, setHandledTargetSubTab] = useState({ token: "", reportPending: false });
+  const reportsBrowseMode = scoutSubTab === "reports"
+    && typeof onQuickReport === "function"
+    && !editingReportId
+    && !["editReport", "productSighting", "storeCorrection", "addGuess", "importIntel"].includes(targetSubTabAction);
 
 
   const storeFilterKey = JSON.stringify([selectedState, selectedChain, selectedRegion, selectedCity, selectedStoreType, selectedCounty, selectedConfidence, storeQuickFilter, storeSearch, storeSort]);
@@ -5301,7 +5307,36 @@ async function handleUpdateStore(e) {
           </div>
         ) : null}
 
-        {scoutSubTab === "reports" ? (
+        {reportsBrowseMode ? (
+          <section className="scout-reports-landing" aria-labelledby="scout-recent-reports-title">
+            <header className="scout-reports-landing__header">
+              <div>
+                <span>Community observations</span>
+                <h2 id="scout-recent-reports-title">Recent restock reports</h2>
+                <p>See what collectors found. Check the observed time before making a trip; stock can change.</p>
+              </div>
+              <PrimaryButton onClick={() => onQuickReport({})}>Report a restock</PrimaryButton>
+            </header>
+            {restockHistory.length ? (
+              <div className="scout-reports-landing__feed">
+                {displayedRestockHistory.map((report) => renderCompactReportCard(report, { compact: true }))}
+              </div>
+            ) : (
+              <div className="scout-reports-landing__empty">
+                <AppNavIcon kind="find" />
+                <h3>No restock reports yet</h3>
+                <p>Checked a store? Share stock, low stock, or an empty shelf to help the next collector. A photo is optional.</p>
+              </div>
+            )}
+            {restockHistory.length > 20 ? (
+              <SecondaryButton onClick={() => setShowAllRestockHistory((current) => !current)}>
+                {showAllRestockHistory ? "Show recent reports" : "View all reports"}
+              </SecondaryButton>
+            ) : null}
+          </section>
+        ) : null}
+
+        {scoutSubTab === "reports" && !reportsBrowseMode ? (
         <div style={styles.reportGrid}>
           <div style={styles.card}>
             <h2 style={styles.sectionTitle}>Submit Store Report</h2>
@@ -5962,7 +5997,7 @@ async function handleUpdateStore(e) {
 
         ) : null}
 
-        {(compact && scoutSubTab === "overview") || (!compact && scoutSubTab === "reports") ? (
+        {(compact && scoutSubTab === "overview") || (!compact && scoutSubTab === "reports" && !reportsBrowseMode) ? (
         <div style={styles.reportGrid}>
           <div style={styles.card}>
             <h2 style={styles.sectionTitle}>Daily Scout Report</h2>

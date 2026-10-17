@@ -3,6 +3,7 @@ import fs from "node:fs";
 
 const app = fs.readFileSync("src/App.jsx", "utf8");
 const scoutPage = fs.readFileSync("src/pages/Scout.jsx", "utf8");
+const scoutSubmit = fs.readFileSync("src/features/deferredViews/ScoutSubmitContent.jsx", "utf8");
 const migration = fs.readFileSync("supabase/migrations/20260523204500_scout_reports_manual_store_saves.sql", "utf8");
 const ownerPolicyMigration = fs.readFileSync("supabase/migrations/20260529123000_store_reports_owner_update_policy.sql", "utf8");
 const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
@@ -48,7 +49,7 @@ assert.doesNotMatch(app, /report\.userId \|\| report\.user_id \|\| report\.repor
 assert.match(app, /Choose how you know this report before saving\./, "Scout submit should require a proof/source choice before saving");
 assert.match(app, /function quickScoutHasMeaningfulReportDetail/, "Scout submit should require a category, item, or useful detail before saving");
 assert.match(app, /Add a category, item name, or useful detail before saving this report\./, "Scout submit should show a clear item/detail validation message");
-assert.match(app, /Review before saving\. Nothing is saved until you tap Save Report\./, "Scout submit review should make the no-auto-save behavior explicit");
+assert.match(scoutSubmit, /Review before saving\. Nothing is saved until you tap Save Report\./, "Scout submit review should make the no-auto-save behavior explicit");
 assert.doesNotMatch(app, /\|\|\s*note\s*\|\|\s*""/, "Scout cards should not fall back to long report notes as the default card summary");
 assert.match(app, /function isScoutPlaceholderReport/, "Scout should filter placeholder/demo reports from user-facing report rows");
 assert.match(app, /\^store location\$/, "Scout placeholder filtering should block fake Store location rows");

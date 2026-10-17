@@ -476,6 +476,7 @@ import {
   roleLabel,
 } from "./utils/rolePermissions";
 import { adaptiveForgeAccessMessage, normalizeSmartSetupPreferences, recommendSmartSetup, resolveAdaptiveUiState, resolveHearthSmartNextAction } from "./utils/adaptiveUi";
+import { selectOwnAdaptiveReports } from "./utils/adaptivePageItems";
 import { APP_SETUP_PAGE_GROUPS, appSetupOptionAllowed, applyAppSetupRecommendation, buildAppSetupRecommendations, buildRecommendedAppPreferences, dismissAppSetupRecommendation, normalizeAppPersonalizationPreferences, sanitizeAppSetupVisibleKeys } from "./utils/appPersonalizationUtils";
 
 const HEARTH_FOUNDATION_TRUST_MESSAGE = "We help families collect fairly without exposing harmful restock patterns.";
@@ -21974,7 +21975,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (stepKey === "status" && !quickScoutReportForm.reportType) {
       return "Choose the shelf status before continuing.";
     }
-    if (stepKey === "details" && currentType.isGuess && !quickScoutReportForm.reportType) return "Choose the stock status before continuing.";
+    if (stepKey === "details" && !quickScoutReportForm.reportType) return "Choose the stock status before continuing.";
     if (stepKey === "details" && !currentType.isGuess && !quickScoutReportForm.proofType) return "Choose how you know this report before saving.";
     if (stepKey === "details" && !currentType.isGuess && !quickScoutHasMeaningfulReportDetail()) return "Add a category, item name, or useful detail before saving this report.";
     if (stepKey === "product" && !quickScoutHasMeaningfulReportDetail() && !currentType.isGuess) return "Add a category, item name, or useful detail before continuing.";
@@ -21991,10 +21992,9 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   function getScoutWizardSteps() {
     if (!quickScoutReportTypeMeta().isGuess) {
       return [
-        { key: "where", label: "Where" },
-        { key: "status", label: "Status" },
-        { key: "details", label: "Details" },
-        { key: "review", label: "Post" },
+        { key: "where", label: "Store" },
+        { key: "details", label: "What you saw" },
+        { key: "review", label: "Review" },
       ];
     }
     return [
@@ -22268,7 +22268,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     if (validationError) {
       setQuickScoutReportMessage(validationError);
       if (!quickScoutReportTypeMeta().isGuess) {
-        setQuickScoutReportStep(scoutWizardStepError("where") ? "where" : scoutWizardStepError("status") ? "status" : "review");
+        setQuickScoutReportStep(scoutWizardStepError("where") ? "where" : "details");
       }
       else if (scoutWizardStepError("where")) setQuickScoutReportStep("where");
       return;
@@ -38751,8 +38751,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <div className="app-setup-panel app-setup-panel--recommendations">
             <label className="toggle-row app-setup-recommendation-toggle">
               <span>
-                <strong>Let Ember &amp; Tide suggest tools based on how I use the app</strong>
-                <small>Recommendations require confirmation before they change your layout.</small>
+                <strong>Adapt Home and Add to how I use Code 3 TCG</strong>
+                <small>Prioritize shortcuts using your saved activity. Your manual choices stay in place; navigation stays consistent.</small>
               </span>
               <input
                 type="checkbox"
@@ -43965,8 +43965,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     if (activeFlowModal?.type === "scoutSubmit") {
       const isGuess = quickScoutReportTypeMeta(quickScoutReportForm.reportType)?.isGuess;
       return {
-        title: isGuess ? "Add Scout Guess" : "Add Scout Report",
-        description: isGuess ? "Save a pattern note for Forecast without marking stock as confirmed." : "Share what you saw. Scout uses current reports, not raw restock patterns.",
+        title: isGuess ? "Add Scout Guess" : "Report a restock",
+        description: isGuess ? "Save a pattern note for Forecast without marking stock as confirmed." : "Choose a store, share what you saw, then review.",
         size: "medium",
       };
     }
@@ -43989,6 +43989,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   function renderAddAnythingFlowContent() {
     return <DeferredModalBoundary label="Loading form…" modalRef={flowModalRef} type={activeFlowModal?.type}>
       <AddAnythingContent scope={{
+        adaptiveActivity,
+        personalizationPreferences,
         ADD_ITEM_QUICK_SEARCH_CHIPS,
         CollectorShowcaseCard,
         CommandGlyphIcon,
@@ -47742,7 +47744,27 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   })();
   const roleModeClass = `app-role-${activeRoleMode} app-mode-${activeRoleMode}`;
 
+  const personalizationPreferences = currentAppSetupPreferences();
+  const adaptiveActivity = {
+    reports: selectOwnAdaptiveReports(scoutReportRows, {
+      userIds: [user?.id, currentUserProfile?.id, currentUserProfile?.userId, ...(BETA_LOCAL_MODE ? ["local-beta-scout", "local-beta"] : [])],
+      email: accountEmail(),
+      allowUnownedLocal: BETA_LOCAL_MODE,
+    }),
+    collection: activeVaultItems,
+    watchlist: workspaceWatchlist,
+    sales: workspaceSales,
+    inventory: forgeInventoryItems,
+    expenses: workspaceExpenses,
+    receipts: visibleReceiptRecords,
+    packs: sparkKidPacks,
+  };
   const hearthPageProps = {
+    adaptiveActivity,
+    personalizationPreferences,
+    onReportRestock: () => openScoutSubmitFlow({ source: "home-restock" }),
+    onOpenRestockReports: () => { prepareRouteNavigation(); setScoutView("reports"); setScoutSubTabTarget({ tab: "reports", id: Date.now() }); setActiveTab("scout"); },
+    onOpenFind: openFlipScoutView,
     BETA_LOCAL_MODE,
     GRADE_ASSIST_LOCAL_STORAGE_KEY,
     HEARTH_FOUNDATION_SCREEN,
@@ -49272,7 +49294,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                         {quickScoutReportSubmitting ? "Saving..." : quickScoutReportTypeMeta().isGuess ? "Save Guess" : "Save Report"}
                       </button>
                     ) : (
-                      <button type="button" onClick={goNextScoutWizardStep}>Next</button>
+                      <button type="button" onClick={goNextScoutWizardStep}>{quickScoutReportStep === "details" ? "Review report" : "Continue"}</button>
                     )}
                   </>
                 )
@@ -51624,7 +51646,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
         {activeTab === "flipScout" && (
           <LazyToolBoundary label="Loading Deal Finder...">
-            <FlipScoutPage initialScreen={flipScoutView} onViewChange={(view) => { prepareRouteNavigation(); setFlipScoutView(view); }} featureControls={ownerFeatureControls} onExit={() => { prepareRouteNavigation(); setActiveTab("dashboard"); }} onOpenRestocks={() => { prepareRouteNavigation(); setOwnerCenterSection("restocks"); setOwnerCenterSubview("live"); setActiveTab(ownerCenterAuthorized ? "ownerCenter" : "scout"); }} />
+            <FlipScoutPage initialScreen={flipScoutView} onViewChange={(view) => { prepareRouteNavigation(); setFlipScoutView(view); }} featureControls={ownerFeatureControls} onExit={() => { prepareRouteNavigation(); setActiveTab("dashboard"); }} onReportRestock={() => openScoutSubmitFlow({ source: "restocks-page" })} onOpenRestocks={() => { prepareRouteNavigation(); setScoutView("reports"); setScoutSubTabTarget({ tab: "reports", id: Date.now() }); setActiveTab("scout"); }} />
           </LazyToolBoundary>
         )}
 

@@ -3,6 +3,7 @@ import { OfflineState, PageHeader, PrimaryButton, SectionHeader, SecondaryButton
 import { AppNavIcon } from "../components/command-system/AppNavIcon.jsx";
 import { createFlipScoutRepository } from "../features/flipScout/storageRepository.js";
 import { formatCurrency, getDashboardSummary } from "../features/flipScout/selectors.js";
+import { rankAdaptivePageItems } from "../utils/adaptivePageItems.js";
 import "./home-layout.css";
 
 const FIND_DESTINATION_KEY = "private-business-hub.flip-scout.destination";
@@ -14,7 +15,7 @@ function recordImage(record = {}) {
 }
 
 function latestDate(record = {}) {
-  return record.updatedAt || record.createdAt || record.dateDiscovered || record.purchaseDate || record.saleDate || "";
+  return record.createdAt || record.created_at || record.submittedAt || record.submitted_at || record.dateDiscovered || record.purchaseDate || record.saleDate || record.updatedAt || "";
 }
 
 function CollectibleMotif() {
@@ -30,11 +31,17 @@ function CollectibleMotif() {
   </svg>;
 }
 
-export default function OperationsHome({ setActiveTab, isOffline, onOpenBusiness }) {
+export default function OperationsHome({
+  setActiveTab, isOffline, onOpenBusiness, onOpenFind, onReportRestock, onOpenRestockReports,
+  adaptiveActivity = {}, personalizationPreferences = {}, adaptiveSellerToolsVisible = false,
+  adminToolsVisible = false, activeVaultItems = [], workspaceWatchlist = [],
+  scoutSnapshot = {}, isWatchedEmberStore = () => false,
+}) {
   const repository = useMemo(() => createFlipScoutRepository(), []);
   const state = useMemo(() => repository.load(), [repository]);
   const summary = useMemo(() => getDashboardSummary(state), [state]);
   const openFind = (screen = "deals", subview = "") => {
+    if (onOpenFind) return onOpenFind(screen, subview);
     window.sessionStorage?.setItem(FIND_DESTINATION_KEY, JSON.stringify({ screen, subview }));
     setActiveTab("flipScout");
   };
@@ -57,7 +64,12 @@ export default function OperationsHome({ setActiveTab, isOffline, onOpenBusiness
   const bestDealProfit = bestDeal?.projectedProfit ?? bestDeal?.expectedProfit;
   const bestDealHasPrice = bestDealPrice !== "" && bestDealPrice != null && Number.isFinite(Number(bestDealPrice));
   const bestDealHasProfit = bestDealProfit !== "" && bestDealProfit != null && Number.isFinite(Number(bestDealProfit));
-  const recent = [...(state.activity || [])].sort((a, b) => new Date(latestDate(b)).getTime() - new Date(latestDate(a)).getTime()).slice(0, 5);
+  const recent = [
+    ...(state.activity || []),
+    ...(adaptiveActivity.reports || []).map((report) => ({ id: `report-${report.id || report.reportId}`, title: `Restock report · ${report.storeName || report.store_name || "Store visit"}`, detail: report.productName || report.itemName || "Your saved observation", createdAt: latestDate(report) })),
+    ...activeVaultItems.map((item) => ({ id: `collection-${item.id}`, title: `Collection · ${item.name || item.productName || "Saved item"}`, detail: "Added to your collection", createdAt: latestDate(item) })),
+  ].filter((entry) => Number.isFinite(Date.parse(latestDate(entry))))
+    .sort((a, b) => new Date(latestDate(b)).getTime() - new Date(latestDate(a)).getTime()).slice(0, 5);
   const sourcingBudget = Number(state.settings?.sourcingBudget || 0);
   const currentMonth = new Date().toISOString().slice(0, 7);
   const monthSales = state.sales.filter((sale) => String(sale.saleDate || sale.createdAt || "").slice(0, 7) === currentMonth);
@@ -67,41 +79,62 @@ export default function OperationsHome({ setActiveTab, isOffline, onOpenBusiness
   const monthRevenue = monthSalesWithRevenue.reduce((sum, sale) => sum + Number(sale.grossSalePrice ?? sale.actualSalesProceeds ?? 0), 0);
   const monthProfit = monthSalesWithProfit.reduce((sum, sale) => sum + Number(sale.realizedProfit ?? sale.actualProfit ?? 0), 0);
   const showBusinessSummary = sourcingBudget > 0 || inventoryWithCost.length > 0 || monthSalesWithRevenue.length > 0 || monthSalesWithProfit.length > 0;
+  const homePreference = personalizationPreferences.pagePreferences?.hearth;
+  const isVisible = (key) => !homePreference?.visibleKeys || homePreference.visibleKeys.includes(key);
+  const sellerVisible = adaptiveSellerToolsVisible || adminToolsVisible;
+  const followedStores = (scoutSnapshot.stores || []).filter(isWatchedEmberStore);
+  const adaptiveEnabled = personalizationPreferences.smartRecommendationsEnabled !== false;
+  const manualHome = Boolean(homePreference?.updatedAt);
+  const pageCards = rankAdaptivePageItems([
+    { key: "scoutSignals", title: "Your restock watch", detail: followedStores.length ? `${followedStores.length} followed store${followedStores.length === 1 ? "" : "s"}. Check the latest community reports.` : "Find stores, check recent reports, and follow the places you visit.", label: "Browse reports", icon: "find", activityKeys: ["reports"], action: onOpenRestockReports },
+    { key: "vaultSnapshot", title: "Your collection", detail: activeVaultItems.length ? `${activeVaultItems.length} saved item${activeVaultItems.length === 1 ? "" : "s"}. Pick up where you left off.` : "Keep your cards, sets, and wants together.", label: "Open collection", icon: "inventory", activityKeys: ["collection"], action: () => setActiveTab("collectionWorkspace") },
+    { key: "marketWatch", title: "Find & compare", detail: workspaceWatchlist.length ? `${workspaceWatchlist.length} watched item${workspaceWatchlist.length === 1 ? "" : "s"}. Compare prices before your next purchase.` : "Compare deals, plan an offer, and follow upcoming auctions.", label: "Explore Find", icon: "search", activityKeys: ["watchlist", "deals", "auctions"], action: () => openFind("deals") },
+    ...(sellerVisible ? [{ key: "forgeSummary", title: "Your business records", detail: "Purchases, inventory, and sales, ready when you need them.", label: "Open inventory", icon: "business", activityKeys: ["sales", "purchases", "inventory", "expenses"], action: () => onOpenBusiness("inventory") }] : []),
+  ].filter((card) => isVisible(card.key)), {
+    activity: { ...state, ...adaptiveActivity,
+      sales: [...state.sales, ...(adaptiveActivity.sales || [])],
+      inventory: [...state.inventory, ...(adaptiveActivity.inventory || [])],
+      expenses: [...state.expenses, ...(adaptiveActivity.expenses || [])],
+    }, enabled: adaptiveEnabled,
+    manualOrder: manualHome, preferredKeys: homePreference?.visibleKeys || [],
+  });
 
   return <div className="ops-home-page home-layout">
-    <PageHeader eyebrow="Code 3 TCG · Home" title="Welcome back." description="Great finds. Well-kept collections. Everything in its place." />
+    <PageHeader eyebrow="Code 3 TCG · Home" title="Welcome back." description="Find restocks. Share what you see. Help the next collector." />
     {isOffline ? <OfflineState action={<SecondaryButton onClick={() => window.location.reload()}>Try again</SecondaryButton>} /> : null}
-    <section className={`ops-home-section ops-attention-panel ${attentionRows.length ? "home-attention-pending" : "home-attention-clear"}`}>
+    <section className="ops-home-section home-restock-hero" aria-labelledby="home-restock-title">
+      <div className="home-restock-copy">
+        <span className="home-group-label">Built around restocks</span>
+        <h2 id="home-restock-title">Spotted stock?<br />Share an update.</h2>
+        <p>Pick a store and tell us what you saw. Review, then share. Photos are optional.</p>
+        <div className="home-restock-actions"><PrimaryButton onClick={onReportRestock}>Report a restock</PrimaryButton><SecondaryButton onClick={onOpenRestockReports}>Browse restocks</SecondaryButton></div>
+        <small>Stock changes quickly. Check when a report was observed.</small>
+      </div>
+      <div className="home-restock-art"><CollectibleMotif /></div>
+    </section>
+    {sellerVisible && isVisible("forgeSummary") && attentionRows.length ? <section className="ops-home-section ops-attention-panel home-attention-pending">
       <SectionHeader title="Needs Attention" />
       {attentionRows.length ? <div className="ops-attention-list">{attentionRows.map((row) => <button type="button" key={row.key} onClick={row.action} aria-label={`${row.label}: ${row.count}. ${row.detail}`}><span className="ops-attention-count">{row.count}</span><span><strong>{row.label}</strong><small>{row.detail}</small></span><span aria-hidden="true">›</span></button>)}</div> : <p className="ops-compact-success"><span className="home-status-check" aria-hidden="true">✓</span><span>Nothing needs attention.</span></p>}
-    </section>
+    </section> : null}
     <section className="ops-home-section home-workspaces">
-      <SectionHeader title="Your everyday work" description="Discover something new, or keep your records in order." />
-      <nav className="home-workspace-layout" aria-label="Workspace shortcuts">
-        <button type="button" className="home-discover-card" onClick={() => openFind("deals")} aria-label="Find. Review deals and upcoming auctions.">
-          <span className="home-discover-topline"><span className="home-shortcut-icon"><AppNavIcon kind="find" /></span><span>Discover</span></span>
-          <span className="home-discover-body"><span className="home-discover-copy"><strong>Find your next<br />great addition.</strong><span>Review deals, compare opportunities, and follow upcoming auctions.</span></span><span className="home-discover-visual"><CollectibleMotif /></span></span>
-          <span className="home-discover-action">Open Find<span aria-hidden="true">↗</span></span>
-        </button>
-        <div className="home-records-group">
-          <div className="home-records-heading"><p className="home-group-label">Keep it organized</p><AppNavIcon kind="workspace" /></div>
-          {[
-            { label: "Purchases", detail: "From ordered to received", action: () => onOpenBusiness("purchases"), icon: "clipboard" },
-            { label: "Inventory", detail: "Items, stock, and recorded costs", action: () => onOpenBusiness("inventory"), icon: "inventory" },
-            { label: "Sales", detail: "Sales and shipping progress", action: () => onOpenBusiness("sales"), icon: "sell" },
-          ].map((item) => <button type="button" className="home-record-shortcut" key={item.label} onClick={item.action} aria-label={`${item.label}. ${item.detail}.`}><span className="home-shortcut-icon"><AppNavIcon kind={item.icon} /></span><span className="home-shortcut-copy"><strong>{item.label}</strong><span>{item.detail}</span></span><span className="home-shortcut-arrow" aria-hidden="true">→</span></button>)}
-        </div>
-      </nav>
+      <div className="home-personal-heading"><SectionHeader title="For you" description={manualHome ? "Your chosen Home layout." : adaptiveEnabled ? "Shortcuts adapt to your saved activity. Your navigation stays in place." : "Your shortcuts, in a consistent order."} /><SecondaryButton onClick={() => setActiveTab("settings")}>Customize</SecondaryButton></div>
+      <div className="home-personal-grid" aria-label="Personalized shortcuts">
+        {pageCards.map((card) => <article className="home-personal-card" key={card.key} data-home-card={card.key}>
+          <span className="home-shortcut-icon" aria-hidden="true"><AppNavIcon kind={card.icon} /></span>
+          <h3>{card.title}</h3><p>{card.detail}</p>
+          {card.key === "forgeSummary" ? <div className="home-business-links">{["purchases", "inventory", "sales"].map((view) => <SecondaryButton key={view} onClick={() => onOpenBusiness(view)}>{view[0].toUpperCase() + view.slice(1)}</SecondaryButton>)}</div> : <SecondaryButton onClick={card.action}>{card.label}</SecondaryButton>}
+        </article>)}
+      </div>
     </section>
-    {bestDeal ? <section className="ops-home-section">
+    {bestDeal && isVisible("marketWatch") ? <section className="ops-home-section">
       <SectionHeader title="Best Opportunity" />
       <article className="ops-home-best-opportunity">{recordImage(bestDeal) ? <img src={recordImage(bestDeal)} alt="" /> : <span className="ops-home-opportunity-placeholder" aria-hidden="true" />}<div><span>{bestDeal.marketplace || bestDeal.source || "Manual source"}</span><h3>{bestDeal.title}</h3><dl><div><dt>Price</dt><dd>{bestDealHasPrice ? formatCurrency(bestDealPrice) : "Not entered"}</dd></div><div><dt>Projected profit</dt><dd>{bestDealHasProfit ? formatCurrency(bestDealProfit) : "Needs analysis"}</dd></div></dl></div><PrimaryButton onClick={() => openFind("deals")}>Review</PrimaryButton></article>
     </section> : null}
-    {recent.length ? <section className="ops-home-section">
+    {recent.length && isVisible("todayActivity") ? <section className="ops-home-section">
       <SectionHeader title="Recent Activity" />
       <div className="ops-home-activity">{recent.map((activity) => <article key={activity.id} aria-label={`${activity.title}. ${activity.detail || ""}`}><span aria-hidden="true" /><strong>{activity.title}</strong><time dateTime={activity.createdAt}>{new Date(activity.createdAt).toLocaleDateString()}</time></article>)}</div>
     </section> : null}
-    {showBusinessSummary ? <div className="ops-business-strip" aria-label="Business summary">
+    {showBusinessSummary && sellerVisible && isVisible("forgeSummary") ? <div className="ops-business-strip" aria-label="Business summary">
       <span><small>Buying Budget</small><strong>{sourcingBudget > 0 ? formatCurrency(sourcingBudget) : "Not set"}</strong></span>
       <span><small>Inventory at Cost</small><strong>{inventoryWithCost.length ? formatCurrency(summary.inventoryCost) : "—"}</strong></span>
       <span><small>Month Sales</small><strong>{monthSalesWithRevenue.length ? formatCurrency(monthRevenue) : "—"}</strong></span>

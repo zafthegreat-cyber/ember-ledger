@@ -1,0 +1,46 @@
+.app.app-command-shell .restock-start {
+  display: grid;
+  gap: 18px;
+}
+.restock-start > .ops-section-header { margin-bottom: 0; }
+.restock-start__report {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
+  padding: 20px;
+  background: var(--surface-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+}
+.restock-start__icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  color: var(--action-primary);
+  background: var(--surface-primary);
+}
+.restock-start__eyebrow { color: var(--text-secondary); font-size: 12px; font-weight: 600; }
+.app.app-command-shell .restock-start__copy h3 { margin: 5px 0 8px; font-size: clamp(19px, 3vw, 24px); line-height: 1.25; }
+.restock-start__copy p { max-width: 60ch; margin: 0; color: var(--text-secondary); font-size: 14px; line-height: 1.6; }
+.restock-start__actions { grid-column: 2; display: flex; flex-wrap: wrap; gap: 10px; }
+.restock-start__actions > button { min-height: 44px; }
+.restock-start__steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding: 0; margin: 0; list-style: none; }
+.restock-start__steps li { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.restock-start__steps li > span { display: grid; place-items: center; flex: 0 0 26px; height: 26px; border: 1px solid var(--border-subtle); border-radius: 50%; color: var(--text-secondary); font-size: 12px; }
+.restock-start__steps strong { color: var(--text-primary); font-size: 13px; font-weight: 600; }
+.restock-start__note { margin: 0; color: var(--text-secondary); font-size: 13px; line-height: 1.6; }
+.restock-start__visits { border-top: 1px solid var(--border-subtle); padding-top: 6px; }
+.restock-start__visits > summary { min-height: 54px; padding: 10px 0; color: var(--text-primary); cursor: pointer; }
+.restock-start__visits > summary > span { display: inline-grid; vertical-align: middle; gap: 4px; font-size: 14px; font-weight: 600; }
+.restock-start__visits > summary small { color: var(--text-secondary); font-size: 12px; font-weight: 400; }
+.restock-start__visits > summary:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; border-radius: 4px; }
+@media (max-width: 600px) {
+  .restock-start__report { padding: 15px; gap: 12px; }
+  .restock-start__actions { grid-column: 1 / -1; }
+  .restock-start__actions > button { flex: 1 1 160px; }
+  .restock-start__steps { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+}
