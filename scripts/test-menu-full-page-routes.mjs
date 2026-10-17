@@ -223,7 +223,8 @@ assert.equal(
   "Menu launcher items should not keep the drawer open for inline utility panels."
 );
 assert.ok(
-  appSource.includes('className="drawer menu-drawer navigation-drawer open"'),
+  [...appSource.matchAll(/className="([^"]+)"/g)].some(([, names]) =>
+    ["drawer", "menu-drawer", "navigation-drawer", "open"].every(name => names.split(/\s+/).includes(name))),
   "Mobile menu should use the menu/navigation drawer classes targeted by scroll-safe CSS."
 );
 assert.ok(

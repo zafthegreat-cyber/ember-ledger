@@ -1,8 +1,9 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const { build } = require("esbuild");
 const { chromium, expect } = require("@playwright/test");
-const output = path.resolve(process.env.QA_OUTPUT_DIR || "artifacts/qa/menu-refinement");
+const output = path.resolve(process.env.QA_OUTPUT_DIR || "artifacts/qa/menu-workspaces");
 fs.mkdirSync(output, { recursive: true });
 const appUrl = new URL(process.env.APP_URL || "http://127.0.0.1:5217");
 assert.ok(["127.0.0.1", "localhost", "[::1]"].includes(appUrl.hostname), "Synthetic menu checks are loopback only");
@@ -15,13 +16,76 @@ const requiredDestinationKeys = [
 const requestedWidths = process.env.QA_MENU_WIDTHS?.split(",").map(Number);
 const viewports = [{ width: 320, height: 568 }, ...[360, 390, 1440].map(width => ({ width, height: 900 }))].filter(viewport => !requestedWidths || requestedWidths.includes(viewport.width));
 assert.ok(viewports.length > 0, "At least one supported viewport must be selected");
+
+async function verifyRestrictedNavigation(browser) {
+  // Render the real presentation component with an explicitly restricted set.
+  // This proves it never manufactures destinations or workspace permissions.
+  const fixture = await build({
+    stdin: { contents: `
+      import React from 'react'; import {createRoot} from 'react-dom/client';
+      import MenuNavigation from './src/features/deferredViews/MenuNavigation.jsx';
+      const Icon=()=> <svg width="19" height="19" aria-hidden="true"><path d="M2 2h12v12H2z" /></svg>;
+      const workspaces=[{id:'COLLECT',label:'Collect',icon:'inventory',shortPurpose:'Your cards'}, {id:'FIND',label:'Find',icon:'find',shortPurpose:'Find cards and prices'}];
+      const sections=[{key:'account',title:'Account',items:[{key:'settings',label:'Settings',helper:'Preferences and cloud saving'}]}, {key:'collection',title:'Collection',items:[{key:'vault',label:'Collection',helper:'Your saved cards'}]}, {key:'community',title:'Community',items:[{key:'scout',label:'Restocks',helper:'Available cards'}]}];
+      window.qaSelections=[];
+      createRoot(document.getElementById('root')).render(<MenuNavigation sections={sections} NavIcon={Icon} isItemActive={()=>false} onSelect={item=>window.qaSelections.push(item.key)} onAdd={()=>window.qaSelections.push('quick-add')} modeLabel="Collector" workspaces={workspaces} currentWorkspaceId="COLLECT" onSelectWorkspace={workspace=>window.qaSelections.push(workspace.id)} />);
+    `, resolveDir: process.cwd(), loader: "jsx" },
+    bundle: true, jsx: "automatic", format: "esm", write: false,
+  });
+  const context = await browser.newContext({ viewport: { width: 390, height: 900 } });
+  const unexpectedRequests = [];
+  await context.route("**/*", route => {
+    const url = new URL(route.request().url());
+    if (url.origin === base && route.request().method() === "GET") {
+      if (url.pathname === "/__qa/menu-restricted") return route.fulfill({ contentType: "text/html", body: '<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="root"></div><script type="module" src="/__qa/menu-restricted.js"></script></body></html>' });
+      if (url.pathname === "/__qa/menu-restricted.js") return route.fulfill({ contentType: "text/javascript", body: fixture.outputFiles[0].text });
+    }
+    unexpectedRequests.push(`${route.request().method()} ${url.origin}${url.pathname}`);
+    return route.abort();
+  });
+  try {
+    const page = await context.newPage(); const errors = [];
+    page.on("pageerror", error => errors.push(error.message));
+    await page.goto(`${base}/__qa/menu-restricted`, { waitUntil: "domcontentloaded" });
+    const search = page.getByRole("searchbox", { name: "Search menu", exact: true });
+    await expect(search).toBeVisible();
+    const destinations = await page.locator("[data-menu-key]").evaluateAll(elements => elements.map(element => element.dataset.menuKey).sort());
+    assert.deepEqual(destinations, ["scout", "settings", "vault"]);
+    await page.locator(".menu-workspace-toggle").click();
+    assert.deepEqual(await page.locator("[data-menu-workspace]").evaluateAll(elements => elements.map(element => element.dataset.menuWorkspace)), ["COLLECT", "FIND"]);
+    await expect(page.locator('[data-menu-workspace="COLLECT"]').getByText("Current workspace", { exact: true })).toBeVisible();
+    await expect(page.locator('[data-menu-workspace][aria-current="page"]')).toHaveCount(0);
+    await search.fill("workspace");
+    assert.deepEqual(await page.locator("[data-menu-workspace]").evaluateAll(elements => elements.map(element => element.dataset.menuWorkspace)), ["COLLECT", "FIND"]);
+    for (const unavailable of ["Bot", "Business", "Sell"]) {
+      await search.fill(unavailable);
+      await expect(page.locator("[data-menu-workspace]")).toHaveCount(0);
+      if (unavailable !== "Sell") await expect(page.getByText("No matching pages", { exact: true })).toBeVisible();
+    }
+    await search.fill("scanning");
+    await expect(page.locator('[data-menu-key="vault"]')).toBeVisible();
+    await expect(page.locator("[data-menu-key]")).toHaveCount(1);
+    await page.keyboard.press("Escape"); await expect(search).toHaveValue(""); await expect(search).toBeFocused();
+    await search.fill("Find & sell");
+    await expect(page.locator('[data-menu-key="scout"]')).toBeVisible();
+    await expect(page.locator("[data-menu-key]")).toHaveCount(1);
+    await page.keyboard.press("Escape"); await expect(search).toHaveValue("");
+    await search.fill("Find"); await page.keyboard.press("ArrowDown");
+    await expect(page.locator('[data-menu-workspace="FIND"]')).toBeFocused();
+    await page.keyboard.press("Enter");
+    assert.deepEqual(await page.evaluate(() => window.qaSelections), ["FIND"]);
+    assert.deepEqual(errors, []); assert.deepEqual(unexpectedRequests, []);
+    return { actualComponent: true, onlyProvidedDestinations: true, onlyProvidedWorkspaces: true, searchCannotExposeRestrictedWorkspaces: true, taskGroupHintsAndLabelsSearchable: true, arrowDownAndEnterResultSelection: true, currentWorkspaceNotCurrentPage: true, callbackPreserved: true, unexpectedRequests: 0 };
+  } finally { await context.close(); }
+}
+
 (async () => {
   const browser = await chromium.launch({ headless: true });
   const results = [];
   let lastPage;
   let lastStep = "Starting synthetic menu checks";
   try {
-    for (const { width, height } of viewports) for (const theme of ["light", "dark"]) {
+    for (const { width, height } of process.env.QA_MENU_FIXTURE_ONLY ? [] : viewports) for (const theme of ["light", "dark"]) {
       const context = await browser.newContext({ viewport: { width, height }, reducedMotion: "reduce", serviceWorkers: "block" });
       await context.route("**/*", (route) => {
         const request = route.request(); const url = new URL(request.url());
@@ -42,6 +106,7 @@ assert.ok(viewports.length > 0, "At least one supported viewport must be selecte
       page.on("pageerror", error => errors.push(error.message));
       await page.goto(`${base}/?betaLocalMode=true`);
       await expect(page.getByRole("heading", { name: "Welcome back.", exact: true })).toBeVisible({ timeout: 30000 });
+      const existingWorkspaceLabels = await page.getByTestId("workspace-switcher").locator(".code3-workspace-switcher__menu button strong").allTextContents();
       const snapshot = () => page.evaluate(() => { const data = JSON.parse(localStorage.getItem("et-tcg-beta-data")); return JSON.stringify([data.items, data.sales, data.expenses]); });
       const before = await snapshot();
       const opener = page.getByRole("button", { name: "Open profile and menu", exact: true });
@@ -57,9 +122,36 @@ assert.ok(viewports.length > 0, "At least one supported viewport must be selecte
       for (const key of requiredDestinationKeys) assert.ok(originalKeys.includes(key), `Original destination ${key} remains available`);
       await expect(search).toBeVisible();
       for (const key of ["vault", "scanProduct", "scout", "watchList"]) await expect(drawer.locator(`[data-menu-shortcut="${key}"]`)).toBeInViewport({ ratio: 1 });
+      const shortcuts = await drawer.locator("[data-menu-shortcut]").evaluateAll(elements => elements.map(element => {
+        const rect = element.getBoundingClientRect();
+        return { top: rect.top, width: rect.width, height: rect.height };
+      }));
+      assert.equal(shortcuts.length, 4, "Four familiar quick actions remain available");
+      assert.ok(shortcuts.every(shortcut => shortcut.width >= 44 && shortcut.height >= 44), "Compact shortcuts retain usable touch targets");
+      assert.ok(Math.max(...shortcuts.map(shortcut => shortcut.top)) - Math.min(...shortcuts.map(shortcut => shortcut.top)) < 1, "Quick actions use one compact row");
       assert.equal(await scrollArea.evaluate(element => element.scrollTop), 0, "Quick access requires no scrolling");
       await page.screenshot({ path: path.join(output, `${width}-${theme}-menu-top.png`) });
 
+      lastStep = `${width} ${theme}: workspace disclosure and permission-filtered choices`;
+      const workspaceToggle = drawer.locator(".menu-workspace-toggle");
+      const workspaceOptions = drawer.locator(".menu-workspace-options");
+      await expect(workspaceToggle).toHaveAttribute("aria-expanded", "false");
+      await expect(workspaceOptions).toBeHidden();
+      const pathBeforeDisclosure = page.url();
+      await workspaceToggle.click();
+      await expect(workspaceToggle).toHaveAttribute("aria-expanded", "true");
+      await expect(workspaceOptions).toBeVisible();
+      assert.equal(page.url(), pathBeforeDisclosure, "Expanding workspace choices does not navigate");
+      const permittedWorkspaces = await workspaceOptions.locator("[data-menu-workspace]").evaluateAll(elements => elements.map(element => element.dataset.menuWorkspace));
+      assert.deepEqual(permittedWorkspaces.slice().sort(), existingWorkspaceLabels.map(label => label.toUpperCase()).sort(), "Menu retains exactly the workspaces allowed by the existing switcher");
+      await expect(workspaceOptions.getByText("Current workspace", { exact: true })).toHaveCount(1);
+      await expect(workspaceOptions.locator('[aria-current="page"]')).toHaveCount(0);
+      await page.screenshot({ path: path.join(output, `${width}-${theme}-menu-workspaces.png`) });
+      await workspaceToggle.click();
+      await expect(workspaceToggle).toHaveAttribute("aria-expanded", "false");
+      assert.equal(page.url(), pathBeforeDisclosure);
+
+      lastStep = `${width} ${theme}: task groups, layout, and keyboard focus`;
       const firstSection = drawer.locator("[data-menu-section]").first();
       const firstToggle = firstSection.locator(".menu-section-toggle");
       const initiallyExpanded = await firstToggle.getAttribute("aria-expanded") === "true";
@@ -87,7 +179,7 @@ assert.ok(viewports.length > 0, "At least one supported viewport must be selecte
       await page.keyboard.press("Shift+Tab"); await expect(drawer.locator(".drawer-footer-card button").last()).toBeFocused();
       await page.keyboard.press("Tab"); await expect(drawer.getByRole("button", { name: "Close menu" })).toBeFocused();
       await scrollArea.evaluate(element => { element.scrollTop = element.scrollHeight; });
-      await expect(drawer.locator("[data-menu-section='roadmap']")).toBeInViewport();
+      await expect(drawer.locator("[data-menu-section]").last()).toBeInViewport();
       await expect(drawer.getByRole("button", { name: "Close menu" })).toBeInViewport();
       await expect(search).toBeInViewport({ ratio: 1 });
       await expect(drawer.locator(".drawer-footer-card")).toBeInViewport();
@@ -109,6 +201,28 @@ assert.ok(viewports.length > 0, "At least one supported viewport must be selecte
       await search.fill("alerts");
       await drawer.getByRole("button", { name: "Clear menu search", exact: true }).click();
       await expect(search).toHaveValue(""); await expect(search).toBeFocused();
+      await search.fill("workspace");
+      await expect(drawer.getByRole("heading", { name: "Workspaces", exact: true })).toBeVisible();
+      assert.deepEqual((await drawer.locator("[data-menu-workspace]").evaluateAll(elements => elements.filter(element => element.getClientRects().length).map(element => element.dataset.menuWorkspace))).sort(), permittedWorkspaces.slice().sort(), "Search includes only the permitted workspaces");
+      await search.fill("Find");
+      const workspaceResult = drawer.locator('[data-menu-workspace="FIND"]');
+      await expect(workspaceResult).toBeVisible();
+      const resultColors = await workspaceResult.evaluate(element => {
+        const colorFor = token => {
+          const probe = document.createElement("span"); probe.style.color = `var(${token})`; element.append(probe);
+          const value = getComputedStyle(probe).color; probe.remove(); return value;
+        };
+        return { background: getComputedStyle(element).backgroundColor, title: getComputedStyle(element.querySelector("strong")).color, helper: getComputedStyle(element.querySelector("small")).color, primary: colorFor("--text-primary"), secondary: colorFor("--text-secondary") };
+      });
+      assert.equal(resultColors.background, "rgba(0, 0, 0, 0)", "Workspace search results stay neutral rather than inheriting generic primary-button styling");
+      assert.equal(resultColors.title, resultColors.primary, "Workspace result titles use readable primary text");
+      assert.equal(resultColors.helper, resultColors.secondary, "Workspace result descriptions use readable secondary text");
+      await page.screenshot({ path: path.join(output, `${width}-${theme}-menu-workspace-search.png`) });
+      await page.keyboard.press("Escape");
+      await expect(search).toHaveValue(""); await expect(search).toBeFocused();
+      await expect(drawer).toBeVisible();
+      await expect(workspaceToggle).toHaveAttribute("aria-expanded", "false");
+      assert.deepEqual(await destinationKeys(), originalKeys, "Escape clears search without losing destinations or dismissing the menu");
       await page.keyboard.press("Escape"); await expect(drawer).toHaveCount(0); if (width <= 520) await expect(opener).toBeFocused();
       assert.notEqual(await page.evaluate(() => document.body.style.overflow), "hidden");
       await open(); await drawer.getByRole("button", { name: "Close menu", exact: true }).click(); await expect(drawer).toHaveCount(0);
@@ -116,10 +230,25 @@ assert.ok(viewports.length > 0, "At least one supported viewport must be selecte
       if (width > 520) { await open(); await page.locator(".code3-menu-backdrop").click({ position: { x: 20, y: 200 } }); await expect(drawer).toHaveCount(0); }
       await open(); await drawer.locator(".drawer-footer-card").getByRole("button", { name: /Settings/ }).click(); await page.waitForURL(/\/settings/); await expect(drawer).toHaveCount(0);
       await open(); await expect(drawer.locator('[data-menu-key="settings"]')).toHaveAttribute("aria-current", "page");
-      await expect(drawer.locator('[data-menu-section="account"] .menu-section-toggle')).toHaveAttribute("aria-expanded", "true");
+      await expect(drawer.locator('[data-menu-key="settings"]').locator("xpath=ancestor::section[@data-menu-section][1]").locator(".menu-section-toggle")).toHaveAttribute("aria-expanded", "true");
+      await workspaceToggle.click();
+      await expect(workspaceOptions.getByText("Current workspace", { exact: true })).toHaveCount(1);
+      await expect(workspaceOptions.locator('[aria-current="page"]')).toHaveCount(0);
+      await workspaceToggle.click();
       assert.deepEqual(await destinationKeys(), originalKeys);
       await page.screenshot({ path: path.join(output, `${width}-${theme}-menu-active.png`) });
       await page.keyboard.press("Escape"); await page.goBack(); await expect(page.getByRole("heading", { name: "Welcome back.", exact: true })).toBeVisible();
+
+      lastStep = `${width} ${theme}: Find workspace navigation and Back`;
+      const previousWorkspacePath = new URL(page.url()).pathname;
+      await open(); await workspaceToggle.click();
+      await workspaceOptions.locator('[data-menu-workspace="FIND"]').click();
+      await page.waitForURL(/\/find\/home(?:\?|$)/); await expect(drawer).toHaveCount(0);
+      await open(); await workspaceToggle.click();
+      await expect(workspaceOptions.locator('[data-menu-workspace="FIND"]').getByText("Current workspace", { exact: true })).toBeVisible();
+      await expect(workspaceOptions.locator('[aria-current="page"]')).toHaveCount(0);
+      await page.keyboard.press("Escape"); await page.goBack();
+      await expect.poll(() => new URL(page.url()).pathname, { message: "Changing workspace preserves browser Back" }).toBe(previousWorkspacePath);
 
       for (const { key, route } of [
         { key: "vault", route: /\/collection(?:\/|\?|$)/ },
@@ -172,11 +301,15 @@ assert.ok(viewports.length > 0, "At least one supported viewport must be selecte
       await page.screenshot({ path: path.join(output, `${width}-${theme}-quick-add.png`) });
       await page.keyboard.press("Escape"); await expect(quickAdd).toHaveCount(0);
       assert.equal(await snapshot(), before); assert.deepEqual(errors, []);
-      results.push({ width, height, theme, navigationItems: originalKeys.length, allOriginalDestinations: true, quickAccessWithoutScrolling: true, groupExpansion: true, searchKeywordsAndClear: true, fixedLayout: true, separateLabelAndHelper: true, compactTouchRows: true, closeAndFocusTrap: true, pinnedSearchHeaderFooter: true, settingsActiveAndBack: true, collectionRestocksAlertsSellActiveAndBack: true, quickAddHandoff: true, recordsUnchanged: true, errors });
-      console.log(`PASS real menu ${width}x${height} ${theme}: ${originalKeys.length} destinations, shortcuts, groups, search, layout, focus, navigation, Back, Quick Add and data preservation.`);
+      results.push({ width, height, theme, navigationItems: originalKeys.length, allOriginalDestinations: true, compactQuickAccessWithoutScrolling: true, groupExpansion: true, workspaceDisclosureAndPermissions: true, workspaceSearchAndBack: true, workspaceResultColors: resultColors, searchKeywordsAndEscape: true, fixedLayout: true, separateLabelAndHelper: true, compactTouchRows: true, closeAndFocusTrap: true, pinnedSearchHeaderFooter: true, settingsActiveAndBack: true, collectionRestocksAlertsSellActiveAndBack: true, quickAddHandoff: true, recordsUnchanged: true, errors });
+      console.log(`PASS real menu ${width}x${height} ${theme}: ${originalKeys.length} destinations, compact shortcuts, task groups, workspace disclosure, search, Escape, layout, focus, navigation, Back, Quick Add and data preservation.`);
       await context.close();
     }
-    fs.writeFileSync(path.join(output, "results.json"), JSON.stringify({ createdAt: new Date().toISOString(), realApp: true, syntheticOnly: true, results }, null, 2));
+    lastStep = "Restricted real-component fixture: supplied permissions remain unchanged";
+    const restrictedNavigation = await verifyRestrictedNavigation(browser);
+    console.log("PASS restricted real menu fixture: only supplied destinations and workspaces appear, including search; no implicit Bot, Business, or Sell access.");
+    const reportName = process.env.QA_MENU_FIXTURE_ONLY ? "restricted-results.json" : requestedWidths ? `results-${requestedWidths.join("-")}.json` : "results.json";
+    fs.writeFileSync(path.join(output, reportName), JSON.stringify({ createdAt: new Date().toISOString(), realApp: !process.env.QA_MENU_FIXTURE_ONLY, syntheticOnly: true, restrictedNavigation, results }, null, 2));
   } catch (error) {
     console.error(`FAILED ${lastStep}`);
     if (lastPage && !lastPage.isClosed()) {
