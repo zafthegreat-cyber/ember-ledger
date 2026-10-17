@@ -56,6 +56,7 @@ export function CommandBoardV4({
   label = "",
   title,
   description,
+  onOpenMenu,
   primaryAction = null,
   secondaryActions = [],
   utilityActions = [],
@@ -140,9 +141,15 @@ export function CommandBoardV4({
                   <AppNavIcon kind={action.icon || "search"} />
                 </button>
               ))}
-              <a className="command-board-v4-mobile-tool" href={commandBoardHref("/settings")} aria-label="Open profile and settings">
-                <AppNavIcon kind="account" />
-              </a>
+              {onOpenMenu ? (
+                <button type="button" className="command-board-v4-mobile-tool" onClick={() => onOpenMenu()} aria-label="Open profile and menu">
+                  <AppNavIcon kind="account" />
+                </button>
+              ) : (
+                <a className="command-board-v4-mobile-tool" href={commandBoardHref("/settings")} aria-label="Open profile and settings">
+                  <AppNavIcon kind="account" />
+                </a>
+              )}
             </nav>
           </div>
 
@@ -153,7 +160,7 @@ export function CommandBoardV4({
                 <h1>{title}</h1>
                 {description ? <p>{description}</p> : null}
               </div>
-              {(primary || secondary.length || utility.length) ? (
+              {(primary || secondary.length || utility.length || onOpenMenu) ? (
                 <div className="command-board-v4-actions" aria-label={`${title} actions`}>
                   {primary ? (
                     <button type="button" className="command-board-v4-primary-action" onClick={primary.onClick} disabled={primary.disabled}>
@@ -171,7 +178,12 @@ export function CommandBoardV4({
                       ))}
                     </span>
                   ) : null}
-                  {!hasProfileAction ? (
+                  {onOpenMenu ? (
+                    <button type="button" className="command-board-v4-profile-action" onClick={() => onOpenMenu()} aria-label="Open profile and menu">
+                      <AppNavIcon kind="account" />
+                      <b>Menu</b>
+                    </button>
+                  ) : !hasProfileAction ? (
                     <a className="command-board-v4-profile-action" href={commandBoardHref("/settings")} aria-label="Open profile and settings">
                       <AppNavIcon kind="account" />
                       <b>Profile</b>

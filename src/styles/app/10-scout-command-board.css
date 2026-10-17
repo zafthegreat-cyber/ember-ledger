@@ -13,7 +13,7 @@ html body .app-command-shell .scout-command-route-v5 {
 }
 
 html body .app-command-shell:has(.scout-command-route-v5) > .header.app-shell-header,
-html body .app-command-shell:has(.scout-command-route-v5) > .topbar,
+html body .app-command-shell:has(.scout-command-route-v5 .scout-command-board-v5) > .topbar,
 html body .app-command-shell:has(.scout-command-route-v5) > .web-command-sidebar,
 html body .app-command-shell:has(.scout-command-route-v5) > .app-main-tabs,
 html body .app-command-shell:has(.scout-command-route-v5) .mobile-bottom-nav {

@@ -1,5 +1,7 @@
 import { useId } from "react";
 import { useModalFocus } from "../../components/operations/useModalFocus.js";
+import MenuNavigation from "./MenuNavigation.jsx";
+import MenuItemIcon from "./MenuItemIcon.jsx";
 import "./menu-drawer.css";
 
 // App owns state, authority and handlers; only this existing renderer is deferred.
@@ -103,6 +105,7 @@ export default function MenuDrawerContent({ scope }) {
     isSupabaseConfigured,
     locationSettings,
     menuCommandSections,
+    menuLocation,
     menuDashboardSectionRows,
     menuHomeStatRows,
     navigateMainTab,
@@ -224,6 +227,24 @@ export default function MenuDrawerContent({ scope }) {
   } = scope;
   const titleId = useId();
   const { dialogRef, onKeyDown } = useModalFocus(true, () => setMenuOpen(false));
+  const settingsItem = menuCommandSections.flatMap(section => section.items).find(item => item.key === "settings");
+
+  function isMenuItemActive(item) {
+    if (item.target) return menuLocation.activeTab === item.target;
+    if (item.key === "scout") return menuLocation.activeTab === "flipScout" && menuLocation.flipScoutView === "restocks";
+    if (item.key === "watchList") return menuLocation.activeTab === "scout" && menuLocation.scoutView === "alerts";
+    const utilityTabs = { membership: "membership", privacySafety: "trust", parentCenter: "parentCenter", shopPortal: "sponsor" };
+    if (utilityTabs[item.key]) return menuLocation.activeTab === utilityTabs[item.key];
+    return isDesktopSidebarItemActive(item);
+  }
+
+  function openMenuItem(item) {
+    if (item.keepOpen) {
+      item.action?.();
+      return;
+    }
+    runMenuAction(() => item.action ? item.action() : navigateMainTab(item));
+  }
 
   function renderDeferredMenuDrawer() {
     return (<>
@@ -234,53 +255,7 @@ export default function MenuDrawerContent({ scope }) {
               <div><p>{BRAND_CONFIG.applicationDisplayName}</p><h2 id={titleId}>Menu</h2></div>
               <button type="button" className="secondary-button drawer-close-button" aria-label="Close menu" onClick={() => setMenuOpen(false)}><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 6 12 12M18 6 6 18" /></svg></button>
             </div>
-            <div className="drawer-menu-stack">
-              <section className="menu-command-links" aria-label="Menu destinations">
-                <div className="menu-command-links-header">
-                  <div>
-                    <span className="menu-workspace-label">{adaptiveUiState.modeLabel}</span>
-                    <p>Your collection, tools, and account.</p>
-                  </div>
-                  <button type="button" className="menu-quick-add" onClick={() => openAddActionSheet("menu")}>
-                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14" /></svg>Quick Add
-                  </button>
-                </div>
-                <div className="menu-command-groups">
-                  {menuCommandSections.map((section) => (
-                    <section className={`menu-command-section menu-command-section--${section.key}`} data-menu-section={section.key} key={section.key}>
-                      <h4>{section.title}</h4>
-                      <div className="menu-command-grid">
-                        {section.items.map((item) => (
-                          <button
-                            type="button"
-                            key={`${section.key}-${item.key}`}
-                            className={isDesktopSidebarItemActive(item) ? "menu-command-link active" : "menu-command-link"}
-                            data-menu-key={item.key}
-                            aria-current={isDesktopSidebarItemActive(item) ? "page" : undefined}
-                            aria-label={`${item.label}. ${item.helper || "Open this workspace area."}`}
-                            onClick={() => {
-                              if (item.keepOpen) {
-                                item.action?.();
-                                return;
-                              }
-                              runMenuAction(() => item.action ? item.action() : navigateMainTab(item));
-                            }}
-                          >
-                            <span className="menu-command-icon" aria-hidden="true">
-                              <AppNavIcon kind={item.icon || "home"} />
-                            </span>
-                            <span className="menu-command-copy">
-                              <strong>{item.label}</strong>
-                              <small>{item.helper}</small>
-                            </span>
-                            <svg className="menu-command-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m9 6 6 6-6 6" /></svg>
-                          </button>
-                        ))}
-                      </div>
-                    </section>
-                  ))}
-                </div>
-              </section>
+            <MenuNavigation sections={menuCommandSections} NavIcon={AppNavIcon} isItemActive={isMenuItemActive} onSelect={openMenuItem} onAdd={() => openAddActionSheet("menu")} modeLabel={adaptiveUiState.modeLabel}>
               {renderMenuPullDown("account", "Account", "App version, sign-in, private beta status, and account actions", (
                 <div className="drawer-links">
                   <div className="drawer-info-card account-status-card">
@@ -1357,11 +1332,11 @@ export default function MenuDrawerContent({ scope }) {
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => { setAdminReviewFilter("Flagged / Duplicate Items"); setActiveTab("adminReview"); })}>Flagged / Duplicate Items</button>
                 </div>
               ), "admin") : null}
-            </div>
+            </MenuNavigation>
             <div className="drawer-footer-card">
-              <span>{BRAND_CONFIG.applicationDisplayName} web app</span>
+              {settingsItem ? <button type="button" className="menu-settings-shortcut" onClick={() => openMenuItem(settingsItem)}><MenuItemIcon item={settingsItem} NavIcon={AppNavIcon} />Settings</button> : <span>{BRAND_CONFIG.applicationDisplayName}</span>}
               {signedInWithSupabase ? (
-                <button type="button" className="logout-link" onClick={() => runMenuAction(signOut)}>Log Out</button>
+                <button type="button" className="logout-link" onClick={() => runMenuAction(signOut)}>Sign out</button>
               ) : (
                 <button type="button" className="secondary-button" onClick={() => { setAuthMode("login"); openUtilityPage("account"); }}>
                   Sign In

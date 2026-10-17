@@ -7813,6 +7813,7 @@ export default function App() {
   }
 
   function openEmberWatchSection() {
+    prepareRouteNavigation();
     setActiveTab("scout");
     setScoutView("alerts");
     setScoutSubTabTarget({ tab: "alerts", id: Date.now() });
@@ -47929,6 +47930,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   };
 
   const forgePageProps = {
+    openMenuDrawer,
     commandDeskSellerAccess,
     editMarketplaceListing,
     exchangeSection,
@@ -48519,6 +48521,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         isSupabaseConfigured,
         locationSettings,
         menuCommandSections,
+        menuLocation: { activeTab, scoutView, flipScoutView },
         menuDashboardSectionRows,
         menuHomeStatRows,
         navigateMainTab,

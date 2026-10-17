@@ -16,6 +16,7 @@ export default function ForgePage(props) {
     openDealFinderModal,
     openExchangeSection,
     openMarketplaceCreate,
+    openMenuDrawer,
     openProductAddFlow,
     openTradeCompassFlow,
 
@@ -695,6 +696,7 @@ export default function ForgePage(props) {
         label={commandBoardCopy.label}
         title={commandBoardCopy.title}
         description={commandBoardCopy.description}
+        onOpenMenu={openMenuDrawer}
         primaryAction={commandBoardCopy.primaryAction}
         secondaryActions={commandBoardCopy.secondaryActions}
         utilityActions={[
