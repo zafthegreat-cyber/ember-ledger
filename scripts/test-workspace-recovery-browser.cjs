@@ -13,12 +13,13 @@ const fixture = new URL("/__qa/workspace-recovery", base).href;
   const results = [];
   try {
     const context = await browser.newContext();
-    await context.route("**/*", (route) => {
+    const routeLocalFixture = (route) => {
       const url = new URL(route.request().url());
       if (url.origin !== base.origin || route.request().method() !== "GET") return route.abort();
       if (url.pathname === "/__qa/workspace-recovery") return route.fulfill({ contentType: "text/html", body: "<!doctype html><title>Disposable recovery verification</title><main>Workspace recovery verification</main>" });
       return route.continue();
-    });
+    };
+    await context.route("**/*", routeLocalFixture);
     const appTab = await context.newPage();
     const recoveryTab = await context.newPage();
     await Promise.all([appTab.goto(fixture), recoveryTab.goto(fixture)]);
@@ -73,6 +74,66 @@ const fixture = new URL("/__qa/workspace-recovery", base).href;
     assert.deepEqual(resumed.saved.items.map((item) => item.id), ["phone-record"]);
     results.push({ check: "fresh-page startup recovers interrupted transaction without losing original records", passed: true });
     await context.close();
+
+    // This separate disposable profile uses real Chromium localStorage quota and
+    // real IndexedDB. Only synthetic QA records are ever filled or recovered.
+    const quotaContext = await browser.newContext();
+    await quotaContext.route("**/*", routeLocalFixture);
+    const quotaTab = await quotaContext.newPage();
+    await quotaTab.goto(fixture);
+    const quotaApplied = await quotaTab.evaluate(async () => {
+      const api = await import("/src/features/backup/workspaceRecovery.js");
+      const { createWorkspacePayloadStore } = await import("/src/features/persistence/workspacePayloadStore.js");
+      const original = { items: Array.from({ length: 1000 }, (_, index) => ({ id: `quota-${index}`, name: `Synthetic ${"x".repeat(160)}`, quantity: 2 })) };
+      localStorage.setItem("et-tcg-beta-data", JSON.stringify(original));
+      let fillerCount = 0;
+      for (; fillerCount < 100; fillerCount += 1) {
+        try { localStorage.setItem(`qa-quota-filler-${fillerCount}`, "x".repeat(100 * 1024)); }
+        catch (error) { if (error.name !== "QuotaExceededError") throw error; break; }
+      }
+      if (fillerCount === 100 || fillerCount < 2) throw new Error("Native browser quota fixture was not bounded as expected.");
+      // Leave space for compact metadata, but insufficient room to duplicate the
+      // recovery before/after payload in this storage area.
+      localStorage.removeItem(`qa-quota-filler-${fillerCount - 1}`);
+      let inlineRejected = false;
+      try { localStorage.setItem("qa-inline-journal-probe", "x".repeat(JSON.stringify(original).length * 2)); }
+      catch (error) { if (error.name !== "QuotaExceededError") throw error; inlineRejected = true; }
+      localStorage.removeItem("qa-inline-journal-probe");
+      const expectedSources = api.captureRecoverySources(localStorage);
+      const next = { items: original.items.map((item) => ({ ...item, quantity: 3 })) };
+      const applied = await api.applyWorkspaceSources({ storage: localStorage, expectedSources, nextSources: { "legacy-core-business": { schemaVersion: 0, data: next } }, ownerId: "synthetic-quota-account", locks: navigator.locks });
+      const markerRaw = localStorage.getItem(api.WORKSPACE_CHECKPOINT_KEY);
+      const marker = JSON.parse(markerRaw);
+      const payloadRaw = await createWorkspacePayloadStore().get(marker.payloadKey);
+      return { inlineRejected, applied, markerBytes: markerRaw.length, markerFormat: marker.format, payloadCharacters: payloadRaw?.length, records: JSON.parse(localStorage.getItem("et-tcg-beta-data")).items.length, quantities: [...new Set(JSON.parse(localStorage.getItem("et-tcg-beta-data")).items.map((item) => item.quantity))], pending: api.hasPendingWorkspaceRecovery(localStorage) };
+    });
+    assert.equal(quotaApplied.inlineRejected, true);
+    assert.equal(quotaApplied.applied.status, "APPLIED");
+    assert.equal(quotaApplied.markerFormat, "code3-workspace-recovery-reference");
+    assert.ok(quotaApplied.markerBytes < 600);
+    assert.ok(quotaApplied.payloadCharacters > 128 * 1024);
+    assert.equal(quotaApplied.records, 1000);
+    assert.deepEqual(quotaApplied.quantities, [3]);
+    assert.equal(quotaApplied.pending, false);
+    results.push({ check: "native near-full localStorage uses verified IndexedDB before-image and compact markers", passed: true });
+
+    await quotaTab.evaluate(async () => {
+      const api = await import("/src/features/backup/workspaceRecovery.js");
+      localStorage.setItem(api.WORKSPACE_RECOVERY_KEY, localStorage.getItem(api.WORKSPACE_CHECKPOINT_KEY));
+    });
+    await quotaTab.reload();
+    const quotaResumed = await quotaTab.evaluate(async () => {
+      const api = await import("/src/features/backup/workspaceRecovery.js");
+      const result = await api.recoverWorkspaceSources({ storage: localStorage, ownerId: "synthetic-quota-account", locks: navigator.locks });
+      const saved = JSON.parse(localStorage.getItem("et-tcg-beta-data"));
+      return { result, records: saved.items.length, quantities: [...new Set(saved.items.map((item) => item.quantity))], pending: api.hasPendingWorkspaceRecovery(localStorage) };
+    });
+    assert.equal(quotaResumed.result.status, "ROLLED_BACK");
+    assert.equal(quotaResumed.records, 1000);
+    assert.deepEqual(quotaResumed.quantities, [2]);
+    assert.equal(quotaResumed.pending, false);
+    results.push({ check: "fresh page resolves durable IndexedDB checkpoint and restores all originals under native quota", passed: true });
+    await quotaContext.close();
     fs.mkdirSync(output, { recursive: true });
     fs.writeFileSync(path.join(output, "native-recovery-results.json"), JSON.stringify({ createdAt: new Date().toISOString(), results, failures: 0 }, null, 2));
     console.log(`Native workspace recovery: ${results.length} checks passed.`);

@@ -10,11 +10,20 @@ import WorkspaceRestorePanel from "../backup/WorkspaceRestorePanel.jsx";
 import { planWorkspaceRestore } from "../backup/workspaceRestorePlan.js";
 import { exportLegacyCloudBackup, inspectLegacyCloudBackup, restoreLegacyCloudBackup } from "../backup/legacyCloudBackup.js";
 import { confirmAccountOperation, consumeAccountConfirmation } from "../../services/accountSessionService.js";
+import WorkspaceRecoverySignIn from "./WorkspaceRecoverySignIn.jsx";
 import "../../styles/theme.css";
 import "./cloud-workspace.css";
 
 const preferenceKey = (id) => `code3.cloud-saving-enabled.v1:${id}`;
 const localDevelopment = () => isLocalDevelopmentIdentityEnabled({ queryEnabled: new URLSearchParams(globalThis.location?.search || "").get("betaLocalMode") === "true" });
+const storageFailure = (code = "") => ["DEVICE_SAVE_FAILED", "STORAGE_UNAVAILABLE", "STORAGE_WRITE_FAILED", "DRAFT_STORAGE_UNAVAILABLE", "LOCAL_TRACKING_FAILED", "RECOVERY_COPY_FAILED", "QuotaExceededError", "SecurityError"].includes(code) || String(code).startsWith("PAYLOAD_");
+const syncError = (result) => Object.assign(new Error(result.message), { code: result.status });
+const hasPendingWrites = () => hasPendingWorkspaceRecovery(localStorage) || hasPendingWorkspaceOwnerSwitch(localStorage) || hasPendingSessionDraftSwitch(sessionStorage);
+function assertNoPendingWrites() {
+  if (hasPendingWrites()) {
+    throw Object.assign(new Error("An interrupted save still needs recovery. Keep this app’s stored data and retry safely before editing records."), { code: "RECOVERY_REQUIRED" });
+  }
+}
 function bounded(request) {
   let timer;
   return Promise.race([request, new Promise((_, reject) => { timer = setTimeout(() => reject(new Error("The account service is taking too long. Your saved records are unchanged. Retry when your connection returns.")), 15000); })]).finally(() => clearTimeout(timer));
@@ -28,6 +37,9 @@ function WorkspaceLease({ children, onError }) {
     acquireWorkspaceReadLease().then((done) => {
       if (!active) { done(); return; }
       release = done;
+      // Check again while holding the lease, after any competing tab's write.
+      try { assertNoPendingWrites(); }
+      catch (error) { done(); release = null; onError(error); return; }
       setReady(true);
     }).catch((error) => { if (active) onError(error); });
     return () => { active = false; release?.(); };
@@ -59,7 +71,7 @@ export default function CloudWorkspaceBoundary({ children, client = supabase, co
     unsubscribe.current?.(); unsubscribe.current = null;
     controller.current?.close(); controller.current = null;
   }, []);
-  const fail = useCallback((error) => setScreen((value) => ({ ...value, phase: "error", message: error.message || "Your records could not be opened safely. They have been preserved." })), []);
+  const fail = useCallback((error) => setScreen((value) => ({ ...value, phase: "error", code: typeof error.code === "string" ? error.code : error.name || "", message: error.message || "Your records could not be opened safely. They have been preserved." })), []);
 
   const verify = useCallback(async (expectedId) => {
     const result = await bounded(client.auth.getUser());
@@ -95,13 +107,18 @@ export default function CloudWorkspaceBoundary({ children, client = supabase, co
       if (ticket !== generation.current) return;
       const next = sync.getStatus();
       setSyncState({ ...next });
-      if (next.status === "AUTH_REQUIRED") fail(new Error(next.message));
+      if (next.status === "AUTH_REQUIRED") fail(syncError(next));
     });
     if (active) {
       const initial = await sync.sync({ allowApply: true });
-      if (initial.status === "AUTH_REQUIRED") throw new Error(initial.message);
+      assertCurrent();
+      // Sync reports failures as status values; a failed rollback must never
+      // allow App's normal record writers to mount over its recovery journal.
+      assertNoPendingWrites();
+      if (["AUTH_REQUIRED", "RECOVERY_REQUIRED"].includes(initial.status) || storageFailure(initial.status)) throw syncError(initial);
     }
     else setSyncState({ status: "PAUSED", message: "Automatic cloud saving is paused. Changes stay on this device." });
+    assertNoPendingWrites();
     if (ticket === generation.current) setScreen({ phase: "ready", user, message: "" });
   }, [client, stop, fail]);
 
@@ -123,6 +140,12 @@ export default function CloudWorkspaceBoundary({ children, client = supabase, co
       queueMicrotask(async () => {
         try {
           if (!id) {
+            // Signing out cannot bypass recovery: the regular login lives inside
+            // App, whose mount effects also write device records.
+            if (hasPendingWrites()) {
+              if (active && ticket === generation.current) setScreen({ phase: "recovery-signin", user: null, message: "" });
+              return;
+            }
             const assertCurrent = () => { if (!active || ticket !== generation.current) throw new Error("The account changed."); };
             if (hasPendingSessionDraftSwitch(sessionStorage)) recoverSessionDraftSwitch({ storage: sessionStorage, assertCurrent });
             if (readSessionDraftBinding(sessionStorage)) await switchSessionDraftOwner({ storage: sessionStorage, ownerId: null, assertCurrent });
@@ -206,7 +229,7 @@ export default function CloudWorkspaceBoundary({ children, client = supabase, co
     reviewConflicts: () => controller.current?.previewConflicts(),
     resolveConflicts: (reviewId, choices) => runExclusive(({ sync }) => sync.resolveConflicts({ reviewId, choices, confirmed: true })),
     openRecovery: () => setScreen((current) => ({ ...current, phase: "restore" })),
-    loadNewer: () => runExclusive(async ({ sync }) => { const result = await sync.sync({ allowApply: true }); if (!["SYNCED", "PENDING"].includes(result.status)) throw new Error(result.message); }),
+    loadNewer: () => runExclusive(async ({ sync }) => { const result = await sync.sync({ allowApply: true }); if (!["SYNCED", "PENDING"].includes(result.status)) throw syncError(result); }),
   };
 
   async function restore({ raw, plan, password, signal }) {
@@ -245,16 +268,17 @@ export default function CloudWorkspaceBoundary({ children, client = supabase, co
   }
 
   if (screen.phase === "passthrough") return <CloudWorkspaceContext.Provider value={null}>{children}</CloudWorkspaceContext.Provider>;
+  if (screen.phase === "recovery-signin") return <WorkspaceScreen title="Sign in to recover your records"><WorkspaceRecoverySignIn client={client} /></WorkspaceScreen>;
   if (screen.phase === "signedout") return <CloudWorkspaceContext.Provider value={null}><WorkspaceLease onError={fail}>{children}</WorkspaceLease></CloudWorkspaceContext.Provider>;
   if (screen.phase === "restore") return <WorkspaceScreen title="Recover your saved records"><WorkspaceRestorePanel userId={screen.user.id} onRestore={restore} onRestoreCloud={restoreCloud} onCancel={() => window.location.reload()} /></WorkspaceScreen>;
   if (screen.phase === "ready") return <CloudWorkspaceContext.Provider value={value}><WorkspaceLease onError={fail}>{children}
     {["REMOTE_AVAILABLE", "CONFLICT"].includes(syncState.status) && <aside className="cloud-workspace-notice" role="status"><strong>{syncState.status === "CONFLICT" ? "Saved changes need review" : "New changes from another device"}</strong><span>{syncState.status === "CONFLICT" ? "Both versions are preserved. Review Cloud saving in Settings." : "Finish any open edits, then load the newer copy."}</span>{syncState.status === "REMOTE_AVAILABLE" && <button type="button" onClick={value.loadNewer}>Load saved changes</button>}</aside>}
   </WorkspaceLease></CloudWorkspaceContext.Provider>;
   if (screen.phase === "checking" || screen.phase === "operation") return <WorkspaceScreen title={screen.phase === "operation" ? "Protecting and updating your records" : "Checking your account"}><p>Please keep this page open.</p></WorkspaceScreen>;
-  return <WorkspaceScreen title={screen.phase === "claim" ? "Keep your existing records" : screen.phase === "switch" ? "Open this account’s records" : "Your records are safe"}>
+  return <WorkspaceScreen title={screen.phase === "claim" ? "Keep your existing records" : screen.phase === "switch" ? "Open this account’s records" : storageFailure(screen.code) ? "Device storage needs attention" : screen.code === "RECOVERY_REQUIRED" ? "Your saved records need recovery" : "Your records are safe"}>
     {screen.phase === "claim" ? <><p>This browser has saved records or drafts that haven’t been linked to an account. Confirm that they belong to <strong>{screen.user.email}</strong> before saving a cloud copy.</p><p>Your original device copy will be retained.</p><button type="button" onClick={() => runExclusive(async ({ user, assertCurrent }) => { await claimWorkspaceOwner({ storage: localStorage, ownerId: user.id, confirmed: true, assertCurrent }); await switchSessionDraftOwner({ storage: sessionStorage, ownerId: user.id, confirmed: true, assertCurrent }); })}>These are my records</button></>
       : screen.phase === "switch" ? <><p>This browser’s current records or drafts belong to a different account. We’ll retain that account’s device copy before opening <strong>{screen.user.email}</strong>.</p><button type="button" onClick={() => runExclusive(async ({ user, assertCurrent }) => { if (!readWorkspaceBinding(localStorage)) await claimWorkspaceOwner({ storage: localStorage, ownerId: user.id, confirmed: true, assertCurrent }); else await switchWorkspaceOwner({ storage: localStorage, ownerId: user.id, confirmed: true, assertCurrent }); await switchSessionDraftOwner({ storage: sessionStorage, ownerId: user.id, assertCurrent }); })}>Preserve and switch accounts</button></>
-        : <><p role="alert">{screen.message}</p><button type="button" onClick={() => window.location.reload()}>Retry safely</button></>}
+        : <><p role="alert">{screen.message}</p>{storageFailure(screen.code) && <p>Keep this app’s stored data. Close other Code 3 TCG tabs, then retry. Do not clear app data or uninstall while this device has unsynced records.</p>}<button type="button" onClick={() => window.location.reload()}>Retry safely</button></>}
     <button type="button" className="cloud-secondary" onClick={() => { void client.auth.signOut({ scope: "local" }).then(({ error }) => { if (error) fail(error); }); }}>Sign out</button>
   </WorkspaceScreen>;
 }

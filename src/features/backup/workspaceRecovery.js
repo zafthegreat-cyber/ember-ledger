@@ -3,10 +3,15 @@ import { readCurrentBackupSources } from "./backupFormat.js";
 import { canonicalStringify, hashCanonicalJson, parseUntrustedBackupJson, parseUntrustedJsonValue } from "./canonicalJson.js";
 import { sanitizeBackupData } from "./backupSecurity.js";
 import { resolveSourceSchemaVersion, validateBackupCrossSourceRelationships, validateBackupSourceData } from "./backupValidation.js";
+import { createWorkspacePayloadStore } from "../persistence/workspacePayloadStore.js";
 
 export const WORKSPACE_STORAGE_LOCK = "code3.workspace-storage.v1";
 export const WORKSPACE_RECOVERY_KEY = "code3.workspace-recovery.v1";
 export const WORKSPACE_CHECKPOINT_KEY = "code3.workspace-checkpoint.v1";
+export const WORKSPACE_INLINE_JOURNAL_LIMIT = 128 * 1024;
+// A journal holds both validated versions of a source. Its bounded parse budget
+// must allow twice the source budget plus the transaction envelope.
+const WORKSPACE_JOURNAL_PARSE_LIMITS = Object.freeze({ maxBytes: 24 * 1024 * 1024, maxStringLength: 10 * 1024 * 1024, maxTotalRecords: 250_000 });
 export const WORKSPACE_LOCAL_SOURCES = Object.freeze(BACKUP_SOURCE_REGISTRY.filter((source) => source.includedInPhase1AExport && source.storageType === BACKUP_STORAGE_TYPES.LOCAL_STORAGE));
 
 export class WorkspaceRecoveryError extends Error {
@@ -157,11 +162,44 @@ function currentEntryValue(storage, entry) {
 }
 
 async function sealed(payload) { return canonicalStringify({ ...payload, integrity: await hashCanonicalJson(payload) }); }
-async function inspectJournal(raw, ownerId) {
-  const journal = parseUntrustedBackupJson(raw, { maxStringLength: 10 * 1024 * 1024 });
+function isPayloadStoreFailure(error) { return error?.code?.startsWith("PAYLOAD_") || error?.code === "RECOVERY_PAYLOAD_UNAVAILABLE"; }
+async function journalReferences({ prepared, committed, ownerId, transactionId, payloadStore, assertCurrent }) {
+  const store = payloadStore || createWorkspacePayloadStore();
+  const references = {};
+  for (const [status, raw] of [["PREPARED", prepared], ["COMMITTED", committed]]) {
+    const payloadHash = await hashCanonicalJson(raw);
+    const payloadKey = `recovery:${ownerId}:${payloadHash}`;
+    assertCurrent();
+    await store.put(payloadKey, raw, { assertCurrent });
+    // The store waits for transaction completion. Independently verify adapters
+    // too: a success callback alone does not establish a durable before image.
+    if (await store.get(payloadKey) !== raw) fail("RECOVERY_PAYLOAD_UNAVAILABLE", "The recovery safety copy could not be verified. Existing records were not changed.");
+    assertCurrent();
+    references[status] = canonicalStringify({ format: "code3-workspace-recovery-reference", version: 1, ownerId, transactionId, status, payloadKey, payloadHash });
+  }
+  return { prepared: references.PREPARED, committed: references.COMMITTED };
+}
+
+async function inspectJournal(raw, ownerId, payloadStore, assertCurrent) {
+  let journal = parseUntrustedBackupJson(raw, WORKSPACE_JOURNAL_PARSE_LIMITS);
+  let reference = null;
+  if (journal.format === "code3-workspace-recovery-reference") {
+    reference = journal;
+    if (reference.version !== 1 || reference.ownerId !== ownerId || !["PREPARED", "COMMITTED"].includes(reference.status)
+      || !/^[a-f0-9]{64}$/.test(reference.payloadHash || "") || !/^[a-f0-9]{64}$/.test(reference.transactionId || "")
+      || reference.payloadKey !== `recovery:${ownerId}:${reference.payloadHash}`
+      || Object.keys(reference).some((key) => !["format", "version", "ownerId", "transactionId", "status", "payloadKey", "payloadHash"].includes(key))) fail("INVALID_RECOVERY", "The recovery safety reference is damaged or belongs to another account.");
+    let payloadRaw;
+    try { payloadRaw = await (payloadStore || createWorkspacePayloadStore()).get(reference.payloadKey); }
+    catch { fail("RECOVERY_PAYLOAD_UNAVAILABLE", "This browser could not open its recovery safety copy. Saved records and the recovery marker were kept."); }
+    assertCurrent();
+    if (typeof payloadRaw !== "string" || await hashCanonicalJson(payloadRaw) !== reference.payloadHash) fail("RECOVERY_PAYLOAD_UNAVAILABLE", "The recovery safety copy is missing or damaged. Saved records and the recovery marker were kept.");
+    journal = parseUntrustedBackupJson(payloadRaw, WORKSPACE_JOURNAL_PARSE_LIMITS);
+  }
   const { integrity, ...payload } = journal;
   if (journal.format !== "code3-workspace-recovery" || journal.version !== 1 || journal.ownerId !== ownerId || !["PREPARED", "COMMITTED"].includes(journal.status)
-    || !Array.isArray(journal.entries) || !journal.entries.length || await hashCanonicalJson(payload) !== integrity) fail("INVALID_RECOVERY", "The recovery checkpoint is damaged or belongs to another account. Saved records have not been changed.");
+    || !Array.isArray(journal.entries) || !journal.entries.length || await hashCanonicalJson(payload) !== integrity
+    || reference && (journal.transactionId !== reference.transactionId || journal.status !== reference.status)) fail("INVALID_RECOVERY", "The recovery checkpoint is damaged or belongs to another account. Saved records have not been changed.");
   const keys = new Set();
   for (const entry of journal.entries) {
     const source = sourceFor(entry.sourceId);
@@ -190,13 +228,13 @@ function rollbackEntries(storage, entries) {
 
 export function hasPendingWorkspaceRecovery(storage) { return read(storage, WORKSPACE_RECOVERY_KEY) !== null; }
 
-export async function recoverWorkspaceSources({ storage, ownerId, locks = globalThis.navigator?.locks, assertCurrent = () => {} } = {}) {
+export async function recoverWorkspaceSources({ storage, ownerId, locks = globalThis.navigator?.locks, assertCurrent = () => {}, payloadStore } = {}) {
   assertOwner(ownerId);
   return withWorkspaceStorageLock(locks, async () => {
     assertCurrent();
     const raw = read(storage, WORKSPACE_RECOVERY_KEY);
     if (raw === null) return { status: "NO_RECOVERY" };
-    const journal = await inspectJournal(raw, ownerId);
+    const journal = await inspectJournal(raw, ownerId, payloadStore, assertCurrent);
     const currentRaw = new Map(journal.entries.map((entry) => [entry.key, read(storage, entry.key)]));
     for (const entry of journal.entries) {
       const hash = await hashCanonicalJson(currentRaw.get(entry.key));
@@ -214,7 +252,7 @@ export async function recoverWorkspaceSources({ storage, ownerId, locks = global
   });
 }
 
-export async function applyWorkspaceSources({ storage, expectedSources, nextSources, ownerId, locks = globalThis.navigator?.locks, assertCurrent = () => {} } = {}) {
+export async function applyWorkspaceSources({ storage, expectedSources, nextSources, ownerId, locks = globalThis.navigator?.locks, assertCurrent = () => {}, payloadStore } = {}) {
   assertOwner(ownerId);
   validateSources(nextSources, { relationships: false });
   return withWorkspaceStorageLock(locks, async () => {
@@ -238,17 +276,44 @@ export async function applyWorkspaceSources({ storage, expectedSources, nextSour
     const payload = { format: "code3-workspace-recovery", version: 1, ownerId, transactionId, createdAt: new Date().toISOString(), status: "PREPARED", entries };
     const prepared = await sealed(payload);
     const committed = await sealed({ ...payload, status: "COMMITTED" });
+    // Never persist a safety image that startup cannot read with its same limits.
+    parseUntrustedBackupJson(prepared, WORKSPACE_JOURNAL_PARSE_LIMITS);
+    parseUntrustedBackupJson(committed, WORKSPACE_JOURNAL_PARSE_LIMITS);
+    let journal = { prepared, committed };
+    const priorCheckpoint = read(storage, WORKSPACE_CHECKPOINT_KEY);
+    let payloadError;
+    if (prepared.length > WORKSPACE_INLINE_JOURNAL_LIMIT) {
+      try { journal = await journalReferences({ prepared, committed, ownerId, transactionId, payloadStore, assertCurrent }); }
+      catch (error) { if (!isPayloadStoreFailure(error)) throw error; payloadError = error; assertCurrent(); }
+    }
+    const assertUnchanged = () => {
+      assertClear(storage);
+      if (read(storage, WORKSPACE_CHECKPOINT_KEY) !== priorCheckpoint) fail("STALE_SNAPSHOT", "The recovery safety copy changed while this save was being prepared.");
+      for (const [key, raw] of beforeRaw) if (read(storage, key) !== raw) fail("STALE_SNAPSHOT", "Records changed while recovery was being prepared.");
+      assertCurrent();
+    };
     // Finish all asynchronous work before this compare/write window. Checkpoint
     // capacity is tested before any business record changes.
-    assertClear(storage);
-    for (const [key, raw] of beforeRaw) if (read(storage, key) !== raw) fail("STALE_SNAPSHOT", "Records changed while recovery was being prepared.");
-    assertCurrent();
-    write(storage, WORKSPACE_CHECKPOINT_KEY, prepared);
-    write(storage, WORKSPACE_RECOVERY_KEY, prepared);
+    assertUnchanged();
+    try {
+      write(storage, WORKSPACE_CHECKPOINT_KEY, journal.prepared);
+      write(storage, WORKSPACE_RECOVERY_KEY, journal.prepared);
+    } catch (error) {
+      // No business write has started. Remove only this attempt's provisional
+      // checkpoint by restoring its exact prior bytes before trying IDB.
+      if (read(storage, WORKSPACE_RECOVERY_KEY) !== null) fail("RECOVERY_REQUIRED", "Recovery stopped with a safety marker. Reopen recovery before using saved records.");
+      if (read(storage, WORKSPACE_CHECKPOINT_KEY) === journal.prepared) write(storage, WORKSPACE_CHECKPOINT_KEY, priorCheckpoint);
+      if (journal.prepared !== prepared || payloadError) throw error;
+      try { journal = await journalReferences({ prepared, committed, ownerId, transactionId, payloadStore, assertCurrent }); }
+      catch (payloadFailure) { if (!isPayloadStoreFailure(payloadFailure)) throw payloadFailure; assertCurrent(); throw error; }
+      assertUnchanged();
+      write(storage, WORKSPACE_CHECKPOINT_KEY, journal.prepared);
+      write(storage, WORKSPACE_RECOVERY_KEY, journal.prepared);
+    }
     try {
       for (const [key, raw] of beforeRaw) if (read(storage, key) !== raw) fail("STALE_SNAPSHOT", "Records changed before recovery could be saved.");
       for (const [key, raw] of afterRaw) write(storage, key, raw);
-      write(storage, WORKSPACE_RECOVERY_KEY, committed);
+      write(storage, WORKSPACE_RECOVERY_KEY, journal.committed);
     } catch (error) {
       try { rollbackEntries(storage, entries); write(storage, WORKSPACE_RECOVERY_KEY, null); } catch { fail("RECOVERY_REQUIRED", "Recovery stopped safely with a checkpoint. Reopen recovery before using saved records."); }
       throw error;

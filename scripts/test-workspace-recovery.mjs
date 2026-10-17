@@ -23,6 +23,16 @@ function createLocks() {
     finally { if (options.mode === "shared") shared--; else exclusive = false; }
   } };
 }
+function payloadStore() {
+  const values = new Map();
+  return { values, async get(key) { return values.get(key) ?? null; }, async put(key, raw, { assertCurrent = () => {} } = {}) { assertCurrent(); if (values.has(key) && values.get(key) !== raw) throw Object.assign(new Error("immutable"), { code: "PAYLOAD_IMMUTABLE_CONFLICT" }); values.set(key, raw); } };
+}
+function quotaStorage(initial, quota) {
+  const storage = new MemoryStorage(initial);
+  storage.failure = (key, raw) => raw !== null && [...storage.values].reduce((total, [storedKey, value]) => total + (storedKey === key ? 0 : storedKey.length + value.length), 0) + key.length + raw.length > quota;
+  return storage;
+}
+const largeData = () => ({ items: Array.from({ length: 1000 }, (_, index) => ({ id: `synthetic-${index}`, name: "x".repeat(160), quantity: 1 })) });
 const CORE = "et-tcg-beta-data";
 const COMMUNITY = "et-tcg-beta-tidepool";
 const core = (data) => ({ "legacy-core-business": { schemaVersion: 0, data } });
@@ -214,6 +224,86 @@ await check("downloaded cloud revisions become recoverable verified backups with
   assert.ok(exported.backup.manifest.excludedSources.some((source) => source.sourceId === "supabase-owner-data"));
   assert.equal(storage.getItem("et-tcg-app-theme"), null, "preview never stages selected cloud values in real storage");
   await assert.rejects(createVerifiedWorkspaceSnapshotBackup({ "authentication-state": { schemaVersion: 0, data: {} } }), { code: "UNSUPPORTED_SOURCE" });
+});
+
+await check("large recovery uses compact verified references when inline safety copies cannot fit", async () => {
+  const initial = largeData(); const raw = JSON.stringify(initial);
+  const storage = quotaStorage({ [CORE]: raw }, raw.length + 3000); const payloads = payloadStore();
+  const next = structuredClone(initial); next.items[0].quantity = 2;
+  await applyWorkspaceSources({ storage, expectedSources: captureRecoverySources(storage), nextSources: core(next), ownerId, locks: createLocks(), payloadStore: payloads });
+  assert.equal(JSON.parse(storage.getItem(CORE)).items[0].quantity, 2);
+  const checkpoint = storage.getItem(WORKSPACE_CHECKPOINT_KEY);
+  assert.equal(JSON.parse(checkpoint).format, "code3-workspace-recovery-reference");
+  assert.ok(checkpoint.length < 600); assert.equal(payloads.values.size, 2);
+  storage.setItem(WORKSPACE_RECOVERY_KEY, checkpoint);
+  assert.equal((await recoverWorkspaceSources({ storage, ownerId, locks: createLocks(), payloadStore: payloads })).status, "ROLLED_BACK");
+  assert.deepEqual(JSON.parse(storage.getItem(CORE)), initial);
+});
+
+await check("small journals fall back after quota without leaving a redundant large checkpoint", async () => {
+  const initial = { items: [{ id: "kept", name: "x".repeat(900) }] };
+  const raw = JSON.stringify(initial); const storage = quotaStorage({ [CORE]: raw, [WORKSPACE_CHECKPOINT_KEY]: "previous checkpoint bytes" }, raw.length + 3100);
+  const next = structuredClone(initial); next.items.push({ id: "new" }); const payloads = payloadStore();
+  await applyWorkspaceSources({ storage, expectedSources: captureRecoverySources(storage), nextSources: core(next), ownerId, locks: createLocks(), payloadStore: payloads });
+  assert.equal(JSON.parse(storage.getItem(WORKSPACE_CHECKPOINT_KEY)).format, "code3-workspace-recovery-reference");
+  assert.equal(JSON.parse(storage.getItem(CORE)).items.length, 2);
+  assert.equal(storage.getItem(WORKSPACE_RECOVERY_KEY), null);
+});
+
+await check("unavailable payload storage and quota preserve original bytes and previous checkpoint", async () => {
+  const raw = JSON.stringify(largeData()); const storage = quotaStorage({ [CORE]: raw, [WORKSPACE_CHECKPOINT_KEY]: "previous" }, raw.length + 3000);
+  const before = [...storage.values]; const next = JSON.parse(raw); next.items[0].quantity = 2;
+  const unavailable = { async put() { throw Object.assign(new Error("unavailable"), { code: "PAYLOAD_STORE_UNAVAILABLE" }); } };
+  await assert.rejects(applyWorkspaceSources({ storage, expectedSources: captureRecoverySources(storage), nextSources: core(next), ownerId, locks: createLocks(), payloadStore: unavailable }), { code: "STORAGE_WRITE_FAILED" });
+  assert.deepEqual([...storage.values], before);
+});
+
+await check("missing or tampered external payloads retain records and the recovery marker", async () => {
+  const initial = largeData(); const storage = new MemoryStorage({ [CORE]: initial }); const payloads = payloadStore();
+  const next = structuredClone(initial); next.items[0].quantity = 2;
+  await applyWorkspaceSources({ storage, expectedSources: captureRecoverySources(storage), nextSources: core(next), ownerId, locks: createLocks(), payloadStore: payloads });
+  const checkpoint = storage.getItem(WORKSPACE_CHECKPOINT_KEY); storage.setItem(WORKSPACE_RECOVERY_KEY, checkpoint);
+  const key = JSON.parse(checkpoint).payloadKey; const savedPayload = payloads.values.get(key); payloads.values.delete(key);
+  const before = [...storage.values];
+  await assert.rejects(recoverWorkspaceSources({ storage, ownerId, locks: createLocks(), payloadStore: payloads }), { code: "RECOVERY_PAYLOAD_UNAVAILABLE" });
+  assert.deepEqual([...storage.values], before);
+  payloads.values.set(key, savedPayload.replace("synthetic-0", "modified-00"));
+  await assert.rejects(recoverWorkspaceSources({ storage, ownerId, locks: createLocks(), payloadStore: payloads }), { code: "RECOVERY_PAYLOAD_UNAVAILABLE" });
+  assert.deepEqual([...storage.values], before);
+  await assert.rejects(recoverWorkspaceSources({ storage, ownerId: otherOwner, locks: createLocks(), payloadStore: payloads }), { code: "INVALID_RECOVERY" });
+});
+
+await check("account changes, newer edits, or another checkpoint during payload persistence cannot install recovery markers", async () => {
+  const initial = largeData(); const next = structuredClone(initial); next.items[0].quantity = 2;
+  for (const mode of ["account", "edit", "checkpoint"]) {
+    const storage = new MemoryStorage({ [CORE]: initial }); const payloads = payloadStore(); const originalPut = payloads.put; let active = true;
+    payloads.put = async (...args) => { await originalPut(...args); if (mode === "account") active = false; else if (mode === "checkpoint") storage.setItem(WORKSPACE_CHECKPOINT_KEY, "newer safety copy"); else storage.setItem(CORE, JSON.stringify({ ...initial, items: [...initial.items, { id: "newer" }] })); };
+    const assertCurrent = () => { if (!active) throw new Error("account changed while storing payload"); };
+    await assert.rejects(applyWorkspaceSources({ storage, expectedSources: captureRecoverySources(storage), nextSources: core(next), ownerId, locks: createLocks(), payloadStore: payloads, assertCurrent }), mode === "account" ? /account changed/ : { code: "STALE_SNAPSHOT" });
+    assert.equal(storage.getItem(WORKSPACE_CHECKPOINT_KEY), mode === "checkpoint" ? "newer safety copy" : null); assert.equal(storage.getItem(WORKSPACE_RECOVERY_KEY), null);
+    assert.equal(JSON.parse(storage.getItem(CORE)).items[0].quantity, 1);
+  }
+});
+
+await check("a journal larger than the individual source budget remains readable and recoverable", async () => {
+  const initial = { items: Array.from({ length: 1000 }, (_, index) => ({ id: `large-${index}`, name: "x".repeat(6000), quantity: 1 })) };
+  const storage = new MemoryStorage({ [CORE]: initial }); const payloads = payloadStore(); const next = structuredClone(initial); next.items[0].quantity = 2;
+  await applyWorkspaceSources({ storage, expectedSources: captureRecoverySources(storage), nextSources: core(next), ownerId, locks: createLocks(), payloadStore: payloads });
+  const checkpoint = storage.getItem(WORKSPACE_CHECKPOINT_KEY); const marker = JSON.parse(checkpoint);
+  assert.ok(payloads.values.get(marker.payloadKey).length > 10 * 1024 * 1024);
+  storage.setItem(WORKSPACE_RECOVERY_KEY, checkpoint);
+  assert.equal((await recoverWorkspaceSources({ storage, ownerId, locks: createLocks(), payloadStore: payloads })).status, "ROLLED_BACK");
+  assert.deepEqual(JSON.parse(storage.getItem(CORE)), initial);
+});
+
+await check("external COMMITTED marker resumes cleanup without undoing a durable save", async () => {
+  const initial = largeData(); const storage = new MemoryStorage({ [CORE]: initial }); const payloads = payloadStore(); const next = structuredClone(initial); next.items[0].quantity = 2;
+  storage.failure = (key, raw) => key === WORKSPACE_RECOVERY_KEY && raw === null;
+  await assert.rejects(applyWorkspaceSources({ storage, expectedSources: captureRecoverySources(storage), nextSources: core(next), ownerId, locks: createLocks(), payloadStore: payloads }), { code: "STORAGE_WRITE_FAILED" });
+  assert.equal(JSON.parse(storage.getItem(WORKSPACE_RECOVERY_KEY)).status, "COMMITTED");
+  storage.failure = null;
+  assert.equal((await recoverWorkspaceSources({ storage, ownerId, locks: createLocks(), payloadStore: payloads })).status, "RECOVERED_COMMIT");
+  assert.equal(JSON.parse(storage.getItem(CORE)).items[0].quantity, 2);
 });
 
 console.log(`Workspace recovery: ${checks} checks passed.`);
