@@ -150,6 +150,7 @@ const SOURCE_DECISIONS = Object.freeze({
     paths: paths([
       ["items", D.OWNED_ITEM, C.REQUIRES_MAPPING, { reason: "Legacy item purpose and physical identity require owner review." }],
       ["purchasers", null, C.LEGACY_ONLY, { reason: "Legacy purchaser summaries have no canonical Phase 1B owner-record domain." }],
+      ["catalogProducts", null, C.LEGACY_ONLY, { reason: "User-created product records are retained in workspace backup and sync; the canonical domain migration does not adopt the product catalogue." }],
       ["sales", D.SALE, C.DUPLICATE_OF_CANONICAL, { reason: "May overlap canonical Deal Finder sales." }],
       ["expenses", D.EXPENSE, C.DUPLICATE_OF_CANONICAL, { reason: "May overlap canonical Deal Finder expenses." }],
       ["mileageTrips", D.MILEAGE_TRIP, C.DUPLICATE_OF_CANONICAL, { reason: "May overlap canonical Deal Finder mileage." }],
@@ -239,6 +240,7 @@ const SOURCE_DECISIONS = Object.freeze({
 });
 
 const LEGACY_ONLY_SOURCES = new Set([
+  "business-compliance",
   "legacy-community",
   "legacy-feedback",
   "legacy-suggestions",

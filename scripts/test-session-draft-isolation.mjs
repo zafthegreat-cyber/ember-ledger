@@ -1,0 +1,56 @@
+import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
+import { switchSessionDraftOwner,readSessionDraftBinding,recoverSessionDraftSwitch,hasSessionDrafts,SESSION_DRAFT_SWITCH_KEY } from "../src/features/persistence/workspaceSessionBinding.js";
+const A=randomUUID(); const B=randomUUID();
+const key="private-business-hub.deal-analysis-draft.v1";
+const form="private-business-hub.form-draft.purchase";
+function storage() {
+  const map=new Map(); let failing=false;
+  return {map,get length(){return map.size;},key(index){return [...map.keys()][index]??null;},getItem(key){return map.get(key)??null;},setItem(key,value){if(failing&&key!==SESSION_DRAFT_SWITCH_KEY)throw new Error("quota");map.set(key,String(value));},removeItem(key){if(failing&&key!==SESSION_DRAFT_SWITCH_KEY)throw new Error("quota");map.delete(key);},fail(value){failing=value;}};
+}
+let checks=0;
+const store=storage();
+const original="\r\n  draft with exact spacing  \r\n";
+store.setItem(key,original);store.setItem(form,'{"amount": 12}');store.setItem("sb-project-auth-token","synthetic-auth");store.setItem("beta-invite-token","synthetic-invite");
+const before=[...store.map];
+await assert.rejects(switchSessionDraftOwner({storage:store,ownerId:A}),/Confirm which account/); checks++;
+assert.deepEqual([...store.map],before); checks++;
+await switchSessionDraftOwner({storage:store,ownerId:A,confirmed:true});
+assert.equal(readSessionDraftBinding(store).ownerId,A); checks++;
+await switchSessionDraftOwner({storage:store,ownerId:B});
+assert.equal(hasSessionDrafts(store),false); checks++;
+assert.equal(store.getItem("sb-project-auth-token"),"synthetic-auth"); checks++;
+assert.equal(store.getItem("beta-invite-token"),"synthetic-invite"); checks++;
+store.setItem(key,"B private draft");
+await switchSessionDraftOwner({storage:store,ownerId:A});
+assert.equal(store.getItem(key),original); checks++;
+assert.equal(store.getItem(form),'{"amount": 12}'); checks++;
+await switchSessionDraftOwner({storage:store,ownerId:null});
+assert.equal(hasSessionDrafts(store),false); checks++;
+assert.equal(readSessionDraftBinding(store),null); checks++;
+await switchSessionDraftOwner({storage:store,ownerId:A});
+assert.equal(store.getItem(key),original); checks++;
+await switchSessionDraftOwner({storage:store,ownerId:B});
+assert.equal(store.getItem(key),"B private draft"); checks++;
+const preAbort=[...store.map]; let assertions=0;
+await assert.rejects(switchSessionDraftOwner({storage:store,ownerId:A,assertCurrent(){if(++assertions===2)throw new Error("account changed");}}),/account changed/); checks++;
+assert.deepEqual([...store.map],preAbort); checks++;
+const separateTab=storage();
+await switchSessionDraftOwner({storage:separateTab,ownerId:A});
+assert.equal(hasSessionDrafts(separateTab),false); checks++;
+// Simulate a failed target write and failed rollback after a durable journal.
+const originalSet=store.setItem.bind(store);
+let journalReady=false;
+store.setItem=(name,value)=>{
+  originalSet(name,value);
+  if(name===SESSION_DRAFT_SWITCH_KEY&&JSON.parse(value).status==="PREPARED")journalReady=true;
+  else if(journalReady&&name===key)store.fail(true);
+};
+await assert.rejects(switchSessionDraftOwner({storage:store,ownerId:A}),/preserved copy/); checks++;
+assert.ok(store.getItem(SESSION_DRAFT_SWITCH_KEY)); checks++;
+store.fail(false);store.setItem=originalSet;
+assert.equal(recoverSessionDraftSwitch({storage:store}).status,"ROLLED_BACK"); checks++;
+assert.equal(readSessionDraftBinding(store).ownerId,B); checks++;
+assert.equal(store.getItem(key),"B private draft"); checks++;
+assert.equal(store.getItem("sb-project-auth-token"),"synthetic-auth"); checks++;
+console.log(JSON.stringify({passed:checks,exactDraftBytesPreserved:true,authAndInviteKeysUnchanged:true}));

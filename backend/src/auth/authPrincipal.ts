@@ -9,6 +9,8 @@ export type AuthPrincipal = Readonly<{
   emailVerified?: boolean;
   issuedAt: number;
   expiresAt: number;
+  /** Available only after the provider has validated the access token. */
+  providerSessionId?: string;
 }>;
 
 export type IdentityVerificationResult =

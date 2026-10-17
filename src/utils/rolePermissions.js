@@ -47,15 +47,9 @@ export function normalizeAppRole(value = "") {
 
 export function isOfficialAdminProfile(profile = {}) {
   const email = normalizedText(profile.email);
-  if (email && (ADMIN_EMAILS.includes(email) || email === DEV_ADMIN_EMAIL)) return true;
-  const identity = [
-    profile.displayName,
-    profile.fullName,
-    profile.username,
-    profile.publicUsername,
-    profile.public_username,
-  ].map(normalizedText).filter(Boolean).join(" ");
-  return OFFICIAL_ADMIN_LABELS.some((label) => identity.includes(label));
+  // Display names and usernames are user-editable, so a recognizable name is
+  // never evidence of an administrative role.
+  return Boolean(email && (ADMIN_EMAILS.includes(email) || email === DEV_ADMIN_EMAIL));
 }
 
 export function appRoleForProfile(profile = {}) {
@@ -73,7 +67,7 @@ export function appRoleForProfile(profile = {}) {
   );
   if ([APP_ROLES.OWNER, APP_ROLES.ADMIN, APP_ROLES.MODERATOR].includes(legacyRole)) return legacyRole;
 
-  if (isOfficialAdminProfile(profile) || truthy(profile.isAdmin) || truthy(profile.is_admin) || truthy(metadata.is_admin) || truthy(metadata.isAdmin)) {
+  if (truthy(profile.isAdmin) || truthy(profile.is_admin) || truthy(metadata.is_admin) || truthy(metadata.isAdmin)) {
     return APP_ROLES.ADMIN;
   }
   if (truthy(profile.isModerator) || truthy(profile.is_moderator) || truthy(metadata.is_moderator) || truthy(metadata.isModerator)) {

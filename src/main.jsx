@@ -5,6 +5,7 @@ import AppLoadFallback from "./components/AppLoadFallback";
 import { registerServiceWorker } from "./registerServiceWorker";
 import { BRAND_CONFIG, applyBrandDocumentMetadata } from "./config/brand";
 import { shouldExposeFallbackErrorDetails } from "./utils/appFallbackContent";
+import CloudWorkspaceBoundary from "./features/persistence/CloudWorkspaceBoundary.jsx";
 
 const App = lazy(() => import("./App.jsx"));
 
@@ -38,7 +39,7 @@ createRoot(document.getElementById("root")).render(
   <StrictMode>
     <AppErrorBoundary>
       <Suspense fallback={<AppLoadFallback kind="loading" />}>
-        <App />
+        <CloudWorkspaceBoundary><App /></CloudWorkspaceBoundary>
       </Suspense>
     </AppErrorBoundary>
   </StrictMode>

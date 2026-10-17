@@ -51,6 +51,7 @@ export function makeFallbackUserProfile(user = null) {
   const lastName = metadata.last_name || metadata.lastName || "";
   const fullName = metadata.full_name || metadata.fullName || [firstName, lastName].filter(Boolean).join(" ");
   const metadataAccess = getAdminAccessFromAuthMetadata(user);
+  const trustedMetadata = getSupabaseAuthMetadata(user);
   const admin = metadataAccess.admin || isAdminEmail(email) || (isLocalhost() && LOCAL_DEV_ADMIN);
   const now = new Date().toISOString();
   const displayName = fullName || metadata.display_name || metadata.displayName || (email ? email.split("@")[0] : "Local Beta");
@@ -85,18 +86,18 @@ export function makeFallbackUserProfile(user = null) {
     app_role: metadataAccess.appRole || (admin ? APP_ROLES.ADMIN : APP_ROLES.USER),
     userRole: admin ? USER_ROLES.ADMIN : USER_ROLES.USER,
     tier: admin ? PLAN_TYPES.FOUNDER : PLAN_TYPES.FREE,
-    planTier: metadata.plan_tier || metadata.planTier || (admin ? PLAN_TYPES.FOUNDER : PLAN_TYPES.FREE),
-    trialTier: metadata.trial_tier || metadata.trialTier || "",
-    trialStartedAt: metadata.trial_started_at || metadata.trialStartedAt || "",
-    trialExpiresAt: metadata.trial_expires_at || metadata.trialExpiresAt || "",
-    subscriptionStatus: metadata.subscription_status || metadata.subscriptionStatus || "none",
-    subscriptionProvider: metadata.subscription_provider || metadata.subscriptionProvider || "",
-    subscriptionProviderId: metadata.subscription_provider_id || metadata.subscriptionProviderId || "",
+    planTier: trustedMetadata.plan_tier || trustedMetadata.planTier || (admin ? PLAN_TYPES.FOUNDER : PLAN_TYPES.FREE),
+    trialTier: trustedMetadata.trial_tier || trustedMetadata.trialTier || "",
+    trialStartedAt: trustedMetadata.trial_started_at || trustedMetadata.trialStartedAt || "",
+    trialExpiresAt: trustedMetadata.trial_expires_at || trustedMetadata.trialExpiresAt || "",
+    subscriptionStatus: trustedMetadata.subscription_status || trustedMetadata.subscriptionStatus || "none",
+    subscriptionProvider: trustedMetadata.subscription_provider || trustedMetadata.subscriptionProvider || "",
+    subscriptionProviderId: trustedMetadata.subscription_provider_id || trustedMetadata.subscriptionProviderId || "",
     preferredRegion: metadata.preferred_region || metadata.preferredRegion || "Hampton Roads / 757",
-    betaStatus: admin || user?.id === "local-beta" ? "approved" : normalizeBetaStatus(metadata.beta_status || metadata.betaStatus || metadata.beta_access_status || metadata.betaAccessStatus),
-    betaAccessStatus: admin || user?.id === "local-beta" ? "approved" : normalizeBetaStatus(metadata.beta_access_status || metadata.betaAccessStatus || metadata.beta_status || metadata.betaStatus),
-    littleSparksStatus: normalizeLittleSparksStatus(metadata.little_sparks_status || metadata.littleSparksStatus),
-    appAccess: Boolean(admin || user?.id === "local-beta" || metadata.app_access || metadata.appAccess),
+    betaStatus: admin || user?.id === "local-beta" ? "approved" : normalizeBetaStatus(trustedMetadata.beta_status || trustedMetadata.betaStatus || trustedMetadata.beta_access_status || trustedMetadata.betaAccessStatus),
+    betaAccessStatus: admin || user?.id === "local-beta" ? "approved" : normalizeBetaStatus(trustedMetadata.beta_access_status || trustedMetadata.betaAccessStatus || trustedMetadata.beta_status || trustedMetadata.betaStatus),
+    littleSparksStatus: normalizeLittleSparksStatus(trustedMetadata.little_sparks_status || trustedMetadata.littleSparksStatus),
+    appAccess: Boolean(admin || user?.id === "local-beta" || trustedMetadata.app_access || trustedMetadata.appAccess),
     termsAcceptedAt: metadata.terms_accepted_at || metadata.termsAcceptedAt || "",
     privacyAcceptedAt: metadata.privacy_accepted_at || metadata.privacyAcceptedAt || "",
     betaAcknowledgedAt: metadata.beta_acknowledged_at || metadata.betaAcknowledgedAt || "",
@@ -118,8 +119,8 @@ export function makeFallbackUserProfile(user = null) {
 }
 
 export function mapProfileRow(row = {}, user = null) {
-  const email = row.email || user?.email || "";
-  const allowlisted = isAdminEmail(email);
+  const email = user?.email || row.email || "";
+  const allowlisted = Boolean(user?.email && isAdminEmail(user.email));
   const metadataAccess = getAdminAccessFromAuthMetadata(user);
   const rowAppRole = appRoleForProfile({ ...row, email, app_metadata: getSupabaseAuthMetadata(user) });
   const admin = metadataAccess.admin || allowlisted || [APP_ROLES.OWNER, APP_ROLES.ADMIN].includes(rowAppRole);
@@ -203,9 +204,9 @@ export async function getCurrentUserProfile(user = null) {
   return mapProfileRow(data, user);
 }
 
-export async function createUserProfileIfMissing(user = null) {
+export async function createUserProfileIfMissing(user = null, { client = supabase, configured = isSupabaseConfigured } = {}) {
   if (user?.id === "local-beta") return makeFallbackUserProfile(user);
-  if (!user || !isSupabaseConfigured || !supabase) return makeFallbackUserProfile(user);
+  if (!user || !configured || !client) return makeFallbackUserProfile(user);
   const now = new Date().toISOString();
   const metadata = user.user_metadata || {};
   const firstName = metadata.first_name || metadata.firstName || "";
@@ -224,10 +225,10 @@ export async function createUserProfileIfMissing(user = null) {
     tier: PLAN_TYPES.FREE,
     plan_tier: PLAN_TYPES.FREE,
     subscription_status: "none",
-    beta_status: normalizeBetaStatus(metadata.beta_status || metadata.betaStatus || metadata.beta_access_status || metadata.betaAccessStatus),
-    beta_access_status: normalizeBetaStatus(metadata.beta_access_status || metadata.betaAccessStatus || metadata.beta_status || metadata.betaStatus),
-    little_sparks_status: normalizeLittleSparksStatus(metadata.little_sparks_status || metadata.littleSparksStatus),
-    app_access: Boolean(metadata.app_access || metadata.appAccess),
+    beta_status: "not_requested",
+    beta_access_status: "not_requested",
+    little_sparks_status: "not_applied",
+    app_access: false,
     terms_accepted_at: metadata.terms_accepted_at || metadata.termsAcceptedAt || null,
     privacy_accepted_at: metadata.privacy_accepted_at || metadata.privacyAcceptedAt || null,
     beta_acknowledged_at: metadata.beta_acknowledged_at || metadata.betaAcknowledgedAt || null,
@@ -235,12 +236,18 @@ export async function createUserProfileIfMissing(user = null) {
     last_login_at: now,
     updated_at: now,
   };
-  const { data, error } = await supabase
+  const { data, error } = await client
     .from("profiles")
-    .upsert(row, { onConflict: "id" })
+    .upsert(row, { onConflict: "id", ignoreDuplicates: true })
     .select()
-    .single();
+    .maybeSingle();
   if (error) return makeFallbackUserProfile(user);
+  if (!data) {
+    // Another device or the auth trigger may have created this profile between
+    // the initial read and insert. Keep that row exactly as it already exists.
+    const existing = await client.from("profiles").select("*").eq("id", user.id).maybeSingle();
+    return existing.data ? mapProfileRow(existing.data, user) : makeFallbackUserProfile(user);
+  }
   return mapProfileRow(data, user);
 }
 
