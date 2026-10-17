@@ -1,3 +1,7 @@
+import { useId } from "react";
+import { useModalFocus } from "../../components/operations/useModalFocus.js";
+import "./menu-drawer.css";
+
 // App owns state, authority and handlers; only this existing renderer is deferred.
 export default function MenuDrawerContent({ scope }) {
   const {
@@ -218,25 +222,27 @@ export default function MenuDrawerContent({ scope }) {
     workspaceTypeLabel,
     workspaces,
   } = scope;
+  const titleId = useId();
+  const { dialogRef, onKeyDown } = useModalFocus(true, () => setMenuOpen(false));
 
   function renderDeferredMenuDrawer() {
     return (<>
-          <div className="drawer-backdrop" onClick={() => setMenuOpen(false)} />
+          <div className="drawer-backdrop code3-menu-backdrop" aria-hidden="true" onClick={() => setMenuOpen(false)} />
 
-          <aside className="drawer menu-drawer navigation-drawer open">
+          <aside ref={dialogRef} className="drawer menu-drawer navigation-drawer code3-menu-drawer open" role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} onKeyDown={onKeyDown}>
             <div className="drawer-header">
-              <div><p>{BRAND_CONFIG.applicationDisplayName}</p><h3>Menu</h3></div>
-              <button type="button" className="secondary-button drawer-close-button" aria-label="Close menu" onClick={() => setMenuOpen(false)}>X</button>
+              <div><p>{BRAND_CONFIG.applicationDisplayName}</p><h2 id={titleId}>Menu</h2></div>
+              <button type="button" className="secondary-button drawer-close-button" aria-label="Close menu" onClick={() => setMenuOpen(false)}><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 6 12 12M18 6 6 18" /></svg></button>
             </div>
             <div className="drawer-menu-stack">
               <section className="menu-command-links" aria-label="Menu destinations">
                 <div className="menu-command-links-header">
                   <div>
-                    <strong>Everything in one place</strong>
-                    <p>{adaptiveUiState.modeLabel}. Core tabs stay in the dock; deeper account, collection, community, and roadmap tools live here.</p>
+                    <span className="menu-workspace-label">{adaptiveUiState.modeLabel}</span>
+                    <p>Your collection, tools, and account.</p>
                   </div>
-                  <button type="button" className="secondary-button" onClick={() => openAddActionSheet("menu")}>
-                    Quick Add
+                  <button type="button" className="menu-quick-add" onClick={() => openAddActionSheet("menu")}>
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14" /></svg>Quick Add
                   </button>
                 </div>
                 <div className="menu-command-groups">
@@ -251,7 +257,7 @@ export default function MenuDrawerContent({ scope }) {
                             className={isDesktopSidebarItemActive(item) ? "menu-command-link active" : "menu-command-link"}
                             data-menu-key={item.key}
                             aria-current={isDesktopSidebarItemActive(item) ? "page" : undefined}
-                      aria-label={`${item.label}. ${item.helper || "Open this workspace area."}`}
+                            aria-label={`${item.label}. ${item.helper || "Open this workspace area."}`}
                             onClick={() => {
                               if (item.keepOpen) {
                                 item.action?.();
@@ -263,10 +269,11 @@ export default function MenuDrawerContent({ scope }) {
                             <span className="menu-command-icon" aria-hidden="true">
                               <AppNavIcon kind={item.icon || "home"} />
                             </span>
-                            <span>
+                            <span className="menu-command-copy">
                               <strong>{item.label}</strong>
                               <small>{item.helper}</small>
                             </span>
+                            <svg className="menu-command-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m9 6 6 6-6 6" /></svg>
                           </button>
                         ))}
                       </div>
