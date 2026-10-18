@@ -23,11 +23,13 @@ import { providerConnectionsRouter } from "./routes/providerConnections.routes";
 import { mailboxImportRouter } from "./routes/mailboxImport.routes";
 import { createPrivateFilesRouter } from "./routes/privateFiles.routes";
 import { createOwnerSessionsRouter } from "./routes/ownerSessions.routes";
+import { createAccountDeletionRouter } from "./routes/accountDeletion.routes";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
 
 const protectedCors = createProtectedCors();
+app.use("/api/account/deletion", protectedCors, createAccountDeletionRouter());
 // The provider route authenticates before parsing a deliberately tiny JSON body.
 // Legacy APIs retain their existing larger parser until they are separately hardened.
 app.use("/api/account-ops/provider-connections", protectedCors, providerConnectionsRouter);

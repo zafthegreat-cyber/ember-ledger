@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import "./test-vercel-packaging.mjs";
 import {
   normalizeProviderConnectionsPayload,
 } from "../src/services/accountOpsProviderApi.js";

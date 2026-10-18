@@ -1,6 +1,6 @@
 # Catalog, Pricing, and Virginia Store Sync
 
-Ember & Tide keeps product and store reference data in local generated JSON files so app screens can render without live third-party calls.
+Code 3 TCG keeps product and store reference data in local generated JSON files so app screens can render without live third-party calls.
 
 ## Sources
 
@@ -75,7 +75,7 @@ Verify the last successful refresh by checking:
 
 ## Fallback Behavior
 
-- Missing product images render through the app's Ember & Tide product placeholder.
+- Missing product images render through the app's Code 3 TCG product placeholder.
 - Missing reference prices show as unavailable; the app should not claim fair pricing without a reliable reference.
 - Reference prices are joined by source productId when available. Low-confidence fallback matching is for review only and must not power automatic fair-price labels.
 - Missing stores can still be entered manually in Scout.

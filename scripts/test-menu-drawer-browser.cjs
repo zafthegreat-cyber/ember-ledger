@@ -10,7 +10,7 @@ assert.ok(["127.0.0.1", "localhost", "[::1]"].includes(appUrl.hostname), "Synthe
 const base = appUrl.origin;
 const requiredDestinationKeys = [
   "profile", "account", "collections", "membership", "privacySafety", "settings",
-  "vault", "exchange", "watchList", "quickAdd", "scout", "tidepool", "parentCenter",
+  "vault", "exchange", "watchList", "quickAdd", "scout", "reportRestock", "tidepool", "parentCenter",
   "shopPortal", "announcements", "scanProduct", "publicBetaFeedback", "help", "feedback", "comingSoon",
 ];
 const requestedWidths = process.env.QA_MENU_WIDTHS?.split(",").map(Number);
@@ -21,6 +21,7 @@ async function verifyRestrictedNavigation(browser) {
   // Render the real presentation component with an explicitly restricted set.
   // This proves it never manufactures destinations or workspace permissions.
   const fixture = await build({
+    absWorkingDir: process.cwd(),
     stdin: { contents: `
       import React from 'react'; import {createRoot} from 'react-dom/client';
       import MenuNavigation from './src/features/deferredViews/MenuNavigation.jsx';
@@ -54,6 +55,11 @@ async function verifyRestrictedNavigation(browser) {
     await expect(search).toBeVisible();
     const destinations = await page.locator("[data-menu-key]").evaluateAll(elements => elements.map(element => element.dataset.menuKey).sort());
     assert.deepEqual(destinations, ["scout", "settings", "vault"]);
+    await expect(page.locator("[data-menu-report]")).toHaveCount(0);
+    await search.fill("empty shelves");
+    await expect(page.locator("[data-menu-key]")).toHaveCount(0);
+    await expect(page.getByText("No matching pages", { exact: true })).toBeVisible();
+    await search.fill("");
     assert.deepEqual(await page.locator("[data-menu-shortcut]").evaluateAll(elements => elements.map(element => element.dataset.menuShortcut)), ["scout", "vault"], "Restocks should lead the supplied quick actions");
     await expect(page.locator('[data-menu-section="find"] .menu-section-title')).toHaveText(/^Find & trade/);
     await page.locator(".menu-workspace-toggle").click();
@@ -84,6 +90,7 @@ async function verifyRestrictedNavigation(browser) {
       await page.evaluate(tier => window.qaRenderExperience({ canPreview: true, adminVisible: true, ownerVisible: true, preview: { enabled: true, tier } }), tier);
       await expect(page.locator('[data-menu-section="find"] .menu-section-title')).toHaveText(tier === "seller" || tier === "shop" ? /^Find & sell/ : /^Find & trade/);
       assert.deepEqual(await page.locator("[data-menu-key]").evaluateAll(elements => elements.map(element => element.dataset.menuKey).sort()), destinations, "Preview wording must preserve supplied destinations");
+      await expect(page.locator("[data-menu-report]")).toHaveCount(0);
       for (const query of ["Bot", "Owner Center", "Account Ops", "Admin Command", "Business"]) {
         await search.fill(query);
         await expect(page.locator("[data-menu-workspace], [data-menu-key]")).toHaveCount(0);
@@ -94,7 +101,35 @@ async function verifyRestrictedNavigation(browser) {
     await expect(page.locator('[data-menu-section="find"] .menu-section-title')).toHaveText(/^Find & trade/);
     assert.deepEqual(await page.evaluate(() => window.qaSelections), ["FIND"], "Changing presentation must not call navigation or data handlers");
     assert.deepEqual(errors, []); assert.deepEqual(unexpectedRequests, []);
-    return { actualComponent: true, actualExperienceHelper: true, collectorRestocksFirst: true, publicTierPreviews: 5, previewCannotInventPrivilegedDestinations: true, presentationChangesDoNotNavigate: true, onlyProvidedDestinations: true, onlyProvidedWorkspaces: true, searchCannotExposeRestrictedWorkspaces: true, taskGroupHintsAndLabelsSearchable: true, arrowDownAndEnterResultSelection: true, currentWorkspaceNotCurrentPage: true, callbackPreserved: true, unexpectedRequests: 0 };
+    return { actualComponent: true, actualExperienceHelper: true, collectorRestocksFirst: true, publicTierPreviews: 5, previewCannotInventPrivilegedDestinations: true, cannotInventReportAction: true, presentationChangesDoNotNavigate: true, onlyProvidedDestinations: true, onlyProvidedWorkspaces: true, searchCannotExposeRestrictedWorkspaces: true, taskGroupHintsAndLabelsSearchable: true, arrowDownAndEnterResultSelection: true, currentWorkspaceNotCurrentPage: true, callbackPreserved: true, unexpectedRequests: 0 };
+  } finally { await context.close(); }
+}
+
+async function verifyGuestReportingIsHidden(browser) {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: "block" });
+  const attemptedWrites = [];
+  await context.route("**/*", route => {
+    const request = route.request(); const url = new URL(request.url());
+    if (request.method() !== "GET") { attemptedWrites.push(`${request.method()} ${url.pathname}`); return route.abort(); }
+    if (url.origin !== base) return route.abort();
+    if (url.pathname.startsWith("/api/")) return route.fulfill({ contentType: "application/json", body: '{"configured":false}' });
+    return route.continue();
+  });
+  try {
+    const page = await context.newPage();
+    await page.goto(base);
+    await page.getByRole("button", { name: "Preview the app", exact: true }).click({ timeout: 30000 });
+    await page.getByRole("button", { name: "Open profile and menu", exact: true }).click();
+    const drawer = page.getByRole("dialog", { name: "Menu", exact: true });
+    await expect(drawer).toBeVisible();
+    await expect(drawer.locator("[data-menu-report], [data-menu-key='reportRestock']")).toHaveCount(0);
+    await drawer.getByRole("searchbox", { name: "Search menu", exact: true }).fill("empty shelves");
+    await expect(drawer.locator("[data-menu-key]")).toHaveCount(0);
+    await expect(drawer.getByText("No matching pages", { exact: true })).toBeVisible();
+    await drawer.getByRole("button", { name: "Close menu", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Open profile and menu", exact: true })).toBeFocused();
+    assert.deepEqual(attemptedWrites, []);
+    return { actualGuestPreview: true, directReportHidden: true, searchCannotExposeReport: true, attemptedWrites };
   } finally { await context.close(); }
 }
 
@@ -116,7 +151,9 @@ async function verifyRestrictedNavigation(browser) {
         if (!localStorage.getItem("__qa_menu_seeded")) {
           localStorage.setItem("__qa_menu_seeded", "true");
           localStorage.setItem("et-tcg-app-theme", theme);
-          localStorage.setItem("et-tcg-beta-data", JSON.stringify({ items: [{ id: "qa-original-card", name: "Synthetic preserved card", quantity: 2 }], sales: [], expenses: [] }));
+          // This matrix exercises every optional menu group. Normal-user and
+          // tier-preview omissions are covered by the separate experience matrix.
+          localStorage.setItem("et-tcg-beta-data", JSON.stringify({ profile: { userId: "local-beta", email: "qa-menu@example.test", appRole: "owner", app_role: "owner", userRole: "owner", appAccess: "approved" }, subscriptionProfile: { tier: "admin", featureTier: "admin", subscriptionPlan: "admin", appRole: "owner", app_role: "owner", isAdmin: true, lifetimeAccess: true, subscriptionStatus: "active" }, appSetupPersonalization: { optionalTools: { family: true } }, items: [{ id: "qa-original-card", name: "Synthetic preserved card", quantity: 2 }], sales: [], expenses: [] }));
         }
       }, { theme });
       const page = await context.newPage(); const errors = [];
@@ -149,6 +186,10 @@ async function verifyRestrictedNavigation(browser) {
       assert.ok(shortcuts.every(shortcut => shortcut.width >= 44 && shortcut.height >= 44), "Compact shortcuts retain usable touch targets");
       assert.ok(Math.max(...shortcuts.map(shortcut => shortcut.top)) - Math.min(...shortcuts.map(shortcut => shortcut.top)) < 1, "Quick actions use one compact row");
       assert.equal(await scrollArea.evaluate(element => element.scrollTop), 0, "Quick access requires no scrolling");
+      const reportAction = drawer.locator("[data-menu-report='restock']");
+      await expect(reportAction).toBeInViewport({ ratio: 1 });
+      const reportTarget = await reportAction.boundingBox();
+      assert.ok(reportTarget.width >= 44 && reportTarget.height >= 44 && reportTarget.height <= 100, "Direct reporting stays compact and touch-friendly");
       await page.screenshot({ path: path.join(output, `${width}-${theme}-menu-top.png`) });
 
       lastStep = `${width} ${theme}: workspace disclosure and permission-filtered choices`;
@@ -162,7 +203,7 @@ async function verifyRestrictedNavigation(browser) {
       await expect(workspaceOptions).toBeVisible();
       assert.equal(page.url(), pathBeforeDisclosure, "Expanding workspace choices does not navigate");
       const permittedWorkspaces = await workspaceOptions.locator("[data-menu-workspace]").evaluateAll(elements => elements.map(element => element.dataset.menuWorkspace));
-      assert.deepEqual(permittedWorkspaces.slice().sort(), existingWorkspaceLabels.map(label => label.toUpperCase()).sort(), "Menu retains exactly the workspaces allowed by the existing switcher");
+      assert.deepEqual(await workspaceOptions.locator("[data-menu-workspace] strong").allTextContents(), existingWorkspaceLabels, "Menu retains exactly the workspace labels and order allowed by the existing switcher");
       await expect(workspaceOptions.getByText("Current workspace", { exact: true })).toHaveCount(1);
       await expect(workspaceOptions.locator('[aria-current="page"]')).toHaveCount(0);
       await page.screenshot({ path: path.join(output, `${width}-${theme}-menu-workspaces.png`) });
@@ -287,9 +328,9 @@ async function verifyRestrictedNavigation(browser) {
         } else await drawer.locator(`[data-menu-shortcut="${key}"]`).click();
         await page.waitForURL(route); await expect(drawer).toHaveCount(0);
         if (key === "vault") await expect(page.getByTestId("collection-workspace")).toBeVisible({ timeout: 30000 });
-        if (key === "scout") await expect(page.getByRole("heading", { name: "Open restock intelligence", exact: true })).toBeVisible({ timeout: 30000 });
+        if (key === "scout") await expect(page.locator(".restock-start").getByRole("heading", { name: "Restocks", exact: true })).toBeVisible({ timeout: 30000 });
         if (key === "exchange") {
-          await expect(page.getByRole("heading", { name: "Exchange decision desk", exact: true })).toBeVisible({ timeout: 30000 });
+          await expect(page.getByRole("heading", { name: "Sell or trade", exact: true })).toBeVisible({ timeout: 30000 });
           await page.screenshot({ path: path.join(output, `${width}-${theme}-sell-research.png`) });
         }
         if (key === "watchList") {
@@ -313,6 +354,30 @@ async function verifyRestrictedNavigation(browser) {
         await page.goBack();
         await expect.poll(() => new URL(page.url()).pathname, { message: `${key} preserves browser Back` }).toBe(previousPath);
       }
+      lastStep = `${width} ${theme}: direct restock handoff, search and cancel`;
+      const reportModal = page.locator('.flow-modal[data-flow="scoutSubmit"]');
+      for (const entry of ["shortcut", "search"]) {
+        const previousUrl = page.url();
+        await open();
+        if (entry === "search") {
+          for (const query of ["empty shelves", "sighting", "out of stock"]) {
+            await search.fill(query);
+            await expect(drawer.locator('[data-menu-key="reportRestock"]')).toBeVisible();
+          }
+          await search.focus(); await page.keyboard.press("ArrowDown");
+          await expect(drawer.locator('[data-menu-key="reportRestock"]')).toBeFocused();
+          await page.keyboard.press("Enter");
+        } else await drawer.locator("[data-menu-report='restock']").click();
+        await expect(drawer).toHaveCount(0); await expect(reportModal).toBeVisible();
+        await expect(reportModal.locator(".scout-where-step")).toBeVisible();
+        await page.waitForFunction(() => Boolean(document.activeElement?.closest('.flow-modal[data-flow="scoutSubmit"]')));
+        assert.equal(page.url(), previousUrl, "Opening a report does not switch the current page or workspace");
+        if (entry === "shortcut") await page.screenshot({ path: path.join(output, `${width}-${theme}-menu-restock.png`) });
+        await page.keyboard.press("Escape"); await expect(reportModal).toHaveCount(0);
+        if (width <= 520) await expect(opener).toBeFocused();
+        assert.equal(page.url(), previousUrl, "Cancel returns to the originating page");
+        assert.equal(await snapshot(), before, "Opening and cancelling reporting preserves existing records");
+      }
       await open(); await drawer.locator(".menu-quick-add").click();
       const quickAdd = page.locator('.flow-modal[data-flow="addActionSheet"]');
       await expect(quickAdd).toBeVisible(); await expect(drawer).toHaveCount(0);
@@ -320,15 +385,19 @@ async function verifyRestrictedNavigation(browser) {
       await page.screenshot({ path: path.join(output, `${width}-${theme}-quick-add.png`) });
       await page.keyboard.press("Escape"); await expect(quickAdd).toHaveCount(0);
       assert.equal(await snapshot(), before); assert.deepEqual(errors, []);
-      results.push({ width, height, theme, navigationItems: originalKeys.length, allOriginalDestinations: true, compactQuickAccessWithoutScrolling: true, groupExpansion: true, workspaceDisclosureAndPermissions: true, workspaceSearchAndBack: true, workspaceResultColors: resultColors, searchKeywordsAndEscape: true, fixedLayout: true, separateLabelAndHelper: true, compactTouchRows: true, closeAndFocusTrap: true, pinnedSearchHeaderFooter: true, settingsActiveAndBack: true, collectionRestocksAlertsSellActiveAndBack: true, quickAddHandoff: true, recordsUnchanged: true, errors });
+      results.push({ width, height, theme, navigationItems: originalKeys.length, allOriginalDestinations: true, compactQuickAccessWithoutScrolling: true, directReportAndSearchHandoff: true, reportCancelPreservesPageFocusAndRecords: true, groupExpansion: true, workspaceDisclosureAndPermissions: true, workspaceSearchAndBack: true, workspaceResultColors: resultColors, searchKeywordsAndEscape: true, fixedLayout: true, separateLabelAndHelper: true, compactTouchRows: true, closeAndFocusTrap: true, pinnedSearchHeaderFooter: true, settingsActiveAndBack: true, collectionRestocksAlertsSellActiveAndBack: true, quickAddHandoff: true, recordsUnchanged: true, errors });
+      fs.writeFileSync(path.join(output, "viewport-progress.json"), JSON.stringify({ syntheticOnly: true, verificationComplete: false, results }, null, 2));
       console.log(`PASS real menu ${width}x${height} ${theme}: ${originalKeys.length} destinations, compact shortcuts, task groups, workspace disclosure, search, Escape, layout, focus, navigation, Back, Quick Add and data preservation.`);
       await context.close();
     }
     lastStep = "Restricted real-component fixture: supplied permissions remain unchanged";
     const restrictedNavigation = await verifyRestrictedNavigation(browser);
     console.log("PASS restricted real menu fixture: only supplied destinations and workspaces appear, including search; no implicit Bot, Business, or Sell access.");
+    lastStep = "Actual guest preview: reporting action remains unavailable";
+    const guestReporting = process.env.QA_MENU_FIXTURE_ONLY ? null : await verifyGuestReportingIsHidden(browser);
+    if (guestReporting) console.log("PASS actual guest menu: reporting action remains absent from shortcuts and search; no external writes.");
     const reportName = process.env.QA_MENU_FIXTURE_ONLY ? "restricted-results.json" : requestedWidths ? `results-${requestedWidths.join("-")}.json` : "results.json";
-    fs.writeFileSync(path.join(output, reportName), JSON.stringify({ createdAt: new Date().toISOString(), realApp: !process.env.QA_MENU_FIXTURE_ONLY, syntheticOnly: true, restrictedNavigation, results }, null, 2));
+    fs.writeFileSync(path.join(output, reportName), JSON.stringify({ createdAt: new Date().toISOString(), realApp: !process.env.QA_MENU_FIXTURE_ONLY, syntheticOnly: true, restrictedNavigation, guestReporting, results }, null, 2));
   } catch (error) {
     console.error(`FAILED ${lastStep}`);
     if (lastPage && !lastPage.isClosed()) {

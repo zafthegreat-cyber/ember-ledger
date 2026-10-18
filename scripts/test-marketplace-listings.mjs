@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { buildEmberAssistFallbackResponse } from "../src/utils/emberAssist.js";
+import { buildEmberAssistFallbackResponse } from "../src/utils/businessAssistant.js";
 import { buildPublicCommunityProfile } from "../src/utils/communityProfile.js";
 import {
   buildQuickAddSuccessMessage,

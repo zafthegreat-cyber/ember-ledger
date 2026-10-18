@@ -17,7 +17,7 @@
   "productsWithReferencePrices": 31467,
   "productsMissingReferencePrices": 1425,
   "priceFallbackLabel": "Price data unavailable",
-  "imageFallbackLabel": "Ember & Tide product placeholder",
+  "imageFallbackLabel": "Code 3 TCG product placeholder",
   "photoSourcePolicy": "Use source image URLs when provided by public catalog data; otherwise render the branded app placeholder.",
   "pricingPolicy": "Use productId joins for reference prices. Fallback matching is low-confidence and must not power automatic fair-price claims.",
   "dailyRefreshCommand": "npm.cmd run sync:market-prices",

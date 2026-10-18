@@ -1,7 +1,7 @@
 import { normalizeStoreLocationType } from "./storeExpansionUtils.js";
 
 export const REGIONAL_BROWSING_EMPTY_COPY = {
-  noStores: "No stores in this area yet. Suggest a store or broaden the area to keep expanding Ember & Tide safely.",
+  noStores: "No stores in this area yet. Suggest a store or broaden the area to keep expanding Code 3 TCG safely.",
   noFamilyFriendly: "No family-friendly shops in this area yet. Broaden the area or suggest a local shop for admin review.",
   noReports: "No confirmed reports here yet. Submit a Scout report when you spot stock to help families nearby.",
   noPredictions: "No predictions here yet because confirmed restock history is too limited.",

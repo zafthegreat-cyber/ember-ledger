@@ -16,7 +16,7 @@ import {
 export { COMMUNITY_MOTTO_COPY, FAMILY_FRIENDLY_SHOP_COPY, STORE_FAMILY_FILTER_OPTIONS, STORE_LOCATION_TYPES };
 
 export const FAMILY_FRIENDLY_CARD_SHOP_TITLE = "Family-Friendly Card Shop";
-export const PARTNER_STATUS_DISCLAIMER = "Partner status helps highlight shops that support the Ember & Tide mission. Availability and pricing may vary.";
+export const PARTNER_STATUS_DISCLAIMER = "Partner status helps highlight shops that support the Code 3 TCG mission. Availability and pricing may vary.";
 export const NO_FAMILY_SHOPS_COPY = "No family-friendly shops match those filters yet. Broaden the area or suggest a local shop for admin review.";
 
 function firstValue(...values) {

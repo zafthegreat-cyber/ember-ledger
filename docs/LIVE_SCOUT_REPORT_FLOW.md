@@ -7,7 +7,7 @@ This pass integrates live production UI shells for Scout Add Report, Scan Screen
 Out of scope:
 
 - Deploy
-- Vault, Market, More, Forge, Tidepool, The Spark, Ember Assist, Parent Center, Shop Portal, or Admin Review integration
+- Vault, Market, More, Forge, Tidepool, The Spark, Business Assistant, Parent Center, Shop Portal, or Admin Review integration
 - Backend writes
 - Auth, billing, database, or RLS changes
 - Real uploads

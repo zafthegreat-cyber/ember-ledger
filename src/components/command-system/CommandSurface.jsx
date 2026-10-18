@@ -1,3 +1,4 @@
+import { PrivateStorageImage } from "../PrivateReceipt.jsx";
 import { AppNavIcon } from "./AppNavIcon";
 
 export function EtMockupPageShell({ accent = "hearth", className = "", ariaLabel = "", children }) {
@@ -122,7 +123,7 @@ export function FlowNextActionCard({ eyebrow = "Next action", title, detail, ton
 }
 
 export function EtMockupHero({
-  brand = "Ember & Tide",
+  brand = "Code 3 TCG",
   title,
   detail,
   mark,
@@ -136,7 +137,7 @@ export function EtMockupHero({
     <section className="et-mockup-page-hero" aria-label={ariaLabel || `${brand} welcome`}>
       <div className="et-mockup-hero-copy">
         <span className="et-mockup-brand-row">
-          {mark ? <img src={mark} alt="" /> : null}
+          {mark ? <PrivateStorageImage src={mark} alt="" /> : null}
           <b>{brand}</b>
         </span>
         <h1>{title}</h1>

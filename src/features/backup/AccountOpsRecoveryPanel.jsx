@@ -5,6 +5,8 @@ import { ACCOUNT_OPS_RESTORE_LOCK } from "../accountOps/recoveryState.js";
 import { createVerifiedBackup } from "./backupFormat.js";
 import { getBackupSource } from "./backupSourceRegistry.js";
 import { planAccountOpsRestore } from "./accountOpsRestore.js";
+import { exportFile, exportFileStatus, exportFileError } from "../../native/nativeFiles.js";
+import { useCloudWorkspace } from "../persistence/CloudWorkspaceContext.js";
 
 export default function AccountOpsRecoveryPanel({ recoveryHost = null }) {
   const [busy, setBusy] = useState(false);
@@ -12,20 +14,25 @@ export default function AccountOpsRecoveryPanel({ recoveryHost = null }) {
   const [plan, setPlan] = useState(null);
   const rawRef = useRef(null);
   const version = useRef(0);
-  useEffect(() => () => { version.current++; rawRef.current = null; recoveryHost?.cancel(); }, [recoveryHost]);
+  const exportRequest = useRef(null);
+  const ownerId = useCloudWorkspace()?.user?.id;
+  useEffect(() => () => { version.current++; rawRef.current = null; exportRequest.current?.abort(); recoveryHost?.cancel(); }, [recoveryHost, ownerId]);
   async function exportScope() {
+    if (exportRequest.current) return;
+    const controller = new AbortController(); exportRequest.current = controller;
     setBusy(true); setMessage("");
     const request = ++version.current;
     try {
       const result = recoveryHost ? await recoveryHost.export() : await accountOpsExclusive(globalThis.localStorage) (ACCOUNT_OPS_RESTORE_LOCK, () => createVerifiedBackup({ localStorage: globalThis.localStorage, sourceRegistry: [getBackupSource("account-ops")] }));
       if (request !== version.current) return;
       if (!result.verified) throw new Error("Account Ops could not be exported safely.");
-      const url = URL.createObjectURL(new Blob([result.json], { type: "application/json" }));
-      const anchor = document.createElement("a"); anchor.href = url; anchor.download = result.fileName.replace("code-3-backup", "code-3-account-ops"); anchor.click();
-      setTimeout(() => URL.revokeObjectURL(url), 0);
-      setMessage("Account Ops-only backup verified and downloaded. Other app records and file bytes are excluded.");
+      let saved;
+      try { saved = await exportFile({ blob: new Blob([result.json], { type: "application/json" }), filename: result.fileName.replace("code-3-backup", "code-3-account-ops"), signal: controller.signal }); }
+      catch (error) { throw new Error(exportFileError(error)); }
+      if (request !== version.current) return;
+      setMessage(`${exportFileStatus(saved)} Account Ops-only backup verified. Other app records and file bytes are excluded.`);
     } catch (error) { if (request === version.current) setMessage(error.message); }
-    finally { if (request === version.current) setBusy(false); }
+    finally { if (exportRequest.current === controller) exportRequest.current = null; if (request === version.current) setBusy(false); }
   }
   async function inspect(event) {
     const file = event.target.files?.[0]; event.target.value = "";

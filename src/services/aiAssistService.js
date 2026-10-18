@@ -375,7 +375,7 @@ export function summarizeKidsApplication(application = {}) {
 
 export function draftNotificationCopy({ type = "account_notice", title = "", message = "" } = {}) {
   const cleanTitle = compactText(title || type.replace(/_/g, " "), 70);
-  const cleanMessage = compactText(message || "There is an Ember & Tide update ready for review.", 180);
+  const cleanMessage = compactText(message || "There is a Code 3 TCG update ready for review.", 180);
   return {
     inputSummary: compactText(`${type}: ${title} ${message}`),
     outputSummary: `Draft notification: "${cleanTitle}" - ${cleanMessage} Review and confirm before sending. SMS remains disabled unless separately approved.`,
@@ -386,12 +386,12 @@ export function draftNotificationCopy({ type = "account_notice", title = "", mes
 }
 
 export function draftMarketingCopy({ topic = "", audience = "parents" } = {}) {
-  const focus = topic || "Ember & Tide beta";
+  const focus = topic || "Code 3 TCG beta";
   const body = audience === "card_shop"
-    ? `Help bring fair, family-friendly Pokemon access back to local collectors. Ember & Tide is preparing beta tools for Vault, Forge, Scout, and Kids Program support.`
+    ? `Help bring fair, family-friendly Pokemon access back to local collectors. Code 3 TCG is preparing beta tools for Vault, Forge, Scout, and Kids Program support.`
     : audience === "sponsor"
-      ? `Partner with Ember & Tide to support kid-focused packs, giveaways, and fair-access community events when inventory allows.`
-      : `Ember & Tide helps families track collections, watch local restocks, and support kid-friendly Pokemon access.`;
+      ? `Partner with Code 3 TCG to support kid-focused packs, giveaways, and fair-access community events when inventory allows.`
+      : `Code 3 TCG helps families track collections, watch local restocks, and support kid-friendly Pokemon access.`;
   return {
     inputSummary: compactText(`${audience}: ${focus}`),
     outputSummary: `Draft ${audience.replace(/_/g, " ")} copy for review: ${body} Review before publishing. No auto-posting happens.`,
@@ -514,7 +514,7 @@ export function draftMarketplaceListingCopy(listing = {}) {
       ebayTitle: title,
       whatnotDescription: compactText(description, 500),
       facebookPost: compactText(`${title}\n\n${description}`, 650),
-      instagramCaption: compactText(`${title}\n${priceText} | ${condition}\n#PokemonTCG #EmberAndTide`, 400),
+      instagramCaption: compactText(`${title}\n${priceText} | ${condition}\n#PokemonTCG #Code3TCG`, 400),
     },
   };
 }

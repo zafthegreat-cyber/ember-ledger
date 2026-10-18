@@ -9,6 +9,8 @@ import { rehearseLocalMigration } from "../persistence/migrationRehearsal.js";
 import { CURRENCY_MINOR_DIGITS } from "../persistence/moneyConversion.js";
 import BackupReviewFindings from "./BackupReviewFindings.jsx";
 import { createBackupReviewReport, downloadBackupReviewReport } from "./reviewPresentation.js";
+import { exportFileStatus, exportFileError } from "../../native/nativeFiles.js";
+import { useCloudWorkspace } from "../persistence/CloudWorkspaceContext.js";
 
 function statusTone(status) {
   if (status === "READY" || status === "REHEARSED_IN_MEMORY") return "success";
@@ -87,7 +89,8 @@ function RehearsalChanges({ rehearsal }) {
 }
 
 export default function MigrationReadinessPanel({ previewRunner = runLocalMigrationPreview, rehearsalRunner = rehearseLocalMigration, initialPreview = null, remoteAdapter }) {
-  const lifetime = useMemo(() => ({ previewRunner, rehearsalRunner, remoteAdapter }), [previewRunner, rehearsalRunner, remoteAdapter]);
+  const ownerId = useCloudWorkspace()?.user?.id;
+  const lifetime = useMemo(() => ({ previewRunner, rehearsalRunner, remoteAdapter, ownerId }), [previewRunner, rehearsalRunner, remoteAdapter, ownerId]);
   const activeOperation = useRef(null);
   const [previewState, setPreview] = useState(() => ({ lifetime, result: initialPreview }));
   const [rehearsalState, setRehearsal] = useState(null);
@@ -137,14 +140,16 @@ export default function MigrationReadinessPanel({ previewRunner = runLocalMigrat
     }
   }
 
-  function downloadReview(kind, result) {
+  async function downloadReview(kind, result) {
     if (activeOperation.current?.lifetime !== lifetime || activeOperation.current.controller) return;
+    const controller = new AbortController(); activeOperation.current.controller = controller;
+    const current = () => activeOperation.current?.lifetime === lifetime && activeOperation.current.controller === controller;
+    setOperation({ lifetime, kind: "report" }); setNotice(null);
     try {
-      downloadBackupReviewReport(createBackupReviewReport({ kind, result, reviewedAt: result.lastPreviewAt || result.createdAt }));
-      setNotice({ lifetime, message: "Review report downloaded. It contains findings, not a restorable backup." });
-    } catch {
-      setNotice({ lifetime, message: "The review report could not be downloaded. The findings remain available on this page." });
-    }
+      const saved = await downloadBackupReviewReport(createBackupReviewReport({ kind, result, reviewedAt: result.lastPreviewAt || result.createdAt }), { signal: controller.signal });
+      if (current()) setNotice({ lifetime, message: `${exportFileStatus(saved)} This report contains findings, not a restorable backup.` });
+    } catch (error) { if (current()) setNotice({ lifetime, message: exportFileError(error) }); }
+    finally { if (current()) { activeOperation.current.controller = null; setOperation(null); } }
   }
 
   const domainsWithWarnings = Array.isArray(preview?.domainsWithWarnings)

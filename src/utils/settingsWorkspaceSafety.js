@@ -1,3 +1,5 @@
+import { formatBrandText } from "../config/brand.js";
+
 export const FORGE_IDENTITY_MODE_OPTIONS = [
   {
     value: "personal",
@@ -11,8 +13,8 @@ export const FORGE_IDENTITY_MODE_OPTIONS = [
   },
   {
     value: "ember_tide",
-    label: "Ember & Tide Forge",
-    description: "Use Ember & Tide branding for your shop/workspace.",
+    label: "Code 3 TCG Forge",
+    description: "Use Code 3 TCG branding for your shop/workspace.",
   },
 ];
 
@@ -87,7 +89,7 @@ export function validateWorkspaceIdentityDraft(draft = {}, options = {}) {
   if (String(draft.businessName || "").trim().length > 80) return "Business/shop name must be 80 characters or fewer.";
   if (String(draft.shopName || "").trim().length > 80) return "Shop name must be 80 characters or fewer.";
   if (normalizeForgeIdentityMode(draft.forgeIdentityMode) === "ember_tide" && options.emberTideAvailable === false) {
-    return "Ember & Tide Forge is not available for this account yet.";
+    return "Code 3 TCG Forge is not available for this account yet.";
   }
   if (!businessName && normalizeForgeIdentityMode(draft.forgeIdentityMode) === "business") {
     return "";
@@ -161,7 +163,7 @@ export function workspaceDeleteBlockReason(workspace = {}, counts = {}, options 
   if (isProtectedWorkspace(workspace, options)) {
     return workspace.id === options.defaultWorkspaceId
       ? "The default personal workspace cannot be deleted. Hide Personal Forge or archive other workspaces instead."
-      : "Protected system or Ember & Tide workspaces cannot be deleted by normal users.";
+      : "Protected system or Code 3 TCG workspaces cannot be deleted by normal users.";
   }
   if (workspace.id === options.defaultWorkspaceId) {
     return "The default personal workspace cannot be deleted. Hide Personal Forge or archive other workspaces instead.";
@@ -180,12 +182,12 @@ export function workspaceDeleteBlockReason(workspace = {}, counts = {}, options 
 export function forgeModeSummary(settings = {}, activeForgeWorkspace = null) {
   const identityMode = forgeIdentityModeFromSettings(settings, activeForgeWorkspace);
   if (identityMode === "ember_tide" && settings.useEmberTideBranding && !settings.lockToEmberTide) {
-    return "Forge uses Ember & Tide branding where available.";
+    return "Forge uses Code 3 TCG branding where available.";
   }
   if (settings.lockToEmberTide) {
     return activeForgeWorkspace
-      ? `Forge is locked to ${activeForgeWorkspace.name || "Ember & Tide"}.`
-      : "Forge is locked to Ember & Tide, but that workspace is unavailable.";
+      ? `Forge is locked to ${formatBrandText(activeForgeWorkspace.name || "Code 3 TCG")}.`
+      : "Forge is locked to Code 3 TCG, but that workspace is unavailable.";
   }
   if (settings.personalForgeEnabled === false) {
     return "Personal Forge is hidden. Forge uses your default or business workspace.";

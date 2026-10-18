@@ -1,7 +1,7 @@
 {
-  "name": "collector-backend",
+  "name": "code3-tcg-backend",
   "version": "1.0.0",
-  "description": "Backend for Collector Hunt HQ",
+  "description": "Code 3 TCG backend",
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx src/server.ts",

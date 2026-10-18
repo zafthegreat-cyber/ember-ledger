@@ -35,7 +35,7 @@ The standalone board represents:
 - Market
 - Tidepool
 - The Spark
-- Ember Assist
+- Business Assistant
 - More
 - Parent Center
 - Shop Portal
@@ -44,9 +44,9 @@ The standalone board represents:
 
 ## Component Layer
 
-Reusable components are in `src/components/ember-ui/index.tsx`, including the requested primitives such as `AppScreen`, `AppHeader`, `PageHero`, `MagicCard`, `SectionHeader`, `StatCard`, `ActionTile`, `BottomNav`, `TrustBadge`, `ConfidenceRing`, `SafeNoticeCard`, and related card/button components.
+Reusable components are in `src/components/code3-ui/index.tsx`, including the requested primitives such as `AppScreen`, `AppHeader`, `PageHero`, `MagicCard`, `SectionHeader`, `StatCard`, `ActionTile`, `BottomNav`, `TrustBadge`, `ConfidenceRing`, `SafeNoticeCard`, and related card/button components.
 
-Typed mock product data lives in `src/mock/emberTideData.ts`, with shared types in `src/types/emberTide.ts`.
+Typed mock product data lives in `src/mock/code3TcgData.ts`, with shared types in `src/types/code3Tcg.ts`.
 
 ## Non-Infringement Notes
 

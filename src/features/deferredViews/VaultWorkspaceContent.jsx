@@ -1,3 +1,4 @@
+import { PrivateStorageImage } from "../../components/PrivateReceipt.jsx";
 // App owns state, authority and handlers; only this existing renderer is deferred.
 export default function VaultWorkspaceContent({ scope }) {
   const {
@@ -604,7 +605,7 @@ export default function VaultWorkspaceContent({ scope }) {
                             aria-label={`Open ${entry.title} from Collection Gallery`}
                           >
                             <span className="vault-gallery-media" aria-hidden="true">
-                              {entry.image ? <img src={entry.image} alt="" loading="lazy" /> : <b>{collectorShowcaseInitials(entry.title)}</b>}
+                              {entry.image ? <PrivateStorageImage src={entry.image} alt="" loading="lazy" /> : <b>{collectorShowcaseInitials(entry.title)}</b>}
                             </span>
                             <span className="vault-gallery-copy">
                               <b>{entry.title}</b>
@@ -848,7 +849,7 @@ export default function VaultWorkspaceContent({ scope }) {
                         </div>
                         {vaultItemDisplayImage(item) ? (
                           <div className="compact-image-wrap vault-image-wrap">
-                            <img src={vaultItemDisplayImage(item)} alt={item.name} />
+                            <PrivateStorageImage src={vaultItemDisplayImage(item)} alt={item.name} />
                           </div>
                         ) : null}
                         <div className="vault-card-facts">
@@ -932,7 +933,7 @@ export default function VaultWorkspaceContent({ scope }) {
                       <div className="vault-set-detail-hero">
                       {selectedVaultSet.logoUrl || selectedVaultSet.symbolUrl ? (
                         <div className="vault-set-detail-logo">
-                          <img src={selectedVaultSet.logoUrl || selectedVaultSet.symbolUrl} alt="" />
+                          <PrivateStorageImage src={selectedVaultSet.logoUrl || selectedVaultSet.symbolUrl} alt="" />
                         </div>
                       ) : null}
                       <div className="vault-set-detail-hero-copy">
@@ -1178,7 +1179,7 @@ export default function VaultWorkspaceContent({ scope }) {
                       <div className={`vault-set-product-grid${vaultSetViewMode === "list" ? " vault-set-product-grid--list" : ""}`}>
                         {selectedVaultSetView.sealedProducts.length ? selectedVaultSetView.sealedProducts.slice(0, 16).map((product) => (
                           <article className="vault-set-mini-card" key={`set-sealed-${product.id || catalogTitle(product)}`}>
-                            {(product.__vaultOwnedSealed ? vaultItemDisplayImage(product) : getCatalogImage(product)) ? <img src={product.__vaultOwnedSealed ? vaultItemDisplayImage(product) : getCatalogImage(product)} alt="" /> : <span className="vault-set-mini-thumb">Box</span>}
+                            {(product.__vaultOwnedSealed ? vaultItemDisplayImage(product) : getCatalogImage(product)) ? <PrivateStorageImage src={product.__vaultOwnedSealed ? vaultItemDisplayImage(product) : getCatalogImage(product)} alt="" /> : <span className="vault-set-mini-thumb">Box</span>}
                             <strong>{product.name || product.itemName || catalogTitle(product)}</strong>
                             <span>{product.productType || product.product_type || "Sealed Product"}</span>
                             <span>{product.__vaultOwnedSealed ? [itemPurchaserName(product), `Qty ${product.quantity || 1}`, vaultItemTotalMarketValue(product) ? money(vaultItemTotalMarketValue(product)) : "Value unavailable"].filter(Boolean).join(" - ") : "Catalog sealed product"}</span>
@@ -1204,7 +1205,7 @@ export default function VaultWorkspaceContent({ scope }) {
                       <button type="button" className={`vault-set-card vault-set-card-button${set.percent === 100 ? " is-complete" : set.ownedCount > 0 ? " has-progress" : " is-empty"}`} key={set.key || `${set.id}-${set.name}`} onClick={() => setSelectedVaultSetId(set.id)}>
                         <div className="vault-set-card-shell">
                           {set.logoUrl || set.symbolUrl ? (
-                            <span className="vault-set-card-logo-wrap"><img className="vault-set-card-logo" src={set.logoUrl || set.symbolUrl} alt="" /></span>
+                            <span className="vault-set-card-logo-wrap"><PrivateStorageImage className="vault-set-card-logo" src={set.logoUrl || set.symbolUrl} alt="" /></span>
                           ) : (
                             <span className="vault-set-card-logo-wrap vault-set-card-logo-wrap--placeholder">Set</span>
                           )}

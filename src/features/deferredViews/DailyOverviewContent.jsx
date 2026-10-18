@@ -309,7 +309,7 @@ export default function DailyOverviewContent({ scope }) {
         key: "announcement",
         priority: "today",
         area: "Announcement",
-        title: activeAnnouncements[0].title || "New Ember & Tide update",
+        title: activeAnnouncements[0].title || "New Code 3 TCG update",
         reason: activeAnnouncements[0].body || activeAnnouncements[0].message || "Review the latest app update.",
         actionLabel: "View Details",
         onAction: () => setActiveTab("whatsNew"),

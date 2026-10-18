@@ -76,7 +76,7 @@ export default function AdminReviewContent({ scope }) {
           />
           <section className="panel admin-permission-denied">
             <h2>Admin role required</h2>
-            <p>If you think this is a mistake, contact Ember & Tide support. Local beta users can submit suggestions, but cannot approve shared data, moderate reports, or access admin queues.</p>
+            <p>If you think this is a mistake, contact Code 3 TCG support. Local beta users can submit suggestions, but cannot approve shared data, moderate reports, or access admin queues.</p>
             <div className="quick-actions">
               <button type="button" onClick={() => setActiveTab("dashboard")}>Go to Hearth</button>
               <button type="button" className="secondary-button" onClick={() => openMenuDrawer("feedback")}>Open Help & Support</button>
@@ -176,7 +176,7 @@ export default function AdminReviewContent({ scope }) {
       <PageHeader
         className={getHeaderCardClass("panel admin-page-header")}
         title="Admin Command Center"
-        subtitle="Review, approve, and protect the Ember & Tide community."
+        subtitle="Review, approve, and protect the Code 3 TCG community."
         actions={(
           <div className="summary-pill-row">
             <span className="status-badge">{actualAdminRole}</span>

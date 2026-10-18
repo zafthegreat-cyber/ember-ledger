@@ -33,7 +33,7 @@ function brandMarkSvg({ size = 512, maskable = false, transparent = false } = {}
     <rect x="18" y="18" width="${view - 36}" height="${view - 36}" rx="92" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="4"/>
   `;
   return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${view} ${view}" role="img" aria-label="Ember & Tide flame and wave mark">
+<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${view} ${view}" role="img" aria-label="Code 3 TCG flame and wave mark">
   <defs>
     <radialGradient id="bg" cx="26%" cy="18%" r="82%">
       <stop offset="0" stop-color="#0c2b47"/>
@@ -90,7 +90,7 @@ function brandMarkSvg({ size = 512, maskable = false, transparent = false } = {}
         <path fill="${COLORS.navy}" opacity=".78" d="M118 329c47 15 89 12 127-9 22-12 48-20 77-19-35 24-72 42-116 45-32 2-61-4-88-17Z"/>
         <path fill="${COLORS.tide}" opacity=".72" d="M77 258c64 23 120 18 168-15 41-28 83-38 129-28-54 6-94 35-135 59-48 29-102 23-162-16Z"/>
       </g>
-      <text x="144" y="246" text-anchor="middle" fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="900" letter-spacing="4" filter="url(#neonGlow)">E&amp;T</text>
+      <text x="144" y="246" text-anchor="middle" fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="900" letter-spacing="4" filter="url(#neonGlow)">C3</text>
       <path d="M54 18h178M54 262h178" stroke="#ff2fb3" stroke-opacity=".6" stroke-width="4"/>
       <path d="M54 28h178M54 252h178" stroke="#38bdf8" stroke-opacity=".5" stroke-width="3"/>
     </g>
@@ -101,7 +101,7 @@ function brandMarkSvg({ size = 512, maskable = false, transparent = false } = {}
 
 function promoHeroSvg({ width = 1536, height = 1024 } = {}) {
   return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="Ember & Tide app preview showing Scout, Vault, Forge, and AI Assistant dashboard.">
+<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="Code 3 TCG app preview showing Scout, Vault, Forge, and AI Assistant dashboard.">
   <defs>
     <radialGradient id="warm" cx="0" cy=".1" r=".55"><stop stop-color="#ff8a1f"/><stop offset="1" stop-color="#ff8a1f" stop-opacity="0"/></radialGradient>
     <radialGradient id="cool" cx=".85" cy=".1" r=".55"><stop stop-color="#0ea5e9" stop-opacity=".78"/><stop offset="1" stop-color="#0ea5e9" stop-opacity="0"/></radialGradient>
@@ -115,8 +115,8 @@ function promoHeroSvg({ width = 1536, height = 1024 } = {}) {
     <rect width="420" height="810" rx="64" fill="#020817" stroke="#5d7288" stroke-width="6"/>
     <rect x="24" y="28" width="372" height="754" rx="42" fill="url(#phone)"/>
     <rect x="136" y="38" width="150" height="26" rx="13" fill="#020817"/>
-    <text x="70" y="116" fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="800">Ember</text>
-    <text x="172" y="116" fill="#38bdf8" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="800">&amp;Tide</text>
+    <text x="70" y="116" fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="800">Code 3</text>
+    <text x="190" y="116" fill="#38bdf8" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="800">TCG</text>
     <rect x="44" y="156" width="332" height="150" rx="16" fill="#0c233a" stroke="#173c5c"/>
     <text x="66" y="198" fill="#fff" font-family="Inter, Arial, sans-serif" font-size="23" font-weight="800">Scout Report Near You</text>
     <text x="66" y="238" fill="#cbd5e1" font-family="Inter, Arial, sans-serif" font-size="20">Local restock signal</text>
@@ -135,8 +135,8 @@ function promoHeroSvg({ width = 1536, height = 1024 } = {}) {
   </g>
   <g transform="translate(800 150)">
     ${brandMarkSvg({ transparent: true }).replace(/<\?xml.*?\?>/, "").replace(/<svg[^>]*>/, '<svg x="-20" y="-80" width="220" height="220" viewBox="0 0 512 512">').replace("</svg>", "</svg>")}
-    <text x="210" y="78" fill="#ff6a13" font-family="Inter, Arial, sans-serif" font-size="90" font-weight="950">Ember</text>
-    <text x="210" y="174" fill="#38bdf8" font-family="Inter, Arial, sans-serif" font-size="82" font-weight="850">&amp; Tide</text>
+    <text x="210" y="78" fill="#ff6a13" font-family="Inter, Arial, sans-serif" font-size="90" font-weight="950">Code 3</text>
+    <text x="210" y="174" fill="#38bdf8" font-family="Inter, Arial, sans-serif" font-size="82" font-weight="850">TCG</text>
     <text x="0" y="290" fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="58" font-weight="600">Track. Trade. Thrive.</text>
     <text x="120" y="420" fill="#ff6a13" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="800">Built for collectors.</text>
     <text x="120" y="468" fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="34">Powered by community.</text>
@@ -155,12 +155,12 @@ function slotSvg(kind, width, height, title, subtitle) {
   <rect width="${width}" height="${height}" fill="url(#bg)"/>
   <circle cx="${width * 0.12}" cy="${height * 0.12}" r="${Math.min(width, height) * 0.24}" fill="#ff6a13" opacity=".24"/>
   <circle cx="${width * 0.88}" cy="${height * 0.18}" r="${Math.min(width, height) * 0.22}" fill="#38bdf8" opacity=".22"/>
-  <svg x="${markX}" y="${markY}" width="${markSize}" height="${markSize}" viewBox="0 0 512 512">${brandMarkSvg({ transparent: true }).replace(/^[\s\S]*?<g transform=/, '<g transform=').replace("</svg>", "")}</svg>
-  <text x="${width / 2}" y="${height * 0.48}" fill="#ff6a13" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="${Math.max(42, width * 0.07)}" font-weight="950">Ember &amp; Tide</text>
+  <svg x="${markX}" y="${markY}" width="${markSize}" height="${markSize}" viewBox="0 0 512 512">${brandMarkSvg({ transparent: true }).replace(/^[\s\S]*?<g transform=/, '<g transform=').replace(/\n  <\/g>\n  <text x="256"/, '\n  <text x="256"').replace("</svg>", "")}</svg>
+  <text x="${width / 2}" y="${height * 0.48}" fill="#ff6a13" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="${Math.max(42, width * 0.07)}" font-weight="950">Code 3 TCG</text>
   <text x="${width / 2}" y="${height * 0.56}" fill="#f8fafc" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="${Math.max(30, width * 0.052)}" font-weight="700">${title}</text>
   <text x="${width / 2}" y="${height * 0.63}" fill="#a8b8ca" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="${Math.max(22, width * 0.032)}">${subtitle}</text>
   ${qr}
-  <text x="${width / 2}" y="${height - 72}" fill="#38bdf8" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="${Math.max(20, width * 0.026)}" font-weight="800">emberandtide.app</text>
+  <text x="${width / 2}" y="${height - 72}" fill="#38bdf8" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="${Math.max(20, width * 0.026)}" font-weight="800">code3tcg.app</text>
 </svg>`;
 }
 
@@ -207,25 +207,25 @@ async function main() {
   const promoSvg = promoHeroSvg();
 
   writeTextAsset(path.join(publicDir, "favicon.svg"), faviconSvg);
-  writeTextAsset(path.join(brandDir, "ember-tide-mark.svg"), markSvg);
-  writeTextAsset(path.join(brandDir, "ember-tide-icon-source.svg"), iconSvg);
-  writeTextAsset(path.join(brandDir, "ember-tide-icon-maskable-source.svg"), maskableSvg);
-  writeTextAsset(path.join(brandDir, "ember-tide-promo-hero.svg"), promoSvg);
+  writeTextAsset(path.join(brandDir, "code3tcg-mark.svg"), markSvg);
+  writeTextAsset(path.join(brandDir, "code3tcg-icon-source.svg"), iconSvg);
+  writeTextAsset(path.join(brandDir, "code3tcg-icon-maskable-source.svg"), maskableSvg);
+  writeTextAsset(path.join(brandDir, "code3tcg-promo-hero.svg"), promoSvg);
   writeTextAsset(path.join(brandDir, "social-square.svg"), slotSvg("social", 1080, 1080, "Track. Trade. Thrive.", "Built for collectors. Powered by community."));
   writeTextAsset(path.join(brandDir, "story-reel.svg"), slotSvg("story", 1080, 1920, "Track. Trade. Thrive.", "Scout restocks. Track inventory. Grow together."));
   writeTextAsset(path.join(brandDir, "flyer-template.svg"), slotSvg("flyer", 850, 1100, "Bring Pokemon Collecting Back to Kids", "Vault / Forge / Scout / Kids Program"));
   writeTextAsset(path.join(brandDir, "link-bio-header.svg"), slotSvg("links", 1200, 640, "Track. Trade. Thrive.", "Try the beta. Join Kids Program. Partner with us."));
-  writeTextAsset(path.join(brandDir, "pwa-install-promo.svg"), slotSvg("pwa", 1200, 630, "Install Ember & Tide", "A collector operating system for mobile."));
+  writeTextAsset(path.join(brandDir, "pwa-install-promo.svg"), slotSvg("pwa", 1200, 630, "Install Code 3 TCG", "A collector operating system for mobile."));
   writeTextAsset(path.join(brandDir, "brand-assets.json"), JSON.stringify({
     appIcon: {
-      source: "/assets/brand/ember-tide-icon-source.svg",
-      mark: "/assets/brand/ember-tide-mark.svg",
-      rule: "Use the neon booster-pack/card-stack icon with the Ember & Tide flame-wave mark and TCG lettering.",
+      source: "/assets/brand/code3tcg-icon-source.svg",
+      mark: "/assets/brand/code3tcg-mark.svg",
+      rule: "Use the neon booster-pack/card-stack icon with the Code 3 TCG flame-wave mark and TCG lettering.",
     },
     promoHero: {
-      source: "/assets/brand/ember-tide-promo-hero.svg",
-      png: "/assets/brand/ember-tide-promo-hero.png",
-      alt: "Ember & Tide app preview showing Scout, Vault, Forge, and AI Assistant dashboard.",
+      source: "/assets/brand/code3tcg-promo-hero.svg",
+      png: "/assets/brand/code3tcg-promo-hero.png",
+      alt: "Code 3 TCG app preview showing Scout, Vault, Forge, and AI Assistant dashboard.",
       note: "Replace with the final compressed promo mockup when the production artwork file is available.",
     },
     slots: {
@@ -254,13 +254,13 @@ async function main() {
   await renderSvgToPng(browser, iconSvg, path.join(publicDir, "icon-512.png"), 512);
   await renderSvgToPng(browser, maskableSvg, path.join(publicDir, "icon-maskable-192.png"), 192);
   await renderSvgToPng(browser, maskableSvg, path.join(publicDir, "icon-maskable-512.png"), 512);
-  await renderSvgToPng(browser, promoSvg, path.join(brandDir, "ember-tide-promo-hero.png"), 1200, 800);
+  await renderSvgToPng(browser, promoSvg, path.join(brandDir, "code3tcg-promo-hero.png"), 1200, 800);
   await renderSvgToPng(browser, slotSvg("links", 1200, 640, "Track. Trade. Thrive.", "Try the beta. Join Kids Program. Partner with us."), path.join(brandDir, "link-bio-header.png"), 900, 480);
-  await renderSvgToPng(browser, slotSvg("pwa", 1200, 630, "Install Ember & Tide", "A collector operating system for mobile."), path.join(brandDir, "pwa-install-promo.png"), 900, 473);
+  await renderSvgToPng(browser, slotSvg("pwa", 1200, 630, "Install Code 3 TCG", "A collector operating system for mobile."), path.join(brandDir, "pwa-install-promo.png"), 900, 473);
   await browser.close();
 
   writeIcoFromPng(path.join(publicDir, "favicon-32x32.png"), path.join(publicDir, "favicon.ico"));
-  console.log("Generated Ember & Tide brand assets.");
+  console.log("Generated Code 3 TCG brand assets.");
 }
 
 main().catch((error) => {

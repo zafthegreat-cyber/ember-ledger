@@ -73,7 +73,7 @@ export default function MembershipContent({ scope }) {
       },
       {
         title: "Family and community",
-        detail: "Tidepool read/report, The Spark view, Ember Assist prompts, and safety basics stay included.",
+        detail: "Tidepool read/report, The Spark view, Business Assistant prompts, and safety basics stay included.",
         meta: "Safe",
         icon: "spark",
         tone: "gold",

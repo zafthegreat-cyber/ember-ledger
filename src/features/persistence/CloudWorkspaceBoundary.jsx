@@ -13,6 +13,8 @@ import { confirmAccountOperation, consumeAccountConfirmation } from "../../servi
 import WorkspaceRecoverySignIn from "./WorkspaceRecoverySignIn.jsx";
 import WorkspaceSupportDetails from "./WorkspaceSupportDetails.jsx";
 import WorkspaceSyncNotice from "./WorkspaceSyncNotice.jsx";
+import PublicPrivacyRoute from "../privacy/PublicPrivacyRoute.jsx";
+import { publicPrivacyRoute } from "../../config/privacyPolicy.js";
 import "../../styles/theme.css";
 import "./cloud-workspace.css";
 
@@ -67,7 +69,13 @@ function WorkspaceScreen({ title, children }) {
 }
 
 /** No record writers mount until account attribution and interrupted writes are settled. */
-export default function CloudWorkspaceBoundary({ children, client = supabase, configured = isSupabaseConfigured, development = localDevelopment() }) {
+export default function CloudWorkspaceBoundary(props) {
+  const route = publicPrivacyRoute(globalThis.location?.pathname);
+  if (route) return <PublicPrivacyRoute route={route} client={props.client === undefined ? supabase : props.client} />;
+  return <ProtectedCloudWorkspaceBoundary {...props} />;
+}
+
+function ProtectedCloudWorkspaceBoundary({ children, client = supabase, configured = isSupabaseConfigured, development = localDevelopment() }) {
   const [screen, setScreen] = useState({ phase: development || !configured ? "passthrough" : "checking", user: null, message: "" });
   const [syncState, setSyncState] = useState({ status: "IDLE", message: "Cloud saving is preparing." });
   const [enabled, setEnabled] = useState(true);

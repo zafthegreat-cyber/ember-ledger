@@ -12,6 +12,10 @@ type CorsOptions = {
 function canonicalOrigin(value: unknown): string | null {
   const origin = String(value || "").trim();
   if (!origin || origin === "*" || origin === "null" || origin.endsWith("/")) return null;
+  // This single bundled iOS origin is still required to be explicitly enabled
+  // below. Custom schemes have URL.origin === "null", so never normalize them
+  // generically or accept any arbitrary capacitor:// host.
+  if (origin === "capacitor://localhost") return origin;
   try {
     const parsed = new URL(origin);
     const isLoopbackHttp = parsed.protocol === "http:"
@@ -43,16 +47,23 @@ function addVaryOrigin(response: Response): void {
 }
 
 export function allowedOriginsForRuntime(env: RuntimeEnvironment, runtimeKind = detectRuntimeKind(env)): Set<string> {
+  const addNative = (allowed: Set<string>) => {
+    if (env.CODE3_NATIVE_CLIENT_ENABLED === "true") {
+      allowed.add("capacitor://localhost");
+      allowed.add("https://localhost");
+    }
+    return allowed;
+  };
   if (runtimeKind === "preview") {
-    return exactOrigins(env.CODE3_CORS_PREVIEW_ORIGINS);
+    return addNative(exactOrigins(env.CODE3_CORS_PREVIEW_ORIGINS));
   }
   if (runtimeKind === "local-development" || runtimeKind === "automated-test") {
     const allowed = exactOrigins(env.CODE3_CORS_LOCAL_ORIGINS);
     exactOrigins(env.CODE3_CORS_ALLOWED_ORIGINS).forEach((origin) => allowed.add(origin));
-    return allowed;
+    return addNative(allowed);
   }
   if (runtimeKind === "production") {
-    return exactOrigins(env.CODE3_CORS_ALLOWED_ORIGINS);
+    return addNative(exactOrigins(env.CODE3_CORS_ALLOWED_ORIGINS));
   }
   return new Set<string>();
 }

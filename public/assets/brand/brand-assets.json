@@ -1,15 +1,15 @@
 {
   "appIcon": {
-    "source": "/assets/brand/ember-tide-app-icon.svg",
-    "mark": "/assets/brand/ember-tide-monogram.svg",
-    "wordmark": "/assets/brand/ember-tide-logo-horizontal.svg",
-    "legacyMark": "/assets/brand/ember-tide-flame-wave.svg",
-    "rule": "Use the ember and tide monogram for app chrome, favicon, loading states, and compact brand placements. Avoid TCG sticker, shopping, or social-feed styling."
+    "source": "/assets/brand/code3tcg-app-icon.svg",
+    "mark": "/assets/brand/code3tcg-monogram.svg",
+    "wordmark": "/assets/brand/code3tcg-logo-horizontal.svg",
+    "legacyMark": "/assets/brand/code3tcg-flame-wave.svg",
+    "rule": "Use the Code 3 TCG mark for app chrome, favicon, loading states, and compact brand placements. Avoid TCG sticker, shopping, or social-feed styling."
   },
   "promoHero": {
-    "source": "/assets/brand/ember-tide-promo-hero.svg",
-    "png": "/assets/brand/ember-tide-promo-hero.png",
-    "alt": "Ember & Tide app preview showing Scout, Vault, Forge, and AI Assistant dashboard.",
+    "source": "/assets/brand/code3tcg-promo-hero.svg",
+    "png": "/assets/brand/code3tcg-promo-hero.png",
+    "alt": "Code 3 TCG app preview showing Scout, Vault, Forge, and AI Assistant dashboard.",
     "note": "Replace with the final compressed promo mockup when the production artwork file is available."
   },
   "slots": {

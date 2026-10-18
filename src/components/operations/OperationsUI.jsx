@@ -1,3 +1,4 @@
+import { PrivateStorageImage } from "../PrivateReceipt.jsx";
 import { useEffect, useId, useRef } from "react";
 import { BRAND_CONFIG } from "../../config/brand.js";
 import { AppNavIcon } from "../command-system/AppNavIcon.jsx";
@@ -181,7 +182,7 @@ export function SortControl({ label = "Sort", value, onChange, options = [] }) {
 }
 
 export function RecordCard({ children, className = "", ...props }) { return <article className={cx("ops-card", "ops-record-card", className)} {...props}>{children}</article>; }
-export function ProductCard({ children, image = "", imageAlt = "", className = "", ...props }) { return <article className={cx("ops-card", "ops-product-card", className)} {...props}>{image ? <img src={image} alt={imageAlt} /> : <div className="ops-product-placeholder" aria-hidden="true"><AppNavIcon kind="inventory" /></div>}{children}</article>; }
+export function ProductCard({ children, image = "", imageAlt = "", className = "", ...props }) { return <article className={cx("ops-card", "ops-product-card", className)} {...props}>{image ? <PrivateStorageImage src={image} alt={imageAlt} /> : <div className="ops-product-placeholder" aria-hidden="true"><AppNavIcon kind="inventory" /></div>}{children}</article>; }
 export function DealCard({ className = "", ...props }) { return <ProductCard className={cx("ops-deal-card", className)} {...props} />; }
 
 export function MetricCard({ label, value, helper = "", tone = "neutral" }) {

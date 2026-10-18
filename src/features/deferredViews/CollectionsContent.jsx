@@ -170,14 +170,14 @@ export default function CollectionsContent({ scope }) {
                   >
                     <strong>{mode.label}</strong>
                     <span>{mode.description}</span>
-                    {disabled ? <small>Ember &amp; Tide workspace access is not available yet.</small> : null}
+                    {disabled ? <small>Code 3 TCG workspace access is not available yet.</small> : null}
                   </button>
                 );
               })}
             </div>
             <div className="menu-toggle-list">
               <label className="toggle-row forge-mode-toggle">
-                <span><strong>Use Ember &amp; Tide branding</strong><small>Use Ember &amp; Tide naming in Forge where you have access.</small></span>
+                <span><strong>Use Code 3 TCG branding</strong><small>Use Code 3 TCG naming in Forge where you have access.</small></span>
                 <input type="checkbox" checked={workspaceIdentityForm.useEmberTideBranding} disabled={!canEditActiveWorkspace || !emberTideForgeWorkspace} onChange={(event) => updateWorkspaceIdentityForm({ useEmberTideBranding: event.target.checked, forgeIdentityMode: event.target.checked ? "ember_tide" : "business", defaultForgeMode: event.target.checked ? "ember_tide" : "business" })} />
               </label>
               <label className="toggle-row forge-mode-toggle">

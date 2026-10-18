@@ -9,6 +9,7 @@ function normalizeVersion(value) {
 }
 
 export async function checkForEmberTideUpdate() {
+  if (isNativePlatform()) return { available: false, currentVersion: APP_VERSION, distribution: "store" };
   const response = await fetch(`${APP_VERSION_URL}?t=${Date.now()}`, {
     cache: "no-store",
     headers: { "Cache-Control": "no-cache" },
@@ -37,6 +38,7 @@ export async function clearEmberTideAppCaches() {
 }
 
 export async function refreshEmberTideApp() {
+  if (isNativePlatform()) { window.location.reload(); return; }
   try {
     sessionStorage.setItem("ember-tide-safe-refresh", "true");
   } catch {
@@ -59,3 +61,4 @@ export async function refreshEmberTideApp() {
     window.location.reload();
   }, 250);
 }
+import { isNativePlatform } from "./native/nativeRuntime.js";

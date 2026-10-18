@@ -35,7 +35,7 @@ The existing Market search, result, and product-detail behavior remains intact.
 
 - Product detail now includes explicit no-checkout language.
 - Loading state says "Checking fair value" and repeats that Market is not an auto-buy dashboard.
-- Error state offers Try Search Again, Vault review fallback, and Ember Assist fallback without promising live data.
+- Error state offers Try Search Again, Vault review fallback, and Business Assistant fallback without promising live data.
 - Existing source/freshness labels remain honest.
 
 ## Responsive QA Results

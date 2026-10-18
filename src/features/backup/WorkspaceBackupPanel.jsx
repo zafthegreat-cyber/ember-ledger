@@ -1,18 +1,23 @@
 import { useEffect, useRef, useState } from "react";
 import { createVerifiedBackup } from "./backupFormat.js";
+import { exportFile, exportFileStatus, exportFileError } from "../../native/nativeFiles.js";
+import { useCloudWorkspace } from "../persistence/CloudWorkspaceContext.js";
 
 export default function WorkspaceBackupPanel({ onRecover, configuredSourceIds = ["supabase-owner-data"], onExportCloud = null, externalBusy = false }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [coverage, setCoverage] = useState(null);
   const pending = useRef(false);
+  const exportRequest = useRef(null);
+  const ownerId = useCloudWorkspace()?.user?.id;
   const lifetime = useRef(0);
-  useEffect(() => () => { lifetime.current++; }, []);
+  useEffect(() => () => { lifetime.current++; exportRequest.current?.abort(); }, [ownerId]);
 
   async function exportBackup() {
     if (pending.current || externalBusy) return;
     pending.current = true;
     const request = ++lifetime.current;
+    const controller = new AbortController(); exportRequest.current = controller;
     setBusy(true); setMessage("");
     try {
       const result = await createVerifiedBackup({ localStorage: globalThis.localStorage, sessionStorage: globalThis.sessionStorage, configuredSourceIds,
@@ -20,13 +25,14 @@ export default function WorkspaceBackupPanel({ onRecover, configuredSourceIds = 
       });
       if (request !== lifetime.current) return;
       if (!result.verified) throw new Error("Some records could not be exported safely. No backup was marked complete and your saved records were not changed.");
-      const url = URL.createObjectURL(new Blob([result.json], { type: "application/json;charset=utf-8" }));
-      const anchor = document.createElement("a"); anchor.href = url; anchor.download = result.fileName; anchor.click();
-      setTimeout(() => URL.revokeObjectURL(url), 0);
+      let saved;
+      try { saved = await exportFile({ blob: new Blob([result.json], { type: "application/json;charset=utf-8" }), filename: result.fileName, signal: controller.signal }); }
+      catch (error) { throw new Error(exportFileError(error)); }
+      if (request !== lifetime.current) return;
       setCoverage({ recordCount: result.backup.coverageSummary.recordCount, excludedSources: result.backup.manifest.excludedSources.filter((source) => source.affectsCoverage), fileReferences: result.backup.coverageSummary.fileReferences });
-      setMessage(result.coverageStatus === "COMPLETE" ? "Device record backup verified and downloaded." : "Device record backup verified and downloaded. Review the exclusions below and keep any separate cloud or file backups with it.");
+      setMessage(`${exportFileStatus(saved)} ${result.coverageStatus === "COMPLETE" ? "Device record backup verified." : "Device record backup verified. Review the exclusions below and keep any separate cloud or file backups with it."}`);
     } catch (error) { if (request === lifetime.current) setMessage(error?.message || "Backup could not be downloaded. Your records were not changed."); }
-    finally { pending.current = false; if (request === lifetime.current) setBusy(false); }
+    finally { pending.current = false; if (exportRequest.current === controller) exportRequest.current = null; if (request === lifetime.current) setBusy(false); }
   }
 
   return <section className="backup-result" aria-labelledby="workspace-backup-title">

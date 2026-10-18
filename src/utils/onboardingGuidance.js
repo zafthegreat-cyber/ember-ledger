@@ -2,12 +2,12 @@ export const ONBOARDING_PERSISTENCE_NOTE =
   "Progress is saved only in this browser during beta. Cloud sync needs backend support later.";
 
 export const ONBOARDING_WELCOME_COPY =
-  "Welcome to Ember & Tide. Start with one card, sealed product, or collector note, then explore fair Scout, Market, Forge, Spark, and Tidepool tools at your own pace.";
+  "Welcome to Code 3 TCG. Start with one card, sealed product, or collector note, then explore fair Scout, Market, Forge, Spark, and Tidepool tools at your own pace.";
 
 export const FIRST_TIME_ONBOARDING_CARDS = [
   {
     key: "welcome",
-    title: "Welcome to Ember & Tide",
+    title: "Welcome to Code 3 TCG",
     body: "A warm collector home for tracking items, researching prices, planning trades, checking Scout reports, and supporting family-friendly collecting.",
   },
   {
@@ -39,9 +39,9 @@ export const FIRST_TIME_ONBOARDING_CARDS = [
 
 export const ACCOUNT_SETUP_USERNAME_RULES = [
   "Public usernames may appear on Marketplace, Tidepool, Scout reports, and community confirmations.",
-  "They must be unique in Ember & Tide so reports and community activity can be attributed clearly.",
+  "They must be unique in Code 3 TCG so reports and community activity can be attributed clearly.",
   "Use letters, numbers, and underscores so other collectors can recognize you safely.",
-  "Ember & Tide, staff, support, moderator, and official admin names are reserved.",
+  "Code 3 TCG, staff, support, moderator, and official admin names are reserved.",
 ];
 
 export const ACCOUNT_SETUP_TIER_ROWS = [
@@ -85,7 +85,7 @@ export const ACCOUNT_SETUP_TIER_ROWS = [
     key: "admin",
     label: "Admin",
     status: "Internal only",
-    description: "Protected Ember & Tide operations. Admin access is never granted through normal signup.",
+    description: "Protected Code 3 TCG operations. Admin access is never granted through normal signup.",
   },
 ];
 
@@ -204,7 +204,7 @@ export function accountSetupTierLabel(value = "") {
 
 export function betaAccessWaitlistMessage(state = "") {
   const label = accessStateLabel(state);
-  return `Ember & Tide is starting in Virginia. We will add ${label} to the waitlist and use waitlist demand to decide which states to add next.`;
+  return `Code 3 TCG is starting in Virginia. We will add ${label} to the waitlist and use waitlist demand to decide which states to add next.`;
 }
 
 export function formatBetaAccessAreaAnswer({ state = "", localAreaAnswer = "", tierInterest = "" } = {}) {
@@ -301,7 +301,7 @@ export const ONBOARDING_CHECKLIST_ITEMS = [
   {
     key: "workspace",
     title: "Choose workspace/Forge identity",
-    description: "Decide whether Forge is personal, business, or Ember & Tide branded.",
+    description: "Decide whether Forge is personal, business, or Code 3 TCG branded.",
     actionLabel: "Open Settings",
     actionTarget: "settings",
   },
@@ -364,7 +364,7 @@ export const ONBOARDING_CHECKLIST_ITEMS = [
   {
     key: "alerts",
     title: "Review in-app alerts",
-    description: "Choose which confirmed restocks, possible windows, shop updates, and admin statuses appear inside Ember & Tide. Local beta does not send push notifications.",
+    description: "Choose which confirmed restocks, possible windows, shop updates, and admin statuses appear inside Code 3 TCG. Local beta does not send push notifications.",
     actionLabel: "Alert Settings",
     actionTarget: "alerts",
   },
@@ -411,7 +411,7 @@ export const CONTEXTUAL_HELP_CARDS = {
   },
   shop_badges: {
     title: "Family-Friendly Card Shop badges",
-    body: "Badges mean a shop supports the Ember & Tide mission. They do not guarantee inventory, price, or availability.",
+    body: "Badges mean a shop supports the Code 3 TCG mission. They do not guarantee inventory, price, or availability.",
     prompt: "How do family-friendly shop badges work?",
   },
   alerts: {
@@ -569,7 +569,7 @@ export const EMPTY_STATE_GUIDANCE = {
     body: "Profile, notifications, privacy, and beta preferences live here. Settings that are local-only stay labeled honestly.",
     actionLabel: "Open Profile",
     actionTarget: "profile",
-    assistPrompt: "Help me set up Ember & Tide",
+    assistPrompt: "Help me set up Code 3 TCG",
   },
 };
 

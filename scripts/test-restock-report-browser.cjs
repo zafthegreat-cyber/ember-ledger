@@ -9,12 +9,13 @@ const output = path.resolve(process.env.QA_OUTPUT_DIR || "artifacts/qa/restock-r
 fs.mkdirSync(output, { recursive: true });
 const widths = (process.env.QA_RESTOCK_WIDTHS || "320,390,1440").split(",").map(Number);
 const cases = widths.flatMap(width => ["light", "dark"].filter(theme => !process.env.QA_RESTOCK_THEME || theme === process.env.QA_RESTOCK_THEME).map(theme => ({ width, height: width === 320 ? 568 : width === 390 ? 844 : 900, theme })));
+const fixtureCatalogName = "Fixture Aurora Booster Bundle";
 
 async function snapshot(page) {
   return page.evaluate(() => {
     const scout = JSON.parse(localStorage.getItem("et-tcg-beta-scout"));
     const data = JSON.parse(localStorage.getItem("et-tcg-beta-data"));
-    return { stores: scout.stores, reports: scout.reports, items: scout.items, collection: data.items, sales: data.sales, expenses: data.expenses };
+    return { stores: scout.stores, reports: scout.reports, items: scout.items, collection: data.items, sales: data.sales, expenses: data.expenses, catalog: data.catalogProducts };
   });
 }
 
@@ -53,7 +54,10 @@ async function checkPresentation(page, modal, name, result) {
   const after = await modal.locator(".modal-close-button").boundingBox();
   assert.equal(before.y, after.y, "Close stays fixed while the body scrolls");
   await body.evaluate(element => { element.scrollTop = 0; });
+  if (name === "catalog-matches") await modal.locator(".scout-report-catalog-matches").scrollIntoViewIfNeeded();
+  if (name === "catalog-selected") await modal.locator(".scout-report-catalog-selection").scrollIntoViewIfNeeded();
   await page.screenshot({ path: path.join(output, `${result.width}-${result.theme}-${name}.png`) });
+  await body.evaluate(element => { element.scrollTop = 0; });
   result.presentation[name] = metrics;
 }
 
@@ -65,18 +69,26 @@ async function checkPresentation(page, modal, name, result) {
       const { width, height, theme } = testCase;
       const context = await browser.newContext({ viewport: { width, height }, reducedMotion: "reduce", serviceWorkers: "block" });
       const blockedWrites = [];
+      const blockedExternal = [];
+      const catalogLookupRequests = [];
+      let checkingCatalog = false;
       await context.route("**/*", route => {
         const request = route.request(); const url = new URL(request.url());
         if (!["GET", "HEAD"].includes(request.method())) { blockedWrites.push(`${request.method()} ${url.pathname}`); return route.abort(); }
-        if (url.origin !== base.origin) return route.abort();
+        if (checkingCatalog && (url.pathname.startsWith("/api/") || url.pathname.startsWith("/rest/v1/"))) catalogLookupRequests.push(`${request.method()} ${url.pathname}`);
+        if (url.origin !== base.origin) { blockedExternal.push(url.origin); return route.abort(); }
+        if (url.pathname === "/__qa-broken-catalog.png") return route.fulfill({ status: 404, body: "Synthetic unavailable reference image" });
         if (url.pathname.startsWith("/api/")) return route.fulfill({ contentType: "application/json", body: '{"configured":false}' });
         return route.continue();
       });
-      await context.addInitScript(({ theme }) => {
+      await context.addInitScript(({ theme, fixtureCatalogName }) => {
         if (localStorage.getItem("__qa_restock_seeded")) return;
         localStorage.setItem("__qa_restock_seeded", "true");
         localStorage.setItem("et-tcg-app-theme", theme);
-        localStorage.setItem("et-tcg-beta-data", JSON.stringify({ items: [{ id: "retained-card", name: "Retained collection card", quantity: 3 }], sales: [], expenses: [] }));
+        localStorage.setItem("et-tcg-beta-data", JSON.stringify({ items: [{ id: "retained-card", name: "Retained collection card", quantity: 3 }], sales: [], expenses: [], catalogProducts: [
+          { id: "restock-fixture-catalog", name: fixtureCatalogName, productName: fixtureCatalogName, productType: "Booster Bundle", productKind: "sealed", setName: "Fixture Aurora", imageUrl: "/assets/brand/code3tcg-app-icon.svg", sourceType: "manual", marketValue: 37.25 },
+          { id: "restock-fixture-catalog-other", name: "Fixture Aurora Collector Tin", productName: "Fixture Aurora Collector Tin", productType: "Tin", productKind: "sealed", setName: "Fixture Aurora", imageUrl: "/__qa-broken-catalog.png", sourceType: "manual", marketValue: 14.5 },
+        ] }));
         localStorage.setItem("et-tcg-beta-scout", JSON.stringify({
           stores: [
             { id: "restock-fixture-north", name: "North Collectibles", nickname: "North Collectibles", retailer: "Target", chain: "Target", city: "Norfolk", state: "VA", address: "1 Fixture North Way", zip: "23510" },
@@ -85,12 +97,12 @@ async function checkPresentation(page, modal, name, result) {
           reports: [{ id: "retained-observation", storeId: "restock-fixture-south", storeName: "South Collectibles", productName: "Retained pack observation", note: "Keep this existing report", reportedAt: "2026-09-14T13:00:00.000Z", stockStatus: "in_stock" }],
           items: [{ id: "retained-sighting", storeId: "restock-fixture-south", name: "Retained tracked pack" }], dropRadarSeedDisabled: true,
         }));
-      }, { theme });
+      }, { theme, fixtureCatalogName });
       const page = await context.newPage(); const errors = [];
       page.setDefaultTimeout(10000);
       page.on("pageerror", error => errors.push(error.message));
       page.on("dialog", dialog => dialog.accept());
-      const result = { ...testCase, presentation: {}, blockedWrites };
+      const result = { ...testCase, presentation: {}, blockedWrites, blockedExternal, catalogLookupRequests };
       try {
         await page.goto(new URL(`/?betaLocalMode=true&themeInspect=${theme}`, base).href);
         const homeReport = page.locator(".home-restock-hero").getByRole("button", { name: "Report a restock", exact: true });
@@ -155,8 +167,58 @@ async function checkPresentation(page, modal, name, result) {
         await modal.getByRole("button", { name: /^Behind counter/ }).click();
         await expect(modal.getByRole("button", { name: /^Behind counter/ })).toHaveAttribute("aria-pressed", "true");
         await modal.getByRole("button", { name: /^Low stock/ }).click();
-        await modal.getByRole("group", { name: /report item category/i }).getByRole("button").first().click();
-        await modal.getByLabel("Product name (optional)", { exact: true }).fill("Fixture booster bundle");
+        const categories = modal.getByRole("group", { name: /report item category/i }).getByRole("button");
+        await categories.first().click();
+        const productInput = modal.getByLabel("Product name (optional)", { exact: true });
+        checkingCatalog = true;
+        await productInput.fill("Fixture Aurora");
+        const matches = modal.getByRole("group", { name: "Catalog matches", exact: true });
+        await expect(matches.getByRole("button", { name: `Use ${fixtureCatalogName}`, exact: true })).toBeVisible();
+        const unavailableReference = matches.getByRole("button", { name: "Use Fixture Aurora Collector Tin", exact: true });
+        await expect(unavailableReference.locator(".scout-report-catalog-placeholder")).toBeVisible();
+        await expect(unavailableReference.locator("img")).toBeHidden();
+        assert.ok(await matches.getByRole("button").count() <= 3, "Catalog suggestions stay compact");
+        await checkPresentation(page, modal, "catalog-matches", result);
+        await matches.getByRole("button", { name: "Use Fixture Aurora Collector Tin", exact: true }).click();
+        const selection = modal.getByRole("article", { name: "Selected catalog product", exact: true });
+        await expect(selection).toContainText("Fixture Aurora Collector Tin");
+        await expect(selection.locator(".scout-report-catalog-placeholder")).toBeVisible();
+        await expect(selection.locator("img")).toBeHidden();
+        await expect(selection.locator("img")).toHaveAttribute("src", "/__qa-broken-catalog.png");
+        await selection.getByRole("button", { name: "Clear match", exact: true }).click();
+        await expect(selection).toHaveCount(0);
+        await expect(productInput).toHaveValue("Fixture Aurora Collector Tin");
+        await productInput.fill("Fixture Aurora");
+        await matches.getByRole("button", { name: `Use ${fixtureCatalogName}`, exact: true }).click();
+        await expect(selection).toContainText("Catalog reference image");
+        await expect(selection.locator("img")).toHaveAttribute("src", "/assets/brand/code3tcg-app-icon.svg");
+        await expect(selection.locator("img")).toBeVisible();
+        await checkPresentation(page, modal, "catalog-selected", result);
+        await modal.getByRole("button", { name: "Review report", exact: true }).filter({ visible: true }).click();
+        await expect(modal.locator(".scout-report-review-grid").first()).toContainText(fixtureCatalogName);
+        await modal.getByRole("button", { name: "Back", exact: true }).filter({ visible: true }).click();
+        await expect(selection).toContainText(fixtureCatalogName);
+        const changedCategory = await categories.nth(1).innerText();
+        await categories.nth(1).click();
+        await expect(selection).toHaveCount(0);
+        await productInput.fill("");
+        await modal.getByRole("button", { name: "Review report", exact: true }).filter({ visible: true }).click();
+        await expect(modal.getByRole("heading", { name: "Ready to share this report?", exact: true })).toBeVisible();
+        await expect(modal.locator(".scout-report-review-grid").first()).toContainText(changedCategory);
+        await modal.getByRole("button", { name: "Back", exact: true }).filter({ visible: true }).click();
+        await productInput.fill("Fixture Aurora");
+        await matches.getByRole("button", { name: `Use ${fixtureCatalogName}`, exact: true }).click();
+        await productInput.fill("Fixture booster bundle");
+        await expect(selection).toHaveCount(0);
+        const savedProductName = theme === "light" ? fixtureCatalogName : "Fixture booster bundle";
+        if (theme === "light") {
+          await productInput.fill("Fixture Aurora");
+          await matches.getByRole("button", { name: `Use ${fixtureCatalogName}`, exact: true }).click();
+        }
+        checkingCatalog = false;
+        assert.deepEqual(catalogLookupRequests, [], "Product matching uses the loaded catalog without API/provider lookups");
+        assert.deepEqual(await snapshot(page), original, "Matching, category-only review, edits and Back do not write saved records");
+        result.catalogSelectionAndFallback = true;
         await modal.getByLabel("Useful details (optional)", { exact: true }).fill("Three bundles near customer service.");
         await checkPresentation(page, modal, "details", result);
         if (width === 320 && theme === "dark") {
@@ -175,7 +237,7 @@ async function checkPresentation(page, modal, name, result) {
         await checkPresentation(page, modal, "review", result);
         assert.deepEqual(await snapshot(page), original, "Reviewing a report cannot write any records");
         await modal.getByRole("button", { name: "Back", exact: true }).filter({ visible: true }).click();
-        await expect(modal.getByLabel("Product name (optional)", { exact: true })).toHaveValue("Fixture booster bundle");
+        await expect(modal.getByLabel("Product name (optional)", { exact: true })).toHaveValue(savedProductName);
         await expect(modal.getByRole("button", { name: /^Low stock/ })).toHaveAttribute("aria-pressed", "true");
         await modal.getByRole("button", { name: "Review report", exact: true }).filter({ visible: true }).click();
         const save = modal.getByRole("button", { name: "Save Report", exact: true }).filter({ visible: true });
@@ -185,17 +247,28 @@ async function checkPresentation(page, modal, name, result) {
         await save.evaluate(button => { button.click(); button.click(); });
         await expect(modal.locator(".scout-quick-report-success")).toBeVisible();
         await expect(modal.locator(".scout-quick-report-success")).toContainText("Saved locally");
+        await expect(modal.locator(".scout-quick-report-success")).toContainText("It has not been posted to the community");
+        await expect(modal.getByRole("button", { name: "Add details", exact: true })).toHaveCount(1);
+        await expect(modal.getByRole("button", { name: "Done", exact: true })).toHaveCount(1);
+        await expect(modal.locator(".scout-post-submit-actions")).toHaveCount(0);
         const saved = await snapshot(page);
         assert.equal(saved.reports.length, original.reports.length + 1, "Repeated save adds only one report");
-        assert.equal(saved.reports.filter(report => report.productName === "Fixture booster bundle").length, 1);
+        assert.equal(saved.reports.filter(report => report.productName === savedProductName).length, 1);
+        const newReport = saved.reports.find(report => report.productName === savedProductName);
+        assert.equal(newReport.catalogProductId, theme === "light" ? "restock-fixture-catalog" : "", "A manual name cannot retain a stale catalog ID");
+        assert.equal(newReport.productImageUrl, theme === "light" ? "/assets/brand/code3tcg-app-icon.svg" : "", "A manual name cannot retain another product's reference image");
+        assert.equal(newReport.photoUrl || "", "", "Catalog artwork is not report proof");
+        assert.deepEqual(newReport.photoUrls, [], "Reference images are not saved as report photos");
+        assert.equal(newReport.proofType, "manual", "Selecting artwork does not change the report's source");
+        assert.equal(newReport.price, "", "Catalog matching does not import a price into the report");
         assert.deepEqual(saved.reports.find(report => report.id === "retained-observation"), original.reports.find(report => report.id === "retained-observation"));
-        for (const key of ["stores", "items", "collection", "sales", "expenses"]) assert.deepEqual(saved[key], original[key], `${key} are preserved`);
+        for (const key of ["stores", "items", "collection", "sales", "expenses", "catalog"]) assert.deepEqual(saved[key], original[key], `${key} are preserved`);
         await checkPresentation(page, modal, "saved", result);
-        await modal.locator(".flow-modal-footer--scout-inline").getByRole("button", { name: "Close", exact: true }).click();
+        await modal.locator(".flow-modal-footer--scout-inline").getByRole("button", { name: "Done", exact: true }).click();
         await expect(modal).toHaveCount(0);
         assert.deepEqual(errors, [], "No browser runtime errors");
         result.passed = true;
-        console.log(`PASS restock ${width} ${theme}: three steps, optional proof, review, Back, guarded local save, original records preserved`);
+        console.log(`PASS restock ${width} ${theme}: local catalog matches/reference images, clear/edit/category-only fallback, Back, honest saved state, guarded save and original records/prices preserved`);
       } catch (error) {
         result.passed = false; result.error = error.message; result.errors = errors;
         fs.writeFileSync(path.join(output, `${width}-${theme}-failure.html`), await page.content());

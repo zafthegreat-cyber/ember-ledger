@@ -27,7 +27,7 @@
 | 8 | Parent Center | Complete | `854cc25` | Mock-only safety center; no child account backend changes. |
 | 9 | Tidepool | Complete | `9dae179` | Mock-only moderated community UI. |
 | 10 | The Spark / Donate / Thank You | Complete | `91a03f6` | Mock-only giving flow; no payments. |
-| 11 | Ember Assist | Complete | `e920470` | Mock/local helper UI framing; no live AI calls added. |
+| 11 | Business Assistant | Complete | `e920470` | Mock/local helper UI framing; no live AI calls added. |
 | 12 | Forge / Trade Analyzer / Listing Builder / Sales Ledger | Complete | `a84238e` | Mock-only workspace UI; no inventory writes. |
 | 13 | Shop Portal | Complete | `384243d` | Mock-only trust controls; no shop backend changes. |
 | 14 | Admin Review | Complete | `27d00ff` | Mock-only review UI; no admin mutations. |
@@ -313,7 +313,7 @@ Mock-only notes:
 - Submit mock donation only switches to the mock Thank You view.
 - No payment, checkout, donation backend, external payment link, upload service, database write, auth change, billing change, schema change, or RLS change was added.
 
-### Section 11 - Ember Assist
+### Section 11 - Business Assistant
 
 Status: Complete. Commit `e920470`.
 
@@ -342,7 +342,7 @@ Checks:
 - `npm.cmd run smoke:beta`: passed.
 - `npm.cmd run test:app-fallbacks`: passed.
 - `npm.cmd run test:menu-full-page-routes`: passed.
-- `npm.cmd run test:ember-assist`: passed.
+- `npm.cmd run test:business-assistant`: passed.
 
 Mock-only notes:
 
@@ -559,7 +559,7 @@ Checks:
 - `npm.cmd run test:market`: sandbox Chromium `spawn EPERM`; outside-sandbox rerun passed.
 - `npm.cmd run test:kids-program`: passed.
 - `npm.cmd run test:spark`: sandbox Chromium `spawn EPERM`; outside-sandbox rerun passed.
-- `npm.cmd run test:ember-assist`: passed.
+- `npm.cmd run test:business-assistant`: passed.
 - `npm.cmd run test:admin`: sandbox Chromium `spawn EPERM`; outside-sandbox rerun passed.
 - `npm.cmd run test:admin-command-center`: passed.
 - `npm.cmd run test:tidepool-community`: passed.

@@ -16,7 +16,7 @@ Nothing is auto-saved before review.
 
 ### Spreadsheet / CSV
 
-Export or save the sheet as CSV. Upload it in Ember & Tide. The app parses headers, suggests column mappings, previews rows, and matches items to the catalog before anything is added.
+Export or save the sheet as CSV. Upload it in Code 3 TCG. The app parses headers, suggests column mappings, previews rows, and matches items to the catalog before anything is added.
 
 Recommended columns:
 
@@ -38,11 +38,11 @@ Recommended columns:
 
 ### Collectr Or Other Collection App
 
-Export the collection if the app supports CSV. Upload the file and review the mapped fields. Ember & Tide tries to match names, sets, quantities, and values where possible.
+Export the collection if the app supports CSV. Upload the file and review the mapped fields. Code 3 TCG tries to match names, sets, quantities, and values where possible.
 
 ### TCGplayer / PriceCharting
 
-Export collection or inventory CSV if available. Ember & Tide tries to match card names, set names, card numbers, quantities, conditions, and values.
+Export collection or inventory CSV if available. Code 3 TCG tries to match card names, set names, card numbers, quantities, conditions, and values.
 
 ### eBay / Whatnot / Facebook Seller Lists
 

@@ -1,3 +1,4 @@
+import { PrivateStorageImage } from "./PrivateReceipt.jsx";
 import { useState } from "react";
 import SmartCatalogSearchBox from "./SmartCatalogSearchBox";
 import { isSupabaseConfigured, supabase } from "../supabaseClient";
@@ -53,7 +54,7 @@ export default function SmartAddCatalog({ onUseProduct, localCatalogProducts = [
           <div className="inventory-card compact-card forge-selected-product-card">
             <div className="catalog-thumb">
               {selectedProduct.imageUrl ? (
-                <img
+                <PrivateStorageImage
                   src={selectedProduct.imageUrl}
                   alt=""
                   onError={(event) => {

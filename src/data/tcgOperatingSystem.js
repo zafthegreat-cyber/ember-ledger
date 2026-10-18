@@ -74,7 +74,7 @@ export const TCG_OS_MODES = [
     title: "Kid / Community",
     verb: "Give",
     summary: "Kid pack builder, donation tracking, cost-per-pack, event prep, and community pricing.",
-    benchmark: "Ember & Tide original",
+    benchmark: "Code 3 TCG original",
     accent: "Mission",
     actions: ["Kid Pack Plan", "Donation Tracker", "Community Price", "Event Prep"],
     featureKeys: ["pack_builder", "donations", "cost_per_pack", "community_price", "thank_you"],

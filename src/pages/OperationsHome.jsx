@@ -1,3 +1,4 @@
+import { PrivateStorageImage } from "../components/PrivateReceipt.jsx";
 import { useMemo } from "react";
 import { OfflineState, PageHeader, PrimaryButton, SectionHeader, SecondaryButton } from "../components/operations/OperationsUI.jsx";
 import { AppNavIcon } from "../components/command-system/AppNavIcon.jsx";
@@ -130,7 +131,7 @@ export default function OperationsHome({
     </section>
     {bestDeal && isVisible("marketWatch") ? <section className="ops-home-section">
       <SectionHeader title={presentation.isCollector ? "A saved find" : "Best Opportunity"} />
-      <article className="ops-home-best-opportunity">{recordImage(bestDeal) ? <img src={recordImage(bestDeal)} alt="" /> : <span className="ops-home-opportunity-placeholder" aria-hidden="true" />}<div><span>{bestDeal.marketplace || bestDeal.source || "Manual source"}</span><h3>{bestDeal.title}</h3><dl><div><dt>Price</dt><dd>{bestDealHasPrice ? formatCurrency(bestDealPrice) : "Not entered"}</dd></div>{sellerVisible ? <div><dt>Projected profit</dt><dd>{bestDealHasProfit ? formatCurrency(bestDealProfit) : "Needs analysis"}</dd></div> : null}</dl></div><PrimaryButton onClick={() => openFind("deals")}>Review</PrimaryButton></article>
+      <article className="ops-home-best-opportunity">{recordImage(bestDeal) ? <PrivateStorageImage src={recordImage(bestDeal)} alt="" /> : <span className="ops-home-opportunity-placeholder" aria-hidden="true" />}<div><span>{bestDeal.marketplace || bestDeal.source || "Manual source"}</span><h3>{bestDeal.title}</h3><dl><div><dt>Price</dt><dd>{bestDealHasPrice ? formatCurrency(bestDealPrice) : "Not entered"}</dd></div>{sellerVisible ? <div><dt>Projected profit</dt><dd>{bestDealHasProfit ? formatCurrency(bestDealProfit) : "Needs analysis"}</dd></div> : null}</dl></div><PrimaryButton onClick={() => openFind("deals")}>Review</PrimaryButton></article>
     </section> : null}
     {recent.length && isVisible("todayActivity") ? <section className="ops-home-section">
       <SectionHeader title="Recent Activity" />

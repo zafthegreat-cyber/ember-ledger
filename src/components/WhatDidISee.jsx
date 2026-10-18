@@ -1,3 +1,4 @@
+import { PrivateStorageImage } from "./PrivateReceipt.jsx";
 import { useEffect, useMemo, useState } from "react";
 import { CATALOG_SORT_OPTIONS } from "../utils/catalogSortUtils";
 import { searchPokemonCatalog } from "../services/pokemonCatalogSearch";
@@ -488,7 +489,7 @@ export default function WhatDidISee({
                   <input type="checkbox" checked={checked} onChange={() => toggleItem(product)} />
                   <span>{checked ? "Checked" : "Check"}</span>
                 </label>
-                {productImage(product) ? <img src={productImage(product)} alt="" /> : <div className="what-see-thumb-placeholder">Image needed</div>}
+                {productImage(product) ? <PrivateStorageImage src={productImage(product)} alt="" /> : <div className="what-see-thumb-placeholder">Image needed</div>}
                 <div className="what-see-result-copy">
                   <h3>{productTitle(product)}</h3>
                   <p>

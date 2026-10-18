@@ -1,4 +1,4 @@
-# Ember & Tide Calendar Data Sync
+# Code 3 TCG Calendar Data Sync
 
 The release/drop calendar is generated from safe public and local sources.
 

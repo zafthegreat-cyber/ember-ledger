@@ -119,7 +119,7 @@ assert.ok(cards.length > 0, "generated card catalog should not be empty");
 assert.ok(marketPrices.length > 0, "generated market price cache should not be empty");
 assert.equal(joinedPriceRows.length, marketPrices.length, "market prices should join to catalog products by productId/catalogItemId");
 assert.equal(importStatus.priceFallbackLabel, "Price data unavailable");
-assert.equal(importStatus.imageFallbackLabel, "Ember & Tide product placeholder");
+assert.equal(importStatus.imageFallbackLabel, "Code 3 TCG product placeholder");
 assert.equal(importStatus.dailyRefreshCommand, "npm.cmd run sync:market-prices");
 assert.match(importStatus.schedulingStatus, /^(manual-script-only|github-actions-daily)$/);
 assert.equal(importStatus.marketPricesJoinedByProductId, joinedPriceRows.length);

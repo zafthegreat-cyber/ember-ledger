@@ -1,4 +1,4 @@
-import { BRAND_CONFIG } from "./brand.js";
+import { BRAND_CONFIG, formatBrandText } from "./brand.js";
 
 const EXACT_VISIBLE_LABELS = new Map([
   ["Ember & Tide", BRAND_CONFIG.applicationDisplayName],
@@ -22,7 +22,6 @@ const EXACT_VISIBLE_LABELS = new Map([
 ]);
 
 const VISIBLE_PHRASE_REPLACEMENTS = [
-  [/Ember\s*(?:&|and)\s*Tide/gi, BRAND_CONFIG.applicationDisplayName],
   [/Private Business Hub/gi, BRAND_CONFIG.applicationDisplayName],
   [/Ask Ember(?: Assist)?/gi, "Business Assistant"],
   [/Ember Assist/gi, "Business Assistant"],
@@ -84,7 +83,7 @@ export function plainLanguageText(value = "") {
   const source = String(value ?? "");
   const exact = EXACT_VISIBLE_LABELS.get(source.trim());
   if (exact && source.trim() === source) return exact;
-  return VISIBLE_PHRASE_REPLACEMENTS.reduce((result, [pattern, replacement]) => result.replace(pattern, replacement), source);
+  return VISIBLE_PHRASE_REPLACEMENTS.reduce((result, [pattern, replacement]) => result.replace(pattern, replacement), formatBrandText(source));
 }
 
 const VISIBLE_ATTRIBUTES = ["aria-label", "title", "placeholder", "alt"];

@@ -104,4 +104,4 @@ The live integration uses existing semantic buttons for CTAs, static category ch
 
 ## Next Recommended Task
 
-Continue to Section 11: Ember Assist. Keep it mock-only with no live AI calls or chat persistence.
+Continue to Section 11: Business Assistant. Keep it mock-only with no live AI calls or chat persistence.

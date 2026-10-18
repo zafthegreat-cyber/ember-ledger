@@ -1,3 +1,4 @@
+import { PrivateStorageImage } from "../components/PrivateReceipt.jsx";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   getStores,
@@ -117,8 +118,8 @@ const REPORT_RETAILER_OPTIONS = [
 
 const REPORT_VISIBILITY_OPTIONS = [
   { value: "public", label: "Public", helper: "Other users may see this report or guess." },
-  { value: "private_from_map", label: "Private from public map", helper: "Private from public map means other users will not see this report publicly, but Ember & Tide admins may review it for abuse prevention, accuracy, and prediction scoring." },
-  { value: "admin_only", label: "Admin review only", helper: "Only you and Ember & Tide admins can review this report." },
+  { value: "private_from_map", label: "Private from public map", helper: "Private from public map means other users will not see this report publicly, but Code 3 TCG admins may review it for abuse prevention, accuracy, and prediction scoring." },
+  { value: "admin_only", label: "Admin review only", helper: "Only you and Code 3 TCG admins can review this report." },
 ];
 
 const TIDEPOOL_EVENT_TYPES = [
@@ -1204,8 +1205,8 @@ function scoutVisibilityLabel(value = "") {
 
 function scoutVisibilityHelper(value = "") {
   if (value === "public") return "Other users may see this report or guess.";
-  if (value === "private_from_map") return "Private from public map means other users will not see this report publicly, but Ember & Tide admins may review it for abuse prevention, accuracy, and prediction scoring.";
-  if (value === "admin_only") return "Only you and Ember & Tide admins can review this report.";
+  if (value === "private_from_map") return "Private from public map means other users will not see this report publicly, but Code 3 TCG admins may review it for abuse prevention, accuracy, and prediction scoring.";
+  if (value === "admin_only") return "Only you and Code 3 TCG admins can review this report.";
   return SCOUT_VISIBILITY_COPY[value]?.helper || "";
 }
 
@@ -3914,7 +3915,7 @@ async function handleUpdateStore(e) {
           {!options.compact && (note || (!stockStatus && !photo)) ? <p className="scout-report-notes">{note || "No notes/details added."}</p> : null}
         </div>
         <div className="scout-report-side">
-          {photo ? <img src={photo} alt="" /> : <span>No photo attached</span>}
+          {photo ? <PrivateStorageImage src={photo} alt="" /> : <span>No photo attached</span>}
           <OverflowMenu
             actions={compactReportActions}
             onDelete={adminMode ? () => setDeleteReportTarget(report) : null}
@@ -5357,13 +5358,13 @@ async function handleUpdateStore(e) {
               <div style={{ ...styles.calloutCard, marginTop: "14px" }}>
                 <h3 style={{ marginTop: 0 }}>Step 4: Screenshot</h3>
                 <p style={styles.tiny}>
-                  Beta/manual assist: upload a screenshot you are allowed to use, then review the same report fields below before submitting. Private from public map means other users will not see it publicly, but Ember & Tide admins may review it for abuse prevention, accuracy, and prediction scoring.
+                  Beta/manual assist: upload a screenshot you are allowed to use, then review the same report fields below before submitting. Private from public map means other users will not see it publicly, but Code 3 TCG admins may review it for abuse prevention, accuracy, and prediction scoring.
                 </p>
                 <div style={styles.formGrid}>
                   <input type="file" accept="image/*" onChange={handleTipScreenshotUpload} />
                   {tipImport.screenshotPreview ? (
                     <div>
-                      <img src={tipImport.screenshotPreview} alt="Uploaded tip screenshot preview" style={styles.previewImage} />
+                      <PrivateStorageImage src={tipImport.screenshotPreview} alt="Uploaded tip screenshot preview" style={styles.previewImage} />
                       <p style={styles.tiny}>Preview: {tipImport.screenshotName}</p>
                     </div>
                   ) : null}
@@ -5624,7 +5625,7 @@ async function handleUpdateStore(e) {
                   </label>
                   {(reportPhoto?.preview || reportForm.imageUrl) ? (
                     <div className="scout-photo-preview">
-                      <img src={reportPhoto?.preview || reportForm.imageUrl} alt="" />
+                      <PrivateStorageImage src={reportPhoto?.preview || reportForm.imageUrl} alt="" />
                       <div>
                         <strong>Photo uploaded</strong>
                         <span>Items not identified yet. Needs review.</span>
@@ -5683,7 +5684,7 @@ async function handleUpdateStore(e) {
                             </label>
                             {product ? (
                               <div className="scout-selected-product-card scout-selected-product-card--small">
-                                {product.imageUrl ? <img src={product.imageUrl} alt="" /> : <span className="scout-selected-product-thumb">No image</span>}
+                                {product.imageUrl ? <PrivateStorageImage src={product.imageUrl} alt="" /> : <span className="scout-selected-product-thumb">No image</span>}
                                 <div className="scout-selected-product-copy">
                                   <strong>{scoutCatalogTitle(product)}</strong>
                                   <small>
@@ -6858,7 +6859,7 @@ async function handleUpdateStore(e) {
                     {getScoutReportPhotoUrls(selectedReportTarget).length ? (
                       <div className="scout-report-proof-strip" aria-label="Report proof photos">
                         {getScoutReportPhotoUrls(selectedReportTarget).slice(0, 4).map((photoUrl, index) => (
-                          <img src={photoUrl} alt={`Report proof ${index + 1}`} key={photoUrl || index} />
+                          <PrivateStorageImage src={photoUrl} alt={`Report proof ${index + 1}`} key={photoUrl || index} />
                         ))}
                       </div>
                     ) : null}

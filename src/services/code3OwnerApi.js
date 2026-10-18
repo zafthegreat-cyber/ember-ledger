@@ -1,7 +1,7 @@
 import { getOwnerRequestHeaders } from "./ownerSession.js";
 
-const VITE_ENV = import.meta.env || {};
-const API_BASE = String(VITE_ENV.VITE_API_BASE_URL || "").replace(/\/$/, "");
+import { getApiBase } from "../native/nativeRuntime.js";
+const API_BASE = getApiBase();
 
 export async function code3OwnerRequest(path, init = {}, options = {}) {
   const route = String(path || "");

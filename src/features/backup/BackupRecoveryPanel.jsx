@@ -19,6 +19,8 @@ import AccountOpsRecoveryPanel from "./AccountOpsRecoveryPanel.jsx";
 import { createPrivateFileClient } from "../privateFiles/privateFileClient.js";
 import BackupReviewFindings from "./BackupReviewFindings.jsx";
 import { createBackupReviewReport, displayReviewValue, downloadBackupReviewReport, RESTORE_FINDING_GROUPS } from "./reviewPresentation.js";
+import { exportFile, exportFileStatus, exportFileError } from "../../native/nativeFiles.js";
+import { useCloudWorkspace } from "../persistence/CloudWorkspaceContext.js";
 
 function statusTone(status) {
   if (status === BACKUP_COVERAGE.COMPLETE || status === "READY_FOR_FUTURE_RESTORE") return "success";
@@ -26,14 +28,9 @@ function statusTone(status) {
   return "warning";
 }
 
-function downloadJson(fileName, json) {
+function downloadJson(fileName, json, assertCurrent) {
   const blob = new Blob([json], { type: "application/json;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = fileName;
-  anchor.click();
-  window.setTimeout(() => URL.revokeObjectURL(url), 0);
+  return exportFile({ blob, filename: fileName, assertCurrent });
 }
 
 function StatusRow({ label, value, children }) {
@@ -59,6 +56,7 @@ function BackupRecoveryContent({ localDevelopment }) {
   }), [localDevelopment]);
 
   const recordActivity = (entry) => setActivity((current) => [entry, ...current].slice(0, 10));
+  const assertExportCurrent = (request) => { if (request !== lifetime.current) throw new DOMException("Export cancelled.", "AbortError"); };
   useLayoutEffect(() => {
     if (preview && focusPreview.current) { previewHeadingRef.current?.focus(); focusPreview.current = false; }
   }, [preview]);
@@ -72,9 +70,10 @@ function BackupRecoveryContent({ localDevelopment }) {
       const client = createPrivateFileClient({ request: (path, init) => code3OwnerRequest(path, init, { localDevelopment }) });
       const backup = await client.exportBackup();
       if (request !== lifetime.current) return;
-      downloadJson("code-3-private-files.json", JSON.stringify(backup, null, 2));
-      setMessage("Private file backup downloaded separately. Keep it with the record backup; this file does not include the rest of the app.");
-    } catch (error) { if (request === lifetime.current) setMessage(error.message || "Private file backup is unavailable."); }
+      const saved = await downloadJson("code-3-private-files.json", JSON.stringify(backup, null, 2), () => assertExportCurrent(request));
+      if (request !== lifetime.current) return;
+      setMessage(`${exportFileStatus(saved)} Keep this separate private file backup with the record backup; this file does not include the rest of the app.`);
+    } catch (error) { if (request === lifetime.current) setMessage(exportFileError(error)); }
     finally { pending.current = false; if (request === lifetime.current) setBusy(""); }
   }
 
@@ -104,18 +103,31 @@ function BackupRecoveryContent({ localDevelopment }) {
           : "Backup verification failed. No success claim or download was produced.");
         return;
       }
-      downloadJson(result.fileName, result.json);
-      setMessage(result.coverageStatus === BACKUP_COVERAGE.COMPLETE
-        ? "Backup verified and downloaded."
-        : "Partial backup verified and downloaded with the listed exclusions.");
-    } catch {
+      const saved = await downloadJson(result.fileName, result.json, () => assertExportCurrent(request));
+      if (request !== lifetime.current) return;
+      setMessage(`${exportFileStatus(saved)} ${result.coverageStatus === BACKUP_COVERAGE.COMPLETE
+        ? "Backup verified."
+        : "Partial backup verified with the listed exclusions."}`);
+    } catch (error) {
       if (request !== lifetime.current) return;
       setExportResult(null);
-      setMessage("Backup export failed safely. No records were changed.");
+      setMessage(exportFileError(error));
     } finally {
       pending.current = false;
       if (request === lifetime.current) setBusy("");
     }
+  }
+
+  async function exportReview() {
+    if (pending.current || !preview) return;
+    pending.current = true;
+    const request = ++lifetime.current;
+    setBusy("report"); setMessage("");
+    try {
+      const saved = await downloadBackupReviewReport(createBackupReviewReport({ kind: "restore-preview", result: { ...preview, sourceFileName: previewInfo?.sourceFileName }, reviewedAt: previewInfo?.reviewedAt }), { assertCurrent: () => assertExportCurrent(request) });
+      if (request === lifetime.current) setMessage(`${exportFileStatus(saved)} This report contains findings, not a restorable backup.`);
+    } catch (error) { if (request === lifetime.current) setMessage(exportFileError(error)); }
+    finally { pending.current = false; if (request === lifetime.current) setBusy(""); }
   }
 
   async function previewFile(event) {
@@ -224,7 +236,7 @@ function BackupRecoveryContent({ localDevelopment }) {
           <BackupReviewFindings title="Warnings" findings={preview.warnings} />
           {!preview.errors?.length && !preview.warnings?.length ? <p>No validation errors or warnings were found.</p> : null}
         </div></details>
-        <div className="backup-actions"><SecondaryButton disabled={Boolean(busy)} onClick={() => downloadBackupReviewReport(createBackupReviewReport({ kind: "restore-preview", result: { ...preview, sourceFileName: previewInfo?.sourceFileName }, reviewedAt: previewInfo?.reviewedAt }))}>Download review report</SecondaryButton></div>
+        <div className="backup-actions"><SecondaryButton disabled={Boolean(busy)} onClick={exportReview}>Download review report</SecondaryButton></div>
         <p className="backup-review-report-note">The report contains bounded findings and record references, not recoverable records or file bytes. Keep your original backup. Review reports can contain private IDs and paths.</p>
       </div> : null}
 
@@ -237,5 +249,6 @@ function BackupRecoveryContent({ localDevelopment }) {
 }
 
 export default function BackupRecoveryPanel({ localDevelopment = false }) {
-  return <BackupRecoveryContent key={localDevelopment ? "local" : "connected"} localDevelopment={localDevelopment} />;
+  const ownerId = useCloudWorkspace()?.user?.id || "unbound";
+  return <BackupRecoveryContent key={`${ownerId}:${localDevelopment ? "local" : "connected"}`} localDevelopment={localDevelopment} />;
 }

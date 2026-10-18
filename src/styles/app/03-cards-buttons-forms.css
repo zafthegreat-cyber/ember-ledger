@@ -437,7 +437,7 @@
   border-color: color-mix(in srgb, var(--et-accent) 34%, rgba(255, 255, 255, 0.14));
   background:
     linear-gradient(90deg, rgba(6, 18, 31, 0.9), rgba(8, 26, 44, 0.58)),
-    image-set(url("/assets/brand/ember-tide-promo-hero.png") 1x),
+    image-set(url("/assets/brand/code3tcg-promo-hero.png") 1x),
     linear-gradient(135deg, #0b2037, #102a44);
   background-size: cover;
   background-position: center;

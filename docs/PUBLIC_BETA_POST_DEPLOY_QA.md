@@ -34,7 +34,7 @@ Public production was tested at 390x844, 430x932, 768x1024, and 1440x900.
 - Tidepool
 - The Spark
 - Donate
-- Ember Assist
+- Business Assistant
 - Forge
 - Shop Portal
 - Admin Review protected state
@@ -55,7 +55,7 @@ The first live public sweep found compact mobile content rendering under the fix
 - Scout at 430x932
 - Scout report flow at 390x844 and 430x932
 - Onboarding / Waitlist / Permission Needed at 390x844 and 430x932
-- Ember Assist at 390x844 and 430x932 because it opens over the Hearth surface
+- Business Assistant at 390x844 and 430x932 because it opens over the Hearth surface
 
 No backend or data behavior was involved. The issue was shell layout space around the fixed mobile dock.
 
@@ -123,7 +123,7 @@ Passed. Membership still frames Free as the complete core collector app:
 - Manual Scout reports and screenshot scan UI
 - Tidepool read/report
 - The Spark view/donation interest
-- Ember Assist basic prompts
+- Business Assistant basic prompts
 - Privacy and child-safety basics
 
 Paid tiers remain framed as scale, convenience, family controls, seller/shop tools, or advanced analytics.
@@ -138,7 +138,7 @@ Passed.
 - The Spark donation flow did not process or imply payment.
 - Market did not imply checkout, guaranteed prices, or guaranteed stock.
 - Scout did not expose vendor schedules, employee schedules, exact restock patterns, or exact quantities.
-- Ember Assist did not imply live AI guarantees.
+- Business Assistant did not imply live AI guarantees.
 
 ## Real-Phone QA
 
@@ -161,7 +161,7 @@ Pending. This pass used browser automation at compact mobile, tablet, and deskto
 - `npm.cmd run test:market`: passed outside sandbox.
 - `npm.cmd run test:kids-program`: passed.
 - `npm.cmd run test:spark`: passed outside sandbox.
-- `npm.cmd run test:ember-assist`: passed.
+- `npm.cmd run test:business-assistant`: passed.
 - `npm.cmd run test:admin`: passed outside sandbox.
 - `npm.cmd run test:admin-command-center`: passed.
 - `npm.cmd run test:tidepool-community`: passed.
@@ -246,7 +246,7 @@ These remain preview/mock/local UI unless later backend work is explicitly appro
 - Market fair-value examples and watch actions.
 - Tidepool posts and moderation examples.
 - The Spark donation interest and thank-you flows.
-- Ember Assist helper responses.
+- Business Assistant helper responses.
 - Forge trade/listing/sales ledger preview workflows.
 - Shop Portal and Admin Review mock actions.
 - Onboarding/waitlist UI beyond existing safe auth behavior.
@@ -258,4 +258,4 @@ These remain preview/mock/local UI unless later backend work is explicitly appro
 
 ## Next Recommended Task
 
-Redeploy the CSS-only post-deploy public beta fix after checks pass, then run a focused live confirmation on Hearth, Scout, Onboarding, Ember Assist, Membership, Admin protected state, and `screen-set.html`.
+Redeploy the CSS-only post-deploy public beta fix after checks pass, then run a focused live confirmation on Hearth, Scout, Onboarding, Business Assistant, Membership, Admin protected state, and `screen-set.html`.

@@ -2,7 +2,7 @@
 
 ## Scope
 
-This pass adds a public beta feedback and waitlist intake surface for Ember & Tide without changing backend schema, auth, billing, database policies, RLS, payments, uploads, messaging, scraping, live AI, checkout, or live inventory behavior.
+This pass adds a public beta feedback and waitlist intake surface for Code 3 TCG without changing backend schema, auth, billing, database policies, RLS, payments, uploads, messaging, scraping, live AI, checkout, or live inventory behavior.
 
 ## Entry Points
 
@@ -12,7 +12,7 @@ This pass adds a public beta feedback and waitlist intake surface for Ember & Ti
 - Onboarding / waitlist: `Request your state` and `Join beta / request state`.
 - The Spark: `Help The Spark` and sponsor support interest.
 - Shop Portal: shop/sponsor partnership interest.
-- Ember Assist: `Join beta / send feedback` quick action.
+- Business Assistant: `Join beta / send feedback` quick action.
 
 ## Form Fields
 

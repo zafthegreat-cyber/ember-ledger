@@ -1,7 +1,8 @@
 import { isSupabaseConfigured, supabase } from "../supabaseClient.js";
+import { getApiBase } from "../native/nativeRuntime.js";
 
 const VITE_ENV = import.meta.env || {};
-const API_BASE = VITE_ENV.VITE_API_BASE_URL || "";
+const API_BASE = getApiBase();
 
 export const OWNER_SESSION_STATES = Object.freeze({
   LOADING: "loading",

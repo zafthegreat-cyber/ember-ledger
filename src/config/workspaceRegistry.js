@@ -228,6 +228,7 @@ const CANONICAL_ROUTES = [
 
   route({ key: "owner-center", path: "/owner-center", match: ROUTE_MATCH_TYPES.PREFIX, classification: ROUTE_CLASSIFICATIONS.OWNER, label: "Owner Center", requiredAuthority: AUTHORITY_REQUIREMENTS.VERIFIED_OWNER }),
 
+  route({ key: "delete-account", path: "/delete-account", classification: ROUTE_CLASSIFICATIONS.GLOBAL, label: "Delete account" }),
   route({ key: "global-home", path: "/", classification: ROUTE_CLASSIFICATIONS.GLOBAL, label: "Code 3 Home" }),
   route({ key: "settings", path: "/settings", match: ROUTE_MATCH_TYPES.PREFIX, classification: ROUTE_CLASSIFICATIONS.GLOBAL, label: "Settings" }),
   route({ key: "kids-community", path: "/kids-community", match: ROUTE_MATCH_TYPES.PREFIX, classification: ROUTE_CLASSIFICATIONS.GLOBAL, label: "Kids & Community" }),

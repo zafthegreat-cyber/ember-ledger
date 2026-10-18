@@ -204,7 +204,7 @@ export default function BetaUsersContent({ scope }) {
         <div className="compact-card-header">
           <div>
             <h3>Beta Users</h3>
-            <p>Admin-only view from request to approval, invite, joined user, and testing activity. Official Ember/Tide admins and existing admin roles only.</p>
+            <p>Admin-only view from request to approval, invite, joined user, and testing activity. Official Code 3 TCG admins and existing admin roles only.</p>
           </div>
           <button type="button" className="secondary-button" onClick={() => void refreshAdminBetaUsersDashboardData()}>Refresh activity</button>
         </div>
@@ -360,7 +360,7 @@ export default function BetaUsersContent({ scope }) {
                     <DetailItem label="Scout reports" value={String(counts.scout)} />
                     <DetailItem label="Vault/Forge adds" value={String(counts.inventory)} />
                     <DetailItem label="Market/watch" value={String(counts.market)} />
-                    <DetailItem label="Ask Ember" value={String(counts.assist)} />
+                    <DetailItem label="Business Assistant" value={String(counts.assist)} />
                     <DetailItem label="Admin notes" value={String(entry.matchingNotes.length)} />
                   </div>
                   <div className="quick-actions">

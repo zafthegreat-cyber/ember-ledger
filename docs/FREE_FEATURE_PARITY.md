@@ -31,7 +31,7 @@ Free is intended to feel like a complete core collector app, not a crippled demo
 - Confidence and Worth the Trip display.
 - Tidepool read/report.
 - The Spark view and donation-interest UI.
-- Ember Assist basic prompts.
+- Business Assistant basic prompts.
 - Basic child privacy and safety copy.
 
 ## Paid May Unlock
@@ -68,7 +68,7 @@ The UI and plan copy must not imply payment is required for:
 
 ## Membership Audit
 
-- `src/services/featureGates.js` now describes Free as a complete core collector plan and lists manual card/sealed/graded tracking, folders/tags/wishlist/missing cards/set progress, basic fair value, basic trade analyzer, deck/list builder, Forge ledger, Scout report submission, screenshot scan UI, Tidepool read/report, The Spark view, Ember Assist prompts, and safety basics.
+- `src/services/featureGates.js` now describes Free as a complete core collector plan and lists manual card/sealed/graded tracking, folders/tags/wishlist/missing cards/set progress, basic fair value, basic trade analyzer, deck/list builder, Forge ledger, Scout report submission, screenshot scan UI, Tidepool read/report, The Spark view, Business Assistant prompts, and safety basics.
 - `src/App.jsx` now shows a dedicated "Free is the core collector app" Membership section so the UI does not suggest core collector tools are paid.
 - Checkout remains labeled as not live, and beta upgrades remain admin-managed.
 

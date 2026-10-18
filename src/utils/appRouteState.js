@@ -81,6 +81,7 @@ export function routeStateFromPath(pathname = "") {
   if (section === "settings") {
     if (subSection === "profile") return { activeTab: detailId === "progress" ? "profileProgress" : "profile" };
     if (subSection === "account") return { activeTab: "account" };
+    if (subSection === "delete-account") return { activeTab: "deleteAccount" };
     if (subSection === "workspaces") return { activeTab: "collections" };
     if (subSection === "data-backup") return { activeTab: "ownerCenter", ownerCenterSection: "controls", ownerCenterSubview: "data-backup" };
     if (subSection === "system-map") return { activeTab: "tcgOs" };
@@ -174,6 +175,7 @@ export function routeStateFromPath(pathname = "") {
   if (section === "parent-center" || section === "parent") return { activeTab: "parentCenter" };
   if (section === "profile") return { activeTab: subSection === "progress" ? "profileProgress" : "profile" };
   if (section === "account") return { activeTab: "account" };
+  if (section === "delete-account") return { activeTab: "deleteAccount" };
   if (section === "collections" || section === "workspaces") return { activeTab: "collections" };
   if (section === "data-backup" || section === "backup") return { activeTab: "ownerCenter", ownerCenterSection: "controls", ownerCenterSubview: "data-backup" };
   if (section === "tcg-os") return { activeTab: "tcgOs" };
@@ -249,6 +251,7 @@ export function pathFromActiveTab(activeTab = "dashboard", state = {}) {
   if (activeTab === "account") return "/settings/account";
   if (activeTab === "settings" || activeTab === "menu") return "/settings";
   if (activeTab === "help") return "/settings/help";
+  if (activeTab === "deleteAccount") return "/delete-account";
   if (activeTab === "dataBackup") return "/owner-center/controls/data-backup";
   if (activeTab === "collections") return "/settings/workspaces";
   if (activeTab === "tcgOs") return "/settings/system-map";

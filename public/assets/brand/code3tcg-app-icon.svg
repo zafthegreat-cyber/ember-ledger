@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Code 3 TCG app icon</title>
+  <desc id="desc">App icon using the Code 3 TCG ember and wave monogram.</desc>
+  <defs>
+    <linearGradient id="bg" x1="62" y1="28" x2="451" y2="492" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#122A36"/>
+      <stop offset="1" stop-color="#05070B"/>
+    </linearGradient>
+    <linearGradient id="ember" x1="149" y1="65" x2="354" y2="435" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFC857"/>
+      <stop offset="0.45" stop-color="#FF7A3D"/>
+      <stop offset="1" stop-color="#C94E28"/>
+    </linearGradient>
+    <linearGradient id="tide" x1="88" y1="334" x2="424" y2="196" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#EAF7F5"/>
+      <stop offset="0.52" stop-color="#45C7D8"/>
+      <stop offset="1" stop-color="#168FA3"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="198" fill="#0D1D27" stroke="rgba(248,243,231,0.16)" stroke-width="8"/>
+  <path fill="url(#ember)" d="M273 76c-60 65-52 120-30 156-35-21-57-54-52-97-69 63-96 133-84 197 16 91 88 144 173 136 78-8 138-66 147-139 8-68-25-124-88-168 5 39-9 72-42 100 5-63-8-112-24-185Z"/>
+  <path fill="#F8F3E7" opacity="0.9" d="M232 357c58 22 112 5 164-44 1 69-52 124-127 128-67 3-124-33-144-92 32 5 68 2 107 8Z"/>
+  <path fill="url(#tide)" d="M109 331c71-39 135-36 195 8 43 32 84 40 128 11-29 54-80 88-140 91-80 4-151-32-183-110Z"/>
+  <path fill="none" stroke="#F8F3E7" stroke-width="20" stroke-linecap="round" d="M146 329c58-24 108-20 155 10 36 24 72 31 115 8"/>
+</svg>

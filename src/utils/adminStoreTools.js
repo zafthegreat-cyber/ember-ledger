@@ -20,7 +20,7 @@ export const STORE_SUGGESTION_REVIEW_COPY =
   "Store suggestions are queued for admin review and do not become public automatically.";
 
 export const STORE_PARTNER_NO_GUARANTEE_COPY =
-  "Family-friendly and partner status means the shop supports the Ember & Tide mission. It is not a guarantee of MSRP, inventory, price, or availability.";
+  "Family-friendly and partner status means the shop supports the Code 3 TCG mission. It is not a guarantee of MSRP, inventory, price, or availability.";
 
 export const ADMIN_STORE_DRAFT_DEFAULTS = {
   id: "",

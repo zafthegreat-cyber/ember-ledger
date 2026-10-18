@@ -1,5 +1,6 @@
+import { isNativePlatform } from "./native/nativeRuntime.js";
 export function registerServiceWorker() {
-  if (!("serviceWorker" in navigator) || import.meta.env.DEV) return;
+  if (isNativePlatform() || !("serviceWorker" in navigator) || import.meta.env.DEV) return;
 
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/sw.js")
@@ -24,7 +25,7 @@ export function registerServiceWorker() {
         });
       })
       .catch((error) => {
-        console.warn("E&T TCG service worker registration failed", error);
+        console.warn("Code 3 TCG service worker registration failed", error);
       });
   });
 

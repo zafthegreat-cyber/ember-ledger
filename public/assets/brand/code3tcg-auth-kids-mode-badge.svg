@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="560" viewBox="0 0 1280 560" role="img" aria-labelledby="badge-title badge-description">
+  <title id="badge-title">Code 3 TCG Kids Mode</title>
+  <desc id="badge-description">Collect. Learn. Be Kind. Have Fun!</desc>
+  <defs><linearGradient id="kids-background" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6B3EE8"/><stop offset="1" stop-color="#1C1642"/></linearGradient></defs>
+  <rect width="1280" height="560" rx="56" fill="url(#kids-background)"/>
+  <circle cx="1030" cy="280" r="220" fill="#F2C36B" opacity=".09"/>
+  <svg x="164" y="130" width="240" height="240" viewBox="0 0 128 128">
+  <title id="code3-title">Code 3 TCG</title>
+  <desc id="code3-description">Code 3 TCG application mark</desc>
+  <rect width="128" height="128" rx="24" fill="#315f55" />
+  <rect x="16" y="16" width="96" height="96" rx="16" fill="none" stroke="#ffffff" stroke-opacity="0.28" stroke-width="3" />
+  <text x="64" y="78" fill="#ffffff" font-family="Inter, system-ui, sans-serif" font-size="48" font-weight="800" text-anchor="middle">C3</text>
+</svg>
+
+  <text x="460" y="208" fill="#FFF6E6" font-family="Georgia, 'Times New Roman', serif" font-size="86" font-weight="700">CODE 3 TCG</text>
+  <rect x="460" y="245" width="300" height="68" rx="34" fill="#F2C36B"/>
+  <text x="610" y="292" text-anchor="middle" fill="#3D2851" font-family="Inter, Arial, sans-serif" font-size="38" font-weight="800">KIDS MODE</text>
+  <text x="460" y="382" fill="#FFF6E6" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="700">Collect. Learn. Be Kind. Have Fun!</text>
+</svg>

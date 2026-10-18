@@ -1,3 +1,4 @@
+import { PrivateStorageImage } from "../../components/PrivateReceipt.jsx";
 // App owns state, authority and handlers; only this existing renderer is deferred.
 export default function CatalogWorkspaceContent({ scope }) {
   const {
@@ -270,7 +271,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                 {catalogForm.imageUrl ? (
                   <div className="receipt-preview">
                     <p>Catalog Photo • {getImageSourceLabel(catalogForm)}</p>
-                    <img src={catalogForm.imageUrl} alt="Catalog" />
+                    <PrivateStorageImage src={catalogForm.imageUrl} alt="Catalog" />
                     <button type="button" className="secondary-button" onClick={() => {
                       updateCatalogForm("imageUrl", "");
                       updateCatalogForm("imageSmall", "");
@@ -464,7 +465,7 @@ Perfect Order ETB, Pokemon, Perfect Order, Elite Trainer Box, 123456789, 70.27, 
                       <div className="catalog-thumb">
                         {catalogImage(p) ? (
                           <>
-                            <img
+                            <PrivateStorageImage
                               src={catalogImage(p)}
                               alt=""
                               onError={(event) => {

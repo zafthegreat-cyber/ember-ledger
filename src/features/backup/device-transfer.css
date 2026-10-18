@@ -1,0 +1,17 @@
+.device-transfer { display: grid; gap: 12px; min-width: 0; padding-top: 20px; margin-top: 20px; border-top: 1px solid var(--border-subtle); }
+.device-transfer :is(p, li) { line-height: 1.55; overflow-wrap: anywhere; }
+.device-transfer :is(h3, h4, p, ol, ul) { margin-block: 0; }
+.device-transfer :is(ol, ul) { padding-inline-start: 22px; }
+.device-transfer li + li { margin-top: 8px; }
+.device-transfer__actions { display: flex; flex-wrap: wrap; align-items: start; gap: 12px; }
+.device-transfer .device-transfer__file { display: grid; gap: 6px; max-width: 100%; min-width: 0; }
+.device-transfer .device-transfer__file input { max-width: 100%; margin: 0; }
+.device-transfer .device-transfer__checkbox { display: flex; align-items: center; gap: 10px; min-height: 44px; }
+.device-transfer .device-transfer__checkbox input { width: 20px; height: 20px; min-height: 20px; margin: 0; accent-color: var(--action-primary); flex: 0 0 20px; }
+.device-transfer__totals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 8px 0; }
+.device-transfer__totals > div { padding: 12px; border: 1px solid var(--border-subtle); border-radius: 8px; }
+.device-transfer__totals dt { color: var(--text-secondary); font-size: .85rem; }
+.device-transfer__totals dd { margin: 4px 0 0; font-size: 1.25rem; font-weight: 650; }
+.device-transfer .device-transfer__secondary { background: transparent; color: var(--text-primary); border-color: var(--border-strong); justify-self: start; }
+.device-transfer summary { min-height: 44px; cursor: pointer; }
+.device-transfer :is(button, input, summary):focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 3px; }

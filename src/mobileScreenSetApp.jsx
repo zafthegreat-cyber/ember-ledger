@@ -19,8 +19,8 @@ import {
   StatCard,
   TrustBadge,
   UpgradePrompt,
-} from "./components/ember-ui";
-import { emberTideData } from "./mock/emberTideData";
+} from "./components/code3-ui";
+import { emberTideData } from "./mock/code3TcgData";
 import { BRAND_CONFIG } from "./config/brand";
 import "./mobileScreenSet.css";
 

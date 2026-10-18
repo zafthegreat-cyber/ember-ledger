@@ -1,5 +1,9 @@
 import DeferredModalBoundary from "./features/deferredViews/DeferredModalBoundary";
+import { isNativePlatform, getNativeAuthRedirect } from "./native/nativeRuntime.js";
+import { exportFile } from "./native/nativeFiles.js";
 import CloudSyncPanel from "./features/persistence/CloudSyncPanel.jsx";
+import AccountDeletionPage from "./features/privacy/AccountDeletionPage.jsx";
+import { PublicSupportPage } from "./features/privacy/PrivacyCenter.jsx";
 import { useCloudWorkspace } from "./features/persistence/CloudWorkspaceContext.js";
 import { canUseHostedAppSupplement, selectHostedAppSupplement } from "./features/persistence/hostedAppSupplement.js";
 import { focusFlowModalContent } from "./features/deferredViews/flowModalFocus.js";
@@ -8,10 +12,11 @@ import "./App.css";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
 import OverflowMenu from "./components/OverflowMenu";
 import SmartSetupDialog from "./components/SmartSetupDialog.jsx";
+import { PrivateReceiptImage, PrivateReceiptLink, PrivateStorageImage } from "./components/PrivateReceipt.jsx";
 import LockedFeatureNotice from "./components/LockedFeatureNotice";
 import "./components/ScoutTileMap";
-import "./components/ember-ui";
-import { BRAND_ASSETS } from "./brand/emberTideBrand";
+import "./components/code3-ui";
+import { BRAND_ASSETS } from "./brand/code3TcgBrand";
 import { BRAND_CONFIG, applyBrandDocumentMetadata } from "./config/brand";
 import {
   AUTHORITY_REQUIREMENTS,
@@ -383,7 +388,7 @@ import {
   makeEmberAssistAdminMessage,
   saveEmberAssistThread,
   shouldShowEmberAssistEntry,
-} from "./utils/emberAssistLite";
+} from "./utils/businessAssistantLite";
 import {
   ADMIN_COMMAND_CENTER_FILTERS,
   COMMUNITY_GUESS_MODERATION_STATUSES,
@@ -645,7 +650,7 @@ async function analyzeCatalogSearchOnDemand(query = "") {
 
 function loadEmberAssistBrainModule() {
   if (!emberAssistBrainModulePromise) {
-    emberAssistBrainModulePromise = import("./utils/emberAssist");
+    emberAssistBrainModulePromise = import("./utils/businessAssistant");
   }
   return emberAssistBrainModulePromise;
 }
@@ -1123,9 +1128,9 @@ const SCOUT_REPORT_VISIBILITY_OPTIONS = [
   {
     value: "private_from_map",
     label: "Private from public map",
-    helper: "Private from public map means other users will not see this report publicly, but Ember & Tide admins may review it for abuse prevention, accuracy, and prediction scoring.",
+    helper: "Private from public map means other users will not see this report publicly, but Code 3 TCG admins may review it for abuse prevention, accuracy, and prediction scoring.",
   },
-  { value: "admin_only", label: "Admin review only", helper: "Only you and Ember & Tide admins can review this report." },
+  { value: "admin_only", label: "Admin review only", helper: "Only you and Code 3 TCG admins can review this report." },
 ];
 const SCOUT_GUESS_VISIBILITY_OPTIONS = [
   { value: "private", label: "Private", helper: "Only you can see this guess in your planner." },
@@ -1327,7 +1332,7 @@ const COMING_SOON_GROUPS = [
       { name: "Built-In Beta Feedback", description: "A more structured feedback inbox connected to app context.", status: "Planned", userType: "Beta users" },
       { name: "App-Wide Search", description: "Search across safe app records without exposing private data.", status: "Future Phase", userType: "All users" },
       { name: "Help/Safety Center", description: "A polished help hub for rules, safety, privacy, and support.", status: "Planned", userType: "All users" },
-      { name: "Ember & Tide Promise", description: "A clear public statement of safety, family privacy, and fair collecting rules.", status: "In Design", userType: "All users" },
+      { name: "Code 3 TCG Promise", description: "A clear public statement of safety, family privacy, and fair collecting rules.", status: "In Design", userType: "All users" },
     ],
   },
   {
@@ -1350,7 +1355,7 @@ const COMING_SOON_GROUPS = [
   {
     key: "not-planned",
     title: "Will Not Add / Safety Guardrails",
-    description: "These mechanics do not fit Ember & Tide's safety, family privacy, or fair collecting values.",
+    description: "These mechanics do not fit Code 3 TCG's safety, family privacy, or fair collecting values.",
     defaultStatus: "Not Planned",
     tone: "guardrail",
     features: [
@@ -1364,7 +1369,7 @@ const COMING_SOON_GROUPS = [
       { name: "Public Child Leaderboards", description: "Public ranking of children is not part of the safety model.", status: "Not Planned", userType: "Families" },
       { name: "Open Marketplace Messaging With Children", description: "Children should not be exposed to open marketplace messaging.", status: "Not Planned", userType: "Families" },
       { name: "Location Sharing Between Users", description: "User-to-user location sharing is not planned.", status: "Not Planned", userType: "All users" },
-      { name: "Nearby Friends For Kids", description: "Nearby friend discovery for children is outside Ember & Tide safety guardrails.", status: "Not Planned", userType: "Families" },
+      { name: "Nearby Friends For Kids", description: "Nearby friend discovery for children is outside Code 3 TCG safety guardrails.", status: "Not Planned", userType: "Families" },
     ],
   },
 ];
@@ -2657,7 +2662,7 @@ const UPGRADE_VALUE_PREVIEWS = {
     bullets: ["More private circle entries", "Future reviewed community tools", "Spark partner planning"],
   },
   assist: {
-    title: "Ember Assist upgrade preview",
+    title: "Business Assistant upgrade preview",
     detail: "Guided help can grow into deeper walkthroughs without promising a live AI backend.",
     now: "Free keeps Collector Guide topics and review-first helper prompts.",
     upgrade: "Upgraded plans can add more guided topics and app walkthrough depth when enabled.",
@@ -3069,7 +3074,7 @@ const SMART_SETUP_PURPOSE_OPTIONS = [
   { key: "sell_trade_and_track_inventory", label: "Sell/trade and track inventory" },
   { key: "help_report_store_stock", label: "Help report store stock" },
   { key: "the_spark_kids_program", label: "Join The Spark / Kids Program" },
-  { key: "run_or_manage_ember_tide_tools", label: "Run or manage Ember & Tide tools" },
+  { key: "run_or_manage_ember_tide_tools", label: "Run or manage Code 3 TCG tools" },
   { key: "i_m_a_card_shop_or_partner", label: "I'm a card shop or partner" },
 ];
 const SMART_SETUP_TOOL_OPTIONS = [
@@ -3089,7 +3094,7 @@ const SMART_SETUP_PRIMARY_MODE_OPTIONS = [
   { key: "collector_parent", label: "Collector / parent" },
   { key: "casual_seller", label: "Casual seller" },
   { key: "business_seller", label: "Business seller" },
-  { key: "admin", label: "Ember & Tide admin" },
+  { key: "admin", label: "Code 3 TCG admin" },
   { key: "card_shop_partner", label: "Card shop / partner" },
   { key: "not_sure", label: "Not sure yet" },
 ];
@@ -3920,7 +3925,7 @@ function PremiumCardImage({ image, title, subtitle, variantType = "normal", clas
   const tone = MASTER_CARD_VARIANT_LABELS[variantType] ? variantType : "other";
   return (
     <div className={`premium-card-image premium-card-image--${tone} ${image ? "has-image" : "is-placeholder"} ${className}`.trim()} aria-label={`${title || "Card"} visual`}>
-      {image ? <img src={image} alt="" loading="lazy" /> : (
+      {image ? <PrivateStorageImage src={image} alt="" loading="lazy" /> : (
         <div className="premium-card-placeholder-art" aria-hidden="true">
           <span className="premium-card-crest" />
           <strong>{title || "Card"}</strong>
@@ -4819,7 +4824,7 @@ function workspaceCanManage(role = "viewer") {
 
 const PERSON_TYPE_OPTIONS = ["Family", "Seller", "Helper", "Partner", "Business", "Other"];
 const PAYOUT_ASSIST_DISCLAIMER = "Payout Assist is an estimate for planning. It is not payroll, tax, or legal advice.";
-const FORGE_BUSINESS_LEDGER_DISCLAIMER = "Planning tool only. Ember & Tide does not provide tax, payroll, accounting, or legal advice.";
+const FORGE_BUSINESS_LEDGER_DISCLAIMER = "Planning tool only. Code 3 TCG does not provide tax, payroll, accounting, or legal advice.";
 const INFO_TOOLTIP_COPY = {
   whoPaid: "The person or account that originally paid for this item or expense.",
   ownerPerson: "The person this record belongs to for family, collection, or business tracking.",
@@ -4833,7 +4838,7 @@ const INFO_TOOLTIP_COPY = {
   vehicle: "A reusable vehicle profile for mileage logs and business records.",
   smartSetup: "Smart Setup shapes the app around your collecting, family, Scout, or seller needs. You can change this anytime.",
   customizeMyApp: "Choose which sections each page shows first. This changes visibility only, not your saved data or permissions.",
-  smartRecommendations: "Ember & Tide can suggest layout changes based on app use, but it will not change your layout without confirmation.",
+  smartRecommendations: "Code 3 TCG can suggest layout changes based on app use, but it will not change your layout without confirmation.",
   resetRecommended: "Restore the recommended layout for your current setup mode.",
   sellerTools: "Seller tools unlock Forge, receipts, mileage, expenses, sales, and planning summaries when you choose to use them.",
   adminTools: "Admin tools are protected by account permissions. Visibility settings cannot grant admin access.",
@@ -6021,7 +6026,7 @@ function CollectorShowcaseCard({
           <span className="collector-showcase-edge" />
           <span className="collector-showcase-face">
             {image ? (
-              <img
+              <PrivateStorageImage
                 src={image}
                 alt=""
                 loading="lazy"
@@ -6176,7 +6181,7 @@ function SealedProductShelfCard({
       <div className="sealed-product-shelf-visual" aria-hidden="true">
         <span className="sealed-product-shelf-board" />
         <span className="sealed-product-shelf-object">
-          {image ? <img src={image} alt="" loading="lazy" /> : (
+          {image ? <PrivateStorageImage src={image} alt="" loading="lazy" /> : (
             <span className="sealed-product-shelf-fallback">
               <strong>{collectorShowcaseInitials(title)}</strong>
               <small>{shelf.label}</small>
@@ -7083,6 +7088,7 @@ export default function App() {
   });
   const [currentUserProfile, setCurrentUserProfile] = useState(() => makeFallbackUserProfile(null));
   const [authMode, setAuthMode] = useState("login");
+  const [accountDeletionCompleted, setAccountDeletionCompleted] = useState(false);
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authFirstName, setAuthFirstName] = useState("");
@@ -7487,6 +7493,12 @@ export default function App() {
   const [forgeImportForm, setForgeImportForm] = useState(FORGE_IMPORT_BLANK);
   const [backupImportPreview, setBackupImportPreview] = useState(null);
   const backupImportReadRef = useRef(0);
+  const fileExportScopeRef = useRef(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    fileExportScopeRef.current = controller;
+    return () => controller.abort();
+  }, [user?.id, authSessionVersion]);
   const [backupImportMessage, setBackupImportMessage] = useState("");
   const [suggestions, setSuggestions] = useState(() => loadSuggestions());
   const [adminReviewFilter, setAdminReviewFilter] = useState("All");
@@ -8187,6 +8199,7 @@ export default function App() {
     exchange: experiencePresentation.copy.sellingLabel,
     settings: "Settings",
     account: "Account",
+    deleteAccount: "Delete account",
     collections: "Collections",
     dataBackup: "Data Safety & Export",
     tcgOs: "TCG OS",
@@ -8266,6 +8279,7 @@ export default function App() {
   }, [experiencePresentation.isPreview, ownerCenterAuthorized, shellRouteOwnership?.classification, shellRouteOwnership?.workspace, workspacePreference.lastProductWorkspace]);
   const mobileMenuByKey = {
     scout: { key: "scout", label: "Restocks", helper: "Reports, store profiles, and saved restock evidence.", icon: "find", action: () => openFlipScoutView("restocks") },
+    reportRestock: !guestPreviewActive ? { key: "reportRestock", label: "Report a restock", helper: "Stock, low stock, or empty shelves.", icon: "plus", action: ({ returnFocusTo } = {}) => { openScoutSubmitFlow({ source: "menu-restock" }); if (returnFocusTo instanceof HTMLElement && returnFocusTo.isConnected) flowModalOpenerRef.current = returnFocusTo; } } : null,
     vault: { key: "vault", label: "Collection", helper: "Collection, sets, wishlist, and grading.", icon: "inventory", target: "collectionWorkspace" },
     quickAdd: { key: "quickAdd", label: "Add", helper: "Scan, add, report, or request.", icon: "plus", action: () => openAddActionSheet("menu-quick-add") },
     scanProduct: { key: "scanProduct", label: "Scan Product/Card", helper: "Open scanner review before saving.", icon: "scan", action: () => openQuickAddAction("scanProduct") },
@@ -8318,6 +8332,7 @@ export default function App() {
   ].filter(Boolean);
   const menuCommunityItems = [
     mobileMenuByKey.scout,
+    mobileMenuByKey.reportRestock,
     showCommunityExperience ? mobileMenuByKey.tidepool : null,
     showFamilyExperience ? mobileMenuByKey.spark : null,
     showFamilyExperience ? mobileMenuByKey.parentCenter : null,
@@ -8556,7 +8571,7 @@ export default function App() {
   const activeForgeIdentityMode = forgeIdentityModeFromSettings(forgeModeSettings, activeForgeWorkspace);
   const activeForgeTransferLabel = "Resale Inventory";
   const forgeWorkspaceUnavailableMessage = forgeModeSettings.lockToEmberTide && !emberTideForgeWorkspace
-    ? "Ember & Tide Forge is unavailable. Create or request access to an Ember & Tide workspace, or turn off Always use Ember & Tide Forge."
+    ? "Code 3 TCG Forge is unavailable. Create or request access to a Code 3 TCG workspace, or turn off Always use Code 3 TCG Forge."
     : "No Forge workspace is available. Enable Personal Forge or create a business workspace.";
   const destinationWorkspaceOptions = useMemo(() => {
     const visible = visibleWorkspaceOptions;
@@ -10393,7 +10408,7 @@ export default function App() {
       wantsFollowUp: publicBetaDefaults.wantsFollowUp ?? true,
       safetyConsent: publicBetaDefaults.safetyConsent || false,
       metadata: {
-        appVersion: "Ember & Tide beta web app",
+        appVersion: "Code 3 TCG beta web app",
         route: activeTab,
         feedbackCategory: type,
         ...(defaults.metadata || {}),
@@ -10520,7 +10535,7 @@ export default function App() {
       title: payload.mainReason || "Public beta feedback",
       description: buildPublicBetaFeedbackDescription(payload),
       expected_result: payload.mainReason === "Request my state" || payload.mainReason === "Join waitlist"
-        ? "Use state requests to decide where Ember & Tide opens next."
+        ? "Use state requests to decide where Code 3 TCG opens next."
         : "Review during public beta planning.",
       severity: payload.mainReason === "Report a bug" ? "normal" : "low",
       status: "new",
@@ -10538,7 +10553,7 @@ export default function App() {
         device: payload.metadata?.device || "",
       },
       browser_info: typeof navigator !== "undefined" ? navigator.userAgent : "",
-      app_version: APP_VERSION || "Ember & Tide beta web app",
+      app_version: APP_VERSION || "Code 3 TCG beta web app",
       related_entity_type: "public_beta_feedback",
       related_entity_id: null,
     };
@@ -10639,7 +10654,7 @@ export default function App() {
           screenshotUrl: "",
           deviceInfo: payload.metadata || {},
           browserInfo: typeof navigator !== "undefined" ? navigator.userAgent : "",
-          appVersion: APP_VERSION || "Ember & Tide beta web app",
+          appVersion: APP_VERSION || "Code 3 TCG beta web app",
           createdAt,
         },
         ...(current.betaFeedback || []),
@@ -10649,8 +10664,8 @@ export default function App() {
     const backendResult = await trySubmitPublicBetaFeedbackToBackend(payload);
     const isWaitlist = payload.mainReason === "Join waitlist" || payload.mainReason === "Request my state";
     const successCopy = isWaitlist
-      ? "Thank you - we'll use state requests to decide where Ember & Tide opens next."
-      : "Thank you - your beta feedback helps shape Ember & Tide.";
+      ? "Thank you - we'll use state requests to decide where Code 3 TCG opens next."
+      : "Thank you - your beta feedback helps shape Code 3 TCG.";
     const fallbackCopy = backendResult.ok
       ? successCopy
       : `${duplicate ? "Already queued - thank you again." : "Queued locally for beta review."} Feedback capture connection is unavailable, so this public beta response is saved on this device for now.`;
@@ -10746,7 +10761,7 @@ export default function App() {
 
   function mapSupabaseNotification(row = {}) {
     const type = row.type || "account_notice";
-    const title = row.title || "Ember & Tide update";
+    const title = row.title || "Code 3 TCG update";
     const message = row.message || "";
     return {
       id: row.id || makeId("notification"),
@@ -10871,7 +10886,7 @@ export default function App() {
           screenshotUrl: payload.screenshotName || "",
           deviceInfo: payload.metadata || {},
           browserInfo: typeof navigator !== "undefined" ? navigator.userAgent : "",
-          appVersion: "Ember & Tide beta web app",
+          appVersion: "Code 3 TCG beta web app",
           createdAt: payload.createdAt,
         },
         ...(current.betaFeedback || []),
@@ -11371,6 +11386,7 @@ export default function App() {
 
   function submitDataRequest(event) {
     event.preventDefault();
+    if (dataRequestForm.requestType === "account_deletion") { window.location.assign("/delete-account"); return; }
     const email = String(dataRequestForm.email || accountEmail()).trim();
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setVaultToast("Enter a valid email for the privacy request.");
@@ -11391,7 +11407,7 @@ export default function App() {
       dataRequests: [request, ...(current.dataRequests || [])],
     }));
     setDataRequestForm({ requestType: "data_export", email, message: "" });
-    setVaultToast("Privacy request submitted for admin review.");
+    setVaultToast("Privacy request saved in your app records. For a response, contact support from Help; this is not confirmation of account deletion.");
   }
 
   function updateDataRequestStatus(requestId, status) {
@@ -11882,7 +11898,7 @@ export default function App() {
     if (!adminToolsVisible) return;
     addBetaNotification({
       type: "announcement",
-      title: "New from Ember & Tide!",
+      title: "New from Code 3 TCG!",
       message: "Admin-created announcement draft. Review copy before making this public in a backend-managed announcement system.",
       actionUrl: "/",
       priority: "normal",
@@ -11934,7 +11950,7 @@ export default function App() {
       reason: String(kidsProgramForm.reason || "").trim(),
       requestedAccess: kidsProgramForm.requestedAccess,
       agreesNoResale: true,
-      consentText: "I agree Ember & Tide may contact me about Kids Program opportunities.",
+      consentText: "I agree Code 3 TCG may contact me about Kids Program opportunities.",
       status: "interest_submitted",
       createdAt: now,
       updatedAt: now,
@@ -12022,7 +12038,7 @@ export default function App() {
       city: String(sponsorForm.city || "").trim(),
       partnershipTypes: sponsorForm.partnershipTypes,
       message: String(sponsorForm.message || "").trim(),
-      consentText: "I agree Ember & Tide may contact me about partnership opportunities.",
+      consentText: "I agree Code 3 TCG may contact me about partnership opportunities.",
       status: "new",
       createdAt: new Date().toISOString(),
     };
@@ -12962,7 +12978,7 @@ export default function App() {
     const importedProducts = (result.rows || []).map(mapCatalog);
     const seedProductsForSearch = await localSeedPromise;
     const localSeedMatches = getLocalCatalogSeedMatches(cleanedSearch || barcode, pageSize, seedProductsForSearch);
-    const combinedProducts = mergeCatalogProductLists(localSeedMatches, importedProducts);
+    const combinedProducts = mergeCatalogProductLists(importedProducts, localSeedMatches);
     setCatalogPagedResultIds(combinedProducts.map((product) => String(product.id)));
     setCatalogProducts((current) => {
       const baseline = options.append ? current : current.filter((product) => product.sourceType !== "supabase");
@@ -17207,11 +17223,13 @@ export default function App() {
   }, [quickAddMenuOpen, activeFlowModal, selectedStoreMapStore, feedbackDialog, suggestionConflict, menuOpen, vaultPotentialDuplicate, vaultDuplicateItem, vaultForgeTransfer, showInventoryScanner, receiptScanOpen, vaultForm, scanReview]);
 
   function getPasswordResetRedirectTo() {
+    if (isNativePlatform()) return getNativeAuthRedirect("recovery");
     const appUrl = String(import.meta.env.VITE_PUBLIC_APP_URL || PRODUCTION_APP_URL).replace(/\/$/, "");
     return `${appUrl}/reset-password`;
   }
 
   function getAuthEmailRedirectTo() {
+    if (isNativePlatform()) return getNativeAuthRedirect("signin");
     return String(import.meta.env.VITE_PUBLIC_APP_URL || PRODUCTION_APP_URL).replace(/\/$/, "");
   }
 
@@ -17862,7 +17880,7 @@ export default function App() {
     if (isProtectedWorkspace(workspace, { defaultWorkspaceId: DEFAULT_PERSONAL_WORKSPACE_ID })) {
       setWorkspaceMessage(workspace.id === DEFAULT_PERSONAL_WORKSPACE_ID
         ? "The default personal workspace cannot be archived. Hide Personal Forge or archive another workspace instead."
-        : "Protected system or Ember & Tide workspaces cannot be archived from normal settings.");
+        : "Protected system or Code 3 TCG workspaces cannot be archived from normal settings.");
       return;
     }
     if (!canManageWorkspaceId(workspace.id)) {
@@ -17887,7 +17905,7 @@ export default function App() {
     if (isProtectedWorkspace(workspace, { defaultWorkspaceId: DEFAULT_PERSONAL_WORKSPACE_ID })) {
       setWorkspaceMessage(workspace.id === DEFAULT_PERSONAL_WORKSPACE_ID
         ? "The default personal workspace cannot be archived."
-        : "Protected system or Ember & Tide workspaces cannot be archived from normal settings.");
+        : "Protected system or Code 3 TCG workspaces cannot be archived from normal settings.");
       return;
     }
     if (!canManageWorkspaceId(workspace.id)) {
@@ -21713,7 +21731,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       return {
         key: "admin-reviewed",
         label: "Strong confidence",
-        helper: "Reviewed by an Ember & Tide admin or moderator.",
+        helper: "Reviewed by a Code 3 TCG admin or moderator.",
         score: 96,
       };
     }
@@ -25008,7 +25026,7 @@ function mapCatalog(row) {
       summary: `Moved through trade for ${record.receivedName || "received item"}.`,
       createdAt: now,
     };
-    const itemNote = `Moved Through Trade via Trade Ledger ${record.id}. Ember & Tide kept the Vault record and did not delete the item.`;
+    const itemNote = `Moved Through Trade via Trade Ledger ${record.id}. Code 3 TCG kept the Vault record and did not delete the item.`;
     setItems((current) => current.map((entry) =>
       String(entry.id || "") === String(item.id)
         ? {
@@ -25035,7 +25053,7 @@ function mapCatalog(row) {
       collectionUpdate: "Given item marked Moved Through Trade. Vault record was kept.",
       inventoryMutation: "explicit_vault_update",
     });
-    setTradeMessage("Given item marked Moved Through Trade. Ember & Tide kept the Vault record and did not delete it.");
+    setTradeMessage("Given item marked Moved Through Trade. Code 3 TCG kept the Vault record and did not delete it.");
     setVaultToast("Given Vault item marked moved through trade.");
   }
 
@@ -28040,7 +28058,7 @@ function renderVaultHeader() {
 function renderForgeHeader() {
   const forgeReportRecordCount = workspaceSales.length + workspaceExpenses.length + workspaceMileageTrips.length;
   const forgeWorkspaceContextLabel = activeForgeWorkspace
-    ? `${activeForgeWorkspace.name || "Ember & Tide"}${forgeModeSettings.lockToEmberTide ? " (locked)" : ""} | Private Forge`
+    ? `${activeForgeWorkspace.name || "Code 3 TCG"}${forgeModeSettings.lockToEmberTide ? " (locked)" : ""} | Private Forge`
     : forgeWorkspaceUnavailableMessage;
   const forgeSummaryCards = [
     {
@@ -29235,7 +29253,7 @@ function renderForgeBusinessLedgerPanel() {
         {expense.notes ? <p className="compact-subtitle">{expense.notes}</p> : null}
         <div className="expense-record-actions">
           {linkedReceipt ? <button type="button" className="secondary-button" onClick={() => openReceiptDetail(linkedReceipt)}>Receipt detail</button> : null}
-          {receiptUrl ? <a href={receiptUrl} target="_blank" rel="noreferrer">View Receipt</a> : null}
+          {receiptUrl ? <PrivateReceiptLink href={receiptUrl}>View Receipt</PrivateReceiptLink> : null}
           <OverflowMenu
             onEdit={() => startEditingExpense(expense)}
             onDelete={() => deleteExpense(expense.id)}
@@ -29738,31 +29756,37 @@ function renderForgeBusinessLedgerPanel() {
     setVaultToast("Sale deleted. Items returned to inventory.");
   }
 
-  function downloadCSV(filename, rows) {
+  async function downloadRecordFile(filename, blob, message) {
+    const scope = fileExportScopeRef.current;
+    if (!scope || scope.signal.aborted) return false;
+    try {
+      await exportFile({ filename, blob, signal: scope.signal });
+      if (scope.signal.aborted) return false;
+      setVaultToast(isNativePlatform() ? "Export prepared. Check that you saved the file before leaving the app." : message);
+      return true;
+    } catch {
+      if (!scope.signal.aborted) showAppMessage("The export was not completed. Your records are unchanged; you can try saving the file again.");
+      return false;
+    }
+  }
+
+  async function downloadCSV(filename, rows, message = "Export complete.") {
     if (!rows.length) return showAppMessage("No data to export yet.");
     const headers = Object.keys(rows[0]);
     const csv = [headers.join(","), ...rows.map((row) => headers.map((h) => `"${String(row[h] ?? "").replaceAll('"', '""')}"`).join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    link.click();
-    URL.revokeObjectURL(url);
-    setVaultToast("Export complete.");
+    return downloadRecordFile(filename, blob, message);
   }
 
-  function downloadBackup() {
-    const backup = createBetaBackup();
-    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `ember-tide-beta-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-    setBackupImportMessage("Backup exported. Keep this file somewhere safe before clearing browser data or switching phones.");
-    setVaultToast("Backup exported.");
+  async function downloadBackup() {
+    try {
+      const backup = createBetaBackup();
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+      const exported = await downloadRecordFile(`code3tcg-beta-backup-${new Date().toISOString().slice(0, 10)}.json`, blob, "Backup exported.");
+      if (exported) setBackupImportMessage("Backup prepared. Verify the saved file and keep it somewhere safe before clearing storage or switching phones.");
+    } catch {
+      showAppMessage("The backup could not be prepared. Your existing records are unchanged.");
+    }
   }
 
   function downloadYearEndTaxSummary(format = "csv") {
@@ -29772,17 +29796,9 @@ function renderForgeBusinessLedgerPanel() {
     }
     if (format === "json") {
       const blob = new Blob([JSON.stringify(summary, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `ember-tide-tax-records-${summary.year}.json`;
-      link.click();
-      URL.revokeObjectURL(url);
-      setVaultToast("Year-end tax records JSON exported for review.");
-      return;
+      return downloadRecordFile(`code3tcg-tax-records-${summary.year}.json`, blob, "Year-end tax records JSON exported for review.");
     }
-    downloadCSV(`ember-tide-tax-records-${summary.year}.csv`, buildTaxRecordExportRows(summary));
-    setVaultToast("Year-end tax records CSV exported for review.");
+    return downloadCSV(`code3tcg-tax-records-${summary.year}.csv`, buildTaxRecordExportRows(summary), "Year-end tax records CSV exported for review.");
   }
 
   function downloadMileageRecords(format = "csv") {
@@ -29790,22 +29806,14 @@ function renderForgeBusinessLedgerPanel() {
     const payload = {
       generatedAt: new Date().toISOString(),
       workspace: activeForgeWorkspace?.name || activeWorkspace?.name || "Forge",
-      disclaimer: "Mileage records for review with your tax professional. Ember & Tide does not provide tax advice.",
+      disclaimer: "Mileage records for review with your tax professional. Code 3 TCG does not provide tax advice.",
       vehicles: groupedMileageVehicles,
     };
     if (format === "json") {
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `ember-tide-mileage-records-${new Date().toISOString().slice(0, 10)}.json`;
-      link.click();
-      URL.revokeObjectURL(url);
-      setVaultToast("Mileage records JSON exported for review.");
-      return;
+      return downloadRecordFile(`code3tcg-mileage-records-${new Date().toISOString().slice(0, 10)}.json`, blob, "Mileage records JSON exported for review.");
     }
-    downloadCSV(`ember-tide-mileage-records-${new Date().toISOString().slice(0, 10)}.csv`, buildMileageExportRows(groupedMileageVehicles));
-    setVaultToast("Mileage records CSV exported for review.");
+    return downloadCSV(`code3tcg-mileage-records-${new Date().toISOString().slice(0, 10)}.csv`, buildMileageExportRows(groupedMileageVehicles), "Mileage records CSV exported for review.");
   }
 
   function downloadSalesRecords(format = "csv") {
@@ -29813,31 +29821,23 @@ function renderForgeBusinessLedgerPanel() {
     const payload = {
       generatedAt: new Date().toISOString(),
       workspace: activeForgeWorkspace?.name || activeWorkspace?.name || "Forge",
-      disclaimer: "Sales records are organized for year-end review with your tax professional. Ember & Tide does not provide tax advice.",
+      disclaimer: "Sales records are organized for year-end review with your tax professional. Code 3 TCG does not provide tax advice.",
       summary: salesSummary,
       sales: workspaceSales,
     };
     if (format === "json") {
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `ember-tide-sales-records-${new Date().toISOString().slice(0, 10)}.json`;
-      link.click();
-      URL.revokeObjectURL(url);
-      setVaultToast("Sales records JSON exported for review.");
-      return;
+      return downloadRecordFile(`code3tcg-sales-records-${new Date().toISOString().slice(0, 10)}.json`, blob, "Sales records JSON exported for review.");
     }
-    downloadCSV(`ember-tide-sales-records-${new Date().toISOString().slice(0, 10)}.csv`, buildSalesExportRows(workspaceSales));
-    setVaultToast("Sales records CSV exported for review.");
+    return downloadCSV(`code3tcg-sales-records-${new Date().toISOString().slice(0, 10)}.csv`, buildSalesExportRows(workspaceSales), "Sales records CSV exported for review.");
   }
 
   function createBetaBackup() {
     const savedScout = safeReadBrowserJson(localStorage, SCOUT_STORAGE_KEY, {});
 
     return {
-      appName: "Ember & Tide",
-      fullBrand: "Ember & Tide",
+      appName: "Code 3 TCG",
+      fullBrand: "Code 3 TCG",
       backupType: "local-beta",
       backupVersion: 2,
       createdAt: new Date().toISOString(),
@@ -31572,7 +31572,7 @@ function renderForgeBusinessLedgerPanel() {
         loading: false,
         error: "",
         message: betaAccessAllowedForProfile(refreshedProfile)
-          ? "Access approved. Opening Ember & Tide now."
+          ? "Access approved. Opening Code 3 TCG now."
           : "Access status checked. Your request is still pending review.",
       }));
     } catch (error) {
@@ -31629,7 +31629,7 @@ function renderForgeBusinessLedgerPanel() {
           error: "",
           result: claim,
         });
-        setVaultToast("Invite claimed. Welcome to Ember & Tide.");
+        setVaultToast("Invite claimed. Welcome to Code 3 TCG.");
         void onActivityEvent("claimed_invite", {
           eventContext: "beta_invite",
           entityType: "beta_invite",
@@ -31918,9 +31918,9 @@ function renderForgeBusinessLedgerPanel() {
   const feedbackDialogCopy = {
     [PUBLIC_BETA_FEEDBACK_DIALOG]: {
       title: "Join the Public Beta",
-      intro: "Help build a fairer way to collect. Families, collectors, sellers, shops, and Spark supporters all help shape Ember & Tide.",
+      intro: "Help build a fairer way to collect. Families, collectors, sellers, shops, and Spark supporters all help shape Code 3 TCG.",
       label: "Message",
-      placeholder: "Tell us what would make Ember & Tide more useful for your family, collection, shop, or community.",
+      placeholder: "Tell us what would make Code 3 TCG more useful for your family, collection, shop, or community.",
       stepsLabel: "Extra context",
       stepsPlaceholder: "Optional: what page, role, state, or beta flow should we review?",
       submit: "Send Public Beta Feedback",
@@ -31936,7 +31936,7 @@ function renderForgeBusinessLedgerPanel() {
     },
     feature: {
       title: "Request a Feature",
-      intro: "Save a local note about what you wanted to do next or what would make Ember & Tide more useful.",
+      intro: "Save a local note about what you wanted to do next or what would make Code 3 TCG more useful.",
       label: "What were you trying to do?",
       placeholder: "What should we add, change, or make easier?",
       stepsLabel: "What was missing or unclear?",
@@ -31989,7 +31989,7 @@ function renderForgeBusinessLedgerPanel() {
         {publicBetaSubmissionComplete ? (
           <div className={`public-beta-submit-state ${feedbackSubmitState.persisted === "backend" ? "is-cloud" : "is-local"}`} role="status">
             <span className="section-kicker">{feedbackSubmitState.persisted === "backend" ? "Submitted" : "Queued locally"}</span>
-            <h3>{feedbackSubmitState.persisted === "backend" ? "Thank you - your beta feedback helps shape Ember & Tide." : "Feedback capture connection coming soon."}</h3>
+            <h3>{feedbackSubmitState.persisted === "backend" ? "Thank you - your beta feedback helps shape Code 3 TCG." : "Feedback capture connection coming soon."}</h3>
             <p>{feedbackSubmitState.message}</p>
             {feedbackSubmitState.persisted !== "backend" ? (
               <small>Nothing was uploaded, paid, messaged, or shared publicly. This response is stored locally on this device until the feedback connection is available.</small>
@@ -32408,7 +32408,7 @@ function renderForgeBusinessLedgerPanel() {
       const fallbackMessage = {
         id: makeId("ember-assist"),
         role: "assistant",
-        text: "I could not load the local helper right now. You can try again, use Quick Add, or send this to Ember & Tide admin for review.",
+        text: "I could not load the local helper right now. You can try again, use Quick Add, or send this to Code 3 TCG admin for review.",
         actions: ["Open Quick Add", "Send Message to Admin"],
         category: "App bug",
         shouldEscalate: true,
@@ -32443,7 +32443,7 @@ function renderForgeBusinessLedgerPanel() {
     pushEmberAssistMessage({
       id: makeId("ember-confirm"),
       role: "assistant",
-      text: "Queued for Ember & Tide admin review. It will appear in the admin inbox.",
+      text: "Queued for Code 3 TCG admin review. It will appear in the admin inbox.",
       actions: [],
       createdAt: new Date().toISOString(),
     });
@@ -35836,7 +35836,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             {ownedCount ? <span className="catalog-owned-bubble">x{ownedCount}</span> : null}
             {productImageSrc ? (
               <>
-                <img
+                <PrivateStorageImage
                   src={productImageSrc}
                   alt=""
                   onError={(event) => {
@@ -38250,7 +38250,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }
 
   async function runMarketingAiAssist(audience = "parents") {
-    const suggestion = draftMarketingCopy({ topic: "Ember & Tide beta", audience });
+    const suggestion = draftMarketingCopy({ topic: "Code 3 TCG beta", audience });
     return showAiSuggestion(AI_FEATURE_AREAS.MARKETING_COPY, {
       ...suggestion,
       title: "Marketing draft assist",
@@ -38445,12 +38445,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <div className="compact-card-header">
           <div>
             <p className="section-kicker">First-time guide</p>
-            <h2>Welcome to Ember &amp; Tide</h2>
+            <h2>Welcome to Code 3 TCG</h2>
             <p>{ONBOARDING_WELCOME_COPY}</p>
           </div>
           {completedAt ? <span className="status-badge">Completed</span> : <span className="status-badge">{hearthChecklistLabel}</span>}
         </div>
-        <div className="hearth-onboarding-guide-grid" aria-label="Ember and Tide first-time guide">
+        <div className="hearth-onboarding-guide-grid" aria-label="Code 3 TCG first-time guide">
           {FIRST_TIME_ONBOARDING_CARDS.map((card) => (
             <article className={`hearth-onboarding-guide-card hearth-onboarding-guide-card--${card.key}`} key={card.key}>
               <strong>{card.title}</strong>
@@ -38662,7 +38662,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <div className="compact-card-header app-setup-personalization-header">
           <div>
             <p className="section-kicker">App Setup &amp; Personalization</p>
-            <strong>Choose your tools, customize pages, and let Ember &amp; Tide recommend what fits you.</strong>
+            <strong>Choose your tools, customize pages, and let Code 3 TCG recommend what fits you.</strong>
             <p className="compact-subtitle">Smart enough to guide. Easy enough for families. Detailed enough for serious collectors and sellers. You can change this anytime.</p>
           </div>
           <span className="status-badge settings-mode-badge">{smartSetupRecommendation.label}</span>
@@ -38774,7 +38774,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             ) : (
               <div className="small-empty-state app-setup-empty-recommendations">
                 <strong>No recommendations yet</strong>
-                <span>Use Ember &amp; Tide a little more and we&apos;ll suggest ways to simplify your pages.</span>
+                <span>Use Code 3 TCG a little more and we&apos;ll suggest ways to simplify your pages.</span>
                 <div className="drawer-inline-actions app-setup-empty-actions">
                   <button type="button" className="drawer-link" onClick={resetAppSetupToRecommended}>Reset to recommended setup</button>
                   <button type="button" className="secondary-button" onClick={() => setAppSetupPanel("customize")}>Customize manually</button>
@@ -38915,7 +38915,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             {step === "mode" ? (
               <div className="smart-setup-step">
                 <h3 id="smart-setup-step-title" tabIndex={-1}>Are you mostly a collector or seller?</h3>
-                <p>Not sure is fine. Ember & Tide can start simple.</p>
+                <p>Not sure is fine. Code 3 TCG can start simple.</p>
                 {renderRadioGrid(SMART_SETUP_PRIMARY_MODE_OPTIONS, "primaryMode")}
               </div>
             ) : null}
@@ -39179,7 +39179,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       { title: "Drop/event composer", body: "Draft a Learn to Play Day, trade night, or Spark drop-off event for review." },
       { title: "Restock status composer", body: "Use safe broad labels instead of exact quantities, vendor timing, or employee details." },
       { title: "Spark sponsor tools", body: "Share support categories without payments, checkout, or donation processing." },
-      { title: "Admin review status", body: "Updates stay pending until Ember & Tide review approves safe public wording." },
+      { title: "Admin review status", body: "Updates stay pending until Code 3 TCG review approves safe public wording." },
     ];
     const shopPortalReviewSteps = [
       { title: "Profile review", body: "Shop identity, region, and family-friendly contact details are reviewed before any badge appears.", status: "Pending" },
@@ -39279,7 +39279,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div className="compact-card-header">
               <div>
                 <h3>Partner interest</h3>
-                <p>Tell Ember & Tide about your shop or support idea. This queues a local beta interest record only and does not publish anything publicly.</p>
+                <p>Tell Code 3 TCG about your shop or support idea. This queues a local beta interest record only and does not publish anything publicly.</p>
               </div>
               <span className="status-badge">Mock review intake</span>
             </div>
@@ -39323,7 +39323,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </Field>
             <label className="checkbox-row">
               <input type="checkbox" checked={sponsorForm.consent} onChange={(event) => updateSponsorForm("consent", event.target.checked)} />
-              <span>I agree Ember & Tide may contact me about partnership opportunities.</span>
+              <span>I agree Code 3 TCG may contact me about partnership opportunities.</span>
             </label>
             <button type="submit">Send sponsor interest</button>
             <button type="button" className="secondary-button" onClick={() => openPublicBetaFeedback({ page: "Shop Portal", role: "Shop", mainReason: "Shop partnership", interests: ["Shop partnership"] })}>Join beta / request review</button>
@@ -39335,6 +39335,20 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         </section>
       </>
     );
+  }
+
+  function navigatePrivacyPage(tab) {
+    if (tab === "deleteAccount") { window.location.assign("/delete-account"); return; }
+    setActiveTab(tab);
+  }
+
+  function renderAccountDeletionPage() {
+    return <AccountDeletionPage key={user?.id || "signed-out"} user={guestPreviewActive ? null : user} completed={accountDeletionCompleted} onNavigate={setActiveTab} onDeleted={async () => {
+      setAccountDeletionCompleted(true);
+      const { error } = await supabase.auth.signOut({ scope: "local" });
+      setUser(null);
+      if (error) throw error;
+    }} />;
   }
 
   function renderTrustPages() {
@@ -39351,7 +39365,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         openFeedbackDialog,
         openUtilityPage,
         runTrustCopyAiAssist,
-        setActiveTab,
+        setActiveTab: navigatePrivacyPage,
       }} />
     </LazyToolBoundary>;
   }
@@ -39369,19 +39383,19 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       <>
         <PageHeader
           className={getHeaderCardClass("panel page-summary-card")}
-          title="Ember & Tide Links"
+          title="Code 3 TCG Links"
           subtitle="Beta, Kids Program, partner interest, feedback, support, and campaign links in one place."
           actions={<button type="button" className="secondary-button" onClick={() => setActiveTab("dashboard")}>Back to Home</button>}
         />
         <section className="panel link-bio-panel">
           <figure className="link-bio-hero">
-            <img src={BRAND_ASSETS.linkBioHeader} alt="Ember & Tide link-in-bio header with Track. Trade. Thrive." loading="lazy" />
+            <img src={BRAND_ASSETS.linkBioHeader} alt="Code 3 TCG link-in-bio header with Track. Trade. Thrive." loading="lazy" />
           </figure>
           <div className="beta-link-stack">
             {linkActions.map((entry) => (
               <button type="button" key={entry.label} onClick={entry.action}>{entry.label}</button>
             ))}
-            <button type="button" className="secondary-button" onClick={() => setVaultToast("Follow links are coming soon for beta launch.")}>Follow Ember & Tide</button>
+            <button type="button" className="secondary-button" onClick={() => setVaultToast("Follow links are coming soon for beta launch.")}>Follow Code 3 TCG</button>
           </div>
           <div className="beta-foundation-grid">
             {BETA_REF_CODES.map((code) => <span className="status-badge" key={code}>{code}</span>)}
@@ -39411,7 +39425,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
     return renderUtilityPageShell({
       title: "Coming Soon",
-      subtitle: "Ember & Tide is growing carefully. These features are planned for future phases, but we are perfecting the core app first.",
+      subtitle: "Code 3 TCG is growing carefully. These features are planned for future phases, but we are perfecting the core app first.",
       className: "coming-soon-page",
       actions: (
         <button
@@ -39540,7 +39554,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <PageHeader
           className={getHeaderCardClass("panel page-summary-card announcements-new-stuff-header")}
           title={heroAnnouncement?.title || "Announcements"}
-          subtitle={heroAnnouncement?.message || heroAnnouncement?.body || "Important Ember & Tide updates appear here before the daily command view."}
+          subtitle={heroAnnouncement?.message || heroAnnouncement?.body || "Important Code 3 TCG updates appear here before the daily command view."}
           actions={(
             <>
               {adminToolsVisible ? <button type="button" className="secondary-button" onClick={() => void runRoadmapChangelogAiAssist()}>Draft changelog</button> : null}
@@ -39644,7 +39658,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <h2>Product glossary</h2>
               <p>Final names for the live app and permission-safe beta surfaces.</p>
             </div>
-            <span className="status-badge">Ember & Tide</span>
+            <span className="status-badge">Code 3 TCG</span>
           </div>
           <div className="beta-foundation-grid">
             {PRODUCT_GLOSSARY.map((item) => (
@@ -40412,10 +40426,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 Change this user from {roleLabel(roleChangeTarget.appRole)} to {roleLabel(roleChangeRole)}. This does not grant seller access, paid tier, or private workspace data by itself.
               </p>
               {roleChangeRole === APP_ROLES.ADMIN || roleChangeRole === APP_ROLES.OWNER ? (
-                <p className="role-warning">Admin and owner promotion is sensitive. Confirm the user is an official Ember & Tide operator before continuing.</p>
+                <p className="role-warning">Admin and owner promotion is sensitive. Confirm the user is an official Code 3 TCG operator before continuing.</p>
               ) : null}
               {roleChangeTarget.protectedOfficialAdmin ? (
-                <p className="role-warning">This looks like official admin Ember/Tide. Only owners should change this role.</p>
+                <p className="role-warning">This looks like official admin Code 3 TCG. Only owners should change this role.</p>
               ) : null}
               <Field label="Reason optional">
                 <textarea value={roleChangeReason} onChange={(event) => setRoleChangeReason(event.target.value)} placeholder="Why is this role changing?" />
@@ -40972,7 +40986,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <div className="compact-card-header">
           <div>
             <h3>Family-Friendly Shop Review</h3>
-            <p>Family-friendly status means this shop supports the Ember & Tide mission. It is not a guarantee of inventory, price, or availability.</p>
+            <p>Family-friendly status means this shop supports the Code 3 TCG mission. It is not a guarantee of inventory, price, or availability.</p>
           </div>
           <span className="status-badge">{rows.filter((row) => normalizeShopReviewStatus(row.store) === "Needs Review").length} need review</span>
         </div>
@@ -41264,7 +41278,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       quantity: Number(source.quantity || 1),
       askingPrice: source.salePrice || source.plannedSalePrice || source.plannedSellingPrice || "",
       tradeValue: source.marketPrice || marketInfo.currentMarketValue || "",
-      locationCity: locationSettings.manualLocation || "",
+      // Public listing location must be chosen separately from private home/GPS settings.
+      locationCity: "",
       locationState: "VA",
       photos: [source.itemImage || source.imageUrl || catalogImage(catalogProduct || source)].filter(Boolean),
       photoUrl: source.itemImage || source.imageUrl || catalogImage(catalogProduct || source) || "",
@@ -41451,7 +41466,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       {
         platform: "instagram",
         listingTitle: `${listing.title}`.slice(0, 80),
-        listingDescription: `${baseDescription}\n#PokemonTCG #TCGCommunity #EmberAndTide`.trim(),
+        listingDescription: `${baseDescription}\n#PokemonTCG #TCGCommunity #Code3TCG`.trim(),
         listedPrice: price,
         platformFees: 0,
         shippingCost: 0,
@@ -41545,7 +41560,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       })))
         .filter((row) => platform === "all" || row.platform === platform)
       : savedChannelRows;
-    downloadCSV(`ember-tide-cross-listings-${platform}.csv`, rows);
+    downloadCSV(`code3tcg-cross-listings-${platform}.csv`, rows);
     setVaultToast("Cross-listing export created.");
   }
 
@@ -41823,7 +41838,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const badges = [];
     const sellerUsername = normalizePublicUsername(listing.sellerUsername || listing.seller_username || listing.username || listing.publicUsername || listing.public_username);
     if (isOfficialCommunityUsername(sellerUsername)) {
-      badges.push({ label: "Official Ember & Tide Admin", tone: "verified" });
+      badges.push({ label: "Official Code 3 TCG Admin", tone: "verified" });
     }
     if (listing.verified || listing.isVerified || String(listing.verificationStatus || "").toLowerCase() === "verified") {
       badges.push({ label: "Verified Listing", tone: "verified" });
@@ -41883,7 +41898,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       <article className={`marketplace-listing-card market-fair-card compact-card${closedListing ? " marketplace-listing-card--closed" : ""}`} key={listing.id}>
         <div className="marketplace-listing-row">
           {imageSrc ? (
-            <img
+            <PrivateStorageImage
               className="marketplace-thumb"
               src={imageSrc}
               alt=""
@@ -42189,7 +42204,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <div className="flow-modal-body receipt-detail-body">
             <section className="receipt-detail-summary-card">
               <div className={imageUrl ? "receipt-proof-frame" : "receipt-proof-frame is-empty"}>
-                {imageUrl ? <img src={imageUrl} alt={`${receiptMerchantLabel(receipt)} receipt proof`} /> : <span>No receipt photo attached</span>}
+                {imageUrl ? <PrivateReceiptImage src={imageUrl} alt={`${receiptMerchantLabel(receipt)} receipt proof`} /> : <span>No receipt photo attached</span>}
               </div>
               <div className="receipt-detail-summary-copy">
                 <span className={`receipt-proof-pill ${imageUrl ? "is-attached" : "is-missing"}`}>
@@ -42411,7 +42426,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </div>
               <div>
                 <strong>Mark Given Item</strong>
-                <span>Mark what you gave as moved through trade. Ember & Tide will not delete it unless you choose to manage it later.</span>
+                <span>Mark what you gave as moved through trade. Code 3 TCG will not delete it unless you choose to manage it later.</span>
                 <small>{savedVaultSourceLinked ? (savedGivenMarked ? "Moved Through Trade recorded." : "Linked Vault item is ready to update.") : "Choose a Vault item as What You Gave to enable this."}</small>
               </div>
             </div>
@@ -43631,7 +43646,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
         <section className="wishlist-iso-helper-card wishlist-iso-flow-helper" aria-label="Wishlist ISO planning limits">
           <strong>No matching or seller offers</strong>
-          <span>Wishlist / ISO is a local planner. Ember & Tide will not message sellers, match offers, send alerts, or claim live availability from this entry.</span>
+          <span>Wishlist / ISO is a local planner. Code 3 TCG will not message sellers, match offers, send alerts, or claim live availability from this entry.</span>
         </section>
 
         {wishlistIsoMessage ? <p className="field-error trade-value-message" role="status">{wishlistIsoMessage}</p> : null}
@@ -44180,7 +44195,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           ) : null}
           {selectedSaleItem ? (
             <div className="forge-sale-product-summary">
-              {selectedSaleItem.itemImage ? <img src={selectedSaleItem.itemImage} alt="" /> : <span>Item</span>}
+              {selectedSaleItem.itemImage ? <PrivateStorageImage src={selectedSaleItem.itemImage} alt="" /> : <span>Item</span>}
               <div>
                 <strong>{selectedSaleItem.name}</strong>
                 <small>Qty owned: {selectedSaleItem.quantity} | Cost basis: {money(saleCostBasis)}</small>
@@ -44214,7 +44229,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <Field label="Notes"><input value={saleForm.notes} onChange={(e) => updateSaleForm("notes", e.target.value)} /></Field>
           </div>
         </details>
-        {saleForm.receiptImage ? <div className="receipt-preview"><p>Sale reference</p><img src={saleForm.receiptImage} alt="Sale reference" /></div> : null}
+        {saleForm.receiptImage ? <div className="receipt-preview"><p>Sale reference</p><PrivateReceiptImage src={saleForm.receiptImage} alt="Sale reference" /></div> : null}
         <div className="profit-preview forge-profit-preview">
           <h3>Estimated Profit</h3>
           <div className="preview-grid">
@@ -44299,7 +44314,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         </Field>
         <Field label="Receipt Tax"><input type="number" step="0.01" value={expenseForm.receiptTax || ""} onChange={(e) => updateExpenseForm("receiptTax", e.target.value)} /></Field>
         <Field label="Personal Split Total"><input type="number" step="0.01" value={expenseForm.receiptPersonalTotal || ""} onChange={(e) => updateExpenseForm("receiptPersonalTotal", e.target.value)} /></Field>
-        {expenseForm.receiptImage ? <div className="receipt-preview"><p>Receipt</p><img src={expenseForm.receiptImage} alt="Receipt" /></div> : null}
+        {expenseForm.receiptImage ? <div className="receipt-preview"><p>Receipt</p><PrivateReceiptImage src={expenseForm.receiptImage} alt="Receipt" /></div> : null}
         <div className="flow-form-footer">
           <button type="submit">{editingExpenseId ? "Save Expense" : "Add Expense"}</button>
         </div>
@@ -44353,7 +44368,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <Field label="Ending Odometer" help={INFO_TOOLTIP_COPY.mileage}><input type="number" value={tripForm.endMiles} onChange={(e) => updateTripForm("endMiles", e.target.value)} /></Field>
         <Field label="Gas Price Paid" help="Optional gas price for estimating fuel cost on this trip."><input type="number" step="0.01" value={tripForm.gasPrice} placeholder="Optional" onChange={(e) => updateTripForm("gasPrice", e.target.value)} /></Field>
         <Field label="Gas Receipt"><input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, (url) => updateTripForm("gasReceiptImage", url), "gas")} /></Field>
-        {tripForm.gasReceiptImage ? <div className="receipt-preview"><p>Gas Receipt</p><img src={tripForm.gasReceiptImage} alt="Gas Receipt" /></div> : null}
+        {tripForm.gasReceiptImage ? <div className="receipt-preview"><p>Gas Receipt</p><PrivateReceiptImage src={tripForm.gasReceiptImage} alt="Gas Receipt" /></div> : null}
         <Field label="Notes"><input value={tripForm.notes} onChange={(e) => updateTripForm("notes", e.target.value)} /></Field>
         <div className="flow-form-footer">
           <button type="submit">{editingTripId ? "Save Trip" : "Add Mileage Trip"}</button>
@@ -44424,7 +44439,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <Field label="Product Type"><input value={marketplaceForm.productType} onChange={(event) => updateMarketplaceForm("productType", event.target.value)} /></Field>
               <Field label="Set / Collection"><input value={marketplaceForm.setName} onChange={(event) => updateMarketplaceForm("setName", event.target.value)} /></Field>
               <Field label="Trade Value"><input type="number" step="0.01" value={marketplaceForm.tradeValue} onChange={(event) => updateMarketplaceForm("tradeValue", event.target.value)} /></Field>
-              <Field label="City"><input value={marketplaceForm.locationCity} onChange={(event) => updateMarketplaceForm("locationCity", event.target.value)} /></Field>
+              <div>
+                <Field label="Public city"><input value={marketplaceForm.locationCity} onChange={(event) => updateMarketplaceForm("locationCity", event.target.value)} autoComplete="off" aria-describedby="marketplace-public-city-help" /></Field>
+                <p id="marketplace-public-city-help" className="compact-subtitle">Choose the city to show on your listing. Keep your home address and exact location private.</p>
+              </div>
               <Field label="Tags"><input value={marketplaceForm.tags || ""} onChange={(event) => updateMarketplaceForm("tags", event.target.value)} placeholder="sealed, trade, local pickup..." /></Field>
               <Field label="Seller Notes"><input value={marketplaceForm.sellerNotes || ""} onChange={(event) => updateMarketplaceForm("sellerNotes", event.target.value)} /></Field>
               <Field label="Description"><textarea value={marketplaceForm.description} onChange={(event) => updateMarketplaceForm("description", event.target.value)} /></Field>
@@ -44591,7 +44609,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
         <section className="tidepool-circle-safety-strip" aria-label="Trusted Circle safety limits">
           <strong>Not Verified Yet</strong>
-          <span>Invite Later is a placeholder only. No messages or invites are sent. Ember &amp; Tide does not verify people, background-check anyone, guarantee safety, or publish this local note.</span>
+          <span>Invite Later is a placeholder only. No messages or invites are sent. Code 3 TCG does not verify people, background-check anyone, guarantee safety, or publish this local note.</span>
         </section>
 
         {tidepoolCircleMessage ? <p className="field-error trade-value-message" role="status">{tidepoolCircleMessage}</p> : null}
@@ -44816,7 +44834,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <div className="catalog-thumb">
           {imageUrl ? (
             <>
-              <img
+              <PrivateStorageImage
                 src={imageUrl}
                 alt=""
                 onError={(event) => {
@@ -45528,8 +45546,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     return (
       <div className={`app app-reset-password app-theme-${resolvedAppTheme}`} data-theme={resolvedAppTheme}>
         <header className="header app-shell-header app-shell-header--full">
-          <h1>E&amp;T TCG</h1>
-          <p>Reset your Ember &amp; Tide password.</p>
+          <h1>Code 3 TCG</h1>
+          <p>Reset your Code 3 TCG password.</p>
         </header>
         <main className="main auth-main">
           <section className="panel auth-panel">
@@ -45643,16 +45661,16 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const success = betaInviteClaimState.status === "success";
     const failed = betaInviteClaimState.status === "error";
     const title = signedOut
-      ? "You're invited to Ember & Tide"
+      ? "You're invited to Code 3 TCG"
       : success
         ? "Invite claimed"
         : failed
           ? "We could not claim this invite"
-          : "You're invited to Ember & Tide";
+          : "You're invited to Code 3 TCG";
     const body = signedOut
       ? "Create or log into your account to claim beta access."
       : success
-        ? "Your beta access is approved. You can enter Ember & Tide now."
+        ? "Your beta access is approved. You can enter Code 3 TCG now."
         : failed
           ? betaInviteClaimState.error
           : "We are checking this one-time invite against the secure beta invite backend.";
@@ -45673,7 +45691,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           {success ? (
             <div className="quick-actions auth-choice-row">
               <button type="button" className="ember-gradient-button auth-choice-button" onClick={() => { setBetaInviteToken(""); setActiveTab("dashboard"); }}>
-                Enter Ember & Tide
+                Enter Code 3 TCG
               </button>
             </div>
           ) : null}
@@ -45752,7 +45770,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   setActiveTab("dashboard");
                 }}
               >
-                Open Ember & Tide
+                Open Code 3 TCG
               </button>
               <button type="button" className="secondary-button auth-choice-button" onClick={() => setActiveTab("menu")}>
                 Open Settings
@@ -45779,7 +45797,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 Try Again
               </button>
               <button type="button" className="secondary-button auth-choice-button" onClick={() => { setWorkspaceInviteId(""); storeWorkspaceInviteId(""); setActiveTab("dashboard"); }}>
-                Back to Ember & Tide
+                Back to Code 3 TCG
               </button>
               <button type="button" className="auth-text-button auth-help-link" onClick={() => window.location.assign(`mailto:${SUPPORT_EMAIL}`)}>Need help?</button>
             </div>
@@ -45829,7 +45847,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const stateRows = [
       { title: "Virginia", body: "Virginia users can continue into beta review.", status: "Current launch" },
       { title: "Outside Virginia", body: "Join the waitlist so we know what states to add next.", status: "Waitlist" },
-      { title: "State requests", body: "Requests help decide where Ember & Tide opens next; no access is guaranteed.", status: "Planning signal" },
+      { title: "State requests", body: "Requests help decide where Code 3 TCG opens next; no access is guaranteed.", status: "Planning signal" },
     ];
     const firstStoreRows = [
       { title: "Target - Short Pump", body: "Watch current reports near Richmond without exact quantities.", status: "VA store" },
@@ -45855,13 +45873,13 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       welcome: {
         kicker: "Welcome",
         title: "Fair collecting starts with a safer home base.",
-        body: "Ember & Tide helps families collect, report, trade, and give back without turning Scout into a rush feed.",
+        body: "Code 3 TCG helps families collect, report, trade, and give back without turning Scout into a rush feed.",
         badge: "Mock onboarding",
       },
       "state-check": {
         kicker: "State Check",
         title: "We are launching in Virginia first.",
-        body: "We're launching in Virginia first so Ember & Tide can stay safe, fair, and useful for families.",
+        body: "We're launching in Virginia first so Code 3 TCG can stay safe, fair, and useful for families.",
         badge: "Virginia first",
       },
       waitlist: {
@@ -45960,7 +45978,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       ],
     };
     return (
-      <section className={`live-onboarding-page live-onboarding-page--${viewKey}`} aria-label="Ember and Tide onboarding preview">
+      <section className={`live-onboarding-page live-onboarding-page--${viewKey}`} aria-label="Code 3 TCG onboarding preview">
         <div className="live-onboarding-hero glass-panel">
           <div>
             <p className="section-kicker">{currentCopy.kicker}</p>
@@ -46096,6 +46114,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       if (activeTab === "parentCenter") return renderParentCenterPage();
       if (activeTab === "sponsor") return renderSponsorInterestPage();
       if (activeTab === "trust") return renderTrustPages();
+      if (activeTab === "deleteAccount") return renderAccountDeletionPage();
+      if (activeTab === "help") return <PublicSupportPage onNavigate={navigatePrivacyPage} />;
       if (activeTab === "links") return renderLinksPage();
       if (activeTab === "whatsNew") return renderWhatsNewPage();
       if (activeTab === "knownLimitations") return renderKnownLimitationsPage();
@@ -46329,17 +46349,17 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       : betaStatus === "approved"
         ? "Your beta access is approved."
         : betaStatus === "not_requested"
-          ? "Set up your Ember & Tide access."
+          ? "Set up your Code 3 TCG access."
           : "Your access request is pending.";
     const accessIntroCopy = betaStatus === "waitlist"
-      ? "Ember & Tide is starting in Virginia. Your state waitlist request helps us decide where to expand next."
+      ? "Code 3 TCG is starting in Virginia. Your state waitlist request helps us decide where to expand next."
       : "We review beta access to keep the community safe and family-friendly.";
     return (
       <div className={`app app-shoreline-access app-theme-${resolvedAppTheme}`} data-theme={resolvedAppTheme}>
         <main className="main shoreline-access-main">
           <section className="shoreline-hero glass-panel">
             <div className="shoreline-brand-mark" aria-hidden="true">
-              <span>E&amp;T</span>
+              <span>Code 3 TCG</span>
             </div>
             <div>
               <p className="section-kicker">Beta access</p>
@@ -46381,7 +46401,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <article className="shoreline-access-note glass-card">
               <span className="status-badge">Safe identity</span>
               <strong>Usernames protect private details.</strong>
-              <p>Public usernames can appear in Marketplace, Tidepool, Scout, and confirmations. Official Ember &amp; Tide names stay reserved.</p>
+              <p>Public usernames can appear in Marketplace, Tidepool, Scout, and confirmations. Official Code 3 TCG names stay reserved.</p>
             </article>
             <article className="shoreline-access-note glass-card">
               <span className="status-badge">Setup paths</span>
@@ -46470,7 +46490,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 ["guardianConfirmed", "Parent / guardian is submitting the application."],
                 ["inventoryLimitedAck", "Program access depends on inventory."],
                 ["quantityLimitAck", "Products may be limited to kid/family-focused quantities."],
-                ["antiResaleAck", "Ember & Tide may deny or remove access for abuse or reselling behavior."],
+                ["antiResaleAck", "Code 3 TCG may deny or remove access for abuse or reselling behavior."],
               ].map(([field, label]) => (
                 <label className="checkbox-row" key={field}>
                   <input type="checkbox" checked={Boolean(shorelineSparksForm[field])} onChange={(event) => updateShorelineSparksField(field, event.target.checked)} />
@@ -46654,7 +46674,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     },
     {
       title: "Workspace & Forge Identity",
-      body: "Personal, business, or Ember & Tide Forge behavior.",
+      body: "Personal, business, or Code 3 TCG Forge behavior.",
       status: BETA_LOCAL_MODE ? "Local workspace settings" : "Workspace scoped",
     },
     {
@@ -46708,7 +46728,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       status: "Beta feedback queue",
     },
     {
-      title: "About Ember & Tide",
+      title: "About Code 3 TCG",
       body: "Protect the spark. Follow the tide.",
       status: PUBLIC_APP_VERSION_LABEL,
     },
@@ -46812,7 +46832,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
 
   function renderSettingsProfileSummaryCard({ compact = false } = {}) {
-    const displayName = currentUserProfile?.displayName || currentUserProfile?.display_name || profileForm.displayName || publicProfileLabel() || "Ember & Tide Collector";
+    const displayName = currentUserProfile?.displayName || currentUserProfile?.display_name || profileForm.displayName || publicProfileLabel() || "Code 3 TCG Collector";
     const publicLabel = publicProfileLabel();
     const initials = String(displayName || publicLabel || "ET")
       .split(/\s+/)
@@ -47006,6 +47026,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </div>
           <span className="status-badge">Private by default</span>
         </div>
+        <div className="drawer-inline-actions">
+          <button type="button" className="secondary-button" onClick={() => setActiveTab("trust")}>Privacy policy</button>
+          <button type="button" className="secondary-button" onClick={() => window.location.assign("/delete-account")}>Delete account</button>
+        </div>
         <div className="settings-section-grid compact">
           {privacyRows.map((row) => (
             <article className="settings-section-card" key={row.title}>
@@ -47104,6 +47128,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               {passwordResetMessage ? <p className="auth-status-message success" role="status">{passwordResetMessage}</p> : null}
               <button type="button" className="drawer-link" disabled={passwordResetLoading || !isSupabaseConfigured} onClick={handleSignedInPasswordReset}>{passwordResetLoading ? "Sending..." : "Send Password Reset Email"}</button>
               <button type="button" className="drawer-link logout-link" onClick={signOut}>Log Out</button>
+              <button type="button" className="drawer-link" onClick={() => window.location.assign("/delete-account")}>Delete account</button>
             </div>
           )}
 
@@ -47353,13 +47378,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </div>
           <form className="drawer-info-card utility-card" onSubmit={submitDataRequest} noValidate>
             <strong>Privacy / Data Requests</strong>
-            <p className="compact-subtitle">Beta requests create admin review items. Nothing is automatically deleted without a safe process.</p>
+            <p className="compact-subtitle">These requests are saved in your app records. Contact support for a response. Account deletion uses a separate password-confirmed process.</p>
             <select className="drawer-field" value={dataRequestForm.requestType} onChange={(event) => setDataRequestForm((current) => ({ ...current, requestType: event.target.value }))}>
-              {DATA_REQUEST_TYPES.map((type) => <option key={type} value={type}>{type.replace(/_/g, " ")}</option>)}
+              {DATA_REQUEST_TYPES.filter((type) => type !== "account_deletion").map((type) => <option key={type} value={type}>{type.replace(/_/g, " ")}</option>)}
             </select>
             <input className="drawer-field" type="email" value={dataRequestForm.email || accountEmail()} onChange={(event) => setDataRequestForm((current) => ({ ...current, email: event.target.value }))} placeholder="Email" />
             <textarea className="drawer-field" value={dataRequestForm.message} onChange={(event) => setDataRequestForm((current) => ({ ...current, message: event.target.value }))} placeholder="Optional details" />
-            <button type="submit" className="drawer-link">Submit Privacy Request</button>
+            <button type="submit" className="drawer-link">Save privacy request</button>
+            <button type="button" className="drawer-link" onClick={() => window.location.assign("/delete-account")}>Delete account</button>
             <button type="button" className="drawer-link" onClick={() => setActiveTab("trust")}>Open Privacy / Terms</button>
           </form>
         </>
@@ -47429,6 +47455,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       className: "help-utility-page",
       children: (
         <>
+          <PublicSupportPage onNavigate={navigatePrivacyPage} />
           <div className="drawer-info-card app-support-card help-support-hero utility-card utility-card-wide">
             <div className="compact-card-header">
               <div>
@@ -47536,7 +47563,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         children: (
           <div className="drawer-info-card utility-card">
             <strong>Permission Denied</strong>
-            <p className="compact-subtitle">You do not have moderator access for Ember & Tide.</p>
+            <p className="compact-subtitle">You do not have moderator access for Code 3 TCG.</p>
           </div>
         ),
       });
@@ -48281,7 +48308,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <div className="app-search-result" key={result.id}>
                 <button type="button" className="app-search-result-main" onClick={() => viewSearchResult(result)}>
                   {(result.category === "Products" || result.category === "Cards") && getCatalogImage(result.source) ? (
-                    <img className="app-search-thumb" src={getCatalogImage(result.source)} alt="" />
+                    <PrivateStorageImage className="app-search-thumb" src={getCatalogImage(result.source)} alt="" />
                   ) : null}
                   <span>{result.category}</span>
                   <strong>{result.title}</strong>
@@ -48932,7 +48959,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <div><dt>Sales</dt><dd>{workspaceArchiveCounts?.sales || 0}</dd></div>
               </dl>
               {String(workspaceArchiveTarget.id) === String(activeWorkspace?.id) ? (
-                <p className="compact-subtitle">Because this is current, Ember & Tide will switch to another active collection after archiving.</p>
+                <p className="compact-subtitle">Because this is current, Code 3 TCG will switch to another active collection after archiving.</p>
               ) : null}
               {workspaceMessage ? <p className="flow-inline-message is-info" role="status">{workspaceMessage}</p> : null}
             </div>
@@ -49111,7 +49138,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     </div>
                     {trip.notes ? <p className="compact-subtitle">{trip.notes}</p> : null}
                     <div className="expense-record-actions">
-                      {trip.gasReceiptImage ? <a href={trip.gasReceiptImage} target="_blank" rel="noreferrer">View Receipt</a> : <span />}
+                      {trip.gasReceiptImage ? <PrivateReceiptLink href={trip.gasReceiptImage}>View Receipt</PrivateReceiptLink> : <span />}
                       <OverflowMenu
                         onEdit={() => startEditingTrip(trip)}
                         onDelete={() => deleteTrip(trip.id)}
@@ -49292,7 +49319,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div className={`location-modal-actions modal-sticky-footer flow-modal-footer ${activeFlowModal?.type === "scoutSubmit" ? "flow-modal-footer--scout-inline" : ""} ${activeFlowModal?.type === "multiDestinationAdd" && multiDestinationStep === "success" ? "flow-modal-footer--success" : ""}`}>
               {activeFlowModal?.type === "scoutSubmit" ? (
                 quickScoutReportStep === "submitted" ? (
-                  <button type="button" onClick={() => closeFlowModal()}>Close</button>
+                  <button type="button" onClick={() => closeFlowModal()}>Done</button>
                 ) : (
                   <>
                     <button type="button" className="secondary-button" onClick={getScoutWizardSteps().findIndex((step) => step.key === quickScoutReportStep) <= 0 ? () => closeFlowModal() : goBackScoutWizardStep}>
@@ -49824,7 +49851,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </div>
                 {scoutReportPhotoUrls(selectedScoutReport).length ? (
                   <div className="scout-report-proof-strip">
-                    {scoutReportPhotoUrls(selectedScoutReport).slice(0, 4).map((url) => <img key={url} src={url} alt="" />)}
+                    {scoutReportPhotoUrls(selectedScoutReport).slice(0, 4).map((url) => <PrivateStorageImage key={url} src={url} alt="" />)}
                   </div>
                 ) : null}
                 {!scoutReportPhotoUrls(selectedScoutReport).length && canAddScoutReportDetails(selectedScoutReport) ? (
@@ -50209,7 +50236,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <div className="app-update-prompt" role="dialog" aria-modal="false" aria-labelledby="app-update-title">
           <div>
             <h2 id="app-update-title">Update available</h2>
-            <p>A new Ember & Tide update is ready. Tap update to refresh safely.</p>
+            <p>A new Code 3 TCG update is ready. Tap update to refresh safely.</p>
           </div>
           <div className="app-update-actions">
             <button type="button" disabled={appRefreshInProgress} onClick={() => void handleSafeAppRefresh()}>
@@ -50412,7 +50439,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </Field>
                 {pictureLookup.imageUrl ? (
                   <div className="picture-lookup-preview scan-product-photo-preview">
-                    <img src={pictureLookup.imageUrl} alt="Uploaded product reference" />
+                    <PrivateStorageImage src={pictureLookup.imageUrl} alt="Uploaded product reference" />
                     <span>{pictureLookup.fileName || "Selected photo"}</span>
                   </div>
                 ) : null}
@@ -50447,7 +50474,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </div>
                 {receiptScanForm.filePreviewUrl ? (
                   <div className="picture-lookup-preview scan-product-photo-preview">
-                    <img src={receiptScanForm.filePreviewUrl} alt="Receipt preview" />
+                    <PrivateReceiptImage src={receiptScanForm.filePreviewUrl} alt="Receipt preview" />
                     <span>{receiptScanForm.fileName || "Selected receipt"}</span>
                   </div>
                 ) : null}
@@ -50501,7 +50528,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </Field>
                 {pictureLookup.imageUrl ? (
                   <div className="picture-lookup-preview scan-product-photo-preview">
-                    <img src={pictureLookup.imageUrl} alt="Uploaded card reference" />
+                    <PrivateStorageImage src={pictureLookup.imageUrl} alt="Uploaded card reference" />
                     <span>{pictureLookup.fileName || "Selected card photo"}</span>
                   </div>
                 ) : null}
@@ -50690,7 +50717,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     {scannerConfidenceLabel(scanReview.matchConfidence)} | {scanReview.matchConfidence}%
                   </span>
                 </div>
-                {scanReview.imageUrl ? <img className="scanner-review-image" src={scanReview.imageUrl} alt={scanReview.itemName} /> : null}
+                {scanReview.imageUrl ? <PrivateStorageImage className="scanner-review-image" src={scanReview.imageUrl} alt={scanReview.itemName} /> : null}
                 <div className="catalog-detail-grid">
                   <DetailItem label="UPC / SKU" value={[scanReview.upc, scanReview.sku].filter(Boolean).join(" / ") || "Unknown"} />
                   <DetailItem label="Market Value" value={scanReview.marketValue ? money(scanReview.marketValue) : "Unknown" } />
@@ -50775,7 +50802,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     <div className="catalog-thumb">
                       {catalogImage(match.item) ? (
                         <>
-                          <img
+                          <PrivateStorageImage
                             src={catalogImage(match.item)}
                             alt=""
                             onError={(event) => {
@@ -50853,7 +50880,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </div>
                 {receiptScanForm.filePreviewUrl ? (
                   <div className="picture-lookup-preview receipt-preview">
-                    <img src={receiptScanForm.filePreviewUrl} alt="Receipt preview" />
+                    <PrivateReceiptImage src={receiptScanForm.filePreviewUrl} alt="Receipt preview" />
                     <span>{receiptScanForm.fileName || "Receipt image"}</span>
                   </div>
                 ) : receiptScanForm.fileName ? (
@@ -51180,7 +51207,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </div>
             {selectedWatchCalendarEvent.imageUrl || selectedWatchCalendarEvent.productImage ? (
               <div className="watch-calendar-detail-media">
-                <img
+                <PrivateStorageImage
                   className="watch-calendar-detail-image"
                   src={selectedWatchCalendarEvent.imageUrl || selectedWatchCalendarEvent.productImage}
                   alt=""
@@ -51331,6 +51358,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         {!activeTabLocked && activeTab === "parentCenter" && renderParentCenterPage()}
         {!activeTabLocked && activeTab === "sponsor" && renderSponsorInterestPage()}
         {!activeTabLocked && activeTab === "trust" && renderTrustPages()}
+        {!activeTabLocked && activeTab === "deleteAccount" && renderAccountDeletionPage()}
         {!activeTabLocked && activeTab === "links" && renderLinksPage()}
         {!activeTabLocked && activeTab === "whatsNew" && renderWhatsNewPage()}
         {!activeTabLocked && activeTab === "knownLimitations" && renderKnownLimitationsPage()}
@@ -52558,7 +52586,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <div className="compact-card-header">
                 <div>
                   <h2>Mileage by Vehicle</h2>
-                  <p>Vehicles stay grouped here. Open a vehicle to review individual trips for year-end records. Ember & Tide does not provide tax advice.</p>
+                  <p>Vehicles stay grouped here. Open a vehicle to review individual trips for year-end records. Code 3 TCG does not provide tax advice.</p>
                 </div>
                 <div className="drawer-inline-actions">
                   <button type="button" onClick={() => openAddMileageFlow()}>Add Mileage</button>
@@ -52696,7 +52724,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     />
                     {catalogImage(selectedCatalogDetailPricingProduct) ? (
                       <>
-                        <img
+                        <PrivateStorageImage
                           className="catalog-detail-image"
                           src={catalogImage(selectedCatalogDetailPricingProduct)}
                           alt={catalogTitle(selectedCatalogDetailProduct)}
@@ -52755,7 +52783,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     <span className="catalog-pill">{getCatalogKindLabel(selectedCatalogDetailProduct)}</span>
                     {selectedCatalogDetailProduct.expansionSymbolUrl || selectedCatalogDetailProduct.expansionLogoUrl ? (
                       <div className="catalog-expansion-banner">
-                        <img src={selectedCatalogDetailProduct.expansionSymbolUrl || selectedCatalogDetailProduct.expansionLogoUrl} alt="" />
+                        <PrivateStorageImage src={selectedCatalogDetailProduct.expansionSymbolUrl || selectedCatalogDetailProduct.expansionLogoUrl} alt="" />
                         <span>{catalogExpansionName(selectedCatalogDetailProduct)}</span>
                       </div>
                     ) : null}
@@ -53184,7 +53212,7 @@ function InventoryBreakdownPanel({ item, variant = "forge", onEditEntry, onDelet
                   {entry.saleDate || entry.sale_date ? <span><b>Sale date</b>{shortDate(entry.saleDate || entry.sale_date)}</span> : null}
                   {entry.listingPlatform || entry.platform ? <span><b>Platform</b>{entry.listingPlatform || entry.platform}</span> : null}
                   {entry.notes ? <span className="wide"><b>Notes</b>{entry.notes}</span> : null}
-                  {receiptUrl ? <a className="wide" href={receiptUrl} target="_blank" rel="noreferrer">Open receipt/photo reference</a> : null}
+                  {receiptUrl ? <PrivateReceiptLink className="wide" href={receiptUrl}>Open receipt/photo reference</PrivateReceiptLink> : null}
                 </div>
               </div>
               <div className="individual-entry-actions">
@@ -53349,7 +53377,7 @@ function ForgeItemDetail({ item, masterCard, onClose, onEdit, onDelete, onEditSa
       </div>
       <div className="inventory-detail-hero">
         <div className={detailImage ? "inventory-detail-image-frame" : "inventory-detail-image-frame placeholder"}>
-          {detailImage ? <img src={detailImage} alt={item.name} /> : <span>Photo needed</span>}
+          {detailImage ? <PrivateStorageImage src={detailImage} alt={item.name} /> : <span>Photo needed</span>}
         </div>
         <div className="inventory-detail-summary">
           <span className="trust-badge trust-badge--secure">Private Forge</span>
@@ -53463,7 +53491,7 @@ function VaultSetCardRow({ row, onOpen, onAddOwned, onAddWishlist, onOpenMarket 
   return (
     <article className="vault-set-card-row">
       <div className={image ? "vault-set-card-row-image" : "vault-set-card-row-image placeholder"}>
-        {image ? <img src={image} alt="" /> : <span>Card</span>}
+        {image ? <PrivateStorageImage src={image} alt="" /> : <span>Card</span>}
       </div>
       <div className="vault-set-card-row-body">
         <span className={statusClass(statusCopy)}>{statusCopy}</span>
@@ -53502,7 +53530,7 @@ function VaultGroupedCardDetail({ cardGroup, setSummary, onClose, onViewSet, onA
       </div>
       <div className="inventory-detail-hero vault-card-identity-hero">
         <div className={image ? "inventory-detail-image-frame" : "inventory-detail-image-frame placeholder"}>
-          {image ? <img src={image} alt={cardGroup.title} /> : <span>Photo needed</span>}
+          {image ? <PrivateStorageImage src={image} alt={cardGroup.title} /> : <span>Photo needed</span>}
         </div>
         <div className="inventory-detail-summary">
           <h4>{cardGroup.ownedQuantity ? `${cardGroup.ownedQuantity} owned` : cardGroup.wishlistQuantity ? `${cardGroup.wishlistQuantity} wanted` : "Not owned yet"}</h4>
@@ -54381,7 +54409,7 @@ function VaultItemDetailContent({ item, masterCard, setSummary, linkedTrades = [
           <summary>Photos / Receipts</summary>
           <div className="catalog-detail-grid">
             {photoReceiptDetails.map(([label, value]) => (
-              <DetailItem key={label} label={label} value={value} />
+              <DetailItem key={label} label={label} value={label === "Receipt URL" || label === "Photo Proof" ? <PrivateReceiptLink href={value}>Open saved proof</PrivateReceiptLink> : value} />
             ))}
           </div>
           <div className="quick-actions">
@@ -54447,7 +54475,7 @@ function VaultItemDetailContent({ item, masterCard, setSummary, linkedTrades = [
             <div className="grade-assist-photo-grid" aria-label="Grade Assist photo references">
               <div className={detailImage ? "grade-assist-photo-card has-image" : "grade-assist-photo-card"}>
                 <span>Front/reference photo</span>
-                {detailImage ? <img src={detailImage} alt={`${item.name || "Vault item"} front reference for Grade Assist`} /> : <strong>No photo yet</strong>}
+                {detailImage ? <PrivateStorageImage src={detailImage} alt={`${item.name || "Vault item"} front reference for Grade Assist`} /> : <strong>No photo yet</strong>}
                 <p>{detailImage ? "Using the current item image for manual review." : "Add an item photo from Edit / Add details when available."}</p>
               </div>
               <div className="grade-assist-photo-card">
@@ -54694,7 +54722,7 @@ function CompactInventoryCard({
 
       {forgeImage ? (
         <div className="compact-image-wrap">
-          <img
+          <PrivateStorageImage
             src={forgeImage}
             alt={item.name}
             loading="lazy"
@@ -54776,7 +54804,7 @@ function CompactInventoryCard({
         {physicalLocation ? <span className="neon-chip forge-location-pill">{physicalLocation}</span> : null}
         {item.tideTradrUrl && <a href={item.tideTradrUrl} target="_blank" rel="noreferrer">Market Watch</a>}
         {item.listingUrl && <a href={item.listingUrl} target="_blank" rel="noreferrer">Listing</a>}
-        {item.receiptImage && <a href={item.receiptImage} target="_blank" rel="noreferrer">Receipt</a>}
+        {item.receiptImage && <PrivateReceiptLink href={item.receiptImage}>Receipt</PrivateReceiptLink>}
       </div>
 
       <div className="compact-actions forge-card-actions">
@@ -54992,7 +55020,7 @@ function VaultEditForm({
             {form.itemImage ? (
               <div className="receipt-preview">
                 <p>Product Photo</p>
-                <img src={form.itemImage} alt="Product" />
+                <PrivateStorageImage src={form.itemImage} alt="Product" />
                 <button type="button" className="secondary-button" onClick={() => setForm("itemImage", "")}>Remove Product Photo</button>
               </div>
             ) : null}
@@ -55002,7 +55030,7 @@ function VaultEditForm({
             {form.receiptImage ? (
               <div className="receipt-preview">
                 <p>Receipt / Screenshot</p>
-                <img src={form.receiptImage} alt="Receipt" />
+                <PrivateReceiptImage src={form.receiptImage} alt="Receipt" />
                 <button type="button" className="secondary-button" onClick={() => setForm("receiptImage", "")}>Remove Receipt</button>
               </div>
             ) : null}
@@ -55180,7 +55208,7 @@ function InventoryForm({
           <div className="catalog-thumb">
             {selectedCatalogImage ? (
               <>
-                <img
+                <PrivateStorageImage
                   src={selectedCatalogImage}
                   alt=""
                   onError={(event) => {
@@ -55253,7 +55281,7 @@ function InventoryForm({
       {form.itemImage && (
         <div className="receipt-preview">
           <p>Product Photo • {getImageSourceLabel(form)}</p>
-          <img src={form.itemImage} alt="Product" />
+          <PrivateStorageImage src={form.itemImage} alt="Product" />
           <button type="button" className="secondary-button" onClick={() => {
             setForm("itemImage", "");
             setForm("itemImageSource", "placeholder");
@@ -55425,7 +55453,7 @@ function InventoryForm({
       <Field label="Listed Price"><input type="number" step="0.01" value={form.listedPrice} onChange={(e) => setForm("listedPrice", e.target.value)} /></Field>
       <Field label="Action Notes"><input value={form.actionNotes} onChange={(e) => setForm("actionNotes", e.target.value)} /></Field>
       <Field label="Receipt / Screenshot"><input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, (url) => setForm("receiptImage", url), "inventory")} /></Field>
-      {form.receiptImage && <div className="receipt-preview"><p>Receipt</p><img src={form.receiptImage} alt="Receipt" /></div>}
+      {form.receiptImage && <div className="receipt-preview"><p>Receipt</p><PrivateReceiptImage src={form.receiptImage} alt="Receipt" /></div>}
       </details>
       <div className="forge-form-footer">
         <button type="submit">{submitLabel}</button>

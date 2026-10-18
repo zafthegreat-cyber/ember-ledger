@@ -1,5 +1,5 @@
-import { LiveEmberTrustNote } from "../components/ember-ui";
-import { BRAND_ASSETS } from "../brand/emberTideBrand";
+import { LiveEmberTrustNote } from "../components/code3-ui";
+import { BRAND_ASSETS } from "../brand/code3TcgBrand";
 import {
   AppNavIcon,
   EtMockupActionCard,
@@ -393,7 +393,7 @@ export default function HearthPage(props) {
         }
         if (activeAnnouncements.length) return {
           badge: "New Stuff",
-          title: activeAnnouncements[0].title || "New Ember & Tide update",
+          title: activeAnnouncements[0].title || "New Code 3 TCG update",
           reason: activeAnnouncements[0].body || activeAnnouncements[0].message || "There is a new app update or announcement to review.",
           primaryLabel: "View Details",
           onPrimary: () => setActiveTab("whatsNew"),
@@ -685,7 +685,7 @@ export default function HearthPage(props) {
       const dismissTodaySpark = async (sparkKey) => {
         const confirmed = await requestConfirmation({
           title: "Dismiss Spark?",
-          message: "You won't earn Ember Points for this Spark today.",
+          message: "You won't earn Community points for this Spark today.",
           confirmLabel: "Dismiss",
           cancelLabel: "Keep Spark",
           destructive: true,
@@ -706,7 +706,7 @@ export default function HearthPage(props) {
           date: hearthTodayKey,
           dismissedSparks: [],
         }));
-        showInfoToast("Today's Sparks restored.", { message: "Sparks still need real actions before they earn Ember Points." });
+        showInfoToast("Today's Sparks restored.", { message: "Sparks still need real actions before they earn Community points." });
       };
       const renderSparkQuickActions = () => (
         <div className="hearth-spark-quick-actions" aria-label="Quick Actions">
@@ -732,7 +732,7 @@ export default function HearthPage(props) {
                 <span className="hearth-sparks-state-icon" aria-hidden="true"><AppNavIcon kind="plan" /></span>
                 <div>
                   <h2>Today&apos;s Sparks Complete</h2>
-                  <p>Great job! You earned {todaySparkEarnedPoints} Ember Points today.</p>
+                  <p>Great job! You earned {todaySparkEarnedPoints} Community points today.</p>
                 </div>
               </div>
               {renderSparkQuickActions()}
@@ -754,7 +754,7 @@ export default function HearthPage(props) {
               <div className="hearth-sparks-heading">
                 <div>
                   <h2>Today&apos;s Sparks</h2>
-                  <p>Complete helpful actions to earn Ember Points.</p>
+                  <p>Complete helpful actions to earn Community points.</p>
                 </div>
               </div>
               <div className="hearth-spark-mission-list">
@@ -769,7 +769,7 @@ export default function HearthPage(props) {
                         <small>{mission.purpose}</small>
                         <p>
                           <span>{mission.current}/{mission.target} complete</span>
-                          <strong className="hearth-spark-reward">+{mission.reward} Ember Points</strong>
+                          <strong className="hearth-spark-reward">+{mission.reward} Community points</strong>
                         </p>
                       </div>
                       <div className="hearth-spark-mission-actions">
@@ -876,10 +876,10 @@ export default function HearthPage(props) {
         : {
           label: "Next Best Step",
           title: bestAction.title || "Keep building your collection.",
-          detail: bestAction.reason || "Open the next useful Ember & Tide area when you are ready.",
+          detail: bestAction.reason || "Open the next useful Code 3 TCG area when you are ready.",
           actionLabel: "Open Next",
           onClick: bestAction.onPrimary || (() => setActiveTab("vault")),
-          secondaryActionLabel: bestAction.secondaryLabel || "Ask Ember",
+          secondaryActionLabel: bestAction.secondaryLabel || "Business Assistant",
           onSecondary: bestAction.onSecondary || (() => openEmberAssistPanel("hearth_next_step")),
           tone: "hearth",
         };
@@ -1528,7 +1528,7 @@ export default function HearthPage(props) {
                 <div>
                   <p className="section-kicker">Hearth</p>
                   <h1>Command Hearth</h1>
-                  <strong>Good afternoon, Ember</strong>
+                  <strong>Welcome to Code 3 TCG</strong>
                   <p>Here&apos;s what needs your attention today.</p>
                 </div>
               </div>
@@ -1649,7 +1649,7 @@ export default function HearthPage(props) {
             <EtMockupHero
               title={hearthHomeTitle}
               detail="Here's your collection at a glance."
-              points={{ value: hearthEmberPoints, label: "Ember Points" }}
+              points={{ value: hearthEmberPoints, label: "Community points" }}
               pills={[
                 { label: "Public Beta", tone: "beta" },
                 { label: hearthModeChipLabel, tone: "collector" },

@@ -1,0 +1,29 @@
+{
+  "appId": "app.code3tcg.mobile",
+  "appName": "Code 3 TCG",
+  "webDir": "dist-native",
+  "loggingBehavior": "debug",
+  "backgroundColor": "#F7F8F5",
+  "zoomEnabled": true,
+  "server": {
+    "hostname": "localhost",
+    "androidScheme": "https",
+    "iosScheme": "capacitor"
+  },
+  "android": {
+    "allowMixedContent": false,
+    "webContentsDebuggingEnabled": false,
+    "resolveServiceWorkerRequests": false
+  },
+  "plugins": {
+    "SystemBars": {
+      "insetsHandling": "native",
+      "initialViewportFitValueHint": "contain"
+    }
+  },
+  "ios": {
+    "contentInset": "automatic",
+    "preferredContentMode": "mobile",
+    "webContentsDebuggingEnabled": false
+  }
+}
