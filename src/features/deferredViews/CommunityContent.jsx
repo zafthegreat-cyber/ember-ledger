@@ -79,7 +79,7 @@ export default function CommunityContent({ scope }) {
       const badges = [];
       const postUsername = normalizePublicUsername(post.username || post.publicUsername || post.public_username);
       const postCategory = normalizeTidepoolPostCategory(post.postType || post.category);
-      if (isOfficialCommunityUsername(postUsername)) badges.push("Official Ember & Tide Admin");
+      if (isOfficialCommunityUsername(postUsername)) badges.push("Official Code 3 TCG Admin");
       if (normalizeTidepoolPostStatus(post) === "Published") badges.push("Published");
       if (/giveaway|donation|kid|family/i.test(`${post.postType || ""} ${post.title || ""}`)) badges.push("Parent-Approved");
       if (post.sourceType === "admin" || post.sourceType === "official") badges.push("Community Helper");
@@ -289,7 +289,7 @@ export default function CommunityContent({ scope }) {
               <div>
                 <span className="section-kicker">Community Safety Checklist</span>
                 <strong>Before meeting, trading, or following up</strong>
-                <p>These reminders are local guidance only. Ember &amp; Tide does not guarantee, verify, invite, or background-check anyone.</p>
+                <p>These reminders are local guidance only. Code 3 TCG does not guarantee, verify, invite, or background-check anyone.</p>
               </div>
               <div className="tidepool-community-safety-list">
                 {tidepoolCommunitySafetyChecklist.map((item) => <span key={item}>{item}</span>)}

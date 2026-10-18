@@ -51,7 +51,24 @@ export const PRIVACY_SECTIONS = Object.freeze([
   },
   {
     key: "retention", title: "What remains after account deletion",
-    body: "The deletion review lists the account data and files the service will remove and any retained scope before you confirm. A successful cloud deletion does not erase backups you downloaded, copies held by other people, or device-only records on your other devices. Device copies remain linked to the original account and are not assigned to a new account automatically. Administrative actions on shared records may remain without your account reference. Service providers may retain disaster-recovery backups and operational logs separately. The retention periods for these backups and logs are still being verified for this beta. Contact support with questions about a specific record or deletion request.",
+    body: "The deletion review lists the account data and files the service will remove and any retained scope before you confirm. A successful cloud deletion does not erase backups you downloaded, copies held by other people, or device-only records on your other devices. Device copies remain linked to the original account and are not assigned to a new account automatically. Administrative actions on shared records may remain without your account reference. Contact support with questions about a specific record or deletion request.",
+  },
+  {
+    // Verified production plan/settings on October 18, 2026. Plan access windows
+    // are not proof of a provider-wide permanent-erasure deadline.
+    // https://supabase.com/docs/guides/platform/backups
+    key: "provider-backups", title: "Database recovery backups",
+    body: "Supabase creates daily backups of our database for recovery. Our current plan has a documented seven-day window for accessing those backups. Backups can contain records saved before account deletion. They include uploaded-file metadata, but not the uploaded files themselves. The backup access window is not a promise that every provider-held copy is permanently erased within seven days.",
+  },
+  {
+    // Actual plans: Supabase Pro, Vercel Hobby; no configured provider log drains.
+    // https://supabase.com/pricing
+    // https://vercel.com/docs/logs/runtime
+    // https://vercel.com/docs/limits#logs
+    // Provider-internal retention and effective purge schedules remain a rollout
+    // review item; do not turn these documented viewing windows into deadlines.
+    key: "provider-logs", title: "Service logs",
+    body: "For the plans we currently use, Supabase documents seven days of access to API, database, and authentication logs. Vercel documents one hour of runtime logs, which record requests while the app runs. Its build logs, which record how an app release was prepared, are separate and are stored indefinitely for each deployment. We have not configured continuous log exports through either provider. Provider security, support, and infrastructure records can follow separate retention rules. These viewing windows are not a complete deletion schedule; contact support about a specific record or request.",
   },
   {
     key: "children", title: "Family information",

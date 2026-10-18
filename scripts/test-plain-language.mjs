@@ -3,6 +3,8 @@ import { plainLanguageText } from "../src/config/plainLanguage.js";
 
 assert.equal(plainLanguageText("Ember & Tide"), "Code 3 TCG");
 assert.equal(plainLanguageText("Ember and Tide navigation"), "Code 3 TCG navigation");
+assert.equal(plainLanguageText("E&T TCG account"), "Code 3 TCG account");
+assert.equal(plainLanguageText("E&amp;T account"), "Code 3 TCG account");
 assert.equal(plainLanguageText("Private Business Hub"), "Code 3 TCG");
 assert.equal(plainLanguageText("Open Vault"), "Open Collection");
 assert.equal(plainLanguageText("Move to Forge"), "Move to Resale Inventory");

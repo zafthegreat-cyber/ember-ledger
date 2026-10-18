@@ -59,13 +59,13 @@ const appVersion = [
 
 function appVersionPlugin() {
   return {
-    name: "ember-tide-app-version",
+    name: "code3-tcg-app-version",
     generateBundle() {
       this.emitFile({
         type: "asset",
         fileName: "app-version.json",
         source: JSON.stringify({
-          app: "ember-and-tide",
+          app: "code3-tcg",
           version: appVersion,
           builtAt: new Date().toISOString(),
         }, null, 2),

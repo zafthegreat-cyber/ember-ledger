@@ -56,7 +56,7 @@ export const SCOUT_REPUTATION_LEVELS = [
 
 export const COMMUNITY_TRUST_BADGES = {
   OFFICIAL_ADMIN: { key: "official_admin", label: "Official Admin", tone: "official" },
-  TEAM: { key: "team", label: "Founder / Ember & Tide Team", tone: "official" },
+  TEAM: { key: "team", label: "Founder / Code 3 TCG Team", tone: "official" },
   VERIFIED_SCOUT: { key: "verified_scout", label: "Verified Scout", tone: "success" },
   TRUSTED_REPORTER: { key: "trusted_reporter", label: "Trusted Reporter", tone: "tide" },
   HELPFUL_PARENT: { key: "helpful_parent", label: "Helpful Parent", tone: "gold" },

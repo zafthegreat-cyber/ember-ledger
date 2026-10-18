@@ -2,7 +2,7 @@
 
 2026-09-14
 
-The user authorized publishing the local app update to code3tcg.app and supplied the old Ember & Tide sign-in screenshot. Inspection also found an oversized logo in the local signed-out layout; prior viewport checks detected overflow but did not enforce useful logo/card dimensions.
+The user authorized publishing the local app update to code3tcg.app and supplied the old Code 3 TCG sign-in screenshot. Inspection also found an oversized logo in the local signed-out layout; prior viewport checks detected overflow but did not enforce useful logo/card dimensions.
 
 Added a scoped signed-out layout with Code 3 branding, bounded logo, readable two-column desktop composition, form-first mobile layout, consistent fields, and accessible account actions. Auth handlers and provider configuration were not changed.
 

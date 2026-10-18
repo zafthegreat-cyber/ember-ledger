@@ -548,7 +548,7 @@ async function runRestChecks() {
 }
 
 async function main() {
-  console.log("Verifying Ember & Tide Phase 2 Supabase foundation...\n");
+  console.log("Verifying Code 3 TCG Phase 2 Supabase foundation...\n");
 
   if (rawDbUrl) {
     await runPostgresChecks();

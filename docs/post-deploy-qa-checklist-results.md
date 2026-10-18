@@ -1,4 +1,4 @@
-# Ember & Tide Beta Post-Deploy QA Checklist / Results
+# Code 3 TCG Beta Post-Deploy QA Checklist / Results
 
 Date created: 2026-05-13
 

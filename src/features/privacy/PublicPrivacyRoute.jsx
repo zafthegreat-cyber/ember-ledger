@@ -65,7 +65,7 @@ export default function PublicPrivacyRoute({ route, client }) {
       <AccountDeletionPage key={user?.id || "signed-out"} user={user} completed={completed} onNavigate={navigate} onDeleted={async () => { setCompleted(true); const result = await client.auth.signOut({ scope: "local" }); setUser(null); if (result.error) throw result.error; }} />
       {authError && <p className="code3-privacy" role="status">{authError}</p>}
       {!user && !completed && client && <DeletionSignIn client={client} />}
-      {!client && <p className="code3-privacy" role="status">Account access is not configured in this build. Contact support using the link above.</p>}
+      {!client && <p className="code3-privacy" role="status">Account sign-in is unavailable here right now. You can still read the privacy policy and contact support using the links above.</p>}
     </>}
   </main>;
 }

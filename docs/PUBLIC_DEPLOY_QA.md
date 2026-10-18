@@ -28,7 +28,7 @@ These surfaces remain preview/mock/local UI unless later backend work is explici
 - Market fair-value examples and watch actions.
 - Tidepool posts and moderation examples.
 - The Spark donation interest and thank-you flows.
-- Ember Assist helper responses.
+- Business Assistant helper responses.
 - Forge trade/listing/sales ledger preview workflows.
 - Shop Portal and Admin Review mock actions.
 - Onboarding/waitlist UI beyond existing safe auth behavior.
@@ -65,7 +65,7 @@ pm.cmd run test:kids-program: passed.
 -
 pm.cmd run test:spark: sandbox Chromium spawn EPERM; outside-sandbox rerun passed.
 -
-pm.cmd run test:ember-assist: passed.
+pm.cmd run test:business-assistant: passed.
 -
 pm.cmd run test:admin: sandbox Chromium spawn EPERM; outside-sandbox rerun passed.
 -
@@ -104,7 +104,7 @@ pm.cmd run test:quick-add: passed.
 -
 pm.cmd run test:kids-program: passed.
 -
-pm.cmd run test:ember-assist: passed.
+pm.cmd run test:business-assistant: passed.
 -
 pm.cmd run test:admin-command-center: passed.
 -
@@ -145,7 +145,7 @@ Screens tested:
 - Membership
 - Onboarding
 - The Spark
-- Ember Assist
+- Business Assistant
 - Tidepool
 - Forge
 - Parent Center

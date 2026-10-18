@@ -13,12 +13,12 @@
 ## Last 30 Commits Reviewed
 
 - `de9f0d7` Update live UI integration train status
-- `2cbefeb` Polish integrated Ember and Tide live UI
+- `2cbefeb` Polish integrated Code 3 TCG live UI
 - `5431f2e` Integrate live onboarding and waitlist UI
 - `27d00ff` Integrate live Admin Review UI
 - `384243d` Integrate live Shop Portal UI
 - `a84238e` Integrate live Forge UI
-- `e920470` Integrate live Ember Assist UI
+- `e920470` Integrate live Business Assistant UI
 - `91a03f6` Integrate live The Spark UI
 - `9dae179` Integrate live Tidepool UI
 - `854cc25` Integrate live Parent Center UI
@@ -32,13 +32,13 @@
 - `f88384a` Integrate live Scout report flow UI
 - `ff6d8a3` Integrate live Scout home UI
 - `aa6a7ea` Integrate live Hearth UI foundation
-- `2f76da3` Add approved Ember and Tide full app UI preview
-- `e7890c6` Add Ember and Tide full app UI preview
+- `2f76da3` Add approved Code 3 TCG full app UI preview
+- `e7890c6` Add Code 3 TCG full app UI preview
 - `7018783` Fix live mobile UI polish issues
 - `5b19fdc` Merge remote-tracking branch 'origin/main' into hearth-home-command-view
 - `56430cb` Polish settings tiers and admin UI
 - `57bd67d` Polish More menu final UI
-- `20a8e2d` Polish Ember Assist final UI
+- `20a8e2d` Polish Business Assistant final UI
 - `009525a` Polish The Spark final UI
 - `546c753` Polish Tidepool final UI
 - `ae87dc4` Polish Forge final UI
@@ -63,7 +63,7 @@ All ordered live UI integration train sections are complete through Section 16.
 | Parent Center | Complete | `854cc25` |
 | Tidepool | Complete | `9dae179` |
 | The Spark / Donate / Thank You | Complete | `91a03f6` |
-| Ember Assist | Complete | `e920470` |
+| Business Assistant | Complete | `e920470` |
 | Forge / Trade Analyzer / Listing Builder / Sales Ledger | Complete | `a84238e` |
 | Shop Portal | Complete | `384243d` |
 | Admin Review | Complete | `27d00ff` |
@@ -106,7 +106,7 @@ The route parser and final QA evidence confirm the following live app coverage:
 - The Spark: `/kids-program`
 - Donate: `/kids-program/donate`
 - Thank You: `/kids-program/thank-you`
-- Ember Assist: live helper UI action, not a primary bottom-nav destination
+- Business Assistant: live helper UI action, not a primary bottom-nav destination
 - Forge: `/forge`
 - Trade Analyzer, Listing Builder, Sales Ledger: live Forge UI states
 - Shop Portal: `/partner` or `/sponsor`
@@ -151,7 +151,7 @@ The route parser and final QA evidence confirm the following live app coverage:
 - `npm.cmd run test:market`: sandbox Chromium `spawn EPERM`; outside-sandbox rerun passed.
 - `npm.cmd run test:kids-program`: passed.
 - `npm.cmd run test:spark`: sandbox Chromium `spawn EPERM`; outside-sandbox rerun first had an intermittent app-load timeout, second outside-sandbox rerun passed.
-- `npm.cmd run test:ember-assist`: passed.
+- `npm.cmd run test:business-assistant`: passed.
 - `npm.cmd run test:admin`: sandbox Chromium `spawn EPERM`; outside-sandbox rerun passed.
 - `npm.cmd run test:admin-command-center`: passed.
 - `npm.cmd run test:tidepool-community`: passed.

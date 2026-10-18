@@ -4,6 +4,97 @@
   "outputDirectory": "dist",
   "routes": [
     {
+      "src": "^/assets/brand/ember-tide-app-icon\\.svg$",
+      "headers": {
+        "Location": "/assets/brand/code3tcg-app-icon.svg"
+      },
+      "status": 308
+    },
+    {
+      "src": "^/assets/brand/ember-tide-auth-app-icon\\.png$",
+      "headers": {
+        "Location": "/assets/brand/code3tcg-auth-app-icon.png"
+      },
+      "status": 308
+    },
+    {
+      "src": "^/assets/brand/ember-tide-auth-kids-mode-badge\\.png$",
+      "headers": {
+        "Location": "/assets/brand/code3tcg-auth-kids-mode-badge.png"
+      },
+      "status": 308
+    },
+    {
+      "src": "^/assets/brand/ember-tide-auth-kids-mode-badge\\.svg$",
+      "headers": {
+        "Location": "/assets/brand/code3tcg-auth-kids-mode-badge.svg"
+      },
+      "status": 308
+    },
+    {
+      "src": "^/assets/brand/ember-tide-auth-logo-mark\\.svg$",
+      "headers": {
+        "Location": "/assets/brand/code3tcg-auth-logo-mark.svg"
+      },
+      "status": 308
+    },
+    {
+      "src": "^/assets/brand/ember-tide-flame-wave\\.svg$",
+      "headers": {
+        "Location": "/assets/brand/code3tcg-flame-wave.svg"
+      },
+      "status": 308
+    },
+    {
+      "src": "^/assets/brand/ember-tide-icon-maskable-source\\.svg$",
+      "headers": {
+        "Location": "/assets/brand/code3tcg-icon-maskable-source.svg"
+      },
+      "status": 308
+    },
+    {
+      "src": "^/assets/brand/ember-tide-icon-source\\.svg$",
+      "headers": {
+        "Location": "/assets/brand/code3tcg-icon-source.svg"
+      },
+      "status": 308
+    },
+    {
+      "src": "^/assets/brand/ember-tide-logo-horizontal\\.svg$",
+      "headers": {
+        "Location": "/assets/brand/code3tcg-logo-horizontal.svg"
+      },
+      "status": 308
+    },
+    {
+      "src": "^/assets/brand/ember-tide-mark\\.svg$",
+      "headers": {
+        "Location": "/assets/brand/code3tcg-mark.svg"
+      },
+      "status": 308
+    },
+    {
+      "src": "^/assets/brand/ember-tide-monogram\\.svg$",
+      "headers": {
+        "Location": "/assets/brand/code3tcg-monogram.svg"
+      },
+      "status": 308
+    },
+    {
+      "src": "^/assets/brand/ember-tide-promo-hero\\.png$",
+      "headers": {
+        "Location": "/assets/brand/code3tcg-promo-hero.png"
+      },
+      "status": 308
+    },
+    {
+      "src": "^/assets/brand/ember-tide-promo-hero\\.svg$",
+      "headers": {
+        "Location": "/assets/brand/code3tcg-promo-hero.svg"
+      },
+      "status": 308
+    },
+    {
       "handle": "filesystem"
     },
     {

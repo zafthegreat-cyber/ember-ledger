@@ -4,7 +4,7 @@ Status: planning only. Do not implement until the migration, RLS, RPC, and QA sc
 
 ## Goal
 
-Move Ember & Tide admin review, Scout moderation, store suggestions, catalog suggestions, and trust/reputation updates from local beta state into durable Supabase-backed workflows.
+Move Code 3 TCG admin review, Scout moderation, store suggestions, catalog suggestions, and trust/reputation updates from local beta state into durable Supabase-backed workflows.
 
 The current app should keep its review-first behavior:
 

@@ -85,7 +85,7 @@ export const NOTIFICATION_PREFERENCE_ROWS = [
     key: "ember_assist_admin_replies",
     category: NOTIFICATION_CATEGORIES.ADMIN_MESSAGE_STATUS,
     label: "Ember Assist/admin replies",
-    description: "Status changes on questions sent to Ember & Tide.",
+    description: "Status changes on questions sent to Code 3 TCG.",
   },
   {
     key: "business_forge_reminders",
@@ -444,7 +444,7 @@ export function buildShopUpdateNotification(store = {}, options = {}) {
     category: NOTIFICATION_CATEGORIES.FAMILY_FRIENDLY_SHOP_UPDATE,
     title: `Shop update: ${name}.`,
     message: normalized.familyFriendlyApproved
-      ? "Family-friendly status means this shop supports the Ember & Tide mission. It is not a guarantee of inventory, price, or availability."
+      ? "Family-friendly status means this shop supports the Code 3 TCG mission. It is not a guarantee of inventory, price, or availability."
       : "This local shop has updated community access details for review.",
     priority: normalized.featuredPartner ? "high" : "normal",
     route: "/scout/stores",
@@ -462,7 +462,7 @@ export function buildKidsProgramNotification(application = {}, options = {}) {
   return makeNotification({
     category: NOTIFICATION_CATEGORIES.KIDS_PROGRAM_UPDATE,
     title: `The Spark status: ${status.replace(/\b\w/g, (char) => char.toUpperCase())}.`,
-    message: "Program availability may vary. Ember & Tide will keep kid/family access fair when inventory allows.",
+    message: "Program availability may vary. Code 3 TCG will keep kid/family access fair when inventory allows.",
     priority: ["approved", "invited"].includes(status) ? "high" : "normal",
     route: "/kids-program",
     actionLabel: "Open The Spark",
@@ -482,7 +482,7 @@ export function buildEmberAssistStatusNotification(message = {}, options = {}) {
     title: `Ember Assist message ${status.toLowerCase()}.`,
     message: status === "Resolved"
       ? "An admin marked your question resolved. Open Ember Assist or Help if you still need support."
-      : "Your question sent to Ember & Tide has a new review status.",
+      : "Your question sent to Code 3 TCG has a new review status.",
     priority: status === "Resolved" ? "normal" : "low",
     route: firstValue(message.submittedData?.route, message.route, "/settings"),
     actionLabel: "Open Details",

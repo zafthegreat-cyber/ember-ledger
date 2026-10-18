@@ -10,8 +10,8 @@ export const STORE_LOCATION_TYPES = [
   "Other",
 ];
 
-export const FAMILY_FRIENDLY_SHOP_COPY = "This shop supports the Ember & Tide mission: helping families and kids access Pokemon in a fair, welcoming, and reasonably priced way.";
-export const COMMUNITY_MOTTO_COPY = "Agreed to the Ember & Tide community motto: keep collecting fair, kid-friendly, and welcoming.";
+export const FAMILY_FRIENDLY_SHOP_COPY = "This shop supports the Code 3 TCG mission: helping families and kids access Pokemon in a fair, welcoming, and reasonably priced way.";
+export const COMMUNITY_MOTTO_COPY = "Agreed to the Code 3 TCG community motto: keep collecting fair, kid-friendly, and welcoming.";
 
 export const STORE_FAMILY_FILTER_OPTIONS = [
   { value: "all", label: "All shop statuses" },

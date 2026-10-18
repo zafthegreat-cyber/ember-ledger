@@ -38,7 +38,7 @@ export const TIDETRADR_REPORT_REASONS = [
 export const TIDETRADR_MARKETPLACE_RULES = [
   "Be honest about item condition and quantity.",
   "Do not list fake, resealed, stolen, or counterfeit products.",
-  "Do not claim official/admin status unless you are an Ember & Tide admin.",
+  "Do not claim official/admin status unless you are a Code 3 TCG admin.",
   "Do not post private home addresses or private contact details.",
   "Use safe public meetup locations.",
   "Keep prices and communication respectful.",
@@ -275,7 +275,7 @@ export function buildMarketplaceListingQualityReport(listing = {}, options = {})
   if (safetyReason) blockers.push(safetyReason);
 
   if (!photoAvailable) {
-    warnings.push(`No listing photo yet; Ember & Tide will show a branded ${fallbackLabel} fallback.`);
+    warnings.push(`No listing photo yet; Code 3 TCG will show a branded ${fallbackLabel} fallback.`);
   }
   if (!firstText(listing.productType, listing.product_type)) warnings.push("Add a product type so buyers can scan the listing quickly.");
   const priceWarning = buildMarketplacePriceWarning(listing, { marketValue, msrp });

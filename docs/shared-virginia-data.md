@@ -1,6 +1,6 @@
 # Shared Virginia Store Directory and Pokemon Catalog
 
-These files set up shared, non-user-specific data for Scout / Ember & Tide.
+These files set up shared, non-user-specific data for Scout / Code 3 TCG.
 
 ## Migration
 

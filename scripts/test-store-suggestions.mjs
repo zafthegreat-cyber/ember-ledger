@@ -15,7 +15,7 @@ import {
 import {
   buildEmberAssistContext,
   buildEmberAssistFallbackResponse,
-} from "../src/utils/emberAssist.js";
+} from "../src/utils/businessAssistant.js";
 
 const suggestion = buildStoreSuggestionRecord({
   displayName: "New Family Card Shop",

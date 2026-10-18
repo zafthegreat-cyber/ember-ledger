@@ -272,7 +272,7 @@ export default function ProfileContent({ scope }) {
                 <div className="you-profile-access-copy">
                   <span className="section-kicker">Access Review</span>
                   <h3>Make help generous without turning proof into a public label.</h3>
-                  <p>Families and adults requesting support should understand what is free, what is discounted, what requires review, and what data Ember & Tide will never make public.</p>
+                  <p>Families and adults requesting support should understand what is free, what is discounted, what requires review, and what data Code 3 TCG will never make public.</p>
                 </div>
                 <div className="you-profile-step-grid">
                   {profileAccessReviewSteps.map((step) => (

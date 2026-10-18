@@ -216,10 +216,10 @@ check(
 );
 
 check(
-  "Ember Assist heavy answer brain is lazy-loaded after launcher render",
-  app.includes('from "./utils/emberAssistLite"') &&
-    app.includes('import("./utils/emberAssist")') &&
-    !/from\s+["']\.\/utils\/emberAssist["']/.test(app)
+  "Business Assistant heavy answer brain is lazy-loaded after launcher render",
+  app.includes('from "./utils/businessAssistantLite"') &&
+    app.includes('import("./utils/businessAssistant")') &&
+    !/from\s+["']\.\/utils\/businessAssistant["']/.test(app)
 );
 
 check(

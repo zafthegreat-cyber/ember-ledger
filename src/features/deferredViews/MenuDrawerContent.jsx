@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useId, useRef } from "react";
 import { useModalFocus } from "../../components/operations/useModalFocus.js";
 import MenuNavigation from "./MenuNavigation.jsx";
 import MenuItemIcon from "./MenuItemIcon.jsx";
@@ -230,6 +230,7 @@ export default function MenuDrawerContent({ scope }) {
     workspaces,
   } = scope;
   const titleId = useId();
+  const menuOpenerRef = useRef(typeof document === "undefined" ? null : document.activeElement);
   const { dialogRef, onKeyDown } = useModalFocus(true, () => setMenuOpen(false));
   const settingsItem = menuCommandSections.flatMap(section => section.items).find(item => item.key === "settings");
 
@@ -247,7 +248,12 @@ export default function MenuDrawerContent({ scope }) {
       item.action?.();
       return;
     }
-    runMenuAction(() => item.action ? item.action() : navigateMainTab(item));
+    runMenuAction(() => {
+      if (!item.action) return navigateMainTab(item);
+      // The report dialog outlives this drawer, so return to its persistent opener.
+      if (item.key === "reportRestock") return item.action({ returnFocusTo: menuOpenerRef.current });
+      return item.action();
+    });
   }
 
   function renderDeferredMenuDrawer() {
@@ -473,9 +479,9 @@ export default function MenuDrawerContent({ scope }) {
                           placeholder="public_username"
                           autoComplete="nickname"
                         />
-                        <small>Shown on Scout reports, community guesses, marketplace listings, and Tidepool instead of private account details. Ember & Tide staff, support, moderator, and official names are protected.</small>
+                        <small>Shown on Scout reports, community guesses, marketplace listings, and Tidepool instead of private account details. Code 3 TCG staff, support, moderator, and official names are protected.</small>
                         {publicIdentityForProfile({ ...currentUserProfile, email: accountEmail() }).isOfficialAdminIdentity ? (
-                          <small className="status-badge verified-badge">Official Ember & Tide admin identity: {publicProfileLabel()}</small>
+                          <small className="status-badge verified-badge">Official Code 3 TCG admin identity: {publicProfileLabel()}</small>
                         ) : null}
                       </label>
                       <label className="settings-field-group">
@@ -500,7 +506,7 @@ export default function MenuDrawerContent({ scope }) {
                   ) : null}
                   {!guestPreviewActive ? (
                     <>
-                      <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("profileProgress"))}>Ember ID Progress</button>
+                      <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("profileProgress"))}>Profile progress</button>
                       <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("mySuggestions"))}>My Suggestions</button>
                       <div className="drawer-danger-zone">
                         <strong>Danger zone</strong>
@@ -550,8 +556,8 @@ export default function MenuDrawerContent({ scope }) {
                         <span>Private collection space for personal Vault, wishlist, and optional Personal Forge records.</span>
                       </article>
                       <article className="settings-section-card">
-                        <strong>Ember & Tide workspace</strong>
-                        <span>Shared/business space for Ember & Tide inventory when you have access.</span>
+                        <strong>Code 3 TCG workspace</strong>
+                        <span>Shared/business space for Code 3 TCG inventory when you have access.</span>
                       </article>
                       <article className="settings-section-card">
                         <strong>Business workspace</strong>
@@ -564,7 +570,7 @@ export default function MenuDrawerContent({ scope }) {
                     <div className="compact-card-header">
                       <div>
                         <strong>Workspace &amp; Forge Identity</strong>
-                        <p className="compact-subtitle">Control whether Forge acts like your private seller space, a business workspace, or Ember &amp; Tide branded workspace.</p>
+                        <p className="compact-subtitle">Control whether Forge acts like your private seller space, a business workspace, or Code 3 TCG branded workspace.</p>
                       </div>
                       <span className="status-badge">{forgeIdentityModeLabel(activeForgeIdentityMode)}</span>
                     </div>
@@ -636,7 +642,7 @@ export default function MenuDrawerContent({ scope }) {
                           >
                             <strong>{mode.label}</strong>
                             <span>{mode.description}</span>
-                            {disabled ? <small>Ember &amp; Tide workspace access is not available yet.</small> : null}
+                            {disabled ? <small>Code 3 TCG workspace access is not available yet.</small> : null}
                           </button>
                         );
                       })}
@@ -644,8 +650,8 @@ export default function MenuDrawerContent({ scope }) {
                     <div className="menu-toggle-list">
                       <label className="toggle-row forge-mode-toggle">
                         <span>
-                          <strong>Use Ember &amp; Tide branding</strong>
-                          <small>Use Ember &amp; Tide naming in Forge where you have access. This does not overwrite your personal profile.</small>
+                          <strong>Use Code 3 TCG branding</strong>
+                          <small>Use Code 3 TCG naming in Forge where you have access. This does not overwrite your personal profile.</small>
                         </span>
                         <input
                           type="checkbox"
@@ -695,7 +701,7 @@ export default function MenuDrawerContent({ scope }) {
 
                   <div className="drawer-info-card forge-mode-settings-card">
                     <strong>Forge workspace mode</strong>
-                    <p className="compact-subtitle">Choose whether Forge follows your personal workspace or stays locked to Ember & Tide seller inventory. Personal Forge data is hidden when turned off, not deleted.</p>
+                    <p className="compact-subtitle">Choose whether Forge follows your personal workspace or stays locked to Code 3 TCG seller inventory. Personal Forge data is hidden when turned off, not deleted.</p>
                     <div className="settings-mode-summary">
                       <span>Seller mode</span>
                       <strong>{settingsSellerModeActive ? "On" : "Off"}</strong>
@@ -718,8 +724,8 @@ export default function MenuDrawerContent({ scope }) {
                     </label>
                     <label className="toggle-row forge-mode-toggle">
                       <span>
-                        <strong>Always use Ember & Tide Forge</strong>
-                        <small>Open Forge, Add Item, and Vault-to-Forge transfers directly in Ember & Tide.</small>
+                        <strong>Always use Code 3 TCG Forge</strong>
+                        <small>Open Forge, Add Item, and Vault-to-Forge transfers directly in Code 3 TCG.</small>
                       </span>
                       <input
                         type="checkbox"
@@ -746,18 +752,18 @@ export default function MenuDrawerContent({ scope }) {
                           </option>
                         ))}
                         {forgeModeSettings.lockToEmberTide && !emberTideForgeWorkspace ? (
-                          <option value="__ember_tide_missing__">Ember & Tide unavailable</option>
+                          <option value="__ember_tide_missing__">Code 3 TCG unavailable</option>
                         ) : null}
                       </select>
                     </Field>
                     <dl className="drawer-status-list forge-mode-summary">
                       <div><dt>Active Forge</dt><dd>{activeForgeWorkspace?.name || "Unavailable"}</dd></div>
                       <div><dt>Personal Forge</dt><dd>{forgeModeSettings.personalForgeEnabled ? "Visible" : "Hidden"}</dd></div>
-                      <div><dt>Locked mode</dt><dd>{forgeModeSettings.lockToEmberTide ? "Ember & Tide" : "Off"}</dd></div>
+                      <div><dt>Locked mode</dt><dd>{forgeModeSettings.lockToEmberTide ? "Code 3 TCG" : "Off"}</dd></div>
                     </dl>
                     <p className="compact-subtitle">{activeForgeModeSummary}</p>
                     {!emberTideForgeWorkspace ? (
-                      <p className="compact-subtitle">Ember & Tide Forge is not available in your workspace list yet. Create an Ember & Tide business workspace or keep Personal Forge enabled.</p>
+                      <p className="compact-subtitle">Code 3 TCG Forge is not available in your workspace list yet. Create a Code 3 TCG business workspace or keep Personal Forge enabled.</p>
                     ) : null}
                     {!activeForgeWorkspace ? (
                       <p className="auth-status-message error" role="status">{forgeWorkspaceUnavailableMessage}</p>
@@ -937,7 +943,7 @@ export default function MenuDrawerContent({ scope }) {
                 <div className="drawer-links">
                   <div className="drawer-info-card settings-command-overview">
                     <strong>Settings</strong>
-                    <p className="compact-subtitle">Control your Ember & Tide experience without changing private data or workspace ownership.</p>
+                    <p className="compact-subtitle">Control your Code 3 TCG experience without changing private data or workspace ownership.</p>
                     <div className="settings-section-grid">
                       {settingsSectionRows.map((row) => (
                         <article className="settings-section-card" key={row.title}>
@@ -1225,7 +1231,7 @@ export default function MenuDrawerContent({ scope }) {
                 <div className="drawer-links">
                   <div className="drawer-info-card app-support-card">
                     <strong>App Support</strong>
-                    <p className="compact-subtitle">Having issues after an update? Refresh Ember & Tide to load the newest version.</p>
+                    <p className="compact-subtitle">Having issues after an update? Refresh Code 3 TCG to load the newest version.</p>
                     <dl className="drawer-status-list">
                       <div><dt>Loaded build</dt><dd>{PUBLIC_APP_VERSION_LABEL}</dd></div>
                       <div><dt>Update status</dt><dd>{appUpdate.available ? "Update available" : "Up to date"}</dd></div>
@@ -1237,7 +1243,7 @@ export default function MenuDrawerContent({ scope }) {
                   </div>
                   <div className="drawer-info-card">
                     <strong>Tester Notes</strong>
-                    <p className="compact-subtitle">Saved in this browser first. Copy or export the note when you are ready to share it with the Ember & Tide team.</p>
+                    <p className="compact-subtitle">Saved in this browser first. Copy or export the note when you are ready to share it with the Code 3 TCG team.</p>
                     <div className="ai-helper-note">
                       <span>AI can help categorize feedback, but admin status changes stay manual.</span>
                       <button type="button" className="secondary-button" onClick={() => runMenuAction(() => void runFeedbackAiSummary())}>Summarize feedback</button>
@@ -1257,7 +1263,7 @@ export default function MenuDrawerContent({ scope }) {
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("market_data"))}>Report Wrong Market Price</button>
                   {adminToolsVisible ? <button type="button" className="drawer-link" onClick={() => runMenuAction(() => void runFeedbackAiSummary())}>Summarize feedback</button> : null}
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(restartOnboarding)}>App Guide / Replay Onboarding</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("profileProgress"))}>Ember ID Progress</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("profileProgress"))}>Profile progress</button>
                 </div>
               ), "help")}
               {renderMenuPullDown("beta_foundations", "Beta Foundations", "Kids Program, trust pages, notifications, membership, and launch links", (
@@ -1272,7 +1278,7 @@ export default function MenuDrawerContent({ scope }) {
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("whatsNew"))}>What's New / Changelog</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("knownLimitations"))}>Known Limitations</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("trust"))}>Privacy / Terms / Rules</button>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("profileProgress"))}>Ember ID Progress</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("profileProgress"))}>Profile progress</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("membership"))}>Membership Foundation</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(restartOnboarding)}>Restart Onboarding</button>
                 </div>

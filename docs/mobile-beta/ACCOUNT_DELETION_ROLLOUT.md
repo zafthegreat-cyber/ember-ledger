@@ -30,7 +30,7 @@ Supabase project `gxsfququorfczvhrkudl` was inspected through catalog metadata a
 
 The separate local migration `20261018174916_code3_private_attachment_reads.sql` makes the four private attachment buckets private and constrains legacy receipt reads to the current owner session. Existing objects, paths, record URLs, and bytes are preserved. An anonymous user, a different account, an expired session, and inconsistent receipt ownership are denied. Other private buckets retain the existing workspace/moderator permissions; public artwork remains public. Synthetic PostgreSQL checks verify these boundaries, including that existing permissive rules cannot bypass the new restrictive policies.
 
-**Rollout dependency:** release the authenticated private-attachment URL resolver before applying the attachment privacy migration. Review existing ownership and ownerless legacy attachments without deleting them, verify authorized users can open their existing receipts, then confirm an unauthenticated request to a former public receipt URL fails. These hosted Storage/CDN checks remain outstanding. Signed URLs remain valid until expiry; keep them short-lived and memory-only. [Supabase signed-URL behavior](https://supabase.com/docs/guides/storage/serving/downloads).
+**Rollout dependency:** release the authenticated private-attachment URL resolver before applying the attachment privacy migration. Review existing ownership and ownerless legacy attachments without deleting them, verify authorized users can open their existing receipts, then confirm an unauthenticated request to a former public receipt URL fails. Isolated hosted Storage checks passed for synthetic owner access, cross-account denial and public-URL denial; the production checks involving existing receipts and the deployed resolver remain outstanding. Signed URLs remain valid until expiry; keep them short-lived and memory-only. [Supabase signed-URL behavior](https://supabase.com/docs/guides/storage/serving/downloads).
 
 ## Deletion and retention boundaries
 
@@ -52,9 +52,66 @@ The operation is not a rollback or a backup recovery flow. Once confirmed, files
 
 `node --test backend/test/privateAttachmentReads.postgres.test.mjs`
 
-The PostgreSQL suite creates a unique `code3_test_delete_*` database on the existing loopback QA server at `127.0.0.1:55439` as `code3qa`. It never reads `DATABASE_URL`, never connects to a remote database, and does not modify an existing app database. Its Auth and Storage tables contain synthetic fixtures; the real hosted Auth/Storage APIs still require the staging test above.
+The PostgreSQL suite creates a unique `code3_test_delete_*` database on the existing loopback QA server at `127.0.0.1:55439` as `code3qa`. It never reads `DATABASE_URL`, never connects to a remote database, and does not modify an existing app database. Its Auth and Storage tables contain synthetic fixtures; the separate real hosted Auth/Storage acceptance result is recorded below.
 
 The attachment-policy suite likewise creates a separate `code3_test_private_read_*` database. Verified results: 10 service/HTTP groups; 45 deletion PostgreSQL checks in each of the canonical and deployed-legacy schema shapes; 9 attachment-policy checks; 62 release-security tests; 102 mailbox-import/parser tests. Membership-only relationships and removed collaborators do not block deletion, while actual content shared with another workspace still does. The backend TypeScript build passes. Earlier regression suites also passed: 58 existing account-session checks and 19 legacy cloud-backup checks. These synthetic checks do not prove real-device or hosted-provider behavior.
+
+## Hosted synthetic acceptance harness
+
+`scripts/test-hosted-account-deletion.mjs` now exercises the actual deletion HTTP router against an isolated hosted Supabase project's Auth, Storage, session policies, and deletion RPCs. The router listens only on an ephemeral loopback port for this test. This verifies hosted provider integration; it does not replace a deployed HTTPS/CORS or real-phone UI check.
+
+Before running, prepare a disposable isolated project with the app schema and the two reviewed deletion/privacy migrations. Do not clone personal records or production Auth/Storage contents. The test does not provision projects, apply migrations, enable production deletion, create buckets, or change bucket privacy. All four private attachment buckets must already exist and be private.
+
+Set only these dedicated process environment variables through the local credential manager or secure test runner; never put key values in a command argument or commit them:
+
+| Variable | Required value |
+| --- | --- |
+| `CODE3_DELETION_TEST_ALLOWED_PROJECTS` | Explicit comma-separated isolated project IDs; production IDs are rejected even if included |
+| `CODE3_DELETION_TEST_SUPABASE_URL` | Exact `https://<isolated-project-id>.supabase.co` origin |
+| `CODE3_DELETION_TEST_ANON_KEY` | That project's public key |
+| `CODE3_DELETION_TEST_SERVICE_ROLE_KEY` | That project's server-only service key |
+
+The hard production denylist includes `gxsfququorfczvhrkudl`. Normal `SUPABASE_*` and `VITE_*` app credentials are never inherited. Legacy JWT keys must name the selected project and correct role. Every provider request is restricted to the selected origin, with redirects forbidden and a 20-second deadline. The exported runner accepts only configurations issued by these checks, preventing direct import from bypassing them.
+
+Run the safe configuration check first, substituting the same isolated project ID in both places:
+
+```powershell
+npm --prefix backend run build
+node scripts/test-hosted-account-deletion.mjs --check-config --project-ref <isolated-project-id> --confirm-isolated <isolated-project-id>
+```
+
+The check makes **zero network requests**. Running the script with no arguments also makes no requests. Only the explicit execution command creates synthetic fixtures:
+
+```powershell
+node scripts/test-hosted-account-deletion.mjs --execute --project-ref <isolated-project-id> --confirm-isolated <isolated-project-id>
+```
+
+The acceptance run creates four new synthetic accounts with a random run marker in server-owned `app_metadata`. It never accepts an existing account ID or a supplied user password. Each account operation rechecks its run stamp, exact synthetic email, and returned account ID. File removal is limited to this run's exact generated manifest; folders, shared artwork, unknown paths, and other accounts are rejected.
+
+Coverage includes fresh password confirmation, rejection of a client-selected target, private/owner/cross-account file access, an actual file removal followed by an injected Storage error, a lost begin-response, an injected Auth deletion error, durable pending state, rejected ordinary writes while pending, and a successful verified retry. The lost-response scenario releases only the captured synthetic lease to simulate expiry without waiting five minutes; it does not remove the pending marker. A separate synthetic sentinel account's snapshot, profile, and file bytes are checked unchanged before that sentinel is deleted through the same normal flow. The harness never writes to shared price tables.
+
+Reports go to ignored `artifacts/qa/hosted-account-deletion/<run-id>.json`. They include only test stages, check labels, the isolated project ID, and synthetic account IDs—no passwords, tokens, keys, email bodies, or real user records. On a failure, the test preserves remaining synthetic fixtures for investigation instead of bypassing a failed deletion guard. Reported `failedStage` and the run marker identify them. Any manual cleanup must reverify that same server-owned run marker and exact synthetic file manifest; do not remove a pending marker while its Auth account still exists.
+
+Local guard verification: `node --test backend/test/hostedAccountDeletionGuard.test.mjs` passes **seven test groups** covering production rejection, configuration bypass attempts, explicit confirmation, conflicting or duplicate command options, key/project mismatch, request destinations, account stamps, and exact file scope. The harness syntax and zero-network default path were checked.
+
+**Hosted acceptance passed on 2026-10-18: 67 checks**, run `fd63d2a1-fd48-4f41-974f-607647eb263d`, against temporary project `gghayxrtqnvcbupxgnng`. The actual Express HTTP router used real Supabase Auth, database and Storage services. Four synthetic accounts were deleted through verified retries; the sentinel's records and attachment bytes were preserved until its own confirmed deletion. Auth rejected the original refresh token after deletion started, and old access sessions and pending cloud writes were denied. Storage and Auth failures and a lost begin-operation response were injected to test recovery.
+
+The temporary branch and both restricted local test-key files were removed, with removal confirmed. Two early synthetic fixtures from missing staging ACLs were discarded with the branch; the successful run removed all four of its own accounts. Production data, prices, bucket privacy and deletion enablement were unchanged. The branch's historical schema gaps and exact metadata/permission repairs are documented in [the hosted acceptance report](HOSTED_DELETION_ACCEPTANCE_2026-10-18.md); the repair SQL remains ignored staging evidence, not production migrations.
+
+**Production release remains pending.** This successful loopback-router/hosted-provider test does not verify the production HTTPS/CORS routes, deployed deletion UI, existing production receipt access or physical iPhone/Android flows. Keep the production feature disabled until the remaining rollout and device checks above are completed and the release is approved.
+
+## Support handling for blocked deletion
+
+| Blocker | Safe next action |
+| --- | --- |
+| Protected app owner | Verify the requester and transfer service ownership to an authorized successor before retrying. Do not temporarily remove protection merely to delete the account. |
+| Shared workspace or shared content | Use the existing transfer/leave workflows. A regular membership or removed member alone is not a blocker; actual records shared across ownership boundaries need review. Preserve collaborators' records. |
+| Shared catalog ownership | Transfer the mandatory catalog ownership reference through a separately reviewed procedure. Keep catalog records, current prices, and histories intact; do not allow the Auth cascade to remove them. |
+| Unknown storage, multipart upload, or separate protected files | Verify the exact owner and use the relevant Storage/provider API. Resolve or cancel unfinished uploads without deleting provider metadata directly. |
+| Unknown data table | Inspect its ownership and retention rules, extend the reviewed deletion scope with regression coverage, then retry. Do not disable the fail-closed check. |
+| Deletion pending | Explain that some files may already be gone, then use fresh password confirmation to retry. Keep the durable write freeze. If Auth deletion already succeeded but the final marker remains, verify Auth absence before operator marker cleanup. |
+
+The public support contact must remain usable when a user cannot sign in or cannot resolve a blocker. Support should never request a password, service key, or a complete backup by email. Finishing these exceptional support workflows and confirming actual provider retention periods are still release requirements; adding the harness does not mark them complete.
 
 ## Backend dependency review
 

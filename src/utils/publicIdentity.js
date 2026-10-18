@@ -5,7 +5,7 @@ export const OFFICIAL_ADMIN_USERNAMES = {
   tide: "official_admin_tide",
 };
 
-export const RESERVED_USERNAME_MESSAGE = "That username is reserved for Ember & Tide. Please choose another.";
+export const RESERVED_USERNAME_MESSAGE = "That username is reserved for Code 3 TCG. Please choose another.";
 
 export const PUBLIC_USERNAME_MIN_LENGTH = 3;
 export const PUBLIC_USERNAME_MAX_LENGTH = 24;

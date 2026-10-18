@@ -16,7 +16,10 @@ import {
 assert.equal(normalizeSalesPlatform("what not"), "Whatnot");
 assert.equal(normalizeSalesPlatform("tcg player"), "TCGplayer");
 assert.equal(normalizeSalesPlatform("card show"), "Local card show/event");
-assert.equal(normalizeSalesPlatform("Ember and Tide"), "Ember & Tide");
+assert.equal(normalizeSalesPlatform("Ember and Tide"), "Code 3 TCG");
+for (const platform of ["Ember & Tide", "emberandtide", "Ember and Tide website", "Code 3 TCG", "code3tcg", "CODE 3 TCG", "Code 3 TCG website"]) {
+  assert.equal(normalizeSalesPlatform(platform), "Code 3 TCG", `${platform} should share the canonical sales-platform group`);
+}
 
 const linkedItem = {
   id: "forge-item-1",

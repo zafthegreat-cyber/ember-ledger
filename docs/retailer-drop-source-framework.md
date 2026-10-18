@@ -1,4 +1,4 @@
-# Ember & Tide Retailer Drop Source Framework
+# Code 3 TCG Retailer Drop Source Framework
 
 Drop Radar can track retailer drop/watch sources without scraping retailer websites, bypassing bot protection, or automating checkout.
 

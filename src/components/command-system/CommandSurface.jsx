@@ -123,7 +123,7 @@ export function FlowNextActionCard({ eyebrow = "Next action", title, detail, ton
 }
 
 export function EtMockupHero({
-  brand = "Ember & Tide",
+  brand = "Code 3 TCG",
   title,
   detail,
   mark,

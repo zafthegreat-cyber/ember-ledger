@@ -13,7 +13,7 @@ import {
   getTierPricingCards,
   normalizeTier,
 } from "../src/services/featureGates.js";
-import { buildEmberAssistContext, buildEmberAssistFallbackResponse } from "../src/utils/emberAssist.js";
+import { buildEmberAssistContext, buildEmberAssistFallbackResponse } from "../src/utils/businessAssistant.js";
 
 assert.deepEqual(
   getTierPricingCards().map((tier) => tier.id),
@@ -151,8 +151,8 @@ for (const pattern of unsafeUpgradeClaimPatterns) {
 const publicCopyFiles = [
   "src/App.jsx",
   "src/services/featureGates.js",
-  "src/utils/emberAssist.js",
-  "src/utils/emberAssistLite.js",
+  "src/utils/businessAssistant.js",
+  "src/utils/businessAssistantLite.js",
   "src/components/LockedFeatureNotice.jsx",
 ];
 

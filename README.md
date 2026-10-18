@@ -1,6 +1,6 @@
-# E&T TCG
+# Code 3 TCG
 
-Local beta for Ember & Tide TCG.
+Local beta for Code 3 TCG.
 
 ## Beta Checklist
 

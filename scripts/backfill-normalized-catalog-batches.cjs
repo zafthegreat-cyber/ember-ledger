@@ -66,7 +66,7 @@ function buildPgConfig() {
     },
     statement_timeout: 120000,
     query_timeout: 120000,
-    application_name: 'ember-ledger-normalized-catalog-backfill',
+    application_name: 'code3tcg-normalized-catalog-backfill',
   };
 }
 

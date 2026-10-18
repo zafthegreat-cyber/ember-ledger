@@ -1,8 +1,8 @@
-# AGENTS.md - Ember & Tide
+# AGENTS.md - Code 3 TCG
 
 ## Product
 
-Ember & Tide is a family-first Pokemon / TCG collecting app.
+Code 3 TCG is a family-first Pokemon / TCG collecting app.
 
 Core mission:
 Fair collecting. Kid-friendly access. Trusted community. Less scalper control.

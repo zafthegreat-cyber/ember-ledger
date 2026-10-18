@@ -2,13 +2,13 @@
 
 ## Scope
 
-This pass adds a frontend-only master-card grouping model for Ember & Tide. It groups raw copies, duplicate copies, wishlist wants, and graded or special variants under one card identity before users inspect individual records.
+This pass adds a frontend-only master-card grouping model for Code 3 TCG. It groups raw copies, duplicate copies, wishlist wants, and graded or special variants under one card identity before users inspect individual records.
 
 No backend schema, RLS policy, auth rule, billing rule, scraping workflow, payment workflow, upload service, live AI call, or inventory integration was changed.
 
 ## Frontend Model
 
-`src/types/emberTide.ts` now defines:
+`src/types/code3Tcg.ts` now defines:
 
 - `MasterCard`
 - `CardVariant`
@@ -26,7 +26,7 @@ The live app derives this grouping from existing local UI records at render time
 
 ## Mock Data
 
-`src/mock/emberTideData.ts` now includes generic Ember & Tide master-card examples using original card names and no licensed card art. These examples support future preview work without changing the approved standalone screen set.
+`src/mock/code3TcgData.ts` now includes generic Code 3 TCG master-card examples using original card names and no licensed card art. These examples support future preview work without changing the approved standalone screen set.
 
 When a local beta workspace has no saved card records, Vault and related grouping surfaces can show these examples as a clearly labeled preview model. They are not saved inventory and do not write to storage.
 

@@ -4,11 +4,11 @@ import MenuItemIcon from "./MenuItemIcon.jsx";
 const SECTION_ORDER = ["find", "collection", "community", "account", "tools", "admin"];
 const SECTION_LABELS = { find: "Find & sell", tools: "Help & updates", account: "Account & settings" };
 const SECTION_ICONS = { collection: "inventory", find: "find", community: "community", tools: "help", account: "account", admin: "secure" };
-const ITEM_GROUPS = { scanProduct: "collection", scout: "find", watchList: "find", exchange: "find", announcements: "tools", comingSoon: "tools" };
+const ITEM_GROUPS = { scanProduct: "collection", scout: "find", reportRestock: "find", watchList: "find", exchange: "find", announcements: "tools", comingSoon: "tools" };
 const SECTION_HINTS = { collection: "Cards, scanning & adding", find: "Restocks, alerts & research", community: "Families, trading & shops", account: "Profile, preferences & privacy", tools: "Support, feedback & what's new", admin: "Approvals & moderation" };
 const QUICK_KEYS = ["scout", "vault", "scanProduct", "watchList"];
 const QUICK_LABELS = { scanProduct: "Scan", watchList: "Alerts" };
-const SEARCH_TERMS = { settings: "cloud saving sync backup recovery theme appearance dark light preferences", collections: "family workspace members", exchange: "sell prices market research", watchList: "notifications watchlist" };
+const SEARCH_TERMS = { settings: "cloud saving sync backup recovery theme appearance dark light preferences", collections: "family workspace members", exchange: "sell prices market research", watchList: "notifications watchlist", reportRestock: "report restock stock low empty shelves shelf sighting store visit found in out of stock availability" };
 const WORKSPACE_HINTS = { COLLECT: "Your cards, sets & wishlist.", FIND: "Restocks, alerts & finding cards.", SELL: "Inventory, listings & sales.", BUSINESS: "Purchases, expenses & reports.", BOT: "Private bot tools & activity." };
 
 function Chevron({ expanded = false }) {
@@ -56,6 +56,7 @@ export default function MenuNavigation({ sections, NavIcon, isItemActive, onSele
   const currentWorkspace = workspaces.find(workspace => workspace.id === currentWorkspaceId);
   const allItems = sections.flatMap(section => section.items);
   const quickItems = QUICK_KEYS.map(key => allItems.find(item => item.key === key)).filter(Boolean);
+  const reportItem = allItems.find(item => item.key === "reportRestock");
 
   function updateQuery(value) {
     setQuery(value);
@@ -100,6 +101,10 @@ export default function MenuNavigation({ sections, NavIcon, isItemActive, onSele
               <span>{QUICK_LABELS[item.key] || item.label}</span>
             </button>)}
           </section>}
+          {reportItem && <button type="button" className="menu-report-action" data-menu-report="restock" onClick={() => onSelect(reportItem)}>
+            <span className="menu-report-icon" aria-hidden="true"><MenuItemIcon item={reportItem} NavIcon={NavIcon} /></span>
+            <span><strong>{reportItem.label}</strong><small>{reportItem.helper}</small></span><Chevron />
+          </button>}
           <p className="menu-browse-label">Browse all</p>
         </>}
         {searching && <p className="menu-results-label">{resultCount} {resultCount === 1 ? "result" : "results"}</p>}

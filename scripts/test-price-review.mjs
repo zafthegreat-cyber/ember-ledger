@@ -10,7 +10,7 @@ import {
 import {
   buildEmberAssistContext,
   buildEmberAssistFallbackResponse,
-} from "../src/utils/emberAssist.js";
+} from "../src/utils/businessAssistant.js";
 
 const money = (value) => `$${Number(value).toFixed(2)}`;
 const now = new Date("2026-05-21T12:00:00.000Z");

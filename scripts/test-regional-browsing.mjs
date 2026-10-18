@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { buildEmberAssistFallbackResponse } from "../src/utils/emberAssist.js";
+import { buildEmberAssistFallbackResponse } from "../src/utils/businessAssistant.js";
 import {
   buildRegionalCityBuckets,
   buildRegionalStoreBuckets,

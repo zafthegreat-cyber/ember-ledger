@@ -465,7 +465,7 @@ function buildConnectionConfig(candidate = connectionSelection.selected) {
       ssl: { rejectUnauthorized: !sslNoVerify },
       statement_timeout: 120000,
       query_timeout: 120000,
-      application_name: "ember-admin-demo-scout-cleanup",
+      application_name: "code3tcg-admin-demo-scout-cleanup",
     },
     info: {
       source: candidateSource,

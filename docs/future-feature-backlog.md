@@ -82,7 +82,7 @@ TideTradr should become a clean searchable, catalog-driven experience.
 
 ### TideTradr — future value-checking hub
 
-This is a future feature note only. TideTradr should become the shared Ember & Tide work area for checking value before buying or trading. It should eventually combine Deal Finder and Trade Checker into one mobile-first, family-friendly tool.
+This is a future feature note only. TideTradr should become the shared Code 3 TCG work area for checking value before buying or trading. It should eventually combine Deal Finder and Trade Checker into one mobile-first, family-friendly tool.
 
 Deal Finder:
 - Helps users decide if a product is worth buying.

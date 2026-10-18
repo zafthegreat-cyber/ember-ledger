@@ -37,9 +37,9 @@ assert.match(app, /function loadCalendarDataOnDemand\(\)/);
 assert.match(app, /import\("\.\/data\/generated\/releaseCalendar\.json"\)/);
 assert.match(app, /function loadScoutRestockIntelOnDemand\(\)/);
 assert.match(app, /import\("\.\/data\/scoutRestockIntelSeed"\)/);
-assert.match(app, /from "\.\/utils\/emberAssistLite"/);
-assert.match(app, /import\("\.\/utils\/emberAssist"\)/);
-assert.doesNotMatch(app, /from "\.\/utils\/emberAssist"/);
+assert.match(app, /from "\.\/utils\/businessAssistantLite"/);
+assert.match(app, /import\("\.\/utils\/businessAssistant"\)/);
+assert.doesNotMatch(app, /from "\.\/utils\/businessAssistant"/);
 
 assert.match(catalogSeed, /generated\/sealedProducts\.json\?url/);
 assert.match(catalogSeed, /export async function loadPokemonProductCatalog/);

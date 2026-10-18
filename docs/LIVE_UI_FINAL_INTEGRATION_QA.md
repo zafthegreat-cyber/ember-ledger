@@ -54,7 +54,7 @@ Each route was captured at 390x844, 430x932, and 1440x900.
 - `npm.cmd run test:market`: sandbox Chromium `spawn EPERM`; outside-sandbox rerun passed.
 - `npm.cmd run test:kids-program`: passed.
 - `npm.cmd run test:spark`: sandbox Chromium `spawn EPERM`; outside-sandbox rerun passed.
-- `npm.cmd run test:ember-assist`: passed.
+- `npm.cmd run test:business-assistant`: passed.
 - `npm.cmd run test:admin`: sandbox Chromium `spawn EPERM`; outside-sandbox rerun passed.
 - `npm.cmd run test:admin-command-center`: passed.
 - `npm.cmd run test:tidepool-community`: passed.

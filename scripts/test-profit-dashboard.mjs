@@ -9,7 +9,7 @@ import {
   buildYearEndTaxSummary,
   summarizeSalesRecords,
 } from "../src/utils/businessTaxRecords.js";
-import { buildEmberAssistFallbackResponse, buildEmberAssistContext } from "../src/utils/emberAssist.js";
+import { buildEmberAssistFallbackResponse, buildEmberAssistContext } from "../src/utils/businessAssistant.js";
 
 const salesSummary = summarizeSalesRecords([
   {

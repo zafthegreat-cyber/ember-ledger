@@ -3,7 +3,7 @@ import { PRIVACY_PUBLISHER, PRIVACY_SECTIONS } from "../config/privacyPolicy.js"
 export const BETA_READINESS_STORAGE_KEY = "et-tcg-beta-readiness";
 
 export const KIDS_PROGRAM_COPY =
-  "Ember & Tide's Kids Program helps families and young collectors access Pokemon products more fairly through giveaways, kid-focused packs, events, and occasional near-retail product opportunities when inventory allows.";
+  "Code 3 TCG's Kids Program helps families and young collectors access Pokemon products more fairly through giveaways, kid-focused packs, events, and occasional near-retail product opportunities when inventory allows.";
 
 export const KIDS_PROGRAM_ANTI_RESALE_COPY =
   "Kids Program items are intended for children and families, not resale. Abuse of the program may result in removal from Kids Program access.";
@@ -72,7 +72,7 @@ export const PRODUCT_ROADMAP_NOTES = [
 ];
 
 export const SIGNUP_NAME_HELPER =
-  "Please use your real name. This helps us keep Ember & Tide fair, especially for Kids Program access, giveaways, and community reports.";
+  "Please use your real name. This helps us keep Code 3 TCG fair, especially for Kids Program access, giveaways, and community reports.";
 
 export const UPLOAD_SAFETY_WARNING =
   "Do not upload photos containing personal, financial, medical, or sensitive information.";
@@ -184,7 +184,7 @@ export const TRUST_PAGE_CONTENT = [
 ];
 
 export const FOR_PARENTS_COPY = [
-  "Ember & Tide's Kids Program is parent/guardian managed.",
+  "Code 3 TCG's Kids Program is parent/guardian managed.",
   "We collect minimal child information.",
   "We do not require child birthdates.",
   "We do not create public child profiles.",
@@ -210,12 +210,12 @@ export const AUTH_COPY_REVIEW = [
   {
     key: "confirmation",
     title: "Confirmation email",
-    expected: "Account confirmation links should route to https://emberandtide.app.",
+    expected: "Account confirmation links should route to https://code3tcg.app.",
   },
   {
     key: "reset",
     title: "Reset password email",
-    expected: "Password reset links should route to https://emberandtide.app/reset-password.",
+    expected: "Password reset links should route to https://code3tcg.app/reset-password.",
   },
   {
     key: "signup_success",
@@ -231,12 +231,12 @@ export const AUTH_COPY_REVIEW = [
 
 export const PRODUCTION_CONFIG_AUDIT = [
   "Supabase project ref: gxsfququorfczvhrkudl",
-  "Production app URL: https://emberandtide.app",
-  "Auth Site URL should be https://emberandtide.app",
-  "Redirect URLs should include https://emberandtide.app, https://emberandtide.app/, and https://emberandtide.app/reset-password",
+  "Production app URL: https://code3tcg.app",
+  "Auth Site URL should be https://code3tcg.app",
+  "Redirect URLs should include https://code3tcg.app, https://code3tcg.app/, and https://code3tcg.app/reset-password",
   "Local dev reset URLs may be included as secondary development redirects only.",
   "No development or old Vercel URL should be primary production auth redirect.",
-  "Custom SMTP should send Ember & Tide branded emails.",
+  "Custom SMTP should send Code 3 TCG branded emails.",
   "Frontend environment variables must not expose service-role keys or secrets.",
   "Guest preview must not expose private data.",
   "Admin tools must stay hidden from Regular Mode and guests.",
@@ -265,7 +265,7 @@ export const BETA_EMPTY_STATES = {
   },
   kids: {
     title: "Kids Program opportunities will appear here",
-    body: "When inventory allows, Ember & Tide will post kid-focused packs, giveaways, and near-retail opportunities for families.",
+    body: "When inventory allows, Code 3 TCG will post kid-focused packs, giveaways, and near-retail opportunities for families.",
   },
   admin: {
     title: "No pending reviews",
@@ -342,11 +342,11 @@ export const DEFAULT_BETA_BLOCKERS = [
 ];
 
 export const DEFAULT_MARKETING_MATERIALS = [
-  { title: "Beta announcement", contentType: "social", platform: "Facebook/Instagram", status: "drafted", caption: "Ember & Tide beta is opening soon for collectors, parents, sellers, and local restock scouts." },
+  { title: "Beta announcement", contentType: "social", platform: "Facebook/Instagram", status: "drafted", caption: "Code 3 TCG beta is opening soon for collectors, parents, sellers, and local restock scouts." },
   { title: "Parent-focused post", contentType: "social", platform: "Facebook", status: "drafted", caption: "Pokemon collecting should still be fun, fair, and family-friendly." },
-  { title: "Card shop/sponsor post", contentType: "outreach", platform: "Email/DM", status: "idea", caption: "Partner with Ember & Tide to support kid-friendly Pokemon access and fair local collecting." },
+  { title: "Card shop/sponsor post", contentType: "outreach", platform: "Email/DM", status: "idea", caption: "Partner with Code 3 TCG to support kid-friendly Pokemon access and fair local collecting." },
   { title: "Kids Program post", contentType: "social", platform: "Facebook/Instagram", status: "drafted", caption: KIDS_PROGRAM_COPY },
-  { title: "Printable flyer", contentType: "flyer", platform: "Print", status: "needs_image", caption: "Bring Pokemon Collecting Back to Kids | https://emberandtide.app | support@emberandtide.app | QR placeholder" },
+  { title: "Printable flyer", contentType: "flyer", platform: "Print", status: "needs_image", caption: "Bring Pokemon Collecting Back to Kids | https://code3tcg.app | support@code3tcg.com | QR placeholder" },
 ];
 
 export const DEFAULT_ROADMAP_ITEMS = [

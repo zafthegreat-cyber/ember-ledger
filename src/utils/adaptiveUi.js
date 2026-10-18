@@ -129,7 +129,7 @@ export function recommendSmartSetup(input = {}, { adminAllowed = false } = {}) {
   if (adminAllowed && flags.wantsAdminTools) {
     planType = SMART_SETUP_PLAN_TYPES.ADMIN;
     label = "Admin";
-    summary = "Best for protected Ember & Tide operations.";
+    summary = "Best for protected Code 3 TCG operations.";
     why = "Your account can see permission-safe admin review tools without crowding normal collector pages.";
   } else if (flags.wantsBusinessTools || setup.primaryMode === "business_seller") {
     planType = SMART_SETUP_PLAN_TYPES.BUSINESS_SELLER;
@@ -536,7 +536,7 @@ export function resolveHearthSmartNextAction(state = {}, data = {}) {
       key: "start_collection",
       badge: "Vault",
       title: "Start your collection",
-      reason: "Add your first item so Ember & Tide can guide your next best steps.",
+      reason: "Add your first item so Code 3 TCG can guide your next best steps.",
       primaryLabel: "Add to Vault",
       secondaryLabel: "Search Market",
     };

@@ -134,7 +134,7 @@ async function fetchOfficialRelease(source) {
   try {
     const response = await fetch(source.url, {
       headers: {
-        "user-agent": "EmberAndTideCalendarSync/1.0 (+https://emberandtide.app)",
+        "user-agent": "Code3TCGCalendarSync/1.0 (+https://code3tcg.app)",
       },
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);

@@ -1,4 +1,5 @@
 {
+  "name": "code3-tcg",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -215,7 +216,7 @@
     "test:sales-records": "node --no-warnings scripts/test-sales-records.mjs",
     "test:trade-value": "node --no-warnings scripts/test-trade-value-flow.mjs",
     "test:year-end-exports": "node --no-warnings scripts/test-year-end-exports.mjs",
-    "test:ember-assist": "node --no-warnings scripts/test-ember-assist.mjs",
+    "test:business-assistant": "node --no-warnings scripts/test-business-assistant.mjs",
     "test:store-expansion": "node --no-warnings scripts/test-store-expansion.mjs",
     "test:store-pages": "node --no-warnings scripts/test-store-pages.mjs",
     "test:partner-profiles": "node --no-warnings scripts/test-partner-profiles.mjs",

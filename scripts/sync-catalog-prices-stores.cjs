@@ -221,7 +221,7 @@ async function fetchJson(url, options = {}, retries = 3) {
     const response = await fetch(url, {
       ...options,
       headers: {
-        "User-Agent": "EmberAndTideCatalogSync/1.0 (public data cache; contact via app owner)",
+        "User-Agent": "Code3TCGCatalogSync/1.0 (public data cache; contact via app owner)",
         ...(options.headers || {}),
       },
     });
@@ -833,7 +833,7 @@ function buildCatalogSyncStatus({ catalog = {}, stores = {}, aliasesImported = 0
     productsWithReferencePrices: productsWithReferencePrice.size,
     productsMissingReferencePrices: Math.max(totalProducts - productsWithReferencePrice.size, 0),
     priceFallbackLabel: "Price data unavailable",
-    imageFallbackLabel: "Ember & Tide product placeholder",
+    imageFallbackLabel: "Code 3 TCG product placeholder",
     photoSourcePolicy: "Use source image URLs when provided by public catalog data; otherwise render the branded app placeholder.",
     pricingPolicy: "Use productId joins for reference prices. Fallback matching is low-confidence and must not power automatic fair-price claims.",
     dailyRefreshCommand: "npm.cmd run sync:market-prices",

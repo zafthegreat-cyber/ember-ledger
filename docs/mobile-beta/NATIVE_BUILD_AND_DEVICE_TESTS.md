@@ -2,6 +2,10 @@
 
 Updated 2026-10-18. Run commands from the repository root. This runbook describes the local native implementation; it does not claim a store upload, successful physical-device test, or a production configuration change.
 
+For the owner's Android/iPhone handoff, the no-Mac TestFlight path and a fill-in physical test record, use [Phone test quickstart](./PHONE_TEST_QUICKSTART.md). Run `node scripts/native-phone-preflight.mjs` against existing artifacts before distribution; add `--hosted` only for the documented read-only public endpoint probes. Passing automated checks never marks the manual/device rows complete.
+
+The configured Android packages were refreshed as **build 4** after the privacy updates and removal of private-location defaults from new public listings. Signatures, manifests, bundle validation and all 175 packaged web assets passed verification; builds 1–3 are preserved separately. See [build 4 evidence](./ANDROID_BUILD_4_2026-10-18.md). The most recent read-only hosted check found native origins are not yet allowed on the production API, so account testing remains gated on that deployment/configuration. iOS assets were synchronized, but this refresh did not compile/sign an iPhone build.
+
 ## Current evidence
 
 | Check | Evidence | Remaining gate |
@@ -183,6 +187,8 @@ Use fresh synthetic test accounts for recovery, session revocation, account swit
 These tests use synthetic data. Browser tests require a disposable local Vite server; their network guards block external and mutating requests.
 
 ```sh
+node scripts/test-native-phone-preflight.mjs
+node scripts/native-phone-preflight.mjs
 npm run test:native
 npm run test:device-transfer
 npm run test:workspace-recovery

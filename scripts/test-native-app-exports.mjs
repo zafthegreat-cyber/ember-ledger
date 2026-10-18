@@ -38,7 +38,7 @@ vm.runInContext(source, context);
 
 await context.downloadBackup();
 assert.deepEqual(JSON.parse(downloads.at(-1).body), savedRecords);
-assert.match(downloads.at(-1).name, /^ember-tide-beta-backup-.*\.json$/);
+assert.match(downloads.at(-1).name, /^code3tcg-beta-backup-.*\.json$/);
 await context.downloadCSV("test.csv", [{ name: 'A "quoted" item', count: 2 }]);
 assert.equal(downloads.at(-1).body, 'name,count\n"A ""quoted"" item","2"');
 for (const method of ["downloadYearEndTaxSummary", "downloadMileageRecords", "downloadSalesRecords"]) {

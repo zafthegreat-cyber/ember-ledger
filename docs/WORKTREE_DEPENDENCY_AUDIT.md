@@ -50,8 +50,8 @@ The next clean regression passed all Scout scenarios, then failed scenario 16 wh
 | `docs/FREE_FEATURE_PARITY.md` | Modified | `INTENDED_FUTURE_WORK` | No | No | No | Exclude. Product-planning changes do not participate in build or tests. |
 | `docs/LIVE_UI_10HR_PASS.md` | Modified | `INTENDED_FUTURE_WORK` | No | No | No | Exclude. Local planning edits only. |
 | `docs/PUBLIC_BETA_POST_DEPLOY_QA.md` | Modified | `INTENDED_FUTURE_WORK` | No | No | No | Exclude. Post-deploy checklist is outside this non-deploy task. |
-| `docs/ember-and-tide-product-vision.md` | Modified | `INTENDED_FUTURE_WORK` | No | No | No | Exclude. Historical product-direction edits are not a runtime dependency. |
-| `docs/ember-tide-final-product-standard.md` | Modified | `INTENDED_FUTURE_WORK` | No | No | No | Exclude. Large pre-existing standards draft is unrelated to checkout execution. |
+| `docs/code3-tcg-product-vision.md` | Modified | `INTENDED_FUTURE_WORK` | No | No | No | Exclude. Historical product-direction edits are not a runtime dependency. |
+| `docs/code3-tcg-final-product-standard.md` | Modified | `INTENDED_FUTURE_WORK` | No | No | No | Exclude. Large pre-existing standards draft is unrelated to checkout execution. |
 | `docs/paid-tiers-and-feature-gates.md` | Modified | `INTENDED_FUTURE_WORK` | No | No | No | Exclude. Pre-existing product/tiers draft; no runtime import. |
 | `package-lock.json` | Modified | `UNRELATED_EXISTING_CHANGE` | Used by `npm ci` | Tracked HEAD lock is sufficient | CI install dependency, but current diff is not | Exclude the one-line root-name drift. Clean `npm ci` left the tracked lock unchanged, package dependencies match, and `package.json` has no root `name`. Decision: `EXISTING_LOCKFILE_ALREADY_SUFFICIENT`. |
 | `src/App.css` | Modified | `REQUIRED_COMMITTED_DEPENDENCY` | Imported by committed `src/App.jsx` | Yes | Yes | Include. The committed route-loading test requires the 10/11 structural layers and rejects the retired 08 layer; it failed against HEAD. Its three imported untracked styles are included separately. |
@@ -59,7 +59,7 @@ The next clean regression passed all Scout scenarios, then failed scenario 16 wh
 | `src/index.css` | Modified | `INTENDED_FUTURE_WORK` | Imported by committed `src/main.jsx` | Tracked styles render successfully | No failing test depends on the added progress animation | Exclude. The addition styles an existing loader but is not required to build or pass the audited source checks. |
 | `src/mobileScreenSet.css` | Modified | `INTENDED_FUTURE_WORK` | Only imported by the non-entry `mobileScreenSet.jsx` module | Not reached by committed application entry | No required test imports it | Exclude the large pre-existing visual experiment. |
 | `src/mobileScreenSet.jsx` | Modified | `INTENDED_FUTURE_WORK` | Not imported from the committed app entry graph | No | No required test | Exclude the standalone screen-set experiment. |
-| `src/mock/emberTideData.ts` | Modified | `INTENDED_FUTURE_WORK` | Referenced by the standalone screen-set experiment, not the committed app | No production dependency | No required test | Exclude mock/demo data changes. |
+| `src/mock/code3TcgData.ts` | Modified | `INTENDED_FUTURE_WORK` | Referenced by the standalone screen-set experiment, not the committed app | No production dependency | No required test | Exclude mock/demo data changes. |
 | `src/pages/Forge.jsx` | Modified | `REQUIRED_COMMITTED_DEPENDENCY` | Lazy route imported by committed `src/App.jsx` | Yes, for Exchange/Business compatibility routes | Yes | Include. The committed route-loading assertion explicitly requires its delegated `CommandBoardV4` renderer and failed against HEAD. |
 | `src/pages/Hearth.jsx` | Modified | `INTENDED_FUTURE_WORK` | Legacy page module exists, but canonical Home uses `OperationsHome` | Not needed for the failing build or canonical Home | No observed clean-checkout failure | Exclude the large pre-existing route experiment unless a later clean test supplies contrary evidence. |
 | `src/pages/Market.jsx` | Modified | `REQUIRED_COMMITTED_DEPENDENCY` | Lazy route imported by committed `src/App.jsx` | Yes, for Market compatibility routes | Yes | Include. The committed route-loading assertion requires its V4 route body and failed against HEAD. |
@@ -75,7 +75,7 @@ The next clean regression passed all Scout scenarios, then failed scenario 16 wh
 | `src/styles/app/06-mobile-responsive.css` | Modified | `INTENDED_FUTURE_WORK` | Imported through `App.css` | Tracked layer remains present | No audited failure | Exclude unless final viewport evidence proves necessity. |
 | `src/styles/app/07-final-product-layers.css` | Modified | `INTENDED_FUTURE_WORK` | Removed from the required `App.css` graph | No after closure | No | Exclude. It is a retired, pre-existing visual layer. |
 | `src/styles/app/08-command-shell-auth.css` | Modified | `INTENDED_FUTURE_WORK` | Removed from the required `App.css` graph | No after closure | The committed route-loading test explicitly rejects importing it | Exclude. It is a retired visual layer. |
-| `src/utils/emberAssist.js` | Modified | `INTENDED_FUTURE_WORK` | Lazy-loaded by committed code | Tracked implementation works | No audited failure depends on the one-line copy change | Exclude; AI expansion is also out of scope. |
+| `src/utils/businessAssistant.js` | Modified | `INTENDED_FUTURE_WORK` | Lazy-loaded by committed code | Tracked implementation works | No audited failure depends on the one-line copy change | Exclude; AI expansion is also out of scope. |
 | `src/utils/onboardingGuidance.js` | Modified | `INTENDED_FUTURE_WORK` | Imported by committed code | Tracked implementation works | No audited failure | Exclude pre-existing copy edits. |
 
 ## Remaining untracked files

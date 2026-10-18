@@ -259,7 +259,7 @@ export function buildMileageExportRows(vehicleGroups = []) {
       tripCount: group.tripCount || 0,
       totalVehicleCost: group.totalVehicleCost || 0,
       mileageValue: group.totalMileageValue || 0,
-      notes: "Mileage records for review with your tax professional. Ember & Tide does not provide tax advice.",
+      notes: "Mileage records for review with your tax professional. Code 3 TCG does not provide tax advice.",
     });
     (group.topPurposes || []).forEach((entry) => {
       rows.push({
@@ -299,7 +299,7 @@ export const SALES_PLATFORM_OPTIONS = [
   "Instagram",
   "In-person",
   "Local card show/event",
-  "Ember & Tide",
+  "Code 3 TCG",
   "Other",
 ];
 
@@ -311,7 +311,7 @@ const SALES_PLATFORM_RULES = [
   { label: "Instagram", pattern: /^instagram\b|^ig\b/ },
   { label: "In-person", pattern: /^in.?person\b|^cash\b|^local pickup\b|^in.?store\b/ },
   { label: "Local card show/event", pattern: /^local card show\b|^card show\b|^event\b|trade night/ },
-  { label: "Ember & Tide", pattern: /^ember\s*(and|&)?\s*tide\b|^emberandtide\b/ },
+  { label: "Code 3 TCG", pattern: /^ember\s*(and|&)?\s*tide\b|^emberandtide\b|^code\s*3\s*tcg\b/ },
 ];
 
 export function normalizeSalesPlatform(value = "") {
@@ -801,7 +801,7 @@ export function buildYearEndTaxSummary({ year, expenses = [], mileageTrips = [],
   return {
     year: selectedYear,
     generatedAt: new Date().toISOString(),
-    disclaimer: "Tax records summary for review with your tax professional. Ember & Tide does not provide tax advice.",
+    disclaimer: "Tax records summary for review with your tax professional. Code 3 TCG does not provide tax advice.",
     expenses: {
       total: expenseTotal,
       count: yearlyExpenses.length,

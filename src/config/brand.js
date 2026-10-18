@@ -24,6 +24,10 @@ export const BRAND_CONFIG = Object.freeze({
   defaultTimeZone: "America/New_York",
 });
 
+export function formatBrandText(value = "") {
+  return String(value ?? "").replace(/\b(?:ember\s*(?:&(?:amp;)?|and|\/)\s*tide|E\s*&(?:amp;)?\s*T)(?:\s+TCG)?\b/gi, BRAND_CONFIG.applicationDisplayName);
+}
+
 export function formatBrowserTitle(pageTitle = "") {
   const title = String(pageTitle || "").trim();
   if (!title) return BRAND_CONFIG.applicationDisplayName;

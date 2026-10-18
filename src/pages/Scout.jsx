@@ -118,8 +118,8 @@ const REPORT_RETAILER_OPTIONS = [
 
 const REPORT_VISIBILITY_OPTIONS = [
   { value: "public", label: "Public", helper: "Other users may see this report or guess." },
-  { value: "private_from_map", label: "Private from public map", helper: "Private from public map means other users will not see this report publicly, but Ember & Tide admins may review it for abuse prevention, accuracy, and prediction scoring." },
-  { value: "admin_only", label: "Admin review only", helper: "Only you and Ember & Tide admins can review this report." },
+  { value: "private_from_map", label: "Private from public map", helper: "Private from public map means other users will not see this report publicly, but Code 3 TCG admins may review it for abuse prevention, accuracy, and prediction scoring." },
+  { value: "admin_only", label: "Admin review only", helper: "Only you and Code 3 TCG admins can review this report." },
 ];
 
 const TIDEPOOL_EVENT_TYPES = [
@@ -1205,8 +1205,8 @@ function scoutVisibilityLabel(value = "") {
 
 function scoutVisibilityHelper(value = "") {
   if (value === "public") return "Other users may see this report or guess.";
-  if (value === "private_from_map") return "Private from public map means other users will not see this report publicly, but Ember & Tide admins may review it for abuse prevention, accuracy, and prediction scoring.";
-  if (value === "admin_only") return "Only you and Ember & Tide admins can review this report.";
+  if (value === "private_from_map") return "Private from public map means other users will not see this report publicly, but Code 3 TCG admins may review it for abuse prevention, accuracy, and prediction scoring.";
+  if (value === "admin_only") return "Only you and Code 3 TCG admins can review this report.";
   return SCOUT_VISIBILITY_COPY[value]?.helper || "";
 }
 
@@ -5358,7 +5358,7 @@ async function handleUpdateStore(e) {
               <div style={{ ...styles.calloutCard, marginTop: "14px" }}>
                 <h3 style={{ marginTop: 0 }}>Step 4: Screenshot</h3>
                 <p style={styles.tiny}>
-                  Beta/manual assist: upload a screenshot you are allowed to use, then review the same report fields below before submitting. Private from public map means other users will not see it publicly, but Ember & Tide admins may review it for abuse prevention, accuracy, and prediction scoring.
+                  Beta/manual assist: upload a screenshot you are allowed to use, then review the same report fields below before submitting. Private from public map means other users will not see it publicly, but Code 3 TCG admins may review it for abuse prevention, accuracy, and prediction scoring.
                 </p>
                 <div style={styles.formGrid}>
                   <input type="file" accept="image/*" onChange={handleTipScreenshotUpload} />

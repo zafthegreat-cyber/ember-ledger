@@ -1,4 +1,4 @@
-# Ember & Tide Core Perfection Checklist
+# Code 3 TCG Core Perfection Checklist
 
 Last updated: May 30, 2026
 
@@ -8,7 +8,7 @@ Purpose: keep the current beta focused on reliability, trust, and mobile usabili
 
 - Core routes load for Hearth, Scout, Vault, Forge, Market, Admin, More, and auth/access states.
 - Mobile pages fit 390px and 430px widths without horizontal overflow.
-- Bottom navigation, Quick Add, and Ember Assist do not cover primary actions.
+- Bottom navigation, Quick Add, and Business Assistant do not cover primary actions.
 - Required fields block invalid saves with field-level messages where practical.
 - Duplicate submit protection is present for Scout reports and other high-risk save paths.
 - Owner/admin edit and delete permissions are respected in the UI and backed by existing RLS where applicable.

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { ACCOUNT_DELETION_CONFIRMATION, fetchAccountDeletionStatus, deleteOwnAccount } from "../../services/accountDeletionApi.js";
 import { PRIVACY_PUBLISHER } from "../../config/privacyPolicy.js";
+import PrivacySupportContact from "./PrivacySupportContact.jsx";
+import { deletionHelpState } from "./privacySupport.js";
 import "./privacy.css";
 
 const ACCOUNT_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -14,6 +16,7 @@ function AccountDeletionForm({ user, onNavigate, onDeleted, completed = false, s
   const [storedReview, setReview] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [errorCode, setErrorCode] = useState("");
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [acknowledged, setAcknowledged] = useState(false);
@@ -23,17 +26,18 @@ function AccountDeletionForm({ user, onNavigate, onDeleted, completed = false, s
   const accountId = ACCOUNT_ID.test(user?.id || "") ? user.id : "";
   const review = storedReview?.ownerId === accountId ? storedReview : null;
   const finished = completed || deleted;
+  const help = deletionHelpState(review, errorCode);
   useEffect(() => () => { generation.current++; operation.current?.abort(); }, [accountId]);
 
   async function loadReview() {
     if (operation.current || !accountId) return;
     const controller = new AbortController(); operation.current = controller;
     const ticket = ++generation.current;
-    setBusy(true); setError(""); setReview(null); setPassword(""); setConfirmation(""); setAcknowledged(false);
+    setBusy(true); setError(""); setErrorCode(""); setReview(null); setPassword(""); setConfirmation(""); setAcknowledged(false);
     try {
       const next = await statusLoader({ expectedUserId: accountId, signal: controller.signal });
       if (ticket === generation.current) setReview({ ...next, ownerId: accountId });
-    } catch (failure) { if (ticket === generation.current && failure?.name !== "AbortError") setError(failure.message || "The deletion review could not be loaded."); }
+    } catch (failure) { if (ticket === generation.current && failure?.name !== "AbortError") { setError(failure.message || "The deletion review could not be loaded."); setErrorCode(failure.code || "account_deletion_unavailable"); } }
     finally { if (operation.current === controller) operation.current = null; if (ticket === generation.current) setBusy(false); }
   }
 
@@ -43,7 +47,7 @@ function AccountDeletionForm({ user, onNavigate, onDeleted, completed = false, s
     const controller = new AbortController(); operation.current = controller;
     const ticket = ++generation.current;
     const currentPassword = password;
-    setPassword(""); setBusy(true); setError("");
+    setPassword(""); setBusy(true); setError(""); setErrorCode("");
     try {
       await deleteAccount({ password: currentPassword, confirmation }, { expectedUserId: accountId, signal: controller.signal });
       if (ticket !== generation.current) return;
@@ -52,6 +56,7 @@ function AccountDeletionForm({ user, onNavigate, onDeleted, completed = false, s
     } catch (failure) {
       if (ticket === generation.current && failure?.name !== "AbortError") {
         setError(failure.message || "Deletion is not confirmed. Check status before trying again.");
+        setErrorCode(failure.code || "outcome_unknown");
         if (failure.code !== "account_reauthentication_failed" && failure.code !== "invalid_confirmation") setReview(null);
       }
     } finally { if (operation.current === controller) operation.current = null; if (ticket === generation.current) setBusy(false); }
@@ -67,27 +72,31 @@ function AccountDeletionForm({ user, onNavigate, onDeleted, completed = false, s
         <li>The service checks ownership before deletion. Shared workspace owners and the protected service owner must transfer ownership first.</li>
         <li>Downloaded backups, records stored only on devices, and copies held by other people are not erased by deleting your cloud account.</li>
       </ul></article>
-      {!accountId ? <div className="code3-privacy-status"><h3>Sign in to verify your account</h3><p>You can read this page without an account. Sign in below or return to the sign-in page, then reopen Delete account. Preview accounts cannot delete real accounts.</p><p>If you cannot sign in, use password reset or contact <a href={`mailto:${PRIVACY_PUBLISHER.supportEmail}`}>{PRIVACY_PUBLISHER.supportEmail}</a> for verified account deletion help. Never email your password.</p></div> : <>
+      {!accountId ? <div className="code3-privacy-status"><h3>Sign in to verify your account</h3><p>You can read this page without an account. Sign in below or return to the sign-in page, then reopen Delete account. Deletion requires verified access to your account.</p><p>If you cannot sign in, use password reset or contact <a href={`mailto:${PRIVACY_PUBLISHER.supportEmail}`}>{PRIVACY_PUBLISHER.supportEmail}</a> for verified account deletion help. Never email your password.</p></div> : <>
         {!review && <button type="button" className="code3-primary" disabled={busy} onClick={() => void loadReview()}>{busy ? "Checking account…" : "Review account deletion"}</button>}
         {review && <>
-          <article className="code3-privacy-card"><h3>Account being deleted</h3><p>{review.accountEmail}</p>
+          <article className="code3-privacy-card"><h3>Account to delete</h3><p>{review.accountEmail}</p>
             <h3>Cloud data included</h3><ul>{review.deletionScope.map((item) => <li key={item}>{item}</li>)}</ul>
             <h3>Data that may remain</h3><ul>{review.retainedScope.map((item) => <li key={item}>{item}</li>)}</ul>
           </article>
           {review.state === "pending" && <div className="code3-privacy-status code3-privacy-error" role="alert">Deletion started earlier but has not finished. Some cloud files may already be removed. Confirm again to finish the deletion.</div>}
-          {review.blockers.length > 0 && <div className="code3-privacy-status" role="status"><h3>Resolve before deleting</h3><ul>{review.blockers.map((item) => <li key={item.code}>{item.message}</li>)}</ul><p>Contact support if you need help transferring ownership.</p></div>}
+          {review.blockers.length > 0 && <div className="code3-privacy-status" role="status"><h3>Resolve before deleting</h3><ul>{review.blockers.map((item) => <li key={item.code}>{item.message}</li>)}</ul></div>}
           {!review.available && review.blockers.length === 0 && <p role="status">The deletion service is unavailable. Try again later or contact support.</p>}
           {review.available && review.blockers.length === 0 && <form onSubmit={(event) => void submit(event)}>
             <label className="code3-privacy-checkbox"><input type="checkbox" checked={acknowledged} disabled={busy} onChange={(event) => setAcknowledged(event.target.checked)} /><span>I reviewed what will be deleted and retained. I saved any backups I need and understand this cannot be undone.</span></label>
             <label>Confirm your account password<input type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} disabled={busy} maxLength={1024} required /></label>
             <label>Type {ACCOUNT_DELETION_CONFIRMATION}<input type="text" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} disabled={busy} autoComplete="off" autoCapitalize="characters" spellCheck={false} required /></label>
-            <div className="code3-privacy-actions"><button type="submit" className="code3-danger" disabled={busy || !acknowledged || confirmation !== ACCOUNT_DELETION_CONFIRMATION || !password}>{busy ? "Deleting account…" : "Permanently delete my account"}</button><button type="button" disabled={busy} onClick={() => { setReview(null); setPassword(""); setConfirmation(""); setAcknowledged(false); setError(""); }}>Cancel</button></div>
+            <div className="code3-privacy-actions"><button type="submit" className="code3-danger" disabled={busy || !acknowledged || confirmation !== ACCOUNT_DELETION_CONFIRMATION || !password}>{busy ? "Deleting account…" : "Permanently delete my account"}</button><button type="button" disabled={busy} onClick={() => { setReview(null); setPassword(""); setConfirmation(""); setAcknowledged(false); setError(""); setErrorCode(""); }}>Cancel</button></div>
           </form>}
           {(!review.available || review.blockers.length > 0) && <button type="button" disabled={busy} onClick={() => void loadReview()}>Check again</button>}
         </>}
       </>}
     </>}
     {error && <div className="code3-privacy-status code3-privacy-error" role="alert">{error}</div>}
+    {!finished && help && !busy && <article className="code3-privacy-card">
+      <h3>{help.title}</h3><p>{help.explanation}</p><ol>{help.steps.map((step) => <li key={step}>{step}</li>)}</ol>
+      <PrivacySupportContact key={help.topic} topic={help.topic} />
+    </article>}
     <div className="code3-privacy-actions">
       <button type="button" disabled={busy} onClick={() => onNavigate?.(accountId ? "settings" : "dashboard")}>{accountId ? "Back to settings" : "Sign in / home"}</button>
       <a href="/privacy" onClick={onNavigate && !busy ? (event) => { event.preventDefault(); onNavigate("trust"); } : busy ? (event) => event.preventDefault() : undefined}>Privacy policy</a>

@@ -282,6 +282,36 @@ export default function ScoutSubmitContent({ scope }) {
         productImageUrl: known.itemImage || catalogImage(product) || "",
       }));
     };
+    const updateScoutProductName = (value) => {
+      setQuickScoutReportMessage("");
+      setQuickScoutReportForm((current) => ({
+        ...current,
+        productName: value,
+        catalogProductId: "", catalogProductName: "", productImageUrl: "", productSetName: "", productType: "",
+      }));
+    };
+    const clearScoutCatalogMatch = () => setQuickScoutReportForm((current) => ({
+      ...current, catalogProductId: "", catalogProductName: "", productImageUrl: "", productSetName: "", productType: "",
+    }));
+    const updateScoutProductCategory = (value) => {
+      setQuickScoutReportMessage("");
+      setQuickScoutReportForm((current) => ({
+        ...current, productCategory: value,
+        ...(current.productCategory !== value ? { catalogProductId: "", catalogProductName: "", productImageUrl: "", productSetName: "", productType: "" } : {}),
+      }));
+    };
+    const renderScoutReferenceThumb = (product = {}, imageUrl = catalogImage(product)) => (
+      <span key={imageUrl || "no-reference-image"} className="scout-report-catalog-thumb" aria-hidden="true">
+        {imageUrl ? <PrivateStorageImage src={imageUrl} alt="" onError={(event) => {
+          event.currentTarget.style.display = "none";
+          event.currentTarget.nextElementSibling?.removeAttribute("hidden");
+        }} /> : null}
+        <svg className="scout-report-catalog-placeholder" hidden={Boolean(imageUrl)} viewBox="0 0 40 50" fill="none" focusable="false">
+          <rect x="9" y="9" width="22" height="32" rx="3" stroke="currentColor" strokeWidth="1.5" />
+          <path d="m20 18 6 7-6 7-6-7 6-7Z" stroke="currentColor" strokeWidth="1.5" />
+        </svg>
+      </span>
+    );
     const selectScoutCatalogSuggestion = (suggestion = {}) => {
       const product = suggestion.product || catalogProducts.find((entry) => String(entry.id) === String(suggestion.productId || suggestion.id));
       if (product?.id || product?.name) {
@@ -338,18 +368,12 @@ export default function ScoutSubmitContent({ scope }) {
         ? "Community Guess (not confirmed stock)"
         : (quickScoutReportSaved?.confidenceLabel || quickScoutReportSaved?.confidence_label || scoutReportConfidenceBadge(quickScoutReportSaved || {}).label || "New Scout report");
       const savedToCloud = quickScoutReportSaved?.sourceStatus === "supabase";
-      const optionalDetailActions = [
-        "Products seen",
-        "Quantity/price",
-        "Proof/photo",
-        "Limit/signage",
-      ];
       return (
         <section className="scout-quick-report-v2 scout-quick-report-sent">
           <div className="scout-quick-report-success">
-            <span>{currentType.isGuess ? "Saved" : savedToCloud ? "Posted" : "Saved locally"}</span>
+            <span>{currentType.isGuess ? "Saved" : savedToCloud ? "Saved to your account" : "Saved locally"}</span>
             <h3>{currentType.isGuess ? "Scout note saved." : "Scout report saved."}</h3>
-            <p>{currentType.isGuess ? "Your planning note stays separate from live stock reports." : "Want to add proof or more details? You can do that now or later."}</p>
+            <p>{currentType.isGuess ? "Your planning note stays separate from live stock reports." : savedToCloud ? "Your report is saved to your account. Add details now or return to your reports later." : "Your report is saved on this device. It has not been posted to the community."}</p>
             {quickScoutReportMessage ? <small>{quickScoutReportMessage}</small> : null}
           </div>
           <div className="scout-report-review-grid scout-submit-confirmation-grid" aria-label="Submitted Scout report confirmation">
@@ -374,20 +398,8 @@ export default function ScoutSubmitContent({ scope }) {
               <strong>{savedSignalType}</strong>
             </div>
           </div>
-          {!currentType.isGuess ? (
-            <div className="scout-post-submit-actions" aria-label="Optional Scout report follow-up details">
-              <strong>Add more details if you have them</strong>
-              <div>
-                {optionalDetailActions.map((label) => (
-                  <button key={label} type="button" className="secondary-button" onClick={openQuickScoutReportDetails}>{label}</button>
-                ))}
-              </div>
-              <small>These are optional. The report is already posted.</small>
-            </div>
-          ) : null}
           <div className="quick-actions">
-            <button type="button" onClick={openQuickScoutReportDetails}>Add More Details</button>
-            <button type="button" className="secondary-button" onClick={() => closeFlowModal({ force: true, reset: true })}>Done</button>
+            <button type="button" className="secondary-button" onClick={openQuickScoutReportDetails}>Add details</button>
           </div>
         </section>
       );
@@ -989,7 +1001,7 @@ export default function ScoutSubmitContent({ scope }) {
                         type="button"
                         className={`secondary-button ${isSelected ? "selected" : ""}`}
                         aria-pressed={isSelected}
-                        onClick={() => updateQuickScoutReportForm("productCategory", category)}
+                        onClick={() => updateScoutProductCategory(category)}
                       >
                         {category}
                       </button>
@@ -1000,10 +1012,31 @@ export default function ScoutSubmitContent({ scope }) {
                   Product name (optional)
                   <input
                     value={quickScoutReportForm.productName}
-                    onChange={(event) => updateQuickScoutReportForm("productName", event.target.value)}
+                    onChange={(event) => updateScoutProductName(event.target.value)}
                     placeholder="e.g. Surging Sparks ETB or booster bundles"
+                    autoComplete="off"
+                    aria-describedby="scout-report-catalog-help"
                   />
                 </label>
+                <p id="scout-report-catalog-help" className="scout-report-catalog-help">Choose a catalog match or keep your own wording. A category alone is enough.</p>
+                {quickScoutReportForm.catalogProductId ? (
+                  <article className="scout-report-catalog-selection" aria-label="Selected catalog product">
+                    {renderScoutReferenceThumb(selectedCatalogProduct || {}, quickScoutReportForm.productImageUrl)}
+                    <div><span>Catalog reference image</span><strong>{quickScoutReportForm.catalogProductName || quickScoutReportForm.productName}</strong><small>{[quickScoutReportForm.productSetName, quickScoutReportForm.productType].filter(Boolean).join(" · ") || "Selected from the catalog"}</small></div>
+                    <button type="button" className="secondary-button" onClick={clearScoutCatalogMatch}>Clear match</button>
+                  </article>
+                ) : productMatches.length ? (
+                  <div className="scout-report-catalog-matches" role="group" aria-label="Catalog matches">
+                    <span>From the catalog · reference images</span>
+                    {productMatches.slice(0, 3).map((product) => (
+                      <button key={product.id || catalogTitle(product)} type="button" className="scout-report-catalog-result" aria-label={`Use ${catalogTitle(product)}`} onClick={() => selectScoutCatalogProduct(product)}>
+                        {renderScoutReferenceThumb(product)}
+                        <span><strong>{catalogTitle(product)}</strong><small>{[catalogExpansionName(product), catalogProductTypeLabel(product)].filter(Boolean).join(" · ")}</small></span>
+                        <span className="scout-report-catalog-use" aria-hidden="true">Use</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             ) : null}
             <label className="scout-report-notes-field">

@@ -539,7 +539,7 @@ export default function MarketplaceContent({ scope }) {
               <p className="market-closed-note">This listing is {normalizeListingStatus(selectedListing)}. It is kept for history and review, not as an active public offer.</p>
             ) : null}
             <p className="compact-subtitle">Seller trust uses public username, Scout level, public badges, and contribution history. Private email and admin moderation notes are not shown publicly.</p>
-            <p className="compact-subtitle">Ember & Tide does not provide checkout/payment inside the app yet. Use safe, agreed payment methods and follow community rules.</p>
+            <p className="compact-subtitle">Code 3 TCG does not provide checkout/payment inside the app yet. Use safe, agreed payment methods and follow community rules.</p>
             <div className="quick-actions">
               <button type="button" disabled={selectedListingClosed} onClick={() => setVaultToast("Contact request saved for beta. Messaging is coming soon.")}>Contact Seller</button>
               <button type="button" className="secondary-button" onClick={() => toggleSavedListing(selectedListing.id)}>Save Listing</button>

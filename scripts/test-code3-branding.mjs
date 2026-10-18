@@ -52,7 +52,7 @@ for (const [iconPath, size] of [
 
 const runtimeBrandSources = [
   "src/config/brand.js",
-  "src/brand/emberTideBrand.js",
+  "src/brand/code3TcgBrand.js",
   "src/mobileScreenSet.jsx",
   "src/mobileScreenSetApp.jsx",
   "screen-set.html",
@@ -65,7 +65,7 @@ const runtimeBrandSources = [
 assert.ok(!runtimeBrandSources.includes("Private Business Hub"), "Temporary development branding must not remain");
 assert.ok(!runtimeBrandSources.includes("Ember & Tide"), "Retired visible branding must not remain in runtime brand surfaces");
 assert.match(read("src/mobileScreenSetApp.jsx"), /BRAND_CONFIG\.applicationDisplayName/);
-assert.match(read("src/brand/emberTideBrand.js"), /name:\s*BRAND_CONFIG\.applicationDisplayName/);
+assert.match(read("src/brand/code3TcgBrand.js"), /name:\s*BRAND_CONFIG\.applicationDisplayName/);
 assert.match(read("public/manifest.webmanifest"), /"name": "__BRAND_PWA_NAME__"/);
 assert.match(read("public/manifest.webmanifest"), /"short_name": "__BRAND_PWA_SHORT_NAME__"/);
 assert.match(read("public/offline.html"), /alt="__BRAND_ACCESSIBLE_LOGO_TEXT__"/);

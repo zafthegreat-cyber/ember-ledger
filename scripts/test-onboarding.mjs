@@ -28,7 +28,7 @@ import {
 assert.ok(ONBOARDING_GOALS.some((goal) => goal.key === "parent_family"), "parent/family goal should exist");
 assert.ok(ONBOARDING_GOALS.some((goal) => goal.key === "seller_forge"), "seller/business goal should exist");
 assert.ok(ONBOARDING_ASSIST_PROMPTS.includes("What should I do first?"), "starter prompts should include first-step help");
-assert.ok(ONBOARDING_WELCOME_COPY.includes("Welcome to Ember & Tide"), "welcome copy should introduce Ember & Tide");
+assert.ok(ONBOARDING_WELCOME_COPY.includes("Welcome to Code 3 TCG"), "welcome copy should introduce Code 3 TCG");
 assert.deepEqual(
   FIRST_TIME_ONBOARDING_CARDS.map((card) => card.key),
   ["welcome", "vault", "market", "scout", "local_beta", "coming_later"],

@@ -2214,7 +2214,7 @@ async function main() {
     assert.equal(deletedWorkspace, null);
   });
 
-  await step("Forge mode: Ember & Tide lock hides Personal Forge and routes writes", async () => {
+  await step("Forge mode: Code 3 TCG lock hides Personal Forge and routes writes", async () => {
     const lockedForgeData = await page.evaluate(() => {
       const data = JSON.parse(localStorage.getItem("et-tcg-beta-data") || "{}");
       const now = new Date().toISOString();

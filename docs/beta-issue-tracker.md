@@ -1,4 +1,4 @@
-# Ember & Tide Beta Issue Tracker
+# Code 3 TCG Beta Issue Tracker
 
 Use this tracker for beta tester reports that need product, QA, or follow-up review. Keep private account details, child details, emails, receipts, addresses, and screenshots out of this file unless they are already safe to share in the repo.
 

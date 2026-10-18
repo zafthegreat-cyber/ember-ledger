@@ -50,14 +50,14 @@ The following must not change:
 | Exchange/listings | `/exchange`, `/harbor` | Exchange / Harbor | Sell | Multi-hub command board | Navigation wording only | Listings, trades, seller workflows | High |
 | Kids program | `/kids-program` | The Spark | Kids & Community | Dedicated family program page | Shell rename; deeper migration later | Parent approvals and child-safety rules | High |
 | Community | `/tidepool` | Tidepool Community | Community | Posts, moderation, trusted circle | Shell rename; deeper migration later | Moderation and privacy behavior | High |
-| Assistant | global panel | Ask Ember / Ember Assist | Business Assistant | Global helper drawer | Entry-point rename in this phase | Existing local/admin help behavior | Medium |
+| Assistant | global panel | Ask Ember / Business Assistant | Business Assistant | Global helper drawer | Entry-point rename in this phase | Existing local/admin help behavior | Medium |
 | Settings | `/settings`, `/menu`, `/more` | You / Menu | Settings | Utility menu/page | Shell rename in this phase | Account, workspace, notification settings | Medium |
 | Account/profile | `/account`, `/profile`, `/profile/progress` | Ember ID / Profile | Account / Profile | Utility pages | Shell rename; deeper migration later | Identity and permissions | Medium |
 | Workspaces | `/collections`, `/workspaces` | Workspace / Family | Workspaces | Utility page | Shell rename; deeper migration later | Workspace membership and privacy | Medium |
 | Data backup | `/data-backup`, `/backup` | Data Safety & Export | Data & Backup | Utility page | Shell rename; deeper migration later | Existing export/import behavior | Low |
 | Admin/moderation | `/admin`, `/moderator` | Admin Command Center | Admin / Review | Large protected dashboards | Shared styling only | Role checks and review queues | High |
 | Supporting pages | `/help`, `/trust`, `/links`, `/whats-new`, `/known-limitations`, `/coming-soon`, `/membership` | Mixed fantasy/beta wording | Plain descriptive labels | Inline App render functions | Shared styling; copy migration later | Existing content and permissions | Medium |
-| Access/onboarding | `/onboarding/*`, `/welcome`, `/state-check`, `/waitlist`, `/invite/*`, `/workspace-invite/*`, `/reset-password` | Ember & Tide access language | Private Business Hub access language | Full-page auth/onboarding surfaces | Brand/config foundation now; deeper screen pass later | Auth and invite flows | High |
+| Access/onboarding | `/onboarding/*`, `/welcome`, `/state-check`, `/waitlist`, `/invite/*`, `/workspace-invite/*`, `/reset-password` | Code 3 TCG access language | Private Business Hub access language | Full-page auth/onboarding surfaces | Brand/config foundation now; deeper screen pass later | Auth and invite flows | High |
 
 Legacy paths remain valid. New `/find/*`, `/purchases`, `/inventory`, `/sell`, `/business`, `/kids-community`, `/assistant`, and `/integrations` aliases will resolve to existing internal route states where safe.
 

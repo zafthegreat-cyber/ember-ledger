@@ -25,7 +25,7 @@ export function registerServiceWorker() {
         });
       })
       .catch((error) => {
-        console.warn("E&T TCG service worker registration failed", error);
+        console.warn("Code 3 TCG service worker registration failed", error);
       });
   });
 

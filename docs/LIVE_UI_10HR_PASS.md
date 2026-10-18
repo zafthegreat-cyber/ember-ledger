@@ -36,7 +36,7 @@
 - Live AI or live messaging
 - Retailer integrations or scraping
 - Scout Online, Scout Watchlist, Scout Reports, Scan Screenshot, Review Report production integration
-- Vault, Forge, Market, Tidepool, The Spark, Ember Assist, More, Parent Center, Shop Portal, Admin Review production integration
+- Vault, Forge, Market, Tidepool, The Spark, Business Assistant, More, Parent Center, Shop Portal, Admin Review production integration
 
 ## Commits Created
 
@@ -114,7 +114,7 @@ The approved 40-screen preview remains preview-only in this pass:
 - The Spark
 - Donate
 - Thank You
-- Ember Assist
+- Business Assistant
 - More
 - Settings
 - Privacy & Safety
@@ -202,4 +202,4 @@ Probe results:
 
 ## Next Recommended Task
 
-After this Scout Home integration commit is approved, the next controlled production integration task should be Scout Add Report / Scan Screenshot review polish only, keeping Scout Online, Scout Watchlist, Vault, Market, Forge, Tidepool, The Spark, Ember Assist, and More out of scope until explicitly started.
+After this Scout Home integration commit is approved, the next controlled production integration task should be Scout Add Report / Scan Screenshot review polish only, keeping Scout Online, Scout Watchlist, Vault, Market, Forge, Tidepool, The Spark, Business Assistant, and More out of scope until explicitly started.

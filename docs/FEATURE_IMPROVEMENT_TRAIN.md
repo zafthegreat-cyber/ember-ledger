@@ -27,7 +27,7 @@
 | 5 - Forge Improvement | Complete | `2f88f4e` | Exact variant/copy language, trade/listing/sales preview polish, and safer suggestion copy. |
 | 6 - The Spark Improvement | Complete | `3af3205` | Impact dashboard, donation category, sponsor/volunteer, and no-payment preview polish. |
 | 7 - Tidepool Improvement | Complete | `fbf2b45` | Moderated community sections, anti-rush-feed copy, and mobile hero polish. |
-| 8 - Ember Assist Improvement | Complete | `5b11ee6` | Helper preview copy, guided suggestions, safe quick actions, and recent-help examples. |
+| 8 - Business Assistant Improvement | Complete | `5b11ee6` | Helper preview copy, guided suggestions, safe quick actions, and recent-help examples. |
 | 9 - Parent Center Improvement | Complete | `29ae0e3` | Private-by-default profiles, approval checklist, family support paths, and safety summary polish. |
 | 10 - Shop Portal Improvement | Complete | `389d724` | Trusted Family Friend badge, safe composer/status controls, sponsorship tools, admin review status, and mobile header polish. |
 | 11 - Admin Review Improvement | Complete | `921dba2` | Review queue/action vocabulary, moderation readability, and protected mock-action framing. |
@@ -42,7 +42,7 @@ Status: Complete. Commit `87d7d1e`.
 
 Summary:
 
-- Added public beta feedback/waitlist entry points from landing, Hearth, More, onboarding/waitlist, The Spark, Shop Portal, and Ember Assist.
+- Added public beta feedback/waitlist entry points from landing, Hearth, More, onboarding/waitlist, The Spark, Shop Portal, and Business Assistant.
 - Added form fields for role, state, reason, interests, message, optional name, email/follow-up, and safety consent.
 - Submission uses existing best-effort feedback storage when available and otherwise shows an honest local fallback.
 - No backend/auth/billing/database/RLS changes were made.
@@ -62,7 +62,7 @@ Checks:
 - `npm.cmd run test:onboarding --if-present`: passed.
 - `npm.cmd run test:kids-program`: passed.
 - `npm.cmd run test:spark`: sandbox Chromium `spawn EPERM`; outside-sandbox rerun passed.
-- `npm.cmd run test:ember-assist`: passed.
+- `npm.cmd run test:business-assistant`: passed.
 - `npm.cmd run test:quick-add`: passed.
 - `npm.cmd run test:vault`: sandbox Chromium `spawn EPERM`; outside-sandbox rerun passed.
 - `npm.cmd run test:vault-workflows`: passed.
@@ -297,13 +297,13 @@ Mock-only notes:
 - Community examples, moderation guidance cards, post/report actions, and support language remain UI/mock/local-only unless existing app behavior already handles safe local state.
 - No deploy was run.
 
-### Section 8 - Ember Assist Improvement
+### Section 8 - Business Assistant Improvement
 
-Status: Complete. Commit message `Improve Ember Assist guided helper UI`.
+Status: Complete. Commit message `Improve Business Assistant guided helper UI`.
 
 Summary:
 
-- Reframed Ember Assist as a public beta helper preview with guided suggestions instead of live AI promises.
+- Reframed Business Assistant as a public beta helper preview with guided suggestions instead of live AI promises.
 - Improved page-aware intro copy for Hearth, Scout, Vault, Forge, Market, The Spark, Admin, and Settings.
 - Strengthened quick actions for card/product scan, restock screenshot review, trade fairness, price listing help, kid-friendly set guidance, beta feedback, and safety reporting.
 - Added a compact helper-preview guidance strip that says suggestions stay local and review-first in this public beta flow.
@@ -314,7 +314,7 @@ Checks:
 
 - `npm.cmd run build`: passed with existing Vite large chunk warning.
 - `git diff --check`: passed with existing LF-to-CRLF working-copy warnings only.
-- `npm.cmd run test:ember-assist`: passed.
+- `npm.cmd run test:business-assistant`: passed.
 - `npm.cmd run test:quick-add`: passed.
 - `npm.cmd run test:app-fallbacks`: passed.
 - `npm.cmd run test:menu-full-page-routes`: passed.
@@ -323,7 +323,7 @@ Checks:
 QA:
 
 - Screenshots and result JSON: `artifacts/qa/feature-improvement-train/ember-assist/`
-- Captured Ember Assist open panel and scrolled recent-help state at 390x844, 430x932, and 1440x900.
+- Captured Business Assistant open panel and scrolled recent-help state at 390x844, 430x932, and 1440x900.
 - Result: no horizontal overflow, no panel/bottom-nav overlap, no console errors, no maximum update depth errors, helper-preview copy present, and no-live-AI copy present.
 - In-app Browser route was unavailable, so screenshot QA used Playwright fallback. Chromium initially hit sandbox `spawn EPERM`; outside-sandbox rerun passed.
 
@@ -380,7 +380,7 @@ Summary:
 - Added review-status cards for shop profile review, safe update review, Spark sponsor support review, and no-live-posting boundaries.
 - Expanded support tools around shop profile, drop/event composer, restock status composer, Spark sponsor tools, and admin review status.
 - Added preview-form safety copy asking shops not to include payment details, private child information, passwords, vendor schedules, or exact inventory quantities.
-- Fixed a narrow Ember Assist helper-routing issue exposed by `test:store-suggestions`, so admin store-tool questions now reach the Admin Store Management guidance instead of the generic admin queue answer.
+- Fixed a narrow Business Assistant helper-routing issue exposed by `test:store-suggestions`, so admin store-tool questions now reach the Admin Store Management guidance instead of the generic admin queue answer.
 - Polished mobile Shop Portal header actions so all three actions are visible at 44px touch height on 390/430 viewports.
 - No Shop Portal backend write, inventory sync, live posting, upload, payment, checkout, live AI, auth, billing, database schema, or RLS behavior was changed.
 
@@ -390,7 +390,7 @@ Checks:
 - `git diff --check`: passed with existing LF-to-CRLF working-copy warnings only.
 - `npm.cmd run test:admin-store-tools`: passed.
 - `npm.cmd run test:store-suggestions`: initially failed on stale helper routing, then passed after the narrow frontend helper fix.
-- `npm.cmd run test:ember-assist`: passed.
+- `npm.cmd run test:business-assistant`: passed.
 - `npm.cmd run test:quick-add`: passed.
 - `npm.cmd run test:app-fallbacks`: passed.
 - `npm.cmd run test:menu-full-page-routes`: passed.
@@ -454,7 +454,7 @@ Status: Complete. Commit message `Improve onboarding and Virginia-first beta flo
 Summary:
 
 - Improved the live onboarding preview so Welcome, State Check, Waitlist, Choose Role, Family Setup, Notifications, First Store, and Permission Needed each show contextual cards instead of repeating the same Virginia rules.
-- Updated the Virginia-first copy to the required public beta framing: "We're launching in Virginia first so Ember & Tide can stay safe, fair, and useful for families."
+- Updated the Virginia-first copy to the required public beta framing: "We're launching in Virginia first so Code 3 TCG can stay safe, fair, and useful for families."
 - Added clearer Family Setup, Notifications, and Permission Needed content around parent guidance, child privacy, safe alerts, one watched store, and protected role-gated tools.
 - Adjusted the mobile onboarding step rail into a thumb-friendly horizontal rail and added stronger bottom-safe spacing for the logged-in app shell.
 - Kept all onboarding/waitlist behavior preview/mock-only with explicit no account, waitlist, billing, database write, checkout, scraping, upload, live AI, or messaging behavior.
@@ -487,7 +487,7 @@ Status: Complete. Commit message `Polish public beta feature experience`.
 
 Summary:
 
-- Ran a final public beta feature-experience QA sweep across Hearth, Scout, Vault, Market, More, Forge, Tidepool, The Spark, Ember Assist, Parent Center, Shop Portal, Admin Review, and Onboarding.
+- Ran a final public beta feature-experience QA sweep across Hearth, Scout, Vault, Market, More, Forge, Tidepool, The Spark, Business Assistant, Parent Center, Shop Portal, Admin Review, and Onboarding.
 - Verified the latest feature-section work did not introduce horizontal overflow, console errors, maximum update depth errors, or unsafe public beta promises.
 - Reviewed the unsafe-copy detector hits and confirmed they were protective statements such as no auto-buy, no guaranteed stock, and no retailer-schedule style behavior.
 - Reviewed fixed dock/FAB overlap notes from the automated detector. The remaining notes are fixed-shell intersections over scrollable content or launcher elements; visual review did not find a release-blocking hidden primary action.
@@ -515,7 +515,7 @@ Checks:
 - `npm.cmd run test:trade-value`: passed.
 - `npm.cmd run test:sales-records`: passed.
 - `npm.cmd run test:kids-program`: passed.
-- `npm.cmd run test:ember-assist`: passed.
+- `npm.cmd run test:business-assistant`: passed.
 - `npm.cmd run test:admin-command-center`: passed.
 - `npm.cmd run test:tidepool-community`: passed.
 - `npm.cmd run test:onboarding --if-present`: passed.
