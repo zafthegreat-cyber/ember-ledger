@@ -1,6 +1,6 @@
 # Code 3 TCG store beta readiness
 
-Updated 2026-10-18. Target distribution is Apple TestFlight and Google Play testing. Work is local on `codex/all-bot-integration-setup`, based on published main `3a1ca40a4bede9fb4ca41c64905ea409c2c43c07`. **The final signed Android App Bundle and debug APK build and pass signature/package validation. There is no iOS archive, physical-device acceptance result, or store submission yet.** Both Android artifacts and the synchronized iOS project include the reviewed receipt-access, export, deletion and safe-area fixes. See the [implementation report](./IMPLEMENTATION_REPORT_2026-10-18.md) for artifact hashes and limits. The production website and existing account data have not been changed by this work.
+Updated 2026-10-18. Target distribution is Apple TestFlight and Google Play testing. The native implementation is committed and pushed on `codex/all-bot-integration-setup` as `890b9dc`, based on published main `3a1ca40a4bede9fb4ca41c64905ea409c2c43c07`. **The signed Android bundle/debug APK validate, and the first iOS cloud compilation and simulator launch pass. There is no signed iOS distribution archive, physical-device acceptance result, or store submission yet.** See the [implementation report](./IMPLEMENTATION_REPORT_2026-10-18.md) for Android hashes and the [cloud build report](./FIRST_IOS_CLOUD_BUILD_2026-10-18.md) for the actual iPhone simulator evidence. The production website and existing account data have not been changed by this work.
 
 ## Publisher and account setup
 
@@ -33,7 +33,7 @@ Enroll through [Apple Developer](https://developer.apple.com/programs/enroll/) a
 
 Android uses compile/target API 36. The Java 21/Android SDK toolchain produced the debug APK and signed `android/app/build/outputs/bundle/release/app-release.aab`. The local upload key is protected by Windows user/SYSTEM ACLs and a DPAPI-encrypted password file through `scripts/native-android-signing.ps1`. That password file is Windows-account-bound; portable owner-controlled key/password recovery remains necessary before publishing. No private signing material belongs in shared artifacts or source control.
 
-No Android device is connected (`adb devices` returned none). iOS source is generated, but this Windows environment has no Xcode, and no iOS build result is claimed. The manual native CI workflow has been prepared but has not been run. No Play/TestFlight upload occurred. See the [native build/signing and device-test runbook](./NATIVE_BUILD_AND_DEVICE_TESTS.md) for exact public configuration, auth redirects, native CORS activation and data-preserving installation steps.
+No Android device is connected (`adb devices` returned none). The first GitHub-hosted Mac run compiled the iOS app with Xcode 26.6 and launched it on a disposable iPhone 17/iOS 26.5 simulator; its screenshot was inspected. Account services were deliberately unconfigured, so no sign-in or account-data result is claimed. No Play/TestFlight upload occurred. See the [native build/signing and device-test runbook](./NATIVE_BUILD_AND_DEVICE_TESTS.md) for exact public configuration, auth redirects, native CORS activation and data-preserving installation steps.
 
 ## Verification completed
 
@@ -78,4 +78,4 @@ Google internal testing supports up to 100 testers. The 12 opted-in testers for 
 
 TestFlight supports up to 100 internal App Store Connect users and 10,000 external testers; builds expire after 90 days, and the first external build requires review. [TestFlight overview](https://developer.apple.com/help/app-store-connect/test-a-beta-version/testflight-overview/). The [store copy and test notes](./STORE_COPY_DRAFT.md) are prepared for review, not submitted metadata.
 
-All changes remain local. Android upload-key creation and release signing were completed locally. No commit, push, merge, production migration, production deployment, store enrollment/payment, tester invitation, or store upload was performed for this readiness work.
+The native implementation and cloud workflow are committed/pushed to the feature branch, and the first iOS simulator build passed. Android upload-key creation and release signing were completed locally; private signing material remains ignored. No merge to main, production migration/deployment, store enrollment/payment, tester invitation, or store upload was performed for this readiness work.

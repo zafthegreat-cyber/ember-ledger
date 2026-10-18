@@ -1,5 +1,7 @@
 # Native beta implementation report — 2026-10-18
 
+**Subsequent release update:** the implementation was committed/pushed as `890b9dc`, and the first iOS cloud compile/simulator launch passed. See the [cloud build report](./FIRST_IOS_CLOUD_BUILD_2026-10-18.md). The local implementation evidence below records the earlier pre-push/pre-Xcode stage; its production-data and unperformed physical-device limits still apply.
+
 Android packaging and signing are implemented and locally verified. The iOS project, privacy/deletion implementation and data-transfer checks are prepared and tested within the limits below. **This is not a store-submission or physical-device completion report.**
 
 Work remains local and uncommitted on `codex/all-bot-integration-setup`, based on `3a1ca40a4bede9fb4ca41c64905ea409c2c43c07`. No commit, push, merge, website deployment, production migration, store upload or real-account deletion was performed. Existing data and the generated price assets were not changed. The latest-price baseline `89da91d1b1ae229097d0203f568ae240f0f33242` remains in the existing source history.

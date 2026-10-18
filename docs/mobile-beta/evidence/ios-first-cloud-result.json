@@ -1,0 +1,24 @@
+{
+  "startedAt": "2026-10-18T18:18:43.512Z",
+  "appId": "app.code3tcg.mobile",
+  "mode": "configuration-smoke-only",
+  "status": "passed",
+  "compiled": true,
+  "launched": true,
+  "launchSurvivalSeconds": 5,
+  "accountServicesConfigured": false,
+  "signInTested": false,
+  "accountDataTested": false,
+  "physicalDeviceTested": false,
+  "storeSigned": false,
+  "uploaded": false,
+  "xcode": "Xcode 26.6\nBuild version 17F113",
+  "selected": {
+    "name": "iPhone 17",
+    "runtime": "com.apple.CoreSimulator.SimRuntime.iOS-26-5",
+    "deviceTypeIdentifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-17"
+  },
+  "simulatorId": "6174550F-8C00-4CF4-B453-6F30A3AD18EB",
+  "processId": 11102,
+  "finishedAt": "2026-10-18T18:27:34.598Z"
+}
