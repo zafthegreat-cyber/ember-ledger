@@ -16,6 +16,13 @@
 .app.app-command-shell .home-personal-card > button, .app.app-command-shell .home-personal-card > .home-business-links { margin-top: auto; }
 .app.app-command-shell .home-personal-card button { min-height: 44px; font-size: 13px; }
 .app.app-command-shell .home-business-links { display: flex; flex-wrap: wrap; gap: 8px; }
+@media (max-width: 420px) {
+  .app.app-command-shell .home-layout .ops-home-best-opportunity { grid-template-columns: 48px minmax(0, 1fr); align-items: start; }
+  .app.app-command-shell .home-layout .ops-home-best-opportunity > img,
+  .app.app-command-shell .home-layout .ops-home-opportunity-placeholder { width: 48px; }
+  .app.app-command-shell .home-layout .ops-home-best-opportunity h3 { display: block; overflow: visible; -webkit-line-clamp: unset; }
+  .app.app-command-shell .home-layout .ops-home-best-opportunity > button { grid-column: 2; min-height: 44px; }
+}
 @media (max-width: 700px) {
   .app.app-command-shell .home-layout .home-restock-hero { grid-template-columns: minmax(0, 1fr); gap: 0; }
   .app.app-command-shell .home-restock-art { display: none; }

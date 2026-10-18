@@ -8,11 +8,12 @@ export default function MembershipContent({ scope }) {
     CommandMetricGrid,
     TIER_DISPLAY_GUIDANCE,
     TIER_LABELS,
-    actualAdminUser,
     adminViewingAsAdmin,
     canUseFeature,
     currentTier,
+    currentTierLabel,
     currentUserProfile,
+    experiencePresentation,
     getLockedFeatureDetails,
     getTierAccess,
     getTierAddOns,
@@ -26,8 +27,12 @@ export default function MembershipContent({ scope }) {
 
   function renderMembershipFoundation() {
     const plan = tierAccess.planTier;
-    const planLabel = tierAccess.tierLabel || TIER_LABELS[currentTier] || "Free";
-    const trialActive = isTrialActive(currentUserProfile);
+    const isPreview = experiencePresentation?.isPreview === true;
+    const planLabel = currentTierLabel || tierAccess.tierLabel || TIER_LABELS[currentTier] || "Free";
+    const planHeading = isPreview ? "Preview plan" : "Current plan";
+    const trialActive = !isPreview && isTrialActive(currentUserProfile);
+    const planDetail = isPreview ? "Preview only; your account is unchanged." : trialActive ? "Trial is active." : "No active trial.";
+    const freeStoreSlots = getTierAccess({ tier: "free" }).scoutStoreSlots;
     const tierCards = getTierPricingCards().map((tier) => ({
       ...tier,
       display: TIER_DISPLAY_GUIDANCE[tier.id] || {},
@@ -36,7 +41,7 @@ export default function MembershipContent({ scope }) {
     const addOns = getTierAddOns();
     const planScoutDetailsAllowed = canUseFeature({ tier: plan }, "scout_current_details");
     const betaStatusLabel = tierAccess.isBeta || BETA_LOCAL_MODE ? "Active beta access" : "Approval required";
-    const adminStatusVisible = Boolean(actualAdminUser || adminViewingAsAdmin);
+    const adminStatusVisible = Boolean(adminViewingAsAdmin && !isPreview);
     const freeCoreFeatures = [
       {
         title: "Protected Vault",
@@ -61,7 +66,7 @@ export default function MembershipContent({ scope }) {
       },
       {
         title: "Scout starter access",
-        detail: "Manual Scout reports, screenshot scan UI, proof review, and 3 watched stores stay included.",
+        detail: `Manual Scout reports, screenshot review, proof review, and ${freeStoreSlots} watched store${Number(freeStoreSlots) === 1 ? "" : "s"} stay included.`,
         meta: "Scout",
         icon: "scout",
         tone: "scout",
@@ -78,15 +83,13 @@ export default function MembershipContent({ scope }) {
       {
         label: "Beta",
         value: betaStatusLabel,
-        helper: "Early access status. It can stack with Free, Plus, Family, Pro / Seller, or reviewed Shop Partner.",
+        helper: "Early access status is separate from your plan.",
       },
-      {
+      ...(adminStatusVisible ? [{
         label: "Admin",
-        value: adminStatusVisible ? "Visible for this session" : "Internal only",
-        helper: adminStatusVisible
-          ? "Admin tools remain permission-gated and are not customer plan features."
-          : "Hidden from normal users. Admin is not available through signup, checkout, or add-ons.",
-      },
+        value: "Visible for this session",
+        helper: "Admin tools remain permission-gated and are not customer plan features.",
+      }] : []),
       {
         label: "Checkout",
         value: "Not live",
@@ -100,17 +103,17 @@ export default function MembershipContent({ scope }) {
         <CommandBoardV4
           accent="you"
           className="membership-v4-command-board"
-          ariaLabel="Membership Command Center"
+          ariaLabel="Plans & access"
           label="Membership"
-          title="Membership Command Center"
-          description="Plan limits, family access, Scout fairness, seller readiness, and beta billing guardrails without turning the app into a checkout surface."
+          title="Plans & access"
+          description="Compare collecting, family, selling, and shop features. Your plan and access limits are shown below."
           primaryAction={{ label: "Compare Plans", icon: "plan", onClick: () => document.getElementById("membership-plan-grid")?.scrollIntoView({ behavior: "smooth", block: "start" }) }}
           secondaryActions={[
             { label: "Ask Admin", icon: "help", onClick: () => requestLockedFeatureAccess("seller_tools") },
             { label: "Back to Hearth", icon: "home", onClick: () => setActiveTab("dashboard") },
           ]}
           statusItems={[
-            { key: "plan", icon: "plan", label: "Current plan", value: planLabel, detail: trialActive ? "Trial active" : "No trial" },
+            { key: "plan", icon: "plan", label: planHeading, value: planLabel, detail: planDetail },
             { key: "scout", icon: "scout", label: "Scout stores", value: String(tierAccess.scoutStoreSlots), detail: tierAccess.scoutStoreSwapDays ? `${tierAccess.scoutStoreSwapDays}-day changes` : "Admin managed" },
             { key: "details", icon: "data", label: "Scout details", value: planScoutDetailsAllowed ? "Selected" : "Limited", detail: "Fair current access" },
             { key: "history", icon: "vault", label: "Raw history", value: tierAccess.canViewRawScoutHistory ? "Admin" : "Protected", detail: "Not paywalled" },
@@ -142,14 +145,14 @@ export default function MembershipContent({ scope }) {
           <CommandBoardSection
             className="membership-v4-status"
             kicker="Current access"
-            title="Current plan and Scout limits"
+            title={isPreview ? "Preview plan and Scout limits" : "Current plan and Scout limits"}
             detail="Free access remains a complete collector app. Paid tiers add scale and convenience without exposing raw Scout history."
-            action={<span className="status-badge">Current plan: {planLabel}</span>}
+            action={<span className="status-badge">{planHeading}: {planLabel}</span>}
           >
             <CommandMetricGrid
               className="membership-v4-status-grid"
               items={[
-                { key: "plan", label: "Current plan", value: planLabel, detail: trialActive ? "Trial is active." : "No active trial." },
+                { key: "plan", label: planHeading, value: planLabel, detail: planDetail },
                 { key: "stores", label: "Scout watch stores", value: String(tierAccess.scoutStoreSlots), detail: tierAccess.scoutStoreSwapDays ? `Change every ${tierAccess.scoutStoreSwapDays} days.` : "Admin moderation access." },
                 { key: "details", label: "Current Scout details", value: planScoutDetailsAllowed ? "Selected" : "Limited", detail: planScoutDetailsAllowed ? "Selected-store current details." : "Limited to keep Scout fair." },
                 { key: "history", label: "Raw Scout history", value: tierAccess.canViewRawScoutHistory ? "Admin" : "Protected", detail: "No hidden history behind paid locks." },
@@ -158,11 +161,11 @@ export default function MembershipContent({ scope }) {
             />
             <div id="membership-scout-guardrails" className="membership-v4-guardrail-rack" aria-label="Scout membership guardrails">
               {[
-                "3 Scout watch stores",
-                "30-day store changes",
-                "Current details limited",
-                "Raw history protected",
-                "Pattern tools protected",
+                `${tierAccess.scoutStoreSlots} Scout watch store${Number(tierAccess.scoutStoreSlots) === 1 ? "" : "s"}`,
+                tierAccess.scoutStoreSwapDays ? `${tierAccess.scoutStoreSwapDays}-day store changes` : "Store changes managed by admin",
+                planScoutDetailsAllowed ? "Selected-store current details" : "Current details limited",
+                tierAccess.canViewRawScoutHistory ? "Raw history restricted to admin" : "Raw history protected",
+                tierAccess.canViewPatternTools ? "Pattern tools restricted to admin" : "Pattern tools protected",
                 "No all-store exact access",
               ].map((rule) => <span key={rule}>{rule}</span>)}
             </div>
@@ -193,13 +196,13 @@ export default function MembershipContent({ scope }) {
             title="Plans add scale, not basic collecting"
             detail="Plan cards are beta preview copy. Checkout is not live, and upgrades are admin-managed during beta."
             action={<span className="status-badge">No checkout</span>}
-            ariaLabel="Ember and Tide public plans"
+            ariaLabel="Code 3 TCG public plans"
           >
             <div id="membership-plan-grid" className="membership-v4-plan-grid">
               {tierCards.map((tier) => (
                 <article className={`membership-v4-plan-card${tier.id === plan ? " current" : ""}`} key={tier.id} data-tier-plan={tier.id}>
                   <div>
-                    <span>{tier.id === plan ? "Current" : tier.display.status || "Beta preview"}</span>
+                    <span>{tier.id === plan ? isPreview ? "Previewing" : "Current" : tier.display.status || "Beta preview"}</span>
                     <strong>{tier.label}</strong>
                   </div>
                   <h3>{tier.price}</h3>

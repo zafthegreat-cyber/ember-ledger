@@ -7,6 +7,7 @@ import {
 import { BRAND_CONFIG } from "../../config/brand.js";
 import { createFlipScoutRepository } from "../flipScout/storageRepository.js";
 import { OWNER_SESSION_STATES } from "../../services/ownerSession.js";
+import { resolveExperiencePresentation } from "../../utils/experiencePresentation.js";
 import "./workspace-shell.css";
 
 const BotOperationsPage = lazy(() => import("../botOps/BotOperationsPage.jsx"));
@@ -52,13 +53,20 @@ function purposeOf(record = {}) {
   return String(record.ownedItemPurpose || record.purpose || "").toUpperCase();
 }
 
-function WorkspaceHeader({ workspace }) {
+function WorkspaceHeader({ workspace, presentation }) {
   const copy = WORKSPACE_COPY[workspace];
+  const showOperationalTools = presentation.showBusinessTools || presentation.showAdminTools;
+  const title = workspace === "SELL"
+    ? presentation.isStore ? "Store sales" : showOperationalTools ? "Sell" : "Sell or trade"
+    : copy.title;
+  const purpose = workspace === "FIND"
+    ? showOperationalTools ? "Restocks, saved opportunities, and sourcing activity." : "Community restocks, fair prices, and your next find."
+    : workspace === "SELL" && !showOperationalTools ? "Track items you want to sell and your completed sales." : copy.purpose;
   return (
     <header className="code3-workspace-home__header">
       <span>{BRAND_CONFIG.applicationShortName} workspace</span>
-      <h1>{copy.title}</h1>
-      <p>{copy.purpose}</p>
+      <h1>{title}</h1>
+      <p>{purpose}</p>
     </header>
   );
 }
@@ -126,7 +134,7 @@ function CollectHome({ items, onNavigate, onAdd }) {
   );
 }
 
-function FindHome({ onNavigate }) {
+function FindHome({ onNavigate, presentation }) {
   const repository = useMemo(() => createFlipScoutRepository(), []);
   const state = useMemo(() => repository.load(), [repository]);
   const watchedDeals = state.deals.filter((record) => /watch|offer|strong|review/i.test(record.status || record.recommendation || ""));
@@ -139,22 +147,23 @@ function FindHome({ onNavigate }) {
         { label: "Active auctions", value: liveAuctions.length },
       ]} />
       <section className="code3-workspace-actions" aria-label="Find actions">
-        <PrimaryButton onClick={() => onNavigate("/find/deals")}>Review Deals</PrimaryButton>
+        <PrimaryButton onClick={() => onNavigate("/find/restocks")}>Browse restocks</PrimaryButton>
+        <SecondaryButton onClick={() => onNavigate("/find/deals")}>Review Deals</SecondaryButton>
         <SecondaryButton onClick={() => onNavigate("/find/auctions")}>Auctions</SecondaryButton>
         <SecondaryButton onClick={() => onNavigate("/find/buy-offer")}>Buy Offer</SecondaryButton>
       </section>
       <RecentList
-        title="Sourcing activity"
+        title={presentation.showBusinessTools || presentation.showAdminTools ? "Sourcing activity" : "Saved finds"}
         records={attention}
         empty={WORKSPACE_COPY.FIND.empty}
         onOpen={(record) => onNavigate(state.auctions.includes(record) ? "/find/auctions" : "/find/deals")}
-        action={<button type="button" onClick={() => onNavigate("/find/restocks")}>Restocks</button>}
       />
     </>
   );
 }
 
-function SellHome({ items, sales, onNavigate, onAdd }) {
+function SellHome({ items, sales, onNavigate, onAdd, presentation }) {
+  const showOperationalTools = presentation.showBusinessTools || presentation.showAdminTools;
   const resaleItems = items.filter((item) => purposeOf(item) === "FOR_RESALE" || /listed|resale|preparing|in stock/i.test(item.status || ""));
   const readyItems = resaleItems.filter((item) => /ready|preparing|in stock/i.test(item.status || ""));
   const activeListings = resaleItems.filter((item) => /listed/i.test(item.status || ""));
@@ -167,8 +176,8 @@ function SellHome({ items, sales, onNavigate, onAdd }) {
         { label: "Recorded sales", value: sales.length },
       ]} />
       <section className="code3-workspace-actions" aria-label="Sell actions">
-        <PrimaryButton onClick={onAdd}>Add Resale Inventory</PrimaryButton>
-        <SecondaryButton onClick={() => onNavigate("/business/inventory")}>Open Inventory</SecondaryButton>
+        <PrimaryButton onClick={onAdd}>{showOperationalTools ? "Add Resale Inventory" : "Add an item to sell"}</PrimaryButton>
+        <SecondaryButton onClick={() => onNavigate("/business/inventory")}>{showOperationalTools ? "Open Inventory" : "Items for sale"}</SecondaryButton>
       </section>
       <RecentList
         title="Recent sales"
@@ -205,16 +214,18 @@ export default function WorkspaceHomePage({
   onAddCollection,
   onAddResale,
   onReturnHome,
+  experiencePresentation,
 }) {
+  const presentation = experiencePresentation || resolveExperiencePresentation();
   const copy = WORKSPACE_COPY[workspace];
   if (!copy) return <EmptyState title="Workspace unavailable">Choose another {BRAND_CONFIG.applicationShortName} workspace.</EmptyState>;
   const botDenied = workspace === "BOT" && ownerSession?.status !== OWNER_SESSION_STATES.AUTHORIZED;
   return (
     <section className={`code3-workspace-home code3-workspace-home--${botDenied ? "owner-gate" : workspace.toLowerCase()}`} data-testid={botDenied ? "owner-workspace-access-state" : `${workspace.toLowerCase()}-workspace-home`}>
-      {!botDenied && workspace !== "BOT" ? <WorkspaceHeader workspace={workspace} /> : null}
+      {!botDenied && workspace !== "BOT" ? <WorkspaceHeader workspace={workspace} presentation={presentation} /> : null}
       {workspace === "COLLECT" ? <CollectHome items={items} onNavigate={onNavigate} onAdd={onAddCollection} /> : null}
-      {workspace === "FIND" ? <FindHome onNavigate={onNavigate} /> : null}
-      {workspace === "SELL" ? <SellHome items={items} sales={sales} onNavigate={onNavigate} onAdd={onAddResale} /> : null}
+      {workspace === "FIND" ? <FindHome onNavigate={onNavigate} presentation={presentation} /> : null}
+      {workspace === "SELL" ? <SellHome items={items} sales={sales} onNavigate={onNavigate} onAdd={onAddResale} presentation={presentation} /> : null}
       {workspace === "BOT" ? <BotHome session={ownerSession} onReturn={onReturnHome} initialSection={botOpsSection} onSectionChange={onBotOpsSectionChange} /> : null}
     </section>
   );

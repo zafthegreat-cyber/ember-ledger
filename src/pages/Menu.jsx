@@ -2,6 +2,7 @@ import { AppNavIcon } from "../components/command-system/AppNavIcon.jsx";
 import { PageHeader, SecondaryButton } from "../components/operations/OperationsUI.jsx";
 import CloudSyncPanel from "../features/persistence/CloudSyncPanel.jsx";
 import { useCloudWorkspace } from "../features/persistence/CloudWorkspaceContext.js";
+import { resolveExperiencePresentation } from "../utils/experiencePresentation.js";
 import "./settings-layout.css";
 
 function SettingsArrow() {
@@ -45,12 +46,10 @@ export default function MenuPage(props) {
   const cloudWorkspace = useCloudWorkspace();
   const {
     activeWorkspaceName = "",
-    adaptiveUiState = {},
     betaReadinessData = {},
     betaAccessAllowed,
     commandDeskSellerAccess = false,
-    dashboardPreset,
-    dashboardPresetLabel,
+    experiencePresentation,
     guestPreviewActive = false,
     notificationUnreadCount = 0,
     openBeaconCenter,
@@ -64,10 +63,14 @@ export default function MenuPage(props) {
     renderUtilityPageShell,
     scoutGuessPoints = 0,
     settingsFamilyStatusLabel = "Protected",
+    showFamilyExperience,
+    showCommunityExperience,
     signedInWithSupabase,
   } = props;
-  const setupLabel = dashboardPresetLabel(dashboardPreset);
-  const familyModeLabel = adaptiveUiState.modeLabel || setupLabel || "Collector view";
+  const presentation = experiencePresentation || resolveExperiencePresentation();
+  const showFamily = presentation.showAdminTools || (typeof showFamilyExperience === "boolean" ? showFamilyExperience : presentation.showFamilyTools);
+  const showCommunity = presentation.showAdminTools || showCommunityExperience === true;
+  const preferencesDescription = presentation.isStore ? "Your store workspace, preferences, and privacy." : presentation.isSeller ? "Your selling workspace, preferences, and privacy." : "Your workspace, tuned to the way you collect.";
   const accountLabel = signedInWithSupabase ? "Cloud account" : guestPreviewActive ? "Guest preview" : "Local beta";
   const accessLabel = betaAccessAllowed() ? "Beta approved" : "Limited preview";
   const familyProtectionLabel = /no kids program request/i.test(String(settingsFamilyStatusLabel || ""))
@@ -80,7 +83,7 @@ export default function MenuPage(props) {
 
   return renderUtilityPageShell({
     title: "Settings",
-    subtitle: "Your account, preferences, and family controls.",
+    subtitle: "Your account, preferences, and privacy.",
     className: "settings-utility-page settings-layout-shell",
     hideCommandHeader: true,
     children: (
@@ -88,7 +91,7 @@ export default function MenuPage(props) {
         <PageHeader
           eyebrow="Your space"
           title="Settings"
-          description="Your workspace, tuned to the way you collect."
+          description={preferencesDescription}
           actions={typeof openCompassSearch === "function" ? <SecondaryButton onClick={() => openCompassSearch("you_compass")}><AppNavIcon kind="search" />Search the app</SecondaryButton> : null}
         />
 
@@ -101,8 +104,8 @@ export default function MenuPage(props) {
           </div>
           <SecondaryButton onClick={() => openUtilityPage("profile")}>Open Profile<SettingsArrow /></SecondaryButton>
           <dl className="settings-layout__account-meta">
-            <div><dt>Experience</dt><dd>{familyModeLabel}<span>Setup: {setupLabel}</span></dd></div>
-            <div><dt>Family protection</dt><dd>{familyProtectionLabel}</dd></div>
+            <div><dt>Experience</dt><dd>{presentation.personaLabel}</dd></div>
+            {showFamily ? <div><dt>Family protection</dt><dd>{familyProtectionLabel}</dd></div> : null}
             <div><dt>Scout trust</dt><dd>{scoutGuessPoints} pts<span>Report history and proof signals</span></dd></div>
           </dl>
         </section>
@@ -116,13 +119,13 @@ export default function MenuPage(props) {
                 </SettingsDisclosure>
               ) : null}
               {typeof renderSettingsWorkspaceCard === "function" ? (
-                <SettingsDisclosure icon="workspace" title="Your workspace" description="Personal and business settings">
+                <SettingsDisclosure icon="workspace" title="Your workspace" description={presentation.isBusiness ? "Workspace and business settings" : "Workspace and collection settings"}>
                   {renderSettingsWorkspaceCard()}
                 </SettingsDisclosure>
               ) : null}
               <SettingsRow icon="account" title="Account & security" description="Sign-in, private account details, and access" onClick={() => openUtilityPage("account")} />
               <SettingsRow icon="bell" title="Notifications" description="Open Beacon to review alerts and reminders" status={notificationUnreadCount ? `${notificationUnreadCount} unread` : "All quiet"} onClick={() => openBeacon("you_beacon")} />
-              <SettingsRow icon="plan" title="Plans & access" description="Plan limits, family pricing, and access review" onClick={() => openUtilityPage("membership")} />
+              <SettingsRow icon="plan" title="Plans & access" description="Plan limits and access review" onClick={() => openUtilityPage("membership")} />
             </SettingsGroup>
 
             <SettingsGroup id="settings-support-heading" title="Records & support">
@@ -138,19 +141,19 @@ export default function MenuPage(props) {
           </div>
 
           <div className="settings-layout__column">
-            <SettingsGroup id="settings-family-heading" title="Family & community">
-              <SettingsRow icon="community" title="Family permissions" description="Open Nest for child profiles and parent approvals" status={kidApplicationCount ? `${kidApplicationCount} request${kidApplicationCount === 1 ? "" : "s"}` : undefined} onClick={() => openUtilityPage("parentCenter")} />
-              <SettingsRow icon="secure" title="Safety center" description="Lantern guidance for safe collecting and trading" onClick={() => openUtilityPage("trust")} />
-              <SettingsRow icon="spark" title="The Spark" description="Kid-pack requests, donations, and giving" onClick={() => openUtilityPage("kidsProgram")} />
-              <SettingsRow icon="pool" title="Community" description="Tidepool events, trusted shops, and local connections" onClick={() => openUtilityPage("tidepool")} />
+            <SettingsGroup id="settings-family-heading" title={showFamily && showCommunity ? "Family, community & safety" : showFamily ? "Family & safety" : showCommunity ? "Community & safety" : "Privacy & safety"}>
+              {showFamily ? <SettingsRow icon="community" title="Family permissions" description="Child profiles and parent approvals" status={kidApplicationCount ? `${kidApplicationCount} request${kidApplicationCount === 1 ? "" : "s"}` : undefined} onClick={() => openUtilityPage("parentCenter")} /> : null}
+              <SettingsRow icon="secure" title="Safety center" description="Guidance for safe collecting and trading" onClick={() => openUtilityPage("trust")} />
+              {showFamily ? <SettingsRow icon="spark" title="The Spark" description="Kid-pack requests, donations, and giving" onClick={() => openUtilityPage("kidsProgram")} /> : null}
+              {showCommunity ? <SettingsRow icon="pool" title="Community" description="Local events, trusted shops, and connections" onClick={() => openUtilityPage("tidepool")} /> : null}
               {typeof renderSettingsPrivacySafetyCard === "function" ? (
-                <SettingsDisclosure icon="secure" title="Privacy & safeguards" description="How your family, location, and records stay private">
+                <SettingsDisclosure icon="secure" title="Privacy & safeguards" description={showFamily ? "How your family, location, and records stay private" : "How your location and records stay private"}>
                   {renderSettingsPrivacySafetyCard()}
                 </SettingsDisclosure>
               ) : null}
             </SettingsGroup>
 
-            <aside className="settings-layout__note" aria-labelledby="settings-access-heading">
+            {showFamily ? <aside className="settings-layout__note" aria-labelledby="settings-access-heading">
               <span className="settings-layout__note-icon" aria-hidden="true"><AppNavIcon kind="community" /></span>
               <div>
                 <h2 id="settings-access-heading">Room for every collector.</h2>
@@ -165,7 +168,7 @@ export default function MenuPage(props) {
                   </ol>
                 </details>
               </div>
-            </aside>
+            </aside> : null}
           </div>
         </div>
         <footer className="settings-layout__footer"><span>Code 3 TCG</span>{PUBLIC_APP_VERSION_LABEL ? <span>{PUBLIC_APP_VERSION_LABEL}</span> : null}</footer>

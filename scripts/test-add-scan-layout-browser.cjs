@@ -88,7 +88,7 @@ async function contrastReport(chooser) {
       const modal = page.locator('.flow-modal[data-flow="addActionSheet"]');
       await expect(modal).toBeVisible();
       await expect(modal.locator(".add-anything-entry")).toBeVisible();
-      await modal.getByRole("button", { name: /^Scan Listing\./ }).click();
+      await modal.getByRole("button", { name: /^Scan (Listing|or review)\./ }).click();
       const chooser = modal.locator(".add-anything-scan-foundation");
       await expect(chooser).toBeVisible();
       const body = modal.locator(".flow-modal-body");
@@ -147,7 +147,7 @@ async function contrastReport(chooser) {
         ];
         for (const target of paths) {
           await opener.click(); await expect(modal.locator(".add-anything-entry")).toBeVisible();
-          await modal.getByRole("button", { name: /^Scan Listing\./ }).click();
+          await modal.getByRole("button", { name: /^Scan (Listing|or review)\./ }).click();
           await chooser.getByRole("button", { name: target.name }).click();
           const screen = modal.locator(target.selector); await expect(screen).toBeVisible();
           await expect(screen.locator(".add-anything-path-header strong")).toHaveText(target.title);

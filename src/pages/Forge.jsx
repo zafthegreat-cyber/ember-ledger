@@ -1,7 +1,37 @@
 import { normalizeExchangeSection } from "../utils/appRouteState";
 import { AppNavIcon, CommandBoardV4 } from "../components/command-system";
+import { PageHeader, SectionHeader, PrimaryButton, SecondaryButton } from "../components/operations/OperationsUI.jsx";
+import { resolveExperiencePresentation } from "../utils/experiencePresentation.js";
+import "./sell-trade.css";
+
+function CollectorSellTrade({ openTradeCompassFlow, openMarketplaceCreate, setActiveTab, openExchangeSection, exchangeSection, editMarketplaceListing, renderMarketplaceSection, workspaceMarketplaceListings = [], workspaceTradeRecords = [] }) {
+  const showListings = normalizeExchangeSection(exchangeSection) === "harbor";
+  const recentListings = workspaceMarketplaceListings.slice(0, 4);
+  return <div className="collector-sell-trade">
+    <PageHeader eyebrow="Code 3 TCG · Collect" title="Sell or trade" description="Make room for your next find. Check value, compare a trade, or prepare a listing." />
+    <div className="collector-trade-actions" aria-label="Sell or trade actions">
+      <article><span className="collector-trade-icon" aria-hidden="true"><AppNavIcon kind="trade" /></span><h2>Compare a trade</h2><p>Review both sides, condition, and value before deciding.</p><PrimaryButton onClick={() => openTradeCompassFlow({ source: "collector-sell-trade" })}>Compare a trade</PrimaryButton></article>
+      <article><span className="collector-trade-icon" aria-hidden="true"><AppNavIcon kind="sell" /></span><h2>Prepare a listing</h2><p>Add an item, photos, and asking price. Review before publishing.</p><SecondaryButton onClick={() => openMarketplaceCreate?.("manual", {})}>Prepare a listing</SecondaryButton></article>
+      <article><span className="collector-trade-icon" aria-hidden="true"><AppNavIcon kind="market" /></span><h2>Check market prices</h2><p>Search cards and products to put your next decision in context.</p><SecondaryButton onClick={() => setActiveTab("market")}>Check market prices</SecondaryButton></article>
+    </div>
+    {showListings && renderMarketplaceSection ? <section className="collector-trade-listings" aria-label="Listings"><SecondaryButton onClick={() => openExchangeSection("overview")}>Back to Sell or trade</SecondaryButton>{renderMarketplaceSection()}</section> : <div className="collector-trade-records">
+      <section className="collector-trade-panel" aria-labelledby="collector-listings-title">
+        <SectionHeader title={<span id="collector-listings-title">Your listings</span>} description="Continue a draft or review a saved listing." />
+        {recentListings.length ? <ul className="collector-trade-record-list">{recentListings.map((listing) => <li key={listing.id}><button type="button" onClick={() => editMarketplaceListing?.(listing)}><span><strong>{listing.title || listing.itemName || listing.productName || "Saved listing"}</strong><small>{listing.status || listing.listingStatus || "Draft"}</small></span><span aria-hidden="true">›</span></button></li>)}</ul> : <p className="collector-trade-empty">No listings yet. Prepare one whenever you have something to sell.</p>}
+        <SecondaryButton onClick={() => openExchangeSection("harbor")}>Browse listings</SecondaryButton>
+      </section>
+      <section className="collector-trade-panel" aria-labelledby="collector-trades-title">
+        <SectionHeader title={<span id="collector-trades-title">Your saved trades</span>} description="Keep the context from trades you have reviewed." />
+        {workspaceTradeRecords.length ? <details className="collector-trade-saved"><summary>{workspaceTradeRecords.length} saved trade{workspaceTradeRecords.length === 1 ? "" : "s"}</summary><ul className="collector-trade-record-list">{workspaceTradeRecords.map((trade) => <li key={trade.id}><article><strong>{trade.sourceItemName || "Item traded"} <span className="collector-trade-for">for</span> {trade.receivedName || "received item"}</strong><small>{trade.resultLabel || trade.guidance || "Trade saved"}</small>{trade.tradeDate ? <time dateTime={trade.tradeDate}>{trade.tradeDate}</time> : null}</article></li>)}</ul></details> : <p className="collector-trade-empty">No saved trades yet. Start with a comparison when you are ready.</p>}
+        <SecondaryButton onClick={() => setActiveTab("vault")}>Open collection</SecondaryButton>
+      </section>
+    </div>}
+  </div>;
+}
 
 export default function ForgePage(props) {
+  const presentation = props.experiencePresentation || resolveExperiencePresentation();
+  if (presentation.isCollector) return <CollectorSellTrade {...props} />;
   const {
 
     editMarketplaceListing,
@@ -657,8 +687,8 @@ export default function ForgePage(props) {
   ];
   const commandBoardCopy = isForgeSection
     ? {
-      label: "Forge",
-      title: "Forge Business Command Center",
+      label: presentation.copy.workspaceLabel,
+      title: presentation.copy.recordsTitle,
       description: "Private seller records, proof, trade decisions, and business exports.",
       primaryAction: { label: "Add Inventory", icon: "forge", onClick: () => openProductAddFlow({ source: "forge-command-board", destinations: { forge: true } }) },
       secondaryActions: [
@@ -668,8 +698,8 @@ export default function ForgePage(props) {
     }
     : isHarborSection
       ? {
-        label: "Harbor",
-        title: "Harbor Seller Command Center",
+        label: presentation.isStore ? "Store listings" : "Listings",
+        title: presentation.isStore ? "Your store listings" : "Your selling listings",
         description: "Prepare listings, review offers, track fulfillment proof, and keep every seller action review-first.",
         primaryAction: { label: "Create Listing", icon: "plus", onClick: () => openMarketplaceCreate?.("manual", {}) },
         secondaryActions: [
@@ -678,8 +708,8 @@ export default function ForgePage(props) {
         ],
       }
       : {
-      label: "Exchange",
-      title: "Exchange Command Center",
+      label: presentation.copy.workspaceLabel,
+      title: presentation.copy.sellingLabel,
       description: "Market research, selling prep, and trade decisions without checkout.",
       primaryAction: { label: "Search Market", icon: "market", onClick: () => openExchangeSection("market") },
       secondaryActions: [

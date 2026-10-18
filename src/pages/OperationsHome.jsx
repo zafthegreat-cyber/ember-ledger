@@ -4,6 +4,7 @@ import { AppNavIcon } from "../components/command-system/AppNavIcon.jsx";
 import { createFlipScoutRepository } from "../features/flipScout/storageRepository.js";
 import { formatCurrency, getDashboardSummary } from "../features/flipScout/selectors.js";
 import { rankAdaptivePageItems } from "../utils/adaptivePageItems.js";
+import { resolveExperiencePresentation } from "../utils/experiencePresentation.js";
 import "./home-layout.css";
 
 const FIND_DESTINATION_KEY = "private-business-hub.flip-scout.destination";
@@ -33,13 +34,15 @@ function CollectibleMotif() {
 
 export default function OperationsHome({
   setActiveTab, isOffline, onOpenBusiness, onOpenFind, onReportRestock, onOpenRestockReports,
-  adaptiveActivity = {}, personalizationPreferences = {}, adaptiveSellerToolsVisible = false,
-  adminToolsVisible = false, activeVaultItems = [], workspaceWatchlist = [],
+  adaptiveActivity = {}, personalizationPreferences = {}, experiencePresentation,
+  onOpenSellTrade, onOpenExperienceSettings, activeVaultItems = [], workspaceWatchlist = [],
   scoutSnapshot = {}, isWatchedEmberStore = () => false,
 }) {
   const repository = useMemo(() => createFlipScoutRepository(), []);
   const state = useMemo(() => repository.load(), [repository]);
   const summary = useMemo(() => getDashboardSummary(state), [state]);
+  const presentation = experiencePresentation || resolveExperiencePresentation();
+  const sellerVisible = presentation.isSeller || presentation.isStore;
   const openFind = (screen = "deals", subview = "") => {
     if (onOpenFind) return onOpenFind(screen, subview);
     window.sessionStorage?.setItem(FIND_DESTINATION_KEY, JSON.stringify({ screen, subview }));
@@ -65,7 +68,7 @@ export default function OperationsHome({
   const bestDealHasPrice = bestDealPrice !== "" && bestDealPrice != null && Number.isFinite(Number(bestDealPrice));
   const bestDealHasProfit = bestDealProfit !== "" && bestDealProfit != null && Number.isFinite(Number(bestDealProfit));
   const recent = [
-    ...(state.activity || []),
+    ...(sellerVisible ? state.activity || [] : []),
     ...(adaptiveActivity.reports || []).map((report) => ({ id: `report-${report.id || report.reportId}`, title: `Restock report · ${report.storeName || report.store_name || "Store visit"}`, detail: report.productName || report.itemName || "Your saved observation", createdAt: latestDate(report) })),
     ...activeVaultItems.map((item) => ({ id: `collection-${item.id}`, title: `Collection · ${item.name || item.productName || "Saved item"}`, detail: "Added to your collection", createdAt: latestDate(item) })),
   ].filter((entry) => Number.isFinite(Date.parse(latestDate(entry))))
@@ -81,16 +84,15 @@ export default function OperationsHome({
   const showBusinessSummary = sourcingBudget > 0 || inventoryWithCost.length > 0 || monthSalesWithRevenue.length > 0 || monthSalesWithProfit.length > 0;
   const homePreference = personalizationPreferences.pagePreferences?.hearth;
   const isVisible = (key) => !homePreference?.visibleKeys || homePreference.visibleKeys.includes(key);
-  const sellerVisible = adaptiveSellerToolsVisible || adminToolsVisible;
   const followedStores = (scoutSnapshot.stores || []).filter(isWatchedEmberStore);
   const adaptiveEnabled = personalizationPreferences.smartRecommendationsEnabled !== false;
   const manualHome = Boolean(homePreference?.updatedAt);
   const pageCards = rankAdaptivePageItems([
     { key: "scoutSignals", title: "Your restock watch", detail: followedStores.length ? `${followedStores.length} followed store${followedStores.length === 1 ? "" : "s"}. Check the latest community reports.` : "Find stores, check recent reports, and follow the places you visit.", label: "Browse reports", icon: "find", activityKeys: ["reports"], action: onOpenRestockReports },
     { key: "vaultSnapshot", title: "Your collection", detail: activeVaultItems.length ? `${activeVaultItems.length} saved item${activeVaultItems.length === 1 ? "" : "s"}. Pick up where you left off.` : "Keep your cards, sets, and wants together.", label: "Open collection", icon: "inventory", activityKeys: ["collection"], action: () => setActiveTab("collectionWorkspace") },
-    { key: "marketWatch", title: "Find & compare", detail: workspaceWatchlist.length ? `${workspaceWatchlist.length} watched item${workspaceWatchlist.length === 1 ? "" : "s"}. Compare prices before your next purchase.` : "Compare deals, plan an offer, and follow upcoming auctions.", label: "Explore Find", icon: "search", activityKeys: ["watchlist", "deals", "auctions"], action: () => openFind("deals") },
-    ...(sellerVisible ? [{ key: "forgeSummary", title: "Your business records", detail: "Purchases, inventory, and sales, ready when you need them.", label: "Open inventory", icon: "business", activityKeys: ["sales", "purchases", "inventory", "expenses"], action: () => onOpenBusiness("inventory") }] : []),
-  ].filter((card) => isVisible(card.key)), {
+    { key: "marketWatch", title: presentation.isCollector ? "Prices & wants" : "Find & compare", detail: workspaceWatchlist.length ? `${workspaceWatchlist.length} watched item${workspaceWatchlist.length === 1 ? "" : "s"}. Compare prices before your next purchase.` : presentation.isCollector ? "Look up cards and products, then save the ones you want." : "Compare deals, plan an offer, and follow upcoming auctions.", label: presentation.isCollector ? "Search cards & products" : "Explore Find", icon: "search", activityKeys: ["watchlist", "deals", "auctions"], action: () => presentation.isCollector ? setActiveTab("market") : openFind("deals") },
+    ...(sellerVisible ? [{ key: "forgeSummary", title: presentation.copy.recordsTitle, detail: presentation.copy.recordsDetail, label: "Open inventory", icon: "business", activityKeys: ["sales", "purchases", "inventory", "expenses"], action: () => onOpenBusiness("inventory") }] : []),
+  ].filter((card) => card.key === "forgeSummary" && !manualHome ? true : isVisible(card.key)), {
     activity: { ...state, ...adaptiveActivity,
       sales: [...state.sales, ...(adaptiveActivity.sales || [])],
       inventory: [...state.inventory, ...(adaptiveActivity.inventory || [])],
@@ -112,29 +114,29 @@ export default function OperationsHome({
       </div>
       <div className="home-restock-art"><CollectibleMotif /></div>
     </section>
-    {sellerVisible && isVisible("forgeSummary") && attentionRows.length ? <section className="ops-home-section ops-attention-panel home-attention-pending">
+    {sellerVisible && (isVisible("forgeSummary") || !manualHome) && attentionRows.length ? <section className="ops-home-section ops-attention-panel home-attention-pending">
       <SectionHeader title="Needs Attention" />
       {attentionRows.length ? <div className="ops-attention-list">{attentionRows.map((row) => <button type="button" key={row.key} onClick={row.action} aria-label={`${row.label}: ${row.count}. ${row.detail}`}><span className="ops-attention-count">{row.count}</span><span><strong>{row.label}</strong><small>{row.detail}</small></span><span aria-hidden="true">›</span></button>)}</div> : <p className="ops-compact-success"><span className="home-status-check" aria-hidden="true">✓</span><span>Nothing needs attention.</span></p>}
     </section> : null}
     <section className="ops-home-section home-workspaces">
-      <div className="home-personal-heading"><SectionHeader title="For you" description={manualHome ? "Your chosen Home layout." : adaptiveEnabled ? "Shortcuts adapt to your saved activity. Your navigation stays in place." : "Your shortcuts, in a consistent order."} /><SecondaryButton onClick={() => setActiveTab("settings")}>Customize</SecondaryButton></div>
+      <div className="home-personal-heading"><SectionHeader title="For you" description={manualHome ? "Your chosen Home layout." : adaptiveEnabled ? "Shortcuts adapt to your saved activity. Your navigation stays in place." : "Your shortcuts, in a consistent order."} /><SecondaryButton onClick={onOpenExperienceSettings || (() => setActiveTab("settings"))}>Customize</SecondaryButton></div>
       <div className="home-personal-grid" aria-label="Personalized shortcuts">
         {pageCards.map((card) => <article className="home-personal-card" key={card.key} data-home-card={card.key}>
           <span className="home-shortcut-icon" aria-hidden="true"><AppNavIcon kind={card.icon} /></span>
           <h3>{card.title}</h3><p>{card.detail}</p>
-          {card.key === "forgeSummary" ? <div className="home-business-links">{["purchases", "inventory", "sales"].map((view) => <SecondaryButton key={view} onClick={() => onOpenBusiness(view)}>{view[0].toUpperCase() + view.slice(1)}</SecondaryButton>)}</div> : <SecondaryButton onClick={card.action}>{card.label}</SecondaryButton>}
+          {card.key === "forgeSummary" ? <div className="home-business-links">{["inventory", "sales", "purchases"].map((view) => <SecondaryButton key={view} onClick={() => onOpenBusiness(view)}>{view === "inventory" ? presentation.copy.inventoryLabel : view[0].toUpperCase() + view.slice(1)}</SecondaryButton>)}</div> : card.key === "marketWatch" && presentation.isCollector ? <div className="home-business-links"><SecondaryButton onClick={card.action}>{card.label}</SecondaryButton>{onOpenSellTrade ? <SecondaryButton onClick={onOpenSellTrade}>Sell or trade</SecondaryButton> : null}</div> : <SecondaryButton onClick={card.action}>{card.label}</SecondaryButton>}
         </article>)}
       </div>
     </section>
     {bestDeal && isVisible("marketWatch") ? <section className="ops-home-section">
-      <SectionHeader title="Best Opportunity" />
-      <article className="ops-home-best-opportunity">{recordImage(bestDeal) ? <img src={recordImage(bestDeal)} alt="" /> : <span className="ops-home-opportunity-placeholder" aria-hidden="true" />}<div><span>{bestDeal.marketplace || bestDeal.source || "Manual source"}</span><h3>{bestDeal.title}</h3><dl><div><dt>Price</dt><dd>{bestDealHasPrice ? formatCurrency(bestDealPrice) : "Not entered"}</dd></div><div><dt>Projected profit</dt><dd>{bestDealHasProfit ? formatCurrency(bestDealProfit) : "Needs analysis"}</dd></div></dl></div><PrimaryButton onClick={() => openFind("deals")}>Review</PrimaryButton></article>
+      <SectionHeader title={presentation.isCollector ? "A saved find" : "Best Opportunity"} />
+      <article className="ops-home-best-opportunity">{recordImage(bestDeal) ? <img src={recordImage(bestDeal)} alt="" /> : <span className="ops-home-opportunity-placeholder" aria-hidden="true" />}<div><span>{bestDeal.marketplace || bestDeal.source || "Manual source"}</span><h3>{bestDeal.title}</h3><dl><div><dt>Price</dt><dd>{bestDealHasPrice ? formatCurrency(bestDealPrice) : "Not entered"}</dd></div>{sellerVisible ? <div><dt>Projected profit</dt><dd>{bestDealHasProfit ? formatCurrency(bestDealProfit) : "Needs analysis"}</dd></div> : null}</dl></div><PrimaryButton onClick={() => openFind("deals")}>Review</PrimaryButton></article>
     </section> : null}
     {recent.length && isVisible("todayActivity") ? <section className="ops-home-section">
       <SectionHeader title="Recent Activity" />
       <div className="ops-home-activity">{recent.map((activity) => <article key={activity.id} aria-label={`${activity.title}. ${activity.detail || ""}`}><span aria-hidden="true" /><strong>{activity.title}</strong><time dateTime={activity.createdAt}>{new Date(activity.createdAt).toLocaleDateString()}</time></article>)}</div>
     </section> : null}
-    {showBusinessSummary && sellerVisible && isVisible("forgeSummary") ? <div className="ops-business-strip" aria-label="Business summary">
+    {showBusinessSummary && sellerVisible && (isVisible("forgeSummary") || !manualHome) ? <div className="ops-business-strip" aria-label={presentation.isStore ? "Store summary" : "Selling summary"}>
       <span><small>Buying Budget</small><strong>{sourcingBudget > 0 ? formatCurrency(sourcingBudget) : "Not set"}</strong></span>
       <span><small>Inventory at Cost</small><strong>{inventoryWithCost.length ? formatCurrency(summary.inventoryCost) : "—"}</strong></span>
       <span><small>Month Sales</small><strong>{monthSalesWithRevenue.length ? formatCurrency(monthRevenue) : "—"}</strong></span>
