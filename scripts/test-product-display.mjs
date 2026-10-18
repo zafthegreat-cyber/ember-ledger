@@ -8,6 +8,7 @@ import {
 } from "../src/data/catalogSearchAliases.mjs";
 import {
   buildCatalogSelectionSnapshot,
+  getItemImageUrl,
   getProductImageFallback,
   getProductImageUrl,
   productHasUsableImage,
@@ -89,6 +90,13 @@ assert.ok(snapshot.setName, "selection snapshot should preserve set/expansion");
 assert.equal(snapshot.destination, "forge");
 assert.equal(snapshot.photoUrl, snapshot.imageUrl, "selection snapshot should keep photoUrl and imageUrl aligned");
 
+const savedPhotoItem = Object.freeze({ item_image: "/saved/card-front.jpg", catalogImageUrl: "/catalog/card.jpg", quantity: 2 });
+assert.equal(getItemImageUrl(savedPhotoItem), "/saved/card-front.jpg", "An owner's saved photo takes precedence over catalog artwork");
+assert.equal(getItemImageUrl({ imageUrl: "placeholder", images: { large: "/catalog/box.jpg" } }), "/catalog/box.jpg", "Structured catalog images survive a placeholder field");
+assert.equal(getItemImageUrl({ imageUrl: {}, photos: [{ url: "/saved/item.jpg" }] }), "/saved/item.jpg", "Malformed fields must not become [object Object] image URLs");
+assert.equal(getItemImageUrl({ itemImage: "none", photos: [] }), "", "Items with no usable photo retain the empty state");
+assert.deepEqual(savedPhotoItem, { item_image: "/saved/card-front.jpg", catalogImageUrl: "/catalog/card.jpg", quantity: 2 }, "Image resolution leaves saved records unchanged");
+
 const manualRecoveryRows = recoveryProducts.filter((product) => product.source === "manual_catalog_recovery");
 for (const product of manualRecoveryRows) {
   assert.ok(!Number(product.marketPrice || product.market_price || 0), `${product.productName}: recovery rows must not invent market price`);
@@ -97,7 +105,7 @@ for (const product of manualRecoveryRows) {
 
 console.log(JSON.stringify({
   ok: true,
-  tests: 14,
+  tests: 19,
   catalogRows: catalog.length,
   imageBackedExample: imageBackedPrismatic.productName || imageBackedPrismatic.name,
 }, null, 2));
