@@ -75,7 +75,7 @@ assertions += 2;
 
 matches(app, /lazy\(\(\) => import\("\.\/features\/accountOps\/AccountOpsPage"\)\)/, "Account Ops should remain route-split");
 matches(app, /<AccountOpsPage[\s\S]*session=\{ownerSession\}/, "Account Ops should receive the verified owner session");
-matches(app, /ownerCenterAuthorized \? \{ key: "account-ops", label: "Account Ops"/, "Account Ops navigation should require verified owner authorization");
+matches(app, /ownerToolsVisible \? \{ key: "account-ops", label: "Account Ops"/, "Account Ops navigation should use the owner-tools visibility gate");
 matches(routes, /\["overview", "accounts", "identity", "payment", "network", "verification", "automation", "orders", "infrastructure", "activity", "profiles", "emails", "tasks", "connections", "inbox"\]/, "Account Ops should expose the unified operating areas and legacy direct routes");
 matches(routes, /return \{ activeTab: "accountOps", accountOpsSection \}/, "direct Account Ops routes should restore section state");
 
@@ -86,8 +86,8 @@ matches(page, /if \(!authorized\) return \{\};[\s\S]*createAccountOpsService\(\)
 matches(page, /lazy\(\(\) => import\("\.\/InboxOrderFoundation\.jsx"\)\)/, "provider and order foundations should remain lazy inside the Account Ops route");
 matches(page, /if \(!authorized\) return[\s\S]*<InboxOrderFoundation section=\{section\}/, "the provider foundation should render only after the existing verified-owner return boundary");
 
-matches(page, /<select value=\{activeArea\} onChange=\{\(event\) => onChange\(event\.target\.value\)\}>/, "mobile Account Ops navigation should use one compact area picker");
-matches(page, /aria-label="Account Ops areas"/, "wide Account Ops navigation should expose one consistent operating-area rail");
+matches(page, /<OperationsWorkspace label="Account Ops areas" activeKey=\{activeArea\} onNavigate=\{onChange\}/, "Account Ops should share the responsive section picker and rail");
+matches(page, /<OperationsRecordBrowser label="Store accounts"/, "accounts should use compact record browsing with focused detail");
 matches(page, /ACCOUNT_OPS_OPERATING_AREAS\.map/, "the same operating-area source should drive compact and wide navigation");
 matches(page, /title="Account Ops"/, "the workspace should use the approved Code 3 name");
 matches(page, /Store Accounts[\s\S]*Ready[\s\S]*Needs Attention[\s\S]*Problem[\s\S]*Email Aliases[\s\S]*Tasks/, "overview metrics should be derived from Account Ops records");
@@ -104,9 +104,12 @@ matches(providerFoundation, /title="Provider Connections"[\s\S]*Foundation Only/
 matches(providerFoundation, /Trusted runtime[\s\S]*Verified server-side in Vercel Preview/, "provider connections should present trusted Preview execution separately");
 matches(providerFoundation, /Gmail and Outlook remain disconnected with live capabilities disabled/, "trusted execution must not imply live mailbox capability");
 matches(providerFoundation, /No mailbox connected/, "provider connections should have an honest disconnected empty state");
-matches(providerFoundation, /Code 3 is not reading a mailbox\./, "Inbox should not imply live mailbox access");
+matches(providerFoundation, /This Account Ops view does not read a mailbox\./, "Inbox should not imply background mailbox access");
 matches(providerFoundation, /An Order Candidate is evidence, not a Business Purchase\./, "order candidates should stay separate from business purchases");
-matches(providerFoundation, /This phase cannot create purchases, receive inventory, or change business records\./, "order review should remain non-mutating");
+matches(providerFoundation, /This Account Ops view cannot create purchases, receive inventory, or change business records\./, "order review should remain non-mutating");
+matches(providerFoundation, /href="\/business\/purchases"[\s\S]*Open purchase email import/, "receipt actions should navigate to the working Purchases area");
+matches(providerFoundation, /one-time, read-only pull[\s\S]*app password is not saved/i, "one-time receipt import should disclose its credential lifetime");
+matches(page, /Profile group[\s\S]*setSelectedProfileId\(""\)/, "changing a profile group should reset record selection");
 matches(providerFoundation, /No sample messages are shown as real data\./, "synthetic fixtures should not be presented as live mailbox content");
 matches(providerApi, /ACCOUNT_OPS_PROVIDER_CONNECTIONS_PATH = "\/api\/account-ops\/provider-connections"/, "the provider client should use only the protected provider-connections prefix");
 matches(providerApi, /method !== "GET" \|\| options\.body !== undefined/, "the Phase 2B1 provider client should remain read-only");

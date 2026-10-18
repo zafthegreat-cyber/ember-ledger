@@ -23,7 +23,7 @@ has(page, /category === INVENTORY_CORRECTION_CATEGORIES\.REVERSAL_CORRECTION/, "
 has(page, /actionInFlightRef\.current/, "same-turn duplicate submissions are synchronously blocked");
 has(page, /disabled=\{busy \|\| !candidate\.eligible\}/, "blocked candidates cannot be confirmed");
 has(page, /setCorrectionCandidate\(null\)/, "form changes invalidate the stale preview");
-has(page, /Replacement items require a new Receiving event/, "replacement preserves the receiving boundary");
+has(page, /Replacement items require a new receiving record and inventory review/, "replacement preserves the receiving boundary");
 has(page, /never creates a product automatically/, "product correction has no product writer");
 has(page, /applies to this entire current acquisition lot/, "whole-lot impact is disclosed");
 has(page, /Existing product relationship/, "product correction selects an existing canonical relationship");

@@ -25,14 +25,16 @@ function throws(callback, predicate, message) { assert.throws(callback, predicat
 async function rejects(callback, predicate, message) { await assert.rejects(callback, predicate, message); assertions += 1; }
 
 const providers = listBotProviders();
-deepEqual(providers.map((provider) => provider.providerKey), [BOT_PROVIDER_KEYS.HAYHA, BOT_PROVIDER_KEYS.STELLAR]);
-equal(BOT_PROVIDER_FOUNDATION_STATUS.providerCount, 2);
+const expectedProviders = ["HAYHA", "STELLAR", "SHIKARI", "VALOR", "REFRACT", "POLAR", "SNIPED", "SWOOPER"];
+deepEqual(providers.map((provider) => provider.providerKey), expectedProviders);
+equal(BOT_PROVIDER_FOUNDATION_STATUS.providerCount, 8);
 equal(BOT_PROVIDER_FOUNDATION_STATUS.configuredProviderCount, 0);
 equal(BOT_PROVIDER_FOUNDATION_STATUS.liveCapabilityCount, 0);
 equal(BOT_PROVIDER_FOUNDATION_STATUS.liveTaskCount, 0);
 equal(BOT_PROVIDER_FOUNDATION_STATUS.providerNetworkAccess, false);
 deepEqual(listAvailableBotProviders(), []);
 equal(getBotProvider("unknown"), null);
+equal(getBotProvider("MOCK"), null, "test fixtures never appear in the setup catalog");
 
 for (const provider of providers) {
   equal(provider.connectionStatus, BOT_PROVIDER_CONNECTION_STATUS.NOT_CONFIGURED, `${provider.displayName} stays not configured`);
@@ -51,13 +53,22 @@ for (const provider of providers) {
   equal(provider.discovery.providerNetworkAccess, false);
   ok(Object.values(BOT_PILOT_READINESS).includes(provider.discovery.pilotReadiness));
   ok(provider.discovery.evidenceCount > 0);
+  deepEqual(Object.keys(provider.setup), ["summary", "availableNow", "nextStep", "officialUrl", "reviewedAt"]);
+  ok(Object.values(provider.setup).every((value) => typeof value === "string" && value.length > 0));
+  equal(provider.setup.reviewedAt, "2026-10-17T00:00:00.000Z");
+  ok(provider.setup.availableNow.includes("local installation label"));
+  ok(provider.setup.availableNow.includes("Live status and task control are unavailable"));
+  equal(new URL(provider.setup.officialUrl).protocol, "https:");
+  equal(getBotProvider(provider.providerKey.toLowerCase()).providerKey, provider.providerKey);
 }
 
 const mutableClone = getBotProvider(BOT_PROVIDER_KEYS.HAYHA);
 mutableClone.displayName = "Changed only in test clone";
+mutableClone.setup.availableNow = "Changed only in test clone";
 equal(getBotProvider(BOT_PROVIDER_KEYS.HAYHA).displayName, "Hayha", "registry projections are defensive clones");
+ok(getBotProvider(BOT_PROVIDER_KEYS.HAYHA).setup.availableNow.includes("local installation label"), "setup metadata is defensively cloned");
 
-for (const providerKey of [BOT_PROVIDER_KEYS.HAYHA, BOT_PROVIDER_KEYS.STELLAR]) {
+for (const providerKey of expectedProviders) {
   const adapter = createUnavailableBotAdapter(providerKey);
   equal(assertBotProviderAdapter(adapter), adapter);
   const description = adapter.describe();
@@ -83,6 +94,11 @@ for (const providerKey of [BOT_PROVIDER_KEYS.HAYHA, BOT_PROVIDER_KEYS.STELLAR]) 
 throws(
   () => createUnavailableBotAdapter("UNREGISTERED"),
   (error) => error.code === "UNKNOWN_PROVIDER",
+);
+throws(
+  () => createUnavailableBotAdapter(BOT_PROVIDER_KEYS.MOCK),
+  (error) => error.code === "UNKNOWN_PROVIDER",
+  "MOCK stays behind the explicit test adapter factory",
 );
 throws(
   () => assertBotProviderAdapter({}),

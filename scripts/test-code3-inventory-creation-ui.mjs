@@ -24,7 +24,7 @@ match(page, /Inventory Creation Candidate != Inventory/);
 match(page, /data-inventory-writer="owner-confirmed-only"/);
 match(page, /service\.previewInventoryCreation/);
 match(page, /service\.confirmInventoryCreation/);
-match(page, /Quantity and cost are re-derived/);
+match(page, /Check each item’s product, condition, and cost\. Nothing is added until you confirm\./, "plain-language review copy preserves explicit inventory confirmation; derivation is checked below");
 match(page, /disabled=\{busy \|\| !candidate\.eligible\}/);
 match(page, /Resolved product reference/);
 match(page, /Damaged/);

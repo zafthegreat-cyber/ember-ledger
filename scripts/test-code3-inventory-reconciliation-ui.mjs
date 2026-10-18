@@ -61,7 +61,7 @@ for (const field of [
   "correctedProductReference",
 ]) has(page, new RegExp(field), `${field} is visible only as a reviewed projection`);
 
-has(page, /Completed Sales and Transfers remain immutable/, "owner-facing copy preserves completed history");
+has(page, /Completed sales and transfers stay in history/, "owner-facing copy preserves completed history");
 has(page, /Original completed records remain unchanged/, "preview does not imply historical replacement");
 has(page, /canonical managed Transfer authority is not available/, "transfer reconciliation fails closed honestly");
 has(page, /No Transfer or Inventory history can be changed from this preview/, "blocked transfer preview has zero mutation authority");

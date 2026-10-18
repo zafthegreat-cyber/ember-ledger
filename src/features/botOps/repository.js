@@ -6,6 +6,7 @@ import {
 } from "./constants.js";
 import { assertSafeBotOpsInput, safeBotOpsClone } from "./security.js";
 import { BOT_OPS_RECORD_NORMALIZERS, BotOpsValidationError } from "./validators.js";
+import { BotOpsCoordinationError, botOpsExclusive, isBrowserBotOpsStorage } from "./operationCoordinator.js";
 
 export class BotOpsRepositoryError extends Error {
   constructor(code, message, details = {}) {
@@ -95,33 +96,46 @@ export function deserializeBotOpsState(raw, options = {}) {
 
 export function createBotOpsRepository(storage = globalThis.localStorage, options = {}) {
   const now = options.now || (() => new Date().toISOString());
-  let memoryState = createEmptyBotOpsState(now);
+  const runExclusive = botOpsExclusive(storage, options);
   let lastError = null;
+
+  function assertActive() {
+    if (options.isOperationActive?.() === false) {
+      throw new BotOpsCoordinationError("OPERATION_CANCELLED", "Owner access changed before this save finished. No bot records were changed.");
+    }
+  }
+
+  function readRaw() {
+    if (!storage?.getItem) throw new Error("storage unavailable");
+    return storage.getItem(BOT_OPS_STORAGE_KEY);
+  }
 
   function load() {
     try {
-      const raw = storage?.getItem?.(BOT_OPS_STORAGE_KEY);
-      if (!raw) {
+      const raw = readRaw();
+      if (raw == null) {
         lastError = null;
-        return safeBotOpsClone(memoryState);
+        return createEmptyBotOpsState(now);
       }
       const result = deserializeBotOpsState(raw, { now });
-      lastError = result.error;
-      if (result.error) return safeBotOpsClone(memoryState);
-      memoryState = result.state;
-      return safeBotOpsClone(memoryState);
+      if (result.error) throw result.error;
+      lastError = null;
+      return safeBotOpsClone(result.state);
     } catch (error) {
       lastError = error;
-      return safeBotOpsClone(memoryState);
+      throw new BotOpsRepositoryError("LOCAL_READ_FAILED", "Saved Bot Operations records could not be read. Existing data has been kept; resolve the storage problem before continuing.");
     }
   }
 
   function save(nextState) {
+    // Never replace unreadable or newer-format records with a fallback snapshot.
+    // Recheck here as well so a direct repository save cannot bypass the gate.
+    load();
+    assertActive();
     const state = normalizeBotOpsState({ ...nextState, updatedAt: isoNow(now) }, { now });
     try {
       if (!storage?.setItem) throw new Error("storage unavailable");
       storage.setItem(BOT_OPS_STORAGE_KEY, JSON.stringify(state));
-      memoryState = state;
       lastError = null;
       return { state: safeBotOpsClone(state), error: null };
     } catch (error) {
@@ -130,11 +144,61 @@ export function createBotOpsRepository(storage = globalThis.localStorage, option
     }
   }
 
+  async function transact(operation) {
+    assertActive();
+    return runExclusive(async () => {
+      assertActive();
+      function readForOperation() {
+        try { return readRaw(); }
+        catch (error) {
+          lastError = error;
+          throw new BotOpsRepositoryError("LOCAL_READ_FAILED", "Saved Bot Operations records could not be read. Existing data has been kept; resolve the storage problem before continuing.");
+        }
+      }
+      const beforeRaw = readForOperation();
+      let staged = load();
+      let open = true;
+      let dirty = false;
+      function assertLease() {
+        if (!open) throw new BotOpsCoordinationError("OPERATION_CLOSED", "The Bot Operations save has finished.");
+        assertActive();
+        if (readForOperation() !== beforeRaw) {
+          throw new BotOpsCoordinationError("VERSION_CONFLICT", "Bot Operations changed in another view. Reload before saving again.");
+        }
+      }
+      const scoped = Object.freeze({
+        storageKey: BOT_OPS_STORAGE_KEY,
+        schemaVersion: BOT_OPS_SCHEMA_VERSION,
+        load() { assertLease(); return safeBotOpsClone(staged); },
+        save(next) {
+          assertLease();
+          staged = normalizeBotOpsState({ ...next, updatedAt: isoNow(now) }, { now });
+          dirty = true;
+          return { state: safeBotOpsClone(staged), error: null };
+        },
+        getLastError: () => null,
+        transact(nested) { assertLease(); return nested(scoped); },
+      });
+      try {
+        const result = await operation(scoped);
+        assertLease();
+        if (dirty) save(staged);
+        return result;
+      } finally { open = false; }
+    });
+  }
+
   return Object.freeze({
     storageKey: BOT_OPS_STORAGE_KEY,
     schemaVersion: BOT_OPS_SCHEMA_VERSION,
     load,
-    save,
+    save: (next) => {
+      if (isBrowserBotOpsStorage(storage) || options.requireCrossTabLock) {
+        throw new BotOpsCoordinationError("COORDINATED_WRITE_REQUIRED", "Use a Bot Operations operation to save browser records safely.");
+      }
+      return save(next);
+    },
+    transact,
     getLastError: () => lastError,
   });
 }

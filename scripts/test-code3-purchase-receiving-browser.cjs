@@ -206,6 +206,7 @@ async function assertMinimumTargets(root, label) {
 }
 
 async function assertSafetySurface(page, root, label) {
+  await root.locator('.purchase-receiving-help').filter({ hasText: 'How your records are kept safe' }).locator('summary').click();
   const body = await root.innerText();
   equal(await root.getAttribute("data-owner-gate"), "authorized", `${label} should use the existing authorized OWNER boundary`);
   equal(await root.getAttribute("data-inventory-writer"), "owner-confirmed-only", `${label} must expose only the explicit owner-confirmed inventory boundary`);
@@ -217,18 +218,27 @@ async function assertSafetySurface(page, root, label) {
   excludes(body, /synthetic-secret-must-not-render|(?:bearer|basic)\s+[a-z0-9._~+/=-]{12,}/i, `${label} must not render secret material`);
   equal(await root.locator('[data-inventory-writer="true"], [data-remote-active="true"]').count(), 0, `${label} must not expose automatic or remote inventory mutation authority`);
   equal(await page.evaluate(() => matchMedia("(prefers-reduced-motion: reduce)").matches), true, `${label} should honor the reduced-motion browser preference`);
+  await root.locator('.purchase-receiving-help').filter({ hasText: 'How your records are kept safe' }).locator('summary').click();
 }
 
 async function selectSection(root, section) {
-  const button = root.getByRole("button", { name: section, exact: true });
+  const button = root.locator(`[data-purchase-section="${section.toLowerCase()}"]`);
   await button.focus();
   equal(await button.evaluate((node) => document.activeElement === node), true, `${section} section control should receive keyboard focus`);
   await button.press("Enter");
   equal(await button.getAttribute("aria-current"), "page", `${section} should become the active workflow section`);
+  const firstRow = root.locator('.ops-record-browser__row').first();
+  await firstRow.click();
 }
 
 async function prepareScenario(page, scenario, root) {
   const body = () => root.innerText();
+  if (["populated-draft", "corrected-draft", "rejected-draft", "confirmed-draft"].includes(scenario.kind)) {
+    const row = root.locator('.ops-record-browser__row').first();
+    await row.focus();
+    await page.keyboard.press('Enter');
+    equal(await root.locator('.ops-record-browser__selection-heading').evaluate(node => document.activeElement === node), true, 'Selecting a record moves focus to its detail');
+  }
   switch (scenario.kind) {
     case "empty":
       match(await body(), /No Purchase Drafts/i, "empty state should disclose that no draft exists");
@@ -252,11 +262,11 @@ async function prepareScenario(page, scenario, root) {
     case "confirmed-draft":
       match(await body(), /Synthetic Target[\s\S]*Confirmed/i, "confirmed source draft should preserve its terminal review state");
       await selectSection(root, "Purchases");
-      match(await body(), /Owner-confirmed Purchase[\s\S]*Not Received/i, "explicit confirmation should create one Purchase that remains unreceived");
+      match(await body(), /Confirmed purchase[\s\S]*Not Received/i, "explicit confirmation should create one Purchase that remains unreceived");
       break;
     case "purchase-desktop":
       await selectSection(root, "Purchases");
-      match(await body(), /Confirmed Purchases[\s\S]*Owner-confirmed Purchase[\s\S]*Not Received/i, "desktop Purchase view should disclose receipt remains separate");
+      match(await body(), /Confirmed Purchases[\s\S]*Confirmed purchase[\s\S]*Not Received/i, "desktop Purchase view should disclose receipt remains separate");
       break;
     case "partial-receiving":
       await selectSection(root, "Receiving");
@@ -283,13 +293,16 @@ async function prepareScenario(page, scenario, root) {
       match(await dialog.innerText(), /Delivery evidence alone does not prove receipt/i, `${scenario.kind} should preserve physical receipt confirmation`);
       break;
     }
-    case "inventory-handoff-preview":
+    case "inventory-handoff-preview": {
       await selectSection(root, "Purchases");
+      const beforePreview = await page.evaluate(key => localStorage.getItem(key), STORAGE_KEY);
       await root.getByRole("button", { name: "Preview Inventory Handoff", exact: true }).click();
       await root.getByRole("heading", { name: "Inventory Handoff Preview", exact: true }).waitFor();
-      match(await body(), /Preview only[\s\S]*separate candidate[\s\S]*Receiving != Inventory/i, "handoff remains a derived preview before separate candidate confirmation");
+      match(await body(), /Preview only[\s\S]*before adding it to inventory/i, "handoff remains a derived preview before separate candidate confirmation");
+      equal(await page.evaluate(key => localStorage.getItem(key), STORAGE_KEY), beforePreview, "Preview must not change purchases, receiving, or inventory history");
       equal(await root.locator('.purchase-receiving-handoff[data-inventory-writer="owner-confirmed-only"]').count(), 1, "handoff exposes only the owner-confirmed candidate writer");
       break;
+    }
     default:
       throw new Error(`Unknown browser QA scenario kind: ${scenario.kind}`);
   }
@@ -393,7 +406,7 @@ async function inspectOwnerGate(browser, state) {
   });
   try {
     await page.goto(appUrl(scenario.theme, false), { waitUntil: "domcontentloaded" });
-    await page.waitForTimeout(750);
+    await page.getByText(/Sign in to review|Welcome back|Sign In Required|Owner Access Required|Owner access unavailable/i).first().waitFor({ timeout: 45000 });
     const body = await page.locator("body").innerText();
     match(body, /Sign in to review|Welcome back|Sign In Required|Owner Access Required|Owner access unavailable/i, "query/header-like OWNER strings must not bypass the verified owner gate");
     excludes(body, /Synthetic Target|ORDER-POPULATED-DRAFT\.TEST|Confirm Purchase|Receiving events/i, "denied navigation must not expose protected Purchase/Receiving records or controls");

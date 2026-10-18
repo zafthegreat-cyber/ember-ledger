@@ -1,5 +1,25 @@
 # Code 3 TCG Implementation Status
 
+## Authorized operations release — 2026-10-18
+
+The user authorized committing, pushing, merging and publishing the existing tested updates. Release preparation is on `codex/all-bot-integration-setup`, fast-forwarded onto `origin/main` at `89da91d1b1ae229097d0203f568ae240f0f33242` (2026-10-18 market-price refresh). Generated prices match that baseline exactly; no data migration, recovery action, authentication change or deployment-setting change is included. [OPERATIONS_RELEASE_PREFLIGHT_2026_10_18.md](./OPERATIONS_RELEASE_PREFLIGHT_2026_10_18.md) records acceptance evidence and the older readiness harness limitations. The implementation checkpoints below describe earlier local work; the release PR and Vercel deployment checks establish publication status.
+
+## Latest operations workspace candidate — 2026-10-18
+
+Current branch remains `codex/all-bot-integration-setup`, based on published main `eb560fc97d36939f19ae68aafbb1e1c7806e8632`. The local candidate applies the Icebox references to existing Email & Orders, Bot tracking, and Account Ops: grouped navigation, searchable compact records, focused details, and mobile Back/focus behavior. Account Ops email/order entries now lead to the purchase-email workflow. Data, prices, permissions, provider gates and deployment settings are preserved. See [OPERATIONS_WORKSPACE_LOCAL_REPORT.md](./OPERATIONS_WORKSPACE_LOCAL_REPORT.md) for implementation, feature mapping, actual checks, screenshots and unavailable integrations. This candidate is uncommitted and unpublished.
+
+## Latest purchase email import candidate — 2026-10-17
+
+The local candidate now adds a one-time AOL/Gmail/Yahoo app-password receipt pull in Business → Purchases & Receiving. It uses verified owner access, read-only IMAP, transient credentials, minimized previews, exact-money review, and duplicate-safe saves into existing purchase drafts. Real mailbox access and hosted deployment remain unverified. See [PURCHASE_EMAIL_IMPORT_LOCAL_REPORT.md](./PURCHASE_EMAIL_IMPORT_LOCAL_REPORT.md) for the implementation, tests, screenshots, and remaining checks. Existing bot integration safeguards and saved data are unchanged.
+
+## Bot tracking candidate — 2026-10-17
+
+Current branch: `codex/all-bot-integration-setup`, based on published main `eb560fc97d36939f19ae68aafbb1e1c7806e8632` (item-photo release, PR #12). The previous phase notes below are historical, not the current branch/publication status.
+
+The local bot candidate adds installation save/edit and setup guidance for all eight named providers, plus a tracking overview, searchable/filterable tasks, atomic manual plans, editable planning stages and readable activity history. Native status sync, order imports and task control remain unimplemented; no bot connection or deployment is claimed. See [BOT_TRACKING_LOCAL_REPORT.md](./BOT_TRACKING_LOCAL_REPORT.md) for the latest implementation and validation, and [BOT_SETUP_LOCAL_REPORT.md](./BOT_SETUP_LOCAL_REPORT.md) for the preceding setup checkpoint.
+
+## Earlier checkpoints
+
 Last local audit: 2026-09-16
 
 Published Phase 2C-E commit / Phase 2A.6-A starting HEAD: `ba68b2eb5f4fe027f5234cf207a44f8c07514ea2`

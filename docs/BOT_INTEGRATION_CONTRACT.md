@@ -1,5 +1,17 @@
 # Code 3 Bot Integration Contract
 
+## Current local extension — 2026-10-17
+
+`codex/all-bot-integration-setup` adds manual installation setup for Hayha, Stellar, Shikari, Valor, Refract, Polar AIO, Sniped and Swooper AIO. One pure provider catalog supplies product names, official links, reviewed guidance and the Account Ops readiness list. These entries are coverage for local organization, not native integrations.
+
+The verified-owner Bots page can save and edit a non-secret installation label, runtime label and app version through the existing service. New UI-created records use `MANUAL_RECORD`, remain disabled/disconnected, and preserve schema version 1 and the existing storage key. Bot-specific Web Locks, staged atomic writes and verified-owner lifetime checks protect concurrent saves. Unreadable or unsupported stored records block writes while preserving the original bytes. The existing version checks, validation and backup boundary still apply. No automatic order import, sync, provider network call, task-control API, credential input or checkout action is introduced.
+
+Current native connection status for every real provider remains `NOT_CONFIGURED`, with all live capabilities false. The MOCK provider remains test-only. Review [current provider evidence](./BOT_PROVIDER_CAPABILITY_REVIEW.md) and [the local completion report](./BOT_SETUP_LOCAL_REPORT.md) before continuing. Earlier two-provider and read-only-screen statements below describe the historical baseline.
+
+The current Stellar Tasks overview documents file export/import, not a stable JSON schema or a current same-version guarantee. Historical wording below cannot establish native format compatibility. The existing bounded JSON preview remains heuristic, zero-write and distinct from installation saving.
+
+## Historical contract
+
 Status: Phase 2D-A local-only Bot Integration Foundation, Phase 2D-B1 provider capability discovery, and Phase 2D-B2 offline Stellar task-export preview remain published and unchanged. Phase 2A.6-A adds only an Account Ops provider-export readiness projection over this boundary; it does not connect a Bot, verify a schema/capability, create an outbound export, or write a Task. These phases do not operate a retailer account, control a task, automate checkout, create a Purchase, receive Inventory, configure credentials, activate remote persistence, or deploy Production.
 
 Starting baseline: `b4848cb851b2be83093fbdc4ed4b976857f9d3ff`.

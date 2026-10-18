@@ -86,8 +86,10 @@ async function noOverflow(page, label) {
       const root = page.locator('[data-testid="purchase-receiving-page"]');
       await root.waitFor();
       equal(await root.getAttribute("data-owner-gate"), "authorized", `${scenario.label} is owner gated`);
-      await root.getByRole("button", { name: "Corrections & Returns", exact: true }).click();
+      await root.locator('[data-purchase-section="corrections"]').click();
+      await root.getByText("Returns, replacements, and history", { exact: true }).click();
       match(await root.innerText(), /Refunds alone never remove Inventory/i, `${scenario.label} preserves refund/return separation`);
+      await root.locator('.ops-record-browser[aria-label="Inventory items"] .ops-record-browser__row').first().click();
       const review = root.getByRole("button", { name: "Review Correction or Return", exact: true });
       equal(await review.count(), 1, `${scenario.label} shows one canonical managed item`);
       await review.click();
@@ -108,7 +110,8 @@ async function noOverflow(page, label) {
         equal(saved.inventoryAdjustments.length, 1, "one append-only correction event is recorded");
         equal(saved.inventoryAdjustments[0].previousState.condition, "SEALED", "original condition remains in history");
         await page.reload({ waitUntil: "networkidle" });
-        await page.locator('[data-testid="purchase-receiving-page"]').getByRole("button", { name: "Corrections & Returns", exact: true }).click();
+        await page.locator('[data-testid="purchase-receiving-page"]').locator('[data-purchase-section="corrections"]').click();
+        await page.locator('[data-testid="purchase-receiving-page"]').locator('.ops-record-browser[aria-label="Inventory items"] .ops-record-browser__row').first().click();
         match(await page.locator('[data-testid="purchase-receiving-page"]').innerText(), /Damaged/i, "refresh replays the canonical correction state");
         equal((await page.evaluate((key) => JSON.parse(localStorage.getItem(key)), INVENTORY_KEY)).inventoryAdjustments.length, 1, "refresh does not duplicate the correction");
       }
@@ -125,7 +128,8 @@ async function noOverflow(page, label) {
       page.on("pageerror", (error) => browserErrors.push(`replacement-workflow: ${error.message}`));
       await page.goto(url(true, "light"), { waitUntil: "networkidle" });
       const root = page.locator('[data-testid="purchase-receiving-page"]');
-      await root.getByRole("button", { name: "Corrections & Returns", exact: true }).click();
+      await root.locator('[data-purchase-section="corrections"]').click();
+      await root.locator('.ops-record-browser[aria-label="Inventory items"] .ops-record-browser__row').first().click();
       await root.getByRole("button", { name: "Record Replacement Receiving", exact: true }).click();
       const dialog = page.getByRole("dialog", { name: "Record Replacement Receiving" });
       await dialog.getByLabel("Replacement reference").fill("replacement-browser.synthetic.test");

@@ -14,6 +14,7 @@ import {
   StatusBadge,
 } from "../../components/operations/OperationsUI.jsx";
 import { OWNER_SESSION_STATES } from "../../services/ownerSession.js";
+import { OperationsWorkspace, OperationsRecordBrowser } from "../../components/operations/OperationsWorkspace.jsx";
 import { ACCOUNT_OPS_STORAGE_KEY } from "./constants.js";
 import { ACCOUNT_OPS_RESTORE_JOURNAL_KEY, AccountOpsRecoveryError, assertAccountOpsRecoveryClear } from "./recoveryState.js";
 import {
@@ -99,20 +100,22 @@ function byId(rows, id) {
   return (rows || []).find((row) => row.id === id) || null;
 }
 
-function AccountOpsNavigation({ active, onChange }) {
+const AREA_LINKS = Object.freeze({
+  identity: [{ key: "identity", label: "Summary" }, { key: "profiles", label: "Profiles" }, { key: "emails", label: "Email aliases" }],
+  verification: [{ key: "verification", label: "Verification queue" }, { key: "inbox", label: "Purchase inbox" }],
+  automation: [{ key: "automation", label: "Export readiness" }, { key: "connections", label: "Provider connections" }],
+  activity: [{ key: "activity", label: "Activity & attention" }, { key: "tasks", label: "Tasks" }],
+});
+
+function AccountOpsNavigation({ active, onChange, children }) {
   const activeArea = areaForSection(active);
   return (
-    <>
-      <label className="account-ops-area-picker">
-        <span>Account Ops area</span>
-        <select value={activeArea} onChange={(event) => onChange(event.target.value)}>
-          {ACCOUNT_OPS_OPERATING_AREAS.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}
-        </select>
-      </label>
-      <nav className="account-ops-area-nav" aria-label="Account Ops areas">
-        {ACCOUNT_OPS_OPERATING_AREAS.map((item) => <button key={item.key} type="button" className={activeArea === item.key ? "is-active" : ""} aria-current={activeArea === item.key ? "page" : undefined} onClick={() => onChange(item.key)}><strong>{item.label}</strong>{" "}<small>{item.description}</small></button>)}
-      </nav>
-    </>
+    <OperationsWorkspace label="Account Ops areas" activeKey={activeArea} onNavigate={onChange}
+      navigation={ACCOUNT_OPS_OPERATING_AREAS.map((item) => ({ ...item, label: item.key === "identity" ? "Profiles & identity" : item.label }))}
+      sidebarFooter={<p className="account-ops-rail-note"><strong>Owner-managed workspace</strong>Local records and manual setup. Provider readiness is separate from a live connection.</p>}>
+      {AREA_LINKS[activeArea] ? <nav className="account-ops-context-nav" aria-label={`${searchLabelForSection(activeArea)} views`}>{AREA_LINKS[activeArea].map((item) => <button key={item.key} type="button" className={active === item.key ? "is-active" : ""} aria-current={active === item.key ? "page" : undefined} onClick={() => onChange(item.key)}>{item.label}</button>)}</nav> : null}
+      {children}
+    </OperationsWorkspace>
   );
 }
 
@@ -131,7 +134,7 @@ function SelectField({ label, value, onChange, options, helper = "", wide = fals
 }
 
 function Facts({ rows }) {
-  return <dl className="account-ops-facts">{rows.filter((row) => row.value !== undefined && row.value !== null && row.value !== "").map((row) => <div key={row.label}><dt>{row.label}</dt><dd className={row.mono ? "account-ops-alias" : ""}>{row.value}</dd></div>)}</dl>;
+  return <dl className="account-ops-facts">{rows.filter((row) => row.value !== undefined && row.value !== null && row.value !== "").map((row) => <div key={row.label} className={row.mono ? "account-ops-fact-wide" : ""}><dt>{row.label}</dt><dd className={row.mono ? "account-ops-alias" : ""}>{row.value}</dd></div>)}</dl>;
 }
 
 function copyText(value, onMessage) {
@@ -217,6 +220,7 @@ function AccountOpsPageContent({
   onSignIn,
   onSignOut,
   onReturnHome,
+  onOpenPurchases,
 }) {
   const authorized = session.status === OWNER_SESSION_STATES.AUTHORIZED;
   const [initialRecords] = useState(() => {
@@ -265,6 +269,9 @@ function AccountOpsPageContent({
   const [aliasDraft, setAliasDraft] = useState(null);
   const [generatedPassword, setGeneratedPassword] = useState("");
   const [selectedAccountIds, setSelectedAccountIds] = useState(() => new Set());
+  const [selectedAccountId, setSelectedAccountId] = useState("");
+  const [selectedProfileId, setSelectedProfileId] = useState("");
+  const [accountView, setAccountView] = useState("records");
   const [message, setMessage] = useState({ text: "", tone: "info" });
   const [busy, setBusy] = useState(false);
 
@@ -300,7 +307,8 @@ function AccountOpsPageContent({
   const retailerMap = useMemo(() => new Map(retailers.map((row) => [row.id, row])), [retailers]);
 
   function showMessage(text, tone = "info") { setMessage({ text, tone }); }
-  function chooseSection(next, nextFilters = null) { setSection(next); setQuery(""); setFilters(nextFilters ? { ...EMPTY_FILTERS, ...nextFilters } : { ...EMPTY_FILTERS }); onSectionChange?.(next); }
+  function chooseSection(next, nextFilters = null) { setSection(next); setQuery(""); setSelectedAccountId(""); setSelectedProfileId(""); setAccountView("records"); setFilters(nextFilters ? { ...EMPTY_FILTERS, ...nextFilters } : { ...EMPTY_FILTERS }); onSectionChange?.(next); }
+  function showAccountRecords() { setSelectedAccountId(""); setAccountView("records"); requestAnimationFrame(() => document.getElementById("account-ops-store-accounts")?.focus({ preventScroll: true })); }
   function closeDialog() { setDialog(""); setEditingId(""); setEditingVersion(undefined); setForm({}); setAliasDraft(null); setGeneratedPassword(""); }
   function changeForm(field, value) { setForm((current) => ({ ...current, [field]: value })); }
   function changeAddress(kind, field, value) { setForm((current) => ({ ...current, [kind]: { ...(current[kind] || {}), [field]: value } })); }
@@ -322,7 +330,7 @@ function AccountOpsPageContent({
     }
   }
 
-  function openProfile(record = null) { setEditingId(record?.id || ""); setEditingVersion(record?.recordVersion); setForm(profileDraft(record || {})); setDialog("profile"); }
+  function openProfile(record = null) { setEditingId(record?.id || ""); setEditingVersion(record?.recordVersion); setForm(profileDraft(record || { profileGroupId: (snapshot.profileGroups || []).some((group) => group.id === filters.profileGroupId && group.status !== "ARCHIVED") ? filters.profileGroupId : "" })); setDialog("profile"); }
   function openDomain(record = null) { setEditingId(record?.id || ""); setEditingVersion(record?.recordVersion); setForm(domainDraft(record || {})); setDialog("domain"); }
   function openAliasGenerator() { setEditingId(""); setForm(aliasGeneratorDraft()); setAliasDraft(null); setDialog("alias-generator"); }
   function openAliasEditor(record) { setEditingId(record.id); setEditingVersion(record.recordVersion); setForm({ profileId: record.profileId || "", retailerId: record.retailerId || "", purpose: record.purpose || "", notes: record.notes || "" }); setDialog("alias-edit"); }
@@ -352,7 +360,6 @@ function AccountOpsPageContent({
         <summary className="account-ops-filter-summary">Filter</summary>
         <div className="account-ops-filter-row">
           <SelectField label="Records" value={filters.recordScope} onChange={(value) => setFilters((current) => ({ ...current, recordScope: value }))} options={[{ value: "active", label: "Active" }, { value: "archived", label: "Archived" }, { value: "all", label: "All" }]} />
-          {section === "profiles" ? <SelectField label="Group" value={filters.profileGroupId} onChange={(value) => setFilters((current) => ({ ...current, profileGroupId: value }))} options={[{ value: "", label: "All groups" }, ...(snapshot.profileGroups || []).map((row) => ({ value: row.id, label: row.displayName }))]} /> : null}
           {section === "emails" ? <><SelectField label="Alias status" value={filters.aliasStatus} onChange={(value) => setFilters((current) => ({ ...current, aliasStatus: value }))} options={[{ value: "", label: "All statuses" }, ...Object.values(EMAIL_ALIAS_STATUSES)]} /><SelectField label="Profile" value={filters.profileId} onChange={(value) => setFilters((current) => ({ ...current, profileId: value }))} options={[{ value: "", label: "All profiles" }, ...(snapshot.profiles || []).map((row) => ({ value: row.id, label: row.displayName }))]} /><SelectField label="Retailer" value={filters.retailerId} onChange={(value) => setFilters((current) => ({ ...current, retailerId: value }))} options={[{ value: "", label: "All retailers" }, ...retailers.map((row) => ({ value: row.id, label: row.displayName }))]} /></> : null}
           {section === "accounts" ? <><SelectField label="Retailer" value={filters.retailerId} onChange={(value) => setFilters((current) => ({ ...current, retailerId: value }))} options={[{ value: "", label: "All retailers" }, ...retailers.map((row) => ({ value: row.id, label: row.displayName }))]} /><SelectField label="Profile" value={filters.profileId} onChange={(value) => setFilters((current) => ({ ...current, profileId: value }))} options={[{ value: "", label: "All profiles" }, ...(snapshot.profiles || []).map((row) => ({ value: row.id, label: row.displayName }))]} /><SelectField label="Status" value={filters.accountStatus} onChange={(value) => setFilters((current) => ({ ...current, accountStatus: value }))} options={[{ value: "", label: "All statuses" }, ...Object.values(STORE_ACCOUNT_STATUSES)]} /><SelectField label="Health" value={filters.health} onChange={(value) => setFilters((current) => ({ ...current, health: value }))} options={[{ value: "", label: "All health states" }, ...Object.values(ACCOUNT_HEALTH_STATES)]} /><SelectField label="Verification" value={filters.verification} onChange={(value) => setFilters((current) => ({ ...current, verification: value }))} options={[{ value: "", label: "Any verification" }, ...Object.values(VERIFICATION_STATES)]} /></> : null}
           {section === "tasks" ? <><SelectField label="Task status" value={filters.taskStatus} onChange={(value) => setFilters((current) => ({ ...current, taskStatus: value }))} options={[{ value: "", label: "All statuses" }, ...Object.values(ACCOUNT_TASK_STATUSES)]} /><SelectField label="Profile" value={filters.profileId} onChange={(value) => setFilters((current) => ({ ...current, profileId: value }))} options={[{ value: "", label: "All profiles" }, ...(snapshot.profiles || []).map((row) => ({ value: row.id, label: row.displayName }))]} /><SelectField label="Retailer" value={filters.retailerId} onChange={(value) => setFilters((current) => ({ ...current, retailerId: value }))} options={[{ value: "", label: "All retailers" }, ...retailers.map((row) => ({ value: row.id, label: row.displayName }))]} /></> : null}
@@ -363,28 +370,27 @@ function AccountOpsPageContent({
 
   return (
     <main className="account-ops" data-testid="account-ops">
-      <PageHeader eyebrow="Owner workspace" title="Account Ops" description="Accounts, profiles, and follow-ups. One organized workspace." actions={<StatusBadge tone="warning">Owner Only · Local Foundation</StatusBadge>} />
+      <PageHeader eyebrow="Owner workspace" title="Account Ops" description="A clear view of your accounts, profiles, and next steps." actions={<StatusBadge tone="neutral">Owner Only · Local Foundation</StatusBadge>} />
       {session.localDevelopment ? <div className="account-ops-local-development" role="status">Local development identity</div> : null}
-      <div className="account-ops-area-shell">
-        <AccountOpsNavigation active={section} onChange={chooseSection} />
+      <AccountOpsNavigation active={section} onChange={chooseSection}>
         <div className="account-ops-area-content">
           {message.text ? <p className={`account-ops-message${message.tone === "error" ? " is-error" : message.tone === "warning" ? " is-warning" : ""}`} role={message.tone === "error" ? "alert" : "status"}>{message.text}</p> : null}
 
           {section === "overview" ? <><AccountOpsOperationsPanel area="overview" accountOpsSnapshot={snapshot} retailers={retailers} onNavigate={chooseSection} onRequestAccountDraft={() => openAccount()} /><details className="account-ops-help account-ops-summary-details"><summary>Detailed account summary</summary>{renderOverview()}</details></> : null}
-          {section === "accounts" ? <><AccountOpsOperationsPanel area="accounts" accountOpsSnapshot={snapshot} retailers={retailers} onNavigate={chooseSection} onRequestAccountDraft={() => openAccount()} /><section id="account-ops-store-accounts" tabIndex={-1} aria-label="Store account list">{renderAccounts()}</section></> : null}
+          {section === "accounts" ? <><nav className="account-ops-context-nav" aria-label="Account views"><button type="button" className={accountView === "records" ? "is-active" : ""} aria-current={accountView === "records" ? "page" : undefined} onClick={() => setAccountView("records")}>Account records</button><button type="button" className={accountView === "readiness" ? "is-active" : ""} aria-current={accountView === "readiness" ? "page" : undefined} onClick={() => setAccountView("readiness")}>Setup & health</button></nav>{accountView === "readiness" ? <AccountOpsOperationsPanel area="accounts" onShowAccounts={showAccountRecords} accountOpsSnapshot={snapshot} retailers={retailers} onNavigate={chooseSection} onRequestAccountDraft={() => openAccount()} /> : null}<section id="account-ops-store-accounts" tabIndex={-1} aria-label="Store account list">{accountView === "records" ? renderAccounts() : <SecondaryButton onClick={() => setAccountView("records")}>Return to account records</SecondaryButton>}</section></> : null}
           {["identity", "payment", "network", "verification", "automation", "infrastructure"].includes(section) ? <AccountOpsOperationsPanel area={section} accountOpsSnapshot={snapshot} retailers={retailers} onNavigate={chooseSection} onRequestAccountDraft={() => openAccount()} /> : null}
-          {section === "activity" ? <><AccountOpsOperationsPanel area="activity" accountOpsSnapshot={snapshot} retailers={retailers} onNavigate={chooseSection} />{renderTasks()}</> : null}
+          {section === "activity" ? <AccountOpsOperationsPanel area="activity" accountOpsSnapshot={snapshot} retailers={retailers} onNavigate={chooseSection} /> : null}
           {section === "profiles" ? renderProfiles() : null}
           {section === "emails" ? renderEmails() : null}
           {section === "tasks" ? renderTasks() : null}
-          {section === "orders" ? <><AccountOpsOperationsPanel area="orders" accountOpsSnapshot={snapshot} retailers={retailers} onNavigate={chooseSection} /><Suspense fallback={<LoadingState title="Loading order foundation">Preparing the owner-only relationship view.</LoadingState>}><InboxOrderFoundation section="orders" localDevelopment={session.localDevelopment === true} /></Suspense></> : null}
+          {section === "orders" ? <><Suspense fallback={<LoadingState title="Loading order foundation">Preparing the owner-only relationship view.</LoadingState>}><InboxOrderFoundation section="orders" localDevelopment={session.localDevelopment === true} onOpenPurchases={onOpenPurchases} /></Suspense><details className="account-ops-management"><summary>Order relationships & receiving</summary><AccountOpsOperationsPanel area="orders" accountOpsSnapshot={snapshot} retailers={retailers} onNavigate={chooseSection} /></details></> : null}
           {section === "connections" || section === "inbox" ? (
             <Suspense fallback={<LoadingState title="Loading provider foundation">Preparing the owner-only Account Ops view.</LoadingState>}>
-              <InboxOrderFoundation section={section} localDevelopment={session.localDevelopment === true} />
+              <InboxOrderFoundation section={section} localDevelopment={session.localDevelopment === true} onOpenPurchases={onOpenPurchases} />
             </Suspense>
           ) : null}
         </div>
-      </div>
+      </AccountOpsNavigation>
 
       {renderDialogs()}
     </main>
@@ -410,17 +416,21 @@ function AccountOpsPageContent({
 
   function renderProfiles() {
     const profiles = filters.profileId ? searchResults.profiles.filter((profile) => profile.id === filters.profileId) : searchResults.profiles;
+    const renderProfileDetail = ({ id }) => {
+      const profile = profiles.find((row) => row.id === id);
+      if (!profile) return null;
+      const aliases = (snapshot.emailAliases || []).filter((row) => row.profileId === profile.id && row.status !== EMAIL_ALIAS_STATUSES.ARCHIVED).length;
+      const accounts = (snapshot.storeAccounts || []).filter((row) => row.profileId === profile.id && row.status !== STORE_ACCOUNT_STATUSES.ARCHIVED).length;
+      const tasks = (snapshot.tasks || []).filter((row) => row.profileId === profile.id && row.status === ACCOUNT_TASK_STATUSES.OPEN).length;
+      return <article className="account-ops-card account-ops-record-detail"><header><div><span className="account-ops-section-kicker">PROFILE DETAILS</span><h3>{profile.displayName}</h3><p>{byId(snapshot.profileGroups, profile.profileGroupId)?.displayName || "No group"}</p></div><StatusBadge tone={statusTone(profile.status)}>{words(profile.status)}</StatusBadge></header><Facts rows={[{ label: "Retailer Accounts", value: accounts }, { label: "Aliases", value: aliases }, { label: "Needs Attention", value: tasks }, { label: "Business", value: profile.businessName }, { label: "Preferred email", value: profile.emailPreference }, { label: "Shipping city", value: profile.shippingAddress?.city }]} /><div className="account-ops-card-actions"><PrimaryButton onClick={() => openProfile(profile)}>Open profile</PrimaryButton><SecondaryButton onClick={() => copyText([profile.fullName, profile.businessName, profile.phone].filter(Boolean).join("\n"), showMessage)}>Copy Info</SecondaryButton></div><div className="account-ops-detail-links"><span>Related records</span><QuietButton onClick={() => chooseSection("emails", { profileId: profile.id })}>Aliases ({aliases})</QuietButton><QuietButton onClick={() => chooseSection("accounts", { profileId: profile.id })}>Accounts ({accounts})</QuietButton><QuietButton onClick={() => chooseSection("tasks", { profileId: profile.id, taskStatus: "" })}>Tasks</QuietButton></div>{profile.status !== "ARCHIVED" ? <div className="account-ops-detail-archive"><QuietButton onClick={() => archive("profile", profile)}>Archive profile</QuietButton></div> : null}</article>;
+    };
     return (
       <section className="account-ops-section">
-        <SectionHeader title="Profiles" description="Reusable owner-managed identity records. Profiles never authorize Code 3." actions={<div className="account-ops-inline-actions"><SecondaryButton onClick={() => { setEditingId(""); setForm({ displayName: "", description: "", status: "ACTIVE" }); setDialog("group"); }}>New Group</SecondaryButton><PrimaryButton onClick={() => openProfile()}>Create Profile</PrimaryButton></div>} />
+        <SectionHeader title="Profiles" description="Reusable identity and address records, organized by group." actions={<div className="account-ops-inline-actions"><SecondaryButton onClick={() => { setEditingId(""); setEditingVersion(undefined); setForm({ displayName: "", description: "", status: "ACTIVE" }); setDialog("group"); }}>New Group</SecondaryButton><PrimaryButton onClick={() => openProfile()}>Create Profile</PrimaryButton></div>} />
         {renderToolbar()}
+        <div className="account-ops-group-filter"><SelectField label="Profile group" value={filters.profileGroupId} onChange={(value) => { setSelectedProfileId(""); setFilters((current) => ({ ...current, profileGroupId: value })); }} options={[{ value: "", label: "All groups" }, ...(snapshot.profileGroups || []).map((row) => ({ value: row.id, label: `${row.displayName}${row.status === "ARCHIVED" ? " (archived)" : ""}` }))]} /><span>{profiles.length} profile{profiles.length === 1 ? "" : "s"}</span>{filters.profileId ? <QuietButton onClick={() => setFilters((current) => ({ ...current, profileId: "" }))}>Show all profiles</QuietButton> : null}</div>
         {(snapshot.profileGroups || []).length ? <details className="account-ops-management"><summary>Manage profile groups</summary><div>{(snapshot.profileGroups || []).map((group) => <div className="account-ops-management-row" key={group.id}><span><strong>{group.displayName}</strong>{group.description ? ` — ${group.description}` : ""}</span><div className="account-ops-inline-actions"><SecondaryButton onClick={() => { setEditingId(group.id); setEditingVersion(group.recordVersion); setForm({ displayName: group.displayName, description: group.description || "", status: group.status }); setDialog("group"); }}>Edit</SecondaryButton>{group.status !== "ARCHIVED" ? <QuietButton onClick={() => { if (window.confirm(`Archive ${group.displayName}?`)) run(() => service.archiveProfileGroup(group.id), "Profile group archived."); }}>Archive</QuietButton> : null}</div></div>)}</div></details> : null}
-        {profiles.length ? <div className="account-ops-list account-ops-list--cards">{profiles.map((profile) => {
-          const aliases = (snapshot.emailAliases || []).filter((row) => row.profileId === profile.id && row.status !== EMAIL_ALIAS_STATUSES.ARCHIVED).length;
-          const accounts = (snapshot.storeAccounts || []).filter((row) => row.profileId === profile.id && row.status !== STORE_ACCOUNT_STATUSES.ARCHIVED).length;
-          const tasks = (snapshot.tasks || []).filter((row) => row.profileId === profile.id && row.status === ACCOUNT_TASK_STATUSES.OPEN).length;
-          return <article className="account-ops-card" key={profile.id}><header><div><h3>{profile.displayName}</h3><p>{byId(snapshot.profileGroups, profile.profileGroupId)?.displayName || "No group"}</p></div><StatusBadge tone={statusTone(profile.status)}>{words(profile.status)}</StatusBadge></header><Facts rows={[{ label: "Retailer Accounts", value: accounts }, { label: "Aliases", value: aliases }, { label: "Needs Attention", value: tasks }, { label: "Business", value: profile.businessName }]} /><div className="account-ops-card-actions"><PrimaryButton onClick={() => openProfile(profile)}>Open</PrimaryButton><SecondaryButton onClick={() => copyText([profile.fullName, profile.businessName, profile.phone].filter(Boolean).join("\n"), showMessage)}>Copy Info</SecondaryButton><QuietButton onClick={() => chooseSection("emails", { profileId: profile.id })}>Aliases</QuietButton><QuietButton onClick={() => chooseSection("accounts", { profileId: profile.id })}>Accounts</QuietButton><QuietButton onClick={() => chooseSection("tasks", { profileId: profile.id, taskStatus: "" })}>Tasks</QuietButton>{profile.status !== "ARCHIVED" ? <QuietButton onClick={() => archive("profile", profile)}>Archive</QuietButton> : null}</div></article>;
-        })}</div> : <EmptyState title="No profiles found" action={<PrimaryButton onClick={() => openProfile()}>Create Profile</PrimaryButton>}>Create a reusable personal, business, store-specific, or custom-group profile.</EmptyState>}
+        <OperationsRecordBrowser label="Profiles" records={profiles.map((profile) => ({ id: profile.id, title: profile.displayName, subtitle: byId(snapshot.profileGroups, profile.profileGroupId)?.displayName || "No group", meta: profile.businessName || "Personal profile", status: words(profile.status), statusTone: statusTone(profile.status) }))} selectedId={selectedProfileId} onSelect={setSelectedProfileId} onBack={() => setSelectedProfileId("")} renderDetail={renderProfileDetail} detailEmpty={<EmptyState title="Choose a profile">Select a record to see linked accounts, aliases, and profile actions.</EmptyState>} emptyState={<EmptyState title="No profiles found" action={<PrimaryButton onClick={() => openProfile()}>Create Profile</PrimaryButton>}>Create a reusable personal, business, store-specific, or custom-group profile.</EmptyState>} />
       </section>
     );
   }
@@ -469,7 +479,6 @@ function AccountOpsPageContent({
       const result = await run(() => service.bulkArchive("storeAccounts", selectedVisible), "Selected accounts archived.");
       if (result) setSelectedAccountIds(new Set());
     };
-    const groups = retailers.map((retailer) => ({ retailer, accounts: searchResults.accounts.filter((account) => account.retailerId === retailer.id) })).filter((group) => group.accounts.length);
     const AccountActions = ({ account }) => {
       const aliasAddress = aliasMap.get(account.aliasId)?.aliasAddress;
       return <div className="account-ops-card-actions"><PrimaryButton onClick={() => openSetup(account)}>Setup</PrimaryButton><SecondaryButton onClick={() => openAccount(account)}>Edit</SecondaryButton>{aliasAddress ? <QuietButton onClick={() => copyText(aliasAddress, showMessage)}>Copy Email</QuietButton> : null}{account.username && account.username !== aliasAddress ? <QuietButton onClick={() => copyText(account.username, showMessage)}>Copy Username</QuietButton> : null}<QuietButton onClick={() => chooseSection("profiles", { profileId: account.profileId })}>View Profile</QuietButton><QuietButton onClick={() => openTask(null, { accountId: account.id, profileId: account.profileId, retailerId: account.retailerId, type: ACCOUNT_TASK_TYPES.CUSTOM, title: `Review ${retailerMap.get(account.retailerId)?.displayName || "store"} account` })}>Task</QuietButton>{account.status !== STORE_ACCOUNT_STATUSES.ARCHIVED ? <QuietButton onClick={() => archive("account", account)}>Archive</QuietButton> : null}</div>;
@@ -480,27 +489,15 @@ function AccountOpsPageContent({
         {renderToolbar()}
         <details className="account-ops-management"><summary>Retailer directory</summary><div>{retailers.map((retailer) => <div className="account-ops-management-row" key={retailer.id}><span><strong>{retailer.displayName}</strong> — {retailer.custom ? "Custom" : "Code 3 preset"}</span>{retailer.custom ? <div className="account-ops-inline-actions"><SecondaryButton onClick={() => openRetailer(retailer)}>Edit</SecondaryButton><QuietButton onClick={() => archive("retailer", retailer)}>Archive</QuietButton></div> : null}</div>)}</div></details>
         {selectedVisible.length ? <div className="account-ops-bulk" role="region" aria-label="Selected account actions"><strong>{selectedVisible.length} selected</strong><SecondaryButton onClick={bulkTasks} disabled={busy}>Create Review Tasks</SecondaryButton><QuietButton onClick={bulkArchive} disabled={busy}>Archive</QuietButton><QuietButton onClick={() => setSelectedAccountIds(new Set())}>Clear</QuietButton></div> : null}
-        {searchResults.accounts.length ? <>
-          <div className="account-ops-mobile-list account-ops-account-groups">{groups.map(({ retailer, accounts }) => {
-            const ready = accounts.filter((row) => row.status === STORE_ACCOUNT_STATUSES.READY).length;
-            const attention = accounts.length - accounts.filter((row) => healthByAccount.get(row.id)?.health === ACCOUNT_HEALTH_STATES.HEALTHY).length;
-            return <section className="account-ops-retailer-group" key={retailer.id}><header><div><h3>{retailer.displayName}</h3><p>{accounts.length} account{accounts.length === 1 ? "" : "s"} · {ready} Ready · {attention} Needs Attention</p></div></header><div className="account-ops-list">{accounts.map((account) => {
-              const health = healthByAccount.get(account.id) || { health: ACCOUNT_HEALTH_STATES.UNKNOWN, reasons: [] };
-              const profile = profileMap.get(account.profileId);
-              const alias = aliasMap.get(account.aliasId);
-              return <article className="account-ops-card" key={account.id}><header><label className="account-ops-select"><input type="checkbox" checked={selectedAccountIds.has(account.id)} onChange={() => toggleSelected(account.id)} aria-label={`Select ${account.accountDisplayName || profile?.displayName || retailer.displayName}`} /><span><h3>{account.accountDisplayName || profile?.displayName || "Store account"}</h3><p>{profile?.displayName || "Missing profile"}</p></span></label><StatusBadge tone={statusTone(health.health)}>{words(health.health)}</StatusBadge></header><Facts rows={[{ label: "Alias", value: alias?.aliasAddress || account.username || "Not recorded", mono: true }, { label: "Status", value: words(account.status) }, { label: "Email verification", value: words(account.emailVerificationStatus) }, { label: "Phone", value: account.phoneVerificationRequired ? words(account.phoneVerificationStatus) : "Not required" }, { label: "Last verified", value: dateLabel(account.lastVerifiedAt) }]} />{health.reasons.length ? <ul className="account-ops-reasons">{health.reasons.slice(0, 3).map((reason) => <li key={reason.code}>{reason.message}</li>)}</ul> : null}<AccountActions account={account} /></article>;
-            })}</div></section>;
-          })}</div>
-          <div className="account-ops-desktop-table"><DesktopDataTable caption="Store accounts" rows={searchResults.accounts} columns={[
-            { key: "select", label: "Select", render: (account) => <label className="account-ops-table-select"><input type="checkbox" checked={selectedAccountIds.has(account.id)} onChange={() => toggleSelected(account.id)} aria-label={`Select ${account.accountDisplayName || "store account"}`} /></label> },
-            { key: "account", label: "Account", render: (account) => <><strong>{account.accountDisplayName || "Store account"}</strong><small>{retailerMap.get(account.retailerId)?.displayName || "Missing retailer"}</small></> },
-            { key: "profile", label: "Profile", render: (account) => profileMap.get(account.profileId)?.displayName || "Missing" },
-            { key: "email", label: "Email", render: (account) => <span className="account-ops-alias">{aliasMap.get(account.aliasId)?.aliasAddress || account.username || "Not recorded"}</span> },
-            { key: "status", label: "Status", render: (account) => <StatusBadge tone={statusTone(account.status)}>{words(account.status)}</StatusBadge> },
-            { key: "health", label: "Health", render: (account) => <StatusBadge tone={statusTone(healthByAccount.get(account.id)?.health)}>{words(healthByAccount.get(account.id)?.health)}</StatusBadge> },
-            { key: "actions", label: "Actions", render: (account) => <AccountActions account={account} /> },
-          ]} /></div>
-        </> : <EmptyState title="No store accounts found" action={<PrimaryButton onClick={() => openAccount()}>Create Account</PrimaryButton>}>Prepare one legitimate retailer account and keep verification human-controlled.</EmptyState>}
+        <div className="account-ops-record-summary"><span>{searchResults.accounts.length} account{searchResults.accounts.length === 1 ? "" : "s"}</span>{searchResults.accounts.length ? <label className="account-ops-select-all"><input type="checkbox" aria-label="Select all filtered accounts" checked={selectedVisible.length === searchResults.accounts.length} onChange={(event) => { const checked = event.target.checked; setSelectedAccountIds((current) => { const next = new Set(current); for (const id of visibleIds) { if (checked) next.add(id); else next.delete(id); } return next; }); }} />Select filtered accounts</label> : null}</div>
+        <OperationsRecordBrowser label="Store accounts" records={searchResults.accounts.map((account) => ({ id: account.id, title: account.accountDisplayName || profileMap.get(account.profileId)?.displayName || "Store account", subtitle: [retailerMap.get(account.retailerId)?.displayName || "Missing retailer", profileMap.get(account.profileId)?.displayName || "Missing profile"].join(" · "), meta: aliasMap.get(account.aliasId)?.aliasAddress || account.username || "No email recorded", status: words(healthByAccount.get(account.id)?.health), statusTone: statusTone(healthByAccount.get(account.id)?.health) }))} selectedId={selectedAccountId} onSelect={setSelectedAccountId} onBack={() => setSelectedAccountId("")} detailEmpty={<EmptyState title="Choose an account">Select a record to see verification, owner-recorded health, and setup actions.</EmptyState>} emptyState={<EmptyState title="No store accounts found" action={<PrimaryButton onClick={() => openAccount()}>Create Account</PrimaryButton>}>Prepare one legitimate retailer account and keep verification human-controlled.</EmptyState>} renderDetail={({ id }) => {
+          const account = searchResults.accounts.find((row) => row.id === id);
+          if (!account) return null;
+          const health = healthByAccount.get(account.id) || { health: ACCOUNT_HEALTH_STATES.UNKNOWN, reasons: [] };
+          const profile = profileMap.get(account.profileId);
+          const alias = aliasMap.get(account.aliasId);
+          return <article className="account-ops-card account-ops-record-detail"><header><div><span className="account-ops-section-kicker">ACCOUNT DETAILS</span><h3>{account.accountDisplayName || profile?.displayName || "Store account"}</h3><p>{retailerMap.get(account.retailerId)?.displayName || "Missing retailer"}</p></div><StatusBadge tone={statusTone(health.health)}>{words(health.health)}</StatusBadge></header><p className="account-ops-detail-note">Manual setup · Health and verification are recorded by the owner.</p><Facts rows={[{ label: "Profile", value: profile?.displayName || "Missing profile" }, { label: "Alias", value: alias?.aliasAddress || account.username || "Not recorded", mono: true }, { label: "Status", value: words(account.status) }, { label: "Email verification", value: words(account.emailVerificationStatus) }, { label: "Phone", value: account.phoneVerificationRequired ? words(account.phoneVerificationStatus) : "Not required" }, { label: "Last verified", value: dateLabel(account.lastVerifiedAt) }]} />{health.reasons.length ? <ul className="account-ops-reasons">{health.reasons.map((reason) => <li key={reason.code}>{reason.message}</li>)}</ul> : null}<AccountActions account={account} /><label className="account-ops-select-all"><input type="checkbox" checked={selectedAccountIds.has(account.id)} onChange={() => toggleSelected(account.id)} aria-label={"Select " + (account.accountDisplayName || "store account")} />Include in selected account actions</label></article>;
+        }} />
       </section>
     );
   }

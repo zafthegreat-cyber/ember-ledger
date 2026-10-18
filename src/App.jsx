@@ -51453,6 +51453,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               session={ownerSession}
               initialSection={accountOpsSection}
               onSectionChange={setAccountOpsSection}
+              onOpenPurchases={() => { prepareRouteNavigation(); setBusinessWorkspaceView("purchases"); setActiveTab("businessWorkspace"); }}
               onSignIn={() => { setAuthMode("login"); setGuestPreview(false); setActiveTab("account"); }}
               onSignOut={signOut}
               onReturnHome={() => navigateProductWorkspace(WORKSPACE_IDS.BUSINESS)}

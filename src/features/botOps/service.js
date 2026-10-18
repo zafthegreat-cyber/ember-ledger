@@ -1,14 +1,19 @@
 import { hashCanonicalJson } from "../backup/canonicalJson.js";
+import { minorUnitsToMajorString } from "../intelligence/money.js";
 import {
   BOT_EVIDENCE_REVIEW_STATES,
   BOT_OPS_COLLECTIONS,
   BOT_OPS_FORMAT,
   BOT_PROVENANCE,
   BOT_PROVIDER_KEYS,
+  BOT_RECORD_STATUS,
+  BOT_TASK_MODES,
+  BOT_TASK_STATUSES,
 } from "./constants.js";
-import { createBotOpsPersistence } from "./persistence.js";
+import { BotOpsPersistenceError, createBotOpsPersistence } from "./persistence.js";
 import { assertBotProviderAdapter } from "./providerAdapters.js";
 import { listBotProviders } from "./providerRegistry.js";
+import { isRegisteredBotProvider } from "./providerCatalog.js";
 import {
   buildAttemptDraft,
   buildCheckoutEvidenceDraft,
@@ -18,13 +23,32 @@ import {
   planTaskReconciliation,
 } from "./reconciliation.js";
 import { assertSafeBotOpsInput, safeBotOpsClone } from "./security.js";
-import { BOT_OPS_RECORD_NORMALIZERS } from "./validators.js";
+import { BOT_OPS_RECORD_NORMALIZERS, BotOpsValidationError } from "./validators.js";
 
 const PROHIBITED_OPTIONS = new Set([
   "mode", "persistenceMode", "remoteDataSource", "request", "remoteActive", "sync",
   "migrationApply", "rollbackExecutor", "providerNetworkAccess", "liveAdapter",
 ]);
 const DIRECTLY_MUTABLE_COLLECTIONS = new Set(BOT_OPS_COLLECTIONS.filter((collection) => !["attempts", "checkoutEvidence", "activity"].includes(collection)));
+const MANUAL_PLAN_CREATE_FIELDS = new Set(["installationId", "retailerId", "title", "identifierType", "identifierValue", "quantityTarget", "maxPrice", "notes"]);
+const MANUAL_PLAN_UPDATE_FIELDS = new Set(["quantityTarget", "maxPrice", "runtimeStatus"]);
+const MANUAL_PLAN_IDENTIFIER_TYPES = new Set(["sku", "tcin", "upc", "canonicalProductId"]);
+const MANUAL_PLAN_STAGES = new Set([BOT_TASK_STATUSES.DRAFT, BOT_TASK_STATUSES.READY, BOT_TASK_STATUSES.PAUSED, BOT_TASK_STATUSES.STOPPED, BOT_TASK_STATUSES.UNKNOWN]);
+const MANUAL_PLAN_STAGE_LABELS = Object.freeze({ DRAFT: "Planning", READY: "Plan ready", PAUSED: "On hold", STOPPED: "Closed", UNKNOWN: "Unknown" });
+
+function manualPriceLabel(value) {
+  return value ? `${minorUnitsToMajorString(value.minorUnits)} ${value.currency}` : "Not set";
+}
+
+function assertManualPlanFields(input, allowed) {
+  assertSafeBotOpsInput(input);
+  if (!input || typeof input !== "object" || Array.isArray(input)) throw new BotOpsValidationError("INVALID_OBJECT", "Manual plan details must be a plain object.");
+  const unknown = Object.keys(input).find((key) => !allowed.has(key));
+  if (unknown) throw new BotOpsValidationError("UNKNOWN_FIELD", `Unsupported manual plan field: ${unknown}.`);
+  if (Object.hasOwn(input, "quantityTarget") && (!Number.isSafeInteger(input.quantityTarget) || input.quantityTarget < 1 || input.quantityTarget > 1_000)) {
+    throw new BotOpsValidationError("INVALID_INTEGER", "Plan quantity must be a whole number from 1 to 1,000.");
+  }
+}
 
 async function listAll(gateway) {
   const records = [];
@@ -54,12 +78,26 @@ export function createBotOpsService(options = {}) {
   const now = options.now || (() => new Date().toISOString());
   let sequence = 0;
   const idFactory = options.idFactory || ((prefix) => `${prefix}:${globalThis.crypto?.randomUUID?.() || `${Date.now()}-${sequence += 1}`}`);
-  const persistence = createBotOpsPersistence({
-    storage: options.storage,
-    repository: options.repository,
-    now,
-    idFactory,
-  });
+  const settings = { ...options, now, idFactory };
+  const persistence = createBotOpsPersistence(settings);
+  const raw = createBotOpsServiceInsideOperation({ ...settings, repository: persistence.repository });
+  if (!persistence.repository.transact) return raw;
+  return Object.freeze(Object.fromEntries(Object.entries(raw).map(([name, value]) => [name,
+    typeof value === "function" && BOT_OPS_MUTATION_NAMES.includes(name)
+      ? (...args) => persistence.repository.transact((scoped) => createBotOpsServiceInsideOperation({ ...settings, repository: scoped })[name](...args))
+      : value,
+  ])));
+}
+
+export const BOT_OPS_MUTATION_NAMES = Object.freeze([
+  "createInstallation", "createRetailerAccountLink", "createBotProfile", "createProxyGroup", "createProductTarget", "createTaskGroup", "createTask",
+  "updateRecord", "archiveRecord", "ingestProviderEvent", "recordAttempt", "reviewCheckoutEvidence", "reconcileCheckoutEvidence",
+  "createManualPlan", "updateManualPlan",
+]);
+
+function createBotOpsServiceInsideOperation(options) {
+  const { now, idFactory } = options;
+  const persistence = createBotOpsPersistence(options);
   const testAdapter = options.testAdapter ? assertBotProviderAdapter(options.testAdapter) : null;
   if (testAdapter) {
     const description = testAdapter.describe();
@@ -71,6 +109,9 @@ export function createBotOpsService(options = {}) {
 
   function snapshot() {
     const state = persistence.repository.load();
+    if (persistence.repository.getLastError?.()) {
+      throw new BotOpsPersistenceError("LOCAL_READ_FAILED", "Saved Bot Operations records could not be read. Existing data has been kept; resolve the storage problem before continuing.");
+    }
     return safeBotOpsClone({
       ...state,
       providers: listBotProviders(),
@@ -91,7 +132,7 @@ export function createBotOpsService(options = {}) {
   }
 
   async function createInstallation(input) {
-    if (input.provider === BOT_PROVIDER_KEYS.MOCK && !testAdapter) throw new Error("Mock Bot Installation records are restricted to explicit test execution.");
+    if (String(input.provider || "").toUpperCase() === BOT_PROVIDER_KEYS.MOCK && !testAdapter) throw new Error("Mock Bot Installation records are restricted to explicit test execution.");
     return collections.installations.create(input);
   }
 
@@ -135,15 +176,106 @@ export function createBotOpsService(options = {}) {
   }
 
   async function createTaskGroup(input) {
-    if (input.provider === BOT_PROVIDER_KEYS.MOCK && !testAdapter) throw new Error("Mock Task Groups are restricted to explicit test execution.");
+    if (String(input.provider || "").toUpperCase() === BOT_PROVIDER_KEYS.MOCK && !testAdapter) throw new Error("Mock Task Groups are restricted to explicit test execution.");
     await assertTaskGroupRelationships(input);
     return collections.taskGroups.create(input);
   }
 
   async function createTask(input) {
-    if (input.provider === BOT_PROVIDER_KEYS.MOCK && !testAdapter) throw new Error("Mock Bot Tasks are restricted to explicit test execution.");
+    if (String(input.provider || "").toUpperCase() === BOT_PROVIDER_KEYS.MOCK && !testAdapter) throw new Error("Mock Bot Tasks are restricted to explicit test execution.");
     await assertTaskRelationships(input);
     return collections.tasks.create(input);
+  }
+
+  async function requireActivePlanRecord(collection, recordId, label) {
+    const record = await collections[collection].getById(String(recordId || ""));
+    if (!record || record.status !== BOT_RECORD_STATUS.ACTIVE || record.archivedAt) {
+      throw new BotOpsValidationError("ACTIVE_REFERENCE_REQUIRED", `Choose an active ${label} before saving this manual plan.`);
+    }
+    return record;
+  }
+
+  async function createManualPlan(input) {
+    if (!persistence.repository.transact) throw new BotOpsPersistenceError("ATOMIC_OPERATION_REQUIRED", "Manual plans require coordinated local storage.");
+    assertManualPlanFields(input, MANUAL_PLAN_CREATE_FIELDS);
+    if (!MANUAL_PLAN_IDENTIFIER_TYPES.has(input.identifierType)) {
+      throw new BotOpsValidationError("INVALID_IDENTIFIER_TYPE", "Choose SKU, TCIN, UPC, or a catalog product ID.");
+    }
+    if (typeof input.identifierValue !== "string" || !input.identifierValue.trim()) {
+      throw new BotOpsValidationError("PRODUCT_ID_REQUIRED", "A manual plan needs a product identifier.");
+    }
+    if (!Object.hasOwn(input, "quantityTarget")) throw new BotOpsValidationError("REQUIRED_FIELD", "Plan quantity is required.");
+    const installation = await requireActivePlanRecord("installations", input.installationId, "bot installation");
+    if (!isRegisteredBotProvider(installation.provider)) throw new BotOpsValidationError("MANUAL_PROVIDER_REQUIRED", "Manual plans require a real saved bot installation.");
+    const target = await createProductTarget({
+      retailerId: input.retailerId,
+      title: input.title,
+      [input.identifierType]: input.identifierValue,
+      quantityLimit: input.quantityTarget,
+      maxPrice: input.maxPrice ?? null,
+      notes: input.notes ?? "",
+      provenance: BOT_PROVENANCE.OWNER_ENTERED,
+    });
+    const group = await createTaskGroup({
+      name: `Plan: ${target.title}`.slice(0, 300),
+      retailerId: target.retailerId,
+      provider: installation.provider,
+      installationId: installation.id,
+      scheduleMode: "MANUAL",
+      taskMode: BOT_TASK_MODES.MANUAL_DRAFT,
+      quantityLimit: target.quantityLimit,
+      maxPrice: target.maxPrice,
+      enabled: false,
+    });
+    const task = await createTask({
+      taskGroupId: group.id,
+      productTargetId: target.id,
+      retailerId: target.retailerId,
+      provider: installation.provider,
+      installationId: installation.id,
+      quantityTarget: target.quantityLimit,
+      maxPrice: target.maxPrice,
+      taskMode: BOT_TASK_MODES.MANUAL_DRAFT,
+      runtimeStatus: BOT_TASK_STATUSES.DRAFT,
+      provenance: BOT_PROVENANCE.OWNER_ENTERED,
+    });
+    await appendActivity("MANUAL_PLAN_CREATED", "A manual plan was saved on this device. No bot task was started.", {
+      installationId: installation.id, taskGroupId: group.id, taskId: task.id,
+    });
+    return { task, target, group };
+  }
+
+  async function updateManualPlan(taskId, patch, expectedVersion) {
+    if (!persistence.repository.transact) throw new BotOpsPersistenceError("ATOMIC_OPERATION_REQUIRED", "Manual plans require coordinated local storage.");
+    assertManualPlanFields(patch, MANUAL_PLAN_UPDATE_FIELDS);
+    if (!Object.keys(patch).length) throw new BotOpsValidationError("EMPTY_PATCH", "Choose a planning detail to update.");
+    if (!Number.isInteger(expectedVersion) || expectedVersion < 1) throw new BotOpsValidationError("EXPECTED_VERSION_REQUIRED", "Reload the manual plan before saving changes.");
+    if (Object.hasOwn(patch, "runtimeStatus") && !MANUAL_PLAN_STAGES.has(patch.runtimeStatus)) {
+      throw new BotOpsValidationError("MANUAL_STAGE_REQUIRED", "Choose a manual planning stage. Live bot statuses are unavailable.");
+    }
+    const current = await getRequired("tasks", taskId);
+    if (current.status === BOT_RECORD_STATUS.ARCHIVED || current.archivedAt) throw new BotOpsValidationError("MANUAL_PLAN_ARCHIVED", "Archived plans cannot be changed.");
+    if (!isRegisteredBotProvider(current.provider)) throw new BotOpsValidationError("MANUAL_PROVIDER_REQUIRED", "Manual planning updates require a real bot provider.");
+    await Promise.all([
+      requireActivePlanRecord("installations", current.installationId, "bot installation"),
+      requireActivePlanRecord("taskGroups", current.taskGroupId, "task group"),
+      requireActivePlanRecord("productTargets", current.productTargetId, "product target"),
+    ]);
+    await assertTaskRelationships(current);
+    if (current.recordVersion !== expectedVersion) throw new BotOpsPersistenceError("VERSION_CONFLICT", "This manual plan changed after it was opened. Reload before saving again.");
+    const normalized = BOT_OPS_RECORD_NORMALIZERS.tasks({ ...current, ...patch }, { persisted: true });
+    const changes = [];
+    if (current.runtimeStatus !== normalized.runtimeStatus) changes.push(`Planning stage: ${MANUAL_PLAN_STAGE_LABELS[current.runtimeStatus]} → ${MANUAL_PLAN_STAGE_LABELS[normalized.runtimeStatus]}`);
+    if (current.quantityTarget !== normalized.quantityTarget) changes.push(`Quantity: ${current.quantityTarget} → ${normalized.quantityTarget}`);
+    if (current.maxPrice?.minorUnits !== normalized.maxPrice?.minorUnits || current.maxPrice?.currency !== normalized.maxPrice?.currency) {
+      changes.push(`Price cap: ${manualPriceLabel(current.maxPrice)} → ${manualPriceLabel(normalized.maxPrice)}`);
+    }
+    if (!changes.length) return current;
+    const updated = await updateRecord("tasks", taskId, patch, expectedVersion);
+    await appendActivity("MANUAL_PLAN_UPDATED", `${changes.join(". ")}. Manual record only; no bot task was controlled.`, {
+      installationId: current.installationId, taskGroupId: current.taskGroupId, taskId: current.id,
+    });
+    return updated;
   }
 
   async function updateRecord(collection, recordId, input, expectedVersion) {
@@ -350,6 +482,8 @@ export function createBotOpsService(options = {}) {
     createProductTarget,
     createTaskGroup,
     createTask,
+    createManualPlan,
+    updateManualPlan,
     updateRecord,
     archiveRecord,
     ingestProviderEvent,

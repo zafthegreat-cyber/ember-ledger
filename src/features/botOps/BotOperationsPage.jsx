@@ -1,31 +1,33 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   EmptyState,
   ErrorState,
-  MetricCard,
   PageHeader,
   RecordCard,
   SectionHeader,
   StatusBadge,
 } from "../../components/operations/OperationsUI.jsx";
+import { OperationsWorkspace } from "../../components/operations/OperationsWorkspace.jsx";
 import { formatMoneyForDisplay } from "../intelligence/money.js";
 import { OWNER_SESSION_STATES } from "../../services/ownerSession.js";
 import {
-  BOT_EVIDENCE_REVIEW_STATES,
-  BOT_PROVIDER_CONNECTION_STATUS,
-  BOT_TASK_STATUSES,
+  BOT_INTEGRATION_MODES,
   createBotOpsService,
-  getBotProviderDiscovery,
   listBotProviders,
 } from "./index.js";
 import StellarTaskExportPreview from "./importPreview/StellarTaskExportPreview.jsx";
+import BotProviderSetup from "./BotProviderSetup.jsx";
+import BotTaskTracker from "./BotTaskTracker.jsx";
+import BotTrackingOverview from "./BotTrackingOverview.jsx";
+import BotTrackingActivity from "./BotTrackingActivity.jsx";
+import { buildBotTracking, isArchived, providerLabel, retailerLabel } from "./tracking.js";
 import "./bot-operations.css";
 
 const SECTIONS = Object.freeze([
   { key: "overview", label: "Overview" },
+  { key: "tasks", label: "Tasks" },
   { key: "bots", label: "Bots" },
   { key: "task-groups", label: "Task Groups" },
-  { key: "tasks", label: "Tasks" },
   { key: "accounts", label: "Accounts" },
   { key: "profiles", label: "Profiles" },
   { key: "proxies", label: "Proxies" },
@@ -65,27 +67,6 @@ function statusTone(value) {
   return "neutral";
 }
 
-function BotOpsTabs({ active, onChange }) {
-  const primary = SECTIONS.slice(0, 3);
-  const secondary = SECTIONS.slice(3);
-  const choose = (key, event) => {
-    const disclosure = event.currentTarget.closest(".bot-ops-tabs")?.querySelector("details");
-    if (disclosure) disclosure.open = false;
-    onChange(key);
-  };
-  return (
-    <nav className="bot-ops-tabs" aria-label="Bot Operations sections">
-      {primary.map((item) => (
-        <button key={item.key} type="button" className={active === item.key ? "is-active" : ""} aria-current={active === item.key ? "page" : undefined} onClick={(event) => choose(item.key, event)}>{item.label}</button>
-      ))}
-      <details className="bot-ops-tabs-more">
-        <summary>More</summary>
-        <div>{secondary.map((item) => <button key={item.key} type="button" className={active === item.key ? "is-active" : ""} aria-current={active === item.key ? "page" : undefined} onClick={(event) => choose(item.key, event)}>{item.label}</button>)}</div>
-      </details>
-    </nav>
-  );
-}
-
 function Facts({ rows }) {
   return <dl className="bot-ops-facts">{rows.filter((row) => row.value !== null && row.value !== undefined && row.value !== "").map((row) => <div key={row.label}><dt>{row.label}</dt><dd>{row.value}</dd></div>)}</dl>;
 }
@@ -94,83 +75,13 @@ function WarningList({ warnings = [] }) {
   return warnings.length ? <ul className="bot-ops-warnings">{warnings.map((warning) => <li key={warning}>{words(warning)}</li>)}</ul> : null;
 }
 
-function ProviderCard({ provider }) {
-  const status = provider.connectionStatus || provider.status || BOT_PROVIDER_CONNECTION_STATUS.NOT_CONFIGURED;
-  const capabilityEntries = Object.entries(provider.capabilities || {});
-  const discovery = getBotProviderDiscovery(provider.key || provider.providerKey);
-  return (
-    <RecordCard className="bot-ops-record">
-      <div className="bot-ops-card-heading"><div><p className="eyebrow">Provider metadata</p><h3>{provider.displayName}</h3></div><StatusBadge tone={statusTone(status)}>{words(status)}</StatusBadge></div>
-      <p>{provider.description || "Provider-neutral metadata is available. No live adapter is connected."}</p>
-      <Facts rows={[
-        { label: "Runtime", value: "Disconnected / unavailable" },
-        { label: "Integration modes", value: (provider.supportedIntegrationModes || provider.integrationModes || []).map(words).join(", ") || "Not configured" },
-        { label: "Provider network", value: "Disabled" },
-      ]} />
-      {discovery ? (
-        <details className="bot-ops-discovery">
-          <summary>Integration discovery</summary>
-          <p className="bot-ops-discovery-note">Research evidence only · Not provider access or approval</p>
-          <Facts rows={[
-            { label: "Official API", value: words(discovery.officialApiStatus) },
-            { label: "Webhook", value: words(discovery.webhookStatus) },
-            { label: "Export", value: words(discovery.exportStatus) },
-            { label: "Local interface", value: words(discovery.localInterfaceStatus) },
-            { label: "Pilot readiness", value: words(discovery.pilotReadiness) },
-            { label: "Live capabilities", value: discovery.liveCapabilitiesEnabled ? "Enabled" : "Disabled" },
-          ]} />
-          <p>{discovery.provider === "STELLAR"
-            ? "A sanitized, owner-selected task export is an offline review candidate only. It cannot report live status or control Stellar."
-            : "No supported read/status pilot path was established from the reviewed public evidence."}</p>
-        </details>
-      ) : null}
-      <details><summary>Capability truth</summary><ul className="bot-ops-capability-list">{capabilityEntries.length ? capabilityEntries.map(([key, enabled]) => <li key={key}><span>{words(key)}</span><strong>{enabled ? "Available" : "Unavailable"}</strong></li>) : <li><span>Live capabilities</span><strong>Unavailable</strong></li>}</ul></details>
-    </RecordCard>
-  );
-}
-
-function Overview({ snapshot, providers, onOpen }) {
-  const running = snapshot.tasks.filter((task) => task.runtimeStatus === BOT_TASK_STATUSES.RUNNING).length;
-  const successes = snapshot.attempts.filter((attempt) => attempt.runtimeStatus === BOT_TASK_STATUSES.SUCCESS || attempt.success === true).length;
-  const failures = snapshot.attempts.filter((attempt) => attempt.success === false && attempt.failureCategory && attempt.failureCategory !== "NONE").length;
-  const review = snapshot.checkoutEvidence.filter((evidence) => [BOT_EVIDENCE_REVIEW_STATES.NEW, BOT_EVIDENCE_REVIEW_STATES.NEEDS_REVIEW].includes(evidence.reviewState)).length;
-  return (
-    <>
-      <section className="bot-ops-runtime-status" aria-label="Bot Operations safety state">
-        <StatusBadge tone="neutral">Owner only</StatusBadge>
-        <div><h2>No bot integrations are connected</h2><p>This local foundation cannot start tasks, automate checkout, bypass retailer controls, or create Purchases or inventory.</p></div>
-      </section>
-      <div className="bot-ops-metrics" aria-label="Bot Operations summary">
-        <MetricCard label="Providers configured" value={providers.filter((provider) => (provider.connectionStatus || provider.status) !== BOT_PROVIDER_CONNECTION_STATUS.NOT_CONFIGURED).length} helper="Live providers remain unavailable" />
-        <MetricCard label="Installation records" value={snapshot.installations.length} helper="Local metadata only" />
-        <MetricCard label="Running tasks" value={running} helper="No task-control adapter exists" />
-        <MetricCard label="Checkout evidence" value={snapshot.checkoutEvidence.length} helper={`${review} require owner review`} />
-        <MetricCard label="Synthetic successes" value={successes} helper="Evidence is not a Purchase" />
-        <MetricCard label="Recorded failures" value={failures} helper="Sanitized summaries only" />
-      </div>
-      <section className="bot-ops-overview-grid">
-        <RecordCard><SectionHeader eyebrow="Provider truth" title="Hayha and Stellar" description="Both definitions remain not configured with every live capability disabled." /><button type="button" onClick={() => onOpen("bots")}>Review provider metadata</button></RecordCard>
-        <RecordCard><SectionHeader eyebrow="Purchase boundary" title="Evidence requires review" description="Bot Success and Checkout Evidence never create a Purchase, receiving record, or inventory item." /><button type="button" onClick={() => onOpen("activity")}>Review local evidence</button></RecordCard>
-      </section>
-    </>
-  );
-}
-
-function BotsSection({ providers, installations }) {
-  return <section><SectionHeader eyebrow="Provider-neutral foundation" title="Bots" description="Definitions and public-source integration research only. No provider SDK, credentials, device connection, or network control is active." /><div className="bot-ops-grid">{providers.map((provider) => <ProviderCard key={provider.key || provider.providerKey} provider={provider} />)}</div><SectionHeader eyebrow="Local records" title="Installations" description="Installation records never contain device fingerprints or credentials." />{installations.length ? <div className="bot-ops-grid">{installations.map((row) => <RecordCard key={row.id} className="bot-ops-record"><div className="bot-ops-card-heading"><h3>{row.friendlyName}</h3><StatusBadge tone={statusTone(row.healthState)}>{words(row.healthState)}</StatusBadge></div><Facts rows={[{ label: "Provider", value: words(row.provider) }, { label: "Runtime label", value: row.runtimeLabel || "Not recorded" }, { label: "Connection", value: words(row.connectionMode) }, { label: "Last seen", value: dateLabel(row.lastSeenAt) }]} /><WarningList warnings={row.warnings} /></RecordCard>)}</div> : <EmptyState title="No installation records">Additions remain unavailable until a separately approved integration phase. Hayha and Stellar are not connected.</EmptyState>}</section>;
-}
-
-function TaskGroupsSection({ rows }) {
-  return <section><SectionHeader eyebrow="Planning metadata" title="Task Groups" description="Groups are local plans only and cannot start a bot or submit a retailer action." />{rows.length ? <div className="bot-ops-grid">{rows.map((row) => <RecordCard key={row.id} className="bot-ops-record"><div className="bot-ops-card-heading"><h3>{row.name}</h3><StatusBadge tone={row.enabled ? "warning" : "neutral"}>{row.enabled ? "Locally enabled" : "Disabled"}</StatusBadge></div><Facts rows={[{ label: "Retailer", value: row.retailerId }, { label: "Provider", value: words(row.provider) }, { label: "Category", value: row.productCategory || "Not recorded" }, { label: "Mode", value: words(row.taskMode) }, { label: "Quantity limit", value: row.quantityLimit }, { label: "Max price", value: row.maxPrice ? formatMoneyForDisplay(row.maxPrice) : "Not set" }]} /><WarningList warnings={row.warnings} /></RecordCard>)}</div> : <EmptyState title="No task groups">No task groups have been saved. This phase does not create or start live bot tasks.</EmptyState>}</section>;
-}
-
-function TasksSection({ rows, targets }) {
-  const targetById = new Map(targets.map((target) => [target.id, target]));
-  return <section><StellarTaskExportPreview /><SectionHeader eyebrow="Normalized status" title="Tasks" description="Statuses are local observations or synthetic QA evidence. No start, stop, restart, cart, or checkout action is connected." />{rows.length ? <div className="bot-ops-grid">{rows.map((row) => <RecordCard key={row.id} className="bot-ops-record"><div className="bot-ops-card-heading"><div><p className="eyebrow">{words(row.provider)}</p><h3>{targetById.get(row.productTargetId)?.title || row.productTargetId}</h3></div><StatusBadge tone={statusTone(row.runtimeStatus)}>{words(row.runtimeStatus)}</StatusBadge></div><Facts rows={[{ label: "Retailer", value: row.retailerId }, { label: "Quantity", value: row.quantityTarget }, { label: "Max price", value: row.maxPrice ? formatMoneyForDisplay(row.maxPrice) : "Not set" }, { label: "Last attempt", value: dateLabel(row.lastAttemptAt) }]} /><WarningList warnings={row.warnings} /></RecordCard>)}</div> : <EmptyState title="No tasks">No live or local task records exist. Provider task control is unavailable.</EmptyState>}</section>;
+function TaskGroupsSection({ rows, installations }) {
+  const installationById = new Map(installations.map((row) => [row.id, row]));
+  return <section><SectionHeader eyebrow="Planning metadata" title="Task Groups" description="Groups are local plans only and cannot start a bot or submit a retailer action." />{rows.length ? <div className="bot-ops-grid">{rows.map((row) => <RecordCard key={row.id} className="bot-ops-record"><div className="bot-ops-card-heading"><h3>{row.name}</h3><StatusBadge tone={row.enabled ? "warning" : "neutral"}>{row.enabled ? "Locally enabled" : "Disabled"}</StatusBadge></div><Facts rows={[{ label: "Retailer", value: retailerLabel(row.retailerId) }, { label: "Provider", value: providerLabel(row.provider) }, { label: "Installation", value: installationById.get(row.installationId)?.friendlyName || "Not available" }, { label: "Category", value: row.productCategory || "Not recorded" }, { label: "Mode", value: words(row.taskMode) }, { label: "Quantity limit", value: row.quantityLimit }, { label: "Max price", value: row.maxPrice ? formatMoneyForDisplay(row.maxPrice) : "Not set" }]} /><WarningList warnings={row.warnings} /></RecordCard>)}</div> : <EmptyState title="No task groups">Add a manual plan in Tasks to organize a product and bot. Live task controls are unavailable.</EmptyState>}</section>;
 }
 
 function AccountsSection({ rows }) {
-  return <section><SectionHeader eyebrow="Account Ops references" title="Accounts" description="Bot assignments reference Account Ops stable IDs. Passwords, cookies, OTPs, aliases, and retailer sessions are never copied here." />{rows.length ? <div className="bot-ops-grid">{rows.map((row) => <RecordCard key={row.id} className="bot-ops-record"><div className="bot-ops-card-heading"><h3>{row.accountLabel}</h3><StatusBadge tone={statusTone(row.status)}>{words(row.status)}</StatusBadge></div><Facts rows={[{ label: "Retailer", value: row.retailerId }, { label: "Account Ops account", value: row.accountOpsStoreAccountId }, { label: "Account Ops profile", value: row.accountOpsProfileId || "Not linked" }, { label: "Last activity", value: dateLabel(row.lastActivityAt) }]} /><WarningList warnings={row.warnings} /></RecordCard>)}</div> : <EmptyState title="No account assignments">No retailer-account references are assigned. Account credentials remain outside Bot Operations.</EmptyState>}</section>;
+  return <section><SectionHeader eyebrow="Account Ops references" title="Accounts" description="Bot assignments reference Account Ops stable IDs. Passwords, cookies, OTPs, aliases, and retailer sessions are never copied here." />{rows.length ? <div className="bot-ops-grid">{rows.map((row) => <RecordCard key={row.id} className="bot-ops-record"><div className="bot-ops-card-heading"><h3>{row.accountLabel}</h3><StatusBadge tone={statusTone(row.status)}>{words(row.status)}</StatusBadge></div><Facts rows={[{ label: "Retailer", value: retailerLabel(row.retailerId) }, { label: "Account Ops account", value: row.accountOpsStoreAccountId }, { label: "Account Ops profile", value: row.accountOpsProfileId || "Not linked" }, { label: "Last activity", value: dateLabel(row.lastActivityAt) }]} /><WarningList warnings={row.warnings} /></RecordCard>)}</div> : <EmptyState title="No account assignments">No retailer-account references are assigned. Account credentials remain outside Bot Operations.</EmptyState>}</section>;
 }
 
 function ProfilesSection({ rows }) {
@@ -185,15 +96,10 @@ function TargetsSection({ rows }) {
   return <section><SectionHeader eyebrow="Shared product intent" title="Product Targets" description="Targets reuse retailer and product identifiers without duplicating catalog or Purchase records." />{rows.length ? <div className="bot-ops-grid">{rows.map((row) => <RecordCard key={row.id} className="bot-ops-record"><div className="bot-ops-card-heading"><div><p className="eyebrow">{row.retailerId}</p><h3>{row.title}</h3></div><StatusBadge tone={statusTone(row.reviewState)}>{words(row.reviewState)}</StatusBadge></div><Facts rows={[{ label: "SKU", value: row.sku || row.tcin || row.upc || row.canonicalProductId }, { label: "Max price", value: row.maxPrice ? formatMoneyForDisplay(row.maxPrice) : "Not set" }, { label: "Quantity limit", value: row.quantityLimit }, { label: "Availability", value: words(row.availabilityMode) }]} /></RecordCard>)}</div> : <EmptyState title="No product targets">No targets have been recorded. Existing retailer/catalog identifiers remain the future source of truth.</EmptyState>}</section>;
 }
 
-function ActivitySection({ snapshot }) {
-  const rows = [...snapshot.attempts].sort((left, right) => String(right.occurredAt || right.createdAt).localeCompare(String(left.occurredAt || left.createdAt)));
-  return <section><SectionHeader eyebrow="Append-only history" title="Activity" description="Only bounded normalized events are retained. Raw provider logs, request bodies, cookies, and tokens are prohibited." />{rows.length ? <div className="bot-ops-activity-list">{rows.map((row) => <RecordCard key={row.id} className="bot-ops-record"><div className="bot-ops-card-heading"><div><p className="eyebrow">{dateLabel(row.occurredAt)}</p><h3>{words(row.normalizedEvent)}</h3></div><StatusBadge tone={statusTone(row.runtimeStatus)}>{words(row.runtimeStatus)}</StatusBadge></div><p>{row.message || "No additional safe summary was retained."}</p><Facts rows={[{ label: "Provider", value: words(row.provider) }, { label: "Task", value: row.taskId }, { label: "Revision", value: row.eventRevision }]} /><WarningList warnings={row.warnings} /></RecordCard>)}</div> : <EmptyState title="No activity">No bot attempts have been observed. Normal runtime does not seed synthetic history.</EmptyState>}{snapshot.checkoutEvidence.length ? <div className="bot-ops-evidence"><SectionHeader eyebrow="Owner review required" title="Checkout Evidence" description="Evidence is not a Purchase and cannot mutate receiving or inventory." />{snapshot.checkoutEvidence.map((row) => <RecordCard key={row.id} className="bot-ops-record"><div className="bot-ops-card-heading"><h3>{row.externalOrderReference || "Checkout evidence"}</h3><StatusBadge tone={statusTone(row.reviewState)}>{words(row.reviewState)}</StatusBadge></div><Facts rows={[{ label: "Retailer", value: row.retailerId }, { label: "Quantity", value: row.quantity }, { label: "Expected amount", value: row.expectedAmount ? formatMoneyForDisplay(row.expectedAmount) : "Not supplied" }, { label: "Occurred", value: dateLabel(row.occurredAt) }]} /><p className="bot-ops-invariant">Owner review required · Purchase not created · Inventory not created</p><WarningList warnings={row.warnings} /></RecordCard>)}</div> : null}</section>;
-}
-
 export default function BotOperationsPage(props) {
   const session = props.session;
   const lifetime = session?.status === OWNER_SESSION_STATES.AUTHORIZED
-    ? JSON.stringify([session.provider || "", session.userId || session.user?.id || session.displayIdentity || "owner"])
+    ? JSON.stringify([session.provider || "", session.identityKey || session.userId || session.user?.id || session.displayIdentity || "owner"])
     : "restricted";
   return <BotOperationsPageContent key={lifetime} {...props} />;
 }
@@ -208,6 +114,14 @@ function BotOperationsPageContent({
   const [snapshot, setSnapshot] = useState(EMPTY_SNAPSHOT);
   const [section, setSection] = useState(SECTIONS.some((item) => item.key === initialSection) ? initialSection : "overview");
   const [error, setError] = useState("");
+  const operationLifetime = useRef(false);
+  const [trackingRequest, setTrackingRequest] = useState({ nonce: 0 });
+  const tracking = useMemo(() => buildBotTracking(snapshot), [snapshot]);
+
+  useLayoutEffect(() => {
+    operationLifetime.current = true;
+    return () => { operationLifetime.current = false; };
+  }, []);
 
   const [previousSection, setPreviousSection] = useState(initialSection);
   if (previousSection !== initialSection) {
@@ -220,11 +134,12 @@ function BotOperationsPageContent({
     let cancelled = false;
     const load = async () => {
       try {
-        const nextService = createBotOpsService();
+        const nextService = createBotOpsService({ isOperationActive: () => !cancelled && operationLifetime.current });
         const nextSnapshot = await nextService.loadSnapshot();
         if (cancelled) return;
         setService(nextService);
         setSnapshot(nextSnapshot);
+        setError("");
       } catch (nextError) {
         if (cancelled) return;
         setService(null);
@@ -233,7 +148,13 @@ function BotOperationsPageContent({
       }
     };
     load();
+    const refreshFromOtherTab = (event) => {
+      if (event.key !== "code3.bot-ops.v1") return;
+      load();
+    };
+    window.addEventListener("storage", refreshFromOtherTab);
     return () => {
+      window.removeEventListener("storage", refreshFromOtherTab);
       cancelled = true;
     };
   }, [authorized]);
@@ -245,21 +166,61 @@ function BotOperationsPageContent({
     onSectionChange?.(nextSection);
   };
 
+  const openTracker = (request = {}) => {
+    setTrackingRequest((current) => ({ ...request, nonce: current.nonce + 1 }));
+    chooseSection("tasks");
+  };
+
+  const savePlan = async (input, existing) => {
+    if (!authorized || !service) throw new Error("Verified owner access is required to save bot plans.");
+    const saved = existing
+      ? await service.updateManualPlan(existing.id, input, existing.recordVersion)
+      : await service.createManualPlan(input);
+    if (!operationLifetime.current) return saved;
+    try {
+      setSnapshot(await service.loadSnapshot());
+    } catch {
+      const refreshError = new Error("The plan was saved, but the list could not refresh. Reload this page before editing it again.");
+      refreshError.savedRecord = saved.task || saved;
+      throw refreshError;
+    }
+    return saved;
+  };
+
+  const saveInstallation = async (input, existing) => {
+    if (!authorized || !service) throw new Error("Verified owner access is required to save bot installations.");
+    const fields = { friendlyName: input.friendlyName, runtimeLabel: input.runtimeLabel, version: input.version };
+    const saved = existing
+      ? await service.updateRecord("installations", existing.id, fields, existing.recordVersion)
+      : await service.createInstallation({ ...fields, provider: input.provider, connectionMode: BOT_INTEGRATION_MODES.MANUAL_RECORD, enabled: false, healthState: "DISCONNECTED" });
+    if (!operationLifetime.current) return saved;
+    try {
+      setSnapshot(await service.loadSnapshot());
+    } catch {
+      const refreshError = new Error("The installation was saved, but the list could not refresh. Reload this page to see the saved record.");
+      refreshError.savedRecord = saved;
+      throw refreshError;
+    }
+    return saved;
+  };
+
   if (!authorized || !service) return error ? <ErrorState title="Bot Operations unavailable">{error}</ErrorState> : <EmptyState title="Checking owner access">Bot Operations storage remains closed until the verified owner session is ready.</EmptyState>;
+  const counts = { tasks: tracking.tasks.filter((row) => !isArchived(row.task)).length, bots: tracking.installations.length, "task-groups": snapshot.taskGroups.filter((row) => !isArchived(row)).length, accounts: snapshot.retailerAccountLinks.length, profiles: snapshot.botProfiles.length, proxies: snapshot.proxyGroups.length, targets: snapshot.productTargets.length };
 
   return (
     <div className="bot-ops" data-testid="bot-operations" data-persistence-mode={service.mode}>
-      <PageHeader eyebrow="Owner-only workspace" title="Bot Operations" description="Provider-neutral local planning, normalized evidence, and review boundaries. No live bot, proxy, retailer, or checkout connection is active." />
-      <BotOpsTabs active={section} onChange={chooseSection} />
-      {section === "overview" ? <Overview snapshot={snapshot} providers={providers} onOpen={chooseSection} /> : null}
-      {section === "bots" ? <BotsSection providers={providers} installations={snapshot.installations} /> : null}
-      {section === "task-groups" ? <TaskGroupsSection rows={snapshot.taskGroups} /> : null}
-      {section === "tasks" ? <TasksSection rows={snapshot.tasks} targets={snapshot.productTargets} /> : null}
+      <PageHeader eyebrow="Owner-only workspace" title="Bot Operations" description="Track products, plans, and progress across your bots. Live integrations are not connected." />
+      <OperationsWorkspace label="Bot Operations" navigation={SECTIONS.map((item) => ({ ...item, count: counts[item.key] }))} activeKey={section} onNavigate={chooseSection} className="bot-ops-workspace" sidebarFooter={<p className="bot-ops-rail-note">Local tracking<br />No live bot connection</p>}>
+      {section === "overview" ? <BotTrackingOverview tracking={tracking} onOpen={chooseSection} onTrack={openTracker} /> : null}
+      {section === "bots" ? <BotProviderSetup providers={providers} installations={snapshot.installations} onSave={saveInstallation} onTrack={openTracker} /> : null}
+      {section === "task-groups" ? <TaskGroupsSection rows={snapshot.taskGroups.filter((row) => !isArchived(row))} installations={snapshot.installations} /> : null}
+      {section === "tasks" ? <><BotTaskTracker key={trackingRequest.nonce} snapshot={snapshot} initialInstallationId={trackingRequest.installationId || ""} initialGroupId={trackingRequest.groupId || ""} initialTaskId={trackingRequest.taskId || ""} initialCreate={Boolean(trackingRequest.create)} initialAttentionOnly={Boolean(trackingRequest.attentionOnly)} onSavePlan={savePlan} onOpenBots={() => chooseSection("bots")} /><details className="bot-ops-import-preview"><summary>Preview a Stellar task export</summary><StellarTaskExportPreview /></details></> : null}
       {section === "accounts" ? <AccountsSection rows={snapshot.retailerAccountLinks} /> : null}
       {section === "profiles" ? <ProfilesSection rows={snapshot.botProfiles} /> : null}
       {section === "proxies" ? <ProxiesSection rows={snapshot.proxyGroups} /> : null}
       {section === "targets" ? <TargetsSection rows={snapshot.productTargets} /> : null}
-      {section === "activity" ? <ActivitySection snapshot={snapshot} /> : null}
+      {section === "activity" ? <BotTrackingActivity snapshot={snapshot} tracking={tracking} /> : null}
+      </OperationsWorkspace>
     </div>
   );
 }

@@ -57,17 +57,17 @@ const REPRESENTATIVE_DARK = new Set([
 ]);
 
 const EXPECTED_TEXT = Object.freeze({
-  "hayha-disconnected": /Hayha foundation[\s\S]*Disconnected/i,
-  "stellar-disconnected": /Stellar foundation[\s\S]*Disconnected/i,
-  "healthy-mock-bot": /Synthetic bot runtime[\s\S]*Healthy/i,
-  "degraded-mock-bot": /Synthetic bot runtime[\s\S]*Degraded/i,
+  "hayha-disconnected": /Hayha foundation[\s\S]*Not connected/i,
+  "stellar-disconnected": /Stellar foundation[\s\S]*Not connected/i,
+  "healthy-mock-bot": /Synthetic bot runtime[\s\S]*Not connected/i,
+  "degraded-mock-bot": /Synthetic bot runtime[\s\S]*Not connected/i,
   "target-pokemon-task-group": /Target Pok.mon synthetic/i,
   "walmart-pokemon-task-group": /Walmart Pok.mon synthetic/i,
   "one-piece-task-group": /Target One Piece synthetic/i,
   "task-waiting": /Synthetic Pok.mon product[\s\S]*Waiting/i,
   "task-monitoring": /Synthetic Pok.mon product[\s\S]*Monitoring/i,
   "carted-synthetic-task": /Synthetic Pok.mon product[\s\S]*Carted/i,
-  "synthetic-checkout-success": /Checkout Succeeded[\s\S]*Checkout Evidence[\s\S]*Owner review required/i,
+  "synthetic-checkout-success": /Checkout Succeeded[\s\S]*Checkout Evidence[\s\S]*Needs review/i,
   "account-error": /Account Error[\s\S]*Synthetic account error/i,
   "proxy-error": /Proxy Error[\s\S]*Synthetic proxy error/i,
   "retailer-block": /Retailer Block[\s\S]*Synthetic retailer block/i,
@@ -81,16 +81,16 @@ const EXPECTED_TEXT = Object.freeze({
   "disabled-account": /Synthetic Target account[\s\S]*Disabled/i,
   "disabled-proxy-group": /Synthetic proxy metadata[\s\S]*Disabled/i,
   "missing-profile": /Target Pok.mon synthetic[\s\S]*Bot Profile Missing/i,
-  "malformed-provider-payload": /Hayha[\s\S]*Not Configured[\s\S]*Stellar[\s\S]*Not Configured/i,
-  "secret-bearing-provider-payload-rejected": /Hayha[\s\S]*Not Configured[\s\S]*Stellar[\s\S]*Not Configured/i,
+  "malformed-provider-payload": /Set up your bot list[\s\S]*Not connected/i,
+  "secret-bearing-provider-payload-rejected": /Set up your bot list[\s\S]*Not connected/i,
   "checkout-evidence-order-reconciled": /Checkout Evidence[\s\S]*Reconciled[\s\S]*Inventory not created/i,
 });
 
 const SECTION_HEADING = Object.freeze({
-  overview: "No bot integrations are connected",
-  bots: "Bots",
+  overview: "Overview",
+  bots: "Set up your bot list",
   "task-groups": "Task Groups",
-  tasks: "Tasks",
+  tasks: "Task tracker",
   accounts: "Accounts",
   profiles: "Profiles",
   proxies: "Proxies",
@@ -163,7 +163,7 @@ async function assertNoHorizontalOverflow(page, label) {
 }
 
 async function assertMinimumTargets(root, label) {
-  const targetMetrics = await root.locator("button:visible, a:visible, summary:visible").evaluateAll((nodes) => nodes.map((node) => {
+  const targetMetrics = await root.locator("button:visible, a:visible, select:visible, summary:visible").evaluateAll((nodes) => nodes.map((node) => {
     const box = node.getBoundingClientRect();
     return {
       label: node.getAttribute("aria-label") || node.textContent?.trim() || node.tagName,
@@ -199,10 +199,20 @@ async function assertProviderHonesty(page) {
   const root = page.getByTestId("bot-operations");
   const currentPath = new URL(page.url()).pathname;
   if (currentPath !== "/bot/bots") return;
+  const setup = root.getByTestId("bot-provider-setup");
+  const select = setup.getByLabel("Bot provider", { exact: true });
+  for (const provider of ["HAYHA", "STELLAR", "SHIKARI", "VALOR", "REFRACT", "POLAR", "SNIPED", "SWOOPER"]) {
+    await select.selectOption(provider);
+    const guidance = setup.getByTestId("bot-provider-guidance");
+    match(await guidance.innerText(), /Not connected/i, `${provider} must remain visibly not connected`);
+    const details = guidance.locator("details");
+    if (!await details.evaluate(node => node.open)) await details.locator("summary").click();
+    match(await guidance.innerText(), /Provider network\s*Disabled/i, `${provider} network remains disabled`);
+    match(await guidance.innerText(), /Live status, task control, and checkout are unavailable/i, `${provider} controls remain unavailable`);
+    await details.locator("summary").click();
+  }
+  await select.selectOption("POLAR");
   const body = await root.innerText();
-  match(body, /Hayha[\s\S]*Not Configured/i, "Hayha must remain visibly not configured");
-  match(body, /Stellar[\s\S]*Not Configured/i, "Stellar must remain visibly not configured");
-  ok((body.match(/Provider network\s*Disabled/gi) || []).length >= 2, "both provider definitions should show provider network disabled");
   equal(
     await root.locator(".bot-ops-record .ops-status-badge").filter({ hasText: /^Connected$/i }).count(),
     0,
@@ -219,13 +229,13 @@ async function verifyFixtureScenario(page, fixture, section) {
   match(body, expected, `${fixture.label} should render its bounded synthetic state`);
 
   if (fixture.key === "same-product-two-bots") {
-    equal(await root.getByRole("heading", { name: /Synthetic Pok.mon product/i }).count(), 2, "the same target may be projected into two tasks without duplicating the target record");
+    equal(await root.locator(".ops-record-browser__row").filter({ hasText: /Synthetic Pok.mon product/i }).count(), 2, "the same target may be projected into two tasks without duplicating the target record");
   }
   if (fixture.key === "duplicate-provider-event") {
-    equal(await root.locator(".bot-ops-record").count(), 1, "a duplicate provider-event fixture should not render duplicate task records");
+    equal(await root.locator(".ops-record-browser__row").count(), 1, "a duplicate provider-event fixture should not render duplicate task records");
   }
   if (fixture.key === "synthetic-checkout-success" || fixture.key === "checkout-evidence-review" || fixture.key === "checkout-evidence-order-reconciled") {
-    match(body, /Owner review required[\s\S]*Purchase not created[\s\S]*Inventory not created/i, "checkout evidence must preserve the owner-review and no-mutation invariant");
+    match(body, /Needs review[\s\S]*Purchase not created[\s\S]*Inventory not created/i, "checkout evidence must preserve the owner-review and no-mutation invariant");
   }
   if (fixture.key === "secret-bearing-provider-payload-rejected") {
     excludes(body, /synthetic-value-must-be-rejected/i, "secret-bearing provider input must never reach the UI");
@@ -291,8 +301,9 @@ async function inspectScenario(browser, scenario) {
     equal(await root.locator("h1", { hasText: /^Bot Operations$/ }).count(), 1, `${scenario.id} should expose one Bot Operations content heading`);
     equal(await page.getByTestId("owner-workspace-access-state").count(), 0, `${scenario.id} should reach Bot Operations only through the existing authorized owner path`);
 
-    const nav = root.getByRole("navigation", { name: "Bot Operations sections" });
-    await nav.waitFor();
+    const rail = root.locator(".ops-workspace__rail");
+    await rail.waitFor();
+    equal(await rail.locator(".ops-workspace__mobile-select option").count(), 9, "all nine Bot Operations sections remain reachable");
     await assertMinimumTargets(root, scenario.id);
     await assertNoActionControls(root, scenario.id);
     await assertNoSecrets(page, root, scenario.id);
@@ -300,9 +311,9 @@ async function inspectScenario(browser, scenario) {
 
     if (!scenario.fixture) {
       const body = await root.innerText();
-      match(body, /No bot integrations are connected/i, "normal Bot runtime should use the honest disconnected state");
-      match(body, /Providers configured\s*0[\s\S]*Running tasks\s*0[\s\S]*Checkout evidence\s*0/i, "normal Bot runtime must not invent providers, tasks, or evidence");
-      match(body, /No live bot, proxy, retailer, or checkout connection is active/i, "normal Bot runtime should disclose the live-integration boundary");
+      match(body, /Live integrations are not connected/i, "normal Bot runtime should use the honest disconnected state");
+      match(body, /Your installations\s*0[\s\S]*Open plans\s*0[\s\S]*Tasks needing attention\s*0[\s\S]*Evidence to review\s*0/i, "normal Bot runtime must not invent saved installations, plans, attention, or evidence");
+      match(body, /Live connections and task controls are not available yet/i, "normal Bot runtime should disclose the live-integration boundary");
     } else if (scenario.expect) {
       match(await root.innerText(), scenario.expect, `${scenario.id} should render its selected domain projection`);
     } else {
@@ -395,7 +406,7 @@ async function main() {
       "All owner QA uses only the existing loopback-only local development identity.",
       "Normal runtime was verified empty and disconnected; synthetic data was injected only through the local test fixture storage key.",
       "Every scenario blocks and reports external HTTP requests; no bot, retailer, proxy, mailbox, or provider network was contacted.",
-      "Hayha and Stellar remained NOT_CONFIGURED, with no live control, checkout, Purchase, receiving, or inventory action.",
+      "All eight providers remained unconfigured and visibly not connected, with no live control, checkout, Purchase, receiving, or inventory action.",
       "Mobile, larger-phone, tablet, desktop, light, dark, reduced-motion, 44px-target, and horizontal-overflow checks are included.",
     ],
     captures,

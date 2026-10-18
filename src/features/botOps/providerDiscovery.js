@@ -6,6 +6,7 @@ import {
   BOT_PROVIDER_KEYS,
 } from "./constants.js";
 import { assertSafeBotOpsInput } from "./security.js";
+import { BOT_PROVIDER_CATALOG, BOT_PROVIDER_REVIEWED_AT, BOT_REAL_PROVIDER_KEYS, isRegisteredBotProvider } from "./providerCatalog.js";
 
 export const BOT_EVIDENCE_TYPES = Object.freeze({
   OFFICIAL_PUBLIC_SITE: "OFFICIAL_PUBLIC_SITE",
@@ -23,17 +24,14 @@ export const BOT_DISCOVERY_RECOMMENDATION_STATUSES = Object.freeze({
   DO_NOT_USE: "DO_NOT_USE",
 });
 
-const REVIEWED_AT = "2026-08-31T00:00:00.000Z";
+const REVIEWED_AT = BOT_PROVIDER_REVIEWED_AT;
 const EVIDENCE_FIELDS = new Set([
   "id", "provider", "capability", "integrationMode", "status", "evidenceType",
   "sourceTitle", "sourceUrl", "sourceDate", "sourceVersion", "verifiedAt",
   "summary", "notes", "requiresOwnerAction",
 ]);
 const ID_PATTERN = /^[a-z0-9][a-z0-9._:-]{0,199}$/i;
-const OFFICIAL_SOURCE_HOSTS = Object.freeze({
-  [BOT_PROVIDER_KEYS.HAYHA]: Object.freeze(["hayhabots.com", "www.hayhabots.com", "docs.hayhabots.com", "hayha-bots.gitbook.io"]),
-  [BOT_PROVIDER_KEYS.STELLAR]: Object.freeze(["stellaraio.com", "www.stellaraio.com", "guides.stellaraio.com"]),
-});
+const REAL_PROVIDER_ENUM = Object.freeze(Object.fromEntries(BOT_REAL_PROVIDER_KEYS.map((key) => [key, key])));
 
 export class BotProviderDiscoveryError extends Error {
   constructor(code, message, details = {}) {
@@ -97,8 +95,12 @@ function officialSourceUrl(value, provider) {
   } catch {
     throw new BotProviderDiscoveryError("INVALID_SOURCE_URL", "sourceUrl must be a valid official HTTPS URL.");
   }
+  const definition = BOT_PROVIDER_CATALOG[provider];
+  const sourceHost = url.hostname.toLowerCase();
+  const requiredPath = definition?.sourcePathPrefixes[sourceHost];
   if (url.protocol !== "https:" || url.username || url.password
-    || !OFFICIAL_SOURCE_HOSTS[provider]?.includes(url.hostname.toLowerCase())) {
+    || !definition?.officialSourceHosts.includes(sourceHost)
+    || (requiredPath && !url.pathname.startsWith(requiredPath))) {
     throw new BotProviderDiscoveryError("UNTRUSTED_SOURCE", "Discovery evidence must reference a reviewed official provider source.");
   }
   return url.toString();
@@ -116,10 +118,7 @@ export function normalizeBotProviderEvidence(input) {
   }
   const id = requiredText(input.id, "id", 200);
   if (!ID_PATTERN.test(id)) throw new BotProviderDiscoveryError("INVALID_ID", "id is invalid.");
-  const provider = enumValue(input.provider, {
-    HAYHA: BOT_PROVIDER_KEYS.HAYHA,
-    STELLAR: BOT_PROVIDER_KEYS.STELLAR,
-  }, "provider");
+  const provider = enumValue(input.provider, REAL_PROVIDER_ENUM, "provider");
   const capability = enumValue(input.capability, BOT_DISCOVERY_CAPABILITIES, "capability", true);
   const integrationMode = enumValue(input.integrationMode, BOT_DISCOVERY_INTEGRATION_MODES, "integrationMode", true);
   if (!capability && !integrationMode) {
@@ -159,7 +158,7 @@ const HAYHA_EVIDENCE = Object.freeze([
     evidenceType: BOT_EVIDENCE_TYPES.OFFICIAL_PUBLIC_SITE,
     sourceTitle: "Hayha public product site",
     sourceUrl: "https://www.hayhabots.com/",
-    sourceVersion: "Public site reviewed 2026-08-31",
+    sourceVersion: "Public site reviewed 2026-10-17",
     summary: "The public product description identifies desktop and command-line experiences but does not document an external read/status API.",
     requiresOwnerAction: true,
   }),
@@ -171,7 +170,7 @@ const HAYHA_EVIDENCE = Object.freeze([
     evidenceType: BOT_EVIDENCE_TYPES.OFFICIAL_DOCUMENTATION_REVIEW,
     sourceTitle: "Hayha official documentation",
     sourceUrl: "https://docs.hayhabots.com/",
-    sourceVersion: "Documentation reviewed 2026-08-31; guide indicates Discord announcements may be newer",
+    sourceVersion: "Documentation reviewed 2026-10-17; guide indicates Discord announcements may be newer",
     summary: "No public integration API or SDK was located in the reviewed public documentation; provider confirmation is required.",
     requiresOwnerAction: true,
   }),
@@ -183,7 +182,7 @@ const HAYHA_EVIDENCE = Object.freeze([
     evidenceType: BOT_EVIDENCE_TYPES.PROVIDER_BRANDED_PUBLIC_GUIDE,
     sourceTitle: "HayhaAIO public GitBook UI guide",
     sourceUrl: "https://hayha-bots.gitbook.io/hayhaaio/ui",
-    sourceVersion: "Provider-branded public GitBook reviewed 2026-08-31; current official-domain confirmation unavailable",
+    sourceVersion: "Provider-branded public GitBook reviewed 2026-10-17; current official-domain confirmation unavailable",
     summary: "The public guide documents owner-configured webhook settings but no general task-status schema, signing, retries, or direct Code 3 delivery contract.",
     notes: "Treat as limited provider-branded evidence pending current provider confirmation.",
     requiresOwnerAction: true,
@@ -197,7 +196,7 @@ const HAYHA_EVIDENCE = Object.freeze([
     evidenceType: BOT_EVIDENCE_TYPES.PROVIDER_BRANDED_PUBLIC_GUIDE,
     sourceTitle: "Hayha Snipes USA public GitBook guide",
     sourceUrl: "https://hayha-bots.gitbook.io/guide-v2/sites/snipes-usa",
-    sourceVersion: "Provider-branded public GitBook reviewed 2026-08-31; current official-domain confirmation unavailable",
+    sourceVersion: "Provider-branded public GitBook reviewed 2026-10-17; current official-domain confirmation unavailable",
     summary: "The guide describes sending queue-pass or checkout-link output to Discord, not a signed general-purpose event interface.",
     notes: "Credential-bearing links and Discord delivery make this unsuitable for a Code 3 pilot.",
     requiresOwnerAction: true,
@@ -210,7 +209,7 @@ const HAYHA_EVIDENCE = Object.freeze([
     evidenceType: BOT_EVIDENCE_TYPES.OFFICIAL_GUIDE,
     sourceTitle: "Hayha Amazon guide",
     sourceUrl: "https://docs.hayhabots.com/site-guides/amazon/",
-    sourceVersion: "Public guide reviewed 2026-08-31",
+    sourceVersion: "Public guide reviewed 2026-10-17",
     summary: "The documented export concerns sensitive account-session material, not a safe task/status export.",
     notes: "Secret-bearing session exports are outside the Code 3 import boundary and must not be ingested.",
     requiresOwnerAction: true,
@@ -223,7 +222,7 @@ const HAYHA_EVIDENCE = Object.freeze([
     evidenceType: BOT_EVIDENCE_TYPES.OFFICIAL_GUIDE,
     sourceTitle: "Hayha Footsites guide",
     sourceUrl: "https://docs.hayhabots.com/site-guides/footsites/",
-    sourceVersion: "Public guide reviewed 2026-08-31",
+    sourceVersion: "Public guide reviewed 2026-10-17",
     summary: "The guide describes owner-operated command-line controls, not a supported third-party integration interface.",
     notes: "Code 3 must not automate command-line input.",
     requiresOwnerAction: true,
@@ -261,10 +260,10 @@ const STELLAR_EVIDENCE = Object.freeze([
     capability: BOT_DISCOVERY_CAPABILITIES.OBSERVE_RUNTIME,
     status: BOT_EVIDENCE_STATUSES.UNKNOWN,
     evidenceType: BOT_EVIDENCE_TYPES.OFFICIAL_PUBLIC_SITE,
-    sourceTitle: "StellarAIO public product site",
-    sourceUrl: "https://stellaraio.com/",
-    sourceVersion: "Stellar 3.0 public site reviewed 2026-08-31",
-    summary: "The product site describes the bot and analytics but does not document a public read/status API.",
+    sourceTitle: "StellarAIO 4.0 getting started guide",
+    sourceUrl: "https://guides.stellaraio.com/stellar/getting-started-with-stellaraio/getting-started-with-stellaraio",
+    sourceVersion: "Stellar 4.0 public guide reviewed 2026-10-17",
+    summary: "Stellar documents its desktop app and first-party mobile pairing, but no third-party read/status protocol.",
     requiresOwnerAction: true,
   }),
   evidence({
@@ -275,7 +274,7 @@ const STELLAR_EVIDENCE = Object.freeze([
     evidenceType: BOT_EVIDENCE_TYPES.OFFICIAL_DOCUMENTATION_REVIEW,
     sourceTitle: "StellarAIO official guides",
     sourceUrl: "https://guides.stellaraio.com/stellar",
-    sourceVersion: "Official guides reviewed 2026-08-31",
+    sourceVersion: "Official guides reviewed 2026-10-17",
     summary: "No public read/status API or SDK was located in the reviewed official guides; provider confirmation is required.",
     requiresOwnerAction: true,
   }),
@@ -288,7 +287,7 @@ const STELLAR_EVIDENCE = Object.freeze([
     evidenceType: BOT_EVIDENCE_TYPES.OFFICIAL_GUIDE,
     sourceTitle: "StellarAIO Settings guide",
     sourceUrl: "https://guides.stellaraio.com/stellar/navigating-stellaraio/what-is-the-settings-tab",
-    sourceVersion: "Official guide reviewed 2026-08-31",
+    sourceVersion: "Official guide reviewed 2026-10-17",
     summary: "Stellar documents Discord webhook notifications, including checkout notification settings, but not a generic Code 3 event endpoint.",
     notes: "Code 3 must not use a Discord user token or scrape private messages; provider confirmation is needed for a direct owner-controlled endpoint.",
     requiresOwnerAction: true,
@@ -302,9 +301,9 @@ const STELLAR_EVIDENCE = Object.freeze([
     evidenceType: BOT_EVIDENCE_TYPES.OFFICIAL_GUIDE,
     sourceTitle: "StellarAIO Tasks guide",
     sourceUrl: "https://guides.stellaraio.com/stellar/navigating-stellaraio/what-is-the-tasks-tab",
-    sourceVersion: "Official guide reviewed 2026-08-31",
+    sourceVersion: "Official guide reviewed 2026-10-17",
     summary: "The Tasks guide documents task-group import and export, creating a possible owner-selected offline review path.",
-    notes: "The exported schema and secret/PII content require a synthetic or fully redacted sample review before any importer is built.",
+    notes: "The current overview describes file transfer without a serialized schema or version marker. The older detailed JSON import/export page is no longer available; a sanitized sample still requires review.",
     requiresOwnerAction: true,
   }),
   evidence({
@@ -316,7 +315,7 @@ const STELLAR_EVIDENCE = Object.freeze([
     evidenceType: BOT_EVIDENCE_TYPES.OFFICIAL_GUIDE,
     sourceTitle: "StellarAIO profile import and export guide",
     sourceUrl: "https://guides.stellaraio.com/stellar/navigating-stellaraio/what-is-the-profiles-tab/how-do-i-mass-import-and-export-profiles",
-    sourceVersion: "Official guide reviewed 2026-08-31",
+    sourceVersion: "Official guide reviewed 2026-10-17",
     summary: "Profile CSV export is documented, but profiles include personal and payment information.",
     notes: "Profile exports are not an acceptable Code 3 pilot input.",
     requiresOwnerAction: true,
@@ -330,7 +329,7 @@ const STELLAR_EVIDENCE = Object.freeze([
     evidenceType: BOT_EVIDENCE_TYPES.OFFICIAL_GUIDE,
     sourceTitle: "StellarAIO session import guide",
     sourceUrl: "https://guides.stellaraio.com/stellar/navigating-stellaraio/what-is-the-identities-tab/how-do-i-add-a-session-or-mass-import-sessions",
-    sourceVersion: "Official guide reviewed 2026-08-31",
+    sourceVersion: "Official guide reviewed 2026-10-17",
     summary: "Documented account/session import formats contain credential and verification material.",
     notes: "Session/account files are prohibited Bot Operations inputs.",
     requiresOwnerAction: true,
@@ -343,9 +342,22 @@ const STELLAR_EVIDENCE = Object.freeze([
     evidenceType: BOT_EVIDENCE_TYPES.OFFICIAL_DOCUMENTATION,
     sourceTitle: "Developing Software Compatible With Stellar: WebSocket Integration",
     sourceUrl: "https://guides.stellaraio.com/stellar/developing-software-compatible-with-stellar/websocket-integration",
-    sourceVersion: "Official guide reviewed 2026-08-31",
+    sourceVersion: "Official guide reviewed 2026-10-17",
     summary: "Stellar officially documents connecting to an owner-provided WebSocket server for external product-monitor input.",
     notes: "This interface sends monitor input into Stellar; it is not a read/status output and is unsuitable for the first observation-only pilot.",
+    requiresOwnerAction: true,
+  }),
+  evidence({
+    id: "stellar.mobile-companion",
+    provider: BOT_PROVIDER_KEYS.STELLAR,
+    integrationMode: BOT_DISCOVERY_INTEGRATION_MODES.DOCUMENTED_LOCAL_INTERFACE,
+    status: BOT_EVIDENCE_STATUSES.DOCUMENTED_BUT_LIMITED,
+    evidenceType: BOT_EVIDENCE_TYPES.OFFICIAL_GUIDE,
+    sourceTitle: "StellarAIO 4.0 mobile companion setup",
+    sourceUrl: "https://guides.stellaraio.com/stellar/getting-started-with-stellaraio/getting-started-with-stellaraio",
+    sourceVersion: "Stellar 4.0 guide reviewed 2026-10-17",
+    summary: "Stellar describes QR pairing for its own mobile app and task controls while the desktop remains running.",
+    notes: "First-party mobile pairing does not document a Code 3 protocol. Pairing codes are not Code 3 inputs.",
     requiresOwnerAction: true,
   }),
   evidence({
@@ -356,7 +368,7 @@ const STELLAR_EVIDENCE = Object.freeze([
     evidenceType: BOT_EVIDENCE_TYPES.OFFICIAL_DOCUMENTATION_REVIEW,
     sourceTitle: "StellarAIO official integration guides",
     sourceUrl: "https://guides.stellaraio.com/stellar/developing-software-compatible-with-stellar/websocket-integration",
-    sourceVersion: "Official guide reviewed 2026-08-31",
+    sourceVersion: "Official guide reviewed 2026-10-17",
     summary: "Only documented interfaces are eligible; hidden or private endpoints are excluded without explicit provider authorization.",
     requiresOwnerAction: true,
   }),
@@ -368,7 +380,7 @@ const STELLAR_EVIDENCE = Object.freeze([
     evidenceType: BOT_EVIDENCE_TYPES.OFFICIAL_DOCUMENTATION_REVIEW,
     sourceTitle: "StellarAIO official integration guides",
     sourceUrl: "https://guides.stellaraio.com/stellar/developing-software-compatible-with-stellar/websocket-integration",
-    sourceVersion: "Official guide reviewed 2026-08-31",
+    sourceVersion: "Official guide reviewed 2026-10-17",
     summary: "Code 3 will use only explicitly documented interfaces; reverse-engineered mechanisms are prohibited.",
     requiresOwnerAction: true,
   }),
@@ -580,6 +592,60 @@ const STELLAR_MODE_REVIEWS = allModeReviews({
   },
 });
 
+function reviewedProvider(provider, { sourceTitle, sourceUrl, summary, additionalEvidence = [], modes = {}, capabilities = {}, webhookStatus, exportStatus } = {}) {
+  const catalog = BOT_PROVIDER_CATALOG[provider];
+  const publicReviewId = `${provider.toLowerCase()}.public-interface-review`;
+  return {
+    provider,
+    reviewedAt: REVIEWED_AT,
+    evidenceStatus: additionalEvidence.length ? BOT_EVIDENCE_STATUSES.DOCUMENTED_BUT_LIMITED : BOT_EVIDENCE_STATUSES.UNKNOWN,
+    pilotReadiness: BOT_PILOT_READINESS.NO_LIVE_BOT_PILOT_YET,
+    liveCapabilitiesEnabled: false,
+    providerNetworkAccess: false,
+    officialApiStatus: BOT_EVIDENCE_STATUSES.UNKNOWN,
+    webhookStatus: webhookStatus || BOT_EVIDENCE_STATUSES.UNKNOWN,
+    exportStatus: exportStatus || BOT_EVIDENCE_STATUSES.UNKNOWN,
+    localInterfaceStatus: BOT_EVIDENCE_STATUSES.UNKNOWN,
+    recommendedMode: null,
+    recommendation: catalog.setup.nextStep,
+    capabilities: capabilityReview(capabilities),
+    integrationModes: allModeReviews({
+      [BOT_DISCOVERY_INTEGRATION_MODES.OFFICIAL_API]: { evidenceIds: [publicReviewId] },
+      [BOT_DISCOVERY_INTEGRATION_MODES.UNSUPPORTED_PRIVATE_API]: {
+        availability: BOT_EVIDENCE_STATUSES.DO_NOT_USE,
+        recommendationStatus: BOT_DISCOVERY_RECOMMENDATION_STATUSES.DO_NOT_USE,
+        implementationComplexity: "PROHIBITED",
+        notes: "Code 3 does not inspect or call undocumented private provider endpoints.",
+      },
+      [BOT_DISCOVERY_INTEGRATION_MODES.REVERSE_ENGINEERED_INTERFACE]: {
+        availability: BOT_EVIDENCE_STATUSES.DO_NOT_USE,
+        recommendationStatus: BOT_DISCOVERY_RECOMMENDATION_STATUSES.DO_NOT_USE,
+        implementationComplexity: "PROHIBITED",
+        notes: "Code 3 does not reverse engineer provider software or network traffic.",
+      },
+      ...modes,
+    }),
+    evidence: [evidence({
+      id: publicReviewId,
+      provider,
+      integrationMode: BOT_DISCOVERY_INTEGRATION_MODES.OFFICIAL_API,
+      status: BOT_EVIDENCE_STATUSES.UNKNOWN,
+      evidenceType: BOT_EVIDENCE_TYPES.OFFICIAL_PUBLIC_SITE,
+      sourceTitle,
+      sourceUrl,
+      sourceVersion: "Public provider source reviewed 2026-10-17",
+      summary,
+      requiresOwnerAction: true,
+    }), ...additionalEvidence.map((item) => evidence({
+      provider,
+      evidenceType: BOT_EVIDENCE_TYPES.OFFICIAL_GUIDE,
+      sourceVersion: "Public provider source reviewed 2026-10-17",
+      requiresOwnerAction: true,
+      ...item,
+    }))],
+  };
+}
+
 const DISCOVERY_REGISTRY = deepFreeze({
   [BOT_PROVIDER_KEYS.HAYHA]: {
     provider: BOT_PROVIDER_KEYS.HAYHA,
@@ -647,6 +713,113 @@ const DISCOVERY_REGISTRY = deepFreeze({
     integrationModes: STELLAR_MODE_REVIEWS,
     evidence: STELLAR_EVIDENCE,
   },
+  [BOT_PROVIDER_KEYS.SHIKARI]: reviewedProvider(BOT_PROVIDER_KEYS.SHIKARI, {
+    sourceTitle: "Shikari public support page",
+    sourceUrl: "https://shikari.tech/support/",
+    summary: "The public support page directs members to its Discord and support channels. No public status or order API contract was verified.",
+  }),
+  [BOT_PROVIDER_KEYS.VALOR]: reviewedProvider(BOT_PROVIDER_KEYS.VALOR, {
+    sourceTitle: "Valor public Settings guide",
+    sourceUrl: "https://docs.valoraio.com/initial-setup/settings",
+    summary: "The Settings guide documents notification and backup controls, without a public third-party status or order API contract.",
+    webhookStatus: BOT_EVIDENCE_STATUSES.DOCUMENTED_BUT_LIMITED,
+    additionalEvidence: [{
+      id: "valor.discord-notifications",
+      integrationMode: BOT_DISCOVERY_INTEGRATION_MODES.DOCUMENTED_WEBHOOK,
+      status: BOT_EVIDENCE_STATUSES.DOCUMENTED_BUT_LIMITED,
+      sourceTitle: "Valor Settings notification destinations",
+      sourceUrl: "https://docs.valoraio.com/initial-setup/settings",
+      summary: "Valor documents Discord destinations for successful, failed, and miscellaneous notifications; a generic Code 3 endpoint and event schema are unverified.",
+    }, {
+      id: "valor.profile-export",
+      integrationMode: BOT_DISCOVERY_INTEGRATION_MODES.DOCUMENTED_EXPORT,
+      status: BOT_EVIDENCE_STATUSES.DO_NOT_USE,
+      sourceTitle: "Valor Profiles guide",
+      sourceUrl: "https://docs.valoraio.com/initial-setup/profiles",
+      summary: "The documented profile CSV contains personal and payment fields. It is not a safe status or order import.",
+    }],
+    modes: {
+      [BOT_DISCOVERY_INTEGRATION_MODES.DOCUMENTED_WEBHOOK]: {
+        availability: BOT_EVIDENCE_STATUSES.DOCUMENTED_BUT_LIMITED,
+        evidenceIds: ["valor.discord-notifications"],
+        authenticationRequirement: "OWNER_CONFIGURED_DISCORD_WEBHOOK",
+        dataAvailable: ["DISCORD_NOTIFICATIONS"],
+        secretsRequired: true,
+        taskControlAvailable: false,
+        securityRisks: ["DIRECT_DESTINATION_UNVERIFIED", "EVENT_SCHEMA_UNVERIFIED"],
+        notes: "Discord notification settings do not establish an authenticated Code 3 receiver.",
+      },
+      [BOT_DISCOVERY_INTEGRATION_MODES.DOCUMENTED_EXPORT]: {
+        availability: BOT_EVIDENCE_STATUSES.DO_NOT_USE,
+        evidenceIds: ["valor.profile-export"],
+        secretsRequired: true,
+        recommendationStatus: BOT_DISCOVERY_RECOMMENDATION_STATUSES.DO_NOT_USE,
+        notes: "Profile files and full app backups are outside the Code 3 metadata boundary.",
+      },
+    },
+  }),
+  [BOT_PROVIDER_KEYS.REFRACT]: reviewedProvider(BOT_PROVIDER_KEYS.REFRACT, {
+    sourceTitle: "Refract dashboard Home guide",
+    sourceUrl: "https://help.refractbot.com/online-dashboard/home",
+    summary: "The guide documents a checkout-history CSV export but does not establish a status API or a stable CSV header, date, and currency contract.",
+    exportStatus: BOT_EVIDENCE_STATUSES.DOCUMENTED_BUT_LIMITED,
+    additionalEvidence: [{
+      id: "refract.checkout-history-export",
+      capability: BOT_DISCOVERY_CAPABILITIES.READ_HISTORY,
+      integrationMode: BOT_DISCOVERY_INTEGRATION_MODES.DOCUMENTED_EXPORT,
+      status: BOT_EVIDENCE_STATUSES.DOCUMENTED_BUT_LIMITED,
+      sourceTitle: "Refract checkout history CSV export",
+      sourceUrl: "https://help.refractbot.com/online-dashboard/home",
+      summary: "Checkout history includes product, price, account, profile, date, and order number. Export CSV is documented; Code 3 compatibility is not verified.",
+      notes: "A sanitized sample and precise format review are needed. Full app backups are not order exports and are not accepted.",
+    }],
+    modes: {
+      [BOT_DISCOVERY_INTEGRATION_MODES.DOCUMENTED_EXPORT]: {
+        availability: BOT_EVIDENCE_STATUSES.DOCUMENTED_BUT_LIMITED,
+        evidenceIds: ["refract.checkout-history-export"],
+        authenticationRequirement: "OWNER_SELECTED_FILE",
+        dataAvailable: ["CHECKOUT_HISTORY_CSV"],
+        readOnlyPossible: true,
+        statusHistoryAvailable: true,
+        taskControlAvailable: false,
+        checkoutEvidenceAvailable: true,
+        securityRisks: ["CSV_SCHEMA_UNVERIFIED", "ACCOUNT_AND_PROFILE_INFORMATION"],
+        notes: "A documented export does not prove Code 3 compatibility. No CSV importer or live connection is enabled.",
+      },
+    },
+    capabilities: {
+      [BOT_DISCOVERY_CAPABILITIES.READ_HISTORY]: {
+        evidenceStatus: BOT_EVIDENCE_STATUSES.DOCUMENTED_BUT_LIMITED,
+        evidenceIds: ["refract.checkout-history-export"],
+        notes: "Manual CSV export is documented, but no Code 3 history adapter is enabled.",
+      },
+    },
+  }),
+  [BOT_PROVIDER_KEYS.POLAR]: reviewedProvider(BOT_PROVIDER_KEYS.POLAR, {
+    sourceTitle: "Polar AIO creator storefront",
+    sourceUrl: "https://whop.com/polar-aio/products/polar-aio/",
+    summary: "The creator storefront describes a retail bot, without a published status, order, export, or task-control interface. Whop billing APIs are a separate product.",
+  }),
+  [BOT_PROVIDER_KEYS.SNIPED]: reviewedProvider(BOT_PROVIDER_KEYS.SNIPED, {
+    sourceTitle: "Sniped retail bot public website",
+    sourceUrl: "https://sniped.gg/",
+    summary: "The public site identifies the retail bot. No public integration schema, authentication, status, or order interface was verified.",
+  }),
+  [BOT_PROVIDER_KEYS.SWOOPER]: reviewedProvider(BOT_PROVIDER_KEYS.SWOOPER, {
+    sourceTitle: "Swooper AIO public alerts page",
+    sourceUrl: "https://swooperhq.com/features/drop-alerts",
+    summary: "Swooper describes alerts in its own members-only Discord and iOS app. No third-party status API or direct Code 3 event contract was verified.",
+    additionalEvidence: [{
+      id: "swooper.reverse-engineering-policy",
+      integrationMode: BOT_DISCOVERY_INTEGRATION_MODES.REVERSE_ENGINEERED_INTERFACE,
+      status: BOT_EVIDENCE_STATUSES.DO_NOT_USE,
+      evidenceType: BOT_EVIDENCE_TYPES.OFFICIAL_TERMS,
+      sourceTitle: "Swooper Terms of Service",
+      sourceUrl: "https://swooperhq.com/terms",
+      sourceDate: "2026-08-06",
+      summary: "The published terms prohibit reverse engineering and software redistribution. First-party app features do not establish an integration contract.",
+    }],
+  }),
 });
 
 export function listBotProviderDiscovery(providerKey = null) {
@@ -684,8 +857,7 @@ export function getBotProviderDiscoverySummary(providerKey) {
  * it never changes the live registry, adapter, network, or persistence state.
  */
 export function calculateBotPilotReadiness(discoveryInput) {
-  const provider = [BOT_PROVIDER_KEYS.HAYHA, BOT_PROVIDER_KEYS.STELLAR]
-    .includes(String(discoveryInput?.provider || "").toUpperCase())
+  const provider = isRegisteredBotProvider(discoveryInput?.provider)
     ? String(discoveryInput.provider).toUpperCase()
     : null;
   const modes = Array.isArray(discoveryInput?.integrationModes) ? discoveryInput.integrationModes : [];
