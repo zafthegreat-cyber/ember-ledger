@@ -16,9 +16,11 @@ import "/src/index.css";
 import "/src/App.css";
 import Home from "/src/pages/OperationsHome.jsx";
 import Add from "/src/features/deferredViews/AddAnythingContent.jsx";
+import Forge from "/src/pages/Forge.jsx";
 import { AppNavIcon } from "/src/components/command-system/AppNavIcon.jsx";
 import { createEmptyFlipScoutState, FLIP_SCOUT_STORAGE_KEY } from "/src/features/flipScout/constants.js";
 import { selectOwnAdaptiveReports } from "/src/utils/adaptivePageItems.js";
+import { resolveExperiencePresentation } from "/src/utils/experiencePresentation.js";
 const h = React.createElement; const root = createRoot(document.getElementById("root")); let revision = 0;
 window.qaCalls = [];
 window.qaRender = ({ screen = "home", theme = "dark", props = {}, repository = {}, reports } = {}) => {
@@ -26,8 +28,9 @@ window.qaRender = ({ screen = "home", theme = "dark", props = {}, repository = {
   const call = (...args) => window.qaCalls.push(args);
   localStorage.setItem(FLIP_SCOUT_STORAGE_KEY, JSON.stringify({ ...createEmptyFlipScoutState(), ...repository }));
   const activity = { ...props.adaptiveActivity };
+  props = { ...props, experiencePresentation: resolveExperiencePresentation({ personaPreference: props.persona || "collector" }), onOpenSellTrade: () => call("sell-trade"), onOpenExperienceSettings: () => call("customize") };
   if (reports) activity.reports = selectOwnAdaptiveReports(reports, { userIds: ["qa-account"], email: "qa@example.test" });
-  const child = screen === "home" ? h(Home, { ...props, adaptiveActivity: activity, setActiveTab: value => call("navigate", value), onOpenBusiness: value => call("business", value), onOpenFind: (...args) => call("find", ...args), onReportRestock: () => call("report"), onOpenRestockReports: () => call("browse") }) : h("div", { className: "flow-modal", "data-flow": "addActionSheet", role: "dialog", "aria-label": "Add" },
+  const child = screen === "trade" ? h(Forge, { ...props, setActiveTab: value => call("navigate", value), openTradeCompassFlow: value => call("trade", value), openMarketplaceCreate: (...args) => call("listing", ...args), editMarketplaceListing: value => call("edit-listing", value.id), openExchangeSection: value => call("exchange", value), renderMarketplaceSection: () => h("p", {}, "Existing listing workflow"), openProductAddFlow: value => call("product", value), setForgeSubTab: value => call("forge", value) }) : screen === "home" ? h(Home, { ...props, adaptiveActivity: activity, setActiveTab: value => call("navigate", value), onOpenBusiness: value => call("business", value), onOpenFind: (...args) => call("find", ...args), onReportRestock: () => call("report"), onOpenRestockReports: () => call("browse") }) : h("div", { className: "flow-modal", "data-flow": "addActionSheet", role: "dialog", "aria-label": "Add" },
     h("div", { className: "modal-title-row" }, h("h2", {}, "Add"), h("button", { className: "modal-close-button", "aria-label": "Close", onClick: () => call("close") }, "×")),
     h("div", { className: "flow-modal-body" }, h(Add, { scope: { ...props, adaptiveActivity: activity, quickAddWizard: { screen: "entry" }, quickAddSellerToolsEnabled: () => Boolean(props.seller), ownerFeatureControls: { kidsCommunity: Boolean(props.kids) }, getCatalogPickerResults: () => [], CommandGlyphIcon: ({seed}) => h(AppNavIcon, { kind: seed }), OWNED_ITEM_PURPOSES: { PERSONAL_COLLECTION: "PERSONAL_COLLECTION", FOR_RESALE: "FOR_RESALE" }, runAddSheetAction: value => call("add", value), closeFlowModal: () => call("close"), openFlipScoutView: (...args) => call("find", ...args), openProductAddFlow: value => call("product", value), openSparkKidPackFlow: value => call("pack", value), setQuickAddPath: value => call("path", value) } })));
   root.render(h("div", { key: revision, className: "app app-command-shell", "data-theme": theme, style: { padding: "16px", minHeight: "100dvh" } }, child));
@@ -37,6 +40,7 @@ window.qaReady = true;
 
 const requestedWidths = process.env.QA_ADAPTIVE_WIDTHS?.split(",").map(Number);
 const restockEntryOnly = process.env.QA_RESTOCK_ENTRY_ONLY === "1";
+const componentsOnly = process.env.QA_COMPONENTS_ONLY === "1";
 const cases = restockEntryOnly ? [{ width: 320, height: 568, theme: "dark" }, { width: 390, height: 844, theme: "dark" }, { width: 1440, height: 900, theme: "light" }] : [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 1440, height: 900 }]
   .flatMap(viewport => ["light", "dark"].map(theme => ({ ...viewport, theme })))
   .filter(item => !requestedWidths || requestedWidths.includes(item.width));
@@ -69,6 +73,7 @@ const homeKeys = page => page.locator("[data-home-card]").evaluateAll(rows => ro
         localStorage.setItem("et-tcg-beta-scout", JSON.stringify({ stores: [{ id: "qa-adaptive-store", name: "QA Corner Store", chain: "Local Card Shops", city: "Suffolk", region: "Hampton Roads", state: "VA", zip: "23435", address: "1 Synthetic Lane" }], reports: [{ id: "qa-preserved-restock", reportId: "qa-preserved-restock", storeId: "qa-adaptive-store", storeName: "QA Corner Store", userId: "qa-account", reportType: "Store Restock Report", stockStatus: "in_stock", visibility: "public", status: "active", productName: "Synthetic collector packs", itemName: "Synthetic collector packs", items: [{ productName: "Synthetic collector packs" }], reportDate: now.slice(0, 10), reportTime: "12:00", observedAt: now, createdAt: now, sourceType: "manual", note: "Synthetic report retained for QA" }] }));
       }, { theme, now });
       const page = await context.newPage(); lastPage = page; page.on("pageerror", error => errors.push(error.message));
+      if (!componentsOnly) {
       step = `${prefix}: direct Find restocks report, community browse and Back`;
       await page.goto(`${base}/find/restocks?betaLocalMode=true`);
       const restocks = page.locator(".restock-start");
@@ -161,8 +166,25 @@ const homeKeys = page => page.locator("[data-home-card]").evaluateAll(rows => ro
       await addReport.click(); await expect(page.locator('.flow-modal[data-flow="scoutSubmit"]')).toBeVisible();
       await page.keyboard.press("Escape"); await expect(page.locator('.flow-modal[data-flow="scoutSubmit"]')).toHaveCount(0);
       assert.deepEqual(await navigation(), initialNavigation, "Opening reporting never reorders navigation");
+      step = `${prefix}: actual collector Sell or trade`;
+      await page.getByRole("button", { name: "Sell or trade", exact: true }).click();
+      await expect(page.locator(".collector-sell-trade")).toBeVisible();
+      await page.getByRole("button", { name: "Compare a trade", exact: true }).click();
+      await expect(page.locator('.flow-modal[data-flow="tradeCompass"]')).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(page.locator('.flow-modal[data-flow="tradeCompass"]')).toHaveCount(0);
+      await page.getByRole("button", { name: "Prepare a listing", exact: true }).click();
+      await expect(page.locator('.flow-modal[data-flow="createListing"]')).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(page.locator('.flow-modal[data-flow="createListing"]')).toHaveCount(0);
+      await page.getByRole("button", { name: "Browse listings", exact: true }).click();
+      await expect(page.locator(".collector-trade-listings")).toBeVisible();
+      await page.getByRole("button", { name: "Back to Sell or trade", exact: true }).click();
+      await expect(page.locator(".collector-trade-records")).toBeVisible();
+      await page.screenshot({ path: path.join(output, `${prefix}-actual-collector-sell-trade.png`), fullPage: true });
       const after = await page.evaluate(() => { const value = JSON.parse(localStorage.getItem("et-tcg-beta-data")); return JSON.stringify([value.items, value.sales, value.expenses]); });
       assert.equal(after, original, "Actual App preserves seeded data when opening and cancelling report flows");
+      }
 
       step = `${prefix}: isolated real component behavior`;
       await page.goto(`${base}/${fixtureRelativePath}`); await page.waitForFunction(() => window.qaReady === true);
@@ -170,11 +192,11 @@ const homeKeys = page => page.locator("[data-home-card]").evaluateAll(rows => ro
       const render = async (screen, props = {}, repository = {}, reports) => {
         const expectedRevision = ++fixtureRevision;
         await page.evaluate(config => { window.qaRender(config); window.qaRequestedRevision = config.revision; }, { screen, theme, props, repository, reports, revision: expectedRevision });
-        await page.waitForFunction(revision => window.qaRequestedRevision === revision && document.querySelector(revision ? ".ops-home-page, .add-anything-entry" : "never"), expectedRevision);
+        await page.waitForFunction(revision => window.qaRequestedRevision === revision && document.querySelector(revision ? ".ops-home-page, .add-anything-entry, .collector-sell-trade, .exchange-page-final" : "never"), expectedRevision);
         // React commits before the next animation frame; two frames also settle CSS layout.
         await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       };
-      const seller = { adaptiveSellerToolsVisible: true };
+      const seller = { persona: "seller" };
       await render("home", seller); assert.deepEqual(await homeKeys(page), defaultHomeKeys);
       await render("home", { ...seller, adaptiveActivity: { collection: records("collection") } }); assert.equal((await homeKeys(page))[0], "vaultSnapshot");
       await render("home", { ...seller, adaptiveActivity: { sales: records("sale") } }); assert.equal((await homeKeys(page))[0], "forgeSummary");
@@ -191,12 +213,12 @@ const homeKeys = page => page.locator("[data-home-card]").evaluateAll(rows => ro
       await page.screenshot({ path: path.join(output, `${prefix}-adaptive-collection-home.png`), fullPage: true });
 
       step = `${prefix}: adaptive Add choices and manual preferences`;
-      await render("add"); const defaultAdd = await primaryAdd(page).allTextContents(); assert.equal(defaultAdd[0], "Scan Listing");
+      await render("add"); const defaultAdd = await primaryAdd(page).allTextContents(); assert.deepEqual(defaultAdd, ["Add Collection Item", "Search cards & products", "Scan or review", "Enter UPC/SKU", "Sell or trade"]);
       await render("add", { adaptiveActivity: { collection: records("collection") } }); assert.equal((await primaryAdd(page).allTextContents())[0], "Add Collection Item");
-      await render("add", { adaptiveActivity: { sales: records("sale") } }); assert.equal((await primaryAdd(page).allTextContents())[0], "Record Sale");
-      await render("add", { adaptiveActivity: { sales: [] } }, { sales: records("native-sale") }); assert.equal((await primaryAdd(page).allTextContents())[0], "Record Sale");
+      await render("add", { ...seller, adaptiveActivity: { sales: records("sale") } }); assert.equal((await primaryAdd(page).allTextContents())[0], "Record Sale");
+      await render("add", { ...seller, adaptiveActivity: { sales: [] } }, { sales: records("native-sale") }); assert.equal((await primaryAdd(page).allTextContents())[0], "Record Sale");
       await render("add", { adaptiveActivity: { sales: records("sale", 4) }, personalizationPreferences: { smartRecommendationsEnabled: false } }); assert.deepEqual(await primaryAdd(page).allTextContents(), defaultAdd);
-      await render("add", { adaptiveActivity: { reports: records("report", 4) }, personalizationPreferences: { pagePreferences: { quickAdd: { visibleKeys: ["addSale", "addVaultItem"], updatedAt: now } } } });
+      await render("add", { ...seller, adaptiveActivity: { reports: records("report", 4) }, personalizationPreferences: { pagePreferences: { quickAdd: { visibleKeys: ["addSale", "addVaultItem"], updatedAt: now } } } });
       assert.deepEqual(await primaryAdd(page).allTextContents(), ["Record Sale", "Add Collection Item"], "Only explicitly chosen actions remain primary, in saved order");
       await expect(page.locator(".add-anything-more")).not.toHaveAttribute("open", "");
       await page.locator(".add-anything-more > summary").click();
@@ -216,12 +238,91 @@ const homeKeys = page => page.locator("[data-home-card]").evaluateAll(rows => ro
         await page.getByRole("button", { name }).click();
         assert.deepEqual(await page.evaluate(() => window.qaCalls.at(-1)), ["path", destination]);
       }
+      await render("add", { kids: true });
+      await page.locator(".add-anything-more > summary").click();
+      await expect(page.getByRole("button", { name: /^Add a parent-guided/ })).toHaveCount(0);
+      await render("add", { kids: true, showFamilyExperience: true });
+      await page.locator(".add-anything-more > summary").click();
+      await page.getByRole("button", { name: /^Add a parent-guided/ }).click();
+      await expect.poll(() => page.evaluate(() => window.qaCalls.at(-1))).toEqual(["pack", { source: "global-add" }]);
+      await render("add", { kids: false, showFamilyExperience: true });
+      await page.locator(".add-anything-more > summary").click();
+      await expect(page.getByRole("button", { name: /^Add a parent-guided/ })).toHaveCount(0);
+      step = `${prefix}: collector, seller and store presentation`;
+      const businessRepository = { sales: records("owned-sale", 3), activity: [{ id: "owned-expense", title: "Private expense record", createdAt: now }], deals: [{ id: "owned-find", title: "Saved collector find", status: "strong", askingPrice: 20, projectedProfit: 10, createdAt: now }] };
+      await render("home", { adaptiveActivity: { sales: records("sale", 4) } }, businessRepository);
+      await expect(page.getByRole("heading", { name: "A saved find", exact: true })).toBeVisible();
+      await expect(page.getByText("Projected profit", { exact: true })).toHaveCount(0);
+      await expect(page.getByText("Private expense record", { exact: true })).toHaveCount(0);
+      await expect(page.locator('[data-home-card="forgeSummary"]')).toHaveCount(0);
+      await page.getByRole("button", { name: "Sell or trade", exact: true }).click();
+      assert.deepEqual(await page.evaluate(() => window.qaCalls.at(-1)), ["sell-trade"]);
+      await page.getByRole("button", { name: "Search cards & products", exact: true }).click();
+      assert.deepEqual(await page.evaluate(() => window.qaCalls.at(-1)), ["navigate", "market"]);
+      await page.screenshot({ path: path.join(output, `${prefix}-collector-home.png`), fullPage: true });
+      await render("add", { adaptiveActivity: { sales: records("sale", 8) }, personalizationPreferences: { pagePreferences: { quickAdd: { visibleKeys: ["addSale", "addExpense", "addVaultItem"], updatedAt: now } } } }, businessRepository);
+      assert.deepEqual(await primaryAdd(page).allTextContents(), ["Add Collection Item"], "Manual choices are filtered through collector-eligible actions");
+      await page.locator(".add-anything-more > summary").click();
+      for (const name of [/^Analyze Deal/, /^Record Purchase/, /^Record Sale/, /^Add Auction/, /^Add selling inventory/, /^Add Expense/, /^Add Mileage/, /^Add Receipt/]) await expect(page.getByRole("button", { name })).toHaveCount(0);
+      await page.getByRole("button", { name: /^Sell or trade\./ }).click();
+      await expect.poll(() => page.evaluate(() => window.qaCalls.at(-1))).toEqual(["sell-trade"]);
+      await page.screenshot({ path: path.join(output, `${prefix}-collector-add.png`) });
+      for (const persona of ["seller", "store"]) {
+        await render("home", { persona }, businessRepository);
+        await expect(page.getByRole("heading", { name: persona === "store" ? "Your store records" : "Your selling records", exact: true })).toBeVisible();
+        const inventoryName = persona === "store" ? "Store inventory" : "Selling inventory";
+        await page.getByRole("button", { name: inventoryName, exact: true }).click();
+        assert.deepEqual(await page.evaluate(() => window.qaCalls.at(-1)), ["business", "inventory"]);
+        await expect(page.getByText("Projected profit", { exact: true })).toBeVisible();
+        await page.screenshot({ path: path.join(output, `${prefix}-${persona}-home.png`), fullPage: true });
+        await render("add", { persona });
+        assert.equal((await primaryAdd(page).allTextContents())[0], persona === "store" ? "Add store inventory" : "Add selling inventory");
+        await expect(page.getByRole("button", { name: /^Record Sale with/ })).toBeVisible();
+        await page.getByRole("button", { name: /^Record Sale with/ }).click();
+        await expect.poll(() => page.evaluate(() => window.qaCalls.at(-1))).toEqual(["find", "records", "sales"]);
+        await page.locator(".add-anything-more > summary").click();
+        await expect(page.getByRole("button", { name: /^Add Expense/ })).toBeVisible();
+        await expect(page.getByRole("button", { name: /^Add Mileage/ })).toBeVisible();
+        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${persona} Add fits viewport`);
+        await page.screenshot({ path: path.join(output, `${prefix}-${persona}-add.png`) });
+      }
+      step = `${prefix}: collector Sell or trade uses existing workflows`;
+      const listing = { id: "qa-listing", title: "Synthetic saved listing", status: "Draft" };
+      const trade = { id: "qa-trade", sourceItemName: "Synthetic card A", receivedName: "Synthetic card B", resultLabel: "Reviewed trade", tradeDate: "2026-10-17" };
+      await render("trade", { workspaceMarketplaceListings: [listing], workspaceTradeRecords: [trade], forgeInventoryItems: [{ id: "qa-business", name: "Synthetic business record", unitCost: 40 }], workspaceSales: [{ total: 999 }] });
+      await expect(page.getByRole("heading", { name: "Sell or trade", exact: true })).toBeVisible();
+      await expect(page.locator(".exchange-page-final")).toHaveCount(0);
+      await page.getByRole("button", { name: "Compare a trade", exact: true }).click();
+      assert.deepEqual(await page.evaluate(() => window.qaCalls.at(-1)), ["trade", { source: "collector-sell-trade" }]);
+      await page.getByRole("button", { name: "Prepare a listing", exact: true }).click();
+      assert.deepEqual(await page.evaluate(() => window.qaCalls.at(-1)), ["listing", "manual", {}]);
+      await page.getByRole("button", { name: "Check market prices", exact: true }).click();
+      assert.deepEqual(await page.evaluate(() => window.qaCalls.at(-1)), ["navigate", "market"]);
+      await page.getByRole("button", { name: /Synthetic saved listing/ }).click();
+      assert.deepEqual(await page.evaluate(() => window.qaCalls.at(-1)), ["edit-listing", "qa-listing"]);
+      await page.locator(".collector-trade-saved > summary").click();
+      await expect(page.getByText("Reviewed trade", { exact: true })).toBeVisible();
+      await page.getByRole("button", { name: "Browse listings", exact: true }).click();
+      assert.deepEqual(await page.evaluate(() => window.qaCalls.at(-1)), ["exchange", "harbor"]);
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, "Collector Sell or trade fits viewport");
+      const tradeTargets = await page.locator(".collector-sell-trade button, .collector-sell-trade summary").evaluateAll(nodes => nodes.map(node => ({ label: node.textContent.trim(), height: node.getBoundingClientRect().height })));
+      assert.ok(tradeTargets.every(target => target.height >= 44), `Collector touch targets: ${JSON.stringify(tradeTargets)}`);
+      await page.screenshot({ path: path.join(output, `${prefix}-collector-sell-trade.png`), fullPage: true });
+      await render("trade", { exchangeSection: "harbor" });
+      await expect(page.getByText("Existing listing workflow", { exact: true })).toBeVisible();
+      await page.getByRole("button", { name: "Back to Sell or trade", exact: true }).click();
+      assert.deepEqual(await page.evaluate(() => window.qaCalls.at(-1)), ["exchange", "overview"]);
+      for (const persona of ["seller", "store"]) {
+        await render("trade", { persona, exchangeSection: "forge" });
+        await expect(page.locator(".exchange-page-final")).toBeVisible();
+        await expect(page.locator(".exchange-command-board")).toHaveAttribute("aria-label", persona === "store" ? "Your store records" : "Your selling records");
+      }
       assert.deepEqual(writes, [], "No network mutation was attempted"); assert.deepEqual(errors, [], "No browser runtime errors");
-      results.push({ ...testCase, directFindRestocksReport: true, browseCommunityReports: true, backToRestocks: true, actualAppReportRouting: true, initialReportAboveNavigation: true, stableNavigation: true, savedDataUnchanged: true, homeBehaviorScenarios: 9, addBehaviorScenarios: 7, publicReportExclusion: true, manualPreferencePrecedence: true, sellerEligibilityPreserved: true, writes, external, errors });
-      console.log(`PASS ${prefix}: actual Home/Add report routing, nine Home and seven Add adaptation scenarios, manual preferences, ownership, permissions and preserved records.`);
+      results.push({ ...testCase, directFindRestocksReport: !componentsOnly, browseCommunityReports: !componentsOnly, backToRestocks: !componentsOnly, actualAppReportRouting: !componentsOnly, actualCollectorSellTradeFlows: !componentsOnly, initialReportAboveNavigation: !componentsOnly, stableNavigation: !componentsOnly, savedDataUnchanged: true, adaptiveHomeAndAddVerified: true, personaPresentationVerified: ["collector", "seller", "store"], collectorBusinessExtrasExcluded: true, familyAddOptInRespectsFeatureGate: true, collectorSellTradeCallbacksPreserved: true, collectorTouchTargets: tradeTargets, publicReportExclusion: true, manualPreferencePrecedence: true, sellerEligibilityPreserved: true, writes, external, errors });
+      console.log(`PASS ${prefix}: ${componentsOnly ? "isolated Home/Add components" : "actual Home/Add report routing"}, adaptive shortcuts, collector/seller/store presentation, manual preferences, ownership, permissions and preserved records.`);
       await context.close();
     }
-    fs.writeFileSync(path.join(output, restockEntryOnly ? "restock-entry-results.json" : requestedWidths ? `results-${requestedWidths.join("-")}.json` : "results.json"), JSON.stringify({ createdAt: new Date().toISOString(), actualAppPlusIsolatedComponents: !restockEntryOnly, syntheticOnly: true, results }, null, 2));
+    fs.writeFileSync(path.join(output, restockEntryOnly ? "restock-entry-results.json" : requestedWidths ? `results-${requestedWidths.join("-")}.json` : "results.json"), JSON.stringify({ createdAt: new Date().toISOString(), actualAppPlusIsolatedComponents: !restockEntryOnly && !componentsOnly, syntheticOnly: true, results }, null, 2));
   } catch (error) {
     console.error(`FAILED ${step}`);
     if (lastPage && !lastPage.isClosed()) { await lastPage.screenshot({ path: path.join(output, "failure.png"), fullPage: true }).catch(() => {}); fs.writeFileSync(path.join(output, "failure.txt"), `${step}\n${await lastPage.locator("body").innerText().catch(() => "Unavailable")}`); }

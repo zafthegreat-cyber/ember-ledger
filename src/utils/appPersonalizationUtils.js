@@ -193,6 +193,9 @@ export function buildRecommendedAppPreferences(context = {}) {
   return {
     version: 1,
     smartRecommendationsEnabled: true,
+    experiencePersona: "",
+    optionalTools: { community: false, family: false, assistant: false },
+    optionalToolsCustomized: [],
     dismissedRecommendationIds: [],
     acceptedRecommendationIds: [],
     pagePreferences,
@@ -219,7 +222,12 @@ export function normalizeAppPersonalizationPreferences(input = {}, context = {})
   APP_SETUP_PAGE_GROUPS.forEach((group) => {
     const saved = source.pagePreferences?.[group.key] || source.pages?.[group.key] || {};
     const savedKeys = Array.isArray(saved.visibleKeys) ? saved.visibleKeys : null;
-    const visibleKeys = sanitizeAppSetupVisibleKeys(group.key, savedKeys || defaults.pagePreferences[group.key]?.visibleKeys || [], context);
+    // Persistence keeps known layout choices for temporarily hidden tools. The
+    // rendering path still uses its actual context to filter available actions.
+    const savedKeyContext = savedKeys && context.preserveUnavailable === true
+      ? { ...context, sellerToolsEnabled: true, adminToolsVisible: true }
+      : context;
+    const visibleKeys = sanitizeAppSetupVisibleKeys(group.key, savedKeys || defaults.pagePreferences[group.key]?.visibleKeys || [], savedKeyContext);
     pagePreferences[group.key] = {
       visibleKeys: visibleKeys.length ? visibleKeys : defaults.pagePreferences[group.key]?.visibleKeys || [],
       updatedAt: saved.updatedAt || "",
@@ -229,6 +237,14 @@ export function normalizeAppPersonalizationPreferences(input = {}, context = {})
   return {
     version: 1,
     smartRecommendationsEnabled: source.smartRecommendationsEnabled !== false,
+    experiencePersona: ["collector", "seller", "store"].includes(source.experiencePersona) ? source.experiencePersona : "",
+    optionalTools: {
+      community: source.optionalTools?.community === true,
+      family: source.optionalTools?.family === true,
+      assistant: source.optionalTools?.assistant === true,
+    },
+    optionalToolsCustomized: [...new Set((Array.isArray(source.optionalToolsCustomized) ? source.optionalToolsCustomized : [])
+      .filter((key) => ["community", "family", "assistant"].includes(key)))],
     dismissedRecommendationIds: uniqueKeys(source.dismissedRecommendationIds),
     acceptedRecommendationIds: uniqueKeys(source.acceptedRecommendationIds),
     pagePreferences,

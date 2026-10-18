@@ -84,6 +84,7 @@ export default function MenuDrawerContent({ scope }) {
     disableLocationTracking,
     downloadBackup,
     effectiveNotificationPreferences,
+    experiencePresentation,
     emberTideForgeWorkspace,
     enableLocationTracking,
     exitGuestPreview,
@@ -258,7 +259,7 @@ export default function MenuDrawerContent({ scope }) {
               <div className="menu-brand-heading"><img src={BRAND_CONFIG.logoReference} alt="" /><div><p>{BRAND_CONFIG.applicationDisplayName}</p><h2 id={titleId}>Menu</h2></div></div>
               <button type="button" className="secondary-button drawer-close-button" aria-label="Close menu" onClick={() => setMenuOpen(false)}><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 6 12 12M18 6 6 18" /></svg></button>
             </div>
-            <MenuNavigation sections={menuCommandSections} NavIcon={AppNavIcon} isItemActive={isMenuItemActive} onSelect={openMenuItem} onAdd={() => openAddActionSheet("menu")} modeLabel={adaptiveUiState.modeLabel} workspaces={switcherWorkspaces} currentWorkspaceId={menuCurrentWorkspaceId} onSelectWorkspace={workspace => runMenuAction(() => navigateProductWorkspace(workspace.id))}>
+            <MenuNavigation sections={menuCommandSections} NavIcon={AppNavIcon} isItemActive={isMenuItemActive} onSelect={openMenuItem} onAdd={() => openAddActionSheet("menu")} modeLabel={experiencePresentation?.personaLabel || adaptiveUiState.modeLabel} experiencePresentation={experiencePresentation} workspaces={switcherWorkspaces} currentWorkspaceId={menuCurrentWorkspaceId} onSelectWorkspace={workspace => runMenuAction(() => navigateProductWorkspace(workspace.id))}>
               {renderMenuPullDown("account", "Account", "App version, sign-in, private beta status, and account actions", (
                 <div className="drawer-links">
                   <div className="drawer-info-card account-status-card">

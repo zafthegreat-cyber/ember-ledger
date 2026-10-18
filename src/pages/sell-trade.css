@@ -1,0 +1,35 @@
+.app[data-theme] .collector-sell-trade { display: grid; gap: 24px; width: min(1120px, 100%); min-width: 0; margin: 0 auto; padding: 28px 0; color: var(--text-primary); }
+.app[data-theme] .collector-sell-trade > .ops-page-header { margin: 0; }
+.app[data-theme] .collector-trade-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.app[data-theme] .collector-trade-actions > article,
+.app[data-theme] .collector-trade-panel { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; padding: 20px; border: 1px solid var(--border-subtle); border-radius: 12px; background: var(--surface-primary); box-shadow: var(--shadow-panel, none); }
+.app[data-theme] .collector-trade-icon { display: grid; place-items: center; width: 40px; height: 40px; border: 1px solid var(--border-subtle); border-radius: 10px; color: var(--action-primary); background: var(--surface-secondary); }
+.app[data-theme] .collector-trade-icon svg { width: 22px; height: 22px; }
+.app[data-theme] .collector-trade-actions h2 { margin: 14px 0 6px; color: var(--text-primary); font: 650 17px/1.4 var(--font-ui); }
+.app[data-theme] .collector-trade-actions p,
+.app[data-theme] .collector-trade-empty { margin: 0 0 18px; color: var(--text-secondary); font: 400 14px/1.6 var(--font-ui); overflow-wrap: anywhere; }
+.app[data-theme] .collector-trade-actions button { margin-top: auto; }
+.app[data-theme] .collector-sell-trade button { min-height: 44px; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.app[data-theme] .collector-trade-records { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.app[data-theme] .collector-trade-panel > .ops-section-header { width: 100%; margin-bottom: 16px; }
+.app[data-theme] .collector-trade-panel > button { margin-top: auto; }
+.app[data-theme] .collector-trade-record-list { list-style: none; width: 100%; margin: 0 0 18px; padding: 0; }
+.app[data-theme] .collector-trade-record-list > li + li { border-top: 1px solid var(--border-subtle); }
+.app[data-theme] .collector-trade-record-list button { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; padding: 12px 0; border: 0; border-radius: 4px; background: transparent !important; color: var(--text-primary) !important; text-align: left; }
+.app[data-theme] .collector-trade-record-list article { padding: 12px 0; }
+.app[data-theme] .collector-trade-record-list strong { display: block; font: 600 14px/1.5 var(--font-ui); overflow-wrap: anywhere; }
+.app[data-theme] .collector-trade-record-list small,
+.app[data-theme] .collector-trade-record-list time { display: block; margin-top: 4px; color: var(--text-secondary); font: 400 12px/1.5 var(--font-ui); overflow-wrap: anywhere; }
+.app[data-theme] .collector-trade-for { color: var(--text-secondary); font-weight: 400; }
+.app[data-theme] .collector-trade-saved { width: 100%; margin-bottom: 18px; }
+.app[data-theme] .collector-trade-saved > summary { min-height: 44px; padding: 12px 0; color: var(--text-primary); font: 600 14px/1.5 var(--font-ui); cursor: pointer; }
+.app[data-theme] .collector-trade-listings { display: grid; gap: 18px; min-width: 0; }
+.app[data-theme] .collector-trade-listings > button { justify-self: start; }
+.app[data-theme] .collector-sell-trade :is(button, summary):focus-visible { outline: 2px solid var(--action-primary); outline-offset: 3px; }
+@media (max-width: 760px) {
+  .app[data-theme] .collector-trade-actions,
+  .app[data-theme] .collector-trade-records { grid-template-columns: minmax(0, 1fr); }
+  .app[data-theme] .collector-sell-trade { gap: 18px; padding: 20px 0; }
+  .app[data-theme] .collector-trade-actions > article,
+  .app[data-theme] .collector-trade-panel { padding: 18px; }
+}

@@ -24,11 +24,14 @@ async function verifyRestrictedNavigation(browser) {
     stdin: { contents: `
       import React from 'react'; import {createRoot} from 'react-dom/client';
       import MenuNavigation from './src/features/deferredViews/MenuNavigation.jsx';
+      import {resolveExperiencePresentation} from './src/utils/experiencePresentation.js';
       const Icon=()=> <svg width="19" height="19" aria-hidden="true"><path d="M2 2h12v12H2z" /></svg>;
       const workspaces=[{id:'COLLECT',label:'Collect',icon:'inventory',shortPurpose:'Your cards'}, {id:'FIND',label:'Find',icon:'find',shortPurpose:'Find cards and prices'}];
       const sections=[{key:'account',title:'Account',items:[{key:'settings',label:'Settings',helper:'Preferences and cloud saving'}]}, {key:'collection',title:'Collection',items:[{key:'vault',label:'Collection',helper:'Your saved cards'}]}, {key:'community',title:'Community',items:[{key:'scout',label:'Restocks',helper:'Available cards'}]}];
       window.qaSelections=[];
-      createRoot(document.getElementById('root')).render(<MenuNavigation sections={sections} NavIcon={Icon} isItemActive={()=>false} onSelect={item=>window.qaSelections.push(item.key)} onAdd={()=>window.qaSelections.push('quick-add')} modeLabel="Collector" workspaces={workspaces} currentWorkspaceId="COLLECT" onSelectWorkspace={workspace=>window.qaSelections.push(workspace.id)} />);
+      const root=createRoot(document.getElementById('root'));
+      window.qaRenderExperience=input=>{const experience=resolveExperiencePresentation(input);root.render(<MenuNavigation sections={sections} NavIcon={Icon} isItemActive={()=>false} onSelect={item=>window.qaSelections.push(item.key)} onAdd={()=>window.qaSelections.push('quick-add')} modeLabel={experience.personaLabel} experiencePresentation={experience} workspaces={workspaces} currentWorkspaceId="COLLECT" onSelectWorkspace={workspace=>window.qaSelections.push(workspace.id)} />);};
+      window.qaRenderExperience({});
     `, resolveDir: process.cwd(), loader: "jsx" },
     bundle: true, jsx: "automatic", format: "esm", write: false,
   });
@@ -51,6 +54,8 @@ async function verifyRestrictedNavigation(browser) {
     await expect(search).toBeVisible();
     const destinations = await page.locator("[data-menu-key]").evaluateAll(elements => elements.map(element => element.dataset.menuKey).sort());
     assert.deepEqual(destinations, ["scout", "settings", "vault"]);
+    assert.deepEqual(await page.locator("[data-menu-shortcut]").evaluateAll(elements => elements.map(element => element.dataset.menuShortcut)), ["scout", "vault"], "Restocks should lead the supplied quick actions");
+    await expect(page.locator('[data-menu-section="find"] .menu-section-title')).toHaveText(/^Find & trade/);
     await page.locator(".menu-workspace-toggle").click();
     assert.deepEqual(await page.locator("[data-menu-workspace]").evaluateAll(elements => elements.map(element => element.dataset.menuWorkspace)), ["COLLECT", "FIND"]);
     await expect(page.locator('[data-menu-workspace="COLLECT"]').getByText("Current workspace", { exact: true })).toBeVisible();
@@ -66,7 +71,7 @@ async function verifyRestrictedNavigation(browser) {
     await expect(page.locator('[data-menu-key="vault"]')).toBeVisible();
     await expect(page.locator("[data-menu-key]")).toHaveCount(1);
     await page.keyboard.press("Escape"); await expect(search).toHaveValue(""); await expect(search).toBeFocused();
-    await search.fill("Find & sell");
+    await search.fill("Find & trade");
     await expect(page.locator('[data-menu-key="scout"]')).toBeVisible();
     await expect(page.locator("[data-menu-key]")).toHaveCount(1);
     await page.keyboard.press("Escape"); await expect(search).toHaveValue("");
@@ -74,8 +79,22 @@ async function verifyRestrictedNavigation(browser) {
     await expect(page.locator('[data-menu-workspace="FIND"]')).toBeFocused();
     await page.keyboard.press("Enter");
     assert.deepEqual(await page.evaluate(() => window.qaSelections), ["FIND"]);
+    for (const tier of ["free", "collector", "family", "seller", "shop"]) {
+      await search.fill("");
+      await page.evaluate(tier => window.qaRenderExperience({ canPreview: true, adminVisible: true, ownerVisible: true, preview: { enabled: true, tier } }), tier);
+      await expect(page.locator('[data-menu-section="find"] .menu-section-title')).toHaveText(tier === "seller" || tier === "shop" ? /^Find & sell/ : /^Find & trade/);
+      assert.deepEqual(await page.locator("[data-menu-key]").evaluateAll(elements => elements.map(element => element.dataset.menuKey).sort()), destinations, "Preview wording must preserve supplied destinations");
+      for (const query of ["Bot", "Owner Center", "Account Ops", "Admin Command", "Business"]) {
+        await search.fill(query);
+        await expect(page.locator("[data-menu-workspace], [data-menu-key]")).toHaveCount(0);
+      }
+    }
+    await search.fill("");
+    await page.evaluate(() => window.qaRenderExperience({}));
+    await expect(page.locator('[data-menu-section="find"] .menu-section-title')).toHaveText(/^Find & trade/);
+    assert.deepEqual(await page.evaluate(() => window.qaSelections), ["FIND"], "Changing presentation must not call navigation or data handlers");
     assert.deepEqual(errors, []); assert.deepEqual(unexpectedRequests, []);
-    return { actualComponent: true, onlyProvidedDestinations: true, onlyProvidedWorkspaces: true, searchCannotExposeRestrictedWorkspaces: true, taskGroupHintsAndLabelsSearchable: true, arrowDownAndEnterResultSelection: true, currentWorkspaceNotCurrentPage: true, callbackPreserved: true, unexpectedRequests: 0 };
+    return { actualComponent: true, actualExperienceHelper: true, collectorRestocksFirst: true, publicTierPreviews: 5, previewCannotInventPrivilegedDestinations: true, presentationChangesDoNotNavigate: true, onlyProvidedDestinations: true, onlyProvidedWorkspaces: true, searchCannotExposeRestrictedWorkspaces: true, taskGroupHintsAndLabelsSearchable: true, arrowDownAndEnterResultSelection: true, currentWorkspaceNotCurrentPage: true, callbackPreserved: true, unexpectedRequests: 0 };
   } finally { await context.close(); }
 }
 

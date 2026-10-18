@@ -1,5 +1,7 @@
+import { useContext } from "react";
 import { AppNavIcon } from "./AppNavIcon";
 import { BRAND_CONFIG } from "../../config/brand";
+import { ExperiencePresentationContext } from "../../utils/experiencePresentationContext";
 
 function normalizeAction(action) {
   if (!action) return null;
@@ -65,6 +67,11 @@ export function CommandBoardV4({
   routes = [],
   children,
 }) {
+  const experience = useContext(ExperiencePresentationContext);
+  const visibleNav = COMMAND_BOARD_NAV
+    .filter((item) => item.path !== "/business" || !experience || experience.showBusinessTools || experience.showAdminTools)
+    .map((item) => item.path === "/business" && experience?.isStore ? { ...item, label: "Store" } : item);
+  const showFamilyGuard = !experience || experience.showFamilyTools || experience.showAdminTools;
   const primary = normalizeAction(primaryAction);
   const secondary = secondaryActions.map(normalizeAction).filter(Boolean);
   const utility = utilityActions.map(normalizeAction).filter(Boolean);
@@ -90,7 +97,7 @@ export function CommandBoardV4({
             <strong>{BRAND_CONFIG.applicationDisplayName}<small>{label || "WORKSPACE"}</small></strong>
           </a>
           <nav aria-label="Main tabs">
-            {COMMAND_BOARD_NAV.map((item) => (
+            {visibleNav.map((item) => (
               <a
                 key={item.key}
                 className={item.key === activeNavKey ? "active" : ""}
@@ -103,9 +110,9 @@ export function CommandBoardV4({
             ))}
           </nav>
           <span className="command-board-v4-guard">
-            <AppNavIcon kind="spark" />
+            <AppNavIcon kind={showFamilyGuard ? "spark" : "secure"} />
             <span>
-              <b>Family guard</b>
+              <b>{showFamilyGuard ? "Family guard" : "Privacy & safety"}</b>
               <small>Safety, privacy, and location rules stay visible.</small>
             </span>
           </span>
@@ -202,7 +209,7 @@ export function CommandBoardV4({
         </div>
 
         <nav className="command-board-v4-mobile-dock" aria-label="Main tabs">
-          {COMMAND_BOARD_NAV.map((item) => (
+          {visibleNav.map((item) => (
             <a
               key={item.key}
               className={item.key === activeNavKey ? "active" : ""}
@@ -333,6 +340,14 @@ export function CommandBoardPlan({ label = "Plan", title, items = [], actions = 
 }
 
 export function CommandBoardRouteStrip({ routes = [] }) {
+  const experience = useContext(ExperiencePresentationContext);
+  const visibleRoutes = routes.filter((route) => {
+    if (!experience || experience.showAdminTools) return true;
+    const key = String(route.key || "").toLowerCase();
+    if (["spark", "kidsprogram", "parentcenter"].includes(key)) return Boolean(experience.showFamilyTools);
+    if (["tidepool", "community"].includes(key)) return Boolean(experience.showCommunityTools);
+    return true;
+  });
   const revealFocusedRoute = (event) => {
     const nav = event.currentTarget;
     const button = event.target.closest("button");
@@ -347,7 +362,7 @@ export function CommandBoardRouteStrip({ routes = [] }) {
 
   return (
     <nav className="command-board-v4-route-strip" aria-label="Routes and connections" onFocus={revealFocusedRoute}>
-      {routes.map((route, index) => (
+      {visibleRoutes.map((route, index) => (
         <button
           type="button"
           key={route.key || route.label || route.title}

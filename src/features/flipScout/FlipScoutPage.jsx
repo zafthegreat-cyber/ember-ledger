@@ -6,6 +6,7 @@ import { downloadTextFile } from "./csv.js";
 import { createEmptyFlipScoutState } from "./constants.js";
 import { createFlipScoutRepository } from "./storageRepository.js";
 import { LoadingState, PageHeader } from "../../components/operations/OperationsUI.jsx";
+import { resolveExperiencePresentation } from "../../utils/experiencePresentation.js";
 import "./flipScout.css";
 
 const DashboardScreen = lazy(() => import("./screens/DashboardScreen.jsx"));
@@ -19,8 +20,8 @@ const EbayDiscoveryScreen = lazy(() => import("./screens/EbayDiscoveryScreen.jsx
 const RestocksScreen = lazy(() => import("./screens/RestocksScreen.jsx"));
 
 const PRIMARY_NAV_ITEMS = [
-  ["deals", "Deals"],
   ["restocks", "Restocks"],
+  ["deals", "Deals"],
   ["auctions", "Auctions"],
 ];
 const SCREEN_TITLES = {
@@ -65,7 +66,9 @@ function createActivity(title, detail) {
   return { id: `activity-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, title, detail, createdAt: new Date().toISOString() };
 }
 
-export default function FlipScoutPage({ onOpenRestocks, onReportRestock, initialScreen = "deals", initialSubview = "", onViewChange, featureControls = EMPTY_FEATURE_CONTROLS }) {
+export default function FlipScoutPage({ onOpenRestocks, onReportRestock, initialScreen = "deals", initialSubview = "", onViewChange, featureControls = EMPTY_FEATURE_CONTROLS, experiencePresentation }) {
+  const presentation = experiencePresentation || resolveExperiencePresentation();
+  const showOperationalTools = presentation.showBusinessTools || presentation.showAdminTools;
   const [repository] = useState(() => createFlipScoutRepository());
   const moreMenuRef = useRef(null);
   const [state, setState] = useState(() => repository.load());
@@ -74,7 +77,7 @@ export default function FlipScoutPage({ onOpenRestocks, onReportRestock, initial
   const [subview, setSubview] = useState(initialDestination.subview);
   const [appraisalSeed, setAppraisalSeed] = useState(null);
   const [storageMessage, setStorageMessage] = useState(repository.getLastError());
-  const activeTitle = useMemo(() => SCREEN_TITLES[activeScreen] || "Find", [activeScreen]);
+  const activeTitle = useMemo(() => activeScreen === "records" && !showOperationalTools ? "Saved records" : SCREEN_TITLES[activeScreen] || "Find", [activeScreen, showOperationalTools]);
   const visiblePrimaryNavItems = PRIMARY_NAV_ITEMS.filter(([key]) => key !== "restocks" || featureControls.restocks !== false).filter(([key]) => key !== "auctions" || featureControls.auctions !== false);
   const intelligenceAnalyses = useMemo(() => (state.appraisals || [])
     .filter((record) => record.recordType === INTELLIGENCE_ANALYSIS_RECORD_TYPE)
@@ -225,13 +228,13 @@ export default function FlipScoutPage({ onOpenRestocks, onReportRestock, initial
     <details ref={moreMenuRef} className="flip-more-menu">
       <summary>More</summary>
       <div>
-        <button type="button" onClick={() => navigate("rules")}>Saved</button>
+        <button type="button" onClick={() => navigate("rules")}>Saved searches</button>
         <button type="button" onClick={() => navigate("appraise")}>Deal Analysis</button>
         <button type="button" onClick={() => navigate("buy-offer")}>Buy Offer</button>
         {featureControls.ebaySearch !== false ? <button type="button" onClick={() => navigate("ebay")}>eBay Search</button> : null}
-        {featureControls.ebaySearch !== false ? <button type="button" onClick={() => navigate("ebay")}>Import Review</button> : null}
-        <button type="button" onClick={() => navigate("sources")}>Sources</button>
-        <button type="button" onClick={() => navigate("rules")}>Search Rule Editor</button>
+        {showOperationalTools && featureControls.ebaySearch !== false ? <button type="button" onClick={() => navigate("ebay")}>Import Review</button> : null}
+        {showOperationalTools ? <button type="button" onClick={() => navigate("sources")}>Sources</button> : null}
+        {showOperationalTools ? <button type="button" onClick={() => navigate("rules")}>Search Rule Editor</button> : null}
       </div>
     </details>
   </div>;
@@ -239,9 +242,9 @@ export default function FlipScoutPage({ onOpenRestocks, onReportRestock, initial
   return (
     <div className="flip-scout-page">
       <PageHeader
-        eyebrow="Sourcing"
+        eyebrow={showOperationalTools ? "Sourcing" : "Restocks & finds"}
         title="Find"
-        description="Discover your next good find. Compare listings and keep the ones worth a closer look."
+        description="Check community restocks, compare prices, and save your next find."
       />
       {activeScreen !== "deals" && PRIMARY_NAV_ITEMS.some(([key]) => key === activeScreen) ? findNavigation : null}
       {!PRIMARY_NAV_ITEMS.some(([key]) => key === activeScreen) ? <div className="flip-context-bar"><button type="button" onClick={() => navigate("deals")}>Back to Deals</button><strong>{activeTitle}</strong></div> : null}
@@ -249,7 +252,7 @@ export default function FlipScoutPage({ onOpenRestocks, onReportRestock, initial
       <main className="flip-scout-main" aria-label={activeTitle} tabIndex={-1}>
         <Suspense fallback={<LoadingState title={`Loading ${activeTitle}`} description="Preparing this workspace." />}>
         {activeScreen === "dashboard" ? <DashboardScreen state={state} onNavigate={navigate} /> : null}
-        {activeScreen === "deals" ? <DealsScreen deals={state.deals} initialMode={subview} navigation={findNavigation} onSave={saveRecord} onDelete={deleteRecord} onAnalyze={analyzeDeal} /> : null}
+        {activeScreen === "deals" ? <DealsScreen deals={state.deals} initialMode={subview} navigation={findNavigation} experiencePresentation={presentation} onSave={saveRecord} onDelete={deleteRecord} onAnalyze={analyzeDeal} /> : null}
         {activeScreen === "restocks" ? <RestocksScreen onOpenRestocks={onOpenRestocks} onReportRestock={onReportRestock} /> : null}
         {activeScreen === "appraise" ? <AppraiserScreen seed={appraisalSeed} onSave={saveRecord} repository={repository} analysisRecords={intelligenceAnalyses} onAnalysisStored={analysisStored} /> : null}
         {activeScreen === "buy-offer" ? <BuyOfferScreen /> : null}

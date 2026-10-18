@@ -11,6 +11,7 @@ import { formatCurrency, formatPercent, sortFlipScoutRecords, timingIndicator } 
 import { CheckField, EmptyState, FormActions, MoneyInput, NumberInput, SectionHeading, SelectInput, TextArea, TextInput } from "../components/Fields.jsx";
 import { DealCard, PrimaryButton, QuietButton } from "../../../components/operations/OperationsUI.jsx";
 import { DetailList, RecordDetailPage } from "../../../components/operations/RecordExperience.jsx";
+import { resolveExperiencePresentation } from "../../../utils/experiencePresentation.js";
 
 function blankDeal() {
   return {
@@ -70,7 +71,9 @@ function listingTiming(deal) {
   return `Found ${days}d ago`;
 }
 
-export default function DealsScreen({ deals, initialMode = "", navigation = null, onSave, onDelete, onAnalyze }) {
+export default function DealsScreen({ deals, initialMode = "", navigation = null, onSave, onDelete, onAnalyze, experiencePresentation }) {
+  const presentation = experiencePresentation || resolveExperiencePresentation();
+  const showSellingMetrics = presentation.showBusinessTools || presentation.showAdminTools;
   const [form, setForm] = useState(blankDeal);
   const [formOpen, setFormOpen] = useState(() => Boolean(initialMode));
   const [query, setQuery] = useState("");
@@ -259,7 +262,7 @@ export default function DealsScreen({ deals, initialMode = "", navigation = null
                 <div className="flip-deal-card__body">
                   <span className="flip-deal-source">{deal.marketplace || "Manual source"}</span>
                   <h3>{deal.title || "Untitled listing"}</h3>
-                  <div className="flip-deal-summary"><span>{deal.currentBid ? "Current bid" : "Price"}<strong>{formatCurrency(deal.currentBid || deal.askingPrice)}</strong></span><span>Projected profit<strong>{deal.projectedProfit || deal.expectedProfit ? formatCurrency(deal.projectedProfit || deal.expectedProfit) : "Needs analysis"}</strong></span></div>
+                  <div className="flip-deal-summary"><span>{deal.currentBid ? "Current bid" : "Price"}<strong>{formatCurrency(deal.currentBid || deal.askingPrice)}</strong></span>{showSellingMetrics ? <span>Projected profit<strong>{deal.projectedProfit || deal.expectedProfit ? formatCurrency(deal.projectedProfit || deal.expectedProfit) : "Needs analysis"}</strong></span> : <span>Saved status<strong>{deal.status || "New"}</strong></span>}</div>
                   <p className="flip-deal-signal">{deal.confidence || "Unrated"} confidence · {deal.riskLevel || (deal.riskFlags?.length ? "Flagged" : "Unrated")} risk</p>
                   <time dateTime={deal.auctionEndTime || deal.listingCreatedAt || deal.dateDiscovered || deal.createdAt}>{listingTiming(deal)}</time>
                   <button type="button" className="primary-button" disabled={saving} onClick={() => setSelectedDeal(deal)}>Review</button>

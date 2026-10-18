@@ -77,6 +77,11 @@ match(appSource, /const shellRoutePath = pathFromActiveTab\(activeTab, \{/);
 doesNotMatch(appSource, /const shellRoutePath = currentRoutePath\(\)/, "Workspace ownership must not call route helpers that depend on later render declarations");
 match(appSource, /directWorkspace: shellRouteOwnership\?\.workspace \|\| ""/);
 match(appSource, /currentProductWorkspaceId = workspaceSelection\.workspace/);
+match(appSource, /availableWorkspaces: availableProductWorkspaces\.map\(\(workspace\) => workspace\.id\),\s*ownerAuthorized: ownerCenterAuthorized/, "The selected workspace must still use actual authorized availability");
+match(appSource, /const presentedProductWorkspaces = availableProductWorkspaces\.filter/, "Presentation may only narrow actual available workspaces");
+match(appSource, /const ownerToolsVisible = experiencePresentation\.showOwnerTools/);
+match(appSource, /ownerVisible: !guestPreviewActive && ownerSession\.status === OWNER_SESSION_STATES\.AUTHORIZED && adminViewingAsAdmin/, "Presentation must require the actual verified owner session outside regular preview");
+match(appSource, /const presentationWorkspaceId = presentedProductWorkspaces\.some\(\(workspace\) => workspace\.id === currentProductWorkspaceId\)\s*\? currentProductWorkspaceId : WORKSPACE_IDS\.COLLECT/, "A hidden workspace must use a safe display context without rewriting actual selection");
 match(appSource, /workspaceId === WORKSPACE_IDS\.BOT && !ownerCenterAuthorized/);
 match(appSource, /routeWorkspace === WORKSPACE_IDS\.BOT && !ownerCenterAuthorized/);
 match(appSource, /shellRouteOwnership\?\.classification === ROUTE_CLASSIFICATIONS\.OWNER/);
@@ -89,11 +94,12 @@ match(appSource, /availableProductWorkspaces\.find\(\(candidate\) => candidate\.
 match(appSource, /\}, \[activeTab, flipScoutView, productWorkspaceHome, effectiveProductWorkspaceHome, botOpsSection, collectionWorkspaceView/, "Switching between workspace homes and Bot sections should reset route focus and scroll even when the active tab is unchanged");
 doesNotMatch(homeSource, /<main\b/, "Workspace homes must not nest a second main landmark inside the application shell");
 
-match(appSource, /const mobileBottomTabs = currentProductWorkspaceId === WORKSPACE_IDS\.BOT[\s\S]*globalAddTab/);
+match(appSource, /const mobileBottomTabs = presentationWorkspaceId === WORKSPACE_IDS\.BOT[\s\S]*globalAddTab/);
+match(appSource, /const workspaceNavItems = getWorkspaceNavigation\(presentationWorkspaceId, \{\s*ownerAuthorized: ownerToolsVisible/, "Visible navigation must follow the display context and retain its owner gate");
 match(appSource, /\.slice\(0, 5\)/, "Mobile workspace navigation should stay bounded");
 match(appSource, /ariaLabel: "Open global Add menu"/);
 match(appSource, /const desktopSidebarItems = workspaceNavItems\.filter/);
-match(appSource, /ownerCenterAuthorized \? \{ key: "owner-center"/);
+match(appSource, /ownerToolsVisible \? \{ key: "owner-center"/);
 doesNotMatch(registrySource, /label:\s*"Owner Center"[\s\S]{0,120}switcherEligible:\s*true/);
 
 match(routeStateSource, /if \(section === "collect"\) return \{ activeTab: "workspaceHome", productWorkspaceHome: WORKSPACE_IDS\.COLLECT \}/);

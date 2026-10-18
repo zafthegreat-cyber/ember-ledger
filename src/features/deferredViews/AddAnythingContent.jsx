@@ -1,6 +1,7 @@
 import "./add-anything.css";
 import { useMemo } from "react";
 import { rankAdaptivePageItems } from "../../utils/adaptivePageItems";
+import { resolveExperiencePresentation } from "../../utils/experiencePresentation.js";
 import { createFlipScoutRepository } from "../flipScout/storageRepository";
 
 // App owns state, authority and handlers; only this existing renderer is deferred.
@@ -9,6 +10,10 @@ export default function AddAnythingContent({ scope }) {
   const {
     adaptiveActivity,
     personalizationPreferences,
+    experiencePresentation,
+    showFamilyExperience,
+    onOpenSellTrade,
+    onOpenExperienceSettings,
     ADD_ITEM_QUICK_SEARCH_CHIPS,
     CollectorShowcaseCard,
     CommandGlyphIcon,
@@ -82,6 +87,8 @@ export default function AddAnythingContent({ scope }) {
     const searchResults = searchQuery ? getCatalogPickerResults(searchQuery, 8) : [];
     const upcResults = upcQuery ? getCatalogPickerResults(upcQuery, 8) : [];
     const sellerQuickAddActive = quickAddSellerToolsEnabled();
+    const presentation = experiencePresentation || resolveExperiencePresentation();
+    const familyVisible = presentation.showAdminTools || (typeof showFamilyExperience === "boolean" ? showFamilyExperience : presentation.showFamilyTools);
     const destinationOptions = [
       { value: "vault", label: "Vault", helper: "Personal collection" },
       ...(sellerQuickAddActive && activeForgeWorkspace ? [{ value: "forge", label: "Forge", helper: "Seller inventory" }] : []),
@@ -829,11 +836,12 @@ export default function AddAnythingContent({ scope }) {
       window.setTimeout(() => openFlipScoutView(screen, subview), 0);
     };
     const defaultEntryOptions = [
-      { key: "scan-listing", title: "Scan Listing", ariaLabel: "Scan Listing. Start a review-first scan or screenshot workflow.", icon: "scan", tone: "search", onClick: () => setQuickAddPath("scanAnything") },
+      { key: "scan-listing", title: presentation.isCollector ? "Scan or review" : "Scan Listing", ariaLabel: presentation.isCollector ? "Scan or review. Start a review-first scan or screenshot workflow." : "Scan Listing. Start a review-first scan or screenshot workflow.", icon: "scan", tone: "search", onClick: () => setQuickAddPath("scanAnything") },
       { key: "analyze-deal", title: "Analyze Deal", ariaLabel: "Analyze Deal. Review costs, resale assumptions, profit, and ROI.", icon: "find", tone: "search", onClick: () => openFindAction("appraise") },
       { key: "record-purchase", title: "Record Purchase", ariaLabel: "Record Purchase. Create a purchase and split it into lots or items.", icon: "clipboard", tone: "forge", onClick: () => openFindAction("records", "purchases") },
       { key: "add-collection-item", title: "Add Collection Item", ariaLabel: "Add Collection Item with a personal collection purpose.", icon: "inventory", tone: "vault", onClick: () => { closeFlowModal({ force: true }); window.setTimeout(() => openProductAddFlow({ source: "global-add-collection", seed: { ownedItemPurpose: OWNED_ITEM_PURPOSES.PERSONAL_COLLECTION }, destinations: { vault: true } }), 0); } },
       { key: "record-sale", title: "Record Sale", ariaLabel: "Record Sale with proceeds, fees, shipping, and realized profit.", icon: "sell", tone: "forge", onClick: () => openFindAction("records", "sales") },
+      ...(onOpenSellTrade ? [{ key: "sell-or-trade", title: "Sell or trade", ariaLabel: "Sell or trade. Open your existing listing and trade tools.", icon: "sell", tone: "forge", onClick: () => { closeFlowModal({ force: true }); window.setTimeout(onOpenSellTrade, 0); } }] : []),
     ];
     const moreEntryOptions = [
       { key: "search-catalog", title: "Search cards & products", ariaLabel: "Search cards and products by name.", icon: "search", tone: "search", onClick: () => setQuickAddPath("search") },
@@ -842,17 +850,17 @@ export default function AddAnythingContent({ scope }) {
       { key: "review-screenshot", title: "Review a restock screenshot", ariaLabel: "Review a restock screenshot before saving a report.", icon: "find", tone: "search", onClick: () => setQuickAddPath("scoutScreenshotReview") },
       { key: "request-missing-item", title: "Request Missing Item", ariaLabel: "Request a missing catalog item.", icon: "search", tone: "search", onClick: openQuickAddMissingProduct },
       { key: "add-auction", title: "Add Auction", ariaLabel: "Add Auction with timing, fees, risk, and a maximum bid.", icon: "calendar", tone: "search", onClick: () => openFindAction("auctions", "new") },
-      { key: "add-resale-inventory", title: "Add Resale Inventory", ariaLabel: "Add Resale Inventory with cost basis and a resale purpose.", icon: "inventory", tone: "forge", onClick: () => { closeFlowModal({ force: true }); window.setTimeout(() => openProductAddFlow({ source: "global-add-resale", seed: { ownedItemPurpose: OWNED_ITEM_PURPOSES.FOR_RESALE }, destinations: { forge: Boolean(activeForgeWorkspace), vault: !activeForgeWorkspace } }), 0); } },
+      { key: "add-resale-inventory", title: presentation.isStore ? "Add store inventory" : "Add selling inventory", ariaLabel: presentation.isStore ? "Add store inventory with cost basis and a resale purpose." : "Add selling inventory with cost basis and a resale purpose.", icon: "inventory", tone: "forge", onClick: () => { closeFlowModal({ force: true }); window.setTimeout(() => openProductAddFlow({ source: "global-add-resale", seed: { ownedItemPurpose: OWNED_ITEM_PURPOSES.FOR_RESALE }, destinations: { forge: Boolean(activeForgeWorkspace), vault: !activeForgeWorkspace } }), 0); } },
       { key: "add-expense", title: "Add Expense", ariaLabel: "Add Expense business record.", icon: "business", tone: "forge", onClick: () => openFindAction("records", "expenses") },
       { key: "add-mileage", title: "Add Mileage", ariaLabel: "Add Mileage for a sourcing, pickup, delivery, or event trip.", icon: "map", tone: "forge", onClick: () => openFindAction("records", "mileage") },
       { key: "add-receipt", title: "Add Receipt", ariaLabel: "Add Receipt and review it before linking records.", icon: "clipboard", tone: "forge", onClick: () => setQuickAddPath("receipt") },
-      ownerFeatureControls.kidsCommunity ? { key: "add-kids-pack", title: "Add Kids Pack", ariaLabel: "Add a parent-guided Kids and Community pack record.", icon: "spark", tone: "spark", onClick: () => { closeFlowModal({ force: true }); window.setTimeout(() => openSparkKidPackFlow({ source: "global-add" }), 0); } } : null,
+      ownerFeatureControls.kidsCommunity && familyVisible ? { key: "add-kids-pack", title: "Add Kids Pack", ariaLabel: "Add a parent-guided Kids and Community pack record.", icon: "spark", tone: "spark", onClick: () => { closeFlowModal({ force: true }); window.setTimeout(() => openSparkKidPackFlow({ source: "global-add" }), 0); } } : null,
     ].filter(Boolean);
 
     const activityKeysByAction = {
       "scan-listing": ["reports"], "analyze-deal": ["watchlist", "deals"],
       "record-purchase": ["purchases"], "add-collection-item": ["collection"],
-      "record-sale": ["sales"], "add-auction": ["auctions"],
+      "record-sale": ["sales"], "sell-or-trade": ["sales", "trades"], "add-auction": ["auctions"],
       "add-resale-inventory": ["inventory"], "add-expense": ["expenses"],
       "add-mileage": ["expenses"], "add-receipt": ["receipts"], "add-kids-pack": ["packs"],
       "search-catalog": ["watchlist"], "enter-upc": ["inventory"], "scan-page": ["collection"], "review-screenshot": ["reports"],
@@ -865,7 +873,21 @@ export default function AddAnythingContent({ scope }) {
     };
     const addPreference = personalizationPreferences?.pagePreferences?.quickAdd;
     const preferredActions = (addPreference?.visibleKeys || []).map((key) => preferenceActions[key]).filter(Boolean);
-    const rankedActions = rankAdaptivePageItems([...defaultEntryOptions, ...moreEntryOptions].map((option) => ({
+    const businessActionKeys = new Set(["analyze-deal", "record-purchase", "record-sale", "add-auction", "add-resale-inventory", "add-expense", "add-mileage", "add-receipt"]);
+    const personaDefaults = presentation.isCollector
+      ? ["add-collection-item", "search-catalog", "scan-listing", "enter-upc", "sell-or-trade"]
+      : presentation.isStore
+        ? ["add-resale-inventory", "record-sale", "record-purchase", "search-catalog", "scan-listing"]
+        : ["add-resale-inventory", "record-sale", "record-purchase", "analyze-deal", "scan-listing"];
+    const eligibleOptions = [...defaultEntryOptions, ...moreEntryOptions]
+      .filter((option) => !presentation.isCollector || !businessActionKeys.has(option.key))
+      .filter((option) => presentation.isCollector || option.key !== "sell-or-trade")
+      .sort((left, right) => {
+        const leftIndex = personaDefaults.indexOf(left.key);
+        const rightIndex = personaDefaults.indexOf(right.key);
+        return (leftIndex < 0 ? Infinity : leftIndex) - (rightIndex < 0 ? Infinity : rightIndex);
+      });
+    const rankedActions = rankAdaptivePageItems(eligibleOptions.map((option) => ({
       ...option, activityKeys: activityKeysByAction[option.key],
     })), {
       activity: { ...savedFindActivity, ...adaptiveActivity,
@@ -936,6 +958,7 @@ export default function AddAnythingContent({ scope }) {
             </div>
           </details>
         ) : null}
+        {onOpenExperienceSettings ? <button type="button" className="secondary-button add-experience-settings" onClick={() => { closeFlowModal({ force: true }); window.setTimeout(onOpenExperienceSettings, 0); }}>Customize these shortcuts</button> : null}
       </div>
     );
   }

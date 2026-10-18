@@ -477,6 +477,9 @@ import {
 } from "./utils/rolePermissions";
 import { adaptiveForgeAccessMessage, normalizeSmartSetupPreferences, recommendSmartSetup, resolveAdaptiveUiState, resolveHearthSmartNextAction } from "./utils/adaptiveUi";
 import { selectOwnAdaptiveReports } from "./utils/adaptivePageItems";
+import { createTierPreviewProfile, normalizePreviewTier, resolveExperiencePresentation } from "./utils/experiencePresentation";
+import { ExperiencePresentationContext } from "./utils/experiencePresentationContext";
+import { AdminPlanPreviewControls, ExperiencePreferences } from "./components/ExperienceControls.jsx";
 import { APP_SETUP_PAGE_GROUPS, appSetupOptionAllowed, applyAppSetupRecommendation, buildAppSetupRecommendations, buildRecommendedAppPreferences, dismissAppSetupRecommendation, normalizeAppPersonalizationPreferences, sanitizeAppSetupVisibleKeys } from "./utils/appPersonalizationUtils";
 
 const HEARTH_FOUNDATION_TRUST_MESSAGE = "We help families collect fairly without exposing harmful restock patterns.";
@@ -6784,6 +6787,8 @@ export default function App() {
   const [quickAddWizard, setQuickAddWizard] = useState(() => createQuickAddWizardState());
   const [lockedFeatureKey, setLockedFeatureKey] = useState("");
   const [adminViewMode, setAdminViewMode] = useState("admin");
+  const [adminPreviewTier, setAdminPreviewTier] = useState("free");
+  const [adminPreviewPersona, setAdminPreviewPersona] = useState("collector");
   const [adminEditMode, setAdminEditMode] = useState(false);
   const [adminModeStorageReady, setAdminModeStorageReady] = useState(false);
   const [adminConfirmAction, setAdminConfirmAction] = useState(null);
@@ -7820,24 +7825,85 @@ export default function App() {
     setScoutSubTabTarget({ tab: "alerts", id: Date.now() });
   }
 
+  const planProfile = subscriptionProfile;
+  const currentPlan = getUserPlan(planProfile);
+  const currentTier = getUserTier(planProfile);
+  const rolePermissionProfile = {
+    ...planProfile,
+    ...currentUserProfile,
+    email: currentUserProfile?.email || user?.email || planProfile?.email || "",
+  };
+  const actualAppRole = appRoleForProfile(rolePermissionProfile);
+  const roleAdminUser = [APP_ROLES.OWNER, APP_ROLES.ADMIN].includes(actualAppRole);
+  const roleModeratorUser = actualAppRole === APP_ROLES.MODERATOR;
+  const adminUser = isAdminUser(planProfile) || roleAdminUser;
+  const explicitAdminRole = String(
+    actualAppRole ||
+    currentUserProfile?.role ||
+    currentUserProfile?.appRole ||
+    currentUserProfile?.app_role ||
+    currentUserProfile?.adminRole ||
+    currentUserProfile?.admin_role ||
+    planProfile?.role ||
+    planProfile?.appRole ||
+    planProfile?.app_role ||
+    planProfile?.adminRole ||
+    planProfile?.admin_role ||
+    ""
+  ).toLowerCase();
+  const moderatorUser =
+    roleModeratorUser ||
+    ["admin", "super_admin", "super-admin", "moderator"].includes(explicitAdminRole) ||
+    Boolean(
+      currentUserProfile?.isAdmin ||
+      currentUserProfile?.is_admin ||
+      currentUserProfile?.isModerator ||
+      currentUserProfile?.is_moderator ||
+      planProfile?.isAdmin ||
+      planProfile?.is_admin ||
+      planProfile?.isModerator ||
+      planProfile?.is_moderator
+    );
+  const normalizedActualRole = explicitAdminRole === "super-admin" ? "super_admin" : explicitAdminRole;
+  const actualAdminRole =
+    [APP_ROLES.OWNER, APP_ROLES.ADMIN, APP_ROLES.MODERATOR].includes(normalizeAppRole(normalizedActualRole)) ? normalizeAppRole(normalizedActualRole) :
+    ["admin", "super_admin", "moderator"].includes(normalizedActualRole) ? normalizedActualRole :
+    adminUser ? "admin" :
+    moderatorUser ? "moderator" :
+    normalizedActualRole || "user";
+  const actualAdminUser = !guestPreviewActive && canViewAdminDashboard({ ...rolePermissionProfile, appRole: actualAdminRole, app_role: actualAdminRole });
+
+
   const smartSetupPreferences = normalizeSmartSetupPreferences(betaReadinessData.onboarding?.smartSetup || {});
-  const smartSetupSellerIntent = [
-    "seller",
-    "business_seller",
-    "yes_i_need_sales_expenses_mileage_receipts",
-    "yes_i_need_year_end_export_tax_support_later",
-  ].some((key) => (
-    smartSetupPreferences.primaryMode === key ||
-    smartSetupPreferences.businessTools === key ||
-    smartSetupPreferences.enabledToolsets.includes(key) ||
-    smartSetupPreferences.purposes.includes(key)
-  ));
-  const localSellerModeActive = sellerModeEnabled(userType, dashboardPreset);
-  const isSellerExperience =
-    smartSetupSellerIntent ||
-    localSellerModeActive ||
-    normalizeUserType(currentUserProfile?.userType || currentUserProfile?.user_type) === "seller" ||
-    normalizeDashboardPreset(currentUserProfile?.dashboardPreset || currentUserProfile?.dashboard_preset) === "seller";
+  const adminModeUserKey = String(currentUserProfile?.userId || currentUserProfile?.id || user?.id || "anonymous");
+  const adminModeStorageKey = ADMIN_MODE_STORAGE_PREFIX + ":" + adminModeUserKey;
+  const adminModeLoaded = !actualAdminUser || adminModeStorageReady;
+  const adminViewingAsAdmin = actualAdminUser && adminModeLoaded && adminViewMode === "admin";
+  const displayedAdminViewMode = adminViewingAsAdmin ? "admin" : "regular";
+  const canPreviewPlans = actualAdminUser && (roleAdminUser || adminUser);
+  const tierPreviewActive = canPreviewPlans && adminModeLoaded && adminViewMode === "regular";
+  const experiencePresentation = resolveExperiencePresentation({
+    setupPreferences: smartSetupPreferences,
+    userType: currentUserProfile?.userType || currentUserProfile?.user_type || userType,
+    dashboardPreset: currentUserProfile?.dashboardPreset || currentUserProfile?.dashboard_preset || dashboardPreset,
+    personaPreference: appSetupPersonalization?.experiencePersona,
+    adminVisible: adminViewingAsAdmin,
+    ownerVisible: !guestPreviewActive && ownerSession.status === OWNER_SESSION_STATES.AUTHORIZED && adminViewingAsAdmin,
+    canPreview: canPreviewPlans,
+    preview: { enabled: tierPreviewActive, tier: adminPreviewTier, persona: adminPreviewPersona },
+  });
+  const optionalExperienceTools = appSetupPersonalization?.optionalTools || {};
+  const showFamilyExperience = experiencePresentation.isPreview
+    ? experiencePresentation.showFamilyTools
+    : appSetupPersonalization?.optionalToolsCustomized?.includes("family")
+      ? optionalExperienceTools.family === true
+      : experiencePresentation.showFamilyTools || optionalExperienceTools.family === true;
+  const showCommunityExperience = experiencePresentation.showAdminTools || (!experiencePresentation.isPreview && optionalExperienceTools.community === true);
+  const showAssistantExperience = experiencePresentation.showAdminTools || (!experiencePresentation.isPreview && optionalExperienceTools.assistant === true);
+  const ownerToolsVisible = experiencePresentation.showOwnerTools;
+  const regularPreviewPlanProfile = actualAdminUser && !adminViewingAsAdmin
+    ? createTierPreviewProfile(tierPreviewActive ? adminPreviewTier : normalizePreviewTier(currentTier) || "free")
+    : planProfile;
   const hasAdminProfileSignal = Boolean(
     currentUserProfile?.isAdmin ||
     currentUserProfile?.is_admin ||
@@ -7857,7 +7923,7 @@ export default function App() {
     subscriptionProfile?.is_moderator
   );
   const adminHeavyDataVisible = !guestPreviewActive && earlyAdminProfileSignal && adminModeStorageReady && adminViewMode === "admin";
-  const commandDeskSellerAccess = isSellerExperience || hasAdminProfileSignal;
+  const commandDeskSellerAccess = experiencePresentation.showBusinessTools || experiencePresentation.showAdminTools;
   const adaptiveAdminNavVisible = Boolean(
     !guestPreviewActive &&
     adminModeStorageReady &&
@@ -7872,10 +7938,10 @@ export default function App() {
   );
   const smartSetupRecommendation = recommendSmartSetup(smartSetupPreferences, { adminAllowed: adaptiveAdminNavVisible });
   const adaptiveUiState = resolveAdaptiveUiState({
-    userType: currentUserProfile?.userType || currentUserProfile?.user_type || userType,
-    dashboardPreset: currentUserProfile?.dashboardPreset || currentUserProfile?.dashboard_preset || dashboardPreset,
-    isSellerExperience,
-    sellerToolsEnabled: localSellerModeActive || smartSetupSellerIntent,
+    userType: experiencePresentation.showBusinessTools ? "seller" : "collector",
+    dashboardPreset: showFamilyExperience ? "family" : experiencePresentation.showBusinessTools ? "seller" : "collector",
+    isSellerExperience: experiencePresentation.showBusinessTools,
+    sellerToolsEnabled: experiencePresentation.showBusinessTools,
     adminToolsVisible: adaptiveAdminNavVisible,
     moderatorToolsVisible: adaptiveModeratorNavVisible && !adaptiveAdminNavVisible,
     currentRoute: activeTab,
@@ -7884,7 +7950,7 @@ export default function App() {
       adminReviewAvailable: adaptiveAdminNavVisible,
       scannerAvailable: true,
     },
-    setupPreferences: smartSetupPreferences,
+    setupPreferences: { ...smartSetupPreferences, primaryMode: experiencePresentation.showBusinessTools ? "seller" : "collector", businessTools: experiencePresentation.showBusinessTools ? smartSetupPreferences.businessTools : "no_i_only_collect", purposes: [], enabledToolsets: [], recommendedPlanType: "" },
   });
   const adaptiveSellerToolsVisible = adaptiveUiState.showSellerTools;
 
@@ -7904,27 +7970,17 @@ export default function App() {
   }
 
   function quickAddSellerToolsEnabled() {
-    const context = appPersonalizationContext();
-    const smartSetupSellerToolsActive = Boolean(
-      (smartSetupPreferences.enabledToolsets || []).some((key) => ["forge_seller_tools", "sales_tracking", "receipts_and_expenses", "mileage_tracking"].includes(key)) ||
-      ["casual_seller", "business_seller", "seller"].includes(smartSetupPreferences.primaryMode) ||
-      ["yes_i_need_sales_expenses_mileage_receipts", "yes_i_need_year_end_export_tax_support_later"].includes(smartSetupPreferences.businessTools)
-    );
-    return Boolean(
-      context.sellerToolsEnabled ||
-      adaptiveUiState.showSellerTools ||
-      smartSetupSellerToolsActive ||
-      sellerModeEnabled(userType, dashboardPreset)
-    );
+    return experiencePresentation.showBusinessTools || experiencePresentation.showAdminTools;
   }
 
   function updateAppSetupPersonalization(updater, message = "") {
+    if (experiencePresentation.isPreview) { setVaultToast("Exit the user preview to change your own setup."); return; }
     if (blockGuestSave()) return;
     setAppSetupPersonalization((current) => {
       const context = appPersonalizationContext();
-      const normalized = normalizeAppPersonalizationPreferences(current, context);
+      const normalized = normalizeAppPersonalizationPreferences(current, { ...context, preserveUnavailable: true });
       const next = typeof updater === "function" ? updater(normalized, context) : { ...normalized, ...updater };
-      return normalizeAppPersonalizationPreferences({ ...next, updatedAt: new Date().toISOString() }, context);
+      return normalizeAppPersonalizationPreferences({ ...next, updatedAt: new Date().toISOString() }, { ...context, preserveUnavailable: true });
     });
     if (message) setVaultToast(message);
   }
@@ -7954,6 +8010,7 @@ export default function App() {
   }
 
   function resetAppSetupToRecommended() {
+    if (experiencePresentation.isPreview) { setVaultToast("Exit the user preview to change your own setup."); return; }
     if (blockGuestSave()) return;
     const context = appPersonalizationContext();
     setAppSetupPersonalization({
@@ -8071,16 +8128,23 @@ export default function App() {
   const privateBotRouteDenied = shellRouteOwnership?.workspace === WORKSPACE_IDS.BOT
     && shellRouteOwnership?.requiredAuthority === AUTHORITY_REQUIREMENTS.VERIFIED_OWNER
     && !ownerCenterAuthorized;
-  const switcherWorkspaces = availableProductWorkspaces.map((workspace) => ({
+  const presentedProductWorkspaces = availableProductWorkspaces.filter((workspace) => {
+    if (workspace.id === WORKSPACE_IDS.BOT) return ownerToolsVisible;
+    if ([WORKSPACE_IDS.BUSINESS, WORKSPACE_IDS.SELL].includes(workspace.id)) return experiencePresentation.showBusinessTools || experiencePresentation.showAdminTools;
+    return true;
+  });
+  const switcherWorkspaces = presentedProductWorkspaces.map((workspace) => ({
     id: workspace.id,
-    label: workspace.label,
+    label: workspace.id === WORKSPACE_IDS.SELL ? experiencePresentation.copy.sellingLabel : workspace.id === WORKSPACE_IDS.BUSINESS && experiencePresentation.isStore ? "Store" : workspace.label,
     icon: workspace.iconKey,
     shortPurpose: workspace.description,
     ownerOnly: workspace.requiredAuthority === AUTHORITY_REQUIREMENTS.VERIFIED_OWNER,
     homePath: workspace.homePath,
   }));
-  const workspaceNavItems = getWorkspaceNavigation(currentProductWorkspaceId, {
-    ownerAuthorized: ownerCenterAuthorized,
+  const presentationWorkspaceId = presentedProductWorkspaces.some((workspace) => workspace.id === currentProductWorkspaceId)
+    ? currentProductWorkspaceId : WORKSPACE_IDS.COLLECT;
+  const workspaceNavItems = getWorkspaceNavigation(presentationWorkspaceId, {
+    ownerAuthorized: ownerToolsVisible,
     featureControls: ownerFeatureControls,
   }).map((item) => ({
     ...item,
@@ -8119,7 +8183,7 @@ export default function App() {
     ownerCenter: "Owner Center",
     accountOps: "Account Ops",
     workspaceHome: getWorkspaceDefinition(effectiveProductWorkspaceHome)?.label || "Workspace",
-    exchange: "Sell",
+    exchange: experiencePresentation.copy.sellingLabel,
     settings: "Settings",
     account: "Account",
     collections: "Collections",
@@ -8168,14 +8232,14 @@ export default function App() {
   const globalAddTab = { key: "global-add", label: "Add", ariaLabel: "Open global Add menu", icon: "plus", isAction: true, action: () => openAddActionSheet("mobile-navigation") };
   const mobileWorkspaceItems = workspaceNavItems.filter((item) => item.mobileEligible !== false);
   const addInsertIndex = Math.min(2, mobileWorkspaceItems.length);
-  const mobileBottomTabs = currentProductWorkspaceId === WORKSPACE_IDS.BOT
+  const mobileBottomTabs = presentationWorkspaceId === WORKSPACE_IDS.BOT
     ? mobileWorkspaceItems
     : [...mobileWorkspaceItems.slice(0, addInsertIndex), globalAddTab, ...mobileWorkspaceItems.slice(addInsertIndex)].slice(0, 5);
   const mobilePrimaryTabKeys = new Set(mobileBottomTabs.map((tab) => tab.key));
   const activeMobileTabKey = activeTab === "ownerCenter" ? "" : mobilePrimaryTabKeys.has(activeWorkspaceNavItem?.key) ? activeWorkspaceNavItem.key : "";
   const desktopSidebarItems = workspaceNavItems.filter((item) => item.desktopEligible !== false);
   const desktopSecondaryItems = [
-    ownerCenterAuthorized ? { key: "owner-center", label: "Owner Center", icon: "settings", badge: "Owner Only", action: () => { prepareRouteNavigation(); setOwnerCenterSection("overview"); setOwnerCenterSubview(""); setActiveTab("ownerCenter"); } } : null,
+    ownerToolsVisible ? { key: "owner-center", label: "Owner Center", icon: "settings", badge: "Owner Only", action: () => { prepareRouteNavigation(); setOwnerCenterSection("overview"); setOwnerCenterSubview(""); setActiveTab("ownerCenter"); } } : null,
     { key: "settings", label: "Settings", icon: "settings", target: "settings" },
   ].filter(Boolean);
   useEffect(() => {
@@ -8184,6 +8248,7 @@ export default function App() {
   }, [activeTab, effectiveProductWorkspaceHome, productWorkspaceHome]);
   useEffect(() => {
     const routeWorkspace = shellRouteOwnership?.workspace;
+    if (experiencePresentation.isPreview) return;
     if (!routeWorkspace || shellRouteOwnership?.classification === ROUTE_CLASSIFICATIONS.OWNER) return;
     if (routeWorkspace === WORKSPACE_IDS.BOT && !ownerCenterAuthorized) return;
     setWorkspacePreference((current) => {
@@ -8197,13 +8262,13 @@ export default function App() {
         lastProductWorkspace: workspacePreference.lastProductWorkspace,
       });
     }
-  }, [ownerCenterAuthorized, shellRouteOwnership?.classification, shellRouteOwnership?.workspace, workspacePreference.lastProductWorkspace]);
+  }, [experiencePresentation.isPreview, ownerCenterAuthorized, shellRouteOwnership?.classification, shellRouteOwnership?.workspace, workspacePreference.lastProductWorkspace]);
   const mobileMenuByKey = {
     scout: { key: "scout", label: "Restocks", helper: "Reports, store profiles, and saved restock evidence.", icon: "find", action: () => openFlipScoutView("restocks") },
     vault: { key: "vault", label: "Collection", helper: "Collection, sets, wishlist, and grading.", icon: "inventory", target: "collectionWorkspace" },
     quickAdd: { key: "quickAdd", label: "Add", helper: "Scan, add, report, or request.", icon: "plus", action: () => openAddActionSheet("menu-quick-add") },
     scanProduct: { key: "scanProduct", label: "Scan Product/Card", helper: "Open scanner review before saving.", icon: "scan", action: () => openQuickAddAction("scanProduct") },
-    emberAssist: ownerFeatureControls.businessAssistant ? { key: "emberAssist", label: "Business Assistant", helper: "Open the application guide.", icon: "help", action: () => setEmberAssistOpen(true) } : null,
+    emberAssist: ownerFeatureControls.businessAssistant && showAssistantExperience ? { key: "emberAssist", label: "Business Assistant", helper: "Open the application guide.", icon: "help", action: () => setEmberAssistOpen(true) } : null,
     watchList: { key: "watchList", label: "Saved Alerts", helper: "Watched stores, alerts, and product signals.", icon: "bell", action: openEmberWatchSection },
     forge: { key: "forge", label: "Business Records", helper: "Purchases, inventory, sales, and money.", icon: "business", target: "businessWorkspace" },
     sales: { key: "sales", label: "Sales", helper: "Sales records and profit review.", icon: "business", action: () => { setBusinessWorkspaceView("sales"); setActiveTab("businessWorkspace"); } },
@@ -8211,7 +8276,7 @@ export default function App() {
     mileage: { key: "mileage", label: "Mileage", helper: "Trips and vehicle costs.", icon: "calendar", action: () => { setBusinessWorkspaceView("money"); setBusinessMoneyView("mileage"); setActiveTab("businessWorkspace"); } },
     taxCenter: { key: "taxCenter", label: "Reports", helper: "Business summaries and reconciliation.", icon: "clipboard", action: () => { setBusinessWorkspaceView("money"); setBusinessMoneyView("reports"); setActiveTab("businessWorkspace"); } },
     market: { key: "market", label: "Market Watch", helper: "Fair prices, watchlist, and value labels.", icon: "market", target: "market" },
-    exchange: { key: "exchange", label: "Sell & Product Research", helper: "Market research, listings, and business tools.", icon: "market", target: "exchange" },
+    exchange: { key: "exchange", label: experiencePresentation.copy.sellingLabel, helper: experiencePresentation.isCollector ? "Sell an extra card or review a trade when you need to." : "Listings, selling records, and product research.", icon: "market", target: "exchange" },
     tidepool: { key: "tidepool", label: "Community", helper: "Family-safe posts and trusted trade talk.", icon: "community", target: "tidepool" },
     spark: ownerFeatureControls.kidsCommunity ? { key: "spark", label: "Kids & Community", helper: "Kids Pack requests, missions, and events.", icon: "community", action: () => setActiveTab("kidsProgram") } : null,
     announcements: { key: "announcements", label: "Announcements", helper: "New Stuff and app updates.", icon: "bell", action: () => setActiveTab("whatsNew") },
@@ -8237,8 +8302,8 @@ export default function App() {
   const menuAccountItems = [
     mobileMenuByKey.profile,
     mobileMenuByKey.account,
-    ownerCenterAuthorized ? { key: "account-ops", label: "Account Ops", helper: "Profiles, email aliases, retailer accounts, and account tasks.", icon: "account", action: () => { prepareRouteNavigation(); setAccountOpsSection("overview"); setActiveTab("accountOps"); } } : null,
-    ownerCenterAuthorized ? { key: "owner-center", label: "Owner Center", helper: "Private sourcing, performance, and system controls.", icon: "settings", action: () => { prepareRouteNavigation(); setOwnerCenterSection("overview"); setOwnerCenterSubview(""); setActiveTab("ownerCenter"); } } : null,
+    ownerToolsVisible ? { key: "account-ops", label: "Account Ops", helper: "Profiles, email aliases, retailer accounts, and account tasks.", icon: "account", action: () => { prepareRouteNavigation(); setAccountOpsSection("overview"); setActiveTab("accountOps"); } } : null,
+    ownerToolsVisible ? { key: "owner-center", label: "Owner Center", helper: "Private sourcing, performance, and system controls.", icon: "settings", action: () => { prepareRouteNavigation(); setOwnerCenterSection("overview"); setOwnerCenterSubview(""); setActiveTab("ownerCenter"); } } : null,
     { key: "collections", label: "Workspace / Family", helper: "Collection workspace, members, and privacy.", icon: "settings", action: () => openUtilityPage("collections") },
     mobileMenuByKey.membership,
     mobileMenuByKey.privacySafety,
@@ -8252,21 +8317,21 @@ export default function App() {
   ].filter(Boolean);
   const menuCommunityItems = [
     mobileMenuByKey.scout,
-    mobileMenuByKey.tidepool,
-    mobileMenuByKey.spark,
-    mobileMenuByKey.parentCenter,
-    mobileMenuByKey.shopPortal,
-    mobileMenuByKey.announcements,
+    showCommunityExperience ? mobileMenuByKey.tidepool : null,
+    showFamilyExperience ? mobileMenuByKey.spark : null,
+    showFamilyExperience ? mobileMenuByKey.parentCenter : null,
+    experiencePresentation.isStore || experiencePresentation.showAdminTools ? mobileMenuByKey.shopPortal : null,
+    experiencePresentation.showAdminTools ? mobileMenuByKey.announcements : null,
   ].filter(Boolean);
   const menuToolItems = [
     mobileMenuByKey.emberAssist,
     mobileMenuByKey.scanProduct,
-    mobileMenuByKey.publicBetaFeedback,
+    experiencePresentation.showAdminTools ? mobileMenuByKey.publicBetaFeedback : null,
     mobileMenuByKey.help,
-    { key: "feedback", label: "Tester Notes", helper: "Save a local bug, idea, or confusion note.", icon: "bell", action: () => openFeedbackDialog("feedback") },
+    experiencePresentation.showAdminTools ? { key: "feedback", label: "Tester Notes", helper: "Save a local bug, idea, or confusion note.", icon: "bell", action: () => openFeedbackDialog("feedback") } : null,
   ].filter(Boolean);
   const menuRoadmapItems = [
-    mobileMenuByKey.comingSoon,
+    experiencePresentation.showAdminTools ? mobileMenuByKey.comingSoon : null,
   ].filter(Boolean);
   const menuAdminItems = [
     mobileMenuByKey.admin,
@@ -16211,53 +16276,6 @@ export default function App() {
     setTidepoolCommentDrafts((current) => ({ ...current, [key]: "" }));
   }
 
-  const planProfile = subscriptionProfile;
-  const currentPlan = getUserPlan(planProfile);
-  const currentTier = getUserTier(planProfile);
-  const rolePermissionProfile = {
-    ...planProfile,
-    ...currentUserProfile,
-    email: currentUserProfile?.email || user?.email || planProfile?.email || "",
-  };
-  const actualAppRole = appRoleForProfile(rolePermissionProfile);
-  const roleAdminUser = [APP_ROLES.OWNER, APP_ROLES.ADMIN].includes(actualAppRole);
-  const roleModeratorUser = actualAppRole === APP_ROLES.MODERATOR;
-  const adminUser = isAdminUser(planProfile) || roleAdminUser;
-  const explicitAdminRole = String(
-    actualAppRole ||
-    currentUserProfile?.role ||
-    currentUserProfile?.appRole ||
-    currentUserProfile?.app_role ||
-    currentUserProfile?.adminRole ||
-    currentUserProfile?.admin_role ||
-    planProfile?.role ||
-    planProfile?.appRole ||
-    planProfile?.app_role ||
-    planProfile?.adminRole ||
-    planProfile?.admin_role ||
-    ""
-  ).toLowerCase();
-  const moderatorUser =
-    roleModeratorUser ||
-    ["admin", "super_admin", "super-admin", "moderator"].includes(explicitAdminRole) ||
-    Boolean(
-      currentUserProfile?.isAdmin ||
-      currentUserProfile?.is_admin ||
-      currentUserProfile?.isModerator ||
-      currentUserProfile?.is_moderator ||
-      planProfile?.isAdmin ||
-      planProfile?.is_admin ||
-      planProfile?.isModerator ||
-      planProfile?.is_moderator
-    );
-  const normalizedActualRole = explicitAdminRole === "super-admin" ? "super_admin" : explicitAdminRole;
-  const actualAdminRole =
-    [APP_ROLES.OWNER, APP_ROLES.ADMIN, APP_ROLES.MODERATOR].includes(normalizeAppRole(normalizedActualRole)) ? normalizeAppRole(normalizedActualRole) :
-    ["admin", "super_admin", "moderator"].includes(normalizedActualRole) ? normalizedActualRole :
-    adminUser ? "admin" :
-    moderatorUser ? "moderator" :
-    normalizedActualRole || "user";
-  const actualAdminUser = !guestPreviewActive && canViewAdminDashboard({ ...rolePermissionProfile, appRole: actualAdminRole, app_role: actualAdminRole });
 
   const betaAccessForEffects = betaAccessAllowed();
   const profileReadyForEffects = currentProfileLoadedForUser();
@@ -16515,6 +16533,7 @@ export default function App() {
       setAppSetupPersonalization(normalizeAppPersonalizationPreferences(saved.appSetupPersonalization || saved.settings?.appSetupPersonalization, {
         userType: savedUserType,
         dashboardPreset: savedPreset,
+        preserveUnavailable: true,
         sellerToolsEnabled: sellerModeEnabled(savedUserType, savedPreset),
         adminToolsVisible: false,
       }));
@@ -16976,8 +16995,9 @@ export default function App() {
         appSetupPersonalization: normalizeAppPersonalizationPreferences(appSetupPersonalization, {
           userType,
           dashboardPreset,
+          preserveUnavailable: true,
           sellerToolsEnabled: sellerModeEnabled(userType, dashboardPreset),
-          adminToolsVisible: Boolean(adminModeStorageReady && adminViewMode === "admin" && canManageBeta(currentUserProfile)),
+          adminToolsVisible: actualAdminUser,
         }),
         cloudSyncPreference,
         locationSettings: hasCurrentLocation || !hasPersistedLocation ? locationSettings : persistedLocationSettings,
@@ -16989,7 +17009,7 @@ export default function App() {
           public_username: currentPublicUsername(),
         },
     });
-  }, [items, purchasers, catalogProducts, tideTradrWatchlist, marketplaceListings, marketplaceReports, marketplaceSavedIds, tideTradrLookupId, marketPriceCache, marketPriceMemories, itemComparisons, vaultCollectionSets, vaultDisplayCase, userSearchAliases, expenses, sales, tradeRecords, sparkGifts, sparkKidPacks, sparkEventPlans, collectorEventPlans, vehicles, mileageTrips, workspaces, workspaceMembers, workspaceInvites, activeWorkspaceId, forgeModeSettings, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, resolvedAppTheme, appSetupPersonalization, cloudSyncPreference, locationSettings, subscriptionProfile, currentUserProfile, adminModeStorageReady, adminViewMode, localDataLoaded, localAppStorageGuard, currentPublicUsername]);
+  }, [items, purchasers, catalogProducts, tideTradrWatchlist, marketplaceListings, marketplaceReports, marketplaceSavedIds, tideTradrLookupId, marketPriceCache, marketPriceMemories, itemComparisons, vaultCollectionSets, vaultDisplayCase, userSearchAliases, expenses, sales, tradeRecords, sparkGifts, sparkKidPacks, sparkEventPlans, collectorEventPlans, vehicles, mileageTrips, workspaces, workspaceMembers, workspaceInvites, activeWorkspaceId, forgeModeSettings, dealForm, userType, homeStatsEnabled, dashboardPreset, dashboardLayout, dashboardCardStyle, resolvedAppTheme, appSetupPersonalization, cloudSyncPreference, locationSettings, subscriptionProfile, currentUserProfile, actualAdminUser, localDataLoaded, localAppStorageGuard, currentPublicUsername]);
 
   useEffect(() => {
     if (!BETA_LOCAL_MODE || !localDataLoaded) return;
@@ -29859,7 +29879,7 @@ function renderForgeBusinessLedgerPanel() {
           dashboardPreset,
           dashboardLayout,
           dashboardCardStyle,
-          appSetupPersonalization: normalizeAppPersonalizationPreferences(appSetupPersonalization, appPersonalizationContext()),
+          appSetupPersonalization: normalizeAppPersonalizationPreferences(appSetupPersonalization, { ...appPersonalizationContext(), preserveUnavailable: true }),
           forgeModeSettings: normalizeForgeModeSettings(forgeModeSettings),
           locationSettings,
           userSearchAliases,
@@ -31358,65 +31378,11 @@ function renderForgeBusinessLedgerPanel() {
     const query = submittedCatalogSearch || catalogSearch || catalogSetFilter;
     return searchSetsByName(query, vaultSetLibraryRows, { limit: 4 });
   }, [catalogSearchHasRun, submittedCatalogSearch, catalogSearch, catalogSetFilter, vaultSetLibraryRows]);
-  const adminModeUserKey = String(currentUserProfile?.userId || currentUserProfile?.id || user?.id || "anonymous");
-  const adminModeStorageKey = `${ADMIN_MODE_STORAGE_PREFIX}:${adminModeUserKey}`;
-  const adminModeLoaded = !actualAdminUser || adminModeStorageReady;
-  const adminViewingAsAdmin = actualAdminUser && adminModeLoaded && adminViewMode === "admin";
-  const displayedAdminViewMode = adminViewingAsAdmin ? "admin" : "regular";
-  const regularPreviewPlanProfile = actualAdminUser && !adminViewingAsAdmin
-    ? {
-        ...planProfile,
-        role: USER_ROLES.USER,
-        appRole: USER_ROLES.USER,
-        app_role: USER_ROLES.USER,
-        adminRole: "",
-        admin_role: "",
-        userRole: USER_ROLES.USER,
-        user_role: USER_ROLES.USER,
-        isAdmin: false,
-        is_admin: false,
-        isModerator: false,
-        is_moderator: false,
-        tier: planProfile?.tier === PLAN_TYPES.ADMIN ? PLAN_TYPES.FREE : planProfile?.tier,
-        featureTier: planProfile?.featureTier === PLAN_TYPES.ADMIN ? PLAN_TYPES.FREE : planProfile?.featureTier,
-        subscriptionPlan: planProfile?.subscriptionPlan === PLAN_TYPES.ADMIN ? PLAN_TYPES.FREE : planProfile?.subscriptionPlan,
-        app_metadata: {
-          ...(planProfile?.app_metadata || {}),
-          role: USER_ROLES.USER,
-          user_role: USER_ROLES.USER,
-          is_admin: false,
-          isAdmin: false,
-          tier: planProfile?.app_metadata?.tier === PLAN_TYPES.ADMIN ? PLAN_TYPES.FREE : planProfile?.app_metadata?.tier,
-          feature_tier: planProfile?.app_metadata?.feature_tier === PLAN_TYPES.ADMIN ? PLAN_TYPES.FREE : planProfile?.app_metadata?.feature_tier,
-          subscription_plan: planProfile?.app_metadata?.subscription_plan === PLAN_TYPES.ADMIN ? PLAN_TYPES.FREE : planProfile?.app_metadata?.subscription_plan,
-        },
-        raw_app_meta_data: {
-          ...(planProfile?.raw_app_meta_data || {}),
-          role: USER_ROLES.USER,
-          user_role: USER_ROLES.USER,
-          is_admin: false,
-          isAdmin: false,
-          tier: planProfile?.raw_app_meta_data?.tier === PLAN_TYPES.ADMIN ? PLAN_TYPES.FREE : planProfile?.raw_app_meta_data?.tier,
-          feature_tier: planProfile?.raw_app_meta_data?.feature_tier === PLAN_TYPES.ADMIN ? PLAN_TYPES.FREE : planProfile?.raw_app_meta_data?.feature_tier,
-          subscription_plan: planProfile?.raw_app_meta_data?.subscription_plan === PLAN_TYPES.ADMIN ? PLAN_TYPES.FREE : planProfile?.raw_app_meta_data?.subscription_plan,
-        },
-        rawAppMetaData: {
-          ...(planProfile?.rawAppMetaData || {}),
-          role: USER_ROLES.USER,
-          user_role: USER_ROLES.USER,
-          is_admin: false,
-          isAdmin: false,
-          tier: planProfile?.rawAppMetaData?.tier === PLAN_TYPES.ADMIN ? PLAN_TYPES.FREE : planProfile?.rawAppMetaData?.tier,
-          feature_tier: planProfile?.rawAppMetaData?.feature_tier === PLAN_TYPES.ADMIN ? PLAN_TYPES.FREE : planProfile?.rawAppMetaData?.feature_tier,
-          subscription_plan: planProfile?.rawAppMetaData?.subscription_plan === PLAN_TYPES.ADMIN ? PLAN_TYPES.FREE : planProfile?.rawAppMetaData?.subscription_plan,
-        },
-      }
-    : planProfile;
   const featureGateOptions = {
     admin: adminViewingAsAdmin && roleAdminUser,
     betaTester: !guestPreviewActive && !actualAdminUser && (BETA_LOCAL_MODE || currentUserProfile?.betaTester || currentUserProfile?.isBetaTester),
-    localBeta: BETA_LOCAL_MODE,
-    qaUnlock: QA_UNLOCK_PAID_FEATURES,
+    localBeta: !tierPreviewActive && BETA_LOCAL_MODE,
+    qaUnlock: !tierPreviewActive && QA_UNLOCK_PAID_FEATURES,
   };
   const featureAllowed = (featureKey) => canUseFeature(regularPreviewPlanProfile, featureKey, featureGateOptions);
   const tierAccess = getTierAccess(regularPreviewPlanProfile, {
@@ -31493,7 +31459,15 @@ function renderForgeBusinessLedgerPanel() {
   const setAdminModeView = (nextMode) => {
     const normalized = nextMode === "regular" ? "regular" : "admin";
     setAdminViewMode(normalized);
-    if (normalized !== "admin") setAdminEditMode(false);
+    if (normalized !== "admin") { setAdminEditMode(false); setMenuOpen(false); setActiveTab("dashboard"); }
+  };
+  const changePreviewTier = (value) => {
+    const tier = normalizePreviewTier(value);
+    if (!canPreviewPlans || !tier) return;
+    setAdminPreviewTier(tier);
+    setAdminPreviewPersona(tier === "seller" ? "seller" : tier === "shop" ? "store" : "collector");
+    setAdminEditMode(false);
+    setActiveTab("dashboard");
   };
   useEffect(() => {
     setScoutBackendSync({
@@ -31841,11 +31815,15 @@ function renderForgeBusinessLedgerPanel() {
     if (!actualAdminUser) {
       setAdminViewMode("regular");
       setAdminEditMode(false);
+      setAdminPreviewTier("free");
+      setAdminPreviewPersona("collector");
       return;
     }
     const saved = safeReadBrowserJson(localStorage, adminModeStorageKey, {});
     const savedViewMode = saved.viewMode === "regular" ? "regular" : "admin";
     setAdminViewMode(savedViewMode);
+    setAdminPreviewTier(normalizePreviewTier(saved.previewTier) || "free");
+    setAdminPreviewPersona(["collector", "seller", "store"].includes(saved.previewPersona) ? saved.previewPersona : "collector");
     setAdminEditMode(savedViewMode === "admin" && saved.editMode === true);
     setAdminModeStorageReady(true);
   }, [actualAdminUser, adminModeStorageKey]);
@@ -31855,11 +31833,13 @@ function renderForgeBusinessLedgerPanel() {
       localStorage.setItem(adminModeStorageKey, JSON.stringify({
         viewMode: adminViewMode === "regular" ? "regular" : "admin",
         editMode: adminViewMode === "admin" && adminEditMode,
+        previewTier: adminPreviewTier,
+        previewPersona: adminPreviewPersona,
       }));
     } catch {
       // Local storage can be unavailable in locked-down browsers; mode controls still work for the session.
     }
-  }, [actualAdminUser, adminModeStorageReady, adminModeStorageKey, adminViewMode, adminEditMode]);
+  }, [actualAdminUser, adminModeStorageReady, adminModeStorageKey, adminViewMode, adminEditMode, adminPreviewTier, adminPreviewPersona]);
   const activeTabFeature = {
     sales: "sales_tracking",
     addSale: "sales_tracking",
@@ -31868,12 +31848,17 @@ function renderForgeBusinessLedgerPanel() {
     mileage: "mileage",
     reports: "business_reports",
   }[activeTab];
-  const activeTabLocked = Boolean(activeTabFeature && FEATURE_GATES_ENABLED && !featureAllowed(activeTabFeature));
+  const previewRouteUnavailable = tierPreviewActive && (
+    shellRouteOwnership?.requiredAuthority === AUTHORITY_REQUIREMENTS.VERIFIED_OWNER ||
+    ["adminReview", "moderator", "betaReadiness"].includes(activeTab)
+  );
+  const activeTabLocked = previewRouteUnavailable || Boolean(activeTabFeature && FEATURE_GATES_ENABLED && !featureAllowed(activeTabFeature));
   const startupAnnouncementsAvailable = getPersistedNotificationRows().some(canShowAnnouncement);
   const startupOnboardingDue = shouldRenderFirstRunOnboarding();
 
   useEffect(() => {
     if (startupPriorityAppliedRef.current || typeof window === "undefined") return;
+    if (!experiencePresentation.showAdminTools) { startupPriorityAppliedRef.current = true; return; }
     const pathname = window.location.pathname || "/";
     const hasDeepLink = pathname !== "/";
     if (hasDeepLink) {
@@ -31898,7 +31883,7 @@ function renderForgeBusinessLedgerPanel() {
       setActiveTab("dailyTide");
     }
     startupPriorityAppliedRef.current = true;
-  }, [activeTab, betaReadinessData.notifications, backendNotifications, backendNotificationsReady, signedInWithSupabase, guestPreviewActive, localDataLoaded, dataAccessForEffects, startupAnnouncementsAvailable, startupOnboardingDue]);
+  }, [activeTab, experiencePresentation.showAdminTools, betaReadinessData.notifications, backendNotifications, backendNotificationsReady, signedInWithSupabase, guestPreviewActive, localDataLoaded, dataAccessForEffects, startupAnnouncementsAvailable, startupOnboardingDue]);
   const notificationPreferenceRows = [
     ...ALERT_TYPE_OPTIONS.map((option) => ({
       key: option.key,
@@ -39690,6 +39675,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   function renderMembershipFoundation() {
     return <LazyToolBoundary label="Loading membership…">
       <MembershipContent scope={{
+        experiencePresentation,
+        currentTierLabel,
         AppNavIcon,
         BETA_LOCAL_MODE,
         CommandBoardSection,
@@ -39700,7 +39687,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         actualAdminUser,
         adminViewingAsAdmin,
         canUseFeature,
-        currentTier,
+        currentTier: tierAccess.planTier,
         currentUserProfile,
         getLockedFeatureDetails,
         getTierAccess,
@@ -43989,6 +43976,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   function renderAddAnythingFlowContent() {
     return <DeferredModalBoundary label="Loading form…" modalRef={flowModalRef} type={activeFlowModal?.type}>
       <AddAnythingContent scope={{
+        experiencePresentation,
+        showFamilyExperience,
+        onOpenSellTrade: () => { prepareRouteNavigation(); setActiveTab("exchange"); },
+        onOpenExperienceSettings: () => { prepareRouteNavigation(); setActiveTab("settings"); },
         adaptiveActivity,
         personalizationPreferences,
         ADD_ITEM_QUICK_SEARCH_CHIPS,
@@ -46739,8 +46730,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               { label: "Help", icon: "help", onClick: () => openUtilityPage("help") },
             ]}
             statusItems={[
-              { key: "role", icon: "account", label: "Role", value: actualAdminUser ? actualAdminRole : "User", detail: activeRoleMode || "Standard" },
-              { key: "plan", icon: "plan", label: "Plan", value: TIER_LABELS[currentTier] || "Free", detail: "Safety basics included" },
+              { key: "role", icon: "account", label: "Role", value: adminViewingAsAdmin ? actualAdminRole : experiencePresentation.personaLabel, detail: experiencePresentation.isPreview ? "Preview only" : "Your setup" },
+              { key: "plan", icon: "plan", label: "Plan", value: currentTierLabel, detail: "Safety basics included" },
               { key: "privacy", icon: "community", label: "Privacy", value: "Protected", detail: "Child and account data" },
               { key: "records", icon: "data", label: "Records", value: "Local", detail: cloudSyncPreference === "cloud" ? "Cloud requested" : "This device" },
               { key: "support", icon: "help", label: "Support", value: "Open", detail: "Beta feedback ready" },
@@ -46822,8 +46813,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       .slice(0, 2)
       .map((part) => part[0]?.toUpperCase())
       .join("") || "ET";
-    const setupLabel = smartSetupRecommendation.label || adaptiveUiState.modeLabel || "Collector / Family";
-    const roleLabel = actualAdminUser ? actualAdminRole : adaptiveUiState.showSellerTools ? "Seller tools" : "Collector";
+    const setupLabel = experiencePresentation.personaLabel;
+    const roleLabel = adminViewingAsAdmin ? actualAdminRole : experiencePresentation.personaLabel;
     const profileStats = [
       { label: "Setup", value: setupLabel },
       { label: "Scout", value: `${scoutGuessPoints} points` },
@@ -46842,7 +46833,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <div className="settings-profile-badge-row">
             <span className="status-badge">Beta</span>
             <span className="status-badge">{setupLabel}</span>
-            {actualAdminUser ? <span className="status-badge admin-badge">Admin</span> : null}
+            {adminViewingAsAdmin ? <span className="status-badge admin-badge">Admin</span> : null}
           </div>
         </div>
         {!compact ? (
@@ -46928,6 +46919,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   function renderSettingsPreferencesCard() {
     return (
       <section className="drawer-info-card settings-preferences-card utility-card utility-card-wide">
+        <ExperiencePreferences experience={experiencePresentation} optionalTools={{ ...optionalExperienceTools, family: showFamilyExperience }} previewActive={experiencePresentation.isPreview} onPersonaChange={(persona) => updateAppSetupPersonalization((current) => ({ ...current, experiencePersona: persona }), "Your experience is updated. Existing records are kept.")} onOptionalToolChange={(key, enabled) => updateAppSetupPersonalization((current) => ({ ...current, optionalTools: { ...current.optionalTools, [key]: enabled }, optionalToolsCustomized: [...new Set([...(current.optionalToolsCustomized || []), key])] }), "Optional tools updated.")} />
         <div className="compact-card-header">
           <div>
             <strong>Preferences</strong>
@@ -47760,6 +47752,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     packs: sparkKidPacks,
   };
   const hearthPageProps = {
+    experiencePresentation,
+    onOpenSellTrade: () => { prepareRouteNavigation(); setActiveTab("exchange"); },
+    onOpenExperienceSettings: () => { prepareRouteNavigation(); setActiveTab("settings"); },
     adaptiveActivity,
     personalizationPreferences,
     onReportRestock: () => openScoutSubmitFlow({ source: "home-restock" }),
@@ -47952,6 +47947,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   };
 
   const forgePageProps = {
+    experiencePresentation,
     openMenuDrawer,
     commandDeskSellerAccess,
     editMarketplaceListing,
@@ -47979,7 +47975,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     renderMarketplaceSection,
     renderPageChrome,
     renderWishlistIsoPlanningSection,
-    setActiveTab,
+    setActiveTab: (tab) => { prepareRouteNavigation(); setActiveTab(tab); },
     setForgeSubTab,
     updateMarketplaceListingStatus,
     workspaceMarketplaceListings,
@@ -48086,6 +48082,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   };
 
   const settingsPageProps = {
+    experiencePresentation,
+    showFamilyExperience,
+    showCommunityExperience,
     activeWorkspaceName: activeWorkspace?.name || "",
     adaptiveUiState,
     applyHomeViewPreset,
@@ -48122,6 +48121,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
 
   return (
+    <ExperiencePresentationContext.Provider value={{ ...experiencePresentation, showFamilyTools: showFamilyExperience, showCommunityTools: showCommunityExperience }}>
     <AppShell className={`app app-command-shell app-${String(activeMainTab || activeTab || "home").toLowerCase()} ${roleModeClass}${activeTab === "market" ? " app-market" : ""} app-adaptive-${adaptiveUiState.mode} app-header-${headerMode} app-theme-${resolvedAppTheme}${guestPreviewActive ? " guest-preview-mode" : ""}${adminViewingAsAdmin ? " admin-view-mode" : ""}${adminEditModeActive ? " admin-edit-mode" : ""}`} data-theme={resolvedAppTheme} data-role-mode={activeRoleMode}>
     <header className={`header app-shell-header app-shell-header--${headerMode}`}>
   <h1
@@ -48169,7 +48169,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
   <WorkspaceSwitcher
     contextLabel={workspaceSwitcherContextLabel}
-    currentWorkspaceId={shellRouteOwnership?.classification === ROUTE_CLASSIFICATIONS.OWNER || privateBotRouteDenied ? "" : currentProductWorkspaceId}
+    currentWorkspaceId={shellRouteOwnership?.classification === ROUTE_CLASSIFICATIONS.OWNER || privateBotRouteDenied ? "" : presentationWorkspaceId}
     workspaces={switcherWorkspaces}
     onSelect={(workspace) => navigateProductWorkspace(workspace.id)}
   />
@@ -48298,7 +48298,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     ) : null}
   </div>
   <div className="topbar-command-actions" aria-label="Command desk actions">
-    {ownerFeatureControls.businessAssistant ? <button
+    {ownerFeatureControls.businessAssistant && showAssistantExperience ? <button
       type="button"
       className="topbar-ask-ember-button"
       aria-label="Open Business Assistant"
@@ -48368,11 +48368,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <section className={`admin-mode-control-bar${adminViewingAsAdmin ? " is-admin" : " is-regular"}${adminEditModeActive ? " is-editing" : ""}`} aria-label="Admin display controls">
           <div className="admin-mode-control-summary">
             <span className="admin-mode-role-pill">Actual role: {actualAdminRole}</span>
-            <strong>{adminViewingAsAdmin ? "Admin Mode active" : "Regular preview active"}</strong>
+            <strong>{adminViewingAsAdmin ? "Admin Mode active" : experiencePresentation.isPreview ? experiencePresentation.previewTierLabel + " · " + experiencePresentation.personaLabel + " preview" : "Regular preview active"}</strong>
             <small>
               {adminViewingAsAdmin
-                ? "Admin dashboards and moderation tools are visible. Backend checks still use your actual role."
-                : "Admin-only UI is hidden so you can QA the normal user experience."}
+                ? "Your full administration view. Switch to Regular to try each plan."
+                : "Previewing the user experience. Your actual plan, permissions, and records stay unchanged."}
             </small>
           </div>
           <div className="admin-mode-controls">
@@ -48416,6 +48416,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </button>
             </div>
           </div>
+          {tierPreviewActive ? <AdminPlanPreviewControls tier={adminPreviewTier} persona={adminPreviewPersona} onTierChange={changePreviewTier} onPersonaChange={(persona) => { setAdminPreviewPersona(persona); setActiveTab("dashboard"); }} onViewPlans={() => { prepareRouteNavigation(); setActiveTab("membership"); }} /> : null}
         </section>
       ) : null}
 
@@ -48445,6 +48446,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       {menuOpen ? (
         <LazyToolBoundary label="Loading view…">
       <MenuDrawerContent scope={{
+        experiencePresentation,
         APP_STRUCTURE_LINKS,
         AppNavIcon,
         BATCH_INTAKE_MODES,
@@ -48544,7 +48546,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         locationSettings,
         menuCommandSections,
         menuLocation: { activeTab, scoutView, flipScoutView },
-        menuCurrentWorkspaceId: shellRouteOwnership?.classification === ROUTE_CLASSIFICATIONS.OWNER || privateBotRouteDenied ? "" : currentProductWorkspaceId,
+        menuCurrentWorkspaceId: shellRouteOwnership?.classification === ROUTE_CLASSIFICATIONS.OWNER || privateBotRouteDenied ? "" : presentationWorkspaceId,
         switcherWorkspaces,
         navigateProductWorkspace,
         menuDashboardSectionRows,
@@ -51301,7 +51303,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <p>{localAppStorageError}</p>
           </aside>
         ) : null}
-        {activeTabLocked ? (
+        {previewRouteUnavailable ? (
+          <section className="drawer-info-card utility-card" role="status">
+            <h1>Outside the user preview</h1>
+            <p>This page is reserved for administration. Return to Admin to use your protected tools.</p>
+            <button type="button" className="primary-button" onClick={() => setActiveTab("dashboard")}>Preview Home</button>
+            <button type="button" className="secondary-button" onClick={() => setAdminModeView("admin")}>Return to Admin</button>
+          </section>
+        ) : activeTabLocked ? (
           <UpgradeScreen featureKey={activeTabFeature} subscriptionsLive={SUBSCRIPTIONS_LIVE} onBack={() => setActiveTab("dashboard")} />
         ) : null}
         {!activeTabLocked && activeTab === "tidepool" && renderTidepoolCommunity()}
@@ -51344,6 +51353,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         {!activeTabLocked && activeTab === "workspaceHome" && (
           <LazyToolBoundary label={`Loading ${getWorkspaceDefinition(effectiveProductWorkspaceHome)?.label || "workspace"}...`}>
             <WorkspaceHomePage
+              experiencePresentation={experiencePresentation}
               workspace={effectiveProductWorkspaceHome}
               items={workspaceItems}
               sales={workspaceSales}
@@ -51360,6 +51370,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         {!activeTabLocked && activeTab === "collectionWorkspace" && (
           <LazyToolBoundary label="Loading Collection...">
             <CollectionWorkspace
+              experiencePresentation={experiencePresentation}
               items={workspaceItems}
               initialView={collectionWorkspaceView}
               onViewChange={(view) => { prepareRouteNavigation(); setCollectionWorkspaceView(view); }}
@@ -51385,6 +51396,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         {!activeTabLocked && activeTab === "businessWorkspace" && businessWorkspaceView !== "purchases" && (
           <LazyToolBoundary label="Loading Business...">
             <BusinessWorkspace
+              experiencePresentation={experiencePresentation}
               ownerSession={ownerSession}
               items={workspaceItems}
               purchases={workspaceItems.filter((item) => item.purchaseDate || item.purchase_date || item.unitCost != null || item.totalPurchaseCost != null)}
@@ -51646,7 +51658,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
 
         {activeTab === "flipScout" && (
           <LazyToolBoundary label="Loading Deal Finder...">
-            <FlipScoutPage initialScreen={flipScoutView} onViewChange={(view) => { prepareRouteNavigation(); setFlipScoutView(view); }} featureControls={ownerFeatureControls} onExit={() => { prepareRouteNavigation(); setActiveTab("dashboard"); }} onReportRestock={() => openScoutSubmitFlow({ source: "restocks-page" })} onOpenRestocks={() => { prepareRouteNavigation(); setScoutView("reports"); setScoutSubTabTarget({ tab: "reports", id: Date.now() }); setActiveTab("scout"); }} />
+            <FlipScoutPage experiencePresentation={experiencePresentation} initialScreen={flipScoutView} onViewChange={(view) => { prepareRouteNavigation(); setFlipScoutView(view); }} featureControls={ownerFeatureControls} onExit={() => { prepareRouteNavigation(); setActiveTab("dashboard"); }} onReportRestock={() => openScoutSubmitFlow({ source: "restocks-page" })} onOpenRestocks={() => { prepareRouteNavigation(); setScoutView("reports"); setScoutSubTabTarget({ tab: "reports", id: Date.now() }); setActiveTab("scout"); }} />
           </LazyToolBoundary>
         )}
 
@@ -53016,11 +53028,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <span aria-hidden="true">↑</span>
         <b>Top</b>
       </button>
-      {ownerFeatureControls.businessAssistant ? renderEmberAssist() : null}
+      {ownerFeatureControls.businessAssistant && showAssistantExperience ? renderEmberAssist() : null}
       {shellRouteOwnership?.classification !== ROUTE_CLASSIFICATIONS.OWNER ? (
         <MobileBottomNavigation items={mobileBottomTabs} activeKey={activeMobileTabKey} onSelect={(tab) => tab.action ? tab.action() : navigateMainTab(tab)} />
       ) : null}
     </AppShell>
+    </ExperiencePresentationContext.Provider>
   );
 }
 
