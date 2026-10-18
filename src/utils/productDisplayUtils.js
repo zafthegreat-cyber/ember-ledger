@@ -1,5 +1,5 @@
 function usableImageUrl(value) {
-  const next = String(value || "").trim();
+  const next = typeof value === "string" ? value.trim() : "";
   if (!next) return "";
   if (/^(null|undefined|none|n\/a|na|unknown|image needed|image unavailable|placeholder)$/i.test(next)) return "";
   return next;
@@ -49,6 +49,27 @@ export function getProductImageUrl(product = {}) {
     product.card_image_url,
     ...imageCandidatesFromImages(product.images),
     ...imageCandidatesFromImages(product.image),
+  ];
+  return candidates.map(usableImageUrl).find(Boolean) || "";
+}
+
+// Saved items retain several legacy photo fields. Resolve them for display only;
+// never copy catalog artwork over the owner's stored photo or record.
+export function getItemImageUrl(item = {}) {
+  const candidates = [
+    item.displayImage,
+    item.itemImage,
+    item.item_image,
+    getProductImageUrl(item),
+    item.catalogImageUrl,
+    item.catalog_image_url,
+    item.productImageUrl,
+    item.product_image_url,
+    ...imageCandidatesFromImages(item.photos),
+    ...imageCandidatesFromImages(item.photoUrls),
+    ...imageCandidatesFromImages(item.photo_urls),
+    ...imageCandidatesFromImages(item.imageReferences),
+    ...imageCandidatesFromImages(item.photoReferences),
   ];
   return candidates.map(usableImageUrl).find(Boolean) || "";
 }

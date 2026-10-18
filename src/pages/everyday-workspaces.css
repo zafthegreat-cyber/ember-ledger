@@ -102,7 +102,7 @@
   width: 76px;
   aspect-ratio: 1;
   border-radius: var(--radius-md);
-  object-fit: cover;
+  object-fit: contain;
   background: var(--surface-secondary);
 }
 
@@ -380,8 +380,8 @@
 .app.app-command-shell .everyday-record-card { width: 100%; display: grid; grid-template-columns: 76px minmax(0, 1fr) auto; align-items: center; gap: 16px; padding: 16px; border: 1px solid var(--border-subtle) !important; border-radius: 10px; background: var(--surface-primary) !important; color: var(--text-primary) !important; box-shadow: var(--shadow-panel) !important; font: inherit; text-align: left; }
 .app.app-command-shell .everyday-record-card:hover { border-color: var(--edge-accent) !important; }
 .everyday-record-card > img, .everyday-record-placeholder { width: 76px; border-radius: 6px; }
-.everyday-record-placeholder { color: transparent; }
-.everyday-record-placeholder::after { content: ""; width: 20px; height: 26px; border: 1px solid var(--border-strong); border-radius: 4px; }
+.everyday-record-placeholder { color: var(--text-muted); }
+.everyday-record-placeholder svg { width: 24px; height: 24px; }
 .everyday-record-card h3 { display: -webkit-box; overflow: hidden; font-size: 15px; line-height: 1.4; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .everyday-record-card dl { margin: 8px 0 0; }
 .everyday-record-chevron { color: var(--text-secondary); font-size: 22px; }

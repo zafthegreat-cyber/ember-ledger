@@ -266,6 +266,7 @@ import {
   normalizeBulkImportRow,
 } from "./utils/inventoryImportUtils";
 import {
+  getItemImageUrl,
   getProductImageFallback,
   getProductImageUrl,
 } from "./utils/productDisplayUtils";
@@ -16394,7 +16395,7 @@ export default function App() {
     selectedCatalogDetailId
   );
   const catalogRouteWarmNeeded = Boolean(
-    ["vault", "inventory", "market", "addInventory", "addSale", "sales", "expenses", "reports"].includes(activeTab) ||
+    ["vault", "inventory", "collectionWorkspace", "businessWorkspace", "market", "addInventory", "addSale", "sales", "expenses", "reports"].includes(activeTab) ||
     (activeTab === "adminReview" && adminHeavyDataVisible)
   );
   const catalogQueryWarmNeeded = Boolean(
@@ -16412,6 +16413,8 @@ export default function App() {
     (activeTab === "market" && (submittedCatalogSearch || submittedCatalogBarcodeSearch)) ||
     activeTab === "market" ||
     activeTab === "vault" ||
+    activeTab === "collectionWorkspace" ||
+    activeTab === "businessWorkspace" ||
     activeTab === "inventory"
   );
   const storeSeedWarmNeeded = Boolean(
@@ -31049,12 +31052,16 @@ function renderForgeBusinessLedgerPanel() {
   ]);
   const rawVaultItems = useMemo(() => workspaceItems.filter(isVaultItemRecord), [workspaceItems]);
   const rawWishlistItems = useMemo(() => workspaceItems.filter(isWishlistItemRecord), [workspaceItems]);
+  const ownedItemCatalogLookupNeeded = Boolean(rawVaultItems.length || rawWishlistItems.length || activeTab === "collectionWorkspace" || activeTab === "businessWorkspace");
   const vaultCatalogLookup = useMemo(
-    () => (catalogProducts.length && (rawVaultItems.length || rawWishlistItems.length)
+    () => (catalogProducts.length && ownedItemCatalogLookupNeeded
       ? buildCatalogProductLookup(catalogProducts)
       : new Map()),
-    [catalogProducts, rawVaultItems.length, rawWishlistItems.length]
+    [catalogProducts, ownedItemCatalogLookupNeeded]
   );
+  const resolveWorkspaceItemImage = useCallback((item = {}) => (
+    getItemImageUrl(item) || getProductImageUrl(resolveCatalogProductForItem(item, vaultCatalogLookup) || {})
+  ), [vaultCatalogLookup]);
   const vaultItems = useMemo(
     () => rawVaultItems.map((item) => enrichVaultItemWithCatalogData(item, resolveCatalogProductForItem(item, vaultCatalogLookup))),
     [rawVaultItems, vaultCatalogLookup]
@@ -51371,6 +51378,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <LazyToolBoundary label="Loading Collection...">
             <CollectionWorkspace
               experiencePresentation={experiencePresentation}
+              resolveItemImage={resolveWorkspaceItemImage}
               items={workspaceItems}
               initialView={collectionWorkspaceView}
               onViewChange={(view) => { prepareRouteNavigation(); setCollectionWorkspaceView(view); }}
@@ -51397,6 +51405,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <LazyToolBoundary label="Loading Business...">
             <BusinessWorkspace
               experiencePresentation={experiencePresentation}
+              resolveItemImage={resolveWorkspaceItemImage}
               ownerSession={ownerSession}
               items={workspaceItems}
               purchases={workspaceItems.filter((item) => item.purchaseDate || item.purchase_date || item.unitCost != null || item.totalPurchaseCost != null)}

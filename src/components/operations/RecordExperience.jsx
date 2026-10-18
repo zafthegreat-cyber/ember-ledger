@@ -1,5 +1,5 @@
 import { useId } from "react";
-import { AppNavIcon } from "../command-system/AppNavIcon.jsx";
+import ItemPhoto from "../ItemPhoto.jsx";
 import { PageHeader, PrimaryButton, QuietButton, StatusBadge } from "./OperationsUI.jsx";
 import "./record-experience.css";
 
@@ -37,7 +37,7 @@ export function RecordDetailPage({ eyebrow = "Record detail", title, status = ""
     <QuietButton className="ops-detail-back" onClick={onBack}><RecordDirectionIcon back />Back</QuietButton>
     <PageHeader eyebrow={eyebrow} title={title} actions={status ? <StatusBadge tone={statusTone}>{status}</StatusBadge> : null} />
     <section className="ops-detail-hero">
-      {image ? <img src={image} alt={imageAlt || title} /> : <div className="ops-detail-identity" aria-hidden="true"><AppNavIcon kind="inventory" /></div>}
+      <ItemPhoto src={image} alt={imageAlt || title} fallbackClassName="ops-detail-identity" loading="eager" />
       <div className="ops-detail-content">{identity ? <p className="ops-detail-identity-copy">{identity}</p> : null}<RecordSummary items={summary} /><div className="ops-detail-actions">{primaryAction}{secondaryActions ? <details className="ops-detail-more"><summary>More</summary><div>{secondaryActions}</div></details> : null}</div></div>
     </section>
     <div className="ops-detail-sections">

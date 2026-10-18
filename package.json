@@ -198,6 +198,8 @@
     "test:buy-offer-browser": "node scripts/test-buy-offer-browser.cjs",
     "test:vault-workflows": "node --no-warnings scripts/test-vault-workflows.mjs",
     "test:product-display": "node --no-warnings scripts/test-product-display.mjs",
+    "test:item-photos-browser": "node scripts/test-item-photos-browser.cjs",
+    "test:item-photos-app-browser": "node scripts/test-item-photos-app-browser.cjs",
     "test:route-loading": "node --no-warnings scripts/test-route-loading.mjs",
     "test:lazy-route-direct-load": "node scripts/test-lazy-route-direct-load.cjs",
     "test:viewport-guard": "node scripts/test-viewport-guard.cjs",
