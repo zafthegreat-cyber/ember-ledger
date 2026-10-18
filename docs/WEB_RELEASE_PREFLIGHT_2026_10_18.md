@@ -34,6 +34,12 @@ Release review corrected invalid branded support URLs/email, spaced social hasht
 
 The older keyboard source contract still expects a Bot Operations label absent in committed HEAD; it remains a documented pre-existing failure. The new report/menu keyboard paths passed actual browser checks. No frontend `typecheck` or generic `test` script exists.
 
+## Hosted packaging and cloud-runner follow-up
+
+The initial preview compiled but exceeded the current plan's twelve-function limit. The deletion status URL now shares the existing deletion Express function through an exact deployment route; twelve function entrypoints remain. No endpoint, backend guard or data behavior was removed. The 23-check packaging regression passes and is included in the preview-runtime runner. The broader preview runner retains a separate pre-existing provider UI wording assertion failure; it is not counted as passed. Hosted deletion-status JSON routing must pass before merge. See [packaging evidence](./VERCEL_FUNCTION_PACKAGING_2026_10_18.md).
+
+The automatic iOS run passed native unit/export tests and web synchronization, then timed out while discovering a cold CoreSimulator before compilation. Discovery now has a bounded timeout-only retry; the real compile, install, launch, survival and screenshot requirements remain unchanged. All 23 native runtime scenarios and legacy export checks pass locally. Only a successful replacement Mac run establishes recovery on that runner; no signed distribution build is implied.
+
 ## Publication and phone limits
 
 After pushing, check the exact source commit's preview and CI results before merging; fetch main again to retain any intervening price refresh. After merge, confirm production READY, the public `app-version.json` commit, new assets/redirects, public mobile/desktop screens, and protected API authorization denial. Record the actual outcome separately from this preflight snapshot.

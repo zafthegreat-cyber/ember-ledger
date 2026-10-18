@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { registerHooks } from "node:module";
+import { discoverIPhoneSimulator } from "./native-ios-simulator-smoke.mjs";
 
 // Mock only Capacitor's native bridge. Product modules execute unchanged.
 const mocked = {
@@ -40,6 +41,46 @@ function host({ launch = null, addGate, addFailure, launchFailure } = {}) {
 }
 
 try {
+const simulatorSnapshot = JSON.stringify({ devices: {
+  "com.apple.CoreSimulator.SimRuntime.iOS-26-5": [{
+    name: "iPhone 17", isAvailable: true,
+    deviceTypeIdentifier: "com.apple.CoreSimulator.SimDeviceType.iPhone-17",
+  }],
+} });
+const simulatorTimeout = () => Object.assign(new Error("Discovery timed out"), { code: "COMMAND_TIMEOUT" });
+await check("cold simulator discovery retries one timeout and still requires an available iPhone", async () => {
+  const commands = []; let retries = 0;
+  const selected = await discoverIPhoneSimulator(async (command, args, options) => {
+    commands.push({ command, args, options });
+    if (commands.length === 1) throw simulatorTimeout();
+    return simulatorSnapshot;
+  }, { onRetry: () => retries++ });
+  assert.equal(selected.name, "iPhone 17");
+  assert.equal(commands.length, 2); assert.equal(retries, 1);
+  for (const call of commands) {
+    assert.equal(call.command, "xcrun");
+    assert.deepEqual(call.args, ["simctl", "list", "devices", "available", "--json"]);
+    assert.ok(call.options.timeoutMs > 60_000 && call.options.timeoutMs <= 180_000);
+  }
+});
+await check("permanent simulator discovery timeout fails after the bounded retry", async () => {
+  let attempts = 0;
+  await assert.rejects(discoverIPhoneSimulator(async () => { attempts++; throw simulatorTimeout(); }), { code: "COMMAND_TIMEOUT" });
+  assert.equal(attempts, 2);
+});
+await check("non-timeout simulator failure is not retried or reported as a successful discovery", async () => {
+  let attempts = 0;
+  const failure = Object.assign(new Error("xcrun unavailable"), { code: "ENOENT" });
+  await assert.rejects(discoverIPhoneSimulator(async () => { attempts++; throw failure; }), failure);
+  assert.equal(attempts, 1);
+});
+await check("invalid simulator output and missing iPhone runtime remain failures", async () => {
+  for (const output of ["invalid JSON", JSON.stringify({ devices: {} })]) {
+    let attempts = 0;
+    await assert.rejects(discoverIPhoneSimulator(async () => { attempts++; return output; }));
+    assert.equal(attempts, 1);
+  }
+});
 await check("native API destination is exact HTTPS production and web configuration stays unchanged", () => {
   assert.equal(runtime.resolveApiBase({ native: true }), "https://code3tcg.app");
   assert.equal(runtime.resolveApiBase({ native: true, configured: "https://code3tcg.app/" }), "https://code3tcg.app");

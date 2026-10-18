@@ -95,6 +95,10 @@
       "status": 308
     },
     {
+      "src": "^/api/account/deletion/status$",
+      "dest": "/api/account/deletion"
+    },
+    {
       "handle": "filesystem"
     },
     {

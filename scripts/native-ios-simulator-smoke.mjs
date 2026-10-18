@@ -24,6 +24,21 @@ export function parseLaunchedPid(output, appId) {
   return Number(match[1]);
 }
 
+// CoreSimulator can take longer than an ordinary command to initialize on a
+// fresh hosted Mac. Retry only a timeout of this read-only discovery command;
+// missing runtimes, malformed output and other command failures remain errors.
+export async function discoverIPhoneSimulator(run, { onRetry = () => {} } = {}) {
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const snapshot = await run("xcrun", ["simctl", "list", "devices", "available", "--json"], { quiet: true, timeoutMs: 180_000 });
+      return selectIPhoneSimulator(JSON.parse(snapshot));
+    } catch (error) {
+      if (error.code !== "COMMAND_TIMEOUT" || attempt === 2) throw error;
+      onRetry();
+    }
+  }
+}
+
 export async function main() {
   if (process.platform !== "darwin") throw new Error("The iPhone simulator smoke check requires macOS with Xcode. No device action was attempted.");
   const build = JSON.parse(readFileSync(resolve("artifacts/native/web-build.json"), "utf8"));
@@ -52,8 +67,11 @@ export async function main() {
     console.log(`Running: ${label}`);
     return new Promise((accept, reject) => {
       const child = spawn(command, args, { stdio: ["ignore", "pipe", "pipe"], env: process.env });
-      let stdout = ""; let timedOut = false;
-      const timer = setTimeout(() => { timedOut = true; child.kill("SIGTERM"); }, timeoutMs);
+      let stdout = ""; let timedOut = false; let forceTimer;
+      const timer = setTimeout(() => {
+        timedOut = true; child.kill("SIGTERM");
+        forceTimer = setTimeout(() => child.kill("SIGKILL"), 5_000);
+      }, timeoutMs);
       const onData = (chunk, stream, capture = false) => {
         const text = chunk.toString(); appendFileSync(log, text);
         if (capture) stdout += text;
@@ -61,11 +79,14 @@ export async function main() {
       };
       child.stdout.on("data", chunk => onData(chunk, process.stdout, true));
       child.stderr.on("data", chunk => onData(chunk, process.stderr));
-      child.on("error", error => { clearTimeout(timer); reject(error); });
+      child.on("error", error => { clearTimeout(timer); clearTimeout(forceTimer); reject(error); });
       child.on("close", code => {
-        clearTimeout(timer);
-        if (timedOut || code !== 0) reject(new Error(`${command} ${args[0] || ""} ${timedOut ? "timed out" : `exited ${code}`}. Review commands.log.`));
-        else accept(stdout);
+        clearTimeout(timer); clearTimeout(forceTimer);
+        if (timedOut || code !== 0) {
+          const error = new Error(`${command} ${args[0] || ""} ${timedOut ? "timed out" : `exited ${code}`}. Review commands.log.`);
+          if (timedOut) error.code = "COMMAND_TIMEOUT";
+          reject(error);
+        } else accept(stdout);
       });
     });
   }
@@ -73,7 +94,10 @@ export async function main() {
   let simulatorId;
   try {
     report.xcode = (await run("xcodebuild", ["-version"], { quiet: true })).trim();
-    const selected = selectIPhoneSimulator(JSON.parse(await run("xcrun", ["simctl", "list", "devices", "available", "--json"], { quiet: true })));
+    const selected = await discoverIPhoneSimulator(run, { onRetry: () => {
+      const message = "CoreSimulator discovery timed out; retrying once with the same bounded timeout.\n";
+      appendFileSync(log, message); console.log(message.trim());
+    } });
     report.selected = selected;
     // Create a separate empty simulator. Never reuse, erase or sign in to an
     // existing developer's simulator, even if this script is run on a local Mac.
