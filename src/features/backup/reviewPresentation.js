@@ -1,3 +1,5 @@
+import { exportFile } from "../../native/nativeFiles.js";
+
 const TEXT_LIMIT = 1200;
 export const REVIEW_REPORT_FINDING_LIMIT = 100;
 export const RESTORE_FINDING_GROUPS = Object.freeze([
@@ -69,8 +71,6 @@ export function createBackupReviewReport({ kind, result, reviewedAt = new Date()
   };
 }
 
-export function downloadBackupReviewReport(report) {
-  const url = URL.createObjectURL(new Blob([JSON.stringify(report, null, 2)], { type: "application/json;charset=utf-8" }));
-  const anchor = document.createElement("a"); anchor.href = url; anchor.download = `code-3-${report.kind}-review.json`; anchor.click();
-  globalThis.setTimeout(() => URL.revokeObjectURL(url), 1000);
+export function downloadBackupReviewReport(report, options = {}) {
+  return exportFile({ ...options, blob: new Blob([JSON.stringify(report, null, 2)], { type: "application/json;charset=utf-8" }), filename: `code-3-${report.kind}-review.json` });
 }

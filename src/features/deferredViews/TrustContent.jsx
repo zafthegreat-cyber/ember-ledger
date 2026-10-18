@@ -1,3 +1,5 @@
+import PrivacyCenter from "../privacy/PrivacyCenter.jsx";
+
 // Rendering is deferred; the owning App retains record state and action handlers.
 export default function TrustContent({ scope }) {
   const {
@@ -112,6 +114,8 @@ export default function TrustContent({ scope }) {
     ];
     return (
       <div className="utility-page trust-command-only-route trust-v4-route">
+        <PrivacyCenter onNavigate={setActiveTab} />
+        <details className="code3-privacy-guidance"><summary>Collecting safety, community guidelines, and terms</summary>
         <CommandBoardV4
           accent="you"
           className="trust-v4-command-board"
@@ -158,7 +162,7 @@ export default function TrustContent({ scope }) {
             className="trust-v4-guardrails"
             kicker="Privacy and safety"
             title="Family-first guardrails before growth"
-            detail="Ember & Tide keeps collecting useful without exposing private child details, harmful Scout patterns, or admin-only moderation data."
+            detail="Code 3 TCG keeps collecting useful without exposing private child details, harmful Scout patterns, or admin-only moderation data."
             action={<span className="status-badge">Protected</span>}
           >
             <div className="trust-v4-guardrail-grid">
@@ -265,7 +269,7 @@ export default function TrustContent({ scope }) {
                 ))}
                 <article className="trust-v4-meetup-warning">
                   <strong>External link gate</strong>
-                  <p>Opening maps, shop pages, or off-app listings should show a warning before leaving Ember & Tide.</p>
+                  <p>Opening maps, shop pages, or off-app listings should show a warning before leaving Code 3 TCG.</p>
                 </article>
               </div>
             </div>
@@ -310,10 +314,9 @@ export default function TrustContent({ scope }) {
 
           <CommandBoardSection
             className="trust-v4-records"
-            kicker="Policy foundations"
-            title="Trust records and beta notices"
-            detail="Legal and safety pages stay clear, readable, and honest while the beta documents are still being finalized."
-            action={<span className="status-badge">Beta documents</span>}
+            kicker="Policies and guidelines"
+            title="Privacy, terms, and community rules"
+            detail="Read how your information is handled and the rules for participating in Code 3 TCG."
           >
             <div className="trust-v4-record-grid">
               {TRUST_PAGE_CONTENT.map((entry) => (
@@ -326,10 +329,6 @@ export default function TrustContent({ scope }) {
                 <strong>Upload Safety</strong>
                 <p>{UPLOAD_SAFETY_WARNING}</p>
               </article>
-              <article className="trust-v4-record-card">
-                <strong>Draft Notice</strong>
-                <p>These beta documents are operational foundations and are not final lawyer-approved documents.</p>
-              </article>
             </div>
             <footer className="trust-v4-legal-footer">
               <p>{BRAND_LEGAL_NOTICE}</p>
@@ -337,6 +336,7 @@ export default function TrustContent({ scope }) {
             </footer>
           </CommandBoardSection>
         </CommandBoardV4>
+        </details>
       </div>
     );
   }

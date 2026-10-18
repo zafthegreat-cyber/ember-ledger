@@ -1,0 +1,90 @@
+name: Native beta build checks
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Native check to run (iOS smoke does not sign in or create a store build)
+        type: choice
+        options:
+          - ios
+          - android
+          - all
+        default: ios
+        required: true
+  push:
+    branches:
+      - codex/all-bot-integration-setup
+    paths:
+      - .github/workflows/native-beta-checks.yml
+      - scripts/native-ios-simulator-smoke.mjs
+      - scripts/native-build.mjs
+      - scripts/test-native-runtime.mjs
+      - scripts/test-native-app-exports.mjs
+      - ios/**
+      - src/**
+      - public/**
+      - index.html
+      - capacitor.config.json
+      - vite.config.*
+      - package.json
+      - package-lock.json
+permissions:
+  contents: read
+concurrency:
+  group: native-beta-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  android:
+    if: github.event_name == 'workflow_dispatch' && (inputs.platform == 'android' || inputs.platform == 'all')
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm ci
+      - run: npm run test:native
+      - run: npm run test:device-transfer && npm run test:account-deletion-client && npm run test:private-receipts
+      - run: npm run native:build
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+      - run: npx cap sync android
+      - run: chmod +x android/gradlew && cd android && ./gradlew assembleDebug testDebugUnitTest
+      - uses: actions/upload-artifact@v4
+        with:
+          name: code3-android-debug-not-for-play-store
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 7
+  ios-simulator:
+    if: github.event_name == 'push' || inputs.platform == 'ios' || inputs.platform == 'all'
+    runs-on: macos-26
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run test:native
+      - name: Build account-free simulator smoke bundle
+        run: npm run native:build:smoke
+      - run: npx cap sync ios
+      - name: Compile and launch a disposable iPhone simulator
+        run: node scripts/native-ios-simulator-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: code3-ios-simulator-smoke-not-for-testflight
+          path: |
+            artifacts/native/ios-smoke/
+            artifacts/native/web-build.json
+          retention-days: 7
+          if-no-files-found: warn

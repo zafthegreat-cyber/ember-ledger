@@ -1204,13 +1204,14 @@ export default function MenuDrawerContent({ scope }) {
                   </div>
                   <form className="drawer-info-card" onSubmit={submitDataRequest} noValidate>
                     <strong>Privacy / Data Requests</strong>
-                    <p className="compact-subtitle">Beta requests create admin review items. Nothing is automatically deleted without a safe process.</p>
+                    <p className="compact-subtitle">These requests are saved in your app records. Contact support for a response. Account deletion uses a separate password-confirmed process.</p>
                     <select className="drawer-field" value={dataRequestForm.requestType} onChange={(event) => setDataRequestForm((current) => ({ ...current, requestType: event.target.value }))}>
-                      {DATA_REQUEST_TYPES.map((type) => <option key={type} value={type}>{type.replace(/_/g, " ")}</option>)}
+                      {DATA_REQUEST_TYPES.filter((type) => type !== "account_deletion").map((type) => <option key={type} value={type}>{type.replace(/_/g, " ")}</option>)}
                     </select>
                     <input className="drawer-field" type="email" value={dataRequestForm.email || accountEmail()} onChange={(event) => setDataRequestForm((current) => ({ ...current, email: event.target.value }))} placeholder="Email" />
                     <textarea className="drawer-field" value={dataRequestForm.message} onChange={(event) => setDataRequestForm((current) => ({ ...current, message: event.target.value }))} placeholder="Optional details" />
-                    <button type="submit" className="drawer-link">Submit Privacy Request</button>
+                    <button type="submit" className="drawer-link">Save privacy request</button>
+                    <button type="button" className="drawer-link" onClick={() => runMenuAction(() => window.location.assign("/delete-account"))}>Delete account</button>
                     <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("trust"))}>Open Privacy / Terms</button>
                   </form>
                   {adminToolsVisible ? (

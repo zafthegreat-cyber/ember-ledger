@@ -1,3 +1,4 @@
+import { PrivateStorageImage } from "../../components/PrivateReceipt.jsx";
 // Rendering is deferred; the owning App retains record state and action handlers.
 export default function MarketplaceContent({ scope }) {
   const {
@@ -490,7 +491,7 @@ export default function MarketplaceContent({ scope }) {
               </div>
               <button type="button" className="secondary-button" onClick={() => setSelectedListingId("")}>Close</button>
             </div>
-            {selectedListing.photos?.[0] ? <img className="catalog-detail-image" src={selectedListing.photos[0]} alt={selectedListing.title} /> : null}
+            {selectedListing.photos?.[0] ? <PrivateStorageImage className="catalog-detail-image" src={selectedListing.photos[0]} alt={selectedListing.title} /> : null}
             <div className="market-trust-badge-row market-detail-badges">
               {renderFairPriceBadge(getMarketplaceListingFairAssessment(selectedListing))}
               {getMarketplaceTrustBadges(selectedListing).map(renderTrustBadge)}

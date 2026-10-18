@@ -1,7 +1,8 @@
 import { sanitizeUserProfileUpdates } from "./constants/plans";
 import { getOwnerRequestHeaders, isLocalDevelopmentIdentityEnabled } from "./services/ownerSession.js";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
+import { getApiBase } from "./native/nativeRuntime.js";
+const API_BASE = getApiBase();
 const PRIVATE_READ_ROUTES = [
   "/api/inventory", "/api/vault", "/api/sales", "/api/expenses", "/api/scout/alerts",
   "/api/store-reports", "/api/tidepool/reports", "/stores", "/predictions/week",

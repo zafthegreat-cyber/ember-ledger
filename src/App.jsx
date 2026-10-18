@@ -1,5 +1,9 @@
 import DeferredModalBoundary from "./features/deferredViews/DeferredModalBoundary";
+import { isNativePlatform, getNativeAuthRedirect } from "./native/nativeRuntime.js";
+import { exportFile } from "./native/nativeFiles.js";
 import CloudSyncPanel from "./features/persistence/CloudSyncPanel.jsx";
+import AccountDeletionPage from "./features/privacy/AccountDeletionPage.jsx";
+import { PublicSupportPage } from "./features/privacy/PrivacyCenter.jsx";
 import { useCloudWorkspace } from "./features/persistence/CloudWorkspaceContext.js";
 import { canUseHostedAppSupplement, selectHostedAppSupplement } from "./features/persistence/hostedAppSupplement.js";
 import { focusFlowModalContent } from "./features/deferredViews/flowModalFocus.js";
@@ -8,6 +12,7 @@ import "./App.css";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
 import OverflowMenu from "./components/OverflowMenu";
 import SmartSetupDialog from "./components/SmartSetupDialog.jsx";
+import { PrivateReceiptImage, PrivateReceiptLink, PrivateStorageImage } from "./components/PrivateReceipt.jsx";
 import LockedFeatureNotice from "./components/LockedFeatureNotice";
 import "./components/ScoutTileMap";
 import "./components/ember-ui";
@@ -3920,7 +3925,7 @@ function PremiumCardImage({ image, title, subtitle, variantType = "normal", clas
   const tone = MASTER_CARD_VARIANT_LABELS[variantType] ? variantType : "other";
   return (
     <div className={`premium-card-image premium-card-image--${tone} ${image ? "has-image" : "is-placeholder"} ${className}`.trim()} aria-label={`${title || "Card"} visual`}>
-      {image ? <img src={image} alt="" loading="lazy" /> : (
+      {image ? <PrivateStorageImage src={image} alt="" loading="lazy" /> : (
         <div className="premium-card-placeholder-art" aria-hidden="true">
           <span className="premium-card-crest" />
           <strong>{title || "Card"}</strong>
@@ -6021,7 +6026,7 @@ function CollectorShowcaseCard({
           <span className="collector-showcase-edge" />
           <span className="collector-showcase-face">
             {image ? (
-              <img
+              <PrivateStorageImage
                 src={image}
                 alt=""
                 loading="lazy"
@@ -6176,7 +6181,7 @@ function SealedProductShelfCard({
       <div className="sealed-product-shelf-visual" aria-hidden="true">
         <span className="sealed-product-shelf-board" />
         <span className="sealed-product-shelf-object">
-          {image ? <img src={image} alt="" loading="lazy" /> : (
+          {image ? <PrivateStorageImage src={image} alt="" loading="lazy" /> : (
             <span className="sealed-product-shelf-fallback">
               <strong>{collectorShowcaseInitials(title)}</strong>
               <small>{shelf.label}</small>
@@ -7083,6 +7088,7 @@ export default function App() {
   });
   const [currentUserProfile, setCurrentUserProfile] = useState(() => makeFallbackUserProfile(null));
   const [authMode, setAuthMode] = useState("login");
+  const [accountDeletionCompleted, setAccountDeletionCompleted] = useState(false);
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authFirstName, setAuthFirstName] = useState("");
@@ -7487,6 +7493,12 @@ export default function App() {
   const [forgeImportForm, setForgeImportForm] = useState(FORGE_IMPORT_BLANK);
   const [backupImportPreview, setBackupImportPreview] = useState(null);
   const backupImportReadRef = useRef(0);
+  const fileExportScopeRef = useRef(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    fileExportScopeRef.current = controller;
+    return () => controller.abort();
+  }, [user?.id, authSessionVersion]);
   const [backupImportMessage, setBackupImportMessage] = useState("");
   const [suggestions, setSuggestions] = useState(() => loadSuggestions());
   const [adminReviewFilter, setAdminReviewFilter] = useState("All");
@@ -8187,6 +8199,7 @@ export default function App() {
     exchange: experiencePresentation.copy.sellingLabel,
     settings: "Settings",
     account: "Account",
+    deleteAccount: "Delete account",
     collections: "Collections",
     dataBackup: "Data Safety & Export",
     tcgOs: "TCG OS",
@@ -11371,6 +11384,7 @@ export default function App() {
 
   function submitDataRequest(event) {
     event.preventDefault();
+    if (dataRequestForm.requestType === "account_deletion") { window.location.assign("/delete-account"); return; }
     const email = String(dataRequestForm.email || accountEmail()).trim();
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setVaultToast("Enter a valid email for the privacy request.");
@@ -11391,7 +11405,7 @@ export default function App() {
       dataRequests: [request, ...(current.dataRequests || [])],
     }));
     setDataRequestForm({ requestType: "data_export", email, message: "" });
-    setVaultToast("Privacy request submitted for admin review.");
+    setVaultToast("Privacy request saved in your app records. For a response, contact support from Help; this is not confirmation of account deletion.");
   }
 
   function updateDataRequestStatus(requestId, status) {
@@ -12962,7 +12976,7 @@ export default function App() {
     const importedProducts = (result.rows || []).map(mapCatalog);
     const seedProductsForSearch = await localSeedPromise;
     const localSeedMatches = getLocalCatalogSeedMatches(cleanedSearch || barcode, pageSize, seedProductsForSearch);
-    const combinedProducts = mergeCatalogProductLists(localSeedMatches, importedProducts);
+    const combinedProducts = mergeCatalogProductLists(importedProducts, localSeedMatches);
     setCatalogPagedResultIds(combinedProducts.map((product) => String(product.id)));
     setCatalogProducts((current) => {
       const baseline = options.append ? current : current.filter((product) => product.sourceType !== "supabase");
@@ -17207,11 +17221,13 @@ export default function App() {
   }, [quickAddMenuOpen, activeFlowModal, selectedStoreMapStore, feedbackDialog, suggestionConflict, menuOpen, vaultPotentialDuplicate, vaultDuplicateItem, vaultForgeTransfer, showInventoryScanner, receiptScanOpen, vaultForm, scanReview]);
 
   function getPasswordResetRedirectTo() {
+    if (isNativePlatform()) return getNativeAuthRedirect("recovery");
     const appUrl = String(import.meta.env.VITE_PUBLIC_APP_URL || PRODUCTION_APP_URL).replace(/\/$/, "");
     return `${appUrl}/reset-password`;
   }
 
   function getAuthEmailRedirectTo() {
+    if (isNativePlatform()) return getNativeAuthRedirect("signin");
     return String(import.meta.env.VITE_PUBLIC_APP_URL || PRODUCTION_APP_URL).replace(/\/$/, "");
   }
 
@@ -29235,7 +29251,7 @@ function renderForgeBusinessLedgerPanel() {
         {expense.notes ? <p className="compact-subtitle">{expense.notes}</p> : null}
         <div className="expense-record-actions">
           {linkedReceipt ? <button type="button" className="secondary-button" onClick={() => openReceiptDetail(linkedReceipt)}>Receipt detail</button> : null}
-          {receiptUrl ? <a href={receiptUrl} target="_blank" rel="noreferrer">View Receipt</a> : null}
+          {receiptUrl ? <PrivateReceiptLink href={receiptUrl}>View Receipt</PrivateReceiptLink> : null}
           <OverflowMenu
             onEdit={() => startEditingExpense(expense)}
             onDelete={() => deleteExpense(expense.id)}
@@ -29738,31 +29754,37 @@ function renderForgeBusinessLedgerPanel() {
     setVaultToast("Sale deleted. Items returned to inventory.");
   }
 
-  function downloadCSV(filename, rows) {
+  async function downloadRecordFile(filename, blob, message) {
+    const scope = fileExportScopeRef.current;
+    if (!scope || scope.signal.aborted) return false;
+    try {
+      await exportFile({ filename, blob, signal: scope.signal });
+      if (scope.signal.aborted) return false;
+      setVaultToast(isNativePlatform() ? "Export prepared. Check that you saved the file before leaving the app." : message);
+      return true;
+    } catch {
+      if (!scope.signal.aborted) showAppMessage("The export was not completed. Your records are unchanged; you can try saving the file again.");
+      return false;
+    }
+  }
+
+  async function downloadCSV(filename, rows, message = "Export complete.") {
     if (!rows.length) return showAppMessage("No data to export yet.");
     const headers = Object.keys(rows[0]);
     const csv = [headers.join(","), ...rows.map((row) => headers.map((h) => `"${String(row[h] ?? "").replaceAll('"', '""')}"`).join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    link.click();
-    URL.revokeObjectURL(url);
-    setVaultToast("Export complete.");
+    return downloadRecordFile(filename, blob, message);
   }
 
-  function downloadBackup() {
-    const backup = createBetaBackup();
-    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `ember-tide-beta-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-    setBackupImportMessage("Backup exported. Keep this file somewhere safe before clearing browser data or switching phones.");
-    setVaultToast("Backup exported.");
+  async function downloadBackup() {
+    try {
+      const backup = createBetaBackup();
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+      const exported = await downloadRecordFile(`ember-tide-beta-backup-${new Date().toISOString().slice(0, 10)}.json`, blob, "Backup exported.");
+      if (exported) setBackupImportMessage("Backup prepared. Verify the saved file and keep it somewhere safe before clearing storage or switching phones.");
+    } catch {
+      showAppMessage("The backup could not be prepared. Your existing records are unchanged.");
+    }
   }
 
   function downloadYearEndTaxSummary(format = "csv") {
@@ -29772,17 +29794,9 @@ function renderForgeBusinessLedgerPanel() {
     }
     if (format === "json") {
       const blob = new Blob([JSON.stringify(summary, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `ember-tide-tax-records-${summary.year}.json`;
-      link.click();
-      URL.revokeObjectURL(url);
-      setVaultToast("Year-end tax records JSON exported for review.");
-      return;
+      return downloadRecordFile(`ember-tide-tax-records-${summary.year}.json`, blob, "Year-end tax records JSON exported for review.");
     }
-    downloadCSV(`ember-tide-tax-records-${summary.year}.csv`, buildTaxRecordExportRows(summary));
-    setVaultToast("Year-end tax records CSV exported for review.");
+    return downloadCSV(`ember-tide-tax-records-${summary.year}.csv`, buildTaxRecordExportRows(summary), "Year-end tax records CSV exported for review.");
   }
 
   function downloadMileageRecords(format = "csv") {
@@ -29795,17 +29809,9 @@ function renderForgeBusinessLedgerPanel() {
     };
     if (format === "json") {
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `ember-tide-mileage-records-${new Date().toISOString().slice(0, 10)}.json`;
-      link.click();
-      URL.revokeObjectURL(url);
-      setVaultToast("Mileage records JSON exported for review.");
-      return;
+      return downloadRecordFile(`ember-tide-mileage-records-${new Date().toISOString().slice(0, 10)}.json`, blob, "Mileage records JSON exported for review.");
     }
-    downloadCSV(`ember-tide-mileage-records-${new Date().toISOString().slice(0, 10)}.csv`, buildMileageExportRows(groupedMileageVehicles));
-    setVaultToast("Mileage records CSV exported for review.");
+    return downloadCSV(`ember-tide-mileage-records-${new Date().toISOString().slice(0, 10)}.csv`, buildMileageExportRows(groupedMileageVehicles), "Mileage records CSV exported for review.");
   }
 
   function downloadSalesRecords(format = "csv") {
@@ -29819,17 +29825,9 @@ function renderForgeBusinessLedgerPanel() {
     };
     if (format === "json") {
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `ember-tide-sales-records-${new Date().toISOString().slice(0, 10)}.json`;
-      link.click();
-      URL.revokeObjectURL(url);
-      setVaultToast("Sales records JSON exported for review.");
-      return;
+      return downloadRecordFile(`ember-tide-sales-records-${new Date().toISOString().slice(0, 10)}.json`, blob, "Sales records JSON exported for review.");
     }
-    downloadCSV(`ember-tide-sales-records-${new Date().toISOString().slice(0, 10)}.csv`, buildSalesExportRows(workspaceSales));
-    setVaultToast("Sales records CSV exported for review.");
+    return downloadCSV(`ember-tide-sales-records-${new Date().toISOString().slice(0, 10)}.csv`, buildSalesExportRows(workspaceSales), "Sales records CSV exported for review.");
   }
 
   function createBetaBackup() {
@@ -35836,7 +35834,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             {ownedCount ? <span className="catalog-owned-bubble">x{ownedCount}</span> : null}
             {productImageSrc ? (
               <>
-                <img
+                <PrivateStorageImage
                   src={productImageSrc}
                   alt=""
                   onError={(event) => {
@@ -39337,6 +39335,20 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     );
   }
 
+  function navigatePrivacyPage(tab) {
+    if (tab === "deleteAccount") { window.location.assign("/delete-account"); return; }
+    setActiveTab(tab);
+  }
+
+  function renderAccountDeletionPage() {
+    return <AccountDeletionPage key={user?.id || "signed-out"} user={guestPreviewActive ? null : user} completed={accountDeletionCompleted} onNavigate={setActiveTab} onDeleted={async () => {
+      setAccountDeletionCompleted(true);
+      const { error } = await supabase.auth.signOut({ scope: "local" });
+      setUser(null);
+      if (error) throw error;
+    }} />;
+  }
+
   function renderTrustPages() {
     return <LazyToolBoundary label="Loading safety guidance…">
       <TrustContent scope={{
@@ -39351,7 +39363,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         openFeedbackDialog,
         openUtilityPage,
         runTrustCopyAiAssist,
-        setActiveTab,
+        setActiveTab: navigatePrivacyPage,
       }} />
     </LazyToolBoundary>;
   }
@@ -41883,7 +41895,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       <article className={`marketplace-listing-card market-fair-card compact-card${closedListing ? " marketplace-listing-card--closed" : ""}`} key={listing.id}>
         <div className="marketplace-listing-row">
           {imageSrc ? (
-            <img
+            <PrivateStorageImage
               className="marketplace-thumb"
               src={imageSrc}
               alt=""
@@ -42189,7 +42201,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <div className="flow-modal-body receipt-detail-body">
             <section className="receipt-detail-summary-card">
               <div className={imageUrl ? "receipt-proof-frame" : "receipt-proof-frame is-empty"}>
-                {imageUrl ? <img src={imageUrl} alt={`${receiptMerchantLabel(receipt)} receipt proof`} /> : <span>No receipt photo attached</span>}
+                {imageUrl ? <PrivateReceiptImage src={imageUrl} alt={`${receiptMerchantLabel(receipt)} receipt proof`} /> : <span>No receipt photo attached</span>}
               </div>
               <div className="receipt-detail-summary-copy">
                 <span className={`receipt-proof-pill ${imageUrl ? "is-attached" : "is-missing"}`}>
@@ -44180,7 +44192,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           ) : null}
           {selectedSaleItem ? (
             <div className="forge-sale-product-summary">
-              {selectedSaleItem.itemImage ? <img src={selectedSaleItem.itemImage} alt="" /> : <span>Item</span>}
+              {selectedSaleItem.itemImage ? <PrivateStorageImage src={selectedSaleItem.itemImage} alt="" /> : <span>Item</span>}
               <div>
                 <strong>{selectedSaleItem.name}</strong>
                 <small>Qty owned: {selectedSaleItem.quantity} | Cost basis: {money(saleCostBasis)}</small>
@@ -44214,7 +44226,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <Field label="Notes"><input value={saleForm.notes} onChange={(e) => updateSaleForm("notes", e.target.value)} /></Field>
           </div>
         </details>
-        {saleForm.receiptImage ? <div className="receipt-preview"><p>Sale reference</p><img src={saleForm.receiptImage} alt="Sale reference" /></div> : null}
+        {saleForm.receiptImage ? <div className="receipt-preview"><p>Sale reference</p><PrivateReceiptImage src={saleForm.receiptImage} alt="Sale reference" /></div> : null}
         <div className="profit-preview forge-profit-preview">
           <h3>Estimated Profit</h3>
           <div className="preview-grid">
@@ -44299,7 +44311,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         </Field>
         <Field label="Receipt Tax"><input type="number" step="0.01" value={expenseForm.receiptTax || ""} onChange={(e) => updateExpenseForm("receiptTax", e.target.value)} /></Field>
         <Field label="Personal Split Total"><input type="number" step="0.01" value={expenseForm.receiptPersonalTotal || ""} onChange={(e) => updateExpenseForm("receiptPersonalTotal", e.target.value)} /></Field>
-        {expenseForm.receiptImage ? <div className="receipt-preview"><p>Receipt</p><img src={expenseForm.receiptImage} alt="Receipt" /></div> : null}
+        {expenseForm.receiptImage ? <div className="receipt-preview"><p>Receipt</p><PrivateReceiptImage src={expenseForm.receiptImage} alt="Receipt" /></div> : null}
         <div className="flow-form-footer">
           <button type="submit">{editingExpenseId ? "Save Expense" : "Add Expense"}</button>
         </div>
@@ -44353,7 +44365,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <Field label="Ending Odometer" help={INFO_TOOLTIP_COPY.mileage}><input type="number" value={tripForm.endMiles} onChange={(e) => updateTripForm("endMiles", e.target.value)} /></Field>
         <Field label="Gas Price Paid" help="Optional gas price for estimating fuel cost on this trip."><input type="number" step="0.01" value={tripForm.gasPrice} placeholder="Optional" onChange={(e) => updateTripForm("gasPrice", e.target.value)} /></Field>
         <Field label="Gas Receipt"><input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, (url) => updateTripForm("gasReceiptImage", url), "gas")} /></Field>
-        {tripForm.gasReceiptImage ? <div className="receipt-preview"><p>Gas Receipt</p><img src={tripForm.gasReceiptImage} alt="Gas Receipt" /></div> : null}
+        {tripForm.gasReceiptImage ? <div className="receipt-preview"><p>Gas Receipt</p><PrivateReceiptImage src={tripForm.gasReceiptImage} alt="Gas Receipt" /></div> : null}
         <Field label="Notes"><input value={tripForm.notes} onChange={(e) => updateTripForm("notes", e.target.value)} /></Field>
         <div className="flow-form-footer">
           <button type="submit">{editingTripId ? "Save Trip" : "Add Mileage Trip"}</button>
@@ -44816,7 +44828,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <div className="catalog-thumb">
           {imageUrl ? (
             <>
-              <img
+              <PrivateStorageImage
                 src={imageUrl}
                 alt=""
                 onError={(event) => {
@@ -46096,6 +46108,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       if (activeTab === "parentCenter") return renderParentCenterPage();
       if (activeTab === "sponsor") return renderSponsorInterestPage();
       if (activeTab === "trust") return renderTrustPages();
+      if (activeTab === "deleteAccount") return renderAccountDeletionPage();
+      if (activeTab === "help") return <PublicSupportPage onNavigate={navigatePrivacyPage} />;
       if (activeTab === "links") return renderLinksPage();
       if (activeTab === "whatsNew") return renderWhatsNewPage();
       if (activeTab === "knownLimitations") return renderKnownLimitationsPage();
@@ -47006,6 +47020,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </div>
           <span className="status-badge">Private by default</span>
         </div>
+        <div className="drawer-inline-actions">
+          <button type="button" className="secondary-button" onClick={() => setActiveTab("trust")}>Privacy policy</button>
+          <button type="button" className="secondary-button" onClick={() => window.location.assign("/delete-account")}>Delete account</button>
+        </div>
         <div className="settings-section-grid compact">
           {privacyRows.map((row) => (
             <article className="settings-section-card" key={row.title}>
@@ -47104,6 +47122,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               {passwordResetMessage ? <p className="auth-status-message success" role="status">{passwordResetMessage}</p> : null}
               <button type="button" className="drawer-link" disabled={passwordResetLoading || !isSupabaseConfigured} onClick={handleSignedInPasswordReset}>{passwordResetLoading ? "Sending..." : "Send Password Reset Email"}</button>
               <button type="button" className="drawer-link logout-link" onClick={signOut}>Log Out</button>
+              <button type="button" className="drawer-link" onClick={() => window.location.assign("/delete-account")}>Delete account</button>
             </div>
           )}
 
@@ -47353,13 +47372,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           </div>
           <form className="drawer-info-card utility-card" onSubmit={submitDataRequest} noValidate>
             <strong>Privacy / Data Requests</strong>
-            <p className="compact-subtitle">Beta requests create admin review items. Nothing is automatically deleted without a safe process.</p>
+            <p className="compact-subtitle">These requests are saved in your app records. Contact support for a response. Account deletion uses a separate password-confirmed process.</p>
             <select className="drawer-field" value={dataRequestForm.requestType} onChange={(event) => setDataRequestForm((current) => ({ ...current, requestType: event.target.value }))}>
-              {DATA_REQUEST_TYPES.map((type) => <option key={type} value={type}>{type.replace(/_/g, " ")}</option>)}
+              {DATA_REQUEST_TYPES.filter((type) => type !== "account_deletion").map((type) => <option key={type} value={type}>{type.replace(/_/g, " ")}</option>)}
             </select>
             <input className="drawer-field" type="email" value={dataRequestForm.email || accountEmail()} onChange={(event) => setDataRequestForm((current) => ({ ...current, email: event.target.value }))} placeholder="Email" />
             <textarea className="drawer-field" value={dataRequestForm.message} onChange={(event) => setDataRequestForm((current) => ({ ...current, message: event.target.value }))} placeholder="Optional details" />
-            <button type="submit" className="drawer-link">Submit Privacy Request</button>
+            <button type="submit" className="drawer-link">Save privacy request</button>
+            <button type="button" className="drawer-link" onClick={() => window.location.assign("/delete-account")}>Delete account</button>
             <button type="button" className="drawer-link" onClick={() => setActiveTab("trust")}>Open Privacy / Terms</button>
           </form>
         </>
@@ -47429,6 +47449,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       className: "help-utility-page",
       children: (
         <>
+          <PublicSupportPage onNavigate={navigatePrivacyPage} />
           <div className="drawer-info-card app-support-card help-support-hero utility-card utility-card-wide">
             <div className="compact-card-header">
               <div>
@@ -48281,7 +48302,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <div className="app-search-result" key={result.id}>
                 <button type="button" className="app-search-result-main" onClick={() => viewSearchResult(result)}>
                   {(result.category === "Products" || result.category === "Cards") && getCatalogImage(result.source) ? (
-                    <img className="app-search-thumb" src={getCatalogImage(result.source)} alt="" />
+                    <PrivateStorageImage className="app-search-thumb" src={getCatalogImage(result.source)} alt="" />
                   ) : null}
                   <span>{result.category}</span>
                   <strong>{result.title}</strong>
@@ -49111,7 +49132,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     </div>
                     {trip.notes ? <p className="compact-subtitle">{trip.notes}</p> : null}
                     <div className="expense-record-actions">
-                      {trip.gasReceiptImage ? <a href={trip.gasReceiptImage} target="_blank" rel="noreferrer">View Receipt</a> : <span />}
+                      {trip.gasReceiptImage ? <PrivateReceiptLink href={trip.gasReceiptImage}>View Receipt</PrivateReceiptLink> : <span />}
                       <OverflowMenu
                         onEdit={() => startEditingTrip(trip)}
                         onDelete={() => deleteTrip(trip.id)}
@@ -49824,7 +49845,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </div>
                 {scoutReportPhotoUrls(selectedScoutReport).length ? (
                   <div className="scout-report-proof-strip">
-                    {scoutReportPhotoUrls(selectedScoutReport).slice(0, 4).map((url) => <img key={url} src={url} alt="" />)}
+                    {scoutReportPhotoUrls(selectedScoutReport).slice(0, 4).map((url) => <PrivateStorageImage key={url} src={url} alt="" />)}
                   </div>
                 ) : null}
                 {!scoutReportPhotoUrls(selectedScoutReport).length && canAddScoutReportDetails(selectedScoutReport) ? (
@@ -50412,7 +50433,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </Field>
                 {pictureLookup.imageUrl ? (
                   <div className="picture-lookup-preview scan-product-photo-preview">
-                    <img src={pictureLookup.imageUrl} alt="Uploaded product reference" />
+                    <PrivateStorageImage src={pictureLookup.imageUrl} alt="Uploaded product reference" />
                     <span>{pictureLookup.fileName || "Selected photo"}</span>
                   </div>
                 ) : null}
@@ -50447,7 +50468,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </div>
                 {receiptScanForm.filePreviewUrl ? (
                   <div className="picture-lookup-preview scan-product-photo-preview">
-                    <img src={receiptScanForm.filePreviewUrl} alt="Receipt preview" />
+                    <PrivateReceiptImage src={receiptScanForm.filePreviewUrl} alt="Receipt preview" />
                     <span>{receiptScanForm.fileName || "Selected receipt"}</span>
                   </div>
                 ) : null}
@@ -50501,7 +50522,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </Field>
                 {pictureLookup.imageUrl ? (
                   <div className="picture-lookup-preview scan-product-photo-preview">
-                    <img src={pictureLookup.imageUrl} alt="Uploaded card reference" />
+                    <PrivateStorageImage src={pictureLookup.imageUrl} alt="Uploaded card reference" />
                     <span>{pictureLookup.fileName || "Selected card photo"}</span>
                   </div>
                 ) : null}
@@ -50690,7 +50711,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     {scannerConfidenceLabel(scanReview.matchConfidence)} | {scanReview.matchConfidence}%
                   </span>
                 </div>
-                {scanReview.imageUrl ? <img className="scanner-review-image" src={scanReview.imageUrl} alt={scanReview.itemName} /> : null}
+                {scanReview.imageUrl ? <PrivateStorageImage className="scanner-review-image" src={scanReview.imageUrl} alt={scanReview.itemName} /> : null}
                 <div className="catalog-detail-grid">
                   <DetailItem label="UPC / SKU" value={[scanReview.upc, scanReview.sku].filter(Boolean).join(" / ") || "Unknown"} />
                   <DetailItem label="Market Value" value={scanReview.marketValue ? money(scanReview.marketValue) : "Unknown" } />
@@ -50775,7 +50796,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     <div className="catalog-thumb">
                       {catalogImage(match.item) ? (
                         <>
-                          <img
+                          <PrivateStorageImage
                             src={catalogImage(match.item)}
                             alt=""
                             onError={(event) => {
@@ -50853,7 +50874,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </div>
                 {receiptScanForm.filePreviewUrl ? (
                   <div className="picture-lookup-preview receipt-preview">
-                    <img src={receiptScanForm.filePreviewUrl} alt="Receipt preview" />
+                    <PrivateReceiptImage src={receiptScanForm.filePreviewUrl} alt="Receipt preview" />
                     <span>{receiptScanForm.fileName || "Receipt image"}</span>
                   </div>
                 ) : receiptScanForm.fileName ? (
@@ -51180,7 +51201,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </div>
             {selectedWatchCalendarEvent.imageUrl || selectedWatchCalendarEvent.productImage ? (
               <div className="watch-calendar-detail-media">
-                <img
+                <PrivateStorageImage
                   className="watch-calendar-detail-image"
                   src={selectedWatchCalendarEvent.imageUrl || selectedWatchCalendarEvent.productImage}
                   alt=""
@@ -51331,6 +51352,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         {!activeTabLocked && activeTab === "parentCenter" && renderParentCenterPage()}
         {!activeTabLocked && activeTab === "sponsor" && renderSponsorInterestPage()}
         {!activeTabLocked && activeTab === "trust" && renderTrustPages()}
+        {!activeTabLocked && activeTab === "deleteAccount" && renderAccountDeletionPage()}
         {!activeTabLocked && activeTab === "links" && renderLinksPage()}
         {!activeTabLocked && activeTab === "whatsNew" && renderWhatsNewPage()}
         {!activeTabLocked && activeTab === "knownLimitations" && renderKnownLimitationsPage()}
@@ -52696,7 +52718,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     />
                     {catalogImage(selectedCatalogDetailPricingProduct) ? (
                       <>
-                        <img
+                        <PrivateStorageImage
                           className="catalog-detail-image"
                           src={catalogImage(selectedCatalogDetailPricingProduct)}
                           alt={catalogTitle(selectedCatalogDetailProduct)}
@@ -52755,7 +52777,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     <span className="catalog-pill">{getCatalogKindLabel(selectedCatalogDetailProduct)}</span>
                     {selectedCatalogDetailProduct.expansionSymbolUrl || selectedCatalogDetailProduct.expansionLogoUrl ? (
                       <div className="catalog-expansion-banner">
-                        <img src={selectedCatalogDetailProduct.expansionSymbolUrl || selectedCatalogDetailProduct.expansionLogoUrl} alt="" />
+                        <PrivateStorageImage src={selectedCatalogDetailProduct.expansionSymbolUrl || selectedCatalogDetailProduct.expansionLogoUrl} alt="" />
                         <span>{catalogExpansionName(selectedCatalogDetailProduct)}</span>
                       </div>
                     ) : null}
@@ -53184,7 +53206,7 @@ function InventoryBreakdownPanel({ item, variant = "forge", onEditEntry, onDelet
                   {entry.saleDate || entry.sale_date ? <span><b>Sale date</b>{shortDate(entry.saleDate || entry.sale_date)}</span> : null}
                   {entry.listingPlatform || entry.platform ? <span><b>Platform</b>{entry.listingPlatform || entry.platform}</span> : null}
                   {entry.notes ? <span className="wide"><b>Notes</b>{entry.notes}</span> : null}
-                  {receiptUrl ? <a className="wide" href={receiptUrl} target="_blank" rel="noreferrer">Open receipt/photo reference</a> : null}
+                  {receiptUrl ? <PrivateReceiptLink className="wide" href={receiptUrl}>Open receipt/photo reference</PrivateReceiptLink> : null}
                 </div>
               </div>
               <div className="individual-entry-actions">
@@ -53349,7 +53371,7 @@ function ForgeItemDetail({ item, masterCard, onClose, onEdit, onDelete, onEditSa
       </div>
       <div className="inventory-detail-hero">
         <div className={detailImage ? "inventory-detail-image-frame" : "inventory-detail-image-frame placeholder"}>
-          {detailImage ? <img src={detailImage} alt={item.name} /> : <span>Photo needed</span>}
+          {detailImage ? <PrivateStorageImage src={detailImage} alt={item.name} /> : <span>Photo needed</span>}
         </div>
         <div className="inventory-detail-summary">
           <span className="trust-badge trust-badge--secure">Private Forge</span>
@@ -53463,7 +53485,7 @@ function VaultSetCardRow({ row, onOpen, onAddOwned, onAddWishlist, onOpenMarket 
   return (
     <article className="vault-set-card-row">
       <div className={image ? "vault-set-card-row-image" : "vault-set-card-row-image placeholder"}>
-        {image ? <img src={image} alt="" /> : <span>Card</span>}
+        {image ? <PrivateStorageImage src={image} alt="" /> : <span>Card</span>}
       </div>
       <div className="vault-set-card-row-body">
         <span className={statusClass(statusCopy)}>{statusCopy}</span>
@@ -53502,7 +53524,7 @@ function VaultGroupedCardDetail({ cardGroup, setSummary, onClose, onViewSet, onA
       </div>
       <div className="inventory-detail-hero vault-card-identity-hero">
         <div className={image ? "inventory-detail-image-frame" : "inventory-detail-image-frame placeholder"}>
-          {image ? <img src={image} alt={cardGroup.title} /> : <span>Photo needed</span>}
+          {image ? <PrivateStorageImage src={image} alt={cardGroup.title} /> : <span>Photo needed</span>}
         </div>
         <div className="inventory-detail-summary">
           <h4>{cardGroup.ownedQuantity ? `${cardGroup.ownedQuantity} owned` : cardGroup.wishlistQuantity ? `${cardGroup.wishlistQuantity} wanted` : "Not owned yet"}</h4>
@@ -54381,7 +54403,7 @@ function VaultItemDetailContent({ item, masterCard, setSummary, linkedTrades = [
           <summary>Photos / Receipts</summary>
           <div className="catalog-detail-grid">
             {photoReceiptDetails.map(([label, value]) => (
-              <DetailItem key={label} label={label} value={value} />
+              <DetailItem key={label} label={label} value={label === "Receipt URL" || label === "Photo Proof" ? <PrivateReceiptLink href={value}>Open saved proof</PrivateReceiptLink> : value} />
             ))}
           </div>
           <div className="quick-actions">
@@ -54447,7 +54469,7 @@ function VaultItemDetailContent({ item, masterCard, setSummary, linkedTrades = [
             <div className="grade-assist-photo-grid" aria-label="Grade Assist photo references">
               <div className={detailImage ? "grade-assist-photo-card has-image" : "grade-assist-photo-card"}>
                 <span>Front/reference photo</span>
-                {detailImage ? <img src={detailImage} alt={`${item.name || "Vault item"} front reference for Grade Assist`} /> : <strong>No photo yet</strong>}
+                {detailImage ? <PrivateStorageImage src={detailImage} alt={`${item.name || "Vault item"} front reference for Grade Assist`} /> : <strong>No photo yet</strong>}
                 <p>{detailImage ? "Using the current item image for manual review." : "Add an item photo from Edit / Add details when available."}</p>
               </div>
               <div className="grade-assist-photo-card">
@@ -54694,7 +54716,7 @@ function CompactInventoryCard({
 
       {forgeImage ? (
         <div className="compact-image-wrap">
-          <img
+          <PrivateStorageImage
             src={forgeImage}
             alt={item.name}
             loading="lazy"
@@ -54776,7 +54798,7 @@ function CompactInventoryCard({
         {physicalLocation ? <span className="neon-chip forge-location-pill">{physicalLocation}</span> : null}
         {item.tideTradrUrl && <a href={item.tideTradrUrl} target="_blank" rel="noreferrer">Market Watch</a>}
         {item.listingUrl && <a href={item.listingUrl} target="_blank" rel="noreferrer">Listing</a>}
-        {item.receiptImage && <a href={item.receiptImage} target="_blank" rel="noreferrer">Receipt</a>}
+        {item.receiptImage && <PrivateReceiptLink href={item.receiptImage}>Receipt</PrivateReceiptLink>}
       </div>
 
       <div className="compact-actions forge-card-actions">
@@ -54992,7 +55014,7 @@ function VaultEditForm({
             {form.itemImage ? (
               <div className="receipt-preview">
                 <p>Product Photo</p>
-                <img src={form.itemImage} alt="Product" />
+                <PrivateStorageImage src={form.itemImage} alt="Product" />
                 <button type="button" className="secondary-button" onClick={() => setForm("itemImage", "")}>Remove Product Photo</button>
               </div>
             ) : null}
@@ -55002,7 +55024,7 @@ function VaultEditForm({
             {form.receiptImage ? (
               <div className="receipt-preview">
                 <p>Receipt / Screenshot</p>
-                <img src={form.receiptImage} alt="Receipt" />
+                <PrivateReceiptImage src={form.receiptImage} alt="Receipt" />
                 <button type="button" className="secondary-button" onClick={() => setForm("receiptImage", "")}>Remove Receipt</button>
               </div>
             ) : null}
@@ -55180,7 +55202,7 @@ function InventoryForm({
           <div className="catalog-thumb">
             {selectedCatalogImage ? (
               <>
-                <img
+                <PrivateStorageImage
                   src={selectedCatalogImage}
                   alt=""
                   onError={(event) => {
@@ -55253,7 +55275,7 @@ function InventoryForm({
       {form.itemImage && (
         <div className="receipt-preview">
           <p>Product Photo • {getImageSourceLabel(form)}</p>
-          <img src={form.itemImage} alt="Product" />
+          <PrivateStorageImage src={form.itemImage} alt="Product" />
           <button type="button" className="secondary-button" onClick={() => {
             setForm("itemImage", "");
             setForm("itemImageSource", "placeholder");
@@ -55425,7 +55447,7 @@ function InventoryForm({
       <Field label="Listed Price"><input type="number" step="0.01" value={form.listedPrice} onChange={(e) => setForm("listedPrice", e.target.value)} /></Field>
       <Field label="Action Notes"><input value={form.actionNotes} onChange={(e) => setForm("actionNotes", e.target.value)} /></Field>
       <Field label="Receipt / Screenshot"><input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, (url) => setForm("receiptImage", url), "inventory")} /></Field>
-      {form.receiptImage && <div className="receipt-preview"><p>Receipt</p><img src={form.receiptImage} alt="Receipt" /></div>}
+      {form.receiptImage && <div className="receipt-preview"><p>Receipt</p><PrivateReceiptImage src={form.receiptImage} alt="Receipt" /></div>}
       </details>
       <div className="forge-form-footer">
         <button type="submit">{submitLabel}</button>

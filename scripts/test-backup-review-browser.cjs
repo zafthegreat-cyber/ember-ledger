@@ -24,8 +24,14 @@ const results = [];
       try {
         await page.goto(new URL("/owner-center/controls/data-backup?betaLocalMode=true", base).href);
         const panel = page.locator(".backup-recovery"); await panel.getByRole("heading", { name: "Data & Backup", exact: true }).waitFor();
-        // Let the existing App startup preference save finish before measuring this read-only operation.
-        await page.waitForFunction(() => localStorage.getItem("et-tcg-phase2-data") !== null);
+        // Both app stores persist during startup. Measuring after only the
+        // preferences store races the deferred catalog/bootstrap persistence.
+        await page.waitForFunction(() => localStorage.getItem("et-tcg-phase2-data") !== null && localStorage.getItem("et-tcg-beta-data") !== null);
+        await page.waitForFunction(() => {
+          const bytes = JSON.stringify([Object.entries(localStorage).sort(), Object.entries(sessionStorage).sort()]);
+          if (window.__backupFixtureStable?.bytes !== bytes) window.__backupFixtureStable = { bytes, since: Date.now() };
+          return Date.now() - window.__backupFixtureStable.since >= 1500;
+        });
         const storage = () => page.evaluate(() => ({ local: Object.fromEntries(Object.keys(localStorage).sort().map(key => [key, localStorage.getItem(key)])), session: Object.fromEntries(Object.keys(sessionStorage).sort().map(key => [key, sessionStorage.getItem(key)])) }));
         const before = await storage();
         const file = panel.locator('input[type="file"]').first();

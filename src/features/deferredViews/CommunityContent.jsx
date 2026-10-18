@@ -1,3 +1,4 @@
+import { PrivateStorageImage } from "../../components/PrivateReceipt.jsx";
 // Rendering is deferred; the owning App retains record state and action handlers.
 export default function CommunityContent({ scope }) {
   const {
@@ -504,7 +505,7 @@ export default function CommunityContent({ scope }) {
                       <span>{confirmationLabel}</span>
                       <span>No private contact info</span>
                     </div>
-                    {post.photoUrl ? <img className="tidepool-post-image" src={post.photoUrl} alt="" /> : null}
+                    {post.photoUrl ? <PrivateStorageImage className="tidepool-post-image" src={post.photoUrl} alt="" /> : null}
                   </div>
                   <div className="tidepool-post-counts">
                     <span>{post.commentCount} comment{post.commentCount === 1 ? "" : "s"}</span>

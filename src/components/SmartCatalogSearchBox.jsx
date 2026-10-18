@@ -1,3 +1,4 @@
+import { PrivateStorageImage } from "./PrivateReceipt.jsx";
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import {
   detectCatalogSearchMode,
@@ -53,7 +54,7 @@ function CatalogSuggestionThumbnail({ suggestion }) {
 
   if (imageUrl) {
     return (
-      <img
+      <PrivateStorageImage
         src={imageUrl}
         alt=""
         onError={() => setFailed(true)}

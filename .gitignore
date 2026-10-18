@@ -25,3 +25,20 @@ supabase/.temp/
 artifacts/
 .vercel
 .env*
+
+# Native build outputs, local SDK paths and signing material
+dist-native/
+android/.gradle/
+android/local.properties
+android/**/build/
+ios/App/App/public/
+android/app/src/main/assets/public/
+ios/App/App/capacitor.config.json
+android/app/src/main/assets/capacitor.config.json
+*.keystore
+*.jks
+*.p12
+*.mobileprovision
+*.p8
+**/xcuserdata/
+native-signing.local.json

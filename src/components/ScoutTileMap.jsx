@@ -1,3 +1,4 @@
+import { PrivateStorageImage } from "./PrivateReceipt.jsx";
 import { useMemo, useRef, useState } from "react";
 
 const TILE_SIZE = 256;
@@ -432,7 +433,7 @@ export default function ScoutTileMap({
           }}
         >
           {map.tiles.map((tile) => (
-            <img
+            <PrivateStorageImage
               alt=""
               aria-hidden="true"
               className="scout-tile-map-tile"

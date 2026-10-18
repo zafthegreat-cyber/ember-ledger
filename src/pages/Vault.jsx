@@ -1,3 +1,4 @@
+import { PrivateStorageImage } from "../components/PrivateReceipt.jsx";
 import { CommandBoardV4 } from "../components/command-system";
 
 export default function VaultPage(props) {
@@ -674,7 +675,7 @@ export default function VaultPage(props) {
               <div className="vault-live-recent-list">
                 {recentRows.length ? recentRows.map((item) => (
                   <button type="button" className="vault-live-recent-row" key={item.id} onClick={() => setSelectedVaultDetailId(item.id)}>
-                    <span className="vault-live-item-thumb" aria-hidden="true">{vaultItemDisplayImage(item) ? <img src={vaultItemDisplayImage(item)} alt="" /> : "Card"}</span>
+                    <span className="vault-live-item-thumb" aria-hidden="true">{vaultItemDisplayImage(item) ? <PrivateStorageImage src={vaultItemDisplayImage(item)} alt="" /> : "Card"}</span>
                     <span>
                       <strong>{item.name}</strong>
                       <small>{[vaultItemSetLabel(item), `Qty ${item.quantity || 1}`, vaultStatusLabel(normalizeVaultStatus(item))].filter(Boolean).join(" | ")}</small>

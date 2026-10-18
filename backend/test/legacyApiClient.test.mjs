@@ -14,6 +14,7 @@ const { createLegacyApiBoundary } = require("../dist/security/legacyApiBoundary.
 const { createOwnerSecurity } = require("../dist/auth/ownerAuthorization.js");
 const apiSource = readFileSync(new URL("../../src/api.js", import.meta.url), "utf8");
 const sessionSource = readFileSync(new URL("../../src/services/ownerSession.js", import.meta.url), "utf8");
+const nativeRuntimeSource = readFileSync(new URL("../../src/native/nativeRuntime.js", import.meta.url), "utf8");
 const ORIGIN = "https://code3.example.test";
 const provider = {
   providerId: "supabase",
@@ -68,6 +69,7 @@ async function loadClient(base, {
   const viteEnv = { VITE_API_BASE_URL: base, DEV: development, ...environment };
   const context = createContext({
     Headers,
+    URL,
     URLSearchParams,
     location: { hostname, search },
     fetch: async (url, init = {}) => {
@@ -97,11 +99,13 @@ async function loadClient(base, {
     initializeImportMeta(meta) { meta.env = viteEnv; },
   });
   const session = new SourceTextModule(sessionSource, moduleOptions("ownerSession.js"));
+  const nativeRuntime = new SourceTextModule(nativeRuntimeSource, moduleOptions("nativeRuntime.js"));
   // Expose the existing internal transport only in this isolated test module so
   // caller-supplied header variants can be tested without adding a product API.
   const api = new SourceTextModule(`${apiSource}\nexport { request as __requestForTest };`, moduleOptions("api.js"));
   await api.link(specifier => {
     if (specifier === "./services/ownerSession.js") return session;
+    if (specifier === "./native/nativeRuntime.js" || specifier === "../native/nativeRuntime.js") return nativeRuntime;
     if (specifier === "../supabaseClient.js") return identity;
     if (specifier === "./constants/plans") return profiles;
     throw new Error(`Unexpected client import: ${specifier}`);

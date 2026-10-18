@@ -1,6 +1,7 @@
 import { getOwnerRequestHeaders, isLocalDevelopmentIdentityEnabled } from "../../services/ownerSession.js";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
+import { getApiBase } from "../../native/nativeRuntime.js";
+const API_BASE = getApiBase();
 const CLIENT_TIMEOUT_MS = 20_000;
 
 export class EbayClientError extends Error {

@@ -1,0 +1,28 @@
+.code3-privacy { width: min(100%, 54rem); min-width: 0; margin: 0 auto; padding: clamp(1rem, 3vw, 2rem); color: var(--text-primary); font-family: var(--font-ui); }
+.code3-public-privacy { display: block; min-height: 100dvh; background: var(--app-background); padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+.code3-privacy, .code3-privacy * { box-sizing: border-box; }
+.code3-privacy header { margin-bottom: 1.5rem; }
+.code3-privacy h2 { font-size: clamp(1.6rem, 5vw, 2.2rem); margin: .3rem 0 .75rem; line-height: 1.2; }
+.code3-privacy h3 { font-size: 1.08rem; margin: 0 0 .6rem; line-height: 1.4; }
+.code3-privacy p, .code3-privacy li { line-height: 1.6; overflow-wrap: anywhere; }
+.code3-privacy p { margin: .5rem 0; }
+.code3-privacy-eyebrow, .code3-privacy-meta { color: var(--text-secondary); font-size: .9rem; }
+.code3-privacy-card { margin: 1rem 0; padding: clamp(1rem, 3vw, 1.5rem); border: 1px solid var(--border-subtle); border-radius: 12px; background: var(--surface-primary); }
+.code3-privacy a { color: var(--action-primary); text-underline-offset: .18em; }
+.code3-privacy-actions { display: flex; flex-wrap: wrap; gap: .65rem; align-items: center; margin: 1rem 0; }
+.code3-privacy-actions a, .code3-privacy button { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; border: 1px solid var(--border-strong); border-radius: 8px; padding: .65rem .9rem; color: var(--text-primary); background: var(--surface-primary); font: inherit; font-weight: 600; line-height: 1.4; text-decoration: none; cursor: pointer; white-space: normal; }
+.code3-privacy button:disabled { opacity: .55; cursor: not-allowed; }
+.code3-privacy a:focus-visible, .code3-privacy button:focus-visible, .code3-privacy input:focus-visible, .code3-privacy summary:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 3px; }
+.code3-privacy .code3-danger { background: var(--surface-primary); border: 2px solid var(--status-danger); color: var(--status-danger); }
+.code3-privacy .code3-primary { background: var(--action-primary); color: var(--on-primary); border-color: var(--action-primary); }
+.code3-privacy-status { padding: 1rem; border-left: 4px solid var(--action-primary); background: var(--surface-secondary); margin: 1rem 0; }
+.code3-privacy-error { border-left-color: var(--status-danger); }
+.code3-privacy form { display: grid; gap: 1rem; }
+.code3-privacy label { display: grid; gap: .45rem; color: var(--text-primary); font-weight: 600; }
+.code3-privacy input:not([type="checkbox"]) { width: 100%; min-width: 0; min-height: 44px; box-sizing: border-box; border: 1px solid var(--border-strong); border-radius: 8px; padding: .7rem; background: var(--surface-primary); color: var(--text-primary); font: inherit; }
+.code3-privacy .code3-privacy-checkbox { display: flex; align-items: flex-start; gap: .75rem; padding: .65rem 0; font-weight: 400; }
+.code3-privacy-checkbox input { width: 1.2rem; height: 1.2rem; flex-shrink: 0; margin-top: .2rem; accent-color: var(--action-primary); }
+.code3-privacy details > summary { min-height: 44px; padding: .7rem; cursor: pointer; }
+.code3-privacy-guidance { margin: 1rem auto; max-width: 70rem; }
+.code3-privacy-guidance > summary { padding: 1rem; min-height: 44px; cursor: pointer; font-weight: 600; }
+@media (max-width: 420px) { .code3-privacy-actions { align-items: stretch; } .code3-privacy-actions a, .code3-privacy-actions button { flex: 1 1 auto; } }

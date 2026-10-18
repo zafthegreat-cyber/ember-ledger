@@ -1,3 +1,4 @@
+import { PrivateStorageImage } from "../../components/PrivateReceipt.jsx";
 // App owns state, authority and handlers; only this existing renderer is deferred.
 export default function MultiDestinationContent({ scope }) {
   const {
@@ -301,7 +302,7 @@ export default function MultiDestinationContent({ scope }) {
             <div className="catalog-thumb selected-match-thumb">
               {catalogImage(selectedCatalog) ? (
                 <>
-                  <img
+                  <PrivateStorageImage
                     src={catalogImage(selectedCatalog)}
                     alt=""
                     onError={(event) => {
@@ -379,7 +380,7 @@ export default function MultiDestinationContent({ scope }) {
                   <div className="catalog-thumb selected-match-thumb">
                     {catalogImage(selectedCatalog) ? (
                       <>
-                        <img
+                        <PrivateStorageImage
                           src={catalogImage(selectedCatalog)}
                           alt=""
                           onError={(event) => {
@@ -938,7 +939,7 @@ export default function MultiDestinationContent({ scope }) {
                 <div className="catalog-thumb market-review-add-thumb">
                   {selectedCatalog && catalogImage(selectedCatalog) ? (
                     <>
-                      <img
+                      <PrivateStorageImage
                         src={catalogImage(selectedCatalog)}
                         alt=""
                         onError={(event) => {

@@ -1,3 +1,4 @@
+import { PrivateStorageImage } from "../components/PrivateReceipt.jsx";
 import {
   CommandMetricGrid,
   CommandBoardV4,
@@ -226,7 +227,7 @@ export default function MarketPage(props) {
                   <article className="market-v4-result-row" key={product.id || product.productId || product.name || `market-product-${index}`}>
                     <div className="market-v4-thumb">
                       {catalogImage(product) ? (
-                        <img src={catalogImage(product)} alt="" />
+                        <PrivateStorageImage src={catalogImage(product)} alt="" />
                       ) : (
                         <span>{index + 1}</span>
                       )}

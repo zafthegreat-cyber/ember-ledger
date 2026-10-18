@@ -1,3 +1,4 @@
+import { PrivateStorageImage } from "../../components/PrivateReceipt.jsx";
 // Rendering is deferred; the owning App retains record state and action handlers.
 export default function InventoryImportContent({ scope }) {
   const {
@@ -188,7 +189,7 @@ export default function InventoryImportContent({ scope }) {
                     <div className="catalog-thumb">
                       {catalogImage(product) ? (
                         <>
-                          <img
+                          <PrivateStorageImage
                             src={catalogImage(product)}
                             alt=""
                             onError={(event) => {

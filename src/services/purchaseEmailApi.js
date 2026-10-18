@@ -1,4 +1,5 @@
-const API_BASE = String((import.meta.env || {}).VITE_API_BASE_URL || "").replace(/\/$/, "");
+import { getApiBase, isTrustedNativeOrigin } from "../native/nativeRuntime.js";
+const API_BASE = getApiBase();
 const BASE_PATH = "/api/account-ops/mailbox-import";
 const PROVIDERS = new Set(["aol", "gmail", "yahoo"]);
 const DAYS = new Set([7, 30, 90]);
@@ -87,7 +88,7 @@ export function resolvePurchaseEmailApiUrl(suffix, apiBase = API_BASE, pageUrl =
     page = new URL(pageUrl);
     endpoint = new URL(`${apiBase}${BASE_PATH}/${suffix}`, page);
   } catch { fail("SECURE_TRANSPORT_REQUIRED", "Open the secure Code 3 TCG app before entering mailbox details."); }
-  const safePage = page.protocol === "https:" || (page.protocol === "http:" && loopback(page.hostname));
+  const safePage = page.protocol === "https:" || (page.protocol === "http:" && loopback(page.hostname)) || isTrustedNativeOrigin(pageUrl);
   const safeEndpoint = endpoint.protocol === "https:" || (endpoint.protocol === "http:" && loopback(endpoint.hostname) && loopback(page.hostname));
   if (!safePage || !safeEndpoint || endpoint.username || endpoint.password || endpoint.search || endpoint.hash) fail("SECURE_TRANSPORT_REQUIRED", "Open the secure Code 3 TCG app before entering mailbox details.");
   return endpoint.href;

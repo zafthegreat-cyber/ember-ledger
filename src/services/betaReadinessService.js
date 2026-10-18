@@ -1,3 +1,5 @@
+import { PRIVACY_PUBLISHER, PRIVACY_SECTIONS } from "../config/privacyPolicy.js";
+
 export const BETA_READINESS_STORAGE_KEY = "et-tcg-beta-readiness";
 
 export const KIDS_PROGRAM_COPY =
@@ -75,15 +77,15 @@ export const SIGNUP_NAME_HELPER =
 export const UPLOAD_SAFETY_WARNING =
   "Do not upload photos containing personal, financial, medical, or sensitive information.";
 
-export const SUPPORT_EMAIL = "support@emberandtide.app";
-export const PRODUCTION_APP_URL = "https://emberandtide.app";
+export const SUPPORT_EMAIL = PRIVACY_PUBLISHER.supportEmail;
+export const PRODUCTION_APP_URL = "https://code3tcg.app";
 export const BRAND_LEGAL_NOTICE =
-  "© 2026 Ember & Tide. All rights reserved. Ember & Tide, the Ember & Tide logo, and related marks are trademarks of Ember & Tide.";
+  "© 2026 Anchor & Wing LLC DBA Code 3 TCG. All rights reserved.";
 export const POKEMON_AFFILIATION_NOTICE =
-  "Pokémon is a trademark of its respective owner. Ember & Tide is not affiliated with or endorsed by The Pokémon Company, Nintendo, Game Freak, or Creatures.";
+  "Pokémon is a trademark of its respective owner. Code 3 TCG is not affiliated with or endorsed by The Pokémon Company, Nintendo, Game Freak, or Creatures.";
 
 export const SIGNUP_TERMS_TEXT = "I agree to the Terms of Use and Privacy Policy.";
-export const SIGNUP_BETA_ACK_TEXT = "I understand Ember & Tide is currently in beta and features may change.";
+export const SIGNUP_BETA_ACK_TEXT = "I understand Code 3 TCG is currently in beta and features may change.";
 
 export const BETA_ACCESS_MODES = ["open_beta", "invite_only", "waitlist"];
 export const BETA_ACCESS_STATUSES = ["pending", "approved", "paused", "denied"];
@@ -148,15 +150,11 @@ export const BETA_REVIEW_SECTIONS = [
 ];
 
 export const TRUST_PAGE_CONTENT = [
-  {
-    key: "privacy",
-    title: "Privacy Policy",
-    body: "Beta draft: Ember & Tide stores account, collection, receipt, workspace, feedback, and Scout data only to run the app and improve beta quality. Private collection, receipt, Kids Program, and workspace data should not be public by default.",
-  },
+  ...PRIVACY_SECTIONS,
   {
     key: "terms",
     title: "Terms of Use",
-    body: "Beta draft: Use Ember & Tide honestly, do not abuse reports or Kids Program access, and do not use the app for scraping, botting, auto-buying, harassment, fraud, or unsafe marketplace behavior.",
+    body: "Use Code 3 TCG honestly. Do not abuse store reports, family programs, shared workspaces, or account access. No unauthorized scraping, automated purchasing, harassment, fraud, or unsafe marketplace conduct is permitted. Prices and community restock reports are estimates or observations, not guarantees. Review records before acting on them.",
   },
   {
     key: "kids_rules",
@@ -166,12 +164,12 @@ export const TRUST_PAGE_CONTENT = [
   {
     key: "community",
     title: "Community Guidelines",
-    body: "Beta draft: Keep reports honest, label guesses as guesses, meet safely, avoid price gouging, and report suspicious behavior for admin review.",
+    body: "Keep reports factual, label guesses, share only information you have permission to share, meet safely, and report abusive behavior for review.",
   },
   {
     key: "acceptable_use",
     title: "Acceptable Use / Anti-Scalping Rules",
-    body: "Beta draft: Do not use Ember & Tide for auto-buying, checkout automation, unauthorized retailer scraping, shelf-clearing abuse, or resale abuse of family-focused programs.",
+    body: "Do not use Code 3 TCG for auto-buying, checkout automation, unauthorized retailer scraping, shelf-clearing abuse, or resale abuse of family-focused programs.",
   },
   {
     key: "brand",
@@ -181,7 +179,7 @@ export const TRUST_PAGE_CONTENT = [
   {
     key: "support",
     title: "Contact / Support",
-    body: `Contact support at ${SUPPORT_EMAIL}.`,
+    body: `${PRIVACY_PUBLISHER.legalName}. Contact ${SUPPORT_EMAIL} for privacy or account help. Do not email passwords or private backups.`,
   },
 ];
 

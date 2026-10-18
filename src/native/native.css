@@ -1,0 +1,14 @@
+.native-account-notice {
+  position: fixed;
+  z-index: 10000;
+  inset: max(16px, env(safe-area-inset-top)) 16px auto;
+  margin-inline: auto;
+  max-width: 520px;
+  padding: 16px;
+  color: var(--text-primary, #24312e);
+  background: var(--surface, #fff);
+  border: 2px solid var(--border-strong, #5f6d66);
+  border-radius: 12px;
+}
+.native-account-notice p { margin: 0 0 12px; }
+.native-account-notice button { min-height: 44px; min-width: 88px; }

@@ -1,5 +1,5 @@
-const VITE_ENV = import.meta.env || {};
-const API_BASE = String(VITE_ENV.VITE_API_BASE_URL || "").replace(/\/$/, "");
+import { getApiBase } from "../native/nativeRuntime.js";
+const API_BASE = getApiBase();
 
 export const ACCOUNT_OPS_PROVIDER_CONNECTIONS_PATH = "/api/account-ops/provider-connections";
 

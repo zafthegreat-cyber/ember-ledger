@@ -1,3 +1,4 @@
+import { PrivateStorageImage } from "../../components/PrivateReceipt.jsx";
 import "./scout-submit.css";
 
 // App owns state, authority and handlers; only this existing renderer is deferred.
@@ -571,7 +572,7 @@ export default function ScoutSubmitContent({ scope }) {
                 </details>
                 {quickScoutReportForm.photoUrl ? (
                   <div className="scout-photo-preview">
-                    <img src={quickScoutReportForm.photoUrl} alt="" />
+                    <PrivateStorageImage src={quickScoutReportForm.photoUrl} alt="" />
                     <div>
                       <strong>Image attached</strong>
                       <span>Proof is optional, but it improves confidence.</span>
@@ -646,7 +647,7 @@ export default function ScoutSubmitContent({ scope }) {
               </div>
               {selectedCatalogProduct || quickScoutReportForm.productImageUrl ? (
                 <article className="scout-selected-product-card">
-                  {quickScoutReportForm.productImageUrl ? <img src={quickScoutReportForm.productImageUrl} alt="" /> : <span className="scout-selected-product-thumb">Item</span>}
+                  {quickScoutReportForm.productImageUrl ? <PrivateStorageImage src={quickScoutReportForm.productImageUrl} alt="" /> : <span className="scout-selected-product-thumb">Item</span>}
                   <div className="scout-selected-product-copy">
                     <strong>{quickScoutReportForm.catalogProductName || quickScoutReportForm.productName}</strong>
                     <small>{[quickScoutReportForm.productSetName, quickScoutReportForm.productType].filter(Boolean).join(" | ") || "Catalog item selected"}</small>
@@ -666,7 +667,7 @@ export default function ScoutSubmitContent({ scope }) {
                       <span className="catalog-thumb">
                         {catalogImage(product) ? (
                           <>
-                            <img
+                            <PrivateStorageImage
                               src={catalogImage(product)}
                               alt=""
                               onError={(event) => {
@@ -1057,7 +1058,7 @@ export default function ScoutSubmitContent({ scope }) {
             ) : null}
             {quickScoutReportForm.photoUrl ? (
               <div className="scout-photo-preview">
-                <img src={quickScoutReportForm.photoUrl} alt="" />
+                <PrivateStorageImage src={quickScoutReportForm.photoUrl} alt="" />
                 <div>
                   <strong>Image attached</strong>
                   <span>Check the image before saving.</span>

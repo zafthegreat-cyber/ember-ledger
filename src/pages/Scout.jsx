@@ -1,3 +1,4 @@
+import { PrivateStorageImage } from "../components/PrivateReceipt.jsx";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   getStores,
@@ -3914,7 +3915,7 @@ async function handleUpdateStore(e) {
           {!options.compact && (note || (!stockStatus && !photo)) ? <p className="scout-report-notes">{note || "No notes/details added."}</p> : null}
         </div>
         <div className="scout-report-side">
-          {photo ? <img src={photo} alt="" /> : <span>No photo attached</span>}
+          {photo ? <PrivateStorageImage src={photo} alt="" /> : <span>No photo attached</span>}
           <OverflowMenu
             actions={compactReportActions}
             onDelete={adminMode ? () => setDeleteReportTarget(report) : null}
@@ -5363,7 +5364,7 @@ async function handleUpdateStore(e) {
                   <input type="file" accept="image/*" onChange={handleTipScreenshotUpload} />
                   {tipImport.screenshotPreview ? (
                     <div>
-                      <img src={tipImport.screenshotPreview} alt="Uploaded tip screenshot preview" style={styles.previewImage} />
+                      <PrivateStorageImage src={tipImport.screenshotPreview} alt="Uploaded tip screenshot preview" style={styles.previewImage} />
                       <p style={styles.tiny}>Preview: {tipImport.screenshotName}</p>
                     </div>
                   ) : null}
@@ -5624,7 +5625,7 @@ async function handleUpdateStore(e) {
                   </label>
                   {(reportPhoto?.preview || reportForm.imageUrl) ? (
                     <div className="scout-photo-preview">
-                      <img src={reportPhoto?.preview || reportForm.imageUrl} alt="" />
+                      <PrivateStorageImage src={reportPhoto?.preview || reportForm.imageUrl} alt="" />
                       <div>
                         <strong>Photo uploaded</strong>
                         <span>Items not identified yet. Needs review.</span>
@@ -5683,7 +5684,7 @@ async function handleUpdateStore(e) {
                             </label>
                             {product ? (
                               <div className="scout-selected-product-card scout-selected-product-card--small">
-                                {product.imageUrl ? <img src={product.imageUrl} alt="" /> : <span className="scout-selected-product-thumb">No image</span>}
+                                {product.imageUrl ? <PrivateStorageImage src={product.imageUrl} alt="" /> : <span className="scout-selected-product-thumb">No image</span>}
                                 <div className="scout-selected-product-copy">
                                   <strong>{scoutCatalogTitle(product)}</strong>
                                   <small>
@@ -6858,7 +6859,7 @@ async function handleUpdateStore(e) {
                     {getScoutReportPhotoUrls(selectedReportTarget).length ? (
                       <div className="scout-report-proof-strip" aria-label="Report proof photos">
                         {getScoutReportPhotoUrls(selectedReportTarget).slice(0, 4).map((photoUrl, index) => (
-                          <img src={photoUrl} alt={`Report proof ${index + 1}`} key={photoUrl || index} />
+                          <PrivateStorageImage src={photoUrl} alt={`Report proof ${index + 1}`} key={photoUrl || index} />
                         ))}
                       </div>
                     ) : null}

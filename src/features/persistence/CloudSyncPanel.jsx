@@ -2,13 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import { useCloudWorkspace } from "./CloudWorkspaceContext.js";
 import { createVerifiedWorkspaceSnapshotBackup } from "../backup/workspaceRestorePlan.js";
 import WorkspaceBackupPanel from "../backup/WorkspaceBackupPanel.jsx";
+import DeviceTransferPanel from "../backup/DeviceTransferPanel.jsx";
 import AccountSessionPanel from "../security/AccountSessionPanel.jsx";
+import { exportFile, exportFileStatus, exportFileError } from "../../native/nativeFiles.js";
 
-function download(name, value) {
+function download(name, value, signal) {
   const json = typeof value === "string" ? value : JSON.stringify(value, null, 2);
-  const url = URL.createObjectURL(new Blob([json], { type: "application/json;charset=utf-8" }));
-  const link = document.createElement("a"); link.href = url; link.download = name; link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 0);
+  return exportFile({ blob: new Blob([json], { type: "application/json;charset=utf-8" }), filename: name, signal });
 }
 
 export default function CloudSyncPanel() {
@@ -40,27 +40,37 @@ export default function CloudSyncPanel() {
       if (ticket === generation.current) setBusy(false);
     }
   }
-  async function downloadVersion(ticket, read) {
+  async function downloadVersion(ticket, read, signal) {
     const snapshot = await read();
     if (!isCurrent(ticket)) return;
     const result = await createVerifiedWorkspaceSnapshotBackup(snapshot.sources);
     if (!isCurrent(ticket)) return;
-    download(result.fileName, result.json);
-    setMessage("Verified saved version downloaded. Use Recover from backup to review missing records before adding them. Cloud inventory, sales and separate attachment files are not included in this workspace version.");
+    let saved;
+    try { saved = await download(result.fileName, result.json, signal); }
+    catch (error) { throw new Error(exportFileError(error)); }
+    if (!isCurrent(ticket)) return;
+    setMessage(`${exportFileStatus(saved)} Use Recover from backup to review missing records before adding them. Cloud inventory, sales and separate attachment files are not included in this workspace version.`);
   }
   async function exportCloud(ticket, signal) {
     const result = await workspace.exportCloudBackup(signal);
     if (!isCurrent(ticket)) return;
     if (!result?.verified) throw new Error("Cloud backup verification did not finish. Your records were not changed.");
-    download(result.fileName, result.json);
+    let saved;
+    try { saved = await download(result.fileName, result.json, signal); }
+    catch (error) { throw new Error(exportFileError(error)); }
+    if (!isCurrent(ticket)) return;
     const { backup } = result;
     setCoverage({ recordCount: backup.records.recordCount, attachmentCount: backup.attachments.length,
       exclusions: backup.records.exclusions || [], missingTables: backup.records.missingTables || [],
       missingFiles: backup.fileErrors || [], externalFileReferences: backup.externalFileReferences || 0,
     });
     setMessage(backup.coverage === "COMPLETE_FOR_LISTED_SCOPE"
-      ? "Cloud backup verified and downloaded for the listed records and attachments. Keep your device backup alongside it."
-      : "Cloud backup verified and downloaded with exclusions. Review the coverage below and keep the missing files separately.");
+      ? `${exportFileStatus(saved)} Cloud backup verified for the listed records and attachments. Keep your device backup alongside it.`
+      : `${exportFileStatus(saved)} Cloud backup verified with exclusions. Review the coverage below and keep the missing files separately.`);
+  }
+  async function downloadConflict(ticket, signal, item) {
+    try { const saved = await download(`code3-conflict-${item.sourceId}.json`, { device: item.device, cloud: item.cloud }, signal); if (isCurrent(ticket)) setMessage(exportFileStatus(saved)); }
+    catch (error) { throw new Error(exportFileError(error)); }
   }
   const { status } = workspace;
   return <section className="drawer-info-card utility-card cloud-workspace-panel" aria-labelledby="cloud-saving-title" aria-busy={busy}>
@@ -70,12 +80,13 @@ export default function CloudSyncPanel() {
     <div><button type="button" disabled={busy || !workspace.enabled} onClick={() => run(() => workspace.syncNow())}>Sync now</button><button type="button" className="cloud-secondary" disabled={busy} onClick={() => workspace.setEnabled(!workspace.enabled)}>{workspace.enabled ? "Pause cloud saving" : "Resume cloud saving"}</button></div>
     {status.status === "REMOTE_AVAILABLE" && <button type="button" disabled={busy} onClick={() => run(() => workspace.loadNewer())}>Load changes from another device</button>}
     {status.status === "CONFLICT" && <button type="button" disabled={busy} onClick={() => run(async (ticket) => { const next = await workspace.reviewConflicts(); if (isCurrent(ticket)) { setReview(next); setChoices({}); } })}>Review both saved versions</button>}
-    {review && <div><p>Choose which version to use for each group. Both originals remain in recovery history. Finish other edits before applying.</p>{review.conflicts.map((item) => <fieldset key={item.sourceId} disabled={busy}><legend>{item.displayName}</legend><label><input type="radio" name={item.sourceId} checked={choices[item.sourceId] === "DEVICE"} onChange={() => setChoices((value) => ({ ...value, [item.sourceId]: "DEVICE" }))} /> This device ({item.deviceRecordCount} records)</label><label><input type="radio" name={item.sourceId} checked={choices[item.sourceId] === "CLOUD"} onChange={() => setChoices((value) => ({ ...value, [item.sourceId]: "CLOUD" }))} /> Cloud ({item.cloudRecordCount} records)</label><button type="button" className="cloud-secondary" onClick={() => download(`code3-conflict-${item.sourceId}.json`, { device: item.device, cloud: item.cloud })}>Download both versions for comparison</button></fieldset>)}<button type="button" disabled={busy || !review.conflicts.length || Object.keys(choices).length !== review.conflicts.length} onClick={() => run(() => workspace.resolveConflicts(review.reviewId, choices))}>Preserve originals and apply choices</button></div>}
-    <details><summary>Saved cloud versions</summary><p>Each cloud save keeps a previous version. Download a verified backup to review or recover missing records.</p><button type="button" className="cloud-secondary" disabled={busy} onClick={() => run(async (ticket) => { const rows = await workspace.history(); if (isCurrent(ticket)) setHistory(rows); })}>Load version history</button>{history && (history.length ? <ul>{history.map((row) => <li key={row.revision}>Version {row.revision} · {new Date(row.updatedAt).toLocaleString()} <button type="button" className="cloud-secondary" disabled={busy} onClick={() => run((ticket) => downloadVersion(ticket, () => workspace.readRevision(row.revision)))}>Download version {row.revision}</button></li>)}</ul> : <p>No cloud versions have been saved yet.</p>)}</details>
-    <details><summary>Preserved device versions</summary><p>Before resolving a conflict, this browser keeps a verified copy of its original records. Download these copies before clearing browser data.</p><button type="button" className="cloud-secondary" disabled={busy} onClick={() => run(async (ticket) => { const rows = await workspace.listDeviceRecoveryCopies(); if (isCurrent(ticket)) setDeviceCopies(rows); })}>Load device recovery copies</button>{deviceCopies && (deviceCopies.length ? <ul>{deviceCopies.map((row) => <li key={row.copyId}>{new Date(row.createdAt).toLocaleString()} · before cloud version {row.cloudRevision} <button type="button" className="cloud-secondary" disabled={busy} onClick={() => run((ticket) => downloadVersion(ticket, () => workspace.readDeviceRecoveryCopy(row.copyId)))}>Download preserved copy</button></li>)}</ul> : <p>No conflict recovery copies are stored on this device.</p>)}</details>
+    {review && <div><p>Choose which version to use for each group. Both originals remain in recovery history. Finish other edits before applying.</p>{review.conflicts.map((item) => <fieldset key={item.sourceId} disabled={busy}><legend>{item.displayName}</legend><label><input type="radio" name={item.sourceId} checked={choices[item.sourceId] === "DEVICE"} onChange={() => setChoices((value) => ({ ...value, [item.sourceId]: "DEVICE" }))} /> This device ({item.deviceRecordCount} records)</label><label><input type="radio" name={item.sourceId} checked={choices[item.sourceId] === "CLOUD"} onChange={() => setChoices((value) => ({ ...value, [item.sourceId]: "CLOUD" }))} /> Cloud ({item.cloudRecordCount} records)</label><button type="button" className="cloud-secondary" onClick={() => run((ticket, signal) => downloadConflict(ticket, signal, item))}>Download both versions for comparison</button></fieldset>)}<button type="button" disabled={busy || !review.conflicts.length || Object.keys(choices).length !== review.conflicts.length} onClick={() => run(() => workspace.resolveConflicts(review.reviewId, choices))}>Preserve originals and apply choices</button></div>}
+    <details><summary>Saved cloud versions</summary><p>Each cloud save keeps a previous version. Download a verified backup to review or recover missing records.</p><button type="button" className="cloud-secondary" disabled={busy} onClick={() => run(async (ticket) => { const rows = await workspace.history(); if (isCurrent(ticket)) setHistory(rows); })}>Load version history</button>{history && (history.length ? <ul>{history.map((row) => <li key={row.revision}>Version {row.revision} · {new Date(row.updatedAt).toLocaleString()} <button type="button" className="cloud-secondary" disabled={busy} onClick={() => run((ticket, signal) => downloadVersion(ticket, () => workspace.readRevision(row.revision), signal))}>Download version {row.revision}</button></li>)}</ul> : <p>No cloud versions have been saved yet.</p>)}</details>
+    <details><summary>Preserved device versions</summary><p>Before resolving a conflict, this browser keeps a verified copy of its original records. Download these copies before clearing browser data.</p><button type="button" className="cloud-secondary" disabled={busy} onClick={() => run(async (ticket) => { const rows = await workspace.listDeviceRecoveryCopies(); if (isCurrent(ticket)) setDeviceCopies(rows); })}>Load device recovery copies</button>{deviceCopies && (deviceCopies.length ? <ul>{deviceCopies.map((row) => <li key={row.copyId}>{new Date(row.createdAt).toLocaleString()} · before cloud version {row.cloudRevision} <button type="button" className="cloud-secondary" disabled={busy} onClick={() => run((ticket, signal) => downloadVersion(ticket, () => workspace.readDeviceRecoveryCopy(row.copyId), signal))}>Download preserved copy</button></li>)}</ul> : <p>No conflict recovery copies are stored on this device.</p>)}</details>
     {message && <p role="status">{message}</p>}
     {coverage && <div><p>{coverage.recordCount} cloud records and {coverage.attachmentCount} attachments included.</p>{coverage.exclusions.length > 0 && <ul>{coverage.exclusions.map((item, index) => <li key={index}>{item}</li>)}</ul>}{coverage.missingTables.length > 0 && <p>{coverage.missingTables.length} record groups were unavailable and are listed in the downloaded backup.</p>}{coverage.missingFiles.length > 0 && <p>{coverage.missingFiles.length} attachments could not be downloaded. Their references remain in the backup; keep the original files separately.</p>}{coverage.externalFileReferences > 0 && <p>{coverage.externalFileReferences} external file references require separate file copies.</p>}</div>}
-    <WorkspaceBackupPanel externalBusy={busy} onRecover={() => run(() => workspace.openRecovery())} onExportCloud={workspace.exportCloudBackup ? () => run(exportCloud) : null} />
+    <WorkspaceBackupPanel key={workspace.user?.id || "unbound"} externalBusy={busy} onRecover={() => run(() => workspace.openRecovery())} onExportCloud={workspace.exportCloudBackup ? () => run(exportCloud) : null} />
+    <DeviceTransferPanel />
     <AccountSessionPanel user={workspace.user} />
   </section>;
 }

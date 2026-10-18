@@ -1,5 +1,6 @@
 import "./add-anything.css";
 import { useMemo } from "react";
+import { PrivateReceiptImage, PrivateStorageImage } from "../../components/PrivateReceipt.jsx";
 import { rankAdaptivePageItems } from "../../utils/adaptivePageItems";
 import { resolveExperiencePresentation } from "../../utils/experiencePresentation.js";
 import { createFlipScoutRepository } from "../flipScout/storageRepository";
@@ -178,7 +179,7 @@ export default function AddAnythingContent({ scope }) {
           />
           <span className="quick-add-result-thumb">
             {catalogImage(product) ? (
-              <img
+              <PrivateStorageImage
                 src={catalogImage(product)}
                 alt=""
                 onError={(event) => {
@@ -395,7 +396,7 @@ export default function AddAnythingContent({ scope }) {
           <div className="quick-add-photo-panel scout-scan-photo-panel">
             {quickAddWizard.scoutScanPhotoUrl ? (
               <div className="picture-lookup-preview quick-add-photo-preview">
-                <img src={quickAddWizard.scoutScanPhotoUrl} alt="Scout screenshot reference" />
+                <PrivateStorageImage src={quickAddWizard.scoutScanPhotoUrl} alt="Scout screenshot reference" />
                 <span>{quickAddWizard.scoutScanPhotoFileName || "Screenshot/photo attached"}</span>
               </div>
             ) : (
@@ -664,7 +665,7 @@ export default function AddAnythingContent({ scope }) {
           <div className="quick-add-photo-panel">
             {quickAddWizard.photoPreviewUrl ? (
               <div className="picture-lookup-preview quick-add-photo-preview">
-                <img src={quickAddWizard.photoPreviewUrl} alt="Uploaded product reference" />
+                <PrivateStorageImage src={quickAddWizard.photoPreviewUrl} alt="Uploaded product reference" />
                 <span>{quickAddWizard.photoFileName || "Photo attached"}</span>
               </div>
             ) : (
@@ -718,7 +719,7 @@ export default function AddAnythingContent({ scope }) {
           <div className="quick-add-photo-panel">
             {quickAddWizard.receiptPhotoUrl ? (
               <div className="picture-lookup-preview quick-add-photo-preview">
-                <img src={quickAddWizard.receiptPhotoUrl} alt="Receipt proof" />
+                <PrivateReceiptImage src={quickAddWizard.receiptPhotoUrl} alt="Receipt proof" />
                 <span>{quickAddWizard.receiptFileName || "Receipt photo attached"}</span>
               </div>
             ) : null}

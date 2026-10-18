@@ -255,9 +255,29 @@
     "seed:scout:historical:dry": "node scripts/import-historical-scout-reports.mjs --dry-run",
     "backend:dev": "npm --prefix backend run dev",
     "backend:build": "npm --prefix backend run build",
-    "backend:start": "npm --prefix backend run start"
+    "backend:start": "npm --prefix backend run start",
+    "native:build": "node scripts/native-build.mjs",
+    "native:build:smoke": "node scripts/native-build.mjs --smoke",
+    "native:sync": "cap sync",
+    "native:android": "cap open android",
+    "native:ios": "cap open ios",
+    "test:native": "node scripts/test-native-runtime.mjs && node scripts/test-native-app-exports.mjs",
+    "native:android:release": "node scripts/native-release.mjs android",
+    "native:ios:release": "node scripts/native-release.mjs ios",
+    "test:account-deletion-client": "node --no-warnings scripts/test-account-deletion-client.mjs",
+    "test:account-deletion-browser": "node scripts/test-account-deletion-browser.cjs",
+    "test:device-transfer": "node --no-warnings scripts/test-device-transfer.mjs",
+    "test:device-transfer-browser": "node scripts/test-device-transfer-browser.cjs",
+    "test:private-receipts": "node --no-warnings scripts/test-private-receipts.mjs",
+    "test:private-receipts-browser": "node scripts/test-private-receipts-browser.cjs"
   },
   "dependencies": {
+    "@capacitor/android": "8.5.3",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/core": "8.5.3",
+    "@capacitor/filesystem": "8.1.5",
+    "@capacitor/ios": "8.5.3",
+    "@capacitor/share": "8.0.3",
     "@supabase/supabase-js": "^2.105.4",
     "@upstash/redis": "^1.35.7",
     "@vitejs/plugin-react": "^5.0.4",
@@ -271,20 +291,26 @@
     "pg": "^8.20.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
-    "vite": "^8.0.10"
+    "vite": "8.0.16"
   },
   "devDependencies": {
+    "@capacitor/cli": "8.5.3",
     "@playwright/test": "^1.59.1",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^25.6.2",
     "@types/pg": "^8.20.0",
-    "esbuild": "0.27.7",
+    "esbuild": "0.28.2",
     "eslint": "^9.39.1",
     "eslint-plugin-react": "7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
     "typescript": "^6.0.3"
+  },
+  "overrides": {
+    "xcode": {
+      "uuid": "11.1.1"
+    }
   }
 }

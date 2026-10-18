@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Code 3 TCG</string>
+    <string name="title_activity_main">Code 3 TCG</string>
+    <string name="package_name">app.code3tcg.mobile</string>
+    <string name="custom_url_scheme">app.code3tcg.mobile</string>
+</resources>
