@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   fetchPurchaseEmailImportStatus,
   normalizePurchaseEmailPreview,
@@ -25,6 +26,23 @@ function check(run) { run(); cases += 1; }
 async function checkAsync(run) { await run(); cases += 1; }
 
 try {
+  // Vercel's nested mailbox URLs need exact entry files: the shared catch-all
+  // previously returned the SPA HTML instead of dispatching these requests.
+  const repoUrl = new URL("../", import.meta.url);
+  for (const action of ["status", "preview"]) {
+    check(() => {
+      const endpoint = new URL(resolvePurchaseEmailApiUrl(action, "", "https://code3tcg.example"));
+      const entryUrl = new URL(`${endpoint.pathname.slice(1)}.ts`, repoUrl);
+      const source = readFileSync(entryUrl, "utf8");
+      const sharedImport = source.match(/^import\s+app\s+from\s+["']([^"']+)["'];?\s*export\s+default\s+app;?\s*$/);
+      assert.ok(sharedImport, `${action} must delegate to the protected shared server`);
+      assert.equal(new URL(`${sharedImport[1]}.ts`, entryUrl).href, new URL("backend/src/server.ts", repoUrl).href);
+    });
+  }
+  check(() => {
+    const server = readFileSync(new URL("backend/src/server.ts", repoUrl), "utf8");
+    assert.match(server, /app\.use\("\/api\/account-ops\/mailbox-import",\s*protectedCors,\s*mailboxImportRouter\)/);
+  });
   check(() => assert.deepEqual(normalizePurchaseEmailPreview(preview).candidates, [receipt]));
   check(() => assert.deepEqual(normalizePurchaseEmailPreview({ ...preview, candidates: [], scannedMessages: 0, skippedMessages: 0 }).candidates, []));
   for (const candidate of [
@@ -113,7 +131,7 @@ try {
     assert.equal(result.available, true); assert.deepEqual(result.providers, ["aol", "gmail", "yahoo"]);
   });
   for (const invalidStatus of [{ ...status, credentialStored: true }, { ...status, mailboxReadOnly: false }, { ...status, mode: "SAVED_CONNECTION" }, { ...status, providers: [] }, { ...status, providers: ["aol", "aol"] }, { ...status, providers: ["unsupported"] }]) await checkAsync(() => assert.rejects(fetchPurchaseEmailImportStatus({ getRequestHeadersImpl: ownerHeaders, fetchImpl: async () => response(invalidStatus) }), { code: "INVALID_RESPONSE" }));
-  console.log(`Purchase email API: ${cases} checks passed (schema, auth-before-fetch, HTTPS/loopback, request boundaries, redaction, provider errors, and one-time status).`);
+  console.log(`Purchase email API: ${cases} checks passed (serverless route packaging, schema, auth-before-fetch, HTTPS/loopback, request boundaries, redaction, provider errors, and one-time status).`);
 } finally {
   if (originalLocation === undefined) delete globalThis.location;
   else globalThis.location = originalLocation;

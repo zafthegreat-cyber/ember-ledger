@@ -36,6 +36,8 @@ Local build/test logs are under ignored `artifacts/qa/release-candidate`, `artif
 
 The existing Vercel project is `prj_opLikOxbXPA3pTJ2EajgR5qzo4fq` / `ember-tide-tcg`, owned by `team_SrWvifkcXd622u47TnXCZUT0`, serving `https://code3tcg.app`. Authenticated inspection confirms Node 24 and a 300-second existing API function timeout, sufficient for the bounded 25-second mailbox operation. No settings were changed.
 
+The first hosted preview exposed a routing issue that local Express tests could not detect: the nested mailbox URL returned the SPA HTML fallback. Explicit `api/account-ops/mailbox-import/status.ts` and `preview.ts` entry points now forward to the existing protected Express application, matching the project's other hosted endpoints. A packaging contract checks these entry points; the replacement hosted preview must return JSON authorization denial before merge. The original preview was not promoted.
+
 Before reporting publication complete: verify the preview build, merge the tested revision, await production READY, match the public app-version to the merged commit, check API health and unauthenticated mailbox denial, and inspect public mobile/desktop/PWA routes. Record the actual results separately from this preflight snapshot.
 
 Real hosted mailbox connectivity/receipt parsing, physical-phone behavior, screen-reader use and cross-device saving of new local purchase records remain unverified. Native bot APIs, VCC issuance, browser automation and live retailer inventory are not added by this release. Do not clear device storage to update the phone app.
