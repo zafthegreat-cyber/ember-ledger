@@ -128,6 +128,7 @@ async function runScenario(browser, scenario) {
   try {
     await page.goto(appUrl(scenario.theme), { waitUntil: "networkidle" });
     const root = page.getByTestId("stellar-export-preview");
+    if (!(await root.isVisible())) await page.locator(".bot-ops-import-preview > summary").click();
     await root.waitFor();
     await page.getByRole("heading", { name: "Preview Stellar Export", exact: true }).waitFor();
     equal(new URL(page.url()).pathname, "/bot/tasks", `${scenario.id} should preserve the canonical owner-only Tasks route`);
@@ -191,14 +192,14 @@ async function runScenario(browser, scenario) {
 
     if (scenario.id === "safe-mobile-light") {
       const botOpsRoot = page.getByTestId("bot-operations");
-      await botOpsRoot.getByRole("button", { name: "Bots", exact: true }).click();
+      await botOpsRoot.locator(".ops-workspace__mobile-select select").selectOption("bots");
       await page.waitForURL(/\/bot\/bots(?:\?|$)/);
       equal(await page.getByTestId("stellar-export-preview").count(), 0, "leaving Tasks should destroy preview component memory");
-      await botOpsRoot.getByText("More", { exact: true }).click();
-      await botOpsRoot.getByRole("button", { name: "Tasks", exact: true }).click();
+      await botOpsRoot.locator(".ops-workspace__mobile-select select").selectOption("tasks");
       await page.waitForURL(/\/bot\/tasks(?:\?|$)/);
       const returned = page.getByTestId("stellar-export-preview");
-      await returned.waitFor();
+      if (!(await returned.isVisible())) await page.locator(".bot-ops-import-preview > summary").click();
+    await returned.waitFor();
       equal(await page.getByTestId("stellar-export-preview-result").count(), 0, "returning to Tasks must not restore preview state");
       match(await returned.innerText(), /No file is open/i, "route return requires file reselection");
       recordPreviewNetwork = false;
@@ -206,7 +207,8 @@ async function runScenario(browser, scenario) {
       recordPreviewNetwork = false;
       await page.reload({ waitUntil: "domcontentloaded" });
       const reloaded = page.getByTestId("stellar-export-preview");
-      await reloaded.waitFor();
+      if (!(await reloaded.isVisible())) await page.locator(".bot-ops-import-preview > summary").click();
+    await reloaded.waitFor();
       equal(await page.getByTestId("stellar-export-preview-result").count(), 0, "refresh while open must discard preview state");
       match(await reloaded.innerText(), /No file is open/i, "refresh while open requires file reselection");
     } else if (scenario.kind !== "empty") {
@@ -218,7 +220,8 @@ async function runScenario(browser, scenario) {
       recordPreviewNetwork = false;
       await page.reload({ waitUntil: "domcontentloaded" });
       const reloaded = page.getByTestId("stellar-export-preview");
-      await reloaded.waitFor();
+      if (!(await reloaded.isVisible())) await page.locator(".bot-ops-import-preview > summary").click();
+    await reloaded.waitFor();
       equal(await page.getByTestId("stellar-export-preview-result").count(), 0, `${scenario.id} refresh must not restore preview state`);
       match(await reloaded.innerText(), /No file is open/i, `${scenario.id} refresh requires file reselection`);
     }

@@ -11,13 +11,13 @@ const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]", "::1"]);
 
 const AREAS = Object.freeze([
   { key: "overview", label: "Overview", heading: "Operations overview" },
-  { key: "accounts", label: "Accounts", heading: "Account Creation Assistant" },
-  { key: "identity", label: "Identity", heading: "Profiles, aliases, and phone resources" },
+  { key: "accounts", label: "Accounts", heading: "Store Accounts" },
+  { key: "identity", label: "Profiles & identity", heading: "Profiles, aliases, and phone resources" },
   { key: "payment", label: "Payment Metadata", heading: "Virtual Cards & Billing Profiles" },
   { key: "network", label: "Network", heading: "Proxy Groups" },
   { key: "verification", label: "Verification", heading: "Verification Inbox" },
   { key: "automation", label: "Automation", heading: "Bot Export Center" },
-  { key: "orders", label: "Orders", heading: "Unified Order Tracker" },
+  { key: "orders", label: "Orders", heading: "Order Candidates" },
   { key: "infrastructure", label: "Infrastructure", heading: "Servers & Remote Workspaces" },
   { key: "activity", label: "Activity", heading: "Attention Center" },
 ]);
@@ -45,10 +45,6 @@ function match(value, pattern, message) {
 function excludes(value, pattern, message) {
   assertions += 1;
   assert.doesNotMatch(value, pattern, message);
-}
-
-function escapeRegex(value) {
-  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function accountOpsUrl({ owner = true, theme = "light", area = "overview" } = {}) {
@@ -222,10 +218,10 @@ async function accessibilityAudit(root, label) {
 }
 
 async function navigateToArea(page, root, scenario, area, { keyboard = false } = {}) {
-  const picker = root.getByRole("combobox", { name: "Account Ops area", exact: true });
-  const rail = root.getByRole("navigation", { name: "Account Ops areas", exact: true });
+  const picker = root.getByRole("combobox", { name: "Section", exact: true });
+  const rail = root.getByRole("navigation", { name: "Account Ops areas navigation", exact: true });
 
-  if (scenario.width < 980) {
+  if (scenario.width < 1100) {
     equal(await picker.isVisible(), true, `${scenario.label} exposes the compact area picker`);
     equal(await rail.isVisible(), false, `${scenario.label} hides the desktop area rail`);
     if (keyboard) await assertKeyboardFocusable(picker, `${scenario.label} area picker`);
@@ -234,7 +230,7 @@ async function navigateToArea(page, root, scenario, area, { keyboard = false } =
   } else {
     equal(await picker.isVisible(), false, `${scenario.label} hides the compact area picker`);
     equal(await rail.isVisible(), true, `${scenario.label} exposes the desktop area rail`);
-    const button = rail.locator("button").filter({ hasText: new RegExp(`^${escapeRegex(area.label)}(?:\\s|$)`, "i") }).first();
+    const button = rail.getByRole("button", { name: area.label, exact: true });
     await button.waitFor();
     if (keyboard) {
       await assertKeyboardFocusable(button, `${scenario.label} ${area.label} rail item`);
@@ -321,11 +317,11 @@ async function verifyVerification(root, scenario) {
 async function verifyAutomation(root, scenario) {
   const area = root.locator(".account-ops-area-content");
   const content = await area.innerText();
-  for (const provider of ["Stellar", "Hayha", "Shikari", "Valor", "Refract"]) {
+  for (const provider of ["Stellar", "Hayha", "Polar", "Sniped", "Swooper", "Shikari", "Valor", "Refract"]) {
     match(content, new RegExp(`\\b${provider}\\b`, "i"), `${scenario.label} shows ${provider} compatibility metadata`);
+    const card = area.locator(".account-ops-operations-card").filter({ has: area.page().getByRole("heading", { name: provider, exact: true }) });
+    match(await card.innerText(), /Not Ready/, `${scenario.label} ${provider} native export remains not ready`);
   }
-  match(content, /Stellar[\s\S]*Not Ready[\s\S]*Hayha[\s\S]*Not Ready/i, `${scenario.label} keeps Stellar and Hayha export readiness not ready`);
-  match(content, /Shikari[\s\S]*Unsupported[\s\S]*Valor[\s\S]*Unsupported[\s\S]*Refract[\s\S]*Unsupported/i, `${scenario.label} shows unreviewed providers as unsupported`);
   match(content, /cannot connect a bot, create a task, send an export, configure a webhook endpoint, or store a bot license/i, `${scenario.label} preserves the export and webhook boundary`);
   equal(await area.getByRole("button", { name: /Send|Connect|Sync|Create Tasks?|Configure Webhook|Export to/i }).count(), 0, `${scenario.label} exposes no send, connect, sync, task-create, or webhook action`);
 }
@@ -364,7 +360,7 @@ async function verifyActivitySearch(page, root, scenario) {
   match(await result.innerText(), /Business 01[\s\S]*Review/i, `${scenario.label} search returns a review-only local navigation result`);
   await assertKeyboardFocusable(result, `${scenario.label} Account Ops search result`);
   await page.keyboard.press("Enter");
-  await root.getByRole("heading", { name: "Account Creation Assistant", exact: true }).waitFor();
+  await root.getByRole("heading", { name: "Store Accounts", exact: true }).waitFor();
   const after = await storageSnapshot(page);
   equal(after.bytes, before.bytes, `${scenario.label} internal search navigation leaves Account Ops storage byte-equivalent`);
   equal(after.counters.accountOpsWrites, before.counters.accountOpsWrites, `${scenario.label} internal search navigation performs no Account Ops write`);
@@ -394,7 +390,9 @@ async function verifyScenario(browser, scenario, accountOpsState, externalReques
     equal(await root.getByRole("heading", { name: "Account Ops", exact: true }).count(), 1, `${scenario.label} renders one Account Ops page heading`);
 
     for (const area of AREAS) {
-      await navigateToArea(page, root, scenario, area, { keyboard: scenario.width >= 980 && area.key === "activity" });
+      await navigateToArea(page, root, scenario, area, { keyboard: scenario.width >= 1100 && area.key === "activity" });
+      if (area.key === "accounts") await root.getByRole("button", { name: "Setup & health", exact: true }).click();
+      if (area.key === "orders") await root.getByText("Order relationships & receiving", { exact: true }).click();
       for (const help of await root.locator(".account-ops-help:not(.account-ops-summary-details) > summary").all()) await help.click();
       const areaText = await root.locator(".account-ops-area-content").innerText();
       excludes(areaText, /\b(?:access token|refresh token|authorization bearer|captcha solution|full card number|security code value)\b/i, `${scenario.label} ${area.label} does not expose prohibited secret material`);
@@ -428,13 +426,13 @@ async function verifyScenario(browser, scenario, accountOpsState, externalReques
       equal(await root.getByRole("heading", { name: area.heading, exact: true }).first().isVisible(), true, `${scenario.label} ${area.label} supports direct loading`);
     }
 
-    await navigateToArea(page, root, scenario, AREAS.find((area) => area.key === "activity"), { keyboard: scenario.width < 980 });
+    await navigateToArea(page, root, scenario, AREAS.find((area) => area.key === "activity"), { keyboard: scenario.width < 1100 });
     await verifyActivitySearch(page, root, scenario);
     await navigateToArea(page, root, scenario, AREAS[0]);
 
-    const picker = root.getByRole("combobox", { name: "Account Ops area", exact: true });
-    const rail = root.getByRole("navigation", { name: "Account Ops areas", exact: true });
-    if (scenario.width < 980) await assertMinimumTarget(picker, `${scenario.label} compact area picker`);
+    const picker = root.getByRole("combobox", { name: "Section", exact: true });
+    const rail = root.getByRole("navigation", { name: "Account Ops areas navigation", exact: true });
+    if (scenario.width < 1100) await assertMinimumTarget(picker, `${scenario.label} compact area picker`);
     else await assertMinimumTarget(rail.locator("button").first(), `${scenario.label} desktop area rail item`);
     await accessibilityAudit(root, scenario.label);
     await assertNoHorizontalOverflow(page, root, scenario.label);

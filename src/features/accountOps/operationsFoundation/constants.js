@@ -1,3 +1,5 @@
+import { BOT_PROVIDER_CATALOG } from "../../botOps/providerCatalog.js";
+
 export const ACCOUNT_OPS_OPERATIONS_CONTRACT_VERSION = "code3.account-ops.operations-foundation.v1";
 
 export const ACCOUNT_OPS_OPERATING_AREAS = Object.freeze([
@@ -156,13 +158,14 @@ export const WORKSPACE_REFERENCE_TYPES = Object.freeze({
   ACCOUNTANT_REVIEW: "ACCOUNTANT_REVIEW",
 });
 
-export const ACCOUNT_OPS_PROVIDER_EXPORTS = Object.freeze([
-  Object.freeze({ provider: "STELLAR", readinessState: EXPORT_READINESS_STATES.NOT_READY, schemaState: EXPORT_SCHEMA_STATES.UNVERIFIED, note: "The existing Stellar workflow is an inbound offline preview, not a verified Code 3 export format." }),
-  Object.freeze({ provider: "HAYHA", readinessState: EXPORT_READINESS_STATES.NOT_READY, schemaState: EXPORT_SCHEMA_STATES.UNVERIFIED, note: "No verified export schema or live connection exists." }),
-  Object.freeze({ provider: "SHIKARI", readinessState: EXPORT_READINESS_STATES.UNSUPPORTED, schemaState: EXPORT_SCHEMA_STATES.UNSUPPORTED, note: "Provider compatibility has not been reviewed." }),
-  Object.freeze({ provider: "VALOR", readinessState: EXPORT_READINESS_STATES.UNSUPPORTED, schemaState: EXPORT_SCHEMA_STATES.UNSUPPORTED, note: "Provider compatibility has not been reviewed." }),
-  Object.freeze({ provider: "REFRACT", readinessState: EXPORT_READINESS_STATES.UNSUPPORTED, schemaState: EXPORT_SCHEMA_STATES.UNSUPPORTED, note: "Provider compatibility has not been reviewed." }),
-]);
+export const ACCOUNT_OPS_PROVIDER_EXPORTS = Object.freeze(
+  Object.values(BOT_PROVIDER_CATALOG).map(({ providerKey, setup }) => Object.freeze({
+    provider: providerKey,
+    readinessState: EXPORT_READINESS_STATES.NOT_READY,
+    schemaState: EXPORT_SCHEMA_STATES.UNVERIFIED,
+    note: `No verified Code 3 outbound export format. ${setup.nextStep}`,
+  })),
+);
 
 export const ACCOUNT_OPS_CLOUD_TEMPLATES = Object.freeze([
   Object.freeze({ id: "cloud-template:bot-runner", templateLabel: "Bot runner", purpose: "Future owner-managed bot runner", sizeClass: "TO_BE_SELECTED", diskGb: null, recommendedBotCapacity: null }),

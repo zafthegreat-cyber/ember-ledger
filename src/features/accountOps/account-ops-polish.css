@@ -1,4 +1,39 @@
 /* Account Ops presentation. Domain state and global application styles stay separate. */
+.account-ops .ops-workspace__main { display: grid; align-content: start; gap: 18px; }
+.account-ops .ops-workspace__navigation .ops-workspace__nav-copy small { display: none; }
+.account-ops .account-ops-rail-note { display: grid; gap: 6px; margin: 0; font-size: 11px; line-height: 1.6; }
+.account-ops .account-ops-rail-note strong { color: var(--text-primary); font-weight: 600; }
+.account-ops .account-ops-context-nav { display: flex; flex-wrap: wrap; gap: 5px; min-width: 0; padding: 4px; border: 1px solid var(--border-subtle); border-radius: 11px; background: var(--surface-secondary); }
+.account-ops .account-ops-context-nav button { flex: 1 1 auto; min-height: 44px; min-width: 0; padding: 10px 14px; border: 1px solid transparent; border-radius: 8px; box-shadow: none; background: transparent; color: var(--text-secondary); font: 550 13px/1.4 var(--font-ui); }
+.account-ops .account-ops-context-nav button.is-active { border-color: var(--border-strong); background: var(--surface-primary); color: var(--text-primary); }
+.account-ops .account-ops-context-nav button:focus-visible,
+.account-ops .account-ops-select-all input:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.account-ops .account-ops-group-filter,
+.account-ops .account-ops-record-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; justify-content: space-between; min-width: 0; color: var(--text-secondary); font-size: 12px; }
+.account-ops .account-ops-group-filter .account-ops-field { flex: 1 1 220px; max-width: 380px; }
+.account-ops .account-ops-select-all { display: flex; align-items: center; gap: 9px; min-height: 44px; color: var(--text-secondary); font-size: 12px; cursor: pointer; }
+.account-ops .account-ops-select-all input { flex: 0 0 20px; width: 20px; height: 20px; min-height: 20px; accent-color: var(--action-primary); }
+.account-ops .account-ops-record-detail { padding: 18px; background: var(--surface-primary); border: 1px solid var(--border-subtle); border-radius: 12px; gap: 18px; }
+.account-ops .account-ops-record-detail h3 { font-size: 18px; letter-spacing: -.02em; }
+.account-ops .account-ops-record-detail .account-ops-facts { padding-block: 14px; border-block: 1px solid var(--border-subtle); gap: 16px; }
+.account-ops .account-ops-record-detail .account-ops-facts dd { font-size: 13px; font-weight: 550; }
+.account-ops .account-ops-detail-note { margin: 0; color: var(--text-secondary); font-size: 12px; line-height: 1.6; }
+.account-ops .account-ops-detail-links { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.account-ops .account-ops-detail-links > span { flex: 1 1 100%; color: var(--text-secondary); font-size: 11px; }
+.account-ops .account-ops-detail-archive { border-top: 1px solid var(--border-subtle); padding-top: 10px; }
+.account-ops .account-ops-import-card { display: grid; gap: 18px; padding: 22px; background: var(--surface-primary); border: 1px solid var(--border-subtle); border-radius: 12px; min-width: 0; }
+.account-ops .account-ops-import-card h3 { margin: 8px 0; font-size: 20px; letter-spacing: -.02em; }
+.account-ops .account-ops-import-card p { margin: 0; color: var(--text-secondary); font-size: 13px; line-height: 1.65; }
+.account-ops .account-ops-import-card > .ops-button { justify-self: start; }
+.account-ops .account-ops-import-card .account-ops-import-note { border-top: 1px solid var(--border-subtle); padding-top: 14px; font-size: 12px; }
+.account-ops .account-ops-management > div { padding-top: 14px; }
+.account-ops #account-ops-store-accounts { padding-top: 0; border-top: 0; }
+@media (max-width: 699px) {
+  .account-ops .ops-workspace__rail-footer { display: none; }
+  .account-ops .account-ops-record-detail { padding: 15px; }
+  .account-ops .account-ops-import-card { padding: 18px; }
+  .account-ops .account-ops-import-card > .ops-button { width: 100%; justify-content: center; }
+}
 .app.app-command-shell .account-ops {
   --account-card-radius: 14px;
   max-width: 1480px;
@@ -49,7 +84,7 @@
 .account-ops .account-ops-help > summary::-webkit-details-marker { display: none; }
 .account-ops .account-ops-help .account-ops-operations-boundary { background: transparent; border: 0; padding: 0 0 14px; font-size: 12px; }
 .account-ops summary:focus-visible, #account-ops-store-accounts:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 4px; }
-.account-ops #account-ops-store-accounts { scroll-margin-top: 100px; min-width: 0; border-top: 1px solid var(--border-subtle); padding-top: 28px; }
+.account-ops #account-ops-store-accounts { scroll-margin-top: 100px; min-width: 0; border-top: 0; padding-top: 0; }
 .account-ops .account-ops-order-example { margin-top: 20px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; padding: 20px; border: 1px dashed var(--border-strong); border-radius: var(--account-card-radius); }
 /* Use the complete account cards when the nested workspace cannot fit every table column. */
 .account-ops #account-ops-store-accounts { container: account-records / inline-size; }
@@ -108,4 +143,14 @@
   .account-ops .account-ops-operations-attention { grid-template-columns: minmax(0, 1fr) auto; }
   .account-ops .account-ops-area-picker { padding: 12px; background: var(--surface-primary); border: 1px solid var(--border-subtle); border-radius: 12px; }
   .account-ops .account-ops-area-picker > span { font-size: 11px; color: var(--text-secondary); }
+}
+
+/* On phones, selecting a record replaces list tools with its focused detail. */
+@media (max-width: 1099px) {
+  .account-ops-section:has(> .ops-record-browser.has-selection) > :is(.account-ops-toolbar, .account-ops-management, .account-ops-group-filter, .account-ops-record-summary, .ops-section-header) { display: none; }
+}
+@media (max-width: 699px) {
+  .account-ops .ops-workspace__label { display: none; }
+  .account-ops .account-ops-record-detail .account-ops-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .account-ops .account-ops-record-detail .account-ops-fact-wide { grid-column: 1 / -1; }
 }

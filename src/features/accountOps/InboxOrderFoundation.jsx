@@ -3,6 +3,7 @@ import {
   EmptyState,
   ErrorState,
   LoadingState,
+  PrimaryButton,
   QuietButton,
   SectionHeader,
   StatusBadge,
@@ -184,69 +185,81 @@ function ProviderConnections({ localDevelopment }) {
   );
 }
 
-function ConnectionsSection({ localDevelopment }) {
+function PurchaseImportLink({ onOpenPurchases }) {
+  return onOpenPurchases
+    ? <PrimaryButton onClick={onOpenPurchases}>Open purchase email import</PrimaryButton>
+    : <a className="ops-button ops-button--primary" href="/business/purchases">Open purchase email import</a>;
+}
+
+function PurchaseImportCard({ onOpenPurchases }) {
+  return <article className="account-ops-import-card">
+    <div><span className="account-ops-section-kicker">PURCHASE EMAILS</span><h3>Turn a receipt into a purchase draft</h3><p>Open Purchases to make a one-time, read-only pull from AOL, Gmail, or Yahoo with an app password. Review the retailer, items, and totals before saving a draft.</p></div>
+    <PurchaseImportLink onOpenPurchases={onOpenPurchases} />
+    <p className="account-ops-import-note">The app password is not saved. Importing does not place an order, receive inventory, or keep a mailbox connection running.</p>
+  </article>;
+}
+
+function ConnectionsSection({ localDevelopment, onOpenPurchases }) {
   return (
     <section className="account-ops-section" aria-label="Provider Connections">
       <SectionHeader
         title="Provider Connections"
-        description="Owner-only connection metadata from the trusted server runtime. OAuth credentials and mailbox content never belong in Account Ops local storage."
+        description="Saved OAuth connection metadata. The separate one-time purchase-email tool is available in Purchases."
         actions={<StatusBadge tone="warning">Foundation Only</StatusBadge>}
       />
       <p className="account-ops-provider-boundary">
-        Code 3 must verify the owner-protected Preview runtime and managed security storage before any provider can be enabled. No live mailbox is authorized.
+        Saved OAuth connections require the owner-protected Preview runtime and managed security storage. These connection controls are not enabled. OAuth credentials and mailbox content never belong in Account Ops local storage.
       </p>
+      <PurchaseImportCard onOpenPurchases={onOpenPurchases} />
       <ProviderConnections localDevelopment={localDevelopment} />
     </section>
   );
 }
 
-function InboxSection() {
+function InboxSection({ onOpenPurchases }) {
   return (
     <section className="account-ops-section" aria-label="Inbox foundation">
       <SectionHeader
         title="Inbox"
-        description="A future owner-reviewed view of minimized retailer and order events."
-        actions={<StatusBadge tone="neutral">Not Connected</StatusBadge>}
+        description="Review purchase receipts in Purchases; keep verification and account follow-ups in Account Ops."
+        actions={<StatusBadge tone="neutral">No background inbox</StatusBadge>}
       />
       <p className="account-ops-provider-boundary">
-        Code 3 is not reading a mailbox. Protected messages, security codes, reset links, and unrelated personal email are not retained here.
+        This Account Ops view does not read a mailbox. Protected messages, security codes, reset links, and unrelated personal email are not retained here.
       </p>
-      <EmptyState title="No mailbox messages">
-        Normalized message events will appear only after a provider is explicitly authorized in a later phase. No sample messages are shown as real data.
-      </EmptyState>
+      <PurchaseImportCard onOpenPurchases={onOpenPurchases} />
+      <p className="account-ops-empty-line">No sample messages are shown as real data. One-time receipt previews stay in Purchases until you review them.</p>
     </section>
   );
 }
 
-function OrdersSection() {
+function OrdersSection({ onOpenPurchases }) {
   return (
     <section className="account-ops-section" aria-label="Order Candidate foundation">
       <SectionHeader
         title="Order Candidates"
-        description="Future retailer-order evidence that must be reviewed and corrected by the owner."
+        description="Start from an email receipt, review the details, and save a purchase draft in Purchases."
         actions={<StatusBadge tone="neutral">Review Required</StatusBadge>}
       />
       <p className="account-ops-provider-boundary">
-        An Order Candidate is evidence, not a Business Purchase. This phase cannot create purchases, receive inventory, or change business records.
+        An Order Candidate is evidence, not a Business Purchase. This Account Ops view cannot create purchases, receive inventory, or change business records.
       </p>
-      <EmptyState title="No order candidates">
-        No live order ingestion is active. Future candidates will retain source history, explain confidence, and require explicit owner review.
-      </EmptyState>
+      <PurchaseImportCard onOpenPurchases={onOpenPurchases} />
       <details className="account-ops-provider-details">
-        <summary>Future review boundary</summary>
+        <summary>How receipt review works</summary>
         <ol>
-          <li>Code 3 proposes a retailer, account, order identity, items, and exact amounts.</li>
-          <li>The owner confirms, corrects, or rejects the candidate.</li>
-          <li>A separately approved phase may preview mapping to a Business Purchase.</li>
+          <li>Request a one-time receipt preview in Purchases with your mailbox app password.</li>
+          <li>Review the proposed retailer, order, items, and amounts. Correct anything missing.</li>
+          <li>Save a purchase draft explicitly. Receiving and inventory remain separate steps.</li>
         </ol>
       </details>
     </section>
   );
 }
 
-export default function InboxOrderFoundation({ section, localDevelopment = false }) {
-  if (section === "connections") return <ConnectionsSection localDevelopment={localDevelopment} />;
-  if (section === "inbox") return <InboxSection />;
-  if (section === "orders") return <OrdersSection />;
+export default function InboxOrderFoundation({ section, localDevelopment = false, onOpenPurchases }) {
+  if (section === "connections") return <ConnectionsSection localDevelopment={localDevelopment} onOpenPurchases={onOpenPurchases} />;
+  if (section === "inbox") return <InboxSection onOpenPurchases={onOpenPurchases} />;
+  if (section === "orders") return <OrdersSection onOpenPurchases={onOpenPurchases} />;
   return null;
 }

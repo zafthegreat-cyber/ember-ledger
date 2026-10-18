@@ -16,7 +16,17 @@ export const BOT_OPS_COLLECTIONS = Object.freeze([
   "activity",
 ]);
 
-export const BOT_PROVIDER_KEYS = Object.freeze({ HAYHA: "HAYHA", STELLAR: "STELLAR", MOCK: "MOCK" });
+export const BOT_PROVIDER_KEYS = Object.freeze({
+  HAYHA: "HAYHA",
+  STELLAR: "STELLAR",
+  SHIKARI: "SHIKARI",
+  VALOR: "VALOR",
+  REFRACT: "REFRACT",
+  POLAR: "POLAR",
+  SNIPED: "SNIPED",
+  SWOOPER: "SWOOPER",
+  MOCK: "MOCK",
+});
 
 export const BOT_PROVIDER_CONNECTION_STATUS = Object.freeze({
   NOT_CONFIGURED: "NOT_CONFIGURED",
@@ -29,6 +39,7 @@ export const BOT_PROVIDER_CONNECTION_STATUS = Object.freeze({
 });
 
 export const BOT_INTEGRATION_MODES = Object.freeze({
+  MANUAL_RECORD: "MANUAL_RECORD",
   OFFICIAL_API: "OFFICIAL_API",
   LOCAL_COMPANION: "LOCAL_COMPANION",
   EXPORTED_DATA: "EXPORTED_DATA",

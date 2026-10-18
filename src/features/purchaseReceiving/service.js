@@ -20,6 +20,7 @@ import {
 } from "./contracts.js";
 import { createPurchaseReceivingPersistence } from "./persistence.js";
 import { normalizePurchaseMoney } from "./money.js";
+import { receiptDuplicate } from "./emailImport.js";
 import { assertSafePurchaseReceivingInput, safePurchaseReceivingClone, sanitizePurchaseReceivingNote } from "./security.js";
 import {
   deriveEffectiveInventoryAdjustmentIds,
@@ -308,7 +309,10 @@ export function createPurchaseReceivingService(options = {}) {
   assertNoCallerMode(options);
   const now = options.now || (() => new Date().toISOString());
   let sequence = 0;
-  const idFactory = options.idFactory || ((prefix) => `${prefix}:${globalThis.crypto?.randomUUID?.() || `${Date.now()}-${sequence += 1}`}`);
+  // Preserve UUID entropy while separating numeric segments with a letter.
+  // Hyphen-joined digits can otherwise resemble a payment-card number to the
+  // strict credential scanner. Existing IDs remain valid and are never rewritten.
+  const idFactory = options.idFactory || ((prefix) => `${prefix}:${globalThis.crypto?.randomUUID?.().replaceAll("-", "x") || `${Date.now().toString(36)}x${(sequence += 1).toString(36)}`}`);
   const isOwnerAuthorized = typeof options.isOwnerAuthorized === "function" ? options.isOwnerAuthorized : () => false;
   const persistence = createPurchaseReceivingPersistence({ storage: options.storage, repository: options.repository, now, lockManager: options.inventoryLockManager });
   const inventoryGateway = createInventoryCreationGateway({
@@ -378,10 +382,20 @@ export function createPurchaseReceivingService(options = {}) {
     };
     const draft = normalizePurchaseDraftInput(systemRecord(prepared, draftId, "PURCHASE_DRAFT", timestamp), { persisted: true });
     const transaction = await persistence.transactLocked((state) => {
+      // A queued import must still belong to the active owner when its lock opens.
+      assertOwner();
       const duplicate = state.purchaseDrafts.find((entry) => entry.sourceIdentityKey === draft.sourceIdentityKey);
       if (duplicate) {
         assertCompatibleDraftReplay(duplicate, draft, "SOURCE_IDENTITY");
         return { state, result: { draft: duplicate, deduplicated: true, wroteDraft: false } };
+      }
+      if (draft.sourceType === PURCHASE_SOURCE_TYPES.ORDER_CANDIDATE && draft.sourceReference?.startsWith("email-receipt:")) {
+        const existing = receiptDuplicate(draft, state);
+        if (existing) {
+          const existingDraft = existing.kind === "draft" ? existing.record : state.purchaseDrafts.find((entry) => entry.id === existing.record.sourceDraftId);
+          if (!existingDraft) throw new PurchaseReceivingServiceError("DUPLICATE_EXTERNAL_ORDER", "This order is already saved. Review the existing Purchase instead.");
+          return { state, result: { draft: existingDraft, deduplicated: true, wroteDraft: false, duplicateReason: "EMAIL_RECEIPT_ORDER" } };
+        }
       }
       const externalKey = externalOrderScopeKey(draft);
       const duplicateOrder = externalKey

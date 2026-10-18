@@ -2,16 +2,17 @@ import {
   BOT_CAPABILITIES,
   BOT_INTEGRATION_MODES,
   BOT_PROVIDER_CONNECTION_STATUS,
-  BOT_PROVIDER_KEYS,
 } from "./constants.js";
+import { BOT_PROVIDER_CATALOG } from "./providerCatalog.js";
 import { getBotProviderDiscoverySummary } from "./providerDiscovery.js";
 
 const DISABLED_CAPABILITIES = Object.freeze(Object.fromEntries(Object.values(BOT_CAPABILITIES).map((key) => [key, false])));
 
-function providerDefinition(providerKey, displayName) {
+function providerDefinition({ providerKey, displayName, setup }) {
   return Object.freeze({
     providerKey,
     displayName,
+    setup,
     connectionStatus: BOT_PROVIDER_CONNECTION_STATUS.NOT_CONFIGURED,
     supportedIntegrationModes: Object.freeze([]),
     potentialIntegrationModes: Object.freeze([
@@ -37,10 +38,9 @@ function providerDefinition(providerKey, displayName) {
   });
 }
 
-export const BOT_PROVIDER_REGISTRY = Object.freeze({
-  [BOT_PROVIDER_KEYS.HAYHA]: providerDefinition(BOT_PROVIDER_KEYS.HAYHA, "Hayha"),
-  [BOT_PROVIDER_KEYS.STELLAR]: providerDefinition(BOT_PROVIDER_KEYS.STELLAR, "Stellar"),
-});
+export const BOT_PROVIDER_REGISTRY = Object.freeze(Object.fromEntries(
+  Object.values(BOT_PROVIDER_CATALOG).map((provider) => [provider.providerKey, providerDefinition(provider)]),
+));
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));

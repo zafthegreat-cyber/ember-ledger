@@ -82,9 +82,10 @@ async function noOverflow(page, label) {
       await root.waitFor();
       equal(await root.getAttribute("data-owner-gate"), "authorized", `${scenario.label} uses OWNER boundary`);
       equal(await root.getAttribute("data-inventory-writer"), "owner-confirmed-only", `${scenario.label} advertises only explicit creation`);
-      const purchasesTab = root.getByRole("button", { name: "Purchases", exact: true });
+      const purchasesTab = root.locator('[data-purchase-section="purchases"]');
       await purchasesTab.focus();
       await purchasesTab.press("Enter");
+      await root.locator('.ops-record-browser[aria-label="Purchases"] .ops-record-browser__row').first().click();
       await root.getByRole("button", { name: "Preview Inventory Handoff", exact: true }).click();
       match(await root.innerText(), /Inventory Creation Candidates[\s\S]*Inventory Creation Candidate != Inventory/i, `${scenario.label} shows the non-authoritative review boundary`);
       const confirm = root.getByRole("button", { name: "Confirm Inventory Creation", exact: true });
@@ -108,7 +109,8 @@ async function noOverflow(page, label) {
         equal(state.inventory[0].quantity, 1, "only physically received quantity is created");
         await page.reload({ waitUntil: "networkidle" });
         const refreshed = page.locator('[data-testid="purchase-receiving-page"]');
-        await refreshed.getByRole("button", { name: "Purchases", exact: true }).click();
+        await refreshed.locator('[data-purchase-section="purchases"]').click();
+        await refreshed.locator('.ops-record-browser[aria-label="Purchases"] .ops-record-browser__row').first().click();
         await refreshed.getByRole("button", { name: "Preview Inventory Handoff", exact: true }).click();
         match(await refreshed.innerText(), /Inventory created/i, "refresh re-derives an already-confirmed candidate");
         equal(await refreshed.getByRole("button", { name: "Confirm Inventory Creation", exact: true }).count(), 0, "refresh cannot duplicate the Inventory confirmation");

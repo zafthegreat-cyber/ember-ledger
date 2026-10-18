@@ -135,25 +135,32 @@ await test("successful checkout evidence is review-only and exact retries do not
   equal(evidence[0].quantity, 2);
 });
 
-await test("retry repairs each interrupted persistence boundary without duplicate attempts or evidence", async () => {
-  for (const failAtWrite of [8, 9, 10, 11]) {
-    const storage = new FailOnceStorage(failAtWrite);
-    const { service } = makeService(storage);
-    const records = await graph(service);
+await test("failed atomic event commits retain every original byte and retries do not duplicate evidence", async () => {
+  const storage = new FailOnceStorage(-1);
+  const { service } = makeService(storage);
+  const records = await graph(service);
+  for (const revision of [1, 2, 3, 4]) {
+    storage.failAtWrite = storage.writes + 1;
+    storage.failed = false;
+    const before = storage.getItem(service.storageKey);
     const checkout = event(records, {
-      providerEventId: `event.interruption-${failAtWrite}.test`,
+      providerEventId: `event.interruption-${revision}.test`,
       normalizedEvent: "CHECKOUT_SUCCEEDED",
       runtimeStatus: "SUCCESS",
       success: true,
       quantity: 1,
       expectedAmount: { minorUnits: 5500, currency: "USD" },
-      externalOrderReference: `ORDER-INTERRUPTION-${failAtWrite}`,
+      externalOrderReference: `ORDER-INTERRUPTION-${revision}`,
     });
     await rejects(() => service.ingestProviderEvent(checkout), (error) => error.code === "LOCAL_SAVE_FAILED");
+    equal(storage.getItem(service.storageKey), before, "failed commit keeps attempts, evidence, tasks, and activity together");
+    const writesBeforeRetry = storage.writes;
     await service.ingestProviderEvent(checkout);
-    equal((await service.listAttempts()).length, 1);
-    equal((await service.listCheckoutEvidence()).length, 1);
-    equal((await service.listActivity()).length, 1);
+    equal(storage.writes, writesBeforeRetry + 1, "the complete event commits one snapshot");
+    await service.ingestProviderEvent(checkout);
+    equal((await service.listAttempts()).length, revision);
+    equal((await service.listCheckoutEvidence()).length, revision);
+    equal((await service.listActivity()).length, revision);
     equal((await service.listTasks()).length, 1);
   }
 });

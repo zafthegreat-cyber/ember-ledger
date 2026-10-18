@@ -17,6 +17,7 @@ const SECRET_KEYS = new Set([
   "cookie", "cookies", "sessioncookie", "cvv", "cvc", "cardnumber", "paymentcardnumber",
   "pan", "proxyusername", "proxypassword", "proxyauth", "proxyauthentication", "proxyurl",
   "proxyendpoint", "authorizationcode", "oauthcode", "oauthstate", "pkceverifier", "codeverifier",
+  "license", "licence", "licensekey", "licencekey", "licensetoken", "licencetoken",
 ]);
 
 const RAW_PROVIDER_KEYS = new Set([
@@ -25,7 +26,7 @@ const RAW_PROVIDER_KEYS = new Set([
   "rawlog", "rawlogs", "logs", "providerlog", "providerlogs", "requestheaders", "responseheaders",
 ]);
 
-const NETWORK_CREDENTIAL_PATTERN = /(?:^|[?&#])(?:access_?token|refresh_?token|token|key|secret|password|passphrase|session|cookie|otp|code)=/i;
+const NETWORK_CREDENTIAL_PATTERN = /(?:^|[?&#])(?:access_?token|refresh_?token|token|key|secret|password|passphrase|session|cookie|otp|code|licen[cs]e(?:_?(?:key|token))?)=/i;
 const PROXY_URI_PATTERN = /\b(?:https?|socks4?|socks5):\/\/[^\s/@]+:[^\s/@]+@/i;
 
 export class BotOpsSecurityError extends Error {
@@ -52,7 +53,7 @@ function isSecretKey(key) {
   const normalized = normalizedKey(key);
   return SECRET_KEYS.has(normalized)
     || /(?:access|refresh|bearer|auth|id|session|provider|oauth|api)?token$/.test(normalized)
-    || /(?:password|passphrase|privatekey|clientsecret|providersecret|apikey|cookie|credentials?)$/.test(normalized)
+    || /(?:password|passphrase|privatekey|clientsecret|providersecret|apikey|cookie|credentials?|licen[cs]e(?:key|token))$/.test(normalized)
     || /^(?:otp|onetimecode|onetimepin|verificationcode|securitycode|recoverycode|cvv|cvc|cardnumber)$/.test(normalized)
     || /^proxy(?:username|password|auth|authentication|url|endpoint|host|hostname|ip|ipaddress)$/.test(normalized);
 }
@@ -66,7 +67,7 @@ function credentialBearingText(value) {
   return NETWORK_CREDENTIAL_PATTERN.test(text)
     || PROXY_URI_PATTERN.test(text)
     || /\b(?:Bearer|Basic)\s+[A-Za-z0-9._~+/=-]{8,}/i.test(text)
-    || /\b(?:password|passphrase|api[ _-]?key|access[ _-]?token|refresh[ _-]?token|session[ _-]?cookie|otp|cvv|cvc|card[ _-]?number)\s*(?:is|:|=)\s*\S+/i.test(text)
+    || /\b(?:password|passphrase|api[ _-]?key|access[ _-]?token|refresh[ _-]?token|session[ _-]?cookie|otp|cvv|cvc|card[ _-]?number|licen[cs]e(?:[ _-]?(?:key|token))?)\s*(?:is|:|=)\s*\S+/i.test(text)
     || /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/.test(text);
 }
 

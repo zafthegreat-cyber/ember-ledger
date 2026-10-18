@@ -99,10 +99,20 @@ function createCollection(collection, options) {
 export function createBotOpsPersistence(options = {}) {
   rejectCallerMode(options);
   const now = options.now || (() => new Date().toISOString());
-  const repository = options.repository || createBotOpsRepository(options.storage, { now });
+  const repository = options.repository || createBotOpsRepository(options.storage, {
+    now, locks: options.locks, requireCrossTabLock: options.requireCrossTabLock, isOperationActive: options.isOperationActive,
+  });
   const collections = Object.fromEntries(BOT_OPS_COLLECTIONS.map((collection) => [
     collection,
-    createCollection(collection, { repository, now, idFactory: options.idFactory }),
+    (() => {
+      const settings = { repository, now, idFactory: options.idFactory };
+      const gateway = createCollection(collection, settings);
+      if (!repository.transact) return gateway;
+      const methods = APPEND_ONLY_COLLECTIONS.has(collection) ? ["create"] : ["create", "update", "archive"];
+      return Object.freeze({ ...gateway, ...Object.fromEntries(methods.map((method) => [method,
+        (...args) => repository.transact((scoped) => createCollection(collection, { ...settings, repository: scoped })[method](...args)),
+      ])) });
+    })(),
   ]));
   return Object.freeze({
     mode: PERSISTENCE_MODES.LOCAL_ONLY,

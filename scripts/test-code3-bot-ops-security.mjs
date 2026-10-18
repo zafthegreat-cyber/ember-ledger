@@ -46,6 +46,9 @@ for (const value of [
   { proxyPassword: "synthetic" },
   { proxyUsername: "synthetic" },
   { nested: { clientSecret: "synthetic" } },
+  { licenseKey: "synthetic" },
+  { licence: "synthetic" },
+  { nested: { botLicenseKey: "synthetic" } },
 ]) {
   throws(() => assertSafeBotOpsInput(value), (error) => error.code === "SECRET_FIELD_REJECTED");
 }
@@ -63,6 +66,10 @@ for (const text of [
   `https://provider.invalid/path?${["access", "token"].join("_")}=synthetic`,
   `https://${["fixture-user", "fixture-pass"].join(":")}@proxy.invalid/`,
   "Bearer synthetic-token-value",
+  "licenseKey=synthetic-123",
+  "License key: synthetic-123",
+  "licence is synthetic-123",
+  "license_token: synthetic-123",
   ["-----BEGIN", "PRIVATE KEY-----"].join(" "),
 ]) {
   throws(() => assertSafeBotOpsInput({ notes: text }), (error) => error.code === "CREDENTIAL_TEXT_REJECTED");
@@ -74,6 +81,7 @@ assert.doesNotThrow(() => assertSafeBotOpsInput({
   shippingProfileReference: "shipping:test-001",
   billingProfileReference: "billing:test-001",
   providerLabel: "Synthetic provider metadata",
+  notes: "Licensed desktop installation. Ask support about a license renewal.",
 }));
 assertions += 1;
 

@@ -20,6 +20,7 @@ import { createProtectedCors } from "./security/corsPolicy";
 import { createLegacyApiBoundary } from "./security/legacyApiBoundary";
 import { code3Router } from "./routes/code3.routes";
 import { providerConnectionsRouter } from "./routes/providerConnections.routes";
+import { mailboxImportRouter } from "./routes/mailboxImport.routes";
 import { createPrivateFilesRouter } from "./routes/privateFiles.routes";
 import { createOwnerSessionsRouter } from "./routes/ownerSessions.routes";
 
@@ -30,6 +31,7 @@ const protectedCors = createProtectedCors();
 // The provider route authenticates before parsing a deliberately tiny JSON body.
 // Legacy APIs retain their existing larger parser until they are separately hardened.
 app.use("/api/account-ops/provider-connections", protectedCors, providerConnectionsRouter);
+app.use("/api/account-ops/mailbox-import", protectedCors, mailboxImportRouter);
 // Private file routes authenticate before their bounded raw-body parser. Storage
 // remains explicitly unavailable until a reviewed private store is supplied.
 app.use("/api/code3/private-files", protectedCors, createPrivateFilesRouter());

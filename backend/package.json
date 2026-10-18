@@ -15,7 +15,8 @@
     "test:code3-postgres": "npm run build && node --test --test-isolation=none test/code3Canonical.postgres.test.mjs",
     "test:provider-runtime": "npm run build && node --test --test-isolation=none test/providerRuntime.test.mjs",
     "test:preview-runtime": "npm run build && node --test --test-isolation=none test/previewRuntime.test.mjs",
-    "test:provider-managed-stores": "npm run build && node --test --test-isolation=none test/managedProviderStores.test.mjs"
+    "test:provider-managed-stores": "npm run build && node --test --test-isolation=none test/managedProviderStores.test.mjs",
+    "test:mailbox-import": "npm run build && node --test --test-isolation=none test/mailboxImport.test.mjs test/mailboxReceiptParser.test.mjs"
   },
   "keywords": [],
   "author": "",
@@ -23,14 +24,18 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.103.3",
     "@upstash/redis": "^1.35.7",
+    "cheerio": "1.2.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "imapflow": "2.5.2",
+    "mailparser": "3.9.40",
     "pg": "^8.20.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/mailparser": "3.9.0",
     "@types/node": "^25.6.0",
     "@types/pg": "^8.20.0",
     "tsx": "^4.21.0",

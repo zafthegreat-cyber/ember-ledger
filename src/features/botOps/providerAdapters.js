@@ -7,6 +7,7 @@ import {
   BOT_TASK_STATUSES,
 } from "./constants.js";
 import { assertSafeBotOpsInput, safeBotOpsClone, sanitizeBotProviderMessage } from "./security.js";
+import { isRegisteredBotProvider } from "./providerCatalog.js";
 
 const ADAPTER_METHODS = Object.freeze([
   "describe",
@@ -50,7 +51,7 @@ function unavailableAction(action) {
 
 export function createUnavailableBotAdapter(providerKey) {
   const provider = String(providerKey || "").toUpperCase();
-  if (![BOT_PROVIDER_KEYS.HAYHA, BOT_PROVIDER_KEYS.STELLAR].includes(provider)) {
+  if (!isRegisteredBotProvider(provider)) {
     throw new BotProviderAdapterError("UNKNOWN_PROVIDER", "Only registered bot providers may use the unavailable adapter.");
   }
   const capabilities = Object.freeze(Object.fromEntries(Object.values(BOT_CAPABILITIES).map((key) => [key, false])));

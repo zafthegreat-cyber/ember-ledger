@@ -91,7 +91,8 @@ async function noOverflow(page, label) {
 
 async function openCostReconciliation(page) {
   const root = page.locator('[data-testid="purchase-receiving-page"]');
-  await root.getByRole("button", { name: "Corrections & Returns", exact: true }).click();
+  await root.locator('[data-purchase-section="corrections"]').click();
+  await root.locator('.ops-record-browser[aria-label="Inventory items"] .ops-record-browser__row').first().click();
   await root.getByRole("button", { name: "Review Correction or Return", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "Review Inventory Correction" });
   await dialog.getByLabel("Correction or disposition").selectOption("ACQUISITION_COST_CORRECTION");
@@ -149,7 +150,8 @@ async function openCostReconciliation(page) {
         equal(countersAfter.inventoryWrites - countersBefore.inventoryWrites, 1, "one canonical Inventory document write is committed");
         await page.reload({ waitUntil: "networkidle" });
         const refreshed = page.locator('[data-testid="purchase-receiving-page"]');
-        await refreshed.getByRole("button", { name: "Corrections & Returns", exact: true }).click();
+        await refreshed.locator('[data-purchase-section="corrections"]').click();
+        await refreshed.locator('.ops-record-browser[aria-label="Inventory items"] .ops-record-browser__row').first().click();
         match(await refreshed.innerText(), /Historical reconciliations[\s\S]*1/i, "refresh replays one canonical reconciliation event");
         equal((await page.evaluate((key) => JSON.parse(localStorage.getItem(key)), INVENTORY_KEY)).inventoryReconciliationEvents.length, 1, "refresh cannot duplicate reconciliation");
       }

@@ -168,7 +168,7 @@ export function normalizeBotInstallation(input, { persisted = false } = {}) {
   const enabled = boolean(input.enabled, false);
   if (provider !== BOT_PROVIDER_KEYS.MOCK
     && (enabled || ![BOT_INSTALLATION_HEALTH.DISCONNECTED, BOT_INSTALLATION_HEALTH.UNKNOWN, BOT_INSTALLATION_HEALTH.DISABLED].includes(healthState))) {
-    throw new BotOpsValidationError("LIVE_INSTALLATION_STATE_PROHIBITED", "Hayha and Stellar must remain disconnected and disabled until a live adapter phase is authorized.");
+    throw new BotOpsValidationError("LIVE_INSTALLATION_STATE_PROHIBITED", "Unconfigured bot providers must remain disconnected and disabled until a live adapter is verified and authorized.");
   }
   return {
     ...metadata(input, RECORD_TYPES.installations), provider,
@@ -315,7 +315,7 @@ export function normalizeBotAttempt(input, { persisted = false } = {}) {
   const runtimeStatus = enumValue(input.runtimeStatus, BOT_TASK_STATUSES, "runtimeStatus", BOT_TASK_STATUSES.UNKNOWN);
   const success = boolean(input.success, false);
   const failureCategory = enumValue(input.failureCategory, BOT_FAILURE_CATEGORIES, "failureCategory", BOT_FAILURE_CATEGORIES.NONE);
-  if (provider !== BOT_PROVIDER_KEYS.MOCK) throw new BotOpsValidationError("LIVE_PROVIDER_EVENT_PROHIBITED", "Phase 2D-A cannot persist live Hayha or Stellar events.");
+  if (provider !== BOT_PROVIDER_KEYS.MOCK) throw new BotOpsValidationError("LIVE_PROVIDER_EVENT_PROHIBITED", "Live bot provider events cannot be persisted without a verified adapter.");
   const hasSuccessSignal = normalizedEvent === BOT_ATTEMPT_EVENTS.CHECKOUT_SUCCEEDED || runtimeStatus === BOT_TASK_STATUSES.SUCCESS;
   if ((success || hasSuccessSignal)
     && (!success || normalizedEvent !== BOT_ATTEMPT_EVENTS.CHECKOUT_SUCCEEDED || runtimeStatus !== BOT_TASK_STATUSES.SUCCESS || failureCategory !== BOT_FAILURE_CATEGORIES.NONE)) {

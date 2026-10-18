@@ -1,5 +1,28 @@
 # Code 3 Bot Provider Capability Review
 
+## Current review — 2026-10-17
+
+The local candidate on `codex/all-bot-integration-setup` expands setup and manual installation records to Hayha, Stellar, Shikari, Valor, Refract, Polar AIO, Sniped, and Swooper AIO. The user confirmed **Swooper AIO (`swooperhq.com`)**, not SwoopTCG/Swooper+. All live connection capabilities remain disabled. A saved installation is a Code 3 record, not a connected bot.
+
+| Provider | Public evidence | Remaining native-connection requirement |
+| --- | --- | --- |
+| Polar AIO | [Creator storefront](https://whop.com/polar-aio/products/polar-aio/) identifies the retail bot. Whop APIs are not Polar bot APIs. | Provider-approved status/order API or export specification. |
+| Sniped | [Official retail-bot site](https://sniped.gg/) identifies the product. | Provider-approved API/export documentation and sample schema. |
+| Swooper AIO | [Official site](https://swooperhq.com/) describes internal Tasks, Activity and Reports; [alerts](https://swooperhq.com/features/drop-alerts) are delivered through its own Discord/iOS products. | A supported third-party interface; internal screens and alerts are not an external API. |
+| Shikari | [Official site](https://shikari.tech/) and [support](https://shikari.tech/support/) identify the product and member support channels. | Supported integration or export documentation. |
+| Valor | [Settings guide](https://docs.valoraio.com/initial-setup/settings.md) documents Discord webhook destinations and app backups. | Direct event payload/authentication or safe order/status schema. Profile and full-backup exports are unsuitable because of personal/payment/session content. |
+| Refract | [Dashboard guide](https://help.refractbot.com/online-dashboard/home.md) documents checkout-history CSV export with product, price, account, profile, date and order number. | Exact CSV headers, date/currency formats and a sanitized sample before a native importer can be verified. A profile CSV or full app backup is not an order export. |
+| Stellar | [Tasks overview](https://guides.stellaraio.com/stellar/navigating-stellaraio/what-is-the-tasks-tab) documents task-group file export/import. [WebSocket documentation](https://guides.stellaraio.com/stellar/developing-software-compatible-with-stellar/websocket-integration) describes monitor input into Stellar. | No current stable export schema or read-only status API was verified. Existing JSON preview remains heuristic and memory-only. |
+| Hayha | [Official documentation](https://docs.hayhabots.com/) and provider-branded guides describe its own UI and notifications. | Current supported read-only interface or safe export schema; account-session exports are not accepted. |
+
+No private account, provider application traffic, binaries, retailer session, or credential was accessed. No support message was sent. Public documentation not found is **unverified**, not proof that a private partner interface cannot exist.
+
+**Correction to historical Stellar wording below:** on 2026-10-17 the Tasks overview documents file export/import but does not establish JSON or the same-version condition. The former detailed import/export URL returns Page Not Found. Earlier cached JSON/same-version wording must not be treated as current schema verification. Stellar's own mobile pairing also does not document a third-party protocol.
+
+The preceding current review supersedes provider counts and source-freshness claims in the historical phase record below. See [BOT_SETUP_LOCAL_REPORT.md](./BOT_SETUP_LOCAL_REPORT.md) for the implementation and validation of this candidate.
+
+## Historical phase record
+
 Status: Phase 2D-B1 discovery and pilot design plus the Phase 2D-B2 offline Stellar task-export preview boundary. Research was performed on 2026-08-31 against publicly accessible first-party Hayha and StellarAIO sources. No provider login, private Discord content, license credential, application traffic, undocumented endpoint, bot process, provider network API, real export, or live installation was accessed.
 
 Phase 2D-B1 research baseline: `cdde7df506c94bc55b2ec7995596843ae1c2261a`.

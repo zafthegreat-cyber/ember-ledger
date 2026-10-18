@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { getBotProvider } from "../src/features/botOps/providerRegistry.js";
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 const page = read("src/features/botOps/BotOperationsPage.jsx");
@@ -16,9 +17,9 @@ function excludes(value, pattern, message) { assert.doesNotMatch(value, pattern,
 function equal(actual, expected, message) { assert.equal(actual, expected, message); assertions += 1; }
 
 matches(page, /import StellarTaskExportPreview from "\.\/importPreview\/StellarTaskExportPreview\.jsx"/, "the preview is a dedicated Bot Operations feature boundary");
-matches(page, /function TasksSection[\s\S]*<StellarTaskExportPreview \/>[\s\S]*title="Tasks"/, "the preview is placed in the existing owner-only Tasks section");
+matches(page, /section === "tasks"[\s\S]*<BotTaskTracker[\s\S]*<summary>Preview a Stellar task export<\/summary><StellarTaskExportPreview \/>/, "the preview remains accessible after the tracker in the existing owner-only Tasks section");
 matches(page, /<StellarTaskExportPreview \/>/, "the preview receives no repository, persistence, import, or writer callback");
-matches(page, /if \(!authorized\) return undefined;[\s\S]*createBotOpsService\(\)/, "the existing owner gate remains before Bot storage initialization");
+matches(page, /if \(!authorized\) return undefined;[\s\S]*createBotOpsService\(/, "the existing owner gate remains before Bot storage initialization");
 matches(routes, /path:\s*"\/bot\/tasks"[\s\S]*requiredAuthority:\s*AUTHORITY_REQUIREMENTS\.VERIFIED_OWNER/, "the containing route remains verified-owner only");
 
 matches(component, /eyebrow="Offline Preview"/, "the flow is explicitly labeled offline");
@@ -61,8 +62,10 @@ matches(styles, /@media \(prefers-reduced-motion:\s*reduce\)/, "reduced motion i
 matches(styles, /:focus-visible/, "preview controls expose visible keyboard focus");
 
 matches(registry, /connectionStatus:\s*BOT_PROVIDER_CONNECTION_STATUS\.NOT_CONFIGURED/, "every generated provider definition remains not configured");
-matches(registry, /\[BOT_PROVIDER_KEYS\.HAYHA\]:\s*providerDefinition\(BOT_PROVIDER_KEYS\.HAYHA,\s*"Hayha"\)/, "Hayha uses the fail-closed provider definition");
-matches(registry, /\[BOT_PROVIDER_KEYS\.STELLAR\]:\s*providerDefinition\(BOT_PROVIDER_KEYS\.STELLAR,\s*"Stellar"\)/, "Stellar uses the fail-closed provider definition");
+for (const key of ["HAYHA", "STELLAR", "SHIKARI", "VALOR", "REFRACT", "POLAR", "SNIPED", "SWOOPER"]) {
+  equal(getBotProvider(key)?.connectionStatus, "NOT_CONFIGURED", `${key} keeps the fail-closed provider definition`);
+  equal(Object.values(getBotProvider(key)?.capabilities || {}).some(Boolean), false, `${key} cannot gain capability through preview parsing`);
+}
 matches(registry, /capabilities:\s*DISABLED_CAPABILITIES/, "every provider receives the all-false capability map");
 matches(registry, /networkAccess:\s*false/, "provider definitions retain disabled network access");
 matches(registry, /configuredProviderCount:\s*0[\s\S]*liveCapabilityCount:\s*0[\s\S]*liveTaskCount:\s*0[\s\S]*providerNetworkAccess:\s*false/, "foundation status remains entirely offline");

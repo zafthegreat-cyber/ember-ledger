@@ -24,8 +24,8 @@ for (const key of ["overview", "accounts", "identity", "payment", "network", "ve
 }
 
 matches(page, /ACCOUNT_OPS_OPERATING_AREAS\.map/, "compact and wide navigation should share one IA source");
-matches(page, /<select value=\{activeArea\}/, "phones should receive a compact native area picker");
-matches(page, /aria-label="Account Ops areas"/, "desktop navigation should have an accessible label");
+matches(page, /<OperationsWorkspace label="Account Ops areas" activeKey=\{activeArea\}/, "phones and desktop should use shared accessible workspace navigation");
+matches(page, /aria-label=\{`\$\{searchLabelForSection\(activeArea\)\} views`\}/, "contextual navigation should have an accessible label");
 matches(page, /Owner Only · Local Foundation/, "the page should label its local OWNER-only boundary");
 matches(page, /AccountOpsOperationsPanel area="overview"/, "overview should render the integrated foundation");
 matches(page, /AccountOpsOperationsPanel area="accounts"/, "accounts should render the integrated foundation with canonical records");
@@ -54,7 +54,9 @@ matches(panel, /does not create cloud instances, start or stop machines, open re
 matches(panel, /Results navigate; they never execute destructive commands/, "private search should remain navigation-only");
 matches(panel, /No push, email, or webhook is sent/, "notification preferences should not send messages");
 
-for (const provider of ["STELLAR", "HAYHA", "SHIKARI", "VALOR", "REFRACT"]) matches(constants, new RegExp(`provider: "${provider}"`), `${provider} should have an explicit readiness truth state`);
+matches(constants, /Object\.values\(BOT_PROVIDER_CATALOG\)\.map/, "Account Ops readiness should use the shared real-provider catalog");
+matches(constants, /readinessState: EXPORT_READINESS_STATES\.NOT_READY/, "provider catalog coverage must not imply working native exports");
+matches(constants, /schemaState: EXPORT_SCHEMA_STATES\.UNVERIFIED/, "outbound schemas must remain unverified");
 matches(constants, /liveRetailerAccountCreation:\s*false/, "live account creation must remain disabled");
 matches(constants, /automaticCaptchaSolving:\s*false/, "automatic CAPTCHA solving must remain disabled");
 matches(constants, /automaticMfa:\s*false/, "automatic MFA must remain disabled");

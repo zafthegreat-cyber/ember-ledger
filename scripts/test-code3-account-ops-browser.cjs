@@ -116,13 +116,15 @@ async function assertMinimumTarget(locator, label) {
 async function verifyFixtureScenario(page, fixture, consoleMessages) {
   const accountSummary = page.locator(".account-ops-summary-details > summary");
   if (await accountSummary.count()) await accountSummary.click();
-  const body = await page.locator("body").innerText();
   const section = SECTION_BY_FIXTURE[fixture.id];
 
   if (section !== "overview") {
-    await page.getByRole("heading", { name: section === "accounts" ? "Store Accounts" : section[0].toUpperCase() + section.slice(1), exact: true }).waitFor();
+    await page.getByRole("heading", { name: section === "accounts" ? "Store Accounts" : section[0].toUpperCase() + section.slice(1), exact: true }).first().waitFor();
   }
 
+  const detailCases = ["awaiting-email-verification", "awaiting-phone-verification", "ready-account", "problem-account", "missing-credential-reference", "duplicate-conflict-warning", "password-generation-workflow", "account-setup-workflow", "profile-many-accounts"];
+  if (detailCases.includes(fixture.id)) await page.locator(".ops-record-browser__row").first().click();
+  const body = await page.locator("body").innerText();
   switch (fixture.id) {
     case "empty-account-ops":
       match(body, /Store Accounts\s*0[\s\S]*Email Aliases\s*0[\s\S]*Tasks\s*0/, "empty overview should derive zero metrics");
@@ -171,6 +173,7 @@ async function verifyFixtureScenario(page, fixture, consoleMessages) {
     case "archived-account": {
       await page.locator(".account-ops-toolbar details > summary").click();
       await page.locator(".account-ops-filter-row select").first().selectOption("archived");
+      await page.locator(".ops-record-browser__row").first().click();
       await page.locator(".account-ops-card h3", { hasText: /^Business 01$/ }).first().waitFor();
       match(await page.locator("body").innerText(), /Archived/i, "archived accounts should remain discoverable through filters");
       break;
@@ -212,7 +215,7 @@ async function verifyFixtureScenario(page, fixture, consoleMessages) {
       match(body, /Retailer Accounts\s*12/, "profiles should summarize many linked retailer accounts without a squeezed table");
       break;
     case "retailer-many-profiles":
-      ok(await page.locator(".account-ops-card").count() >= 12, "retailer group should handle many profiles at mobile width");
+      ok(await page.locator(".ops-record-browser__row").count() >= 12, "retailer group should handle many profiles at mobile width");
       break;
     default:
       throw new Error(`No browser expectations registered for ${fixture.id}`);
@@ -248,11 +251,11 @@ async function inspectFixture(browser, fixture, theme, { scenario = true } = {})
     equal(await page.locator("html").getAttribute("data-theme"), theme, `${fixture.id} should render the requested ${theme} theme`);
     equal(await root.locator("h1", { hasText: /^Account Ops$/ }).count(), 1, "Account Ops should have one workspace content heading");
     await page.getByText("Local development identity", { exact: true }).waitFor();
-    const areaPicker = page.getByRole("combobox", { name: "Account Ops area", exact: true });
+    const areaPicker = page.getByRole("combobox", { name: "Section", exact: true });
     await areaPicker.waitFor();
     await assertMinimumTarget(areaPicker, "Account Ops area picker");
     const areaLabels = await areaPicker.locator("option").allTextContents();
-    equal(areaLabels.join("|"), "Overview|Accounts|Identity|Payment Metadata|Network|Verification|Automation|Orders|Infrastructure|Activity", "the mobile picker should expose the complete unified operating map");
+    equal(areaLabels.join("|"), "Overview|Accounts|Profiles & identity|Payment Metadata|Network|Verification|Automation|Orders|Infrastructure|Activity", "the mobile picker should expose the complete unified operating map");
 
     if (scenario) await verifyFixtureScenario(page, fixture, consoleMessages);
     const metrics = await assertNoHorizontalOverflow(page, `${fixture.id} (${theme}) at 360px`);
@@ -364,8 +367,8 @@ async function inspectFoundation(browser, fixture, emptyState) {
     if (fixture.id === "provider-not-configured") match(body, /No mailbox connected[\s\S]*not configured/i, "unconfigured provider QA must remain honest");
     if (fixture.id === "trusted-preview-not-configured") match(body, /Trusted runtime[\s\S]*Available[\s\S]*Gmail[\s\S]*Not Configured[\s\S]*Outlook \/ Microsoft[\s\S]*Not Configured[\s\S]*No mailbox connected/i, "trusted Preview QA must remain separate from provider configuration");
     if (fixture.id === "provider-healthy-metadata") match(body, /Synthetic QA mailbox[\s\S]*Healthy[\s\S]*Read-only order metadata/i, "synthetic provider metadata should render without credential material");
-    if (fixture.section === "inbox") match(body, /Code 3 is not reading a mailbox[\s\S]*No mailbox messages/i, "Inbox foundation must not claim live ingestion");
-    if (fixture.section === "orders") match(body, /evidence, not a Business Purchase[\s\S]*No order candidates/i, "Order Candidate foundation must remain review-only");
+    if (fixture.section === "inbox") match(body, /This Account Ops view does not read a mailbox[\s\S]*Open purchase email import/i, "Inbox foundation must not claim live ingestion");
+    if (fixture.section === "orders") match(body, /evidence, not a Business Purchase[\s\S]*Open purchase email import/i, "Order Candidate foundation must remain review-only");
     excludes(body, /access.?token|refresh.?token|client.?secret|\bOTP\s*[:=]|Import Purchase/i, "foundation QA must not expose secrets or Purchase mutation");
     const metrics = await assertNoHorizontalOverflow(page, `${fixture.id} (${fixture.theme}) at 360px`);
     equal(browserErrors.length, 0, browserErrors.join("\n"));

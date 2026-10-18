@@ -144,7 +144,7 @@ const expectedMenuDestinations = [
   'key: "account-ops", label: "Account Ops"',
   'quickAdd: { key: "quickAdd"',
   'scanProduct: { key: "scanProduct"',
-  'emberAssist: ownerFeatureControls.businessAssistant ? { key: "emberAssist", label: "Business Assistant"',
+  'emberAssist: ownerFeatureControls.businessAssistant && showAssistantExperience ? { key: "emberAssist", label: "Business Assistant"',
   'privacySafety: { key: "privacySafety"',
   'parentCenter: { key: "parentCenter"',
   'publicBetaFeedback: { key: "publicBetaFeedback"',
@@ -191,7 +191,10 @@ assert.ok(
   "Account Ops should remain Business-associated and owner-protected."
 );
 assert.ok(
-  appFileSource.includes("ownerCenterAuthorized ? { key: \"owner-center\"") &&
+  appFileSource.includes("ownerToolsVisible ? { key: \"owner-center\"") &&
+    appFileSource.includes("const ownerToolsVisible = experiencePresentation.showOwnerTools;") &&
+    appFileSource.includes("ownerVisible: !guestPreviewActive && ownerSession.status === OWNER_SESSION_STATES.AUTHORIZED && adminViewingAsAdmin,") &&
+    fs.readFileSync(path.join(root, "src", "utils", "experiencePresentation.js"), "utf8").includes("showOwnerTools: ownerVisible === true && !isPreview,") &&
     appFileSource.includes("shellRouteOwnership?.classification === ROUTE_CLASSIFICATIONS.OWNER") &&
     !/id:\s*WORKSPACE_IDS\.OWNER/.test(workspaceRegistrySource),
   "Owner Center should remain an owner affordance outside the product switcher."

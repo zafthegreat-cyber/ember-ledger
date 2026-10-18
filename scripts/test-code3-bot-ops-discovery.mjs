@@ -39,7 +39,7 @@ deepEqual(Object.values(BOT_EVIDENCE_STATUSES), [
 ]);
 
 const discoveries = listBotProviderDiscovery();
-deepEqual(discoveries.map(({ provider }) => provider), [BOT_PROVIDER_KEYS.HAYHA, BOT_PROVIDER_KEYS.STELLAR]);
+deepEqual(discoveries.map(({ provider }) => provider), ["HAYHA", "STELLAR", "SHIKARI", "VALOR", "REFRACT", "POLAR", "SNIPED", "SWOOPER"]);
 deepEqual(listBotProviderDiscovery("hayha").map(({ provider }) => provider), [BOT_PROVIDER_KEYS.HAYHA]);
 deepEqual(listBotProviderDiscovery("unknown"), []);
 equal(getBotProviderDiscovery("unknown"), null);
@@ -75,9 +75,11 @@ for (const discovery of discoveries) {
     equal(item.sourceUrl.startsWith("https://"), true);
     equal(Object.values(BOT_EVIDENCE_STATUSES).includes(item.status), true);
     equal(Object.values(BOT_EVIDENCE_TYPES).includes(item.evidenceType), true);
-    equal(item.verifiedAt, "2026-08-31T00:00:00.000Z");
+    equal(item.verifiedAt, "2026-10-17T00:00:00.000Z");
     equal("sourceText" in item, false, "long provider documentation is not retained");
+    deepEqual(normalizeBotProviderEvidence(item), item, `${discovery.provider} evidence normalizes with its official source boundary`);
   }
+  equal(calculateBotPilotReadiness(discovery).eligibleForSeparateAuthorization, false, `${discovery.provider} public evidence cannot enable a live pilot`);
 }
 
 const hayha = getBotProviderDiscovery(BOT_PROVIDER_KEYS.HAYHA);
@@ -113,6 +115,19 @@ equal(stellarFile.recommendationStatus, BOT_DISCOVERY_RECOMMENDATION_STATUSES.OF
 equal(stellarFile.readOnlyPossible, true);
 equal(stellarFile.taskControlAvailable, false);
 equal(stellarFile.secretsRequired, false);
+ok(stellar.evidence.find(({ id }) => id === "stellar.task-group-export").notes.includes("no longer available"), "removed Stellar details page is not presented as a current schema");
+ok(stellar.evidence.find(({ id }) => id === "stellar.mobile-companion").notes.includes("does not document a Code 3 protocol"));
+
+const refract = getBotProviderDiscovery(BOT_PROVIDER_KEYS.REFRACT);
+equal(refract.exportStatus, BOT_EVIDENCE_STATUSES.DOCUMENTED_BUT_LIMITED);
+equal(refract.officialApiStatus, BOT_EVIDENCE_STATUSES.UNKNOWN);
+ok(refract.evidence.some(({ id }) => id === "refract.checkout-history-export"));
+equal(refract.capabilities.READ_HISTORY.enabled, false);
+equal(getBotProviderDiscovery(BOT_PROVIDER_KEYS.VALOR).webhookStatus, BOT_EVIDENCE_STATUSES.DOCUMENTED_BUT_LIMITED);
+for (const key of ["SHIKARI", "POLAR", "SNIPED", "SWOOPER"]) {
+  equal(getBotProviderDiscovery(key).officialApiStatus, BOT_EVIDENCE_STATUSES.UNKNOWN);
+  equal(getBotProviderDiscovery(key).recommendedMode, null);
+}
 
 const pilot = recommendFirstBotPilot();
 equal(pilot.readiness, BOT_PILOT_READINESS.NO_LIVE_BOT_PILOT_YET);
@@ -204,6 +219,14 @@ throws(
   (error) => error.code === "UNTRUSTED_SOURCE",
   "non-provider sources are not normalized as official evidence",
 );
+const polarEvidence = getBotProviderDiscovery(BOT_PROVIDER_KEYS.POLAR).evidence[0];
+for (const sourceUrl of ["https://whop.com/unrelated-product/", "https://docs.polar.sh/", "https://polar.com/", "https://whop.com/polar-aio-impostor/"]) {
+  throws(
+    () => normalizeBotProviderEvidence({ ...polarEvidence, sourceUrl }),
+    (error) => error.code === "UNTRUSTED_SOURCE",
+    "Polar evidence must reference its verified creator storefront, not similarly named products or another Whop seller",
+  );
+}
 throws(
   () => normalizeBotProviderEvidence({ ...normalized, apiToken: "synthetic-forbidden" }),
   (error) => ["SECRET_FIELD_REJECTED", "UNKNOWN_FIELD"].includes(error.code),

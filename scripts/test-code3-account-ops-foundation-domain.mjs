@@ -188,10 +188,10 @@ deepEqual(Object.values(ATTENTION_PRIORITIES), ["CRITICAL", "HIGH", "NORMAL", "I
 deepEqual(NOTIFICATION_CATEGORIES, ["VERIFICATION", "ACCOUNTS", "BOTS", "ORDERS", "SERVERS", "BUSINESS"], "notification categories are bounded");
 deepEqual(NOTIFICATION_CHANNELS, ["IN_APP", "PUSH", "EMAIL", "WEBHOOK"], "future notification channels are metadata only");
 deepEqual(Object.values(WORKSPACE_REFERENCE_TYPES), ["BOT", "BOT_TASK", "PURCHASE", "INVENTORY", "RECEIVING_DISCREPANCY", "ACCOUNTANT_REVIEW"], "cross-workspace references are explicitly bounded");
-equal(ACCOUNT_OPS_PROVIDER_EXPORTS.length, 5, "five provider-readiness definitions exist");
-deepEqual(ACCOUNT_OPS_PROVIDER_EXPORTS.map((row) => row.provider), ["STELLAR", "HAYHA", "SHIKARI", "VALOR", "REFRACT"], "provider list is explicit");
+equal(ACCOUNT_OPS_PROVIDER_EXPORTS.length, 8, "eight provider-readiness definitions exist");
+deepEqual(ACCOUNT_OPS_PROVIDER_EXPORTS.map((row) => row.provider), ["HAYHA", "STELLAR", "SHIKARI", "VALOR", "REFRACT", "POLAR", "SNIPED", "SWOOPER"], "all named providers have readiness coverage");
 ok(ACCOUNT_OPS_PROVIDER_EXPORTS.slice(0, 2).every((row) => row.readinessState === EXPORT_READINESS_STATES.NOT_READY && row.schemaState === EXPORT_SCHEMA_STATES.UNVERIFIED), "Stellar and Hayha remain unverified and not ready");
-ok(ACCOUNT_OPS_PROVIDER_EXPORTS.slice(2).every((row) => row.readinessState === EXPORT_READINESS_STATES.UNSUPPORTED && row.schemaState === EXPORT_SCHEMA_STATES.UNSUPPORTED), "unreviewed providers remain unsupported");
+ok(ACCOUNT_OPS_PROVIDER_EXPORTS.every((row) => row.readinessState === EXPORT_READINESS_STATES.NOT_READY && row.schemaState === EXPORT_SCHEMA_STATES.UNVERIFIED), "reviewed product identities do not verify an outbound schema");
 equal(ACCOUNT_OPS_CLOUD_TEMPLATES.length, 3, "three planning-only cloud templates exist");
 ok(ACCOUNT_OPS_CLOUD_TEMPLATES.every((template) => template.provider == null && template.estimatedCostMinor == null), "cloud templates do not claim providers or current prices");
 ok(Object.values(ACCOUNT_OPS_AUTOMATION_BOUNDARIES).every((value) => value === false), "every live automation boundary remains false");
@@ -393,15 +393,15 @@ equal(captchaAction.resumeAllowed, false, "no automatic challenge resume is enab
 deepFrozen(verificationRows, "verification inbox");
 
 const defaultExports = deriveDefaultExportReadiness(healthyFixture.accountOps, createEmptyAccountOpsOperationsSnapshot());
-equal(defaultExports.length, 5, "default export center covers all named future providers");
+equal(defaultExports.length, 8, "default export center covers all named providers");
 ok(defaultExports.every((row) => row.liveConnection === false && row.directExportAllowed === false && row.providerCapabilityVerified === false), "export readiness never becomes provider capability or a send action");
 equal(defaultExports.find((row) => row.provider === "STELLAR").readinessState, EXPORT_READINESS_STATES.NOT_READY, "Stellar remains not ready for outbound export");
 const mergedExports = deriveDefaultExportReadiness(healthyFixture.accountOps, operations);
-equal(mergedExports.length, 5, "a reviewed readiness row cannot hide the other required provider cards");
+equal(mergedExports.length, 8, "a reviewed readiness row cannot hide the other required provider cards");
 equal(mergedExports.find((row) => row.provider === "STELLAR").readinessState, EXPORT_READINESS_STATES.READY_FOR_PREVIEW, "reviewed local readiness replaces only its matching provider projection");
 const profileCompatibility = deriveProfileCompatibilityViews(healthyFixture.accountOps, mergedExports);
 equal(profileCompatibility.length, healthyFixture.accountOps.profiles.length, "Profile Builder exposes one compatibility review per canonical Profile");
-ok(profileCompatibility.every((row) => row.botProviderCompatibility.length === 5), "each Profile shows every required provider readiness relationship");
+ok(profileCompatibility.every((row) => row.botProviderCompatibility.length === 8), "each Profile shows every required provider readiness relationship");
 ok(profileCompatibility.every((row) => row.botProviderCompatibility.every((provider) => provider.compatibilityVerified === false)), "Profile relationships never claim verified bot compatibility");
 deepFrozen(profileCompatibility, "profile compatibility review");
 deepFrozen(defaultExports, "default export readiness");
