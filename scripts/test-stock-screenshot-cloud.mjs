@@ -4,13 +4,14 @@ import path from "node:path";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { encodeScoutReportCloudNotes, decodeScoutReportCloudNotes, mergeScoutReportCloudSave } from "../src/utils/scoutReportCloudContext.mjs";
+import { hasConfirmedScoutReportStatus, hasVerifiedScoutReportStatus } from "../src/utils/scoutReportVerification.mjs";
 
 const require = createRequire(import.meta.url);
 const espree = require("espree");
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const source = fs.readFileSync(path.join(root, "src/App.jsx"), "utf8");
 const ast = espree.parse(source, { ecmaVersion: "latest", sourceType: "module", ecmaFeatures: { jsx: true }, range: true });
-const names = ["mapSupabaseScoutReport", "persistScoutReportToSupabase", "normalizeScoutReportVisibility", "scoutBackendNumberOrNull", "scoutReportTimeForBackend", "isScoutBackendOptionalError", "scoutBackendKey", "scoutBackendSyncReady", "updateQuickScoutReportForm"];
+const names = ["mapSupabaseScoutReport", "persistScoutReportToSupabase", "normalizeScoutReportVisibility", "scoutBackendNumberOrNull", "scoutReportTimeForBackend", "isScoutBackendOptionalError", "scoutBackendKey", "scoutBackendSyncReady", "updateQuickScoutReportForm", "scoutReportConfidenceBadge"];
 const functions = new Map();
 function visit(node) {
   if (!node || typeof node !== "object") return;
@@ -61,11 +62,14 @@ function fixture(options = {}) {
   const calls = [];
   const messages = [];
   const logs = [];
+  const badgeEvaluations = [];
   let form = options.form || {};
   const responses = [...(options.responses || [])];
   const environment = {
     encodeScoutReportCloudNotes,
     decodeScoutReportCloudNotes,
+    hasConfirmedScoutReportStatus,
+    hasVerifiedScoutReportStatus,
     getScoutQuickStoreId: (store) => store.id || store.storeId || "",
     getScoutQuickStoreName: (store) => store.name || "",
     getScoutQuickRetailer: (store) => store.retailer || "",
@@ -73,6 +77,12 @@ function fixture(options = {}) {
     getLocalTimeKey: localTime,
     makeId: (prefix) => `${prefix}-test-only`,
     scoutConfidenceScore: (confidence) => confidence === "confirmed" ? 90 : 26,
+    isHistoricalScoutImport: (report) => report.sourceType === "historical_import" || report.source_type === "historical_import" || Boolean(report.importedByAdmin || report.imported_by_admin),
+    scoutConfidenceBadgeMeta: (key) => ({ key, score: key === "verified" ? 90 : 26 }),
+    evaluateScoutReportReliability: (report, options = {}) => {
+      badgeEvaluations.push({ report, options });
+      return { key: options.needsReview ? "unusual-needs-review" : "unconfirmed", score: 26 };
+    },
     uuidOrNull: (value) => /^[\da-f]{8}-(?:[\da-f]{4}-){3}[\da-f]{12}$/i.test(String(value || "")) ? value : null,
     getScoutQuickStores: () => stores,
     logAppError: (...args) => logs.push(args),
@@ -116,7 +126,7 @@ function fixture(options = {}) {
     },
   };
   const api = new Function(...Object.keys(environment), `${[...functions.values()].join("\n")}\nreturn {${names.join(",")}};`)(...Object.values(environment));
-  return { api, calls, logs, messages, get form() { return form; } };
+  return { api, calls, logs, messages, badgeEvaluations, get form() { return form; } };
 }
 
 // Additive-schema installations must remain readable too.
@@ -247,6 +257,39 @@ await check("ordinary private reports retain product, directory store, time, sha
   assert.equal(saved.report.visibility, "private_from_map"); assert.equal(saved.report.verified, false);
   assert.equal(saved.report.sourceType, "user_report"); assert.equal(saved.report.proofType, "manual");
   assert(!Object.hasOwn(saved.report, "screenshotImportReviewed"));
+});
+await check("schema-persisted unverified screenshot and ordinary rows never display a verified badge", async () => {
+  for (const input of [localReport(), ordinaryReport()]) {
+    const f = fixture();
+    const saved = await f.api.persistScoutReportToSupabase(input);
+    assert.equal(saved.ok, true); assert.equal(saved.report.verificationStatus, "unverified");
+    assert.notEqual(f.api.scoutReportConfidenceBadge(saved.report).key, "verified");
+    assert.equal(f.badgeEvaluations.length, 1, "Unverified rows must still reach reliability evaluation");
+    assert.equal(Boolean(f.badgeEvaluations[0].options.needsReview), input.sourceType === "text_screenshot", "Screenshot review must remain explicit");
+  }
+});
+await check("lookalike and negated verification statuses never display a verified badge", () => {
+  for (const rawStatus of ["unverified", "unconfirmed", "not_verified", "not_confirmed", "confirmed_by_user", "unverified_historical"]) {
+    for (const key of ["verificationStatus", "verification_status", "status"]) {
+      const f = fixture();
+      const badge = f.api.scoutReportConfidenceBadge({ [key]: rawStatus, confidence: "unconfirmed", verified: false });
+      assert.notEqual(badge.key, "verified", `${key}: ${rawStatus}`);
+      assert.equal(f.badgeEvaluations.length, 1, `${key}: ${rawStatus}`);
+    }
+  }
+});
+await check("explicit verification status tokens retain their existing badge behavior", () => {
+  for (const verificationStatus of ["confirmed", "verified", "confirmed_restock", "verified_user_report"]) {
+    const f = fixture();
+    assert.equal(f.api.scoutReportConfidenceBadge({ verificationStatus }).key, "verified", verificationStatus);
+    assert.equal(f.badgeEvaluations.length, 0);
+  }
+});
+await check("unverified screenshot review reaches the existing needs-review branch", () => {
+  const f = fixture();
+  const report = { sourceType: "text_screenshot", verificationStatus: "unverified", confidence: "unconfirmed", needsReview: true };
+  assert.equal(f.api.scoutReportConfidenceBadge(report).key, "unusual-needs-review");
+  assert.deepEqual(f.badgeEvaluations, [{ report, options: { needsReview: true } }]);
 });
 await check("public and administrator-only sharing remain explicit", async () => {
   for (const visibility of ["public", "admin_only"]) {
