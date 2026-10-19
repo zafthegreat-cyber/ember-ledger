@@ -94,17 +94,17 @@ const homeKeys = page => page.locator("[data-home-card]").evaluateAll(rows => ro
       await expect(page).toHaveURL(/\/scout\/reports(?:\?|$)/);
       const reportFeed = page.getByRole("heading", { name: "Recent restock reports", exact: true });
       await expect(reportFeed).toBeVisible({ timeout: 20000 });
-      const preservedReport = page.locator(".scout-reports-landing__feed .scout-page-report-card").filter({ has: page.getByRole("heading", { name: "QA Corner Store", exact: true }) });
+      const preservedReport = page.locator(".scout-reports-landing__feed .scout-feed-report-card").filter({ has: page.getByRole("heading", { name: "QA Corner Store", exact: true }) });
       await expect(preservedReport).toHaveCount(1); await expect(preservedReport).toContainText("Synthetic collector packs");
-      const textGroups = await preservedReport.evaluate(element => [".scout-report-human-summary", ".scout-report-meta", ".scout-signal-badge-row"].map(selector => ({ selector, children: [...element.querySelector(selector).children].map(node => { const rect = node.getBoundingClientRect(); return { text: node.textContent, left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom }; }) })));
+      const textGroups = await preservedReport.evaluate(element => [".scout-feed-report-card__signal", ".scout-feed-report-card__copy", ".scout-feed-report-card__footer"].map(selector => ({ selector, children: [...element.querySelector(selector).children].map(node => { const rect = node.getBoundingClientRect(); return { text: node.textContent, left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom }; }) })));
       for (const group of textGroups) {
         for (let index = 1; index < group.children.length; index += 1) {
           const before = group.children[index - 1]; const current = group.children[index];
           assert.ok(current.left - before.right >= 3 || current.top - before.bottom >= 3 || before.left - current.right >= 3, `${group.selector}: adjacent report text has readable separation (${before.text} / ${current.text})`);
         }
       }
-      const moreBox = await preservedReport.getByRole("button", { name: "More actions", exact: true }).boundingBox();
-      assert.ok(moreBox.width >= 44 && moreBox.height >= 44, "Saved report More action has a 44px touch target");
+      const moreBox = await preservedReport.getByRole("button", { name: "View details", exact: true }).boundingBox();
+      assert.ok(moreBox.width >= 44 && moreBox.height >= 44, "Saved report details action has a 44px touch target");
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, "Community report feed has no horizontal overflow");
       await expect(page.getByRole("heading", { name: "Submit Store Report", exact: true })).toHaveCount(0);
       await expect(page.locator('.flow-modal[data-flow="scoutSubmit"]')).toHaveCount(0);
@@ -118,8 +118,8 @@ const homeKeys = page => page.locator("[data-home-card]").evaluateAll(rows => ro
       await expect(savedReportDetail).toBeVisible(); await expect(savedReportDetail).toContainText("Synthetic collector packs");
       await savedReportDetail.getByRole("button", { name: "Close report details", exact: true }).click();
       await expect(savedReportDetail).toHaveCount(0); await expect(reportFeed).toBeVisible();
-      await preservedReport.getByRole("button", { name: "More actions", exact: true }).click();
-      await preservedReport.getByRole("menuitem", { name: "Add details", exact: true }).click();
+      await preservedReport.getByRole("button", { name: "View details", exact: true }).click();
+      await savedReportDetail.locator(".location-modal-actions").getByRole("button", { name: "Add details", exact: true }).click();
       await expect(page.getByRole("heading", { name: "Submit Store Report", exact: true })).toBeVisible();
       await expect(page.getByText("Editing mode is open in the report form above.", { exact: true })).toBeVisible();
       await page.getByRole("button", { name: "Cancel / Clear", exact: true }).click();

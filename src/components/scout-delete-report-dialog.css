@@ -1,0 +1,120 @@
+.scout-delete-report-backdrop,
+.scout-delete-report-backdrop * { box-sizing: border-box; }
+html body .app[data-theme] .scout-delete-report-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  padding: max(12px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
+  background: var(--overlay-backdrop);
+  overflow: hidden;
+}
+html body .app[data-theme] .scout-delete-report-dialog {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: min(520px, 100%);
+  max-height: calc(100dvh - max(12px, env(safe-area-inset-top, 0px)) - max(12px, env(safe-area-inset-bottom, 0px)));
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: var(--surface-primary);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-3);
+  overflow: hidden;
+  text-align: start;
+  font: 400 1rem/1.6 var(--font-ui);
+  overflow-wrap: anywhere;
+}
+.scout-delete-report-dialog > * { min-width: 0; }
+html body .app[data-theme] .scout-delete-report-dialog__header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  align-items: start;
+  gap: 12px;
+  padding: 20px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+html body .app[data-theme] .scout-delete-report-dialog__header p {
+  margin: 0 0 5px;
+  color: var(--text-secondary);
+  font: 400 .8125rem/1.5 var(--font-ui);
+}
+html body .app[data-theme] .scout-delete-report-dialog__header h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font: 650 1.25rem/1.4 var(--font-ui);
+  overflow-wrap: anywhere;
+}
+html body .app[data-theme] .scout-delete-report-dialog__body {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-height: 0;
+  padding: 20px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+html body .app[data-theme] .scout-delete-report-dialog__body p { margin: 0; color: var(--text-secondary); font: inherit; }
+.scout-delete-report-dialog__body strong { color: var(--text-primary); }
+html body .app[data-theme] .scout-delete-report-dialog__footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0;
+  padding: 16px 20px;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--surface-primary);
+}
+html body .app[data-theme] .scout-delete-report-dialog button {
+  min-width: 44px;
+  min-height: 44px;
+  height: auto;
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  background: var(--surface-primary);
+  color: var(--text-primary);
+  box-shadow: none;
+  text-shadow: none;
+  font: 600 .875rem/1.5 var(--font-ui);
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+html body .app[data-theme] .scout-delete-report-dialog .scout-delete-report-dialog__close {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+.scout-delete-report-dialog__footer > button { flex: 1 1 140px; }
+html body .app[data-theme] .scout-delete-report-dialog .scout-delete-report-dialog__confirm {
+  border-color: var(--status-danger);
+  color: var(--status-danger);
+  background: var(--danger-background);
+}
+html body .app[data-theme] .scout-delete-report-dialog button:hover { background: var(--surface-secondary); }
+html body .app[data-theme] .scout-delete-report-dialog button:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+/* The older store-page rule pins nested-dialog controls to 13px with !important. */
+html body .app[data-theme] .scout-route-polish .scout-delete-report-backdrop .scout-delete-confirm-sheet.scout-delete-report-dialog button {
+  padding: 10px 14px !important;
+  font: 600 .875rem/1.5 var(--font-ui) !important;
+}
+html body .app[data-theme] .scout-route-polish .scout-delete-report-backdrop .scout-delete-confirm-sheet.scout-delete-report-dialog .scout-delete-report-dialog__close {
+  padding: 0 !important;
+  font: 400 1.5rem/1 var(--font-ui) !important;
+}
+@media (max-width: 420px) {
+  html body .app[data-theme] .scout-delete-report-dialog__header,
+  html body .app[data-theme] .scout-delete-report-dialog__body { padding: 16px; }
+  html body .app[data-theme] .scout-delete-report-dialog__footer { padding: 12px 16px; }
+}

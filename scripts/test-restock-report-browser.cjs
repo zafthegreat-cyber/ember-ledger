@@ -10,6 +10,22 @@ fs.mkdirSync(output, { recursive: true });
 const widths = (process.env.QA_RESTOCK_WIDTHS || "320,390,1440").split(",").map(Number);
 const cases = widths.flatMap(width => ["light", "dark"].filter(theme => !process.env.QA_RESTOCK_THEME || theme === process.env.QA_RESTOCK_THEME).map(theme => ({ width, height: width === 320 ? 568 : width === 390 ? 844 : 900, theme })));
 const fixtureCatalogName = "Fixture Aurora Booster Bundle";
+const fixturePhoto = {
+  name: "synthetic-shelf-proof.png",
+  mimeType: "image/png",
+  buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQEBAO5W6AMAAAAASUVORK5CYII=", "base64"),
+};
+
+async function assertStepFocus(page, modal, label, result) {
+  const heading = modal.locator(".scout-report-step-card.active h3").first();
+  await expect(heading).toBeVisible();
+  // The dialog's existing focus helper also runs in an animation frame. Check
+  // the settled target, so a competing effect cannot silently steal focus.
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  await expect(heading).toBeFocused();
+  await expect.poll(() => modal.locator(".flow-modal-body").evaluate(element => element.scrollTop)).toBeLessThanOrEqual(1);
+  result.stepFocusChecks.push(label);
+}
 
 async function snapshot(page) {
   return page.evaluate(() => {
@@ -56,6 +72,7 @@ async function checkPresentation(page, modal, name, result) {
   await body.evaluate(element => { element.scrollTop = 0; });
   if (name === "catalog-matches") await modal.locator(".scout-report-catalog-matches").scrollIntoViewIfNeeded();
   if (name === "catalog-selected") await modal.locator(".scout-report-catalog-selection").scrollIntoViewIfNeeded();
+  if (name === "proof-photo") await modal.locator(".scout-photo-preview").scrollIntoViewIfNeeded();
   await page.screenshot({ path: path.join(output, `${result.width}-${result.theme}-${name}.png`) });
   await body.evaluate(element => { element.scrollTop = 0; });
   result.presentation[name] = metrics;
@@ -102,7 +119,7 @@ async function checkPresentation(page, modal, name, result) {
       page.setDefaultTimeout(10000);
       page.on("pageerror", error => errors.push(error.message));
       page.on("dialog", dialog => dialog.accept());
-      const result = { ...testCase, presentation: {}, blockedWrites, blockedExternal, catalogLookupRequests };
+      const result = { ...testCase, presentation: {}, stepFocusChecks: [], blockedWrites, blockedExternal, catalogLookupRequests };
       try {
         await page.goto(new URL(`/?betaLocalMode=true&themeInspect=${theme}`, base).href);
         const homeReport = page.locator(".home-restock-hero").getByRole("button", { name: "Report a restock", exact: true });
@@ -125,6 +142,7 @@ async function checkPresentation(page, modal, name, result) {
         await page.getByRole("button", { name: "Submit Report", exact: true }).first().click();
         const modal = page.locator('.flow-modal[data-flow="scoutSubmit"]');
         await expect(modal).toBeVisible();
+        await assertStepFocus(page, modal, "initial store", result);
         await expect(modal.locator(".scout-report-step-pill")).toHaveCount(3);
         await expect(modal.locator(".scout-flow-guidance-card")).toHaveCount(0);
         const continueButton = modal.getByRole("button", { name: "Continue", exact: true });
@@ -140,6 +158,7 @@ async function checkPresentation(page, modal, name, result) {
           await observed.fill(future); await next().click();
           await expect(modal.locator(".scout-where-step")).toBeVisible();
           await expect(modal.locator(".form-error").first()).toBeVisible();
+          await expect(modal.getByRole("alert").first()).toBeVisible();
           await observed.fill(observedTime);
           await modal.getByRole("button", { name: "Change store", exact: true }).click();
           await modal.getByLabel("Find your store", { exact: true }).fill("No matching fixture location");
@@ -147,6 +166,7 @@ async function checkPresentation(page, modal, name, result) {
           await modal.getByPlaceholder("Store name, city, or general location", { exact: true }).fill("Fixture Corner Shop, Norfolk VA");
           await next().click();
           await expect(modal.locator(".form-error").first()).toContainText("Confirm the manual store/location");
+          await expect(modal.getByRole("alert").first()).toContainText("Confirm the manual store/location");
           await modal.getByRole("checkbox").check();
           await next().click();
           await expect(modal.locator(".scout-proof-step")).toBeVisible();
@@ -159,6 +179,7 @@ async function checkPresentation(page, modal, name, result) {
         }
         await next().click();
         await expect(modal.getByRole("heading", { name: "What did you see?", exact: true })).toBeVisible();
+        await assertStepFocus(page, modal, "store to shelf details", result);
         await expect(modal.getByRole("group", { name: "Shelf status", exact: true }).getByRole("button")).toHaveCount(4);
         await expect(modal.locator(".scout-proof-disclosure")).not.toHaveAttribute("open", "");
         const observations = modal.getByText("Other shelf observations", { exact: true });
@@ -172,6 +193,7 @@ async function checkPresentation(page, modal, name, result) {
         const productInput = modal.getByLabel("Product name (optional)", { exact: true });
         checkingCatalog = true;
         await productInput.fill("Fixture Aurora");
+        await expect(productInput).toBeFocused();
         const matches = modal.getByRole("group", { name: "Catalog matches", exact: true });
         await expect(matches.getByRole("button", { name: `Use ${fixtureCatalogName}`, exact: true })).toBeVisible();
         const unavailableReference = matches.getByRole("button", { name: "Use Fixture Aurora Collector Tin", exact: true });
@@ -220,6 +242,69 @@ async function checkPresentation(page, modal, name, result) {
         assert.deepEqual(await snapshot(page), original, "Matching, category-only review, edits and Back do not write saved records");
         result.catalogSelectionAndFallback = true;
         await modal.getByLabel("Useful details (optional)", { exact: true }).fill("Three bundles near customer service.");
+        const notesInput = modal.locator(".scout-report-notes-field textarea");
+        await expect(notesInput).toBeFocused();
+        const proofDisclosure = modal.locator(".scout-proof-disclosure");
+        await proofDisclosure.locator("summary").click();
+        const proofText = proofDisclosure.getByLabel("Proof text or link", { exact: true });
+        const sourceText = "Synthetic fixture shelf tag; no personal information.";
+        await proofText.fill(sourceText);
+        const proofSource = proofDisclosure.getByRole("group", { name: "How you know this report", exact: true });
+        const sourceBeforePhoto = await proofSource.locator('[aria-pressed="true"]').innerText();
+        const photoInput = proofDisclosure.locator('input[type="file"]');
+        for (const attempt of ["first attach", "same file reselect"]) {
+          await photoInput.setInputFiles(fixturePhoto);
+          const preview = proofDisclosure.locator(".scout-photo-preview");
+          await expect(preview.locator("img")).toHaveAttribute("src", /^data:image\/png;base64,/);
+          await expect.poll(() => preview.locator("img").evaluate(image => image.naturalWidth)).toBe(1);
+          await expect(proofText).toHaveValue(sourceText);
+          if (attempt === "first attach") await checkPresentation(page, modal, "proof-photo", result);
+          await preview.getByRole("button", { name: "Remove photo", exact: true }).click();
+          await expect(preview).toHaveCount(0);
+          await expect(photoInput).toHaveValue("");
+          await expect(proofText).toHaveValue(sourceText);
+          assert.equal(await proofSource.locator('[aria-pressed="true"]').innerText(), sourceBeforePhoto, `${attempt}: removing the photo keeps the source selection`);
+          await expect(productInput).toHaveValue(savedProductName);
+          await expect(modal.getByRole("button", { name: /^Low stock/ })).toHaveAttribute("aria-pressed", "true");
+          assert.ok(await modal.evaluate(element => element.contains(document.activeElement)), `${attempt}: removing the photo keeps focus inside the dialog`);
+          assert.deepEqual(await snapshot(page), original, `${attempt}: attaching/removing synthetic draft proof does not change saved data`);
+        }
+        result.photoRemovalAndSameFileReselect = true;
+        await photoInput.setInputFiles(fixturePhoto);
+        await expect(proofDisclosure.locator(".scout-photo-preview img")).toHaveAttribute("src", /^data:image\/png;base64,/);
+        // Delay only this synthetic replacement's FileReader callback. Removing
+        // the current photo must also invalidate that in-flight draft selection.
+        await page.evaluate(() => {
+          const RealFileReader = window.FileReader;
+          window.__qaPhotoReader = { pending: false, restore: () => { window.FileReader = RealFileReader; } };
+          window.FileReader = class extends RealFileReader {
+            readAsDataURL(file) {
+              const onload = this.onload;
+              this.onload = event => {
+                window.__qaPhotoReader.flush = () => onload?.call(this, event);
+                window.__qaPhotoReader.pending = true;
+              };
+              super.readAsDataURL(file);
+            }
+          };
+        });
+        await photoInput.setInputFiles({ ...fixturePhoto, name: "synthetic-replacement-proof.png" });
+        await expect.poll(() => page.evaluate(() => window.__qaPhotoReader.pending)).toBe(true);
+        await proofDisclosure.getByRole("button", { name: "Remove photo", exact: true }).click();
+        await expect(proofDisclosure.locator(".scout-photo-preview")).toHaveCount(0);
+        await page.evaluate(() => { window.__qaPhotoReader.flush(); window.__qaPhotoReader.restore(); delete window.__qaPhotoReader; });
+        await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+        await expect(proofDisclosure.locator(".scout-photo-preview")).toHaveCount(0);
+        await expect(photoInput).toHaveValue("");
+        await expect(proofText).toHaveValue(sourceText);
+        await expect(productInput).toHaveValue(savedProductName);
+        await expect(notesInput).toHaveValue("Three bundles near customer service.");
+        assert.deepEqual(await snapshot(page), original, "A removed, pending replacement cannot reattach proof or write saved data");
+        await photoInput.setInputFiles(fixturePhoto);
+        await expect(proofDisclosure.locator(".scout-photo-preview img")).toHaveAttribute("src", /^data:image\/png;base64,/);
+        await proofDisclosure.getByRole("button", { name: "Remove photo", exact: true }).click();
+        await expect(proofDisclosure.locator(".scout-photo-preview")).toHaveCount(0);
+        result.pendingPhotoReplacementCancelled = true;
         await checkPresentation(page, modal, "details", result);
         if (width === 320 && theme === "dark") {
           await modal.locator(".scout-report-wizard").evaluate(form => {
@@ -232,14 +317,51 @@ async function checkPresentation(page, modal, name, result) {
         }
         await modal.getByRole("button", { name: "Review report", exact: true }).filter({ visible: true }).click();
         await expect(modal.getByRole("heading", { name: "Ready to share this report?", exact: true })).toBeVisible();
+        await assertStepFocus(page, modal, "details to review", result);
         await expect(modal.getByText("1 Fixture North Way", { exact: false }).first()).toBeVisible();
         await expect(modal.getByText("Shared with", { exact: true })).toBeVisible();
         await checkPresentation(page, modal, "review", result);
         assert.deepEqual(await snapshot(page), original, "Reviewing a report cannot write any records");
+        const editStore = modal.getByRole("button", { name: "Edit store and time", exact: true });
+        const editDetails = modal.getByRole("button", { name: "Edit shelf status and products", exact: true });
+        await expect(editStore).toHaveCount(1);
+        await expect(editDetails).toHaveCount(1);
+        await modal.locator(".flow-modal-body").evaluate(element => { element.scrollTop = element.scrollHeight; });
+        await editStore.click();
+        await expect(modal.locator(".scout-where-step")).toBeVisible();
+        await assertStepFocus(page, modal, "review edit store", result);
+        await expect(observed).toHaveValue(observedTime);
+        await expect(modal.locator(".scout-where-step")).toContainText("North Collectibles");
+        await next().click();
+        await assertStepFocus(page, modal, "edited store to details", result);
+        await expect(productInput).toHaveValue(savedProductName);
+        await expect(notesInput).toHaveValue("Three bundles near customer service.");
+        await expect(proofText).toHaveValue(sourceText);
+        assert.equal(await proofSource.locator('[aria-pressed="true"]').innerText(), sourceBeforePhoto, "Editing store/time preserves the selected source");
+        await modal.getByRole("button", { name: "Review report", exact: true }).filter({ visible: true }).click();
+        await assertStepFocus(page, modal, "edited store back to review", result);
+        for (const attempt of [1, 2]) {
+          await modal.locator(".flow-modal-body").evaluate(element => { element.scrollTop = element.scrollHeight; });
+          await editDetails.click();
+          await assertStepFocus(page, modal, `review edit details ${attempt}`, result);
+          await expect(productInput).toHaveValue(savedProductName);
+          await expect(modal.getByRole("button", { name: /^Low stock/ })).toHaveAttribute("aria-pressed", "true");
+          await expect(notesInput).toHaveValue("Three bundles near customer service.");
+          await expect(proofText).toHaveValue(sourceText);
+          assert.equal(await proofSource.locator('[aria-pressed="true"]').innerText(), sourceBeforePhoto, `Detail edit ${attempt} preserves the selected source`);
+          if (theme === "light") await expect(selection).toContainText(fixtureCatalogName);
+          else await expect(selection).toHaveCount(0);
+          await modal.getByRole("button", { name: "Review report", exact: true }).filter({ visible: true }).click();
+          await assertStepFocus(page, modal, `edited details back to review ${attempt}`, result);
+          assert.deepEqual(await snapshot(page), original, `Contextual review edit ${attempt} keeps all saved records and prices untouched`);
+        }
+        result.contextualReviewEditsPreserveDraft = true;
         await modal.getByRole("button", { name: "Back", exact: true }).filter({ visible: true }).click();
+        await assertStepFocus(page, modal, "review Back", result);
         await expect(modal.getByLabel("Product name (optional)", { exact: true })).toHaveValue(savedProductName);
         await expect(modal.getByRole("button", { name: /^Low stock/ })).toHaveAttribute("aria-pressed", "true");
         await modal.getByRole("button", { name: "Review report", exact: true }).filter({ visible: true }).click();
+        await assertStepFocus(page, modal, "final review", result);
         const save = modal.getByRole("button", { name: "Save Report", exact: true }).filter({ visible: true });
         await save.focus();
         const focus = await save.evaluate(element => ({ outline: parseFloat(getComputedStyle(element).outlineWidth), bottom: element.getBoundingClientRect().bottom }));
@@ -268,7 +390,8 @@ async function checkPresentation(page, modal, name, result) {
         await expect(modal).toHaveCount(0);
         assert.deepEqual(errors, [], "No browser runtime errors");
         result.passed = true;
-        console.log(`PASS restock ${width} ${theme}: local catalog matches/reference images, clear/edit/category-only fallback, Back, honest saved state, guarded save and original records/prices preserved`);
+        assert.deepEqual(blockedWrites, [], "Local draft editing, photo removal and saving make no provider writes");
+        console.log(`PASS restock ${width} ${theme}: review edit shortcuts, settled step focus/scroll, synthetic proof removal/reselect, local catalog fallback, Back, guarded save and original records/prices preserved`);
       } catch (error) {
         result.passed = false; result.error = error.message; result.errors = errors;
         fs.writeFileSync(path.join(output, `${width}-${theme}-failure.html`), await page.content());
@@ -277,5 +400,5 @@ async function checkPresentation(page, modal, name, result) {
       } finally { results.push(result); await context.close(); }
     }
   } finally { await browser.close(); fs.writeFileSync(path.join(output, "results.json"), JSON.stringify(results, null, 2)); }
-  assert.ok(results.every(result => result.passed), "Restock browser checks failed; see artifacts/qa/restock-report/results.json");
+  assert.ok(results.every(result => result.passed), `Restock browser checks failed; see ${path.join(output, "results.json")}`);
 })().catch(error => { console.error(error); process.exitCode = 1; });

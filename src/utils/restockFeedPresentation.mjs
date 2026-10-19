@@ -1,0 +1,69 @@
+const STOCK_SEEN_STATUSES = new Set(["in_stock", "stock_seen", "leftover_stock", "behind_counter", "vendor_stocking"]);
+
+export const RESTOCK_FEED_FILTERS = [
+  { value: "all", label: "All reports" },
+  { value: "stock", label: "Stock seen" },
+  { value: "low", label: "Low stock" },
+  { value: "empty", label: "Empty shelves" },
+];
+
+export function restockReportStockGroup(report = {}) {
+  const status = String(report.stockStatus || report.stock_status || report.reportStatus || report.report_status || "").toLowerCase();
+  if (STOCK_SEEN_STATUSES.has(status)) return "stock";
+  if (status === "low_stock") return "low";
+  if (["empty", "no_stock", "out_of_stock", "sold_out"].includes(status)) return "empty";
+  return "other";
+}
+
+export function restockReportObservedTimestamp(report = {}) {
+  const raw = report.observedAt || report.observed_at || report.reportedAt || report.reported_at || report.reportDate || report.report_date || report.submittedAt || report.submitted_at || report.createdAt || report.created_at;
+  if (!raw) return null;
+  const value = String(raw);
+  const timestamp = Date.parse(value.includes("T") ? value : `${value.slice(0, 10)}T${report.reportTime || report.report_time || "00:00"}`);
+  return Number.isFinite(timestamp) ? timestamp : null;
+}
+
+export function restockReportObservedLabel(report = {}, now = Date.now()) {
+  const timestamp = restockReportObservedTimestamp(report);
+  if (timestamp === null) return "Observation time unavailable";
+  const date = new Date(timestamp);
+  const dateLabel = date.toLocaleString(undefined, { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
+  if (timestamp > now) return `Future observation date · ${dateLabel}`;
+  const minutes = Math.floor((now - timestamp) / 60000);
+  if (minutes < 1) return "Observed just now";
+  if (minutes < 60) return `Observed ${minutes} min ago`;
+  if (date.toDateString() === new Date(now).toDateString()) return `Observed today at ${date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`;
+  return `Observed ${dateLabel}`;
+}
+
+export function restockReportTrustLabel(report = {}, hasPhoto = false) {
+  if (String(report.sourceType || report.source_type || "").toLowerCase() === "historical_import" || report.importedByAdmin || report.imported_by_admin) return "Historical import";
+  const status = String(report.verificationStatus || report.verification_status || "").toLowerCase().trim();
+  if (report.verified === true || status === "verified") return "Verified";
+  return hasPhoto ? "Photo attached" : "Needs confirmation";
+}
+
+export function restockReportSearchText(report = {}, store = {}) {
+  const items = Array.isArray(report.itemsSeen) ? report.itemsSeen : Array.isArray(report.items_seen) ? report.items_seen : [];
+  const snapshot = report.catalogProductSnapshot || report.catalog_product_snapshot || {};
+  return [
+    store.nickname, store.name, store.chain, store.retailer, store.city, store.region,
+    report.storeName, report.store_name, report.retailer, report.city, report.region,
+    report.itemName, report.item_name, report.productName, report.product_name, report.manualItemName,
+    snapshot.name, snapshot.productName, snapshot.product_name, snapshot.cardName, snapshot.card_name, snapshot.title,
+    report.note, report.notes, report.reportText, report.report_text,
+    ...items.flatMap((item) => [item.productName, item.product_name, item.name]),
+  ].filter(Boolean).join(" ").toLocaleLowerCase();
+}
+
+// This operates only on reports already permitted by Scout's existing visibility checks.
+export function filterRestockFeed(entries = [], { search = "", stock = "all", period = "all" } = {}, now = Date.now()) {
+  const terms = String(search).trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
+  const windowMs = period === "24h" ? 24 * 60 * 60 * 1000 : period === "7d" ? 7 * 24 * 60 * 60 * 1000 : null;
+  return entries.filter((entry) => {
+    if (stock !== "all" && entry.stockGroup !== stock) return false;
+    if (terms.some((term) => !entry.searchText.includes(term))) return false;
+    if (windowMs !== null && (!Number.isFinite(entry.observedAt) || entry.observedAt > now || now - entry.observedAt > windowMs)) return false;
+    return true;
+  });
+}

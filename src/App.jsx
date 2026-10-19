@@ -6774,6 +6774,7 @@ export default function App() {
   const routeNavigationModeRef = useRef("replace");
   const routeFocusModeRef = useRef("initial");
   const routeScrollPositionsRef = useRef(new Map());
+  const appliedRouteLocationRef = useRef(typeof window === "undefined" ? "" : `${window.location.pathname}${window.location.search}${window.location.hash || ""}`);
   const [betaInviteToken, setBetaInviteToken] = useState(initialRouteState.inviteToken || "");
   const [workspaceInviteId, setWorkspaceInviteId] = useState(initialRouteState.workspaceInviteId || "");
   const [onboardingView, setOnboardingView] = useState(initialRouteState.onboardingView || "welcome");
@@ -34263,6 +34264,7 @@ function renderForgeBusinessLedgerPanel() {
       if (method === "pushState") delete nextHistoryState.emberTideScoutReportReturn;
       window.history[method](nextHistoryState, "", nextUrl);
     }
+    appliedRouteLocationRef.current = nextUrl;
     routeNavigationModeRef.current = "replace";
   }, [activeTab, exchangeSection, betaInviteToken, workspaceInviteId, onboardingView, activeWorkspaceId, homeSubTab, flipScoutView, productWorkspaceHome, botOpsSection, collectionWorkspaceView, businessWorkspaceView, businessMoneyView, ownerCenterSection, ownerCenterSubview, accountOpsSection, tidepoolPostId, forgeSubTab, activeScoutPage, selectedScoutReport, scoutReportFilter, scoutReportSort, scoutSubTabTarget, vaultSubTab, vaultFilter, vaultSearch, vaultSort, selectedVaultDetailId, selectedForgeDetailId, tideTradrSubTab, selectedCatalogDetailId, catalogSearch, submittedCatalogSearch, catalogDataFilter, catalogKindFilter, catalogSetFilter, catalogTypeFilter, sparkFlowView, routePathForHistory]);
   useEffect(() => {
@@ -34284,6 +34286,11 @@ function renderForgeBusinessLedgerPanel() {
         reportReturn.restoring = true;
         setActiveFlowModal(reportReturn.modal);
       }
+      const nextLocation = `${window.location.pathname}${window.location.search}${window.location.hash || ""}`;
+      // Same-location entries belong to overlays; their owners handle dismissal
+      // without replaying page targets or resetting the mounted Scout view.
+      if (nextLocation === appliedRouteLocationRef.current) return;
+      appliedRouteLocationRef.current = nextLocation;
       routeNavigationModeRef.current = "pop";
       routeFocusModeRef.current = "pop";
       setActiveTab(route.activeTab || "dashboard");

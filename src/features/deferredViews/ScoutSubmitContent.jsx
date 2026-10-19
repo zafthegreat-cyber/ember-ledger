@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { PrivateStorageImage } from "../../components/PrivateReceipt.jsx";
 import "./scout-submit.css";
 
@@ -88,6 +89,28 @@ export default function ScoutSubmitContent({ scope }) {
     updateQuickScoutVisitDateTime,
     validateScoutVisitDateTime,
   } = scope;
+
+  const photoInputRef = useRef(null);
+  const photoSelectionRef = useRef(0);
+
+  useEffect(() => () => { photoSelectionRef.current += 1; }, []);
+
+  const changeDraftPhoto = (event) => {
+    const selection = ++photoSelectionRef.current;
+    handleImageUpload(event, (url) => {
+      if (photoSelectionRef.current === selection) updateQuickScoutReportForm("photoUrl", url);
+    }, "scout-reports");
+  };
+
+  const removeDraftPhoto = () => {
+    photoSelectionRef.current += 1;
+    updateQuickScoutReportForm("photoUrl", "");
+    if (photoInputRef.current) {
+      photoInputRef.current.value = "";
+      const summary = photoInputRef.current.closest("details")?.querySelector("summary");
+      (summary || photoInputRef.current).focus({ preventScroll: true });
+    }
+  };
 
   function renderScoutSubmitFlowContent() {
     const stores = getScoutQuickStores();
@@ -372,7 +395,7 @@ export default function ScoutSubmitContent({ scope }) {
         <section className="scout-quick-report-v2 scout-quick-report-sent">
           <div className="scout-quick-report-success">
             <span>{currentType.isGuess ? "Saved" : savedToCloud ? "Saved to your account" : "Saved locally"}</span>
-            <h3>{currentType.isGuess ? "Scout note saved." : "Scout report saved."}</h3>
+            <h3 data-scout-step-heading={!currentType.isGuess || undefined} tabIndex={-1}>{currentType.isGuess ? "Scout note saved." : "Scout report saved."}</h3>
             <p>{currentType.isGuess ? "Your planning note stays separate from live stock reports." : savedToCloud ? "Your report is saved to your account. Add details now or return to your reports later." : "Your report is saved on this device. It has not been posted to the community."}</p>
             {quickScoutReportMessage ? <small>{quickScoutReportMessage}</small> : null}
           </div>
@@ -413,7 +436,7 @@ export default function ScoutSubmitContent({ scope }) {
         onTouchStart={handleScoutWizardTouchStart}
         onTouchEnd={handleScoutWizardTouchEnd}
       >
-        {quickScoutReportMessage ? <div className="form-error">{quickScoutReportMessage}</div> : null}
+        {quickScoutReportMessage ? <div className="form-error" role="alert">{quickScoutReportMessage}</div> : null}
         {currentType.isGuess ? <div className="scout-report-progress">
           <div>
             <strong>Step {activeStepIndex + 1} of {wizardSteps.length}</strong>
@@ -477,7 +500,7 @@ export default function ScoutSubmitContent({ scope }) {
             <div className="scout-report-step-header">
               <span>Step 1</span>
               <div>
-                <h3>Post the restock essentials</h3>
+                <h3 data-scout-step-heading={!currentType.isGuess || undefined} tabIndex={-1}>Post the restock essentials</h3>
                 <p>Product details and extra proof can come after this report is posted.</p>
               </div>
             </div>
@@ -578,7 +601,7 @@ export default function ScoutSubmitContent({ scope }) {
                   <summary>Add proof/photo (optional)</summary>
                   <label>
                     Add proof/photo (optional)
-                    <input type="file" accept="image/*" onChange={(event) => handleImageUpload(event, (url) => updateQuickScoutReportForm("photoUrl", url), "scout-reports")} />
+                    <input ref={photoInputRef} type="file" accept="image/*" onChange={changeDraftPhoto} />
                     <small>Shelf photo, display photo, receipt, limit sign, vendor cart, or other proof.</small>
                   </label>
                 </details>
@@ -589,6 +612,7 @@ export default function ScoutSubmitContent({ scope }) {
                       <strong>Image attached</strong>
                       <span>Proof is optional, but it improves confidence.</span>
                     </div>
+                    <button type="button" className="secondary-button" onClick={removeDraftPhoto}>Remove photo</button>
                   </div>
                 ) : null}
                 <div className="scout-confidence-preview">
@@ -626,7 +650,7 @@ export default function ScoutSubmitContent({ scope }) {
             <div className="scout-report-step-header">
               <span>Step 1</span>
               <div>
-                <h3>What did you see?</h3>
+                <h3 data-scout-step-heading={!currentType.isGuess || undefined} tabIndex={-1}>What did you see?</h3>
                 <p>Search the catalog, pick a common product chip, or type a manual product. Status and quantity stay visible before you move on.</p>
               </div>
             </div>
@@ -760,7 +784,7 @@ export default function ScoutSubmitContent({ scope }) {
             <div className="scout-report-step-header">
               <span>{currentType.isGuess ? "Store" : "Step 1"}</span>
               <div>
-                <h3>{currentType.isGuess ? "Choose the store or location" : "Which store did you visit?"}</h3>
+                <h3 data-scout-step-heading={!currentType.isGuess || undefined} tabIndex={-1}>{currentType.isGuess ? "Choose the store or location" : "Which store did you visit?"}</h3>
                 <p>{currentType.isGuess ? "Choose where this planner note belongs. Guesses stay separate from confirmed reports." : "Choose the exact location and when you saw it."}</p>
               </div>
             </div>
@@ -926,7 +950,7 @@ export default function ScoutSubmitContent({ scope }) {
             <div className="scout-report-step-header">
               <span>Step 2</span>
               <div>
-                <h3>Shelf status</h3>
+                <h3 data-scout-step-heading={!currentType.isGuess || undefined} tabIndex={-1}>Shelf status</h3>
                 <p>Choose the closest public signal. This is about what you observed, not a prediction.</p>
               </div>
             </div>
@@ -961,7 +985,7 @@ export default function ScoutSubmitContent({ scope }) {
             <div className="scout-report-step-header">
               <span>Step {activeStepIndex + 1}</span>
               <div>
-                <h3>{currentType.isGuess ? "Add guess context" : "What did you see?"}</h3>
+                <h3 data-scout-step-heading={!currentType.isGuess || undefined} tabIndex={-1}>{currentType.isGuess ? "Add guess context" : "What did you see?"}</h3>
                 <p>{currentType.isGuess ? "Keep planner notes separate from observed reports." : "Choose the shelf status and a category or product. A photo is optional."}</p>
               </div>
             </div>
@@ -1071,7 +1095,7 @@ export default function ScoutSubmitContent({ scope }) {
             <div className="scout-report-detail-grid">
               <label>
                 Add proof/photo (optional)
-                <input type="file" accept="image/*" onChange={(event) => handleImageUpload(event, (url) => updateQuickScoutReportForm("photoUrl", url), "scout-reports")} />
+                <input ref={photoInputRef} type="file" accept="image/*" onChange={changeDraftPhoto} />
                 <small>Shelf photo, display photo, receipt, limit sign, vendor cart, or other proof.</small>
               </label>
               <label>
@@ -1096,6 +1120,7 @@ export default function ScoutSubmitContent({ scope }) {
                   <strong>Image attached</strong>
                   <span>Check the image before saving.</span>
                 </div>
+                <button type="button" className="secondary-button" onClick={removeDraftPhoto}>Remove photo</button>
               </div>
             ) : null}
             </details>
@@ -1166,23 +1191,44 @@ export default function ScoutSubmitContent({ scope }) {
             <div className="scout-report-step-header">
               <span>Step {activeStepIndex + 1}</span>
               <div>
-                <h3>{currentType.isGuess ? "Review and save" : "Ready to share this report?"}</h3>
+                <h3 data-scout-step-heading={!currentType.isGuess || undefined} tabIndex={-1}>{currentType.isGuess ? "Review and save" : "Ready to share this report?"}</h3>
                 <p>{currentType.isGuess ? "Nothing is saved until you submit this note." : "Review before saving. Nothing is saved until you tap Save Report."}</p>
               </div>
             </div>
             <div className="scout-report-review-grid">
-              {(currentType.isGuess ? summaryRows : [
-                ["Store", [storeSelection.storeName, storeSelection.address, storeSelection.city].filter(Boolean).join(", ") || selectedStoreSummary],
-                ["Observed time", quickScoutDateLabel()],
-                ["Shelf status", selectedStockSummary],
-                ["Cards / products", productDetailSummary],
-                ["Shared with", scoutVisibilityOptionLabel(quickScoutReportForm.visibility || "public", false)],
-              ]).map(([label, value]) => (
+              {currentType.isGuess ? summaryRows.map(([label, value]) => (
                 <div key={label}>
                   <span>{label}</span>
                   <strong>{value}</strong>
                 </div>
-              ))}
+              )) : <>
+                <div className="scout-review-group" role="group" aria-label="Store and time">
+                  <div className="scout-review-group-heading">
+                    <span>Store and time</span>
+                    <button type="button" className="ghost-button" aria-label="Edit store and time" disabled={quickScoutReportSubmitting} onClick={() => goToScoutWizardStep("where")}>Edit</button>
+                  </div>
+                  <strong>{[storeSelection.storeName, storeSelection.address, storeSelection.city].filter(Boolean).join(", ") || selectedStoreSummary}</strong>
+                  <span className="scout-review-observed-time">Observed: {quickScoutDateLabel()}</span>
+                </div>
+                <div className="scout-review-group" role="group" aria-label="Shelf status and products">
+                  <div className="scout-review-group-heading">
+                    <span>Shelf status and products</span>
+                    <button type="button" className="ghost-button" aria-label="Edit shelf status and products" disabled={quickScoutReportSubmitting} onClick={() => goToScoutWizardStep("details")}>Edit</button>
+                  </div>
+                  <strong>{selectedStockSummary}</strong>
+                  <div className={`scout-review-product ${quickScoutReportForm.catalogProductId ? "has-reference" : ""}`}>
+                    {quickScoutReportForm.catalogProductId ? renderScoutReferenceThumb(selectedCatalogProduct || {}, quickScoutReportForm.productImageUrl) : null}
+                    <div>
+                      <span>{productDetailSummary}</span>
+                      {quickScoutReportForm.catalogProductId ? <small>Catalog reference image · not report proof</small> : null}
+                    </div>
+                  </div>
+                </div>
+                <div className="scout-review-group">
+                  <span>Shared with</span>
+                  <strong>{scoutVisibilityOptionLabel(quickScoutReportForm.visibility || "public", false)}</strong>
+                </div>
+              </>}
             </div>
             {!currentType.isGuess ? (
               <details className="scout-report-disclosure">
@@ -1235,7 +1281,7 @@ export default function ScoutSubmitContent({ scope }) {
               <strong>Privacy and freshness</strong>
               <span>Reports are shared by store, not private address. Old reports are kept for history and should not be treated as live stock.</span>
             </div>
-            {reviewStepError ? <div className="form-error">{reviewStepError}</div> : null}
+            {reviewStepError ? <div className="form-error" role="alert">{reviewStepError}</div> : null}
           </section>
         ) : null}
 

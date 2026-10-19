@@ -110,7 +110,10 @@ async function main() {
         await expect(dialog).toBeVisible();
         await assertControls(dialog); await assertNoOverflow(page);
         const details = dialog.locator("summary").filter({ hasText: /^Details/ });
+        await expect(dialog.locator(".scout-report-detail-section").first()).toHaveAttribute("open", "");
         await details.focus(); await page.keyboard.press("Enter");
+        await expect(dialog.locator(".scout-report-detail-section").first()).not.toHaveAttribute("open", "");
+        await page.keyboard.press("Enter");
         await expect(dialog.locator(".scout-report-detail-section").first()).toHaveAttribute("open", "");
         const close = dialog.getByRole("button", { name: "Close", exact: true });
         await close.focus(); await assertFocus(close);

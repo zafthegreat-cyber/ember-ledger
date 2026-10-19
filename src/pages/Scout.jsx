@@ -19,8 +19,13 @@ import {
 import SmartCatalogSearchBox from "../components/SmartCatalogSearchBox";
 import OverflowMenu from "../components/OverflowMenu";
 import ScoutTileMap from "../components/ScoutTileMap";
+import RestockReportBrowser from "../components/RestockReportBrowser.jsx";
+import RestockReportDetails from "../components/RestockReportDetails.jsx";
+import StoreObservationSummary from "../components/StoreObservationSummary.jsx";
+import ScoutDeleteReportDialog from "../components/ScoutDeleteReportDialog.jsx";
+import { createRestockDetailsHistory } from "../utils/restockDetailsHistory.mjs";
+import { restockReportObservedLabel, restockReportStockGroup, restockReportTrustLabel } from "../utils/restockFeedPresentation.mjs";
 import { AppNavIcon, CommandBoardSection, CommandBoardV4, CommandMetricGrid } from "../components/command-system";
-import { PrimaryButton, SecondaryButton } from "../components/operations/OperationsUI.jsx";
 import "./scout-reports.css";
 import { getStoreGroup, normalizeStoreGroup, STORE_GROUP_ORDER } from "../utils/storeGroupingUtils";
 import { dedupeStoresByChainAddress, normalizeImportedStore, normalizeStateLabel, normalizeVirginiaRegion } from "../utils/storeImportUtils";
@@ -1365,6 +1370,12 @@ export default function Scout({
   const [editingReportId, setEditingReportId] = useState(null);
   const [deleteReportTarget, setDeleteReportTarget] = useState(null);
   const [selectedReportTarget, setSelectedReportTarget] = useState(null);
+  const reportDetailsRef = useRef(null);
+  const reportDetailsOpenerRef = useRef(null);
+  const deleteReportOpenerRef = useRef(null);
+  const reportDetailsHandoffRef = useRef(false);
+  const reportDetailsHistoryRef = useRef(null);
+  const reportDetailsHistoryReportsRef = useRef([]);
   const [editingTrackedItemId, setEditingTrackedItemId] = useState(null);
   const [tipImport, setTipImport] = useState({
     screenshotName: "",
@@ -1837,18 +1848,59 @@ export default function Scout({
 
   useEffect(() => {
     function handleScoutEscape(event) {
-      if (event.key !== "Escape") return;
+      if (event.key !== "Escape" || event.defaultPrevented) return;
       if (deleteReportTarget) {
         setDeleteReportTarget(null);
         return;
       }
       if (selectedReportTarget) {
-        setSelectedReportTarget(null);
+        dismissReportDetails();
       }
     }
     window.addEventListener("keydown", handleScoutEscape);
     return () => window.removeEventListener("keydown", handleScoutEscape);
   }, [deleteReportTarget, selectedReportTarget]);
+
+  useEffect(() => {
+    if (!selectedReportTarget) return undefined;
+    const dialog = reportDetailsRef.current;
+    if (!dialog) return undefined;
+    const opener = reportDetailsOpenerRef.current;
+    const previousOverflow = document.body.style.overflow;
+    reportDetailsHandoffRef.current = false;
+    document.body.style.overflow = "hidden";
+    dialog.querySelector(".modal-close-button")?.focus({ preventScroll: true });
+    const trapFocus = (event) => {
+      if (event.key !== "Tab" || document.querySelector(".scout-delete-confirm-sheet")) return;
+      const controls = [...dialog.querySelectorAll("button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex]:not([tabindex='-1'])")]
+        .filter((node) => node.getClientRects().length && getComputedStyle(node).visibility !== "hidden");
+      const first = controls[0];
+      const last = controls.at(-1);
+      if (!first) return;
+      if (!dialog.contains(document.activeElement) || (!event.shiftKey && document.activeElement === last) || (event.shiftKey && document.activeElement === first)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+      }
+    };
+    document.addEventListener("keydown", trapFocus);
+    return () => {
+      document.removeEventListener("keydown", trapFocus);
+      document.body.style.overflow = previousOverflow;
+      if (!reportDetailsHandoffRef.current && opener?.isConnected) opener.focus({ preventScroll: true });
+    };
+  }, [selectedReportTarget]);
+
+  function openReportDetails(report, trigger = document.activeElement) {
+    const menu = trigger?.closest?.(".overflow-menu") || document.querySelector(".overflow-menu.open");
+    reportDetailsOpenerRef.current = menu?.querySelector(".overflow-menu-button") || trigger;
+    reportDetailsHistoryRef.current?.open(report);
+  }
+
+  function dismissReportDetails(after) {
+    const controller = reportDetailsHistoryRef.current;
+    if (controller) controller.dismiss(after);
+    else setSelectedReportTarget(null);
+  }
 
   function findStoreRecord(storeId) {
     return resolveScoutStoreRecord(storeId, stores, storeDetailRecords, adminMode);
@@ -3608,6 +3660,29 @@ async function handleUpdateStore(e) {
     [allReports, adminMode]
   );
 
+  useEffect(() => {
+    reportDetailsHistoryReportsRef.current = visibleAllReports;
+  }, [visibleAllReports]);
+
+  useEffect(() => {
+    const controller = createRestockDetailsHistory({
+      target: window,
+      resolveReport: (candidate) => {
+        const id = candidate?.id ?? candidate?.reportId ?? candidate?.report_id;
+        return reportDetailsHistoryReportsRef.current.find((report) => report === candidate || (
+          id !== undefined && id !== null && String(id) !== "" && String(report.id ?? report.reportId ?? report.report_id ?? "") === String(id)
+        ));
+      },
+      onOpen: setSelectedReportTarget,
+      onClose: () => { setDeleteReportTarget(null); setSelectedReportTarget(null); },
+    });
+    reportDetailsHistoryRef.current = controller;
+    return () => {
+      controller.destroy();
+      if (reportDetailsHistoryRef.current === controller) reportDetailsHistoryRef.current = null;
+    };
+  }, []);
+
   const visibleReports = useMemo(
     () => reports.filter((report) => canViewerSeeScoutReport(report, adminMode)),
     [reports, adminMode]
@@ -3849,21 +3924,38 @@ async function handleUpdateStore(e) {
     const historicalImport = String(report.sourceType || report.source_type || "").toLowerCase() === "historical_import" || report.importedByAdmin || report.imported_by_admin;
     const submittedByLabel = isUserOwnedScoutReport(report) ? "You" : report.submittedByDisplay || report.submitted_by_display || report.displayName || report.reportedBy || report.reported_by || "Scout user";
     const freshnessLabel = scoutFreshnessLabel(report);
-    const trustLabel = historicalImport
-      ? "Historical import"
-      : report.verified || String(report.verificationStatus || report.verification_status || "").toLowerCase().includes("verified")
-        ? "Verified"
-        : photo
-          ? "Photo attached"
-          : "Needs confirmation";
+    const trustLabel = restockReportTrustLabel(report, Boolean(photo));
     const primarySummary = visibleItems[0]
       ? summarizeReportItem(visibleItems[0], money)
       : note || stockStatus || status || "Store report";
     const canManageScoutReport = adminMode || isUserOwnedScoutReport(report);
     const compactReportActions = [
-      { label: "View", onClick: () => setSelectedReportTarget(report) },
+      { label: "View", onClick: () => openReportDetails(report) },
       ...(canManageScoutReport ? [{ label: adminMode ? "Edit details" : "Add details", onClick: () => startEditingReport(report) }] : []),
     ];
+    if (options.feed) {
+      const stockGroup = restockReportStockGroup(report);
+      return (
+        <article className="scout-feed-report-card" key={report.id || report.reportId || `${storeName}-${note}`}>
+          <div className="scout-feed-report-card__signal">
+            <span className={`scout-feed-stock scout-feed-stock--${stockGroup}`}>{stockStatus || (stockGroup === "empty" ? "Empty shelves" : "Stock not specified")}</span>
+            <span>{restockReportObservedLabel(report, scoutNow)}</span>
+          </div>
+          <div className="scout-feed-report-card__body">
+            <div className="scout-feed-report-card__copy">
+              <h3>{storeName}</h3>
+              <p className="scout-feed-report-card__location">{retailer}{area ? ` · ${area}` : ""}</p>
+              <p className="scout-feed-report-card__items">{visibleItems.length ? visibleItems.map((item) => item.productName).join(" · ") : note || "No item details added"}{extraCount ? ` · +${extraCount} more item${extraCount === 1 ? "" : "s"}` : ""}</p>
+            </div>
+            {photo ? <div className="scout-feed-report-card__photo"><PrivateStorageImage src={photo} alt="Attached observation photo" /></div> : null}
+          </div>
+          <div className="scout-feed-report-card__footer">
+            <p>{trustLabel}{historicalImport ? " · Not live verified" : photo && trustLabel !== "Photo attached" ? " · Photo attached" : ""}</p>
+            <button type="button" className="secondary-button" onClick={(event) => openReportDetails(report, event.currentTarget)}>View details <span aria-hidden="true">→</span></button>
+          </div>
+        </article>
+      );
+    }
     return (
       <article className="scout-report-compact-card scout-page-report-card" key={report.id || report.reportId || `${storeName}-${note}`}>
         <div className="scout-report-card-main">
@@ -3923,7 +4015,7 @@ async function handleUpdateStore(e) {
         </div>
         {!options.inDetail ? (
           <div className="scout-report-card-action">
-            <button type="button" className="secondary-button" onClick={() => setSelectedReportTarget(report)}>View details</button>
+            <button type="button" className="secondary-button" onClick={(event) => openReportDetails(report, event.currentTarget)}>View details</button>
           </div>
         ) : null}
       </article>
@@ -4053,6 +4145,7 @@ async function handleUpdateStore(e) {
       });
   }, [visibleAllReports]);
   const displayedRestockHistory = showAllRestockHistory ? restockHistory : restockHistory.slice(0, 20);
+  const reportDetailsStore = selectedReportTarget ? findStoreRecord(getReportStoreId(selectedReportTarget)) : null;
 
   const enrichedTidepoolReports = useMemo(() => {
     return tidepoolReports
@@ -5309,32 +5402,7 @@ async function handleUpdateStore(e) {
         ) : null}
 
         {reportsBrowseMode ? (
-          <section className="scout-reports-landing" aria-labelledby="scout-recent-reports-title">
-            <header className="scout-reports-landing__header">
-              <div>
-                <span>Community observations</span>
-                <h2 id="scout-recent-reports-title">Recent restock reports</h2>
-                <p>See what collectors found. Check the observed time before making a trip; stock can change.</p>
-              </div>
-              <PrimaryButton onClick={() => onQuickReport({})}>Report a restock</PrimaryButton>
-            </header>
-            {restockHistory.length ? (
-              <div className="scout-reports-landing__feed">
-                {displayedRestockHistory.map((report) => renderCompactReportCard(report, { compact: true }))}
-              </div>
-            ) : (
-              <div className="scout-reports-landing__empty">
-                <AppNavIcon kind="find" />
-                <h3>No restock reports yet</h3>
-                <p>Checked a store? Share stock, low stock, or an empty shelf to help the next collector. A photo is optional.</p>
-              </div>
-            )}
-            {restockHistory.length > 20 ? (
-              <SecondaryButton onClick={() => setShowAllRestockHistory((current) => !current)}>
-                {showAllRestockHistory ? "Show recent reports" : "View all reports"}
-              </SecondaryButton>
-            ) : null}
-          </section>
+          <RestockReportBrowser reports={restockHistory} getStore={getReportStore} renderReport={renderCompactReportCard} now={scoutNow} onReport={() => onQuickReport({})} />
         ) : null}
 
         {scoutSubTab === "reports" && !reportsBrowseMode ? (
@@ -6544,12 +6612,6 @@ async function handleUpdateStore(e) {
                     </div>
                     <span style={styles.badge}>{selectedStore.favorite || selectedStore.watched ? "Watching" : "Shared Virginia store"}</span>
                   </div>
-                  <div className="scout-store-record-metrics" style={styles.statsRow}>
-                    <Metric label="Restock likelihood" value={selectedStore.restockConfidence || (selectedStore.carriesPokemon || selectedStore.carriesPokemonLikely || selectedStore.carriesTCG ? "Likely" : "Unknown")} />
-                    <Metric label="Pokemon likelihood" value={selectedStore.pokemonStockLikelihood || selectedStore.pokemon_stock_likelihood || selectedStore.pokemonConfidenceLevel || selectedStore.pokemonConfidence || "Unknown"} />
-                    <Metric label="Last restock" value={selectedStore.lastRestock || selectedStore.lastReportedStockDate || selectedStore.lastReportDate || reports[0]?.reportDate || "Unknown"} />
-                    <Metric label="Store ID" value={selectedStore.retailerStoreId || selectedStore.retailer_store_id || selectedStore.storeNumber || selectedStore.store_number || "Unknown"} />
-                  </div>
                   {normalizeStoreExpansionFields(selectedStore).familyFriendlyApproved || normalizeStoreExpansionFields(selectedStore).agreedToCommunityMotto ? (
                     <div className="store-expansion-mission-card">
                       {normalizeStoreExpansionFields(selectedStore).familyFriendlyApproved ? (
@@ -6563,15 +6625,8 @@ async function handleUpdateStore(e) {
                   ) : null}
                   <div className="scout-store-record-actions" style={styles.row}>
                     <button type="button" className="scout-store-action-primary" style={styles.buttonPrimary} onClick={() => openStoreReport(selectedStore.id)}>Submit Report</button>
-                    <button type="button" className="scout-store-action-secondary" style={styles.buttonSoft} onClick={toggleSelectedStoreFavorite}>{selectedStore.favorite || selectedStore.watched ? "Unwatch" : "Watch / Favorite"}</button>
-                    <button type="button" className="scout-store-action-secondary" style={styles.buttonSoft} onClick={() => submitSharedDataSuggestion({
-                      suggestionType: SUGGESTION_TYPES.EDIT_STORE_DETAILS,
-                      targetTable: "stores",
-                      targetRecordId: selectedStore.id,
-                      submittedData: { ...selectedStore, needsReview: true },
-                      currentDataSnapshot: selectedStore,
-                      notes: "Correction requested from Store Detail.",
-                    }, setError)}>Suggest Correction</button>
+                    <button type="button" className="scout-store-action-secondary" aria-pressed={Boolean(selectedStore.favorite || selectedStore.watched)} style={styles.buttonSoft} onClick={toggleSelectedStoreFavorite}>{selectedStore.favorite || selectedStore.watched ? "Unwatch" : "Watch / Favorite"}</button>
+
                     {selectedStore.address ? (
                       <a className="scout-store-action-secondary" style={styles.buttonSoft} href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${selectedStore.name} ${selectedStore.address} ${selectedStore.city || ""} ${selectedStore.state || ""}`)}`} target="_blank" rel="noreferrer">Open Directions</a>
                     ) : null}
@@ -6580,6 +6635,28 @@ async function handleUpdateStore(e) {
                       setStoreDirectoryView("retailer");
                     }}>Back to Retailer</button>
                   </div>
+                  <StoreObservationSummary
+                    reports={visibleReports.filter((report) => String(getReportStoreId(report)) === String(selectedStore.id))}
+                    now={scoutNow}
+                    stockLabel={(report) => scoutStockStatusLabel(report.stockStatus || report.stock_status || report.reportStatus || report.report_status)}
+                    onOpenReport={openReportDetails}
+                  />
+                  <details className="scout-store-facts"><summary>Store information</summary>
+                  <div className="scout-store-record-metrics" style={styles.statsRow}>
+                    <Metric label="Restock likelihood" value={selectedStore.restockConfidence || (selectedStore.carriesPokemon || selectedStore.carriesPokemonLikely || selectedStore.carriesTCG ? "Likely" : "Unknown")} />
+                    <Metric label="Pokemon likelihood" value={selectedStore.pokemonStockLikelihood || selectedStore.pokemon_stock_likelihood || selectedStore.pokemonConfidenceLevel || selectedStore.pokemonConfidence || "Unknown"} />
+                    <Metric label="Saved restock date" value={selectedStore.lastRestock || selectedStore.lastReportedStockDate || selectedStore.lastReportDate || reports[0]?.reportDate || "Unknown"} />
+                    <Metric label="Store ID" value={selectedStore.retailerStoreId || selectedStore.retailer_store_id || selectedStore.storeNumber || selectedStore.store_number || "Unknown"} />
+                  </div>
+                    <button type="button" className="scout-store-action-secondary" style={styles.buttonSoft} onClick={() => submitSharedDataSuggestion({
+                      suggestionType: SUGGESTION_TYPES.EDIT_STORE_DETAILS,
+                      targetTable: "stores",
+                      targetRecordId: selectedStore.id,
+                      submittedData: { ...selectedStore, needsReview: true },
+                      currentDataSnapshot: selectedStore,
+                      notes: "Correction requested from Store Detail.",
+                    }, setError)}>Suggest Correction</button>
+                  </details>
                   {adminMode ? (
                     <details style={{ marginTop: "12px" }} open={isEditingStore}>
                       <summary style={{ ...styles.buttonSoft, cursor: "pointer", display: "inline-block" }} onClick={() => setIsEditingStore((current) => !current)}>Admin Edit Store Metadata</summary>
@@ -6810,132 +6887,64 @@ async function handleUpdateStore(e) {
         ) : null}
 
         {selectedReportTarget ? (
-          <div className="location-modal-backdrop scout-sheet-backdrop" role="presentation" onClick={() => setSelectedReportTarget(null)}>
-            <section className="location-modal scout-report-detail-sheet" role="dialog" aria-modal="true" aria-labelledby="scout-page-report-detail-title" onClick={(event) => event.stopPropagation()}>
+          <div className="location-modal-backdrop scout-sheet-backdrop" role="presentation" onClick={() => dismissReportDetails()}>
+            <section ref={reportDetailsRef} inert={Boolean(deleteReportTarget)} aria-hidden={deleteReportTarget ? true : undefined} className="location-modal scout-report-detail-sheet" role="dialog" aria-modal="true" aria-labelledby="scout-page-report-detail-title" onClick={(event) => event.stopPropagation()}>
               <div className="modal-title-row modal-sticky-header">
                 <div>
                   <p>Scout report</p>
                   <h2 id="scout-page-report-detail-title">{getReportStore(selectedReportTarget).nickname || getReportStore(selectedReportTarget).name || "Store not selected"}</h2>
                 </div>
-                <button type="button" className="modal-close-button" aria-label="Close report details" onClick={() => setSelectedReportTarget(null)}>X</button>
+                <button type="button" className="modal-close-button" aria-label="Close report details" onClick={() => dismissReportDetails()}>X</button>
               </div>
               <div className="scout-report-detail-body">
-                {renderCompactReportCard(selectedReportTarget, { compact: true, inDetail: true })}
-                <div className="scout-report-detail-breakdown">
-                  <details className="scout-report-detail-section">
-                    <summary>
-                      <span>Details</span>
-                      <small>Products and report notes.</small>
-                    </summary>
-                    <div className="scout-report-detail-items">
-                      {normalizeReportItemsForForm(selectedReportTarget).filter((item) => String(item.productName || "").trim()).length ? (
-                        normalizeReportItemsForForm(selectedReportTarget).filter((item) => String(item.productName || "").trim()).map((item, index) => (
-                          <div key={`${item.productName}-${index}`} className="scout-report-detail-item">
-                            <strong>{item.productName}</strong>
-                            <span>{item.quantity ? `Qty ${item.quantity}` : "Qty unknown"}</span>
-                            <span>{Number(item.price || 0) > 0 ? money(item.price) : "Price not added"}</span>
-                            {item.note ? <p>{item.note}</p> : null}
-                          </div>
-                        ))
-                      ) : (
-                        <div className="scout-report-detail-item">
-                          <strong>General report</strong>
-                          <span>{scoutStockStatusLabel(selectedReportTarget.stockStatus || selectedReportTarget.stock_status) || "Stock status not selected"}</span>
-                          {getScoutReportPhotoUrls(selectedReportTarget).length ? <span>Photo uploaded - Items not identified yet</span> : null}
-                          {selectedReportTarget.note ? <p>{selectedReportTarget.note}</p> : null}
-                        </div>
-                      )}
-                    </div>
-                  </details>
-                  <details className="scout-report-detail-section">
-                    <summary>
-                      <span>Proof / Photos</span>
-                      <small>{getScoutReportPhotoUrls(selectedReportTarget).length ? "Proof attached" : "No proof yet"}</small>
-                    </summary>
-                    <div className="scout-report-detail-row">
-                      <strong>{getScoutReportPhotoUrls(selectedReportTarget).length ? "Proof attached" : "Proof optional"}</strong>
-                      <span>{getScoutReportPhotoUrls(selectedReportTarget).length ? `${getScoutReportPhotoUrls(selectedReportTarget).length} photo${getScoutReportPhotoUrls(selectedReportTarget).length === 1 ? "" : "s"} saved for this report.` : "Photos and proof help the community, but they are optional."}</span>
-                    </div>
-                    {getScoutReportPhotoUrls(selectedReportTarget).length ? (
-                      <div className="scout-report-proof-strip" aria-label="Report proof photos">
-                        {getScoutReportPhotoUrls(selectedReportTarget).slice(0, 4).map((photoUrl, index) => (
-                          <PrivateStorageImage src={photoUrl} alt={`Report proof ${index + 1}`} key={photoUrl || index} />
-                        ))}
-                      </div>
-                    ) : null}
-                  </details>
-                  <details className="scout-report-detail-section">
-                    <summary>
-                      <span>Confidence</span>
-                      <small>{scoutFreshnessLabel(selectedReportTarget)}</small>
-                    </summary>
-                    <div className="scout-report-detail-row">
-                      <strong>{selectedReportTarget.confidence || "Possible"}</strong>
-                      <span>{scoutFreshnessLabel(selectedReportTarget)}. This is a community signal, not guaranteed live stock.</span>
-                    </div>
-                    <div className="scout-report-detail-row">
-                      <strong>Source</strong>
-                      <span>{scoutSourceTypeLabel(selectedReportTarget.sourceType || selectedReportTarget.source_type || "user_report")}</span>
-                    </div>
-                  </details>
-                  <details className="scout-report-detail-section">
-                    <summary>
-                      <span>Context / Source</span>
-                      <small>Store, timing, and reporter context.</small>
-                    </summary>
-                    <div className="scout-report-detail-row">
-                      <strong>{getReportStore(selectedReportTarget).name || selectedReportTarget.storeName || "Store not selected"}</strong>
-                      <span>{[getReportStore(selectedReportTarget).address, getReportStore(selectedReportTarget).city, getReportStore(selectedReportTarget).state].filter(Boolean).join(", ") || "Address not available"}</span>
-                    </div>
-                    <div className="scout-report-detail-row">
-                      <strong>Observed</strong>
-                      <span>{friendlyScoutTimestamp(selectedReportTarget)}</span>
-                    </div>
-                  </details>
-                </div>
+                <RestockReportDetails
+                  key={selectedReportTarget.id || selectedReportTarget.reportId}
+                  report={selectedReportTarget}
+                  store={getReportStore(selectedReportTarget)}
+                  items={normalizeReportItemsForForm(selectedReportTarget)}
+                  photos={getScoutReportPhotoUrls(selectedReportTarget)}
+                  stockLabel={scoutStockStatusLabel(selectedReportTarget.stockStatus || selectedReportTarget.stock_status) || ({ stock: "Stock seen", low: "Low stock", empty: "Empty shelves" }[restockReportStockGroup(selectedReportTarget)]) || "Stock not specified"}
+                  stockGroup={restockReportStockGroup(selectedReportTarget)}
+                  observedLabel={restockReportObservedLabel(selectedReportTarget, scoutNow)}
+                  trustLabel={restockReportTrustLabel(selectedReportTarget, Boolean(getScoutReportPhotoUrls(selectedReportTarget).length))}
+                  sourceLabel={scoutSourceTypeLabel(selectedReportTarget.sourceType || selectedReportTarget.source_type)}
+                  visibilityLabel={selectedReportTarget.visibility ? scoutVisibilityLabel(selectedReportTarget.visibility) : "Sharing preference not added"}
+                  money={money}
+                />
               </div>
               <div className="location-modal-actions modal-sticky-footer">
+                {reportDetailsStore && typeof onQuickReport === "function" ? (
+                  <button type="button" className="scout-report-new-visit" onClick={() => {
+                    reportDetailsHandoffRef.current = true;
+                    dismissReportDetails(() => openStoreReport(reportDetailsStore.id));
+                  }}>Report a new visit</button>
+                ) : null}
                 {(isUserOwnedScoutReport(selectedReportTarget) || adminMode) ? (
-                  <button type="button" onClick={() => {
-                    startEditingReport(selectedReportTarget);
-                    setSelectedReportTarget(null);
+                  <button type="button" className="secondary-button" onClick={() => {
+                    reportDetailsHandoffRef.current = true;
+                    dismissReportDetails(() => startEditingReport(selectedReportTarget));
                   }}>{adminMode ? "Edit details" : "Add details"}</button>
                 ) : null}
-                {adminMode ? <button type="button" className="delete-button" onClick={() => setDeleteReportTarget(selectedReportTarget)}>Delete</button> : null}
-                <button type="button" className="secondary-button" onClick={() => setSelectedReportTarget(null)}>Close</button>
+                {adminMode ? <button type="button" className="delete-button" onClick={(event) => {
+                  deleteReportOpenerRef.current = event.currentTarget;
+                  setDeleteReportTarget(selectedReportTarget);
+                }}>Delete</button> : null}
+                <button type="button" className="secondary-button" onClick={() => dismissReportDetails()}>Close</button>
               </div>
             </section>
           </div>
         ) : null}
         {deleteReportTarget ? (
-          <div className="location-modal-backdrop scout-sheet-backdrop" role="presentation" onClick={() => setDeleteReportTarget(null)}>
-            <section className="location-modal scout-delete-confirm-sheet" role="dialog" aria-modal="true" aria-labelledby="scout-page-delete-title" onClick={(event) => event.stopPropagation()}>
-              <div className="modal-title-row modal-sticky-header">
-                <div>
-                  <p>Delete Scout report</p>
-                  <h2 id="scout-page-delete-title">Delete this report?</h2>
-                </div>
-                <button type="button" className="modal-close-button" aria-label="Close delete confirmation" onClick={() => setDeleteReportTarget(null)}>X</button>
-              </div>
-              <p className="compact-subtitle">
-                This will delete the report for {getReportStore(deleteReportTarget).nickname || getReportStore(deleteReportTarget).name || "the selected store"}.
-              </p>
-              <div className="location-modal-actions modal-sticky-footer">
-                <button
-                  type="button"
-                  className="delete-button"
-                  onClick={() => {
-                    handleDeleteReport(deleteReportTarget.id || deleteReportTarget.reportId || deleteReportTarget.report_id);
-                    setDeleteReportTarget(null);
-                    setSelectedReportTarget(null);
-                  }}
-                >
-                  Delete Report
-                </button>
-                <button type="button" className="secondary-button" onClick={() => setDeleteReportTarget(null)}>Cancel</button>
-              </div>
-            </section>
-          </div>
+          <ScoutDeleteReportDialog
+            returnFocusRef={deleteReportOpenerRef}
+            storeName={getReportStore(deleteReportTarget).nickname || getReportStore(deleteReportTarget).name || "the selected store"}
+            onCancel={() => setDeleteReportTarget(null)}
+            onConfirm={() => {
+              handleDeleteReport(deleteReportTarget.id || deleteReportTarget.reportId || deleteReportTarget.report_id);
+              setDeleteReportTarget(null);
+              dismissReportDetails();
+            }}
+          />
         ) : null}
       </div>
     </div>
