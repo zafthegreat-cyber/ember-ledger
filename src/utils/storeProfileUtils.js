@@ -12,6 +12,7 @@ import {
   matchesRegionalAreaFilters,
   normalizeStoreAreaFields,
 } from "./regionalBrowsingUtils.js";
+import { hasConfirmedScoutReportStatus } from "./scoutReportVerification.mjs";
 
 export { COMMUNITY_MOTTO_COPY, FAMILY_FRIENDLY_SHOP_COPY, STORE_FAMILY_FILTER_OPTIONS, STORE_LOCATION_TYPES };
 
@@ -68,7 +69,7 @@ function storeMatchesRecord(store = {}, record = {}) {
 }
 
 function isConfirmedReport(report = {}) {
-  const text = normalizeText([
+  const values = [
     report.status,
     report.verificationStatus,
     report.verification_status,
@@ -77,9 +78,11 @@ function isConfirmedReport(report = {}) {
     report.confidence,
     report.sourceType,
     report.source_type,
-  ].filter(Boolean).join(" "));
+  ].filter(Boolean);
+  const text = normalizeText(values.join(" "));
   if (/guess|prediction|predicted|placeholder|rejected|duplicate|stale|deleted/.test(text)) return false;
-  return Boolean(report.verified || /confirmed|verified|stock on shelf|restock happening now|admin entered|historical/.test(text));
+  return Boolean(report.verified || values.some((value) => hasConfirmedScoutReportStatus(value)
+    || ["stock on shelf", "restock happening now", "admin entered", "historical", "historical import"].includes(normalizeText(value))));
 }
 
 function recordDate(record = {}) {

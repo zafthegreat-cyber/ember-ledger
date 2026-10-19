@@ -25,6 +25,7 @@ import StoreObservationSummary from "../components/StoreObservationSummary.jsx";
 import ScoutDeleteReportDialog from "../components/ScoutDeleteReportDialog.jsx";
 import { createRestockDetailsHistory } from "../utils/restockDetailsHistory.mjs";
 import { restockReportObservedLabel, restockReportStockGroup, restockReportTrustLabel } from "../utils/restockFeedPresentation.mjs";
+import { hasVerifiedScoutReportStatus } from "../utils/scoutReportVerification.mjs";
 import { AppNavIcon, CommandBoardSection, CommandBoardV4, CommandMetricGrid } from "../components/command-system";
 import "./scout-reports.css";
 import { getStoreGroup, normalizeStoreGroup, STORE_GROUP_ORDER } from "../utils/storeGroupingUtils";
@@ -525,7 +526,7 @@ function scoutSignalConfidencePercent(report = {}) {
   if (Number.isFinite(rawScore) && rawScore > 0) return Math.max(12, Math.min(98, rawScore));
   const confidence = String(report.confidence || report.confidenceLevel || report.confidence_level || "").toLowerCase();
   const verification = String(report.verificationStatus || report.verification_status || "").toLowerCase();
-  if (report.verified || verification.includes("verified")) return 88;
+  if (report.verified || hasVerifiedScoutReportStatus(verification)) return 88;
   if (confidence.includes("strong") || confidence.includes("high") || confidence.includes("likely")) return 76;
   if (confidence.includes("possible") || confidence.includes("moderate")) return 58;
   if (confidence.includes("guess") || confidence.includes("low")) return 36;
@@ -3746,7 +3747,7 @@ async function handleUpdateStore(e) {
         const reportCount = storeReports.length;
         const verifiedCount = storeReports.filter((report) => (
           report.verified ||
-          String(report.verificationStatus || report.verification_status || "").toLowerCase().includes("verified")
+          hasVerifiedScoutReportStatus(report.verificationStatus || report.verification_status)
         )).length;
         const proofCount = storeReports.filter((report) => getScoutReportPhotoUrls(report).length || (report.evidence || []).length).length;
         const recentCount = storeReports.filter((report) => getStoreReportTimestamp(report) >= sevenDaysAgo).length;

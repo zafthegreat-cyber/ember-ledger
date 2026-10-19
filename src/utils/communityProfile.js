@@ -10,6 +10,7 @@ import {
   canSubmitScoutGuess,
   getScoutPoints,
 } from "./dropRadarUtils.mjs";
+import { hasConfirmedScoutReportStatus } from "./scoutReportVerification.mjs";
 
 export const SCOUT_REPUTATION_LEVELS = [
   {
@@ -108,8 +109,8 @@ function statusText(row = {}) {
 }
 
 export function scoutReportIsConfirmed(row = {}) {
-  const status = statusText(row);
-  return Boolean(row.verified || row.confirmed || status.includes("confirmed") || status.includes("verified"));
+  const statuses = [row.status, row.verificationStatus || row.verification_status, row.moderationStatus || row.moderation_status];
+  return Boolean(row.verified || row.confirmed || statuses.some(hasConfirmedScoutReportStatus));
 }
 
 export function scoutReportIsRejected(row = {}) {

@@ -11,6 +11,7 @@ import { lazy, Suspense, useCallback, useDeferredValue, useEffect, useEffectEven
 import "./App.css";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
 import { encodeScoutReportCloudNotes, decodeScoutReportCloudNotes, mergeScoutReportCloudSave } from "./utils/scoutReportCloudContext.mjs";
+import { hasConfirmedScoutReportStatus } from "./utils/scoutReportVerification.mjs";
 import OverflowMenu from "./components/OverflowMenu";
 import SmartSetupDialog from "./components/SmartSetupDialog.jsx";
 import { PrivateReceiptImage, PrivateReceiptLink, PrivateStorageImage } from "./components/PrivateReceipt.jsx";
@@ -15660,7 +15661,7 @@ export default function App() {
     const status = row.status || row.verification_status || "unverified";
     const statusText = scoutBackendKey(status);
     const rejected = /rejected|stale|duplicate|deleted|archived/.test(statusText);
-    const confirmed = !rejected && [statusText, scoutBackendKey(row.verification_status)].some((value) => ["confirmed", "verified"].includes(value));
+    const confirmed = !rejected && [statusText, scoutBackendKey(row.verification_status)].some((value) => hasConfirmedScoutReportStatus(value));
     const confidenceScore = Number(row.confidence_score ?? 0);
     const likely = !confirmed && !rejected && confidenceScore >= 60;
     const reportedDate = reportedAt ? new Date(reportedAt) : null;
@@ -33256,8 +33257,7 @@ function renderForgeBusinessLedgerPanel() {
     }
     if (
       report.verified ||
-      rawStatus.includes("confirmed") ||
-      rawStatus.includes("verified") ||
+      hasConfirmedScoutReportStatus(rawStatus) ||
       rawConfidence === "verified" ||
       reporterScore >= 85
     ) {
