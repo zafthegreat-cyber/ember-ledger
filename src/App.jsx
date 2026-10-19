@@ -96,6 +96,7 @@ import {
 import { buildWishlistAddSeed, buildWishlistToOwnedRecord } from "./utils/vaultWorkflowUtils";
 import { normalizeCatalogName } from "./utils/catalogSearchUtils";
 import { getBestCatalogMatches } from "./utils/scanMatchUtils";
+import { buildMarketSourceDetailItem } from "./utils/marketSourceDetailIdentity.mjs";
 import {
   DROP_RADAR_GUESS_LOCKED_MESSAGE,
   MIN_SCOUT_POINTS_FOR_GUESS,
@@ -26152,7 +26153,7 @@ function refreshMarketCatalog(type = "all") {
   setMarketPriceCache(result.cache);
   setTideTradrWatchlist((current) => refreshWatchlistMarketItems(current, result.catalog, result.cache));
   setMarketSyncMessage(
-    `${type === "card" ? "Card" : type === "sealed" ? "Sealed product" : "Catalog"} market sync used cached/manual/estimated beta sources. ${result.cache.failedMatches?.length || 0} items need review.`
+    `${type === "card" ? "Card" : type === "sealed" ? "Sealed product" : "Catalog"} saved prices checked. Open an item's Compare market price sources panel to request provider quotes. ${result.cache.failedMatches?.length || 0} items need review.`
   );
 }
 
@@ -38046,8 +38047,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <p className="compact-subtitle">Market values are labeled Live, Cached, Manual, Estimated, or Unknown. Beta sync uses local/import-ready data unless a backend source is connected.</p>
         {marketSyncMessage ? <p className="compact-subtitle">{marketSyncMessage}</p> : null}
         <div className="quick-actions">
-          <button type="button" onClick={() => refreshMarketCatalog("card")}>Sync Cards</button>
-          <button type="button" className="secondary-button" onClick={() => refreshMarketCatalog("sealed")}>Sync Sealed Products</button>
+          <button type="button" onClick={() => refreshMarketCatalog("card")}>Review saved card prices</button>
+          <button type="button" className="secondary-button" onClick={() => refreshMarketCatalog("sealed")}>Review saved product prices</button>
           <button type="button" className="secondary-button" onClick={refreshMarketWatchlist}>Refresh Watchlist</button>
           <button type="button" className="secondary-button" onClick={refreshPinnedMarketWatch}>Refresh Pinned Market Watch</button>
         </div>
@@ -51611,6 +51612,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         selectedVaultCardGroup,
         selectedVaultDetailId,
         selectedVaultDetailItem,
+        selectedVaultMarketItem: buildMarketSourceDetailItem(selectedVaultDetailItem, catalogProducts),
         selectedVaultDetailMasterCard,
         selectedVaultDetailSetSummary,
         selectedVaultSet,
@@ -52211,6 +52213,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             {selectedForgeDetailId ? (
               <ForgeItemDetail
                 item={selectedForgeDetailItem}
+                marketItem={buildMarketSourceDetailItem(selectedForgeDetailItem, catalogProducts)}
                 masterCard={selectedForgeDetailMasterCard}
                 onClose={() => setSelectedForgeDetailId("")}
                 onEdit={startEditingItem}
@@ -53067,6 +53070,15 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 <div id="catalog-market-history">
                   <LazyToolBoundary label="Loading price history...">
                     <MarketPriceHistoryPanel
+                      marketItem={{
+                        ...selectedCatalogDetailPricingProduct,
+                        variant: selectedCatalogDetailVariant?.variantName || selectedCatalogDetailPricingProduct?.variant || selectedCatalogDetailPricingProduct?.priceSubtype || "",
+                        finish: selectedCatalogDetailVariant?.finish || selectedCatalogDetailPricingProduct?.finish || "",
+                        printing: selectedCatalogDetailVariant?.printing || selectedCatalogDetailPricingProduct?.printing || "",
+                        language: selectedCatalogDetailVariant?.language || selectedCatalogDetailPricingProduct?.language || "",
+                        condition: selectedCatalogDetailVariant?.conditionName || selectedCatalogDetailPricingProduct?.condition || "",
+                        tcgplayerSkuId: selectedCatalogDetailVariant?.tcgplayerSkuId || selectedCatalogDetailPricingProduct?.tcgplayerSkuId || "",
+                      }}
                       catalogProductId={selectedCatalogDetailPricingProduct?.id || selectedCatalogDetailProduct.id}
                       tcgplayerProductId={selectedCatalogDetailPricingProduct?.tcgplayerProductId}
                       externalProductId={selectedCatalogDetailPricingProduct?.externalProductId}
@@ -53340,7 +53352,7 @@ function PriceReviewPanel({ item, variant = "forge", onReviewMarket, onReviewPla
   );
 }
 
-function ForgeItemDetail({ item, masterCard, onClose, onEdit, onDelete, onEditSale, onSell, onCreateListing, onAttachReceipt, onQuickUpdateMarketValue, onQuickUpdateSalePrice, onStartTrade }) {
+function ForgeItemDetail({ item, marketItem, masterCard, onClose, onEdit, onDelete, onEditSale, onSell, onCreateListing, onAttachReceipt, onQuickUpdateMarketValue, onQuickUpdateSalePrice, onStartTrade }) {
   if (!item) return null;
   const detailImage = item.itemImage || vaultItemDisplayImage(item);
   const setLabel = item.setName || item.expansion || "";
@@ -53473,9 +53485,10 @@ function ForgeItemDetail({ item, masterCard, onClose, onEdit, onDelete, onEditSa
           <LazyToolBoundary label="Loading price history...">
             <MarketPriceHistoryPanel
               compact
+              marketItem={marketItem || item}
               catalogProductId={item.catalogProductId || item.catalogItemId}
-              tcgplayerProductId={item.tcgplayerProductId || item.sku}
-              externalProductId={item.externalProductId || item.sku}
+              tcgplayerProductId={item.tcgplayerProductId || item.tcgplayer_product_id}
+              externalProductId={item.externalProductId || item.external_product_id}
               productName={item.name}
               currentMarketPrice={item.marketPrice}
               currentLowPrice={item.lowPrice}
@@ -53707,7 +53720,7 @@ function VaultItemDetail(props) {
   return <VaultItemDetailContent key={gradeAssistRecordKey(props.item || {})} {...props} />;
 }
 
-function VaultItemDetailContent({ item, masterCard, setSummary, linkedTrades = [], collectionSets = [], onClose, onEdit, onDelete, onViewSet, onMarkOwned, onMoveToForge, onCopyToForge, onCreateListing, onDuplicate, onAttachReceipt, onCheckMarket, onSavePriceMemory, onAddToDisplayCase, onAddToCompare, onQuickUpdateMarketValue, onQuickUpdateSalePrice, onStartTrade, showSellerTools = false }) {
+function VaultItemDetailContent({ item, marketItem, masterCard, setSummary, linkedTrades = [], collectionSets = [], onClose, onEdit, onDelete, onViewSet, onMarkOwned, onMoveToForge, onCopyToForge, onCreateListing, onDuplicate, onAttachReceipt, onCheckMarket, onSavePriceMemory, onAddToDisplayCase, onAddToCompare, onQuickUpdateMarketValue, onQuickUpdateSalePrice, onStartTrade, showSellerTools = false }) {
   const [gradeAssistDraft, setGradeAssistDraft] = useState(() => loadGradeAssistDraft(item || {}));
   const [gradeAssistMessage, setGradeAssistMessage] = useState("");
 
@@ -54406,9 +54419,10 @@ function VaultItemDetailContent({ item, masterCard, setSummary, linkedTrades = [
           <LazyToolBoundary label="Loading price history...">
             <MarketPriceHistoryPanel
               compact
+              marketItem={marketItem || item}
               catalogProductId={item.catalogProductId || item.catalogItemId}
-              tcgplayerProductId={item.tcgplayerProductId || item.sku}
-              externalProductId={item.externalProductId || item.sku}
+              tcgplayerProductId={item.tcgplayerProductId || item.tcgplayer_product_id}
+              externalProductId={item.externalProductId || item.external_product_id}
               productName={item.name}
               currentMarketPrice={item.marketPrice}
               currentLowPrice={item.lowPrice}

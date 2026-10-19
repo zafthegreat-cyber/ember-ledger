@@ -139,8 +139,8 @@ export default function MarketPage(props) {
   ];
   const formatMarketValue = (product) => {
     const info = getTideTradrMarketInfo(product);
-    const value = info?.currentMarketValue ?? product.marketValue ?? product.marketPrice ?? product.price ?? product.msrp;
-    return Number(value) > 0 ? money(value) : "No value";
+    const value = info?.currentMarketValue ?? product.marketValue ?? product.marketPrice;
+    return Number.isFinite(Number(value)) && Number(value) > 0 ? money(value) : "Value unknown";
   };
   const marketProductTitle = (product) => {
     try {
@@ -258,10 +258,10 @@ export default function MarketPage(props) {
             </div>
 
             <div className="market-v4-value-ribbon" aria-label="Value range ribbon">
-              <span>Low $42</span>
-              <span>Fair $58</span>
-              <span>High $75</span>
-              <strong>Current context: $61</strong>
+              <span>Low: Unknown</span>
+              <span>Market: Unknown</span>
+              <span>High: Unknown</span>
+              <strong>Choose a product to compare price sources.</strong>
             </div>
           </section>
 
@@ -274,9 +274,8 @@ export default function MarketPage(props) {
             </article>
             <article>
               <span>Liquidity</span>
-              <h3>Medium demand</h3>
-              <p>Good for collecting or watching; avoid treating weak data as a guaranteed sale price.</p>
-              <div className="market-v4-liquidity-meter"><i style={{ width: "62%" }} /></div>
+              <h3>Demand unknown</h3>
+              <p>Verified sales and sell-through data are needed to assess demand. Active asking prices do not show how quickly an item sells.</p>
             </article>
             <article>
               <span>Safety model</span>

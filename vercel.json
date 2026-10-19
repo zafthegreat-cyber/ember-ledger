@@ -99,6 +99,10 @@
       "dest": "/api/account/deletion"
     },
     {
+      "src": "^/api/market/sources/[^/]+$",
+      "dest": "/api/health"
+    },
+    {
       "handle": "filesystem"
     },
     {

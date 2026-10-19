@@ -201,6 +201,7 @@
     "test:adaptive-restock-home-browser": "node scripts/test-adaptive-restock-home-browser.cjs",
     "test:restock-report-browser": "node scripts/test-restock-report-browser.cjs",
     "test:stock-screenshot": "node scripts/test-scout-screenshot-ocr.mjs && node scripts/test-stock-screenshot-draft.mjs && node scripts/test-stock-screenshot-cloud.mjs",
+    "test:market-sources": "node --test scripts/test-market-refresh-safety.cjs && node --test scripts/test-live-market-sources.mjs && node scripts/test-market-source-detail-identity.mjs && node scripts/test-market-page-price-truth.mjs && node scripts/test-market-price-preservation.cjs && npm --prefix backend run test:market-sources",
     "test:stock-screenshot-browser": "node scripts/test-stock-screenshot-import-browser.cjs",
     "test:scout-screenshot-ocr-browser": "node scripts/test-scout-screenshot-ocr-browser.cjs",
     "test:forge-grouped-inventory": "node --no-warnings scripts/test-forge-grouped-inventory.mjs",

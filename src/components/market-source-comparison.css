@@ -1,0 +1,27 @@
+.market-source-comparison { display: grid; gap: 16px; min-width: 0; margin: 20px 0; padding: 20px; border: 1px solid var(--border-subtle); border-radius: 16px; background: var(--surface-primary); color: var(--text-primary); }
+.market-source-comparison :is(h3,h4,p) { margin: 0; }
+.market-source-comparison h3 { font-size: 1.2rem; line-height: 1.35; }
+.market-source-comparison h4 { font-size: 1rem; line-height: 1.4; }
+.market-source-comparison p { color: var(--text-secondary); line-height: 1.55; font-size: .9rem; }
+.market-source-comparison small { color: var(--text-secondary); line-height: 1.5; font-size: .8rem; overflow-wrap: anywhere; }
+.market-source-heading,.market-source-provider-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.market-source-heading > div,.market-source-provider-heading > div { display: grid; gap: 4px; min-width: 0; }
+.market-source-eyebrow { color: var(--action-primary); font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.market-source-comparison button { flex: 0 0 auto; min-height: 44px; padding: 10px 14px; border-radius: 10px; font-size: .875rem; font-weight: 650; background: var(--action-primary); color: var(--on-primary); border: 1px solid var(--action-primary); }
+.market-source-comparison button.secondary-button { background: var(--surface-primary); color: var(--text-primary); border-color: var(--border-strong); }
+.market-source-comparison button:disabled { opacity: .65; cursor: default; }
+.market-source-comparison :is(button,a):focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 3px; }
+.market-source-provider-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,260px),1fr)); gap: 12px; }
+.market-source-provider,.market-source-ebay { display: grid; gap: 12px; min-width: 0; padding: 16px; border: 1px solid var(--border-subtle); border-radius: 12px; background: var(--surface-secondary); align-content: start; }
+.market-source-status { flex: 0 0 auto; padding: 4px 8px; border: 1px solid var(--border-subtle); border-radius: 6px; color: var(--text-secondary); background: var(--surface-primary); font-size: .75rem; }
+.market-source-status.is-ready { color: var(--status-success); }
+.market-source-quote-list,.market-source-ebay-list { display: grid; gap: 8px; }
+.market-source-quote { display: grid; gap: 5px; min-width: 0; padding: 12px; border: 1px solid var(--border-subtle); border-radius: 10px; background: var(--surface-primary); overflow-wrap: anywhere; }
+.market-source-quote-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px; }
+.market-source-quote-heading strong { font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+.market-source-quote-heading span { color: var(--text-secondary); font-size: .75rem; }
+.market-source-quote a { display: inline-flex; width: fit-content; align-items: center; min-height: 44px; padding: 8px 0; color: var(--action-primary); font-size: .875rem; font-weight: 650; text-decoration: underline; text-underline-offset: 3px; }
+.market-source-comparison .market-source-match-note { font-size: .8rem; }
+.market-source-comparison .market-source-error { padding: 12px; border: 1px solid var(--status-danger); border-radius: 10px; color: var(--status-danger); background: var(--surface-primary); }
+.market-source-comparison .market-source-footnote { font-size: .8rem; }
+@media (max-width: 540px) { .market-source-comparison { padding: 14px; gap: 14px; border-radius: 12px; } .market-source-heading,.market-source-ebay > .market-source-provider-heading { align-items: stretch; flex-direction: column; } .market-source-provider,.market-source-ebay { padding: 12px; } .market-source-comparison button { width: 100%; } }

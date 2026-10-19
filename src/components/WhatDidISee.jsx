@@ -401,9 +401,10 @@ export default function WhatDidISee({
         </div>
         <MarketPriceHistoryPanel
           compact
+          marketItem={product}
           catalogProductId={product.id}
-          tcgplayerProductId={product.tcgplayerProductId || product.sku}
-          externalProductId={product.externalProductId || product.sku}
+          tcgplayerProductId={product.tcgplayerProductId || product.tcgplayer_product_id}
+          externalProductId={product.externalProductId || product.external_product_id}
           productName={productTitle(product)}
           currentMarketPrice={product.marketPrice || product.marketValue || product.midPrice}
           currentLowPrice={product.lowPrice}
