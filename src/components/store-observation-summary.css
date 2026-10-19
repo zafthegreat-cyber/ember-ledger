@@ -1,0 +1,25 @@
+html body .app[data-theme] .scout-store-observation {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 9px;
+  background: var(--surface-secondary);
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.scout-store-observation__heading { display: grid; gap: 5px; }
+html body .app[data-theme] .scout-store-observation__eyebrow { margin: 0; color: var(--text-secondary); font: 500 13px/1.5 var(--font-ui); }
+html body .app[data-theme] .scout-store-observation h3 { margin: 0; color: var(--text-primary); font: 600 17px/1.4 var(--font-ui); }
+.scout-store-observation__signal { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; min-width: 0; color: var(--text-secondary); font: 400 13px/1.5 var(--font-ui); }
+.scout-store-observation__stock { display: inline-flex; align-items: center; max-width: 100%; padding: 4px 8px; border: 1px solid currentColor; border-radius: 5px; color: var(--text-secondary); font-weight: 600; }
+.scout-store-observation__stock--stock { color: var(--status-success); }
+.scout-store-observation__stock--low { color: var(--status-warning); }
+html body .app[data-theme] .scout-store-observation__products { margin: 0; color: var(--text-primary); font: 500 15px/1.6 var(--font-ui); }
+.scout-store-observation__footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 16px; min-width: 0; }
+html body .app[data-theme] .scout-store-observation__footer p { margin: 0; min-width: 0; color: var(--text-secondary); font: 400 13px/1.5 var(--font-ui); }
+html body .app[data-theme] .scout-store-observation__footer button { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-width: 44px; min-height: 44px; max-width: 100%; margin: 0; padding: 10px 12px; border: 1px solid var(--border-strong); border-radius: 7px; background: var(--surface-primary); color: var(--text-primary); font: 600 13px/1.5 var(--font-ui); white-space: normal; text-align: center; text-shadow: none; box-shadow: none; }
+.scout-store-observation__footer button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
+html body .app[data-theme] .scout-store-observation__note { margin: 0; color: var(--text-secondary); font: 400 13px/1.6 var(--font-ui); }
+@media (max-width: 380px) { html body .app[data-theme] .scout-store-observation { padding: 14px; } }

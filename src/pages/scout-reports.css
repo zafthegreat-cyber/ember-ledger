@@ -57,10 +57,63 @@ html body .app[data-theme] .scout-reports-landing .scout-page-report-card .overf
 .scout-reports-landing__empty h3 { margin: 12px 0 6px; color: var(--text-primary); font-size: 17px; }
 .scout-reports-landing__empty p { max-width: 60ch; margin: 0; color: var(--text-secondary); font-size: 14px; line-height: 1.6; }
 .scout-reports-landing > .ops-button { justify-self: start; }
+.scout-report-filters { display: grid; gap: 14px; padding: 16px; min-width: 0; border: 1px solid var(--border-subtle); border-radius: 10px; background: var(--surface-primary); }
+.scout-report-filters__fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(170px, 210px); gap: 12px; }
+.scout-report-filters__fields label { display: grid; min-width: 0; gap: 7px; color: var(--text-primary); font: 600 13px/1.5 var(--font-ui); }
+.scout-report-search { display: flex; align-items: center; gap: 8px; min-width: 0; padding-inline-start: 12px; border: 1px solid var(--border-strong); border-radius: 7px; background: var(--surface-primary); color: var(--text-secondary); }
+.scout-report-search > svg { flex: 0 0 20px; }
+html body .app[data-theme] .scout-report-search input { width: 100%; min-width: 0; min-height: 44px; margin: 0; padding: 10px 10px 10px 0; border: 0; border-radius: 7px; background: transparent; color: var(--text-primary); font: 400 16px/1.5 var(--font-ui); box-shadow: none; }
+.scout-report-search:focus-within { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
+html body .app[data-theme] .scout-report-search input:focus-visible { outline: none !important; box-shadow: none !important; }
+html body .app[data-theme] .scout-report-filters select { width: 100%; min-width: 0; min-height: 46px; margin: 0; padding: 10px 12px; border: 1px solid var(--border-strong); border-radius: 7px; background: var(--surface-primary); color: var(--text-primary); font: 400 15px/1.5 var(--font-ui); box-shadow: none; }
+.scout-report-filter-options { display: flex; flex-wrap: wrap; gap: 8px; }
+html body .app[data-theme] .scout-report-filter-options button { display: inline-flex; align-items: center; justify-content: center; margin: 0; padding: 10px 13px; border: 1px solid var(--border-strong); border-radius: 7px; background: var(--surface-primary); color: var(--text-primary); font: 600 13px/1.5 var(--font-ui); text-shadow: none; box-shadow: none; }
+html body .app[data-theme] .scout-report-filter-options button[aria-pressed="true"] { border-color: var(--action-primary) !important; background: var(--action-primary) !important; color: var(--on-primary) !important; }
+.scout-report-results { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 0; }
+.scout-report-results p { margin: 0; color: var(--text-secondary); font: 400 13px/1.5 var(--font-ui); }
+html body .app[data-theme] .scout-report-results button { flex: 0 0 auto; margin: 0; padding: 8px 10px; border: 1px solid var(--border-strong); border-radius: 7px; background: var(--surface-primary); color: var(--text-primary); font: 600 13px/1.5 var(--font-ui); box-shadow: none; text-shadow: none; }
+html body .app[data-theme] .scout-feed-report-card { display: grid; gap: 14px; min-width: 0; margin: 0; padding: 18px; border: 1px solid var(--border-subtle); border-radius: 10px; background: var(--surface-primary); color: var(--text-primary); overflow-wrap: anywhere; }
+.scout-feed-report-card__signal { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 14px; color: var(--text-secondary); font: 400 13px/1.5 var(--font-ui); }
+.scout-feed-stock { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 4px 8px; border: 1px solid currentColor; border-radius: 5px; color: var(--text-secondary); font-weight: 600; }
+.scout-feed-stock::before { width: 6px; height: 6px; flex: 0 0 6px; border-radius: 50%; background: currentColor; content: ""; }
+.scout-feed-stock--stock { color: var(--status-success); }
+.scout-feed-stock--low { color: var(--status-warning); }
+.scout-feed-report-card__body { display: flex; align-items: start; gap: 14px; min-width: 0; }
+.scout-feed-report-card__copy { flex: 1 1 0; min-width: 0; }
+html body .app[data-theme] .scout-feed-report-card h3 { margin: 0; color: var(--text-primary); font: 600 17px/1.4 var(--font-ui); }
+.scout-feed-report-card__location { margin: 4px 0 0; color: var(--text-secondary); font: 400 13px/1.5 var(--font-ui); }
+.scout-feed-report-card__items { margin: 10px 0 0; color: var(--text-primary); font: 500 15px/1.5 var(--font-ui); }
+.scout-feed-report-card__photo { flex: 0 0 80px; }
+.scout-feed-report-card__photo img { display: block; width: 80px; height: 80px; border-radius: 7px; object-fit: cover; }
+.scout-feed-report-card__footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 16px; padding-top: 12px; border-top: 1px solid var(--border-subtle); }
+.scout-feed-report-card__footer p { margin: 0; min-width: 0; color: var(--text-secondary); font: 400 13px/1.5 var(--font-ui); }
+html body .app[data-theme] .scout-feed-report-card__footer button { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; gap: 8px; margin: 0; padding: 10px 12px; border: 1px solid var(--border-strong); border-radius: 7px; background: var(--surface-primary); color: var(--text-primary); font: 600 13px/1.5 var(--font-ui); text-shadow: none; box-shadow: none; }
+.scout-report-filters select:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
+.scout-reports-landing__empty > .ops-button { margin-top: 16px; }
+html body .app[data-theme] .scout-route-polish .scout-report-detail-sheet { display: flex; flex-direction: column; width: min(720px, calc(100vw - 24px)); max-height: calc(100dvh - 32px); min-width: 0; overflow: hidden; padding: 16px; border: 1px solid var(--border-subtle); border-radius: 12px; background: var(--surface-primary); color: var(--text-primary); }
+html body .app[data-theme] .scout-route-polish .scout-report-detail-sheet > .modal-title-row { display: flex; flex: 0 0 auto; position: static; align-items: start; justify-content: space-between; gap: 12px; margin: 0; padding: 0 0 12px; border-bottom: 1px solid var(--border-subtle); }
+.scout-report-detail-sheet > .modal-title-row > div { min-width: 0; }
+html body .app[data-theme] .scout-report-detail-sheet .modal-title-row h2 { margin: 3px 0 0; color: var(--text-primary); font: 600 20px/1.4 var(--font-ui); overflow-wrap: anywhere; }
+html body .app[data-theme] .scout-report-detail-sheet .modal-title-row p { margin: 0; color: var(--text-secondary); font: 400 13px/1.5 var(--font-ui); }
+html body .app[data-theme] .scout-report-detail-sheet .modal-close-button { flex: 0 0 44px; width: 44px; height: 44px; min-height: 44px; min-width: 44px; }
+html body .app[data-theme] .scout-route-polish .scout-report-detail-sheet > .scout-report-detail-body { flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 12px 2px; }
+html body .app[data-theme] .scout-route-polish .scout-report-detail-sheet > .modal-sticky-footer { position: static; display: flex; flex: 0 0 auto; flex-wrap: wrap; gap: 8px; margin: 0; padding: 12px 0 0; border-top: 1px solid var(--border-subtle); background: var(--surface-primary); }
+html body .app[data-theme] .scout-route-polish .scout-report-detail-sheet > .modal-sticky-footer > button { flex: 1 1 auto; min-width: 44px; min-height: 44px; margin: 0; padding: 10px 12px; border-radius: 7px; font: 600 13px/1.5 var(--font-ui); white-space: normal; }
+html body .app[data-theme] .scout-route-polish .scout-report-detail-sheet > .modal-sticky-footer > .scout-report-new-visit { background: var(--action-primary) !important; color: var(--on-primary) !important; border-color: var(--action-primary) !important; box-shadow: none !important; }
+.scout-report-detail-sheet :is(button, summary):focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
+html body .app[data-theme] .scout-store-facts { margin-top: 14px; border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--surface-primary); }
+html body .app[data-theme] .scout-store-facts > summary { min-height: 48px; padding: 12px; cursor: pointer; color: var(--text-primary); font: 600 14px/1.5 var(--font-ui); }
+html body .app[data-theme] .scout-store-facts > .scout-store-record-metrics { margin: 0; padding: 12px; }
+.scout-store-facts > summary:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
 @media (max-width: 600px) {
   .scout-reports-landing__header > .ops-button { width: 100%; }
   html body .app[data-theme] .scout-reports-landing .scout-page-report-card { grid-template-columns: minmax(0, 1fr); padding: 14px; gap: 14px; }
   .scout-reports-landing .scout-report-meta { grid-template-columns: minmax(0, 1fr); }
   .scout-reports-landing .scout-report-side { flex-direction: row; align-items: center; justify-content: space-between; }
   .scout-reports-landing .scout-report-side img { width: 72px; height: 72px; }
+  .scout-report-filters { padding: 14px; }
+  .scout-report-filters__fields { grid-template-columns: minmax(0, 1fr); }
+  html body .app[data-theme] .scout-feed-report-card { padding: 14px; }
+  .scout-feed-report-card__photo { flex-basis: 64px; }
+  .scout-feed-report-card__photo img { width: 64px; height: 64px; }
 }
