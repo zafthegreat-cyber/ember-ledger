@@ -10,6 +10,7 @@ import { focusFlowModalContent } from "./features/deferredViews/flowModalFocus.j
 import { lazy, Suspense, useCallback, useDeferredValue, useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import "./App.css";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
+import { encodeScoutReportCloudNotes, decodeScoutReportCloudNotes, mergeScoutReportCloudSave } from "./utils/scoutReportCloudContext.mjs";
 import OverflowMenu from "./components/OverflowMenu";
 import SmartSetupDialog from "./components/SmartSetupDialog.jsx";
 import { PrivateReceiptImage, PrivateReceiptLink, PrivateStorageImage } from "./components/PrivateReceipt.jsx";
@@ -15651,14 +15652,15 @@ export default function App() {
   }
 
   function mapSupabaseScoutReport(row = {}, stores = []) {
-    const screenshotSource = row.source_type === "text_screenshot";
+    const context = decodeScoutReportCloudNotes(row.notes);
+    const screenshotSource = row.source_type === "text_screenshot" || context.sourceType === "text_screenshot";
     const matchedStore = stores.find((store) => String(getScoutQuickStoreId(store)) === String(row.store_id)) || {};
     const observedAt = row.observed_at || row.report_time || row.reported_at || row.created_at || row.updated_at || "";
     const reportedAt = observedAt;
     const status = row.status || row.verification_status || "unverified";
     const statusText = scoutBackendKey(status);
     const rejected = /rejected|stale|duplicate|deleted|archived/.test(statusText);
-    const confirmed = !rejected && (screenshotSource ? ["confirmed", "verified"].includes(scoutBackendKey(row.verification_status || status)) : /confirmed|verified/.test(statusText));
+    const confirmed = !rejected && [statusText, scoutBackendKey(row.verification_status)].some((value) => ["confirmed", "verified"].includes(value));
     const confidenceScore = Number(row.confidence_score ?? 0);
     const likely = !confirmed && !rejected && confidenceScore >= 60;
     const reportedDate = reportedAt ? new Date(reportedAt) : null;
@@ -15666,10 +15668,11 @@ export default function App() {
     const reportTime = reportedDate && !Number.isNaN(reportedDate.getTime()) ? getLocalTimeKey(reportedDate) : String(reportedAt || "").slice(11, 16);
     const storeName = row.store_name || getScoutQuickStoreName(matchedStore) || "Store location";
     const retailer = getScoutQuickRetailer(matchedStore) || row.retailer || "";
-    const sourceType = row.source_type || (confirmed ? "verified_user_report" : "user_report");
+    const sourceType = screenshotSource ? "text_screenshot" : row.source_type || (confirmed ? "verified_user_report" : "user_report");
+    const sourceLabel = context.sourceLabel || row.source_label || "";
     const confidence = row.confidence || (confirmed ? "confirmed" : likely ? "likely" : "unconfirmed");
     const importedByAdmin = Boolean(row.imported_by_admin);
-    const reportStatus = row.report_status || "";
+    const reportStatus = context.reportStatus || row.report_status || "";
     const historicalImport = sourceType === "historical_import" || importedByAdmin || Boolean(row.imported_batch);
     const historicalStockPositive = historicalImport && ["stock_seen", "vendor_seen", "leftover_stock"].includes(reportStatus);
     return {
@@ -15707,13 +15710,13 @@ export default function App() {
       proofType: screenshotSource ? "text_screenshot" : row.photo_url ? "stock_photo" : "manual",
       ...(screenshotSource ? {
         screenshotImportReviewed: true,
-        screenshotSourcePlatform: row.source_label === "Facebook screenshot" ? "facebook" : row.source_label === "Discord screenshot" ? "discord" : "other",
+        screenshotSourcePlatform: sourceLabel === "Facebook screenshot" ? "facebook" : sourceLabel === "Discord screenshot" ? "discord" : "other",
         needsReview: !confirmed,
         needs_review: !confirmed,
       } : {}),
-      proofText: row.notes || "",
-      notes: row.notes || "",
-      note: row.notes || "",
+      proofText: context.notes,
+      notes: context.notes,
+      note: context.notes,
       reportType: row.report_type || (confirmed ? "stock_on_shelf" : "other"),
       report_type: row.report_type || (confirmed ? "restock" : "other"),
       reportStatus,
@@ -15729,8 +15732,8 @@ export default function App() {
       confidence_score: confidenceScore || scoutConfidenceScore(confidence),
       sourceType,
       source_type: sourceType,
-      sourceLabel: row.source_label || "",
-      source_label: row.source_label || "",
+      sourceLabel,
+      source_label: sourceLabel,
       submittedByDisplay: row.submitted_by_display || "",
       submitted_by_display: row.submitted_by_display || "",
       importedBatch: row.imported_batch || "",
@@ -15882,7 +15885,7 @@ export default function App() {
         .filter((store) => adminEditModeActive || store.active !== false);
 
       const reportSelect = "id,store_id,user_id,product_id,report_type,quantity_seen,price_seen,photo_url,notes,observed_at,reported_at,verification_status,workspace_id,store_name,product_name,product_type,set_name,quantity_estimate,report_time,visibility,status,confidence_score,source_type,source_label,submitted_by_display,confidence,imported_batch,imported_by_admin,scout_points_awarded,import_key,report_status,created_at,updated_at";
-      const reportFallbackSelect = "id,store_id,user_id,product_id,report_type,quantity_seen,price_seen,photo_url,notes,reported_at,verification_status";
+      const reportFallbackSelect = "id,store_id,user_id,product_id,report_type,quantity_seen,price_seen,photo_url,notes,observed_at,reported_at,verification_status,workspace_id,store_name,product_name,product_type,set_name,quantity_estimate,report_time,visibility,status,confidence_score,created_at,updated_at";
       let reportsResult = await supabase
         .from("store_reports")
         .select(reportSelect)
@@ -15960,9 +15963,6 @@ export default function App() {
     const storeId = uuidOrNull(rawStoreId);
     const observedAt = scoutReportTimeForBackend(report);
     const confidenceScore = Number(report.confidenceScore || report.confidence_score || scoutConfidenceScore(report.confidence || ""));
-    const confirmed = Boolean(report.verified || /confirmed|verified/i.test(`${report.status || ""} ${report.verificationStatus || report.verification_status || ""}`));
-    const verificationStatus = report.verification_status || report.verificationStatus || (confirmed ? "verified" : report.needsReview || report.needs_review ? "needs_review" : "new_report");
-    const publicStatus = report.status || (confirmed ? "confirmed" : report.hidden ? "hidden" : "active");
     const payload = {
       store_id: storeId,
       user_id: user.id,
@@ -15970,11 +15970,12 @@ export default function App() {
       report_type: report.report_type || report.reportType || "restock",
       quantity_seen: scoutBackendNumberOrNull(report.quantity || report.quantitySeen || report.quantity_seen),
       price_seen: scoutBackendNumberOrNull(report.price || report.priceSeen || report.price_seen),
-      photo_url: report.photoUrl || report.photo_url || "",
-      notes: report.notes || report.note || report.proofText || "",
+      photo_url: report.photoUrl || report.photo_url || report.photoUrls?.[0] || "",
+      notes: encodeScoutReportCloudNotes(report),
       observed_at: observedAt,
       reported_at: observedAt,
-      verification_status: verificationStatus,
+      // New submissions never assert moderator authority, including admin drafts.
+      verification_status: "unverified",
       workspace_id: uuidOrNull(report.workspaceId || report.workspace_id || activeWorkspaceId),
       store_name: report.storeName || report.store_name || "",
       product_name: report.productName || report.product_name || report.itemName || "",
@@ -15983,36 +15984,12 @@ export default function App() {
       quantity_estimate: String(report.quantity || report.quantityEstimate || report.quantity_estimate || ""),
       report_time: observedAt,
       visibility: normalizeScoutReportVisibility(report.visibility || "public"),
-      status: publicStatus,
+      status: "unverified",
       confidence_score: confidenceScore,
-      source_type: report.sourceType || report.source_type || (confirmed ? "verified_user_report" : "user_report"),
-      source_label: report.sourceLabel || report.source_label || report.confidenceLabel || report.confidence_label || "",
-      submitted_by_display: report.submittedByDisplay || report.submitted_by_display || "",
-      confidence: report.confidence || (confirmed ? "confirmed" : "new-report"),
-      imported_batch: report.importedBatch || report.imported_batch || null,
-      imported_by_admin: Boolean(report.importedByAdmin || report.imported_by_admin),
-      scout_points_awarded: report.scoutPointsAwarded ?? report.scout_points_awarded ?? true,
-      import_key: report.importKey || report.import_key || null,
-      report_status: report.reportStatus || report.report_status || null,
     };
-    let result = await supabase.from("store_reports").insert(payload).select("id,store_id,user_id,product_id,report_type,quantity_seen,price_seen,photo_url,notes,observed_at,reported_at,verification_status,workspace_id,store_name,product_name,product_type,set_name,quantity_estimate,report_time,visibility,status,confidence_score,source_type,source_label,submitted_by_display,confidence,imported_batch,imported_by_admin,scout_points_awarded,import_key,report_status,created_at,updated_at").single();
-    // A legacy insert cannot retain screenshot provenance or private sharing.
-    // Keep the existing local report when the server lacks those columns.
-    if (result.error && isScoutBackendOptionalError(result.error) && report.sourceType !== "text_screenshot" && report.source_type !== "text_screenshot" && !report.screenshotImportReviewed && report.proofType !== "text_screenshot") {
-      const fallbackPayload = {
-        store_id: storeId,
-        user_id: user.id,
-        product_id: payload.product_id,
-        report_type: payload.report_type,
-        quantity_seen: payload.quantity_seen,
-        price_seen: payload.price_seen,
-        photo_url: payload.photo_url,
-        notes: payload.notes,
-        reported_at: observedAt,
-        verification_status: payload.verification_status,
-      };
-      result = await supabase.from("store_reports").insert(fallbackPayload).select("id,store_id,user_id,product_id,report_type,quantity_seen,price_seen,photo_url,notes,reported_at,verification_status").single();
-    }
+    // Use the deployed core schema in one insert. Never retry by dropping privacy,
+    // store/product details, or the non-authoritative source context in notes.
+    const result = await supabase.from("store_reports").insert(payload).select("id,store_id,user_id,product_id,report_type,quantity_seen,price_seen,photo_url,notes,observed_at,reported_at,verification_status,workspace_id,store_name,product_name,product_type,set_name,quantity_estimate,report_time,visibility,status,confidence_score,created_at,updated_at").single();
     if (result.error) {
       logAppError("scout_report_backend_save", result.error, { storeId: rawStoreId || storeId, storeName: payload.store_name }, "normal");
       return { ok: false, error: result.error, reason: "backend_save_failed" };
@@ -22432,7 +22409,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     try {
       backendSaveResult = await persistScoutReportToSupabase(report);
       if (backendSaveResult?.ok && backendSaveResult.report) {
-        savedReport = backendSaveResult.report;
+        savedReport = mergeScoutReportCloudSave(report, backendSaveResult.report);
         const localReportId = getScoutReportId(report);
         const latestScoutData = getSharedScoutData();
         const cloudMergeBase = (latestScoutData.reports || []).filter((candidate) => String(getScoutReportId(candidate)) !== String(localReportId));

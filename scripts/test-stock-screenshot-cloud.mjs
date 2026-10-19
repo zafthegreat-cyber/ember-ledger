@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
+import { encodeScoutReportCloudNotes, decodeScoutReportCloudNotes, mergeScoutReportCloudSave } from "../src/utils/scoutReportCloudContext.mjs";
 
 const require = createRequire(import.meta.url);
 const espree = require("espree");
@@ -26,11 +27,35 @@ const storeId = "11111111-1111-4111-8111-111111111111";
 const userId = "22222222-2222-4222-8222-222222222222";
 const workspaceId = "33333333-3333-4333-8333-333333333333";
 const reportId = "44444444-4444-4444-8444-444444444444";
-const stores = Object.freeze([Object.freeze({ id: storeId, name: "Test Store", retailer: "Target", city: "Test City", address: "100 Test Street" })]);
+const stores = Object.freeze([Object.freeze({ id: storeId, name: "Review Store", retailer: "Target", city: "Review City", address: "100 Review Street" })]);
 const observedAt = "2026-10-18T15:30:00.000Z";
 const pad = (value) => String(value).padStart(2, "0");
 const localDate = (value = new Date()) => `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`;
 const localTime = (value = new Date()) => `${pad(value.getHours())}:${pad(value.getMinutes())}`;
+
+// The deployed table has 26 columns; optional migration columns are absent.
+// Validate the payload AND RETURNING columns instead of manufacturing success.
+const productionColumns = new Set([
+  "id", "store_id", "user_id", "product_id", "report_type", "quantity_seen", "price_seen", "photo_url", "notes",
+  "reported_at", "verification_status", "workspace_id", "store_name", "product_name", "product_type", "set_name",
+  "quantity_estimate", "report_time", "visibility", "status", "confidence_score", "created_at", "updated_at",
+  "archived_at", "archived_by", "observed_at",
+]);
+const productionStatuses = new Set(["pending", "confirmed", "unverified", "rejected", "stale"]);
+const productionVisibility = new Set(["public", "private_from_map", "admin_only"]);
+function productionInsert(payload, columns) {
+  const requested = columns.split(",").map((column) => column.trim());
+  const unknown = [...Object.keys(payload), ...requested].find((column) => !productionColumns.has(column));
+  if (unknown) return { data: null, error: { code: "42703", message: `column ${unknown} does not exist` } };
+  if (!productionStatuses.has(payload.status ?? "unverified")) return { data: null, error: { code: "23514", message: "store_reports_status_check" } };
+  if (!productionVisibility.has(payload.visibility ?? "public")) return { data: null, error: { code: "23514", message: "store_reports_visibility_check" } };
+  if (!["", "unverified", "submitted", "Submitted"].includes(payload.verification_status ?? "unverified")) {
+    return { data: null, error: { code: "42501", message: "Only admins can set store report verification status" } };
+  }
+  if (!payload.report_type || !payload.user_id) return { data: null, error: { code: "23502", message: "Required report fields are missing" } };
+  const row = { id: reportId, status: "unverified", verification_status: "unverified", visibility: "public", created_at: observedAt, updated_at: observedAt, ...payload };
+  return { data: Object.fromEntries(requested.map((column) => [column, row[column] ?? null])), error: null };
+}
 
 function fixture(options = {}) {
   const calls = [];
@@ -39,6 +64,8 @@ function fixture(options = {}) {
   let form = options.form || {};
   const responses = [...(options.responses || [])];
   const environment = {
+    encodeScoutReportCloudNotes,
+    decodeScoutReportCloudNotes,
     getScoutQuickStoreId: (store) => store.id || store.storeId || "",
     getScoutQuickStoreName: (store) => store.name || "",
     getScoutQuickRetailer: (store) => store.retailer || "",
@@ -49,7 +76,7 @@ function fixture(options = {}) {
     uuidOrNull: (value) => /^[\da-f]{8}-(?:[\da-f]{4}-){3}[\da-f]{12}$/i.test(String(value || "")) ? value : null,
     getScoutQuickStores: () => stores,
     logAppError: (...args) => logs.push(args),
-    adminEditModeActive: false,
+    adminEditModeActive: options.adminEditMode ?? false,
     user: { id: userId },
     activeWorkspaceId: workspaceId,
     BETA_LOCAL_MODE: options.localBeta ?? false,
@@ -68,15 +95,19 @@ function fixture(options = {}) {
     supabase: {
       from(table) {
         calls.push({ operation: "from", table });
+        assert.equal(table, "store_reports", "These saves must not change another table");
         return {
           insert(payload) {
             calls.push({ operation: "insert", payload });
-            const response = responses.shift();
-            assert(response, "Unexpected Supabase insert: all requests must be explicitly mocked");
             return {
               select(columns) {
                 calls.push({ operation: "select", columns });
-                return { single: async () => typeof response === "function" ? response(payload) : response };
+                return { single: async () => {
+                  const schemaResult = productionInsert(payload, columns);
+                  if (schemaResult.error) return schemaResult;
+                  const response = responses.shift();
+                  return response === undefined ? schemaResult : typeof response === "function" ? response(payload, columns) : response;
+                } };
               },
             };
           },
@@ -88,64 +119,85 @@ function fixture(options = {}) {
   return { api, calls, logs, messages, get form() { return form; } };
 }
 
+// Additive-schema installations must remain readable too.
 const cloudRow = (overrides = {}) => ({
   id: reportId, store_id: storeId, user_id: userId, workspace_id: workspaceId,
-  store_name: "Test Store", product_name: "Prismatic Evolutions ETB", product_type: "Pokemon TCG",
+  store_name: "Review Store", product_name: "Prismatic Evolutions ETB", product_type: "Pokemon TCG",
   report_type: "restock", report_status: "stock_on_shelf", observed_at: observedAt,
   reported_at: observedAt, report_time: observedAt, created_at: observedAt, updated_at: observedAt,
-  status: "active", verification_status: "needs_review", visibility: "private_from_map", confidence_score: 26,
+  status: "unverified", verification_status: "unverified", visibility: "private_from_map", confidence_score: 26,
   confidence: "unusual-needs-review", source_type: "text_screenshot", source_label: "Facebook screenshot",
   photo_url: "", notes: "Reviewed product details only", ...overrides,
 });
 const localReport = (overrides = {}) => ({
-  id: "local-report", storeId, workspaceId, productName: "Prismatic Evolutions ETB", productCategory: "Pokemon TCG",
+  id: "local-report", storeId, workspaceId, storeName: "Review Store", productName: "Prismatic Evolutions ETB", productCategory: "Pokemon TCG",
   report_type: "restock", reportStatus: "stock_on_shelf", observedAt, sourceType: "text_screenshot", source_type: "text_screenshot",
   sourceLabel: "Facebook screenshot", screenshotImportReviewed: true, screenshotSourcePlatform: "facebook",
   proofType: "text_screenshot", visibility: "private_from_map", status: "active", verification_status: "needs_review",
   verified: false, needsReview: true, confidenceScore: 26, confidence: "unusual-needs-review", notes: "Reviewed product details only",
   ...overrides,
 });
-const optionalError = Object.freeze({ code: "42703", message: "column source_type does not exist" });
+const ordinaryReport = (overrides = {}) => localReport({ sourceType: "user_report", source_type: "user_report", screenshotImportReviewed: false, screenshotSourcePlatform: "", proofType: "manual", sourceLabel: "Community report", verification_status: "new_report", ...overrides });
 let passed = 0;
 async function check(name, run) {
   try { await run(); passed += 1; console.log(`PASS ${name}`); }
   catch (error) { error.message = `${name}: ${error.message}`; throw error; }
 }
+const inserts = (f) => f.calls.filter((call) => call.operation === "insert");
 
-await check("modern cloud mapping retains screenshot provenance, proof, privacy and review", () => {
+await check("schema fake rejects the original missing-column, status and moderation regressions", () => {
+  const minimal = { user_id: userId, report_type: "restock", status: "unverified", verification_status: "unverified" };
+  assert.equal(productionInsert({ ...minimal, source_type: "text_screenshot" }, "id").error.code, "42703");
+  assert.equal(productionInsert(minimal, "id,source_label").error.code, "42703");
+  assert.equal(productionInsert({ ...minimal, status: "active" }, "id").error.code, "23514");
+  for (const verification_status of ["needs_review", "new_report", "verified"]) {
+    assert.equal(productionInsert({ ...minimal, verification_status }, "id").error.code, "42501");
+  }
+});
+await check("modern mapping retains screenshot provenance, proof, privacy and review", () => {
   const row = Object.freeze(cloudRow());
   const mapped = fixture().api.mapSupabaseScoutReport(row, stores);
   assert.equal(mapped.sourceType, "text_screenshot"); assert.equal(mapped.source_type, "text_screenshot");
   assert.equal(mapped.proofType, "text_screenshot"); assert.equal(mapped.screenshotImportReviewed, true);
   assert.equal(mapped.screenshotSourcePlatform, "facebook"); assert.equal(mapped.visibility, "private_from_map");
   assert.equal(mapped.needsReview, true); assert.equal(mapped.needs_review, true); assert.equal(mapped.verified, false);
-  assert.equal(mapped.verificationStatus, "needs_review"); assert.equal(mapped.verification_status, "needs_review");
+  assert.equal(mapped.verificationStatus, "unverified"); assert.equal(mapped.verification_status, "unverified");
   assert.equal(mapped.shouldTrainPredictions, false); assert.equal(mapped.trainingEligible, false);
-  assert.equal(mapped.observedAt, observedAt); assert.equal(mapped.notes, row.notes);
-  assert.equal(mapped.stockStatus, "stock_on_shelf");
+  assert.equal(mapped.observedAt, observedAt); assert.equal(mapped.notes, row.notes); assert.equal(mapped.stockStatus, "stock_on_shelf");
 });
-await check("controlled platform labels survive cloud mapping without trusting arbitrary source text", () => {
+await check("controlled platform labels never interpret arbitrary source text", () => {
   for (const [label, expected] of [["Discord screenshot", "discord"], ["Community screenshot", "other"], ["unknown person @private-name says Facebook", "other"]]) {
     assert.equal(fixture().api.mapSupabaseScoutReport(cloudRow({ source_label: label }), stores).screenshotSourcePlatform, expected);
   }
 });
-await check("an existing proof image cannot turn an indirect screenshot into a shelf-photo report", () => {
+await check("a proof photo cannot turn an indirect screenshot into a shelf-photo report", () => {
   const mapped = fixture().api.mapSupabaseScoutReport(cloudRow({ photo_url: "https://proof.example.test/user-selected-proof.jpg" }), stores);
   assert.equal(mapped.proofType, "text_screenshot"); assert.equal(mapped.needsReview, true);
   assert.equal(mapped.photoUrl, "https://proof.example.test/user-selected-proof.jpg");
 });
-await check("unverified screenshot status is not mistaken for verified by substring", () => {
-  const mapped = fixture().api.mapSupabaseScoutReport(cloudRow({ status: "unverified", verification_status: "unverified" }), stores);
-  assert.equal(mapped.verified, false); assert.equal(mapped.needsReview, true); assert.equal(mapped.trainingEligible, false);
+await check("unverified and lookalike statuses never become confirmed for either source", () => {
+  for (const source_type of ["user_report", "text_screenshot"]) {
+    for (const status of ["unverified", "pending", "not_verified", "confirmed_by_user", "not_confirmed", "unconfirmed"]) {
+      const mapped = fixture().api.mapSupabaseScoutReport(cloudRow({ status, verification_status: status, source_type }), stores);
+      assert.equal(mapped.verified, false, `${source_type}: ${status}`); assert.equal(mapped.trainingEligible, false, `${source_type}: ${status}`);
+    }
+  }
 });
-await check("explicit moderator confirmation retains provenance and can resolve review", () => {
-  const mapped = fixture().api.mapSupabaseScoutReport(cloudRow({ verification_status: "verified" }), stores);
+await check("explicit server confirmation resolves review and retains provenance", () => {
+  const mapped = fixture().api.mapSupabaseScoutReport(cloudRow({ status: "confirmed", verification_status: "verified" }), stores);
   assert.equal(mapped.verified, true); assert.equal(mapped.needsReview, false); assert.equal(mapped.proofType, "text_screenshot");
   assert.equal(mapped.sourceType, "text_screenshot"); assert.equal(mapped.screenshotSourcePlatform, "facebook");
 });
-await check("ordinary photo report mapping remains unchanged", () => {
-  const mapped = fixture().api.mapSupabaseScoutReport(cloudRow({ source_type: "user_report", verification_status: "new_report", photo_url: "photo.jpg" }), stores);
+await check("rejected or stale rows override a prior confirmation field", () => {
+  for (const status of ["rejected", "stale"]) {
+    const mapped = fixture().api.mapSupabaseScoutReport(cloudRow({ status, verification_status: "verified" }), stores);
+    assert.equal(mapped.verified, false); assert.equal(mapped.trainingEligible, false);
+  }
+});
+await check("ordinary photo reports retain photo proof and unverified state", () => {
+  const mapped = fixture().api.mapSupabaseScoutReport(cloudRow({ source_type: "user_report", photo_url: "photo.jpg" }), stores);
   assert.equal(mapped.proofType, "stock_photo"); assert(!Object.hasOwn(mapped, "screenshotImportReviewed"));
+  assert.equal(mapped.verified, false); assert.equal(mapped.trainingEligible, false);
 });
 await check("status edits preserve source markers and private sharing", () => {
   const f = fixture({ form: { ...localReport(), reportType: "stock_on_shelf" } });
@@ -154,56 +206,159 @@ await check("status edits preserve source markers and private sharing", () => {
   assert.equal(f.form.screenshotImportReviewed, true); assert.equal(f.form.proofType, "text_screenshot");
   assert.equal(f.form.screenshotSourcePlatform, "facebook"); assert.equal(f.form.visibility, "private_from_map");
 });
-await check("modern persistence sends indirect/private fields and remaps a safe report", async () => {
-  const f = fixture({ responses: [(payload) => ({ data: cloudRow({ ...payload }), error: null })] });
-  const input = Object.freeze(localReport({ rawText: "Private OCR author @test-handle", screenshotImage: "private-image-bytes", screenshotPreview: "blob:private-preview" }));
+await check("private screenshot saves and reloads against the actual 26-column schema", async () => {
+  const f = fixture();
+  const input = Object.freeze(localReport({ quantity: 3, price: 49.99, setName: "Prismatic Evolutions", rawText: "Private OCR author @test-handle", screenshotImage: "private-image-bytes", screenshotPreview: "blob:private-preview" }));
   const saved = await f.api.persistScoutReportToSupabase(input);
-  assert.equal(saved.ok, true); assert.equal(saved.report.proofType, "text_screenshot");
-  assert.equal(saved.report.needsReview, true); assert.equal(saved.report.visibility, "private_from_map");
-  const payload = f.calls.find((call) => call.operation === "insert").payload;
-  assert.equal(payload.source_type, "text_screenshot"); assert.equal(payload.source_label, "Facebook screenshot");
-  assert.equal(payload.visibility, "private_from_map"); assert.equal(payload.verification_status, "needs_review");
-  assert.equal(payload.observed_at, observedAt); assert.equal(payload.photo_url, ""); assert.equal(payload.notes, input.notes);
+  assert.equal(saved.ok, true, JSON.stringify(saved.error)); assert.equal(saved.source, "supabase");
+  assert.equal(inserts(f).length, 1, "No second, lossy insert is allowed");
+  const payload = inserts(f)[0].payload;
+  assert.equal(payload.visibility, "private_from_map"); assert.equal(payload.verification_status, "unverified");
+  assert.equal(payload.status, "unverified"); assert.equal(payload.observed_at, observedAt); assert.equal(payload.photo_url, "");
   assert.equal(payload.user_id, userId); assert.equal(payload.workspace_id, workspaceId);
+  assert.equal(payload.store_name, input.storeName); assert.equal(payload.product_name, input.productName);
+  assert.equal(payload.quantity_seen, 3); assert.equal(payload.price_seen, 49.99); assert.equal(payload.set_name, input.setName);
+  const context = decodeScoutReportCloudNotes(payload.notes);
+  assert.equal(context.notes, input.notes); assert.equal(context.sourceType, "text_screenshot");
+  assert.equal(context.sourceLabel, "Facebook screenshot"); assert.equal(context.reportStatus, "stock_on_shelf");
   for (const key of ["rawText", "screenshotImage", "screenshotPreview"]) assert(!Object.hasOwn(payload, key));
-  assert(!JSON.stringify(payload).includes("@test-handle"));
-});
-await check("screenshot metadata errors never retry a legacy public/source-less insert", async () => {
-  const f = fixture({ responses: [{ data: null, error: optionalError }] });
-  const saved = await f.api.persistScoutReportToSupabase(Object.freeze(localReport()));
-  assert.equal(saved.ok, false); assert.equal(saved.reason, "backend_save_failed");
-  assert.equal(f.calls.filter((call) => call.operation === "insert").length, 1);
-  assert.equal(f.calls.some((call) => call.operation === "delete" || call.operation === "update"), false);
-});
-await check("every recognized screenshot marker blocks legacy fallback", async () => {
-  for (const marker of [{ sourceType: "text_screenshot" }, { source_type: "text_screenshot" }, { screenshotImportReviewed: true }, { proofType: "text_screenshot" }]) {
-    const f = fixture({ responses: [{ data: null, error: optionalError }] });
-    const report = { ...localReport(), sourceType: "user_report", source_type: "user_report", screenshotImportReviewed: false, proofType: "manual", ...marker };
-    const saved = await f.api.persistScoutReportToSupabase(report);
-    assert.equal(saved.ok, false, JSON.stringify(marker));
-    assert.equal(f.calls.filter((call) => call.operation === "insert").length, 1, JSON.stringify(marker));
+  for (const value of ["@test-handle", "private-image-bytes", "blob:private-preview"]) assert(!JSON.stringify(payload).includes(value));
+  const persisted = productionInsert(payload, [...productionColumns].join(",")).data;
+  const reloaded = fixture().api.mapSupabaseScoutReport(persisted, stores);
+  for (const report of [saved.report, reloaded]) {
+    assert.equal(report.id, reportId); assert.equal(report.proofType, "text_screenshot");
+    assert.equal(report.sourceType, "text_screenshot"); assert.equal(report.screenshotSourcePlatform, "facebook");
+    assert.equal(report.visibility, "private_from_map"); assert.equal(report.needsReview, true); assert.equal(report.verified, false);
+    assert.equal(report.trainingEligible, false); assert.equal(report.notes, input.notes);
+    assert.equal(report.stockStatus, "stock_on_shelf"); assert.equal(report.observedAt, observedAt);
+    assert.equal(report.storeName, input.storeName); assert.equal(report.productName, input.productName);
   }
 });
-await check("ordinary reports retain the existing legacy fallback behavior", async () => {
-  const f = fixture({ responses: [{ data: null, error: optionalError }, { data: cloudRow({ source_type: undefined, verification_status: "new_report", photo_url: "proof.jpg" }), error: null }] });
-  const saved = await f.api.persistScoutReportToSupabase(localReport({ sourceType: "user_report", source_type: "user_report", screenshotImportReviewed: false, proofType: "photo" }));
-  assert.equal(saved.ok, true);
-  const payloads = f.calls.filter((call) => call.operation === "insert").map((call) => call.payload);
-  assert.equal(payloads.length, 2); assert.equal(payloads[1].user_id, userId);
-  assert(!Object.hasOwn(payloads[1], "source_type")); assert(!Object.hasOwn(payloads[1], "visibility"));
+await check("ordinary private reports retain product, directory store, time, sharing and notes", async () => {
+  const f = fixture();
+  const input = ordinaryReport({ notes: "Phone check 1019 A", reportStatus: "no_stock", storeId: "directory-location-7", storeName: "Directory location" });
+  const saved = await f.api.persistScoutReportToSupabase(input);
+  assert.equal(saved.ok, true, JSON.stringify(saved.error)); assert.equal(inserts(f).length, 1); assert.equal(saved.usedDirectoryStoreFallback, true);
+  const payload = inserts(f)[0].payload;
+  assert.equal(payload.store_id, null); assert.equal(payload.store_name, input.storeName);
+  assert.equal(payload.product_name, input.productName); assert.equal(payload.visibility, "private_from_map");
+  assert.equal(payload.observed_at, observedAt); assert.equal(payload.verification_status, "unverified");
+  assert.equal(saved.report.notes, input.notes); assert.equal(saved.report.stockStatus, "no_stock");
+  assert.equal(saved.report.visibility, "private_from_map"); assert.equal(saved.report.verified, false);
+  assert.equal(saved.report.sourceType, "user_report"); assert.equal(saved.report.proofType, "manual");
+  assert(!Object.hasOwn(saved.report, "screenshotImportReviewed"));
 });
-await check("unrelated backend errors keep the existing local-failure result", async () => {
-  const f = fixture({ responses: [{ data: null, error: { code: "NETWORK", message: "network unavailable" } }] });
-  const saved = await f.api.persistScoutReportToSupabase(localReport());
-  assert.equal(saved.ok, false); assert.equal(saved.reason, "backend_save_failed");
-  assert.equal(f.calls.filter((call) => call.operation === "insert").length, 1);
+await check("public and administrator-only sharing remain explicit", async () => {
+  for (const visibility of ["public", "admin_only"]) {
+    const f = fixture();
+    const saved = await f.api.persistScoutReportToSupabase(ordinaryReport({ visibility }));
+    assert.equal(saved.ok, true, JSON.stringify(saved.error)); assert.equal(inserts(f)[0].payload.visibility, visibility); assert.equal(saved.report.visibility, visibility);
+  }
 });
-await check("guest, unsigned, unconfigured, unready and local-beta sessions cannot call cloud persistence", async () => {
+await check("every screenshot marker retains indirect provenance in a schema-compatible save", async () => {
+  for (const marker of [{ sourceType: "text_screenshot" }, { source_type: "text_screenshot" }, { screenshotImportReviewed: true }, { proofType: "text_screenshot" }]) {
+    const f = fixture();
+    const saved = await f.api.persistScoutReportToSupabase(ordinaryReport({ ...marker, sourceLabel: "Discord screenshot" }));
+    assert.equal(saved.ok, true, JSON.stringify(marker)); assert.equal(inserts(f).length, 1);
+    assert.equal(saved.report.sourceType, "text_screenshot", JSON.stringify(marker)); assert.equal(saved.report.proofType, "text_screenshot", JSON.stringify(marker));
+    assert.equal(saved.report.screenshotSourcePlatform, "discord", JSON.stringify(marker));
+    assert.equal(saved.report.needsReview, true); assert.equal(saved.report.visibility, "private_from_map");
+  }
+});
+await check("an explicitly selected proof photo survives cloud saving without publishing the screenshot", async () => {
+  const f = fixture();
+  const photo = "https://proof.example.test/selected-shelf-proof.jpg";
+  const saved = await f.api.persistScoutReportToSupabase(localReport({ photoUrls: [photo], screenshotImage: "private-screenshot-bytes", screenshotPreview: "blob:private-screenshot" }));
+  assert.equal(saved.ok, true); assert.equal(inserts(f)[0].payload.photo_url, photo);
+  assert.equal(saved.report.photoUrl, photo); assert.equal(saved.report.proofType, "text_screenshot");
+  assert.equal(saved.report.needsReview, true);
+  assert(!JSON.stringify(inserts(f)[0].payload).includes("private-screenshot"));
+});
+await check("new drafts cannot grant themselves moderation or historical-import authority", async () => {
+  for (const adminEditMode of [false, true]) {
+    const f = fixture({ adminEditMode });
+    const saved = await f.api.persistScoutReportToSupabase(ordinaryReport({ status: "confirmed", verification_status: "verified", verificationStatus: "verified", verified: true, importedByAdmin: true, imported_by_admin: true, importedBatch: "not-a-server-import", sourceType: "historical_import", source_type: "historical_import", reportStatus: "stock_seen" }));
+    assert.equal(saved.ok, true, JSON.stringify(saved.error));
+    const payload = inserts(f)[0].payload;
+    assert.equal(payload.status, "unverified"); assert.equal(payload.verification_status, "unverified");
+    assert.equal(saved.report.verified, false); assert.equal(saved.report.trainingEligible, false);
+    assert.equal(saved.report.importedByAdmin, false); assert.equal(saved.report.importedBatch, ""); assert.notEqual(saved.report.sourceType, "historical_import");
+  }
+});
+await check("optional-column failures never retry a lossy insert for either source", async () => {
+  for (const report of [localReport(), ordinaryReport()]) {
+    const f = fixture({ responses: [{ data: null, error: { code: "42703", message: "column observed_at does not exist" } }] });
+    const saved = await f.api.persistScoutReportToSupabase(Object.freeze(report));
+    assert.equal(saved.ok, false); assert.equal(saved.reason, "backend_save_failed"); assert.equal(inserts(f).length, 1); assert.equal(f.logs.length, 1);
+  }
+});
+await check("network and policy errors preserve the local-failure result without mutating other rows", async () => {
+  for (const error of [{ code: "NETWORK", message: "network unavailable" }, { code: "42501", message: "row-level security policy denied the insert" }]) {
+    const f = fixture({ responses: [{ data: null, error }] });
+    const saved = await f.api.persistScoutReportToSupabase(localReport());
+    assert.equal(saved.ok, false); assert.equal(saved.reason, "backend_save_failed"); assert.equal(inserts(f).length, 1); assert.equal(f.logs.length, 1);
+    assert.equal(f.calls.some((call) => call.operation === "delete" || call.operation === "update"), false);
+  }
+});
+await check("guest, unsigned, unconfigured, unready and local-beta sessions never call cloud persistence", async () => {
   for (const options of [{ guest: true }, { signedIn: false }, { configured: false }, { protectedReady: false }, { localBeta: true }]) {
     const f = fixture(options);
     const saved = await f.api.persistScoutReportToSupabase(localReport());
-    assert.equal(saved.ok, false); assert.equal(saved.skipped, true); assert.equal(saved.reason, "backend_unavailable");
-    assert.equal(f.calls.length, 0, JSON.stringify(options));
+    assert.equal(saved.ok, false); assert.equal(saved.skipped, true); assert.equal(saved.reason, "backend_unavailable"); assert.equal(f.calls.length, 0, JSON.stringify(options));
   }
 });
-console.log(`Stock screenshot cloud: ${passed} actual App behavior checks passed. No live requests were made.`);
+await check("context is idempotent, bounded and excludes OCR, images and draft authority", () => {
+  const report = localReport({ rawText: "private-ocr", screenshotImage: "data:image/private", verified: true, importedByAdmin: true });
+  const encoded = encodeScoutReportCloudNotes(report);
+  assert.equal(encodeScoutReportCloudNotes({ ...report, notes: encoded }), encoded);
+  assert(encoded.length - report.notes.length < 300);
+  for (const value of ["private-ocr", "data:image/private", "verified", "importedByAdmin"]) assert(!encoded.includes(value));
+  assert.deepEqual(decodeScoutReportCloudNotes(encoded), { notes: report.notes, sourceType: "text_screenshot", sourceLabel: "Facebook screenshot", reportStatus: "stock_on_shelf" });
+  assert.equal(decodeScoutReportCloudNotes(encodeScoutReportCloudNotes(ordinaryReport({ reportStatus: "employee_restock_coming" }))).reportStatus, "employee_restock_coming");
+});
+await check("successful cloud saves retain reviewed device details while server identity and authority win", () => {
+  const local = localReport({
+    itemsSeen: [{ productName: "Prismatic Evolutions ETB", quantity: "3" }],
+    photoUrls: ["https://proof.example.test/selected-shelf-proof.jpg"],
+    catalogProductId: "reviewed-catalog-id", catalogProductName: "Prismatic Evolutions ETB",
+    productImageUrl: "https://art.example.test/etb.webp", manualLocation: { city: "Review City", address: "100 Review Street" },
+    city: "Review City", address: "100 Review Street", region: "VA", state: "VA", zip: "23435",
+    retailer: "Target", chain: "Target", needsStoreReview: true, stockLeft: "some", storeFollowPreference: true,
+    rawText: "private-ocr-text", screenshotImage: "private-image-bytes", screenshotPreview: "blob:private-preview",
+    status: "confirmed", verification_status: "verified", verified: true, importedByAdmin: true,
+    visibility: "public", notes: "obsolete local note", userId: "other-user",
+  });
+  const cloud = fixture().api.mapSupabaseScoutReport(cloudRow({ notes: "Server-reviewed note" }), []);
+  const merged = mergeScoutReportCloudSave(Object.freeze(local), Object.freeze(cloud));
+  for (const key of ["itemsSeen", "photoUrls", "catalogProductId", "catalogProductName", "productImageUrl", "manualLocation", "state", "zip", "needsStoreReview", "stockLeft", "storeFollowPreference"]) {
+    assert.deepEqual(merged[key], local[key], key);
+  }
+  for (const key of ["city", "address", "region", "retailer", "chain"]) assert.equal(merged[key], local[key], key);
+  for (const key of ["id", "userId", "status", "verification_status", "verified", "visibility", "sourceType", "notes", "needsReview", "trainingEligible", "importedByAdmin"]) {
+    assert.deepEqual(merged[key], cloud[key], key);
+  }
+  for (const key of ["rawText", "screenshotImage", "screenshotPreview"]) assert(!Object.hasOwn(merged, key));
+  for (const value of ["private-ocr-text", "private-image-bytes", "blob:private-preview"]) assert(!JSON.stringify(merged).includes(value));
+  assert(source.includes("mergeScoutReportCloudSave(report, backendSaveResult.report)"), "The real submit flow must use the preservation helper");
+});
+await check("cloud location details override an older device location", () => {
+  const local = { city: "Old City", address: "Old address", region: "Old region", retailer: "Old retailer", chain: "Old chain" };
+  const cloud = { city: "Current City", address: "Current address", region: "Current region", retailer: "Current retailer", chain: "Current chain" };
+  assert.deepEqual(mergeScoutReportCloudSave(local, cloud), cloud);
+});
+await check("malformed or authority-spoofing context remains literal notes and never creates trust", () => {
+  for (const footer of ["not-json", "null", "[]", '{"verified":true}', '{"source":"historical_import"}', '{"source":"text_screenshot","platform":"private person"}', '{"stockStatus":"verified"}', "x".repeat(241)]) {
+    const notes = `Keep my note\n\n[Code 3 report context v1:${footer}]`;
+    assert.deepEqual(decodeScoutReportCloudNotes(notes), { notes, sourceType: "", sourceLabel: "", reportStatus: "" });
+    const mapped = fixture().api.mapSupabaseScoutReport(cloudRow({ source_type: undefined, report_status: undefined, notes }), stores);
+    assert.equal(mapped.notes, notes); assert.equal(mapped.verified, false); assert.equal(mapped.trainingEligible, false); assert.notEqual(mapped.sourceType, "historical_import");
+  }
+});
+await check("core report-loader fallback retains privacy and identity fields", () => {
+  const match = source.match(/const reportFallbackSelect\s*=\s*"([^"]+)"/);
+  assert(match, "The optional-schema loader needs a named core fallback selection");
+  const columns = new Set(match[1].split(","));
+  for (const column of ["visibility", "status", "verification_status", "store_name", "product_name", "observed_at", "notes", "workspace_id"]) assert(columns.has(column), `Fallback omits ${column}`);
+  for (const column of columns) assert(productionColumns.has(column), `Fallback still requests unavailable ${column}`);
+});
+console.log(`Stock screenshot cloud: ${passed} actual App behavior checks passed against a production-schema fake. No live requests were made.`);
