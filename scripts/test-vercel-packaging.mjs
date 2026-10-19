@@ -49,4 +49,19 @@ equal(deletionEntry, 'import app from "../../backend/src/server";\nexport defaul
 const server = read("backend/src/server.ts");
 matches(server, /app\.use\("\/api\/account\/deletion", protectedCors, createAccountDeletionRouter\(\)\)/, "the retained deletion adapter must keep the protected canonical account-deletion router");
 matches(read("backend/src/routes/accountDeletion.routes.ts"), /router\.get\("\/status",/, "status remains a GET route on the same deletion router");
-console.log(`PASS ${assertions} Vercel packaging checks: twelve API functions, exact status routing and unchanged shared deletion handler.`);
+
+const marketSourcesIndex = vercelConfig.routes.findIndex((route) => route.src === "^/api/market/sources/[^/]+$");
+equal(marketSourcesIndex >= 0 && marketSourcesIndex < filesystemIndex, true, "price sources must select their shared function before filesystem and SPA routing");
+const marketSourcesRoute = vercelConfig.routes[marketSourcesIndex];
+equal(JSON.stringify(marketSourcesRoute), JSON.stringify({ src: "^/api/market/sources/[^/]+$", dest: "/api/health" }), "price sources must reuse the existing canonical Express adapter without transforming method or request");
+const marketSourcesPattern = new RegExp(marketSourcesRoute.src);
+for (const path of ["/api/market/sources/502006", "/api/market/sources/retailer-sku", "/api/market/sources/0"]) {
+  equal(marketSourcesPattern.test(path), true, "one product segment reaches backend identity validation, including malformed IDs");
+}
+equal(marketSourcesPattern.test(new URL("https://example.invalid/api/market/sources/502006?review=1").pathname), true, "query parameters do not prevent the canonical source route from matching");
+for (const path of ["/api/market/sources", "/api/market/sources/502006/", "/api/market/sources/502006/extra", "/prefix/api/market/sources/502006", "/API/market/sources/502006", "/api/market/refresh/502006", "/api/auth/session", "/api/health", "/settings", "/find/restocks"]) {
+  equal(marketSourcesPattern.test(path), false, `the source rewrite must not capture ${path}`);
+}
+equal(read("api/health.ts").trim().replaceAll("\r\n", "\n"), 'import app from "../backend/src/server";\n\nexport default app;', "the shared health adapter retains the canonical Express app and security boundary");
+matches(server, /app\.use\("\/api\/market", marketRouter\)/, "source URLs remain on the existing market router");
+console.log(`PASS ${assertions} Vercel packaging checks: twelve API functions, exact public source/status routing and canonical Express handlers.`);
