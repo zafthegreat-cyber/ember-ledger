@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { isSupabaseConfigured, supabase } from "../supabaseClient";
+import MarketSourceComparison from "./MarketSourceComparison.jsx";
+
+const EMPTY_ITEM = Object.freeze({});
 
 const WINDOWS = [
   { key: "3m", label: "3M", days: 92 },
@@ -31,12 +34,9 @@ function normalizePoint(row = {}) {
   return {
     ...row,
     date: pointDate(row),
-    condition: row.condition || row.price_subtype || "Unopened",
+    condition: row.condition || row.price_subtype || "Not specified",
     marketPrice: asNumber(row.market_price),
-    listedMedian: asNumber(row.listed_median ?? row.mid_price),
-    mostRecentSale: asNumber(row.most_recent_sale ?? row.direct_low_price),
-    lowSalePrice: asNumber(row.low_sale_price ?? row.low_price),
-    highSalePrice: asNumber(row.high_sale_price ?? row.high_price),
+    directLow: asNumber(row.direct_low_price),
     lowPrice: asNumber(row.low_price),
     midPrice: asNumber(row.mid_price),
     highPrice: asNumber(row.high_price),
@@ -81,13 +81,13 @@ function volatilityLabel(points) {
 
 function snapshotStats(points) {
   const marketPrices = points.map((point) => point.marketPrice).filter((price) => price > 0);
-  const lowSales = points.map((point) => point.lowSalePrice).filter((price) => price > 0);
-  const highSales = points.map((point) => point.highSalePrice).filter((price) => price > 0);
+  const lowQuotes = points.map((point) => point.lowPrice).filter((price) => price > 0);
+  const highQuotes = points.map((point) => point.highPrice).filter((price) => price > 0);
   const first = marketPrices[0] || 0;
   const latest = marketPrices[marketPrices.length - 1] || 0;
   return {
-    lowSalePrice: lowSales.length ? Math.min(...lowSales) : 0,
-    highSalePrice: highSales.length ? Math.max(...highSales) : 0,
+    lowQuotedPrice: lowQuotes.length ? Math.min(...lowQuotes) : 0,
+    highQuotedPrice: highQuotes.length ? Math.max(...highQuotes) : 0,
     lowestMarketPrice: marketPrices.length ? Math.min(...marketPrices) : 0,
     highestMarketPrice: marketPrices.length ? Math.max(...marketPrices) : 0,
     averageMarketPrice: average(marketPrices),
@@ -117,7 +117,7 @@ function PriceChart({ points }) {
   const width = 640;
   const height = 220;
   const padding = 28;
-  const prices = points.flatMap((point) => [point.marketPrice, point.listedMedian, point.lowSalePrice, point.highSalePrice]).filter((price) => price > 0);
+  const prices = points.flatMap((point) => [point.marketPrice, point.midPrice, point.lowPrice, point.highPrice]).filter((price) => price > 0);
   if (points.length < 2 || prices.length < 2) {
     return (
       <div className="market-history-chart empty">
@@ -128,9 +128,9 @@ function PriceChart({ points }) {
   const minPrice = Math.min(...prices);
   const maxPrice = Math.max(...prices);
   const marketPath = buildChartPath(points, "marketPrice", width, height, padding, minPrice, maxPrice);
-  const medianPath = buildChartPath(points, "listedMedian", width, height, padding, minPrice, maxPrice);
-  const lowPath = buildChartPath(points, "lowSalePrice", width, height, padding, minPrice, maxPrice);
-  const highPath = buildChartPath(points, "highSalePrice", width, height, padding, minPrice, maxPrice);
+  const medianPath = buildChartPath(points, "midPrice", width, height, padding, minPrice, maxPrice);
+  const lowPath = buildChartPath(points, "lowPrice", width, height, padding, minPrice, maxPrice);
+  const highPath = buildChartPath(points, "highPrice", width, height, padding, minPrice, maxPrice);
 
   return (
     <div className="market-history-chart">
@@ -144,14 +144,14 @@ function PriceChart({ points }) {
       </svg>
       <div className="market-history-legend">
         <span><b className="legend-dot market" /> Market</span>
-        <span><b className="legend-dot median" /> Listed Median</span>
-        <span><b className="legend-dot range" /> Low/High</span>
+        <span><b className="legend-dot median" /> Mid price</span>
+        <span><b className="legend-dot range" /> Quoted low/high</span>
       </div>
     </div>
   );
 }
 
-export default function MarketPriceHistoryPanel({
+function MarketPriceHistorySession({
   catalogProductId,
   tcgplayerProductId,
   externalProductId,
@@ -163,6 +163,7 @@ export default function MarketPriceHistoryPanel({
   lastPriceChecked = "",
   compact = false,
   money,
+  marketItem = EMPTY_ITEM,
 }) {
   const [windowKey, setWindowKey] = useState("3m");
   const [condition, setCondition] = useState("All");
@@ -251,18 +252,15 @@ export default function MarketPriceHistoryPanel({
   const historyPoints = useMemo(() => historyRows.map(normalizePoint).filter((point) => point.date), [historyRows]);
   const fallbackPoint = useMemo(() => {
     const current = currentRows[0] || {};
-    const checkedAt = current.checked_at || lastPriceChecked || new Date().toISOString();
+    const checkedAt = current.checked_at || lastPriceChecked || "";
     return normalizePoint({
       ...current,
       market_price: current.market_price ?? currentMarketPrice,
       low_price: current.low_price ?? currentLowPrice,
       mid_price: current.mid_price ?? currentMidPrice,
       high_price: current.high_price ?? currentHighPrice,
-      listed_median: current.listed_median ?? current.mid_price ?? currentMidPrice,
-      low_sale_price: current.low_sale_price ?? current.low_price ?? currentLowPrice,
-      high_sale_price: current.high_sale_price ?? current.high_price ?? currentHighPrice,
       checked_at: checkedAt,
-      condition: current.condition || current.price_subtype || "Unopened",
+      condition: current.condition || current.price_subtype || "Not specified",
     });
   }, [currentHighPrice, currentLowPrice, currentMarketPrice, currentMidPrice, currentRows, lastPriceChecked]);
 
@@ -285,9 +283,10 @@ export default function MarketPriceHistoryPanel({
 
   return (
     <section className={compact ? "market-history-panel compact" : "market-history-panel"}>
+      <MarketSourceComparison marketItem={marketItem} productName={productName} />
       <div className="compact-card-header">
         <div>
-          <h3>Market Data</h3>
+          <h3>Saved price history</h3>
           <p>{productName}</p>
         </div>
         {loading ? <span className="status-badge">Loading...</span> : <span className="status-badge">{historyPoints.length ? `${historyPoints.length} snapshot${historyPoints.length === 1 ? "" : "s"}` : "Current only"}</span>}
@@ -295,16 +294,16 @@ export default function MarketPriceHistoryPanel({
 
       <div className="market-history-summary">
         <div className="card"><p>Market Price</p><h2>{asMoney(latestPoint.marketPrice || currentMarketPrice, money)}</h2></div>
-        <div className="card"><p>Most Recent Sale</p><h2>{asMoney(latestPoint.mostRecentSale, money)}</h2></div>
+        <div className="card"><p>Direct low</p><h2>{asMoney(latestPoint.directLow, money)}</h2></div>
         <div className="card"><p>Volatility</p><h2>{volatility}</h2></div>
-        <div className="card"><p>Listed Median</p><h2>{asMoney(latestPoint.listedMedian || latestPoint.midPrice, money)}</h2></div>
+        <div className="card"><p>Mid price</p><h2>{asMoney(latestPoint.midPrice, money)}</h2></div>
       </div>
 
       <div className="market-history-controls">
         <div>
           <h4>Market Price History</h4>
           <p>
-            {latestPoint.condition || "Unopened"}: {asMoney(latestPoint.marketPrice || currentMarketPrice, money)}
+            {latestPoint.condition || "Not specified"}: {asMoney(latestPoint.marketPrice || currentMarketPrice, money)}
             {selectedPoints.length >= 2 ? ` (${percentLabel})` : ""}
           </p>
         </div>
@@ -335,8 +334,8 @@ export default function MarketPriceHistoryPanel({
       {!error && historyPoints.length === 1 ? <p className="compact-subtitle">More history will appear as prices refresh.</p> : null}
 
       <div className="market-history-summary snapshot">
-        <div className="card"><p>Low Sale Price</p><h2>{asMoney(stats.lowSalePrice, money)}</h2></div>
-        <div className="card"><p>High Sale Price</p><h2>{asMoney(stats.highSalePrice, money)}</h2></div>
+        <div className="card"><p>Low quoted price</p><h2>{asMoney(stats.lowQuotedPrice, money)}</h2></div>
+        <div className="card"><p>High quoted price</p><h2>{asMoney(stats.highQuotedPrice, money)}</h2></div>
         <div className="card"><p>Lowest Market</p><h2>{asMoney(stats.lowestMarketPrice, money)}</h2></div>
         <div className="card"><p>Highest Market</p><h2>{asMoney(stats.highestMarketPrice, money)}</h2></div>
         <div className="card"><p>Average Market</p><h2>{asMoney(stats.averageMarketPrice, money)}</h2></div>
@@ -346,6 +345,13 @@ export default function MarketPriceHistoryPanel({
       <p className="compact-subtitle">
         Last price checked: {latestPoint.date ? new Date(latestPoint.date).toLocaleString() : "Unknown"}
       </p>
+      <p className="compact-subtitle">Low, mid, high, and direct-low references are quoted prices, not verified completed sales.</p>
     </section>
   );
+}
+
+export default function MarketPriceHistoryPanel(props) {
+  const item = props.marketItem || EMPTY_ITEM;
+  const key = JSON.stringify([props.catalogProductId || "", props.tcgplayerProductId || "", props.externalProductId || "", item.variant || item.priceSubtype || "", item.condition || ""]);
+  return <MarketPriceHistorySession key={key} {...props} />;
 }

@@ -7,6 +7,8 @@ const seedCatalogDir = path.join(rootDir, "seeds", "catalog");
 const seedStoreDir = path.join(rootDir, "seeds", "stores");
 
 const TCGCSV_BASE = "https://tcgcsv.com/tcgplayer";
+const TCGCSV_BUILD_URL = "https://tcgcsv.com/last-updated.txt";
+const FETCH_TIMEOUT_MS = 20_000;
 const POKEMON_CATEGORY_ID = Number(process.env.TCGCSV_CATEGORY_ID || 3);
 const DEFAULT_GROUP_LIMIT = Number(process.env.TCGCSV_GROUP_LIMIT || 0);
 const REQUEST_DELAY_MS = Number(process.env.SYNC_REQUEST_DELAY_MS || 120);
@@ -157,6 +159,19 @@ function numberOrEmpty(value) {
   return Number.isFinite(next) ? Number(next.toFixed(2)) : "";
 }
 
+function positivePrice(value) {
+  if ((typeof value !== "number" && typeof value !== "string") || String(value).trim() === "") return "";
+  const parsed = Number(value);
+  const rounded = Number.isFinite(parsed) ? Number(parsed.toFixed(2)) : 0;
+  return rounded > 0 && Number.isSafeInteger(Math.round(rounded * 100)) ? rounded : "";
+}
+
+function referenceQuote(price = {}) {
+  const market = positivePrice(price.marketPrice);
+  const mid = positivePrice(price.midPrice);
+  return { value: market || mid || "", basis: market ? "market" : mid ? "mid" : "unknown" };
+}
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -216,21 +231,54 @@ function parseCsv(text = "") {
   );
 }
 
-async function fetchJson(url, options = {}, retries = 3) {
+async function fetchProviderData(url, options = {}, retries = 3, format = "json") {
   for (let attempt = 1; attempt <= retries; attempt += 1) {
     const response = await fetch(url, {
       ...options,
+      signal: options.signal || AbortSignal.timeout(FETCH_TIMEOUT_MS),
       headers: {
         "User-Agent": "Code3TCGCatalogSync/1.0 (public data cache; contact via app owner)",
         ...(options.headers || {}),
       },
     });
-    if (response.ok) return response.json();
+    if (response.ok) return format === "text" ? response.text() : response.json();
     const body = await response.text().catch(() => "");
     if (attempt === retries) throw new Error(`Fetch failed ${response.status} ${url}: ${body.slice(0, 300)}`);
     await sleep(500 * attempt);
   }
   return null;
+}
+
+async function fetchJson(url, options = {}, retries = 3) {
+  return fetchProviderData(url, options, retries);
+}
+
+function providerBuildTimestamp(value) {
+  const text = typeof value === "string" ? value.trim() : "";
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})$/.test(text)
+    || !Number.isFinite(Date.parse(text))) throw new Error("The provider build timestamp is invalid. Existing files were kept.");
+  return new Date(text).toISOString();
+}
+
+function shouldSkipProviderBuild(sourceBuild, previousStatus = {}, previous = {}, categoryId = POKEMON_CATEGORY_ID) {
+  const lastBuild = Date.parse(previousStatus.tcgcsvBuildTimestamp || "");
+  const products = [...(previous.sealed || []), ...(previous.cards || [])];
+  const prices = previous.marketPrices || [];
+  return previousStatus.tcgcsvBuildComplete === true
+    && Number(previousStatus.tcgcsvCategoryId) === Number(categoryId)
+    && Number.isFinite(lastBuild) && lastBuild >= Date.parse(providerBuildTimestamp(sourceBuild))
+    && products.length > 0 && Number(previousStatus.catalogProductsImported) === products.length
+    && Number(previousStatus.marketPricesImported) === prices.length && prices.some(usableReference);
+}
+
+function providerCheckpoint(sourceBuild, catalog = {}, previousStatus = {}, completeScope = true) {
+  const complete = completeScope && (catalog.groups || []).length > 0
+    && (catalog.syncedGroups || []).length === catalog.groups.length && !(catalog.failedGroups || []).length;
+  return {
+    tcgcsvBuildTimestamp: complete ? providerBuildTimestamp(sourceBuild) : previousStatus.tcgcsvBuildTimestamp || "",
+    tcgcsvLatestAvailableBuildTimestamp: providerBuildTimestamp(sourceBuild),
+    tcgcsvBuildComplete: complete,
+  };
 }
 
 function extendedDataObject(product = {}) {
@@ -287,8 +335,8 @@ function isSealedOrAccessory(product = {}) {
 }
 
 function pricingConfidence(price = {}) {
-  if (Number(price.marketPrice || 0) > 0 && price.productId) return "high";
-  if (Number(price.midPrice || price.lowPrice || 0) > 0 && price.productId) return "medium";
+  if (positivePrice(price.marketPrice) && price.productId) return "high";
+  if (positivePrice(price.midPrice) && price.productId) return "medium";
   return "unavailable";
 }
 
@@ -301,8 +349,8 @@ function imageConfidence(product = {}) {
 function pickPrice(prices = []) {
   if (!prices.length) return {};
   return [...prices].sort((a, b) => {
-    const aMarket = a.marketPrice == null ? 1 : 0;
-    const bMarket = b.marketPrice == null ? 1 : 0;
+    const aMarket = positivePrice(a.marketPrice) ? 0 : positivePrice(a.midPrice) ? 1 : 2;
+    const bMarket = positivePrice(b.marketPrice) ? 0 : positivePrice(b.midPrice) ? 1 : 2;
     if (aMarket !== bMarket) return aMarket - bMarket;
     const subtypeOrder = ["normal", "sealed", "unlimited", "holofoil", "reverse holofoil"];
     const ai = subtypeOrder.indexOf(normalizeSearch(a.subTypeName));
@@ -311,14 +359,15 @@ function pickPrice(prices = []) {
   })[0] || {};
 }
 
-function normalizeTcgCsvSealed(product = {}, group = {}, price = {}) {
+function normalizeTcgCsvSealed(product = {}, group = {}, price = {}, checkedAt = SYNC_TIMESTAMP) {
   const ext = extendedDataObject(product);
   const name = product.cleanName || product.name || "";
   const productType = inferProductType(name) || "Other sealed product";
-  const marketPrice = numberOrEmpty(price.marketPrice);
-  const midPrice = numberOrEmpty(price.midPrice);
-  const lowPrice = numberOrEmpty(price.lowPrice);
-  const highPrice = numberOrEmpty(price.highPrice);
+  const quote = referenceQuote(price);
+  const marketPrice = positivePrice(price.marketPrice);
+  const midPrice = positivePrice(price.midPrice);
+  const lowPrice = positivePrice(price.lowPrice);
+  const highPrice = positivePrice(price.highPrice);
   return {
     id: `tcgcsv-${product.productId}`,
     source: "TCGCSV",
@@ -367,14 +416,16 @@ function normalizeTcgCsvSealed(product = {}, group = {}, price = {}) {
     marketValue: marketPrice || midPrice || "",
     lowPrice,
     midPrice,
-    directLowPrice: numberOrEmpty(price.directLowPrice),
+    directLowPrice: positivePrice(price.directLowPrice),
     highPrice,
     marketSource: marketPrice || midPrice ? "TCGCSV" : "Unknown",
     marketStatus: marketPrice || midPrice ? "cached" : "unknown",
     pricingConfidence: pricingConfidence(price),
     marketConfidenceLevel: pricingConfidence(price),
     sourceUpdatedAt: product.modifiedOn || group.modifiedOn || "",
-    marketLastUpdated: product.modifiedOn || group.modifiedOn || "",
+    marketPriceBasis: quote.basis,
+    marketLastUpdated: quote.value ? checkedAt : "",
+    priceCheckedAt: quote.value ? checkedAt : "",
     releaseDate: product.presaleInfo?.releasedOn || group.publishedOn || "",
     releaseYear: String(product.presaleInfo?.releasedOn || group.publishedOn || "").slice(0, 4),
     lastUpdated: product.modifiedOn || group.modifiedOn || "",
@@ -382,9 +433,10 @@ function normalizeTcgCsvSealed(product = {}, group = {}, price = {}) {
   };
 }
 
-function normalizeTcgCsvCard(product = {}, group = {}, price = {}) {
+function normalizeTcgCsvCard(product = {}, group = {}, price = {}, checkedAt = SYNC_TIMESTAMP) {
   const ext = extendedDataObject(product);
   const name = product.cleanName || product.name || "";
+  const quote = referenceQuote(price);
   return {
     id: `tcgcsv-card-${product.productId}`,
     externalCardId: String(product.productId || ""),
@@ -417,30 +469,34 @@ function normalizeTcgCsvCard(product = {}, group = {}, price = {}) {
     tcgplayerUrl: product.url || "",
     productUrl: product.url || "",
     marketUrl: product.url || "",
-    marketValueRaw: numberOrEmpty(price.marketPrice),
-    marketValueNearMint: numberOrEmpty(price.marketPrice || price.midPrice),
-    marketPrice: numberOrEmpty(price.marketPrice || price.midPrice),
-    lowPrice: numberOrEmpty(price.lowPrice),
-    midPrice: numberOrEmpty(price.midPrice),
-    directLowPrice: numberOrEmpty(price.directLowPrice),
-    highPrice: numberOrEmpty(price.highPrice),
-    marketSource: price.marketPrice || price.midPrice ? "TCGCSV" : "Unknown",
-    marketStatus: price.marketPrice || price.midPrice ? "cached" : "unknown",
+    marketValueRaw: positivePrice(price.marketPrice),
+    marketValueNearMint: quote.value,
+    marketPrice: quote.value,
+    lowPrice: positivePrice(price.lowPrice),
+    midPrice: positivePrice(price.midPrice),
+    directLowPrice: positivePrice(price.directLowPrice),
+    highPrice: positivePrice(price.highPrice),
+    marketSource: quote.value ? "TCGCSV" : "Unknown",
+    marketStatus: quote.value ? "cached" : "unknown",
     pricingConfidence: pricingConfidence(price),
     marketConfidenceLevel: pricingConfidence(price),
     sourceUpdatedAt: product.modifiedOn || group.modifiedOn || "",
-    marketLastUpdated: product.modifiedOn || group.modifiedOn || "",
+    marketPriceBasis: quote.basis,
+    marketLastUpdated: quote.value ? checkedAt : "",
+    priceCheckedAt: quote.value ? checkedAt : "",
     lastUpdated: product.modifiedOn || group.modifiedOn || "",
   };
 }
 
-function normalizeMarketPrice(product = {}, group = {}, price = {}, catalogType = "sealed") {
-  const marketPrice = numberOrEmpty(price.marketPrice || price.midPrice);
+function normalizeMarketPrice(product = {}, group = {}, price = {}, catalogType = "sealed", checkedAt = SYNC_TIMESTAMP) {
+  const quote = referenceQuote(price);
+  const marketPrice = quote.value;
   return {
     id: `tcgcsv-price-${product.productId}-${slug(price.subTypeName || "normal")}`,
     catalogItemId: catalogType === "card" ? `tcgcsv-card-${product.productId}` : `tcgcsv-${product.productId}`,
     productId: catalogType === "card" ? `tcgcsv-card-${product.productId}` : `tcgcsv-${product.productId}`,
     sourceProductId: String(product.productId || ""),
+    sourceGroupId: String(group.groupId || product.groupId || ""),
     tcgplayerProductId: String(product.productId || ""),
     catalogType,
     itemType: catalogType,
@@ -457,18 +513,20 @@ function normalizeMarketPrice(product = {}, group = {}, price = {}, catalogType 
     currency: "USD",
     price: marketPrice,
     marketPrice,
-    lowPrice: numberOrEmpty(price.lowPrice),
-    midPrice: numberOrEmpty(price.midPrice),
-    highPrice: numberOrEmpty(price.highPrice),
-    directLow: numberOrEmpty(price.directLowPrice),
-    directLowPrice: numberOrEmpty(price.directLowPrice),
-    timestamp: product.modifiedOn || group.modifiedOn || SYNC_TIMESTAMP,
+    lowPrice: positivePrice(price.lowPrice),
+    midPrice: positivePrice(price.midPrice),
+    highPrice: positivePrice(price.highPrice),
+    directLow: positivePrice(price.directLowPrice),
+    directLowPrice: positivePrice(price.directLowPrice),
+    marketPriceBasis: quote.basis,
+    timestamp: marketPrice ? checkedAt : "",
+    priceCheckedAt: marketPrice ? checkedAt : "",
     marketStatus: marketPrice ? "cached" : "unknown",
     pricingConfidence: pricingConfidence(price),
     confidenceScore: pricingConfidence(price) === "high" ? 88 : pricingConfidence(price) === "medium" ? 68 : 0,
     sourceUpdatedAt: product.modifiedOn || group.modifiedOn || "",
-    createdAt: product.modifiedOn || group.modifiedOn || "",
-    updatedAt: product.modifiedOn || group.modifiedOn || "",
+    createdAt: marketPrice ? checkedAt : "",
+    updatedAt: marketPrice ? checkedAt : "",
   };
 }
 
@@ -528,8 +586,7 @@ function mergeProducts(manualRows = [], importedRows = []) {
       continue;
     }
     byKey.set(key, {
-      ...existing,
-      ...row,
+      ...mergeQuote(existing, row),
       id: existing.id || row.id,
       msrp: existing.msrp || row.msrp,
       msrpPrice: existing.msrpPrice || row.msrpPrice,
@@ -539,9 +596,173 @@ function mergeProducts(manualRows = [], importedRows = []) {
   return [...byKey.values()].sort((a, b) => String(a.productName || a.name).localeCompare(String(b.productName || b.name)) || String(a.id).localeCompare(String(b.id)));
 }
 
-async function syncTcgCsvCatalog() {
-  const groupsPayload = await fetchJson(`${TCGCSV_BASE}/${POKEMON_CATEGORY_ID}/groups`);
-  const allGroups = (groupsPayload?.results || []).sort((a, b) => new Date(b.modifiedOn || b.publishedOn || 0) - new Date(a.modifiedOn || a.publishedOn || 0));
+const QUOTE_FIELDS = [
+  "marketPrice", "marketValue", "marketValueRaw", "marketValueNearMint", "price", "lowPrice", "midPrice", "highPrice",
+  "directLow", "directLowPrice", "marketSource", "marketStatus", "pricingConfidence", "marketConfidenceLevel",
+  "confidenceScore", "marketPriceBasis", "marketLastUpdated", "priceCheckedAt", "lastPriceChecked", "timestamp",
+  "marketValueSource", "marketValueUpdatedAt", "marketPriceReviewedAt",
+  "externalSource", "source", "sourceUrl", "currency", "marketCurrency", "priceType",
+];
+const MONEY_FIELDS = ["lowPrice", "midPrice", "highPrice", "directLow", "directLowPrice"];
+
+function tcgPlayerProductId(row = {}) {
+  const tcgCsvSource = /tcgcsv/i.test(String(row.source || row.externalSource || row.sourceType || ""));
+  return String(row.tcgplayerProductId || (tcgCsvSource ? row.sourceProductId || row.externalId || row.externalProductId : "") || "");
+}
+
+function catalogIdentity(row = {}) {
+  const providerId = tcgPlayerProductId(row);
+  return providerId ? `tcgplayer:${providerId}` : `id:${row.id || ""}`;
+}
+
+function usableReference(row = {}) {
+  return positivePrice(row.marketPrice) || positivePrice(row.marketValue) || positivePrice(row.marketValueNearMint)
+    || positivePrice(row.marketValueRaw) || positivePrice(row.price) || positivePrice(row.midPrice);
+}
+
+function manualQuote(row = {}) {
+  return Boolean(usableReference(row)) && (String(row.marketStatus || "").toLowerCase() === "manual"
+    || /manual|admin/i.test(String(row.marketValueSource || row.marketSource || row.externalSource || row.sourceType || "")));
+}
+
+function quoteObservation(row = {}) {
+  const value = row.priceCheckedAt || row.timestamp || row.marketLastUpdated || row.lastPriceChecked || row.lastMarketUpdate;
+  const parsed = typeof value === "string" ? Date.parse(value) : NaN;
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function quoteCurrency(row = {}) {
+  return String(row.marketCurrency || row.currency || "USD").toUpperCase();
+}
+
+function mergeQuote(previous, incoming) {
+  const merged = { ...previous, ...incoming, id: previous.id || incoming.id };
+  const previousObservedAt = quoteObservation(previous);
+  const incomingObservedAt = quoteObservation(incoming);
+  const olderOrUnknown = Boolean(usableReference(previous)) && previousObservedAt !== null
+    && (incomingObservedAt === null || incomingObservedAt < previousObservedAt);
+  const differentCurrency = Boolean(usableReference(previous)) && quoteCurrency(previous) !== quoteCurrency(incoming);
+  // Feed rows cannot replace user/admin values or make an absent quote appear newly checked.
+  if (manualQuote(previous) || !usableReference(incoming) || olderOrUnknown || differentCurrency) {
+    for (const field of QUOTE_FIELDS) {
+      if (Object.hasOwn(previous, field)) merged[field] = previous[field];
+      else delete merged[field];
+    }
+    if (Object.hasOwn(previous, "updatedAt")) merged.updatedAt = previous.updatedAt;
+  } else {
+    for (const field of MONEY_FIELDS) {
+      if (!positivePrice(incoming[field]) && positivePrice(previous[field])) merged[field] = previous[field];
+    }
+  }
+  if (previous.createdAt) merged.createdAt = previous.createdAt;
+  return merged;
+}
+
+/** Merge an independently validated feed with the last good files; absence never means deletion. */
+function preserveLastGoodCatalog(previous = {}, incoming = {}) {
+  const freshProducts = [...(incoming.sealedProducts || []), ...(incoming.cards || [])];
+  const freshPrices = incoming.marketPrices || [];
+  if (!(incoming.syncedGroups || []).length || !freshProducts.length || !freshPrices.some(usableReference)) {
+    throw new Error("The price feed contained no usable completed group. Existing catalog and prices were kept.");
+  }
+  const products = new Map();
+  const productKeys = new Map();
+  for (const row of [...(previous.sealed || []), ...(previous.cards || [])]) {
+    const key = row.id || catalogIdentity(row);
+    products.set(key, row);
+    if (!productKeys.has(catalogIdentity(row))) productKeys.set(catalogIdentity(row), key);
+  }
+  for (const row of freshProducts) {
+    const identity = catalogIdentity(row);
+    const key = productKeys.get(identity) || row.id || identity;
+    const prior = products.get(key);
+    products.set(key, prior ? { ...mergeQuote(prior, row), catalogType: prior.catalogType || row.catalogType } : row);
+    productKeys.set(identity, key);
+  }
+  const catalogIds = new Map();
+  for (const row of products.values()) {
+    const key = tcgPlayerProductId(row);
+    if (key && !catalogIds.has(key)) catalogIds.set(key, row.id);
+  }
+  const priceKey = (row) => {
+    const providerId = tcgPlayerProductId(row);
+    if (!providerId) return `id:${row.id || row.catalogItemId || row.productId || ""}`;
+    return [String(row.externalSource || row.source || "TCGCSV").toLowerCase(), providerId,
+      normalizeSearch(row.variant || row.condition || "normal"), row.priceType || "market", row.currency || "USD"].join("|");
+  };
+  const prices = new Map();
+  const priceKeys = new Map();
+  for (const row of previous.marketPrices || []) {
+    const key = row.id || priceKey(row);
+    prices.set(key, row);
+    if (!priceKeys.has(priceKey(row))) priceKeys.set(priceKey(row), key);
+  }
+  for (const row of freshPrices) {
+    if (!usableReference(row)) continue;
+    const identity = priceKey(row);
+    let key = priceKeys.get(identity) || row.id || identity;
+    let prior = prices.get(key);
+    // Old IDs remain valid even when a different source/currency uses the same provider ID.
+    if (prior && priceKey(prior) !== identity) {
+      key = `${row.id || "price"}-${slug(identity)}`;
+      prior = prices.get(key);
+    }
+    const catalogId = catalogIds.get(tcgPlayerProductId(row)) || row.catalogItemId || row.productId;
+    prices.set(key, { ...(prior ? mergeQuote(prior, row) : { ...row, id: key }), catalogItemId: catalogId, productId: catalogId });
+    priceKeys.set(identity, key);
+  }
+  return {
+    ...incoming,
+    sealedProducts: [...products.values()].filter((row) => row.catalogType !== "card"),
+    cards: [...products.values()].filter((row) => row.catalogType === "card"),
+    marketPrices: [...prices.values()],
+  };
+}
+
+function normalizeTcgCsvGroup(productsPayload, pricesPayload, group, checkedAt = SYNC_TIMESTAMP) {
+  if (productsPayload?.success === false || pricesPayload?.success === false
+    || !Array.isArray(productsPayload?.results) || !productsPayload.results.length
+    || !Array.isArray(pricesPayload?.results) || !pricesPayload.results.length) {
+    throw new Error("The group returned empty or malformed product/price data.");
+  }
+  const products = productsPayload.results.filter((row) => row && /^\d+$/.test(String(row.productId || "")) && (row.cleanName || row.name));
+  if (products.length !== productsPayload.results.length
+    || new Set(products.map((row) => String(row.productId))).size !== products.length
+    || (Number.isFinite(productsPayload.totalItems) && productsPayload.totalItems !== products.length)) {
+    throw new Error("The group product list is incomplete or malformed.");
+  }
+  const pricesByProduct = new Map();
+  for (const price of pricesPayload.results) {
+    if (!price || !referenceQuote(price).value) continue;
+    const key = String(price.productId || "");
+    if (!pricesByProduct.has(key)) pricesByProduct.set(key, []);
+    pricesByProduct.get(key).push(price);
+  }
+  const result = { sealedProducts: [], cards: [], marketPrices: [] };
+  for (const product of products) {
+    const price = pickPrice(pricesByProduct.get(String(product.productId)) || []);
+    const catalogType = isSealedOrAccessory(product) ? "sealed" : "card";
+    if (catalogType === "sealed") result.sealedProducts.push(normalizeTcgCsvSealed(product, group, price, checkedAt));
+    else result.cards.push(normalizeTcgCsvCard(product, group, price, checkedAt));
+    if (referenceQuote(price).value) result.marketPrices.push(normalizeMarketPrice(product, group, price, catalogType, checkedAt));
+  }
+  if (!result.marketPrices.length) throw new Error("The group contained no usable price joined to a product ID.");
+  return result;
+}
+
+async function syncTcgCsvCatalog({ fetcher = fetchJson, pause = sleep, now = () => new Date().toISOString(),
+  readSeedRows = () => readCsv(path.join(seedCatalogDir, "sealed-products.csv")) } = {}) {
+  const groupsPayload = await fetcher(`${TCGCSV_BASE}/${POKEMON_CATEGORY_ID}/groups`);
+  if (groupsPayload?.success === false || !Array.isArray(groupsPayload?.results) || !groupsPayload.results.length) {
+    throw new Error("The price feed returned no usable groups. Existing catalog and prices were kept.");
+  }
+  const allGroups = groupsPayload.results.filter((group) => group && /^\d+$/.test(String(group.groupId || "")))
+    .sort((a, b) => new Date(b.modifiedOn || b.publishedOn || 0) - new Date(a.modifiedOn || a.publishedOn || 0));
+  if (allGroups.length !== groupsPayload.results.length
+    || new Set(allGroups.map((group) => String(group.groupId))).size !== allGroups.length
+    || (Number.isFinite(groupsPayload.totalItems) && groupsPayload.totalItems !== allGroups.length)) {
+    throw new Error("The provider group list is incomplete. Existing catalog and prices were kept.");
+  }
   const explicitGroupIds = String(process.env.TCGCSV_GROUP_IDS || "")
     .split(",")
     .map((value) => value.trim())
@@ -555,36 +776,32 @@ async function syncTcgCsvCatalog() {
   const cards = [];
   const marketPrices = [];
   const failedGroups = [];
+  const syncedGroups = [];
 
   for (const group of groups) {
     try {
       const [productsPayload, pricesPayload] = await Promise.all([
-        fetchJson(`${TCGCSV_BASE}/${POKEMON_CATEGORY_ID}/${group.groupId}/products`),
-        fetchJson(`${TCGCSV_BASE}/${POKEMON_CATEGORY_ID}/${group.groupId}/prices`),
+        fetcher(`${TCGCSV_BASE}/${POKEMON_CATEGORY_ID}/${group.groupId}/products`),
+        fetcher(`${TCGCSV_BASE}/${POKEMON_CATEGORY_ID}/${group.groupId}/prices`),
       ]);
-      const pricesByProduct = new Map();
-      for (const price of pricesPayload?.results || []) {
-        const key = String(price.productId || "");
-        if (!pricesByProduct.has(key)) pricesByProduct.set(key, []);
-        pricesByProduct.get(key).push(price);
-      }
-      for (const product of productsPayload?.results || []) {
-        const primaryPrice = pickPrice(pricesByProduct.get(String(product.productId)) || []);
-        const catalogType = isSealedOrAccessory(product) ? "sealed" : "card";
-        if (catalogType === "sealed") sealed.push(normalizeTcgCsvSealed(product, group, primaryPrice));
-        else cards.push(normalizeTcgCsvCard(product, group, primaryPrice));
-        if (primaryPrice.productId) marketPrices.push(normalizeMarketPrice(product, group, primaryPrice, catalogType));
-      }
-      await sleep(REQUEST_DELAY_MS);
+      const normalized = normalizeTcgCsvGroup(productsPayload, pricesPayload, group, now());
+      sealed.push(...normalized.sealedProducts);
+      cards.push(...normalized.cards);
+      marketPrices.push(...normalized.marketPrices);
+      syncedGroups.push(group);
+      await pause(REQUEST_DELAY_MS);
     } catch (error) {
       failedGroups.push({ groupId: group.groupId, name: group.name, error: error.message || String(error) });
     }
   }
 
-  const manualSealed = (await readCsv(path.join(seedCatalogDir, "sealed-products.csv"))).map(normalizeManualSealed);
+  if (!syncedGroups.length || !marketPrices.length) {
+    throw new Error("Every selected price group failed or contained no usable quote. Existing catalog and prices were kept.");
+  }
+  const manualSealed = (await readSeedRows()).map(normalizeManualSealed);
   return {
     groups: allGroups,
-    syncedGroups: groups,
+    syncedGroups,
     sealedProducts: mergeProducts(manualSealed, sealed),
     cards: cards.sort((a, b) => String(a.setName).localeCompare(String(b.setName)) || String(a.cardName).localeCompare(String(b.cardName))),
     marketPrices: marketPrices.sort((a, b) => String(a.catalogItemId).localeCompare(String(b.catalogItemId)) || String(a.variant).localeCompare(String(b.variant))),
@@ -948,8 +1165,18 @@ async function main() {
   const beforeCards = await readJson(path.join(generatedDir, "pokemonTcgCards.json"), []);
   const beforePrices = await readJson(path.join(generatedDir, "marketPrices.json"), []);
   const beforeStores = await readJson(path.join(generatedDir, "virginiaStores.json"), []);
+  const previousStatus = await readJson(path.join(generatedDir, "catalogImportStatus.json"), {});
+  const before = { sealed: beforeSealed, cards: beforeCards, marketPrices: beforePrices };
+  const sourceBuild = providerBuildTimestamp(await fetchProviderData(TCGCSV_BUILD_URL, {}, 3, "text"));
+  if (PRICE_ONLY && shouldSkipProviderBuild(sourceBuild, previousStatus, before)) {
+    console.log(JSON.stringify({ event: "market-refresh-skipped", ok: true, dryRun: DRY_RUN,
+      reason: "The provider build has not changed since the last complete successful refresh.",
+      tcgcsvBuildTimestamp: sourceBuild, generatedFilesChanged: false }, null, 2));
+    return;
+  }
 
-  const catalog = await syncTcgCsvCatalog();
+  const incomingCatalog = await syncTcgCsvCatalog();
+  const catalog = preserveLastGoodCatalog(before, incomingCatalog);
   const stores = PRICE_ONLY
     ? { stores: beforeStores, importedFromOverpass: 0, overpassError: "" }
     : await syncVirginiaStores();
@@ -959,6 +1186,8 @@ async function main() {
     stores,
     aliasesImported: (await readJson(path.join(generatedDir, "searchAliases.json"), [])).length,
   });
+  Object.assign(status, providerCheckpoint(sourceBuild, catalog, previousStatus,
+    DEFAULT_GROUP_LIMIT === 0 && !String(process.env.TCGCSV_GROUP_IDS || "").trim()));
 
   if (!DRY_RUN) {
     await writeGenerated("sealedProducts.json", catalog.sealedProducts);
@@ -1035,6 +1264,13 @@ module.exports = {
   normalizeTcgCsvSealed,
   normalizeTcgCsvCard,
   normalizeMarketPrice,
+  normalizeTcgCsvGroup,
+  preserveLastGoodCatalog,
+  positivePrice,
+  syncTcgCsvCatalog,
+  providerBuildTimestamp,
+  shouldSkipProviderBuild,
+  providerCheckpoint,
   pricingConfidence,
   imageConfidence,
   buildCatalogSyncStatus,

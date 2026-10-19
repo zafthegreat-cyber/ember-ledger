@@ -86,6 +86,7 @@ export default function VaultWorkspaceContent({ scope }) {
     selectedVaultCardGroup,
     selectedVaultDetailId,
     selectedVaultDetailItem,
+    selectedVaultMarketItem,
     selectedVaultDetailMasterCard,
     selectedVaultDetailSetSummary,
     selectedVaultSet,
@@ -670,6 +671,7 @@ export default function VaultWorkspaceContent({ scope }) {
               {selectedVaultDetailId ? (
                 <VaultItemDetail
                   item={selectedVaultDetailItem}
+                  marketItem={selectedVaultMarketItem}
                   masterCard={selectedVaultDetailMasterCard}
                   setSummary={selectedVaultDetailSetSummary}
                   linkedTrades={workspaceTradeRecords.filter((record) => {

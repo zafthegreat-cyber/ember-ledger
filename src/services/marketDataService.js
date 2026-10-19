@@ -20,7 +20,8 @@ export function calculateMarketConfidence(item = {}, price = {}) {
 }
 
 export function getBestAvailableMarketPrice(item = {}, cache = { prices: [] }) {
-  const cached = getCachedPricesForItem(cache, item.id).sort((a, b) => new Date(b.timestamp || b.updatedAt || 0) - new Date(a.timestamp || a.updatedAt || 0))[0];
+  const currency = String(item.marketCurrency || item.currency || "USD").toUpperCase();
+  const cached = getCachedPricesForItem(cache, item.id).filter((price) => String(price.currency || "USD").toUpperCase() === currency);
   const manualOrCatalog = normalizeMarketPrice({
     catalogItemId: item.id,
     catalogType: item.catalogType || "sealed",
@@ -31,8 +32,9 @@ export function getBestAvailableMarketPrice(item = {}, cache = { prices: [] }) {
     lowPrice: Number(item.lowPrice || item.marketLow || 0),
     midPrice: Number(item.midPrice || item.marketMid || item.marketPrice || item.marketValueNearMint || 0),
     highPrice: Number(item.highPrice || item.marketHigh || item.marketValueGraded || 0),
-    timestamp: item.marketLastUpdated || item.lastMarketUpdate || item.lastUpdated || item.updatedAt || "",
+    timestamp: item.priceCheckedAt || item.marketLastUpdated || item.lastPriceChecked || item.lastMarketUpdate || "",
     marketStatus: item.marketStatus || item.sourceType || (item.marketSource ? MARKET_STATUS.MANUAL : MARKET_STATUS.MOCK),
+    currency,
     confidenceScore: item.marketConfidenceLevel === "High" ? 80 : item.marketConfidenceLevel === "Medium" ? 62 : item.marketConfidenceLevel === "Low" ? 42 : 50,
   });
   const unavailableMarketPrice = normalizeMarketPrice({
@@ -45,8 +47,10 @@ export function getBestAvailableMarketPrice(item = {}, cache = { prices: [] }) {
     confidenceScore: 0,
   });
 
-  const candidates = [cached, manualOrCatalog, unavailableMarketPrice].filter(Boolean).filter((price) => Number(price.marketPrice || price.price || 0) > 0 || price.marketStatus === MARKET_STATUS.UNKNOWN);
-  const priority = { live: 5, manual: 4, cached: 3, mock: 2, unknown: 1 };
+  const candidates = [...cached, manualOrCatalog, unavailableMarketPrice].filter(Boolean).filter((price) => Number(price.marketPrice || price.price || 0) > 0 || price.marketStatus === MARKET_STATUS.UNKNOWN);
+  // Manual reviews remain authoritative until the user changes them. Provider
+  // comparisons never silently replace that decision or mix currencies.
+  const priority = { manual: 6, live: 5, cached: 3, estimated: 2, mock: 2, unknown: 1 };
   const best = candidates.sort((a, b) => {
     const statusDiff = (priority[b.marketStatus] || 0) - (priority[a.marketStatus] || 0);
     if (statusDiff) return statusDiff;
@@ -83,6 +87,7 @@ export function matchExternalId(item = {}, externalData = []) {
 
 export function applyMarketPriceToCatalogItem(item = {}, price = {}) {
   const normalized = normalizeMarketPrice(price);
+  if (!Number.isFinite(normalized.marketPrice) || normalized.marketPrice <= 0) return item;
   return {
     ...item,
     marketValue: normalized.marketPrice,
@@ -115,7 +120,7 @@ export function refreshCatalogMarketItems(catalog = [], cache = { prices: [] }, 
     const best = getBestAvailableMarketPrice(item, nextCache);
     return applyMarketPriceToCatalogItem(item, best);
   });
-  return { catalog: nextCatalog, cache: { ...nextCache, lastSync: new Date().toISOString() } };
+  return { catalog: nextCatalog, cache: nextCache };
 }
 
 export function refreshWatchlistMarketItems(watchlist = [], catalog = [], cache = { prices: [] }) {
@@ -123,6 +128,7 @@ export function refreshWatchlistMarketItems(watchlist = [], catalog = [], cache 
     const item = catalog.find((product) => String(product.id) === String(watch.productId));
     if (!item) return watch;
     const best = getBestAvailableMarketPrice(item, cache);
+    if (!Number.isFinite(Number(best.marketPrice)) || Number(best.marketPrice) <= 0) return watch;
     const previousMarketValue = Number(watch.marketValue || 0);
     return {
       ...watch,
@@ -133,7 +139,7 @@ export function refreshWatchlistMarketItems(watchlist = [], catalog = [], cache 
       marketStatus: best.marketStatus,
       confidenceLabel: best.confidence.label,
       needsReview: best.confidence.needsReview,
-      lastUpdated: best.timestamp || new Date().toISOString(),
+      lastUpdated: best.timestamp || watch.lastUpdated || "",
     };
   });
 }

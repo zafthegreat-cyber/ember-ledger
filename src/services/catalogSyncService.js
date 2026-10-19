@@ -61,32 +61,30 @@ export function matchExternalCardId(card = {}, externalCards = []) {
 }
 
 export function syncPokemonTcgPrices(catalog = []) {
-  const now = new Date().toISOString();
   const prices = catalog
     .filter((item) => item.catalogType === "card" && Number(item.marketPrice || item.marketValueNearMint || item.marketValueRaw || 0) > 0)
     .map((item) => ({
       catalogItemId: item.id,
       catalogType: "card",
-      externalSource: item.externalSourceId ? "Pokemon TCG API / Scrydex" : "Pokemon TCG local cached structure",
+      externalSource: item.marketSource || item.externalSource || item.source || "Saved catalog reference",
       externalId: item.externalSourceId || item.cardId || item.tcgplayerProductId || item.id,
       sourceUrl: item.sourceUrl || item.marketUrl || "",
       priceType: "market",
       condition: item.condition || "Near Mint",
       variant: item.variant || "",
-      currency: "USD",
+      currency: item.marketCurrency || item.currency || "USD",
       marketPrice: Number(item.marketValueNearMint || item.marketPrice || item.marketValueRaw || 0),
       lowPrice: Number(item.lowPrice || 0),
       midPrice: Number(item.midPrice || item.marketValueNearMint || item.marketPrice || 0),
       highPrice: Number(item.highPrice || item.marketValueGraded || 0),
-      timestamp: now,
-      marketStatus: item.sourceType === "live" ? "live" : item.sourceType === "manual" ? "manual" : item.sourceType === "mock" ? "mock" : "cached",
+      timestamp: item.marketLastUpdated || item.lastPriceChecked || item.lastMarketUpdate || "",
+      marketStatus: item.marketStatus === "manual" || item.sourceType === "manual" ? "manual" : item.sourceType === "mock" ? "mock" : "cached",
       confidenceScore: item.externalSourceId || item.cardId ? 78 : 58,
     }));
   return { prices, failedMatches: [] };
 }
 
 export function syncTcgCsvProductPrices(catalog = []) {
-  const now = new Date().toISOString();
   const failedMatches = [];
   const prices = catalog
     .filter((item) => item.catalogType !== "card")
@@ -105,17 +103,17 @@ export function syncTcgCsvProductPrices(catalog = []) {
       return {
         catalogItemId: item.id,
         catalogType: "sealed",
-        externalSource: item.tcgplayerProductId ? "TCGCSV / TCGplayer product" : "TCGCSV local cached structure",
+        externalSource: item.marketSource || item.externalSource || item.source || "Saved catalog reference",
         externalId: item.tcgplayerProductId || item.externalSourceId || item.externalProductId || item.upc || item.barcode || item.id,
         sourceUrl: item.sourceUrl || item.marketUrl || "",
         priceType: "market",
-        currency: "USD",
+        currency: item.marketCurrency || item.currency || "USD",
         marketPrice: price,
         lowPrice: Number(item.lowPrice || 0),
         midPrice: Number(item.midPrice || price || 0),
         highPrice: Number(item.highPrice || 0),
-        timestamp: now,
-        marketStatus: item.sourceType === "live" ? "live" : item.sourceType === "manual" ? "manual" : item.sourceType === "mock" ? "mock" : "cached",
+        timestamp: item.marketLastUpdated || item.lastPriceChecked || item.lastMarketUpdate || "",
+        marketStatus: item.marketStatus === "manual" || item.sourceType === "manual" ? "manual" : item.sourceType === "mock" ? "mock" : "cached",
         confidenceScore: item.upc || item.barcode || item.tcgplayerProductId ? 76 : 55,
       };
     })
