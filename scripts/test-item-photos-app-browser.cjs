@@ -5,7 +5,7 @@ const { chromium, expect } = require("@playwright/test");
 
 const base = new URL(process.env.APP_URL || "http://127.0.0.1:5243").origin;
 assert.ok(["127.0.0.1", "localhost", "[::1]"].includes(new URL(base).hostname), "Photo fixtures must use disposable local state");
-const output = path.resolve("artifacts/qa/item-photos-app");
+const output = path.resolve(process.env.QA_OUTPUT_DIR || "artifacts/qa/item-photos-app");
 const appKey = "et-tcg-beta-data";
 const repositoryKey = "ember-and-tide.flip-scout.v1";
 const catalogPhoto = `${base}/__qa/photos/catalog.svg`;
@@ -85,7 +85,7 @@ async function checkPhoto(locator, expectedSource) {
       const name = `${screen}-${width}-${theme}`;
       try {
         await page.goto(`${base}${screen === "collection" ? "/collection" : "/business/inventory"}?betaLocalMode=true&themeInspect=${theme}`);
-        const cards = page.locator(".everyday-record-list .everyday-record-card");
+        const cards = page.locator(screen === "collection" ? ".collection-portfolio-grid .collection-portfolio-item" : ".everyday-record-list .everyday-record-card");
         await expect(cards).toHaveCount(3, { timeout: 45000 });
         await expect(page.locator(".app[data-theme]")).toHaveAttribute("data-theme", theme);
         const before = await snapshot(page);
@@ -93,7 +93,7 @@ async function checkPhoto(locator, expectedSource) {
         if (screen === "repository-inventory") assert.deepEqual(JSON.parse(before.repository).inventory, records, "Repository-only fixtures retain their original data");
         const expected = [[records[0], personalPhoto], [records[1], snakePhoto], [records[2], catalogPhoto]];
         for (const [record, source] of expected) {
-          const card = page.getByRole("button", { name: `Open ${record.name}`, exact: true });
+          const card = screen === "collection" ? page.locator(".collection-portfolio-grid").getByRole("button", { name: `Open ${record.name}`, exact: true }) : page.getByRole("button", { name: `Open ${record.name}`, exact: true });
           await checkPhoto(card.locator("img"), source);
           await card.click();
           await expect(page.locator(".ops-record-detail")).toBeVisible();

@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react";
 import { PrivateStorageImage } from "../../components/PrivateReceipt.jsx";
+import StockScreenshotImport from "../../components/StockScreenshotImport.jsx";
 import "./scout-submit.css";
+import "./stock-report-easy.css";
 
 // App owns state, authority and handlers; only this existing renderer is deferred.
 export default function ScoutSubmitContent({ scope }) {
@@ -11,6 +13,7 @@ export default function ScoutSubmitContent({ scope }) {
     SCOUT_PRODUCT_CATEGORY_OPTIONS,
     SCOUT_QUICK_PROOF_TYPES,
     SCOUT_QUICK_STOCK_LEFT_OPTIONS,
+    SCOUT_REPORT_VISIBILITY_OPTIONS,
     adminEditModeActive,
     applyQuickScoutReportTimePreset,
     buildCatalogAutofillDetails,
@@ -260,7 +263,10 @@ export default function ScoutSubmitContent({ scope }) {
       ["Store follow", (quickScoutReportForm.storeFollowPreference || "verified_restocks").replace(/_/g, " ")],
     ];
     const selectedTypeOption = quickReportTypeOptions.find((option) => option.value === quickScoutReportForm.reportType);
+    const screenshotSourceLabel = ({ facebook: "Facebook", discord: "Discord", other: "Community" })[quickScoutReportForm.screenshotSourcePlatform] || "Community";
     const commonReportTypes = ["stock_on_shelf", "low_stock", "no_stock", "restock_happening_now"];
+    const primaryCategories = SCOUT_PRODUCT_CATEGORY_OPTIONS.slice(0, 5);
+    const otherCategories = SCOUT_PRODUCT_CATEGORY_OPTIONS.slice(5);
     const renderReportTypeChoice = (option) => {
       const isSelected = quickScoutReportForm.reportType === option.value;
       return (
@@ -323,6 +329,16 @@ export default function ScoutSubmitContent({ scope }) {
         ...(current.productCategory !== value ? { catalogProductId: "", catalogProductName: "", productImageUrl: "", productSetName: "", productType: "" } : {}),
       }));
     };
+    const renderNotesField = () => (
+      <label className="scout-report-notes-field">
+        {currentType.isGuess ? "Details / notes" : "Useful details (optional)"}
+        <textarea
+          value={quickScoutReportForm.note}
+          onChange={(event) => updateQuickScoutReportForm("note", event.target.value)}
+          placeholder="Aisle, purchase limit, shelf condition, or anything useful..."
+        />
+      </label>
+    );
     const renderScoutReferenceThumb = (product = {}, imageUrl = catalogImage(product)) => (
       <span key={imageUrl || "no-reference-image"} className="scout-report-catalog-thumb" aria-hidden="true">
         {imageUrl ? <PrivateStorageImage src={imageUrl} alt="" onError={(event) => {
@@ -431,7 +447,7 @@ export default function ScoutSubmitContent({ scope }) {
     return (
       <form
         id="quick-scout-report-form"
-        className={`scout-report-flow scout-quick-report-v2 scout-report-wizard ${currentType.isGuess ? "" : "scout-report-quick"}`}
+        className={`scout-report-flow scout-quick-report-v2 scout-report-wizard ${currentType.isGuess ? "" : "scout-report-quick stock-report-easy"}`}
         onSubmit={submitQuickScoutReport}
         onTouchStart={handleScoutWizardTouchStart}
         onTouchEnd={handleScoutWizardTouchEnd}
@@ -494,6 +510,17 @@ export default function ScoutSubmitContent({ scope }) {
         </div>
 
         </> : null}
+
+        {!currentType.isGuess && ["where", "essentials"].includes(quickScoutReportStep) ? (
+          <StockScreenshotImport
+            stores={stores}
+            reportDraft={quickScoutReportForm}
+            onApply={(patch) => {
+              setQuickScoutReportForm((current) => ({ ...current, ...patch }));
+              setQuickScoutReportMessage("Screenshot details added to your draft. Confirm the store and observed time before posting.");
+            }}
+          />
+        ) : null}
 
         {quickScoutReportStep === "essentials" ? (
           <section className="scout-report-step-card active scout-essentials-step">
@@ -822,24 +849,28 @@ export default function ScoutSubmitContent({ scope }) {
                 {currentType.isGuess ? <div className="scout-report-store-actions">
                   <button type="button" className="secondary-button" onClick={clearScoutStoreSelection}>Change store</button>
                 </div> : null}
+                {!currentType.isGuess ? <p className="stock-report-observed-summary">Observed: {quickScoutDateLabel()}</p> : null}
                 {!currentType.isGuess ? (
-                  <div className="scout-report-detail-grid scout-report-time-grid">
-                    <label className="scout-visit-time-field">
-                      <span>Observed time</span>
-                      <input
-                        type="datetime-local"
-                        value={quickScoutVisitDateTimeValue()}
-                        onChange={(event) => updateQuickScoutVisitDateTime(event.target.value)}
-                        required
-                      />
-                      <small>Use this if you are backfilling a store visit from earlier.</small>
-                    </label>
-                    <div className="scout-report-date-presets" role="group" aria-label="Quick report time presets">
-                      <button type="button" className={quickScoutReportForm.dateMode === "today" || quickScoutReportForm.dateMode === "earlier_today" ? "selected" : ""} aria-pressed={quickScoutReportForm.dateMode === "today" || quickScoutReportForm.dateMode === "earlier_today"} onClick={() => applyQuickScoutReportTimePreset("now")}>Today</button>
-                      <button type="button" className={quickScoutReportForm.dateMode === "yesterday" ? "selected" : ""} aria-pressed={quickScoutReportForm.dateMode === "yesterday"} onClick={() => applyQuickScoutReportTimePreset("yesterday")}>Yesterday</button>
-                      <button type="button" className={quickScoutReportForm.dateMode === "pick_date" ? "selected" : ""} aria-pressed={quickScoutReportForm.dateMode === "pick_date"} onClick={() => applyQuickScoutReportTimePreset("pick_date")}>Pick date</button>
+                  <details className="scout-report-disclosure stock-report-time-disclosure" open={!visitValidationPreview.ok || undefined}>
+                    <summary>Change observed time</summary>
+                    <div className="scout-report-detail-grid scout-report-time-grid">
+                      <label className="scout-visit-time-field">
+                        <span>Observed time</span>
+                        <input
+                          type="datetime-local"
+                          value={quickScoutVisitDateTimeValue()}
+                          onChange={(event) => updateQuickScoutVisitDateTime(event.target.value)}
+                          required
+                        />
+                        <small>Use when the stock was seen, rather than when the post or screenshot was made.</small>
+                      </label>
+                      <div className="scout-report-date-presets" role="group" aria-label="Quick report time presets">
+                        <button type="button" className={quickScoutReportForm.dateMode === "today" || quickScoutReportForm.dateMode === "earlier_today" ? "selected" : ""} aria-pressed={quickScoutReportForm.dateMode === "today" || quickScoutReportForm.dateMode === "earlier_today"} onClick={() => applyQuickScoutReportTimePreset("now")}>Today</button>
+                        <button type="button" className={quickScoutReportForm.dateMode === "yesterday" ? "selected" : ""} aria-pressed={quickScoutReportForm.dateMode === "yesterday"} onClick={() => applyQuickScoutReportTimePreset("yesterday")}>Yesterday</button>
+                        <button type="button" className={quickScoutReportForm.dateMode === "pick_date" ? "selected" : ""} aria-pressed={quickScoutReportForm.dateMode === "pick_date"} onClick={() => applyQuickScoutReportTimePreset("pick_date")}>Pick date</button>
+                      </div>
                     </div>
-                  </div>
+                  </details>
                 ) : null}
               </article>
             ) : (
@@ -920,24 +951,28 @@ export default function ScoutSubmitContent({ scope }) {
                     <small>Manual locations are posted with an unusual/needs review signal if the store is not in the directory.</small>
                   </div>
                 ) : null}
+                {!currentType.isGuess ? <p className="stock-report-observed-summary">Observed: {quickScoutDateLabel()}</p> : null}
                 {!currentType.isGuess ? (
-                  <div className="scout-report-detail-grid scout-report-time-grid">
-                    <label className="scout-visit-time-field">
-                      <span>Observed time</span>
-                      <input
-                        type="datetime-local"
-                        value={quickScoutVisitDateTimeValue()}
-                        onChange={(event) => updateQuickScoutVisitDateTime(event.target.value)}
-                        required
-                      />
-                      <small>Use this if you are backfilling a store visit from earlier.</small>
-                    </label>
-                    <div className="scout-report-date-presets" role="group" aria-label="Quick report time presets">
-                      <button type="button" className={quickScoutReportForm.dateMode === "today" || quickScoutReportForm.dateMode === "earlier_today" ? "selected" : ""} aria-pressed={quickScoutReportForm.dateMode === "today" || quickScoutReportForm.dateMode === "earlier_today"} onClick={() => applyQuickScoutReportTimePreset("now")}>Today</button>
-                      <button type="button" className={quickScoutReportForm.dateMode === "yesterday" ? "selected" : ""} aria-pressed={quickScoutReportForm.dateMode === "yesterday"} onClick={() => applyQuickScoutReportTimePreset("yesterday")}>Yesterday</button>
-                      <button type="button" className={quickScoutReportForm.dateMode === "pick_date" ? "selected" : ""} aria-pressed={quickScoutReportForm.dateMode === "pick_date"} onClick={() => applyQuickScoutReportTimePreset("pick_date")}>Pick date</button>
+                  <details className="scout-report-disclosure stock-report-time-disclosure" open={!visitValidationPreview.ok || undefined}>
+                    <summary>Change observed time</summary>
+                    <div className="scout-report-detail-grid scout-report-time-grid">
+                      <label className="scout-visit-time-field">
+                        <span>Observed time</span>
+                        <input
+                          type="datetime-local"
+                          value={quickScoutVisitDateTimeValue()}
+                          onChange={(event) => updateQuickScoutVisitDateTime(event.target.value)}
+                          required
+                        />
+                        <small>Use when the stock was seen, rather than when the post or screenshot was made.</small>
+                      </label>
+                      <div className="scout-report-date-presets" role="group" aria-label="Quick report time presets">
+                        <button type="button" className={quickScoutReportForm.dateMode === "today" || quickScoutReportForm.dateMode === "earlier_today" ? "selected" : ""} aria-pressed={quickScoutReportForm.dateMode === "today" || quickScoutReportForm.dateMode === "earlier_today"} onClick={() => applyQuickScoutReportTimePreset("now")}>Today</button>
+                        <button type="button" className={quickScoutReportForm.dateMode === "yesterday" ? "selected" : ""} aria-pressed={quickScoutReportForm.dateMode === "yesterday"} onClick={() => applyQuickScoutReportTimePreset("yesterday")}>Yesterday</button>
+                        <button type="button" className={quickScoutReportForm.dateMode === "pick_date" ? "selected" : ""} aria-pressed={quickScoutReportForm.dateMode === "pick_date"} onClick={() => applyQuickScoutReportTimePreset("pick_date")}>Pick date</button>
+                      </div>
                     </div>
-                  </div>
+                  </details>
                 ) : null}
               </>
             )}
@@ -1017,7 +1052,7 @@ export default function ScoutSubmitContent({ scope }) {
                   </div>
                 </div>
                 <div className="scout-product-chip-row scout-category-chip-row" role="group" aria-label="Scout report item category">
-                  {SCOUT_PRODUCT_CATEGORY_OPTIONS.map((category) => {
+                  {primaryCategories.map((category) => {
                     const isSelected = quickScoutReportForm.productCategory === category;
                     return (
                       <button
@@ -1032,6 +1067,18 @@ export default function ScoutSubmitContent({ scope }) {
                     );
                   })}
                 </div>
+                {otherCategories.length ? (
+                  <details className="scout-report-disclosure stock-report-more-categories" open={otherCategories.includes(quickScoutReportForm.productCategory) || undefined}>
+                    <summary>More categories</summary>
+                    <div className="scout-product-chip-row scout-category-chip-row" role="group" aria-label="More item categories">
+                      {otherCategories.map((category) => (
+                        <button key={category} type="button" className={`secondary-button ${quickScoutReportForm.productCategory === category ? "selected" : ""}`} aria-pressed={quickScoutReportForm.productCategory === category} onClick={() => updateScoutProductCategory(category)}>{category}</button>
+                      ))}
+                    </div>
+                  </details>
+                ) : null}
+                <details className="scout-report-disclosure stock-report-product-disclosure" open={Boolean(quickScoutReportForm.productName || quickScoutReportForm.catalogProductId) || undefined}>
+                  <summary>Add product name <span>Optional</span></summary>
                 <label className="scout-report-notes-field scout-report-product-field">
                   Product name (optional)
                   <input
@@ -1061,16 +1108,15 @@ export default function ScoutSubmitContent({ scope }) {
                     ))}
                   </div>
                 ) : null}
+                </details>
               </div>
             ) : null}
-            <label className="scout-report-notes-field">
-              {currentType.isGuess ? "Details / notes" : "Useful details (optional)"}
-              <textarea
-                value={quickScoutReportForm.note}
-                onChange={(event) => updateQuickScoutReportForm("note", event.target.value)}
-                placeholder="Aisle, purchase limit, shelf condition, or anything useful..."
-              />
-            </label>
+            {currentType.isGuess ? renderNotesField() : (
+              <details className="scout-report-disclosure stock-report-notes-disclosure" open={Boolean(quickScoutReportForm.note) || undefined}>
+                <summary>Add useful details <span>Optional</span></summary>
+                {renderNotesField()}
+              </details>
+            )}
             <details className="scout-report-disclosure scout-proof-disclosure" open={currentType.isGuess || Boolean(quickScoutReportForm.photoUrl || quickScoutReportForm.proofText || quickScoutReportForm.proofType !== "manual") || undefined}>
               <summary>Add photo or source <span>Optional</span></summary>
               <p>{currentType.isGuess ? "Add the source or context behind your planning note. This remains a guess, not confirmed stock." : "A shelf photo or source helps others assess the report. Share only what you observed."}</p>
@@ -1124,6 +1170,22 @@ export default function ScoutSubmitContent({ scope }) {
               </div>
             ) : null}
             </details>
+            {!currentType.isGuess ? (
+              <details className="scout-report-disclosure stock-report-extra-disclosure" open={Boolean(quickScoutReportForm.quantity || quickScoutReportForm.price) || undefined}>
+                <summary>Price and extra details <span>Optional</span></summary>
+                <div className="scout-report-detail-grid">
+                  <label>
+                    Quantity/status detail
+                    <input value={quickScoutReportForm.quantity} onChange={(event) => updateQuickScoutReportForm("quantity", event.target.value)} placeholder="e.g. A few left" />
+                  </label>
+                  <label>
+                    Price / MSRP
+                    <input inputMode="decimal" value={quickScoutReportForm.price} onChange={(event) => updateQuickScoutReportForm("price", event.target.value)} placeholder="Optional" />
+                  </label>
+                </div>
+                <p className="stock-report-small-note">Use a general stock description unless the shop has approved exact quantities.</p>
+              </details>
+            ) : null}
             {detailsStepError ? <p className="scout-field-error">{detailsStepError}</p> : null}
           </section>
         ) : null}
@@ -1195,6 +1257,9 @@ export default function ScoutSubmitContent({ scope }) {
                 <p>{currentType.isGuess ? "Nothing is saved until you submit this note." : "Review before saving. Nothing is saved until you tap Save Report."}</p>
               </div>
             </div>
+            {!currentType.isGuess && quickScoutReportForm.screenshotImportReviewed ? (
+              <p className="stock-report-source-note" role="note">From a community screenshot · needs review <span>{screenshotSourceLabel} source. The original image is not attached.</span></p>
+            ) : null}
             <div className="scout-report-review-grid">
               {currentType.isGuess ? summaryRows.map(([label, value]) => (
                 <div key={label}>
@@ -1231,12 +1296,26 @@ export default function ScoutSubmitContent({ scope }) {
               </>}
             </div>
             {!currentType.isGuess ? (
-              <details className="scout-report-disclosure">
+              <details className="scout-report-disclosure stock-report-sharing-disclosure">
                 <summary>Source and sharing details</summary>
+                <label>
+                  Who can see this report
+                  <select value={quickScoutReportForm.visibility || "public"} onChange={(event) => updateQuickScoutReportForm("visibility", event.target.value)}>
+                    {SCOUT_REPORT_VISIBILITY_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  </select>
+                  <small>{SCOUT_REPORT_VISIBILITY_OPTIONS.find((option) => option.value === quickScoutReportForm.visibility)?.helper}</small>
+                </label>
                 <div className="scout-report-review-grid">
                   {summaryRows.filter(([label]) => !["Report type", "Reporting at", "Product details", "Visit date & time"].includes(label)).map(([label, value]) => (
                     <div key={label}><span>{label}</span><strong>{value}</strong></div>
                   ))}
+                </div>
+                {quickScoutReportForm.note ? <p>{quickScoutReportForm.note}</p> : null}
+                <div className="stock-report-review-context">
+                  <strong>{confidenceBadge.label}</strong>
+                  <p>{confidenceBadge.helper}</p>
+                  {quickScoutStoreHasHistory(storeSelection) ? <p>This store already has recent reports. Save only if this is a fresh observation or adds useful context.</p> : null}
+                  <p>Shared by store, not private address. Older reports remain in history and may no longer reflect current stock.</p>
                 </div>
               </details>
             ) : null}
@@ -1262,11 +1341,12 @@ export default function ScoutSubmitContent({ scope }) {
                 </span>
               </label>
             ) : null}
-            {quickScoutReportForm.note ? (
+            {currentType.isGuess && quickScoutReportForm.note ? (
               <div className="scout-report-review-items">
                 <p>{quickScoutReportForm.note}</p>
               </div>
             ) : null}
+            {currentType.isGuess ? <>
             <div className="scout-location-trust-note">
               <strong>{confidenceBadge.label}</strong>
               <span>{confidenceBadge.helper}</span>
@@ -1281,6 +1361,7 @@ export default function ScoutSubmitContent({ scope }) {
               <strong>Privacy and freshness</strong>
               <span>Reports are shared by store, not private address. Old reports are kept for history and should not be treated as live stock.</span>
             </div>
+            </> : null}
             {reviewStepError ? <div className="form-error" role="alert">{reviewStepError}</div> : null}
           </section>
         ) : null}

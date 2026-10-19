@@ -1,0 +1,144 @@
+/* The quick report keeps its existing draft, validation and save authority. */
+.flow-modal[data-flow="scoutSubmit"] .stock-report-easy .scout-report-step-card {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.flow-modal[data-flow="scoutSubmit"] .stock-report-easy .scout-report-step-header h3 {
+  font-size: 1.15rem;
+  line-height: 1.4;
+}
+
+.flow-modal[data-flow="scoutSubmit"] .stock-report-easy .scout-report-step-header p {
+  margin: 4px 0 0;
+  color: var(--text-secondary);
+  font-size: .85rem;
+  line-height: 1.5;
+}
+
+.flow-modal[data-flow="scoutSubmit"] .stock-report-easy :is(.scout-report-store-list, .scout-report-required-detail-panel) {
+  min-width: 0;
+  gap: 10px;
+}
+
+.flow-modal[data-flow="scoutSubmit"] .stock-report-easy .scout-report-disclosure {
+  min-width: 0;
+  background: var(--surface-primary);
+  box-shadow: none;
+}
+
+.flow-modal[data-flow="scoutSubmit"] .stock-report-easy .scout-report-disclosure > summary {
+  min-height: 46px;
+  min-width: 44px;
+  font-size: .85rem;
+  line-height: 1.5;
+}
+
+.flow-modal[data-flow="scoutSubmit"] .stock-report-easy .scout-report-disclosure[open] {
+  padding-bottom: 2px;
+}
+
+.flow-modal[data-flow="scoutSubmit"] .stock-report-easy .scout-report-disclosure :is(label, input, select, textarea) {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.flow-modal[data-flow="scoutSubmit"] .stock-report-easy .scout-report-disclosure label {
+  display: grid;
+  gap: 7px;
+  color: var(--text-primary);
+  font-size: .85rem;
+  line-height: 1.5;
+}
+
+.flow-modal[data-flow="scoutSubmit"] .stock-report-easy .scout-report-disclosure :is(input, select) {
+  min-height: 44px;
+  width: 100%;
+}
+
+.flow-modal[data-flow="scoutSubmit"] .stock-report-easy :is(.stock-report-observed-summary, .stock-report-small-note, .stock-report-review-context p, .scout-report-disclosure small) {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: .8125rem;
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+.flow-modal[data-flow="scoutSubmit"] .stock-report-easy .stock-report-review-context {
+  display: grid;
+  gap: 7px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.flow-modal[data-flow="scoutSubmit"] .stock-report-easy .stock-report-review-context > strong {
+  color: var(--text-primary);
+  font-size: .85rem;
+}
+
+.flow-modal[data-flow="scoutSubmit"] .stock-report-easy .stock-report-source-note {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border-strong);
+  border-inline-start: 3px solid var(--action-primary);
+  border-radius: 8px;
+  background: var(--surface-secondary);
+  color: var(--text-primary);
+  font-size: .85rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.flow-modal[data-flow="scoutSubmit"] .stock-report-easy .stock-report-source-note > span {
+  color: var(--text-secondary);
+  font-size: .8125rem;
+  font-weight: 400;
+}
+
+.flow-modal[data-flow="scoutSubmit"] .stock-report-easy .scout-category-chip-row > button {
+  flex: 1 1 105px;
+  min-width: 44px;
+  min-height: 44px;
+  border-color: var(--border-strong);
+  padding: 8px 10px;
+  font-size: .8125rem;
+}
+
+.flow-modal[data-flow="scoutSubmit"] .stock-report-easy .scout-confirm-location-row {
+  min-height: 44px;
+  min-width: 0;
+}
+
+.flow-modal[data-flow="scoutSubmit"] .stock-report-easy .scout-report-time-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.flow-modal[data-flow="scoutSubmit"] .stock-report-easy .scout-report-date-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.flow-modal[data-flow="scoutSubmit"] .stock-report-easy .scout-report-date-presets > button {
+  flex: 1 1 80px;
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.flow-modal[data-flow="scoutSubmit"] .stock-report-easy .scout-report-status-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
+}
+
+@media (max-width: 360px) {
+  .flow-modal[data-flow="scoutSubmit"] .stock-report-easy .scout-report-store-main {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .flow-modal[data-flow="scoutSubmit"] .stock-report-easy .scout-report-step-pill {
+    padding-inline: 5px;
+  }
+}

@@ -74,6 +74,7 @@ import {
   UNIVERSAL_DATA_ENTITIES,
 } from "./data/tcgOperatingSystem";
 import { POKEMON_SETS } from "./data/pokemonSetCatalog";
+import { COLLECTIBLE_GAMES, getRecordGame } from "./utils/collectibleGames.mjs";
 import "./data/storeGroups";
 import { MARKET_SOURCES, MARKET_STATUS, MARKET_STATUS_LABELS } from "./data/marketSources";
 import { CATALOG_IMPORT_SOURCES, flagCatalogDuplicates, validateCatalogImport } from "./utils/catalogImportUtils";
@@ -1092,10 +1093,11 @@ const SCOUT_QUICK_PROOF_TYPES = [
   { value: "stock_photo", label: "Photo" },
   { value: "receipt", label: "Receipt" },
   { value: "screenshot", label: "Shelf/sign photo" },
+  { value: "text_screenshot", label: "Community screenshot" },
   { value: "text_link", label: "Text/link" },
   { value: "manual", label: "No proof" },
 ];
-const SCOUT_PRODUCT_CATEGORY_OPTIONS = ["Pokemon TCG", "Sealed product", "Packs", "ETBs", "Booster bundles", "Binders", "Sleeves", "Sports cards", "Other"];
+const SCOUT_PRODUCT_CATEGORY_OPTIONS = ["Pokemon TCG", ...COLLECTIBLE_GAMES.filter((game) => game.id !== "pokemon").map((game) => game.name), "Sealed product", "Packs", "ETBs", "Booster bundles", "Binders", "Sleeves", "Sports cards", "Other"];
 const SCOUT_QUICK_REPORT_TYPES = [
   { value: "stock_on_shelf", label: "Stock seen", helper: "Product was seen on shelf, display, or behind counter.", reportType: "Store Restock Report", stockStatus: "in_stock", sourceType: "user_report", confidence: "possible" },
   { value: "no_stock", label: "No stock", helper: "Nothing found", reportType: "Store Restock Report", stockStatus: "empty", sourceType: "user_report", confidence: "possible" },
@@ -15649,13 +15651,14 @@ export default function App() {
   }
 
   function mapSupabaseScoutReport(row = {}, stores = []) {
+    const screenshotSource = row.source_type === "text_screenshot";
     const matchedStore = stores.find((store) => String(getScoutQuickStoreId(store)) === String(row.store_id)) || {};
     const observedAt = row.observed_at || row.report_time || row.reported_at || row.created_at || row.updated_at || "";
     const reportedAt = observedAt;
     const status = row.status || row.verification_status || "unverified";
     const statusText = scoutBackendKey(status);
     const rejected = /rejected|stale|duplicate|deleted|archived/.test(statusText);
-    const confirmed = !rejected && /confirmed|verified/.test(statusText);
+    const confirmed = !rejected && (screenshotSource ? ["confirmed", "verified"].includes(scoutBackendKey(row.verification_status || status)) : /confirmed|verified/.test(statusText));
     const confidenceScore = Number(row.confidence_score ?? 0);
     const likely = !confirmed && !rejected && confidenceScore >= 60;
     const reportedDate = reportedAt ? new Date(reportedAt) : null;
@@ -15701,7 +15704,13 @@ export default function App() {
       price_seen: row.price_seen,
       photoUrl: row.photo_url || "",
       photo_url: row.photo_url || "",
-      proofType: row.photo_url ? "stock_photo" : "manual",
+      proofType: screenshotSource ? "text_screenshot" : row.photo_url ? "stock_photo" : "manual",
+      ...(screenshotSource ? {
+        screenshotImportReviewed: true,
+        screenshotSourcePlatform: row.source_label === "Facebook screenshot" ? "facebook" : row.source_label === "Discord screenshot" ? "discord" : "other",
+        needsReview: !confirmed,
+        needs_review: !confirmed,
+      } : {}),
       proofText: row.notes || "",
       notes: row.notes || "",
       note: row.notes || "",
@@ -15712,8 +15721,8 @@ export default function App() {
       stockStatus: reportStatus || (confirmed ? "confirmed_restock" : row.report_type || "reported"),
       visibility: normalizeScoutReportVisibility(row.visibility || "public"),
       status,
-      verificationStatus: status,
-      verification_status: status,
+      verificationStatus: screenshotSource ? row.verification_status || "needs_review" : status,
+      verification_status: screenshotSource ? row.verification_status || "needs_review" : status,
       verified: confirmed,
       confidence,
       confidenceScore: confidenceScore || scoutConfidenceScore(confidence),
@@ -15987,7 +15996,9 @@ export default function App() {
       report_status: report.reportStatus || report.report_status || null,
     };
     let result = await supabase.from("store_reports").insert(payload).select("id,store_id,user_id,product_id,report_type,quantity_seen,price_seen,photo_url,notes,observed_at,reported_at,verification_status,workspace_id,store_name,product_name,product_type,set_name,quantity_estimate,report_time,visibility,status,confidence_score,source_type,source_label,submitted_by_display,confidence,imported_batch,imported_by_admin,scout_points_awarded,import_key,report_status,created_at,updated_at").single();
-    if (result.error && isScoutBackendOptionalError(result.error)) {
+    // A legacy insert cannot retain screenshot provenance or private sharing.
+    // Keep the existing local report when the server lacks those columns.
+    if (result.error && isScoutBackendOptionalError(result.error) && report.sourceType !== "text_screenshot" && report.source_type !== "text_screenshot" && !report.screenshotImportReviewed && report.proofType !== "text_screenshot") {
       const fallbackPayload = {
         store_id: storeId,
         user_id: user.id,
@@ -20325,6 +20336,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
 
 
   function openQuickAddPathFlow(path, patch = {}, source = "quick-add-path") {
+    if (path === "scoutScreenshotReview") return openScoutSubmitFlow({ inputMode: "screenshot", source });
     setQuickAddWizard(createQuickAddWizardState({
       screen: path,
       path,
@@ -20368,6 +20380,10 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   }
 
   function setQuickAddPath(path, patch = {}) {
+    if (path === "scoutScreenshotReview") {
+      if (!closeFlowModal({ reset: false })) return;
+      return openScoutSubmitFlow({ inputMode: "screenshot", source: "add-screenshot" });
+    }
     updateQuickAddWizard({
       screen: path,
       path,
@@ -21146,6 +21162,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     const now = new Date();
     return {
       reportType: "stock_on_shelf",
+      reportTypeTouched: false,
       proofType: "manual",
       storeId: "",
       storeName: "",
@@ -21495,6 +21512,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
         if (!Number.isNaN(parsedDate.getTime())) next.dayOfWeek = SCOUT_WEEKDAYS[parsedDate.getDay()];
       }
       if (field === "reportType") {
+        next.reportTypeTouched = true;
         const nextType = SCOUT_QUICK_REPORT_TYPES.find((option) => option.value === value);
         next.visibility = nextType?.isGuess ? normalizeScoutGuessVisibility(current.visibility || "private") : normalizeScoutReportVisibility(current.visibility || "public");
         if (nextType?.isGuess) next.dateMode = current.dateMode === "today" ? "day_only" : current.dateMode;
@@ -21545,6 +21563,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   }
 
   function quickScoutProofLabel(value = quickScoutReportForm.proofType) {
+    if (quickScoutReportForm.screenshotImportReviewed && value === quickScoutReportForm.proofType) return "Community screenshot";
     const option = SCOUT_QUICK_PROOF_TYPES.find((item) => item.value === value);
     return option ? option.label : "Manual";
   }
@@ -21883,6 +21902,9 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     }
     score = Math.max(0, Math.min(96, score));
     if (spammy) return { ...scoutConfidenceBadgeMeta("unusual-needs-review"), score, hidden: true, needsReview: true, reasons };
+    if ((proofType === "text_screenshot" || report.sourceType === "text_screenshot" || report.source_type === "text_screenshot" || report.screenshotImportReviewed) && report.verified !== true) {
+      return { ...screenshotScoutReliability(), reasons: [...reasons, "Community screenshot is indirect evidence"] };
+    }
     if (freshness.key === "old" || freshness.key === "expired") return { ...scoutConfidenceBadgeMeta("stale-expired"), score, needsReview: false, reasons };
     if (conflictingRecent.length) return { ...scoutConfidenceBadgeMeta("conflicting-reports"), score, needsReview: true, reasons };
     if (Number(report.confirmationCount || report.confirmation_count || report.communityConfirmations || report.community_confirmations || 0) >= 2 || similarRecent.length >= 2) {
@@ -21944,12 +21966,16 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     );
   }
 
+  function screenshotScoutReliability() {
+    return { ...scoutConfidenceBadgeMeta("unusual-needs-review"), label: "Needs review", helper: "A community screenshot is indirect evidence. The store and observed time need review.", score: 26, needsReview: true, reasons: ["Community screenshot is indirect evidence"] };
+  }
+
   function quickScoutConfidenceBadge(form = quickScoutReportForm, type = quickScoutReportTypeMeta(form.reportType), storeSelection = resolveQuickScoutStoreSelection(form)) {
     const draft = {
       quickReportType: type?.value,
       reportStatus: type?.value,
       stockStatus: type?.stockStatus,
-      sourceType: type?.sourceType,
+      sourceType: form.screenshotImportReviewed ? "text_screenshot" : type?.sourceType,
       proofType: form.proofType,
       photoUrls: form.photoUrl ? [form.photoUrl] : [],
       notes: [form.note, form.proofText].filter(Boolean).join(" | "),
@@ -22068,6 +22094,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
 
   function buildQuickScoutReportRecord() {
     const type = quickScoutReportTypeMeta();
+    const screenshotSource = Boolean(quickScoutReportForm.screenshotImportReviewed || quickScoutReportForm.proofType === "text_screenshot");
     const storeSelection = resolveQuickScoutStoreSelection();
     if (!storeSelection.valid) return null;
     const selectedStore = storeSelection.store || {};
@@ -22110,8 +22137,9 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       reportStatus: type.value,
       report_status: type.value,
       stockStatus: type.stockStatus,
-      sourceType: type.sourceType,
-      source_type: type.sourceType,
+      sourceType: screenshotSource ? "text_screenshot" : type.sourceType,
+      source_type: screenshotSource ? "text_screenshot" : type.sourceType,
+      ...(screenshotSource ? { screenshotImportReviewed: true, screenshotSourcePlatform: ["facebook", "discord", "other"].includes(quickScoutReportForm.screenshotSourcePlatform) ? quickScoutReportForm.screenshotSourcePlatform : "other" } : {}),
       storeId: storeSelection.storeId,
       store_id: storeSelection.storeId,
       selectedStoreId: storeSelection.storeId,
@@ -22127,9 +22155,9 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       region: storeSelection.region || getScoutQuickStoreRegion(selectedStore) || quickScoutReportForm.region || "",
       manualLocation: quickScoutReportForm.manualLocation.trim(),
       needsStoreReview: storeSelection.needsStoreReview,
-      needsReview: Boolean(type.needsReview || storeSelection.needsStoreReview),
-      verificationStatus: type.needsReview || storeSelection.needsStoreReview ? "needs_review" : "new_report",
-      verification_status: type.needsReview || storeSelection.needsStoreReview ? "needs_review" : "new_report",
+      needsReview: Boolean(screenshotSource || type.needsReview || storeSelection.needsStoreReview),
+      verificationStatus: screenshotSource || type.needsReview || storeSelection.needsStoreReview ? "needs_review" : "new_report",
+      verification_status: screenshotSource || type.needsReview || storeSelection.needsStoreReview ? "needs_review" : "new_report",
       status: "active",
       verified: false,
       visibility: normalizeScoutReportVisibility(quickScoutReportForm.visibility),
@@ -22165,7 +22193,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       reportText: notes || type.label,
       notes,
       photoUrls: quickScoutReportForm.photoUrl ? [quickScoutReportForm.photoUrl] : [],
-      proofType: quickScoutReportForm.proofType,
+      proofType: screenshotSource ? "text_screenshot" : quickScoutReportForm.proofType,
       stockLeft: quickScoutReportForm.stockLeft,
       storeFollowPreference: quickScoutReportForm.storeFollowPreference || "verified_restocks",
       store_follow_preference: quickScoutReportForm.storeFollowPreference || "verified_restocks",
@@ -22193,7 +22221,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       sourceStatus: BETA_LOCAL_MODE ? "local_beta" : "local",
       report_type: quickScoutNormalizedReportType(type),
     };
-    const reliability = evaluateScoutReportReliability(baseReport, { needsReview: Boolean(type.needsReview || storeSelection.needsStoreReview) });
+    const reliability = evaluateScoutReportReliability(baseReport, { needsReview: Boolean(screenshotSource || type.needsReview || storeSelection.needsStoreReview) });
     const scoutPointsValue = scoutPointsForReport({ ...baseReport, confidence: reliability.key });
     return {
       ...baseReport,
@@ -22210,8 +22238,8 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       reliability_label: reliability.label,
       reliabilityReason: reliability.helper,
       reliability_reason: reliability.helper,
-      sourceLabel: reliability.label,
-      source_label: reliability.label,
+      sourceLabel: screenshotSource ? quickScoutReportForm.screenshotSourcePlatform === "facebook" ? "Facebook screenshot" : quickScoutReportForm.screenshotSourcePlatform === "discord" ? "Discord screenshot" : "Community screenshot" : reliability.label,
+      source_label: screenshotSource ? quickScoutReportForm.screenshotSourcePlatform === "facebook" ? "Facebook screenshot" : quickScoutReportForm.screenshotSourcePlatform === "discord" ? "Discord screenshot" : "Community screenshot" : reliability.label,
       needsReview: Boolean(baseReport.needsReview || reliability.needsReview),
       needs_review: Boolean(baseReport.needsReview || reliability.needsReview),
       hidden: Boolean(reliability.hidden),
@@ -22479,6 +22507,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       ...buildQuickScoutStoreDraft(seededStore || {}),
       reportType: seededReportType?.value || (options.action === "addGuess" ? "restock_guess" : "stock_on_shelf"),
       proofType: options.proofType || (options.action === "importIntel" ? "text_link" : "manual"),
+      screenshotEntry: options.inputMode === "screenshot",
       ...(options.action === "addGuess" ? { dateMode: "day_only", visibility: "private" } : {}),
       productName: options.productName || "",
       proofText: options.proofText || "",
@@ -22498,6 +22527,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
   }
 
   function openLiveScoutReportFlow(flow = "addReport") {
+    if (flow === "scanScreenshot") return openScoutSubmitFlow({ inputMode: "screenshot", source: "scout-screenshot" });
     setActiveTab("scout");
     setScoutReviewMockSubmitted(false);
     setScoutView(flow);
@@ -31060,9 +31090,18 @@ function renderForgeBusinessLedgerPanel() {
       : new Map()),
     [catalogProducts, ownedItemCatalogLookupNeeded]
   );
-  const resolveWorkspaceItemImage = useCallback((item = {}) => (
-    getItemImageUrl(item) || getProductImageUrl(resolveCatalogProductForItem(item, vaultCatalogLookup) || {})
-  ), [vaultCatalogLookup]);
+  const resolveWorkspaceItemImage = useCallback((item = {}) => {
+    const savedPhoto = getItemImageUrl(item);
+    if (savedPhoto) return savedPhoto;
+    const product = resolveCatalogProductForItem(item, vaultCatalogLookup);
+    if (!product) return "";
+    const game = getRecordGame(item);
+    if (game !== "unspecified") return game === getRecordGame(product) ? getProductImageUrl(product) : "";
+    // Preserve legacy unlabelled artwork links, but an explicit unsupported or
+    // conflicting game must not borrow a Pokémon catalog image by name or ID.
+    const declaredGame = ["tcgGame", "tcg_game", "gameId", "game_id", "game", "gameName", "game_name"].some((field) => item[field] != null && String(item[field]).trim());
+    return declaredGame ? "" : getProductImageUrl(product);
+  }, [vaultCatalogLookup]);
   const vaultItems = useMemo(
     () => rawVaultItems.map((item) => enrichVaultItemWithCatalogData(item, resolveCatalogProductForItem(item, vaultCatalogLookup))),
     [rawVaultItems, vaultCatalogLookup]
@@ -44022,6 +44061,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         POKEMON_SETS,
         PurchaserSelect,
         SCOUT_PRODUCT_CATEGORY_OPTIONS,
+        SCOUT_REPORT_VISIBILITY_OPTIONS,
         activeForgeWorkspace,
         activeWorkspace,
         addPurchaserName,
@@ -44636,6 +44676,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         LazySmartCatalogSearchBox,
         MIN_SCOUT_POINTS_FOR_GUESS,
         SCOUT_PRODUCT_CATEGORY_OPTIONS,
+        SCOUT_REPORT_VISIBILITY_OPTIONS,
         SCOUT_QUICK_PROOF_TYPES,
         SCOUT_QUICK_STOCK_LEFT_OPTIONS,
         adminEditModeActive,
@@ -51412,10 +51453,15 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         {!activeTabLocked && activeTab === "collectionWorkspace" && (
           <LazyToolBoundary label="Loading Collection...">
             <CollectionWorkspace
+              key={`${currentWorkspaceUserId}:${activeWorkspaceId}`}
               experiencePresentation={experiencePresentation}
+              portfolioScope={`${currentWorkspaceUserId}:${activeWorkspaceId}`}
+              portfolioFeatures={{ value: featureAllowed("portfolio_value"), history: featureAllowed("price_history"), export: featureAllowed("collection_export") }}
+              onLockedFeature={openLockedFeatureNotice}
               resolveItemImage={resolveWorkspaceItemImage}
               items={workspaceItems}
               initialView={collectionWorkspaceView}
+              catalogProducts={catalogProducts}
               onViewChange={(view) => { prepareRouteNavigation(); setCollectionWorkspaceView(view); }}
               onAddItem={() => openProductAddFlow({ source: "collection-workspace", seed: { ownedItemPurpose: OWNED_ITEM_PURPOSES.PERSONAL_COLLECTION }, destinations: { vault: true } })}
               onChangePurpose={(item, nextPurpose) => updateOwnedItemPurpose(item, nextPurpose, "Purpose assigned in Collection")}

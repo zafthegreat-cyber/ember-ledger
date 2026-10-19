@@ -48,7 +48,7 @@ function fixture(options = {}) {
   };
   const resolveReport = (candidate) => records.get(String(candidate?.id ?? candidate?.reportId ?? candidate?.report_id ?? "")) || null;
   const controller = createRestockDetailsHistory({
-    target, resolveReport,
+    target, resolveReport, ...(options.historyKey ? { historyKey: options.historyKey } : {}),
     onOpen: report => events.push(["open", report]),
     onClose: () => events.push(["close"]),
   });
@@ -72,6 +72,51 @@ check("Opening pushes one same-URL token and preserves all unrelated history sta
   assert.equal(typeof token, "string"); assert.deepEqual(unrelated, before); assert.deepEqual(f.entries[0].state, before);
   const serialized = JSON.stringify(f.current.state);
   assert.ok(!serialized.includes("report-a") && !serialized.includes("observation") && !serialized.includes("productName"), "History must not contain report IDs or report content");
+});
+
+check("A custom history key strips only its stale token and preserves Scout's marker", () => {
+  const customKey = "code3CollectionPortfolioDialog";
+  const baseline = { emberTideRoute: true, [marker]: "scout-parent-token", [customKey]: "stale-portfolio-token", custom: { page: 3 } };
+  const f = fixture({ state: baseline, historyKey: customKey });
+  assert.equal(f.current.state[customKey], undefined);
+  assert.equal(f.current.state[marker], "scout-parent-token");
+  assert.deepEqual(f.current.state.custom, { page: 3 });
+  assert.deepEqual(f.events, []);
+  f.controller.open(f.records.get("report-a"));
+  assert.equal(typeof f.current.state[customKey], "string");
+  assert.equal(f.current.state[marker], "scout-parent-token");
+  f.controller.destroy();
+  assert.equal(f.current.state[customKey], undefined);
+  assert.equal(f.current.state[marker], "scout-parent-token");
+});
+
+check("A custom-key child can close without consuming the default-key parent entry", () => {
+  const f = fixture();
+  f.controller.open(f.records.get("report-a"));
+  const parentToken = f.current.state[marker];
+  const customKey = "code3CollectionPortfolioDialog";
+  const childEvents = [];
+  const child = createRestockDetailsHistory({
+    target: f.target, historyKey: customKey,
+    resolveReport: (payload) => payload?.type === "chooser" ? payload : null,
+    onOpen: (payload) => childEvents.push(["open", payload.type]),
+    onClose: () => childEvents.push(["close"]),
+  });
+  child.open({ type: "chooser", privateDraft: "must stay out of history" });
+  assert.equal(f.target.history.length, 3);
+  assert.equal(f.current.state[marker], parentToken);
+  assert.equal(typeof f.current.state[customKey], "string");
+  assert.ok(!JSON.stringify(f.current.state).includes("privateDraft"));
+  child.dismiss(); f.flushOne();
+  assert.equal(f.index, 1);
+  assert.equal(f.current.state[customKey], undefined);
+  assert.equal(f.current.state[marker], parentToken);
+  assert.deepEqual(childEvents, [["open", "chooser"], ["close"]]);
+  assert.equal(closeCount(f), 0);
+  child.destroy();
+  assert.equal(f.current.state[marker], parentToken);
+  f.controller.dismiss(); f.flushOne();
+  assert.equal(f.index, 0); assert.deepEqual(f.current.state, f.baseline);
 });
 
 check("Double open reuses its entry; duplicate dismiss/open cannot race a pending traversal", () => {

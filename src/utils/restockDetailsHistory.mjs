@@ -2,14 +2,14 @@ export const RESTOCK_DETAILS_HISTORY_KEY = "code3ScoutReportDetails";
 
 // History stores only an opaque UI token. Reports remain in the existing
 // permitted in-memory collection and are resolved again before Forward opens.
-export function createRestockDetailsHistory({ target, resolveReport, onOpen, onClose, timeoutMs = 1500 }) {
+export function createRestockDetailsHistory({ target, resolveReport, onOpen, onClose, timeoutMs = 1500, historyKey = RESTOCK_DETAILS_HISTORY_KEY }) {
   const known = new Map();
   let active = null;
   let pending = null;
   let disposed = false;
   let sequence = 0;
   const prefix = target.crypto?.randomUUID?.() || `report-${Math.random().toString(36).slice(2)}`;
-  const currentToken = () => target.history.state?.[RESTOCK_DETAILS_HISTORY_KEY];
+  const currentToken = () => target.history.state?.[historyKey];
   const signature = (state) => {
     try { return JSON.stringify(state || {}); } catch { return null; }
   };
@@ -18,7 +18,7 @@ export function createRestockDetailsHistory({ target, resolveReport, onOpen, onC
   const strip = (token) => {
     if (currentToken() !== token) return;
     const state = { ...(target.history.state || {}) };
-    delete state[RESTOCK_DETAILS_HISTORY_KEY];
+    delete state[historyKey];
     target.history.replaceState(state, "", target.location.href);
   };
   // A reload cannot restore a report or a draft from an old UI token.
@@ -75,7 +75,7 @@ export function createRestockDetailsHistory({ target, resolveReport, onOpen, onC
         return true;
       }
       const frame = { token: `${prefix}-${++sequence}`, report: permitted, url: target.location.href, parentSignature: signature(target.history.state) };
-      target.history.pushState({ ...(target.history.state || {}), [RESTOCK_DETAILS_HISTORY_KEY]: frame.token }, "", frame.url);
+      target.history.pushState({ ...(target.history.state || {}), [historyKey]: frame.token }, "", frame.url);
       frame.stateSignature = signature(target.history.state);
       known.set(frame.token, frame);
       active = frame;

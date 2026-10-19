@@ -10,7 +10,6 @@ import {
   QuietButton,
   RecordCard,
   SearchField,
-  SecondaryButton,
   SectionHeader,
   StatusBadge,
 } from "../components/operations/OperationsUI.jsx";
@@ -41,11 +40,20 @@ import { AppNavIcon } from "../components/command-system/AppNavIcon.jsx";
 import { resolveExperiencePresentation } from "../utils/experiencePresentation.js";
 import { getItemImageUrl } from "../utils/productDisplayUtils.js";
 import ItemPhoto from "../components/ItemPhoto.jsx";
+import CollectionPortfolio from "../components/CollectionPortfolio.jsx";
+import CollectionSets from "../components/CollectionSets.jsx";
+import CollectionGameFilter from "../components/CollectionGameFilter.jsx";
+import { COLLECTIBLE_GAMES, assignCollectibleGame, getRecordGame, getRecordGameLabel, matchesRecordGame } from "../utils/collectibleGames.mjs";
+import { POKEMON_SETS } from "../data/pokemonSetCatalog.js";
+import { buildCollectionSetRows } from "../utils/collectionSets.mjs";
+import { createCollectionSetsNavigation } from "../utils/collectionSetsNavigation.mjs";
 import "./everyday-workspaces.css";
 
 const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 const percent = new Intl.NumberFormat("en-US", { style: "percent", maximumFractionDigits: 1 });
 const EMPTY_FEATURE_CONTROLS = Object.freeze({});
+const EMPTY_CATALOG = Object.freeze([]);
+const POKEMON_COLLECTION_SETS = POKEMON_SETS.map((set) => ({ ...set, tcgGame: "pokemon" }));
 const TODAY = () => new Date().toISOString().slice(0, 10);
 
 function number(value) {
@@ -227,7 +235,7 @@ function PurposeActions({ item, onChange }) {
 
 function itemDetailGroups(item, valueLabel = "Projected resale") {
   return [
-    { title: "Identification", description: "Item and card details.", items: [{ label: "Classification", value: item.productClassification }, { label: "Pokémon", value: item.pokemonName }, { label: "Set", value: item.setName }, { label: "Card number", value: item.cardNumber }, { label: "Language", value: item.language }, { label: "Condition", value: item.condition }, { label: "Grade", value: [item.gradingCompany, item.grade].filter(Boolean).join(" ") }, { label: "Certification", value: item.certificationNumber }] },
+    { title: "Identification", description: "Item and card details.", items: [{ label: "Trading card game", value: getRecordGameLabel(item) }, { label: "Classification", value: item.productClassification }, { label: getRecordGame(item) === "pokemon" ? "Pokémon" : "Character or subject", value: item.pokemonName }, { label: "Set", value: item.setName }, { label: "Card number", value: item.cardNumber }, { label: "Language", value: item.language }, { label: "Condition", value: item.condition }, { label: "Grade", value: [item.gradingCompany, item.grade].filter(Boolean).join(" ") }, { label: "Certification", value: item.certificationNumber }] },
     { title: "Acquisition and value", description: "Original cost context remains attached.", items: [{ label: "Purchase source", value: item.purchaseSource || item.source }, { label: "Purchase date", value: dateLabel(item.purchaseDate) }, { label: "Original listing", value: item.originalListing }, { label: "Total purchase cost", value: money(item.totalPurchaseCost), numeric: true }, { label: "Allocated cost", value: money(acquisitionCost(item)), numeric: true }, { label: valueLabel, value: [money(item.projectedResaleLow, ""), money(item.projectedResaleMid, ""), money(item.projectedResaleHigh, "")].filter(Boolean).join(" / ") }] },
     { title: "Storage and notes", description: "Where the item is and what remains to do.", items: [{ label: "Storage location", value: item.storageLocation }, { label: "Sales channel", value: item.intendedSalesChannel }, { label: "Notes", value: item.notes }] },
   ];
@@ -239,7 +247,8 @@ function itemDetailSections(item, valueLabel) {
 
 function itemTimeline(item) {
   const purposeHistory = Array.isArray(item.purposeHistory) ? item.purposeHistory.map((entry) => ({ id: entry.id, title: "Purpose changed", date: dateLabel(entry.at), detail: `${entry.from.replaceAll("_", " ")} → ${entry.to.replaceAll("_", " ")} · ${entry.reason}` })) : [];
-  return [...purposeHistory, item.purchaseDate ? { id: "purchased", title: "Purchased", date: dateLabel(item.purchaseDate), detail: item.purchaseSource || "Source not recorded" } : null, item.createdAt ? { id: "created", title: "Record created", date: dateLabel(item.createdAt) } : null].filter(Boolean);
+  const gameHistory = Array.isArray(item.tcgGameAssignmentHistory) ? item.tcgGameAssignmentHistory.filter((entry) => entry && typeof entry === "object").map((entry, index) => ({ id: `game-${index}-${entry.at}`, title: "Game label changed", date: dateLabel(entry.at), detail: `${Object.values(entry.previousLabels || {}).filter((value) => typeof value === "string").join(" / ")} → ${getRecordGameLabel({ tcgGame: entry.game })}` })) : [];
+  return [...gameHistory, ...purposeHistory, item.purchaseDate ? { id: "purchased", title: "Purchased", date: dateLabel(item.purchaseDate), detail: item.purchaseSource || "Source not recorded" } : null, item.createdAt ? { id: "created", title: "Record created", date: dateLabel(item.createdAt) } : null].filter(Boolean);
 }
 
 function blankForm(type, seed = {}) {
@@ -253,7 +262,9 @@ function blankForm(type, seed = {}) {
     expense: { date: TODAY(), category: "Other", merchant: "", description: "", amount: "", paymentMethod: "", businessPercentage: 100, receiptReference: "", relatedRecordType: "", relatedRecordId: "", ...shared },
     mileage: { date: TODAY(), startLocation: "", destination: "", purpose: "", miles: "", relatedRecordType: "", relatedRecordId: "", ...shared },
   };
-  return { ...(forms[type] || shared), ...seed };
+  const result = { ...(forms[type] || shared), ...seed };
+  if (["collection", "inventory"].includes(type) && !seed.id && result.tcgGame == null) result.tcgGame = "pokemon";
+  return result;
 }
 
 const FORM_CONFIG = {
@@ -274,6 +285,10 @@ function RecordForm({ type, seed = {}, state, onSave, onCancel }) {
   const saveInFlightRef = useRef(false);
   const [saving, setSaving] = useState(false);
   const set = (key) => (value) => { setForm((current) => ({ ...current, [key]: value })); setError(""); };
+  const changeGame = (value) => {
+    try { setForm(assignCollectibleGame(form, value)); setError(""); }
+    catch (failure) { setError(failure.message || "The game label could not be changed. Existing saved labels are kept."); }
+  };
   const selectedInventory = state.inventory.find((item) => item.id === form.inventoryItemId);
   const quantityCheck = type === "sale" ? validateSaleQuantity({ inventoryItem: selectedInventory, sales: state.sales, saleDraft: form, editingSaleId: form.id }) : { valid: true, message: "" };
   const suggestedCogs = selectedInventory ? suggestedInventorySaleCogsMajorUnits(selectedInventory, state.sales, Number(form.quantitySold), form.id) : 0;
@@ -316,7 +331,7 @@ function RecordForm({ type, seed = {}, state, onSave, onCancel }) {
 
   return <GuidedFormPage title={config.title} description={config.description} steps={config.steps} activeStep={step} onStepChange={setStep} onCancel={cancel} onSubmit={submit} canContinue={canContinue && !saving} submitLabel={saving ? "Saving…" : seed.id ? `Update ${config.submit.replace("Save ", "")}` : config.submit} error={error}>
     <div className="ops-form-group"><header><h2>{config.steps[step]}</h2><p>Required fields are marked. Additional detail can be added later.</p></header><div className="ops-form-grid">
-      {(["collection", "inventory"].includes(type) && step === 0) ? <><TextField label="Item name" required value={form.name} onChange={set("name")} error={!form.name && error ? "Item name is required." : ""} /><TextField label="Quantity" type="number" inputMode="numeric" min="1" value={form.quantity} onChange={set("quantity")} /><SelectField label="Product classification" value={form.productClassification} onChange={set("productClassification")} options={PRODUCT_CLASSIFICATIONS} /><TextField label="Pokémon" value={form.pokemonName} onChange={set("pokemonName")} /><TextField label="Set" value={form.setName} onChange={set("setName")} /><TextField label="Card number" value={form.cardNumber} onChange={set("cardNumber")} /><TextField label="Condition" value={form.condition} onChange={set("condition")} /></> : null}
+      {(["collection", "inventory"].includes(type) && step === 0) ? <><TextField label="Item name" required value={form.name} onChange={set("name")} error={!form.name && error ? "Item name is required." : ""} /><SelectField label="Trading card game" value={getRecordGame(form)} onChange={changeGame} options={[...COLLECTIBLE_GAMES.map((game) => ({ value: game.id, label: game.name })), { value: "unspecified", label: "Unspecified / other" }]} />{seed.id && (form.tcgGameAssignmentHistory?.length || 0) > (seed.tcgGameAssignmentHistory?.length || 0) ? <p className="collection-game-filter-note">Saving will change the game label to {getRecordGameLabel(form)}. Previous game labels are kept in the record's history.</p> : null}<TextField label="Quantity" type="number" inputMode="numeric" min="1" value={form.quantity} onChange={set("quantity")} /><SelectField label="Product classification" value={form.productClassification} onChange={set("productClassification")} options={PRODUCT_CLASSIFICATIONS} /><TextField label={getRecordGame(form) === "pokemon" ? "Pokémon" : "Character or subject"} value={form.pokemonName} onChange={set("pokemonName")} /><TextField label="Set" value={form.setName} onChange={set("setName")} /><TextField label="Card number" value={form.cardNumber} onChange={set("cardNumber")} /><TextField label="Condition" value={form.condition} onChange={set("condition")} /></> : null}
       {(["collection", "inventory"].includes(type) && step === 1) ? <><SelectField label="Purchase" value={form.purchaseId || ""} onChange={set("purchaseId")} options={[{ value: "", label: "No purchase selected" }, ...state.purchases.map((row) => ({ value: row.id, label: row.title }))]} /><SelectField label="Purchase lot" value={form.lotId || ""} onChange={set("lotId")} options={[{ value: "", label: "No lot selected" }, ...state.lots.map((row) => ({ value: row.id, label: row.title }))]} /><TextField label="Purchase source" value={form.purchaseSource} onChange={set("purchaseSource")} /><TextField label="Purchase date" type="date" value={form.purchaseDate} onChange={set("purchaseDate")} /><TextField label="Allocated item cost" type="number" inputMode="decimal" min="0" step="0.01" value={form.allocatedItemCost} onChange={set("allocatedItemCost")} /></> : null}
       {(["collection", "inventory"].includes(type) && step === 2) ? <><SelectField label="Purpose" value={form.ownedItemPurpose} onChange={set("ownedItemPurpose")} options={OWNED_ITEM_PURPOSE_OPTIONS} /><SelectField label="Status" value={form.status || "In stock"} onChange={set("status")} options={INVENTORY_STATUSES} /><TextField label="Storage location" value={form.storageLocation} onChange={set("storageLocation")} /><TextField label="Intended sales channel" value={form.intendedSalesChannel || ""} onChange={set("intendedSalesChannel")} /><TextField label="Projected resale low" type="number" inputMode="decimal" min="0" step="0.01" value={form.projectedResaleLow || ""} onChange={set("projectedResaleLow")} /><TextField label="Projected resale midpoint" type="number" inputMode="decimal" min="0" step="0.01" value={form.projectedResaleMid || ""} onChange={set("projectedResaleMid")} /><TextField label="Projected resale high" type="number" inputMode="decimal" min="0" step="0.01" value={form.projectedResaleHigh || ""} onChange={set("projectedResaleHigh")} /><TextField className="is-wide" label="Notes" multiline value={form.notes} onChange={set("notes")} /></> : null}
       {(type === "purchase" && step === 0) ? <><TextField label="Purchase title" required value={form.title} onChange={set("title")} error={!form.title && error ? "Purchase title is required." : ""} /><TextField label="Source" value={form.source} onChange={set("source")} /><TextField label="Purchase date" type="date" value={form.purchaseDate} onChange={set("purchaseDate")} /></> : null}
@@ -341,7 +356,7 @@ function CollectionItemDetail({ item, onBack, onPurpose, onEdit, onDelete, value
   return <RecordDetailPage eyebrow="Collection item" title={recordTitle(item)} status={normalized.ownedItemPurpose.replaceAll("_", " ").toLowerCase()} statusTone={normalized.ownedItemPurpose === OWNED_ITEM_PURPOSES.UNASSIGNED ? "warning" : "info"} image={resolveItemImage(item)} identity={[item.productClassification, item.setName, item.cardNumber].filter(Boolean).join(" · ") || "Identification is incomplete."} summary={[{ label: "Acquisition cost", value: cost == null ? "Not recorded" : money(cost), numeric: true }, { label: valueLabel, value: money(item.projectedResaleMid) }, { label: "Condition", value: item.condition || "Not recorded" }, { label: "Storage", value: item.storageLocation || "Not assigned" }]} primaryAction={managed ? null : <PrimaryButton onClick={() => onPurpose(item, OWNED_ITEM_PURPOSES.FOR_RESALE)}>Sell This Item</PrimaryButton>} secondaryActions={managed ? null : <><QuietButton onClick={() => onEdit(item)}>Edit</QuietButton>{item._recordOrigin === "repository" ? <QuietButton className="ops-button--danger" onClick={() => onDelete(item)}>Delete</QuietButton> : null}</>} sections={[...itemDetailSections(item, valueLabel), ...(managed ? [{ title: "Acquisition provenance", description: "This owner-confirmed lot can be corrected only through append-only Inventory adjustments.", children: <DetailList items={[{ label: "Purchase", value: item.purchaseId }, { label: "Inventory lot", value: item.inventoryLotId }]} /> }] : [{ title: "Purpose assignment", description: "Purpose controls where this owned item appears.", children: <PurposeActions item={item} onChange={onPurpose} /> }])]} timeline={itemTimeline(item)} onBack={onBack} />;
 }
 
-export function CollectionWorkspace({ items = [], initialView = "collection", onViewChange, onChangePurpose, onSellItem, featureControls = EMPTY_FEATURE_CONTROLS, experiencePresentation, resolveItemImage = recordImage }) {
+export function CollectionWorkspace({ items = [], catalogProducts = EMPTY_CATALOG, initialView = "collection", onViewChange, onChangePurpose, onSellItem, featureControls = EMPTY_FEATURE_CONTROLS, experiencePresentation, resolveItemImage = recordImage, portfolioScope = "", portfolioFeatures = EMPTY_FEATURE_CONTROLS, onLockedFeature }) {
   const presentation = experiencePresentation || resolveExperiencePresentation();
   const valueLabel = presentation.showBusinessTools || presentation.showAdminTools ? "Projected resale" : "Estimated value";
   const { state, error, saveRecord, removeRecord } = useBusinessRepository();
@@ -351,6 +366,13 @@ export function CollectionWorkspace({ items = [], initialView = "collection", on
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [conditionFilter, setConditionFilter] = useState("");
+  const [collectionGame, setCollectionGame] = useState("all");
+  const [portfolioViewState, setPortfolioViewState] = useState({ section: "overview", period: "1m", hidden: false, display: "grid", sort: "name" });
+  const [setBrowserState, setSetBrowserState] = useState({ query: "", scope: "all", sort: "name", language: "all", game: "all", selectedId: "", limit: 24 });
+  const setNavigationRef = useRef(null);
+  const setRowsRef = useRef([]);
+  const setOpenerRef = useRef("");
+  const setSelectionRef = useRef(null);
   const [previousView, setPreviousView] = useState(initialView);
   if (previousView !== initialView) {
     setPreviousView(initialView);
@@ -361,17 +383,47 @@ export function CollectionWorkspace({ items = [], initialView = "collection", on
   }
   const allItems = useMemo(() => mergeRecords(state.inventory, items).map(normalizeOwnedItem), [items, state.inventory]);
   const visible = useMemo(() => allItems.filter((item) => (!query || [recordTitle(item), item.setName, item.cardNumber, item.storageLocation].join(" ").toLowerCase().includes(query.toLowerCase())) && (!conditionFilter || item.condition === conditionFilter)), [allItems, conditionFilter, query]);
-  const collectionItems = visible.filter((item) => item.ownedItemPurpose === OWNED_ITEM_PURPOSES.PERSONAL_COLLECTION);
-  const hasCollectionItems = allItems.some((item) => item.ownedItemPurpose === OWNED_ITEM_PURPOSES.PERSONAL_COLLECTION);
+  const collectionItems = visible.filter((item) => item.ownedItemPurpose === OWNED_ITEM_PURPOSES.PERSONAL_COLLECTION && matchesRecordGame(item, collectionGame));
+  const personalCollectionItems = useMemo(() => allItems.filter((item) => item.ownedItemPurpose === OWNED_ITEM_PURPOSES.PERSONAL_COLLECTION), [allItems]);
   const heldItems = visible.filter((item) => item.ownedItemPurpose === OWNED_ITEM_PURPOSES.HOLD);
   const unassigned = allItems.filter((item) => item.ownedItemPurpose === OWNED_ITEM_PURPOSES.UNASSIGNED);
   const grading = visible.filter((item) => item.gradingCompany || item.grade || /graded/i.test(item.productClassification || ""));
-  const sets = Object.entries(collectionItems.reduce((groups, item) => { const key = item.setName || (/binder/i.test(item.productClassification || "") ? recordTitle(item) : ""); if (key) (groups[key] ||= []).push(item); return groups; }, {}));
+  const setRows = useMemo(() => buildCollectionSetRows({ items: personalCollectionItems, catalogProducts, knownSets: POKEMON_COLLECTION_SETS }), [personalCollectionItems, catalogProducts]);
+  useEffect(() => { setRowsRef.current = setRows; }, [setRows]);
+  useEffect(() => {
+    if (view !== "sets") return undefined;
+    const controller = createCollectionSetsNavigation({
+      target: window,
+      resolve: (selection) => {
+        const row = setRowsRef.current.find((entry) => entry.id === selection?.setId);
+        if (!row) return null;
+        const item = selection.itemId ? row.ownedItems.find((entry) => String(entry.id) === selection.itemId && entry._recordOrigin === selection.origin) : null;
+        return selection.itemId && !item ? null : { row, item };
+      },
+      onChange: (selection) => {
+        const previousSelection = setSelectionRef.current;
+        setSelectionRef.current = selection;
+        setSelected(selection?.item || null);
+        setSetBrowserState((current) => ({ ...current, selectedId: selection?.row.id || "" }));
+        window.requestAnimationFrame(() => {
+          if (selection?.item) return;
+          if (selection) {
+            const itemIndex = previousSelection?.item && previousSelection.row.id === selection.row.id ? selection.row.ownedItems.findIndex((item) => item.id === previousSelection.item.id && item._recordOrigin === previousSelection.item._recordOrigin) : -1;
+            const itemButton = itemIndex >= 0 ? document.querySelectorAll(".collection-sets-items .collection-portfolio-item")[itemIndex] : null;
+            (itemButton || document.querySelector("[data-set-detail-heading]"))?.focus({ preventScroll: true });
+          }
+          else {
+            [...document.querySelectorAll(".collection-sets-card")].find((button) => button.getAttribute("data-set-id") === setOpenerRef.current)?.focus({ preventScroll: true });
+          }
+        });
+      },
+    });
+    setNavigationRef.current = controller;
+    return () => { controller.destroy(); setNavigationRef.current = null; };
+  }, [view, portfolioScope]);
   const secondaryDestinations = [{ key: "sets", label: "Sets & Binders" }, { key: "wishlist", label: "Wishlist" }, featureControls.grading !== false ? { key: "grading", label: "Grading" } : null].filter(Boolean);
   const collectionMoreItems = [...secondaryDestinations, ...(unassigned.length ? [{ key: "unassigned", label: `Unassigned Review (${unassigned.length})` }] : [])];
-  const valuedCollectionItems = collectionItems.filter((item) => item.projectedResaleMid !== "" && item.projectedResaleMid != null && Number.isFinite(Number(item.projectedResaleMid)));
-  const estimatedCollectionValue = valuedCollectionItems.reduce((sum, item) => sum + Number(item.projectedResaleMid), 0);
-  const changeView = (next) => { setSelected(null); setView(next); onViewChange?.(next); };
+  const changeView = (next) => { setSelected(null); setSetBrowserState((current) => ({ ...current, selectedId: "" })); setView(next); onViewChange?.(next); };
   const chooseCollectionUtility = (next) => {
     if (next === "unassigned") {
       changeView("unassigned");
@@ -390,37 +442,37 @@ export function CollectionWorkspace({ items = [], initialView = "collection", on
       setSelected({ ...changeOwnedItemPurpose(item, nextPurpose, { changedBy: "owner", reason: "Purpose assigned in Collection" }), _recordOrigin: "legacy" });
     } else if (nextPurpose === OWNED_ITEM_PURPOSES.FOR_RESALE) onSellItem?.(item);
   };
-  if (form) return <RecordForm key={`${form.type}-${form.seed?.id || "new"}`} type={form.type} seed={form.seed} state={state} onSave={async (collection, record, message) => { const saved = await saveRecord(collection, record, message); if (saved) setSelected({ ...saved, _recordOrigin: "repository" }); return saved; }} onCancel={() => setForm(null)} />;
-  if (selected) return <div className="manual-lifecycle-detail"><CollectionItemDetail resolveItemImage={resolveItemImage} item={selected} valueLabel={valueLabel} onBack={() => setSelected(null)} onPurpose={changePurpose} onEdit={(item) => setForm({ type: "collection", seed: item })} onDelete={async (item) => { if (await removeRecord("inventory", item)) setSelected(null); }} />{selected._recordOrigin === "repository" ? <ManualLifecycles key={selected.id} types={featureControls.grading !== false ? ["assignment", "grading"] : ["assignment"]} title="Item organization" itemId={selected.id} /> : null}</div>;
+  if (form) return <RecordForm key={`${form.type}-${form.seed?.id || "new"}`} type={form.type} seed={form.seed} state={state} onSave={async (collection, record, message) => { const saved = await saveRecord(collection, record, message); if (saved) setSelected(view === "sets" && setBrowserState.selectedId && !form.seed?.id ? null : { ...saved, _recordOrigin: "repository" }); return saved; }} onCancel={() => setForm(null)} />;
+  if (selected) return <div className="manual-lifecycle-detail"><CollectionItemDetail resolveItemImage={resolveItemImage} item={selected} valueLabel={valueLabel} onBack={() => { if (view === "sets") setNavigationRef.current?.back({ setId: setBrowserState.selectedId }); else setSelected(null); }} onPurpose={changePurpose} onEdit={(item) => setForm({ type: "collection", seed: item })} onDelete={async (item) => { if (await removeRecord("inventory", item)) setSelected(null); }} />{selected._recordOrigin === "repository" ? <ManualLifecycles key={selected.id} types={featureControls.grading !== false ? ["assignment", "grading"] : ["assignment"]} title="Item organization" itemId={selected.id} /> : null}</div>;
   const cardsFor = (records) => records.map((item) => <RecordListCard key={item.id} resolveItemImage={resolveItemImage} record={item} eyebrow={[item.setName, item.productClassification].filter(Boolean).join(" · ") || "Owned item"} status={item.ownedItemPurpose === OWNED_ITEM_PURPOSES.UNASSIGNED ? "Needs purpose" : ""} statusTone="warning" facts={[{ label: item.condition ? "Condition" : "Quantity", value: item.condition || item.quantity || 1 }, { label: "Estimated value", value: item.projectedResaleMid !== "" && item.projectedResaleMid != null ? money(item.projectedResaleMid) : "" }]} onOpen={setSelected} />);
   return <main className="everyday-workspace" data-testid="collection-workspace">
-    <PageHeader eyebrow="Made for collecting" title={view === "collection" ? "Collection" : secondaryDestinations.find((item) => item.key === view)?.label || "Collection"} description={view === "collection" ? "The cards, sealed products, and finds you choose to keep." : ""} actions={<PrimaryButton onClick={() => setForm({ type: "collection", seed: {} })}>Add Item</PrimaryButton>} />
+    <PageHeader eyebrow={view === "sets" ? "" : "Made for collecting"} title={view === "sets" ? "Card sets" : view === "collection" ? "Collection" : secondaryDestinations.find((item) => item.key === view)?.label || "Collection"} description={view === "collection" ? "The cards, sealed products, and finds you choose to keep." : ""} actions={<PrimaryButton onClick={() => setForm({ type: "collection", seed: { ...((view === "sets" ? setBrowserState.game : collectionGame) !== "all" ? { tcgGame: view === "sets" ? setBrowserState.game : collectionGame } : {}) } })}>Add Item</PrimaryButton>} />
     {view !== "collection" ? <div className="everyday-secondary-navigation"><button type="button" onClick={() => changeView("collection")}>Back to Collection</button><WorkspaceMoreMenu items={collectionMoreItems} active={view} onChange={chooseCollectionUtility} /></div> : null}
     {error ? <p className="compatibility-note" role="alert">{error}</p> : null}
-    {view === "collection" ? <>
-      <div className="everyday-toolbar"><SearchField label="Search collection" value={query} onChange={setQuery} enterKeyHint="search" autoComplete="off" /><FilterButton active={filtersOpen || Boolean(conditionFilter)} onClick={() => setFiltersOpen(true)}>Filter</FilterButton></div>
-      <div className="everyday-collection-summary"><MetricRow items={[{ label: collectionItems.length === 1 ? "Item" : "Items", value: collectionItems.length }, ...(valuedCollectionItems.length ? [{ label: "Estimated Value", value: money(estimatedCollectionValue), numeric: true }] : [])]} /><WorkspaceMoreMenu items={collectionMoreItems} active={view} onChange={chooseCollectionUtility} /></div>
-      <section className="collection-content" aria-label="Collection items">
-        {collectionItems.length ? <div className="everyday-record-list">{cardsFor(collectionItems)}</div> : <div className="collection-empty">
-          <div className="collection-empty-mark" aria-hidden="true"><AppNavIcon kind="vault" /></div>
-          <EmptyState
-            title={hasCollectionItems ? "No matching items" : "No collection items yet"}
-            action={hasCollectionItems
-              ? <SecondaryButton onClick={() => { setQuery(""); setConditionFilter(""); }}>Clear search & filters</SecondaryButton>
-              : <PrimaryButton onClick={() => setForm({ type: "collection", seed: {} })}>Add Item</PrimaryButton>}
-          >
-            {hasCollectionItems ? "Try a different search or clear your filters to see your collection." : <>
-              Give your collection a home. Add a card, sealed product, or collectible to keep its details together.
-              {allItems.length ? <> To bring an existing item here, set its purpose to Personal collection.{unassigned.length ? " Find unassigned items in More." : ""}</> : null}
-            </>}
-          </EmptyState>
-        </div>}
-      </section>
-    </> : null}
-    {view === "sets" ? <section><SectionHeader title="Sets & Binders" description="Grouped from real set and binder fields." />{sets.length ? <div className="everyday-group-list">{sets.map(([name, records]) => <RecordCard key={name}><h3>{name}</h3><p>{records.length} item{records.length === 1 ? "" : "s"}</p><QuietButton onClick={() => setSelected(records[0])}>Open Items</QuietButton></RecordCard>)}</div> : <EmptyState title="No set or binder groups">Add a set name or binder classification to an owned item.</EmptyState>}</section> : null}
+    {view === "collection" ? <CollectionPortfolio
+      key={portfolioScope}
+      preferenceScope={portfolioScope}
+      viewState={portfolioViewState}
+      onViewStateChange={setPortfolioViewState}
+      items={personalCollectionItems}
+      visibleItems={collectionItems}
+      query={query}
+      onQueryChange={setQuery}
+      conditionFilter={conditionFilter}
+      onOpenFilters={() => setFiltersOpen(true)}
+      onClearFilters={() => { setQuery(""); setConditionFilter(""); setCollectionGame("all"); }}
+      onOpenItem={setSelected}
+      onAddItem={() => setForm({ type: "collection", seed: collectionGame !== "all" ? { tcgGame: collectionGame } : {} })}
+      resolveItemImage={resolveItemImage}
+      moreActions={<WorkspaceMoreMenu items={collectionMoreItems} active={view} onChange={chooseCollectionUtility} />}
+      gameFilters={<><CollectionGameFilter value={collectionGame} onChange={setCollectionGame} />{collectionGame !== "all" ? <p className="collection-game-filter-note">The game filter changes the items shown below. Portfolio totals, rankings, history, and exports include all games in the selected portfolio.</p> : null}</>}
+      gameFiltered={collectionGame !== "all"}
+      features={portfolioFeatures}
+      onLockedFeature={onLockedFeature}
+    /> : null}
+    {view === "sets" ? <CollectionSets rows={setRows} viewState={setBrowserState} onViewStateChange={setSetBrowserState} onOpenSet={(row) => { setOpenerRef.current = row.id; setNavigationRef.current?.open({ setId: row.id }); }} onBack={() => setNavigationRef.current?.back()} onOpenItem={(item) => setNavigationRef.current?.open({ setId: setBrowserState.selectedId, itemId: String(item.id), origin: item._recordOrigin })} onAddItem={(row) => setForm({ type: "collection", seed: { setName: row.name, tcgGame: row.gameId === "unspecified" && row.gameName !== "Game not recorded" ? row.gameName : row.gameId } })} onAddManualItem={() => setForm({ type: "collection", seed: setBrowserState.game !== "all" ? { tcgGame: setBrowserState.game } : {} })} resolveItemImage={resolveItemImage} showValues={portfolioFeatures.value === true && !portfolioViewState.hidden} binderTools={<ManualLifecycles key="sets" types={["binder", "assignment", "setPlan"]} title="Binder organization & set coverage" />} /> : null}
     {view === "wishlist" ? <section><SectionHeader title="Wishlist" description="Owned targets currently assigned to Hold." />{heldItems.length ? <div className="everyday-record-list">{cardsFor(heldItems)}</div> : <EmptyState title="Your wishlist is empty">Assign an item to Hold to keep it here.</EmptyState>}</section> : null}
     {view === "grading" ? <section><SectionHeader title="Grading" description="Recorded grading candidates and graded items only." />{grading.length ? <div className="everyday-record-list">{cardsFor(grading)}</div> : <EmptyState title="No grading records">Add grading company, grade, or a graded classification to an item.</EmptyState>}</section> : null}
-    {view === "sets" ? <ManualLifecycles key="sets" types={["binder", "assignment", "setPlan"]} title="Binder organization & set coverage" /> : null}
     {view === "wishlist" ? <ManualLifecycles key="wishlist" types={["wish"]} title="Wanted items & exact matches" /> : null}
     {view === "grading" && featureControls.grading !== false ? <ManualLifecycles key="grading" types={["grading"]} title="Grading journey" /> : null}
     {view === "unassigned" ? <section><SectionHeader title="Unassigned review" description="Give each existing physical record a purpose without duplicating it." />{unassigned.length ? <div className="everyday-record-list">{cardsFor(unassigned)}</div> : <EmptyState title="Every item has a purpose">There are no unassigned records to review.</EmptyState>}</section> : null}
