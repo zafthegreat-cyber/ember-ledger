@@ -1,6 +1,11 @@
 {
   "name": "code3-tcg",
   "scripts": {
+    "prepare:scout-ocr": "node scripts/prepare-scout-ocr.mjs",
+    "predev": "npm run prepare:scout-ocr",
+    "prebuild": "npm run prepare:scout-ocr",
+    "prenative:build": "npm run prepare:scout-ocr",
+    "prenative:build:smoke": "npm run prepare:scout-ocr",
     "dev": "vite",
     "build": "vite build",
     "lint:src": "eslint src",
@@ -195,6 +200,9 @@
     "test:workspace-experience-browser": "node scripts/test-workspace-experience-browser.cjs",
     "test:adaptive-restock-home-browser": "node scripts/test-adaptive-restock-home-browser.cjs",
     "test:restock-report-browser": "node scripts/test-restock-report-browser.cjs",
+    "test:stock-screenshot": "node scripts/test-scout-screenshot-ocr.mjs && node scripts/test-stock-screenshot-draft.mjs && node scripts/test-stock-screenshot-cloud.mjs",
+    "test:stock-screenshot-browser": "node scripts/test-stock-screenshot-import-browser.cjs",
+    "test:scout-screenshot-ocr-browser": "node scripts/test-scout-screenshot-ocr-browser.cjs",
     "test:forge-grouped-inventory": "node --no-warnings scripts/test-forge-grouped-inventory.mjs",
     "test:inventory-detail": "node --no-warnings scripts/test-inventory-detail-utils.mjs",
     "test:vault-set-mastery": "node --no-warnings scripts/test-vault-set-mastery.mjs",
@@ -280,6 +288,7 @@
     "@capacitor/ios": "8.5.3",
     "@capacitor/share": "8.0.3",
     "@supabase/supabase-js": "^2.105.4",
+    "@tesseract.js-data/eng": "1.0.0",
     "@upstash/redis": "^1.35.7",
     "@vitejs/plugin-react": "^5.0.4",
     "@zxing/browser": "^0.2.0",
@@ -292,6 +301,7 @@
     "pg": "^8.20.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
+    "tesseract.js": "7.0.0",
     "vite": "8.0.16"
   },
   "devDependencies": {

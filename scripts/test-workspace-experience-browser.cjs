@@ -5,7 +5,7 @@ const { build } = require("esbuild");
 const { chromium, expect } = require("@playwright/test");
 
 const origin = "http://127.0.0.1:5243";
-const output = path.resolve("artifacts/qa/workspace-experience");
+const output = path.resolve(process.env.QA_OUTPUT_DIR || "artifacts/qa/workspace-experience");
 const entry = `
 import React from 'react'; import {createRoot} from 'react-dom/client';
 import './src/index.css'; import './src/App.css';
@@ -26,7 +26,7 @@ const root=createRoot(document.getElementById('root'));let revision=0;
 window.qaRender=({screen='find',persona='collector',view='overview',admin=false}={})=>{
  const experiencePresentation=resolveExperiencePresentation({personaPreference:persona,adminVisible:admin});
  const props={experiencePresentation,onViewChange:(...args)=>window.qaCalls.push(args)};
- const content=screen==='home'?<WorkspaceHomePage {...props} workspace={view} items={seed.inventory} sales={seed.sales} onNavigate={(...args)=>window.qaCalls.push(args)} onAddResale={()=>window.qaCalls.push(['add-resale'])}/>:screen==='find'?<FlipScoutPage {...props} onReportRestock={()=>window.qaCalls.push(['report'])} onOpenRestocks={()=>window.qaCalls.push(['browse'])}/>:screen==='collection'?<CollectionWorkspace {...props}/>:<BusinessWorkspace {...props} initialView={view}/>;
+ const content=screen==='home'?<WorkspaceHomePage {...props} workspace={view} items={seed.inventory} sales={seed.sales} onNavigate={(...args)=>window.qaCalls.push(args)} onAddResale={()=>window.qaCalls.push(['add-resale'])}/>:screen==='find'?<FlipScoutPage {...props} onReportRestock={()=>window.qaCalls.push(['report'])} onOpenRestocks={()=>window.qaCalls.push(['browse'])}/>:screen==='collection'?<CollectionWorkspace {...props} portfolioScope="qa-workspace-experience"/>:<BusinessWorkspace {...props} initialView={view}/>;
  root.render(<div key={++revision} className="app app-command-shell" data-theme={document.documentElement.dataset.theme}>{content}</div>);
 };window.qaRender();
 `;
@@ -94,7 +94,7 @@ window.qaRender=({screen='find',persona='collector',view='overview',admin=false}
         assert.deepEqual(await page.locator(".business-destination-copy strong").allTextContents(), ["Purchases", "Inventory", "Sales", "Money", "Compliance"]);
       }
       await page.evaluate(() => window.qaRender({ screen: "collection" }));
-      await page.getByRole("button", { name: "Open QA collection card", exact: true }).click();
+      await page.locator(".collection-portfolio-grid").getByRole("button", { name: "Open QA collection card", exact: true }).click();
       await expect(page.getByRole("heading", { name: "QA collection card", exact: true })).toBeVisible();
       await expect(page.locator("body")).toContainText("Estimated value");
       await expect(page.locator("body")).not.toContainText("Projected resale");

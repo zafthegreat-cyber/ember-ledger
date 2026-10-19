@@ -187,7 +187,7 @@ export default function MarketPage(props) {
               <div>
                 <span>Price discovery</span>
                 <h2>Market Product Search</h2>
-                <p>Search cards, sealed products, sets, UPCs, or SKUs. Results stay framed as research until the app has real checkout, disputes, and payment systems.</p>
+                <p>Search the Pokémon catalog for cards, sealed products, sets, UPCs, or SKUs. Other games can be tracked manually in Collection; live catalog and price lookup for those games are not connected.</p>
               </div>
               <strong>{catalogSearchHasRun ? `${marketResultCount} results` : "Ready"}</strong>
             </div>

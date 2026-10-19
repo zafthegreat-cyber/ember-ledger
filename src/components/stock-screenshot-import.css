@@ -1,0 +1,35 @@
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-intake { display: grid; gap: 16px; min-width: 0; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-report-start-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 7rem), 1fr)); gap: 8px; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-report-start-options > button { display: grid; align-content: center; min-height: 52px; padding: 10px; background: var(--surface-primary) !important; color: var(--text-primary) !important; border: 1px solid var(--border-strong); border-radius: 8px; text-align: center; white-space: normal; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-report-start-options > button[aria-pressed="true"] { border-color: var(--action-primary) !important; background: var(--selection-background) !important; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-report-start-options strong { color: var(--text-primary) !important; font: 600 .875rem/1.4 var(--font-ui); }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-report-start-options span { color: var(--text-secondary); font: 400 .8125rem/1.5 var(--font-ui); }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-panel { display: grid; gap: 16px; min-width: 0; padding: 16px; border: 1px solid var(--border-subtle); border-radius: 12px; background: var(--surface-primary); color: var(--text-primary); }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-panel :is(h4,p,ul) { margin: 0; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-panel h4 { font: 650 1.0625rem/1.4 var(--font-display); }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-panel :is(p,small,li) { color: var(--text-secondary); font: 400 .8125rem/1.6 var(--font-ui); overflow-wrap: anywhere; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-panel header { display: grid; gap: 6px; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-panel :is(button,input,select,summary) { min-height: 44px; min-width: 0; max-width: 100%; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-panel :is(button,input,select,textarea,summary):focus-visible, html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-upload:focus-within { outline: 3px solid var(--focus-ring) !important; outline-offset: 3px; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-panel :is(button,.stock-screenshot-upload) { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 10px 12px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface-primary) !important; color: var(--text-primary) !important; font: 600 .875rem/1.5 var(--font-ui); text-align: center; white-space: normal; overflow-wrap: anywhere; cursor: pointer; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-panel button:disabled { opacity: .6; cursor: default; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-upload-row { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; min-width: 0; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-upload { position: relative; overflow: hidden; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-upload input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-panel label:not(.stock-screenshot-replace):not(.stock-screenshot-upload) { display: grid; gap: 6px; min-width: 0; color: var(--text-primary); font: 500 .875rem/1.5 var(--font-ui); }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-panel :is(input:not([type="checkbox"]):not([type="file"]),select,textarea) { width: 100%; min-width: 0; max-width: 100%; padding: 10px 12px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface-inset); color: var(--text-primary); font: 400 1rem/1.5 var(--font-ui); }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-panel input[type="datetime-local"] { min-inline-size: 0; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-panel textarea { min-height: 100px; resize: vertical; }
+html body .flow-modal[data-flow="scoutSubmit"] :is(.stock-screenshot-source-text,.stock-screenshot-preview) { min-width: 0; border-top: 1px solid var(--border-subtle); }
+html body .flow-modal[data-flow="scoutSubmit"] :is(.stock-screenshot-source-text,.stock-screenshot-preview) > summary { display: flex; align-items: center; padding: 10px 0; color: var(--action-primary); font: 600 .875rem/1.5 var(--font-ui); cursor: pointer; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-preview img { display: block; width: 100%; max-height: 260px; object-fit: contain; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-source-text[open] { display: grid; gap: 12px; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-review-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: 14px; min-width: 0; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-review-flags { padding-inline-start: 20px; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-replace { display: flex; align-items: center; gap: 10px; min-height: 44px; color: var(--text-primary); font: 500 .875rem/1.5 var(--font-ui); }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-replace input { width: 20px; height: 20px; flex: 0 0 20px; accent-color: var(--action-primary); }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-replace span { display: grid; gap: 4px; min-width: 0; }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-progress { display: grid; gap: 10px; min-width: 0; color: var(--text-primary); font: 500 .875rem/1.5 var(--font-ui); }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-progress progress { width: 100%; accent-color: var(--action-primary); }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-panel .stock-screenshot-error { color: var(--status-danger-text, var(--text-primary)); }
+html body .flow-modal[data-flow="scoutSubmit"] .stock-screenshot-panel .stock-screenshot-apply { color: var(--on-primary) !important; background: var(--action-primary) !important; border-color: var(--action-primary); justify-self: start; }

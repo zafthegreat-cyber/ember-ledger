@@ -3,11 +3,24 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { chromium, expect } = require("@playwright/test");
 
+async function openDisclosure(disclosure) {
+  if (!(await disclosure.evaluate(element => element.open))) await disclosure.locator(":scope > summary").click();
+  await expect(disclosure).toHaveAttribute("open", "");
+}
+
 async function checkWizardPresentation(page, modal, state, output, theme, width) {
   const section = modal.locator(".scout-where-step");
   await expect(section).toBeVisible();
-  await expect(modal.getByRole("button", { name: "Next", exact: true })).toHaveCount(1);
+  await expect(modal.getByRole("button", { name: "Continue", exact: true })).toHaveCount(1);
+  await openDisclosure(modal.locator(".stock-report-time-disclosure"));
   const metrics = await modal.evaluate((dialog, selectionState) => {
+    const visible = element => {
+      if (!element.getClientRects().length || getComputedStyle(element).visibility === "hidden" || getComputedStyle(element).display === "none") return false;
+      for (let ancestor = element.parentElement; ancestor && ancestor !== dialog; ancestor = ancestor.parentElement) {
+        if (ancestor.tagName === "DETAILS" && !ancestor.open && !ancestor.querySelector(":scope > summary")?.contains(element)) return false;
+      }
+      return true;
+    };
     const where = dialog.querySelector(".scout-where-step");
     const cards = [...where.querySelectorAll(".scout-report-store-card")];
     const rect = (element) => {
@@ -15,8 +28,8 @@ async function checkWizardPresentation(page, modal, state, output, theme, width)
       return { x, y, width: w, height, right, bottom };
     };
     const foot = dialog.querySelector(".flow-modal-footer--scout-inline");
-    const helpers = [...where.querySelectorAll("p, small, .scout-report-store-meta, .scout-location-trust-note, .scout-report-step-header > span")];
-    const controls = [...where.querySelectorAll("button, input"), ...foot.querySelectorAll("button")];
+    const helpers = [...where.querySelectorAll("p, small, .scout-report-store-meta, .scout-location-trust-note, .scout-report-step-header > span")].filter(visible);
+    const controls = [...where.querySelectorAll("button, input, summary"), ...foot.querySelectorAll("button")].filter(visible);
     const note = where.querySelector(".scout-location-trust-note");
     return {
       state: selectionState,
@@ -100,7 +113,7 @@ async function checkWizardPresentation(page, modal, state, output, theme, width)
 (async () => {
   const base = new URL(process.env.APP_URL || "http://127.0.0.1:5217/");
   assert.ok(["127.0.0.1", "localhost", "[::1]"].includes(base.hostname), "Synthetic handoff test is local-only");
-  const output = path.resolve(__dirname, "../artifacts/qa/release-readiness/scout-store-handoff");
+  const output = path.resolve(process.env.QA_OUTPUT_DIR || path.join(__dirname, "../artifacts/qa/release-readiness/scout-store-handoff"));
   fs.mkdirSync(output, { recursive: true });
   const browser = await chromium.launch({ headless: true });
   const results = [];
@@ -133,6 +146,7 @@ async function checkWizardPresentation(page, modal, state, output, theme, width)
         await page.getByRole("button", { name: "Submit Report", exact: true }).first().click();
         const modal = page.locator('.flow-modal[data-flow="scoutSubmit"]');
         await expect(modal).toBeVisible();
+        await openDisclosure(modal.locator(".stock-report-time-disclosure"));
         await modal.locator("input[type=datetime-local]").fill("2026-09-14T09:45");
         result.selectedPresentation = await checkWizardPresentation(page, modal, "selected", output, theme, width);
         await modal.getByRole("button", { name: "Change store", exact: true }).click();
@@ -191,24 +205,25 @@ async function checkWizardPresentation(page, modal, state, output, theme, width)
 
         // Only this disposable local fixture is saved; every network write is blocked.
         await northResult.getByRole("button", { name: "Select store", exact: true }).click();
-        await modal.getByRole("button", { name: "Next", exact: true }).click();
-        await expect(modal.getByRole("heading", { name: "Shelf status", exact: true })).toBeVisible();
-        await modal.getByRole("button", { name: "Next", exact: true }).click();
-        await expect(modal.getByRole("heading", { name: "Items and proof", exact: true })).toBeVisible();
-        await modal.getByPlaceholder("Optional: Surging Sparks ETB, booster bundles, binders...").fill("Synthetic presentation pack");
+        await modal.getByRole("button", { name: "Continue", exact: true }).click();
+        await expect(modal.getByRole("heading", { name: "What did you see?", exact: true })).toBeVisible();
+        await expect(modal.getByRole("group", { name: "Shelf status", exact: true })).toBeVisible();
+        await openDisclosure(modal.locator(".stock-report-product-disclosure"));
+        await modal.getByLabel("Product name (optional)", { exact: true }).fill("Synthetic presentation pack");
+        await openDisclosure(modal.locator(".scout-proof-disclosure"));
         await modal.getByRole("button", { name: /^No proof/ }).click();
-        await modal.getByRole("button", { name: "Next", exact: true }).click();
-        await expect(modal.getByRole("heading", { name: "Review and save", exact: true })).toBeVisible();
+        await modal.getByRole("button", { name: "Review report", exact: true }).click();
+        await expect(modal.getByRole("heading", { name: "Ready to share this report?", exact: true })).toBeVisible();
         await modal.getByRole("button", { name: "Back", exact: true }).click();
-        await expect(modal.getByPlaceholder("Optional: Surging Sparks ETB, booster bundles, binders...")).toHaveValue("Synthetic presentation pack");
-        await modal.getByRole("button", { name: "Next", exact: true }).click();
+        await expect(modal.getByLabel("Product name (optional)", { exact: true })).toHaveValue("Synthetic presentation pack");
+        await modal.getByRole("button", { name: "Review report", exact: true }).click();
         const save = modal.getByRole("button", { name: "Save Report", exact: true });
         await expect(save).toHaveCount(1);
         await expect(save).toBeEnabled();
-        result.reviewPresentation = await modal.locator(".scout-report-review-grid").evaluate((grid) => ({
+        result.reviewPresentation = await modal.locator(".scout-report-review-grid").first().evaluate((grid) => ({
           overflow: grid.scrollWidth - grid.clientWidth,
           pairs: [...grid.children].map((row) => {
-            const label = row.querySelector("span");
+            const label = row.querySelector(".scout-review-group-heading") || row.querySelector("span");
             const value = row.querySelector("strong");
             return { labelSize: parseFloat(getComputedStyle(label).fontSize), gap: value.getBoundingClientRect().top - label.getBoundingClientRect().bottom };
           }),
@@ -225,7 +240,7 @@ async function checkWizardPresentation(page, modal, state, output, theme, width)
         await page.screenshot({ path: path.join(output, `wizard-review-${theme}-${width}.png`) });
         await save.click();
         await expect(modal.locator(".scout-quick-report-success").getByRole("heading", { name: /report saved\./ })).toBeVisible();
-        const close = modal.locator(".flow-modal-footer--scout-inline").getByRole("button", { name: "Close", exact: true });
+        const close = modal.locator(".flow-modal-footer--scout-inline").getByRole("button", { name: "Done", exact: true });
         await expect(close).toBeVisible();
         assert.ok((await close.boundingBox()).height >= 44, "Submitted Close must retain its full touch target");
         const confirmation = modal.locator(".scout-quick-report-sent");
@@ -243,7 +258,7 @@ async function checkWizardPresentation(page, modal, state, output, theme, width)
               const style = getComputedStyle(button);
               return { name: button.textContent.trim(), width: rect.width, height: rect.height, secondary: button.classList.contains("secondary-button"), background: style.backgroundColor, image: style.backgroundImage };
             }),
-            optionalGap: parseFloat(getComputedStyle(section.querySelector(".scout-post-submit-actions > div")).gap),
+            optionalGap: parseFloat(getComputedStyle(section.querySelector(".quick-actions")).gap),
           };
         });
         assert.ok(result.submittedPresentation.overflow <= 1, "Submitted confirmation must not overflow horizontally");
@@ -259,18 +274,20 @@ async function checkWizardPresentation(page, modal, state, output, theme, width)
         }
         await modal.evaluate((dialog) => { dialog.scrollTop = 0; });
         await page.screenshot({ path: path.join(output, `wizard-submitted-${theme}-${width}.png`) });
-        const done = confirmation.getByRole("button", { name: "Done", exact: true });
+        const done = close;
         await done.focus();
         await page.keyboard.press("Shift+Tab");
         await page.keyboard.press("Tab");
         await expect(done).toBeFocused();
         const doneFocus = await done.evaluate((button) => ({
+          top: button.getBoundingClientRect().top,
           bottom: button.getBoundingClientRect().bottom,
           footerTop: button.closest(".flow-modal").querySelector(".flow-modal-footer--scout-inline").getBoundingClientRect().top,
+          footerBottom: button.closest(".flow-modal").querySelector(".flow-modal-footer--scout-inline").getBoundingClientRect().bottom,
           outline: parseFloat(getComputedStyle(button).outlineWidth),
         }));
         result.submittedPresentation.doneFocus = doneFocus;
-        assert.ok(doneFocus.outline >= 2 && doneFocus.bottom + doneFocus.outline <= doneFocus.footerTop, "Done keyboard focus must clear the sticky footer");
+        assert.ok(doneFocus.outline >= 2 && doneFocus.top - doneFocus.outline >= doneFocus.footerTop && doneFocus.bottom + doneFocus.outline <= doneFocus.footerBottom, "Done keyboard focus must remain fully visible inside its sticky footer");
         await page.screenshot({ path: path.join(output, `wizard-submitted-actions-${theme}-${width}.png`) });
         const submitted = await page.evaluate(() => JSON.parse(localStorage.getItem("et-tcg-beta-scout")));
         assert.equal(submitted.reports.length, recordSnapshot.reports.length + 1);

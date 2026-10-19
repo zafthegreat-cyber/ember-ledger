@@ -35,12 +35,59 @@ async function snapshot(page) {
   });
 }
 
+async function openDisclosure(disclosure) {
+  if (!(await disclosure.evaluate(element => element.open))) await disclosure.locator(":scope > summary").click();
+  await expect(disclosure).toHaveAttribute("open", "");
+}
+
+async function checkStartChoices(modal, result) {
+  const choices = modal.locator(".stock-report-start-options > button");
+  await expect(choices).toHaveCount(2);
+  const metrics = await choices.evaluateAll(elements => {
+    const context = document.createElement("canvas").getContext("2d", { willReadFrequently: true });
+    const color = value => {
+      context.clearRect(0, 0, 1, 1); context.fillStyle = value; context.fillRect(0, 0, 1, 1);
+      const values = [...context.getImageData(0, 0, 1, 1).data];
+      return [...values.slice(0, 3), values[3] / 255];
+    };
+    const over = (front, back) => front.slice(0, 3).map((channel, index) => channel * front[3] + back[index] * (1 - front[3]));
+    const background = node => {
+      const chain = []; for (let ancestor = node; ancestor; ancestor = ancestor.parentElement) chain.unshift(ancestor);
+      return chain.reduce((back, element) => over(color(getComputedStyle(element).backgroundColor), back), [255, 255, 255]);
+    };
+    const luminance = channels => channels.map(channel => { const value = channel / 255; return value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4; }).reduce((total, value, index) => total + value * [.2126, .7152, .0722][index], 0);
+    return elements.map(button => {
+      const rect = button.getBoundingClientRect();
+      return { label: button.textContent.trim(), width: rect.width, height: rect.height, selected: button.getAttribute("aria-pressed"), text: [...button.querySelectorAll("strong, span")].filter(node => node.getClientRects().length && getComputedStyle(node).visibility !== "hidden").map(node => {
+        const back = background(node); const front = over(color(getComputedStyle(node).color), back);
+        const a = luminance(front); const b = luminance(back);
+        return { label: node.textContent.trim(), ratio: (Math.max(a, b) + .05) / (Math.min(a, b) + .05), foreground: getComputedStyle(node).color, background: back };
+      }) };
+    });
+  });
+  for (const choice of metrics) {
+    assert.ok(choice.width >= 44 && choice.height >= 44, `${choice.label}: source choice has a usable touch target`);
+    assert.ok(choice.text.length, `${choice.label}: readable source label is visible`);
+    for (const text of choice.text) assert.ok(text.ratio >= 4.5, `${choice.label}: ${text.label} has readable contrast (${text.ratio.toFixed(2)})`);
+  }
+  assert.equal(metrics.filter(choice => choice.selected === "true").length, 1, "Exactly one report source is selected");
+  result.sourceChoices = metrics;
+}
+
 async function checkPresentation(page, modal, name, result) {
   const body = modal.locator(".flow-modal-body");
   const footer = modal.locator(".flow-modal-footer--scout-inline");
   await expect(footer).toBeVisible();
   const metrics = await modal.evaluate(dialog => {
-    const visible = element => element.getClientRects().length && getComputedStyle(element).visibility !== "hidden";
+    const visible = element => {
+      if (!element.getClientRects().length || getComputedStyle(element).visibility === "hidden") return false;
+      // Chromium can return layout rectangles for descendants of closed details.
+      // Measure only visible summaries and controls, including nested disclosures.
+      for (let ancestor = element.parentElement; ancestor && ancestor !== dialog; ancestor = ancestor.parentElement) {
+        if (ancestor.tagName === "DETAILS" && !ancestor.open && !ancestor.querySelector(":scope > summary")?.contains(element)) return false;
+      }
+      return true;
+    };
     const rect = element => { const value = element.getBoundingClientRect(); return { x: value.x, y: value.y, width: value.width, height: value.height, right: value.right, bottom: value.bottom }; };
     const foot = dialog.querySelector(".flow-modal-footer--scout-inline");
     const bodyElement = dialog.querySelector(".flow-modal-body");
@@ -95,6 +142,7 @@ async function checkPresentation(page, modal, name, result) {
         if (checkingCatalog && (url.pathname.startsWith("/api/") || url.pathname.startsWith("/rest/v1/"))) catalogLookupRequests.push(`${request.method()} ${url.pathname}`);
         if (url.origin !== base.origin) { blockedExternal.push(url.origin); return route.abort(); }
         if (url.pathname === "/__qa-broken-catalog.png") return route.fulfill({ status: 404, body: "Synthetic unavailable reference image" });
+        if (url.pathname.endsWith("/sealedProducts.json") && request.resourceType() === "fetch") return route.fulfill({ contentType: "application/json", body: JSON.stringify([{ id: "restock-fixture-warm-catalog", productName: "Synthetic catalog hydration marker", productType: "Supply", sourceType: "manual", marketValue: 19.75 }]) });
         if (url.pathname.startsWith("/api/")) return route.fulfill({ contentType: "application/json", body: '{"configured":false}' });
         return route.continue();
       });
@@ -131,6 +179,16 @@ async function checkPresentation(page, modal, name, result) {
         await page.keyboard.press("Escape");
         await expect(entryModal).toHaveCount(0);
         await page.getByRole("button", { name: "Open global Add menu", exact: true }).filter({ visible: true }).first().click();
+        // Let the existing deferred catalog hydration settle before taking the
+        // exact preservation baseline; loading the Add menu warms this data.
+        await expect.poll(() => page.evaluate(() => {
+          const catalog = JSON.parse(localStorage.getItem("et-tcg-beta-data")).catalogProducts || [];
+          return {
+            warm: catalog.some(row => row.id === "restock-fixture-warm-catalog"),
+            bundlePrice: catalog.find(row => row.id === "restock-fixture-catalog")?.marketValue,
+            tinPrice: catalog.find(row => row.id === "restock-fixture-catalog-other")?.marketValue,
+          };
+        }), { timeout: 30000 }).toEqual({ warm: true, bundlePrice: 37.25, tinPrice: 14.5 });
         await page.getByRole("button", { name: "Report a restock. Share what you saw at a store.", exact: true }).click();
         await expect(entryModal.locator(".scout-where-step")).toBeVisible();
         await entryModal.locator(".modal-close-button").click();
@@ -143,6 +201,7 @@ async function checkPresentation(page, modal, name, result) {
         const modal = page.locator('.flow-modal[data-flow="scoutSubmit"]');
         await expect(modal).toBeVisible();
         await assertStepFocus(page, modal, "initial store", result);
+        await checkStartChoices(modal, result);
         await expect(modal.locator(".scout-report-step-pill")).toHaveCount(3);
         await expect(modal.locator(".scout-flow-guidance-card")).toHaveCount(0);
         const continueButton = modal.getByRole("button", { name: "Continue", exact: true });
@@ -150,6 +209,7 @@ async function checkPresentation(page, modal, name, result) {
         const next = () => continueButton.filter({ visible: true });
         const observed = modal.locator('input[type="datetime-local"]');
         const observedTime = await page.evaluate(() => { const date = new Date(Date.now() - 3600000); date.setMinutes(date.getMinutes() - date.getTimezoneOffset()); return date.toISOString().slice(0, 16); });
+        await openDisclosure(modal.locator(".stock-report-time-disclosure"));
         await observed.fill(observedTime);
         await checkPresentation(page, modal, "store", result);
 
@@ -192,6 +252,7 @@ async function checkPresentation(page, modal, name, result) {
         await categories.first().click();
         const productInput = modal.getByLabel("Product name (optional)", { exact: true });
         checkingCatalog = true;
+        await openDisclosure(modal.locator(".stock-report-product-disclosure"));
         await productInput.fill("Fixture Aurora");
         await expect(productInput).toBeFocused();
         const matches = modal.getByRole("group", { name: "Catalog matches", exact: true });
@@ -210,6 +271,7 @@ async function checkPresentation(page, modal, name, result) {
         await selection.getByRole("button", { name: "Clear match", exact: true }).click();
         await expect(selection).toHaveCount(0);
         await expect(productInput).toHaveValue("Fixture Aurora Collector Tin");
+        await openDisclosure(modal.locator(".stock-report-product-disclosure"));
         await productInput.fill("Fixture Aurora");
         await matches.getByRole("button", { name: `Use ${fixtureCatalogName}`, exact: true }).click();
         await expect(selection).toContainText("Catalog reference image");
@@ -223,17 +285,21 @@ async function checkPresentation(page, modal, name, result) {
         const changedCategory = await categories.nth(1).innerText();
         await categories.nth(1).click();
         await expect(selection).toHaveCount(0);
+        await openDisclosure(modal.locator(".stock-report-product-disclosure"));
         await productInput.fill("");
         await modal.getByRole("button", { name: "Review report", exact: true }).filter({ visible: true }).click();
         await expect(modal.getByRole("heading", { name: "Ready to share this report?", exact: true })).toBeVisible();
         await expect(modal.locator(".scout-report-review-grid").first()).toContainText(changedCategory);
         await modal.getByRole("button", { name: "Back", exact: true }).filter({ visible: true }).click();
+        await openDisclosure(modal.locator(".stock-report-product-disclosure"));
         await productInput.fill("Fixture Aurora");
         await matches.getByRole("button", { name: `Use ${fixtureCatalogName}`, exact: true }).click();
+        await openDisclosure(modal.locator(".stock-report-product-disclosure"));
         await productInput.fill("Fixture booster bundle");
         await expect(selection).toHaveCount(0);
         const savedProductName = theme === "light" ? fixtureCatalogName : "Fixture booster bundle";
         if (theme === "light") {
+          await openDisclosure(modal.locator(".stock-report-product-disclosure"));
           await productInput.fill("Fixture Aurora");
           await matches.getByRole("button", { name: `Use ${fixtureCatalogName}`, exact: true }).click();
         }
@@ -241,6 +307,7 @@ async function checkPresentation(page, modal, name, result) {
         assert.deepEqual(catalogLookupRequests, [], "Product matching uses the loaded catalog without API/provider lookups");
         assert.deepEqual(await snapshot(page), original, "Matching, category-only review, edits and Back do not write saved records");
         result.catalogSelectionAndFallback = true;
+        await openDisclosure(modal.locator(".stock-report-notes-disclosure"));
         await modal.getByLabel("Useful details (optional)", { exact: true }).fill("Three bundles near customer service.");
         const notesInput = modal.locator(".scout-report-notes-field textarea");
         await expect(notesInput).toBeFocused();

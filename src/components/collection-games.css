@@ -1,0 +1,201 @@
+/* Shared game filters use the app's existing semantic light and dark tokens. */
+.app.app-command-shell[data-theme] .collection-game-filter {
+  min-width: 0;
+  max-width: 100%;
+  width: fit-content;
+  margin: 0;
+}
+.app.app-command-shell[data-theme] .collection-game-filter[open] {
+  width: 100%;
+  flex-basis: 100%;
+}
+.app.app-command-shell[data-theme] .collection-game-filter > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 44px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface-primary) !important;
+  color: var(--text-primary) !important;
+  font: 600 .875rem/1.5 var(--font-ui);
+  list-style: none;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.app.app-command-shell[data-theme] .collection-game-filter > summary::-webkit-details-marker {
+  display: none;
+}
+.app.app-command-shell[data-theme] .collection-game-filter > summary::after {
+  content: "";
+  flex: 0 0 7px;
+  width: 7px;
+  height: 7px;
+  margin: -4px 3px 0;
+  border-inline-end: 2px solid currentColor;
+  border-block-end: 2px solid currentColor;
+  transform: rotate(45deg);
+}
+.app.app-command-shell[data-theme] .collection-game-filter[open] > summary {
+  border-color: var(--action-primary);
+}
+.app.app-command-shell[data-theme] .collection-game-filter[open] > summary::after {
+  margin-block-start: 4px;
+  transform: rotate(225deg);
+}
+.app.app-command-shell[data-theme] .collection-game-filter > summary:focus-visible {
+  outline: 3px solid var(--focus-ring) !important;
+  outline-offset: 3px;
+}
+.app.app-command-shell[data-theme] .collection-game-filter-content {
+  display: grid;
+  min-width: 0;
+  gap: 12px;
+  padding: 14px 0 4px;
+}
+.app.app-command-shell[data-theme] .collection-game-filter-note {
+  display: block;
+  max-width: 75ch;
+  min-width: 0;
+  margin: 0;
+  color: var(--text-secondary);
+  font: 400 .8125rem/1.6 var(--font-ui);
+  overflow-wrap: anywhere;
+}
+.app.app-command-shell[data-theme] .collection-game-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 6.5rem), 1fr));
+  gap: 10px;
+  min-width: 0;
+  width: 100%;
+}
+.app.app-command-shell[data-theme] .collection-game-option {
+  position: relative;
+  display: grid;
+  justify-items: start;
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
+  min-height: 112px;
+  width: 100%;
+  height: auto;
+  padding: 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--surface-primary) !important;
+  color: var(--text-primary) !important;
+  box-shadow: none;
+  font: 500 .875rem/1.4 var(--font-ui);
+  text-align: start;
+  text-transform: none;
+  letter-spacing: normal;
+  white-space: normal;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.app.app-command-shell[data-theme] .collection-game-option:hover {
+  border-color: var(--action-primary);
+}
+.app.app-command-shell[data-theme] .collection-game-option[aria-pressed="true"] {
+  border-color: var(--action-primary) !important;
+  background: var(--selection-background) !important;
+  box-shadow: inset 0 0 0 1px var(--action-primary);
+}
+.app.app-command-shell[data-theme] .collection-game-option:focus-visible {
+  outline: 3px solid var(--focus-ring) !important;
+  outline-offset: 3px;
+}
+.app.app-command-shell[data-theme] .collection-game-mark {
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 32px;
+  padding: 0;
+  color: var(--action-primary);
+  font: 700 .9375rem/1.2 var(--font-display);
+  letter-spacing: .025em;
+}
+.app.app-command-shell[data-theme] .collection-game-mark > svg {
+  width: 24px;
+  height: 24px;
+  stroke: currentColor;
+  stroke-width: 1.6;
+}
+.app.app-command-shell[data-theme] .collection-game-copy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  min-width: 0;
+  width: 100%;
+}
+.app.app-command-shell[data-theme] .collection-game-copy > strong {
+  min-width: 0;
+  flex: 1 1 auto;
+  color: var(--text-primary);
+  font: 600 .875rem/1.45 var(--font-ui);
+  overflow-wrap: anywhere;
+}
+.app.app-command-shell[data-theme] .collection-game-count {
+  color: var(--text-secondary);
+  font: 500 .75rem/1.5 var(--font-ui);
+  font-variant-numeric: tabular-nums;
+}
+.app.app-command-shell[data-theme] .collection-game-selected {
+  position: absolute;
+  inset-block-start: 12px;
+  inset-inline-end: 12px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  color: var(--on-primary);
+  font: 700 .75rem/1 var(--font-ui);
+}
+.app.app-command-shell[data-theme] .collection-game-option[aria-pressed="true"] .collection-game-selected {
+  background: var(--action-primary);
+}
+.app.app-command-shell[data-theme] .collection-game-picker[data-compact="true"] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 8px;
+}
+.app.app-command-shell[data-theme] .collection-game-picker[data-compact="true"] .collection-game-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: auto;
+  max-width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 8px;
+}
+.app.app-command-shell[data-theme] .collection-game-picker[data-compact="true"] .collection-game-mark,
+.app.app-command-shell[data-theme] .collection-game-picker[data-compact="true"] .collection-game-selected {
+  display: none;
+}
+.app.app-command-shell[data-theme] .collection-game-picker[data-compact="true"] .collection-game-copy {
+  width: auto;
+}
+.app.app-command-shell[data-theme] .collection-game-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+@media (min-width: 760px) {
+  .app.app-command-shell[data-theme] .collection-game-picker {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
+  }
+}
