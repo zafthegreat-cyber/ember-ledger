@@ -117,24 +117,41 @@ async function assertLayout(page) {
         await expect(f.page.locator("#setup")).toBeVisible();
         await expect(f.page.locator("#password")).toHaveValue("");
         await expect(f.page.locator("#token")).toHaveAttribute("type","password");
+        await expect(f.page.locator("#toggleToken")).toHaveText("Show token");
+        await expect(f.page.locator("#toggleToken")).toHaveAttribute("aria-pressed","false");
         await expect(f.page.locator("#token")).toHaveValue(fixture.token);
         await f.page.locator("#copyEndpoint").click(); await expect(f.page.locator("#status")).toContainText("Endpoint copied");
         await f.page.locator("#copyToken").click(); await expect(f.page.locator("#status")).toContainText("Verification token copied");
         assert.deepEqual(await f.page.evaluate(() => window.qaClipboard),[fixture.endpoint,fixture.token]);
+        await f.page.locator("#toggleToken").click();
+        await expect(f.page.locator("#token")).toHaveAttribute("type","text");
+        await expect(f.page.locator("#toggleToken")).toHaveText("Hide token");
+        await expect(f.page.locator("#toggleToken")).toHaveAttribute("aria-pressed","true");
+        await expect(f.page.locator("#token")).toHaveValue(fixture.token);
+        await f.page.locator("#toggleToken").click();
+        await expect(f.page.locator("#token")).toHaveAttribute("type","password");
+        await expect(f.page.locator("#toggleToken")).toHaveText("Show token");
+        await expect(f.page.locator("#toggleToken")).toHaveAttribute("aria-pressed","false");
         const setupLayout = await assertLayout(f.page);
+        // Screenshots always keep the synthetic token masked, matching the secure default.
         await f.page.screenshot({ path:path.join(output,`setup-${viewport.width}.png`),fullPage:true });
         await f.page.locator("#appId").fill(fixture.appId); await f.page.locator("#certId").fill(fixture.certId);
         await f.page.locator("#saveKeys").click(); await expect(f.page.locator("#status")).toContainText("Saved to encrypted server storage");
         await expect(f.page.locator("#appId")).toHaveValue(""); await expect(f.page.locator("#certId")).toHaveValue("");
         await f.page.locator("#refreshStatus").click(); await expect(f.page.locator("#delivery")).toContainText("Received: 2. Processed: 1. Pending: 0. Needs review: 1. Failed: 0.");
         await expect(f.page.locator("#delivery")).toContainText("receipt is not proof of completed erasure");
+        await f.page.locator("#toggleToken").click();
+        await expect(f.page.locator("#token")).toHaveAttribute("type","text");
         await f.page.locator("#signOut").click(); await expect(f.page.locator("#status")).toContainText("Signed out.");
         await expect(f.page.locator("#setup")).toBeHidden();
         for (const id of ["password","token","appId","certId"]) await expect(f.page.locator(`#${id}`)).toHaveValue("");
+        await expect(f.page.locator("#token")).toHaveAttribute("type","password");
+        await expect(f.page.locator("#toggleToken")).toHaveText("Show token");
+        await expect(f.page.locator("#toggleToken")).toHaveAttribute("aria-pressed","false");
         await expect(f.page.locator("#delivery")).toHaveText("");
         assert.equal(f.calls.at(-1).path,"/auth/v1/logout");
         await assertPreserved(f);
-        results.push({ mode:"happy",viewport,loginLayout,setupLayout,login:true,clipboardMockOnly:true,credentialFieldsCleared:true,deliveryReviewStateHonest:true,signOut:true,noBrowserPersistence:true,existingRecordsAndPricesPreserved:true,providerCalls:f.calls.map(x => x.path) });
+        results.push({ mode:"happy",viewport,loginLayout,setupLayout,login:true,clipboardMockOnly:true,tokenDefaultMasked:true,showHideToggleWorks:true,clearResetsMask:true,screenshotTokenMasked:true,credentialFieldsCleared:true,deliveryReviewStateHonest:true,signOut:true,noBrowserPersistence:true,existingRecordsAndPricesPreserved:true,providerCalls:f.calls.map(x => x.path) });
       } finally { await f.context.close(); }
     }
     for (const mode of ["bad-password","wrong-owner","info-error","network-error"]) {
@@ -153,10 +170,11 @@ async function assertLayout(page) {
         await signIn(f); await expect(f.page.locator("#setup")).toBeVisible();
         if (mode === "save-error") { await f.page.locator("#appId").fill(fixture.appId); await f.page.locator("#certId").fill(fixture.certId); await f.page.locator("#saveKeys").click(); await expect(f.page.locator("#status")).toContainText("service is unavailable"); await expect(f.page.locator("#saveKeys")).toBeEnabled(); await expect(f.page.locator("#configured")).toContainText("not been configured yet"); }
         if (mode === "status-error") { await f.page.locator("#refreshStatus").click(); await expect(f.page.locator("#status")).toContainText("service is unavailable"); await expect(f.page.locator("#delivery")).toHaveText(""); }
-        if (mode === "clipboard-denied") { await f.page.locator("#copyToken").click(); await expect(f.page.locator("#status")).toContainText("Clipboard unavailable"); assert.deepEqual(await f.page.evaluate(() => window.qaClipboard),[]); }
+        if (mode === "clipboard-denied") { await f.page.locator("#copyToken").click(); await expect(f.page.locator("#status")).toContainText("Choose Show token, then select and copy it manually"); assert.deepEqual(await f.page.evaluate(() => window.qaClipboard),[]); await f.page.locator("#toggleToken").click(); await expect(f.page.locator("#token")).toHaveAttribute("type","text"); await expect(f.page.locator("#token")).toHaveValue(fixture.token); }
         await assertLayout(f.page); await assertPreserved(f);
         await f.page.evaluate(() => dispatchEvent(new PageTransitionEvent("pagehide")));
         await expect(f.page.locator("#setup")).toBeHidden(); for (const id of ["password","token","appId","certId"]) await expect(f.page.locator(`#${id}`)).toHaveValue("");
+        await expect(f.page.locator("#token")).toHaveAttribute("type","password"); await expect(f.page.locator("#toggleToken")).toHaveText("Show token"); await expect(f.page.locator("#toggleToken")).toHaveAttribute("aria-pressed","false");
         results.push({ mode,safeError:true,noFalseSuccess:true,pageHideClearsSecrets:true,noBrowserPersistence:true });
       } finally { await f.context.close(); }
     }
