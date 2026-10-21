@@ -4,6 +4,7 @@ import { canonicalStringify, hashCanonicalJson, parseUntrustedBackupJson, parseU
 import { sanitizeBackupData } from "./backupSecurity.js";
 import { resolveSourceSchemaVersion, validateBackupCrossSourceRelationships, validateBackupSourceData } from "./backupValidation.js";
 import { createWorkspacePayloadStore } from "../persistence/workspacePayloadStore.js";
+import { redactEbayPersonalData, readEbayPrivacyPolicy } from "../ebayPrivacy/privacyPolicy.js";
 
 export const WORKSPACE_STORAGE_LOCK = "code3.workspace-storage.v1";
 export const WORKSPACE_RECOVERY_KEY = "code3.workspace-recovery.v1";
@@ -254,6 +255,7 @@ export async function recoverWorkspaceSources({ storage, ownerId, locks = global
 
 export async function applyWorkspaceSources({ storage, expectedSources, nextSources, ownerId, locks = globalThis.navigator?.locks, assertCurrent = () => {}, payloadStore } = {}) {
   assertOwner(ownerId);
+  nextSources = redactEbayPersonalData(nextSources, readEbayPrivacyPolicy(storage));
   validateSources(nextSources, { relationships: false });
   return withWorkspaceStorageLock(locks, async () => {
     assertCurrent();

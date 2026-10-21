@@ -1,3 +1,6 @@
+import { redactEbayArchive, redactedPayloadLocation } from "../ebayPrivacy/privacyArchives.js";
+import { deriveEbayListingTombstones, validateEbayPrivacyPolicy } from "../ebayPrivacy/privacyPolicy.js";
+import { canonicalStringify } from "../backup/canonicalJson.js";
 export const WORKSPACE_PAYLOAD_DATABASE = "code3-workspace-safety-v1";
 export const WORKSPACE_PAYLOAD_OBJECT_STORE = "payloads";
 
@@ -10,7 +13,7 @@ function checkKey(key) {
   if (typeof key !== "string" || !key.length || key.length > 256 || [...key].some((character) => character.charCodeAt(0) < 32)) throw unavailable();
 }
 
-/** Immutable device-only payloads. No delete or automatic cleanup API exists. */
+/** Immutable safety payloads, with one narrowly scoped eBay privacy-redaction migration. */
 export function createWorkspacePayloadStore({ indexedDB: providedIndexedDB, timeoutMs = 15000 } = {}) {
   function open() {
     let indexedDB;
@@ -91,6 +94,71 @@ export function createWorkspacePayloadStore({ indexedDB: providedIndexedDB, time
   }
 
   return Object.freeze({
+    async redactEbayPrivacy(policy, { assertCurrent = () => {}, rawHashes = new Map() } = {}) {
+      validateEbayPrivacyPolicy(policy);
+      if (!policy.tombstones.length) return new Map();
+      assertCurrent();
+      const db = await open();
+      try {
+        return await new Promise((resolve,reject) => {
+          const replacements = new Map();
+          const queued = [];
+          const transaction = db.transaction(WORKSPACE_PAYLOAD_OBJECT_STORE,"readwrite");
+          const store = transaction.objectStore(WORKSPACE_PAYLOAD_OBJECT_STORE);
+          const referenceMapKey = "ebay-privacy-reference-map:v1";
+          const prior = store.get(referenceMapKey);
+          let failure;
+          const timer = setTimeout(() => { failure = fail("PAYLOAD_STORE_TIMEOUT", "The eBay privacy safety update did not finish. Reopen the app to retry."); try { transaction.abort(); } catch { reject(failure); } },timeoutMs);
+          transaction.oncomplete = () => { clearTimeout(timer); replacements.ebayPrivacyPolicy = policy; resolve(replacements); };
+          transaction.onabort = transaction.onerror = () => { clearTimeout(timer); reject(failure || unavailable()); };
+          prior.onsuccess = () => {
+            try {
+              if (prior.result !== undefined) {
+                const map = JSON.parse(prior.result);
+                if (!Array.isArray(map) || map.length > 100000) throw unavailable();
+                for (const [key,entry] of map) {
+                  checkKey(key); checkKey(entry.key);
+                  if (!/^[a-f0-9]{64}$/.test(entry.payloadHash || "")) throw unavailable();
+                  replacements.set(key,entry);
+                }
+              }
+            } catch (error) { failure = error; transaction.abort(); return; }
+            const request = store.openCursor();
+            request.onsuccess = () => {
+            const cursor = request.result;
+            if (!cursor) {
+              try {
+                assertCurrent();
+                for (const entry of queued) {
+                  const projected = redactEbayArchive(entry.parsed,policy,new Map(),rawHashes);
+                  if (projected !== entry.parsed) {
+                    const raw = canonicalStringify(projected);
+                    const replacement = redactedPayloadLocation(entry.key,raw);
+                    store.put(raw,replacement.key); store.delete(entry.key);
+                    replacements.set(entry.key,replacement);
+                  }
+                }
+                store.put(JSON.stringify([...replacements]),referenceMapKey);
+              } catch (error) { failure = error; transaction.abort(); }
+              return;
+            }
+            try {
+              assertCurrent();
+              if (typeof cursor.key !== "string" || typeof cursor.value !== "string") throw unavailable();
+              // Only registered immutable workspace-copy namespaces are touched.
+              if (/^(recovery|conflict-copy|owner-archive):/.test(cursor.key)) {
+                const parsed = JSON.parse(cursor.value);
+                if (queued.length >= 10000) throw unavailable();
+                policy = deriveEbayListingTombstones(parsed,policy);
+                queued.push({key:cursor.key,parsed});
+              }
+              cursor.continue();
+            } catch (error) { failure = error; transaction.abort(); }
+            };
+          };
+        });
+      } finally { db.close(); }
+    },
     async get(key) {
       checkKey(key);
       const db = await open();

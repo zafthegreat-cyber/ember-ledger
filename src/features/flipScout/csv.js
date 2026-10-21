@@ -1,3 +1,4 @@
+import { redactEbayPersonalData } from "../ebayPrivacy/privacyPolicy.js";
 export function escapeCsvValue(value) {
   if (value === null || value === undefined) return "";
   const normalized = Array.isArray(value)
@@ -9,7 +10,7 @@ export function escapeCsvValue(value) {
 }
 
 export function recordsToCsv(records = [], columns = []) {
-  const safeRecords = Array.isArray(records) ? records : [];
+  const safeRecords = redactEbayPersonalData(Array.isArray(records) ? records : []);
   const resolvedColumns = columns.length
     ? columns.map((column) => typeof column === "string" ? { key: column, label: column } : column)
     : Array.from(new Set(safeRecords.flatMap((record) => Object.keys(record || {})))).map((key) => ({ key, label: key }));

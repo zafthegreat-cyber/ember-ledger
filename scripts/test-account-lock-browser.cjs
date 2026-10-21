@@ -37,6 +37,7 @@ async function fetchFixture(input,options={}){
   data=true;
  }
  else if(url.pathname.endsWith('/code3_workspace_read'))data={format:'code3-workspace-v1',revision:0,updatedAt:null,sources:{}};
+ else if(url.pathname.endsWith('/code3_ebay_privacy_tombstones'))data={tombstones:[],nextAfter:0,hasMore:false};
  else if(url.pathname.endsWith('/code3_workspace_write'))data={format:'code3-workspace-v1',revision:1,updatedAt:new Date().toISOString(),sources:{}};
  else throw new Error('Unexpected synthetic request '+url.pathname);
  return new Response(JSON.stringify(data),{status:200,headers:{'Content-Type':'application/json'}});

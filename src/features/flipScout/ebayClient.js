@@ -1,6 +1,7 @@
 import { getOwnerRequestHeaders, isLocalDevelopmentIdentityEnabled } from "../../services/ownerSession.js";
 
 import { getApiBase } from "../../native/nativeRuntime.js";
+import { redactEbayPersonalData } from "../ebayPrivacy/privacyPolicy.js";
 const API_BASE = getApiBase();
 const CLIENT_TIMEOUT_MS = 20_000;
 
@@ -67,5 +68,5 @@ export function getEbayHealth({ verify = false } = {}) {
 }
 
 export function searchEbayListings(search) {
-  return requestEbay("/search", { method: "POST", body: JSON.stringify(search || {}) });
+  return requestEbay("/search", { method: "POST", body: JSON.stringify(search || {}) }).then((result) => redactEbayPersonalData(result));
 }

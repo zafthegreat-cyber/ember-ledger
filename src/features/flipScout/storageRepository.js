@@ -14,6 +14,7 @@ import { validateLifecycleRecord, validateLifecycleTransition } from "../manualL
 import { buildSaleReturnApplication, previewSaleReturn as deriveSaleReturnPreview, validateReturnState, validateReturnTransition } from "../manualLifecycles/returnSettlement.js";
 import { buildReturnCorrection, previewReturnCorrection as deriveReturnCorrectionPreview } from "../manualLifecycles/returnCorrections.js";
 import { completedSale, hasAppliedReturns, nextReturnSaleAllocation } from "../manualLifecycles/returnLedger.js";
+import { redactEbayPersonalData } from "../ebayPrivacy/privacyPolicy.js";
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -274,6 +275,7 @@ function makeId(prefix = "record") {
 }
 
 export function normalizeFlipScoutState(value, now = new Date().toISOString()) {
+  value = redactEbayPersonalData(value);
   const empty = createEmptyFlipScoutState(now);
   if (!value || typeof value !== "object" || Array.isArray(value)) return empty;
   if (Number(value.schemaVersion || 1) > FLIP_SCOUT_SCHEMA_VERSION) {

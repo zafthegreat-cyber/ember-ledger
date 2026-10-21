@@ -6,7 +6,7 @@ const { chromium } = require("@playwright/test");
 // app, account, Supabase project, or existing browser storage is accessed.
 const origin = "http://127.0.0.1:5299";
 (async () => {
-  const moduleSource = readFileSync("src/features/persistence/workspacePayloadStore.js", "utf8");
+  const modules = new Map(["persistence/workspacePayloadStore.js","ebayPrivacy/privacyArchives.js","ebayPrivacy/privacyPolicy.js","ebayPrivacy/identityHash.js","backup/canonicalJson.js"].map((name) => [`/src/features/${name}`,readFileSync(`src/features/${name}`,"utf8")]));
   const browser = await chromium.launch({ headless: true });
   let checks = 0;
   try {
@@ -14,8 +14,8 @@ const origin = "http://127.0.0.1:5299";
     await context.route("**/*", (route) => {
       const url = new URL(route.request().url());
       if (url.origin !== origin) return route.abort();
-      if (url.pathname === "/payload.js") return route.fulfill({ contentType: "text/javascript", body: moduleSource });
-      return route.fulfill({ contentType: "text/html", body: '<!doctype html><title>Disposable payload tests</title><script type="module">window.payloadModule = await import("/payload.js");</script>' });
+      if (modules.has(url.pathname)) return route.fulfill({ contentType: "text/javascript", body: modules.get(url.pathname) });
+      return route.fulfill({ contentType: "text/html", body: '<!doctype html><title>Disposable payload tests</title><script type="module">window.payloadModule = await import("/src/features/persistence/workspacePayloadStore.js");</script>' });
     });
     const page = await context.newPage();
     async function run(name, test) { const result = await page.evaluate(test); assert.equal(result, true); checks++; process.stdout.write(`PASS ${name}\n`); }

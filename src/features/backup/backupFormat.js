@@ -19,6 +19,7 @@ import {
   validateBackupSourceData,
 } from "./backupValidation.js";
 import { readAccountOpsRecoveryGuardedRaw } from "../accountOps/recoveryState.js";
+import { redactEbayPersonalData } from "../ebayPrivacy/privacyPolicy.js";
 
 export const CODE3_BACKUP_FORMAT = "code-3-backup";
 export const CODE3_BACKUP_FORMAT_VERSION = 1;
@@ -74,7 +75,7 @@ function readSourceData(source, context) {
     const raw = source.sourceId === "account-ops"
       ? readAccountOpsRecoveryGuardedRaw(storage)
       : readRaw(storage, source.storageKey);
-    const parsed = parseStoredValue(raw, source.emptyValue);
+    const parsed = redactEbayPersonalData(parseStoredValue(raw, source.emptyValue));
     return source.exportAdapter === "allowlisted-json-key"
       ? pickAllowedFields(parsed, source.allowedFields)
       : parsed;

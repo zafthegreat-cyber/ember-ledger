@@ -3,6 +3,7 @@ import { canonicalStringify, hashCanonicalJson, parseUntrustedJsonValue } from "
 import { findProhibitedData } from "../backup/backupSecurity.js";
 import { resolveSourceSchemaVersion, validateBackupSourceData, validateBackupCrossSourceRelationships } from "../backup/backupValidation.js";
 import { readAccountOpsRecoveryGuardedRaw } from "../accountOps/recoveryState.js";
+import { redactEbayPersonalData, readEbayPrivacyPolicy } from "../ebayPrivacy/privacyPolicy.js";
 
 export const WORKSPACE_CLOUD_FORMAT = "code3-workspace-v1";
 export const WORKSPACE_MAX_BYTES = 8 * 1024 * 1024;
@@ -54,6 +55,7 @@ export function captureWorkspaceSources(storage) {
         if (raw === null) continue;
         data = projectSource(source, readJson(raw));
       }
+      data = redactEbayPersonalData(data, readEbayPrivacyPolicy(storage));
       sources[source.sourceId] = { schemaVersion: resolveSourceSchemaVersion(source, data), data };
     } catch (error) {
       workspaceFail("INVALID_LOCAL_DATA", `${source.displayName} needs review before cloud saving. Its original data is unchanged.`, { sourceId: source.sourceId, reason: error.code || "UNREADABLE" });
@@ -63,7 +65,7 @@ export function captureWorkspaceSources(storage) {
 }
 
 export function validateWorkspaceSources(input) {
-  const sources = parseUntrustedJsonValue(canonicalStringify(input), { maxBytes: WORKSPACE_MAX_BYTES });
+  const sources = redactEbayPersonalData(parseUntrustedJsonValue(canonicalStringify(input), { maxBytes: WORKSPACE_MAX_BYTES }));
   if (!sources || Array.isArray(sources) || typeof sources !== "object") workspaceFail("INVALID_WORKSPACE", "Cloud workspace data must contain registered sources.");
   const sections = [];
   for (const [sourceId, entry] of Object.entries(sources)) {

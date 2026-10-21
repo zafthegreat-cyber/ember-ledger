@@ -5,7 +5,9 @@ import { CloudWorkspaceContext } from "./CloudWorkspaceContext.js";
 import { createCloudWorkspaceSync } from "./cloudWorkspaceSync.js";
 import { claimWorkspaceOwner, hasPendingWorkspaceOwnerSwitch, hasWorkspaceLocalRecords, readWorkspaceBinding, recoverWorkspaceOwnerSwitch, switchWorkspaceOwner } from "./workspaceOwnerBinding.js";
 import { hasSessionDrafts, readSessionDraftBinding, hasPendingSessionDraftSwitch, recoverSessionDraftSwitch, switchSessionDraftOwner } from "./workspaceSessionBinding.js";
-import { acquireWorkspaceReadLease, applyWorkspaceSources, hasPendingWorkspaceRecovery, recoverWorkspaceSources } from "../backup/workspaceRecovery.js";
+import { acquireWorkspaceReadLease, applyWorkspaceSources, hasPendingWorkspaceRecovery, recoverWorkspaceSources, withWorkspaceStorageLock } from "../backup/workspaceRecovery.js";
+import { readEbayPrivacyPolicy, refreshEbayPrivacyPolicy } from "../ebayPrivacy/privacyPolicy.js";
+import { redactEbayDeviceCopies } from "../ebayPrivacy/devicePrivacy.js";
 import WorkspaceRestorePanel from "../backup/WorkspaceRestorePanel.jsx";
 import { planWorkspaceRestore } from "../backup/workspaceRestorePlan.js";
 import { exportLegacyCloudBackup, inspectLegacyCloudBackup, restoreLegacyCloudBackup } from "../backup/legacyCloudBackup.js";
@@ -101,10 +103,27 @@ function ProtectedCloudWorkspaceBoundary({ children, client = supabase, configur
     return result.data.user;
   }, [client]);
 
+  const refreshPrivacy = useCallback(async (ownerId, assertCurrent) => {
+    const session = await bounded(client.auth.getSession(), "VERIFY_EBAY_PRIVACY_SESSION");
+    assertCurrent();
+    if (session.error || session.data?.session?.user?.id !== ownerId || !session.data.session.access_token) throw new Error("Sign in again before updating eBay privacy records.");
+    const token = session.data.session.access_token;
+    return refreshEbayPrivacyPolicy({ storage: localStorage, assertCurrent, rpc: async (name,args) => {
+      const request = client.rpc(name,args);
+      if (typeof request.setHeader !== "function") throw new Error("Update the account client before refreshing eBay privacy records.");
+      request.setHeader("Authorization",`Bearer ${token}`);
+      const result = await bounded(request,"REFRESH_EBAY_PRIVACY");
+      assertCurrent();
+      return result;
+    } });
+  }, [client]);
+
   const open = useCallback(async (user, ticket) => {
     const assertCurrent = () => {
       if (ticket !== generation.current || identity.current !== user.id) throw new Error("The account changed. No new records were applied.");
     };
+    const privacy = await refreshPrivacy(user.id,assertCurrent);
+    if (privacy.tombstones.length) await withWorkspaceStorageLock(globalThis.navigator?.locks, () => redactEbayDeviceCopies({ storage: localStorage, sessionStorage, policy: privacy, assertCurrent }));
     if (hasPendingWorkspaceOwnerSwitch(localStorage)) await recoverWorkspaceOwnerSwitch({ storage: localStorage, assertCurrent });
     if (hasPendingSessionDraftSwitch(sessionStorage)) recoverSessionDraftSwitch({ storage: sessionStorage, assertCurrent });
     if (hasPendingWorkspaceRecovery(localStorage)) await recoverWorkspaceSources({ storage: localStorage, ownerId: user.id, assertCurrent });
@@ -140,7 +159,7 @@ function ProtectedCloudWorkspaceBoundary({ children, client = supabase, configur
     else setSyncState({ status: "PAUSED", message: "Automatic cloud saving is paused. Changes stay on this device." });
     assertNoPendingWrites();
     if (ticket === generation.current) setScreen({ phase: "ready", user, message: "" });
-  }, [client, stop, fail]);
+  }, [client, stop, fail, refreshPrivacy]);
 
   useEffect(() => {
     if (development || !configured || !client) return undefined;
@@ -207,14 +226,24 @@ function ProtectedCloudWorkspaceBoundary({ children, client = supabase, configur
     const check = async () => {
       if (pending || !navigator.onLine) return;
       pending = true;
-      try { await verify(screen.user.id); }
+      try {
+        await verify(screen.user.id);
+        const before = readEbayPrivacyPolicy(localStorage).after;
+        const assertCurrent = () => { if (!active || ticket !== generation.current) throw new Error("The account changed during the eBay privacy update."); };
+        const privacy = await refreshPrivacy(screen.user.id,assertCurrent);
+        if (privacy.after !== before) {
+          setOperation({ run: async ({ assertCurrent: assertOperation }) => withWorkspaceStorageLock(globalThis.navigator?.locks,
+            () => redactEbayDeviceCopies({ storage: localStorage, sessionStorage, policy: privacy, assertCurrent: assertOperation })) });
+          setScreen((value) => ({ ...value, phase: "operation", message: "Updating eBay privacy records…" }));
+        }
+      }
       catch (error) { if (active && ticket === generation.current) { stop(); fail(error); } }
       finally { pending = false; }
     };
     const timer = setInterval(check, 30000);
-    window.addEventListener("focus", check);
-    return () => { active = false; clearInterval(timer); window.removeEventListener("focus", check); };
-  }, [screen.phase, screen.user, verify, stop, fail]);
+    window.addEventListener("focus", check); window.addEventListener("online", check);
+    return () => { active = false; clearInterval(timer); window.removeEventListener("focus", check); window.removeEventListener("online", check); };
+  }, [screen.phase, screen.user, verify, stop, fail, refreshPrivacy]);
 
   useEffect(() => {
     if (!operation || screen.phase !== "operation") return undefined;

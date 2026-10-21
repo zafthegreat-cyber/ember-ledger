@@ -4,6 +4,7 @@ import { countSourceRecords, createVerifiedBackup } from "./backupFormat.js";
 import { BACKUP_SOURCE_REGISTRY } from "./backupSourceRegistry.js";
 import { resolveSourceSchemaVersion, validateBackupCrossSourceRelationships, validateBackupSourceData } from "./backupValidation.js";
 import { captureRecoverySources, WORKSPACE_LOCAL_SOURCES, WorkspaceRecoveryError } from "./workspaceRecovery.js";
+import { redactEbayPersonalData } from "../ebayPrivacy/privacyPolicy.js";
 
 function fail(code, message) { throw new WorkspaceRecoveryError(code, message); }
 function same(left, right) { return canonicalStringify(left) === canonicalStringify(right); }
@@ -57,7 +58,8 @@ export async function planWorkspaceRestore(raw, { storage } = {}) {
     if (!source) { skippedSources.push(section.sourceId); continue; }
     const current = expectedSources[section.sourceId].data;
     const absent = source.storageKey ? storage.getItem(source.storageKey) === null : source.storageKeys.every((key) => storage.getItem(key) === null);
-    const data = absent ? structuredClone(section.data) : mergeMissing(current, section.data, findings, section.sourceId);
+    const incoming = redactEbayPersonalData(section.data);
+    const data = absent ? structuredClone(incoming) : mergeMissing(current, incoming, findings, section.sourceId);
     const validation = validateBackupSourceData(source, data);
     if (!validation.valid) fail("MERGED_DATA_INVALID", `${source.displayName} cannot be combined safely with the current records.`);
     nextSources[section.sourceId] = { schemaVersion: resolveSourceSchemaVersion(source, data), data };
