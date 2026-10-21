@@ -2,6 +2,10 @@ import { PrivateStorageImage } from "../components/PrivateReceipt.jsx";
 import { useMemo } from "react";
 import { OfflineState, PageHeader, PrimaryButton, SectionHeader, SecondaryButton } from "../components/operations/OperationsUI.jsx";
 import { AppNavIcon } from "../components/command-system/AppNavIcon.jsx";
+import { BrandIdentity } from "../components/brand/BrandIdentity.jsx";
+import ItemPhoto from "../components/ItemPhoto.jsx";
+import { getItemImageUrl } from "../utils/productDisplayUtils.js";
+import { inferOwnedItemPurpose, OWNED_ITEM_PURPOSES } from "../features/ownedItems/ownedItemPurpose.js";
 import { createFlipScoutRepository } from "../features/flipScout/storageRepository.js";
 import { formatCurrency, getDashboardSummary } from "../features/flipScout/selectors.js";
 import { rankAdaptivePageItems } from "../utils/adaptivePageItems.js";
@@ -18,6 +22,11 @@ function recordImage(record = {}) {
 
 function latestDate(record = {}) {
   return record.createdAt || record.created_at || record.submittedAt || record.submitted_at || record.dateDiscovered || record.purchaseDate || record.saleDate || record.updatedAt || "";
+}
+
+function SavedItemPreview({ items = [] }) {
+  if (!items.length) return null;
+  return <div className="home-collection-peek" aria-label="Items from your saved records">{items.slice(0, 3).map((item) => <figure key={item.id}><ItemPhoto src={getItemImageUrl(item)} alt="" fallbackClassName="home-collection-peek__placeholder" /><figcaption>{item.name || item.productName || item.title || "Saved item"}</figcaption></figure>)}</div>;
 }
 
 function CollectibleMotif() {
@@ -103,12 +112,12 @@ export default function OperationsHome({
   });
 
   return <div className="ops-home-page home-layout">
-    <PageHeader eyebrow="Code 3 TCG · Home" title="Welcome back." description="Find restocks. Share what you see. Help the next collector." />
+    <PageHeader eyebrow={<><span className="home-desktop-context">Home</span><span className="home-mobile-identity"><BrandIdentity /></span></>} title="Welcome back." description="Find restocks. Share what you see. Help the next collector." />
     {isOffline ? <OfflineState action={<SecondaryButton onClick={() => window.location.reload()}>Try again</SecondaryButton>} /> : null}
     <section className="ops-home-section home-restock-hero" aria-labelledby="home-restock-title">
       <div className="home-restock-copy">
-        <span className="home-group-label">Built around restocks</span>
-        <h2 id="home-restock-title">Spotted stock?<br />Share an update.</h2>
+        <span className="home-group-label">Community restocks</span>
+        <h2 id="home-restock-title">Spotted stock? Share an update.</h2>
         <p>Pick a store and tell us what you saw. Review, then share. Photos are optional.</p>
         <div className="home-restock-actions"><PrimaryButton onClick={onReportRestock}>Report a restock</PrimaryButton><SecondaryButton onClick={onOpenRestockReports}>Browse restocks</SecondaryButton></div>
         <small>Stock changes quickly. Check when a report was observed.</small>
@@ -125,6 +134,7 @@ export default function OperationsHome({
         {pageCards.map((card) => <article className="home-personal-card" key={card.key} data-home-card={card.key}>
           <span className="home-shortcut-icon" aria-hidden="true"><AppNavIcon kind={card.icon} /></span>
           <h3>{card.title}</h3><p>{card.detail}</p>
+          {card.key === "vaultSnapshot" ? <SavedItemPreview items={activeVaultItems} /> : card.key === "forgeSummary" && sellerVisible ? <SavedItemPreview items={(adaptiveActivity.inventory || []).filter((item) => inferOwnedItemPurpose(item) === OWNED_ITEM_PURPOSES.FOR_RESALE)} /> : null}
           {card.key === "forgeSummary" ? <div className="home-business-links">{["inventory", "sales", "purchases"].map((view) => <SecondaryButton key={view} onClick={() => onOpenBusiness(view)}>{view === "inventory" ? presentation.copy.inventoryLabel : view[0].toUpperCase() + view.slice(1)}</SecondaryButton>)}</div> : card.key === "marketWatch" && presentation.isCollector ? <div className="home-business-links"><SecondaryButton onClick={card.action}>{card.label}</SecondaryButton>{onOpenSellTrade ? <SecondaryButton onClick={onOpenSellTrade}>Sell or trade</SecondaryButton> : null}</div> : <SecondaryButton onClick={card.action}>{card.label}</SecondaryButton>}
         </article>)}
       </div>

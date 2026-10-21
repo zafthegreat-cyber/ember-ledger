@@ -86,20 +86,17 @@ button {
   place-items: center;
   width: var(--ets-size-touch);
   height: var(--ets-size-touch);
-  border: var(--ets-border-thin) solid var(--ets-color-lineStrong);
+  border: 0;
   border-radius: var(--ets-radius-lg);
-  background:
-    radial-gradient(circle at 32% 30%, var(--ets-color-ember), transparent 34%),
-    radial-gradient(circle at 68% 68%, var(--ets-color-tideBlue), transparent 38%),
-    var(--ets-color-surface);
-  box-shadow: 0 var(--ets-space-4) var(--ets-space-10) var(--ets-color-shadowSoft);
+  background: transparent;
+  box-shadow: none;
 }
 
-.ets-logo-mark span {
-  width: var(--ets-space-8);
-  height: var(--ets-space-8);
-  border-radius: var(--ets-radius-pill);
-  background: linear-gradient(135deg, var(--ets-color-gold), var(--ets-color-tide));
+.ets-logo-mark img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .ets-phone-grid {

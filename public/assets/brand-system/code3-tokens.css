@@ -1,0 +1,24 @@
+/* Code 3 TCG · October 2026 brand direction. Artwork is supplied separately.
+   Keep this file byte-identical in website, app and bot. Both fonts: SIL OFL 1.1. */
+@font-face { font-family:"Chakra Petch"; src:url("./fonts/ChakraPetch-SemiBold.ttf") format("truetype"); font-weight:600; font-style:normal; font-display:swap; }
+@font-face { font-family:"DM Sans"; src:url("./fonts/DMSans-Variable.ttf") format("truetype"); font-weight:100 1000; font-style:normal; font-display:swap; }
+:root, .app[data-theme] {
+  --c3-maroon:#7A0F1E; --c3-purple:#4B1B6B; --c3-charcoal:#222222; --c3-cream:#FBF4E6; --c3-gold:#D4AF37;
+  --c3-font-heading:"Chakra Petch","Segoe UI",sans-serif;
+  --c3-font-body:"DM Sans","Segoe UI",sans-serif;
+  --c3-page:#FBF4E6; --c3-surface:#FFFCF7; --c3-surface-secondary:#F3E9DD; --c3-surface-inset:#EFE3D8; --c3-surface-elevated:#FFFFFF;
+  --c3-text:#222222; --c3-muted:#675852; --c3-action:#7A0F1E; --c3-action-hover:#5D0B17; --c3-on-action:#FFFFFF;
+  --c3-border:#DCD0C8; --c3-control-border:#8C767B; --c3-focus:#4B1B6B;
+  --c3-selection:#F3E3E6; --c3-gold-ink:#7A5C0A;
+  --c3-success:#24633D; --c3-warning:#80500B; --c3-danger:#AD2434; --c3-info:#364F92;
+  --c3-radius-sm:8px; --c3-radius:14px; --c3-radius-lg:22px;
+  --c3-shadow:0 5px 22px rgb(69 27 43 / 5%); --c3-scrim:rgb(26 17 27 / 52%);
+}
+:root[data-theme="dark"], .app[data-theme="dark"], :root:has(.app[data-theme="dark"]) {
+  --c3-page:#191619; --c3-surface:#242024; --c3-surface-secondary:#302830; --c3-surface-inset:#201B21; --c3-surface-elevated:#352D34;
+  --c3-text:#FBF4E6; --c3-muted:#C8B8BC; --c3-action:#E8C86B; --c3-action-hover:#F3D987; --c3-on-action:#241B13;
+  --c3-border:#4B3D46; --c3-control-border:#A28E98; --c3-focus:#E8C86B;
+  --c3-selection:#3E2D3C; --c3-gold-ink:#E8C86B;
+  --c3-success:#9AD4AE; --c3-warning:#F1BB85; --c3-danger:#FFADB8; --c3-info:#BAC6FF;
+  --c3-shadow:0 5px 22px rgb(0 0 0 / 16%); --c3-scrim:rgb(13 9 14 / 70%);
+}

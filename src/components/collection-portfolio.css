@@ -80,7 +80,7 @@
 .app.app-command-shell[data-theme] .collection-portfolio-chart-data :is(td:last-child, th:last-child) { text-align: right; font-variant-numeric: tabular-nums; }
 .app.app-command-shell[data-theme] .collection-portfolio-chart-data thead { position: sticky; top: 0; background: var(--surface-secondary); color: var(--text-secondary); }
 .app.app-command-shell[data-theme] :is(.collection-portfolio-grid, .collection-portfolio-most-valuable, .collection-portfolio-chooser-list) { list-style: none; padding: 0; margin: 0; min-width: 0; }
-.app.app-command-shell[data-theme] .collection-portfolio-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, max(7rem, calc((100% - 12px) / 2))), 1fr)); gap: 12px; }
+.app.app-command-shell[data-theme] .collection-portfolio-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, max(7rem, calc((100% - 12px) / 2))), 1fr)); gap: 12px; }
 .app.app-command-shell[data-theme] .collection-portfolio-grid > li { min-width: 0; display: grid; }
 .app.app-command-shell[data-theme] .collection-portfolio-item { display: grid; width: 100%; min-width: 0; align-content: start; padding: 0; overflow: hidden; text-align: left; border: 1px solid var(--border-subtle) !important; border-radius: 12px; background: var(--surface-primary) !important; color: var(--text-primary) !important; box-shadow: var(--shadow-1); font: inherit; cursor: pointer; }
 .app.app-command-shell[data-theme] :is(.collection-portfolio-item, .collection-portfolio-valuable-row):hover { border-color: var(--action-primary) !important; }
@@ -149,12 +149,12 @@
 .app.app-command-shell[data-theme] .collection-portfolio-form-actions > button.ops-button--danger { border-color: var(--status-danger) !important; background: var(--danger-background) !important; color: var(--status-danger) !important; }
 .app.app-command-shell[data-theme] .collection-portfolio-form > .ops-button--danger { justify-self: start; min-width: 44px; max-width: 100%; min-height: 44px; padding: 11px 14px; font: 600 .875rem/1.5 var(--font-ui); }
 @media (min-width: 640px) {
-  .app.app-command-shell[data-theme] .collection-portfolio-grid[data-mode="grid"] { grid-template-columns: repeat(auto-fit, minmax(min(100%, max(10rem, calc((100% - 24px) / 3))), 1fr)); }
+  .app.app-command-shell[data-theme] .collection-portfolio-grid[data-mode="grid"] { grid-template-columns: repeat(auto-fill, minmax(min(100%, max(10rem, calc((100% - 24px) / 3))), 1fr)); }
   .app.app-command-shell[data-theme] .collection-portfolio-chooser-row { grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; }
   .app.app-command-shell[data-theme] .collection-portfolio-chooser-actions { padding: 0; }
 }
 @media (min-width: 1040px) {
-  .app.app-command-shell[data-theme] .collection-portfolio-grid[data-mode="grid"] { grid-template-columns: repeat(auto-fit, minmax(min(100%, max(10rem, calc((100% - 36px) / 4))), 1fr)); }
+  .app.app-command-shell[data-theme] .collection-portfolio-grid[data-mode="grid"] { grid-template-columns: repeat(auto-fill, minmax(min(100%, max(10rem, calc((100% - 36px) / 4))), 1fr)); }
 }
 @media (max-width: 359px) {
   .app.app-command-shell[data-theme] .collection-portfolio-item-copy { padding: 10px; }

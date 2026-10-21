@@ -15,27 +15,9 @@
   "icons": [
     {
       "src": "__BRAND_LOGO__",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
-    },
-    {
-      "src": "__BRAND_PWA_ICON_192__",
-      "sizes": "192x192",
+      "sizes": "__BRAND_ICON_SIZES__",
       "type": "image/png",
       "purpose": "any"
-    },
-    {
-      "src": "__BRAND_PWA_ICON_512__",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "__BRAND_PWA_MASKABLE_ICON__",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
     }
   ],
   "shortcuts": [

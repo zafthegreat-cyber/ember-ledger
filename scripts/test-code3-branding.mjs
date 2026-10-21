@@ -23,7 +23,8 @@ viteConfig.plugins.find(plugin => plugin.name === "business-hub-brand-metadata")
   },
 });
 assert.equal(devManifest.name, BRAND_CONFIG.pwaName);
-assert.equal(devManifest.icons.filter(icon => icon.type === "image/png").length, 3);
+const iconSizes = `${BRAND_CONFIG.iconSize}x${BRAND_CONFIG.iconSize}`;
+assert.deepEqual(devManifest.icons, [{ src: BRAND_CONFIG.logoReference, sizes: iconSizes, type: "image/png", purpose: "any" }], "Declare the supplied PNG's real dimensions; no resized or maskable asset is claimed");
 
 assert.equal(BRAND_CONFIG.applicationDisplayName, "Code 3 TCG");
 assert.equal(BRAND_CONFIG.shortName, "Code 3 TCG");
@@ -36,19 +37,40 @@ assert.equal(BRAND_CONFIG.businessDisplayName, "", "The legal/public business na
 assert.equal(BRAND_CONFIG.legalBusinessDisplayName, "", "No legal business name should be inferred from the app name");
 assert.equal(formatBrowserTitle(), "Code 3 TCG");
 assert.equal(formatBrowserTitle("Home"), "Code 3 TCG — Home");
-assert.equal(BRAND_CONFIG.logoReference, "/assets/brand/code-3-mark.svg");
-assert.match(read("index.html"), /rel="apple-touch-icon" sizes="180x180" href="__BRAND_APPLE_TOUCH_ICON__"/);
+assert.equal(BRAND_CONFIG.monogram, "", "The retired C3 monogram must not replace the supplied emblem");
+assert.equal(BRAND_CONFIG.logoReference, "/assets/brand-system/artwork/code3-emblem-icon.png");
+assert.equal(BRAND_CONFIG.wordmarkReference, "/assets/brand-system/artwork/code3-wordmark.png");
+assert.equal(BRAND_CONFIG.wordmarkOnDarkReference, "/assets/brand-system/artwork/code3-wordmark-on-dark.png");
+assert.equal(BRAND_CONFIG.bannerReference, "/assets/brand-system/artwork/code3-banner.png");
+assert.equal(BRAND_CONFIG.iconSize, 1254);
+assert.match(read("index.html"), /rel="apple-touch-icon" sizes="__BRAND_ICON_SIZES__" href="__BRAND_APPLE_TOUCH_ICON__"/);
+assert.match(read("index.html"), /rel="icon" href="__BRAND_FAVICON__" type="image\/png" sizes="__BRAND_ICON_SIZES__"/);
 for (const [iconPath, size] of [
-  [BRAND_CONFIG.appleTouchIconReference, 180],
-  [BRAND_CONFIG.pwaIcon192Reference, 192],
-  [BRAND_CONFIG.pwaIcon512Reference, 512],
-  [BRAND_CONFIG.pwaMaskableIconReference, 512],
+  [BRAND_CONFIG.appleTouchIconReference, BRAND_CONFIG.iconSize],
+  [BRAND_CONFIG.pwaIcon192Reference, BRAND_CONFIG.iconSize],
+  [BRAND_CONFIG.pwaIcon512Reference, BRAND_CONFIG.iconSize],
+  [BRAND_CONFIG.pwaMaskableIconReference, BRAND_CONFIG.iconSize],
 ]) {
   const icon = readFileSync(resolve(root, `public${iconPath}`));
   assert.equal(icon.subarray(0, 8).toString("hex"), "89504e470d0a1a0a", `${iconPath} must be a PNG`);
   assert.equal(icon.readUInt32BE(16), size, `${iconPath} width`);
   assert.equal(icon.readUInt32BE(20), size, `${iconPath} height`);
 }
+for (const [imagePath, width, height] of [[BRAND_CONFIG.wordmarkReference, 2172, 724], [BRAND_CONFIG.wordmarkOnDarkReference, 2172, 724], [BRAND_CONFIG.bannerReference, 2171, 724]]) {
+  const image = readFileSync(resolve(root, `public${imagePath}`));
+  assert.equal(image.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
+  assert.equal(image.readUInt32BE(16), width);
+  assert.equal(image.readUInt32BE(20), height);
+}
+const { BRAND_ASSETS } = await import(pathToFileURL(resolve(root, "src/brand/code3TcgBrand.js")));
+assert.equal(BRAND_ASSETS.mark, BRAND_CONFIG.logoReference);
+assert.equal(BRAND_ASSETS.logo, BRAND_CONFIG.wordmarkReference);
+assert.equal(BRAND_ASSETS.promoHero, BRAND_CONFIG.bannerReference);
+assert.equal(BRAND_ASSETS.linkBioHeader, BRAND_CONFIG.bannerReference);
+assert.match(read("src/components/operations/OperationsUI.jsx"), /<BrandIdentity variant="wordmark" onDark\s*\/>/);
+assert.match(read("src/components/brand/BrandIdentity.jsx"), /src=\{onDark \? BRAND_CONFIG\.wordmarkOnDarkReference : BRAND_CONFIG\.wordmarkReference\}/);
+assert.match(read("src/components/AppLoadFallback.jsx"), /<img src=\{BRAND_CONFIG\.logoReference\}/);
+assert.match(read("src/mobileScreenSetApp.jsx"), /<img src=\{BRAND_CONFIG\.logoReference\} alt=\{BRAND_CONFIG\.accessibleLogoText\}/);
 
 const runtimeBrandSources = [
   "src/config/brand.js",
@@ -72,7 +94,6 @@ assert.match(read("public/offline.html"), /alt="__BRAND_ACCESSIBLE_LOGO_TEXT__"/
 assert.match(read("public/sw.js"), /"__BRAND_LOGO__"/);
 assert.match(read("src/config/plainLanguage.js"), /"alt"/, "Retired visible branding must also be rewritten in accessible image text");
 assert.match(read("public/sw.js"), /ember-tide-pwa-v4/, "Historical cache namespace remains stable");
-assert.match(read("public/assets/brand/code-3-mark.svg"), /<title id="code3-title">Code 3 TCG<\/title>/);
 
 if (process.env.CODE3_VERIFY_DIST === "1") {
   for (const path of ["dist/index.html", "dist/screen-set.html", "dist/manifest.webmanifest", "dist/offline.html", "dist/sw.js"]) {
@@ -87,21 +108,18 @@ if (process.env.CODE3_VERIFY_DIST === "1") {
   assert.equal(manifest.display, "standalone");
   assert.equal(manifest.id, "/");
   assert.equal(manifest.start_url, "/");
-  for (const [src, sizes, purpose] of [
-    [BRAND_CONFIG.pwaIcon192Reference, "192x192", "any"],
-    [BRAND_CONFIG.pwaIcon512Reference, "512x512", "any"],
-    [BRAND_CONFIG.pwaMaskableIconReference, "512x512", "maskable"],
-  ]) {
-    assert.ok(manifest.icons.some(icon => icon.src === src && icon.sizes === sizes && icon.purpose === purpose && icon.type === "image/png"));
+  assert.deepEqual(manifest.icons, devManifest.icons);
+  for (const { src } of manifest.icons) {
     assert.ok(existsSync(resolve(root, `dist${src}`)), `${src} must be shipped`);
   }
-  assert.ok(read("dist/index.html").includes(`rel="apple-touch-icon" sizes="180x180" href="${BRAND_CONFIG.appleTouchIconReference}"`));
+  for (const src of [BRAND_CONFIG.wordmarkReference, BRAND_CONFIG.wordmarkOnDarkReference, BRAND_CONFIG.bannerReference]) assert.ok(existsSync(resolve(root, `dist${src}`)), `${src} must be shipped`);
+  assert.ok(read("dist/index.html").includes(`rel="apple-touch-icon" sizes="${iconSizes}" href="${BRAND_CONFIG.appleTouchIconReference}"`));
   assert.ok(!read("dist/manifest.webmanifest").includes("__BRAND_"), "Install metadata must be resolved");
   assert.match(read("dist/index.html"), /<title>Code 3 TCG<\/title>/);
   assert.match(read("dist/screen-set.html"), /<title>Code 3 TCG Mobile Screen Set<\/title>/);
   assert.match(read("dist/offline.html"), /<title>Code 3 TCG — Offline<\/title>/);
   assert.match(read("dist/offline.html"), /alt="Code 3 TCG"/);
-  assert.match(read("dist/sw.js"), /"\/assets\/brand\/code-3-mark\.svg"/);
+  assert.ok(read("dist/sw.js").includes(JSON.stringify(BRAND_CONFIG.logoReference)));
   assert.ok(!read("dist/offline.html").includes("__BRAND_"), "Offline build metadata must be resolved");
   assert.ok(!read("dist/sw.js").includes("__BRAND_"), "Service-worker brand metadata must be resolved");
 }

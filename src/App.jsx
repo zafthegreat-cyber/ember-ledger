@@ -8248,7 +8248,8 @@ export default function App() {
   }, [activeTabLabel]);
   const activeMainTab = currentProductWorkspaceId.toLowerCase();
   const sortedWorkspaceNavItems = [...workspaceNavItems].sort((left, right) => right.path.length - left.path.length);
-  const activeWorkspaceNavItem = sortedWorkspaceNavItems.find((item) => shellRoutePath === item.path || shellRoutePath.startsWith(`${item.path}/`));
+  const activeWorkspaceNavItem = sortedWorkspaceNavItems.find((item) => shellRoutePath === item.path || shellRoutePath.startsWith(`${item.path}/`))
+    || (activeTab === "dashboard" ? workspaceNavItems.find((item) => item.key.endsWith("-home")) : undefined);
   const globalAddTab = { key: "global-add", label: "Add", ariaLabel: "Open global Add menu", icon: "plus", isAction: true, action: () => openAddActionSheet("mobile-navigation") };
   const mobileWorkspaceItems = workspaceNavItems.filter((item) => item.mobileEligible !== false);
   const addInsertIndex = Math.min(2, mobileWorkspaceItems.length);
@@ -39413,7 +39414,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         />
         <section className="panel link-bio-panel">
           <figure className="link-bio-hero">
-            <img src={BRAND_ASSETS.linkBioHeader} alt="Code 3 TCG link-in-bio header with Track. Trade. Thrive." loading="lazy" />
+            <img src={BRAND_ASSETS.linkBioHeader} alt="Code 3 TCG banner with three fanned cards and the gold 3 wordmark" loading="lazy" />
           </figure>
           <div className="beta-link-stack">
             {linkActions.map((entry) => (
@@ -48219,7 +48220,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       setActiveTab("dashboard");
     }}
   >
-    <span className="topbar-brand-mark ops-brand-mark" aria-hidden="true">{BRAND_CONFIG.monogram}</span>
+    <span className="topbar-brand-mark ops-brand-mark" aria-hidden="true"><img src={BRAND_CONFIG.logoReference} alt="" /></span>
     <span className="sr-only">{BRAND_CONFIG.applicationDisplayName}</span>
     <span className="topbar-brand-copy">
       <strong>{BRAND_CONFIG.applicationDisplayName}</strong>

@@ -1,0 +1,309 @@
+/* Presentation only. Supplied artwork remains unmodified. */
+html body .app[data-theme] { font-family:var(--c3-font-body); }
+html body .app[data-theme] :is(h1,h2,h3) { font-family:var(--c3-font-heading) !important; font-weight:600; letter-spacing:-.025em; }
+html body .app[data-theme] :is(button,input,select,textarea) { font-family:var(--c3-font-body); }
+html body .app.app-command-shell[data-theme] .home-layout .home-restock-hero { border-top-color:var(--c3-gold); border-radius:var(--c3-radius-lg); grid-template-columns:minmax(0,1fr); }
+html body .app.app-command-shell[data-theme] .home-restock-art { display:none; }
+html body .app.app-command-shell[data-theme] .everyday-record-card { grid-template-columns:84px minmax(0,1fr) auto; }
+html body .app.app-command-shell[data-theme] .everyday-record-card > img { width:84px; height:102px; object-fit:contain; background:var(--c3-cream); border:1px solid var(--border-subtle); border-radius:6px; }
+html body .app.app-command-shell[data-theme] .topbar-brand-mark.ops-brand-mark { padding:0; border:0; border-radius:8px; background:transparent !important; box-shadow:none; }
+html body .app.app-command-shell[data-theme] .topbar-brand-mark img { display:block; width:100%; height:100%; object-fit:contain; }
+html body .app[data-theme] .ops-brand strong { font-family:var(--c3-font-heading); font-size:17px; font-weight:600; }
+html body .app[data-theme] :is(.ops-desktop-sidebar,.topbar) { border-top:2px solid var(--c3-gold); }
+html body .app[data-theme] :is(.ops-record-card,.ops-home-section,.ops-data-table,.ops-bottom-sheet) { border-radius:var(--c3-radius); }
+html body .app[data-theme] :is(.ops-button,.ops-mobile-nav button,.ops-desktop-sidebar nav button,input,select) { min-height:44px; }
+html body .app[data-theme] :is(button,a,input,select,textarea,summary):focus-visible { outline:3px solid var(--c3-focus) !important; outline-offset:3px; }
+html body .app[data-theme] :is(.landing-brand-mark,.auth-brand-mark,.auth-card-brand-mark) { visibility:visible; object-fit:contain; border-radius:8px; background:transparent; box-shadow:none; }
+html body .app[data-theme] .hearth-logo-mark { background:transparent; border-radius:8px; box-shadow:none; }
+html body .app[data-theme] .home-collectible-motif { display:none; }
+
+/* App-only brand roles: shared palette and data/status semantics remain intact. */
+:root:has(.app[data-theme="dark"]),
+body:has(.app[data-theme="dark"]) {
+  /* Keep the outer document canvas aligned with the scoped app surface. */
+  --app-background:#141619;
+}
+html body .app[data-theme] {
+  --app-brand-rail:#501523;
+  --app-brand-header:#481124;
+  --app-brand-on-chrome:var(--c3-cream);
+  --app-brand-chrome-muted:#E5CCD9;
+  --app-brand-chrome-line:#AE8197;
+  --app-brand-hero:var(--c3-maroon);
+  --app-brand-hero-muted:#F0D9DC;
+  --app-brand-on-gold:#241B13;
+  --app-brand-maroon-wash:#F6E6E8;
+  --app-brand-maroon-ink:var(--c3-maroon);
+  --app-brand-purple-wash:#EFE5F5;
+  --app-brand-purple-ink:var(--c3-purple);
+  --app-brand-selected:#F5ECD4;
+  --app-brand-selected-ink:#58420D;
+  --app-brand-selected-border:#8B6810;
+  --app-brand-photo:var(--c3-cream);
+}
+html body .app[data-theme="dark"] {
+  --app-brand-rail:#191B20;
+  --app-brand-header:#1B1D22;
+  --app-brand-chrome-muted:#C3BFC5;
+  --app-brand-chrome-line:#454851;
+  --app-brand-hero:#282128;
+  --app-brand-hero-muted:#D2C7CD;
+  --app-brand-maroon-wash:#30232A;
+  --app-brand-maroon-ink:#F1BECA;
+  --app-brand-purple-wash:#2C2636;
+  --app-brand-purple-ink:#E7CAFA;
+  --app-brand-selected:#342E20;
+  --app-brand-selected-ink:#E8C86B;
+  --app-brand-selected-border:#D4AF37;
+  --app-background:#141619;
+  --surface-primary:#202328;
+  --surface-secondary:#292D33;
+  --surface-inset:#191C21;
+  --surface-elevated:#30343B;
+  --text-secondary:#C1BDC4;
+  --text-muted:var(--text-secondary);
+  --border-subtle:#41454E;
+  --border-strong:#8B8D98;
+}
+
+/* Colored navigation frames the workspace; search and menus retain neutral surfaces. */
+html body .app.app-command-shell[data-theme] .ops-desktop-sidebar {
+  background:var(--app-brand-rail) !important;
+  border-right-color:var(--app-brand-chrome-line) !important;
+}
+html body .app.app-command-shell[data-theme] .ops-desktop-sidebar :is(.ops-navigation-label,.ops-sidebar-footer,.ops-sidebar-footer p,.ops-sidebar-footer small) { color:var(--app-brand-chrome-muted) !important; }
+html body .app.app-command-shell[data-theme] .ops-desktop-sidebar :is(nav button,summary) { color:var(--app-brand-on-chrome) !important; }
+html body .app.app-command-shell[data-theme] .ops-desktop-sidebar :is(nav button,summary):hover { background:var(--app-brand-header) !important; }
+html body .app.app-command-shell[data-theme] .ops-desktop-sidebar nav button.is-active {
+  background:var(--app-brand-selected) !important;
+  color:var(--app-brand-selected-ink) !important;
+  box-shadow:inset 3px 0 var(--c3-gold);
+}
+html body .app.app-command-shell[data-theme] .ops-desktop-sidebar nav button small { color:inherit !important; }
+html body .app.app-command-shell[data-theme] .topbar {
+  background:var(--app-brand-header) !important;
+  border-color:var(--app-brand-chrome-line) !important;
+  border-top-color:var(--c3-gold) !important;
+  backdrop-filter:none;
+}
+html body .app.app-command-shell[data-theme] .topbar :is(.code3-workspace-switcher > summary,.code3-workspace-switcher > summary strong,.code3-workspace-switcher__brand,.code3-workspace-switcher__chevron,.topbar-brand-copy strong,.app-search-toggle,.topbar-profile-button,.menu-button,.topbar-command-actions > button:not(.topbar-quick-add-button)) { color:var(--app-brand-on-chrome) !important; }
+html body .app.app-command-shell[data-theme] .topbar :is(.topbar-profile-button,.menu-button,.app-search-toggle) { background:var(--app-brand-header) !important; }
+html body .app.app-command-shell[data-theme] .topbar .topbar-brand-copy small { color:var(--app-brand-chrome-muted) !important; }
+html body .app.app-command-shell[data-theme] .topbar .topbar-quick-add-button { background:var(--c3-gold) !important; color:var(--app-brand-on-gold) !important; }
+html body .app.app-command-shell[data-theme] .ops-mobile-nav { background:var(--app-brand-rail) !important; border-color:var(--app-brand-chrome-line) !important; backdrop-filter:none; }
+html body .app.app-command-shell[data-theme] .ops-mobile-nav button { color:var(--app-brand-chrome-muted) !important; }
+html body .app.app-command-shell[data-theme] .ops-mobile-nav button.is-active { background:var(--app-brand-selected) !important; color:var(--app-brand-selected-ink) !important; box-shadow:inset 0 -2px var(--app-brand-selected-border); }
+html body .app.app-command-shell[data-theme] .ops-mobile-nav__action-icon { background:var(--c3-gold) !important; color:var(--app-brand-on-gold) !important; border-color:var(--app-brand-rail) !important; }
+html body .app.app-command-shell[data-theme] :is(.ops-desktop-sidebar,.ops-mobile-nav,.topbar) :is(button,a,summary):focus-visible { outline-color:var(--c3-gold) !important; }
+html body .app.app-command-shell[data-theme] .topbar :is(.code3-workspace-switcher__menu,.app-search-results) :is(button,a,summary):focus-visible { outline-color:var(--c3-focus) !important; }
+
+/* A single expressive restock panel carries the brand curves, with solid controls. */
+html body .app.app-command-shell[data-theme] .home-layout .home-restock-hero {
+  position:relative;
+  isolation:isolate;
+  overflow:hidden;
+  background:var(--app-brand-hero) !important;
+  border-color:var(--app-brand-hero) !important;
+  border-top:3px solid var(--c3-gold) !important;
+}
+html body .app.app-command-shell[data-theme] .home-restock-hero::after { content:""; position:absolute; z-index:-1; width:280px; height:280px; top:-180px; right:-100px; border:42px solid var(--c3-purple); border-radius:50%; pointer-events:none; }
+html body .app.app-command-shell[data-theme] .home-layout .home-restock-copy :is(h2,.home-group-label) { color:var(--app-brand-on-chrome) !important; }
+html body .app.app-command-shell[data-theme] .home-layout .home-restock-copy :is(p,small) { color:var(--app-brand-hero-muted) !important; }
+html body .app.app-command-shell[data-theme] .home-restock-actions .ops-button--primary { background:var(--c3-gold) !important; border-color:var(--c3-gold) !important; color:var(--app-brand-on-gold) !important; }
+html body .app.app-command-shell[data-theme] .home-restock-actions .ops-button--primary:hover { background:var(--c3-cream) !important; border-color:var(--c3-cream) !important; }
+html body .app.app-command-shell[data-theme] .home-restock-actions .ops-button--secondary { background:transparent !important; border-color:var(--app-brand-hero-muted) !important; color:var(--app-brand-on-chrome) !important; }
+html body .app.app-command-shell[data-theme] .home-restock-actions .ops-button--secondary:hover { background:var(--app-brand-header) !important; }
+html body .app.app-command-shell[data-theme] .home-restock-hero :focus-visible { outline-color:var(--c3-gold) !important; }
+
+/* Color distinguishes collection summaries and selections without coloring record data. */
+html body .app.app-command-shell[data-theme] .ops-page-header :is(h1,.ops-eyebrow) { color:var(--app-brand-maroon-ink); }
+html body .app.app-command-shell[data-theme] .ops-section-header h2 { color:var(--app-brand-purple-ink); }
+html body .app.app-command-shell[data-theme] .everyday-metrics > .ops-metric-card.is-neutral:nth-child(odd) { background:var(--surface-primary) !important; border-top:2px solid var(--app-brand-maroon-ink); }
+html body .app.app-command-shell[data-theme] .everyday-metrics > .ops-metric-card.is-neutral:nth-child(even) { background:var(--surface-primary) !important; border-top:2px solid var(--app-brand-purple-ink); }
+html body .app.app-command-shell[data-theme] .home-shortcut-icon { background:var(--app-brand-purple-wash) !important; color:var(--app-brand-purple-ink) !important; border-color:var(--app-brand-purple-ink); }
+html body .app.app-command-shell[data-theme] :is(.everyday-tabs,.everyday-secondary-navigation) > button.is-active { background:var(--app-brand-selected) !important; color:var(--app-brand-selected-ink) !important; border-color:var(--app-brand-selected-border) !important; }
+html body .app.app-command-shell[data-theme] :is(.ops-bottom-sheet,.ops-dialog) { border-top:3px solid var(--c3-gold); }
+
+/* The same identity and readable hierarchy across Home, Inventory and Sales. */
+html body .app[data-theme] .code3-brand-identity { display:inline-flex; align-items:center; gap:10px; min-width:0; }
+html body .app[data-theme] .code3-brand-identity__emblem { flex:0 0 42px; width:42px; height:42px; object-fit:contain; }
+html body .app[data-theme] .code3-brand-identity__label { color:var(--app-brand-maroon-ink); white-space:nowrap; font:600 21px/1.15 var(--c3-font-heading); letter-spacing:0; text-transform:none; }
+html body .app[data-theme] .code3-brand-identity__number { color:var(--c3-gold-ink); }
+html body .app[data-theme] .code3-brand-identity--wordmark { display:block; width:100%; }
+html body .app[data-theme] .code3-brand-identity--wordmark img { display:block; width:100%; height:auto; object-fit:contain; }
+html body .app.app-command-shell[data-theme] .ops-brand { width:calc(100% + 16px); min-height:84px; padding:0; margin:0 -8px 10px; border:0 !important; border-radius:0; background:transparent !important; box-shadow:none !important; }
+html body .app.app-command-shell[data-theme] .ops-desktop-sidebar :is(nav > button,summary,.ops-desktop-subnav button) { min-height:48px; font-size:15px; line-height:1.35; }
+html body .app.app-command-shell[data-theme] .ops-desktop-sidebar .ops-navigation-label { font:600 13px/1.4 var(--c3-font-body); text-transform:none; letter-spacing:0; }
+html body .app.app-command-shell[data-theme] .ops-sidebar-footer { font-size:13px; line-height:1.5; }
+html body .app.app-command-shell[data-theme] .ops-mobile-nav button span { font-size:12px; line-height:1.3; }
+html body .app.app-command-shell[data-theme] .ops-page-header h1 { font-size:clamp(28px,3vw,36px); line-height:1.15; }
+html body .app.app-command-shell[data-theme] :is(.ops-page-header p,.ops-section-header p) { font-size:15px; line-height:1.55; }
+html body .app.app-command-shell[data-theme] .ops-eyebrow { font:600 14px/1.4 var(--c3-font-body); text-transform:none; letter-spacing:0; }
+html body .app.app-command-shell[data-theme] .home-layout { width:min(1080px,100%); margin-inline:auto; padding-top:24px; }
+html body .app.app-command-shell[data-theme] .home-layout > .ops-page-header { margin-bottom:20px; gap:8px; }
+html body .app.app-command-shell[data-theme] .home-layout > .ops-page-header h1 { margin:0 0 4px; }
+html body .app.app-command-shell[data-theme] .home-layout > .ops-page-header .ops-eyebrow { font:600 14px/1.4 var(--c3-font-body); text-transform:none; letter-spacing:0; }
+html body .app.app-command-shell[data-theme] .home-mobile-identity { display:none; }
+html body .app.app-command-shell[data-theme] .home-layout .home-group-label { font:600 14px/1.4 var(--c3-font-body); letter-spacing:0; text-transform:none; }
+html body .app.app-command-shell[data-theme] .home-layout .home-restock-hero { padding:22px 24px; margin-bottom:22px; border-radius:16px; }
+html body .app.app-command-shell[data-theme] .home-restock-copy { display:grid; grid-template-columns:minmax(0,1fr) 208px; column-gap:28px; row-gap:9px; }
+html body .app.app-command-shell[data-theme] .home-restock-copy > :is(.home-group-label,h2,p,small) { grid-column:1; margin:0; }
+html body .app.app-command-shell[data-theme] .home-restock-copy h2 { max-width:25ch; font-size:27px; line-height:1.2; }
+html body .app.app-command-shell[data-theme] .home-restock-copy p { font-size:15px; line-height:1.5; }
+html body .app.app-command-shell[data-theme] .home-restock-copy > small { font-size:13px; line-height:1.5; }
+html body .app.app-command-shell[data-theme] .home-restock-actions { grid-column:2; grid-row:1 / span 4; align-self:center; display:grid; gap:10px; }
+html body .app.app-command-shell[data-theme] .home-restock-actions > button { width:100%; min-height:46px; padding:12px 16px; font-size:15px; }
+html body .app.app-command-shell[data-theme] .home-layout .home-personal-card { padding:18px; border-top:3px solid var(--app-brand-purple-ink); }
+html body .app.app-command-shell[data-theme] .home-layout .home-personal-card :is(h3,p) { font-size:15px; line-height:1.5; }
+html body .app.app-command-shell[data-theme] .home-layout .home-personal-card h3 { font-size:19px; }
+html body .app.app-command-shell[data-theme] .home-collection-peek { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; width:100%; margin-bottom:16px; }
+html body .app.app-command-shell[data-theme] .home-collection-peek figure { min-width:0; margin:0; }
+html body .app.app-command-shell[data-theme] .home-collection-peek :is(img,.home-collection-peek__placeholder) { display:block; width:100%; height:106px; padding:8px; object-fit:contain; border:1px solid var(--border-subtle); border-radius:10px; background:var(--c3-cream); }
+html body .app.app-command-shell[data-theme] .home-collection-peek__placeholder { color:var(--c3-maroon); }
+html body .app.app-command-shell[data-theme] .home-collection-peek figcaption { margin-top:7px; display:-webkit-box; overflow:hidden; -webkit-line-clamp:2; -webkit-box-orient:vertical; color:var(--text-primary); font-size:13px; line-height:1.4; }
+html body .app.app-command-shell[data-theme] .everyday-workspace { width:min(1120px,100%); margin-inline:auto; gap:20px; padding:24px; }
+html body .app.app-command-shell[data-theme] .everyday-workspace > .ops-page-header { margin-bottom:0; }
+html body .app.app-command-shell[data-theme] .everyday-back-button { width:fit-content; justify-self:start; }
+html body .app.app-command-shell[data-theme] .everyday-business-records .everyday-record-list { grid-template-columns:minmax(0,1fr); }
+html body .app.app-command-shell[data-theme] .everyday-metrics { gap:12px; }
+html body .app.app-command-shell[data-theme] .ops-metric-card { padding:14px 16px; gap:7px; }
+html body .app.app-command-shell[data-theme] .ops-metric-card > :is(span,small) { font:500 14px/1.4 var(--c3-font-body); text-transform:none; letter-spacing:0; }
+html body .app.app-command-shell[data-theme] .ops-metric-card > strong { font-size:25px; line-height:1.2; }
+html body .app.app-command-shell[data-theme] .everyday-record-card { border-radius:14px; padding:18px; }
+html body .app.app-command-shell[data-theme] .everyday-record-card h3 { font-size:17px; line-height:1.4; }
+html body .app.app-command-shell[data-theme] .everyday-record-card__heading span { font-size:13px; }
+html body .app.app-command-shell[data-theme] .everyday-record-card :is(dt,dd) { font-size:14px; line-height:1.45; }
+html body .app.app-command-shell[data-theme] .ops-data-table :is(th,td) { font-size:14px; line-height:1.5; padding:12px 16px; }
+
+/* Reference refinement: charcoal data surfaces, larger saved artwork and gold decisions.
+   These app-only roles leave shared tokens, record state and semantic status colors intact. */
+html body .app.app-command-shell[data-theme] :is(.home-layout,.everyday-workspace) .ops-button--primary,
+html body .app.app-command-shell[data-theme] .flow-modal[data-flow="scoutSubmit"] .scout-wizard-footer > button:not(.secondary-button) {
+  background:var(--c3-gold) !important; border-color:var(--app-brand-selected-border) !important; color:var(--app-brand-on-gold) !important; box-shadow:none;
+}
+html body .app.app-command-shell[data-theme] :is(.home-layout,.everyday-workspace) .ops-button--primary:hover,
+html body .app.app-command-shell[data-theme] .flow-modal[data-flow="scoutSubmit"] .scout-wizard-footer > button:not(.secondary-button):hover { background:#E8C86B !important; border-color:var(--app-brand-selected-border) !important; }
+html body .app.app-command-shell[data-theme] .home-restock-hero::after { border-width:28px; top:-195px; right:-125px; }
+html body .app.app-command-shell[data-theme] .home-layout .home-personal-card { border-top-width:2px; background:var(--surface-primary); }
+html body .app.app-command-shell[data-theme] .home-layout .home-collection-peek :is(img,.home-collection-peek__placeholder) { height:128px; }
+html body .app.app-command-shell[data-theme] .ops-page-header :is(h1,.ops-eyebrow),
+html body .app.app-command-shell[data-theme] .ops-section-header h2 { color:var(--text-primary); }
+
+/* Keep the existing portfolio controls and saved-item actions; give photos room. */
+html body .app.app-command-shell[data-theme] .collection-portfolio { gap:20px; }
+html body .app.app-command-shell[data-theme] .collection-portfolio > div:first-child { gap:18px; }
+html body .app.app-command-shell[data-theme] .collection-portfolio-collection { gap:12px; }
+html body .app.app-command-shell[data-theme] .collection-portfolio-filter-row { display:flex; gap:10px; align-items:center; min-width:0; }
+html body .app.app-command-shell[data-theme] .collection-portfolio-filter-row > :is(.collection-game-filter,.collection-portfolio-sort) { flex:1 1 0; min-width:0; }
+html body .app.app-command-shell[data-theme] .collection-portfolio-filter-row .collection-game-filter { width:auto; }
+html body .app.app-command-shell[data-theme] .collection-portfolio-filter-row .collection-portfolio-sort { flex-wrap:nowrap; }
+html body .app.app-command-shell[data-theme] .collection-portfolio-filter-row .collection-portfolio-sort select { flex:1 1 0; width:100%; }
+html body .app.app-command-shell[data-theme] .collection-portfolio-search-row { display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:8px; align-items:end; }
+html body .app.app-command-shell[data-theme] .collection-portfolio-search-row .collection-portfolio-display { margin:0; }
+html body .app.app-command-shell[data-theme] .collection-portfolio-estimate-note { padding:0 12px; border:1px solid var(--border-subtle); border-radius:8px; background:var(--surface-primary); }
+html body .app.app-command-shell[data-theme] .collection-portfolio-estimate-note > summary { display:flex; align-items:center; min-height:44px; cursor:pointer; color:var(--text-secondary); font-size:13px; }
+html body .app.app-command-shell[data-theme] .collection-portfolio-estimate-note > p { padding-bottom:12px; }
+html body .app.app-command-shell[data-theme] .collection-portfolio-grid[data-mode="grid"] { grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+html body .app.app-command-shell[data-theme] .collection-portfolio-item { border-radius:10px; box-shadow:none; }
+html body .app.app-command-shell[data-theme] .collection-portfolio-grid[data-mode="grid"] .collection-portfolio-item-media { aspect-ratio:4 / 5; padding:10px; background:var(--app-brand-photo); }
+html body .app.app-command-shell[data-theme] .collection-portfolio-item-media > :is(img,div) { object-fit:contain; }
+html body .app.app-command-shell[data-theme] .collection-portfolio-grid[data-mode="grid"] .collection-portfolio-photo-fallback { color:var(--c3-maroon); }
+html body .app.app-command-shell[data-theme] .collection-portfolio-item-copy { gap:6px; padding:12px; }
+html body .app.app-command-shell[data-theme] .collection-portfolio-item-name { font-size:15px; line-height:1.4; }
+html body .app.app-command-shell[data-theme] :is(.collection-portfolio-item-meta,.collection-portfolio-item-quantity) { font-size:13px; line-height:1.5; }
+html body .app.app-command-shell[data-theme] .collection-portfolio-tabs :is([aria-selected="true"],[aria-pressed="true"])::after { background:var(--app-brand-selected-border); }
+html body .app.app-command-shell[data-theme] :is(.collection-portfolio-periods,.collection-portfolio-display) button[aria-pressed="true"] { background:var(--app-brand-selected) !important; color:var(--app-brand-selected-ink) !important; border-color:var(--app-brand-selected-border) !important; }
+html body .app.app-command-shell[data-theme] :is(.collection-portfolio-chart-empty,.collection-portfolio-chart-hidden) { grid-template-columns:32px minmax(0,1fr); gap:4px 12px; min-height:0; padding:16px; text-align:left; justify-items:start; }
+html body .app.app-command-shell[data-theme] :is(.collection-portfolio-chart-empty,.collection-portfolio-chart-hidden) > span { grid-row:1 / span 2; width:32px; height:32px; margin:0; font-size:20px; }
+html body .app.app-command-shell[data-theme] .collection-portfolio-chart-empty small { max-width:none; margin:0; }
+
+/* The three existing report steps stay visible; fields and choices use solid surfaces. */
+html body .app.app-command-shell[data-theme] .flow-modal[data-flow="scoutSubmit"] { border:1px solid var(--border-subtle) !important; border-top:3px solid var(--c3-gold) !important; border-radius:16px; background:var(--surface-primary) !important; }
+html body .app.app-command-shell[data-theme] .flow-modal[data-flow="scoutSubmit"] .scout-report-stepper { gap:8px; padding:0 0 16px; border-bottom:1px solid var(--border-subtle); }
+html body .app.app-command-shell[data-theme] .flow-modal[data-flow="scoutSubmit"] .scout-report-step-pill { display:flex; flex-direction:column; justify-content:center; gap:7px; min-height:70px; padding:8px 4px; border:0 !important; border-radius:8px; background:transparent !important; color:var(--text-secondary) !important; font-size:13px; }
+html body .app.app-command-shell[data-theme] .flow-modal[data-flow="scoutSubmit"] .scout-report-step-number { display:grid; place-items:center; width:28px; height:28px; border:1px solid var(--border-strong); border-radius:50%; color:var(--text-primary); background:var(--surface-primary); font:600 13px/1 var(--c3-font-body); }
+html body .app.app-command-shell[data-theme] .flow-modal[data-flow="scoutSubmit"] .scout-report-step-pill.active { color:var(--app-brand-selected-ink) !important; background:var(--app-brand-selected) !important; }
+html body .app.app-command-shell[data-theme] .flow-modal[data-flow="scoutSubmit"] .scout-report-step-pill.active .scout-report-step-number { color:var(--app-brand-on-gold); background:var(--c3-gold); border-color:var(--c3-gold); }
+html body .app.app-command-shell[data-theme] .flow-modal[data-flow="scoutSubmit"] :is(.scout-report-choice-card.selected,.scout-category-chip-row button.selected,.scout-report-store-card.selected,.scout-report-date-presets button.selected) { background:var(--app-brand-selected) !important; border-color:var(--app-brand-selected-border) !important; box-shadow:inset 0 0 0 1px var(--app-brand-selected-border); }
+html body .app.app-command-shell[data-theme] .flow-modal[data-flow="scoutSubmit"] :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),select,textarea) { min-height:44px; border:1px solid var(--border-strong); border-radius:8px; background:var(--surface-inset) !important; color:var(--text-primary); }
+html body .app.app-command-shell[data-theme] .flow-modal[data-flow="scoutSubmit"] .scout-wizard-footer { gap:10px; padding-top:16px; border-top:1px solid var(--border-subtle); }
+html body .app.app-command-shell[data-theme] .flow-modal[data-flow="scoutSubmit"] .scout-wizard-footer > button { min-height:46px; border-radius:9px; font-size:15px; }
+
+/* Existing Seller destinations become compact tiles; the routes and labels stay intact. */
+html body .app.app-command-shell[data-theme] .business-destination-grid { grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+html body .app.app-command-shell[data-theme] .business-destination-grid > button,
+html body .app.app-command-shell[data-theme] .business-destination-grid > button:nth-child(n+4) { grid-column:auto; grid-template-columns:minmax(0,1fr) auto; align-items:start; gap:12px; min-height:166px; padding:20px; border-radius:10px; background:var(--surface-primary) !important; box-shadow:none !important; }
+html body .app.app-command-shell[data-theme] .business-destination-grid > button:nth-child(3n+1) { border-top:3px solid var(--app-brand-purple-ink) !important; background:var(--app-brand-purple-wash) !important; }
+html body .app.app-command-shell[data-theme] .business-destination-grid > button:nth-child(3n+2) { border-top:3px solid var(--app-brand-maroon-ink) !important; background:var(--app-brand-maroon-wash) !important; }
+html body .app.app-command-shell[data-theme] .business-destination-grid > button:nth-child(3n) { border-top:3px solid var(--app-brand-selected-border) !important; }
+html body .app.app-command-shell[data-theme] .business-destination-grid .business-destination-icon { width:36px; height:36px; background:var(--surface-primary); color:var(--action-primary); border-color:var(--border-subtle); }
+html body .app.app-command-shell[data-theme] .business-destination-grid .business-destination-copy,
+html body .app.app-command-shell[data-theme] .business-destination-grid > button:nth-child(n+4) .business-destination-copy { grid-column:1 / -1; grid-row:auto; gap:5px; }
+html body .app.app-command-shell[data-theme] .business-destination-grid .business-destination-copy strong { color:var(--text-primary); font-size:20px; }
+html body .app.app-command-shell[data-theme] .business-destination-grid .business-destination-copy > span { color:var(--text-secondary); font-size:13px; line-height:1.5; }
+html body .app.app-command-shell[data-theme] .business-destination-grid .business-destination-arrow,
+html body .app.app-command-shell[data-theme] .business-destination-grid > button:nth-child(n+4) .business-destination-arrow { grid-column:2; grid-row:1; }
+html body .app.app-command-shell[data-theme] .business-destination-step { padding-top:10px; font-size:12px; }
+@media (min-width:800px) { html body .app.app-command-shell[data-theme] .collection-portfolio-grid[data-mode="grid"] { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+@media (min-width:1200px) { html body .app.app-command-shell[data-theme] .collection-portfolio-grid[data-mode="grid"] { grid-template-columns:repeat(4,minmax(0,1fr)); } }
+@media (max-width:700px) {
+  html body .app.app-command-shell[data-theme] .everyday-workspace[data-testid="collection-workspace"] > .ops-page-header { display:grid !important; grid-template-columns:minmax(0,1fr) auto !important; grid-template-areas:"eyebrow eyebrow" "title action" "description description"; gap:6px 12px; }
+  html body .app.app-command-shell[data-theme] .everyday-workspace[data-testid="collection-workspace"] > .ops-page-header > div:first-child { display:contents !important; }
+  html body .app.app-command-shell[data-theme] .everyday-workspace[data-testid="collection-workspace"] > .ops-page-header .ops-eyebrow { grid-area:eyebrow !important; font-size:12px; }
+  html body .app.app-command-shell[data-theme] .everyday-workspace[data-testid="collection-workspace"] > .ops-page-header h1 { grid-area:title !important; align-self:center; margin:0; font-size:28px; }
+  html body .app.app-command-shell[data-theme] .everyday-workspace[data-testid="collection-workspace"] > .ops-page-header p { grid-area:description !important; margin:0; font-size:14px; }
+  html body .app.app-command-shell[data-theme] .everyday-workspace[data-testid="collection-workspace"] > .ops-page-header .ops-page-actions { grid-area:action !important; }
+  html body .app.app-command-shell[data-theme] .collection-portfolio > div:first-child { gap:12px; }
+  html body .app.app-command-shell[data-theme] .collection-portfolio-heading { grid-template-columns:minmax(0,1fr) auto; gap:4px 10px; padding:0; }
+  html body .app.app-command-shell[data-theme] .collection-portfolio-heading .collection-portfolio-select { gap:4px; padding:0; }
+  html body .app.app-command-shell[data-theme] .collection-portfolio-heading .collection-portfolio-select > span:first-child { font-size:12px; }
+  html body .app.app-command-shell[data-theme] .collection-portfolio-heading .collection-portfolio-select strong { font-size:16px; }
+  html body .app.app-command-shell[data-theme] .collection-portfolio-value { justify-content:flex-end; flex-wrap:nowrap; gap:6px; font-size:27px; }
+  html body .app.app-command-shell[data-theme] .collection-portfolio-coverage,html body .app.app-command-shell[data-theme] .collection-portfolio-change { grid-column:1 / -1; }
+  html body .app.app-command-shell[data-theme] .collection-portfolio-coverage { font-size:12px; }
+  html body .app.app-command-shell[data-theme] .collection-portfolio-search-row .ops-field > span:first-child { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+  html body .app.app-command-shell[data-theme] .collection-portfolio-search-row .ops-field { gap:0; }
+  html body .app.app-command-shell[data-theme] .collection-portfolio-search-row .ops-button { padding-inline:10px; gap:5px; }
+  html body .app.app-command-shell[data-theme] .collection-portfolio-display > button { padding:10px 8px; font-size:12px; }
+  html body .app.app-command-shell[data-theme] .collection-portfolio-filter-row .collection-game-filter > summary { padding:8px; gap:6px; font-size:12px; }
+  html body .app.app-command-shell[data-theme] .collection-portfolio-filter-row .collection-portfolio-sort { gap:6px; font-size:12px; }
+  html body .app.app-command-shell[data-theme] .collection-portfolio-tabs button { padding-bottom:10px; font-size:16px; }
+  html body .app.app-command-shell[data-theme] .collection-portfolio-collection .collection-find-hint { margin:0; font-size:12px; }
+  html body .app.app-command-shell[data-theme] .flow-modal[data-flow="scoutSubmit"] .scout-report-stepper { gap:6px; padding-bottom:8px; }
+  html body .app.app-command-shell[data-theme] .flow-modal[data-flow="scoutSubmit"] .scout-report-step-pill { min-height:60px; gap:4px; padding:4px; font-size:12px; line-height:1.3; }
+  html body .app.app-command-shell[data-theme] .flow-modal[data-flow="scoutSubmit"] .scout-report-step-number { width:24px; height:24px; font-size:12px; }
+  html body .app.app-command-shell[data-theme] .flow-modal[data-flow="scoutSubmit"] .scout-report-status-grid { gap:8px; }
+  html body .app.app-command-shell[data-theme] .flow-modal[data-flow="scoutSubmit"] .scout-report-status-grid .scout-report-choice-card { min-height:100px; padding:8px; gap:4px; align-content:start; }
+  html body .app.app-command-shell[data-theme] .flow-modal[data-flow="scoutSubmit"] .scout-report-status-grid .scout-report-choice-card > strong { display:block; font-size:13px; line-height:1.35; }
+  html body .app.app-command-shell[data-theme] .flow-modal[data-flow="scoutSubmit"] .scout-report-status-grid .scout-report-choice-card > span { font-size:12px; line-height:1.4; }
+  html body .app.app-command-shell[data-theme] .flow-modal[data-flow="scoutSubmit"] .scout-report-status-grid .stock-report-status-icon { display:inline-block; width:16px; height:16px; margin-right:4px; vertical-align:-3px; }
+  html body .app.app-command-shell[data-theme] .flow-modal[data-flow="scoutSubmit"] .scout-report-status-grid .scout-selection-badge { margin-left:4px; font-size:10px; line-height:1.3; }
+  html body .app.app-command-shell[data-theme] .business-destination-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+  html body .app.app-command-shell[data-theme] .business-destination-grid > button,
+  html body .app.app-command-shell[data-theme] .business-destination-grid > button:nth-child(n+4) { min-height:154px; padding:16px; gap:10px; }
+  html body .app.app-command-shell[data-theme] .business-destination-grid > button:last-child:nth-child(odd) { grid-column:1 / -1; }
+  html body .app.app-command-shell[data-theme] .business-destination-grid .business-destination-copy strong { font-size:18px; }
+  html body .app.app-command-shell[data-theme] .collection-portfolio-grid[data-mode="grid"] { gap:12px; }
+}
+@media (min-width:1000px) {
+  html body .app.app-command-shell[data-theme] .everyday-record-card dl { grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; }
+}
+@media (max-width:700px) {
+  html body .app.app-command-shell[data-theme] .home-mobile-identity { display:block; }
+  html body .app.app-command-shell[data-theme] .home-desktop-context { display:none; }
+  html body .app.app-command-shell[data-theme] .home-layout { padding-top:16px; }
+  html body .app.app-command-shell[data-theme] .home-layout > .ops-page-header p { max-width:38ch; font-size:15px; }
+  html body .app.app-command-shell[data-theme] .home-layout .home-restock-hero { padding:20px; }
+  html body .app.app-command-shell[data-theme] .home-restock-copy { display:flex; flex-direction:column; gap:10px; }
+  html body .app.app-command-shell[data-theme] .home-restock-copy h2 { font-size:25px; }
+  html body .app.app-command-shell[data-theme] .home-restock-actions { display:flex; flex-wrap:wrap; width:100%; margin-top:4px; }
+  html body .app.app-command-shell[data-theme] .home-restock-actions > button { flex:1 1 130px; padding-inline:10px; font-size:14px; }
+  html body .app.app-command-shell[data-theme] .everyday-workspace { padding:18px 16px calc(108px + env(safe-area-inset-bottom)); gap:18px; }
+  html body .app.app-command-shell[data-theme] .everyday-record-card { grid-template-columns:84px minmax(0,1fr) 12px; gap:12px; padding:16px; }
+  html body .app.app-command-shell[data-theme] .everyday-record-card__body { display:contents; }
+  html body .app.app-command-shell[data-theme] .everyday-record-card__heading { grid-column:2; grid-row:1; display:grid; align-self:center; }
+  html body .app.app-command-shell[data-theme] .everyday-record-card > img { grid-column:1; grid-row:1; }
+  html body .app.app-command-shell[data-theme] .everyday-record-chevron { grid-column:3; grid-row:1; }
+  html body .app.app-command-shell[data-theme] .everyday-record-card dl { grid-column:1 / -1; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px 20px; margin:0; padding-top:12px; border-top:1px solid var(--border-subtle); }
+}
+@media (prefers-reduced-motion:reduce) { .app[data-theme] *, .app[data-theme] *::before, .app[data-theme] *::after { animation:none !important; transition:none !important; scroll-behavior:auto !important; } }
