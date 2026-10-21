@@ -1,3 +1,4 @@
+@import url("/assets/brand-system/code3-tokens.css");
 /* Code 3 TCG semantic palette. Theme selection remains owned by app preferences. */
 @font-face {
   font-family: "Code 3 Display";
@@ -7,26 +8,26 @@
   font-display: swap;
 }
 :root, .app[data-theme] {
-  --font-ui: "Segoe UI Variable Text", "Segoe UI", Inter, Roboto, Arial, sans-serif;
-  --font-display: "Code 3 Display", "Segoe UI Variable Display", "Segoe UI", sans-serif;
+  --font-ui: var(--c3-font-body);
+  --font-display: var(--c3-font-heading);
   --font-mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
-  --app-background: #F5F7FA;
-  --surface-primary: #FFFFFF;
-  --surface-secondary: #EEF2F6;
-  --surface-inset: #E9EEF3;
-  --surface-elevated: #FFFFFF;
-  --text-primary: #202A35;
-  --text-secondary: #5C6878;
+  --app-background: var(--c3-page);
+  --surface-primary: var(--c3-surface);
+  --surface-secondary: var(--c3-surface-secondary);
+  --surface-inset: var(--c3-surface-inset);
+  --surface-elevated: var(--c3-surface-elevated);
+  --text-primary: var(--c3-text);
+  --text-secondary: var(--c3-muted);
   --text-muted: var(--text-secondary);
-  --action-primary: #0F766E;
-  --action-hover: #0C625C;
-  --on-primary: #FFFFFF;
-  --border-subtle: #DCE3EA;
-  --border-strong: #7B8796;
-  --status-success: #247348;
-  --status-warning: #92590D;
-  --status-danger: #B33636;
-  --status-info: #326987;
+  --action-primary: var(--c3-action);
+  --action-hover: var(--c3-action-hover);
+  --on-primary: var(--c3-on-action);
+  --border-subtle: var(--c3-border);
+  --border-strong: var(--c3-control-border);
+  --status-success: var(--c3-success);
+  --status-warning: var(--c3-warning);
+  --status-danger: var(--c3-danger);
+  --status-info: var(--c3-info);
   --focus-ring: var(--action-primary);
   --shadow-1: 0 1px 2px rgb(16 21 28 / 4%);
   --shadow-2: 0 4px 16px rgb(16 21 28 / 6%);
@@ -36,22 +37,22 @@
   color-scheme: light;
 }
 .app[data-theme="dark"], [data-theme="dark"], :root:has(.app[data-theme="dark"]) {
-  --app-background: #10151C;
-  --surface-primary: #1A222D;
-  --surface-secondary: #242F3C;
-  --surface-inset: #121922;
-  --surface-elevated: #273342;
-  --text-primary: #F2F5F9;
-  --text-secondary: #ACB8C8;
-  --action-primary: #67C8BB;
-  --action-hover: #82D5CA;
-  --on-primary: #102C27;
-  --border-subtle: #344253;
-  --border-strong: #7F91A6;
-  --status-success: #81CEA0;
-  --status-warning: #E9BA72;
-  --status-danger: #F09692;
-  --status-info: #8BC3DF;
+  --app-background: var(--c3-page);
+  --surface-primary: var(--c3-surface);
+  --surface-secondary: var(--c3-surface-secondary);
+  --surface-inset: var(--c3-surface-inset);
+  --surface-elevated: var(--c3-surface-elevated);
+  --text-primary: var(--c3-text);
+  --text-secondary: var(--c3-muted);
+  --action-primary: var(--c3-action);
+  --action-hover: var(--c3-action-hover);
+  --on-primary: var(--c3-on-action);
+  --border-subtle: var(--c3-border);
+  --border-strong: var(--c3-control-border);
+  --status-success: var(--c3-success);
+  --status-warning: var(--c3-warning);
+  --status-danger: var(--c3-danger);
+  --status-info: var(--c3-info);
   color-scheme: dark;
 }
 /* Compatibility aliases let existing components share this palette. */

@@ -27,7 +27,7 @@ export default function AppLoadFallback({ kind = "error", error = null, showDeta
     <main className="app-load-fallback" data-boot-theme={readAppLoadFallbackTheme()} role={isLoading ? "status" : "alert"} aria-live={isLoading ? "polite" : "assertive"} aria-label={copy.title}>
       <section className="app-load-fallback-card">
         <div className="app-load-fallback-brand" aria-hidden="true">
-          <span>{BRAND_CONFIG.monogram}</span>
+          <img src={BRAND_CONFIG.logoReference} alt="" />
         </div>
         <p className="app-load-fallback-eyebrow">{copy.eyebrow}</p>
         <h1>{copy.title}</h1>

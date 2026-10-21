@@ -15,6 +15,7 @@ const brandReplacements = {
   __BRAND_LOGO__: BRAND_CONFIG.logoReference,
   __BRAND_FAVICON__: BRAND_CONFIG.faviconReference,
   __BRAND_APPLE_TOUCH_ICON__: BRAND_CONFIG.appleTouchIconReference,
+  __BRAND_ICON_SIZES__: `${BRAND_CONFIG.iconSize}x${BRAND_CONFIG.iconSize}`,
   __BRAND_PWA_ICON_192__: BRAND_CONFIG.pwaIcon192Reference,
   __BRAND_PWA_ICON_512__: BRAND_CONFIG.pwaIcon512Reference,
   __BRAND_PWA_MASKABLE_ICON__: BRAND_CONFIG.pwaMaskableIconReference,

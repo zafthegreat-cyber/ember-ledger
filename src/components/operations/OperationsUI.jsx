@@ -1,6 +1,7 @@
 import { PrivateStorageImage } from "../PrivateReceipt.jsx";
 import { useEffect, useId, useRef } from "react";
 import { BRAND_CONFIG } from "../../config/brand.js";
+import { BrandIdentity } from "../brand/BrandIdentity.jsx";
 import { AppNavIcon } from "../command-system/AppNavIcon.jsx";
 import "./operations-ui.css";
 import { useModalFocus } from "./useModalFocus.js";
@@ -60,8 +61,7 @@ export function DesktopSidebar({ items = [], secondaryItems = [], activeKey = ""
   return (
     <aside className="ops-desktop-sidebar" aria-label="Primary navigation">
       <button type="button" className="ops-brand" onClick={() => onSelect?.(items[0])} aria-label={`Open ${BRAND_CONFIG.applicationDisplayName} home`}>
-        <span className="ops-brand-mark" aria-hidden="true">{BRAND_CONFIG.monogram}</span>
-        <span><strong>{BRAND_CONFIG.applicationDisplayName}</strong><small>{BRAND_CONFIG.businessDisplayName}</small></span>
+        <BrandIdentity variant="wordmark" onDark />
       </button>
       <span className="ops-navigation-label">Workspace</span>
       <nav>

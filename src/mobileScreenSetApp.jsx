@@ -572,7 +572,7 @@ export default function MobileScreenSet({ tokenVars }) {
   return (
     <div className="ets-screen-set" style={tokenVars}>
       <header className="ets-board-header">
-        <div className="ets-logo-mark" role="img" aria-label={BRAND_CONFIG.accessibleLogoText}><span /></div>
+        <div className="ets-logo-mark"><img src={BRAND_CONFIG.logoReference} alt={BRAND_CONFIG.accessibleLogoText} /></div>
         <div>
           <p className="ets-kicker">Full UI perfection preview</p>
           <h1>{BRAND_CONFIG.applicationDisplayName}</h1>

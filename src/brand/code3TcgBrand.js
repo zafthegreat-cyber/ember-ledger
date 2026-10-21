@@ -10,12 +10,12 @@ export const EMBER_TIDE_PRODUCT_STANDARD = Object.freeze({
 
 export const BRAND_ASSETS = Object.freeze({
   mark: BRAND_CONFIG.logoReference,
-  logo: BRAND_CONFIG.logoReference,
+  logo: BRAND_CONFIG.wordmarkReference,
   appIcon: BRAND_CONFIG.faviconReference,
   loadingMark: BRAND_CONFIG.logoReference,
-  promoHero: BRAND_CONFIG.logoReference,
-  linkBioHeader: BRAND_CONFIG.logoReference,
-  pwaInstallPromo: BRAND_CONFIG.logoReference,
+  promoHero: BRAND_CONFIG.bannerReference,
+  linkBioHeader: BRAND_CONFIG.bannerReference,
+  pwaInstallPromo: BRAND_CONFIG.bannerReference,
 });
 
 export const ROUTE_PRODUCT_STANDARDS = Object.freeze({
