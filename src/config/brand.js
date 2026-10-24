@@ -11,12 +11,13 @@ export const BRAND_CONFIG = Object.freeze({
   wordmarkReference: "/assets/brand-system/artwork/code3-wordmark.png",
   wordmarkOnDarkReference: "/assets/brand-system/artwork/code3-wordmark-on-dark.png",
   bannerReference: "/assets/brand-system/artwork/code3-banner.png",
-  faviconReference: "/assets/brand-system/artwork/code3-emblem-icon.png",
-  appleTouchIconReference: "/assets/brand-system/artwork/code3-emblem-icon.png",
-  // Legacy field names remain compatible; the supplied source is 1254px, not resized exports.
-  pwaIcon192Reference: "/assets/brand-system/artwork/code3-emblem-icon.png",
-  pwaIcon512Reference: "/assets/brand-system/artwork/code3-emblem-icon.png",
-  pwaMaskableIconReference: "/assets/brand-system/artwork/code3-emblem-icon.png",
+  faviconReference: "/assets/brand-system/icons/v1/favicon-32.png",
+  appleTouchIconReference: "/assets/brand-system/icons/v1/apple-touch-icon.png",
+  // Versioned install exports let browsers discover the new home-screen artwork.
+  // Keep the supplied artwork above separate from these resized files.
+  pwaIcon192Reference: "/assets/brand-system/icons/v1/icon-192.png",
+  pwaIcon512Reference: "/assets/brand-system/icons/v1/icon-512.png",
+  pwaMaskableIconReference: "/assets/brand-system/icons/v1/icon-maskable-512.png",
   iconSize: 1254,
   pwaBackgroundColor: "#FBF4E6",
   accessibleLogoText: "Code 3 TCG",
