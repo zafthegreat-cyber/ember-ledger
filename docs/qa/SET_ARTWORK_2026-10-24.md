@@ -1,5 +1,7 @@
 # Matching set and game artwork — October 24, 2026
 
+**Publication:** approved by the owner, merged in [PR23](https://github.com/zafthegreat-cyber/ember-ledger/pull/23) as `b2bee61efffc723eb987e306fb8c82dd4e958f9d`, and published to `https://code3tcg.app` in deployment `dpl_EZQThLdnYtFSLPMXxgwjbM7sdXTF`. Live GET-only checks verified all 183 asset hashes, the deployed set UI and all 4,729 catalog objects/prices against latest premerge `230d6cedc51287c6e85a8badcd07b34599eb7b76`. Cloud workspace/revision/report and object fingerprints were unchanged before/after publication. Evidence: `artifacts/qa/set-artwork-20261024/live-artwork-results.json` and `production-preservation-results.json`. The newer Terms page from main was preserved. Physical testing remains paused.
+
 The set browser previously used the first owned or catalog product photo when no logo metadata existed. The imported set metadata file is empty, so this happened frequently. A booster pack or collection box therefore appeared to represent an unrelated set.
 
 ## Correction
@@ -32,7 +34,7 @@ Browser tests used fresh disposable contexts, loopback requests and synthetic re
 
 The current bundled catalog yields 220 derived set groups. This count is not a promise about a signed-in user's catalog snapshot. Named categories, combined trainer kits, unsupported language editions and entries without verified matching artwork retain named unavailable states. McDonald’s 2023/2024 provider metadata supplies no logo; another edition’s artwork is not substituted. The screenshot’s “183 sets” must not be used as a hardcoded coverage claim.
 
-Local evidence: `artifacts/qa/set-artwork-20261024/`, including `real-art-app/`, `browser-regression/`, `browser-mobile-final/`, `supplemental-app/`, source manifests and baseline comparisons. Screenshots show disposable test records, not the owner's collection. Phone acceptance remains paused. This visual revision stays on its review branch until approved; it has not been merged or published.
+Local evidence: `artifacts/qa/set-artwork-20261024/`, including `real-art-app/`, `browser-regression/`, `browser-mobile-final/`, `supplemental-app/`, source manifests and baseline comparisons. Screenshots show disposable test records, not the owner's collection. Phone acceptance remains paused. Publication was completed after approval as recorded above.
 
 ## Future artwork updates
 
