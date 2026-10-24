@@ -10,7 +10,7 @@ export function privacyPublisherFromEnv(env = {}) {
 }
 
 export const PRIVACY_PUBLISHER = privacyPublisherFromEnv(import.meta.env || {});
-export const PRIVACY_POLICY_UPDATED = "October 18, 2026";
+export const PRIVACY_POLICY_UPDATED = "October 24, 2026";
 
 export function publicPrivacyRoute(pathname = "") {
   const path = pathname.replace(/\/$/, "") || "/";
@@ -28,6 +28,26 @@ export const PRIVACY_SECTIONS = Object.freeze([
   {
     key: "purpose", title: "How information is used and shared",
     body: "Records support the features you choose: collection tracking, restock reports, business records, account recovery, and device sync. Public posts and reports can be seen by other users according to their visibility settings. Shared-workspace members can see records within their granted access. Authorized administrators may review reports, account access, family-program requests, and support submissions. Do not treat public or shared contributions as private notes.",
+  },
+  {
+    key: "discord-data", title: "Discord companion: information it accesses",
+    body: "This policy also covers Code 3 TCG Community, our Discord bot and alert companion. When a server administrator connects it, our setup and delivery tools access the connected server's name and ID, channel names and IDs, roles and permissions, the bot's server membership, and its webhook configuration. They read recent messages in configured setup channels to find and verify the bot's welcome posts, and read back alert messages to confirm delivery. Discord can include message content, author IDs, display names, and other message metadata in these responses. Unrelated messages and author profiles are not saved by these tools. The companion does not continuously archive conversations, read private direct messages, or import your Discord friends list.",
+  },
+  {
+    key: "discord-use", title: "Discord setup, alerts, and saved records",
+    body: "We use this information to configure the authorized server, check channel access, publish welcome and help posts, deliver reviewed public alerts, confirm delivery, and prevent duplicate posts. Maintainer storage keeps server, role, channel, bot and webhook IDs, welcome-post content fingerprints, posted message IDs, delivery results, and setup timestamps. Alert duplicate protection stores a hash of the event ID and payload and the delivery receipt. Bot and webhook credentials are kept in private maintainer configuration and must never be posted publicly. This companion does not automatically link your Discord identity to your Code 3 TCG app account or copy private app records into Discord.",
+  },
+  {
+    key: "discord-sharing", title: "What is shared with Discord and other members",
+    body: "Discord receives the API requests and messages needed to operate the companion. An approved alert shares its public product, retailer or store, reported status, source, observation time, and app link in the configured channel. People with access to that channel can see, copy, or share the message. Server staff can see posts and reports allowed by their Discord permissions and may review information you send them for support or moderation. We do not sell Discord API data, disclose it to advertising networks or data brokers, use it to profile members, or use Discord message content to train AI models. Discord handles its own accounts, messages, infrastructure, and retention under its own privacy policy.",
+  },
+  {
+    key: "discord-retention", title: "Discord retention and deletion requests",
+    body: "We retain companion configuration and delivery records only while needed to operate, recover, and verify the authorized integration and prevent duplicate alerts. These maintainer records do not currently have a fixed automatic expiry. We review and delete Discord API data promptly when it is no longer needed, the integration stops operating, Discord requires deletion, or the applicable user requests deletion, unless a legal retention requirement applies. Removing the bot stops its access through that server membership; it does not by itself erase existing channel messages, webhook integrations, or records already held by Discord or other members. A server administrator can also remove the companion's webhooks in Discord's integration settings.",
+  },
+  {
+    key: "discord-choices", title: "Your Discord privacy choices and support",
+    body: "You can leave the server, change your Discord notification settings, ask staff to add or remove an optional interest role, and use Discord's controls for your own messages and account. Server administrators can remove the bot and its webhooks to disconnect it. To request access, correction, or deletion of companion data held by Code 3 TCG, or report an app or privacy concern, contact the privacy and support address on this page. Include only enough context to identify the affected server, message, or record; we may need to verify that you are entitled to the request. Never send passwords, bot tokens, webhook credentials, or private backups. Deleting your collector app account and removing a Discord integration are separate actions.",
   },
   {
     key: "storage", title: "Device storage and cloud saving",
@@ -72,6 +92,10 @@ export const PRIVACY_SECTIONS = Object.freeze([
   },
   {
     key: "children", title: "Family information",
-    body: "Family-program features are intended to be managed by a parent or guardian. The app does not provide public child profiles or open private messaging for children. A parent or guardian can review the information they entered and use the privacy and deletion options for their account. Do not create an account for a child without the applicable parent or guardian involvement.",
+    body: "Family-program features are intended to be managed by a parent or guardian. The app does not provide public child profiles or open private messaging for children. A parent or guardian can review the information they entered and use the privacy and deletion options for their account. Do not create an account for a child without the applicable parent or guardian involvement. The Discord companion is intended only for people who meet Discord's minimum age of 13 and any higher minimum age required where they live. App family features do not allow a child below that age to use Discord. Do not submit a child's personal information to the companion or community channels; contact support if it was shared in error.",
+  },
+  {
+    key: "changes", title: "Changes to this policy",
+    body: "We update this page when our information practices change and show the current revision date above. We will provide additional notice of material changes through a reasonable available channel when practical, and request consent where required. Contact the privacy and support address on this page if you have questions about a change or an existing record.",
   },
 ]);
