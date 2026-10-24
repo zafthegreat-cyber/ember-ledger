@@ -68,7 +68,7 @@
 }
 .app.app-command-shell[data-theme] .collection-game-picker {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 6.5rem), 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   min-width: 0;
   width: 100%;
@@ -124,6 +124,22 @@
   height: 24px;
   stroke: currentColor;
   stroke-width: 1.6;
+}
+.app.app-command-shell[data-theme] .collection-game-mark[data-has-logo="true"] {
+  box-sizing: border-box;
+  width: 100%;
+  height: 70px;
+  min-width: 0;
+  padding: 7px;
+  border-radius: 8px;
+  background: #252125;
+  color: #fbf4e6;
+}
+.app.app-command-shell[data-theme] .collection-game-mark > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 .app.app-command-shell[data-theme] .collection-game-copy {
   display: flex;
