@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { buildCollectionSetRows, filterCollectionSetRows } from "../src/utils/collectionSets.mjs";
+import { resolveSetArtwork } from "../src/utils/setArtwork.mjs";
 
 let passed = 0;
 const test = (name, run) => { run(); passed += 1; console.log(`PASS ${name}`); };
@@ -73,12 +74,14 @@ test("aggregate overflow never renders Infinity as a price", () => {
   const row = first({ items: [card({ projectedResaleMid: max }), card({ id: "two", projectedResaleMid: max })] });
   assert.equal(row.totalValue, null); assert.equal(row.isValueValid, false);
 });
-test("catalog products offer artwork and discovery only, never owned prices or counts", () => {
+test("catalog discovery cannot promote product logos, checklist metadata or prices into set identity", () => {
   const product = freeze({ id: "cat", setName: "Fusion Strike", catalogType: "card", cardNumber: "7/264", imageUrl: "/existing-art.png", marketPrice: 999, releaseDate: "2000-01-01", printedTotal: 999, logoUrl: "/not-a-set-logo.svg" });
   const row = first({ catalogProducts: [product] });
-  assert.equal(row.artworkRecord, product); assert.equal(row.artworkSource, "catalog"); assert.equal(row.itemCount, 0); assert.equal(row.knownValueCount, 0); assert.equal(row.uniqueCardCount, 0); assert.equal(row.totalCards, null); assert.equal(row.releaseDate, ""); assert.equal(row.logoUrl, "");
+  assert.equal(row.artworkRecord, product); assert.equal(row.artworkSource, "catalog"); assert.equal(row.itemCount, 0); assert.equal(row.knownValueCount, 0); assert.equal(row.uniqueCardCount, 0); assert.equal(row.totalCards, null); assert.equal(row.releaseDate, "");
+  assert.equal(row.logoUrl, resolveSetArtwork({ game: "pokemon", name: "Fusion Strike" }).logoUrl);
+  assert.notEqual(row.logoUrl, product.logoUrl, "The exact known set can use its identity logo; the product cannot supply one");
 });
-test("saved private and legacy photo fields take priority over representative catalog artwork", () => {
+test("saved private and legacy photo references stay intact for existing product detail compatibility", () => {
   for (const photo of [{ itemImage: "private:photo" }, { item_image: "/my-photo.png" }, { displayImage: "/display.png" }, { photos: [{ url: "/photo.png" }] }, { images: { large: "/nested.png" } }]) {
     const item = freeze(card(photo));
     const row = first({ items: [item], catalogProducts: [{ setName: "Fusion Strike", imageUrl: "/catalog.png" }] });

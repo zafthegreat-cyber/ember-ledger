@@ -27,9 +27,9 @@ function fixtureRecords() {
       { ...common, id: "qa-sets-sealed", name: "Fusion sealed box", quantity: 2, productType: "Booster Box", productClassification: "Sealed", projectedResaleMid: 25, setName: "Fusion Strike", item_image: `${base.origin}/__qa/sets/sealed.svg` },
       { ...common, id: "qa-sets-repository-card", name: "Zenith third card", quantity: 1, projectedResaleMid: 15, setName: "Fusion Strike", cardNumber: "3", item_image: `${base.origin}/__qa/sets/zenith.svg` },
       { ...common, id: "qa-sets-celebration", name: "Celebration saved card", quantity: 1, projectedResaleMid: 3, setName: "Celebrations", cardNumber: "2" },
-      { ...common, id: "qa-sets-custom", name: "Custom set card", quantity: 1, projectedResaleMid: 7, setName: "Nebula custom set", cardNumber: "A1" },
-      { ...common, id: "qa-sets-unpriced-only", name: "Unpriced custom card", quantity: 1, projectedResaleMid: "", setName: "Unknown custom set", cardNumber: "U1" },
-      { ...common, id: "qa-sets-zero-only", name: "Zero custom card", quantity: 1, projectedResaleMid: 0, setName: "Zero custom set", cardNumber: "Z1" },
+      { ...common, id: "qa-sets-custom", name: "Custom set card", quantity: 1, projectedResaleMid: 7, tcgGame: "pokemon", setName: "Nebula custom set", cardNumber: "A1" },
+      { ...common, id: "qa-sets-unpriced-only", name: "Unpriced custom card", quantity: 1, projectedResaleMid: "", setName: "Unknown custom set", cardNumber: "U1", item_image: `${base.origin}/__qa/sets/custom-product.svg` },
+      { ...common, id: "qa-sets-zero-only", name: "Zero custom card", quantity: 1, projectedResaleMid: 0, tcgGame: "pokemon", setName: "Zero custom set", cardNumber: "Z1" },
       { ...common, id: "qa-sets-held", name: "Excluded held card", quantity: 1, ownedItemPurpose: "HOLD", projectedResaleMid: 777, setName: "Celebrations", cardNumber: "3" },
     ],
   };
@@ -42,20 +42,24 @@ function fixtureExpense() {
 async function setup(browser, testCase) {
   const { legacy, inventory } = fixtureRecords();
   const context = await browser.newContext({ viewport: { width: testCase.width, height: testCase.height }, reducedMotion: "reduce", serviceWorkers: "block" });
-  const safety = { blockedWrites: [], blockedExternal: [], blockedWebSockets: [], pageErrors: [], syntheticSetCatalog: false };
+  const safety = { blockedWrites: [], blockedExternal: [], blockedWebSockets: [], pageErrors: [], setArtworkRequests: [], syntheticSetCatalog: false };
   await context.route("**/*", route => {
     const request = route.request(), url = new URL(request.url());
     if (!["GET", "HEAD"].includes(request.method())) { safety.blockedWrites.push(`${request.method()} ${url.pathname}`); return route.abort(); }
     if (url.origin !== base.origin) { safety.blockedExternal.push(url.origin + url.pathname); return route.abort(); }
+    if (url.pathname === "/src/data/setArtwork.json") return route.fulfill({ contentType: "application/javascript", body: 'export default {schemaVersion:1,sets:[],games:[]};' });
     if (url.pathname === "/src/data/generated/pokemonTcgSets.json") {
       safety.syntheticSetCatalog = true;
       const sets = [
-        { id: "swsh8", name: "Fusion Strike", setCode: "FST", series: "Sword & Shield", releaseDate: "2021-11-12", total: 4, printedTotal: 4, logoUrl: `${base.origin}/__qa/sets/logo.svg` },
-        { id: "cel25", name: "Celebrations", setCode: "CEL", series: "Sword & Shield", releaseDate: "2021-10-08", total: 3, printedTotal: 3, logoUrl: `${base.origin}/__qa/sets/broken.svg` },
+        { id: "swsh8", name: "Fusion Strike", setCode: "FST", series: "Sword & Shield", releaseDate: "2021-11-12", total: 4, printedTotal: 4, logoUrl: `${base.origin}/__qa/sets/fusion-logo.svg`, symbolUrl: `${base.origin}/__qa/sets/fusion-symbol.svg` },
+        { id: "cel25", name: "Celebrations", setCode: "CEL", series: "Sword & Shield", releaseDate: "2021-10-08", total: 3, printedTotal: 3, logoUrl: `${base.origin}/__qa/sets/celebrations-logo-broken.svg`, symbolUrl: `${base.origin}/__qa/sets/celebrations-symbol.svg` },
+        { id: "qa-nebula", name: "Nebula custom set", sourceType: "manual", logoUrl: `${base.origin}/__qa/sets/nebula-logo-broken.svg`, symbolUrl: `${base.origin}/__qa/sets/nebula-symbol-broken.svg` },
+        { id: "qa-zero", name: "Zero custom set", sourceType: "manual", symbolUrl: `${base.origin}/__qa/sets/zero-symbol.svg` },
       ];
       return route.fulfill({ contentType: "application/javascript", body: `export default ${JSON.stringify(sets)};` });
     }
-    if (url.pathname === "/__qa/sets/broken.svg") return route.fulfill({ status: 404, body: "Synthetic missing artwork" });
+    if (/\/__qa\/sets\/.*(?:logo|symbol)/.test(url.pathname)) safety.setArtworkRequests.push(url.pathname);
+    if (url.pathname.endsWith("-broken.svg")) return route.fulfill({ status: 404, body: "Synthetic missing artwork" });
     if (url.pathname.startsWith("/__qa/sets/")) return route.fulfill({ contentType: "image/svg+xml", body: svg });
     if (url.pathname.endsWith("/sealedProducts.json") && request.resourceType() === "fetch") return route.fulfill({ contentType: "application/json", body: JSON.stringify([{ id: "qa-sets-catalog", name: "Synthetic current catalog price", productName: "Synthetic current catalog price", productType: "Supply", sourceType: "manual", marketPrice: 37.25, imageUrl: `${base.origin}/__qa/sets/catalog.svg` }]) });
     if (url.pathname.startsWith("/api/")) return route.fulfill({ contentType: "application/json", body: '{"configured":false}' });
@@ -123,6 +127,25 @@ async function geometry(page, region, testCase) {
   return metrics;
 }
 
+async function expectSetImage(container, setName, fileName) {
+  const artwork = container.locator(".collection-sets-artwork");
+  await artwork.scrollIntoViewIfNeeded();
+  await expect(artwork).toHaveAttribute("data-artwork", "logo");
+  const image = artwork.getByRole("img", { name: `${setName} set artwork`, exact: true });
+  await expect(image).toHaveAttribute("src", `${base.origin}/__qa/sets/${fileName}`);
+  await expect.poll(() => image.evaluate(element => element.complete && element.naturalWidth > 0)).toBe(true);
+  await expect(artwork.locator(".collection-sets-artwork-photo,.collection-sets-artwork-caption")).toHaveCount(0);
+}
+
+async function expectNamedSetFallback(container, setName) {
+  const artwork = container.locator(".collection-sets-artwork");
+  await artwork.scrollIntoViewIfNeeded();
+  await expect(artwork).toHaveAttribute("data-artwork", "fallback");
+  await expect(artwork.locator("strong")).toHaveText(setName);
+  await expect(artwork).toContainText("Set artwork unavailable");
+  await expect(artwork.locator("img,.collection-sets-artwork-photo,.collection-sets-artwork-caption")).toHaveCount(0);
+}
+
 async function runCase(browser, testCase) {
   const { context, page, safety } = await setup(browser, testCase);
   const name = `${testCase.width}-${testCase.theme}`;
@@ -163,6 +186,9 @@ async function runCase(browser, testCase) {
       return { ...result, inspected: true, network: safety };
     }
     await exercise(page, region, testCase, result);
+    assert.equal(safety.setArtworkRequests.includes("/__qa/sets/fusion-symbol.svg"), false, "A successful matching logo never fetches the backup symbol");
+    assert.ok(safety.setArtworkRequests.indexOf("/__qa/sets/celebrations-logo-broken.svg") < safety.setArtworkRequests.indexOf("/__qa/sets/celebrations-symbol.svg"), "The backup symbol is requested only after the logo fails");
+    assert.ok(safety.setArtworkRequests.includes("/__qa/sets/nebula-logo-broken.svg") && safety.setArtworkRequests.includes("/__qa/sets/nebula-symbol-broken.svg"), "Both failed identity-art sources are exercised before the named fallback");
     assert.equal(await recordBytes(page), before, "Set browsing preserves every original item, sale, expense, catalog price and repository byte");
     assert.equal(safety.syntheticSetCatalog, true, "The fixture catalog supplies known dates, logos and checklist totals");
     assert.deepEqual(safety.blockedWrites, [], "Set browsing attempts no server writes");
@@ -189,25 +215,39 @@ async function exercise(page, region, testCase, result) {
   await expect(fusion).toContainText("3/4");
   await expect(fusion).toContainText("4 of 5 records valued");
   await expect(fusion.locator("time")).toHaveAttribute("datetime", "2021-11-12");
-  await expect.poll(() => fusion.locator("img").evaluateAll(images => images.some(img => img.complete && img.naturalWidth > 0))).toBe(true);
+  await expectSetImage(fusion, "Fusion Strike", "fusion-logo.svg");
   await celebrations.scrollIntoViewIfNeeded();
   await expect(celebrations).toContainText("$3.00");
   await expect(celebrations).toContainText("2/3");
-  await expect(celebrations.locator(".collection-sets-artwork")).toHaveAttribute("data-artwork", "fallback");
-  result.realProgressSavedValuesArtworkDatesAndBrokenFallback = true;
+  await expectSetImage(celebrations, "Celebrations", "celebrations-symbol.svg");
+  await expect(grid).not.toContainText("Example artwork");
+  await expect(grid).not.toContainText("Collection artwork");
+  result.realProgressSavedValuesAndReleaseDates = true;
   result.gridMetrics = await geometry(page, region, testCase);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await settle(page);
   await page.screenshot({ path: path.join(output, `${name}-sets.png`), fullPage: true });
+  await page.screenshot({ path: path.join(output, `${name}-sets-viewport.png`) });
 
   await region.getByRole("button", { name: "Your sets", exact: true }).click();
   await expect(grid.locator(".collection-sets-card")).toHaveCount(5);
   await expect(grid).not.toContainText("Family binder record");
+  await expectNamedSetFallback(grid.getByRole("button", { name: "Open Nebula custom set", exact: true }), "Nebula custom set");
+  await expectNamedSetFallback(grid.getByRole("button", { name: "Open Unknown custom set", exact: true }), "Unknown custom set");
+  await expectSetImage(grid.getByRole("button", { name: "Open Zero custom set", exact: true }), "Zero custom set", "zero-symbol.svg");
+  result.matchingLogoFirstThenSymbolAndNamedMissingOrBrokenFallback = true;
+  result.ownedGridMetrics = await geometry(page, region, testCase);
   await region.getByRole("button", { name: "Your sets", exact: true }).scrollIntoViewIfNeeded();
   await page.screenshot({ path: path.join(output, `${name}-your-sets.png`), fullPage: true });
+  await page.screenshot({ path: path.join(output, `${name}-your-sets-viewport.png`) });
   const search = region.getByRole("searchbox", { name: "Search sets", exact: true });
   await search.fill("nebula");
   await expect(grid.locator("button")).toHaveCount(1);
   await expect(grid).toContainText("Nebula custom set");
   await expect(grid).toContainText("Checklist unavailable");
+  await grid.getByRole("button", { name: "Open Nebula custom set", exact: true }).click();
+  await expectNamedSetFallback(detail.locator(".collection-set-detail-header"), "Nebula custom set");
+  await detail.getByRole("button", { name: /Back to sets$/ }).click();
   await region.getByRole("button", { name: "Clear search", exact: true }).click();
   await region.getByRole("combobox", { name: "Sort sets", exact: true }).selectOption("newest");
   await expect(grid.locator(".collection-sets-card-name")).toHaveText(["Fusion Strike", "Celebrations", "Nebula custom set", "Unknown custom set", "Zero custom set"]);
@@ -226,6 +266,10 @@ async function exercise(page, region, testCase, result) {
   await expect(unpriced).not.toContainText("$0.00");
   await unpriced.click();
   await expect(detail).toBeVisible();
+  await expectNamedSetFallback(detail.locator(".collection-set-detail-header"), "Unknown custom set");
+  const preservedPhoto = detail.getByRole("list", { name: "Collection items", exact: true }).getByRole("button", { name: "Open Unpriced custom card", exact: true }).locator("img");
+  await expect(preservedPhoto).toHaveAttribute("src", `${base.origin}/__qa/sets/custom-product.svg`);
+  await expect.poll(() => preservedPhoto.evaluate(element => element.complete && element.naturalWidth > 0)).toBe(true);
   await expect(detail).not.toContainText("$0.00");
   await expect(detail).toContainText("Not recorded");
   await detail.getByRole("button", { name: /Back to sets$/ }).click();
@@ -235,6 +279,7 @@ async function exercise(page, region, testCase, result) {
   await expect(zero).not.toContainText("No saved value");
   await zero.click();
   await expect(detail).toContainText("$0.00");
+  await expectSetImage(detail.locator(".collection-set-detail-header"), "Zero custom set", "zero-symbol.svg");
   await detail.getByRole("button", { name: /Back to sets$/ }).click();
   result.missingAndExplicitZeroRemainDistinctInGridAndDetail = true;
 
@@ -247,12 +292,17 @@ async function exercise(page, region, testCase, result) {
   await expect(detail).toBeVisible();
   await expect(detail.getByRole("heading", { name: "Fusion Strike", exact: true })).toBeFocused();
   await expect(detail).toContainText("$90.00");
+  await expectSetImage(detail.locator(".collection-set-detail-header"), "Fusion Strike", "fusion-logo.svg");
   await expect(detail).not.toContainText("Excluded resale card");
   await expect(detail).not.toContainText("Excluded held card");
   const items = detail.getByRole("list", { name: "Collection items", exact: true });
   await expect(items.locator("button")).toHaveCount(5);
   await expect(items).toContainText("Unknown saved value card");
   await expect(items).toContainText("Not valued");
+  for (const [itemName, fileName] of [["Aurora first card", "card.svg"], ["Aurora duplicate card", "duplicate.svg"], ["Fusion sealed box", "sealed.svg"], ["Zenith third card", "zenith.svg"]]) {
+    await expect(items.getByRole("button", { name: `Open ${itemName}`, exact: true }).locator("img")).toHaveAttribute("src", `${base.origin}/__qa/sets/${fileName}`);
+  }
+  result.originalProductPhotosRemainInCollectionItemsOnly = true;
   result.detailMetrics = await geometry(page, region, testCase);
   await page.screenshot({ path: path.join(output, `${name}-detail.png`), fullPage: true });
   const detailUrl = page.url();
@@ -343,6 +393,6 @@ async function exercise(page, region, testCase, result) {
     }
   } finally {
     await browser.close();
-    fs.writeFileSync(path.join(output, "results.json"), JSON.stringify({ actualApp: true, syntheticOnly: true, catalogFixture: "Loopback module response adds synthetic Fusion Strike/Celebrations checklist totals, dates and logos; no original files changed", results }, null, 2));
+    fs.writeFileSync(path.join(output, "results.json"), JSON.stringify({ actualApp: true, syntheticOnly: true, catalogFixture: "Loopback module response supplies distinct logos and symbols, missing/broken art and existing owned-product photos. All values and records remain synthetic; no original files changed", results }, null, 2));
   }
 })().catch(error => { console.error(error); process.exitCode = 1; });

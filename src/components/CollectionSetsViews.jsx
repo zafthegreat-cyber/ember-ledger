@@ -1,5 +1,4 @@
 import { useState } from "react";
-import ItemPhoto from "./ItemPhoto.jsx";
 import { PortfolioItemGrid } from "./CollectionPortfolioViews.jsx";
 import { getPortfolioItemValuation } from "../utils/collectionPortfolio.mjs";
 import "./collection-sets.css";
@@ -29,17 +28,12 @@ function releaseDate(value) {
 
 function setTitle(row) { return row.name || row.setName || "Unnamed set"; }
 
-export function SetArtwork({ row = {}, resolveItemImage }) {
+export function SetArtwork({ row = {} }) {
   const [failedSources, setFailedSources] = useState([]);
   const logo = [artworkUrl(row.logoUrl), artworkUrl(row.symbolUrl)].find((source) => source && !failedSources.includes(source));
-  const photo = row.artworkRecord ? resolveItemImage?.(row.artworkRecord) || "" : "";
-  const source = logo || photo;
   const date = releaseDate(row.releaseDate);
-  const sourceLabel = row.artworkSource === "catalog" ? "Example artwork" : "Collection artwork";
-  return <span className="collection-sets-artwork" data-artwork={logo ? "logo" : photo ? "item" : "fallback"}>
-    <span className="collection-sets-artwork-fallback" aria-hidden="true"><strong>{row.code || "SET"}</strong><span>{row.series || "Trading card set"}</span></span>
-    {logo ? <img className="collection-sets-artwork-logo" src={logo} alt="" loading="lazy" decoding="async" onError={() => setFailedSources((previous) => previous.includes(logo) ? previous : [...previous, logo])} /> : source ? <ItemPhoto className="collection-sets-artwork-photo" fallbackClassName="collection-sets-artwork-photo-fallback" src={source} /> : null}
-    {!logo && photo ? <span className="collection-sets-artwork-caption">{sourceLabel}</span> : null}
+  return <span className="collection-sets-artwork" data-artwork={logo ? "logo" : "fallback"} data-has-release={Boolean(date)}>
+    {logo ? <img className="collection-sets-artwork-logo" src={logo} alt={`${setTitle(row)} set artwork`} loading="lazy" decoding="async" onError={() => setFailedSources((previous) => previous.includes(logo) ? previous : [...previous, logo])} /> : <span className="collection-sets-artwork-fallback"><strong>{setTitle(row)}</strong><span>Set artwork unavailable</span></span>}
     {date ? <time className="collection-sets-release" dateTime={date.date}>{date.label}</time> : null}
   </span>;
 }
@@ -53,13 +47,13 @@ function SetSavedValue({ row, showValues }) {
   return <><span className="collection-sets-value">Saved value <strong>{money.format(total)}</strong></span>{knownCount < itemCount ? <span className="collection-sets-value-coverage">{knownCount} of {itemCount} records valued</span> : null}</>;
 }
 
-export function CollectionSetGrid({ rows = EMPTY_ROWS, onOpen, resolveItemImage, showValues = true }) {
+export function CollectionSetGrid({ rows = EMPTY_ROWS, onOpen, showValues = true }) {
   const nameCounts = new Map();
   for (const row of rows) { const name = setTitle(row).toLocaleLowerCase(); nameCounts.set(name, (nameCounts.get(name) || 0) + 1); }
   return <ul className="collection-sets-grid" aria-label="Trading card sets">{rows.map((row, index) => {
     const progress = typeof row.progressPercent === "number" && Number.isFinite(row.progressPercent) && row.progressPercent >= 0 && row.progressPercent <= 100 ? row.progressPercent : null;
     return <li key={row.id || row.key || `${row.code || setTitle(row)}-${index}`}><button type="button" className="collection-sets-card" data-set-id={row.id} aria-label={`Open ${setTitle(row)}${nameCounts.get(setTitle(row).toLocaleLowerCase()) > 1 ? ` (${row.gameName || "Game not recorded"})` : ""}`} onClick={() => onOpen?.(row)}>
-      <SetArtwork row={row} resolveItemImage={resolveItemImage} />
+      <SetArtwork row={row} />
       <span className="collection-sets-card-copy"><strong className="collection-sets-card-name">{setTitle(row)}</strong>{row.gameName || row.series ? <span className="collection-sets-card-series">{[row.gameName, row.series].filter(Boolean).join(" · ")}</span> : null}<span className="collection-sets-progress-label">{row.progressLabel || "Checklist unavailable"}</span>{progress != null ? <progress className="collection-sets-progress" value={progress} max="100" aria-label={`${setTitle(row)} collection completion`}>{Math.round(progress)}%</progress> : null}<SetSavedValue row={row} showValues={showValues} /></span>
     </button></li>;
   })}</ul>;

@@ -3,6 +3,7 @@ import { inferOwnedItemPurpose, OWNED_ITEM_PURPOSES } from "../features/ownedIte
 import { getPortfolioItemValuation, summarizePortfolio } from "./collectionPortfolio.mjs";
 import { getItemImageUrl } from "./productDisplayUtils.js";
 import { getRecordGame, getRecordGameLabel, normalizeCollectibleGame } from "./collectibleGames.mjs";
+import { resolveSetArtwork } from "./setArtwork.mjs";
 
 // Read-only collection presentation. Product release dates, catalog prices and
 // card-number denominators are never promoted into official set metadata.
@@ -171,13 +172,16 @@ export function buildCollectionSetRows({ items = [], knownSets = [], catalogProd
     const artworkRecord = group.ownedItems.find(hasArtwork) || group.catalogRecords.find(hasArtwork) || group.ownedItems[0] || group.catalogRecords[0] || null;
     const artworkSource = artworkRecord && hasArtwork(artworkRecord) ? group.ownedItems.includes(artworkRecord) ? "owned" : "catalog" : "";
     const sealedItems = group.ownedItems.filter((item) => singleOrSealed(item) === "sealed");
+    const foreignArtworkOnly = languages.length > 0 && !languages.includes("English");
+    const artworkMetadata = group.metadata.filter((record) => !foreignArtworkOnly || record.artworkLanguage !== "en");
+    const setArtwork = resolveSetArtwork({ game: group.gameId, name: group.name, language: foreignArtworkOnly ? languages[0] : "en" });
     return {
       id: `set:${encodeURIComponent(group.key)}`, key: group.key, name: group.name, gameId: group.gameId, gameName: group.gameName,
       code: uniqueMetadataValue(group.metadata, (record) => first(record, ["code", "setCode", "set_code", "ptcgoCode"])) || "",
       series: uniqueMetadataValue(group.metadata, (record) => first(record, ["series"])) || "",
       releaseDate: uniqueMetadataValue(group.metadata, (record) => validDate(first(record, ["releaseDate", "release_date"]))) || "",
-      logoUrl: uniqueMetadataValue(group.metadata, (record) => first(record, ["logoUrl", "logo_url"])) || "",
-      symbolUrl: uniqueMetadataValue(group.metadata, (record) => first(record, ["symbolUrl", "symbol_url"])) || "",
+      logoUrl: uniqueMetadataValue(artworkMetadata, (record) => first(record, ["logoUrl", "logo_url"])) || setArtwork?.logoUrl || "",
+      symbolUrl: uniqueMetadataValue(artworkMetadata, (record) => first(record, ["symbolUrl", "symbol_url"])) || setArtwork?.symbolUrl || "",
       ownedItems: group.ownedItems, artworkRecord, artworkSource,
       totalValue: valuation.total, knownValueCount: valuation.knownCount, itemCount: group.ownedItems.length,
       unknownValueCount: valuation.unknownCount, valuationLabel: valuation.valuationLabel, isValueValid: valuation.isValid,

@@ -1,0 +1,3693 @@
+{
+  "schemaVersion": 1,
+  "reviewedAt": "2026-10-24",
+  "provider": {
+    "fileSha256": "9DF2F1E4DE63037925CED583AFC1FA7CF807E0F1240B21F292F0EEA2782A3859",
+    "commit": "39a26a144c8b6ef6c2fb17b2c29d0bb7121e3a11",
+    "url": "https://raw.githubusercontent.com/PokemonTCG/pokemon-tcg-data/39a26a144c8b6ef6c2fb17b2c29d0bb7121e3a11/sets/en.json",
+    "count": 176
+  },
+  "sets": [
+    {
+      "id": "base1",
+      "name": "Base",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/base1.png",
+      "sourceUrl": "https://images.pokemontcg.io/base1/logo.png",
+      "sha256": "0fd74831836f0e95f5fe8c2e7eff8d67b170013ce87311866fd55f2586027553",
+      "dimensions": {
+        "width": 2500,
+        "height": 1281
+      },
+      "game": "pokemon",
+      "aliases": [
+        "BS",
+        "Base",
+        "Base Set",
+        "Base Set (Shadowless)",
+        "base",
+        "base set",
+        "base1"
+      ]
+    },
+    {
+      "id": "base2",
+      "name": "Jungle",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/base2.png",
+      "sourceUrl": "https://images.pokemontcg.io/base2/logo.png",
+      "sha256": "fddd5ad6c4864eb6284f78aac284652b5e1885271b1d48dd8a94387a12ca23d7",
+      "dimensions": {
+        "width": 160,
+        "height": 111
+      },
+      "game": "pokemon",
+      "aliases": [
+        "JU",
+        "Jungle",
+        "base2",
+        "ju",
+        "jungle"
+      ]
+    },
+    {
+      "id": "basep",
+      "name": "Wizards Black Star Promos",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/basep.png",
+      "sourceUrl": "https://images.pokemontcg.io/basep/logo.png",
+      "sha256": "feedeb0bba7952ce90f70115df5ece0399be0d4b8ea8d3fa7e2f96401fe4da69",
+      "dimensions": {
+        "width": 200,
+        "height": 181
+      },
+      "game": "pokemon",
+      "aliases": [
+        "PR",
+        "Wizards Black Star Promos",
+        "basep",
+        "black star promo",
+        "wizards promo",
+        "wotc promo"
+      ]
+    },
+    {
+      "id": "base3",
+      "name": "Fossil",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/base3.png",
+      "sourceUrl": "https://images.pokemontcg.io/base3/logo.png",
+      "sha256": "6ce58b3d77b592a47a3f2a52a53af15114fe002d6fca1a5e93514fda2c4e1fb6",
+      "dimensions": {
+        "width": 200,
+        "height": 174
+      },
+      "game": "pokemon",
+      "aliases": [
+        "FO",
+        "Fossil",
+        "base3",
+        "fo",
+        "fossil"
+      ]
+    },
+    {
+      "id": "base4",
+      "name": "Base Set 2",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/base4.png",
+      "sourceUrl": "https://images.pokemontcg.io/base4/logo.png",
+      "sha256": "6f6a9e9c61f7045f79f4854da8ee7f610086d0457d0b42b19a7432c8dda0404b",
+      "dimensions": {
+        "width": 180,
+        "height": 134
+      },
+      "game": "pokemon",
+      "aliases": [
+        "B2",
+        "Base Set 2",
+        "b2",
+        "base 2",
+        "base set 2",
+        "base4"
+      ]
+    },
+    {
+      "id": "base5",
+      "name": "Team Rocket",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/base5.png",
+      "sourceUrl": "https://images.pokemontcg.io/base5/logo.png",
+      "sha256": "cc6ca3b47eb88a7f22841113b936a52b403d00c16d10245e375f2939fc2d7ccd",
+      "dimensions": {
+        "width": 400,
+        "height": 137
+      },
+      "game": "pokemon",
+      "aliases": [
+        "TR",
+        "Team Rocket",
+        "base5",
+        "rocket",
+        "team rocket",
+        "tr"
+      ]
+    },
+    {
+      "id": "gym1",
+      "name": "Gym Heroes",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/gym1.png",
+      "sourceUrl": "https://images.pokemontcg.io/gym1/logo.png",
+      "sha256": "ca12dd94aac049f8c830b6f2bccc7d307cee6c917bf04d8433df5832cbc461a8",
+      "dimensions": {
+        "width": 250,
+        "height": 110
+      },
+      "game": "pokemon",
+      "aliases": [
+        "G1",
+        "Gym Heroes",
+        "g1",
+        "gym heroes",
+        "gym1"
+      ]
+    },
+    {
+      "id": "gym2",
+      "name": "Gym Challenge",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/gym2.png",
+      "sourceUrl": "https://images.pokemontcg.io/gym2/logo.png",
+      "sha256": "70d1b9a5d7bf5a4ce56a9bcbeb71f2797ac435bb08e0ad4d07443e53e4757a57",
+      "dimensions": {
+        "width": 243,
+        "height": 112
+      },
+      "game": "pokemon",
+      "aliases": [
+        "G2",
+        "Gym Challenge",
+        "g2",
+        "gym challenge",
+        "gym2"
+      ]
+    },
+    {
+      "id": "neo1",
+      "name": "Neo Genesis",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/neo1.png",
+      "sourceUrl": "https://images.pokemontcg.io/neo1/logo.png",
+      "sha256": "ab7e4a2e599c28b7b26cdf2b136314fa90c1ae2daa84d7831edcc87b2a98f0c2",
+      "dimensions": {
+        "width": 1280,
+        "height": 422
+      },
+      "game": "pokemon",
+      "aliases": [
+        "N1",
+        "Neo Genesis",
+        "n1",
+        "neo genesis",
+        "neo1"
+      ]
+    },
+    {
+      "id": "neo2",
+      "name": "Neo Discovery",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/neo2.png",
+      "sourceUrl": "https://images.pokemontcg.io/neo2/logo.png",
+      "sha256": "1237beac2b27e6105b925f983801dc0fc14bc3add344a72b45f5a01769bc2e7f",
+      "dimensions": {
+        "width": 200,
+        "height": 90
+      },
+      "game": "pokemon",
+      "aliases": [
+        "N2",
+        "Neo Discovery",
+        "n2",
+        "neo discovery",
+        "neo2"
+      ]
+    },
+    {
+      "id": "si1",
+      "name": "Southern Islands",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/si1.png",
+      "sourceUrl": "https://images.pokemontcg.io/si1/logo.png",
+      "sha256": "cf7d4c81597f4131c867d0d646f77fc9157f3e2204bc33f6f980fe2df3397ccf",
+      "dimensions": {
+        "width": 1200,
+        "height": 479
+      },
+      "game": "pokemon",
+      "aliases": [
+        "Southern Islands",
+        "si1"
+      ]
+    },
+    {
+      "id": "neo3",
+      "name": "Neo Revelation",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/neo3.png",
+      "sourceUrl": "https://images.pokemontcg.io/neo3/logo.png",
+      "sha256": "9f5818b9a54c11e27b44e88c08520f0bc64adda80e6b68f788fff157aaf2c139",
+      "dimensions": {
+        "width": 308,
+        "height": 230
+      },
+      "game": "pokemon",
+      "aliases": [
+        "N3",
+        "Neo Revelation",
+        "n3",
+        "neo revelation",
+        "neo3"
+      ]
+    },
+    {
+      "id": "neo4",
+      "name": "Neo Destiny",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/neo4.png",
+      "sourceUrl": "https://images.pokemontcg.io/neo4/logo.png",
+      "sha256": "8b39798df4206acc71e39bfe460f0e8bfee202bc476cb41a4d11b596f449fb75",
+      "dimensions": {
+        "width": 200,
+        "height": 95
+      },
+      "game": "pokemon",
+      "aliases": [
+        "N4",
+        "Neo Destiny",
+        "n4",
+        "neo destiny",
+        "neo4"
+      ]
+    },
+    {
+      "id": "base6",
+      "name": "Legendary Collection",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/base6.png",
+      "sourceUrl": "https://images.pokemontcg.io/base6/logo.png",
+      "sha256": "e1d7ee6e182be9d900cae8b82db93d367f115c4a244a7db7a6eea0e1a716ae7c",
+      "dimensions": {
+        "width": 198,
+        "height": 74
+      },
+      "game": "pokemon",
+      "aliases": [
+        "LC",
+        "Legendary Collection",
+        "base6"
+      ]
+    },
+    {
+      "id": "ecard1",
+      "name": "Expedition Base Set",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/ecard1.png",
+      "sourceUrl": "https://images.pokemontcg.io/ecard1/logo.png",
+      "sha256": "fbb7b0336b5f01606d54fa9da575a3a8af773b78b16dffc57a7ab4e2d2eaf1c7",
+      "dimensions": {
+        "width": 1080,
+        "height": 247
+      },
+      "game": "pokemon",
+      "aliases": [
+        "EX",
+        "EXP",
+        "Expedition Base Set",
+        "ecard1",
+        "exp",
+        "expedition",
+        "expedition base"
+      ]
+    },
+    {
+      "id": "bp",
+      "name": "Best of Game",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/bp.png",
+      "sourceUrl": "https://images.pokemontcg.io/bp/logo.png",
+      "sha256": "424de0cac677a9cfc26df49e888a8cc1b30189a4e42dcd7f9b4b6c5d4bddc59f",
+      "dimensions": {
+        "width": 1200,
+        "height": 615
+      },
+      "game": "pokemon",
+      "aliases": [
+        "BP",
+        "Best of Game",
+        "bp"
+      ]
+    },
+    {
+      "id": "ecard2",
+      "name": "Aquapolis",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/ecard2.png",
+      "sourceUrl": "https://images.pokemontcg.io/ecard2/logo.png",
+      "sha256": "b7af96c00440312fb56530654be618773ae587a6d189546545385b33944a3b6d",
+      "dimensions": {
+        "width": 182,
+        "height": 38
+      },
+      "game": "pokemon",
+      "aliases": [
+        "AQ",
+        "Aquapolis",
+        "aq",
+        "aquapolis",
+        "ecard2"
+      ]
+    },
+    {
+      "id": "ecard3",
+      "name": "Skyridge",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/ecard3.png",
+      "sourceUrl": "https://images.pokemontcg.io/ecard3/logo.png",
+      "sha256": "8d852d32031114d855738da8c14fec05f721fce1e09e317c432099fa59fa6645",
+      "dimensions": {
+        "width": 210,
+        "height": 65
+      },
+      "game": "pokemon",
+      "aliases": [
+        "SK",
+        "Skyridge",
+        "ecard3",
+        "sk",
+        "skyridge"
+      ]
+    },
+    {
+      "id": "ex1",
+      "name": "Ruby & Sapphire",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/ex1.png",
+      "sourceUrl": "https://images.pokemontcg.io/ex1/logo.png",
+      "sha256": "b90a7efa6682e04630349c8829b5e5af21b5796e11a5c35311fb935af17d9655",
+      "dimensions": {
+        "width": 574,
+        "height": 72
+      },
+      "game": "pokemon",
+      "aliases": [
+        "EX Ruby & Sapphire",
+        "RS",
+        "Ruby & Sapphire",
+        "ex1",
+        "rs",
+        "ruby and sapphire",
+        "ruby sapphire"
+      ]
+    },
+    {
+      "id": "ex2",
+      "name": "Sandstorm",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/ex2.png",
+      "sourceUrl": "https://images.pokemontcg.io/ex2/logo.png",
+      "sha256": "cd8b320ca559ef008692634d898071c264fe71f277a0f065827d71b321e58377",
+      "dimensions": {
+        "width": 572,
+        "height": 76
+      },
+      "game": "pokemon",
+      "aliases": [
+        "EX Sandstorm",
+        "SS",
+        "Sandstorm",
+        "ex sandstorm",
+        "ex2",
+        "sandstorm"
+      ]
+    },
+    {
+      "id": "ex3",
+      "name": "Dragon",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/ex3.png",
+      "sourceUrl": "https://images.pokemontcg.io/ex3/logo.png",
+      "sha256": "265bbf47a30350392832b48b306801201a638bb26b9abc54757af6af4615bd5e",
+      "dimensions": {
+        "width": 562,
+        "height": 84
+      },
+      "game": "pokemon",
+      "aliases": [
+        "DR",
+        "Dragon",
+        "EX Dragon",
+        "dragon",
+        "ex dragon",
+        "ex3"
+      ]
+    },
+    {
+      "id": "np",
+      "name": "Nintendo Black Star Promos",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/np.png",
+      "sourceUrl": "https://images.pokemontcg.io/np/logo.png",
+      "sha256": "feedeb0bba7952ce90f70115df5ece0399be0d4b8ea8d3fa7e2f96401fe4da69",
+      "dimensions": {
+        "width": 200,
+        "height": 181
+      },
+      "game": "pokemon",
+      "aliases": [
+        "Nintendo Black Star Promos",
+        "Nintendo Promos",
+        "PR-NP",
+        "np"
+      ]
+    },
+    {
+      "id": "ex4",
+      "name": "Team Magma vs Team Aqua",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/ex4.png",
+      "sourceUrl": "https://images.pokemontcg.io/ex4/logo.png",
+      "sha256": "fff2b42c6aa08857fe7199a35e7420ccc65171356ea103bd3f1fc2f5b0737208",
+      "dimensions": {
+        "width": 578,
+        "height": 145
+      },
+      "game": "pokemon",
+      "aliases": [
+        "EX Team Magma vs Team Aqua",
+        "MA",
+        "Team Magma vs Team Aqua",
+        "ex4",
+        "ma",
+        "team magma aqua",
+        "team magma vs team aqua"
+      ]
+    },
+    {
+      "id": "tk1a",
+      "name": "EX Trainer Kit Latias",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/tk1a.png",
+      "sourceUrl": "https://images.pokemontcg.io/tk1a/logo.png",
+      "sha256": "2ad8e4de7556abd5515845b6de132ceb75bd1dce014053e218899999c07f1a91",
+      "dimensions": {
+        "width": 2323,
+        "height": 208
+      },
+      "game": "pokemon",
+      "aliases": [
+        "EX Trainer Kit Latias",
+        "tk1a"
+      ]
+    },
+    {
+      "id": "tk1b",
+      "name": "EX Trainer Kit Latios",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/tk1b.png",
+      "sourceUrl": "https://images.pokemontcg.io/tk1b/logo.png",
+      "sha256": "2ad8e4de7556abd5515845b6de132ceb75bd1dce014053e218899999c07f1a91",
+      "dimensions": {
+        "width": 2323,
+        "height": 208
+      },
+      "game": "pokemon",
+      "aliases": [
+        "EX Trainer Kit Latios",
+        "tk1b"
+      ]
+    },
+    {
+      "id": "ex5",
+      "name": "Hidden Legends",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/ex5.png",
+      "sourceUrl": "https://images.pokemontcg.io/ex5/logo.png",
+      "sha256": "ef65dbee8ff3ad3ce9c1a3a0abfc90390877a050323f0f33e5284f47fa3dde56",
+      "dimensions": {
+        "width": 574,
+        "height": 303
+      },
+      "game": "pokemon",
+      "aliases": [
+        "EX Hidden Legends",
+        "HL",
+        "Hidden Legends",
+        "ex5",
+        "hidden legends",
+        "hl"
+      ]
+    },
+    {
+      "id": "ex6",
+      "name": "FireRed & LeafGreen",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/ex6.png",
+      "sourceUrl": "https://images.pokemontcg.io/ex6/logo.png",
+      "sha256": "15373d5850db8a3608381b37b2cffe1f008c1745417b124d7542e815b0b1ad93",
+      "dimensions": {
+        "width": 186,
+        "height": 108
+      },
+      "game": "pokemon",
+      "aliases": [
+        "EX FireRed & LeafGreen",
+        "FRLG",
+        "FireRed & LeafGreen",
+        "RG",
+        "ex6",
+        "firered and leafgreen",
+        "firered leafgreen",
+        "frlg"
+      ]
+    },
+    {
+      "id": "pop1",
+      "name": "POP Series 1",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/pop1.png",
+      "sourceUrl": "https://images.pokemontcg.io/pop1/logo.png",
+      "sha256": "e67ad711700dc0d0263826c36983c7123cf8f51256a31409a2c4c292e0de7372",
+      "dimensions": {
+        "width": 300,
+        "height": 367
+      },
+      "game": "pokemon",
+      "aliases": [
+        "POP Series 1",
+        "pop1"
+      ]
+    },
+    {
+      "id": "ex7",
+      "name": "Team Rocket Returns",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/ex7.png",
+      "sourceUrl": "https://images.pokemontcg.io/ex7/logo.png",
+      "sha256": "385eed959073925a20e02a6f7ecc75ae37d20742ced92b9a1a454b39f1d7a9fd",
+      "dimensions": {
+        "width": 192,
+        "height": 80
+      },
+      "game": "pokemon",
+      "aliases": [
+        "EX Team Rocket Returns",
+        "TRR",
+        "Team Rocket Returns",
+        "ex7",
+        "team rocket returns",
+        "trr"
+      ]
+    },
+    {
+      "id": "ex8",
+      "name": "Deoxys",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/ex8.png",
+      "sourceUrl": "https://images.pokemontcg.io/ex8/logo.png",
+      "sha256": "fbf9ff84f590ef914038c275c80957a5b6e7e6380d2026ecc28365bfac6e0900",
+      "dimensions": {
+        "width": 573,
+        "height": 111
+      },
+      "game": "pokemon",
+      "aliases": [
+        "DX",
+        "Deoxys",
+        "EX Deoxys",
+        "deoxys",
+        "dx",
+        "ex8"
+      ]
+    },
+    {
+      "id": "ex9",
+      "name": "Emerald",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/ex9.png",
+      "sourceUrl": "https://images.pokemontcg.io/ex9/logo.png",
+      "sha256": "e6ce132ec2f82b63a7294a8bd7a216586b9606db2ea8a2097f7f4fe0c16c51fc",
+      "dimensions": {
+        "width": 210,
+        "height": 33
+      },
+      "game": "pokemon",
+      "aliases": [
+        "EM",
+        "EX Emerald",
+        "Emerald",
+        "em",
+        "emerald",
+        "ex9"
+      ]
+    },
+    {
+      "id": "ex10",
+      "name": "Unseen Forces",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/ex10.png",
+      "sourceUrl": "https://images.pokemontcg.io/ex10/logo.png",
+      "sha256": "205dd788cf74553a11d81cad5e2a0371e09c757bf5f35e6146a2b4447e360d8c",
+      "dimensions": {
+        "width": 571,
+        "height": 214
+      },
+      "game": "pokemon",
+      "aliases": [
+        "EX Unseen Forces",
+        "UF",
+        "Unseen Forces",
+        "ex10",
+        "uf",
+        "unseen forces"
+      ]
+    },
+    {
+      "id": "pop2",
+      "name": "POP Series 2",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/pop2.png",
+      "sourceUrl": "https://images.pokemontcg.io/pop2/logo.png",
+      "sha256": "e67ad711700dc0d0263826c36983c7123cf8f51256a31409a2c4c292e0de7372",
+      "dimensions": {
+        "width": 300,
+        "height": 367
+      },
+      "game": "pokemon",
+      "aliases": [
+        "POP Series 2",
+        "pop2"
+      ]
+    },
+    {
+      "id": "ex11",
+      "name": "Delta Species",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/ex11.png",
+      "sourceUrl": "https://images.pokemontcg.io/ex11/logo.png",
+      "sha256": "19abd9d2805c410ac6680d1b38b4f274c933430d60d6f341157c0b3f2ef78f45",
+      "dimensions": {
+        "width": 568,
+        "height": 144
+      },
+      "game": "pokemon",
+      "aliases": [
+        "DS",
+        "Delta Species",
+        "EX Delta Species",
+        "delta species",
+        "ds",
+        "ex11"
+      ]
+    },
+    {
+      "id": "ex12",
+      "name": "Legend Maker",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/ex12.png",
+      "sourceUrl": "https://images.pokemontcg.io/ex12/logo.png",
+      "sha256": "d952a6a01d26bcc5b0fd9d5a69596d7c32a756753ca4362d2aa6954a783e42e5",
+      "dimensions": {
+        "width": 578,
+        "height": 208
+      },
+      "game": "pokemon",
+      "aliases": [
+        "EX Legend Maker",
+        "LM",
+        "Legend Maker",
+        "ex12",
+        "legend maker",
+        "lm"
+      ]
+    },
+    {
+      "id": "tk2a",
+      "name": "EX Trainer Kit 2 Plusle",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/tk2a.png",
+      "sourceUrl": "https://images.pokemontcg.io/tk2a/logo.png",
+      "sha256": "2ad8e4de7556abd5515845b6de132ceb75bd1dce014053e218899999c07f1a91",
+      "dimensions": {
+        "width": 2323,
+        "height": 208
+      },
+      "game": "pokemon",
+      "aliases": [
+        "EX Trainer Kit 2 Plusle",
+        "tk2a"
+      ]
+    },
+    {
+      "id": "tk2b",
+      "name": "EX Trainer Kit 2 Minun",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/tk2b.png",
+      "sourceUrl": "https://images.pokemontcg.io/tk2b/logo.png",
+      "sha256": "2ad8e4de7556abd5515845b6de132ceb75bd1dce014053e218899999c07f1a91",
+      "dimensions": {
+        "width": 2323,
+        "height": 208
+      },
+      "game": "pokemon",
+      "aliases": [
+        "EX Trainer Kit 2 Minun",
+        "tk2b"
+      ]
+    },
+    {
+      "id": "pop3",
+      "name": "POP Series 3",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/pop3.png",
+      "sourceUrl": "https://images.pokemontcg.io/pop3/logo.png",
+      "sha256": "e67ad711700dc0d0263826c36983c7123cf8f51256a31409a2c4c292e0de7372",
+      "dimensions": {
+        "width": 300,
+        "height": 367
+      },
+      "game": "pokemon",
+      "aliases": [
+        "POP Series 3",
+        "pop3"
+      ]
+    },
+    {
+      "id": "ex13",
+      "name": "Holon Phantoms",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/ex13.png",
+      "sourceUrl": "https://images.pokemontcg.io/ex13/logo.png",
+      "sha256": "ffe29eeed8279ac81cdd260bac0933d9a4874c036a7364ae22ef6027670cd926",
+      "dimensions": {
+        "width": 195,
+        "height": 98
+      },
+      "game": "pokemon",
+      "aliases": [
+        "EX Holon Phantoms",
+        "HP",
+        "Holon Phantoms",
+        "ex13",
+        "holon phantoms",
+        "hp"
+      ]
+    },
+    {
+      "id": "ex14",
+      "name": "Crystal Guardians",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/ex14.png",
+      "sourceUrl": "https://images.pokemontcg.io/ex14/logo.png",
+      "sha256": "ef0046f64e3e7594c60956f1bb92b8eba2707d1f6450f13c171bbad31b615305",
+      "dimensions": {
+        "width": 203,
+        "height": 97
+      },
+      "game": "pokemon",
+      "aliases": [
+        "CG",
+        "Crystal Guardians",
+        "EX Crystal Guardians",
+        "cg",
+        "crystal guardians",
+        "ex14"
+      ]
+    },
+    {
+      "id": "pop4",
+      "name": "POP Series 4",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/pop4.png",
+      "sourceUrl": "https://images.pokemontcg.io/pop4/logo.png",
+      "sha256": "e67ad711700dc0d0263826c36983c7123cf8f51256a31409a2c4c292e0de7372",
+      "dimensions": {
+        "width": 300,
+        "height": 367
+      },
+      "game": "pokemon",
+      "aliases": [
+        "POP Series 4",
+        "pop4"
+      ]
+    },
+    {
+      "id": "ex15",
+      "name": "Dragon Frontiers",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/ex15.png",
+      "sourceUrl": "https://images.pokemontcg.io/ex15/logo.png",
+      "sha256": "fb43944df437b04598cf90a6efd2078a55ba486a6d00bc5393835b6169dec899",
+      "dimensions": {
+        "width": 572,
+        "height": 148
+      },
+      "game": "pokemon",
+      "aliases": [
+        "DF",
+        "Dragon Frontiers",
+        "EX Dragon Frontiers",
+        "df",
+        "dragon frontiers",
+        "ex15"
+      ]
+    },
+    {
+      "id": "pop5",
+      "name": "POP Series 5",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/pop5.png",
+      "sourceUrl": "https://images.pokemontcg.io/pop5/logo.png",
+      "sha256": "e67ad711700dc0d0263826c36983c7123cf8f51256a31409a2c4c292e0de7372",
+      "dimensions": {
+        "width": 300,
+        "height": 367
+      },
+      "game": "pokemon",
+      "aliases": [
+        "POP Series 5",
+        "pop5"
+      ]
+    },
+    {
+      "id": "ex16",
+      "name": "Power Keepers",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/ex16.png",
+      "sourceUrl": "https://images.pokemontcg.io/ex16/logo.png",
+      "sha256": "f3b3c71d47bd08b9f8567f7a33eb187e1d342916eb4fd1c10d5c4dae7f1fdab7",
+      "dimensions": {
+        "width": 206,
+        "height": 92
+      },
+      "game": "pokemon",
+      "aliases": [
+        "EX Power Keepers",
+        "PK",
+        "Power Keepers",
+        "ex16",
+        "pk",
+        "power keepers"
+      ]
+    },
+    {
+      "id": "dp1",
+      "name": "Diamond & Pearl",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/dp1.png",
+      "sourceUrl": "https://images.pokemontcg.io/dp1/logo.png",
+      "sha256": "9a5bee7556a2293f1261b5cccc7ee58c2a6103290c753977351d09264c611726",
+      "dimensions": {
+        "width": 579,
+        "height": 89
+      },
+      "game": "pokemon",
+      "aliases": [
+        "DP",
+        "Diamond & Pearl",
+        "diamond and pearl",
+        "diamond pearl",
+        "dp",
+        "dp1"
+      ]
+    },
+    {
+      "id": "dpp",
+      "name": "DP Black Star Promos",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/dpp.png",
+      "sourceUrl": "https://images.pokemontcg.io/dpp/logo.png",
+      "sha256": "feedeb0bba7952ce90f70115df5ece0399be0d4b8ea8d3fa7e2f96401fe4da69",
+      "dimensions": {
+        "width": 200,
+        "height": 181
+      },
+      "game": "pokemon",
+      "aliases": [
+        "DP Black Star Promos",
+        "DP Promos",
+        "Diamond & Pearl Promos",
+        "Diamond and Pearl Promos",
+        "PR-DPP",
+        "dpp"
+      ]
+    },
+    {
+      "id": "dp2",
+      "name": "Mysterious Treasures",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/dp2.png",
+      "sourceUrl": "https://images.pokemontcg.io/dp2/logo.png",
+      "sha256": "fd5c16df3bb2755b5336c4c02c48ee96358ad5c1af362a37a50d21f11425ff94",
+      "dimensions": {
+        "width": 581,
+        "height": 150
+      },
+      "game": "pokemon",
+      "aliases": [
+        "MT",
+        "Mysterious Treasures",
+        "dp2",
+        "mt",
+        "mysterious treasures"
+      ]
+    },
+    {
+      "id": "pop6",
+      "name": "POP Series 6",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/pop6.png",
+      "sourceUrl": "https://images.pokemontcg.io/pop6/logo.png",
+      "sha256": "e67ad711700dc0d0263826c36983c7123cf8f51256a31409a2c4c292e0de7372",
+      "dimensions": {
+        "width": 300,
+        "height": 367
+      },
+      "game": "pokemon",
+      "aliases": [
+        "POP Series 6",
+        "pop6"
+      ]
+    },
+    {
+      "id": "dp3",
+      "name": "Secret Wonders",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/dp3.png",
+      "sourceUrl": "https://images.pokemontcg.io/dp3/logo.png",
+      "sha256": "daf26326edfd480c9da1e6957c017f52545659ff708783d1a3c3e31a93e9848f",
+      "dimensions": {
+        "width": 573,
+        "height": 159
+      },
+      "game": "pokemon",
+      "aliases": [
+        "SW",
+        "Secret Wonders",
+        "dp3",
+        "secret wonders",
+        "sw"
+      ]
+    },
+    {
+      "id": "dp4",
+      "name": "Great Encounters",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/dp4.png",
+      "sourceUrl": "https://images.pokemontcg.io/dp4/logo.png",
+      "sha256": "f21dbbf97c22f8b7589c0f66586eda4b87c5d28cde41ab2ae89cfd58776bb488",
+      "dimensions": {
+        "width": 580,
+        "height": 130
+      },
+      "game": "pokemon",
+      "aliases": [
+        "GE",
+        "Great Encounters",
+        "dp4",
+        "ge",
+        "great encounters"
+      ]
+    },
+    {
+      "id": "pop7",
+      "name": "POP Series 7",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/pop7.png",
+      "sourceUrl": "https://images.pokemontcg.io/pop7/logo.png",
+      "sha256": "e67ad711700dc0d0263826c36983c7123cf8f51256a31409a2c4c292e0de7372",
+      "dimensions": {
+        "width": 300,
+        "height": 367
+      },
+      "game": "pokemon",
+      "aliases": [
+        "POP Series 7",
+        "pop7"
+      ]
+    },
+    {
+      "id": "dp5",
+      "name": "Majestic Dawn",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/dp5.png",
+      "sourceUrl": "https://images.pokemontcg.io/dp5/logo.png",
+      "sha256": "5f21d0a19f5bc193406b1061c62c50d01b2ed53c7e126f4240075c1f8858586e",
+      "dimensions": {
+        "width": 575,
+        "height": 147
+      },
+      "game": "pokemon",
+      "aliases": [
+        "MD",
+        "Majestic Dawn",
+        "dp5",
+        "majestic dawn",
+        "md"
+      ]
+    },
+    {
+      "id": "dp6",
+      "name": "Legends Awakened",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/dp6.png",
+      "sourceUrl": "https://images.pokemontcg.io/dp6/logo.png",
+      "sha256": "631fa302b59bd3560b220dd4a4b42ad64d1eecf741ff441297d77d51fd9bebb4",
+      "dimensions": {
+        "width": 571,
+        "height": 142
+      },
+      "game": "pokemon",
+      "aliases": [
+        "LA",
+        "Legends Awakened",
+        "dp6",
+        "la",
+        "legends awakened"
+      ]
+    },
+    {
+      "id": "pop8",
+      "name": "POP Series 8",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/pop8.png",
+      "sourceUrl": "https://images.pokemontcg.io/pop8/logo.png",
+      "sha256": "e67ad711700dc0d0263826c36983c7123cf8f51256a31409a2c4c292e0de7372",
+      "dimensions": {
+        "width": 300,
+        "height": 367
+      },
+      "game": "pokemon",
+      "aliases": [
+        "POP Series 8",
+        "pop8"
+      ]
+    },
+    {
+      "id": "dp7",
+      "name": "Stormfront",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/dp7.png",
+      "sourceUrl": "https://images.pokemontcg.io/dp7/logo.png",
+      "sha256": "078339cc7d5d885a3811a7c78b4b97d265d6963ee0fab1c86b5a446a0f1b962e",
+      "dimensions": {
+        "width": 571,
+        "height": 172
+      },
+      "game": "pokemon",
+      "aliases": [
+        "SF",
+        "Stormfront",
+        "dp sf",
+        "dp7",
+        "stormfront"
+      ]
+    },
+    {
+      "id": "pl1",
+      "name": "Platinum",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/pl1.png",
+      "sourceUrl": "https://images.pokemontcg.io/pl1/logo.png",
+      "sha256": "98e8e0e5830ea4eb4cb1f384bf901cf0aa0459ee838f17ac051168436f145483",
+      "dimensions": {
+        "width": 581,
+        "height": 113
+      },
+      "game": "pokemon",
+      "aliases": [
+        "PL",
+        "Platinum",
+        "pl",
+        "pl1",
+        "platinum"
+      ]
+    },
+    {
+      "id": "pop9",
+      "name": "POP Series 9",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/pop9.png",
+      "sourceUrl": "https://images.pokemontcg.io/pop9/logo.png",
+      "sha256": "e67ad711700dc0d0263826c36983c7123cf8f51256a31409a2c4c292e0de7372",
+      "dimensions": {
+        "width": 300,
+        "height": 367
+      },
+      "game": "pokemon",
+      "aliases": [
+        "POP Series 9",
+        "pop9"
+      ]
+    },
+    {
+      "id": "pl2",
+      "name": "Rising Rivals",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/pl2.png",
+      "sourceUrl": "https://images.pokemontcg.io/pl2/logo.png",
+      "sha256": "79c2284213d2e2435c100ec10e64dd044767bbcb770159eb14b27c7317db15f2",
+      "dimensions": {
+        "width": 575,
+        "height": 170
+      },
+      "game": "pokemon",
+      "aliases": [
+        "RR",
+        "Rising Rivals",
+        "pl2",
+        "rising rivals",
+        "rr"
+      ]
+    },
+    {
+      "id": "pl3",
+      "name": "Supreme Victors",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/pl3.png",
+      "sourceUrl": "https://images.pokemontcg.io/pl3/logo.png",
+      "sha256": "20f32b97d3c87bf2dbab061957bf41af01d135d5df783081c35482f227b5b651",
+      "dimensions": {
+        "width": 580,
+        "height": 164
+      },
+      "game": "pokemon",
+      "aliases": [
+        "SV",
+        "Supreme Victors",
+        "pl sv",
+        "pl3",
+        "supreme victors"
+      ]
+    },
+    {
+      "id": "pl4",
+      "name": "Arceus",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/pl4.png",
+      "sourceUrl": "https://images.pokemontcg.io/pl4/logo.png",
+      "sha256": "6633e31e5deb7bcce8dc997122e0473fa4cf6b5a193ddab305f7fa69f5a0d61d",
+      "dimensions": {
+        "width": 576,
+        "height": 168
+      },
+      "game": "pokemon",
+      "aliases": [
+        "AR",
+        "Arceus",
+        "arceus",
+        "pl arceus",
+        "pl4"
+      ]
+    },
+    {
+      "id": "ru1",
+      "name": "Pokémon Rumble",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/ru1.png",
+      "sourceUrl": "https://images.pokemontcg.io/ru1/logo.png",
+      "sha256": "7a50dd960d03cb0b42bfb7939075a8a4460277f3eb352fbac79c6578bd371e37",
+      "dimensions": {
+        "width": 1200,
+        "height": 758
+      },
+      "game": "pokemon",
+      "aliases": [
+        "Pokémon Rumble",
+        "Rumble",
+        "ru1"
+      ]
+    },
+    {
+      "id": "hgss1",
+      "name": "HeartGold & SoulSilver",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/hgss1.png",
+      "sourceUrl": "https://images.pokemontcg.io/hgss1/logo.png",
+      "sha256": "cf09a8b54930ab9fb7e4fb22ee6a58609f1cd6c8335664d815514222868ade89",
+      "dimensions": {
+        "width": 586,
+        "height": 246
+      },
+      "game": "pokemon",
+      "aliases": [
+        "HS",
+        "HeartGold & SoulSilver",
+        "heartgold and soulsilver",
+        "heartgold soulsilver",
+        "hgss",
+        "hgss1",
+        "hs"
+      ]
+    },
+    {
+      "id": "hsp",
+      "name": "HGSS Black Star Promos",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/hsp.png",
+      "sourceUrl": "https://images.pokemontcg.io/hsp/logo.png",
+      "sha256": "feedeb0bba7952ce90f70115df5ece0399be0d4b8ea8d3fa7e2f96401fe4da69",
+      "dimensions": {
+        "width": 200,
+        "height": 181
+      },
+      "game": "pokemon",
+      "aliases": [
+        "HGSS Black Star Promos",
+        "HGSS Promos",
+        "PR-HS",
+        "hsp"
+      ]
+    },
+    {
+      "id": "hgss2",
+      "name": "HS—Unleashed",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/hgss2.png",
+      "sourceUrl": "https://images.pokemontcg.io/hgss2/logo.png",
+      "sha256": "12f30cd1cb04eed93c200a5c6966edb6a9b23af618ac6f25e5ab7bfd9359e7ad",
+      "dimensions": {
+        "width": 588,
+        "height": 133
+      },
+      "game": "pokemon",
+      "aliases": [
+        "HS—Unleashed",
+        "UL",
+        "Unleashed",
+        "hgss unleashed",
+        "hgss2",
+        "ul",
+        "unleashed"
+      ]
+    },
+    {
+      "id": "hgss3",
+      "name": "HS—Undaunted",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/hgss3.png",
+      "sourceUrl": "https://images.pokemontcg.io/hgss3/logo.png",
+      "sha256": "12e78abc3ad494d0a4ed7c77f20dc3161be41bed6e5e5c9e2488c66cad7595c2",
+      "dimensions": {
+        "width": 588,
+        "height": 141
+      },
+      "game": "pokemon",
+      "aliases": [
+        "HS—Undaunted",
+        "UD",
+        "Undaunted",
+        "hgss3",
+        "ud",
+        "undaunted"
+      ]
+    },
+    {
+      "id": "hgss4",
+      "name": "HS—Triumphant",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/hgss4.png",
+      "sourceUrl": "https://images.pokemontcg.io/hgss4/logo.png",
+      "sha256": "038efe6f4c115036e48043df3691e4d6f62b9045114b40218368f148ed8406e1",
+      "dimensions": {
+        "width": 587,
+        "height": 153
+      },
+      "game": "pokemon",
+      "aliases": [
+        "HS—Triumphant",
+        "TM",
+        "Triumphant",
+        "hgss triumphant",
+        "hgss4",
+        "triumphant"
+      ]
+    },
+    {
+      "id": "col1",
+      "name": "Call of Legends",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/col1.png",
+      "sourceUrl": "https://images.pokemontcg.io/col1/logo.png",
+      "sha256": "108c0907dfda4734cd9eff3c7bbd4f4193d092738b4f3f4a7870a142e34f924d",
+      "dimensions": {
+        "width": 586,
+        "height": 138
+      },
+      "game": "pokemon",
+      "aliases": [
+        "CL",
+        "Call of Legends",
+        "call of legends",
+        "col",
+        "col1"
+      ]
+    },
+    {
+      "id": "bwp",
+      "name": "BW Black Star Promos",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/bwp.png",
+      "sourceUrl": "https://images.pokemontcg.io/bwp/logo.png",
+      "sha256": "feedeb0bba7952ce90f70115df5ece0399be0d4b8ea8d3fa7e2f96401fe4da69",
+      "dimensions": {
+        "width": 200,
+        "height": 181
+      },
+      "game": "pokemon",
+      "aliases": [
+        "BW Black Star Promos",
+        "BW Promos",
+        "BWP",
+        "Black & White Promos",
+        "Black and White Promos",
+        "PR-BLW",
+        "black and white promos",
+        "black white promos",
+        "bw promos",
+        "bwp"
+      ]
+    },
+    {
+      "id": "bw1",
+      "name": "Black & White",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/bw1.png",
+      "sourceUrl": "https://images.pokemontcg.io/bw1/logo.png",
+      "sha256": "8ffd8b66cd3024d41a38c77b8bd8cb95f4685ae555621dd09f88db829501bbdd",
+      "dimensions": {
+        "width": 588,
+        "height": 62
+      },
+      "game": "pokemon",
+      "aliases": [
+        "BLW",
+        "Black & White",
+        "black and white",
+        "black white",
+        "blw",
+        "bw",
+        "bw1"
+      ]
+    },
+    {
+      "id": "mcd11",
+      "name": "McDonald's Collection 2011",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/mcd11.png",
+      "sourceUrl": "https://images.pokemontcg.io/mcd11/logo.png",
+      "sha256": "f23fc8a48cd132c076618723b8c4080c867903eb97705b88eca8ebda4cc2c57c",
+      "dimensions": {
+        "width": 1047,
+        "height": 1024
+      },
+      "game": "pokemon",
+      "aliases": [
+        "McDonald's Collection 2011",
+        "McDonald's Promos 2011",
+        "mcd11"
+      ]
+    },
+    {
+      "id": "bw2",
+      "name": "Emerging Powers",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/bw2.png",
+      "sourceUrl": "https://images.pokemontcg.io/bw2/logo.png",
+      "sha256": "1d45bf1174145360d17c1cf236f773425f5a334fadc34a2957b242e5daddb1c1",
+      "dimensions": {
+        "width": 586,
+        "height": 140
+      },
+      "game": "pokemon",
+      "aliases": [
+        "EPO",
+        "Emerging Powers",
+        "bw2",
+        "emerging powers",
+        "epo"
+      ]
+    },
+    {
+      "id": "bw3",
+      "name": "Noble Victories",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/bw3.png",
+      "sourceUrl": "https://images.pokemontcg.io/bw3/logo.png",
+      "sha256": "c00ded5c8206a39e63d5fc9289c036e776aac47e6ba5a2666f90be2694515ab5",
+      "dimensions": {
+        "width": 586,
+        "height": 140
+      },
+      "game": "pokemon",
+      "aliases": [
+        "NVI",
+        "Noble Victories",
+        "bw3",
+        "noble victories",
+        "nvi"
+      ]
+    },
+    {
+      "id": "bw4",
+      "name": "Next Destinies",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/bw4.png",
+      "sourceUrl": "https://images.pokemontcg.io/bw4/logo.png",
+      "sha256": "700ef7324d6b9742d163d5de82cbd40507466fc77afee8940adc17d36f6ec435",
+      "dimensions": {
+        "width": 588,
+        "height": 197
+      },
+      "game": "pokemon",
+      "aliases": [
+        "NXD",
+        "Next Destinies",
+        "bw4",
+        "next destinies",
+        "nxd"
+      ]
+    },
+    {
+      "id": "bw5",
+      "name": "Dark Explorers",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/bw5.png",
+      "sourceUrl": "https://images.pokemontcg.io/bw5/logo.png",
+      "sha256": "baa053833164443c3e1f666164f6a35dfb5becc78ccb4bab4456e57c747b31ba",
+      "dimensions": {
+        "width": 586,
+        "height": 167
+      },
+      "game": "pokemon",
+      "aliases": [
+        "DEX",
+        "Dark Explorers",
+        "bw5",
+        "dark explorers",
+        "dex"
+      ]
+    },
+    {
+      "id": "mcd12",
+      "name": "McDonald's Collection 2012",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/mcd12.png",
+      "sourceUrl": "https://images.pokemontcg.io/mcd12/logo.png",
+      "sha256": "f23fc8a48cd132c076618723b8c4080c867903eb97705b88eca8ebda4cc2c57c",
+      "dimensions": {
+        "width": 1047,
+        "height": 1024
+      },
+      "game": "pokemon",
+      "aliases": [
+        "McDonald's Collection 2012",
+        "McDonald's Promos 2012",
+        "mcd12"
+      ]
+    },
+    {
+      "id": "bw6",
+      "name": "Dragons Exalted",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/bw6.png",
+      "sourceUrl": "https://images.pokemontcg.io/bw6/logo.png",
+      "sha256": "80310a1bf2280fbbc93d6d5d14ed039c982266c4059a108bee9ecadaa29950c5",
+      "dimensions": {
+        "width": 554,
+        "height": 169
+      },
+      "game": "pokemon",
+      "aliases": [
+        "DRX",
+        "Dragons Exalted",
+        "bw6",
+        "dragons exalted",
+        "drx"
+      ]
+    },
+    {
+      "id": "dv1",
+      "name": "Dragon Vault",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/dv1.png",
+      "sourceUrl": "https://images.pokemontcg.io/dv1/logo.png",
+      "sha256": "24a164585584b515659fd28aae9a55100e16a02c0afeae1564ce73d23bcf57a2",
+      "dimensions": {
+        "width": 325,
+        "height": 82
+      },
+      "game": "pokemon",
+      "aliases": [
+        "DRV",
+        "Dragon Vault",
+        "dragon vault",
+        "drv",
+        "dv1"
+      ]
+    },
+    {
+      "id": "bw7",
+      "name": "Boundaries Crossed",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/bw7.png",
+      "sourceUrl": "https://images.pokemontcg.io/bw7/logo.png",
+      "sha256": "398e201426035eda49a5a6a4aa0d9e2411a8db4f7e216e33ebb7390281a41afb",
+      "dimensions": {
+        "width": 588,
+        "height": 220
+      },
+      "game": "pokemon",
+      "aliases": [
+        "BCR",
+        "Boundaries Crossed",
+        "bcr",
+        "boundaries crossed",
+        "bw7"
+      ]
+    },
+    {
+      "id": "bw8",
+      "name": "Plasma Storm",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/bw8.png",
+      "sourceUrl": "https://images.pokemontcg.io/bw8/logo.png",
+      "sha256": "c6d4a0259e4703683da5f3d3c79450a9c2d920666ff168707f44f4c365ac684f",
+      "dimensions": {
+        "width": 588,
+        "height": 134
+      },
+      "game": "pokemon",
+      "aliases": [
+        "PLS",
+        "Plasma Storm",
+        "bw8",
+        "plasma storm",
+        "pls"
+      ]
+    },
+    {
+      "id": "bw9",
+      "name": "Plasma Freeze",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/bw9.png",
+      "sourceUrl": "https://images.pokemontcg.io/bw9/logo.png",
+      "sha256": "f0182d3b091d02756ad69f8f1cfcbe9c3307b5b892f1de3ad38138d4e202edb7",
+      "dimensions": {
+        "width": 588,
+        "height": 147
+      },
+      "game": "pokemon",
+      "aliases": [
+        "PLF",
+        "Plasma Freeze",
+        "bw9",
+        "plasma freeze",
+        "plf"
+      ]
+    },
+    {
+      "id": "bw10",
+      "name": "Plasma Blast",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/bw10.png",
+      "sourceUrl": "https://images.pokemontcg.io/bw10/logo.png",
+      "sha256": "3376f086f3fefddd8391a1b0c1d633fda5e9141b2989f70173a1f3e1b6a2ba35",
+      "dimensions": {
+        "width": 581,
+        "height": 154
+      },
+      "game": "pokemon",
+      "aliases": [
+        "PLB",
+        "Plasma Blast",
+        "bw10",
+        "plasma blast",
+        "plb"
+      ]
+    },
+    {
+      "id": "xyp",
+      "name": "XY Black Star Promos",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/xyp.png",
+      "sourceUrl": "https://images.pokemontcg.io/xyp/logo.png",
+      "sha256": "feedeb0bba7952ce90f70115df5ece0399be0d4b8ea8d3fa7e2f96401fe4da69",
+      "dimensions": {
+        "width": 200,
+        "height": 181
+      },
+      "game": "pokemon",
+      "aliases": [
+        "PR-XY",
+        "XY Black Star Promos",
+        "XY Promos",
+        "XYP",
+        "xy promos",
+        "xyp"
+      ]
+    },
+    {
+      "id": "bw11",
+      "name": "Legendary Treasures",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/bw11.png",
+      "sourceUrl": "https://images.pokemontcg.io/bw11/logo.png",
+      "sha256": "2524a39d10cb6d992647f01fa996436cef7a2ccdaa5764cffac50a3b912663a5",
+      "dimensions": {
+        "width": 586,
+        "height": 166
+      },
+      "game": "pokemon",
+      "aliases": [
+        "LTR",
+        "Legendary Treasures",
+        "bw11",
+        "legendary treasures",
+        "ltr"
+      ]
+    },
+    {
+      "id": "xy0",
+      "name": "Kalos Starter Set",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/xy0.png",
+      "sourceUrl": "https://images.pokemontcg.io/xy0/logo.png",
+      "sha256": "ba038e02baabe8d93a31f763d8e1e6bdf9a62c64459bab15ded28dd4db98660d",
+      "dimensions": {
+        "width": 578,
+        "height": 197
+      },
+      "game": "pokemon",
+      "aliases": [
+        "KSS",
+        "Kalos Starter Set",
+        "xy0"
+      ]
+    },
+    {
+      "id": "xy1",
+      "name": "XY",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/xy1.png",
+      "sourceUrl": "https://images.pokemontcg.io/xy1/logo.png",
+      "sha256": "4a379f776e44b52aa1776d9dc034bac206058605c9d698df869faa01741497d9",
+      "dimensions": {
+        "width": 582,
+        "height": 145
+      },
+      "game": "pokemon",
+      "aliases": [
+        "XY",
+        "XY Base Set",
+        "xy",
+        "xy base",
+        "xy1"
+      ]
+    },
+    {
+      "id": "xy2",
+      "name": "Flashfire",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/xy2.png",
+      "sourceUrl": "https://images.pokemontcg.io/xy2/logo.png",
+      "sha256": "7f2975e9f8b9bc845519c407fd1acc43fa2807460fe2c37bafa273cab921828a",
+      "dimensions": {
+        "width": 573,
+        "height": 236
+      },
+      "game": "pokemon",
+      "aliases": [
+        "FLF",
+        "Flashfire",
+        "flashfire",
+        "flf",
+        "xy2"
+      ]
+    },
+    {
+      "id": "mcd14",
+      "name": "McDonald's Collection 2014",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/mcd14.png",
+      "sourceUrl": "https://images.pokemontcg.io/mcd14/logo.png",
+      "sha256": "f23fc8a48cd132c076618723b8c4080c867903eb97705b88eca8ebda4cc2c57c",
+      "dimensions": {
+        "width": 1047,
+        "height": 1024
+      },
+      "game": "pokemon",
+      "aliases": [
+        "McDonald's Collection 2014",
+        "McDonald's Promos 2014",
+        "mcd14"
+      ]
+    },
+    {
+      "id": "xy3",
+      "name": "Furious Fists",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/xy3.png",
+      "sourceUrl": "https://images.pokemontcg.io/xy3/logo.png",
+      "sha256": "1c5deb765c0191f336d842fcf8c2de7a6a5bc07c45085ddf04478fe53229f6cc",
+      "dimensions": {
+        "width": 573,
+        "height": 226
+      },
+      "game": "pokemon",
+      "aliases": [
+        "FFI",
+        "Furious Fists",
+        "ffi",
+        "furious fists",
+        "xy3"
+      ]
+    },
+    {
+      "id": "xy4",
+      "name": "Phantom Forces",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/xy4.png",
+      "sourceUrl": "https://images.pokemontcg.io/xy4/logo.png",
+      "sha256": "6f79bef281510ffe548b2c3583832e949ea0d883de7856a4e1de5403f67c0a5e",
+      "dimensions": {
+        "width": 557,
+        "height": 267
+      },
+      "game": "pokemon",
+      "aliases": [
+        "PHF",
+        "Phantom Forces",
+        "phantom forces",
+        "xy phf",
+        "xy4"
+      ]
+    },
+    {
+      "id": "xy5",
+      "name": "Primal Clash",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/xy5.png",
+      "sourceUrl": "https://images.pokemontcg.io/xy5/logo.png",
+      "sha256": "abfd90a159e7911734137fb666949ccf9c7604a09595d1527776716a72b30b21",
+      "dimensions": {
+        "width": 575,
+        "height": 192
+      },
+      "game": "pokemon",
+      "aliases": [
+        "PRC",
+        "Primal Clash",
+        "prc",
+        "primal clash",
+        "xy5"
+      ]
+    },
+    {
+      "id": "dc1",
+      "name": "Double Crisis",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/dc1.png",
+      "sourceUrl": "https://images.pokemontcg.io/dc1/logo.png",
+      "sha256": "37f7c22b850ddef9db4d40e33ee877acd1fa5861dfba1429cc344dc01b1672d1",
+      "dimensions": {
+        "width": 574,
+        "height": 254
+      },
+      "game": "pokemon",
+      "aliases": [
+        "DCR",
+        "Double Crisis",
+        "dc1",
+        "dcr",
+        "double crisis"
+      ]
+    },
+    {
+      "id": "xy6",
+      "name": "Roaring Skies",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/xy6.png",
+      "sourceUrl": "https://images.pokemontcg.io/xy6/logo.png",
+      "sha256": "665c139724c527bf918f1edceba12f76ff567ae3d8bcc3c75d19b6ba49cbd5a7",
+      "dimensions": {
+        "width": 573,
+        "height": 260
+      },
+      "game": "pokemon",
+      "aliases": [
+        "ROS",
+        "Roaring Skies",
+        "roaring skies",
+        "ros",
+        "xy6"
+      ]
+    },
+    {
+      "id": "xy7",
+      "name": "Ancient Origins",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/xy7.png",
+      "sourceUrl": "https://images.pokemontcg.io/xy7/logo.png",
+      "sha256": "c2f85eb28504dd2d6ec87a6d71faada9f8c8c2428712bfab1de0e585aeb27355",
+      "dimensions": {
+        "width": 575,
+        "height": 243
+      },
+      "game": "pokemon",
+      "aliases": [
+        "AOR",
+        "Ancient Origins",
+        "ancient origins",
+        "aor",
+        "xy7"
+      ]
+    },
+    {
+      "id": "xy8",
+      "name": "BREAKthrough",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/xy8.png",
+      "sourceUrl": "https://images.pokemontcg.io/xy8/logo.png",
+      "sha256": "ced53d9558d8e479d8985a5af311a1f6689094053e1652f98b52e5572e4e6cfb",
+      "dimensions": {
+        "width": 570,
+        "height": 197
+      },
+      "game": "pokemon",
+      "aliases": [
+        "BKT",
+        "BREAKthrough",
+        "break through",
+        "breakthrough",
+        "xy breakthrough",
+        "xy8"
+      ]
+    },
+    {
+      "id": "mcd15",
+      "name": "McDonald's Collection 2015",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/mcd15.png",
+      "sourceUrl": "https://images.pokemontcg.io/mcd15/logo.png",
+      "sha256": "f23fc8a48cd132c076618723b8c4080c867903eb97705b88eca8ebda4cc2c57c",
+      "dimensions": {
+        "width": 1047,
+        "height": 1024
+      },
+      "game": "pokemon",
+      "aliases": [
+        "McDonald's Collection 2015",
+        "McDonald's Promos 2015",
+        "mcd15"
+      ]
+    },
+    {
+      "id": "xy9",
+      "name": "BREAKpoint",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/xy9.png",
+      "sourceUrl": "https://images.pokemontcg.io/xy9/logo.png",
+      "sha256": "748897a7d26a6a11b6c583afe5c83e4e503dc22f6f9711593ffc21a80e9b88cc",
+      "dimensions": {
+        "width": 578,
+        "height": 122
+      },
+      "game": "pokemon",
+      "aliases": [
+        "BKP",
+        "BREAKpoint",
+        "bkp",
+        "break point",
+        "breakpoint",
+        "xy9"
+      ]
+    },
+    {
+      "id": "g1",
+      "name": "Generations",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/g1.png",
+      "sourceUrl": "https://images.pokemontcg.io/g1/logo.png",
+      "sha256": "1c7e8738b1e60a6414b3f8209cf2fe392369fb22249ed66db12465f2243e23a5",
+      "dimensions": {
+        "width": 578,
+        "height": 125
+      },
+      "game": "pokemon",
+      "aliases": [
+        "GEN",
+        "Generations",
+        "g1",
+        "gen",
+        "generations"
+      ]
+    },
+    {
+      "id": "xy10",
+      "name": "Fates Collide",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/xy10.png",
+      "sourceUrl": "https://images.pokemontcg.io/xy10/logo.png",
+      "sha256": "71abe6af66346d9be0908f43ae5d28b42c92eaf6f5dbf9b898ae335f858cec90",
+      "dimensions": {
+        "width": 570,
+        "height": 167
+      },
+      "game": "pokemon",
+      "aliases": [
+        "FCO",
+        "Fates Collide",
+        "fates collide",
+        "fco",
+        "xy10"
+      ]
+    },
+    {
+      "id": "xy11",
+      "name": "Steam Siege",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/xy11.png",
+      "sourceUrl": "https://images.pokemontcg.io/xy11/logo.png",
+      "sha256": "a22c1446819b14a8f2559960afee447365bde17755ea3bd3df31ad2f07a07844",
+      "dimensions": {
+        "width": 578,
+        "height": 192
+      },
+      "game": "pokemon",
+      "aliases": [
+        "STS",
+        "Steam Siege",
+        "steam siege",
+        "sts",
+        "xy11"
+      ]
+    },
+    {
+      "id": "mcd16",
+      "name": "McDonald's Collection 2016",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/mcd16.png",
+      "sourceUrl": "https://images.pokemontcg.io/mcd16/logo.png",
+      "sha256": "f23fc8a48cd132c076618723b8c4080c867903eb97705b88eca8ebda4cc2c57c",
+      "dimensions": {
+        "width": 1047,
+        "height": 1024
+      },
+      "game": "pokemon",
+      "aliases": [
+        "McDonald's Collection 2016",
+        "McDonald's Promos 2016",
+        "mcd16"
+      ]
+    },
+    {
+      "id": "xy12",
+      "name": "Evolutions",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/xy12.png",
+      "sourceUrl": "https://images.pokemontcg.io/xy12/logo.png",
+      "sha256": "04e76e0b4d7e7442c6ab81b391838abbf5d15c1f974120cdc5c5e6276a8e599d",
+      "dimensions": {
+        "width": 573,
+        "height": 139
+      },
+      "game": "pokemon",
+      "aliases": [
+        "EVO",
+        "Evolutions",
+        "evo",
+        "evolutions",
+        "xy evolutions",
+        "xy12"
+      ]
+    },
+    {
+      "id": "sm1",
+      "name": "Sun & Moon",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/sm1.png",
+      "sourceUrl": "https://images.pokemontcg.io/sm1/logo.png",
+      "sha256": "270fcbb8cf3f44b39254e7f3d247a0d14b9b6eeffde2960baf5163f8496b250b",
+      "dimensions": {
+        "width": 567,
+        "height": 130
+      },
+      "game": "pokemon",
+      "aliases": [
+        "SM Base Set",
+        "SUM",
+        "Sun & Moon",
+        "Sun & Moon Base Set",
+        "sm",
+        "sm1",
+        "sum",
+        "sun and moon",
+        "sun moon"
+      ]
+    },
+    {
+      "id": "smp",
+      "name": "SM Black Star Promos",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/smp.png",
+      "sourceUrl": "https://images.pokemontcg.io/smp/logo.png",
+      "sha256": "feedeb0bba7952ce90f70115df5ece0399be0d4b8ea8d3fa7e2f96401fe4da69",
+      "dimensions": {
+        "width": 200,
+        "height": 181
+      },
+      "game": "pokemon",
+      "aliases": [
+        "PR-SM",
+        "SM Black Star Promos",
+        "SM Promos",
+        "SMP",
+        "sm promos",
+        "smp",
+        "sun and moon promos",
+        "sun moon promos"
+      ]
+    },
+    {
+      "id": "sm2",
+      "name": "Guardians Rising",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/sm2.png",
+      "sourceUrl": "https://images.pokemontcg.io/sm2/logo.png",
+      "sha256": "a9f56e344c0f5b7514fc44cd2ee5383952a5ef87da8567cae363915fa1e6f2d2",
+      "dimensions": {
+        "width": 577,
+        "height": 203
+      },
+      "game": "pokemon",
+      "aliases": [
+        "GRI",
+        "Guardians Rising",
+        "gri",
+        "guardians rising",
+        "sm2"
+      ]
+    },
+    {
+      "id": "sm3",
+      "name": "Burning Shadows",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/sm3.png",
+      "sourceUrl": "https://images.pokemontcg.io/sm3/logo.png",
+      "sha256": "68c3c0b92bea2bd2b4ee6c12e38f135d0f41a7e0bb89b953fbae12a8b3f02fd0",
+      "dimensions": {
+        "width": 578,
+        "height": 201
+      },
+      "game": "pokemon",
+      "aliases": [
+        "BUS",
+        "Burning Shadows",
+        "burning shadows",
+        "bus",
+        "sm3"
+      ]
+    },
+    {
+      "id": "sm35",
+      "name": "Shining Legends",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/sm35.png",
+      "sourceUrl": "https://images.pokemontcg.io/sm35/logo.png",
+      "sha256": "57f185349e589291ce2a4ccbeb57351dae581bf7508a8d0d4069f47d28160f48",
+      "dimensions": {
+        "width": 577,
+        "height": 225
+      },
+      "game": "pokemon",
+      "aliases": [
+        "SLG",
+        "Shining Legends",
+        "shining legends",
+        "slg",
+        "sm3.5",
+        "sm35"
+      ]
+    },
+    {
+      "id": "sm4",
+      "name": "Crimson Invasion",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/sm4.png",
+      "sourceUrl": "https://images.pokemontcg.io/sm4/logo.png",
+      "sha256": "f135b6e9375d6818f3b78f49dd7b25c18fd786e0143da0d9aed53a43ff92143a",
+      "dimensions": {
+        "width": 578,
+        "height": 226
+      },
+      "game": "pokemon",
+      "aliases": [
+        "CIN",
+        "Crimson Invasion",
+        "cin",
+        "crimson invasion",
+        "sm4"
+      ]
+    },
+    {
+      "id": "mcd17",
+      "name": "McDonald's Collection 2017",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/mcd17.png",
+      "sourceUrl": "https://images.pokemontcg.io/mcd17/logo.png",
+      "sha256": "f23fc8a48cd132c076618723b8c4080c867903eb97705b88eca8ebda4cc2c57c",
+      "dimensions": {
+        "width": 1047,
+        "height": 1024
+      },
+      "game": "pokemon",
+      "aliases": [
+        "McDonald's Collection 2017",
+        "McDonald's Promos 2017",
+        "mcd17"
+      ]
+    },
+    {
+      "id": "sm5",
+      "name": "Ultra Prism",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/sm5.png",
+      "sourceUrl": "https://images.pokemontcg.io/sm5/logo.png",
+      "sha256": "bc29ad0f3b98c5d02baf7ee3b889291cbb2649770a83a512a4e5e339ce3c779d",
+      "dimensions": {
+        "width": 577,
+        "height": 242
+      },
+      "game": "pokemon",
+      "aliases": [
+        "UPR",
+        "Ultra Prism",
+        "sm5",
+        "ultra prism",
+        "upr"
+      ]
+    },
+    {
+      "id": "sm6",
+      "name": "Forbidden Light",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/sm6.png",
+      "sourceUrl": "https://images.pokemontcg.io/sm6/logo.png",
+      "sha256": "117377db37a492f080459aad75f24172784e758d61a9835330070267c66af90d",
+      "dimensions": {
+        "width": 578,
+        "height": 327
+      },
+      "game": "pokemon",
+      "aliases": [
+        "FLI",
+        "Forbidden Light",
+        "fli",
+        "forbidden light",
+        "sm6"
+      ]
+    },
+    {
+      "id": "sm7",
+      "name": "Celestial Storm",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/sm7.png",
+      "sourceUrl": "https://images.pokemontcg.io/sm7/logo.png",
+      "sha256": "f19ef3c0ac2754ac0d03ceaac54fd855e54ab5a02428baa946c3291f9409a0c6",
+      "dimensions": {
+        "width": 578,
+        "height": 327
+      },
+      "game": "pokemon",
+      "aliases": [
+        "CES",
+        "Celestial Storm",
+        "celestial storm",
+        "ces",
+        "sm7"
+      ]
+    },
+    {
+      "id": "sm75",
+      "name": "Dragon Majesty",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/sm75.png",
+      "sourceUrl": "https://images.pokemontcg.io/sm75/logo.png",
+      "sha256": "947c0ac30dd2875d808aa642f7d7b45d665714dc9aa2db92dfbbc754c82b6f12",
+      "dimensions": {
+        "width": 578,
+        "height": 327
+      },
+      "game": "pokemon",
+      "aliases": [
+        "DRM",
+        "Dragon Majesty",
+        "dragon majesty",
+        "drm",
+        "sm7.5",
+        "sm75"
+      ]
+    },
+    {
+      "id": "mcd18",
+      "name": "McDonald's Collection 2018",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/mcd18.png",
+      "sourceUrl": "https://images.pokemontcg.io/mcd18/logo.png",
+      "sha256": "f23fc8a48cd132c076618723b8c4080c867903eb97705b88eca8ebda4cc2c57c",
+      "dimensions": {
+        "width": 1047,
+        "height": 1024
+      },
+      "game": "pokemon",
+      "aliases": [
+        "McDonald's Collection 2018",
+        "McDonald's Promos 2018",
+        "mcd18"
+      ]
+    },
+    {
+      "id": "sm8",
+      "name": "Lost Thunder",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/sm8.png",
+      "sourceUrl": "https://images.pokemontcg.io/sm8/logo.png",
+      "sha256": "730e35fd122854c93d99f973bf0eb476c0904f76fb19ac741ee0970b8210dc8f",
+      "dimensions": {
+        "width": 567,
+        "height": 183
+      },
+      "game": "pokemon",
+      "aliases": [
+        "LOT",
+        "Lost Thunder",
+        "lost thunder",
+        "lot",
+        "sm8"
+      ]
+    },
+    {
+      "id": "sm9",
+      "name": "Team Up",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/sm9.png",
+      "sourceUrl": "https://images.pokemontcg.io/sm9/logo.png",
+      "sha256": "fff976a228cfd69aa258fa95fbcf4fa619aed773ed51dde247bde33d91d2a94b",
+      "dimensions": {
+        "width": 1200,
+        "height": 443
+      },
+      "game": "pokemon",
+      "aliases": [
+        "TEU",
+        "Team Up",
+        "sm9",
+        "team up",
+        "teu"
+      ]
+    },
+    {
+      "id": "det1",
+      "name": "Detective Pikachu",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/det1.png",
+      "sourceUrl": "https://images.pokemontcg.io/det1/logo.png",
+      "sha256": "c661d67e2abb99a67be94c52a0c7e0ea215bf5887306c0072ff09dc573a046a4",
+      "dimensions": {
+        "width": 430,
+        "height": 212
+      },
+      "game": "pokemon",
+      "aliases": [
+        "DET",
+        "Detective Pikachu",
+        "det",
+        "det1",
+        "detective pikachu"
+      ]
+    },
+    {
+      "id": "sm10",
+      "name": "Unbroken Bonds",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/sm10.png",
+      "sourceUrl": "https://images.pokemontcg.io/sm10/logo.png",
+      "sha256": "014f26f48a4f0d12c2f05dec685ba042d56f42a4047072ee2e12314cc0073ad5",
+      "dimensions": {
+        "width": 575,
+        "height": 242
+      },
+      "game": "pokemon",
+      "aliases": [
+        "UNB",
+        "Unbroken Bonds",
+        "sm10",
+        "unb",
+        "unbroken bonds"
+      ]
+    },
+    {
+      "id": "sm11",
+      "name": "Unified Minds",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/sm11.png",
+      "sourceUrl": "https://images.pokemontcg.io/sm11/logo.png",
+      "sha256": "07389a6c2e8db3279bca6aa9684b9b32274f97323665c25c9f4d29d8843c81dd",
+      "dimensions": {
+        "width": 578,
+        "height": 269
+      },
+      "game": "pokemon",
+      "aliases": [
+        "UNM",
+        "Unified Minds",
+        "sm11",
+        "unified minds",
+        "unm"
+      ]
+    },
+    {
+      "id": "sm115",
+      "name": "Hidden Fates",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/sm115.png",
+      "sourceUrl": "https://images.pokemontcg.io/sm115/logo.png",
+      "sha256": "4c960c1973750cb02b3aa8392f90954bcb3d30eca7e917a7ea09542abc6dfa4b",
+      "dimensions": {
+        "width": 554,
+        "height": 253
+      },
+      "game": "pokemon",
+      "aliases": [
+        "HIF",
+        "Hidden Fates",
+        "hidden fates",
+        "hif",
+        "sm11.5",
+        "sm115"
+      ]
+    },
+    {
+      "id": "sma",
+      "name": "Hidden Fates Shiny Vault",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/sma.png",
+      "sourceUrl": "https://images.pokemontcg.io/sma/logo.png",
+      "sha256": "d1c49ff42f097de0f7650705863b881f21aac9997cf78d04633a82bd2f446beb",
+      "dimensions": {
+        "width": 365,
+        "height": 167
+      },
+      "game": "pokemon",
+      "aliases": [
+        "HIF",
+        "Hidden Fates Shiny Vault",
+        "sma"
+      ]
+    },
+    {
+      "id": "mcd19",
+      "name": "McDonald's Collection 2019",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/mcd19.png",
+      "sourceUrl": "https://images.pokemontcg.io/mcd19/logo.png",
+      "sha256": "f23fc8a48cd132c076618723b8c4080c867903eb97705b88eca8ebda4cc2c57c",
+      "dimensions": {
+        "width": 1047,
+        "height": 1024
+      },
+      "game": "pokemon",
+      "aliases": [
+        "McDonald's Collection 2019",
+        "McDonald's Promos 2019",
+        "mcd19"
+      ]
+    },
+    {
+      "id": "sm12",
+      "name": "Cosmic Eclipse",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/sm12.png",
+      "sourceUrl": "https://images.pokemontcg.io/sm12/logo.png",
+      "sha256": "adc16a772db77a62aedc88b17e255a66306df6f87b4a3c7654a0f01706c4102f",
+      "dimensions": {
+        "width": 578,
+        "height": 277
+      },
+      "game": "pokemon",
+      "aliases": [
+        "CEC",
+        "Cosmic Eclipse",
+        "cec",
+        "cosmic eclipse",
+        "sm12"
+      ]
+    },
+    {
+      "id": "swshp",
+      "name": "SWSH Black Star Promos",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/swshp.png",
+      "sourceUrl": "https://images.pokemontcg.io/swshp/logo.png",
+      "sha256": "feedeb0bba7952ce90f70115df5ece0399be0d4b8ea8d3fa7e2f96401fe4da69",
+      "dimensions": {
+        "width": 200,
+        "height": 181
+      },
+      "game": "pokemon",
+      "aliases": [
+        "PR-SW",
+        "SWSH Black Star Promos",
+        "Sword & Shield Promo Cards",
+        "Sword & Shield Promos",
+        "swshp"
+      ]
+    },
+    {
+      "id": "swsh1",
+      "name": "Sword & Shield",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/swsh1.png",
+      "sourceUrl": "https://images.pokemontcg.io/swsh1/logo.png",
+      "sha256": "7b79ac3985069affab1f313c36c4a3d26b84075776fb31194023d7b1b60a04f7",
+      "dimensions": {
+        "width": 572,
+        "height": 112
+      },
+      "game": "pokemon",
+      "aliases": [
+        "SSH",
+        "Sword & Shield",
+        "Sword & Shield Base",
+        "Sword & Shield Base Set",
+        "ssh",
+        "sword and shield",
+        "sword shield",
+        "sword shield base",
+        "swsh",
+        "swsh1"
+      ]
+    },
+    {
+      "id": "swsh2",
+      "name": "Rebel Clash",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/swsh2.png",
+      "sourceUrl": "https://images.pokemontcg.io/swsh2/logo.png",
+      "sha256": "71484d39ed5d33efe95c9d316ae7a9d11db96ce3adcadc453e7c49f038214b41",
+      "dimensions": {
+        "width": 578,
+        "height": 194
+      },
+      "game": "pokemon",
+      "aliases": [
+        "RCL",
+        "Rebel Clash",
+        "rc",
+        "rcl",
+        "rebel clash",
+        "swsh2"
+      ]
+    },
+    {
+      "id": "swsh3",
+      "name": "Darkness Ablaze",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/swsh3.png",
+      "sourceUrl": "https://images.pokemontcg.io/swsh3/logo.png",
+      "sha256": "de006066f281bf233f2f02b990fbd266dff3e6666b60a97a5b38fcfed03208d4",
+      "dimensions": {
+        "width": 446,
+        "height": 120
+      },
+      "game": "pokemon",
+      "aliases": [
+        "DAA",
+        "Darkness Ablaze",
+        "da",
+        "daa",
+        "darkness ablaze",
+        "swsh3"
+      ]
+    },
+    {
+      "id": "fut20",
+      "name": "Pokémon Futsal Collection",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/fut20.png",
+      "sourceUrl": "https://images.pokemontcg.io/fut20/logo.png",
+      "sha256": "cb6dd4a51735c471fd94376168074ea899cae9af25197efefb05c05f8b77ea61",
+      "dimensions": {
+        "width": 420,
+        "height": 530
+      },
+      "game": "pokemon",
+      "aliases": [
+        "FUT20",
+        "Pokémon Futsal Collection",
+        "fut20"
+      ]
+    },
+    {
+      "id": "swsh35",
+      "name": "Champion's Path",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/swsh35.png",
+      "sourceUrl": "https://images.pokemontcg.io/swsh35/logo.png",
+      "sha256": "486790ffa0684075a5c4783bc29bfa75dcd2c4679c503e8b6eff9878cb67a1be",
+      "dimensions": {
+        "width": 815,
+        "height": 298
+      },
+      "game": "pokemon",
+      "aliases": [
+        "CPA",
+        "Champion's Path",
+        "champion path",
+        "champions",
+        "champions path",
+        "cp",
+        "cpa",
+        "swsh3.5",
+        "swsh35"
+      ]
+    },
+    {
+      "id": "swsh4",
+      "name": "Vivid Voltage",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/swsh4.png",
+      "sourceUrl": "https://images.pokemontcg.io/swsh4/logo.png",
+      "sha256": "45533a3c949d6ec34f9f47e40cefa01dbce4acd1b95bc72ac9a7333fe428f981",
+      "dimensions": {
+        "width": 473,
+        "height": 188
+      },
+      "game": "pokemon",
+      "aliases": [
+        "VIV",
+        "Vivid Voltage",
+        "swsh4",
+        "viv",
+        "vivid voltage",
+        "vv"
+      ]
+    },
+    {
+      "id": "swsh45",
+      "name": "Shining Fates",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/swsh45.png",
+      "sourceUrl": "https://images.pokemontcg.io/swsh45/logo.png",
+      "sha256": "aa8f8eaf57b2a5b45cfeac27746e8ab5f69b023b1b2fa84316b42b0a136e2b78",
+      "dimensions": {
+        "width": 357,
+        "height": 177
+      },
+      "game": "pokemon",
+      "aliases": [
+        "SHF",
+        "Shining Fates",
+        "sf",
+        "shf",
+        "shining fates",
+        "swsh4.5",
+        "swsh45"
+      ]
+    },
+    {
+      "id": "swsh45sv",
+      "name": "Shining Fates Shiny Vault",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/swsh45sv.png",
+      "sourceUrl": "https://images.pokemontcg.io/swsh45sv/logo.png",
+      "sha256": "aa8f8eaf57b2a5b45cfeac27746e8ab5f69b023b1b2fa84316b42b0a136e2b78",
+      "dimensions": {
+        "width": 357,
+        "height": 177
+      },
+      "game": "pokemon",
+      "aliases": [
+        "SHF",
+        "Shining Fates Shiny Vault",
+        "swsh45sv"
+      ]
+    },
+    {
+      "id": "swsh5",
+      "name": "Battle Styles",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/swsh5.png",
+      "sourceUrl": "https://images.pokemontcg.io/swsh5/logo.png",
+      "sha256": "dfcb4cf4bc6499d1d2ec2293567aa5f2dd4afc44757e2d6934a5f29b23e325f2",
+      "dimensions": {
+        "width": 522,
+        "height": 172
+      },
+      "game": "pokemon",
+      "aliases": [
+        "BST",
+        "Battle Styles",
+        "battle styles",
+        "bs",
+        "bst",
+        "swsh5"
+      ]
+    },
+    {
+      "id": "swsh6",
+      "name": "Chilling Reign",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/swsh6.png",
+      "sourceUrl": "https://images.pokemontcg.io/swsh6/logo.png",
+      "sha256": "1ae6fef6fec83ac7d3ca1ca0d27854cf1aa79afc2460c19d017f838663fbf0c1",
+      "dimensions": {
+        "width": 411,
+        "height": 219
+      },
+      "game": "pokemon",
+      "aliases": [
+        "CRE",
+        "Chilling Reign",
+        "chilling reign",
+        "cr",
+        "cre",
+        "swsh6"
+      ]
+    },
+    {
+      "id": "swsh7",
+      "name": "Evolving Skies",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/swsh7.png",
+      "sourceUrl": "https://images.pokemontcg.io/swsh7/logo.png",
+      "sha256": "f2402b6fb9405f2b1ba88bb64a2df6db032ebf86469b3397b1c4d1ccd825d9cf",
+      "dimensions": {
+        "width": 365,
+        "height": 146
+      },
+      "game": "pokemon",
+      "aliases": [
+        "EVS",
+        "Evolving Skies",
+        "es",
+        "evo skies",
+        "evolving skies",
+        "evs",
+        "swsh7"
+      ]
+    },
+    {
+      "id": "mcd21",
+      "name": "McDonald's Collection 2021",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/mcd21.png",
+      "sourceUrl": "https://images.pokemontcg.io/mcd21/logo.png",
+      "sha256": "f23fc8a48cd132c076618723b8c4080c867903eb97705b88eca8ebda4cc2c57c",
+      "dimensions": {
+        "width": 1047,
+        "height": 1024
+      },
+      "game": "pokemon",
+      "aliases": [
+        "McDonald's 25th Anniversary Promos",
+        "McDonald's Collection 2021",
+        "McDonald's Promos 2021",
+        "mcd21"
+      ]
+    },
+    {
+      "id": "cel25",
+      "name": "Celebrations",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/cel25.png",
+      "sourceUrl": "https://images.pokemontcg.io/cel25/logo.png",
+      "sha256": "2ed5ef5b3fc742830dca5ae52a87b87528c4599373a9a54511a6424658a9df25",
+      "dimensions": {
+        "width": 1368,
+        "height": 330
+      },
+      "game": "pokemon",
+      "aliases": [
+        "CEL",
+        "Celebrations",
+        "cel",
+        "cel25",
+        "celebration",
+        "celebrations"
+      ]
+    },
+    {
+      "id": "cel25c",
+      "name": "Celebrations: Classic Collection",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/cel25c.png",
+      "sourceUrl": "https://images.pokemontcg.io/cel25c/logo.png",
+      "sha256": "2ed5ef5b3fc742830dca5ae52a87b87528c4599373a9a54511a6424658a9df25",
+      "dimensions": {
+        "width": 1368,
+        "height": 330
+      },
+      "game": "pokemon",
+      "aliases": [
+        "CEL",
+        "Celebrations: Classic Collection",
+        "cel25c"
+      ]
+    },
+    {
+      "id": "swsh8",
+      "name": "Fusion Strike",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/swsh8.png",
+      "sourceUrl": "https://images.pokemontcg.io/swsh8/logo.png",
+      "sha256": "a0c4f3865a1eafa664a8d843b5c689fccacab10eef9651e3a31de074ef6091ac",
+      "dimensions": {
+        "width": 552,
+        "height": 224
+      },
+      "game": "pokemon",
+      "aliases": [
+        "FST",
+        "Fusion Strike",
+        "fs",
+        "fst",
+        "fusion strike",
+        "swsh8"
+      ]
+    },
+    {
+      "id": "swsh9",
+      "name": "Brilliant Stars",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/swsh9.png",
+      "sourceUrl": "https://images.pokemontcg.io/swsh9/logo.png",
+      "sha256": "bb8a6c45a9b6cab8ed9d22c6599f129b6649fd907dda9c217a79bffa8e5f40ac",
+      "dimensions": {
+        "width": 578,
+        "height": 239
+      },
+      "game": "pokemon",
+      "aliases": [
+        "BRS",
+        "Brilliant Stars",
+        "brilliant stars",
+        "brs",
+        "bs",
+        "swsh9"
+      ]
+    },
+    {
+      "id": "swsh9tg",
+      "name": "Brilliant Stars Trainer Gallery",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/swsh9tg.png",
+      "sourceUrl": "https://images.pokemontcg.io/swsh9tg/logo.png",
+      "sha256": "bb8a6c45a9b6cab8ed9d22c6599f129b6649fd907dda9c217a79bffa8e5f40ac",
+      "dimensions": {
+        "width": 578,
+        "height": 239
+      },
+      "game": "pokemon",
+      "aliases": [
+        "BRS",
+        "Brilliant Stars Trainer Gallery",
+        "swsh9tg"
+      ]
+    },
+    {
+      "id": "swsh10",
+      "name": "Astral Radiance",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/swsh10.png",
+      "sourceUrl": "https://images.pokemontcg.io/swsh10/logo.png",
+      "sha256": "f89463d3739578f998922a78a5a09b8f7544ebf7e0238033f0c3078d2df52f3d",
+      "dimensions": {
+        "width": 902,
+        "height": 334
+      },
+      "game": "pokemon",
+      "aliases": [
+        "ASR",
+        "Astral Radiance",
+        "asr",
+        "astral",
+        "astral radiance",
+        "swsh10"
+      ]
+    },
+    {
+      "id": "swsh10tg",
+      "name": "Astral Radiance Trainer Gallery",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/swsh10tg.png",
+      "sourceUrl": "https://images.pokemontcg.io/swsh10tg/logo.png",
+      "sha256": "f89463d3739578f998922a78a5a09b8f7544ebf7e0238033f0c3078d2df52f3d",
+      "dimensions": {
+        "width": 902,
+        "height": 334
+      },
+      "game": "pokemon",
+      "aliases": [
+        "ASR",
+        "Astral Radiance Trainer Gallery",
+        "swsh10tg"
+      ]
+    },
+    {
+      "id": "pgo",
+      "name": "Pokémon GO",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/pgo.png",
+      "sourceUrl": "https://images.pokemontcg.io/pgo/logo.png",
+      "sha256": "9ff96f3d3e8d76457208722f9207b24748bdea69c622a474cf8922991b644868",
+      "dimensions": {
+        "width": 220,
+        "height": 137
+      },
+      "game": "pokemon",
+      "aliases": [
+        "PGO",
+        "Pokemon GO",
+        "Pokémon GO",
+        "pgo",
+        "pogo",
+        "pokemon go"
+      ]
+    },
+    {
+      "id": "mcd22",
+      "name": "McDonald's Collection 2022",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/mcd22.png",
+      "sourceUrl": "https://images.pokemontcg.io/mcd22/logo.png",
+      "sha256": "81b6e524618435100745629ad4d57441d163bc6a955f1af109392c31b6324590",
+      "dimensions": {
+        "width": 1138,
+        "height": 390
+      },
+      "game": "pokemon",
+      "aliases": [
+        "McDonald's Collection 2022",
+        "McDonald's Promos 2022",
+        "mcd22"
+      ]
+    },
+    {
+      "id": "swsh11",
+      "name": "Lost Origin",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/swsh11.png",
+      "sourceUrl": "https://images.pokemontcg.io/swsh11/logo.png",
+      "sha256": "33139f89cf0dd8d804822ba999c0bdc5ae91ffefafcfb92773751dd1c43a88f5",
+      "dimensions": {
+        "width": 565,
+        "height": 218
+      },
+      "game": "pokemon",
+      "aliases": [
+        "LOR",
+        "Lost Origin",
+        "lo",
+        "lor",
+        "lost origin",
+        "swsh11"
+      ]
+    },
+    {
+      "id": "swsh11tg",
+      "name": "Lost Origin Trainer Gallery",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/swsh11tg.png",
+      "sourceUrl": "https://images.pokemontcg.io/swsh11tg/logo.png",
+      "sha256": "33139f89cf0dd8d804822ba999c0bdc5ae91ffefafcfb92773751dd1c43a88f5",
+      "dimensions": {
+        "width": 565,
+        "height": 218
+      },
+      "game": "pokemon",
+      "aliases": [
+        "LOR",
+        "Lost Origin Trainer Gallery",
+        "swsh11tg"
+      ]
+    },
+    {
+      "id": "swsh12",
+      "name": "Silver Tempest",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/swsh12.png",
+      "sourceUrl": "https://images.pokemontcg.io/swsh12/logo.png",
+      "sha256": "bfb84d5e77835d5d7327da26a8dfdbe3ca3bf8ab4e8c3c6a59862e3ad1c752ed",
+      "dimensions": {
+        "width": 900,
+        "height": 422
+      },
+      "game": "pokemon",
+      "aliases": [
+        "SIT",
+        "Silver Tempest",
+        "silver tempest",
+        "sit",
+        "st",
+        "swsh12"
+      ]
+    },
+    {
+      "id": "swsh12tg",
+      "name": "Silver Tempest Trainer Gallery",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/swsh12tg.png",
+      "sourceUrl": "https://images.pokemontcg.io/swsh12tg/logo.png",
+      "sha256": "bfb84d5e77835d5d7327da26a8dfdbe3ca3bf8ab4e8c3c6a59862e3ad1c752ed",
+      "dimensions": {
+        "width": 900,
+        "height": 422
+      },
+      "game": "pokemon",
+      "aliases": [
+        "SIT",
+        "Silver Tempest Trainer Gallery",
+        "swsh12tg"
+      ]
+    },
+    {
+      "id": "swsh12pt5",
+      "name": "Crown Zenith",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/swsh12pt5.png",
+      "sourceUrl": "https://images.pokemontcg.io/swsh12pt5/logo.png",
+      "sha256": "50794a1569b76c7aa1eb0059d1958148329fad8cb3c26ed688f3d87462a1c8fb",
+      "dimensions": {
+        "width": 564,
+        "height": 213
+      },
+      "game": "pokemon",
+      "aliases": [
+        "CRZ",
+        "Crown Zenith",
+        "crown zenith",
+        "crz",
+        "cz",
+        "swsh12.5",
+        "swsh12pt5"
+      ]
+    },
+    {
+      "id": "swsh12pt5gg",
+      "name": "Crown Zenith Galarian Gallery",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/swsh12pt5gg.png",
+      "sourceUrl": "https://images.pokemontcg.io/swsh12pt5gg/logo.png",
+      "sha256": "50794a1569b76c7aa1eb0059d1958148329fad8cb3c26ed688f3d87462a1c8fb",
+      "dimensions": {
+        "width": 564,
+        "height": 213
+      },
+      "game": "pokemon",
+      "aliases": [
+        "CRZ",
+        "Crown Zenith Galarian Gallery",
+        "swsh12pt5gg"
+      ]
+    },
+    {
+      "id": "svp",
+      "name": "Scarlet & Violet Black Star Promos",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/svp.png",
+      "sourceUrl": "https://images.pokemontcg.io/svp/logo.png",
+      "sha256": "feedeb0bba7952ce90f70115df5ece0399be0d4b8ea8d3fa7e2f96401fe4da69",
+      "dimensions": {
+        "width": 200,
+        "height": 181
+      },
+      "game": "pokemon",
+      "aliases": [
+        "PR-SV",
+        "Scarlet & Violet Black Star Promos",
+        "Scarlet & Violet Promo Cards",
+        "Scarlet & Violet Promos",
+        "svp"
+      ]
+    },
+    {
+      "id": "sve",
+      "name": "Scarlet & Violet Energies",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/sve.png",
+      "sourceUrl": "https://images.pokemontcg.io/sve/logo.png",
+      "sha256": "0fd74831836f0e95f5fe8c2e7eff8d67b170013ce87311866fd55f2586027553",
+      "dimensions": {
+        "width": 2500,
+        "height": 1281
+      },
+      "game": "pokemon",
+      "aliases": [
+        "SVE",
+        "SVE: Scarlet & Violet Energies",
+        "Scarlet & Violet Energies",
+        "sve"
+      ]
+    },
+    {
+      "id": "sv1",
+      "name": "Scarlet & Violet",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/sv1.png",
+      "sourceUrl": "https://images.pokemontcg.io/sv1/logo.png",
+      "sha256": "92fdb84885d56c57a79654d2c43032d21e16ce6a0c5a11a21821333ecae4ce52",
+      "dimensions": {
+        "width": 898,
+        "height": 260
+      },
+      "game": "pokemon",
+      "aliases": [
+        "SVI",
+        "Scarlet & Violet",
+        "Scarlet & Violet Base",
+        "Scarlet & Violet Base Set",
+        "base sv",
+        "scarlet and violet",
+        "scarlet violet",
+        "scarlet violet base",
+        "sv",
+        "sv base",
+        "sv1",
+        "svi"
+      ]
+    },
+    {
+      "id": "sv2",
+      "name": "Paldea Evolved",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/sv2.png",
+      "sourceUrl": "https://images.pokemontcg.io/sv2/logo.png",
+      "sha256": "762d7b8c19db8c620dbf1641635039a91b893049289c0f135fb39871ef8d5ea7",
+      "dimensions": {
+        "width": 451,
+        "height": 147
+      },
+      "game": "pokemon",
+      "aliases": [
+        "PAL",
+        "Paldea Evolved",
+        "pal",
+        "paldea",
+        "paldea evolved",
+        "pe",
+        "sv2"
+      ]
+    },
+    {
+      "id": "sv3",
+      "name": "Obsidian Flames",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/sv3.png",
+      "sourceUrl": "https://images.pokemontcg.io/sv3/logo.png",
+      "sha256": "7fd258760a9c2b903bb49a87c71b0c2737433e396674e1021b09e466938ddb42",
+      "dimensions": {
+        "width": 451,
+        "height": 167
+      },
+      "game": "pokemon",
+      "aliases": [
+        "OBF",
+        "Obsidian Flames",
+        "obf",
+        "obs",
+        "obsidian flames",
+        "of",
+        "sv3"
+      ]
+    },
+    {
+      "id": "sv3pt5",
+      "name": "151",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/sv3pt5.png",
+      "sourceUrl": "https://images.pokemontcg.io/sv3pt5/logo.png",
+      "sha256": "ecd3f027313d99d22f03050b4ea2fdddda7ba8b4e4a8c1ca0b1669464bb9790d",
+      "dimensions": {
+        "width": 440,
+        "height": 334
+      },
+      "game": "pokemon",
+      "aliases": [
+        "151",
+        "MEW",
+        "Scarlet & Violet 151",
+        "mew",
+        "pokemon 151",
+        "scarlet & violet 151",
+        "scarlet and violet 151",
+        "scarlet violet 151",
+        "sv151",
+        "sv3.5",
+        "sv3pt5"
+      ]
+    },
+    {
+      "id": "sv4",
+      "name": "Paradox Rift",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/sv4.png",
+      "sourceUrl": "https://images.pokemontcg.io/sv4/logo.png",
+      "sha256": "199a118bed0ae22cc24f6c1dedfd3cf70cf1ab37612787003aedbccc68c28d6f",
+      "dimensions": {
+        "width": 451,
+        "height": 167
+      },
+      "game": "pokemon",
+      "aliases": [
+        "PAR",
+        "Paradox Rift",
+        "par",
+        "paradox rift",
+        "pr",
+        "sv4"
+      ]
+    },
+    {
+      "id": "sv4pt5",
+      "name": "Paldean Fates",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/sv4pt5.png",
+      "sourceUrl": "https://images.pokemontcg.io/sv4pt5/logo.png",
+      "sha256": "731cf852d9503d3b31a756ed8f13af13e36fe9483a26d8e90c9d9e38978c315e",
+      "dimensions": {
+        "width": 467,
+        "height": 256
+      },
+      "game": "pokemon",
+      "aliases": [
+        "PAF",
+        "Paldean Fates",
+        "paf",
+        "paldean fates",
+        "pf",
+        "sv4.5",
+        "sv4pt5"
+      ]
+    },
+    {
+      "id": "sv5",
+      "name": "Temporal Forces",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/sv5.png",
+      "sourceUrl": "https://images.pokemontcg.io/sv5/logo.png",
+      "sha256": "0f041da49af5793f0d9efc17c4b9ba741bb5cd9064d5bc89d67aac8d7d0d7c82",
+      "dimensions": {
+        "width": 575,
+        "height": 228
+      },
+      "game": "pokemon",
+      "aliases": [
+        "TEF",
+        "Temporal Forces",
+        "sv5",
+        "tef",
+        "temporal forces",
+        "tf"
+      ]
+    },
+    {
+      "id": "sv6",
+      "name": "Twilight Masquerade",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/sv6.png",
+      "sourceUrl": "https://images.pokemontcg.io/sv6/logo.png",
+      "sha256": "22ab6dd96a1d1b1ddc705e0a47703b36e31839b4a3d7e5c936b936de6266254f",
+      "dimensions": {
+        "width": 529,
+        "height": 226
+      },
+      "game": "pokemon",
+      "aliases": [
+        "TWM",
+        "Twilight Masquerade",
+        "scarlet & violet twilight masquerade",
+        "scarlet and violet twilight masquerade",
+        "scarlet violet twilight masquerade",
+        "sv06",
+        "sv6",
+        "tm",
+        "twilight masquerade",
+        "twm"
+      ]
+    },
+    {
+      "id": "sv6pt5",
+      "name": "Shrouded Fable",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/sv6pt5.png",
+      "sourceUrl": "https://images.pokemontcg.io/sv6pt5/logo.png",
+      "sha256": "0a47b76022e44839462e2c08371c80ca93f12cb96915d21c70adf3f8bde8f505",
+      "dimensions": {
+        "width": 578,
+        "height": 271
+      },
+      "game": "pokemon",
+      "aliases": [
+        "SFA",
+        "Shrouded Fable",
+        "sf",
+        "sfa",
+        "shrouded fable",
+        "sv6.5",
+        "sv6pt5"
+      ]
+    },
+    {
+      "id": "sv7",
+      "name": "Stellar Crown",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/sv7.png",
+      "sourceUrl": "https://images.pokemontcg.io/sv7/logo.png",
+      "sha256": "1430551d9277c3c199033ae7839378289b4ab204279bee3e57cc62be503ebcb9",
+      "dimensions": {
+        "width": 448,
+        "height": 180
+      },
+      "game": "pokemon",
+      "aliases": [
+        "SCR",
+        "Stellar Crown",
+        "sc",
+        "scr",
+        "stellar crown",
+        "sv7"
+      ]
+    },
+    {
+      "id": "sv8",
+      "name": "Surging Sparks",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/sv8.png",
+      "sourceUrl": "https://images.pokemontcg.io/sv8/logo.png",
+      "sha256": "7e44c5673a6c88a2858b2aab8dc670483d60edff4223af28e259411d1f793aec",
+      "dimensions": {
+        "width": 474,
+        "height": 209
+      },
+      "game": "pokemon",
+      "aliases": [
+        "SSP",
+        "Surging Sparks",
+        "scarlet & violet surging sparks",
+        "scarlet and violet surging sparks",
+        "scarlet violet surging sparks",
+        "ss",
+        "ssp",
+        "surg",
+        "surging sparks",
+        "sv08",
+        "sv8"
+      ]
+    },
+    {
+      "id": "sv8pt5",
+      "name": "Prismatic Evolutions",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/sv8pt5.png",
+      "sourceUrl": "https://images.pokemontcg.io/sv8pt5/logo.png",
+      "sha256": "f3edea0a719426fa159b21f2c14d3fa248343e8b98f699dd370913c5108bacb2",
+      "dimensions": {
+        "width": 500,
+        "height": 232
+      },
+      "game": "pokemon",
+      "aliases": [
+        "PRE",
+        "Prismatic Evolutions",
+        "pe",
+        "pr evo",
+        "pre",
+        "prism evo",
+        "prismatic",
+        "prismatic evolutions",
+        "scarlet & violet prismatic evolutions",
+        "scarlet and violet prismatic evolutions",
+        "scarlet violet prismatic evolutions",
+        "sv8.5",
+        "sv8pt5",
+        "sv8pt5 prismatic"
+      ]
+    },
+    {
+      "id": "sv9",
+      "name": "Journey Together",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/sv9.png",
+      "sourceUrl": "https://images.pokemontcg.io/sv9/logo.png",
+      "sha256": "fe6e96bbea4102ae4836939010e1b3b36a52bd7cde6fee810a479f4d1544bb9e",
+      "dimensions": {
+        "width": 445,
+        "height": 140
+      },
+      "game": "pokemon",
+      "aliases": [
+        "JTG",
+        "Journey Together",
+        "journey together",
+        "jt",
+        "jtg",
+        "jtt",
+        "sv9"
+      ]
+    },
+    {
+      "id": "sv10",
+      "name": "Destined Rivals",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/sv10.png",
+      "sourceUrl": "https://images.pokemontcg.io/sv10/logo.png",
+      "sha256": "30b9f6bda80dedc79a025cb8068fb4ace39b1d7b5df7e968156aa89182aecfeb",
+      "dimensions": {
+        "width": 517,
+        "height": 194
+      },
+      "game": "pokemon",
+      "aliases": [
+        "DRI",
+        "Destined Rivals",
+        "destined rivals",
+        "dr",
+        "dri",
+        "sv10"
+      ]
+    },
+    {
+      "id": "zsv10pt5",
+      "name": "Black Bolt",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/zsv10pt5.png",
+      "sourceUrl": "https://images.pokemontcg.io/zsv10pt5/logo.png",
+      "sha256": "dfd3cf7f3b8fda808c23063397dc1e5ce467bf1511d23203c4979e4d55f11b96",
+      "dimensions": {
+        "width": 390,
+        "height": 245
+      },
+      "game": "pokemon",
+      "aliases": [
+        "BKT",
+        "BLK",
+        "Black Bolt",
+        "bb",
+        "bkt",
+        "black bolt",
+        "sv10.5 black bolt",
+        "sv10pt5 black bolt",
+        "sv10pt5-bkt",
+        "zsv10pt5"
+      ]
+    },
+    {
+      "id": "rsv10pt5",
+      "name": "White Flare",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/rsv10pt5.png",
+      "sourceUrl": "https://images.pokemontcg.io/rsv10pt5/logo.png",
+      "sha256": "7634f8401f6cb3af01e0ef636c2b80c6df7a70f6baccac758cebabd05bb44262",
+      "dimensions": {
+        "width": 414,
+        "height": 252
+      },
+      "game": "pokemon",
+      "aliases": [
+        "WFL",
+        "WHT",
+        "White Flare",
+        "rsv10pt5",
+        "sv10.5 white flare",
+        "sv10pt5 white flare",
+        "sv10pt5-wfl",
+        "wf",
+        "wfl",
+        "white flare"
+      ]
+    },
+    {
+      "id": "me1",
+      "name": "Mega Evolution",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/me1.png",
+      "sourceUrl": "https://images.pokemontcg.io/me1/logo.png",
+      "sha256": "a44e5267b1a2293e2a59d620612a5de48dccca349df25841b101ea86ff20c5c3",
+      "dimensions": {
+        "width": 543,
+        "height": 110
+      },
+      "game": "pokemon",
+      "aliases": [
+        "MEG",
+        "Mega Evolution",
+        "m1",
+        "me",
+        "me1",
+        "mega",
+        "mega base",
+        "mega evolution"
+      ]
+    },
+    {
+      "id": "me2",
+      "name": "Phantasmal Flames",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/me2.png",
+      "sourceUrl": "https://images.pokemontcg.io/me2/logo.png",
+      "sha256": "ee431b73321077fdc215cebbdb7927c55c902ab044804e825846758401b16f9f",
+      "dimensions": {
+        "width": 347,
+        "height": 150
+      },
+      "game": "pokemon",
+      "aliases": [
+        "PFL",
+        "PHF",
+        "Phantasmal Flames",
+        "m2",
+        "me2",
+        "pf",
+        "phantasmal flames",
+        "phf"
+      ]
+    },
+    {
+      "id": "me2pt5",
+      "name": "Ascended Heroes",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/me2pt5.png",
+      "sourceUrl": "https://images.scrydex.com/pokemon/me2pt5-logo/logo",
+      "sha256": "b7bfcf16556438ff7c34a9bdd713417ef16ce25b59fadca9cb73ce32f9dd283b",
+      "dimensions": {
+        "width": 278,
+        "height": 140
+      },
+      "game": "pokemon",
+      "aliases": [
+        "ASC",
+        "Ascended Heroes",
+        "asc",
+        "ascended",
+        "ascended heroes",
+        "me ascended",
+        "me ascended heroes",
+        "me-ascended-heroes",
+        "me2pt5",
+        "mega ascended",
+        "mega ascended heroes"
+      ]
+    },
+    {
+      "id": "me3",
+      "name": "Perfect Order",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/me3.png",
+      "sourceUrl": "https://images.scrydex.com/pokemon/me3-logo/logo",
+      "sha256": "7d7da8032ecdcb29cde41b6137cb818142102bdb931a412f14ed02d01b892f17",
+      "dimensions": {
+        "width": 314,
+        "height": 140
+      },
+      "game": "pokemon",
+      "aliases": [
+        "POR",
+        "Perfect Order",
+        "me perfect",
+        "me perfect order",
+        "me-perfect-order",
+        "me3",
+        "mega perfect",
+        "mega perfect order",
+        "perfect",
+        "perfect order",
+        "por"
+      ]
+    },
+    {
+      "id": "me4",
+      "name": "Chaos Rising",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/me4.png",
+      "sourceUrl": "https://images.scrydex.com/pokemon/me4-logo/logo",
+      "sha256": "10ed78c1fc7cbee10d5eb7fe52375e87131350f8b8f56e3e66b8c7968b4400a5",
+      "dimensions": {
+        "width": 375,
+        "height": 127
+      },
+      "game": "pokemon",
+      "aliases": [
+        "CRI",
+        "Chaos Rising",
+        "me4"
+      ]
+    },
+    {
+      "id": "me5",
+      "name": "Pitch Black",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/me5.png",
+      "sourceUrl": "https://images.scrydex.com/pokemon/me5-logo/logo",
+      "sha256": "cf30a9e1435d4f66f9af7453518d3ea117fa09733f1d11757cd8b126240cde58",
+      "dimensions": {
+        "width": 375,
+        "height": 124
+      },
+      "game": "pokemon",
+      "aliases": [
+        "PBL",
+        "Pitch Black",
+        "me5"
+      ]
+    },
+    {
+      "id": "me55",
+      "name": "30th Celebration",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/me55.png",
+      "sourceUrl": "https://images.scrydex.com/pokemon/me55-logo/logo",
+      "sha256": "883334940d86ba790ceb49ce8a83e4467f26ce96b203d69bc907c06aac407d04",
+      "dimensions": {
+        "width": 253,
+        "height": 140
+      },
+      "game": "pokemon",
+      "aliases": [
+        "30C",
+        "30th Celebration",
+        "me55"
+      ]
+    },
+    {
+      "id": "me55c",
+      "name": "30th Celebration: Classic Collection",
+      "language": "en",
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/me55c.png",
+      "sourceUrl": "https://images.scrydex.com/pokemon/me55c-logo/logo",
+      "sha256": "883334940d86ba790ceb49ce8a83e4467f26ce96b203d69bc907c06aac407d04",
+      "dimensions": {
+        "width": 253,
+        "height": 140
+      },
+      "game": "pokemon",
+      "aliases": [
+        "30C",
+        "30th Celebration: Classic Collection",
+        "me55c"
+      ]
+    },
+    {
+      "id": "official-me06",
+      "name": "Delta Reign",
+      "language": "en",
+      "game": "pokemon",
+      "aliases": [
+        "ME06: Delta Reign"
+      ],
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/official-me06.png",
+      "sourceUrl": "https://d1i787aglh9bmb.cloudfront.net/assets/img/me-expansions/me06/logo/en-us/me06-logo-2x.png",
+      "sourcePage": "https://tcg.pokemon.com/en-us/expansions/delta-reign/",
+      "sha256": "81a5cd5864ddedc819e5a060b87543e206d606b2535ed2f2fff0a650bc4e84a0",
+      "dimensions": {
+        "width": 1052,
+        "height": 504
+      }
+    },
+    {
+      "id": "official-tcg-classic",
+      "name": "Pokémon Trading Card Game Classic",
+      "language": "en",
+      "game": "pokemon",
+      "aliases": [
+        "Trading Card Game Classic"
+      ],
+      "logoUrl": "/assets/catalog/set-logos/pokemon/en/official-tcg-classic.jpg",
+      "sourceUrl": "https://imguscdn.gamespress.com/cdn/files/PokemonAmerica/2023/02/271312-b410dfc2/Pokemon_Trading_Card_Game_Classic_Logo.jpg?w=240&mode=max&otf=y&quality=90&format=jpg&bgcolor=white&sky=56b778b57e9c375e02aa27ed07591aba24e7fd1a71b0ed7f7f67cb1836694ea2",
+      "sourcePage": "https://press.pokemon.com/en/Pokemon-Trading-Card-Game-Classic",
+      "sha256": "c130245de8e158132dae9068f248415cd3564e3da83012b597712a6046db3fee",
+      "dimensions": {
+        "height": 55,
+        "width": 240
+      }
+    }
+  ],
+  "games": [
+    {
+      "id": "pokemon",
+      "name": "Pokémon",
+      "language": "en",
+      "logoUrl": "/assets/catalog/game-logos/pokemon.png",
+      "sourceUrl": "https://tcg.pokemon.com/assets/img/global/logos/en-us/tcg-logo-2x.png",
+      "sha256": "329ffba6c9f5bc8bff6aa47f3a7cc1c12fefc75dd235cdc97fa908ec163213ff",
+      "dimensions": {
+        "width": 250,
+        "height": 128
+      },
+      "sourcePage": "https://tcg.pokemon.com/en-us/"
+    },
+    {
+      "id": "magic",
+      "name": "Magic: The Gathering",
+      "language": "en",
+      "logoUrl": "/assets/catalog/game-logos/magic.png",
+      "sourceUrl": "https://images.ctfassets.net/s5n2t79q9icq/3dB5uyWzUH95O1ZPBNNUX5/6cff7c65a809285755ea24b164b6ac65/magic-logo.png",
+      "sha256": "f7589be78651edc1410a27252a3dff23ec823a9ae759cd24c219dfbeb6b2960a",
+      "dimensions": {
+        "width": 257,
+        "height": 86
+      },
+      "sourcePage": "https://magic.wizards.com/en"
+    },
+    {
+      "id": "yugioh",
+      "name": "Yu-Gi-Oh!",
+      "language": "en",
+      "logoUrl": "/assets/catalog/game-logos/yugioh.png",
+      "sourceUrl": "https://www.yugioh-card.com/en/wp-content/uploads/2020/04/logo-main.png",
+      "sha256": "497ae19eaf7a422b5132f937e9c2da4564e9d7e9037fa64a319c9801a0b33f4c",
+      "dimensions": {
+        "width": 264,
+        "height": 96
+      },
+      "sourcePage": "https://www.yugioh-card.com/en/"
+    },
+    {
+      "id": "lorcana",
+      "name": "Disney Lorcana",
+      "language": "en",
+      "logoUrl": "/assets/catalog/game-logos/lorcana.png",
+      "sourceUrl": "https://www.disneylorcana.com/_nuxt/logo-br-2x.Sweb4xgr.png",
+      "sha256": "995bed5d74679a94ce4955bc228f5348a1af179d3db714b84cd9e260506d2b01",
+      "dimensions": {
+        "width": 568,
+        "height": 208
+      },
+      "sourcePage": "https://www.disneylorcana.com/en-US/"
+    },
+    {
+      "id": "one-piece",
+      "name": "One Piece",
+      "language": "en",
+      "logoUrl": "/assets/catalog/game-logos/one-piece.png",
+      "sourceUrl": "https://en.onepiece-cardgame.com/renewal/images/common/logo_op_white.png",
+      "sha256": "eda7d006229d5bb648fef4cd05709ed26c70cd978731784e017f0166dc2238da",
+      "dimensions": {
+        "width": 561,
+        "height": 145
+      },
+      "sourcePage": "https://en.onepiece-cardgame.com/"
+    }
+  ]
+}

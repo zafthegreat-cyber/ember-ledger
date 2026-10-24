@@ -1,5 +1,6 @@
 import { SET_SEARCH_METADATA } from "./pokemonCatalogCoreData";
 import importedPokemonSets from "./generated/pokemonTcgSets.json";
+import { resolveSetArtwork } from "../utils/setArtwork.mjs";
 
 const SET_SERIES = {
   "Prismatic Evolutions": "Scarlet & Violet",
@@ -79,7 +80,18 @@ const setByCode = new Map();
   else setByCode.set(key, { ...setByCode.get(key), ...set });
 });
 
-export const POKEMON_SETS = [...setByCode.values()];
+export const POKEMON_SETS = [...setByCode.values()].map((set) => {
+  const artwork = resolveSetArtwork({ game: "pokemon", name: set.name });
+  return artwork ? {
+    ...set,
+    logoUrl: set.logoUrl || artwork.logoUrl,
+    symbolUrl: set.symbolUrl || artwork.symbolUrl || "",
+    imageSource: set.logoUrl || set.symbolUrl ? set.imageSource : "verified-set-artwork",
+    imageStatus: set.logoUrl || set.symbolUrl ? set.imageStatus : "verified",
+    imageNeedsReview: set.logoUrl || set.symbolUrl ? set.imageNeedsReview : false,
+    artworkLanguage: "en",
+  } : set;
+});
 
 export function getSetByCodeOrAlias(value) {
   const normalized = String(value || "").trim().toLowerCase();
