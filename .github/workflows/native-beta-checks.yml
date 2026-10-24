@@ -11,6 +11,11 @@ on:
           - all
         default: ios
         required: true
+      build_number:
+        description: New build number (at least 7 and above the last accepted upload)
+        type: string
+        default: '7'
+        required: true
   push:
     branches:
       - codex/all-bot-integration-setup
@@ -18,6 +23,8 @@ on:
       - .github/workflows/native-beta-checks.yml
       - scripts/native-ios-simulator-smoke.mjs
       - scripts/native-build.mjs
+      - scripts/native-build-number.mjs
+      - scripts/test-native-build-readiness.mjs
       - scripts/test-native-runtime.mjs
       - scripts/test-native-app-exports.mjs
       - ios/**
@@ -38,18 +45,22 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && (inputs.platform == 'android' || inputs.platform == 'all')
     runs-on: ubuntu-latest
     timeout-minutes: 35
+    env:
+      CODE3_BUILD_NUMBER: ${{ inputs.build_number || '7' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '24'
           cache: npm
-      - uses: actions/setup-java@v4
+      - run: node scripts/native-build-number.mjs
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
         with:
           distribution: temurin
           java-version: '21'
       - run: npm ci
       - run: npm run test:native
+      - run: node scripts/test-native-build-readiness.mjs
       - run: npm run test:device-transfer && npm run test:account-deletion-client && npm run test:private-receipts
       - run: npm run native:build
         env:
@@ -57,34 +68,47 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
       - run: npx cap sync android
       - run: chmod +x android/gradlew && cd android && ./gradlew assembleDebug testDebugUnitTest
-      - uses: actions/upload-artifact@v4
+      - name: Record debug artifact identity and upgrade limits
+        run: |
+          mkdir -p artifacts/native/android-debug
+          cp android/app/build/outputs/apk/debug/app-debug.apk artifacts/native/android-debug/Code3TCG-debug.apk
+          cp artifacts/native/web-build.json artifacts/native/android-debug/web-build.json
+          cp docs/mobile-beta/BETA_PACKAGE_READINESS_2026-10-24.md artifacts/native/android-debug/README.md
+          cd artifacts/native/android-debug
+          sha256sum Code3TCG-debug.apk > SHA256SUMS.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: code3-android-debug-not-for-play-store
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: code3-android-debug-build-${{ inputs.build_number }}-not-an-upgrade-or-play-release
+          path: artifacts/native/android-debug/
           retention-days: 7
   ios-simulator:
     if: github.event_name == 'push' || inputs.platform == 'ios' || inputs.platform == 'all'
     runs-on: macos-26
     timeout-minutes: 35
+    env:
+      CODE3_BUILD_NUMBER: ${{ inputs.build_number || '7' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '24'
           cache: npm
+      - run: node scripts/native-build-number.mjs
       - run: npm ci
       - run: npm run test:native
+      - run: node scripts/test-native-build-readiness.mjs
       - name: Build account-free simulator smoke bundle
         run: npm run native:build:smoke
       - run: npx cap sync ios
       - name: Compile and launch a disposable iPhone simulator
         run: node scripts/native-ios-simulator-smoke.mjs
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: code3-ios-simulator-smoke-not-for-testflight
           path: |
             artifacts/native/ios-smoke/
             artifacts/native/web-build.json
+            docs/mobile-beta/BETA_PACKAGE_READINESS_2026-10-24.md
           retention-days: 7
           if-no-files-found: warn

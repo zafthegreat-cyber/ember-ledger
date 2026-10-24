@@ -11,6 +11,7 @@ import { lazy, Suspense, useCallback, useDeferredValue, useEffect, useEffectEven
 import "./App.css";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
 import { encodeScoutReportCloudNotes, decodeScoutReportCloudNotes, mergeScoutReportCloudSave } from "./utils/scoutReportCloudContext.mjs";
+import { freshRestockVisitDefaults } from "./utils/restockShortcuts.mjs";
 import { hasConfirmedScoutReportStatus } from "./utils/scoutReportVerification.mjs";
 import OverflowMenu from "./components/OverflowMenu";
 import SmartSetupDialog from "./components/SmartSetupDialog.jsx";
@@ -7060,6 +7061,16 @@ export default function App() {
   const [showTreasure, setShowTreasure] = useState(false);
 
   const [user, setUser] = useState(BETA_LOCAL_MODE ? { id: "local-beta", email: "local beta mode" } : null);
+  const [accountDeletionGeneration, setAccountDeletionGeneration] = useState(0);
+  const accountDeletionIdentityRef = useRef({ accountId: BETA_LOCAL_MODE ? "local-beta" : "", generation: 0 });
+  const receiveAuthUser = useCallback((nextUser) => {
+    const accountId = nextUser?.id || "";
+    if (accountDeletionIdentityRef.current.accountId !== accountId) {
+      accountDeletionIdentityRef.current = { accountId, generation: accountDeletionIdentityRef.current.generation + 1 };
+      setAccountDeletionGeneration(accountDeletionIdentityRef.current.generation);
+    }
+    setUser(nextUser);
+  }, []);
   const [ownerSession, setOwnerSession] = useState(() => ({
     status: OWNER_SESSION_STATES.LOADING,
     authenticated: false,
@@ -7095,7 +7106,7 @@ export default function App() {
   });
   const [currentUserProfile, setCurrentUserProfile] = useState(() => makeFallbackUserProfile(null));
   const [authMode, setAuthMode] = useState("login");
-  const [accountDeletionCompleted, setAccountDeletionCompleted] = useState(false);
+  const [accountDeletionCompletedForId, setAccountDeletionCompletedForId] = useState("");
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authFirstName, setAuthFirstName] = useState("");
@@ -16597,14 +16608,15 @@ export default function App() {
         ...(saved.dealForm || {}),
       });
       onLocalSnapshotRead();
-      setUser(localBetaUser);
+      receiveAuthUser(localBetaUser);
       setLocalDataLoaded(true);
       if (!isSupabaseConfigured || !supabase) return;
       supabase.auth.getUser().then(({ data, error }) => {
-        if (!error && data?.user) setUser(data.user);
+        if (!error && data?.user) receiveAuthUser(data.user);
       });
       const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-        setUser(session?.user || localBetaUser);
+        if (session?.user?.id) setAccountDeletionCompletedForId((previous) => previous === session.user.id ? previous : "");
+        receiveAuthUser(session?.user || localBetaUser);
         setAuthSessionVersion((current) => current + 1);
       });
       return () => subscription.unsubscribe();
@@ -16612,17 +16624,18 @@ export default function App() {
 
     setLocalDataLoaded(true);
     if (!isSupabaseConfigured || !supabase) {
-      setUser(null);
+      receiveAuthUser(null);
       return undefined;
     }
 
     checkUser();
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user || null);
+      if (session?.user?.id) setAccountDeletionCompletedForId((previous) => previous === session.user.id ? previous : "");
+      receiveAuthUser(session?.user || null);
       setAuthSessionVersion((current) => current + 1);
     });
     return () => subscription.unsubscribe();
-  }, [localAppStorageGuard]);
+  }, [localAppStorageGuard, receiveAuthUser]);
 
   useEffect(() => {
     let active = true;
@@ -17349,7 +17362,7 @@ export default function App() {
 
   function startGuestPreview() {
     setGuestPreview(true);
-    setUser(null);
+    receiveAuthUser(null);
     setAuthMode("login");
     setAuthPassword("");
     setAuthError("");
@@ -17505,12 +17518,12 @@ export default function App() {
       await supabase.auth.signOut();
     }
     if (BETA_LOCAL_MODE) {
-      setUser({ id: "local-beta", email: "local beta mode" });
+      receiveAuthUser({ id: "local-beta", email: "local beta mode" });
       setActiveTab("menu");
       setMenuOpen(true);
       setMenuSectionsOpen((current) => ({ ...current, account: true }));
     } else {
-      setUser(null);
+      receiveAuthUser(null);
       setActiveTab("dashboard");
     }
   }
@@ -17518,7 +17531,7 @@ export default function App() {
   async function checkUser() {
     if (!isSupabaseConfigured || !supabase) return;
     const { data, error } = await supabase.auth.getUser();
-    if (!error) setUser(data.user);
+    if (!error) receiveAuthUser(data.user);
   }
 
   async function handleAuth(event) {
@@ -17639,7 +17652,7 @@ export default function App() {
           }
         }
         const { data: currentUserData, error: currentUserError } = await supabase.auth.getUser();
-        setUser(currentUserError ? data.user : currentUserData.user);
+        receiveAuthUser(currentUserError ? data.user : currentUserData.user);
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) {
@@ -17649,7 +17662,7 @@ export default function App() {
           return;
         }
         const { data: currentUserData, error: currentUserError } = await supabase.auth.getUser();
-        setUser(currentUserError ? data.user : currentUserData.user);
+        receiveAuthUser(currentUserError ? data.user : currentUserData.user);
       }
       setAuthPassword("");
       if (authMode === "signup") {
@@ -17679,13 +17692,13 @@ export default function App() {
       }
     }
     if (BETA_LOCAL_MODE) {
-      setUser({ id: "local-beta", email: "local beta mode" });
+      receiveAuthUser({ id: "local-beta", email: "local beta mode" });
       setAuthPassword("");
       setVaultToast("Signed out. Private beta data is still available on this device.");
       return;
     }
 
-    setUser(null);
+    receiveAuthUser(null);
   }
 
   function changeActiveWorkspace(workspaceId) {
@@ -22479,6 +22492,28 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     } else {
       openScoutReportDetail(savedReportId || savedReport, { fallback: savedReport, focus: "details" });
     }
+  }
+
+  function openQuickScoutSavingSettings() {
+    closeFlowModal({ force: true, reset: true });
+    setActiveTab("settings");
+  }
+
+  function startAnotherScoutVisit() {
+    const saved = quickScoutReportSaved || {};
+    const storeId = saved.storeId || saved.store_id || "";
+    const store = storeId ? getScoutQuickStores().find(candidate => candidate.active !== false && String(getScoutQuickStoreId(candidate)) === String(storeId)) : null;
+    const draft = createQuickScoutReportDraft({
+      ...(store ? buildQuickScoutStoreDraft(store) : { manualLocation: saved.manualLocation || saved.storeName || saved.store_name || "", manualLocationOpen: true }),
+      ...freshRestockVisitDefaults(saved),
+      storeConfirmed: false,
+    });
+    setQuickScoutReportForm(draft);
+    setQuickScoutReportStep("where");
+    setQuickScoutReportSaved(null);
+    setQuickScoutReportMessage("");
+    flowModalBaselineRef.current.scoutSubmit = draft;
+    openFlowModal("scoutSubmit", { size: "medium", source: "restock-new-visit" });
   }
 
   function openScoutSubmitFlow(options = {}) {
@@ -39381,10 +39416,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }
 
   function renderAccountDeletionPage() {
-    return <AccountDeletionPage key={user?.id || "signed-out"} user={guestPreviewActive ? null : user} completed={accountDeletionCompleted} onNavigate={setActiveTab} onDeleted={async () => {
-      setAccountDeletionCompleted(true);
+    return <AccountDeletionPage key={`${user?.id || "signed-out"}:${accountDeletionGeneration}`} user={guestPreviewActive ? null : user} completed={Boolean(accountDeletionCompletedForId && (!user?.id || user.id === accountDeletionCompletedForId))} onNavigate={setActiveTab} onDeleted={async () => {
+      const deletedAccountId = user?.id;
+      if (!deletedAccountId || accountDeletionIdentityRef.current.accountId !== deletedAccountId || accountDeletionIdentityRef.current.generation !== accountDeletionGeneration) return;
+      setAccountDeletionCompletedForId(deletedAccountId || "");
       const { error } = await supabase.auth.signOut({ scope: "local" });
-      setUser(null);
+      if (accountDeletionIdentityRef.current.accountId === deletedAccountId && accountDeletionIdentityRef.current.generation === accountDeletionGeneration) receiveAuthUser(null);
       if (error) throw error;
     }} />;
   }
@@ -44700,6 +44737,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         mapCatalog,
         money,
         openQuickScoutReportDetails,
+        openQuickScoutSavingSettings,
         openStoreProfile,
         parseManualLocationCoordinates,
         quickScoutConfidenceBadge,
@@ -44713,6 +44751,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         quickScoutReportStep,
         quickScoutReportSubmitting,
         quickScoutReportTypeMeta,
+        recentScoutReports: scoutSnapshot.reports || [],
+        scoutReporterId: user?.id || "",
+        startAnotherScoutVisit,
         quickScoutStockLeftLabel,
         quickScoutStoreHasHistory,
         quickScoutStoreNeedsReviewConfirmation,

@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { resolveNativeBuildNumber } from "./native-build-number.mjs";
 
 const platform = process.argv[2];
 if (!["android", "ios"].includes(platform)) throw new Error("Choose android or ios.");
@@ -8,7 +9,7 @@ const required = platform === "android"
   ? ["JAVA_HOME", "ANDROID_HOME", "CODE3_ANDROID_KEYSTORE", "CODE3_ANDROID_STORE_PASSWORD", "CODE3_ANDROID_KEY_ALIAS", "CODE3_ANDROID_KEY_PASSWORD", "CODE3_BUILD_NUMBER"]
   : ["CODE3_APPLE_TEAM_ID", "CODE3_IOS_PROFILE_NAME", "CODE3_BUILD_NUMBER"];
 for (const name of required) if (!process.env[name]) throw new Error(`Missing ${name}. Signing values belong in the local environment, never in source control.`);
-if (!/^[1-9][0-9]{0,8}$/.test(process.env.CODE3_BUILD_NUMBER)) throw new Error("Use a new positive build number.");
+process.env.CODE3_BUILD_NUMBER = String(resolveNativeBuildNumber(process.env.CODE3_BUILD_NUMBER, { required: true }));
 if (platform === "ios" && process.platform !== "darwin") throw new Error("iOS archive signing requires macOS with Xcode 26 or newer.");
 if (platform === "android" && !existsSync(process.env.CODE3_ANDROID_KEYSTORE)) throw new Error("The owner's Android upload keystore was not found.");
 function run(command, args, cwd = process.cwd()) {

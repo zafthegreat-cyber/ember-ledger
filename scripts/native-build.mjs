@@ -1,9 +1,11 @@
 import { loadEnv, build } from "vite";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { resolveNativeBuildNumber } from "./native-build-number.mjs";
 
 const settings = { ...loadEnv("native", process.cwd(), "VITE_"), ...process.env };
 const smoke = process.argv.includes("--smoke");
+const buildNumber = resolveNativeBuildNumber(settings.CODE3_BUILD_NUMBER);
 if (!smoke && (!settings.VITE_SUPABASE_URL || !settings.VITE_SUPABASE_ANON_KEY)) {
   throw new Error("Provide the existing PUBLIC Supabase URL and publishable/anon key in .env.native.local before building a usable native app. No service-role key belongs in a native build.");
 }
@@ -36,6 +38,7 @@ await build({
 mkdirSync(resolve("artifacts/native"), { recursive: true });
 writeFileSync(resolve("artifacts/native/web-build.json"), JSON.stringify({
   builtAt: new Date().toISOString(), mode: smoke ? "configuration-smoke-only" : "native-beta",
+  buildNumber, sourceCommit: process.env.GITHUB_SHA || null,
   apiOrigin: process.env.VITE_API_BASE_URL, accountServicesConfigured: !smoke,
   storeSigned: false, physicalDeviceTested: false,
 }, null, 2));

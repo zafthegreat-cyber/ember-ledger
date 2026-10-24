@@ -3,6 +3,7 @@ import { mkdirSync, readFileSync, writeFileSync, appendFileSync, existsSync } fr
 import { basename, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
+import { resolveNativeBuildNumber } from "./native-build-number.mjs";
 
 // Export the small parsers so they can be checked on Windows without starting
 // a simulator or invoking any build, signing, account or deployment operation.
@@ -45,6 +46,7 @@ export async function main() {
   if (build.mode !== "configuration-smoke-only" || build.accountServicesConfigured !== false) {
     throw new Error("Run npm run native:build:smoke and npx cap sync ios first. This check must not use a configured account build.");
   }
+  const buildNumber = resolveNativeBuildNumber(build.buildNumber);
   const config = JSON.parse(readFileSync(resolve("ios/App/App/capacitor.config.json"), "utf8"));
   const appId = "app.code3tcg.mobile";
   if (config.appId !== appId || config.server?.url) throw new Error("Unexpected native app ID or remote web content. No simulator was started.");
@@ -53,7 +55,7 @@ export async function main() {
   const log = resolve(output, "commands.log");
   writeFileSync(log, "Code 3 TCG iPhone simulator smoke check; no sign-in or store upload.\n");
   const report = {
-    startedAt: new Date().toISOString(), appId, mode: "configuration-smoke-only", status: "running",
+    startedAt: new Date().toISOString(), appId, buildNumber, mode: "configuration-smoke-only", status: "running",
     compiled: false, launched: false, launchSurvivalSeconds: 0,
     accountServicesConfigured: false, signInTested: false, accountDataTested: false,
     physicalDeviceTested: false, storeSigned: false, uploaded: false,
@@ -110,7 +112,7 @@ export async function main() {
     await run("xcrun", ["simctl", "bootstatus", simulatorId, "-b"], { timeoutMs: 240_000 });
     const derived = resolve("artifacts/native/ios-simulator");
     await run("xcodebuild", ["-project", "ios/App/App.xcodeproj", "-scheme", "App", "-configuration", "Debug",
-      "-destination", `platform=iOS Simulator,id=${simulatorId}`, "-derivedDataPath", derived, "CODE_SIGNING_ALLOWED=NO", "build"], { timeoutMs: 1_200_000 });
+      "-destination", `platform=iOS Simulator,id=${simulatorId}`, "-derivedDataPath", derived, `CURRENT_PROJECT_VERSION=${buildNumber}`, "CODE_SIGNING_ALLOWED=NO", "build"], { timeoutMs: 1_200_000 });
     report.compiled = true;
     const appPath = resolve(derived, "Build/Products/Debug-iphonesimulator/App.app");
     if (!existsSync(resolve(appPath, "App"))) throw new Error("The compiled simulator app executable was not found.");

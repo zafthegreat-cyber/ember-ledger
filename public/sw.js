@@ -1,8 +1,12 @@
-const CACHE_NAME = "ember-tide-pwa-v4";
+const CACHE_NAME = "ember-tide-pwa-v5";
 const APP_SHELL = [
   "/offline.html",
   "/manifest.webmanifest",
   "__BRAND_LOGO__",
+  "__BRAND_PWA_ICON_192__",
+  "__BRAND_PWA_ICON_512__",
+  "__BRAND_PWA_MASKABLE_ICON__",
+  "__BRAND_APPLE_TOUCH_ICON__",
 ];
 
 function isAppCache(key) {
@@ -40,6 +44,15 @@ self.addEventListener("fetch", (event) => {
   const requestUrl = new URL(event.request.url);
   if (requestUrl.origin !== self.location.origin) return;
   if (requestUrl.pathname === "/app-version.json") return;
+
+  // Refresh install metadata even when a previous icon was cached.
+  // This only concerns public assets; account storage is untouched.
+  if (event.request.destination === "manifest" || requestUrl.pathname === "/manifest.webmanifest") {
+    event.respondWith(fetch(event.request, { cache: "no-store" }).catch(async () => (
+      (await caches.match(event.request)) || Response.error()
+    )));
+    return;
+  }
 
   if (event.request.mode === "navigate") {
     event.respondWith(

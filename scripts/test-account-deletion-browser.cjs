@@ -24,8 +24,10 @@ fs.mkdirSync(output, { recursive: true });
 fs.writeFileSync(path.join(output, "fixture.html"), `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Account deletion synthetic QA</title></head><body><div id="root"></div><script type="module">
 import React from 'react';import {createRoot} from 'react-dom/client';import '/src/index.css';import '/src/styles/theme.css';
 import AccountDeletionPage from '/src/features/privacy/AccountDeletionPage.jsx';import PublicPrivacyRoute from '/src/features/privacy/PublicPrivacyRoute.jsx';
-const params=new URLSearchParams(location.search);window.__calls=0;window.__success=0;
-const mockClient={auth:{onAuthStateChange:callback=>{window.__authCallback=callback;return {data:{subscription:{unsubscribe(){}}}}},getSession:async()=>({data:{session:null}}),signInWithPassword:async input=>{window.__signedInEmail=input.email;window.__authCallback('SIGNED_IN',{user:{id:'11111111-1111-4111-8111-111111111111'}});return {data:{session:{user:{id:'11111111-1111-4111-8111-111111111111'}}}}},resetPasswordForEmail:async(email)=>{window.__resetEmail=email;return {data:{}}}}};
+const params=new URLSearchParams(location.search);window.__calls=0;window.__success=0;window.__signedOutAccountIds=[];
+let mockUser=params.get('completion')?{id:'11111111-1111-4111-8111-111111111111'}:null;
+window.__switchPublicUser=id=>{mockUser=id?{id}:null;window.__publicAccountId=id;window.__authCallback(id?'SIGNED_IN':'SIGNED_OUT',mockUser?{user:mockUser}:null)};
+const mockClient={auth:{onAuthStateChange:callback=>{window.__authCallback=callback;return {data:{subscription:{unsubscribe(){}}}}},getSession:async()=>({data:{session:mockUser?{user:mockUser}:null}}),signInWithPassword:async input=>{window.__signedInEmail=input.email;window.__switchPublicUser('11111111-1111-4111-8111-111111111111');return {data:{session:{user:mockUser}}}},signOut:async()=>{window.__signedOutAccountIds.push(mockUser?.id||null);window.__switchPublicUser(null);if(params.get('holdSignOut'))await new Promise(resolve=>window.__finishPublicSignOut=resolve);return {error:null}},resetPasswordForEmail:async(email)=>{window.__resetEmail=email;return {data:{}}}}};
 const status={available:true,state:params.get('pending')?'pending':'ready',accountEmail:'synthetic@example.invalid',blockers:params.get('blocked')?[{code:'account_protected_owner',message:'Transfer protected service ownership first.'}]:[],deletionScope:['Synthetic personal collection and files'],retainedScope:['Other accounts and current prices']};
 function SwitchingAccount(){const [user,setUser]=React.useState({id:'11111111-1111-4111-8111-111111111111'});window.__switchDeletionAccount=()=>setUser({id:'22222222-2222-4222-8222-222222222222'});return React.createElement(AccountDeletionPage,{user,statusLoader:async({expectedUserId})=>{if(params.get('switch')==='review'&&expectedUserId.startsWith('1111'))await new Promise(resolve=>window.__finishOldReview=resolve);return{...status,accountEmail:expectedUserId.startsWith('2222')?'new-account@example.invalid':'synthetic@example.invalid'}},deleteAccount:async()=>{await new Promise(resolve=>window.__finishOldDelete=resolve);return{state:'deleted',localCleanupRequired:true}},onDeleted:()=>window.__success++})}
 if(params.get('switch'))createRoot(document.getElementById('root')).render(React.createElement(SwitchingAccount));else if(params.get('auth'))createRoot(document.getElementById('root')).render(React.createElement(PublicPrivacyRoute,{route:'delete',client:mockClient}));else createRoot(document.getElementById('root')).render(React.createElement('main',{className:'app code3-public-privacy','data-theme':params.get('theme')||'light'},React.createElement(AccountDeletionPage,{user:{id:'11111111-1111-4111-8111-111111111111'},statusLoader:async()=>status,deleteAccount:async(input)=>{window.__calls++;if(input.password==='wrong')throw Object.assign(new Error('Password confirmation failed. Check your account password and try again.'),{code:'account_reauthentication_failed'});await new Promise(resolve=>window.__finish=resolve);return {state:'deleted',localCleanupRequired:true}},onDeleted:async()=>{window.__success++},onNavigate:tab=>{window.__navigation=tab}})));
@@ -103,6 +105,67 @@ if(params.get('switch'))createRoot(document.getElementById('root')).render(React
     assert.equal(await page.evaluate(()=>window.__signedInEmail), "synthetic@example.invalid");
     assert.equal(await page.evaluate(()=>localStorage.length+sessionStorage.length),0);
     await context.close();
+
+    // Exercise the real public-route completion state, rather than only the
+    // deletion form: a previous account's success must never label a new one.
+    for (const scenario of ["completed", "delayed-sign-out", "switch-before-completion", "switch-away-and-back"]) {
+      const holdSignOut = scenario === "delayed-sign-out";
+      const holdDelete = scenario === "switch-before-completion" || scenario === "switch-away-and-back";
+      const completionContext = await browser.newContext({ viewport: { width: 390, height: 900 }, serviceWorkers: "block" });
+      const external = []; const errors = [];
+      await completionContext.addInitScript(() => {
+        localStorage.setItem("unrelated-user-records", "preserve-existing-records");
+        localStorage.setItem("latest-price-sentinel", "42.75");
+        window.__publicDeleteCalls = 0;
+      });
+      await completionContext.route("**/*", route => {
+        const url = new URL(route.request().url());
+        if (url.origin !== base) { external.push(url.origin); return route.abort(); }
+        if (url.pathname === "/src/services/accountDeletionApi.js") return route.fulfill({ contentType: "application/javascript", body: `
+          export const ACCOUNT_DELETION_CONFIRMATION='DELETE MY ACCOUNT';
+          export async function fetchAccountDeletionStatus(){return {available:true,state:'ready',accountEmail:window.__publicAccountId?.startsWith('2222')?'second@example.invalid':'first@example.invalid',blockers:[],deletionScope:['Synthetic account only'],retainedScope:['Other accounts and current prices']}}
+          export async function deleteOwnAccount(){window.__publicDeleteCalls++;if(${holdDelete})await new Promise(resolve=>window.__finishPublicDelete=resolve);return {state:'deleted',localCleanupRequired:true}}
+        ` });
+        return route.continue();
+      });
+      const completionPage = await completionContext.newPage(); completionPage.on("pageerror", error => errors.push(error.message));
+      try {
+        await completionPage.goto(`${base}/artifacts/qa/mobile-beta/privacy-deletion/fixture.html?auth=1&completion=1${holdSignOut ? "&holdSignOut=1" : ""}`);
+        await completionPage.getByRole("button", { name: "Review account deletion" }).click();
+        await completionPage.getByRole("checkbox").check();
+        await completionPage.getByLabel("Confirm your account password", { exact: true }).fill("synthetic-password");
+        await completionPage.getByLabel("Type DELETE MY ACCOUNT").fill("DELETE MY ACCOUNT");
+        await completionPage.getByRole("button", { name: "Permanently delete my account" }).click();
+        if (holdDelete) {
+          await expect(completionPage.getByRole("button", { name: "Deleting account…", exact: true })).toBeDisabled();
+          // Deliberately emit auth events and finish the old promise in one
+          // browser task: React has no opportunity to unmount the old form.
+          await completionPage.evaluate(switchBack => {
+            window.__switchPublicUser("22222222-2222-4222-8222-222222222222");
+            if (switchBack) window.__switchPublicUser("11111111-1111-4111-8111-111111111111");
+            window.__finishPublicDelete();
+          }, scenario === "switch-away-and-back");
+        } else {
+          await expect(completionPage.getByRole("heading", { name: "Account deleted", exact: true })).toBeVisible();
+          await completionPage.evaluate(() => window.__switchPublicUser("22222222-2222-4222-8222-222222222222"));
+        }
+        if (holdSignOut) await completionPage.evaluate(() => window.__finishPublicSignOut());
+        await expect(completionPage.getByRole("heading", { name: "Account deleted", exact: true })).toHaveCount(0);
+        await completionPage.getByRole("button", { name: "Review account deletion" }).click();
+        await expect(completionPage.getByText(scenario === "switch-away-and-back" ? "first@example.invalid" : "second@example.invalid", { exact: true })).toBeVisible();
+        await expect(completionPage.getByLabel("Confirm your account password", { exact: true })).toHaveValue("");
+        await expect(completionPage.getByRole("checkbox")).not.toBeChecked();
+        await completionPage.evaluate(() => window.__switchPublicUser(null));
+        await expect(completionPage.getByRole("heading", { name: "Delete your account", exact: true })).toBeVisible();
+        await expect(completionPage.getByRole("heading", { name: "Account deleted", exact: true })).toHaveCount(0);
+        assert.equal(await completionPage.evaluate(() => window.__publicDeleteCalls), 1);
+        assert.deepEqual(await completionPage.evaluate(() => window.__signedOutAccountIds), holdDelete ? [] : ["11111111-1111-4111-8111-111111111111"], "A stale deletion callback must not start any sign-out after an account epoch changes");
+        assert.equal(await completionPage.evaluate(() => localStorage.getItem("unrelated-user-records")), "preserve-existing-records");
+        assert.equal(await completionPage.evaluate(() => localStorage.getItem("latest-price-sentinel")), "42.75");
+        assert.deepEqual(errors, []); assert.deepEqual(external, []);
+        results.push({ publicCompletionAccountIsolation: true, scenario, delayedOldSignOut: holdSignOut, sameTaskSwitchBeforeCompletion: holdDelete, staleCallbackSignOutCalls: holdDelete ? 0 : null, newAccountNotMarkedDeleted: true, credentialsCleared: true, originalsAndPricesPreserved: true, liveDeletes: 0 });
+      } finally { await completionContext.close(); }
+    }
 
     for (const stage of ["review", "delete"]) {
       const switchContext = await browser.newContext({ viewport: { width: 390, height: 900 }, serviceWorkers: "block" });
