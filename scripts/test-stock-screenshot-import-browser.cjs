@@ -174,7 +174,7 @@ async function makeScreenshot(page, theme) {
         await expect(modal.locator(".stock-report-source-note")).toContainText(testCase.theme === "dark" ? "Discord" : "Facebook");
         const sharing = modal.locator(".stock-report-sharing-disclosure");
         await sharing.locator("summary").click();
-        await expect(sharing.getByRole("combobox")).toHaveValue("private_from_map");
+        await expect(modal.getByRole("combobox", { name: "Who can see this report", exact: true })).toHaveValue("private_from_map");
         await expect(sharing).toContainText("Needs review");
         await presentation(page, modal, result, "private-review");
         assert.deepEqual(await snapshot(page), original, "Final review cannot save or upload anything");

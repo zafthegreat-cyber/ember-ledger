@@ -1,3 +1,5 @@
+import { isCanonicalPrivateImageReference } from "../../services/privateStorageReferences.js";
+
 const PROHIBITED_NORMALIZED_KEYS = new Set([
   "accesstoken",
   "refreshtoken",
@@ -217,10 +219,14 @@ function luhnValid(value) {
   return sum % 10 === 0;
 }
 
-export function isProhibitedDataValue(value, key = "") {
+export function isProhibitedDataValue(value, key = "", { projectUrl } = {}) {
   const allowProductChecksum = PRODUCT_CHECKSUM_IDENTIFIER_KEYS.has(normalizeKey(key));
   if (typeof value === "number") return Number.isSafeInteger(value) && !allowProductChecksum && luhnValid(value);
   if (typeof value !== "string") return false;
+  // Generated object paths contain timestamps/UUIDs that can accidentally pass
+  // Luhn. Only canonical, token-free image locators in the configured project's
+  // approved private buckets skip that heuristic; credential checks still run.
+  const allowPrivateObjectIdentifier = isCanonicalPrivateImageReference(value, key, projectUrl);
   const candidates = [value];
   let encoded = value;
   let encodingLimitExceeded = false;
@@ -248,15 +254,54 @@ export function isProhibitedDataValue(value, key = "") {
     || JWT_TEXT_PATTERN.test(candidate)
     || PRIVATE_KEY_PATTERN.test(candidate)
     || HIGH_CONFIDENCE_TOKEN_PATTERN.test(candidate)
-    || (!allowProductChecksum && [...candidate.matchAll(CARD_CANDIDATE_PATTERN)].some((match) => luhnValid(match[1]))));
+    || (!allowProductChecksum && !allowPrivateObjectIdentifier
+      && [...candidate.matchAll(CARD_CANDIDATE_PATTERN)].some((match) => luhnValid(match[1]))));
 }
 
-export function findProhibitedData(value) {
+function verifiedBackupDigestFields(value, verifiedManifestHash) {
+  const fields = new WeakMap();
+  const isRecord = (entry) => entry && typeof entry === "object" && !Array.isArray(entry);
+  const isDigest = (entry) => typeof entry === "string" && /^[a-f0-9]{64}$/.test(entry);
+  // This context must come from verifyBackupEnvelope, never from the imported
+  // JSON's selfVerificationPassed flag. Ordinary source scans remain strict.
+  if (!isDigest(verifiedManifestHash) || !isRecord(value)
+    || value.format !== "code-3-backup" || value.formatVersion !== 1
+    || !isRecord(value.manifest) || value.manifest.formatVersion !== 1
+    || !isRecord(value.integrity) || value.integrity.algorithm !== "SHA-256"
+    || value.manifest.manifestHash !== verifiedManifestHash
+    || value.integrity.manifestHash !== verifiedManifestHash
+    || !Array.isArray(value.sections) || !Array.isArray(value.manifest.sections)
+    || value.sections.length !== value.manifest.sections.length) return fields;
+
+  for (let index = 0; index < value.sections.length; index += 1) {
+    const section = value.sections[index];
+    const indexed = value.manifest.sections[index];
+    if (!isRecord(section) || !isRecord(indexed)
+      || typeof section.sourceId !== "string" || !section.sourceId
+      || !Number.isInteger(section.schemaVersion) || section.schemaVersion < 0
+      || !Number.isInteger(section.recordCount) || section.recordCount < 0
+      || !isDigest(section.sha256) || section.sha256 !== indexed.sha256
+      || section.sourceId !== indexed.sourceId
+      || section.schemaVersion !== indexed.schemaVersion
+      || section.recordCount !== indexed.recordCount) return fields;
+  }
+
+  fields.set(value.manifest, new Set(["manifestHash"]));
+  fields.set(value.integrity, new Set(["manifestHash"]));
+  for (let index = 0; index < value.sections.length; index += 1) {
+    fields.set(value.sections[index], new Set(["sha256"]));
+    fields.set(value.manifest.sections[index], new Set(["sha256"]));
+  }
+  return fields;
+}
+
+export function findProhibitedData(value, { verifiedBackupManifestHash, projectUrl } = {}) {
   const matches = [];
+  const digestFields = verifiedBackupDigestFields(value, verifiedBackupManifestHash);
   const stack = [{ value, path: "$", key: "" }];
   while (stack.length) {
     const current = stack.pop();
-    if (isProhibitedDataValue(current.value, current.key)) {
+    if (isProhibitedDataValue(current.value, current.key, { projectUrl })) {
       matches.push({ path: current.path, key: "[credential-bearing value]" });
       continue;
     }
@@ -270,17 +315,21 @@ export function findProhibitedData(value) {
     for (const key of Object.keys(current.value)) {
       const nextPath = `${current.path}.${key}`;
       if (isProhibitedDataKey(key)) matches.push({ path: nextPath, key });
+      // Object identity keeps dotted or bracket-shaped user keys from posing
+      // as a trusted metadata path. User-field digests and signed URLs are not
+      // granted this derived-metadata exemption.
+      else if (digestFields.get(current.value)?.has(key)) continue;
       else stack.push({ value: current.value[key], path: nextPath, key });
     }
   }
   return matches;
 }
 
-export function sanitizeBackupData(value) {
+export function sanitizeBackupData(value, { projectUrl } = {}) {
   const excludedPaths = [];
 
   function visit(current, path, key = "") {
-    if (isProhibitedDataValue(current, key)) {
+    if (isProhibitedDataValue(current, key, { projectUrl })) {
       excludedPaths.push(path);
       return null;
     }
@@ -293,7 +342,7 @@ export function sanitizeBackupData(value) {
         excludedPaths.push(nextPath);
         continue;
       }
-      if (isProhibitedDataValue(current[key], key)) {
+      if (isProhibitedDataValue(current[key], key, { projectUrl })) {
         excludedPaths.push(nextPath);
         continue;
       }

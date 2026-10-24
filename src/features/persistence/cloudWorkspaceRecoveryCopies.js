@@ -5,10 +5,10 @@ import { createWorkspacePayloadStore } from "./workspacePayloadStore.js";
 const PREFIX = "code3.workspace-conflict-copy.v1:";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export async function preserveWorkspaceConflictCopy({ storage, ownerId, copyId, sources, cloudRevision, assertCurrent = () => {}, payloadStore = createWorkspacePayloadStore() }) {
+export async function preserveWorkspaceConflictCopy({ storage, ownerId, copyId, sources, cloudRevision, assertCurrent = () => {}, payloadStore = createWorkspacePayloadStore(), projectUrl }) {
   assertCurrent();
   if (!UUID.test(ownerId || "") || !UUID.test(copyId || "") || !Number.isSafeInteger(cloudRevision) || cloudRevision < 0) workspaceFail("INVALID_RECOVERY_COPY", "A valid account, revision, and recovery copy are required.");
-  validateWorkspaceSources(sources);
+  sources = validateWorkspaceSources(sources, { projectUrl });
   const payload = { format: "code3-workspace-conflict-copy", version: 1, ownerId, copyId, createdAt: new Date().toISOString(), cloudRevision, sources };
   const hash = await hashCanonicalJson(payload);
   const serialized = canonicalStringify({ ...payload, hash });
@@ -31,7 +31,7 @@ export async function preserveWorkspaceConflictCopy({ storage, ownerId, copyId, 
   return { copyId, createdAt: payload.createdAt };
 }
 
-export async function readWorkspaceConflictCopy({ storage, ownerId, copyId, payloadStore = createWorkspacePayloadStore() }) {
+export async function readWorkspaceConflictCopy({ storage, ownerId, copyId, payloadStore = createWorkspacePayloadStore(), projectUrl }) {
   if (!UUID.test(ownerId || "") || !UUID.test(copyId || "")) workspaceFail("INVALID_RECOVERY_COPY", "A valid account and recovery copy are required.");
   const key = `${PREFIX}${ownerId}:${copyId}`;
   const raw = storage.getItem(key);
@@ -54,19 +54,19 @@ export async function readWorkspaceConflictCopy({ storage, ownerId, copyId, payl
     || !Number.isFinite(Date.parse(payload.createdAt)) || !Number.isSafeInteger(payload.cloudRevision) || payload.cloudRevision < 0
     || Object.keys(payload).some((field) => !["format", "version", "ownerId", "copyId", "createdAt", "cloudRevision", "sources"].includes(field))
     || await hashCanonicalJson(payload) !== hash || (reference && reference.hash !== hash)) workspaceFail("RECOVERY_COPY_INVALID", "This device recovery copy could not be verified.");
-  validateWorkspaceSources(payload.sources);
+  payload.sources = validateWorkspaceSources(payload.sources, { projectUrl });
   if (storage.getItem(key) !== raw) workspaceFail("RECOVERY_COPY_INVALID", "This device recovery reference changed during verification. Try again.");
   return payload;
 }
 
-export async function listWorkspaceConflictCopies({ storage, ownerId, payloadStore = createWorkspacePayloadStore() }) {
+export async function listWorkspaceConflictCopies({ storage, ownerId, payloadStore = createWorkspacePayloadStore(), projectUrl }) {
   if (!UUID.test(ownerId || "")) workspaceFail("ACCOUNT_REQUIRED", "Sign in before viewing device recovery copies.");
   const prefix = `${PREFIX}${ownerId}:`;
   const copies = [];
   for (let index = 0; index < storage.length; index++) {
     const key = storage.key(index);
     if (!key?.startsWith(prefix)) continue;
-    const payload = await readWorkspaceConflictCopy({ storage, ownerId, copyId: key.slice(prefix.length), payloadStore });
+    const payload = await readWorkspaceConflictCopy({ storage, ownerId, copyId: key.slice(prefix.length), payloadStore, projectUrl });
     copies.push({ copyId: payload.copyId, createdAt: payload.createdAt, cloudRevision: payload.cloudRevision });
   }
   return copies.sort((left, right) => right.createdAt.localeCompare(left.createdAt));

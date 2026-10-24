@@ -24,7 +24,7 @@ function ReportImage({ src, alt, reference = false }) {
           {src ? <button type="button" className="secondary-button" onClick={() => { setAttempt((value) => value + 1); setFailed(false); }}>Retry {reference ? "image" : "photo"}</button> : null}
         </div>
       ) : (
-        <PrivateStorageImage key={attempt} src={src} alt={alt} loading="lazy" onError={() => setFailed(true)} />
+        <PrivateStorageImage key={attempt} src={src} alt={alt} authorizePrivate={!reference} loading="lazy" onError={() => setFailed(true)} />
       )}
     </div>
   );
@@ -120,6 +120,7 @@ export default function RestockReportDetails({
   const meaningfulItems = preserveLegacyReportZeros(report, items).filter((item) => item && (
     savedText(item.productName) || savedText(item.quantity) || savedText(item.price) || savedText(item.note || item.notes) || item.catalogProductSnapshot || item.catalog_product_snapshot
   ));
+  const savedCategory = [report.productCategory, report.product_category, report.productType, report.product_type].map(savedText).find(Boolean) || "";
   const savedReferenceImage = savedText(report.productImageUrl || report.product_image_url);
   const savedReferenceId = savedText(report.catalogProductId || report.catalog_product_id);
   const referenceAlreadyShown = meaningfulItems.some((item) => {
@@ -141,11 +142,13 @@ export default function RestockReportDetails({
       </div>
       <div className="scout-report-detail-breakdown">
         <details className="scout-report-detail-section" open>
-          <summary><span>Details</span><small>{meaningfulItems.length ? `${meaningfulItems.length} reported item${meaningfulItems.length === 1 ? "" : "s"}` : "General shelf observation"}{note ? " · Report notes" : ""}</small></summary>
+          <summary><span>Details</span><small>{meaningfulItems.length ? `${meaningfulItems.length} reported item${meaningfulItems.length === 1 ? "" : "s"}` : savedCategory ? `${savedCategory} · Category reported` : "General shelf observation"}{note ? " · Report notes" : ""}</small></summary>
           {meaningfulItems.length ? (
             <ul className="scout-report-detail-items scout-report-details__items">
               {meaningfulItems.map((item, index) => <ItemDetails key={`${item.id || item.productId || item.productName || "item"}-${index}`} item={item} index={index} money={money} />)}
             </ul>
+          ) : savedCategory ? (
+            <div className="scout-report-details__section-copy"><p><strong>{savedCategory}</strong></p><p>Category reported. Individual products were not specified.{photoUrls.length ? " View the attached observation photos below." : ""}</p></div>
           ) : (
             <div className="scout-report-details__section-copy"><p>{photoUrls.length ? "Items have not been identified in this report. View the attached observation photos below." : "No individual product details were added."}</p></div>
           )}

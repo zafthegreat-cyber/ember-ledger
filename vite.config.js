@@ -30,7 +30,13 @@ function applyBrandReplacements(source = "") {
 function brandMetadataPlugin() {
   return {
     name: "business-hub-brand-metadata",
-    transformIndexHtml: applyBrandReplacements,
+    transformIndexHtml: {
+      // Resolve root-relative artwork before Vite normalizes HTML asset URLs.
+      // Resolving the placeholder afterward can turn /__BRAND_LOGO__ into
+      // //assets/... in development, which points at an unrelated hostname.
+      order: "pre",
+      handler: applyBrandReplacements,
+    },
     configureServer(server) {
       server.middlewares.use("/manifest.webmanifest", (_request, response) => {
         response.setHeader("Content-Type", "application/manifest+json; charset=utf-8");

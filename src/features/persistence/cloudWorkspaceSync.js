@@ -10,11 +10,11 @@ import { preserveWorkspaceConflictCopy, listWorkspaceConflictCopies, readWorkspa
 const STATE_PREFIX = "code3.workspace-sync-state.v1:";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function checkedSnapshot(value) {
+function checkedSnapshot(value, projectUrl) {
   if (!value || value.format !== WORKSPACE_CLOUD_FORMAT || !Number.isSafeInteger(value.revision) || value.revision < 0
     || (value.revision > 0 && !Number.isFinite(Date.parse(value.updatedAt)))
     || (value.revision === 0 && Object.keys(value.sources || {}).length)) workspaceFail("INVALID_CLOUD_RESPONSE", "The cloud response could not be verified. Your device records are unchanged.");
-  return { format: WORKSPACE_CLOUD_FORMAT, revision: value.revision, updatedAt: value.updatedAt || null, sources: validateWorkspaceSources(value.sources) };
+  return { format: WORKSPACE_CLOUD_FORMAT, revision: value.revision, updatedAt: value.updatedAt || null, sources: validateWorkspaceSources(value.sources, { projectUrl }) };
 }
 
 function remoteError(error) {
@@ -80,11 +80,11 @@ export function createSupabaseWorkspaceTransport({ client, ownerId, timeoutMs = 
   return Object.freeze({
     close() { closed = true; for (const controller of pendingControllers) controller.abort(); pendingControllers.clear(); },
     authorize,
-    async read(revision = null) { return checkedSnapshot(await rpc("code3_workspace_read", { p_revision: revision })); },
+    async read(revision = null) { return checkedSnapshot(await rpc("code3_workspace_read", { p_revision: revision }), client.supabaseUrl); },
     async write({ expectedRevision, sources, mutationId }) {
-      validateWorkspaceSources(sources);
+      sources = validateWorkspaceSources(sources, { projectUrl: client.supabaseUrl });
       if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0 || !UUID.test(mutationId || "")) workspaceFail("INVALID_MUTATION", "Cloud saving requires a valid revision and stable operation ID.");
-      const result = checkedSnapshot(await rpc("code3_workspace_write", { p_expected_revision: expectedRevision, p_sources: sources, p_mutation_id: mutationId }));
+      const result = checkedSnapshot(await rpc("code3_workspace_write", { p_expected_revision: expectedRevision, p_sources: sources, p_mutation_id: mutationId }), client.supabaseUrl);
       if (result.revision !== expectedRevision + 1 || canonicalStringify(result.sources) !== canonicalStringify(sources)) workspaceFail("INVALID_ACKNOWLEDGEMENT", "The server save could not be verified. Both copies remain preserved.");
       return result;
     },
@@ -109,13 +109,14 @@ function readState(storage, ownerId) {
 
 /** Local records are the durable outbox; only verified server acknowledgements advance its baseline. */
 export function createCloudWorkspaceSync({ storage, client, ownerId, applySources, locks = globalThis.navigator?.locks,
-  transport = createSupabaseWorkspaceTransport({ client, ownerId }), idFactory = () => globalThis.crypto.randomUUID() } = {}) {
+  transport = createSupabaseWorkspaceTransport({ client, ownerId }), idFactory = () => globalThis.crypto.randomUUID(), projectUrl = client?.supabaseUrl } = {}) {
   if (!UUID.test(ownerId || "") || !storage?.getItem || typeof applySources !== "function") workspaceFail("HOST_REQUIRED", "Cloud saving requires an account, device storage, and protected recovery adapter.");
   let closed = false;
   let running = null;
   const reviews = new Map();
   let state = { status: "IDLE", revision: 0, conflicts: [], changedSources: [], message: "Cloud saving is ready." };
   const listeners = new Set();
+  const capture = () => captureWorkspaceSources(storage, { projectUrl });
   function report(next) { state = { ...state, ...next }; for (const listener of listeners) listener(); return cloneWorkspaceJson(state); }
   function assertActive() {
     if (closed) workspaceFail("SESSION_CHANGED", "This cloud saving session has ended.");
@@ -133,19 +134,19 @@ export function createCloudWorkspaceSync({ storage, client, ownerId, applySource
     assertActive();
     report({ status: "SYNCING", message: "Checking saved changes…" });
     const baseline = readState(storage, ownerId);
-    const local = captureWorkspaceSources(storage);
+    const local = capture();
     const remote = await transport.read();
     assertActive();
-    if (canonicalStringify(captureWorkspaceSources(storage)) !== canonicalStringify(local)) return report({ status: "PENDING", message: "New changes are saved on this device and will sync next.", conflicts: [] });
+    if (canonicalStringify(capture()) !== canonicalStringify(local)) return report({ status: "PENDING", message: "New changes are saved on this device and will sync next.", conflicts: [] });
     if (remote.revision < baseline.revision) workspaceFail("CLOUD_HISTORY_CHANGED", "The cloud history changed unexpectedly. Your local records have not been replaced.");
-    const merge = await reconcileWorkspaceSources({ baselineHashes: baseline.hashes, localSources: local, remoteSources: remote.sources });
+    const merge = await reconcileWorkspaceSources({ baselineHashes: baseline.hashes, localSources: local, remoteSources: remote.sources, projectUrl });
     assertActive();
     if (merge.conflicts.length) return report({ status: "CONFLICT", conflicts: merge.conflicts, changedSources: [], revision: remote.revision, message: "This device and another device changed the same records. Both copies are preserved. Review the differences before syncing." });
     if (merge.changedLocal.length && !allowApply) return report({ status: "REMOTE_AVAILABLE", conflicts: [], changedSources: merge.changedLocal, revision: remote.revision, message: "Another device has saved changes. Reload safely to load them." });
     if (merge.changedLocal.length) {
       await transport.authorize?.();
       assertActive();
-      await applySources({ storage, expectedSources: local, nextSources: merge.sources, ownerId, locks, assertCurrent: assertActive });
+      await applySources({ storage, expectedSources: local, nextSources: merge.sources, ownerId, locks, assertCurrent: assertActive, projectUrl });
       assertActive();
     }
     let saved = remote;
@@ -157,17 +158,17 @@ export function createCloudWorkspaceSync({ storage, client, ownerId, applySource
       assertActive();
     }
     await acknowledge(saved);
-    const pending = canonicalStringify(captureWorkspaceSources(storage)) !== canonicalStringify(saved.sources);
+    const pending = canonicalStringify(capture()) !== canonicalStringify(saved.sources);
     return report({ status: pending ? "PENDING" : "SYNCED", revision: saved.revision, updatedAt: saved.updatedAt,
       conflicts: [], changedSources: merge.changedLocal, message: pending ? "New changes are saved on this device and waiting to sync." : "Saved to your account. Other devices can load this version." });
   }
   async function previewConflicts() {
     if (running) await running;
     assertActive();
-    const local = captureWorkspaceSources(storage);
+    const local = capture();
     const remote = await transport.read();
     const baseline = readState(storage, ownerId);
-    const merge = await reconcileWorkspaceSources({ baselineHashes: baseline.hashes, localSources: local, remoteSources: remote.sources });
+    const merge = await reconcileWorkspaceSources({ baselineHashes: baseline.hashes, localSources: local, remoteSources: remote.sources, projectUrl });
     assertActive();
     const reviewId = idFactory();
     reviews.clear();
@@ -190,7 +191,7 @@ export function createCloudWorkspaceSync({ storage, client, ownerId, applySource
     const review = reviews.get(reviewId);
     if (!choices || Object.keys(choices).length !== review.merge.conflicts.length
       || review.merge.conflicts.some((id) => !["DEVICE", "CLOUD"].includes(choices[id]))) workspaceFail("CONFLICT_CHOICES_REQUIRED", "Choose which version to use for each conflicting source. Both originals stay recoverable.");
-    if (canonicalStringify(captureWorkspaceSources(storage)) !== canonicalStringify(review.local)) workspaceFail("STALE_CONFLICT_REVIEW", "This device changed after the review. Review the latest records again.");
+    if (canonicalStringify(capture()) !== canonicalStringify(review.local)) workspaceFail("STALE_CONFLICT_REVIEW", "This device changed after the review. Review the latest records again.");
     const currentRemote = await transport.read();
     assertActive();
     if (currentRemote.revision !== review.remote.revision || canonicalStringify(currentRemote.sources) !== canonicalStringify(review.remote.sources)) workspaceFail("STALE_CONFLICT_REVIEW", "Another device changed after the review. Review the latest records again.");
@@ -200,12 +201,12 @@ export function createCloudWorkspaceSync({ storage, client, ownerId, applySource
       if (!selected) workspaceFail("SOURCE_DELETION_BLOCKED", "Cloud conflict review cannot remove an entire source. Use recovery to inspect that source first.");
       chosen[sourceId] = selected;
     }
-    validateWorkspaceSources(chosen);
+    validateWorkspaceSources(chosen, { projectUrl });
     await transport.authorize?.();
     assertActive();
-    await preserveWorkspaceConflictCopy({ storage, ownerId, copyId: reviewId, sources: review.local, cloudRevision: currentRemote.revision, assertCurrent: assertActive });
+    await preserveWorkspaceConflictCopy({ storage, ownerId, copyId: reviewId, sources: review.local, cloudRevision: currentRemote.revision, assertCurrent: assertActive, projectUrl });
     assertActive();
-    await applySources({ storage, expectedSources: review.local, nextSources: chosen, ownerId, locks, assertCurrent: assertActive });
+    await applySources({ storage, expectedSources: review.local, nextSources: chosen, ownerId, locks, assertCurrent: assertActive, projectUrl });
     assertActive();
     const saved = canonicalStringify(chosen) === canonicalStringify(currentRemote.sources) ? currentRemote
       : await transport.write({ expectedRevision: currentRemote.revision, sources: chosen, mutationId: idFactory() });
@@ -228,8 +229,8 @@ export function createCloudWorkspaceSync({ storage, client, ownerId, applySource
     readRevision: (revision) => { assertActive(); return transport.read(revision); },
     previewConflicts,
     resolveConflicts,
-    listDeviceRecoveryCopies: () => { assertActive(); return listWorkspaceConflictCopies({ storage, ownerId }); },
-    readDeviceRecoveryCopy: (copyId) => { assertActive(); return readWorkspaceConflictCopy({ storage, ownerId, copyId }); },
+    listDeviceRecoveryCopies: () => { assertActive(); return listWorkspaceConflictCopies({ storage, ownerId, projectUrl }); },
+    readDeviceRecoveryCopy: (copyId) => { assertActive(); return readWorkspaceConflictCopy({ storage, ownerId, copyId, projectUrl }); },
     waitForIdle: () => running || Promise.resolve(),
   });
 }

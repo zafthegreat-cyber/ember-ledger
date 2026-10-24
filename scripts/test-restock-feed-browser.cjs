@@ -73,8 +73,8 @@ async function records(page) {
         await expect(feed.getByRole("status")).toContainText("20 of 26 reports shown");
         await feed.getByRole("button", { name: "Show more reports", exact: true }).click(); await expect(cards).toHaveCount(26);
         await feed.getByRole("button", { name: "Show fewer reports", exact: true }).click(); await expect(cards).toHaveCount(20);
-        await feed.getByRole("button", { name: "Stock seen", exact: true }).click(); await expect(cards).toHaveCount(15);
-        await expect(feed.getByRole("button", { name: "Stock seen", exact: true })).toHaveAttribute("aria-pressed", "true");
+        await feed.getByRole("button", { name: /^Stock seen(?:,|$)/ }).click(); await expect(cards).toHaveCount(15);
+        await expect(feed.getByRole("button", { name: /^Stock seen(?:,|$)/ })).toHaveAttribute("aria-pressed", "true");
         await feed.getByLabel("Observed", { exact: true }).selectOption("24h"); await expect(cards).toHaveCount(8);
         await feed.getByRole("searchbox", { name: "Search reports", exact: true }).fill("NORFOLK aurora"); await expect(cards).toHaveCount(8);
         const first = cards.first(); await expect(first).toContainText("Aurora Pack 0"); await expect(first).toContainText("Photo attached");
@@ -84,12 +84,12 @@ async function records(page) {
         await expect(dialog).toBeVisible(); await expect(dialog).toContainText("Aurora Pack 0");
         await dialog.getByRole("button", { name: "Close report details", exact: true }).click(); await expect(dialog).toHaveCount(0);
         await expect(feed.getByRole("searchbox", { name: "Search reports", exact: true })).toHaveValue("NORFOLK aurora"); await expect(cards).toHaveCount(8);
-        await feed.getByRole("button", { name: "Low stock", exact: true }).click(); await expect(cards).toHaveCount(0);
+        await feed.getByRole("button", { name: /^Low stock(?:,|$)/ }).click(); await expect(cards).toHaveCount(0);
         await expect(feed.getByRole("heading", { name: "Try a wider search", exact: true })).toBeVisible();
         await feed.getByRole("button", { name: "Show all reports", exact: true }).click(); await expect(cards).toHaveCount(20);
         await expect(feed.getByRole("searchbox", { name: "Search reports", exact: true })).toBeFocused();
-        await feed.getByRole("button", { name: "Low stock", exact: true }).click(); await expect(cards).toHaveCount(5);
-        await feed.getByRole("button", { name: "Empty shelves", exact: true }).click(); await expect(cards).toHaveCount(5);
+        await feed.getByRole("button", { name: /^Low stock(?:,|$)/ }).click(); await expect(cards).toHaveCount(5);
+        await feed.getByRole("button", { name: /^Empty shelves(?:,|$)/ }).click(); await expect(cards).toHaveCount(5);
         await feed.getByLabel("Observed", { exact: true }).selectOption("24h"); await expect(cards).toHaveCount(0);
         await feed.getByRole("button", { name: "Clear filters", exact: true }).click(); await expect(cards).toHaveCount(20);
         await expect(feed.getByRole("searchbox", { name: "Search reports", exact: true })).toBeFocused();

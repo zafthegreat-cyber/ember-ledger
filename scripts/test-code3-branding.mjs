@@ -7,8 +7,13 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (path) => readFileSync(resolve(root, path), "utf8");
 const { BRAND_CONFIG, formatBrowserTitle } = await import(pathToFileURL(resolve(root, "src/config/brand.js")));
 const { default: viteConfig } = await import(pathToFileURL(resolve(root, "vite.config.js")));
+const metadataPlugin = viteConfig.plugins.find(plugin => plugin.name === "business-hub-brand-metadata");
+assert.equal(metadataPlugin.transformIndexHtml.order, "pre", "Brand placeholders must resolve before Vite rewrites HTML asset URLs");
+const brandedHtml = metadataPlugin.transformIndexHtml.handler(read("index.html"));
+assert.ok(brandedHtml.includes(`src="${BRAND_CONFIG.logoReference}"`));
+assert.ok(!brandedHtml.includes("__BRAND_") && !/\b(?:src|href)="\/\/assets\//.test(brandedHtml), "Brand artwork must stay on the app origin");
 let devManifest;
-viteConfig.plugins.find(plugin => plugin.name === "business-hub-brand-metadata").configureServer({
+metadataPlugin.configureServer({
   middlewares: {
     use(route, handler) {
       assert.equal(route, "/manifest.webmanifest");

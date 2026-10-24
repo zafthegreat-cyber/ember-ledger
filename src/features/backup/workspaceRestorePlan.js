@@ -4,6 +4,7 @@ import { countSourceRecords, createVerifiedBackup } from "./backupFormat.js";
 import { BACKUP_SOURCE_REGISTRY } from "./backupSourceRegistry.js";
 import { resolveSourceSchemaVersion, validateBackupCrossSourceRelationships, validateBackupSourceData } from "./backupValidation.js";
 import { captureRecoverySources, WORKSPACE_LOCAL_SOURCES, WorkspaceRecoveryError } from "./workspaceRecovery.js";
+import { projectSourceData } from "./sourceProjection.js";
 
 function fail(code, message) { throw new WorkspaceRecoveryError(code, message); }
 function same(left, right) { return canonicalStringify(left) === canonicalStringify(right); }
@@ -42,11 +43,11 @@ function mergeMissing(current, incoming, findings, path) {
   return current;
 }
 
-export async function planWorkspaceRestore(raw, { storage } = {}) {
-  const preview = await previewBackupRestore(raw);
+export async function planWorkspaceRestore(raw, { storage, projectUrl } = {}) {
+  const preview = await previewBackupRestore(raw, { projectUrl });
   if (!["READY_FOR_FUTURE_RESTORE", "READY_WITH_WARNINGS"].includes(preview.result)) fail("BACKUP_NOT_READY", preview.errors?.[0] || "The backup did not pass integrity, schema, and record validation.");
   const backup = parseUntrustedBackupJson(raw);
-  const expectedSources = captureRecoverySources(storage);
+  const expectedSources = captureRecoverySources(storage, { projectUrl });
   const nextSources = {};
   const skippedSources = [];
   const findings = { conflicts: [], retainedSettings: 0 };
@@ -57,7 +58,8 @@ export async function planWorkspaceRestore(raw, { storage } = {}) {
     if (!source) { skippedSources.push(section.sourceId); continue; }
     const current = expectedSources[section.sourceId].data;
     const absent = source.storageKey ? storage.getItem(source.storageKey) === null : source.storageKeys.every((key) => storage.getItem(key) === null);
-    const data = absent ? structuredClone(section.data) : mergeMissing(current, section.data, findings, section.sourceId);
+    const incoming = projectSourceData(source, section.data);
+    const data = absent ? structuredClone(incoming) : mergeMissing(current, incoming, findings, section.sourceId);
     const validation = validateBackupSourceData(source, data);
     if (!validation.valid) fail("MERGED_DATA_INVALID", `${source.displayName} cannot be combined safely with the current records.`);
     nextSources[section.sourceId] = { schemaVersion: resolveSourceSchemaVersion(source, data), data };
@@ -87,7 +89,7 @@ export async function createVerifiedWorkspaceSnapshotBackup(sources, options = {
   for (const [sourceId, section] of Object.entries(sources || {})) {
     const source = WORKSPACE_LOCAL_SOURCES.find((entry) => entry.sourceId === sourceId);
     if (!source || !source.supportedSchemaVersions.includes(section?.schemaVersion)) fail("UNSUPPORTED_SOURCE", "The selected cloud version has an unsupported source.");
-    if (source.storageKey) values.set(source.storageKey, canonicalStringify(section.data));
+    if (source.storageKey) values.set(source.storageKey, canonicalStringify(projectSourceData(source, section.data)));
     else for (const [key, value] of Object.entries(section.data)) {
       if (!source.storageKeys.includes(key)) fail("UNSUPPORTED_KEY", "The selected cloud version has an unsupported preference.");
       values.set(key, typeof value === "string" ? value : canonicalStringify(value));

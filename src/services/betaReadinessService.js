@@ -1,4 +1,6 @@
 import { PRIVACY_PUBLISHER, PRIVACY_SECTIONS } from "../config/privacyPolicy.js";
+import { canonicalStringify } from "../features/backup/canonicalJson.js";
+import { projectSourceData } from "../features/backup/sourceProjection.js";
 
 export const BETA_READINESS_STORAGE_KEY = "et-tcg-beta-readiness";
 
@@ -431,8 +433,22 @@ export function loadBetaReadinessData() {
 
 export function saveBetaReadinessData(updater) {
   const current = loadBetaReadinessData();
+  const businessContent = (value) => {
+    const content = { ...projectSourceData("beta-readiness-records", value) };
+    delete content.updatedAt;
+    // Compare the same JSON values that this service persists, ignoring order.
+    return canonicalStringify(JSON.parse(JSON.stringify(content)));
+  };
+  const originalContent = businessContent(current);
+  const hadTimestamp = Object.hasOwn(current, "updatedAt");
+  const originalTimestamp = current.updatedAt;
   const next = typeof updater === "function" ? updater(current) : { ...current, ...updater };
-  const payload = { ...createEmptyBetaReadinessData(), ...next, updatedAt: new Date().toISOString() };
+  const payload = { ...createEmptyBetaReadinessData(), ...next };
+  // Logging an error must not manufacture a business edit during cloud review.
+  // Every other changed field still advances the saved source timestamp.
+  if (originalContent !== businessContent(payload)) payload.updatedAt = new Date().toISOString();
+  else if (hadTimestamp) payload.updatedAt = originalTimestamp;
+  else delete payload.updatedAt;
   if (typeof localStorage !== "undefined") {
     localStorage.setItem(BETA_READINESS_STORAGE_KEY, JSON.stringify(payload));
   }

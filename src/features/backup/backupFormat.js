@@ -19,6 +19,7 @@ import {
   validateBackupSourceData,
 } from "./backupValidation.js";
 import { readAccountOpsRecoveryGuardedRaw } from "../accountOps/recoveryState.js";
+import { projectPrivateImageReferences } from "../../services/privateStorageReferences.js";
 
 export const CODE3_BACKUP_FORMAT = "code-3-backup";
 export const CODE3_BACKUP_FORMAT_VERSION = 1;
@@ -107,7 +108,7 @@ export function readCurrentBackupSources(options = {}) {
   for (const source of sourceRegistry) {
     if (!source.includedInPhase1AExport) continue;
     try {
-      const sanitized = sanitizeBackupData(readSourceData(source, options));
+      const sanitized = sanitizeBackupData(projectPrivateImageReferences(readSourceData(source, options), options.projectUrl), { projectUrl: options.projectUrl });
       sources[source.sourceId] = sanitized.data;
       if (sanitized.excludedPaths.length) {
         warnings.push({
@@ -349,7 +350,7 @@ export async function createVerifiedBackup(options = {}) {
     if (!source.includedInPhase1AExport) continue;
     try {
       const rawData = readSourceData(source, options);
-      const sanitized = sanitizeBackupData(rawData);
+      const sanitized = sanitizeBackupData(projectPrivateImageReferences(rawData, options.projectUrl), { projectUrl: options.projectUrl });
       const validation = validateBackupSourceData(source, sanitized.data);
       if (!validation.valid) throw new Error(validation.errors.join(" "));
       const warnings = sanitized.excludedPaths.length
@@ -407,7 +408,7 @@ export async function createVerifiedBackup(options = {}) {
         truncatedDomains: [...(remoteExport.truncatedDomains || [])],
         records,
       };
-      const sanitized = sanitizeBackupData(remoteData);
+      const sanitized = sanitizeBackupData(projectPrivateImageReferences(remoteData, options.projectUrl), { projectUrl: options.projectUrl });
       const validation = validateBackupSourceData(remoteSource, sanitized.data);
       if (!validation.valid) throw new Error(validation.errors.join(" "));
       const remoteWarnings = [

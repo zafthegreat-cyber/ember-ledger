@@ -15,6 +15,7 @@ import { hasConfirmedScoutReportStatus } from "./utils/scoutReportVerification.m
 import OverflowMenu from "./components/OverflowMenu";
 import SmartSetupDialog from "./components/SmartSetupDialog.jsx";
 import { PrivateReceiptImage, PrivateReceiptLink, PrivateStorageImage } from "./components/PrivateReceipt.jsx";
+import { createPrivateStorageReference, normalizePrivateStorageReference } from "./services/privateStorageReferences.js";
 import LockedFeatureNotice from "./components/LockedFeatureNotice";
 import "./components/ScoutTileMap";
 import "./components/code3-ui";
@@ -6455,7 +6456,7 @@ function scoutReportPhotoUrls(report = {}) {
       report.image_url,
       report.photoUrl,
       report.photo_url,
-    ].map((url) => String(url || "").trim()).filter(Boolean);
+    ].map((url) => normalizePrivateStorageReference(String(url || "").trim(), supabase?.supabaseUrl)).filter(Boolean);
     return [...new Set(urls)];
   }
 
@@ -15708,8 +15709,8 @@ export default function App() {
       quantity_seen: row.quantity_seen,
       price: row.price_seen || "",
       price_seen: row.price_seen,
-      photoUrl: row.photo_url || "",
-      photo_url: row.photo_url || "",
+      photoUrl: normalizePrivateStorageReference(row.photo_url || "", supabase?.supabaseUrl),
+      photo_url: normalizePrivateStorageReference(row.photo_url || "", supabase?.supabaseUrl),
       proofType: screenshotSource ? "text_screenshot" : row.photo_url ? "stock_photo" : "manual",
       ...(screenshotSource ? {
         screenshotImportReviewed: true,
@@ -15973,7 +15974,7 @@ export default function App() {
       report_type: report.report_type || report.reportType || "restock",
       quantity_seen: scoutBackendNumberOrNull(report.quantity || report.quantitySeen || report.quantity_seen),
       price_seen: scoutBackendNumberOrNull(report.price || report.priceSeen || report.price_seen),
-      photo_url: report.photoUrl || report.photo_url || report.photoUrls?.[0] || "",
+      photo_url: normalizePrivateStorageReference(report.photoUrl || report.photo_url || report.photoUrls?.[0] || "", supabase?.supabaseUrl),
       notes: encodeScoutReportCloudNotes(report),
       observed_at: observedAt,
       reported_at: observedAt,
@@ -22172,7 +22173,7 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
       }] : [],
       reportText: notes || type.label,
       notes,
-      photoUrls: quickScoutReportForm.photoUrl ? [quickScoutReportForm.photoUrl] : [],
+      photoUrls: quickScoutReportForm.photoUrl ? [normalizePrivateStorageReference(quickScoutReportForm.photoUrl, supabase?.supabaseUrl)] : [],
       proofType: screenshotSource ? "text_screenshot" : quickScoutReportForm.proofType,
       stockLeft: quickScoutReportForm.stockLeft,
       storeFollowPreference: quickScoutReportForm.storeFollowPreference || "verified_restocks",
@@ -23953,6 +23954,13 @@ function mapCatalog(row) {
 
     if (error) return showAppMessage("Could not upload image: " + error.message);
 
+    if (safeFolder === "scout-reports") {
+      // Report proof persists object identity; each preview checks the account.
+      setter(createPrivateStorageReference({ bucket: PRIVATE_UPLOAD_BUCKET, path: filePath }, supabase.supabaseUrl));
+      return;
+    }
+
+    // Other upload workflows retain their existing preview/link behavior.
     const { data, error: signedUrlError } = await supabase.storage
       .from(PRIVATE_UPLOAD_BUCKET)
       .createSignedUrl(filePath, PRIVATE_UPLOAD_SIGNED_URL_SECONDS);
@@ -36368,7 +36376,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   ];
 
   const SCOUT_REPORT_PROOF_TYPES = [
-    { value: "screenshot", label: "Screenshot" },
+    { value: "text_screenshot", label: "Community screenshot" },
+    { value: "screenshot", label: "Shelf/sign photo" },
     { value: "stock_photo", label: "Photo" },
     { value: "receipt", label: "Receipt" },
     { value: "text_link", label: "Text/link" },
@@ -36700,7 +36709,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       reportId: getScoutReportId(report),
       status: "still_there",
       reason: "duplicate",
-      proofType: "screenshot",
+      proofType: report.sourceType === "text_screenshot" || report.source_type === "text_screenshot" || report.screenshotImportReviewed === true ? "text_screenshot" : "screenshot",
       proofUrl: "",
       note: "",
       message: "",
@@ -36781,8 +36790,10 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         };
       }
     } else if (type === "proof") {
-      const proofUrl = String(draft.proofUrl || "").trim();
-      const sourceType = String(draft.proofType || "screenshot").trim() || "screenshot";
+      const proofUrl = normalizePrivateStorageReference(String(draft.proofUrl || "").trim(), supabase?.supabaseUrl);
+      const communityScreenshot = report.sourceType === "text_screenshot" || report.source_type === "text_screenshot"
+        || report.screenshotImportReviewed === true || report.proofType === "text_screenshot";
+      const sourceType = communityScreenshot ? "text_screenshot" : String(draft.proofType || "screenshot").trim() || "screenshot";
       const existingPhotoUrls = scoutReportPhotoUrls(report);
       const nextPhotoUrls = proofUrl
         ? [proofUrl, ...existingPhotoUrls.filter((url) => String(url || "") !== proofUrl)]
@@ -36795,8 +36806,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         proof_type: sourceType,
         sourceType: sourceType,
         source_type: sourceType,
-        sourceLabel: `${scoutSourceTypeLabel(sourceType)} proof`,
-        source_label: `${scoutSourceTypeLabel(sourceType)} proof`,
+        sourceLabel: communityScreenshot ? report.sourceLabel || report.source_label || "Community screenshot" : `${scoutSourceTypeLabel(sourceType)} proof`,
+        source_label: communityScreenshot ? report.source_label || report.sourceLabel || "Community screenshot" : `${scoutSourceTypeLabel(sourceType)} proof`,
         proofText,
         proof_text: proofText,
         sourceText: proofText,
@@ -36927,8 +36938,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const price = String(draft?.price || "").trim();
     const detailNote = String(draft?.detailNote || "").trim();
     const sourceText = String(draft?.sourceText || "").trim();
-    const sourceType = String(draft?.sourceType || "manual").trim() || "manual";
-    const proofUrl = String(draft?.proofUrl || "").trim();
+    // Editing details or adding a photo cannot turn an indirect community
+    // screenshot into a first-hand shelf observation or remove its provenance.
+    const communityScreenshot = report.sourceType === "text_screenshot" || report.source_type === "text_screenshot"
+      || report.screenshotImportReviewed === true || report.proofType === "text_screenshot";
+    const sourceType = communityScreenshot ? "text_screenshot" : String(draft?.sourceType || "manual").trim() || "manual";
+    const proofUrl = normalizePrivateStorageReference(String(draft?.proofUrl || "").trim(), supabase?.supabaseUrl);
     const existingItems = normalizeScoutReportItems(report);
     const nextItems = productName
       ? [
@@ -37037,7 +37052,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const reportId = uuidOrNull(getScoutReportId(report));
     if (!reportId) return null;
     const now = new Date().toISOString();
-    const reportSelect = "id,store_id,user_id,product_id,report_type,quantity_seen,price_seen,photo_url,notes,observed_at,reported_at,verification_status,workspace_id,store_name,product_name,product_type,set_name,quantity_estimate,report_time,visibility,status,confidence_score,source_type,source_label,submitted_by_display,confidence,imported_batch,imported_by_admin,scout_points_awarded,import_key,report_status,created_at,updated_at";
+    const reportSelect = "id,store_id,user_id,product_id,report_type,quantity_seen,price_seen,photo_url,notes,observed_at,reported_at,verification_status,workspace_id,store_name,product_name,product_type,set_name,quantity_estimate,report_time,visibility,status,confidence_score,created_at,updated_at";
     const result = await supabase
       .from("store_reports")
       .update({
@@ -37045,9 +37060,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         quantity_estimate: report.quantitySeen || report.quantity_seen || report.quantity_estimate || null,
         price_seen: scoutBackendNumberOrNull(report.priceSeen || report.price_seen || report.price),
         photo_url: scoutReportPhotoUrls(report)[0] || null,
-        notes: report.notes || report.reportText || report.report_text || null,
-        source_type: report.sourceType || report.source_type || "manual",
-        source_label: report.sourceLabel || report.source_label || "Manual Scout detail update",
+        notes: encodeScoutReportCloudNotes(report),
         updated_at: now,
       })
       .eq("id", reportId)
@@ -49782,6 +49795,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                       <span>{[item.quantity ? `Qty ${item.quantity}` : "Qty not added", Number(item.price || 0) > 0 ? money(item.price) : "", item.note].filter(Boolean).join(" | ")}</span>
                     </div>
                   ))
+                ) : scoutReportDetailItemSummary(selectedScoutReport) !== "Details needed" ? (
+                  <div className="scout-report-detail-row">
+                    <strong>{scoutReportDetailItemSummary(selectedScoutReport)}</strong>
+                    <span>Category reported. Individual products were not specified.</span>
+                  </div>
                 ) : (
                   <div className="scout-report-detail-row scout-report-detail-missing-row">
                     <strong>Details needed</strong>
@@ -49827,7 +49845,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                         <span>Source type</span>
                         <select value={scoutReportDetailsDraft.sourceType} onChange={(event) => updateScoutReportDetailsDraft("sourceType", event.target.value)}>
                           <option value="manual">Manual note</option>
-                          <option value="screenshot">Screenshot</option>
+                          <option value="text_screenshot">Community screenshot</option>
+                          <option value="screenshot">Shelf/sign photo</option>
                           <option value="stock_photo">Shelf/photo proof</option>
                           <option value="receipt">Receipt</option>
                           <option value="text_link">Text/link</option>
@@ -49878,7 +49897,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </div>
                 {scoutReportPhotoUrls(selectedScoutReport).length ? (
                   <div className="scout-report-proof-strip">
-                    {scoutReportPhotoUrls(selectedScoutReport).slice(0, 4).map((url) => <PrivateStorageImage key={url} src={url} alt="" />)}
+                    {scoutReportPhotoUrls(selectedScoutReport).slice(0, 4).map((url) => <PrivateStorageImage key={url} src={url} alt="" authorizePrivate />)}
                   </div>
                 ) : null}
                 {!scoutReportPhotoUrls(selectedScoutReport).length && canAddScoutReportDetails(selectedScoutReport) ? (
@@ -51721,6 +51740,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               openBeaconCenter={openBeaconCenter}
               openCompassSearch={openCompassSearch}
               onQuickReport={(options) => openScoutSubmitFlow({ ...options, source: "scout-command" })}
+              onEditReport={openScoutReportAddDetails}
               onReturnToReport={scoutStoreReportReturnRef.current?.storeId === String(scoutSubTabTarget.storeId || "") ? () => window.history.back() : null}
               onOpenFlipScout={() => setActiveTab("flipScout")}
             />

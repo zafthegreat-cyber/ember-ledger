@@ -5,13 +5,15 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { encodeScoutReportCloudNotes, decodeScoutReportCloudNotes, mergeScoutReportCloudSave } from "../src/utils/scoutReportCloudContext.mjs";
 import { hasConfirmedScoutReportStatus, hasVerifiedScoutReportStatus } from "../src/utils/scoutReportVerification.mjs";
+import { normalizePrivateStorageReference } from "../src/services/privateStorageReferences.js";
+import { prepareRestockFeedEntries, filterRestockFeed, restockFeedBrowseState, restockReportStockLabel, restockReportStockGroup } from "../src/utils/restockFeedPresentation.mjs";
 
 const require = createRequire(import.meta.url);
 const espree = require("espree");
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const source = fs.readFileSync(path.join(root, "src/App.jsx"), "utf8");
 const ast = espree.parse(source, { ecmaVersion: "latest", sourceType: "module", ecmaFeatures: { jsx: true }, range: true });
-const names = ["mapSupabaseScoutReport", "persistScoutReportToSupabase", "normalizeScoutReportVisibility", "scoutBackendNumberOrNull", "scoutReportTimeForBackend", "isScoutBackendOptionalError", "scoutBackendKey", "scoutBackendSyncReady", "updateQuickScoutReportForm", "scoutReportConfidenceBadge"];
+const names = ["mapSupabaseScoutReport", "persistScoutReportToSupabase", "persistScoutReportDetailsToSupabase", "scoutReportPhotoUrls", "getScoutReportId", "normalizeScoutReportVisibility", "scoutBackendNumberOrNull", "scoutReportTimeForBackend", "isScoutBackendOptionalError", "scoutBackendKey", "scoutBackendSyncReady", "updateQuickScoutReportForm", "scoutReportConfidenceBadge"];
 const functions = new Map();
 function visit(node) {
   if (!node || typeof node !== "object") return;
@@ -68,6 +70,7 @@ function fixture(options = {}) {
   const environment = {
     encodeScoutReportCloudNotes,
     decodeScoutReportCloudNotes,
+    normalizePrivateStorageReference,
     hasConfirmedScoutReportStatus,
     hasVerifiedScoutReportStatus,
     getScoutQuickStoreId: (store) => store.id || store.storeId || "",
@@ -103,10 +106,31 @@ function fixture(options = {}) {
     SCOUT_WEEKDAYS: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
     normalizeScoutGuessVisibility: (value) => value,
     supabase: {
+      supabaseUrl: "https://synthetic-project.supabase.co",
       from(table) {
         calls.push({ operation: "from", table });
         assert.equal(table, "store_reports", "These saves must not change another table");
         return {
+          update(payload) {
+            calls.push({ operation: "update", payload });
+            return { eq(field, id) {
+              calls.push({ operation: "eq", field, id });
+              assert.equal(field, "id"); assert.equal(id, reportId, "Details must update the existing saved ID");
+              return { select(columns) {
+                calls.push({ operation: "select", columns });
+                return { single: async () => {
+                  const requested = columns.split(",").map((column) => column.trim());
+                  const unknown = [...Object.keys(payload), ...requested].find((column) => !productionColumns.has(column));
+                  if (unknown) return { data: null, error: { code: "42703", message: `column ${unknown} does not exist` } };
+                  const original = options.existingRow || cloudRow();
+                  const row = { ...original, ...payload };
+                  const result = { data: Object.fromEntries(requested.map((column) => [column, row[column] ?? null])), error: null };
+                  const response = responses.shift();
+                  return response === undefined ? result : response;
+                } };
+              } };
+            } };
+          },
           insert(payload) {
             calls.push({ operation: "insert", payload });
             return {
@@ -403,5 +427,69 @@ await check("core report-loader fallback retains privacy and identity fields", (
   const columns = new Set(match[1].split(","));
   for (const column of ["visibility", "status", "verification_status", "store_name", "product_name", "observed_at", "notes", "workspace_id"]) assert(columns.has(column), `Fallback omits ${column}`);
   for (const column of columns) assert(productionColumns.has(column), `Fallback still requests unavailable ${column}`);
+});
+await check("private proof links persist and reload as token-free object references", async () => {
+  const origin = "https://synthetic-project.supabase.co";
+  const oldLink = `${origin}/storage/v1/object/sign/receipt-images/users/${userId}/scout-reports/proof.png?token=expired-private-proof`;
+  const stable = `${origin}/storage/v1/object/authenticated/receipt-images/users/${userId}/scout-reports/proof.png`;
+  const f = fixture();
+  const saved = await f.api.persistScoutReportToSupabase(localReport({ photoUrls: [oldLink] }));
+  assert.equal(saved.ok, true);
+  assert.equal(inserts(f)[0].payload.photo_url, stable);
+  const mapped = f.api.mapSupabaseScoutReport(cloudRow({ photo_url: oldLink }), stores);
+  assert.equal(mapped.photoUrl, stable); assert.equal(mapped.photo_url, stable);
+  assert.equal(JSON.stringify(inserts(f)[0].payload).includes("expired-private-proof"), false);
+});
+await check("existing screenshot details update the core schema while keeping manual location, privacy and source", async () => {
+  const original = cloudRow({ store_id: null, store_name: "QA manual location", source_type: undefined, report_status: undefined, notes: encodeScoutReportCloudNotes(localReport()) });
+  const before = JSON.stringify(original);
+  const f = fixture({ existingRow: original });
+  const saved = await f.api.persistScoutReportDetailsToSupabase(localReport({ id: reportId, storeId: "", storeName: "QA manual location", notes: "Additional reviewed context", quantitySeen: "2" }));
+  const updates = f.calls.filter((call) => call.operation === "update");
+  assert.equal(updates.length, 1); assert.equal(inserts(f).length, 0);
+  assert.equal(saved.id, reportId); assert.equal(saved.storeName, original.store_name); assert.equal(saved.storeId, "");
+  assert.equal(saved.visibility, "private_from_map"); assert.equal(saved.sourceType, "text_screenshot"); assert.equal(saved.sourceLabel, "Facebook screenshot");
+  assert.equal(saved.verified, false); assert.equal(saved.needsReview, true); assert.equal(saved.notes, "Additional reviewed context");
+  assert.equal(Object.hasOwn(updates[0].payload, "source_type"), false); assert.equal(Object.hasOwn(updates[0].payload, "visibility"), false); assert.equal(Object.hasOwn(updates[0].payload, "verification_status"), false);
+  assert.equal(decodeScoutReportCloudNotes(updates[0].payload.notes).sourceType, "text_screenshot");
+  assert.equal(JSON.stringify(original), before);
+});
+await check("detail cloud errors retain the existing record without lossy retry or new insert", async () => {
+  const f = fixture({ responses: [{ data: null, error: { code: "42501", message: "synthetic owner policy denial" } }] });
+  const original = Object.freeze(localReport({ id: reportId }));
+  const before = JSON.stringify(original);
+  await assert.rejects(f.api.persistScoutReportDetailsToSupabase(original), (error) => error.code === "42501");
+  assert.equal(f.calls.filter((call) => call.operation === "update").length, 1); assert.equal(inserts(f).length, 0); assert.equal(JSON.stringify(original), before);
+});
+await check("local beta and non-cloud report identities never trigger detail cloud writes", async () => {
+  for (const options of [{ localBeta: true }, { guest: true }, { signedIn: false }, { protectedReady: false }]) {
+    const f = fixture(options);
+    assert.equal(await f.api.persistScoutReportDetailsToSupabase(localReport({ id: reportId })), null); assert.equal(f.calls.length, 0);
+  }
+  const f = fixture(); assert.equal(await f.api.persistScoutReportDetailsToSupabase(localReport({ id: "local-existing-report" })), null); assert.equal(f.calls.length, 0);
+});
+await check("actual cloud-mapped category-only stock reports retain feed labels, search and stock-filter counts", () => {
+  const states = [
+    ["stock_on_shelf", "stock", "Stock seen"], ["restock_happening_now", "stock", "Vendor stocking"],
+    ["low_stock", "low", "Low stock"], ["no_stock", "empty", "Empty shelves"],
+    ["vendor_seen", "other", "Stock not specified"], ["customer_service", "other", "Stock not specified"],
+  ];
+  const mapped = states.map(([stockStatus, group, label], index) => {
+    const row = cloudRow({ id: `mapped-${index}`, product_name: "", product_type: "Pokemon TCG", source_type: undefined, report_status: undefined,
+      status: "unverified", verification_status: "unverified", notes: encodeScoutReportCloudNotes({ sourceType: "user_report", reportStatus: stockStatus, notes: "QA category-only observation" }) });
+    const before = JSON.stringify(row);
+    const result = fixture().api.mapSupabaseScoutReport(row, stores);
+    assert.equal(result.stockStatus, stockStatus); assert.equal(restockReportStockGroup(result), group); assert.equal(restockReportStockLabel(result), label);
+    assert.equal(result.productType, "Pokemon TCG"); assert.equal(result.verified, false); assert.equal(result.visibility, "private_from_map");
+    assert.equal(JSON.stringify(row), before); return result;
+  });
+  const before = JSON.stringify(mapped);
+  const entries = prepareRestockFeedEntries(mapped);
+  const now = Date.parse(observedAt) + 60000;
+  assert.deepEqual(restockFeedBrowseState(entries, {}, now).counts, { all: 6, stock: 2, low: 1, empty: 1 });
+  assert.equal(filterRestockFeed(entries, { stock: "stock", search: "Pokemon TCG" }, now).length, 2);
+  assert.equal(filterRestockFeed(entries, { stock: "low" }, now).length, 1);
+  assert.equal(filterRestockFeed(entries, { stock: "empty" }, now).length, 1);
+  assert.equal(JSON.stringify(mapped), before, "Feed display must not rewrite synced records, privacy or verification");
 });
 console.log(`Stock screenshot cloud: ${passed} actual App behavior checks passed against a production-schema fake. No live requests were made.`);
