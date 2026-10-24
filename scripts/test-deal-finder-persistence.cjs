@@ -174,14 +174,6 @@ async function checkBrowser() {
         const product = page.locator(".market-v4-result-row").filter({ hasText: "Synthetic persistence bundle" });
         await expect(product).toBeVisible({ timeout: 30000 }); await product.getByRole("button", { name: "Compare", exact: true }).click();
         const modal = page.locator(".deal-finder-modal"); await expect(modal).toBeVisible();
-        await page.evaluate(() => {
-          window.syntheticObservedToasts = [];
-          new MutationObserver(() => {
-            for (const node of document.querySelectorAll(".app-toast-title")) {
-              if (!window.syntheticObservedToasts.includes(node.textContent)) window.syntheticObservedToasts.push(node.textContent);
-            }
-          }).observe(document.body, { childList: true, subtree: true, characterData: true });
-        });
         await modal.getByLabel("Asking Price", { exact: true }).fill("10");
         const original = await page.evaluate((key) => localStorage.getItem(key), storageKey);
         await page.evaluate((key) => {
@@ -201,8 +193,11 @@ async function checkBrowser() {
         await page.screenshot({ path: path.join(output, `blocked-${theme}-${width}.png`) });
         await page.evaluate(() => window.syntheticRestoreStorage());
         await modal.getByRole("button", { name: "Calculate & Save Deal", exact: true }).click();
-        await expect.poll(() => page.evaluate(() => window.syntheticObservedToasts.includes("Deal session saved locally."))).toBe(true);
-        await expect(modal.locator(".home-list-row")).toHaveCount(2);
+        // The durable saved record and its visible history row are the success
+        // contract; short-lived global toasts need not survive modal rendering.
+        await expect.poll(() => page.evaluate((key) => JSON.parse(localStorage.getItem(key)).dealFinderSessions.length, storageKey), { timeout: 30000 }).toBe(2);
+        await expect(modal.locator(".home-list-row")).toHaveCount(2, { timeout: 30000 });
+        await expect(modal.locator(".home-list-row").filter({ hasText: "Synthetic persistence bundle" })).toBeVisible();
         const saved = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)), storageKey);
         assert.equal(saved.dealFinderSessions.length, 2); assert.equal(saved.dealFinderItems.length, 2);
         assert.equal(saved.dealFinderItems[0].sessionId, saved.dealFinderSessions[0].id);

@@ -222,6 +222,7 @@ async function focusTrap(page, dialog, result) {
         await proofDisclosure.locator("summary").click();
         await expect(proofDisclosure.getByLabel("Proof text or link", { exact: true })).toHaveValue("");
         assert.deepEqual(await snapshot(page), original, "Starting a new visit cannot change or overwrite old observations");
+        await report.locator(".stock-report-product-disclosure > summary").click();
         await report.getByLabel("Product name (optional)", { exact: true }).fill("ZXQ fixture observation 7731");
         await report.getByRole("button", { name: "Review report", exact: true }).filter({ visible: true }).click();
         await report.getByRole("button", { name: "Save Report", exact: true }).filter({ visible: true }).click();

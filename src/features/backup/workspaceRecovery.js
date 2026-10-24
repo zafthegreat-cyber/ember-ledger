@@ -4,6 +4,8 @@ import { canonicalStringify, hashCanonicalJson, parseUntrustedBackupJson, parseU
 import { sanitizeBackupData } from "./backupSecurity.js";
 import { resolveSourceSchemaVersion, validateBackupCrossSourceRelationships, validateBackupSourceData } from "./backupValidation.js";
 import { createWorkspacePayloadStore } from "../persistence/workspacePayloadStore.js";
+import { projectPrivateImageReferences } from "../../services/privateStorageReferences.js";
+import { projectSourceData, retainDeviceOnlySourceFields } from "./sourceProjection.js";
 
 export const WORKSPACE_STORAGE_LOCK = "code3.workspace-storage.v1";
 export const WORKSPACE_RECOVERY_KEY = "code3.workspace-recovery.v1";
@@ -71,22 +73,22 @@ export function withWorkspaceStorageLock(locks, operation) {
   });
 }
 
-export function captureRecoverySources(storage) {
-  const result = readCurrentBackupSources({ localStorage: storage, sourceRegistry: WORKSPACE_LOCAL_SOURCES });
+export function captureRecoverySources(storage, { projectUrl } = {}) {
+  const result = readCurrentBackupSources({ localStorage: storage, sourceRegistry: WORKSPACE_LOCAL_SOURCES, projectUrl });
   if (result.warnings.some((entry) => entry.message.startsWith("Current source could not be read"))) fail("SOURCE_UNREADABLE", "Some saved records cannot be read. They have not been cleared or replaced.");
   return Object.fromEntries(WORKSPACE_LOCAL_SOURCES.map((source) => [source.sourceId, {
-    schemaVersion: resolveSourceSchemaVersion(source, result.sources[source.sourceId]), data: result.sources[source.sourceId],
+    schemaVersion: resolveSourceSchemaVersion(source, result.sources[source.sourceId]), data: projectSourceData(source, result.sources[source.sourceId]),
   }]));
 }
 
-function validateSources(sources, { relationships = true } = {}) {
+function validateSources(sources, { relationships = true, projectUrl } = {}) {
   if (!sources || typeof sources !== "object" || Array.isArray(sources)) fail("INVALID_SOURCES", "Recovery sources must be an object.");
   // Round-tripping also applies the bounded untrusted JSON/prototype checks.
   parseUntrustedBackupJson(canonicalStringify(sources));
   for (const [id, section] of Object.entries(sources)) {
     const source = sourceFor(id);
     if (!section || !source.supportedSchemaVersions.includes(section.schemaVersion)) fail("INVALID_SCHEMA", `${source.displayName} uses an unsupported version.`);
-    if (!equal(sanitizeBackupData(section.data).data, section.data)) fail("PRIVATE_FIELDS", "Recovery cannot import authentication, credentials, or private provider payloads.");
+    if (!equal(sanitizeBackupData(section.data, { projectUrl }).data, section.data)) fail("PRIVATE_FIELDS", "Recovery cannot import authentication, credentials, or private provider payloads.");
     if (source.allowedFields && Object.keys(section.data).some((key) => !source.allowedFields.includes(key))) fail("UNSUPPORTED_FIELDS", "Recovery cannot import account permissions or unregistered fields.");
     if (source.storageKeys && Object.keys(section.data).some((key) => !source.storageKeys.includes(key))) fail("UNSUPPORTED_KEY", "Recovery cannot write an unregistered preference.");
     const validation = validateBackupSourceData(source, section.data);
@@ -96,6 +98,15 @@ function validateSources(sources, { relationships = true } = {}) {
     const cross = validateBackupCrossSourceRelationships(Object.entries(sources).map(([sourceId, section]) => ({ sourceId, ...section })));
     if (!cross.valid) fail("INVALID_RELATIONSHIPS", "Recovered record relationships did not pass validation.");
   }
+}
+
+function projectRecoverySources(sources) {
+  if (!sources || typeof sources !== "object" || Array.isArray(sources)) return sources;
+  return Object.fromEntries(Object.entries(sources).map(([id, section]) => [id,
+    section && typeof section === "object" && !Array.isArray(section)
+      ? { ...section, data: projectSourceData(sourceFor(id), section.data) }
+      : section,
+  ]));
 }
 
 function stableId(value) { return value && typeof value === "object" ? value.id ?? value.recordId ?? value.record_id ?? null : null; }
@@ -120,20 +131,21 @@ function retainPrivateFields(original, safeOriginal, next) {
   return result;
 }
 
-function rawForValue(storage, source, key, value, exists = true) {
+function rawForValue(storage, source, key, value, exists = true, projectUrl) {
   if (!exists) return null;
   if (source.storageKeys) return typeof value === "string" ? value : canonicalStringify(value);
   const raw = read(storage, key);
   if (raw === null) return canonicalStringify(value);
   const original = parseUntrustedJsonValue(raw);
-  const safeOriginal = sanitizeBackupData(original).data;
-  const retained = retainPrivateFields(original, safeOriginal, value);
+  const projectedOriginal = projectPrivateImageReferences(original, projectUrl);
+  const safeOriginal = sanitizeBackupData(projectedOriginal, { projectUrl }).data;
+  const retained = retainDeviceOnlySourceFields(source, original, retainPrivateFields(original, safeOriginal, value));
   if (source.allowedFields) {
     for (const [field, fieldValue] of Object.entries(original)) {
       if (!source.allowedFields.includes(field)) retained[field] = fieldValue;
     }
   }
-  if (sanitizeBackupData(retained).excludedPaths.length < sanitizeBackupData(original).excludedPaths.length) fail("PRIVATE_LOCAL_DATA", "This change would remove local-only private fields. Preserve those records before trying recovery again.");
+  if (sanitizeBackupData(projectPrivateImageReferences(retained, projectUrl), { projectUrl }).excludedPaths.length < sanitizeBackupData(projectedOriginal, { projectUrl }).excludedPaths.length) fail("PRIVATE_LOCAL_DATA", "This change would remove local-only private fields. Preserve those records before trying recovery again.");
   return canonicalStringify(retained);
 }
 
@@ -154,11 +166,11 @@ function entriesFor(storage, before, after) {
   return entries;
 }
 
-function currentEntryValue(storage, entry) {
+function currentEntryValue(storage, entry, projectUrl) {
   const source = sourceFor(entry.sourceId);
-  const current = readCurrentBackupSources({ localStorage: storage, sourceRegistry: [source] });
+  const current = readCurrentBackupSources({ localStorage: storage, sourceRegistry: [source], projectUrl });
   if (current.warnings.some((warning) => warning.message.startsWith("Current source could not be read"))) fail("SOURCE_UNREADABLE", "Recovery could not read saved records.");
-  return source.storageKey ? current.sources[entry.sourceId] : current.sources[entry.sourceId][entry.key] ?? null;
+  return source.storageKey ? projectSourceData(source, current.sources[entry.sourceId]) : current.sources[entry.sourceId][entry.key] ?? null;
 }
 
 async function sealed(payload) { return canonicalStringify({ ...payload, integrity: await hashCanonicalJson(payload) }); }
@@ -180,7 +192,7 @@ async function journalReferences({ prepared, committed, ownerId, transactionId, 
   return { prepared: references.PREPARED, committed: references.COMMITTED };
 }
 
-async function inspectJournal(raw, ownerId, payloadStore, assertCurrent) {
+async function inspectJournal(raw, ownerId, payloadStore, assertCurrent, projectUrl) {
   let journal = parseUntrustedBackupJson(raw, WORKSPACE_JOURNAL_PARSE_LIMITS);
   let reference = null;
   if (journal.format === "code3-workspace-recovery-reference") {
@@ -206,35 +218,41 @@ async function inspectJournal(raw, ownerId, payloadStore, assertCurrent) {
     if (keys.has(entry.key) || (source.storageKey ? entry.key !== source.storageKey : !source.storageKeys.includes(entry.key)) || typeof entry.beforeExists !== "boolean"
       || ![entry.beforeRawHash, entry.afterRawHash].every((value) => typeof value === "string" && /^[a-f0-9]{64}$/.test(value))) fail("INVALID_RECOVERY", "The recovery checkpoint contains an unsupported target.");
     keys.add(entry.key);
+    if (source.storageKey) {
+      // Verify the original checkpoint hash above before deriving the same
+      // device-only projection used by current capture and conflict recovery.
+      if (entry.beforeExists) entry.beforeValue = projectSourceData(source, entry.beforeValue);
+      entry.afterValue = projectSourceData(source, entry.afterValue);
+    }
     const wrap = (value) => ({ [entry.sourceId]: { schemaVersion: resolveSourceSchemaVersion(source, source.storageKey ? value : {}), data: source.storageKey ? value : { [entry.key]: value } } });
-    if (entry.beforeExists) validateSources(wrap(entry.beforeValue), { relationships: false });
-    validateSources(wrap(entry.afterValue), { relationships: false });
+    if (entry.beforeExists) validateSources(wrap(entry.beforeValue), { relationships: false, projectUrl });
+    validateSources(wrap(entry.afterValue), { relationships: false, projectUrl });
   }
   return journal;
 }
 
-function rollbackEntries(storage, entries) {
+function rollbackEntries(storage, entries, projectUrl) {
   // Check all targets before touching any: do not erase edits made outside the
   // transaction, including edits by an older app tab that lacks shared leases.
   for (const entry of entries) {
-    const current = currentEntryValue(storage, entry);
+    const current = currentEntryValue(storage, entry, projectUrl);
     if (!equal(current, entry.beforeValue) && !equal(current, entry.afterValue)) fail("RECOVERY_CONFLICT", "Records changed after recovery started. Keep the checkpoint and review the newer records before retrying.");
   }
   for (const entry of entries.slice().reverse()) {
     const source = sourceFor(entry.sourceId);
-    write(storage, entry.key, rawForValue(storage, source, entry.key, entry.beforeValue, entry.beforeExists));
+    write(storage, entry.key, rawForValue(storage, source, entry.key, entry.beforeValue, entry.beforeExists, projectUrl));
   }
 }
 
 export function hasPendingWorkspaceRecovery(storage) { return read(storage, WORKSPACE_RECOVERY_KEY) !== null; }
 
-export async function recoverWorkspaceSources({ storage, ownerId, locks = globalThis.navigator?.locks, assertCurrent = () => {}, payloadStore } = {}) {
+export async function recoverWorkspaceSources({ storage, ownerId, locks = globalThis.navigator?.locks, assertCurrent = () => {}, payloadStore, projectUrl } = {}) {
   assertOwner(ownerId);
   return withWorkspaceStorageLock(locks, async () => {
     assertCurrent();
     const raw = read(storage, WORKSPACE_RECOVERY_KEY);
     if (raw === null) return { status: "NO_RECOVERY" };
-    const journal = await inspectJournal(raw, ownerId, payloadStore, assertCurrent);
+    const journal = await inspectJournal(raw, ownerId, payloadStore, assertCurrent, projectUrl);
     const currentRaw = new Map(journal.entries.map((entry) => [entry.key, read(storage, entry.key)]));
     for (const entry of journal.entries) {
       const hash = await hashCanonicalJson(currentRaw.get(entry.key));
@@ -243,23 +261,25 @@ export async function recoverWorkspaceSources({ storage, ownerId, locks = global
     if (read(storage, WORKSPACE_RECOVERY_KEY) !== raw) fail("RECOVERY_CONFLICT", "The checkpoint changed during recovery.");
     for (const [key, snapshot] of currentRaw) if (read(storage, key) !== snapshot) fail("RECOVERY_CONFLICT", "Records changed while recovery was being verified.");
     assertCurrent();
-    if (journal.status === "PREPARED") rollbackEntries(storage, journal.entries);
+    if (journal.status === "PREPARED") rollbackEntries(storage, journal.entries, projectUrl);
     else for (const entry of journal.entries) {
-      if (!equal(currentEntryValue(storage, entry), entry.afterValue)) fail("RECOVERY_CONFLICT", "Saved records changed after recovery completed. The checkpoint was retained.");
+      if (!equal(currentEntryValue(storage, entry, projectUrl), entry.afterValue)) fail("RECOVERY_CONFLICT", "Saved records changed after recovery completed. The checkpoint was retained.");
     }
     write(storage, WORKSPACE_RECOVERY_KEY, null);
     return { status: journal.status === "PREPARED" ? "ROLLED_BACK" : "RECOVERED_COMMIT", transactionId: journal.transactionId };
   });
 }
 
-export async function applyWorkspaceSources({ storage, expectedSources, nextSources, ownerId, locks = globalThis.navigator?.locks, assertCurrent = () => {}, payloadStore } = {}) {
+export async function applyWorkspaceSources({ storage, expectedSources, nextSources, ownerId, locks = globalThis.navigator?.locks, assertCurrent = () => {}, payloadStore, projectUrl } = {}) {
   assertOwner(ownerId);
-  validateSources(nextSources, { relationships: false });
+  expectedSources = projectRecoverySources(expectedSources);
+  nextSources = projectRecoverySources(nextSources);
+  validateSources(nextSources, { relationships: false, projectUrl });
   return withWorkspaceStorageLock(locks, async () => {
     assertCurrent();
     assertClear(storage);
-    const before = captureRecoverySources(storage);
-    validateSources({ ...before, ...nextSources });
+    const before = captureRecoverySources(storage, { projectUrl });
+    validateSources({ ...before, ...nextSources }, { projectUrl });
     for (const id of Object.keys(nextSources)) {
       const expected = expectedSources?.[id];
       if (expected ? !equal(before[id], expected) : !sourceIsAbsent(storage, sourceFor(id))) fail("STALE_SNAPSHOT", "Your saved records changed. Review the current version before recovering this backup.");
@@ -267,7 +287,7 @@ export async function applyWorkspaceSources({ storage, expectedSources, nextSour
     const entries = entriesFor(storage, before, nextSources);
     if (!entries.length) return { status: "UNCHANGED", changedSources: [] };
     const beforeRaw = new Map(entries.map((entry) => [entry.key, read(storage, entry.key)]));
-    const afterRaw = new Map(entries.map((entry) => [entry.key, rawForValue(storage, sourceFor(entry.sourceId), entry.key, entry.afterValue)]));
+    const afterRaw = new Map(entries.map((entry) => [entry.key, rawForValue(storage, sourceFor(entry.sourceId), entry.key, entry.afterValue, true, projectUrl)]));
     await Promise.all(entries.map(async (entry) => {
       entry.beforeRawHash = await hashCanonicalJson(beforeRaw.get(entry.key));
       entry.afterRawHash = await hashCanonicalJson(afterRaw.get(entry.key));
@@ -315,7 +335,7 @@ export async function applyWorkspaceSources({ storage, expectedSources, nextSour
       for (const [key, raw] of afterRaw) write(storage, key, raw);
       write(storage, WORKSPACE_RECOVERY_KEY, journal.committed);
     } catch (error) {
-      try { rollbackEntries(storage, entries); write(storage, WORKSPACE_RECOVERY_KEY, null); } catch { fail("RECOVERY_REQUIRED", "Recovery stopped safely with a checkpoint. Reopen recovery before using saved records."); }
+      try { rollbackEntries(storage, entries, projectUrl); write(storage, WORKSPACE_RECOVERY_KEY, null); } catch { fail("RECOVERY_REQUIRED", "Recovery stopped safely with a checkpoint. Reopen recovery before using saved records."); }
       throw error;
     }
     // If cleanup fails the committed journal lets startup verify, not undo, the save.

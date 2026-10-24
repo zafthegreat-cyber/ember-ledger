@@ -499,8 +499,11 @@ export async function previewBackupRestore(raw, options = {}) {
     });
   }
 
-  const earlyProhibitedFields = findProhibitedData(backup).map((match) => match.path);
   const integrity = await verifyBackupEnvelope(backup, options);
+  const earlyProhibitedFields = findProhibitedData(backup, {
+    verifiedBackupManifestHash: integrity.valid ? integrity.manifestHash : undefined,
+    projectUrl: options.projectUrl,
+  }).map((match) => match.path);
   if (!integrity.valid) {
     return emptyPreview(RESTORE_PREVIEW_RESULTS.CORRUPTED, {
       formatRecognized: true,

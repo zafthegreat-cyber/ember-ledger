@@ -3,6 +3,14 @@ import { PrivateStorageImage } from "../../components/PrivateReceipt.jsx";
 import StockScreenshotImport from "../../components/StockScreenshotImport.jsx";
 import "./scout-submit.css";
 import "./stock-report-easy.css";
+import "./stock-report-guidance.css";
+
+const stockStatusPaths = {
+  stock_on_shelf: "M4 6h16v14H4V6Zm4-3h8v3H8V3Zm0 8 3 3 5-5",
+  low_stock: "M5 20V9h4v11H5Zm5 0V5h4v15h-4Zm5 0v-7h4v7h-4Z",
+  no_stock: "M5 5l14 14M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z",
+  restock_happening_now: "M4 9a8 8 0 1 1 0 6M4 3v6h6m2-2v5l3 2",
+};
 
 // App owns state, authority and handlers; only this existing renderer is deferred.
 export default function ScoutSubmitContent({ scope }) {
@@ -95,6 +103,7 @@ export default function ScoutSubmitContent({ scope }) {
 
   const photoInputRef = useRef(null);
   const photoSelectionRef = useRef(0);
+  const reportMessageRef = useRef(null);
 
   useEffect(() => () => { photoSelectionRef.current += 1; }, []);
 
@@ -235,6 +244,7 @@ export default function ScoutSubmitContent({ scope }) {
           { key: "details", label: "Item/details", ready: quickScoutHasMeaningfulReportDetail() },
         ];
     const scoutPointsRemaining = Math.max(0, MIN_SCOUT_POINTS_FOR_GUESS - scoutGuessPoints);
+    const missingReportRequirements = scoutRequiredChecklist.filter((item) => !item.ready);
     const scoutPointsProgress = Math.min(100, Math.round((scoutGuessPoints / Math.max(1, MIN_SCOUT_POINTS_FOR_GUESS)) * 100));
     const productDetailSummary = quickScoutReportForm.productName
       ? [quickScoutReportForm.productCategory, quickScoutReportForm.productName].filter(Boolean).join(" | ")
@@ -278,7 +288,10 @@ export default function ScoutSubmitContent({ scope }) {
           data-selected={isSelected ? "true" : "false"}
           onClick={() => updateQuickScoutReportForm("reportType", option.value)}
         >
-          <strong>{option.title}{isSelected ? renderScoutSelectionBadge("Selected") : null}</strong>
+          <strong>
+            {stockStatusPaths[option.value] ? <svg className="stock-report-status-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false"><path d={stockStatusPaths[option.value]} /></svg> : null}
+            {option.title}{isSelected ? renderScoutSelectionBadge("Selected") : null}
+          </strong>
           <span>{option.helper}</span>
         </button>
       );
@@ -376,6 +389,7 @@ export default function ScoutSubmitContent({ scope }) {
       const error = scoutWizardStepError(activeWizardStep.key);
       if (error) {
         setQuickScoutReportMessage(error);
+        requestAnimationFrame(() => reportMessageRef.current?.focus({ preventScroll: false }));
         return;
       }
       setQuickScoutReportMessage("");
@@ -448,11 +462,24 @@ export default function ScoutSubmitContent({ scope }) {
       <form
         id="quick-scout-report-form"
         className={`scout-report-flow scout-quick-report-v2 scout-report-wizard ${currentType.isGuess ? "" : "scout-report-quick stock-report-easy"}`}
-        onSubmit={submitQuickScoutReport}
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (quickScoutReportSubmitting) return;
+          if (quickScoutReportStep === "review") submitQuickScoutReport(event);
+          else goNextScoutWizardStep();
+        }}
         onTouchStart={handleScoutWizardTouchStart}
         onTouchEnd={handleScoutWizardTouchEnd}
       >
-        {quickScoutReportMessage ? <div className="form-error" role="alert">{quickScoutReportMessage}</div> : null}
+        {quickScoutReportMessage ? <div ref={reportMessageRef} className="form-error" role="alert" tabIndex={-1}>{quickScoutReportMessage}</div> : null}
+        {!currentType.isGuess ? (
+          <div className="stock-report-step-context">
+            <p><strong>Step {activeStepIndex + 1} of {wizardSteps.length}</strong><span>{quickScoutReportStep === "review" ? "Check, then save" : "Review before saving"}</span></p>
+            <div className="stock-report-step-track" aria-hidden="true">
+              {wizardSteps.map((step, index) => <span key={step.key} className={index <= activeStepIndex ? "is-reached" : ""} />)}
+            </div>
+          </div>
+        ) : null}
         {currentType.isGuess ? <div className="scout-report-progress">
           <div>
             <strong>Step {activeStepIndex + 1} of {wizardSteps.length}</strong>
@@ -479,6 +506,12 @@ export default function ScoutSubmitContent({ scope }) {
           ))}
         </div>
         {!currentType.isGuess ? <p className="sr-only" role="status">Step {activeStepIndex + 1} of {wizardSteps.length}: {activeWizardStep.title || activeWizardStep.label}.</p> : null}
+        {!currentType.isGuess && quickScoutReportStep === "details" && storeSelection.valid ? (
+          <div className="stock-report-draft-context">
+            <div><strong>{storeSelection.storeName}</strong><span>Observed: {quickScoutDateLabel()}</span></div>
+            <button type="button" className="ghost-button" aria-label="Change report store or observed time" disabled={quickScoutReportSubmitting} onClick={() => goToScoutWizardStep("where")}>Change</button>
+          </div>
+        ) : null}
         {currentType.isGuess ? <>
         <div className="scout-current-selection-strip" aria-live="polite">
           <strong>Current choice</strong>
@@ -634,7 +667,7 @@ export default function ScoutSubmitContent({ scope }) {
                 </details>
                 {quickScoutReportForm.photoUrl ? (
                   <div className="scout-photo-preview">
-                    <PrivateStorageImage src={quickScoutReportForm.photoUrl} alt="" />
+                    <PrivateStorageImage src={quickScoutReportForm.photoUrl} alt="" authorizePrivate />
                     <div>
                       <strong>Image attached</strong>
                       <span>Proof is optional, but it improves confidence.</span>
@@ -1031,6 +1064,7 @@ export default function ScoutSubmitContent({ scope }) {
             {!currentType.isGuess ? (
               <div className="scout-report-status-panel">
                 <h4>Shelf status</h4>
+                <p className="stock-report-small-note">Pick one. You can change it before saving.</p>
                 <div className="scout-report-type-grid scout-report-status-grid" role="group" aria-label="Shelf status">
                   {quickReportTypeOptions.filter((option) => commonReportTypes.includes(option.value)).map(renderReportTypeChoice)}
                 </div>
@@ -1161,7 +1195,7 @@ export default function ScoutSubmitContent({ scope }) {
             ) : null}
             {quickScoutReportForm.photoUrl ? (
               <div className="scout-photo-preview">
-                <PrivateStorageImage src={quickScoutReportForm.photoUrl} alt="" />
+                <PrivateStorageImage src={quickScoutReportForm.photoUrl} alt="" authorizePrivate />
                 <div>
                   <strong>Image attached</strong>
                   <span>Check the image before saving.</span>
@@ -1289,28 +1323,38 @@ export default function ScoutSubmitContent({ scope }) {
                     </div>
                   </div>
                 </div>
-                <div className="scout-review-group">
-                  <span>Shared with</span>
-                  <strong>{scoutVisibilityOptionLabel(quickScoutReportForm.visibility || "public", false)}</strong>
+                <div className="scout-review-group stock-report-review-sharing">
+                  <label>
+                    Shared with
+                    <select aria-label="Who can see this report" value={quickScoutReportForm.visibility || "public"} onChange={(event) => updateQuickScoutReportForm("visibility", event.target.value)} disabled={quickScoutReportSubmitting}>
+                      {SCOUT_REPORT_VISIBILITY_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                    </select>
+                    <small>{SCOUT_REPORT_VISIBILITY_OPTIONS.find((option) => option.value === (quickScoutReportForm.visibility || "public"))?.helper}</small>
+                  </label>
                 </div>
               </>}
             </div>
+            {!currentType.isGuess && (quickScoutReportForm.photoUrl || quickScoutReportForm.note) ? (
+              <div className="stock-report-review-extras">
+                <div className="scout-review-group-heading"><strong>Your added details</strong><button type="button" className="ghost-button" aria-label="Edit added report details" disabled={quickScoutReportSubmitting} onClick={() => goToScoutWizardStep("details")}>Edit</button></div>
+                {quickScoutReportForm.note ? <p>{quickScoutReportForm.note}</p> : null}
+                {quickScoutReportForm.photoUrl ? <div className="scout-photo-preview"><PrivateStorageImage src={quickScoutReportForm.photoUrl} alt="Report photo to review before saving" authorizePrivate /><div><strong>Report photo attached</strong><span>Check for faces, addresses, or personal information before sharing.</span></div></div> : null}
+              </div>
+            ) : null}
+            {!currentType.isGuess && reviewStepError ? (
+              <div className="stock-report-fix-checklist" aria-label="Missing report details">
+                <strong>A few details still need your attention</strong>
+                {(missingReportRequirements.length ? missingReportRequirements : [{ key: "details", label: "report details" }]).map((item) => <button key={item.key} type="button" className="secondary-button" disabled={quickScoutReportSubmitting} onClick={() => goToScoutWizardStep(["store", "time"].includes(item.key) ? "where" : "details")}>Add or check {item.label.toLowerCase()}<span aria-hidden="true">→</span></button>)}
+              </div>
+            ) : null}
             {!currentType.isGuess ? (
               <details className="scout-report-disclosure stock-report-sharing-disclosure">
                 <summary>Source and sharing details</summary>
-                <label>
-                  Who can see this report
-                  <select value={quickScoutReportForm.visibility || "public"} onChange={(event) => updateQuickScoutReportForm("visibility", event.target.value)}>
-                    {SCOUT_REPORT_VISIBILITY_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                  </select>
-                  <small>{SCOUT_REPORT_VISIBILITY_OPTIONS.find((option) => option.value === quickScoutReportForm.visibility)?.helper}</small>
-                </label>
                 <div className="scout-report-review-grid">
                   {summaryRows.filter(([label]) => !["Report type", "Reporting at", "Product details", "Visit date & time"].includes(label)).map(([label, value]) => (
                     <div key={label}><span>{label}</span><strong>{value}</strong></div>
                   ))}
                 </div>
-                {quickScoutReportForm.note ? <p>{quickScoutReportForm.note}</p> : null}
                 <div className="stock-report-review-context">
                   <strong>{confidenceBadge.label}</strong>
                   <p>{confidenceBadge.helper}</p>

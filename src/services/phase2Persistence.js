@@ -1,3 +1,5 @@
+import { canonicalStringify } from "../features/backup/canonicalJson.js";
+
 const PHASE2_STORAGE_KEY = "et-tcg-phase2-data";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -76,8 +78,19 @@ export function saveLocalPhase2Data(updater) {
     throw new Error("Saved Phase 2 data is invalid and was not changed.");
   }
   const current = { ...defaults, ...parsed };
+  const content = (value) => {
+    const fields = { ...value };
+    delete fields.updatedAt;
+    return canonicalStringify(JSON.parse(JSON.stringify(fields)));
+  };
+  const originalContent = content(current);
+  const originalTimestamp = current.updatedAt;
   const next = typeof updater === "function" ? updater(current) : { ...current, ...updater };
-  const payload = { ...createEmptyPhase2Data(), ...next, updatedAt: new Date().toISOString() };
+  const payload = { ...defaults, ...next };
+  // Dashboard preference effects can re-save identical values while a cloud
+  // conflict is open. A no-op must not manufacture a new business revision.
+  if (originalContent === content(payload)) return { ...payload, updatedAt: originalTimestamp };
+  payload.updatedAt = new Date().toISOString();
   localStorage.setItem(PHASE2_STORAGE_KEY, JSON.stringify(payload));
   return payload;
 }

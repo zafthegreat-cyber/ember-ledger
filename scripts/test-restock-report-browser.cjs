@@ -386,7 +386,7 @@ async function checkPresentation(page, modal, name, result) {
         await expect(modal.getByRole("heading", { name: "Ready to share this report?", exact: true })).toBeVisible();
         await assertStepFocus(page, modal, "details to review", result);
         await expect(modal.getByText("1 Fixture North Way", { exact: false }).first()).toBeVisible();
-        await expect(modal.getByText("Shared with", { exact: true })).toBeVisible();
+        await expect(modal.getByRole("combobox", { name: "Who can see this report", exact: true })).toBeVisible();
         await checkPresentation(page, modal, "review", result);
         assert.deepEqual(await snapshot(page), original, "Reviewing a report cannot write any records");
         const editStore = modal.getByRole("button", { name: "Edit store and time", exact: true });

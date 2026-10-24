@@ -9,7 +9,7 @@ fs.mkdirSync(output, { recursive: true });
 const fixture = `<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body><div id="root"></div><script type="module">
 import React from 'react';import{createRoot}from'react-dom/client';import'/src/index.css';import'/src/App.css';import'/src/styles/theme.css';import{PrivateReceiptImage,PrivateReceiptLink,PrivateStorageImage}from'/src/components/PrivateReceipt.jsx';
 const ref='https://synthetic-project.supabase.co/storage/v1/object/public/receipts/legacy%20receipt.png';localStorage.setItem('synthetic-record',JSON.stringify({receiptImage:ref,marketPrice:99}));
-createRoot(document.getElementById('root')).render(React.createElement('main',{className:'app code3-public-privacy','data-theme':new URLSearchParams(location.search).get('theme'),style:{padding:'24px',minHeight:'100dvh',background:'var(--app-background)'}},React.createElement('section',{className:'card',style:{maxWidth:'500px',padding:'20px'}},React.createElement('h2',{},'Your saved receipt'),React.createElement('p',{},'Existing receipt reference, private account access.'),React.createElement(PrivateReceiptImage,{src:ref,alt:'Synthetic receipt',style:{width:'180px',height:'100px',background:'#d5e8e2'}}),React.createElement('div',{style:{marginTop:'16px'}},React.createElement(PrivateReceiptLink,{href:ref},'View receipt')),React.createElement('h3',{},'Product and report photos'),React.createElement('button',{type:'button','aria-label':'Open product'},React.createElement(PrivateStorageImage,{src:ref,alt:'Legacy product artwork',style:{width:'100px',height:'80px',background:'#d5e8e2'}})),React.createElement(PrivateStorageImage,{src:'https://synthetic-project.supabase.co/storage/v1/object/sign/receipt-images/users/other/scout-photo.png?token=existing-report-token',alt:'Shared report artwork',style:{width:'100px',height:'80px',background:'#d5e8e2'}}))));
+createRoot(document.getElementById('root')).render(React.createElement('main',{className:'app code3-public-privacy','data-theme':new URLSearchParams(location.search).get('theme'),style:{padding:'24px',minHeight:'100dvh',background:'var(--app-background)'}},React.createElement('section',{className:'card',style:{maxWidth:'500px',padding:'20px'}},React.createElement('h2',{},'Your saved receipt'),React.createElement('p',{},'Existing receipt reference, private account access.'),React.createElement(PrivateReceiptImage,{src:ref,alt:'Synthetic receipt',style:{width:'180px',height:'100px',background:'#d5e8e2'}}),React.createElement('div',{style:{marginTop:'16px'}},React.createElement(PrivateReceiptLink,{href:ref},'View receipt')),React.createElement('h3',{},'Product and report photos'),React.createElement('button',{type:'button','aria-label':'Open product'},React.createElement(PrivateStorageImage,{src:ref,alt:'Legacy product artwork',style:{width:'100px',height:'80px',background:'#d5e8e2'}})),React.createElement(PrivateStorageImage,{src:'https://synthetic-project.supabase.co/storage/v1/object/sign/receipt-images/users/other/scout-photo.png?token=existing-report-token',alt:'Shared report artwork',style:{width:'100px',height:'80px',background:'#d5e8e2'}}),React.createElement(PrivateStorageImage,{src:'https://synthetic-project.supabase.co/storage/v1/object/authenticated/receipt-images/users/11111111-1111-4111-8111-111111111111/scout-reports/proof.png',alt:'Private saved proof',style:{width:'100px',height:'80px',background:'#d5e8e2'}}),React.createElement(PrivateStorageImage,{src:'https://synthetic-project.supabase.co/storage/v1/object/sign/receipt-images/users/11111111-1111-4111-8111-111111111111/scout-reports/legacy-proof.png?token=expired-proof-token',authorizePrivate:true,alt:'Reviewed legacy proof',style:{width:'100px',height:'80px',background:'#d5e8e2'}}))));
 </script></body></html>`;
 fs.writeFileSync(path.join(output, "fixture.html"), fixture);
 const stub = `
@@ -41,11 +41,18 @@ export const supabase={supabaseUrl:'https://synthetic-project.supabase.co',auth:
       await expect(page.getByRole('img',{name:'Synthetic receipt'})).toBeVisible();
       await expect(page.getByRole('img',{name:'Legacy product artwork'})).toBeVisible();
       await expect(page.getByRole('img',{name:'Shared report artwork'})).toBeVisible();
+      const canonicalProof = page.getByRole('img',{name:'Private saved proof',exact:true});
+      const legacyProof = page.getByRole('img',{name:'Reviewed legacy proof',exact:true});
+      await expect(canonicalProof).toBeVisible();
+      await expect(legacyProof).toBeVisible();
+      await expect(canonicalProof).toHaveAttribute('src',/\/object\/sign\/receipt-images\/.*\?token=synthetic-/);
+      const firstProofUrl = await canonicalProof.getAttribute('src');
       await expect(page.getByRole('link',{name:'View receipt'})).toHaveAttribute('href',/\/sign\/receipts\/legacy%20receipt\.png\?token=synthetic-/);
       const original=await page.evaluate(()=>localStorage.getItem('synthetic-record'));
       const firstCount=await page.evaluate(()=>window.__receiptState.signed);
       await page.clock.fastForward(46_000);
       await expect.poll(()=>page.evaluate(()=>window.__receiptState.signed)).toBeGreaterThan(firstCount);
+      await expect.poll(()=>canonicalProof.getAttribute('src')).not.toBe(firstProofUrl);
       await expect(page.getByRole('link',{name:'View receipt'})).toBeVisible();
       assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
       const lowContrast=await page.locator('h2,h3,p,a').evaluateAll(nodes=>{
@@ -62,22 +69,28 @@ export const supabase={supabaseUrl:'https://synthetic-project.supabase.co',auth:
       await expect(page.getByRole('link',{name:'View receipt'})).toHaveCount(0);
       await expect(page.getByRole('img',{name:'Synthetic receipt'})).toHaveCount(0);
       await expect(page.getByRole('img',{name:'Legacy product artwork'})).toHaveCount(0);
+      await expect(canonicalProof).toHaveCount(0);
+      await expect(legacyProof).toHaveCount(0);
       await expect(page.getByRole('img',{name:'Shared report artwork'})).toBeVisible();
       assert.equal(await page.locator('button button,button a,a button').count(),0,'Image failures never introduce nested interactive controls');
       await expect(page.getByRole('button',{name:'Retry receipt'}).first()).toBeVisible();
       await page.evaluate(()=>window.__receiptOther());
       await expect(page.getByRole('button',{name:'Retry receipt'}).first()).toBeVisible();
       assert.equal(await page.getByRole('link',{name:'View receipt'}).count(),0);
+      await expect(canonicalProof).toHaveCount(0);
+      await expect(legacyProof).toHaveCount(0);
       await expect(page.getByRole('img',{name:'Shared report artwork'})).toHaveAttribute('src',/existing-report-token$/);
       await page.evaluate(()=>window.__receiptOwner());
       await expect(page.getByRole('link',{name:'View receipt'})).toBeVisible();
+      await expect(canonicalProof).toBeVisible();
+      await expect(legacyProof).toBeVisible();
       assert.equal(await page.evaluate(()=>localStorage.getItem('synthetic-record')),original);
       assert.equal(await page.evaluate(()=>localStorage.length),1);
       assert.equal(await page.evaluate(()=>sessionStorage.length),0);
       assert.ok(imageRequests.length>0);
-      assert.ok(imageRequests.every(request=>(request.url.includes('/object/sign/receipts/')||request.url.includes('existing-report-token'))&&!request.headers.authorization));
+      assert.ok(imageRequests.every(request=>(request.url.includes('/object/sign/receipts/')||request.url.includes('/object/sign/receipt-images/')||request.url.includes('existing-report-token'))&&!request.headers.authorization));
       assert.deepEqual(errors,[]);
-      results.push({width,theme,shortLivedRefresh:true,signOutClearsLink:true,otherAccountDenied:true,legacyOwnerArtwork:true,otherBucketSharedArtworkUnchanged:true,originalRecordsUnchanged:true,publicImageRequests:0});
+      results.push({width,theme,shortLivedRefresh:true,canonicalProofRefresh:true,explicitLegacyProofAuthorization:true,signOutClearsLink:true,otherAccountDenied:true,legacyOwnerArtwork:true,otherBucketSharedArtworkUnchanged:true,originalRecordsUnchanged:true,publicImageRequests:0});
       await context.close();
     }
     fs.writeFileSync(path.join(output,'results.json'),JSON.stringify({generatedAt:new Date().toISOString(),syntheticOnly:true,results},null,2));

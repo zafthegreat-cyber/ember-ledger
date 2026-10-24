@@ -24,7 +24,7 @@ import RestockReportDetails from "../components/RestockReportDetails.jsx";
 import StoreObservationSummary from "../components/StoreObservationSummary.jsx";
 import ScoutDeleteReportDialog from "../components/ScoutDeleteReportDialog.jsx";
 import { createRestockDetailsHistory } from "../utils/restockDetailsHistory.mjs";
-import { restockReportObservedLabel, restockReportStockGroup, restockReportTrustLabel } from "../utils/restockFeedPresentation.mjs";
+import { restockReportObservedLabel, restockReportStockGroup, restockReportStockLabel, restockReportTrustLabel } from "../utils/restockFeedPresentation.mjs";
 import { hasVerifiedScoutReportStatus } from "../utils/scoutReportVerification.mjs";
 import { AppNavIcon, CommandBoardSection, CommandBoardV4, CommandMetricGrid } from "../components/command-system";
 import "./scout-reports.css";
@@ -1268,6 +1268,7 @@ export default function Scout({
   openBeaconCenter = null,
   openCompassSearch = null,
   onQuickReport = null,
+  onEditReport = null,
   onReturnToReport = null,
   onOpenFlipScout = null,
 }) {
@@ -2018,6 +2019,9 @@ export default function Scout({
   }
 
   function startEditingReport(report) {
+    // The app owns the canonical saved record and its permission-checked details
+    // editor, including manual locations and indirect screenshot provenance.
+    if (typeof onEditReport === "function") return onEditReport(report);
     setEditingReportId(report.id);
     setReportPhoto(null);
     const productSnapshot = report.catalogProductSnapshot || report.catalog_product_snapshot || null;
@@ -3939,16 +3943,16 @@ async function handleUpdateStore(e) {
       return (
         <article className="scout-feed-report-card" key={report.id || report.reportId || `${storeName}-${note}`}>
           <div className="scout-feed-report-card__signal">
-            <span className={`scout-feed-stock scout-feed-stock--${stockGroup}`}>{stockStatus || (stockGroup === "empty" ? "Empty shelves" : "Stock not specified")}</span>
+            <span className={`scout-feed-stock scout-feed-stock--${stockGroup}`}>{stockStatus || restockReportStockLabel(report)}</span>
             <span>{restockReportObservedLabel(report, scoutNow)}</span>
           </div>
           <div className="scout-feed-report-card__body">
             <div className="scout-feed-report-card__copy">
               <h3>{storeName}</h3>
               <p className="scout-feed-report-card__location">{retailer}{area ? ` · ${area}` : ""}</p>
-              <p className="scout-feed-report-card__items">{visibleItems.length ? visibleItems.map((item) => item.productName).join(" · ") : note || "No item details added"}{extraCount ? ` · +${extraCount} more item${extraCount === 1 ? "" : "s"}` : ""}</p>
+              <p className="scout-feed-report-card__items">{visibleItems.length ? visibleItems.map((item) => item.productName).join(" · ") : report.productCategory || report.product_category || report.productType || report.product_type || note || "No item details added"}{extraCount ? ` · +${extraCount} more item${extraCount === 1 ? "" : "s"}` : ""}</p>
             </div>
-            {photo ? <div className="scout-feed-report-card__photo"><PrivateStorageImage src={photo} alt="Attached observation photo" /></div> : null}
+            {photo ? <div className="scout-feed-report-card__photo"><PrivateStorageImage src={photo} alt="Attached observation photo" authorizePrivate /></div> : null}
           </div>
           <div className="scout-feed-report-card__footer">
             <p>{trustLabel}{historicalImport ? " · Not live verified" : photo && trustLabel !== "Photo attached" ? " · Photo attached" : ""}</p>
@@ -4008,7 +4012,7 @@ async function handleUpdateStore(e) {
           {!options.compact && (note || (!stockStatus && !photo)) ? <p className="scout-report-notes">{note || "No notes/details added."}</p> : null}
         </div>
         <div className="scout-report-side">
-          {photo ? <PrivateStorageImage src={photo} alt="" /> : <span>No photo attached</span>}
+          {photo ? <PrivateStorageImage src={photo} alt="" authorizePrivate /> : <span>No photo attached</span>}
           <OverflowMenu
             actions={compactReportActions}
             onDelete={adminMode ? () => setDeleteReportTarget(report) : null}
@@ -5433,7 +5437,7 @@ async function handleUpdateStore(e) {
                   <input type="file" accept="image/*" onChange={handleTipScreenshotUpload} />
                   {tipImport.screenshotPreview ? (
                     <div>
-                      <PrivateStorageImage src={tipImport.screenshotPreview} alt="Uploaded tip screenshot preview" style={styles.previewImage} />
+                      <PrivateStorageImage src={tipImport.screenshotPreview} alt="Uploaded tip screenshot preview" authorizePrivate style={styles.previewImage} />
                       <p style={styles.tiny}>Preview: {tipImport.screenshotName}</p>
                     </div>
                   ) : null}
@@ -5694,7 +5698,7 @@ async function handleUpdateStore(e) {
                   </label>
                   {(reportPhoto?.preview || reportForm.imageUrl) ? (
                     <div className="scout-photo-preview">
-                      <PrivateStorageImage src={reportPhoto?.preview || reportForm.imageUrl} alt="" />
+                      <PrivateStorageImage src={reportPhoto?.preview || reportForm.imageUrl} alt="" authorizePrivate />
                       <div>
                         <strong>Photo uploaded</strong>
                         <span>Items not identified yet. Needs review.</span>
@@ -6904,7 +6908,7 @@ async function handleUpdateStore(e) {
                   store={getReportStore(selectedReportTarget)}
                   items={normalizeReportItemsForForm(selectedReportTarget)}
                   photos={getScoutReportPhotoUrls(selectedReportTarget)}
-                  stockLabel={scoutStockStatusLabel(selectedReportTarget.stockStatus || selectedReportTarget.stock_status) || ({ stock: "Stock seen", low: "Low stock", empty: "Empty shelves" }[restockReportStockGroup(selectedReportTarget)]) || "Stock not specified"}
+                  stockLabel={scoutStockStatusLabel(selectedReportTarget.stockStatus || selectedReportTarget.stock_status) || restockReportStockLabel(selectedReportTarget)}
                   stockGroup={restockReportStockGroup(selectedReportTarget)}
                   observedLabel={restockReportObservedLabel(selectedReportTarget, scoutNow)}
                   trustLabel={restockReportTrustLabel(selectedReportTarget, Boolean(getScoutReportPhotoUrls(selectedReportTarget).length))}

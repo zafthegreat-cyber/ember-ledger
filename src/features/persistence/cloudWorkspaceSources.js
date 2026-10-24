@@ -3,6 +3,8 @@ import { canonicalStringify, hashCanonicalJson, parseUntrustedJsonValue } from "
 import { findProhibitedData } from "../backup/backupSecurity.js";
 import { resolveSourceSchemaVersion, validateBackupSourceData, validateBackupCrossSourceRelationships } from "../backup/backupValidation.js";
 import { readAccountOpsRecoveryGuardedRaw } from "../accountOps/recoveryState.js";
+import { projectPrivateImageReferences } from "../../services/privateStorageReferences.js";
+import { projectSourceData } from "../backup/sourceProjection.js";
 
 export const WORKSPACE_CLOUD_FORMAT = "code3-workspace-v1";
 export const WORKSPACE_MAX_BYTES = 8 * 1024 * 1024;
@@ -31,13 +33,13 @@ function readJson(raw, allowText = false) {
 }
 
 function projectSource(source, value) {
-  if (!source.allowedFields) return value;
+  if (!source.allowedFields) return projectSourceData(source, value);
   if (!value || typeof value !== "object" || Array.isArray(value)) workspaceFail("INVALID_LOCAL_DATA", `${source.displayName} could not be read safely.`);
   return Object.fromEntries(source.allowedFields.filter((key) => Object.hasOwn(value, key)).map((key) => [key, value[key]]));
 }
 
-/** The original storage bytes stay in place. No sanitizing rewrite or canonical remapping occurs. */
-export function captureWorkspaceSources(storage) {
+/** Keep original bytes; copy known private image locators without expiring credentials. */
+export function captureWorkspaceSources(storage, { projectUrl } = {}) {
   const sources = {};
   for (const source of WORKSPACE_SYNC_SOURCES) {
     let data;
@@ -54,15 +56,16 @@ export function captureWorkspaceSources(storage) {
         if (raw === null) continue;
         data = projectSource(source, readJson(raw));
       }
+      data = projectPrivateImageReferences(data, projectUrl);
       sources[source.sourceId] = { schemaVersion: resolveSourceSchemaVersion(source, data), data };
     } catch (error) {
       workspaceFail("INVALID_LOCAL_DATA", `${source.displayName} needs review before cloud saving. Its original data is unchanged.`, { sourceId: source.sourceId, reason: error.code || "UNREADABLE" });
     }
   }
-  return validateWorkspaceSources(sources);
+  return validateWorkspaceSources(sources, { projectUrl });
 }
 
-export function validateWorkspaceSources(input) {
+export function validateWorkspaceSources(input, { projectUrl } = {}) {
   const sources = parseUntrustedJsonValue(canonicalStringify(input), { maxBytes: WORKSPACE_MAX_BYTES });
   if (!sources || Array.isArray(sources) || typeof sources !== "object") workspaceFail("INVALID_WORKSPACE", "Cloud workspace data must contain registered sources.");
   const sections = [];
@@ -73,7 +76,8 @@ export function validateWorkspaceSources(input) {
       || !Number.isInteger(entry.schemaVersion) || !Object.hasOwn(entry, "data")) workspaceFail("INVALID_SOURCE", "A cloud source is invalid.", { sourceId });
     if (source.allowedFields && Object.keys(entry.data || {}).some((key) => !source.allowedFields.includes(key))) workspaceFail("PROHIBITED_SOURCE_FIELD", "Security and session fields cannot enter cloud workspace data.", { sourceId });
     if (source.storageKeys && Object.keys(entry.data || {}).some((key) => !source.storageKeys.includes(key))) workspaceFail("PROHIBITED_STORAGE_KEY", "Cloud preferences contain an unregistered storage key.", { sourceId });
-    if (findProhibitedData(entry.data).length) workspaceFail("SECURITY_REVIEW_REQUIRED", `${source.displayName} contains security-sensitive fields. Its original data is preserved locally; review it before syncing.`, { sourceId });
+    entry.data = projectSourceData(source, entry.data);
+    if (findProhibitedData(entry.data, { projectUrl }).length) workspaceFail("SECURITY_REVIEW_REQUIRED", `${source.displayName} contains security-sensitive fields. Its original data is preserved locally; review it before syncing.`, { sourceId });
     const validation = validateBackupSourceData(source, entry.data);
     if (!validation.valid || validation.schemaVersion !== entry.schemaVersion) workspaceFail("INVALID_SOURCE", `${source.displayName} failed validation. No saved records were replaced.`, { sourceId });
     sections.push({ sourceId, schemaVersion: entry.schemaVersion, data: entry.data });
@@ -88,9 +92,9 @@ export async function workspaceSourceHashes(sources) {
 }
 
 /** Merge independent source changes. Same-source concurrent edits always require review. */
-export async function reconcileWorkspaceSources({ baselineHashes = {}, localSources, remoteSources }) {
-  const local = validateWorkspaceSources(localSources);
-  const remote = validateWorkspaceSources(remoteSources);
+export async function reconcileWorkspaceSources({ baselineHashes = {}, localSources, remoteSources, projectUrl }) {
+  const local = validateWorkspaceSources(localSources, { projectUrl });
+  const remote = validateWorkspaceSources(remoteSources, { projectUrl });
   const localHashes = await workspaceSourceHashes(local);
   const remoteHashes = await workspaceSourceHashes(remote);
   const merged = {};
@@ -110,6 +114,6 @@ export async function reconcileWorkspaceSources({ baselineHashes = {}, localSour
     if (!selected && base !== null) { conflicts.push(sourceId); continue; }
     if (selected) merged[sourceId] = selected;
   }
-  if (!conflicts.length) validateWorkspaceSources(merged);
+  if (!conflicts.length) validateWorkspaceSources(merged, { projectUrl });
   return { sources: merged, conflicts, changedLocal, changedRemote, localHashes, remoteHashes };
 }
