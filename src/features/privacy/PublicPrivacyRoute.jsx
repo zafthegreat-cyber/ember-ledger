@@ -52,11 +52,18 @@ export default function PublicPrivacyRoute({ route, client }) {
   const [completedAccountId, setCompletedAccountId] = useState("");
   const [authError, setAuthError] = useState("");
   const [theme] = useState(themeChoice);
+  const [accountGeneration, setAccountGeneration] = useState(0);
+  const accountIdentity = useRef({ accountId: "", generation: 0 });
   const completed = Boolean(completedAccountId && (!user?.id || user.id === completedAccountId));
   useEffect(() => {
     if (route !== "delete" || !client) return undefined;
     let active = true; let received = false;
     const receiveUser = (nextUser) => {
+      const accountId = nextUser?.id || "";
+      if (accountIdentity.current.accountId !== accountId) {
+        accountIdentity.current = { accountId, generation: accountIdentity.current.generation + 1 };
+        setAccountGeneration(accountIdentity.current.generation);
+      }
       setUser(nextUser);
       if (nextUser?.id) setCompletedAccountId((previous) => previous === nextUser.id ? previous : "");
     };
@@ -67,11 +74,18 @@ export default function PublicPrivacyRoute({ route, client }) {
   const navigate = (tab) => window.location.assign(({ trust: "/privacy", help: "/support", deleteAccount: "/delete-account" })[tab] || pathFromActiveTab(tab));
   return <main className="app code3-public-privacy" data-theme={theme}>
     {route === "privacy" ? <PrivacyCenter onNavigate={navigate} /> : route === "help" ? <PublicSupportPage onNavigate={navigate} /> : <>
-      <AccountDeletionPage key={user?.id || "signed-out"} user={user} completed={completed} onNavigate={navigate} onDeleted={async () => {
+      <AccountDeletionPage key={`${user?.id || "signed-out"}:${accountGeneration}`} user={user} completed={completed} onNavigate={navigate} onDeleted={async () => {
         const deletedAccountId = user?.id;
+        // Auth callbacks run before React can unmount the previous account's
+        // form. Never let that form complete or sign out a newer auth epoch.
+        if (!deletedAccountId || accountIdentity.current.accountId !== deletedAccountId || accountIdentity.current.generation !== accountGeneration) return;
         setCompletedAccountId(deletedAccountId || "");
         const result = await client.auth.signOut({ scope: "local" });
-        setUser((current) => current?.id === deletedAccountId ? null : current);
+        if (accountIdentity.current.accountId === deletedAccountId && accountIdentity.current.generation === accountGeneration) {
+          accountIdentity.current = { accountId: "", generation: accountGeneration + 1 };
+          setAccountGeneration(accountIdentity.current.generation);
+          setUser(null);
+        }
         if (result.error) throw result.error;
       }} />
       {authError && <p className="code3-privacy" role="status">{authError}</p>}
