@@ -7,10 +7,12 @@ export default function PrivacyCenter({ onNavigate, publisher = PRIVACY_PUBLISHE
     <header>
       <p className="code3-privacy-eyebrow">Code 3 TCG · Your information</p>
       <h2 id="code3-privacy-title">Privacy policy</h2>
-      <p>What the app saves, how sharing works, and how to manage your records.</p>
+      <p>What the Code 3 TCG app and Code 3 TCG Community Discord companion access, save, and share, and how to manage your information.</p>
       <p className="code3-privacy-meta">Updated {PRIVACY_POLICY_UPDATED}</p>
     </header>
     <div className="code3-privacy-actions">
+      <a href="#privacy-discord-data">Discord companion privacy</a>
+      <a href="/terms">Terms of Service</a>
       <a href="/delete-account" onClick={onNavigate ? (event) => { event.preventDefault(); onNavigate("deleteAccount"); } : undefined}>Delete account</a>
       <a href="/settings" onClick={onNavigate ? (event) => { event.preventDefault(); onNavigate("settings"); } : undefined}>Backups &amp; settings</a>
       <a href="/support" onClick={onNavigate ? (event) => { event.preventDefault(); onNavigate("help"); } : undefined}>Get help</a>
@@ -23,6 +25,10 @@ export default function PrivacyCenter({ onNavigate, publisher = PRIVACY_PUBLISHE
     {PRIVACY_SECTIONS.map((section) => <article className="code3-privacy-card" key={section.key} id={`privacy-${section.key}`}>
       <h3>{section.title}</h3><p>{section.body}</p>
     </article>)}
+    <article className="code3-privacy-card">
+      <h3>Discord's own privacy policy</h3>
+      <p>For information held by Discord, review <a href="https://discord.com/privacy">Discord's Privacy Policy</a> and its account privacy controls. Our <a href="/support">support page</a> can help with information held by Code 3 TCG.</p>
+    </article>
   </section>;
 }
 
