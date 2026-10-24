@@ -4,6 +4,10 @@
   "outputDirectory": "dist",
   "routes": [
     {
+      "src": "^/(?:terms|terms-of-service|settings/terms)/?$",
+      "dest": "/terms.html"
+    },
+    {
       "src": "^/assets/brand/ember-tide-app-icon\\.svg$",
       "headers": {
         "Location": "/assets/brand/code3tcg-app-icon.svg"
