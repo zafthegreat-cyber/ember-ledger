@@ -11,6 +11,7 @@ import { lazy, Suspense, useCallback, useDeferredValue, useEffect, useEffectEven
 import "./App.css";
 import { isSupabaseConfigured, supabase } from "./supabaseClient";
 import { encodeScoutReportCloudNotes, decodeScoutReportCloudNotes, mergeScoutReportCloudSave } from "./utils/scoutReportCloudContext.mjs";
+import { freshRestockVisitDefaults } from "./utils/restockShortcuts.mjs";
 import { hasConfirmedScoutReportStatus } from "./utils/scoutReportVerification.mjs";
 import OverflowMenu from "./components/OverflowMenu";
 import SmartSetupDialog from "./components/SmartSetupDialog.jsx";
@@ -7095,7 +7096,7 @@ export default function App() {
   });
   const [currentUserProfile, setCurrentUserProfile] = useState(() => makeFallbackUserProfile(null));
   const [authMode, setAuthMode] = useState("login");
-  const [accountDeletionCompleted, setAccountDeletionCompleted] = useState(false);
+  const [accountDeletionCompletedForId, setAccountDeletionCompletedForId] = useState("");
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authFirstName, setAuthFirstName] = useState("");
@@ -16604,6 +16605,7 @@ export default function App() {
         if (!error && data?.user) setUser(data.user);
       });
       const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (session?.user?.id) setAccountDeletionCompletedForId((previous) => previous === session.user.id ? previous : "");
         setUser(session?.user || localBetaUser);
         setAuthSessionVersion((current) => current + 1);
       });
@@ -16618,6 +16620,7 @@ export default function App() {
 
     checkUser();
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user?.id) setAccountDeletionCompletedForId((previous) => previous === session.user.id ? previous : "");
       setUser(session?.user || null);
       setAuthSessionVersion((current) => current + 1);
     });
@@ -22479,6 +22482,28 @@ function openVaultQuickAdd({ category = "Personal collection", productType = "",
     } else {
       openScoutReportDetail(savedReportId || savedReport, { fallback: savedReport, focus: "details" });
     }
+  }
+
+  function openQuickScoutSavingSettings() {
+    closeFlowModal({ force: true, reset: true });
+    setActiveTab("settings");
+  }
+
+  function startAnotherScoutVisit() {
+    const saved = quickScoutReportSaved || {};
+    const storeId = saved.storeId || saved.store_id || "";
+    const store = storeId ? getScoutQuickStores().find(candidate => candidate.active !== false && String(getScoutQuickStoreId(candidate)) === String(storeId)) : null;
+    const draft = createQuickScoutReportDraft({
+      ...(store ? buildQuickScoutStoreDraft(store) : { manualLocation: saved.manualLocation || saved.storeName || saved.store_name || "", manualLocationOpen: true }),
+      ...freshRestockVisitDefaults(saved),
+      storeConfirmed: false,
+    });
+    setQuickScoutReportForm(draft);
+    setQuickScoutReportStep("where");
+    setQuickScoutReportSaved(null);
+    setQuickScoutReportMessage("");
+    flowModalBaselineRef.current.scoutSubmit = draft;
+    openFlowModal("scoutSubmit", { size: "medium", source: "restock-new-visit" });
   }
 
   function openScoutSubmitFlow(options = {}) {
@@ -39381,10 +39406,11 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }
 
   function renderAccountDeletionPage() {
-    return <AccountDeletionPage key={user?.id || "signed-out"} user={guestPreviewActive ? null : user} completed={accountDeletionCompleted} onNavigate={setActiveTab} onDeleted={async () => {
-      setAccountDeletionCompleted(true);
+    return <AccountDeletionPage key={user?.id || "signed-out"} user={guestPreviewActive ? null : user} completed={Boolean(accountDeletionCompletedForId && (!user?.id || user.id === accountDeletionCompletedForId))} onNavigate={setActiveTab} onDeleted={async () => {
+      const deletedAccountId = user?.id;
+      setAccountDeletionCompletedForId(deletedAccountId || "");
       const { error } = await supabase.auth.signOut({ scope: "local" });
-      setUser(null);
+      setUser((current) => current?.id === deletedAccountId ? null : current);
       if (error) throw error;
     }} />;
   }
@@ -44700,6 +44726,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         mapCatalog,
         money,
         openQuickScoutReportDetails,
+        openQuickScoutSavingSettings,
         openStoreProfile,
         parseManualLocationCoordinates,
         quickScoutConfidenceBadge,
@@ -44713,6 +44740,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         quickScoutReportStep,
         quickScoutReportSubmitting,
         quickScoutReportTypeMeta,
+        recentScoutReports: scoutSnapshot.reports || [],
+        scoutReporterId: user?.id || "",
+        startAnotherScoutVisit,
         quickScoutStockLeftLabel,
         quickScoutStoreHasHistory,
         quickScoutStoreNeedsReviewConfirmation,

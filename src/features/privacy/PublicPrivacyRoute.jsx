@@ -49,20 +49,31 @@ function DeletionSignIn({ client }) {
 // pending deletion or broken device recovery must not hide deletion/help.
 export default function PublicPrivacyRoute({ route, client }) {
   const [user, setUser] = useState(null);
-  const [completed, setCompleted] = useState(false);
+  const [completedAccountId, setCompletedAccountId] = useState("");
   const [authError, setAuthError] = useState("");
   const [theme] = useState(themeChoice);
+  const completed = Boolean(completedAccountId && (!user?.id || user.id === completedAccountId));
   useEffect(() => {
     if (route !== "delete" || !client) return undefined;
     let active = true; let received = false;
-    const { data } = client.auth.onAuthStateChange((_event, session) => { received = true; if (active) setUser(session?.user || null); });
-    client.auth.getSession().then(({ data: sessionData, error }) => { if (active && !received) { if (error) setAuthError("Sign in below to verify the account you want to delete."); else setUser(sessionData?.session?.user || null); } }).catch(() => { if (active) setAuthError("The account service could not be reached. You can contact support for help."); });
+    const receiveUser = (nextUser) => {
+      setUser(nextUser);
+      if (nextUser?.id) setCompletedAccountId((previous) => previous === nextUser.id ? previous : "");
+    };
+    const { data } = client.auth.onAuthStateChange((_event, session) => { received = true; if (active) receiveUser(session?.user || null); });
+    client.auth.getSession().then(({ data: sessionData, error }) => { if (active && !received) { if (error) setAuthError("Sign in below to verify the account you want to delete."); else receiveUser(sessionData?.session?.user || null); } }).catch(() => { if (active) setAuthError("The account service could not be reached. You can contact support for help."); });
     return () => { active = false; data.subscription.unsubscribe(); };
   }, [client, route]);
   const navigate = (tab) => window.location.assign(({ trust: "/privacy", help: "/support", deleteAccount: "/delete-account" })[tab] || pathFromActiveTab(tab));
   return <main className="app code3-public-privacy" data-theme={theme}>
     {route === "privacy" ? <PrivacyCenter onNavigate={navigate} /> : route === "help" ? <PublicSupportPage onNavigate={navigate} /> : <>
-      <AccountDeletionPage key={user?.id || "signed-out"} user={user} completed={completed} onNavigate={navigate} onDeleted={async () => { setCompleted(true); const result = await client.auth.signOut({ scope: "local" }); setUser(null); if (result.error) throw result.error; }} />
+      <AccountDeletionPage key={user?.id || "signed-out"} user={user} completed={completed} onNavigate={navigate} onDeleted={async () => {
+        const deletedAccountId = user?.id;
+        setCompletedAccountId(deletedAccountId || "");
+        const result = await client.auth.signOut({ scope: "local" });
+        setUser((current) => current?.id === deletedAccountId ? null : current);
+        if (result.error) throw result.error;
+      }} />
       {authError && <p className="code3-privacy" role="status">{authError}</p>}
       {!user && !completed && client && <DeletionSignIn client={client} />}
       {!client && <p className="code3-privacy" role="status">Account sign-in is unavailable here right now. You can still read the privacy policy and contact support using the links above.</p>}

@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react";
 import { PrivateStorageImage } from "../../components/PrivateReceipt.jsx";
 import StockScreenshotImport from "../../components/StockScreenshotImport.jsx";
+import { RecentRestockStores, RestockLocalSaveNotice, RestockOfflineNotice } from "../../components/RestockShortcuts.jsx";
+import { recentReportedStoreRows } from "../../utils/restockShortcuts.mjs";
 import "./scout-submit.css";
 import "./stock-report-easy.css";
 import "./stock-report-guidance.css";
@@ -51,6 +53,7 @@ export default function ScoutSubmitContent({ scope }) {
     mapCatalog,
     money,
     openQuickScoutReportDetails,
+    openQuickScoutSavingSettings,
     openStoreProfile,
     parseManualLocationCoordinates,
     quickScoutConfidenceBadge,
@@ -64,6 +67,9 @@ export default function ScoutSubmitContent({ scope }) {
     quickScoutReportStep,
     quickScoutReportSubmitting,
     quickScoutReportTypeMeta,
+    recentScoutReports,
+    scoutReporterId,
+    startAnotherScoutVisit,
     quickScoutStockLeftLabel,
     quickScoutStoreHasHistory,
     quickScoutStoreNeedsReviewConfirmation,
@@ -206,6 +212,7 @@ export default function ScoutSubmitContent({ scope }) {
       })
       .slice(0, 8);
     const recommendedStoreRows = filteredStoreRows.slice(0, normalizedStoreSearch ? 6 : 3);
+    const recentStoreRows = recentReportedStoreRows({ reports: recentScoutReports, storeRows, ownerId: scoutReporterId });
     const wizardSteps = getScoutWizardSteps().map((step) => ({
       ...step,
       title: step.key === "where"
@@ -453,7 +460,9 @@ export default function ScoutSubmitContent({ scope }) {
           </div>
           <div className="quick-actions">
             <button type="button" className="secondary-button" onClick={openQuickScoutReportDetails}>Add details</button>
+            {!currentType.isGuess ? <button type="button" className="secondary-button" onClick={startAnotherScoutVisit}>New visit at this store</button> : null}
           </div>
+          {!currentType.isGuess && !savedToCloud ? <RestockLocalSaveNotice onCheckSaving={openQuickScoutSavingSettings} /> : null}
         </section>
       );
     }
@@ -472,6 +481,7 @@ export default function ScoutSubmitContent({ scope }) {
         onTouchEnd={handleScoutWizardTouchEnd}
       >
         {quickScoutReportMessage ? <div ref={reportMessageRef} className="form-error" role="alert" tabIndex={-1}>{quickScoutReportMessage}</div> : null}
+        {!currentType.isGuess ? <RestockOfflineNotice /> : null}
         {!currentType.isGuess ? (
           <div className="stock-report-step-context">
             <p><strong>Step {activeStepIndex + 1} of {wizardSteps.length}</strong><span>{quickScoutReportStep === "review" ? "Check, then save" : "Review before saving"}</span></p>
@@ -908,6 +918,7 @@ export default function ScoutSubmitContent({ scope }) {
               </article>
             ) : (
               <>
+                {!currentType.isGuess && !normalizedStoreSearch ? <RecentRestockStores rows={recentStoreRows} onSelect={selectQuickScoutReportStore} /> : null}
                 <label className="scout-report-store-tools">
                   <span>Find your store</span>
                   <input

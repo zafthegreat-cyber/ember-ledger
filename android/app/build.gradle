@@ -3,6 +3,10 @@ apply plugin: 'com.android.application'
 def releaseKeys = ['CODE3_ANDROID_KEYSTORE', 'CODE3_ANDROID_STORE_PASSWORD', 'CODE3_ANDROID_KEY_ALIAS', 'CODE3_ANDROID_KEY_PASSWORD']
 def hasReleaseSigning = releaseKeys.every { System.getenv(it) }
 def releaseRequested = gradle.startParameter.taskNames.any { it.toLowerCase().contains('release') }
+def code3BuildNumber = System.getenv('CODE3_BUILD_NUMBER') ?: '7'
+if (!(code3BuildNumber ==~ /^[1-9][0-9]{0,8}$/) || code3BuildNumber.toInteger() < 7) {
+    throw new GradleException('CODE3_BUILD_NUMBER must be at least 7 and greater than the last distributed/uploaded build.')
+}
 if (releaseRequested && !hasReleaseSigning) {
     throw new GradleException('Release signing is not configured. Set the four CODE3_ANDROID signing environment variables; never use the debug key for a store release.')
 }
@@ -14,7 +18,7 @@ android {
         applicationId "app.code3tcg.mobile"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode = (System.getenv('CODE3_BUILD_NUMBER') ?: '1').toInteger()
+        versionCode = code3BuildNumber.toInteger()
         versionName = (System.getenv('CODE3_VERSION_NAME') ?: '1.0.0')
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
