@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import process from "node:process";
 import { BRAND_CONFIG } from "./src/config/brand.js";
 
 const brandReplacements = {
@@ -11,6 +12,15 @@ const brandReplacements = {
   __BRAND_PWA_SHORT_NAME__: BRAND_CONFIG.pwaShortName || BRAND_CONFIG.shortName,
   __BRAND_ACCESSIBLE_LOGO_TEXT__: BRAND_CONFIG.accessibleLogoText || BRAND_CONFIG.applicationDisplayName,
   __BRAND_TAGLINE__: BRAND_CONFIG.tagline,
+  __BRAND_SEARCH_DESCRIPTION__: BRAND_CONFIG.searchDescription,
+  __BRAND_SOCIAL_IMAGE__: new URL(BRAND_CONFIG.pwaIcon512Reference, BRAND_CONFIG.publicAppUrl).href,
+  __BRAND_SITE_JSONLD__: JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: BRAND_CONFIG.applicationDisplayName,
+    alternateName: BRAND_CONFIG.searchAlternateName,
+    url: BRAND_CONFIG.publicAppUrl,
+  }).replaceAll("<", "\\u003c"),
   __BRAND_ACCENT__: BRAND_CONFIG.primaryAccent,
   __BRAND_LOGO__: BRAND_CONFIG.logoReference,
   __BRAND_FAVICON__: BRAND_CONFIG.faviconReference,
