@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeProduct, fetchGame, alertPayload, testPayload, discordClient, verifyDestination, deliver, poll, GAMES, GUILD, BOT, CHANNEL } from '../supabase/functions/code3-retailer-alerts/core.mjs';
+import { normalizeProduct, fetchGame, alertPayload, testPayload, discordClient, botCanNotify, verifyDestination, deliver, poll, GAMES, GUILD, BOT, CHANNEL } from '../supabase/functions/code3-retailer-alerts/core.mjs';
 const now = new Date('2026-10-24T23:00:00Z');
 const raw = { sku: 1234567, name: 'Pokemon TCG Booster Bundle', url: 'https://www.bestbuy.com/site/test/1234567.p', onlineAvailability: true };
 const product = () => normalizeProduct(raw, 'pokemon', now);
@@ -8,6 +8,8 @@ function discordFixture() {
   let payload, posted = 0, wrong = false;
   const api = async (route, options) => {
     if (route === '/users/@me') return { bot: true, id: BOT };
+    if (route === `/guilds/${GUILD}/members/${BOT}`) return { user: {id: BOT}, roles: ['bot-role'] };
+    if (route === `/guilds/${GUILD}/roles`) return [{id: GUILD, permissions: '0'}, {id: 'bot-role', permissions: String((1n<<10n)|(1n<<11n)|(1n<<14n)|(1n<<16n))}];
     if (route === `/channels/${CHANNEL}`) return { type: 0, guild_id: GUILD, permission_overwrites: [{ id: BOT, type: 1, allow: String(1n << 17n), deny: '0' }] };
     if (options?.method === 'POST') { payload=options.body; posted++; assert.equal(payload.enforce_nonce,true); return { id:'1563700494977859705' }; }
     return { id:'1563700494977859705', channel_id:CHANNEL, author:{ id:BOT }, content:payload.content,
@@ -15,6 +17,24 @@ function discordFixture() {
   };
   return { api, get posted() { return posted; }, setWrong() { wrong=true; } };
 }
+test('permission check recognizes bot-role allows and respects member-specific denies', () => {
+  const mention = 1n << 17n;
+  const basic = (1n<<10n)|(1n<<11n)|(1n<<14n)|(1n<<16n);
+  const roles = [{id: GUILD,permissions:'0'},{id:'bot-role',permissions:String(basic|mention)}];
+  const member = {user:{id:BOT},roles:['bot-role']};
+  const channel = {guild_id:GUILD,permission_overwrites:[{id:GUILD,type:0,allow:'0',deny:String(mention)}]};
+  assert.equal(botCanNotify(roles,member,channel),false,'channel deny overrides a global role allow');
+  channel.permission_overwrites.push({id:'bot-role',type:0,allow:String(mention),deny:'0'});
+  assert.equal(botCanNotify(roles,member,channel),true,'bot role channel allow overrides everyone deny');
+  channel.permission_overwrites.push({id:BOT,type:1,allow:'0',deny:String(mention)});
+  assert.equal(botCanNotify(roles,member,channel),false,'member deny overrides a role allow');
+  channel.permission_overwrites.at(-1).allow=String(mention);
+  channel.permission_overwrites.at(-1).deny='0';
+  assert.equal(botCanNotify(roles,member,channel),true);
+  channel.permission_overwrites.at(-1).deny=String(1n<<11n);
+  assert.equal(botCanNotify(roles,member,channel),false,'mention permission cannot bypass denied send permission');
+  assert.equal(botCanNotify(roles,{...member,user:{id:'other'}},channel),false);
+});
 test('only explicit retailer availability for supported card products is accepted', () => {
   assert.equal(product().available,true);
   for (const mutate of [r=>r.onlineAvailability='true',r=>r.onlineAvailability=null,r=>r.name='Pokemon Nintendo Video Game',

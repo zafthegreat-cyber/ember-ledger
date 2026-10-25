@@ -100,12 +100,30 @@ export function discordClient(token, { fetchImpl = fetch, sleep = ms => new Prom
   };
 }
 
+export function botCanNotify(roles, member, channel) {
+  if (member.user?.id !== BOT || channel.guild_id !== GUILD || !Array.isArray(member.roles) || !Array.isArray(roles)) return false;
+  const everyone = roles.find(role => role.id === GUILD);
+  if (!everyone) return false;
+  let bits = roles.filter(role => role.id === GUILD || member.roles.includes(role.id))
+    .reduce((value, role) => value | BigInt(role.permissions), 0n);
+  if (bits & (1n << 3n)) return true; // Discord Administrator bypasses overwrites.
+  const defaults = channel.permission_overwrites?.find(item => item.type === 0 && item.id === GUILD);
+  if (defaults) bits = (bits & ~BigInt(defaults.deny)) | BigInt(defaults.allow);
+  const selected = (channel.permission_overwrites ?? []).filter(item => item.type === 0 && member.roles.includes(item.id));
+  bits = (bits & ~selected.reduce((value, item) => value | BigInt(item.deny), 0n)) |
+    selected.reduce((value, item) => value | BigInt(item.allow), 0n);
+  const own = channel.permission_overwrites?.find(item => item.type === 1 && item.id === BOT);
+  if (own) bits = (bits & ~BigInt(own.deny)) | BigInt(own.allow);
+  const required = (1n << 10n) | (1n << 11n) | (1n << 14n) | (1n << 16n) | (1n << 17n);
+  return (bits & required) === required;
+}
+
 export async function verifyDestination(api) {
   const bot = await api('/users/@me');
   const channel = await api(`/channels/${CHANNEL}`);
   if (!bot.bot || bot.id !== BOT || channel.guild_id !== GUILD || channel.type !== 0) throw new Error('Discord destination identity mismatch.');
-  const access = channel.permission_overwrites?.find(item => item.type === 1 && item.id === BOT);
-  if (!access || !(BigInt(access.allow) & (1n << 17n)) || BigInt(access.deny) & (1n << 17n)) throw new Error('The server owner must allow bot role mentions in restock-alerts.');
+  const [member, roles] = await Promise.all([api(`/guilds/${GUILD}/members/${BOT}`), api(`/guilds/${GUILD}/roles`)]);
+  if (!botCanNotify(roles, member, channel)) throw new Error('Allow bot viewing, sending, embeds, history, and role mentions inside restock-alerts channel permissions.');
 }
 
 export async function deliver(api, payload, eventKey) {
