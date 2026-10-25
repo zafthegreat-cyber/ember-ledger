@@ -125,7 +125,7 @@ export function findDealForProviderListing(deals = [], listing = {}) {
 export function providerListingToDeal(listing, existingDeal = null, importedAt = new Date().toISOString()) {
   const sourceFields = [
     "providerId", "marketplace", "externalListingId", "legacyListingId", "listingUrl", "originalListingUrl",
-    "title", "description", "sellerName", "sellerRating", "sellerFeedbackScore", "listingType", "buyingOptions",
+    "title", "description", "sellerName", "sellerUserId", "sellerRating", "sellerFeedbackScore", "listingType", "buyingOptions",
     "productClassification", "condition", "conditionId", "askingPrice", "priceCurrency", "purchaseShipping",
     "shippingCostType", "currentBid", "numberOfBids", "imageReferences", "location", "distance", "distanceUnit",
     "dateDiscovered", "listingCreatedAt", "listingOriginTime", "auctionEndTime", "localPickupAvailable",

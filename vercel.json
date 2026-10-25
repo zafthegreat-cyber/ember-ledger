@@ -99,6 +99,14 @@
       "status": 308
     },
     {
+      "src": "^/api/ebay/account-deletion$",
+      "dest": "/api/health"
+    },
+    {
+      "src": "^/api/ebay(?:/.*)?$",
+      "dest": "/api/health"
+    },
+    {
       "src": "^/api/account/deletion/status$",
       "dest": "/api/account/deletion"
     },

@@ -15,14 +15,18 @@ export class EbayClientError extends Error {
   }
 }
 
-async function requestEbay(path, { allowErrorPayload = false, ...options } = {}) {
+async function requestEbay(path, { allowErrorPayload = false, signal, ...options } = {}) {
   const controller = new AbortController();
+  const abort = () => controller.abort();
+  signal?.addEventListener("abort", abort, { once: true });
+  if (signal?.aborted) controller.abort();
   const timeoutId = window.setTimeout(() => controller.abort(), CLIENT_TIMEOUT_MS);
   try {
     const queryEnabled = new URLSearchParams(window.location.search).get("betaLocalMode") === "true";
     const ownerHeaders = await getOwnerRequestHeaders({
       localDevelopment: isLocalDevelopmentIdentityEnabled({ queryEnabled }),
     });
+    if (controller.signal.aborted) throw new DOMException("Request stopped", "AbortError");
     const response = await fetch(`${API_BASE}/api/ebay${path}`, {
       ...options,
       signal: controller.signal,
@@ -54,11 +58,13 @@ async function requestEbay(path, { allowErrorPayload = false, ...options } = {})
   } catch (error) {
     if (error instanceof EbayClientError) throw error;
     if (error?.name === "AbortError") {
+      if (signal?.aborted) throw new EbayClientError("The price check was stopped.", { code: "aborted" });
       throw new EbayClientError("The eBay connector request timed out. Try a manual refresh.", { code: "timeout", status: 504 });
     }
     throw new EbayClientError("The eBay connector could not reach the application server.", { code: "network_error" });
   } finally {
     window.clearTimeout(timeoutId);
+    signal?.removeEventListener("abort", abort);
   }
 }
 
@@ -68,4 +74,18 @@ export function getEbayHealth({ verify = false } = {}) {
 
 export function searchEbayListings(search) {
   return requestEbay("/search", { method: "POST", body: JSON.stringify(search || {}) });
+}
+
+export function getEbaySoldHealth({ signal } = {}) {
+  return requestEbay("/sold/health", { signal });
+}
+
+export function searchEbaySoldComparables(identity, { signal } = {}) {
+  return requestEbay("/sold/search", { method: "POST", body: JSON.stringify(identity), signal });
+}
+
+export async function sanitizeEbaySnapshot(data) {
+  const result = await requestEbay("/deletion/sanitize", { method: "POST", body: JSON.stringify({ data }) });
+  if (!result?.ok || !result.data || typeof result.data !== "object") throw new EbayClientError("eBay privacy cleanup could not be verified.");
+  return result.data;
 }

@@ -279,7 +279,10 @@
     "test:device-transfer": "node --no-warnings scripts/test-device-transfer.mjs",
     "test:device-transfer-browser": "node scripts/test-device-transfer-browser.cjs",
     "test:private-receipts": "node --no-warnings scripts/test-private-receipts.mjs",
-    "test:private-receipts-browser": "node scripts/test-private-receipts-browser.cjs"
+    "test:private-receipts-browser": "node scripts/test-private-receipts-browser.cjs",
+    "test:sold-comps": "npm --prefix backend run test:sold-comps && node --experimental-vm-modules --test scripts/test-sold-comps-client.mjs",
+    "test:ebay-deletion": "npm --prefix backend run test:ebay-deletion && node --no-warnings scripts/test-ebay-deletion-client.mjs",
+    "test:ebay-deletion:postgres": "npm --prefix backend run build && node scripts/test-ebay-deletion-postgres.mjs"
   },
   "dependencies": {
     "@capacitor/android": "8.5.3",
