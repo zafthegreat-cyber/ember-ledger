@@ -5,6 +5,7 @@ import CloudSyncPanel from "./features/persistence/CloudSyncPanel.jsx";
 import AccountDeletionPage from "./features/privacy/AccountDeletionPage.jsx";
 import { PublicSupportPage } from "./features/privacy/PrivacyCenter.jsx";
 import { useCloudWorkspace } from "./features/persistence/CloudWorkspaceContext.js";
+import { useCloudSyncReviewNavigation } from "./features/persistence/useCloudSyncReviewNavigation.js";
 import { canUseHostedAppSupplement, selectHostedAppSupplement } from "./features/persistence/hostedAppSupplement.js";
 import { focusFlowModalContent } from "./features/deferredViews/flowModalFocus.js";
 import { lazy, Suspense, useCallback, useDeferredValue, useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore } from "react";
@@ -6776,6 +6777,7 @@ export default function App() {
   if (!initialRouteStateRef.current) initialRouteStateRef.current = loadInitialRouteState();
   const initialRouteState = initialRouteStateRef.current;
   const [activeTab, setActiveTab] = useState(initialRouteState.activeTab || "dashboard");
+  const { cloudSyncReviewRequested, onCloudSyncReviewShown } = useCloudSyncReviewNavigation(openUtilityPage, cloudWorkspace?.user?.id);
 
   useEffect(() => observePlainLanguage(document.body), []);
   const routeNavigationModeRef = useRef("replace");
@@ -7814,7 +7816,7 @@ export default function App() {
   }
 
   function openUtilityPage(sectionKey = "") {
-    if (!confirmLeaveVaultWork()) return;
+    if (!confirmLeaveVaultWork()) return false;
     prepareRouteNavigation();
     if (["data", "data-backup", "backup", "dataBackup"].includes(sectionKey)) {
       setQuickAddMenuOpen(false);
@@ -7824,7 +7826,7 @@ export default function App() {
       setOwnerCenterSection("controls");
       setOwnerCenterSubview("data-backup");
       setActiveTab("ownerCenter");
-      return;
+      return true;
     }
     const nextTab = utilityTabForMenuSection(sectionKey) || sectionKey || "settings";
     setQuickAddMenuOpen(false);
@@ -7835,6 +7837,7 @@ export default function App() {
       setAdminReviewFilter((current) => current === "All" ? "Scout Report Review" : current);
     }
     setActiveTab(nextTab);
+    return true;
   }
 
   function openMenuDrawer(sectionKey = "") {
@@ -48197,6 +48200,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   };
 
   const settingsPageProps = {
+    cloudSyncReviewRequested,
+    onCloudSyncReviewShown,
     experiencePresentation,
     showFamilyExperience,
     showCommunityExperience,

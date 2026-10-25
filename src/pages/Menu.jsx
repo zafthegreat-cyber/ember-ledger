@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { AppNavIcon } from "../components/command-system/AppNavIcon.jsx";
 import { PageHeader, SecondaryButton } from "../components/operations/OperationsUI.jsx";
 import CloudSyncPanel from "../features/persistence/CloudSyncPanel.jsx";
@@ -20,9 +21,26 @@ function SettingsRow({ icon, title, description, status, onClick }) {
   );
 }
 
-function SettingsDisclosure({ icon, title, description, children }) {
+function SettingsDisclosure({ icon, title, description, children, reviewRequested = false, onReviewShown }) {
+  const disclosureRef = useRef(null);
+  useEffect(() => {
+    if (!reviewRequested) return undefined;
+    const disclosure = disclosureRef.current;
+    disclosure.open = true;
+    // Wait until route-level focus has settled, including a lazy Settings mount.
+    let focusFrame;
+    const routeFrame = requestAnimationFrame(() => {
+      focusFrame = requestAnimationFrame(() => {
+        const summary = disclosure.querySelector("summary");
+        summary?.focus({ preventScroll: true });
+        summary?.scrollIntoView({ block: "center", behavior: "auto" });
+        onReviewShown?.();
+      });
+    });
+    return () => { cancelAnimationFrame(routeFrame); cancelAnimationFrame(focusFrame); };
+  }, [reviewRequested, onReviewShown]);
   return (
-    <details className="settings-layout__disclosure">
+    <details ref={disclosureRef} className="settings-layout__disclosure">
       <summary>
         <span className="settings-layout__row-icon" aria-hidden="true"><AppNavIcon kind={icon} /></span>
         <span className="settings-layout__row-copy"><strong>{title}</strong><span>{description}</span></span>
@@ -49,6 +67,8 @@ export default function MenuPage(props) {
     betaReadinessData = {},
     betaAccessAllowed,
     commandDeskSellerAccess = false,
+    cloudSyncReviewRequested = false,
+    onCloudSyncReviewShown,
     experiencePresentation,
     guestPreviewActive = false,
     notificationUnreadCount = 0,
@@ -129,7 +149,7 @@ export default function MenuPage(props) {
             </SettingsGroup>
 
             <SettingsGroup id="settings-support-heading" title="Records & support">
-              {cloudWorkspace && <SettingsDisclosure icon="data" title="Cloud saving & recovery" description="Account backups, device sync, and signed-in devices"><CloudSyncPanel /></SettingsDisclosure>}
+              {cloudWorkspace && <SettingsDisclosure icon="data" title="Cloud saving & recovery" description="Account backups, device sync, and signed-in devices" reviewRequested={cloudSyncReviewRequested} onReviewShown={onCloudSyncReviewShown}><CloudSyncPanel /></SettingsDisclosure>}
               <SettingsRow icon="data" title="Archive & backups" description="Receipts, proof, exports, and private records" status={commandDeskSellerAccess ? "Seller records" : undefined} onClick={() => openUtilityPage("dataBackup")} />
               <SettingsRow icon="help" title="Help & app status" description="Get help, share feedback, or check known issues" onClick={() => openUtilityPage("help")} />
               {typeof renderAppBuildDetails === "function" ? (

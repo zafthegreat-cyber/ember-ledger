@@ -90,7 +90,7 @@ async function makeScreenshot(page, theme) {
       page.on("pageerror", (error) => result.errors.push(error.message));
       page.on("dialog", (dialog) => dialog.accept());
       try {
-        await page.goto(new URL(`/?betaLocalMode=true&themeInspect=${testCase.theme}`, base).href);
+        await page.goto(new URL(`/?betaLocalMode=true&themeInspect=${testCase.theme}`, base).href, { waitUntil: "domcontentloaded", timeout: 45000 });
         const opener = page.locator(".home-restock-hero").getByRole("button", { name: "Report a restock", exact: true });
         await expect(opener).toBeVisible({ timeout: 45000 });
         // Let the app's ordinary, deferred local catalog hydration finish
@@ -116,8 +116,11 @@ async function makeScreenshot(page, theme) {
         await intake.getByRole("button", { name: /^Use a screenshot/ }).click();
         const fileInput = intake.locator('input[type="file"]');
         assert.equal(await fileInput.getAttribute("capture"), null, "Screenshot picker must not force the camera");
-        await expect(intake.getByLabel(/^Exact store/)).toHaveValue("");
-        await expect(intake.getByLabel("When was the stock seen?", { exact: false })).toHaveValue("");
+        await expect(intake.getByLabel(/^Exact store/)).toHaveCount(0);
+        await expect(intake.getByLabel("When was the stock seen?", { exact: false })).toHaveCount(0);
+        await expect(intake.getByRole("button", { name: "Enter details myself", exact: true })).toBeVisible();
+        await expect(intake.getByRole("button", { name: "Use reviewed details", exact: true })).toHaveCount(0);
+        await presentation(page, modal, result, "screenshot-intake");
         await intake.getByLabel(/^Post source/).selectOption(testCase.theme === "dark" ? "discord" : "facebook");
         const fixture = await makeScreenshot(page, testCase.theme);
         fs.writeFileSync(path.join(output, `${testCase.width}-${testCase.theme}-source-fixture.png`), fixture.buffer);
@@ -154,6 +157,20 @@ async function makeScreenshot(page, theme) {
         }
         await apply.click();
         await expect(intake.getByRole("status")).toContainText("Reviewed details added");
+        await expect(intake.getByLabel(/^Exact store/)).toHaveCount(0);
+        const editDetails = intake.getByRole("button", { name: "Edit details", exact: true });
+        await expect(editDetails).toBeFocused();
+        await presentation(page, modal, result, "screenshot-applied");
+        await editDetails.click();
+        await expect(intake.getByRole("heading", { name: "Review screenshot details", exact: true })).toBeFocused();
+        await expect(intake.getByLabel(/^Products mentioned/)).toHaveValue(/Prismatic Evolutions/);
+        await expect(intake.getByLabel(/^Product category/)).toHaveValue("Pokemon TCG");
+        await expect(intake.getByLabel(/^Stock status in the post/)).toHaveValue("stock_on_shelf");
+        await expect(intake.getByLabel(/^Exact store/)).toHaveValue(northId);
+        await expect(intake.getByLabel("When was the stock seen?", { exact: false })).toHaveValue(observed);
+        await expect(intake.getByLabel(/^Replace report fields I already entered/)).not.toBeChecked();
+        await apply.click();
+        await expect(editDetails).toBeFocused();
         await expect(modal.locator(".scout-where-step")).toContainText("North Collectibles");
         await expect(modal.locator(".stock-report-observed-summary")).toContainText("2026-09-15");
         assert.deepEqual(await snapshot(page), original, "Applying reviewed details only edits the draft");
@@ -233,11 +250,15 @@ async function makeScreenshot(page, theme) {
           const afterSaved = await snapshot(page);
           await opener.click();
           await intake.getByRole("button", { name: /^Use a screenshot/ }).click();
+          await intake.getByRole("button", { name: "Enter details myself", exact: true }).click();
+          await expect(intake.getByRole("heading", { name: "Review screenshot details", exact: true })).toBeFocused();
           await intake.getByLabel(/^Products mentioned/).fill("Reviewer selected product");
           await intake.getByLabel(/^Product category/).selectOption("Magic: The Gathering");
           await intake.getByLabel(/^Stock status in the post/).selectOption("low_stock");
           await fileInput.setInputFiles({ name: "unsupported.svg", mimeType: "image/svg+xml", buffer: Buffer.from("<svg></svg>") });
           await expect(intake.getByRole("alert")).toContainText("Choose a JPG, PNG, or WebP screenshot");
+          await expect(intake.getByLabel(/^Products mentioned/)).toHaveCount(0);
+          await intake.getByRole("button", { name: "Enter details myself", exact: true }).click();
           await expect(intake.getByLabel(/^Products mentioned/)).toHaveValue("Reviewer selected product");
           await expect(intake.getByLabel(/^Product category/)).toHaveValue("Magic: The Gathering");
           await expect(intake.getByLabel(/^Stock status in the post/)).toHaveValue("low_stock");
@@ -252,8 +273,11 @@ async function makeScreenshot(page, theme) {
             await intake.getByRole("button", { name: "Cancel text reading", exact: true }).click();
             await expect(intake.getByText("Text reading stopped. You can paste text or enter the details.", { exact: true })).toBeVisible();
             await expect(intake.getByRole("button", { name: "Cancel text reading", exact: true })).toHaveCount(0);
+            await expect(intake.getByRole("button", { name: "Enter details myself", exact: true })).toBeFocused();
             await expect.poll(() => page.workers().length, { timeout: 3000 }).toBe(0);
           } finally { release(); await context.unroute("**/ocr/tesseract-7.0.0/lang/eng.traineddata.gz", holdModel); }
+          await expect(intake.getByLabel(/^Products mentioned/)).toHaveCount(0);
+          await intake.getByRole("button", { name: "Enter details myself", exact: true }).click();
           await expect(intake.getByLabel(/^Products mentioned/)).toHaveValue("Reviewer selected product");
           await expect(intake.getByLabel(/^Product category/)).toHaveValue("Magic: The Gathering");
           await expect(intake.getByLabel(/^Stock status in the post/)).toHaveValue("low_stock");
@@ -264,11 +288,34 @@ async function makeScreenshot(page, theme) {
           await expect(intake.getByLabel(/^Products mentioned/)).toHaveValue("Reviewer selected product");
           await expect(intake.getByLabel(/^Product category/)).toHaveValue("Magic: The Gathering");
           await expect(intake.getByLabel(/^Stock status in the post/)).toHaveValue("low_stock");
+          await expect(intake.getByRole("heading", { name: "Review screenshot details", exact: true })).toBeFocused();
+          await intake.getByLabel(/^Exact store/).selectOption(northId);
+          await intake.getByLabel("When was the stock seen?", { exact: false }).fill(observed);
+          await apply.click();
+          await expect(intake.getByRole("status")).toContainText("Reviewed details added");
+          await editDetails.click();
+          await intake.getByLabel(/^Products mentioned/).fill("Replacement reviewed product");
+          await expect(intake.getByLabel(/^Replace report fields I already entered/)).not.toBeChecked();
+          await apply.click();
+          await expect(intake.getByRole("status")).toContainText("existing product choice was kept");
+          await modal.getByRole("button", { name: "Continue", exact: true }).filter({ visible: true }).click();
+          await expect(modal.locator(".scout-proof-step").getByLabel("Product name (optional)", { exact: true })).toHaveValue("Reviewer selected product");
+          await modal.getByRole("button", { name: "Back", exact: true }).filter({ visible: true }).click();
+          await intake.getByRole("button", { name: "Enter details myself", exact: true }).click();
+          await intake.getByLabel(/^Products mentioned/).fill("Replacement reviewed product");
+          await intake.getByLabel(/^Product category/).selectOption("Magic: The Gathering");
+          await intake.getByLabel(/^Stock status in the post/).selectOption("low_stock");
+          await intake.getByRole("button", { name: /^Use the time already entered:/ }).click();
+          await intake.getByLabel(/^Replace report fields I already entered/).check();
+          await apply.click();
+          await modal.getByRole("button", { name: "Continue", exact: true }).filter({ visible: true }).click();
+          await expect(modal.locator(".scout-proof-step").getByLabel("Product name (optional)", { exact: true })).toHaveValue("Replacement reviewed product");
           assert.deepEqual(await snapshot(page), afterSaved, "Cancelled OCR, invalid replacement and manual paste never save or alter records");
           await modal.locator(".modal-close-button").click();
           await expect(modal).toHaveCount(0);
           result.manualReviewPreserved = true;
           result.cancelledOcrNeverSaves = true;
+          result.replaceRequiresOptIn = true;
         }
         assert.deepEqual(result.ocrExternal, []); assert.deepEqual(result.blockedWrites, []); assert.deepEqual(result.errors, []);
         assert.ok(result.ocrAssets.some((asset) => asset.endsWith("eng.traineddata.gz")));
@@ -277,7 +324,8 @@ async function makeScreenshot(page, theme) {
         console.log(`PASS stock screenshot ${testCase.width} ${testCase.theme}: genuine OCR, review guards, private provenance, final-only save, original data/prices retained`);
       } catch (error) {
         result.passed = false; result.error = error.message;
-        fs.writeFileSync(path.join(output, `${testCase.width}-${testCase.theme}-failure.html`), await page.content());
+        const failureHtml = await page.content().catch(() => null);
+        if (failureHtml) fs.writeFileSync(path.join(output, `${testCase.width}-${testCase.theme}-failure.html`), failureHtml);
         await page.screenshot({ path: path.join(output, `${testCase.width}-${testCase.theme}-failure.png`) }).catch(() => {});
         console.error(`FAIL stock screenshot ${testCase.width} ${testCase.theme}: ${error.message}`);
       } finally { results.push(result); await context.close(); }
