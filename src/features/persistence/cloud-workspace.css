@@ -5,7 +5,7 @@
 .cloud-workspace-card p { line-height: 1.6; overflow-wrap: anywhere; }
 .cloud-workspace-card button, .cloud-workspace-panel button, .cloud-workspace-notice button { min-height: 44px; padding: 10px 16px; border-radius: 9px; border: 1px solid var(--action-primary); background: var(--action-primary); color: var(--on-primary); font: inherit; font-weight: 650; cursor: pointer; margin: 8px 8px 0 0; }
 .cloud-workspace-card button:focus-visible, .cloud-workspace-panel button:focus-visible, .cloud-workspace-notice button:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 3px; }
-.cloud-workspace-card .cloud-secondary, .cloud-workspace-panel .cloud-secondary { background: transparent; color: inherit; border-color: var(--border-strong); }
+.cloud-workspace-card .cloud-secondary, .cloud-workspace-panel .cloud-secondary, .cloud-workspace-notice .cloud-secondary { background: transparent; color: inherit; border-color: var(--border-strong); }
 .cloud-workspace-panel { display: grid; gap: 12px; }
 .cloud-workspace-panel h3, .cloud-workspace-panel p { margin: 0; }
 .cloud-workspace-panel p { line-height: 1.55; }
@@ -24,4 +24,5 @@
 .cloud-workspace-notice__content p { margin: 6px 0 0; color: var(--text-secondary); }
 .cloud-workspace-notice .cloud-workspace-notice__dismiss { display: grid; place-items: center; width: 44px; height: 44px; min-height: 44px; padding: 0; margin: -6px -6px 0 0; border: 1px solid var(--border-strong); border-radius: 8px; background: transparent; color: var(--text-primary); cursor: pointer; }
 .cloud-workspace-notice .cloud-workspace-notice__dismiss:hover { background: var(--surface-secondary, var(--app-background)); }
-.cloud-workspace-notice .cloud-workspace-notice__load { grid-column: 1 / -1; justify-self: start; margin: 0; }
+.cloud-workspace-notice__actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; }
+.cloud-workspace-notice__actions button { margin: 0; }

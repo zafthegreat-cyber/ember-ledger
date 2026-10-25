@@ -39,11 +39,17 @@ export default function StockScreenshotImport({ stores = EMPTY_STORES, reportDra
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [stage, setStage] = useState("intake");
   const sequence = useRef(0);
   const controller = useRef(null);
   const previewRef = useRef("");
   const inputRef = useRef(null);
   const edited = useRef(new Set());
+  const reviewHeadingRef = useRef(null);
+  const editDetailsRef = useRef(null);
+  const errorRef = useRef(null);
+  const manualReviewRef = useRef(null);
+  const pendingFocus = useRef(null);
   const knownStores = stores.map((row) => row.store || row).filter((row) => storeId(row));
   const candidates = suggestions?.storeCandidates || [];
   const candidateIds = new Set(candidates.map(storeId));
@@ -54,6 +60,11 @@ export default function StockScreenshotImport({ stores = EMPTY_STORES, reportDra
     controller.current?.abort();
     if (previewRef.current) URL.revokeObjectURL(previewRef.current);
   }, []);
+
+  useEffect(() => {
+    const target = { review: reviewHeadingRef, applied: editDetailsRef, error: errorRef, manual: manualReviewRef }[pendingFocus.current];
+    if (target?.current) { target.current.focus(); pendingFocus.current = null; }
+  });
 
   function stop() { sequence.current += 1; controller.current?.abort(); controller.current = null; setBusy(false); setProgress(null); }
   function clearImage() {
@@ -74,12 +85,17 @@ export default function StockScreenshotImport({ stores = EMPTY_STORES, reportDra
     if (!edited.current.has("items")) setProductName(parsed.items.join("\n"));
     if (!edited.current.has("category")) setCategory(parsed.productCategory || "");
     if (!edited.current.has("status")) setStatus(parsed.reportType || "");
+    setStage("review");
     return parsed;
+  }
+  function openReview() {
+    stop(); setError(""); setMessage("");
+    pendingFocus.current = "review"; setStage("review");
   }
   async function readImage(event) {
     const file = event.target.files?.[0];
     if (!file) return;
-    clearImage(); clearSuggestions(); setError(""); setMessage("");
+    clearImage(); clearSuggestions(); setError(""); setMessage(""); setStage("intake");
     const invalid = validateScoutScreenshotFile(file);
     if (invalid) { setError(invalid.message); return; }
     const imageUrl = URL.createObjectURL(file);
@@ -95,16 +111,17 @@ export default function StockScreenshotImport({ stores = EMPTY_STORES, reportDra
       setMessage(result.status === "complete" ? "Text read. Check the suggestions below before using them." : "Some text may be missing. Correct the text or enter the details below.");
     } else if (result.status !== "cancelled") setError(result.message || "The screenshot could not be read. Paste the post text or enter details instead.");
   }
-  function changeMode(next) { if (next === "manual") { clearImage(); setError(""); setMessage(""); } setMode(next); }
+  function changeMode(next) { if (next === "manual") { clearImage(); setError(""); if (stage !== "applied") setMessage(""); } setMode(next); }
   function apply() {
     const result = createStockScreenshotPatch(reportDraft, {
       storeId: chosenStore || reportDraft.storeId || "", productName, productCategory: category,
       reportType: status, platform, reportDate: observedTime.slice(0, 10), reportTime: observedTime.slice(11, 16),
       observedTimeConfirmed: timeConfirmed, replaceEnteredFields: replace,
     }, { stores: knownStores });
-    if (!result.ok) { setError(result.error); return; }
+    if (!result.ok) { pendingFocus.current = "error"; setError(result.error); return; }
     const kept = (result.preservedFields || []).map((field) => ({ storeId: "store", productName: "product", productCategory: "category", reportType: "stock status" })[field]).filter(Boolean);
     onApply(result.patch); setError(""); setMessage(`Reviewed details added.${kept.length ? ` Your existing ${kept.join(", ")} ${kept.length > 1 ? "choices were" : "choice was"} kept.` : ""} The screenshot and raw text remain on this device; nothing has been posted.`);
+    pendingFocus.current = "applied"; setStage("applied");
   }
 
   return <section className="stock-screenshot-intake" aria-label="Start your restock report">
@@ -113,16 +130,25 @@ export default function StockScreenshotImport({ stores = EMPTY_STORES, reportDra
       <button className="stock-screenshot-button" type="button" aria-pressed={mode === "screenshot"} onClick={() => changeMode("screenshot")}><strong>Use a screenshot</strong></button>
     </div>
     {mode === "screenshot" ? <div className="stock-screenshot-panel">
-      <header><h4>Add from a screenshot</h4><p>We read the image on your device. Review the store, products, and time before adding anything to your draft.</p></header>
+      {stage === "applied" ? <div className="stock-screenshot-applied">
+        <div role="status"><h4>Reviewed details added</h4><p>{message.replace(/^Reviewed details added\.\s*/, "")}</p></div>
+        <button ref={editDetailsRef} type="button" className="stock-screenshot-button" onClick={openReview}>Edit details</button>
+      </div> : <>
+      <header><h4>Add from a screenshot</h4><p>Choose an image or paste post text. Review the details before adding them to your draft.</p></header>
       <div className="stock-screenshot-upload-row">
         <label className="stock-screenshot-upload" htmlFor={`${id}-file`}>Choose screenshot<input id={`${id}-file`} ref={inputRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={readImage} /></label>
-        {preview ? <button className="stock-screenshot-button" type="button" onClick={() => { clearImage(); clearSuggestions(); setError(""); setMessage("Screenshot removed. Nothing has been posted."); }}>Remove screenshot</button> : null}
+        {preview ? <button className="stock-screenshot-button" type="button" onClick={() => { clearImage(); clearSuggestions(); setStage("intake"); setError(""); setMessage("Screenshot removed. Nothing has been posted."); inputRef.current?.focus(); }}>Remove screenshot</button> : null}
         <label>Post source<select value={platform} onChange={(event) => setPlatform(event.target.value)}><option value="facebook">Facebook</option><option value="discord">Discord</option><option value="other">Other screenshot</option></select></label>
       </div>
       <p className="stock-screenshot-help">JPG, PNG, or WebP · up to 12 MB. Crop to one stock post for clearer text. No Facebook or Discord login is needed.</p>
       {preview ? <details className="stock-screenshot-preview"><summary>View chosen screenshot</summary><img src={preview} alt="Private screenshot for this draft" /><p>{fileName}</p></details> : null}
-      {busy ? <div className="stock-screenshot-progress" role="status"><span>{progress?.label || "Reading screenshot"}</span><progress max="1" value={typeof progress?.progress === "number" ? progress.progress : undefined} aria-label="Screenshot text reading progress" /><button className="stock-screenshot-button" type="button" onClick={() => { stop(); setMessage("Text reading stopped. You can paste text or enter the details."); }}>Cancel text reading</button><small>The first use downloads the text reader. The screenshot stays on your device.</small></div> : null}
-      <details className="stock-screenshot-source-text" open={!busy && Boolean(error) || undefined}><summary>Paste or correct post text</summary><label htmlFor={`${id}-text`}>Private screenshot text<textarea id={`${id}-text`} value={text} maxLength={20000} onChange={(event) => { if (busy) stop(); setText(event.target.value); }} placeholder="Paste a Facebook post or Discord message here, or correct text that was read from the image." /></label><button className="stock-screenshot-button" type="button" disabled={!text.trim() || busy} onClick={() => { suggest(text); setError(""); setMessage("Suggestions updated. Review the fields below."); }}>Find report details</button><p>This raw text is not included in your report. Keep names, avatars, and private conversation out of the product fields.</p></details>
+      {busy ? <div className="stock-screenshot-progress" role="status"><span>{progress?.label || "Reading screenshot"}</span><progress max="1" value={typeof progress?.progress === "number" ? progress.progress : undefined} aria-label="Screenshot text reading progress" /><button className="stock-screenshot-button" type="button" onClick={() => { stop(); pendingFocus.current = "manual"; setMessage("Text reading stopped. You can paste text or enter the details."); }}>Cancel text reading</button><small>The first use downloads the text reader. The screenshot stays on your device.</small></div> : null}
+      <details className="stock-screenshot-source-text" open={!busy && Boolean(error) || undefined}><summary>Paste or correct post text</summary><label htmlFor={`${id}-text`}>Private screenshot text<textarea id={`${id}-text`} value={text} maxLength={20000} onChange={(event) => { if (busy) stop(); setText(event.target.value); }} placeholder="Paste a Facebook post or Discord message here, or correct text that was read from the image." /></label><button className="stock-screenshot-button" type="button" disabled={!text.trim() || busy} onClick={() => { suggest(text); pendingFocus.current = "review"; setError(""); setMessage("Suggestions updated. Review the fields below."); }}>Find report details</button><p>This raw text is not included in your report. Keep names, avatars, and private conversation out of the product fields.</p></details>
+      {message ? <p role="status">{message}</p> : null}
+      {error ? <p ref={errorRef} tabIndex={-1} className="stock-screenshot-error" role="alert">{error}</p> : null}
+      {stage === "intake" ? <div className="stock-screenshot-manual-fallback"><p>{error ? "You can still make a report. Paste the text above, or enter the store and products yourself." : "No readable text? You can enter the report details yourself."}</p><button ref={manualReviewRef} className="stock-screenshot-button" type="button" onClick={openReview}>Enter details myself</button></div> : null}
+      {stage === "review" ? <section className="stock-screenshot-review" aria-labelledby={`${id}-review-heading`}>
+      <header><h4 id={`${id}-review-heading`} ref={reviewHeadingRef} tabIndex={-1}>Review screenshot details</h4><p>Confirm the exact store and when the stock was seen. Suggestions are a starting point.</p></header>
       {suggestions?.flags?.length ? <ul className="stock-screenshot-review-flags">{[...new Set(suggestions.flags.map((flag) => FLAG_LABELS[flag]).filter(Boolean))].map((label) => <li key={label}>{label}</li>)}</ul> : null}
       <div className="stock-screenshot-review-fields">
         <label>Exact store<select value={chosenStore} onChange={(event) => setChosenStore(event.target.value)}><option value="">{reportDraft.storeId || reportDraft.manualLocation ? "Keep the store already entered in the report" : "Choose the exact location"}</option>{orderedStores.map((store) => <option key={storeId(store)} value={storeId(store)}>{[storeName(store), store.city, store.address].filter(Boolean).join(" · ")}</option>)}</select></label>
@@ -134,9 +160,9 @@ export default function StockScreenshotImport({ stores = EMPTY_STORES, reportDra
       </div>
       <label className="stock-screenshot-replace"><input type="checkbox" checked={replace} onChange={(event) => setReplace(event.target.checked)} /><span>Replace report fields I already entered<small>Otherwise your existing store, product, and status choices are kept. Notes and photos are always kept.</small></span></label>
       <p className="stock-screenshot-privacy">This starts as a private report that needs review. The image and raw text are not attached. You can choose sharing on the final review screen.</p>
-      {message ? <p role="status">{message}</p> : null}
-      {error ? <p className="stock-screenshot-error" role="alert">{error}</p> : null}
       <button type="button" className="stock-screenshot-apply" disabled={busy} onClick={apply}>Use reviewed details</button>
+      </section> : <p className="stock-screenshot-privacy">The screenshot and raw text stay on your device. Nothing is added to your draft until you review it.</p>}
+      </>}
     </div> : null}
   </section>;
 }
