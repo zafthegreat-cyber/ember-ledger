@@ -8,6 +8,8 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "test:ebay": "npm run build && node --test --test-isolation=none test/ebayBrowse.service.test.mjs",
+    "test:sold-comps": "npm run build && node --test test/soldComps.test.mjs",
+    "test:ebay-deletion": "npm run build && node --test test/ebayDeletion.test.mjs",
     "test:market-sources": "npm run build && node --test --test-isolation=none test/marketSources.test.mjs",
     "test:owner-security": "npm run build && node --test --test-isolation=none test/ownerSecurity.test.mjs",
     "test:release-security": "npm run build && node --experimental-vm-modules --test --test-isolation=none test/ownerSecurity.test.mjs test/code3Canonical.routes.test.mjs test/previewRuntime.test.mjs test/legacyApiBoundary.test.mjs test/legacyApiClient.test.mjs",

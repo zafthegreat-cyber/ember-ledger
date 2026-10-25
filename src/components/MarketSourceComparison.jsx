@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { fetchMarketSourceQuotes, resolveMarketSourceIdentity } from "../services/liveMarketSources.mjs";
 import { searchEbayListings } from "../features/flipScout/ebayClient.js";
 import { supabase } from "../supabaseClient.js";
+import EbaySoldPriceComparison from "./EbaySoldPriceComparison.jsx";
 import "./market-source-comparison.css";
 
 const EMPTY_ITEM = Object.freeze({});
@@ -122,8 +123,9 @@ function ComparisonSession({ item, name }) {
         </section>;
       })}
     </div>
+    <EbaySoldPriceComparison item={item} name={name} />
     <section className="market-source-ebay" aria-label="Compare eBay asking prices">
-      <div className="market-source-provider-heading"><div><h4>eBay</h4><p>Active asking prices for comparison. Completed-sale data is not connected.</p></div><button type="button" className="secondary-button" disabled={Boolean(busy) || (!search.keywords && !search.gtin)} onClick={checkEbay}>{busy === "ebay" ? "Checking eBay…" : "Compare eBay asking prices"}</button></div>
+      <div className="market-source-provider-heading"><div><h4>eBay asking prices</h4><p>Active listing prices for comparison.</p></div><button type="button" className="secondary-button" disabled={Boolean(busy) || (!search.keywords && !search.gtin)} onClick={checkEbay}>{busy === "ebay" ? "Checking eBay…" : "Compare eBay asking prices"}</button></div>
       <small>Search: {search.keywords || search.gtin || "Add an item name or barcode first."}</small>
       {ebayResult ? <><p className="market-source-match-note">Review each title and condition. These listings are not confirmed matches and do not change your market value.</p><div className="market-source-ebay-list">{(ebayResult.listings || []).slice(0, 6).map((listing) => {
         const link = sourceLink(listing.listingUrl);
@@ -140,6 +142,6 @@ function ComparisonSession({ item, name }) {
 export default function MarketSourceComparison({ marketItem = EMPTY_ITEM, productName = "Product" }) {
   const identity = resolveMarketSourceIdentity(marketItem);
   const name = text(productName) || text(marketItem.name || marketItem.productName || marketItem.cardName) || "this item";
-  const key = JSON.stringify([identity.key, name, text(marketItem.id), text(marketItem.setName || marketItem.set_name), text(marketItem.cardNumber || marketItem.card_number), text(marketItem.upc || marketItem.barcode)]);
+  const key = JSON.stringify([identity.key, name, text(marketItem.id), text(marketItem.setName || marketItem.set_name), text(marketItem.cardNumber || marketItem.card_number), text(marketItem.upc || marketItem.barcode), text(marketItem.condition), text(marketItem.grader), text(marketItem.grade)]);
   return <ComparisonSession key={key} item={marketItem} name={name} />;
 }

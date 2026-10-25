@@ -1,10 +1,12 @@
 import { PrivateStorageImage } from "../../../components/PrivateReceipt.jsx";
 import { useMemo, useState } from "react";
 import EbayConnectionPanel from "../components/EbayConnectionPanel.jsx";
+import EbaySoldPriceComparison from "../../../components/EbaySoldPriceComparison.jsx";
 import { CheckField, EmptyState, FormActions, MoneyInput, NumberInput, SectionHeading, SelectInput, StatusPill, TextInput } from "../components/Fields.jsx";
 import { searchEbayListings } from "../ebayClient.js";
 import { ebaySearchFromRule, isEbaySearchRule } from "../ebayDiscovery.js";
 import { formatCurrency } from "../selectors.js";
+const EMPTY_SOLD_ITEM = Object.freeze({});
 
 function blankSearch() {
   return {
@@ -103,6 +105,7 @@ export default function EbayDiscoveryScreen({ state, initialRuleId = "", onMerge
   const [pagination, setPagination] = useState({ offset: 0, limit: 25, total: 0, hasNext: false, hasPrevious: false });
   const [queueQuery, setQueueQuery] = useState("");
   const [reviewFilter, setReviewFilter] = useState("Pending");
+  const [soldOpen, setSoldOpen] = useState(false);
   const set = (key) => (value) => setForm((current) => ({ ...current, [key]: value }));
 
   const queue = useMemo(() => {
@@ -170,6 +173,11 @@ export default function EbayDiscoveryScreen({ state, initialRuleId = "", onMerge
         <SectionHeading eyebrow="Connection status" title="eBay Browse API" detail="Searches run through the private server. No eBay client secret or application token is sent to this browser." />
         <EbayConnectionPanel onStatus={setHealth} />
       </section>
+
+      <details className="market-source-comparison" onToggle={event => setSoldOpen(event.currentTarget.open)}>
+        <summary>Calculate a card’s sold market price</summary>
+        {soldOpen ? <EbaySoldPriceComparison item={EMPTY_SOLD_ITEM} name="" /> : null}
+      </details>
 
       <section className="flip-section">
         <SectionHeading eyebrow="Manual refresh only" title="Search active eBay listings" detail="Results are sorted by newly listed and always enter Import Review first." actions={<button type="button" className="secondary-button" disabled={loading || !lastRequest} onClick={() => runSearch(pagination.offset)}>{loading ? "Checking…" : "Refresh"}</button>} />

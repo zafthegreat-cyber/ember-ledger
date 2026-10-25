@@ -623,6 +623,32 @@ export function createFlipScoutRepository(storage = globalThis.localStorage, opt
     return persist(nextState);
   }
 
+  // Privacy deletion may change provider fields on otherwise immutable business
+  // history. It must preserve the record structure and all operational values.
+  async function reconcileEbayPrivacy(sanitize) {
+    return runLocked(async () => {
+      const current = load();
+      if (lastError || readPendingJournal()) throw new Error(lastError || "Finish pending inventory recovery before privacy cleanup.");
+      const clean = normalizeFlipScoutState(await sanitize(clone(current)));
+      if (JSON.stringify(clean) === JSON.stringify(current)) return { state: current, changed: false };
+      const protectedFields = ["id", "provenanceManaged", "status", "quantity", "amount", "amountMinor", "purchasePrice", "purchaseTax", "purchaseShipping", "askingPrice", "landedCost", "salePrice", "soldQuantity", "costBasis", "totalCost"];
+      for (const collection of RECORD_COLLECTIONS) {
+        if (clean[collection].length !== current[collection].length) throw new Error("Privacy cleanup changed business records.");
+        current[collection].forEach((record, index) => {
+          for (const key of protectedFields) {
+            if (JSON.stringify(record[key]) !== JSON.stringify(clean[collection][index][key])) throw new Error("Privacy cleanup changed protected business values.");
+          }
+        });
+      }
+      // Do not put erased PII into a rollback journal. A failed deletion stays
+      // visible and is retried on reconnect/focus; no success is assumed.
+      const serialized = serializeFlipScoutState(clean);
+      storage.setItem(FLIP_SCOUT_STORAGE_KEY, serialized);
+      if (storage.getItem(FLIP_SCOUT_STORAGE_KEY) !== serialized) throw new Error("eBay privacy cleanup could not be saved on this device.");
+      return { state: clean, changed: true };
+    });
+  }
+
   function assertReturnOwner(isOwnerAuthorized) {
     if (typeof isOwnerAuthorized !== "function" || isOwnerAuthorized() !== true) throw new Error("A verified OWNER session is required before reviewing or applying a stock/refund return.");
   }
@@ -720,6 +746,7 @@ export function createFlipScoutRepository(storage = globalThis.localStorage, opt
     exportJson,
     importJson,
     runLocked,
+    reconcileEbayPrivacy,
     previewSaleReturn,
     applySaleReturn,
     previewReturnCorrection,

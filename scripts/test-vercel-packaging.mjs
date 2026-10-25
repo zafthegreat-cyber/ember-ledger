@@ -62,6 +62,23 @@ equal(marketSourcesPattern.test(new URL("https://example.invalid/api/market/sour
 for (const path of ["/api/market/sources", "/api/market/sources/502006/", "/api/market/sources/502006/extra", "/prefix/api/market/sources/502006", "/API/market/sources/502006", "/api/market/refresh/502006", "/api/auth/session", "/api/health", "/settings", "/find/restocks"]) {
   equal(marketSourcesPattern.test(path), false, `the source rewrite must not capture ${path}`);
 }
-equal(read("api/health.ts").trim().replaceAll("\r\n", "\n"), 'import app from "../backend/src/server";\n\nexport default app;', "the shared health adapter retains the canonical Express app and security boundary");
+const healthEntry = read("api/health.ts");
+matches(healthEntry, /import app from "\.\.\/backend\/src\/server";/, "the shared health adapter imports the canonical Express app");
+matches(healthEntry, /export default app;/, "the shared health adapter exports the canonical Express app without request rewriting");
+matches(healthEntry, /bodyParser: false/, "the shared notification adapter preserves raw bytes for signature verification");
 matches(server, /app\.use\("\/api\/market", marketRouter\)/, "source URLs remain on the existing market router");
-console.log(`PASS ${assertions} Vercel packaging checks: twelve API functions, exact public source/status routing and canonical Express handlers.`);
+
+// Nested eBay paths otherwise reach the SPA: GET returns HTML and POST returns
+// 405 before Express can verify the owner or call the Browse API.
+const ebayIndex = vercelConfig.routes.findIndex((route) => route.src === "^/api/ebay(?:/.*)?$");
+equal(ebayIndex >= 0 && ebayIndex < filesystemIndex, true, "eBay routes must select Express before filesystem and SPA routing");
+for (const path of ["/api/ebay/health", "/api/ebay/search", "/api/ebay/sold/health", "/api/ebay/sold/search", "/api/ebay/deletion/sanitize", "/api/ebay/account-deletion"]) {
+  const firstRoute = vercelConfig.routes.find((route) => route.src && new RegExp(route.src).test(path));
+  equal(firstRoute?.dest, "/api/health", `${path} must reach the shared Express function`);
+}
+const ebayPattern = new RegExp(vercelConfig.routes[ebayIndex].src);
+for (const path of ["/api/ebay-other/search", "/api/auth/session", "/api/market/sources/502006", "/find/ebay", "/settings"]) {
+  equal(ebayPattern.test(path), false, `the eBay route must not capture ${path}`);
+}
+matches(read("backend/src/routes/ebay.routes.ts"), /router\.use\(requireOwner\)/, "the shared eBay router retains owner authorization");
+console.log(`PASS ${assertions} Vercel packaging checks: twelve API functions, source/status/eBay routing and canonical Express handlers.`);
