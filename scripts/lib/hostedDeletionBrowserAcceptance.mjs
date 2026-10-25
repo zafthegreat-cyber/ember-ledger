@@ -11,6 +11,89 @@ const EMAIL = /^code3-delete-([a-f0-9-]{36})-([a-z]{1,20})@example\.test$/;
 const PRESERVE_KEY = "code3-https-acceptance-preserve";
 const ROOT = fileURLToPath(new URL("../../", import.meta.url));
 
+const BLOCKED_REQUEST_KINDS = Object.freeze([
+  "AppVersionCacheBust", "AppVersionOtherQuery", "AppVersion", "AppPage", "AppAssets", "AppFonts", "AppManifest", "AppFavicon", "AppServiceWorker",
+  "AppVercelFeedback", "AppVercelTelemetry", "AppAccountApi", "AppOtherApi", "AppOther", "ProviderAuthToken", "ProviderAuthUser",
+  "ProviderLogoutLocal", "ProviderLogoutOther", "ProviderSessionRpc", "ProviderStorage", "ProviderOther", "ExternalVercelLive", "External", "InvalidUrl",
+]);
+const PAGE_ERROR_KINDS = Object.freeze(["Reference", "Type", "Syntax", "Range", "Security", "Abort", "AuthSessionMissing", "Other"]);
+export const BROWSER_DIAGNOSTIC_KEYS = Object.freeze([
+  "blocked", "pageErrors", "providerRequests", "deletionPosts", "blockedWebSocket", "blockedPreviewForward",
+  ...BLOCKED_REQUEST_KINDS.map(kind => `blocked${kind}`),
+  ...["Get", "Head", "Post", "Options", "Other"].map(method => `blockedMethod${method}`),
+  ...PAGE_ERROR_KINDS.map(kind => `pageError${kind}`),
+]);
+
+export function classifyBlockedBrowserRequest({ appOrigin, providerOrigin }, input) {
+  let url;
+  try { url = new URL(input); } catch { return "InvalidUrl"; }
+  if (url.username || url.password || url.hash || url.protocol !== "https:") return "InvalidUrl";
+  if (url.origin === appOrigin) {
+    if (url.pathname === "/app-version.json") {
+      if (!url.search) return "AppVersion";
+      return [...url.searchParams.keys()].length === 1 && /^\d{1,16}$/.test(url.searchParams.get("t") || "") ? "AppVersionCacheBust" : "AppVersionOtherQuery";
+    }
+    if (["/delete-account", "/privacy", "/support"].includes(url.pathname)) return "AppPage";
+    if (url.pathname.startsWith("/assets/")) return "AppAssets";
+    if (url.pathname.startsWith("/fonts/")) return "AppFonts";
+    if (url.pathname === "/manifest.webmanifest") return "AppManifest";
+    if (url.pathname === "/favicon.ico") return "AppFavicon";
+    if (url.pathname === "/sw.js") return "AppServiceWorker";
+    if (/^\/_vercel\/(?:live|feedback)(?:\/|$)/.test(url.pathname)) return "AppVercelFeedback";
+    if (/^\/_vercel\/(?:insights|speed-insights)(?:\/|$)/.test(url.pathname)) return "AppVercelTelemetry";
+    if (["/api/account/deletion", "/api/account/deletion/status"].includes(url.pathname)) return "AppAccountApi";
+    return url.pathname.startsWith("/api/") ? "AppOtherApi" : "AppOther";
+  }
+  if (url.origin === providerOrigin) {
+    if (url.pathname === "/auth/v1/token") return "ProviderAuthToken";
+    if (["/auth/v1/user", "/auth/v1/settings"].includes(url.pathname)) return "ProviderAuthUser";
+    if (url.pathname === "/auth/v1/logout") return [...url.searchParams.keys()].length === 1 && url.searchParams.get("scope") === "local" ? "ProviderLogoutLocal" : "ProviderLogoutOther";
+    if (url.pathname === "/rest/v1/rpc/code3_current_session_valid") return "ProviderSessionRpc";
+    return url.pathname.startsWith("/storage/v1/") ? "ProviderStorage" : "ProviderOther";
+  }
+  return url.origin === "https://vercel.live" ? "ExternalVercelLive" : "External";
+}
+
+export function createBrowserDiagnosticState() {
+  return Object.fromEntries(BROWSER_DIAGNOSTIC_KEYS.map(key => [key, 0]));
+}
+
+export function recordBlockedBrowserRequest(state, scope, url, method) {
+  state.blocked++;
+  state[`blocked${classifyBlockedBrowserRequest(scope, url)}`]++;
+  const verb = String(method).toUpperCase();
+  const kind = ({ GET: "Get", HEAD: "Head", POST: "Post", OPTIONS: "Options" })[verb] || "Other";
+  state[`blockedMethod${kind}`]++;
+}
+
+export function recordBrowserPageError(state, error) {
+  state.pageErrors++;
+  const kind = new Map([["ReferenceError", "Reference"], ["TypeError", "Type"], ["SyntaxError", "Syntax"], ["RangeError", "Range"], ["SecurityError", "Security"], ["AbortError", "Abort"], ["AuthSessionMissingError", "AuthSessionMissing"]]).get(error?.name) || "Other";
+  state[`pageError${kind}`]++;
+}
+
+// Only fixed authored contexts/keys and bounded integer counts may cross the
+// adapter boundary. Never retain URLs, error text, headers or request bodies.
+export function sanitizeBrowserDiagnostics(value) {
+  try {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+    const sanitized = {};
+    for (const contextName of ["attachment", "deployed"]) {
+      if (!Object.hasOwn(value, contextName)) continue;
+      const state = value[contextName];
+      if (!state || typeof state !== "object" || Array.isArray(state)) return undefined;
+      const counts = {};
+      for (const key of BROWSER_DIAGNOSTIC_KEYS) {
+        const count = Object.hasOwn(state, key) ? state[key] : 0;
+        if (!Number.isSafeInteger(count) || count < 0 || count > 1_000_000) return undefined;
+        counts[key] = count;
+      }
+      sanitized[contextName] = counts;
+    }
+    return Object.keys(sanitized).length ? sanitized : undefined;
+  } catch { return undefined; }
+}
+
 // The runner owns account creation, privileged verification and cleanup. This
 // adapter accepts only issued Preview configuration and this run's in-memory
 // synthetic logins. Importing it never launches a browser or makes requests.
@@ -130,6 +213,14 @@ export function browserEnvironment(environment = process.env) {
   return Object.fromEntries(Object.entries(environment).filter(([key]) => allowed.has(key.toUpperCase())));
 }
 
+export function seedBrowserPreservationRecord({ appOrigin, key, value }) {
+  // addInitScript also runs on the initial opaque about:blank document of a
+  // newly opened tab. Touch Storage only after its exact approved origin is
+  // established; storage failures on that origin must still fail acceptance.
+  if (globalThis.location.origin !== appOrigin) return;
+  if (!localStorage.getItem(key)) localStorage.setItem(key, value);
+}
+
 export async function forwardProtectedPreviewResponse({ route, guardedConfig, scope }) {
   assertAuthorizedHttpsTestConfig(guardedConfig);
   assert.equal(scope.appOrigin, guardedConfig.appOrigin, "Preview forwarding requires the approved application origin");
@@ -204,6 +295,10 @@ export async function buildReceiptComponentFixtureHtml({ providerOrigin, publicA
   `;
   const result = await build({ absWorkingDir: ROOT, stdin: { contents: source, resolveDir: ROOT, sourcefile: "code3-private-attachment-acceptance.jsx", loader: "jsx" },
     bundle: true, write: false, format: "iife", platform: "browser", target: "es2022", logLevel: "silent", loader: { ".css": "empty" },
+    // Match Vite's React transform: source components import hooks without a
+    // classic JSX React binding. A successful build alone cannot catch that
+    // missing binding; the offline runtime test also mounts these components.
+    jsx: "automatic",
     define: { "process.env.NODE_ENV": '"production"', "import.meta.env": JSON.stringify({ VITE_SUPABASE_URL: providerOrigin, VITE_SUPABASE_ANON_KEY: publicAnonKey }) } });
   const script = result.outputFiles[0].text.replace(/<\/script/gi, "<\\/script");
   return `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Synthetic attachment integration</title></head><body><div id="root"></div><script>${script}</script></body></html>`;
@@ -220,27 +315,29 @@ export async function runHostedDeletionBrowserAcceptance(input) {
   const networkScope = { ...target, fixturePath, attachments };
   const browser = await chromium.launch({ headless: true, env: browserEnvironment() });
   const contexts = [];
+  const diagnosticStates = {};
   let phase = "initial verification";
   const evaluateNetwork = async (page, operation, value) => {
     let timer;
     try { return await Promise.race([page.evaluate(operation, value), new Promise((_resolve, reject) => { timer = setTimeout(() => reject(new Error("Synthetic browser operation timed out")), 45_000); })]); }
     finally { clearTimeout(timer); }
   };
-  async function context(html) {
+  async function context(kind, html) {
     const current = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: "reduce", serviceWorkers: "block", acceptDownloads: false });
     contexts.push(current);
-    const state = { blocked: 0, pageErrors: 0, deletionPosts: 0, providerRequests: 0 };
-    current.on("page", page => { page.on("pageerror", () => { state.pageErrors++; }); page.setDefaultTimeout(20_000); });
-    await current.routeWebSocket("**/*", socket => { state.blocked++; socket.close(); });
+    const state = createBrowserDiagnosticState();
+    diagnosticStates[kind] = state;
+    current.on("page", page => { page.on("pageerror", error => { recordBrowserPageError(state, error); }); page.setDefaultTimeout(20_000); });
+    await current.routeWebSocket("**/*", socket => { state.blocked++; state.blockedWebSocket++; socket.close(); });
     await current.route("**/*", async route => {
       const request = route.request();
-      if (!browserRequestAllowed(networkScope, request.url(), request.method())) { state.blocked++; return route.abort(); }
+      if (!browserRequestAllowed(networkScope, request.url(), request.method())) { recordBlockedBrowserRequest(state, networkScope, request.url(), request.method()); return route.abort(); }
       const url = new URL(request.url());
       if (url.origin === target.providerOrigin) state.providerRequests++;
       if (url.origin === target.appOrigin && url.pathname === "/api/account/deletion" && request.method() === "POST") state.deletionPosts++;
       if (url.pathname === fixturePath && html) return route.fulfill({ status: 200, contentType: "text/html", body: html, headers: { "Cache-Control": "no-store" } });
       try { if (await forwardProtectedPreviewResponse({ route, guardedConfig: input.guardedConfig, scope: networkScope })) return undefined; }
-      catch { state.blocked++; return route.abort(); }
+      catch { state.blocked++; state.blockedPreviewForward++; return route.abort(); }
       return route.continue();
     });
     return { current, state };
@@ -264,14 +361,23 @@ export async function runHostedDeletionBrowserAcceptance(input) {
   };
   try {
     await assertFixture(browserFixture); await assertFixture(sentinel);
-    phase = "private attachment component setup";
+    phase = "private attachment fixture bundle";
     const html = await buildReceiptComponentFixtureHtml({ providerOrigin: target.providerOrigin, publicAnonKey, attachments: browserFixture.attachments });
-    const receipt = await context(html);
+    const receipt = await context("attachment", html);
     const page = await receipt.current.newPage();
+    phase = "private attachment fixture navigation";
     await page.goto(`${target.appOrigin}${fixturePath}`, { waitUntil: "domcontentloaded" });
+    phase = "private attachment component boot";
+    await expect.poll(() => page.evaluate(() => typeof window.__code3ReceiptQa?.recordBytes === "function")).toBe(true);
+    await expect(page.getByRole("heading", { name: "Synthetic private attachment integration", exact: true })).toBeVisible();
+    await expect(page.locator("main > section")).toHaveCount(TEST_BUCKETS.length);
+    check(receipt.state.pageErrors === 0, "Browser component: actual attachment components mount without runtime errors");
     const originalBytes = await page.evaluate(() => window.__code3ReceiptQa.recordBytes());
+    phase = "private attachment synthetic sign-in";
     await signInReceipt(page, browserFixture);
+    check(true, "Browser component: real isolated sign-in identifies the verified synthetic owner");
     const images = page.locator("img");
+    phase = "private attachment image loading";
     const initialImages = await boundReceiptImages(page);
     check(initialImages.length === TEST_BUCKETS.length, "Browser component: all four loaded images match their exact private bucket and path");
     check(await evaluateNetwork(page, () => window.__code3ReceiptQa.publicReferencesDenied()), "Browser component: all former public attachment URLs are denied");
@@ -318,9 +424,9 @@ export async function runHostedDeletionBrowserAcceptance(input) {
     await receipt.current.close();
 
     phase = "deployed public deletion sign-in";
-    const deployed = await context();
+    const deployed = await context("deployed");
     const publicPage = await deployed.current.newPage();
-    await deployed.current.addInitScript(({ key, value }) => { if (!localStorage.getItem(key)) localStorage.setItem(key, value); }, { key: PRESERVE_KEY, value: originalBytes });
+    await deployed.current.addInitScript(seedBrowserPreservationRecord, { appOrigin: target.appOrigin, key: PRESERVE_KEY, value: originalBytes });
     await publicPage.goto(`${target.appOrigin}/delete-account`, { waitUntil: "domcontentloaded" });
     await expect(publicPage.getByRole("heading", { name: "Delete your account", exact: true })).toBeVisible();
     await assertFixture(browserFixture);
@@ -370,14 +476,17 @@ export async function runHostedDeletionBrowserAcceptance(input) {
     await second.getByRole("button", { name: "Cancel", exact: true }).click();
     check(deployed.state.deletionPosts === 2, "Deployed UI: switching to the sentinel clears prior deletion completion without deleting the sentinel");
     check(await second.evaluate(key => localStorage.getItem(key), PRESERVE_KEY) === originalBytes, "Deployed UI: account switching leaves original device references and prices unchanged");
-    check(deployed.state.blocked === 0 && deployed.state.pageErrors === 0 && deployed.state.providerRequests > 0, "Deployed UI: real HTTPS and isolated Auth requests complete without mocks or unexpected destinations");
+    check(deployed.state.providerRequests > 0, "Deployed UI: real isolated provider requests were observed");
+    check(deployed.state.pageErrors === 0, "Deployed UI: all account operations finish without browser runtime errors");
+    check(deployed.state.blocked === 0, "Deployed UI: no unexpected or blocked network destinations were requested");
     return { deployedDeletionUiVerified: true, receiptComponentHostedIntegrationVerified: true, deployedReceiptWorkflowVerified: false,
-      physicalDevicesVerified: false, nativeOriginVerified: false, checks };
+      physicalDevicesVerified: false, nativeOriginVerified: false, browserDiagnostics: sanitizeBrowserDiagnostics(diagnosticStates), checks };
   } catch {
     // Playwright errors can embed filled values, signed URLs and request text.
     // Never propagate them, persist traces/HAR/storageState, or copy them into
     // the report. Only this adapter-authored phase is safe to expose.
-    throw Object.assign(new Error(`Isolated browser acceptance failed during ${phase}.`), { code: "code3_browser_acceptance_failed", browserPhase: phase });
+    throw Object.assign(new Error(`Isolated browser acceptance failed during ${phase}.`), { code: "code3_browser_acceptance_failed", browserPhase: phase,
+      browserDiagnostics: sanitizeBrowserDiagnostics(diagnosticStates) });
   } finally {
     await Promise.allSettled(contexts.map(current => current.close()));
     await browser.close().catch(() => undefined);

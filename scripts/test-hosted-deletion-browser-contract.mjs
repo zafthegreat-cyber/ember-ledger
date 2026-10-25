@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
+import vm from "node:vm";
 import { readHostedDeletionHttpsConfig } from "./lib/hostedDeletionHttpsGuard.mjs";
 import { TEST_BUCKETS } from "./lib/hostedDeletionGuard.mjs";
 import { validateHostedDeletionBrowserInput, browserRequestAllowed, signedAttachmentInfo, isExpiredStorageResponse, completedRenewalBeforeExpiry,
   probeRevokedAttachmentSigners, browserEnvironment, forwardProtectedPreviewResponse, buildReceiptComponentFixtureHtml } from "./lib/hostedDeletionBrowserAcceptance.mjs";
+import { BROWSER_DIAGNOSTIC_KEYS, classifyBlockedBrowserRequest, createBrowserDiagnosticState, recordBlockedBrowserRequest,
+  recordBrowserPageError, sanitizeBrowserDiagnostics, seedBrowserPreservationRecord } from "./lib/hostedDeletionBrowserAcceptance.mjs";
 
 // Pure admission/destination checks and an in-memory build of actual components.
 // No browser, provider, deployment, account creation, credentials or file writes.
@@ -44,6 +47,63 @@ for (const patch of [
 ]) assert.throws(() => validateHostedDeletionBrowserInput({ ...input, ...patch }));
 
 const scope = { appOrigin, providerOrigin, fixturePath: "/__synthetic.html", attachments: [...browserFixture.attachments, ...sentinel.attachments] };
+const initializerSource = `(${seedBrowserPreservationRecord.toString()})(input)`;
+const initializerInput = { appOrigin, key: "synthetic-preservation-key", value: "synthetic-original-device-copy" };
+for (const origin of ["null", "https://outside.invalid", appOrigin + ".invalid"]) {
+  const context = { location: { origin }, input: initializerInput };
+  Object.defineProperty(context, "localStorage", { get() { assert.fail("Opaque and unrelated origins must not access Storage at all"); } });
+  assert.doesNotThrow(() => vm.runInNewContext(initializerSource, context));
+}
+assert.throws(() => vm.runInNewContext(initializerSource, { location: { origin: appOrigin }, input: initializerInput,
+  localStorage: { getItem() { throw new Error("Synthetic approved-origin storage denied"); } } }), /Synthetic approved-origin storage denied/,
+"Genuine storage errors on the approved app origin remain visible; the initializer has no broad catch");
+let written;
+vm.runInNewContext(initializerSource, { location: { origin: appOrigin }, input: initializerInput, localStorage: { getItem: () => null, setItem: (key, value) => { written = { key, value }; } } });
+assert.deepEqual(written, { key: initializerInput.key, value: initializerInput.value });
+vm.runInNewContext(initializerSource, { location: { origin: appOrigin }, input: initializerInput,
+  localStorage: { getItem: () => "existing-device-copy", setItem: () => { assert.fail("Existing approved-origin data must never be overwritten"); } } });
+const diagnosticRouteCases = [
+  [appOrigin + "/app-version.json?t=1800000000000", "AppVersionCacheBust"],
+  [appOrigin + "/app-version.json?t=not-a-timestamp", "AppVersionOtherQuery"],
+  [appOrigin + "/app-version.json?t=1800000000000&t=1800000000001", "AppVersionOtherQuery"],
+  [appOrigin + "/app-version.json?secret=synthetic-never-record", "AppVersionOtherQuery"],
+  [appOrigin + "/app-version.json", "AppVersion"], [appOrigin + "/delete-account?private=synthetic-never-record", "AppPage"],
+  [appOrigin + "/assets/app.js?private=synthetic-never-record", "AppAssets"], [appOrigin + "/fonts/body.woff2", "AppFonts"],
+  [appOrigin + "/manifest.webmanifest", "AppManifest"], [appOrigin + "/favicon.ico", "AppFavicon"], [appOrigin + "/sw.js", "AppServiceWorker"],
+  [appOrigin + "/_vercel/live/feedback/feedback.js", "AppVercelFeedback"], [appOrigin + "/_vercel/insights/script.js", "AppVercelTelemetry"],
+  [appOrigin + "/api/account/deletion", "AppAccountApi"], [appOrigin + "/api/unexpected-records", "AppOtherApi"], [appOrigin + "/unknown-private-route", "AppOther"],
+  [providerOrigin + "/auth/v1/token?grant_type=password", "ProviderAuthToken"], [providerOrigin + "/auth/v1/user", "ProviderAuthUser"],
+  [providerOrigin + "/auth/v1/logout?scope=local", "ProviderLogoutLocal"], [providerOrigin + "/auth/v1/logout?scope=global", "ProviderLogoutOther"],
+  [providerOrigin + "/rest/v1/rpc/code3_current_session_valid", "ProviderSessionRpc"], [providerOrigin + "/storage/v1/object/sign/private/synthetic?token=synthetic-never-record", "ProviderStorage"],
+  [providerOrigin + "/auth/v1/admin/users", "ProviderOther"], ["https://vercel.live/_next-live/feedback/feedback.js", "ExternalVercelLive"],
+  ["https://outside.invalid/synthetic-never-record", "External"], ["not-a-url synthetic-never-record", "InvalidUrl"],
+  [appOrigin.replace("https://", "https://synthetic-never-record@") + "/delete-account", "InvalidUrl"],
+];
+for (const [url, kind] of diagnosticRouteCases) assert.equal(classifyBlockedBrowserRequest(scope, url), kind);
+const diagnosticState = createBrowserDiagnosticState();
+recordBlockedBrowserRequest(diagnosticState, scope, appOrigin + "/app-version.json?t=1800000000000", "GET");
+recordBlockedBrowserRequest(diagnosticState, scope, providerOrigin + "/auth/v1/logout?scope=global", "POST");
+recordBlockedBrowserRequest(diagnosticState, scope, "https://outside.invalid/synthetic-never-record?token=synthetic-never-record", "UNKNOWN");
+recordBrowserPageError(diagnosticState, new ReferenceError("synthetic-never-record"));
+recordBrowserPageError(diagnosticState, { name: "AuthSessionMissingError", message: "synthetic-never-record", url: "synthetic-never-record" });
+recordBrowserPageError(diagnosticState, { name: "constructor", message: "synthetic-never-record" });
+assert.equal(diagnosticState.blocked, 3); assert.equal(diagnosticState.blockedAppVersionCacheBust, 1);
+assert.equal(diagnosticState.blockedProviderLogoutOther, 1); assert.equal(diagnosticState.blockedExternal, 1);
+assert.equal(diagnosticState.blockedMethodGet, 1); assert.equal(diagnosticState.blockedMethodPost, 1); assert.equal(diagnosticState.blockedMethodOther, 1);
+assert.equal(diagnosticState.pageErrors, 3); assert.equal(diagnosticState.pageErrorReference, 1);
+assert.equal(diagnosticState.pageErrorAuthSessionMissing, 1); assert.equal(diagnosticState.pageErrorOther, 1);
+const safeDiagnostics = sanitizeBrowserDiagnostics({ attachment: diagnosticState, deployed: { ...diagnosticState, url: "synthetic-never-record", error: "synthetic-never-record" }, arbitraryContext: { token: "synthetic-never-record" } });
+assert.deepEqual(Object.keys(safeDiagnostics), ["attachment", "deployed"]);
+assert.deepEqual(Object.keys(safeDiagnostics.deployed), BROWSER_DIAGNOSTIC_KEYS);
+assert.ok(!JSON.stringify(safeDiagnostics).includes("synthetic-never-record"), "Diagnostic output never retains routes, query values or error text");
+for (const count of [-1, NaN, Infinity, "1", {}, 1_000_001, Number.MAX_SAFE_INTEGER + 1]) {
+  assert.equal(sanitizeBrowserDiagnostics({ deployed: { pageErrors: count } }), undefined, "Invalid numeric diagnostics cannot reach the report");
+}
+for (const value of [null, [], "synthetic-never-record", { deployed: [] }, { unknownContext: {} }]) assert.equal(sanitizeBrowserDiagnostics(value), undefined);
+assert.equal(sanitizeBrowserDiagnostics({ get deployed() { throw new Error("synthetic-never-record"); } }), undefined);
+assert.equal(sanitizeBrowserDiagnostics({ deployed: { get pageErrors() { throw new Error("synthetic-never-record"); } } }), undefined);
+assert.equal(sanitizeBrowserDiagnostics({ deployed: { get privateUnknownKey() { assert.fail("Unknown diagnostic getters must never be read"); } } }).deployed.pageErrors, 0);
+assert.deepEqual(sanitizeBrowserDiagnostics({ deployed: { pageErrors: 1 } }).deployed, { ...createBrowserDiagnosticState(), pageErrors: 1 });
 const file = browserFixture.attachments[0];
 const good = [
   [`${appOrigin}/delete-account`, "GET"], [`${appOrigin}/assets/app.js`, "GET"], [`${appOrigin}/__synthetic.html`, "GET"],
@@ -141,4 +201,4 @@ assert.ok(html.includes(anon) && html.includes(providerOrigin), "Only isolated p
 for (const value of [secret, oidc, browserFixture.password, sentinel.password, browserFixture.email, sentinel.email]) {
   assert.ok(!html.includes(value), "Credentials and sign-in identities never enter fixture HTML");
 }
-console.log(`PASS browser acceptance admission, ${good.length + bad.length} destination/method cases, protected response/redirect checks and actual component build; no network or filesystem writes.`);
+console.log(`PASS browser acceptance admission, ${good.length + bad.length} destination/method cases, ${diagnosticRouteCases.length} fixed diagnostic classifications/sanitizer cases, protected response/redirect checks and actual component build; no network or filesystem writes.`);

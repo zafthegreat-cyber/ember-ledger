@@ -210,12 +210,18 @@ test("browser failure retains fixtures and reports only a fixed authored phase",
       reportSink: async () => {}, browserAdapter: async input => {
         browserInput = input;
         throw Object.assign(new Error("Never copy synthetic-private-error-text"), {
-          code: "code3_browser_acceptance_failed", browserPhase: "deployed public deletion sign-in" });
+          code: "code3_browser_acceptance_failed", browserPhase: "deployed public deletion sign-in",
+          browserDiagnostics: { deployed: { blocked: 2, pageErrors: 1, arbitrarySecret: "synthetic-private-error-text" },
+            arbitraryContext: { secret: "synthetic-private-error-text" } } });
       },
     });
     assert.equal(report.status, "failed"); assert.equal(report.failedStage, "deployed-browser-acceptance");
     assert.equal(report.browserFailedPhase, "deployed public deletion sign-in");
     assert.ok(!JSON.stringify(report).includes("synthetic-private-error-text"));
+    assert.equal(report.browserDiagnostics.deployed.blocked, 2);
+    assert.equal(report.browserDiagnostics.deployed.pageErrors, 1);
+    assert.equal(report.browserDiagnostics.arbitraryContext, undefined);
+    assert.equal(report.browserDiagnostics.deployed.arbitrarySecret, undefined);
     assert.equal(state.deleted.length, 1); assert.equal(state.users.size, 2);
     assert.equal(browserInput.browserFixture.password, ""); assert.equal(browserInput.sentinel.password, "");
   } finally { globalThis.fetch = original; }

@@ -6,8 +6,9 @@ const PRODUCTION_APP_HOSTS = new Set([
   "code3tcg.app", "www.code3tcg.app", "ember-tide-tcg.vercel.app", "ember-tide.vercel.app",
   "ember-tide-tcg-zafthegreat-cybers-projects.vercel.app", "ember-tide-zafthegreat-cybers-projects.vercel.app",
   "ember-tide-dixlgjexv-zafthegreat-cybers-projects.vercel.app",
+  "ember-tide-5f8nr3e9p-zafthegreat-cybers-projects.vercel.app",
 ]);
-const PRODUCTION_DEPLOYMENT_IDS = new Set(["dpl_FsYtzWk5ZizgYHxGcpjMFzxvX3uK"]);
+const PRODUCTION_DEPLOYMENT_IDS = new Set(["dpl_FsYtzWk5ZizgYHxGcpjMFzxvX3uK", "dpl_6oSr2qaSTVPZ1Yazo3kikQVCV9sD"]);
 const EXTRA_FLAGS = new Set(["--app-origin", "--confirm-preview-origin", "--with-browser"]);
 const APP_ROUTES = new Map([
   ["/app-version.json", new Set(["GET"])],

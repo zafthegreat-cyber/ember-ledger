@@ -7,11 +7,14 @@ import { fileURLToPath } from "node:url";
 import { restrictedTestFetch, syntheticEmail, assertSyntheticAccount, assertSyntheticPaths, TEST_BUCKETS } from "./lib/hostedDeletionGuard.mjs";
 import { readHostedDeletionHttpsConfig, assertAuthorizedHttpsTestConfig, isolatedProviderConfig, assertPreviewVersion, restrictedHttpsAppFetch, readBoundedAcceptanceJson } from "./lib/hostedDeletionHttpsGuard.mjs";
 import { classifyReceiptReference } from "../src/services/privateReceiptAccess.js";
+import { sanitizeBrowserDiagnostics } from "./lib/hostedDeletionBrowserAcceptance.mjs";
 
 const backendRequire = createRequire(new URL("../backend/package.json", import.meta.url));
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX1kAAAAASUVORK5CYII=", "base64");
 const confirmation = "DELETE MY ACCOUNT";
-const BROWSER_PHASES = new Set(["initial verification", "private attachment component setup", "private attachment URL renewal",
+const BROWSER_PHASES = new Set(["initial verification", "private attachment component setup", "private attachment fixture bundle",
+  "private attachment fixture navigation", "private attachment component boot", "private attachment synthetic sign-in",
+  "private attachment image loading", "private attachment URL renewal",
   "private attachment session revocation", "deployed public deletion sign-in", "deployed wrong-password confirmation",
   "deployed confirmed synthetic deletion", "deployed completion account isolation"]);
 const storageDenial = error => error?.name === "StorageApiError" && [400, 403, 404].includes(error.status)
@@ -220,6 +223,7 @@ export async function runHostedDeletionHttpsAcceptance(config, { browserAdapter,
       check(result?.deployedDeletionUiVerified === true, "Actual deployed deletion page completed browser acceptance");
       report.deployedDeletionUiVerified = true;
       report.receiptComponentHostedIntegrationVerified = result.receiptComponentHostedIntegrationVerified === true;
+      report.browserDiagnostics = sanitizeBrowserDiagnostics(result.browserDiagnostics);
       await assertDeleted(fixture);
     }
     stage = "sentinel-preservation"; await verifyFixture(sentinel);
@@ -242,6 +246,7 @@ export async function runHostedDeletionHttpsAcceptance(config, { browserAdapter,
     if (/^[A-Za-z0-9_]{3,64}$/.test(String(error?.providerCode || ""))) report.providerCode = error.providerCode;
     if (Number.isInteger(error?.httpStatus)) report.httpStatus = error.httpStatus;
     if (error?.code === "code3_browser_acceptance_failed" && BROWSER_PHASES.has(error.browserPhase)) report.browserFailedPhase = error.browserPhase;
+    if (error?.code === "code3_browser_acceptance_failed") report.browserDiagnostics = sanitizeBrowserDiagnostics(error.browserDiagnostics);
   } finally {
     report.fixtures = fixtures.map(({ id, label, deleted }) => ({ id, label, deleted }));
     for (const fixture of fixtures) { fixture.password = ""; fixture.token = ""; fixture.refreshToken = ""; }
