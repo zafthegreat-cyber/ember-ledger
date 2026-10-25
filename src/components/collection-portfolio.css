@@ -170,3 +170,4 @@
 @media (prefers-reduced-motion: reduce) {
   .app.app-command-shell[data-theme] .collection-portfolio :is(button, svg) { transition: none; }
 }
+.collection-product-value-label { display: block; color: var(--text-secondary); font: 400 12px/1.5 var(--font-ui); margin-bottom: 2px; }

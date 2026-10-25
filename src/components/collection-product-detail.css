@@ -1,0 +1,68 @@
+/* Product grouping is presentation only; copy records keep their own lifecycle. */
+.app.app-command-shell[data-theme] .collection-product-detail {
+  display: grid;
+  gap: 20px;
+  width: min(1040px, 100%);
+  min-width: 0;
+  margin-inline: auto;
+  padding: 24px;
+  padding-bottom: max(100px, calc(env(safe-area-inset-bottom, 0px) + 96px));
+  color: var(--text-primary);
+}
+.app.app-command-shell[data-theme] .collection-product-detail :is(h1, h2, h3, p, li, dd) { overflow-wrap: anywhere; }
+.app.app-command-shell[data-theme] .collection-product-detail > .ops-page-header { margin: 0; padding: 0; }
+.app.app-command-shell[data-theme] .collection-product-detail .ops-page-header h1 { font-size: clamp(1.65rem, 3vw, 2.15rem); line-height: 1.2; }
+.app.app-command-shell[data-theme] .collection-product-detail .ops-page-header p { font-size: .9375rem; }
+.app.app-command-shell[data-theme] .collection-product-detail :is(button, [role="tab"]) { min-height: 44px; }
+.app.app-command-shell[data-theme] .collection-product-detail :is(button, [role="tabpanel"]):focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 3px; }
+.app.app-command-shell[data-theme] .collection-product-back { width: fit-content; max-width: 100%; text-align: left; }
+.app.app-command-shell[data-theme] .collection-product-back > span { font-size: 1.2rem; }
+.app.app-command-shell[data-theme] .collection-product-detail .everyday-tabs { display: flex; gap: 8px; padding: 0; }
+.app.app-command-shell[data-theme] .collection-product-detail .everyday-tabs button { flex: 1 1 0; min-width: 0; min-height: 48px; padding: 10px 16px; font: 600 1rem/1.5 var(--font-ui); }
+.app.app-command-shell[data-theme] .collection-product-detail .everyday-tab-panel { min-width: 0; }
+.app.app-command-shell[data-theme] .collection-product-detail .everyday-tab-panel:not([hidden]) { display: grid; gap: 20px; }
+.app.app-command-shell[data-theme] :is(.collection-product-overview, .collection-product-identification, .collection-product-copy) { min-width: 0; border: 1px solid var(--border-subtle); border-radius: 12px; background: var(--surface-primary); box-shadow: var(--shadow-1); }
+.app.app-command-shell[data-theme] .collection-product-overview { display: grid; grid-template-columns: minmax(0, 240px) minmax(0, 1fr); gap: 24px; padding: 24px; align-items: center; }
+.app.app-command-shell[data-theme] .collection-product-photo { display: grid; place-items: center; width: 100%; min-width: 0; aspect-ratio: 1 / 1; padding: 16px; border: 1px solid var(--border-subtle); border-radius: 10px; background: var(--surface-inset); }
+.app.app-command-shell[data-theme] .collection-product-photo > :is(img, div) { width: 100%; height: 100%; min-width: 0; min-height: 0; object-fit: contain; }
+.app.app-command-shell[data-theme] .collection-product-photo-fallback { display: grid; place-items: center; color: var(--text-secondary); }
+.app.app-command-shell[data-theme] .collection-product-photo-fallback svg { width: 48px; height: 48px; }
+.app.app-command-shell[data-theme] .collection-product-overview-copy { display: grid; min-width: 0; gap: 16px; justify-items: start; }
+.app.app-command-shell[data-theme] .collection-product-totals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; width: 100%; min-width: 0; margin: 0; }
+.app.app-command-shell[data-theme] .collection-product-totals > div { min-width: 0; }
+.app.app-command-shell[data-theme] .collection-product-totals dt { color: var(--text-secondary); font: 500 .875rem/1.5 var(--font-ui); }
+.app.app-command-shell[data-theme] .collection-product-totals dd { margin: 6px 0 0; color: var(--text-primary); font: 600 clamp(1.4rem, 3vw, 2rem)/1.2 var(--font-display); font-variant-numeric: tabular-nums; }
+.app.app-command-shell[data-theme] .collection-product-purposes { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; margin: 0; min-width: 0; }
+.app.app-command-shell[data-theme] .collection-product-purposes li { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 8px 12px; border: 1px solid var(--edge-accent); border-radius: 8px; background: var(--selection-background); color: var(--action-primary); font: 600 .9375rem/1.4 var(--font-ui); }
+.app.app-command-shell[data-theme] .collection-product-purposes li strong { padding-inline-start: 8px; border-inline-start: 1px solid var(--edge-accent); color: inherit; font-variant-numeric: tabular-nums; }
+.app.app-command-shell[data-theme] .collection-product-detail p.collection-product-note { margin: 0; color: var(--text-secondary); font: 400 .875rem/1.6 var(--font-ui); }
+.app.app-command-shell[data-theme] .collection-product-identification { padding: 20px 24px; }
+.app.app-command-shell[data-theme] .collection-product-detail h2 { margin: 0; color: var(--text-primary); font: 600 1.25rem/1.4 var(--font-display); }
+.app.app-command-shell[data-theme] .collection-product-detail .ops-detail-list :is(dt, dd) { font-size: .875rem; line-height: 1.6; }
+.app.app-command-shell[data-theme] .collection-product-detail .ops-detail-list > div { gap: 16px; }
+.app.app-command-shell[data-theme] .collection-product-copies { display: grid; gap: 20px; min-width: 0; }
+.app.app-command-shell[data-theme] .collection-product-copies > header { display: grid; gap: 10px; min-width: 0; }
+.app.app-command-shell[data-theme] .collection-product-copies > header p { margin: 0; color: var(--text-secondary); font: 400 .9375rem/1.6 var(--font-ui); }
+.app.app-command-shell[data-theme] .collection-product-copy-list { display: grid; gap: 16px; min-width: 0; margin: 0; padding: 0; list-style: none; }
+.app.app-command-shell[data-theme] .collection-product-copy-list > li { min-width: 0; }
+.app.app-command-shell[data-theme] .collection-product-copy { display: grid; gap: 14px; padding: 20px 24px; }
+.app.app-command-shell[data-theme] .collection-product-copy > header { display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap; gap: 12px; min-width: 0; }
+.app.app-command-shell[data-theme] .collection-product-copy > header > div { min-width: 0; }
+.app.app-command-shell[data-theme] .collection-product-copy h3 { margin: 0; color: var(--text-primary); font: 600 1.125rem/1.4 var(--font-display); font-variant-numeric: tabular-nums; }
+.app.app-command-shell[data-theme] .collection-product-copy header p { margin: 4px 0 0; color: var(--text-secondary); font: 400 .875rem/1.5 var(--font-ui); }
+.app.app-command-shell[data-theme] .collection-product-copy header > span { color: var(--text-secondary); font: 400 .875rem/1.5 var(--font-ui); }
+.app.app-command-shell[data-theme] .collection-product-copy > button { justify-self: start; max-width: 100%; white-space: normal; }
+@media (min-width: 1080px) {
+  .app.app-command-shell[data-theme] .collection-product-copy-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 719px) {
+  .app.app-command-shell[data-theme] .collection-product-detail { gap: 16px; padding: 16px; padding-bottom: max(100px, calc(env(safe-area-inset-bottom, 0px) + 90px)); }
+  .app.app-command-shell[data-theme] .collection-product-overview { grid-template-columns: minmax(0, 1fr); gap: 18px; padding: 16px; }
+  .app.app-command-shell[data-theme] .collection-product-photo { width: min(220px, 100%); justify-self: center; }
+  .app.app-command-shell[data-theme] .collection-product-totals { gap: 12px; }
+  .app.app-command-shell[data-theme] :is(.collection-product-identification, .collection-product-copy) { padding: 16px; }
+  .app.app-command-shell[data-theme] .collection-product-copy > button { justify-self: stretch; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app.app-command-shell[data-theme] .collection-product-detail * { scroll-behavior: auto; transition: none; animation: none; }
+}

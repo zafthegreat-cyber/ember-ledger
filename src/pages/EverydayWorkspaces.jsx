@@ -40,6 +40,9 @@ import { resolveExperiencePresentation } from "../utils/experiencePresentation.j
 import { getItemImageUrl } from "../utils/productDisplayUtils.js";
 import ItemPhoto from "../components/ItemPhoto.jsx";
 import CollectionPortfolio from "../components/CollectionPortfolio.jsx";
+import CollectionProductDetail from "../components/CollectionProductDetail.jsx";
+import { groupCollectionCopies } from "../utils/collectionCopyGroups.mjs";
+import { getPortfolioItemKey } from "../utils/collectionPortfolio.mjs";
 import CollectionSets from "../components/CollectionSets.jsx";
 import CollectionGameFilter from "../components/CollectionGameFilter.jsx";
 import { COLLECTIBLE_GAMES, assignCollectibleGame, getRecordGame, getRecordGameLabel, matchesRecordGame } from "../utils/collectibleGames.mjs";
@@ -356,12 +359,26 @@ function CollectionItemDetail({ item, onBack, onPurpose, onEdit, onDelete, value
   return <RecordDetailPage eyebrow="Collection item" title={recordTitle(item)} status={normalized.ownedItemPurpose.replaceAll("_", " ").toLowerCase()} statusTone={normalized.ownedItemPurpose === OWNED_ITEM_PURPOSES.UNASSIGNED ? "warning" : "info"} image={resolveItemImage(item)} identity={[item.productClassification, item.setName, item.cardNumber].filter(Boolean).join(" · ") || "Identification is incomplete."} summary={[{ label: "Acquisition cost", value: cost == null ? "Not recorded" : money(cost), numeric: true }, { label: valueLabel, value: money(item.projectedResaleMid) }, { label: "Condition", value: item.condition || "Not recorded" }, { label: "Storage", value: item.storageLocation || "Not assigned" }]} primaryAction={managed ? null : <PrimaryButton onClick={() => onPurpose(item, OWNED_ITEM_PURPOSES.FOR_RESALE)}>Sell This Item</PrimaryButton>} secondaryActions={managed ? null : <><QuietButton onClick={() => onEdit(item)}>Edit</QuietButton>{item._recordOrigin === "repository" ? <QuietButton className="ops-button--danger" onClick={() => onDelete(item)}>Delete</QuietButton> : null}</>} sections={[...itemDetailSections(item, valueLabel), ...(managed ? [{ title: "Acquisition provenance", description: "This owner-confirmed lot can be corrected only through append-only Inventory adjustments.", children: <DetailList items={[{ label: "Purchase", value: item.purchaseId }, { label: "Inventory lot", value: item.inventoryLotId }]} /> }] : [{ title: "Purpose assignment", description: "Purpose controls where this owned item appears.", children: <PurposeActions item={item} onChange={onPurpose} /> }])]} timeline={itemTimeline(item)} onBack={onBack} />;
 }
 
+function isCollectionCopy(item) {
+  return [OWNED_ITEM_PURPOSES.PERSONAL_COLLECTION, OWNED_ITEM_PURPOSES.HOLD].includes(inferOwnedItemPurpose(item));
+}
+
+function collectionNavigationPosition(opener) {
+  const main = document.querySelector(".main");
+  return { key: opener?.getAttribute("data-copy-record-key") || opener?.getAttribute("data-collection-product-key"), valuable: opener?.classList.contains("collection-portfolio-valuable-row"), x: window.scrollX, y: window.scrollY, mainX: main?.scrollLeft || 0, mainY: main?.scrollTop || 0 };
+}
+
 export function CollectionWorkspace({ items = [], catalogProducts = EMPTY_CATALOG, initialView = "collection", onViewChange, onChangePurpose, onSellItem, featureControls = EMPTY_FEATURE_CONTROLS, experiencePresentation, resolveItemImage = recordImage, portfolioScope = "", portfolioFeatures = EMPTY_FEATURE_CONTROLS, onLockedFeature }) {
   const presentation = experiencePresentation || resolveExperiencePresentation();
   const valueLabel = presentation.showBusinessTools || presentation.showAdminTools ? "Projected resale" : "Estimated value";
   const { state, error, saveRecord, removeRecord } = useBusinessRepository();
   const [view, setView] = useState(initialView);
   const [selected, setSelected] = useState(null);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [productDetailTab, setProductDetailTab] = useState("overview");
+  const collectionNavigationRef = useRef(null);
+  const productOpenerRef = useRef(null);
+  const copyOpenerRef = useRef(null);
   const [form, setForm] = useState(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -378,13 +395,55 @@ export function CollectionWorkspace({ items = [], catalogProducts = EMPTY_CATALO
     setPreviousView(initialView);
     setView(initialView);
     setSelected(null);
+    setSelectedProduct(null);
     setForm(null);
     setFiltersOpen(false);
   }
   const allItems = useMemo(() => mergeRecords(state.inventory, items).map(normalizeOwnedItem), [items, state.inventory]);
   const visible = useMemo(() => allItems.filter((item) => (!query || [recordTitle(item), item.setName, item.cardNumber, item.storageLocation].join(" ").toLowerCase().includes(query.toLowerCase())) && (!conditionFilter || item.condition === conditionFilter)), [allItems, conditionFilter, query]);
-  const collectionItems = visible.filter((item) => item.ownedItemPurpose === OWNED_ITEM_PURPOSES.PERSONAL_COLLECTION && matchesRecordGame(item, collectionGame));
+  const collectionItems = visible.filter((item) => isCollectionCopy(item) && matchesRecordGame(item, collectionGame));
+  const collectionPortfolioItems = useMemo(() => allItems.filter(isCollectionCopy), [allItems]);
   const personalCollectionItems = useMemo(() => allItems.filter((item) => item.ownedItemPurpose === OWNED_ITEM_PURPOSES.PERSONAL_COLLECTION), [allItems]);
+  const selectedProductGroup = useMemo(() => {
+    if (!selectedProduct) return null;
+    const current = new Map(allItems.map(item => [getPortfolioItemKey(item), item]).filter(([key]) => key));
+    const copies = selectedProduct.records.map(item => {
+      const key = getPortfolioItemKey(item);
+      return key ? current.get(key) : item;
+    }).filter(item => item && isCollectionCopy(item));
+    return groupCollectionCopies(copies).find(group => group.key === selectedProduct.key) || null;
+  }, [allItems, selectedProduct]);
+  useEffect(() => {
+    if (!collectionNavigationRef.current) return undefined;
+    const frame = window.requestAnimationFrame(() => {
+      const navigation = collectionNavigationRef.current;
+      collectionNavigationRef.current = null;
+      const container = document.querySelector(navigation.kind === "copy" ? ".manual-lifecycle-detail .ops-record-detail" : ".collection-product-detail");
+      if (navigation.kind === "product" || navigation.kind === "copy") {
+        const heading = container?.querySelector("h1");
+        heading?.setAttribute("tabindex", "-1");
+        heading?.focus({ preventScroll: true });
+        container?.scrollIntoView({ block: "start", behavior: "instant" });
+        return;
+      }
+      const position = navigation.kind === "copies-return" ? copyOpenerRef.current : productOpenerRef.current;
+      const selector = navigation.kind === "copies-return" ? "[data-copy-record-key]" : position?.valuable ? ".collection-portfolio-valuable-row[data-collection-product-key]" : ".collection-portfolio-item[data-collection-product-key]";
+      const attribute = navigation.kind === "copies-return" ? "data-copy-record-key" : "data-collection-product-key";
+      const target = [...document.querySelectorAll(selector)].find(button => button.getAttribute(attribute) === position?.key);
+      if (target) {
+        target.focus({ preventScroll: true });
+        window.scrollTo(position.x, position.y);
+        const main = document.querySelector(".main");
+        if (main) { main.scrollLeft = position.mainX; main.scrollTop = position.mainY; }
+      } else {
+        const heading = document.querySelector(".collection-product-copies h2, .collection-product-detail h1, .everyday-workspace h1");
+        heading?.setAttribute("tabindex", "-1");
+        heading?.focus({ preventScroll: true });
+        heading?.scrollIntoView({ block: "center", behavior: "instant" });
+      }
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [selected, selectedProduct, form]);
   const heldItems = visible.filter((item) => item.ownedItemPurpose === OWNED_ITEM_PURPOSES.HOLD);
   const unassigned = allItems.filter((item) => item.ownedItemPurpose === OWNED_ITEM_PURPOSES.UNASSIGNED);
   const grading = visible.filter((item) => item.gradingCompany || item.grade || /graded/i.test(item.productClassification || ""));
@@ -404,6 +463,7 @@ export function CollectionWorkspace({ items = [], catalogProducts = EMPTY_CATALO
         const previousSelection = setSelectionRef.current;
         setSelectionRef.current = selection;
         setSelected(selection?.item || null);
+        setSelectedProduct(null);
         setSetBrowserState((current) => ({ ...current, selectedId: selection?.row.id || "" }));
         window.requestAnimationFrame(() => {
           if (selection?.item) return;
@@ -423,7 +483,7 @@ export function CollectionWorkspace({ items = [], catalogProducts = EMPTY_CATALO
   }, [view, portfolioScope]);
   const secondaryDestinations = [{ key: "sets", label: "Sets & Binders" }, { key: "wishlist", label: "Wishlist" }, featureControls.grading !== false ? { key: "grading", label: "Grading" } : null].filter(Boolean);
   const collectionMoreItems = [...secondaryDestinations, ...(unassigned.length ? [{ key: "unassigned", label: `Unassigned Review (${unassigned.length})` }] : [])];
-  const changeView = (next) => { setSelected(null); setSetBrowserState((current) => ({ ...current, selectedId: "" })); setView(next); onViewChange?.(next); };
+  const changeView = (next) => { setSelected(null); setSelectedProduct(null); setSetBrowserState((current) => ({ ...current, selectedId: "" })); setView(next); onViewChange?.(next); };
   const chooseCollectionUtility = (next) => {
     if (next === "unassigned") {
       changeView("unassigned");
@@ -443,10 +503,11 @@ export function CollectionWorkspace({ items = [], catalogProducts = EMPTY_CATALO
     } else if (nextPurpose === OWNED_ITEM_PURPOSES.FOR_RESALE) onSellItem?.(item);
   };
   if (form) return <RecordForm key={`${form.type}-${form.seed?.id || "new"}`} type={form.type} seed={form.seed} state={state} onSave={async (collection, record, message) => { const saved = await saveRecord(collection, record, message); if (saved) setSelected(view === "sets" && setBrowserState.selectedId && !form.seed?.id ? null : { ...saved, _recordOrigin: "repository" }); return saved; }} onCancel={() => setForm(null)} />;
-  if (selected) return <div className="manual-lifecycle-detail"><CollectionItemDetail resolveItemImage={resolveItemImage} item={selected} valueLabel={valueLabel} onBack={() => { if (view === "sets") setNavigationRef.current?.back({ setId: setBrowserState.selectedId }); else setSelected(null); }} onPurpose={changePurpose} onEdit={(item) => setForm({ type: "collection", seed: item })} onDelete={async (item) => { if (await removeRecord("inventory", item)) setSelected(null); }} />{selected._recordOrigin === "repository" ? <ManualLifecycles key={selected.id} types={featureControls.grading !== false ? ["assignment", "grading"] : ["assignment"]} title="Item organization" itemId={selected.id} /> : null}</div>;
+  if (selected) return <div className="manual-lifecycle-detail"><CollectionItemDetail resolveItemImage={resolveItemImage} item={selected} valueLabel={valueLabel} onBack={() => { if (view === "sets") setNavigationRef.current?.back({ setId: setBrowserState.selectedId }); else { if (selectedProduct) collectionNavigationRef.current = { kind: "copies-return" }; setSelected(null); } }} onPurpose={changePurpose} onEdit={(item) => setForm({ type: "collection", seed: item })} onDelete={async (item) => { if (await removeRecord("inventory", item)) { if (selectedProduct) collectionNavigationRef.current = { kind: "copies-return" }; setSelected(null); } }} />{selected._recordOrigin === "repository" ? <ManualLifecycles key={selected.id} types={featureControls.grading !== false ? ["assignment", "grading"] : ["assignment"]} title="Item organization" itemId={selected.id} /> : null}</div>;
+  if (selectedProductGroup) return <CollectionProductDetail group={selectedProductGroup} onBack={() => { collectionNavigationRef.current = { kind: "grid-return" }; setSelectedProduct(null); }} onOpenRecord={(item, opener) => { copyOpenerRef.current = collectionNavigationPosition(opener); collectionNavigationRef.current = { kind: "copy" }; setSelected(item); }} resolveItemImage={resolveItemImage} getAcquisitionCost={acquisitionCost} activeTab={productDetailTab} onTabChange={setProductDetailTab} hiddenValues={portfolioViewState.hidden} />;
   const cardsFor = (records) => records.map((item) => <RecordListCard key={item.id} resolveItemImage={resolveItemImage} record={item} eyebrow={[item.setName, item.productClassification].filter(Boolean).join(" · ") || "Owned item"} status={item.ownedItemPurpose === OWNED_ITEM_PURPOSES.UNASSIGNED ? "Needs purpose" : ""} statusTone="warning" facts={[{ label: item.condition ? "Condition" : "Quantity", value: item.condition || item.quantity || 1 }, { label: "Estimated value", value: item.projectedResaleMid !== "" && item.projectedResaleMid != null ? money(item.projectedResaleMid) : "" }]} onOpen={setSelected} />);
   return <main className="everyday-workspace" data-testid="collection-workspace">
-    <PageHeader eyebrow={view === "sets" ? "" : "Made for collecting"} title={view === "sets" ? "Card sets" : view === "collection" ? "Collection" : secondaryDestinations.find((item) => item.key === view)?.label || "Collection"} description={view === "collection" ? "The cards, sealed products, and finds you choose to keep." : ""} actions={<PrimaryButton onClick={() => setForm({ type: "collection", seed: { ...((view === "sets" ? setBrowserState.game : collectionGame) !== "all" ? { tcgGame: view === "sets" ? setBrowserState.game : collectionGame } : {}) } })}>Add Item</PrimaryButton>} />
+    <PageHeader eyebrow={view === "sets" ? "" : "Made for collecting"} title={view === "sets" ? "Card sets" : view === "collection" ? "Collection" : secondaryDestinations.find((item) => item.key === view)?.label || "Collection"} description={view === "collection" ? "Your personal collection and held copies, grouped by product." : ""} actions={<PrimaryButton onClick={() => setForm({ type: "collection", seed: { ...((view === "sets" ? setBrowserState.game : collectionGame) !== "all" ? { tcgGame: view === "sets" ? setBrowserState.game : collectionGame } : {}) } })}>Add Item</PrimaryButton>} />
     {view !== "collection" ? <div className="everyday-secondary-navigation"><button type="button" onClick={() => changeView("collection")}>Back to Collection</button><WorkspaceMoreMenu items={collectionMoreItems} active={view} onChange={chooseCollectionUtility} /></div> : null}
     {error ? <p className="compatibility-note" role="alert">{error}</p> : null}
     {view === "collection" ? <CollectionPortfolio
@@ -454,7 +515,7 @@ export function CollectionWorkspace({ items = [], catalogProducts = EMPTY_CATALO
       preferenceScope={portfolioScope}
       viewState={portfolioViewState}
       onViewStateChange={setPortfolioViewState}
-      items={personalCollectionItems}
+      items={collectionPortfolioItems}
       visibleItems={collectionItems}
       query={query}
       onQueryChange={setQuery}
@@ -462,6 +523,7 @@ export function CollectionWorkspace({ items = [], catalogProducts = EMPTY_CATALO
       onOpenFilters={() => setFiltersOpen(true)}
       onClearFilters={() => { setQuery(""); setConditionFilter(""); setCollectionGame("all"); }}
       onOpenItem={setSelected}
+      onOpenGroup={(group, opener) => { productOpenerRef.current = collectionNavigationPosition(opener); collectionNavigationRef.current = { kind: "product" }; setSelected(null); setSelectedProduct(group); setProductDetailTab("overview"); }}
       onAddItem={() => setForm({ type: "collection", seed: collectionGame !== "all" ? { tcgGame: collectionGame } : {} })}
       resolveItemImage={resolveItemImage}
       moreActions={<WorkspaceMoreMenu items={collectionMoreItems} active={view} onChange={chooseCollectionUtility} />}

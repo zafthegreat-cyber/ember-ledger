@@ -84,7 +84,26 @@ export function PortfolioValueChart({ points = EMPTY_ITEMS, hidden = false, mone
   </figure>;
 }
 
-export function PortfolioItemGrid({ items = EMPTY_ITEMS, resolveItemImage, onOpen, hidden = false, valueForItem, money, mode = "grid" }) {
+function groupContext(group) {
+  const item = group.item;
+  const identity = [item.language || item.languageCode, item.variant || item.priceSubtype || item.cardVariant, item.edition].filter(Boolean);
+  return [itemContext(item), ...identity].join(" · ");
+}
+
+function groupValue(group, { hidden, money }) {
+  if (hidden) return "Value hidden";
+  if (group.valuation.value === null) return "Value not recorded";
+  const value = formatMoney(group.valuation.value, money);
+  return group.valuation.partial ? `${value} known · ${group.valuation.unknownCount} not valued` : value;
+}
+
+export function PortfolioItemGrid({ items = EMPTY_ITEMS, groups, resolveItemImage, onOpen, onOpenGroup, hidden = false, valueForItem, money, mode = "grid" }) {
+  if (groups) return <ul className="collection-portfolio-grid" data-mode={mode === "list" ? "list" : "grid"} aria-label="Collection items">
+    {groups.map(group => <li key={group.key}><button type="button" className="collection-portfolio-item" data-collection-product-key={group.key} onClick={event => onOpenGroup?.(group, event.currentTarget)} aria-label={`Open ${itemTitle(group.item)}`}>
+      <span className="collection-portfolio-item-media"><ItemPhoto src={resolveItemImage?.(group.item) || ""} fallbackClassName="collection-portfolio-photo-fallback" /></span>
+      <span className="collection-portfolio-item-copy"><strong className="collection-portfolio-item-name">{itemTitle(group.item)}</strong><span className="collection-portfolio-item-meta">{groupContext(group)}</span><span className="collection-portfolio-item-quantity">Qty {group.quantity}</span><span className="collection-portfolio-item-meta">{group.purposeCounts.map(row => `${row.shortLabel} · ${row.quantity}`).join(" · ")}</span><span className="collection-portfolio-item-value">{!hidden && group.valuation.value !== null ? <small className="collection-product-value-label">Total saved value</small> : null}{groupValue(group, { hidden, money })}</span></span>
+    </button></li>)}
+  </ul>;
   return <ul className="collection-portfolio-grid" data-mode={mode === "list" ? "list" : "grid"} aria-label="Collection items">
     {items.map((item, index) => <li key={item.id || `${itemTitle(item)}-${index}`}><button type="button" className="collection-portfolio-item" onClick={() => onOpen?.(item)} aria-label={`Open ${itemTitle(item)}`}>
       <span className="collection-portfolio-item-media"><ItemPhoto src={resolveItemImage?.(item) || ""} fallbackClassName="collection-portfolio-photo-fallback" /></span>
@@ -93,7 +112,13 @@ export function PortfolioItemGrid({ items = EMPTY_ITEMS, resolveItemImage, onOpe
   </ul>;
 }
 
-export function PortfolioMostValuable({ items = EMPTY_ITEMS, resolveItemImage, onOpen, hidden = false, valueForItem, money }) {
+export function PortfolioMostValuable({ items = EMPTY_ITEMS, groups, resolveItemImage, onOpen, onOpenGroup, hidden = false, valueForItem, money }) {
+  if (groups) return <section className="collection-portfolio-valuable-section"><div className="collection-portfolio-section-heading"><h2>Most valuable</h2><span>Saved estimates</span></div>{!groups.length ? <p className="collection-portfolio-muted">Add a saved value to an item to see your most valuable pieces here.</p> : <ul className="collection-portfolio-most-valuable" aria-label="Most valuable items">
+    {groups.slice(0, 5).map(group => <li key={group.key}><button type="button" className="collection-portfolio-valuable-row" data-collection-product-key={group.key} onClick={event => onOpenGroup?.(group, event.currentTarget)} aria-label={`Open ${itemTitle(group.item)}`}>
+      <span className="collection-portfolio-valuable-media"><ItemPhoto src={resolveItemImage?.(group.item) || ""} fallbackClassName="collection-portfolio-photo-fallback" /></span>
+      <span className="collection-portfolio-valuable-copy"><strong>{itemTitle(group.item)}</strong><small>Qty {group.quantity} · {groupContext(group)}</small></span><span className="collection-portfolio-valuable-value">{groupValue(group, { hidden, money })}</span>
+    </button></li>)}
+  </ul>}</section>;
   return <section className="collection-portfolio-valuable-section"><div className="collection-portfolio-section-heading"><h2>Most valuable</h2><span>Saved estimates</span></div>{!items.length ? <p className="collection-portfolio-muted">Add a saved value to an item to see your most valuable pieces here.</p> : <ul className="collection-portfolio-most-valuable" aria-label="Most valuable items">
     {items.slice(0, 5).map((item, index) => <li key={item.id || `${itemTitle(item)}-${index}`}><button type="button" className="collection-portfolio-valuable-row" onClick={() => onOpen?.(item)} aria-label={`Open ${itemTitle(item)}`}>
       <span className="collection-portfolio-valuable-media"><ItemPhoto src={resolveItemImage?.(item) || ""} fallbackClassName="collection-portfolio-photo-fallback" /></span>
