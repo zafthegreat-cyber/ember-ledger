@@ -87,7 +87,7 @@ select jsonb_build_object('projectRef',${literal(PRIVACY_PROJECT_REF)},'captured
 
 async function main(args) {
   assert.ok(args.length === 0 || args.length === 2 && args[0] === "--metadata", "Usage: node scripts/prepare-account-deletion-preflight.mjs [--metadata <redacted-metadata.json>]");
-  const files = ["20261018172530_code3_account_deletion.sql", "20261018174916_code3_private_attachment_reads.sql"];
+  const files = ["20261024234312_code3_account_deletion.sql", "20261024234513_code3_private_attachment_reads.sql"];
   const migrations = await Promise.all(files.map(async file => {
     const sql = await fs.readFile(path.join(root, "supabase/migrations", file), "utf8");
     return { file, sql, sha256: createHash("sha256").update(sql).digest("hex") };

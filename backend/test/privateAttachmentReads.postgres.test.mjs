@@ -45,7 +45,7 @@ test("private attachment migration prevents anonymous and cross-account receipt 
     await identity("anon");
     assert.ok((await names()).includes('owner-receipt')); checks++;
     await db.query("reset role");
-    await db.query(await readFile(new URL("../../supabase/migrations/20261018174916_code3_private_attachment_reads.sql",import.meta.url),"utf8"));
+    await db.query(await readFile(new URL("../../supabase/migrations/20261024234513_code3_private_attachment_reads.sql",import.meta.url),"utf8"));
     assert.deepEqual((await db.query("select * from storage.objects order by id")).rows,before); checks++;
     assert.deepEqual((await db.query("select id from storage.buckets where public order by id")).rows.map(row=>row.id),['brand-assets','catalog-images']); checks++;
     await identity("anon");

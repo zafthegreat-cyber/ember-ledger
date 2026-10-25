@@ -83,7 +83,7 @@ for (const canonical of [true, false]) test(`account deletion preserves other ac
     const prices = (await db.query("select * from public.market_prices")).rows;
     const otherItems = (await db.query("select * from public.inventory_items where user_id=$1",[b])).rows;
     const before = (await db.query("select * from auth.users order by id")).rows;
-    await db.query(await readFile(new URL("../../supabase/migrations/20261018172530_code3_account_deletion.sql", import.meta.url), "utf8"));
+    await db.query(await readFile(new URL("../../supabase/migrations/20261024234312_code3_account_deletion.sql", import.meta.url), "utf8"));
     assert.deepEqual((await db.query("select * from auth.users order by id")).rows,before); checks++;
     const permissions = await db.query("select p.proname,has_function_privilege('anon',p.oid,'execute') as anon_access,has_function_privilege('authenticated',p.oid,'execute') as user_access from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname in ('code3_account_deletion_status','code3_begin_account_deletion','code3_finish_account_data_deletion','code3_release_account_deletion','code3_complete_account_deletion')");
     assert.equal(permissions.rows.length,5); assert.ok(permissions.rows.every(row=>!row.anon_access&&!row.user_access)); checks++;
