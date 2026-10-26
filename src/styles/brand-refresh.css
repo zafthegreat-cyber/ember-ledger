@@ -5,7 +5,7 @@ html body .app[data-theme] :is(button,input,select,textarea) { font-family:var(-
 html body .app.app-command-shell[data-theme] .home-layout .home-restock-hero { border-top-color:var(--c3-gold); border-radius:var(--c3-radius-lg); grid-template-columns:minmax(0,1fr); }
 html body .app.app-command-shell[data-theme] .home-restock-art { display:none; }
 html body .app.app-command-shell[data-theme] .everyday-record-card { grid-template-columns:84px minmax(0,1fr) auto; }
-html body .app.app-command-shell[data-theme] .everyday-record-card > img { width:84px; height:102px; object-fit:contain; background:var(--c3-cream); border:1px solid var(--border-subtle); border-radius:6px; }
+html body .app.app-command-shell[data-theme] .everyday-record-card > img { width:84px; height:102px; object-fit:contain; background:var(--app-brand-photo); border:1px solid var(--border-subtle); border-radius:6px; }
 html body .app.app-command-shell[data-theme] .topbar-brand-mark.ops-brand-mark { padding:0; border:0; border-radius:8px; background:transparent !important; box-shadow:none; }
 html body .app.app-command-shell[data-theme] .topbar-brand-mark img { display:block; width:100%; height:100%; object-fit:contain; }
 html body .app[data-theme] .ops-brand strong { font-family:var(--c3-font-heading); font-size:17px; font-weight:600; }
@@ -21,7 +21,7 @@ html body .app[data-theme] .home-collectible-motif { display:none; }
 :root:has(.app[data-theme="dark"]),
 body:has(.app[data-theme="dark"]) {
   /* Keep the outer document canvas aligned with the scoped app surface. */
-  --app-background:#141619;
+  --app-background:#14171D;
 }
 html body .app[data-theme] {
   --app-brand-rail:#501523;
@@ -42,8 +42,11 @@ html body .app[data-theme] {
   --app-brand-photo:var(--c3-cream);
 }
 html body .app[data-theme="dark"] {
-  --app-brand-rail:#191B20;
-  --app-brand-header:#1B1D22;
+  --app-brand-rail:#14171D;
+  --app-brand-header:#20252E;
+  --app-brand-on-chrome:#F3F4F6;
+  --app-brand-on-gold:#20242C;
+  --app-brand-photo:#20252E;
   --app-brand-chrome-muted:#C3BFC5;
   --app-brand-chrome-line:#454851;
   --app-brand-hero:#282128;
@@ -55,11 +58,11 @@ html body .app[data-theme="dark"] {
   --app-brand-selected:#342E20;
   --app-brand-selected-ink:#E8C86B;
   --app-brand-selected-border:#D4AF37;
-  --app-background:#141619;
-  --surface-primary:#202328;
-  --surface-secondary:#292D33;
-  --surface-inset:#191C21;
-  --surface-elevated:#30343B;
+  --app-background:#14171D;
+  --surface-primary:#20252E;
+  --surface-secondary:#292F3A;
+  --surface-inset:#191D25;
+  --surface-elevated:#303743;
   --text-secondary:#C1BDC4;
   --text-muted:var(--text-secondary);
   --border-subtle:#41454E;
@@ -110,7 +113,7 @@ html body .app.app-command-shell[data-theme] .home-restock-hero::after { content
 html body .app.app-command-shell[data-theme] .home-layout .home-restock-copy :is(h2,.home-group-label) { color:var(--app-brand-on-chrome) !important; }
 html body .app.app-command-shell[data-theme] .home-layout .home-restock-copy :is(p,small) { color:var(--app-brand-hero-muted) !important; }
 html body .app.app-command-shell[data-theme] .home-restock-actions .ops-button--primary { background:var(--c3-gold) !important; border-color:var(--c3-gold) !important; color:var(--app-brand-on-gold) !important; }
-html body .app.app-command-shell[data-theme] .home-restock-actions .ops-button--primary:hover { background:var(--c3-cream) !important; border-color:var(--c3-cream) !important; }
+html body .app.app-command-shell[data-theme] .home-restock-actions .ops-button--primary:hover { background:var(--c3-action-hover) !important; border-color:var(--c3-action-hover) !important; color:var(--c3-on-action) !important; }
 html body .app.app-command-shell[data-theme] .home-restock-actions .ops-button--secondary { background:transparent !important; border-color:var(--app-brand-hero-muted) !important; color:var(--app-brand-on-chrome) !important; }
 html body .app.app-command-shell[data-theme] .home-restock-actions .ops-button--secondary:hover { background:var(--app-brand-header) !important; }
 html body .app.app-command-shell[data-theme] .home-restock-hero :focus-visible { outline-color:var(--c3-gold) !important; }
@@ -158,7 +161,7 @@ html body .app.app-command-shell[data-theme] .home-layout .home-personal-card :i
 html body .app.app-command-shell[data-theme] .home-layout .home-personal-card h3 { font-size:19px; }
 html body .app.app-command-shell[data-theme] .home-collection-peek { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; width:100%; margin-bottom:16px; }
 html body .app.app-command-shell[data-theme] .home-collection-peek figure { min-width:0; margin:0; }
-html body .app.app-command-shell[data-theme] .home-collection-peek :is(img,.home-collection-peek__placeholder) { display:block; width:100%; height:106px; padding:8px; object-fit:contain; border:1px solid var(--border-subtle); border-radius:10px; background:var(--c3-cream); }
+html body .app.app-command-shell[data-theme] .home-collection-peek :is(img,.home-collection-peek__placeholder) { display:block; width:100%; height:106px; padding:8px; object-fit:contain; border:1px solid var(--border-subtle); border-radius:10px; background:var(--app-brand-photo); }
 html body .app.app-command-shell[data-theme] .home-collection-peek__placeholder { color:var(--c3-maroon); }
 html body .app.app-command-shell[data-theme] .home-collection-peek figcaption { margin-top:7px; display:-webkit-box; overflow:hidden; -webkit-line-clamp:2; -webkit-box-orient:vertical; color:var(--text-primary); font-size:13px; line-height:1.4; }
 html body .app.app-command-shell[data-theme] .everyday-workspace { width:min(1120px,100%); margin-inline:auto; gap:20px; padding:24px; }
