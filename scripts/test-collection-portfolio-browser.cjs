@@ -215,12 +215,12 @@ async function checkSheetKeyboard(page, region, testCase, result) {
 async function exercisePortfolio(page, region, testCase, result) {
   await expect(region.getByRole("button", { name: "Overview", exact: true })).toHaveAttribute("aria-pressed", "true");
   await expect(region).toContainText("USD");
-  await expect(region.locator(".collection-portfolio-value")).toHaveText("$100.00");
+  await expect(region.locator(".collection-portfolio-value")).toHaveText("$877.00");
   const grid = region.getByRole("list", { name: "Collection items", exact: true });
-  await expect(grid.locator(".collection-portfolio-item")).toHaveCount(3);
+  await expect(grid.locator(".collection-portfolio-item")).toHaveCount(4);
   await expect(region).not.toContainText("Excluded resale item");
-  await expect(region).not.toContainText("Excluded held item");
-  await expect(region.getByRole("list", { name: "Most valuable items", exact: true }).locator("button")).toHaveCount(2);
+  await expect(grid).toContainText("Excluded held item"); // Historical fixture name; Hold now belongs in Collection.
+  await expect(region.getByRole("list", { name: "Most valuable items", exact: true }).locator("button")).toHaveCount(3);
   result.metrics = await checkGeometry(page, region, testCase);
   const more = region.locator(".everyday-more-menu");
   await more.locator(":scope > summary").click();
@@ -230,18 +230,19 @@ async function exercisePortfolio(page, region, testCase, result) {
   await expect(more).not.toHaveAttribute("open", "");
 
   await region.getByRole("button", { name: "Hide values", exact: true }).click();
-  await expect(region).not.toContainText("$100.00");
+  await expect(region).not.toContainText("$877.00");
+  await expect(region).not.toContainText("$777.00");
   await expect(region).not.toContainText("$50.00");
-  await expect(grid.locator(".collection-portfolio-item-value")).toHaveText(["Value hidden", "Value hidden", "Value hidden"]);
+  await expect(grid.locator(".collection-portfolio-item-value")).toHaveText(["Value hidden", "Value hidden", "Value hidden", "Value hidden"]);
   await region.getByRole("button", { name: "Show values", exact: true }).click();
-  await expect(region.locator(".collection-portfolio-value")).toHaveText("$100.00");
+  await expect(region.locator(".collection-portfolio-value")).toHaveText("$877.00");
   result.hideValuesCoversTotalsGridAndRanking = true;
 
   const search = region.getByRole("searchbox", { name: "Search collection", exact: true });
   await search.fill("aurora");
   await expect(grid.locator("button")).toHaveCount(1);
   await expect(grid).toContainText("Aurora legacy collectible");
-  await expect(region.locator(".collection-portfolio-value")).toHaveText("$100.00");
+  await expect(region.locator(".collection-portfolio-value")).toHaveText("$877.00");
   await search.fill("");
   await region.getByRole("button", { name: "Filter", exact: true }).click();
   const filters = page.getByRole("dialog", { name: "Filter collection", exact: true });
@@ -249,34 +250,52 @@ async function exercisePortfolio(page, region, testCase, result) {
   await filters.getByRole("button", { name: "Close", exact: true }).click();
   await expect(grid.locator("button")).toHaveCount(1);
   await expect(grid).toContainText("Zenith repository collectible");
-  await expect(region.locator(".collection-portfolio-value")).toHaveText("$100.00");
+  await expect(region.locator(".collection-portfolio-value")).toHaveText("$877.00");
   await region.getByRole("button", { name: "Filter", exact: true }).click();
   await filters.getByRole("button", { name: "Clear Filter", exact: true }).click();
-  await expect(grid.locator("button")).toHaveCount(3);
+  await expect(grid.locator("button")).toHaveCount(4);
   await region.getByRole("combobox", { name: "Sort collection", exact: true }).selectOption("value");
-  await expect(grid.locator(".collection-portfolio-item-name")).toHaveText(["Aurora legacy collectible", "Zenith repository collectible", "Unknown estimate collectible"]);
+  await expect(grid.locator(".collection-portfolio-item-name")).toHaveText(["Excluded held item", "Aurora legacy collectible", "Zenith repository collectible", "Unknown estimate collectible"]);
   await region.getByRole("combobox", { name: "Sort collection", exact: true }).selectOption("name");
   await region.getByRole("button", { name: "List", exact: true }).click();
   await expect(grid).toHaveAttribute("data-mode", "list");
   await expect(region.getByRole("button", { name: "List", exact: true })).toHaveAttribute("aria-pressed", "true");
   await grid.getByRole("button", { name: "Open Zenith repository collectible", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Zenith repository collectible", exact: true })).toBeVisible();
+  let product = page.getByTestId("collection-product-detail");
+  await expect(product.getByRole("tab", { name: "Overview", exact: true })).toHaveAttribute("aria-selected", "true");
+  await expect(product).toContainText("QA Zenith Set");
+  await product.getByRole("tab", { name: "Copies", exact: true }).click();
+  await expect(product.getByRole("tab", { name: "Copies", exact: true })).toHaveAttribute("aria-selected", "true");
+  await expect(product).toContainText("Recorded cost");
+  await expect(product).toContainText("$10.00");
+  await product.getByRole("button", { name: "Open copy record 1: Personal collection, quantity 1", exact: true }).click();
   await expect(page.locator(".ops-record-detail")).toContainText("QA Zenith Set");
   await page.getByRole("button", { name: "Back", exact: true }).click();
+  await expect(product.getByRole("tab", { name: "Copies", exact: true })).toHaveAttribute("aria-selected", "true");
+  await product.getByRole("button", { name: "Back to collection", exact: true }).click();
   await expect(region).toBeVisible();
   await expect(grid).toHaveAttribute("data-mode", "list");
   await region.getByRole("button", { name: "Grid", exact: true }).click();
   await expect(grid).toHaveAttribute("data-mode", "grid");
   await region.getByRole("list", { name: "Most valuable items", exact: true }).getByRole("button", { name: "Open Aurora legacy collectible", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Aurora legacy collectible", exact: true })).toBeVisible();
+  product = page.getByTestId("collection-product-detail");
+  await product.getByRole("tab", { name: "Copies", exact: true }).click();
+  await expect(product).toContainText("Qty 2 across 1 purchase record");
+  await expect(product).toContainText("$10.00");
+  await product.getByRole("button", { name: "Open copy record 1: Personal collection, quantity 2", exact: true }).click();
   await expect(page.locator(".ops-record-detail")).toContainText("QA Aurora Set");
   await page.getByRole("button", { name: "Back", exact: true }).click();
+  await expect(product.getByRole("tab", { name: "Copies", exact: true })).toHaveAttribute("aria-selected", "true");
+  await product.getByRole("button", { name: "Back to collection", exact: true }).click();
   await expect(region).toBeVisible();
   result.searchAndConditionKeepTotalSortAndBothLayoutsOpenExactRecords = true;
+  result.productCopiesKeepPerRecordCostAndQuantity = true;
 
   await checkSheetKeyboard(page, region, testCase, result);
   await choosePortfolio(page, region, "All portfolios");
-  await expect(region.locator(".collection-portfolio-value")).toHaveText("$100.00");
+  await expect(region.locator(".collection-portfolio-value")).toHaveText("$877.00");
   await exerciseOrganization(page, region, testCase, result);
   await exerciseHistoryAndExport(page, region, testCase, result);
   if (testCase.width === 320) {
@@ -366,7 +385,7 @@ async function exerciseOrganization(page, region, testCase, result) {
   await choosePortfolio(page, region, "Main");
   await expect(region.getByRole("list", { name: "Collection items", exact: true }).getByRole("button", { name: "Open Zenith repository collectible", exact: true })).toBeVisible();
   await choosePortfolio(page, region, "All portfolios");
-  await expect(region.locator('[data-testid="portfolio-total"]')).toHaveText("$100.00");
+  await expect(region.locator('[data-testid="portfolio-total"]')).toHaveText("$877.00");
   assert.equal((await metadata(page))[privateKey], privateBefore, "Organization never reads or changes another account/workspace's metadata");
   result.createRenameAssignFavoriteOrderRemoveAndReload = true;
   result.unrelatedScopeKept = true;
@@ -385,14 +404,14 @@ async function exerciseHistoryAndExport(page, region, testCase, result) {
   assert.equal(state.snapshots.length, 1);
   const first = state.snapshots[0];
   assert.equal(first.portfolioId, "all");
-  assert.equal(first.total, 100); assert.equal(first.knownCount, 2); assert.equal(first.totalCount, 3); assert.equal(first.quantity, 4);
+  assert.equal(first.total, 877); assert.equal(first.knownCount, 3); assert.equal(first.totalCount, 4); assert.equal(first.quantity, 5);
   assert.ok(Date.parse(first.at) >= started && Date.parse(first.at) <= Date.now() + 1000, "A snapshot records the actual present, not invented historical prices");
   await expect(history).toContainText("No value history yet");
   await history.getByRole("button", { name: "Save value snapshot", exact: true }).click();
   await expect(history.locator("svg[role=img]")).toHaveCount(1);
   state = JSON.parse((await metadata(page))[result.scopeKey]);
   assert.equal(state.snapshots.length, 2);
-  assert.ok(state.snapshots.every(point => point.total === 100 && Date.parse(point.at) >= started), "The curve contains only the two user-saved current totals");
+  assert.ok(state.snapshots.every(point => point.total === 877 && Date.parse(point.at) >= started), "The curve contains only the two user-saved current totals");
   for (const label of ["1D", "7D", "1M", "3M", "6M", "MAX"]) {
     await history.getByRole("button", { name: label, exact: true }).click();
     await expect(history.getByRole("button", { name: label, exact: true })).toHaveAttribute("aria-pressed", "true");
@@ -410,7 +429,7 @@ async function exerciseHistoryAndExport(page, region, testCase, result) {
   const hiddenDownload = page.waitForEvent("download");
   await region.getByRole("button", { name: "Export", exact: true }).click();
   const hiddenCsv = fs.readFileSync(await (await hiddenDownload).path(), "utf8");
-  assert.ok(!hiddenCsv.includes("estimate USD") && !hiddenCsv.includes("50.00") && !hiddenCsv.includes("100.00"), "Hidden-value CSV omits all monetary columns");
+  assert.ok(!hiddenCsv.includes("estimate USD") && !hiddenCsv.includes("50.00") && !hiddenCsv.includes("877.00") && !hiddenCsv.includes("777.00"), "Hidden-value CSV omits all monetary columns");
   assert.ok(hiddenCsv.includes("Aurora legacy collectible") && hiddenCsv.includes("Zenith repository collectible") && hiddenCsv.includes("Unknown estimate collectible"));
   await region.getByRole("button", { name: "Show values", exact: true }).click();
   const downloadPromise = page.waitForEvent("download");
@@ -421,9 +440,9 @@ async function exerciseHistoryAndExport(page, region, testCase, result) {
   assert.ok(csv.includes('"Unit estimate USD"') && csv.includes('"Total estimate USD"'));
   assert.ok(csv.includes('"Aurora legacy collectible","Game not recorded","Supply","QA Aurora Set","2","25","50"'));
   assert.ok(csv.includes('"Zenith repository collectible","Game not recorded","Supply","QA Zenith Set","1","50","50"'));
-  assert.ok(!csv.includes("Excluded resale item") && !csv.includes("Excluded held item"));
+  assert.ok(!csv.includes("Excluded resale item") && csv.includes('"Excluded held item","Game not recorded","Supply","","1","777","777"'));
   await region.getByRole("button", { name: "Overview", exact: true }).click();
-  await expect(region.getByRole("list", { name: "Collection items", exact: true }).locator("button")).toHaveCount(3);
+  await expect(region.getByRole("list", { name: "Collection items", exact: true }).locator("button")).toHaveCount(4);
   result.actualCurrentSnapshotsAccessibleHistoryPeriodsAndCsv = true;
 }
 
@@ -440,8 +459,8 @@ async function variantCase(browser, kind, scopeKey) {
     const before = await recordBytes(page);
     assertSeededRecords(before);
     if (kind === "boot") {
-      await expect(region.locator('[data-testid="portfolio-total"]')).toHaveText("$100.00");
-      await expect(region.getByRole("list", { name: "Collection items", exact: true }).locator("button")).toHaveCount(3);
+      await expect(region.locator('[data-testid="portfolio-total"]')).toHaveText("$877.00");
+      await expect(region.getByRole("list", { name: "Collection items", exact: true }).locator("button")).toHaveCount(4);
     } else if (kind === "free") {
       await expect(region.getByRole("region", { name: "Portfolio value history", exact: true })).toHaveCount(0);
       await region.getByRole("button", { name: "Performance", exact: true }).click();
