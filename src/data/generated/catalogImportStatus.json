@@ -1,21 +1,21 @@
 {
-  "lastImportedAt": "2026-10-27T15:23:53.663Z",
+  "lastImportedAt": "2026-10-28T16:06:32.586Z",
   "source": "tcgcsv-plus-local-seeds",
   "marketPriceSource": "TCGCSV public product/price JSON",
   "tcgcsvCategoryId": 3,
   "tcgcsvGroupsAvailable": 220,
-  "tcgcsvGroupsSynced": 215,
+  "tcgcsvGroupsSynced": 214,
   "catalogProductsImported": 32906,
   "cardsImported": 28177,
   "sealedProductsImported": 4729,
-  "marketPricesImported": 31575,
-  "marketPricesJoinedByProductId": 31575,
+  "marketPricesImported": 31586,
+  "marketPricesJoinedByProductId": 31586,
   "referencePriceJoinCoverage": 1,
   "aliasesImported": 59,
   "productsWithPhotos": 32882,
   "productsMissingPhotos": 24,
-  "productsWithReferencePrices": 31556,
-  "productsMissingReferencePrices": 1350,
+  "productsWithReferencePrices": 31564,
+  "productsMissingReferencePrices": 1342,
   "priceFallbackLabel": "Price data unavailable",
   "imageFallbackLabel": "Code 3 TCG product placeholder",
   "photoSourcePolicy": "Use source image URLs when provided by public catalog data; otherwise render the branded app placeholder.",
@@ -93,11 +93,16 @@
       "groupId": 23095,
       "name": "Ash vs Team Rocket Deck Kit (JP Exclusive)",
       "error": "The group returned empty or malformed product/price data."
+    },
+    {
+      "groupId": 2214,
+      "name": "Kids WB Promos",
+      "error": "The group returned empty or malformed product/price data."
     }
   ],
   "overpassError": "",
   "notes": "Generated from public TCGCSV product/price JSON and cached Virginia store directory data. No retailer scraping and no TCGplayer page scraping. Pricing is reference data, not a live offer.",
   "tcgcsvBuildTimestamp": "",
-  "tcgcsvLatestAvailableBuildTimestamp": "2026-10-26T20:05:56.000Z",
+  "tcgcsvLatestAvailableBuildTimestamp": "2026-10-27T20:05:13.000Z",
   "tcgcsvBuildComplete": false
 }
