@@ -1,6 +1,7 @@
 {
   "name": "code3-tcg",
   "scripts": {
+    "test:discord-retailer-alerts": "node --test scripts/test-discord-retailer-alerts.mjs",
     "prepare:scout-ocr": "node scripts/prepare-scout-ocr.mjs",
     "predev": "npm run prepare:scout-ocr",
     "prebuild": "npm run prepare:scout-ocr",
