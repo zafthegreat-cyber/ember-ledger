@@ -20,6 +20,7 @@ import SmartCatalogSearchBox from "../components/SmartCatalogSearchBox";
 import OverflowMenu from "../components/OverflowMenu";
 import ScoutTileMap from "../components/ScoutTileMap";
 import RestockReportBrowser from "../components/RestockReportBrowser.jsx";
+import CommunityRestockFeed from "../components/CommunityRestockFeed.jsx";
 import RestockReportDetails from "../components/RestockReportDetails.jsx";
 import StoreObservationSummary from "../components/StoreObservationSummary.jsx";
 import ScoutDeleteReportDialog from "../components/ScoutDeleteReportDialog.jsx";
@@ -4573,6 +4574,7 @@ async function handleUpdateStore(e) {
   return (
     <div className={`scout-route-polish ${!compact ? "scout-command-route-v5" : ""}`.trim()}>
       <div className="scout-route-shell">
+        {reportsBrowseMode ? <CommunityRestockFeed onOpenMap={() => { setScoutSubTab("overview"); setScoutOverviewView("map"); }} /> : null}
         {!compact && scoutSubTab === "overview" ? (
           <CommandBoardV4
             accent="scout"
