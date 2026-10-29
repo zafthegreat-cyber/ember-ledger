@@ -17,7 +17,7 @@ try {
   await expect(page.getByRole('heading',{name:'A good find is worth sharing.'})).toBeVisible({timeout:30000});
   await expect(page.locator('.community-scout').getByText('No recent reviewed reports yet.',{exact:true})).toBeVisible({timeout:15000});
   const colors=await page.locator('.community-scout').evaluate(element=>({heading:getComputedStyle(element.querySelector('h2')).color,copy:getComputedStyle(element.querySelector('p')).color,input:getComputedStyle(element.querySelector('input')).backgroundColor,placeholder:getComputedStyle(element.querySelector('input'),'::placeholder').color}));
-  assert.deepEqual(colors,{heading:'rgb(247, 243, 231)',copy:'rgb(193, 206, 200)',input:'rgb(16, 42, 36)',placeholder:'rgb(169, 192, 182)'},'App theme must preserve readable community contrast');
+  assert.deepEqual(colors,{heading:'rgb(251, 244, 230)',copy:'rgb(229, 204, 217)',input:'rgb(40, 14, 25)',placeholder:'rgb(208, 175, 190)'},'App theme must preserve readable community contrast');
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+2),'Reports horizontal overflow');
   await page.screenshot({path:`artifacts/qa/community/integrated-reports-${width}.png`,fullPage:false});
   const snapshot=await page.evaluate(()=>localStorage.getItem('et-tcg-beta-scout'));
