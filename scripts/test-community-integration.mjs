@@ -16,6 +16,10 @@ try {
   await page.goto(new URL('/scout/reports?betaLocalMode=true',base).href);
   await expect(page.getByRole('heading',{name:'A good find is worth sharing.'})).toBeVisible({timeout:30000});
   await expect(page.locator('.community-scout').getByText('No recent reviewed reports yet.',{exact:true})).toBeVisible({timeout:15000});
+  const colors=await page.locator('.community-scout').evaluate(element=>({heading:getComputedStyle(element.querySelector('h2')).color,copy:getComputedStyle(element.querySelector('p')).color,input:getComputedStyle(element.querySelector('input')).backgroundColor,placeholder:getComputedStyle(element.querySelector('input'),'::placeholder').color}));
+  assert.deepEqual(colors,{heading:'rgb(247, 243, 231)',copy:'rgb(193, 206, 200)',input:'rgb(16, 42, 36)',placeholder:'rgb(169, 192, 182)'},'App theme must preserve readable community contrast');
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+2),'Reports horizontal overflow');
+  await page.screenshot({path:`artifacts/qa/community/integrated-reports-${width}.png`,fullPage:false});
   const snapshot=await page.evaluate(()=>localStorage.getItem('et-tcg-beta-scout'));
   await page.locator('.community-scout').getByRole('button',{name:'Release calendar',exact:true}).click();
   await expect(page.locator('.community-scout').getByRole('heading',{name:'Dates from the publishers'})).toBeVisible();

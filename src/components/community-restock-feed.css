@@ -5,3 +5,34 @@
 .community-scout__heading{display:flex;align-items:center;justify-content:space-between;gap:16px;border-top:1px solid var(--community-line);padding-top:22px}.community-scout h3{margin:0;font-size:21px;color:var(--community-ink)}.community-scout__heading p{font-size:13px;margin:7px 0}.community-scout__filters{display:grid;grid-template-columns:minmax(160px,2fr) 1fr 1fr;gap:12px;margin:20px 0}.community-scout__filters label{display:grid;gap:7px;min-width:0}.community-scout__filters label>span{font-size:13px;font-weight:700;color:var(--community-muted)}.community-scout__filters input,.community-scout__filters select{width:100%;min-width:0;min-height:46px;border:1px solid #607a70;border-radius:12px;padding:11px 12px;font:inherit;font-size:15px;background:#102a24;color:var(--community-ink);color-scheme:dark}.community-scout__filters input::placeholder{color:#a9c0b6}
 .community-scout__notice{padding:22px;border:1px dashed #75866b;border-radius:16px;background:#18362c;margin:18px 0!important}.community-scout__notice strong{color:var(--community-ink)}.community-scout__notice a,.community-scout__report a{color:#f0d291;text-underline-offset:4px}.community-scout__list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:18px}.community-scout__report{min-width:0;padding:20px;border:1px solid #4a665a;border-radius:18px;background:#1a392f}.community-scout__report-top{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;color:var(--community-muted);text-transform:capitalize}.community-scout__stock{display:inline-flex;padding:6px 9px;border:1px solid #6f9b74;border-radius:8px;background:#254c37;color:#e3f2dc;font-weight:700}.community-scout__stock--preorder,.community-scout__stock--backorder{background:#493a20;border-color:#a78b54;color:#f8e3b5}.community-scout__stock--empty{background:#2e3b3a;border-color:#768584;color:#e4ebea}.community-scout__product{display:block;margin-top:18px;font-size:12px;color:var(--community-gold)}.community-scout h4{margin:6px 0 12px;font-size:21px;line-height:1.25;color:var(--community-ink);overflow-wrap:anywhere}.community-scout__store{font-size:14px;overflow-wrap:anywhere}.community-scout__report-footer{border-top:1px solid var(--community-line);padding-top:15px;margin-top:18px;display:flex;align-items:start;justify-content:space-between;gap:12px;font-size:12px;line-height:1.5;color:var(--community-muted)}.community-scout__report-footer a{display:inline-flex;min-height:44px;align-items:start;flex:none}.community-scout__footer{display:flex;justify-content:space-between;gap:16px;margin-top:22px;font-size:12px;line-height:1.5;color:var(--community-muted)}.community-scout__more{margin-top:16px}
 @media(max-width:700px){.community-scout__seal{display:none}.community-scout__filters{grid-template-columns:1fr 1fr}.community-scout__filters label:first-child{grid-column:1/-1}.community-scout__list{grid-template-columns:1fr}.community-scout__footer{display:grid;gap:8px}.community-scout__actions a,.community-scout__actions button{flex:1 1 42%;padding:10px;font-size:13px}.community-scout__heading{align-items:start}.community-scout__heading p{max-width:240px}.community-scout__report-footer{display:grid;gap:8px}.community-scout__report-footer a{min-height:44px}}
+
+/* The app's theme uses important global text/control colors. Keep this dark
+   community surface readable in both themes without changing other Scout UI. */
+html body .app.app-command-shell[data-theme] .community-scout :is(h2,h3,h4,strong) {
+  color: var(--community-ink) !important;
+}
+html body .app.app-command-shell[data-theme] .community-scout p {
+  color: var(--community-muted) !important;
+}
+html body .app.app-command-shell[data-theme] .community-scout a {
+  color: #f0d291 !important;
+}
+html body .app.app-command-shell[data-theme] .community-scout :is(.community-scout__actions button,.community-scout__actions a,.community-scout__tabs button,.community-scout__refresh,.community-scout__more) {
+  background: #19372e !important;
+  border-color: #62796c !important;
+  color: var(--community-ink) !important;
+}
+html body .app.app-command-shell[data-theme] .community-scout :is(.community-scout__actions .community-scout__primary,.community-scout__tabs button[aria-pressed=true]) {
+  background: #dfc88f !important;
+  border-color: #dfc88f !important;
+  color: #182b22 !important;
+}
+html body .app.app-command-shell[data-theme] .community-scout__filters :is(input,select) {
+  background: #102a24 !important;
+  border-color: #607a70 !important;
+  color: var(--community-ink) !important;
+}
+html body .app.app-command-shell[data-theme] .community-scout__filters input::placeholder {
+  color: #a9c0b6 !important;
+  opacity: 1;
+}
