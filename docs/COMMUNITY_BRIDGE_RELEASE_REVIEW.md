@@ -22,7 +22,7 @@ The Scout Reports view adds a shared feed of staff-approved Discord observations
 - Full local app checks passed at 390 and 1440 pixels: live gateway → Reports → release dates → existing keyboard-pannable map, without changing saved Scout state or producing page errors.
 - Production build passed. Existing large-chunk and mixed dynamic/static Supabase import warnings remain.
 - New function has no security advisor findings. Existing unrelated project warnings are outside this release.
-- Fresh-browser hosted checks verify the existing sign-in boundary and deployed assets; authenticated production member use is not represented by the local QA bypass.
+- The hosted preview build is ready. Hosted browser verification is pending preview access approval because existing development authentication expired. The Vercel fetch tool can create a temporary share link, so it has not been used. Authenticated production member use is not represented by the local QA bypass.
 
 ## Rollback
 
