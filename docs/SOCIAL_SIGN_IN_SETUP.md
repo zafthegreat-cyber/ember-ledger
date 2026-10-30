@@ -101,7 +101,7 @@ The Android beta workflow reads these two public gates from GitHub repository va
 2. Finish a real website authorization roundtrip, cancellation and expired-link check. Confirm the existing email login, confirmation and recovery flows still work.
 3. Link a provider from an existing ordinary account; prove the same server user ID, collection and workspace permissions remain. Try a different account and confirm records remain isolated. Do not test only with the owner.
 4. On Android and iOS devices, confirm the OS browser opens, the app deep link returns, the signed server session is valid, cancellation is recoverable and duplicate callbacks do not duplicate exchanges. Native web compilation and mocked bridges do not prove physical-device login.
-5. Verify Apple relay-email behavior and Google/Meta public audience restrictions. Keep new-account beta/access checks.
+5. Verify Apple relay-email behavior and Google/Meta public audience restrictions. Keep confirmed-session, explicit account restriction and private workspace checks. Ordinary signup no longer requires beta approval.
 6. Add that provider to the public build gate and deploy a reviewed release. Record the deployed commit and results. Do not claim an unconfigured provider works.
 
 Official setup references: [Google](https://supabase.com/docs/guides/auth/social-sign-in/auth-google), [Apple](https://supabase.com/docs/guides/auth/social-sign-in/auth-apple), [Discord](https://supabase.com/docs/guides/auth/social-sign-in/auth-discord), [Facebook](https://supabase.com/docs/guides/auth/social-sign-in/auth-facebook), [identity linking](https://supabase.com/docs/guides/auth/auth-identity-linking), [Capacitor Browser](https://capacitorjs.com/docs/apis/browser).
