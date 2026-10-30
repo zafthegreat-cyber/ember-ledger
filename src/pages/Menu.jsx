@@ -92,7 +92,7 @@ export default function MenuPage(props) {
   const showCommunity = presentation.showAdminTools || showCommunityExperience === true;
   const preferencesDescription = presentation.isStore ? "Your store workspace, preferences, and privacy." : presentation.isSeller ? "Your selling workspace, preferences, and privacy." : "Your workspace, tuned to the way you collect.";
   const accountLabel = signedInWithSupabase ? "Cloud account" : guestPreviewActive ? "Guest preview" : "Local beta";
-  const accessLabel = betaAccessAllowed() ? "Beta approved" : "Limited preview";
+  const accessLabel = betaAccessAllowed() ? "Ready" : "Guest preview";
   const familyProtectionLabel = /no kids program request/i.test(String(settingsFamilyStatusLabel || ""))
     ? "Parent guard ready"
     : settingsFamilyStatusLabel || "Protected";

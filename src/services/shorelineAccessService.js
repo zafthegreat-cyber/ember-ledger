@@ -256,12 +256,12 @@ export function isMissingRoleManagementBackend(error) {
 
 export function betaInviteClaimErrorMessage(error) {
   const message = String(error?.message || error?.details || error || "").trim();
-  if (!message) return "This invite could not be claimed. Request beta access and we will review it.";
-  if (/different email|email does not match|mismatch/i.test(message)) return "This invite was made for a different email. Log in with the email this invite was sent to, or request beta access.";
-  if (/already.*claimed/i.test(message)) return "This invite has already been claimed. Ask the sender for a new invite or request beta access.";
-  if (/expired/i.test(message)) return "This invite link has expired. You can still request beta access and we will review it.";
-  if (/no longer active|revoked/i.test(message)) return "This invite link is no longer active. You can still request beta access and we will review it.";
-  if (/not valid|invalid|missing/i.test(message)) return "This invite link is not valid. Check the link or request beta access.";
+  if (!message) return "This invite could not be claimed. You can create an account without an invite.";
+  if (/different email|email does not match|mismatch/i.test(message)) return "This invite was made for a different email. Log in with the email this invite was sent to. You can also create an account without an invite.";
+  if (/already.*claimed/i.test(message)) return "This invite has already been claimed. You can create an account without an invite.";
+  if (/expired/i.test(message)) return "This invite link has expired. You can create an account without an invite.";
+  if (/no longer active|revoked/i.test(message)) return "This invite link is no longer active. You can create an account without an invite.";
+  if (/not valid|invalid|missing/i.test(message)) return "This invite link is not valid. You can create an account without an invite.";
   if (/sign in|required|auth/i.test(message)) return "Create or log into your account to claim beta access.";
   return message;
 }

@@ -1,5 +1,7 @@
 import DeferredModalBoundary from "./features/deferredViews/DeferredModalBoundary";
 import SocialSignInButtons, { ConnectedSignIns } from "./features/auth/SocialSignIn.jsx";
+import CommunityWelcome, { MemberAccessNotice } from "./features/auth/CommunityWelcome.jsx";
+import { hasServerAppAccessDecision } from "./features/auth/memberAccess.mjs";
 import { isNativePlatform, getNativeAuthRedirect } from "./native/nativeRuntime.js";
 import { exportFile } from "./native/nativeFiles.js";
 import CloudSyncPanel from "./features/persistence/CloudSyncPanel.jsx";
@@ -425,19 +427,14 @@ import {
   upsertNotificationState,
 } from "./utils/notificationCenterUtils";
 import {
-  ACCOUNT_SETUP_STATE_OPTIONS,
   ACCOUNT_SETUP_TIER_ROWS,
   ACCOUNT_SETUP_USERNAME_RULES,
   ACCOUNT_SETUP_WORKSPACE_ROWS,
   FIRST_TIME_ONBOARDING_CARDS,
   ONBOARDING_PERSISTENCE_NOTE,
   ONBOARDING_WELCOME_COPY,
-  accessStateLabel,
-  betaAccessWaitlistMessage,
   buildOnboardingChecklist,
   getEmptyStateGuidance,
-  isVirginiaAccessState,
-  normalizeAccessState,
   normalizeOnboardingGoalKeys,
   normalizeOnboardingState,
   onboardingChecklistSummary,
@@ -467,7 +464,6 @@ import {
   normalizeLittleSparksStatus,
   revokeAdminBetaInvite,
   statusLabel,
-  submitBetaAccessRequest,
   submitLittleSparksApplication,
   updateAdminBetaAccessProfile,
   updateAdminUserRole,
@@ -10186,7 +10182,7 @@ export default function App() {
       guestPreviewActive,
       activeTabLocked,
     })) {
-      setVaultToast(guestPreviewActive ? "Create an account before posting to Tidepool." : "Tidepool posting is available after beta access is approved.");
+      setVaultToast(guestPreviewActive ? "Create an account before posting to Tidepool." : "Sign in with a verified account to post in Tidepool.");
       return;
     }
     setActiveTab("tidepool");
@@ -10386,7 +10382,7 @@ export default function App() {
     const label = FEATURE_LABELS[featureKey] || featureKey;
     setLockedFeatureKey("");
     openFeedbackDialog("feature", {
-      whatHappened: `Request beta access for ${label}.`,
+      whatHappened: `Suggest improvements for ${label}.`,
       metadata: { featureKey },
     });
   }
@@ -11151,6 +11147,7 @@ export default function App() {
   }
 
   function betaAccessAllowed(profile = currentUserProfile) {
+    if (!BETA_LOCAL_MODE && !actualAdminUser && hasServerAppAccessDecision(profile, user?.id)) return profile.serverAppAccess === true;
     return Boolean(
       BETA_LOCAL_MODE ||
       actualAdminUser ||
@@ -11192,67 +11189,8 @@ export default function App() {
     );
   }
 
-  function updateShorelineBetaField(field, value) {
-    setShorelineBetaForm((current) => {
-      const next = { ...current, [field]: value };
-      if (field === "state" && !isVirginiaAccessState(value)) {
-        next.localAreaAnswer = "";
-      }
-      return next;
-    });
-  }
-
   function updateShorelineSparksField(field, value) {
     setShorelineSparksForm((current) => ({ ...current, [field]: value }));
-  }
-
-  async function handleSubmitShorelineBetaRequest(event) {
-    event.preventDefault();
-    const fullName = String(shorelineBetaForm.fullName || "").trim();
-    const email = String(shorelineBetaForm.email || accountEmail()).trim();
-    const reason = String(shorelineBetaForm.reason || "").trim();
-    const accessState = normalizeAccessState(shorelineBetaForm.state || "");
-    if (!fullName || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setShorelineState((current) => ({ ...current, error: "Add your full name and a valid email before requesting beta access." }));
-      return;
-    }
-    if (!accessState) {
-      setShorelineState((current) => ({ ...current, error: "Choose your state so we know whether to review beta access or add you to the waitlist." }));
-      return;
-    }
-    if (!reason) {
-      setShorelineState((current) => ({ ...current, error: "Tell us briefly why you want beta access." }));
-      return;
-    }
-    if (!shorelineBetaForm.rulesAgreed) {
-      setShorelineState((current) => ({ ...current, error: "Please agree to the community rules and fair-use expectations." }));
-      return;
-    }
-    setShorelineSaving("beta");
-    setShorelineState((current) => ({ ...current, error: "", message: "" }));
-    try {
-      const request = await submitBetaAccessRequest(user, { ...shorelineBetaForm, state: accessState, email, fullName });
-      const accessMessage = isVirginiaAccessState(accessState)
-        ? "Beta access request submitted for review."
-        : betaAccessWaitlistMessage(accessState);
-      setShorelineState((current) => ({ ...current, betaRequest: request, message: accessMessage }));
-      setCurrentUserProfile((current) => ({
-        ...current,
-        betaStatus: request.status,
-        betaAccessStatus: request.status,
-      }));
-      void trackBetaActivity("created_beta_request", {
-        eventContext: "beta_access",
-        entityType: "beta_access_request",
-        entityId: request.id,
-      });
-      setVaultToast(isVirginiaAccessState(accessState) ? "Beta access request submitted." : `${accessStateLabel(accessState)} waitlist request submitted.`);
-    } catch (error) {
-      logAppError("shoreline_beta_submit", error, { userId: user?.id }, "normal");
-      setShorelineState((current) => ({ ...current, error: error.message || "Could not submit beta access request." }));
-    } finally {
-      setShorelineSaving("");
-    }
   }
 
   async function handleSubmitLittleSparksApplication(event) {
@@ -16090,7 +16028,7 @@ export default function App() {
       guestPreviewActive,
       activeTabLocked,
     })) {
-      setVaultToast("Tidepool posting is available after beta access is approved.");
+      setVaultToast("Sign in with a verified account to post in Tidepool.");
       return false;
     }
     const identity = publicIdentityForProfile(currentUserProfile);
@@ -16862,7 +16800,7 @@ export default function App() {
         source: "shoreline",
         kind: "access_pending",
         label: "Beta access",
-        message: "Full app sync waits until beta access is approved.",
+        message: "Cloud saving is waiting for a verified account and profile.",
       });
       return undefined;
     }
@@ -17676,8 +17614,8 @@ export default function App() {
         setAuthTermsAccepted(false);
         setAuthBetaAcknowledged(false);
       }
-      setAuthMessage(authMode === "signup" ? "Account created. Request beta access from the welcome screen." : "Signed in.");
-      setVaultToast(authMode === "signup" ? "Account created. Request beta access from the welcome screen." : "Signed in.");
+      setAuthMessage(authMode === "signup" ? "Account created. Welcome to Code 3 TCG!" : "Signed in.");
+      setVaultToast(authMode === "signup" ? "Account created. Welcome to Code 3 TCG!" : "Signed in.");
     } catch (error) {
       const message = normalizeAuthErrorMessage(error.message);
       setAuthError(message);
@@ -31639,8 +31577,8 @@ function renderForgeBusinessLedgerPanel() {
         loading: false,
         error: "",
         message: betaAccessAllowedForProfile(refreshedProfile)
-          ? "Access approved. Opening Code 3 TCG now."
-          : "Access status checked. Your request is still pending review.",
+          ? "Account verified. Opening Code 3 TCG now."
+          : "We could not confirm account access. Check your sign-in or contact support.",
       }));
     } catch (error) {
       setShorelineState((current) => ({
@@ -31660,7 +31598,7 @@ function renderForgeBusinessLedgerPanel() {
     setBetaInviteClaimState((current) => (
       token
         ? current
-        : { status: "error", message: "", error: "This invite link is not valid. Check the link or request beta access.", result: null }
+        : { status: "error", message: "", error: "This invite link is not valid. You can create an account without an invite.", result: null }
     ));
   }, [activeTab, betaInviteToken]);
 
@@ -31678,7 +31616,7 @@ function renderForgeBusinessLedgerPanel() {
       if (activeTab !== "invite" || !user?.id || user.id === "local-beta" || guestPreviewActive) return;
       const token = String(betaInviteToken || getStoredBetaInviteToken() || "").trim();
       if (!token) {
-        setBetaInviteClaimState({ status: "error", message: "", error: "This invite link is not valid. Check the link or request beta access.", result: null });
+        setBetaInviteClaimState({ status: "error", message: "", error: "This invite link is not valid. You can create an account without an invite.", result: null });
         return;
       }
       if (betaInviteClaimInFlightRef.current === token) return;
@@ -31692,7 +31630,7 @@ function renderForgeBusinessLedgerPanel() {
         storeBetaInviteToken("");
         setBetaInviteClaimState({
           status: "success",
-          message: "Invite claimed. Your beta access is approved.",
+          message: "Invite claimed. Your account is ready.",
           error: "",
           result: claim,
         });
@@ -32726,7 +32664,7 @@ function renderForgeBusinessLedgerPanel() {
       { label: "Check trade fairness", helper: "Compare exact variants with parent-aware warnings.", action: () => { setEmberAssistOpen(false); setActiveTab("inventory"); openTradeCompassFlow({ source: "ember-assist-quick-action-trade-fairness" }); } },
       { label: "Help price listing", helper: "Use fair context; nothing posts or checks out.", action: () => { setEmberAssistOpen(false); setActiveTab("market"); } },
       { label: "Recommend kid-friendly set", helper: "Guided suggestions for safer family collecting.", action: () => { setEmberAssistOpen(false); setActiveTab("kidsProgram"); } },
-      { label: "Join beta / send feedback", helper: "Request a state, shop path, sponsor path, or beta fix.", action: () => { setEmberAssistOpen(false); openPublicBetaFeedback({ page: "Ember Assist", mainReason: "General feedback" }); } },
+      { label: "Share feedback", helper: "Share an idea, report a bug, or ask about a partnership.", action: () => { setEmberAssistOpen(false); openPublicBetaFeedback({ page: "Ember Assist", mainReason: "General feedback" }); } },
       { label: "Report something unsafe", helper: "Send a safety note to review.", action: () => { setEmberAssistOpen(false); openFeedbackDialog("feedback", { page: "Ember Assist", topic: "Safety concern" }); } },
     ];
     const emberAssistRecentHelp = [
@@ -39403,7 +39341,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <span>I agree Code 3 TCG may contact me about partnership opportunities.</span>
             </label>
             <button type="submit">Send sponsor interest</button>
-            <button type="button" className="secondary-button" onClick={() => openPublicBetaFeedback({ page: "Shop Portal", role: "Shop", mainReason: "Shop partnership", interests: ["Shop partnership"] })}>Join beta / request review</button>
+            <button type="button" className="secondary-button" onClick={() => openPublicBetaFeedback({ page: "Shop Portal", role: "Shop", mainReason: "Shop partnership", interests: ["Shop partnership"] })}>Request shop review</button>
           </form>
           <footer className="brand-legal-footer">
             <p>{BRAND_LEGAL_NOTICE}</p>
@@ -45755,7 +45693,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     const body = signedOut
       ? "Create or log into your account to claim beta access."
       : success
-        ? "Your beta access is approved. You can enter Code 3 TCG now."
+        ? "Your account is ready. You can enter Code 3 TCG now."
         : failed
           ? betaInviteClaimState.error
           : "We are checking this one-time invite against the secure beta invite backend.";
@@ -45770,7 +45708,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           {tokenPresent ? (
             <p className="auth-landing-note">Invite links are one-time. Do not post this link publicly.</p>
           ) : (
-            <p className="auth-landing-note">This invite link is missing a token. Request beta access and we will review it.</p>
+            <p className="auth-landing-note">This invite link is missing a token. You can create an account without an invite.</p>
           )}
           {claiming ? <div className="route-loading-card"><span className="route-loading-spinner" aria-hidden="true" />Checking invite...</div> : null}
           {success ? (
@@ -45800,7 +45738,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 Try Again
               </button>
               <button type="button" className="secondary-button auth-choice-button" onClick={() => { setBetaInviteToken(""); storeBetaInviteToken(""); setActiveTab("dashboard"); }}>
-                Request Beta Access
+                Create Account
               </button>
               <button type="button" className="auth-text-button auth-help-link" onClick={() => window.location.assign(`mailto:${SUPPORT_EMAIL}`)}>Need help?</button>
             </div>
@@ -45895,6 +45833,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   }
 
   function renderLiveOnboardingPage({ signedOut = false } = {}) {
+    if (["welcome", "state-check", "waitlist", "permission-needed"].includes(String(onboardingView || "welcome").toLowerCase())) {
+      return <main className="social-callback-screen"><section className="social-callback-card">
+        <h1>Welcome to Code 3 TCG</h1>
+        <p>Create a free account and start collecting. No invitation or beta access request is required.</p>
+        <button type="button" className="secondary-button" onClick={() => { if (signedOut) setAuthMode("signup"); setActiveTab("dashboard"); }}>{signedOut ? "Create free account" : "Start collecting"}</button>
+        <CommunityWelcome onFeedback={signedOut ? undefined : () => openPublicBetaFeedback({ page: "Welcome", mainReason: "General feedback" })} />
+      </section></main>;
+    }
     const normalizedView = String(onboardingView || "welcome").toLowerCase();
     const viewKey = [
       "welcome",
@@ -46129,7 +46075,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 </article>
               ))}
             </div>
-            <button type="button" className="secondary-button" onClick={() => openPublicBetaFeedback({ page: "Onboarding", mainReason: viewKey === "waitlist" ? "Request my state" : "Join waitlist" })}>Join beta / request state</button>
+            <button type="button" className="secondary-button" onClick={() => openPublicBetaFeedback({ page: "Onboarding", mainReason: viewKey === "waitlist" ? "Request my state" : "Join waitlist" })}>Share feedback</button>
           </aside>
         </div>
 
@@ -46296,14 +46242,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     <div className="auth-card-wordmark">{BRAND_CONFIG.applicationDisplayName}</div>
                   </div>
                   <h2>{authMode === "login" ? "Welcome back!" : "Create your account"}</h2>
-                  <p>{authMode === "login" ? "Log in to continue your collection journey." : "Request beta access for your collection journey."}</p>
+                  <p>{authMode === "login" ? "Log in to continue your collection journey." : "Join Code 3 TCG and start your collection journey."}</p>
                 </div>
                 <h3 className="auth-mode-title">{authMode === "login" ? "Log In" : "Create Account"}</h3>
                 <SocialSignInButtons />
                 {authMode === "signup" ? (
-                  <p className="compact-subtitle">Create your account first. New accounts may need beta approval before full app access.</p>
+                  <p className="compact-subtitle">Create a free account. Confirm your email, then start exploring.</p>
                 ) : (
-                  <p className="compact-subtitle">Use your approved {BRAND_CONFIG.applicationDisplayName} account to continue.</p>
+                  <p className="compact-subtitle">Use your {BRAND_CONFIG.applicationDisplayName} account to continue.</p>
                 )}
                 <form onSubmit={handleAuth} className="form auth-form" noValidate>
                   {authMode === "signup" ? (
@@ -46358,7 +46304,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   {authMessage ? <p className="auth-status-message success" role="status">{authMessage}</p> : null}
                   <button type="submit" disabled={authLoading || !isSupabaseConfigured}>{authLoading ? "Working..." : authMode === "login" ? "Log In" : "Create Account"}</button>
                 </form>
-                <p className="auth-beta-note">New accounts may require approval before private records are available.</p>
+                <p className="auth-beta-note">Anyone can create an account. Your collection and workspace records stay private.</p>
                 <div className="auth-link-stack" aria-label="Account options">
                   {authMode === "login" ? (
                     <>
@@ -46377,7 +46323,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                           setAuthBetaAcknowledged(false);
                         }}
                       >
-                        Request Beta Access
+                        Create Account
                       </button>
                       <button type="button" className="auth-text-button" onClick={() => window.location.assign(`mailto:${SUPPORT_EMAIL}`)}>
                         Need help?
@@ -46413,6 +46359,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     </>
                   )}
                 </div>
+                <CommunityWelcome compact />
               </>
             )}
             </div>
@@ -46424,144 +46371,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
     );
   }
 
-  function renderShorelineAccessGate() {
-    const betaStatus = normalizeBetaStatus(shorelineState.betaRequest?.status || currentUserProfile?.betaStatus || currentUserProfile?.betaAccessStatus);
+  function renderLittleSparksApplicationForm() {
     const sparksStatus = littleSparksStatus();
-    const accessStatusUpdatedAt = shorelineState.betaRequest?.updatedAt || shorelineState.betaRequest?.createdAt || currentUserProfile?.updatedAt;
-    const selectedAccessState = normalizeAccessState(shorelineBetaForm.state || "VA") || "VA";
-    const selectedAccessIsVirginia = isVirginiaAccessState(selectedAccessState);
-    const accessHeadline = betaStatus === "waitlist"
-      ? "You are on the state waitlist."
-      : betaStatus === "approved"
-        ? "Your beta access is approved."
-        : betaStatus === "not_requested"
-          ? "Set up your Code 3 TCG access."
-          : "Your access request is pending.";
-    const accessIntroCopy = betaStatus === "waitlist"
-      ? "Code 3 TCG is starting in Virginia. Your state waitlist request helps us decide where to expand next."
-      : "We review beta access to keep the community safe and family-friendly.";
     return (
-      <div className={`app app-shoreline-access app-theme-${resolvedAppTheme}`} data-theme={resolvedAppTheme}>
-        <main className="main shoreline-access-main">
-          <section className="shoreline-hero glass-panel">
-            <div className="shoreline-brand-mark" aria-hidden="true">
-              <span>Code 3 TCG</span>
-            </div>
-            <div>
-              <p className="section-kicker">Beta access</p>
-              <h1>{accessHeadline}</h1>
-              <p>{accessIntroCopy}</p>
-              <p className="compact-subtitle">Once approved, your full app access will unlock after you refresh or sign in again.</p>
-              <div className="shoreline-action-row">
-                <button type="button" className="ember-gradient-button" onClick={() => void refreshShorelineAccessStatus()} disabled={shorelineState.loading}>
-                  {shorelineState.loading ? "Checking..." : "Check Again"}
-                </button>
-                <button type="button" className="secondary-button" onClick={() => window.location.assign(`mailto:${SUPPORT_EMAIL}`)}>Contact Support</button>
-                <button type="button" className="secondary-button" onClick={signOut}>Back to Login</button>
-              </div>
-            </div>
-            <div className="shoreline-status-grid" aria-label="Access status">
-              <article className="glass-card compact-card">
-                <span className={`status-badge ${betaStatus}`}>{statusLabel(betaStatus)}</span>
-                <strong>Beta access</strong>
-                <small>{accessStatusUpdatedAt ? `Updated ${shortDate(accessStatusUpdatedAt)}` : "Waiting for review"}</small>
-              </article>
-              <article className="glass-card compact-card">
-                <span className={`status-badge ${sparksStatus}`}>{statusLabel(sparksStatus)}</span>
-                <strong>Little Sparks</strong>
-                <small>{shorelineState.littleSparksApplication?.updatedAt ? `Updated ${shortDate(shorelineState.littleSparksApplication.updatedAt)}` : "No application yet"}</small>
-              </article>
-            </div>
-          </section>
-
-          {shorelineState.loading ? <div className="glass-card shoreline-message">Loading access status...</div> : null}
-          {shorelineState.message ? <div className="glass-card shoreline-message" role="status">{shorelineState.message}</div> : null}
-          {shorelineState.error ? <div className="glass-card shoreline-message shoreline-error" role="alert">{shorelineState.error}</div> : null}
-
-          <section className="shoreline-access-note-grid" aria-label="Account setup guidance">
-            <article className="shoreline-access-note glass-card">
-              <span className="status-badge">Virginia first</span>
-              <strong>Current beta access is VA-only.</strong>
-              <p>Out-of-state families and collectors can join the waitlist. We use state demand to decide which states to add next.</p>
-            </article>
-            <article className="shoreline-access-note glass-card">
-              <span className="status-badge">Safe identity</span>
-              <strong>Usernames protect private details.</strong>
-              <p>Public usernames can appear in Marketplace, Tidepool, Scout, and confirmations. Official Code 3 TCG names stay reserved.</p>
-            </article>
-            <article className="shoreline-access-note glass-card">
-              <span className="status-badge">Setup paths</span>
-              <strong>Free, Plus, Family, Pro / Seller, reviewed Shop Partner, Beta, and Admin are clearly separated.</strong>
-              <p>Beta and Admin are protected access statuses. Checkout and self-serve upgrades are not live in this flow.</p>
-            </article>
-          </section>
-
-          {renderAccountSetupOverviewCard({ compact: true })}
-
-          <section className="shoreline-form-grid">
-            <form className="shoreline-form glass-card" onSubmit={handleSubmitShorelineBetaRequest}>
-              <div className="compact-card-header">
-                <div>
-                  <p className="section-kicker">Beta access</p>
-                  <h2>Request full app access</h2>
-                </div>
-                <span className={`status-badge ${betaStatus}`}>{statusLabel(betaStatus)}</span>
-              </div>
-              <label>Full name<input value={shorelineBetaForm.fullName} onChange={(event) => updateShorelineBetaField("fullName", event.target.value)} /></label>
-              <label>Email<input type="email" value={shorelineBetaForm.email} onChange={(event) => updateShorelineBetaField("email", event.target.value)} /></label>
-              <label>State
-                <select value={shorelineBetaForm.state || "VA"} onChange={(event) => updateShorelineBetaField("state", event.target.value)}>
-                  {ACCOUNT_SETUP_STATE_OPTIONS.map((state) => (
-                    <option key={state.value} value={state.value}>{state.label}</option>
-                  ))}
-                </select>
-              </label>
-              <div className={selectedAccessIsVirginia ? "shoreline-state-note" : "shoreline-state-note waitlist"}>
-                <strong>{selectedAccessIsVirginia ? "Virginia beta review" : `${accessStateLabel(selectedAccessState)} waitlist`}</strong>
-                <span>{selectedAccessIsVirginia ? "Virginia requests can be reviewed for beta access." : betaAccessWaitlistMessage(selectedAccessState)}</span>
-              </div>
-              <label>City / area (no exact address)<input value={shorelineBetaForm.cityArea} onChange={(event) => updateShorelineBetaField("cityArea", event.target.value)} placeholder="Hampton Roads, Fredericksburg, or your city" /></label>
-              <label>Starting path
-                <select value={shorelineBetaForm.tierInterest || "free"} onChange={(event) => updateShorelineBetaField("tierInterest", event.target.value)}>
-                  {ACCOUNT_SETUP_TIER_ROWS.map((tier) => (
-                    <option key={tier.key} value={tier.key}>{tier.label} - {tier.status}</option>
-                  ))}
-                </select>
-              </label>
-              <label>Collector type
-                <select value={shorelineBetaForm.collectorType} onChange={(event) => updateShorelineBetaField("collectorType", event.target.value)}>
-                  <option value="parent_family">Parent / family</option>
-                  <option value="kid_collector">Kid collector</option>
-                  <option value="casual_collector">Casual collector</option>
-                  <option value="seller">Seller</option>
-                  <option value="local_shop">Local shop</option>
-                  <option value="other">Other</option>
-                </select>
-              </label>
-              <label>Why do you want beta access?<textarea value={shorelineBetaForm.reason} onChange={(event) => updateShorelineBetaField("reason", event.target.value)} /></label>
-              {selectedAccessIsVirginia ? (
-                <label>Virginia area
-                  <select value={shorelineBetaForm.localAreaAnswer} onChange={(event) => updateShorelineBetaField("localAreaAnswer", event.target.value)}>
-                    <option value="">Choose one</option>
-                    <option value="hampton_roads">Hampton Roads</option>
-                    <option value="fredericksburg">Fredericksburg</option>
-                    <option value="virginia">Other Virginia</option>
-                  </select>
-                </label>
-              ) : null}
-              <label>Optional social handle<input value={shorelineBetaForm.socialHandle} onChange={(event) => updateShorelineBetaField("socialHandle", event.target.value)} /></label>
-              <label className="checkbox-row">
-                <input type="checkbox" checked={shorelineBetaForm.rulesAgreed} onChange={(event) => updateShorelineBetaField("rulesAgreed", event.target.checked)} />
-                <span>I agree to the community rules and fair-use expectations.</span>
-              </label>
-              <button type="submit" className="ember-gradient-button" disabled={shorelineSaving === "beta"}>{shorelineSaving === "beta" ? "Submitting..." : selectedAccessIsVirginia ? "Request Beta Access" : "Join State Waitlist"}</button>
-            </form>
-
             <form className="shoreline-form glass-card" onSubmit={handleSubmitLittleSparksApplication}>
               <div className="compact-card-header">
                 <div>
                   <p className="section-kicker">Little Sparks</p>
-                  <h2>Apply for Kids Program access</h2>
+                  <h2>Little Sparks family program</h2><p>Optional program application. Your Code 3 account does not need this approval.</p>
                 </div>
                 <span className={`status-badge ${sparksStatus}`}>{statusLabel(sparksStatus)}</span>
               </div>
@@ -46585,11 +46402,14 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               ))}
               <button type="submit" className="tide-gradient-button" disabled={shorelineSaving === "sparks"}>{shorelineSaving === "sparks" ? "Submitting..." : "Apply for Little Sparks"}</button>
             </form>
-          </section>
-        </main>
-        {renderToastViewport()}
-        {renderConfirmationModal()}
+    );
+  }
 
+  function renderShorelineAccessGate() {
+    const restricted = [currentUserProfile?.betaStatus, currentUserProfile?.betaAccessStatus].some(status => ["denied", "suspended", "disabled", "blocked"].includes(String(status || "").toLowerCase()));
+    return <>
+      <MemberAccessNotice checking={shorelineState.loading || !currentProfileLoadedForUser()} restricted={restricted}
+        onRetry={() => void refreshShorelineAccessStatus()} onSignOut={signOut} />
         {watchCalendarView === "month" ? (
           <div className="watch-month-panel">
             <div className="watch-month-toolbar">
@@ -46642,12 +46462,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </div>
           </div>
         ) : null}
-      </div>
-    );
+    </>;
   }
-
-
-
 
   function renderTodaysTideCommandCenter() {
     return <LazyToolBoundary label="Loading view…">
@@ -46932,7 +46748,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
       { label: "Setup", value: setupLabel },
       { label: "Scout", value: `${scoutGuessPoints} points` },
       { label: "Workspace", value: activeWorkspace?.name || "Personal" },
-      { label: "Access", value: betaAccessAllowed() ? "Beta approved" : "Limited" },
+      { label: "Access", value: betaAccessAllowed() ? "Ready" : "Check account" },
     ];
     return (
       <section className={`drawer-info-card settings-profile-summary-card utility-card${compact ? "" : " utility-card-wide"}`}>
@@ -47132,7 +46948,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
   function renderAccountPage() {
     return renderUtilityPageShell({
       title: "Account",
-      subtitle: "Sign in, account status, private beta access, and security actions.",
+      subtitle: "Sign in, account status, feedback, and security actions.",
       className: "account-utility-page",
       children: (
         <>
@@ -47180,8 +46996,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             ) : (
               <form className="drawer-info-card utility-card" onSubmit={handleAuth} noValidate>
                 <SocialSignInButtons />
-                <strong>{authMode === "login" ? "Log in" : "Create Account / Request Beta Access"}</strong>
-                <p className="compact-subtitle">New accounts may need approval before full app access.</p>
+                <strong>{authMode === "login" ? "Log in" : "Create Account"}</strong>
+                <p className="compact-subtitle">Create a free account and confirm your email to get started.</p>
                 {!isSupabaseConfigured ? <p className="compact-subtitle danger-text">Supabase anon auth is not configured in this frontend.</p> : null}
                 {authMode === "signup" ? (
                   <>
@@ -47202,7 +47018,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                 {authMessage ? <p className="auth-status-message success" role="status">{authMessage}</p> : null}
                 {authMode === "login" ? <button type="button" className="auth-text-button drawer-auth-link" onClick={openPasswordResetRequest}>Forgot password?</button> : null}
                 <div className="drawer-inline-actions">
-                  <button type="submit" className="drawer-link" disabled={authLoading || !isSupabaseConfigured}>{authLoading ? "Working..." : authMode === "login" ? "Log In" : "Create Account / Request Beta Access"}</button>
+                  <button type="submit" className="drawer-link" disabled={authLoading || !isSupabaseConfigured}>{authLoading ? "Working..." : authMode === "login" ? "Log In" : "Create Account"}</button>
                   <button type="button" className="drawer-link" onClick={() => { setAuthError(""); setAuthMessage(""); setAuthMode(authMode === "login" ? "signup" : "login"); }}>{authMode === "login" ? "Create Account" : "Use Login"}</button>
                 </div>
               </form>
@@ -47211,7 +47027,9 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div className="drawer-info-card utility-card">
               <strong>{actualAdminUser ? "Signed in with admin role" : "Signed in"}</strong>
               <p className="compact-subtitle">Supabase session is active. Log out only clears the account session; it does not erase private beta records on this device.</p>
+              <details><summary>Little Sparks family program (optional)</summary>{shorelineState.error && <p role="alert">{shorelineState.error}</p>}{shorelineState.message && <p role="status">{shorelineState.message}</p>}{renderLittleSparksApplicationForm()}</details>
               <ConnectedSignIns user={user} />
+              <CommunityWelcome onFeedback={() => openPublicBetaFeedback({ page: "Account", mainReason: "General feedback" })} />
               {passwordResetError ? <p className="auth-status-message error" role="alert">{passwordResetError}</p> : null}
               {passwordResetMessage ? <p className="auth-status-message success" role="status">{passwordResetMessage}</p> : null}
               <button type="button" className="drawer-link" disabled={passwordResetLoading || !isSupabaseConfigured} onClick={handleSignedInPasswordReset}>{passwordResetLoading ? "Sending..." : "Send Password Reset Email"}</button>
@@ -47554,7 +47372,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             </div>
             <dl className="drawer-status-list">
               <div><dt>Build</dt><dd>{PUBLIC_APP_VERSION_LABEL}</dd></div>
-              <div><dt>Beta access</dt><dd>{betaAccessAllowed() ? "Approved beta" : "Pending or limited"}</dd></div>
+              <div><dt>Beta access</dt><dd>{betaAccessAllowed() ? "Ready" : "Check account"}</dd></div>
               <div><dt>Support path</dt><dd>{BETA_FEEDBACK_TYPES.slice(0, 4).join(", ")}</dd></div>
             </dl>
             {renderAppBuildDetails()}
@@ -51476,6 +51294,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         {!activeTabLocked && activeTab === "onboarding" && renderLiveOnboardingPage()}
         {!activeTabLocked && activeTab === "betaReadiness" && adminToolsVisible && renderBetaReadinessPanel()}
         {!activeTabLocked && activeTab === "dailyTide" && renderTodaysTideCommandCenter()}
+        {!activeTabLocked && ["dashboard", "workspaceHome"].includes(activeTab) && <CommunityWelcome onFeedback={() => openPublicBetaFeedback({ page: "Welcome", mainReason: "General feedback" })} />}
         {!activeTabLocked && activeTab === "dashboard" && (
           <LazyToolBoundary label="Loading Home...">
             <OperationsHomePage {...hearthPageProps} onOpenBusiness={(view) => { prepareRouteNavigation(); setBusinessWorkspaceView(view); setActiveTab("businessWorkspace"); }} />

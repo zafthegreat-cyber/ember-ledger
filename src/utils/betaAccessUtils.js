@@ -47,6 +47,9 @@ export function betaAccessStatusForProfile(profile = {}) {
 }
 
 export function betaAccessAllowedForProfile(profile = {}) {
+  if (profile.serverAppAccessCheckedFor && profile.serverAppAccessCheckedFor === (profile.userId || profile.id)) {
+    return profile.serverAppAccess === true;
+  }
   return Boolean(
     profile.appAccess ||
     profile.app_access ||

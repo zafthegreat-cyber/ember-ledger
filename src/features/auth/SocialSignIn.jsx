@@ -37,7 +37,7 @@ export default function SocialSignInButtons({ loadProviders = availableSocialPro
   return <section className="social-sign-in" aria-label="Sign in with another account" aria-busy={Boolean(busy)}>
     <SocialButtons providers={providers} busy={busy} onChoose={choose} />
     {error && <p className="auth-status-message error" role="alert">{error}</p>}
-    <p className="social-sign-in-note">New here? Continuing creates an account if needed. You agree to our <a href="/terms" target="_blank" rel="noreferrer">Terms</a> and <a href="/privacy" target="_blank" rel="noreferrer">Privacy Policy</a>. Beta approval still applies.</p>
+    <p className="social-sign-in-note">New here? Continuing creates an account if needed. You agree to our <a href="/terms" target="_blank" rel="noreferrer">Terms</a> and <a href="/privacy" target="_blank" rel="noreferrer">Privacy Policy</a>.</p>
     <p className="social-sign-in-note">Already have a collection? Use your existing sign-in first, then open Account → Ways to sign in to connect another method. This keeps your saved records with the same account.</p>
     <div className="social-sign-in-divider"><span>or use email</span></div>
   </section>;

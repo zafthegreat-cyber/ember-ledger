@@ -267,7 +267,7 @@ export default function MenuDrawerContent({ scope }) {
               <button type="button" className="secondary-button drawer-close-button" aria-label="Close menu" onClick={() => setMenuOpen(false)}><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 6 12 12M18 6 6 18" /></svg></button>
             </div>
             <MenuNavigation sections={menuCommandSections} NavIcon={AppNavIcon} isItemActive={isMenuItemActive} onSelect={openMenuItem} onAdd={() => openAddActionSheet("menu")} modeLabel={experiencePresentation?.personaLabel || adaptiveUiState.modeLabel} experiencePresentation={experiencePresentation} workspaces={switcherWorkspaces} currentWorkspaceId={menuCurrentWorkspaceId} onSelectWorkspace={workspace => runMenuAction(() => navigateProductWorkspace(workspace.id))}>
-              {renderMenuPullDown("account", "Account", "App version, sign-in, private beta status, and account actions", (
+              {renderMenuPullDown("account", "Account", "App version, sign-in, and account actions", (
                 <div className="drawer-links">
                   <div className="drawer-info-card account-status-card">
                     <div>
@@ -1257,7 +1257,7 @@ export default function MenuDrawerContent({ scope }) {
                     <p className="compact-subtitle">Hearth, Market Watch, Tidepool Community, Tide Score, Fair Price Badges, and future roadmap names live with Known Limitations.</p>
                     <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("knownLimitations"))}>Open Glossary</button>
                   </div>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openPublicBetaFeedback({ page: "More Feedback", mainReason: "General feedback" }))}>Join Beta / Request State</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openPublicBetaFeedback({ page: "More Feedback", mainReason: "General feedback" }))}>Share feedback</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("feedback"))}>Tester Notes</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("bug"))}>Report a Bug</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("feature"))}>Request a Feature</button>
