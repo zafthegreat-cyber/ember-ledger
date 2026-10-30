@@ -66,6 +66,8 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+          VITE_AUTH_VERIFIED_PROVIDERS: ${{ vars.VITE_AUTH_VERIFIED_PROVIDERS }}
+          VITE_AUTH_ACCOUNT_LINKING_VERIFIED: ${{ vars.VITE_AUTH_ACCOUNT_LINKING_VERIFIED }}
       - run: npx cap sync android
       - run: chmod +x android/gradlew && cd android && ./gradlew assembleDebug testDebugUnitTest
       - name: Record debug artifact identity and upgrade limits

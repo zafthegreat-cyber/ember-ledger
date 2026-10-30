@@ -1002,6 +1002,7 @@ export default function MenuDrawerContent({ scope }) {
                     <div className="drawer-info-card">
                       <strong>Account Security</strong>
                       <p className="compact-subtitle">Send a secure email link to set or reset your Code 3 TCG password. Some account security actions require it.</p>
+                      <button type="button" className="drawer-link" onClick={() => openUtilityPage("account")}>Ways to sign in</button>
                       {passwordResetError ? <p className="auth-status-message error" role="alert">{passwordResetError}</p> : null}
                       {passwordResetMessage ? <p className="auth-status-message success" role="status">{passwordResetMessage}</p> : null}
                       <button type="button" className="drawer-link" disabled={passwordResetLoading || !isSupabaseConfigured} onClick={handleSignedInPasswordReset}>

@@ -1,5 +1,5 @@
 import DeferredModalBoundary from "./features/deferredViews/DeferredModalBoundary";
-import SocialSignInButtons from "./features/auth/SocialSignIn.jsx";
+import SocialSignInButtons, { ConnectedSignIns } from "./features/auth/SocialSignIn.jsx";
 import { isNativePlatform, getNativeAuthRedirect } from "./native/nativeRuntime.js";
 import { exportFile } from "./native/nativeFiles.js";
 import CloudSyncPanel from "./features/persistence/CloudSyncPanel.jsx";
@@ -47211,6 +47211,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             <div className="drawer-info-card utility-card">
               <strong>{actualAdminUser ? "Signed in with admin role" : "Signed in"}</strong>
               <p className="compact-subtitle">Supabase session is active. Log out only clears the account session; it does not erase private beta records on this device.</p>
+              <ConnectedSignIns user={user} />
               {passwordResetError ? <p className="auth-status-message error" role="alert">{passwordResetError}</p> : null}
               {passwordResetMessage ? <p className="auth-status-message success" role="status">{passwordResetMessage}</p> : null}
               <button type="button" className="drawer-link" disabled={passwordResetLoading || !isSupabaseConfigured} onClick={handleSignedInPasswordReset}>{passwordResetLoading ? "Sending..." : "Send Password Reset Email"}</button>

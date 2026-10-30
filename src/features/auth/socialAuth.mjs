@@ -45,7 +45,7 @@ export function checkedProviderUrl(value, provider, projectUrl) {
   const destinations = {
     google: url.hostname === "accounts.google.com" && /^\/o\/oauth2\/(?:v2\/)?auth$/.test(url.pathname),
     apple: url.hostname === "appleid.apple.com" && url.pathname === "/auth/authorize",
-    discord: url.hostname === "discord.com" && url.pathname === "/oauth2/authorize",
+    discord: url.hostname === "discord.com" && /^\/(?:api\/)?oauth2\/authorize$/.test(url.pathname),
     facebook: ["www.facebook.com", "facebook.com"].includes(url.hostname) && /^\/(?:v[0-9.]+\/)?dialog\/oauth$/.test(url.pathname),
   };
   if (!supabase && !destinations[provider]) throw failure();

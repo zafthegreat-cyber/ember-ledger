@@ -1,6 +1,6 @@
 # Social sign-in release review
 
-Prepared October 30, 2026. **Implementation prepared; production activation pending.**
+Prepared October 30, 2026. **Discord provider configured; live acceptance and production activation pending.**
 
 ## Behavior
 
@@ -23,7 +23,7 @@ No database migration, auth-provider activation, RLS change, new user account, p
 
 ## Verification
 
-- 28 social-auth/service and rendered-component tests pass, including a real SDK S256 challenge, no UI for unconfigured providers, duplicate-click handling, callback writer gating, cancelled consent, revoked sessions, identity mismatch, same-account linking and replay after sign-out.
+- 29 social-auth/service and rendered-component tests pass, including a real SDK S256 challenge, Discord's two exact authorization paths, no UI for unconfigured providers, duplicate-click handling, callback writer gating, cancelled consent, revoked sessions, identity mismatch, same-account linking and replay after sign-out.
 - 25 native runtime scenarios pass with mocked OS bridges, including verified social callbacks and preserved recovery behavior.
 - 38 existing account-session checks pass; 20 cloud workspace/sync ownership scenarios pass. Existing native business-export checks also pass.
 - Full source lint passes with zero errors and the existing `App.jsx` `checkUser` effect-dependency warning. The new files and other changed components have clean targeted lint.
@@ -31,6 +31,14 @@ No database migration, auth-provider activation, RLS change, new user account, p
 - Rendered-component tests use a DOM fixture, not a live browser authorization. Interactive browser verification stopped because Computer Use could not confidently determine the browser URL. No real provider roundtrip, provider secret configuration, ordinary-account linking against production, Apple relay-email acceptance or physical-device callback is claimed.
 
 The old application checkout and the completed Discord community bridge are preserved. Best Buy stays paused.
+
+## Discord activation preparation, October 30
+
+The owner saved the Discord OAuth credentials in Supabase Auth and confirmed adding the production website, native OAuth deep link and temporary local test return URLs, plus manual identity linking. Public provider settings confirm Discord enabled while Google, Apple and Facebook remain disabled. Authorization redirects use application `1563636539370639420`, the Code 3 Supabase callback and only identity/email access. No provider credential was copied into the repository or frontend.
+
+The private live canary runs the actual app and auth service with a development-only proof collector. It records outcome flags and per-run salted account hashes, never credentials, authorization codes or tokens. The first live attempt reached Discord but displayed **Invalid OAuth2 redirect_uri**. The owner must save `https://gxsfququorfczvhrkudl.supabase.co/auth/v1/callback` in that Discord application's OAuth2 Redirects before the roundtrip can finish. Supabase's application-return allowlist is a separate setting.
+
+The Account page now exposes the existing verified connection component; Settings → Account Security links there. A usable native web bundle builds with Discord and the linking gate, and Android/iOS sync register Browser `8.0.5`. Native build receipts report the included provider gates, and the Android workflow reads their public repository variables. No APK, signed archive or physical-device authorization has been produced by these checks. Production gates remain off pending real authorization and same-account acceptance.
 
 ## Remaining activation
 

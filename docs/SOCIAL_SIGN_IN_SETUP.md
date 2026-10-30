@@ -40,7 +40,7 @@ Apple enrollment, verification, contractual acceptance and any membership paymen
 
 ## Existing-account linking
 
-Enable Supabase's manual identity linking only as a reviewed production authentication change. Set the frontend linking gate only after testing it. Existing users sign in with their current method, open Settings → Cloud saving → Ways to sign in, and choose a provider to connect. Supabase verifies the provider identity; the app verifies the signed user and current server session before and after the exchange. The resulting user ID must match the original account. A different ID fails without adopting that session or moving records.
+Enable Supabase's manual identity linking only as a reviewed production authentication change. Set the frontend linking gate only after testing it. Existing users sign in with their current method, open Account → Ways to sign in, and choose a provider to connect. Settings → Account Security also links to this page. Supabase verifies the provider identity; the app verifies the signed user and current server session before and after the exchange. The resulting user ID must match the original account. A different ID fails without adopting that session or moving records.
 
 Supabase also has its own verified-email identity-linking rules. The app never merges records based on an email field entered in the browser. Apple relay addresses or a different provider email must use the signed-in connection flow to preserve the original account.
 
@@ -56,6 +56,8 @@ VITE_AUTH_ACCOUNT_LINKING_VERIFIED=false
 After live acceptance, add only the verified provider IDs (for example `google,discord`). A provider button also requires the live Supabase settings endpoint to report that provider enabled. A missing setting, failed lookup or unverified provider yields no working button. Public provider settings are never used to authorize access to records.
 
 For native releases, include the same public gates in the native build configuration, then rebuild and sync Capacitor. Browser plugin `8.0.5` is pinned; both Android Gradle and iOS Swift Package Manager registrations are included. The existing encrypted native session storage and deep-link origin checks remain in place.
+
+The Android beta workflow reads these two public gates from GitHub repository variables alongside its existing public Supabase configuration. Local native builds read them from `.env.native.local` or the process environment. The native build receipt records the included provider IDs and linking gate. Smoke bundles force both gates off and must not be distributed for sign-in testing. Native app binaries installed before this release need an update; a website deployment alone does not replace their bundled code.
 
 ## Acceptance before each provider is advertised
 

@@ -70,6 +70,10 @@ test("provider navigation cannot send OAuth data to arbitrary URLs", () => {
   assert.ok(checkedProviderUrl("https://accounts.google.com/o/oauth2/v2/auth?client_id=public", "google", project));
   for (const value of ["https://accounts.google.com.evil.test/o/oauth2/v2/auth", "javascript:alert(1)", "https://user:pass@accounts.google.com/o/oauth2/v2/auth", "https://discord.com/oauth2/authorize"]) assert.throws(() => checkedProviderUrl(value, "google", project));
 });
+test("Supabase Discord authorization accepts the documented API path without permitting other API routes", () => {
+  for (const path of ["/oauth2/authorize", "/api/oauth2/authorize"]) assert.ok(checkedProviderUrl(`https://discord.com${path}?client_id=1563636539370639420`, "discord", project));
+  for (const path of ["/api/users/@me", "/api/oauth2/token", "/api/oauth2/authorize/extra"]) assert.throws(() => checkedProviderUrl(`https://discord.com${path}`, "discord", project));
+});
 test("all four options start with fixed callbacks and no application/bot permissions", async () => {
   for (const provider of SOCIAL_PROVIDERS) {
     const f = fixture(); await f.service.start(provider.id);
