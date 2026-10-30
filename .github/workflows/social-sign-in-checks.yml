@@ -1,0 +1,34 @@
+name: Social sign-in checks
+on:
+  pull_request:
+    paths:
+      - .github/workflows/social-sign-in-checks.yml
+      - src/features/auth/**
+      - src/supabaseClient.js
+      - src/native/**
+      - src/main.jsx
+      - scripts/test-social-sign-in*.mjs
+      - package.json
+      - package-lock.json
+  push:
+    branches:
+      - codex/social-login-20261030
+permissions:
+  contents: read
+jobs:
+  auth-behavior:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run test:social-sign-in
+      - run: npm run test:native
+      - run: npm run test:account-sessions
+      - run: npm run test:cloud-workspace-sync
+      - run: npm exec -- eslint src/features/auth src/supabaseClient.js src/native/NativeBridge.jsx src/native/nativeLifecycle.js src/native/nativeRuntime.js src/main.jsx
+      - run: npm run build
