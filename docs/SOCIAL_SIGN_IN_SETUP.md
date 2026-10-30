@@ -32,11 +32,47 @@ Provider client secrets belong only in **Supabase Authentication → Sign In / P
 | Discord | Existing Code 3 TCG Community application `1563636539370639420`, or a separate approved sign-in application; OAuth2 redirect above; OAuth client secret | `identify email`; no bot, guild, friends or messaging scopes |
 | Facebook | Meta developer application with Facebook Login; exact callback; app domain, privacy/deletion information; email permission and appropriate live/test mode | Public profile and email; no posts, friends or groups |
 
-A dedicated Google project creation was submitted with ID `code3tcg-signin-20261030`. Its final console readback was interrupted by a browser-tool change. Check whether it exists before creating another project. No OAuth client or secret was created in that operation.
+A dedicated Google project creation was previously submitted with ID `code3tcg-signin-20261030`. The later console readback under the Code 3 owner Google account reports missing project access, and the project picker has no accessible project for it. This does not establish whether the project exists under another account. Select its owning account or confirm the intended project before creating a duplicate. No working Google OAuth client or secret has been verified.
 
 The existing Discord app's OAuth2 page was available and showed **no configured redirects** and a hidden client secret. Its bot token is not an OAuth client secret. Do not reset the bot token. If a client-secret reset is necessary, the owner must complete it and keep the resulting value private.
 
 Apple enrollment, verification, contractual acceptance and any membership payment require the owner. No paid membership or new billing account has been created by this implementation. Google branding/audience and Meta app review may require owner verification before general availability.
+
+## Google, Facebook and Apple account setup
+
+The October 30 public-settings readback reports email, Discord and phone enabled; Google, Facebook and Apple remain disabled. Phone reports Twilio with automatic phone confirmation off. This proves configuration flags only: no SMS was sent, no phone sign-in screen was added, and neither SMS delivery nor social authorization is accepted by this readback.
+
+Shared application information:
+
+| Field | Code 3 value |
+|---|---|
+| Application name | Code 3 TCG |
+| Website | `https://code3tcg.app` |
+| Privacy policy | `https://code3tcg.app/privacy` |
+| Terms | `https://code3tcg.app/terms` |
+| Account deletion instructions | `https://code3tcg.app/delete-account` |
+| Existing native bundle/application ID | `app.code3tcg.mobile` |
+| Provider callback | `https://gxsfququorfczvhrkudl.supabase.co/auth/v1/callback` |
+
+These public identifiers are not provider credentials. Confirm ownership of the chosen developer account before saving a client. Keep the existing Supabase app-return URLs and manual linking configuration.
+
+### Google
+
+Open [Google Auth Platform](https://console.cloud.google.com/auth/overview). Select the intended Code 3 project using its owning account. Complete branding with the public app information and an owner-controlled support address. Configure the audience for the intended users; a restricted test audience is not public availability.
+
+In Clients, create a **Web application** named `Code 3 TCG sign-in`. Set the JavaScript origin to `https://code3tcg.app` and its redirect URI to the shared provider callback above. Copy its client ID and client secret directly into [Supabase Auth providers](https://supabase.com/dashboard/project/gxsfququorfczvhrkudl/auth/providers) → Google. Do not request extra Google API access for login. Save, then verify a live roundtrip and existing-account connection before releasing the button. [Official guide](https://supabase.com/docs/guides/auth/social-sign-in/auth-google).
+
+### Facebook
+
+Open [Meta apps](https://developers.facebook.com/apps/). Use a Code 3 application with Facebook Login / Authentication and Account Creation. Configure **Valid OAuth Redirect URIs** with the shared provider callback. In Use Cases, confirm both `public_profile` and `email` are ready for testing; email is required by this integration.
+
+Supply the public app/policy information where requested. Copy the app ID and app secret directly into Supabase → Facebook. Development access and a test login are not proof that ordinary members can use the application: complete Meta's applicable live-access requirements before releasing it. [Official guide](https://supabase.com/docs/guides/auth/social-sign-in/auth-facebook).
+
+### Apple
+
+Use the owner's [Apple Developer account](https://developer.apple.com/account/). Confirm enrollment and the existing `app.code3tcg.mobile` App ID, then enable its Sign in with Apple capability. Reuse an appropriate Services ID or register a separate one; `app.code3tcg.web` is a proposal, not a verified registration.
+
+For this browser OAuth flow, configure the Services ID with domain `gxsfququorfczvhrkudl.supabase.co` and the shared provider callback. Generate the client secret from the owner's signing key and enter it directly in Supabase → Apple. Keep the Services ID first in Supabase's client-ID list if native audiences are also listed. Protect the `.p8` key outside the repository; record the generated secret's expiry and rotate it before expiration, at most six months. Verify Hide My Email and same-account linking. [Official guide](https://supabase.com/docs/guides/auth/social-sign-in/auth-apple).
 
 ## Existing-account linking
 
