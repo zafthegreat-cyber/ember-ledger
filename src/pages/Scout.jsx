@@ -21,6 +21,7 @@ import OverflowMenu from "../components/OverflowMenu";
 import ScoutTileMap from "../components/ScoutTileMap";
 import RestockReportBrowser from "../components/RestockReportBrowser.jsx";
 import CommunityRestockFeed from "../components/CommunityRestockFeed.jsx";
+import RestockHistoryPanel from "../features/restockHistory/RestockHistoryPanel.jsx";
 import RestockReportDetails from "../components/RestockReportDetails.jsx";
 import StoreObservationSummary from "../components/StoreObservationSummary.jsx";
 import ScoutDeleteReportDialog from "../components/ScoutDeleteReportDialog.jsx";
@@ -4494,6 +4495,7 @@ async function handleUpdateStore(e) {
     { key: "overview", icon: "scout", label: "Overview", title: "Radar and proof", detail: "Map, reports, trust", ariaLabel: "Overview", active: scoutSubTab === "overview", action: () => setScoutSubTab("overview") },
     { key: "stores", icon: "workspace", label: "Stores", title: "Store Directory", detail: `${directoryStats.totalStores} saved rows`, ariaLabel: "Stores", active: scoutSubTab === "stores", action: () => setScoutSubTab("stores") },
     { key: "reports", icon: "clipboard", label: "Reports", title: "Submit Report", detail: "Product, time, proof", ariaLabel: "Reports", active: scoutSubTab === "reports", action: () => setScoutSubTab("reports") },
+    { key: "history", icon: "data", label: "History", title: "Saved restock history", detail: "Past stock and no-stock reports", ariaLabel: "Saved restock history", active: scoutSubTab === "history", action: () => setScoutSubTab("history") },
     { key: "route", icon: "map", label: "Route", title: "Route Planner", detail: "Safe store checks", ariaLabel: "Route Planner", active: scoutSubTab === "route", action: () => setScoutSubTab("route") },
     { key: "online", icon: "market", label: "Online", title: "Online Drops", detail: "Retailer source checks", ariaLabel: "Online Drops", active: scoutSubTab === "online", action: () => setScoutSubTab("online") },
     { key: "alerts", icon: "bell", label: "Alerts", title: "Watch Alerts", detail: "Store and product alerts", ariaLabel: "Alerts", active: scoutSubTab === "alerts", action: () => setScoutSubTab("alerts") },
@@ -4574,6 +4576,8 @@ async function handleUpdateStore(e) {
   return (
     <div className={`scout-route-polish ${!compact ? "scout-command-route-v5" : ""}`.trim()}>
       <div className="scout-route-shell">
+        {reportsBrowseMode || scoutSubTab === "history" ? <nav className="restock-history-views" aria-label="Restock report views"><button type="button" aria-pressed={reportsBrowseMode} onClick={() => setScoutSubTab("reports")}>Recent reports</button><button type="button" aria-pressed={scoutSubTab === "history"} onClick={() => setScoutSubTab("history")}>Saved history</button></nav> : null}
+        {scoutSubTab === "history" ? <RestockHistoryPanel projectUrl={supabase?.supabaseUrl} onBack={() => setScoutSubTab("reports")} /> : null}
         {reportsBrowseMode ? <CommunityRestockFeed onOpenMap={() => { setScoutSubTab("overview"); setScoutOverviewView("map"); }} /> : null}
         {!compact && scoutSubTab === "overview" ? (
           <CommandBoardV4

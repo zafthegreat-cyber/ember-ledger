@@ -15520,6 +15520,7 @@ export default function App() {
       intelImportReviews: saved.intelImportReviews || [],
       scoutProfile: saved.scoutProfile || {},
       alertSettings: saved.alertSettings || {},
+      ...(Object.hasOwn(saved, "historicalRestockHistory") ? { historicalRestockHistory: saved.historicalRestockHistory } : {}),
     });
   }
 
@@ -29917,6 +29918,11 @@ function renderForgeBusinessLedgerPanel() {
           routes: savedScout.routes || scoutSnapshot.routes || [],
           bestBuyStockResults: savedScout.bestBuyStockResults || scoutSnapshot.bestBuyStockResults || [],
           bestBuyNightlyReports: savedScout.bestBuyNightlyReports || scoutSnapshot.bestBuyNightlyReports || [],
+          ...(Object.hasOwn(savedScout, "historicalRestockHistory")
+            ? { historicalRestockHistory: savedScout.historicalRestockHistory }
+            : Object.hasOwn(scoutSnapshot, "historicalRestockHistory")
+              ? { historicalRestockHistory: scoutSnapshot.historicalRestockHistory }
+              : {}),
         },
         suggestions: loadSuggestions(),
         tidepoolCommunity: {
@@ -30116,7 +30122,7 @@ function renderForgeBusinessLedgerPanel() {
     const nextItemComparisons = mode === "replace"
       ? data.itemComparisons || []
       : mergeById(itemComparisons, data.itemComparisons || []);
-    const nextScout = mode === "replace"
+    let nextScout = mode === "replace"
       ? {
           stores: scoutImport.stores || [],
           reports: scoutImport.reports || [],
@@ -30133,6 +30139,34 @@ function renderForgeBusinessLedgerPanel() {
           bestBuyStockResults: mergeById(scoutSnapshot.bestBuyStockResults || [], scoutImport.bestBuyStockResults || []),
           bestBuyNightlyReports: mergeById(scoutSnapshot.bestBuyNightlyReports || [], scoutImport.bestBuyNightlyReports || []),
         };
+    // Older backup files do not contain private historical observations. Keep
+    // those records, and merge an incoming history by its stable content keys.
+    // Finish validation before any of the state setters below can run.
+    let scoutBeforeHistoryReview;
+    let durableScoutForHistory;
+    try {
+      scoutBeforeHistoryReview = localStorage.getItem(SCOUT_STORAGE_KEY);
+      durableScoutForHistory = scoutBeforeHistoryReview === null ? {} : JSON.parse(scoutBeforeHistoryReview);
+      if (!durableScoutForHistory || typeof durableScoutForHistory !== "object" || Array.isArray(durableScoutForHistory)) throw new Error("Saved restock records need review.");
+    } catch {
+      setBackupImportMessage("Backup import stopped: saved restock records could not be read. No records were changed.");
+      return;
+    }
+    const existingScoutForHistory = Object.hasOwn(durableScoutForHistory, "historicalRestockHistory") ? durableScoutForHistory : scoutSnapshot;
+    if (Object.hasOwn(existingScoutForHistory, "historicalRestockHistory") || Object.hasOwn(scoutImport, "historicalRestockHistory")) {
+      try {
+        const { HISTORY_FIELD, readHistoricalRestockHistory, prepareHistoricalRestockImport } = await import("./features/restockHistory/historyArchive.mjs");
+        const existingHistory = readHistoricalRestockHistory(existingScoutForHistory);
+        const incomingHistory = readHistoricalRestockHistory(scoutImport);
+        if (existingHistory) nextScout = (await prepareHistoricalRestockImport(nextScout, existingHistory)).nextScout;
+        if (incomingHistory) nextScout = (await prepareHistoricalRestockImport(nextScout, incomingHistory)).nextScout;
+        if (!Object.hasOwn(nextScout, HISTORY_FIELD)) throw new Error("Historical reports could not be preserved. No backup records were applied.");
+        if (localStorage.getItem(SCOUT_STORAGE_KEY) !== scoutBeforeHistoryReview) throw new Error("Restock records changed during this review. Review the current version before importing the backup.");
+      } catch (error) {
+        setBackupImportMessage(`Backup import stopped: ${error instanceof Error ? error.message : "Historical records need review."}`);
+        return;
+      }
+    }
     const tidepoolImport = data.tidepoolCommunity || {};
     const nextTidepool = mode === "replace"
       ? {
