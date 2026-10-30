@@ -218,5 +218,18 @@ await check("web backup and diagnostic report exports still create downloadable 
     assert.equal(calls.filter(([name]) => name === "revoke").length, 2);
   } finally { globalThis.setTimeout = originalTimeout; URL.createObjectURL = createURL; URL.revokeObjectURL = revokeURL; }
 });
+await check("native social callbacks use the verified OAuth handler and keep recovery exchanges separate", async () => {
+  const f = host(); let verified = 0; const result = { path: "/settings" };
+  const cleanup = await startNativeLifecycle({ client: f.client, onSocialCallback: async value => { assert.equal(value.flow, "oauth"); assert.equal(value.code, code); verified++; return result; } });
+  await f.emit("appUrlOpen", { url: `code3tcg://auth/callback?code=${code}&flow=oauth` });
+  await f.emit("appUrlOpen", { url: `code3tcg://auth/callback?code=${code}&flow=oauth` });
+  assert.equal(f.counts().exchanges, 0); assert.equal(verified, 2); assert.deepEqual(f.states.routes, ["/settings"]); cleanup();
+});
+await check("failed native social verification never navigates or exchanges a recovery code", async () => {
+  const f = host(); const errors = [];
+  const cleanup = await startNativeLifecycle({ client: f.client, onSocialCallback: async () => { throw new Error("fixture denied"); }, onAuthError: value => errors.push(value) });
+  await f.emit("appUrlOpen", { url: `code3tcg://auth/callback?error=access_denied&flow=oauth` });
+  assert.deepEqual(f.states.routes, []); assert.equal(f.counts().exchanges, 0); assert.equal(errors.length, 1); assert.ok(!errors[0].includes("fixture")); cleanup();
+});
 console.log(`Native runtime: ${checks} behavior scenarios passed with mocked OS bridges. Hardware cryptography, native compilation, device dialogs, and real account links still require device verification.`);
 } finally { hooks.deregister(); }

@@ -1,4 +1,5 @@
 import { useId, useRef } from "react";
+import SocialSignInButtons from "../auth/SocialSignIn.jsx";
 import { useModalFocus } from "../../components/operations/useModalFocus.js";
 import MenuNavigation from "./MenuNavigation.jsx";
 import MenuItemIcon from "./MenuItemIcon.jsx";
@@ -337,6 +338,7 @@ export default function MenuDrawerContent({ scope }) {
                       </form>
                     ) : (
                       <form className="drawer-info-card" onSubmit={handleAuth} noValidate>
+                        <SocialSignInButtons />
                         <strong>{authMode === "login" ? "Sign in with Supabase" : "Create Supabase account"}</strong>
                         <p className="compact-subtitle">Sign in for admin tools and future cloud sync. User-owned beta data stays local for now.</p>
                         {!isSupabaseConfigured ? <p className="compact-subtitle danger-text">Supabase anon auth is not configured in this frontend.</p> : null}
@@ -999,7 +1001,7 @@ export default function MenuDrawerContent({ scope }) {
                   {signedInWithSupabase ? (
                     <div className="drawer-info-card">
                       <strong>Account Security</strong>
-                      <p className="compact-subtitle">Send a password reset email to your signed-in Supabase account.</p>
+                      <p className="compact-subtitle">Send a secure email link to set or reset your Code 3 TCG password. Some account security actions require it.</p>
                       {passwordResetError ? <p className="auth-status-message error" role="alert">{passwordResetError}</p> : null}
                       {passwordResetMessage ? <p className="auth-status-message success" role="status">{passwordResetMessage}</p> : null}
                       <button type="button" className="drawer-link" disabled={passwordResetLoading || !isSupabaseConfigured} onClick={handleSignedInPasswordReset}>

@@ -22,7 +22,7 @@ function exchangeOnce(client, code) {
   return state.pending.get(code);
 }
 
-export async function startNativeLifecycle({ client, onAuthError = () => {}, signal } = {}) {
+export async function startNativeLifecycle({ client, onAuthError = () => {}, onSocialCallback, signal } = {}) {
   if (!isNativePlatform() || signal?.aborted) return () => {};
   activeCleanup?.();
   let disposed = false;
@@ -45,13 +45,15 @@ export async function startNativeLifecycle({ client, onAuthError = () => {}, sig
   const handleUrl = async ({ url }) => {
     const callback = parseNativeAuthCallback(url);
     if (!callback || disposed || processing) return;
-    if (callback.error || !client) { onAuthError("This sign-in link could not be verified. Request a new link from the app."); return; }
+    if ((callback.error && callback.flow !== "oauth") || !client) { onAuthError("This sign-in link could not be verified. Request a new link from the app."); return; }
     processing = true;
     try {
-      const exchanged = await exchangeOnce(client, callback.code);
+      const social = callback.flow === "oauth";
+      if (social && !onSocialCallback) throw new Error("Social sign-in is not configured.");
+      const exchanged = social ? await onSocialCallback(callback) : await exchangeOnce(client, callback.code);
       if (disposed || exchanged.navigated) return;
       // Recovery UI is already handled by the existing reset-password route.
-      const next = callback.flow === "recovery" ? "/reset-password" : "/";
+      const next = social ? exchanged.path : callback.flow === "recovery" ? "/reset-password" : "/";
       history.replaceState({}, "", next);
       exchanged.navigated = true;
       window.dispatchEvent(new PopStateEvent("popstate"));

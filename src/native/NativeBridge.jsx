@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient.js";
 import { startNativeLifecycle } from "./nativeLifecycle.js";
+import { finishNativeSocialCallback } from "../features/auth/socialAuthClient.js";
 
 export default function NativeBridge() {
   const [error, setError] = useState("");
@@ -8,7 +9,7 @@ export default function NativeBridge() {
     let stop;
     let active = true;
     const controller = new AbortController();
-    startNativeLifecycle({ client: supabase, signal: controller.signal, onAuthError: message => { if (active) setError(message); } })
+    startNativeLifecycle({ client: supabase, signal: controller.signal, onSocialCallback: finishNativeSocialCallback, onAuthError: message => { if (active) setError(message); } })
       .then(cleanup => { if (active) stop = cleanup; else cleanup(); })
       .catch(() => { if (active) setError("The device connection could not start. Close and reopen Code 3 TCG. Your saved records are unchanged."); });
     return () => { active = false; controller.abort(); stop?.(); };

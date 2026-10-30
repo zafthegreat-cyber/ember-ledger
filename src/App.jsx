@@ -1,4 +1,5 @@
 import DeferredModalBoundary from "./features/deferredViews/DeferredModalBoundary";
+import SocialSignInButtons from "./features/auth/SocialSignIn.jsx";
 import { isNativePlatform, getNativeAuthRedirect } from "./native/nativeRuntime.js";
 import { exportFile } from "./native/nativeFiles.js";
 import CloudSyncPanel from "./features/persistence/CloudSyncPanel.jsx";
@@ -46298,6 +46299,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                   <p>{authMode === "login" ? "Log in to continue your collection journey." : "Request beta access for your collection journey."}</p>
                 </div>
                 <h3 className="auth-mode-title">{authMode === "login" ? "Log In" : "Create Account"}</h3>
+                <SocialSignInButtons />
                 {authMode === "signup" ? (
                   <p className="compact-subtitle">Create your account first. New accounts may need beta approval before full app access.</p>
                 ) : (
@@ -47177,6 +47179,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               </form>
             ) : (
               <form className="drawer-info-card utility-card" onSubmit={handleAuth} noValidate>
+                <SocialSignInButtons />
                 <strong>{authMode === "login" ? "Log in" : "Create Account / Request Beta Access"}</strong>
                 <p className="compact-subtitle">New accounts may need approval before full app access.</p>
                 {!isSupabaseConfigured ? <p className="compact-subtitle danger-text">Supabase anon auth is not configured in this frontend.</p> : null}
