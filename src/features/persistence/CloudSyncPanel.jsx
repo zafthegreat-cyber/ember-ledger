@@ -4,6 +4,7 @@ import { createVerifiedWorkspaceSnapshotBackup } from "../backup/workspaceRestor
 import WorkspaceBackupPanel from "../backup/WorkspaceBackupPanel.jsx";
 import DeviceTransferPanel from "../backup/DeviceTransferPanel.jsx";
 import AccountSessionPanel from "../security/AccountSessionPanel.jsx";
+import { ConnectedSignIns } from "../auth/SocialSignIn.jsx";
 import { exportFile, exportFileStatus, exportFileError } from "../../native/nativeFiles.js";
 
 function download(name, value, signal) {
@@ -87,6 +88,7 @@ export default function CloudSyncPanel() {
     {coverage && <div><p>{coverage.recordCount} cloud records and {coverage.attachmentCount} attachments included.</p>{coverage.exclusions.length > 0 && <ul>{coverage.exclusions.map((item, index) => <li key={index}>{item}</li>)}</ul>}{coverage.missingTables.length > 0 && <p>{coverage.missingTables.length} record groups were unavailable and are listed in the downloaded backup.</p>}{coverage.missingFiles.length > 0 && <p>{coverage.missingFiles.length} attachments could not be downloaded. Their references remain in the backup; keep the original files separately.</p>}{coverage.externalFileReferences > 0 && <p>{coverage.externalFileReferences} external file references require separate file copies.</p>}</div>}
     <WorkspaceBackupPanel key={workspace.user?.id || "unbound"} externalBusy={busy} onRecover={() => run(() => workspace.openRecovery())} onExportCloud={workspace.exportCloudBackup ? () => run(exportCloud) : null} />
     <DeviceTransferPanel />
+    <ConnectedSignIns user={workspace.user} />
     <AccountSessionPanel user={workspace.user} />
   </section>;
 }

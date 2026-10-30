@@ -1,4 +1,5 @@
 import { useId, useRef } from "react";
+import SocialSignInButtons from "../auth/SocialSignIn.jsx";
 import { useModalFocus } from "../../components/operations/useModalFocus.js";
 import MenuNavigation from "./MenuNavigation.jsx";
 import MenuItemIcon from "./MenuItemIcon.jsx";
@@ -266,7 +267,7 @@ export default function MenuDrawerContent({ scope }) {
               <button type="button" className="secondary-button drawer-close-button" aria-label="Close menu" onClick={() => setMenuOpen(false)}><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 6 12 12M18 6 6 18" /></svg></button>
             </div>
             <MenuNavigation sections={menuCommandSections} NavIcon={AppNavIcon} isItemActive={isMenuItemActive} onSelect={openMenuItem} onAdd={() => openAddActionSheet("menu")} modeLabel={experiencePresentation?.personaLabel || adaptiveUiState.modeLabel} experiencePresentation={experiencePresentation} workspaces={switcherWorkspaces} currentWorkspaceId={menuCurrentWorkspaceId} onSelectWorkspace={workspace => runMenuAction(() => navigateProductWorkspace(workspace.id))}>
-              {renderMenuPullDown("account", "Account", "App version, sign-in, private beta status, and account actions", (
+              {renderMenuPullDown("account", "Account", "App version, sign-in, and account actions", (
                 <div className="drawer-links">
                   <div className="drawer-info-card account-status-card">
                     <div>
@@ -337,6 +338,7 @@ export default function MenuDrawerContent({ scope }) {
                       </form>
                     ) : (
                       <form className="drawer-info-card" onSubmit={handleAuth} noValidate>
+                        <SocialSignInButtons />
                         <strong>{authMode === "login" ? "Sign in with Supabase" : "Create Supabase account"}</strong>
                         <p className="compact-subtitle">Sign in for admin tools and future cloud sync. User-owned beta data stays local for now.</p>
                         {!isSupabaseConfigured ? <p className="compact-subtitle danger-text">Supabase anon auth is not configured in this frontend.</p> : null}
@@ -999,7 +1001,8 @@ export default function MenuDrawerContent({ scope }) {
                   {signedInWithSupabase ? (
                     <div className="drawer-info-card">
                       <strong>Account Security</strong>
-                      <p className="compact-subtitle">Send a password reset email to your signed-in Supabase account.</p>
+                      <p className="compact-subtitle">Send a secure email link to set or reset your Code 3 TCG password. Some account security actions require it.</p>
+                      <button type="button" className="drawer-link" onClick={() => openUtilityPage("account")}>Ways to sign in</button>
                       {passwordResetError ? <p className="auth-status-message error" role="alert">{passwordResetError}</p> : null}
                       {passwordResetMessage ? <p className="auth-status-message success" role="status">{passwordResetMessage}</p> : null}
                       <button type="button" className="drawer-link" disabled={passwordResetLoading || !isSupabaseConfigured} onClick={handleSignedInPasswordReset}>
@@ -1254,7 +1257,7 @@ export default function MenuDrawerContent({ scope }) {
                     <p className="compact-subtitle">Hearth, Market Watch, Tidepool Community, Tide Score, Fair Price Badges, and future roadmap names live with Known Limitations.</p>
                     <button type="button" className="drawer-link" onClick={() => runMenuAction(() => setActiveTab("knownLimitations"))}>Open Glossary</button>
                   </div>
-                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openPublicBetaFeedback({ page: "More Feedback", mainReason: "General feedback" }))}>Join Beta / Request State</button>
+                  <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openPublicBetaFeedback({ page: "More Feedback", mainReason: "General feedback" }))}>Share feedback</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("feedback"))}>Tester Notes</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("bug"))}>Report a Bug</button>
                   <button type="button" className="drawer-link" onClick={() => runMenuAction(() => openFeedbackDialog("feature"))}>Request a Feature</button>

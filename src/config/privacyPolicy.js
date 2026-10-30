@@ -10,7 +10,7 @@ export function privacyPublisherFromEnv(env = {}) {
 }
 
 export const PRIVACY_PUBLISHER = privacyPublisherFromEnv(import.meta.env || {});
-export const PRIVACY_POLICY_UPDATED = "October 24, 2026";
+export const PRIVACY_POLICY_UPDATED = "October 30, 2026";
 
 export function publicPrivacyRoute(pathname = "") {
   const path = pathname.replace(/\/$/, "") || "/";
@@ -24,6 +24,10 @@ export const PRIVACY_SECTIONS = Object.freeze([
   {
     key: "information", title: "Information you choose to save",
     body: "Code 3 TCG uses your account email, profile and access settings to sign you in. Depending on the tools you use, it also stores collection and wishlist records, purchases, sales, expenses, receipt details, attachments, store reports, feedback, and workspace membership. Optional family-program information is entered by a parent or guardian. Keep child names, home addresses, payment card details, and other sensitive information out of public posts and photos.",
+  },
+  {
+    key: "social-sign-in", title: "Optional Google, Apple, Discord and Facebook sign-in",
+    body: "When a sign-in provider is available and you choose it, that provider verifies your identity and shares the account information you authorize, such as a provider account identifier, email address and basic profile details. Supabase processes this information to create or authenticate your Code 3 TCG account. We request identity information for sign-in, not access to your contacts, social posts, private messages or provider purchases. You can continue using email and password. To add another method to an existing account, sign in first and use the connection option in account settings; no private records are merged based only on an email typed into the app. Apple may supply a relay email if you choose Hide My Email. You can review or revoke provider access in that provider's account settings. Deleting or revoking a provider connection does not by itself delete your Code 3 TCG records; use this app's account-deletion or support options for those records.",
   },
   {
     key: "purpose", title: "How information is used and shared",

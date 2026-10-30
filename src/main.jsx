@@ -7,6 +7,7 @@ import { BRAND_CONFIG, applyBrandDocumentMetadata } from "./config/brand";
 import { shouldExposeFallbackErrorDetails } from "./utils/appFallbackContent";
 import CloudWorkspaceBoundary from "./features/persistence/CloudWorkspaceBoundary.jsx";
 import NativeBridge from "./native/NativeBridge.jsx";
+import SocialAuthBoundary from "./features/auth/SocialAuthBoundary.jsx";
 import "./native/native.css";
 
 const App = lazy(() => import("./App.jsx"));
@@ -42,7 +43,7 @@ createRoot(document.getElementById("root")).render(
     <AppErrorBoundary>
       <NativeBridge />
       <Suspense fallback={<AppLoadFallback kind="loading" />}>
-        <CloudWorkspaceBoundary><App /></CloudWorkspaceBoundary>
+        <SocialAuthBoundary><CloudWorkspaceBoundary><App /></CloudWorkspaceBoundary></SocialAuthBoundary>
       </Suspense>
     </AppErrorBoundary>
   </StrictMode>

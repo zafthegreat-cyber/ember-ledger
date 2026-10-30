@@ -46,6 +46,7 @@
     "test:cloud-workspace-postgres": "node scripts/test-cloud-workspace-postgres.mjs",
     "test:workspace-invite-sessions-postgres": "node scripts/test-workspace-invite-sessions-postgres.mjs",
     "test:account-sessions": "node scripts/test-account-session-client.mjs",
+    "test:social-sign-in": "node --test scripts/test-social-sign-in.mjs scripts/test-social-sign-in-ui.mjs",
     "test:account-startup-browser": "node scripts/test-account-lock-browser.cjs",
     "test:account-sessions-postgres": "node scripts/test-account-sessions-postgres.mjs",
     "test:session-draft-isolation": "node scripts/test-session-draft-isolation.mjs",
@@ -287,6 +288,7 @@
   "dependencies": {
     "@capacitor/android": "8.5.3",
     "@capacitor/app": "8.1.2",
+    "@capacitor/browser": "8.0.5",
     "@capacitor/core": "8.5.3",
     "@capacitor/filesystem": "8.1.5",
     "@capacitor/ios": "8.5.3",
@@ -321,6 +323,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
+    "jsdom": "30.1.3",
     "typescript": "^6.0.3"
   },
   "overrides": {

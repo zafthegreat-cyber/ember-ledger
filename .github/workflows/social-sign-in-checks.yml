@@ -1,0 +1,54 @@
+name: Social sign-in checks
+on:
+  pull_request:
+    paths:
+      - .github/workflows/social-sign-in-checks.yml
+      - src/features/auth/**
+      - src/supabaseClient.js
+      - src/native/**
+      - src/main.jsx
+      - scripts/test-social-sign-in*.mjs
+      - scripts/test-open-registration.mjs
+      - scripts/test-account-sessions-postgres.mjs
+      - supabase/migrations/*open_member_registration.sql
+      - src/lib/userProfile.js
+      - src/utils/betaAccessUtils.js
+      - package.json
+      - package-lock.json
+  push:
+    branches:
+      - codex/social-login-20261030
+permissions:
+  contents: read
+jobs:
+  auth-behavior:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: code3qa
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 55439:5432
+        options: >-
+          --health-cmd "pg_isready -U code3qa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run test:social-sign-in
+      - run: node --test scripts/test-open-registration.mjs
+      - run: node scripts/test-account-sessions-postgres.mjs
+      - run: npm run test:native
+      - run: npm run test:account-sessions
+      - run: npm run test:cloud-workspace-sync
+      - run: npm exec -- eslint src/features/auth src/supabaseClient.js src/native/NativeBridge.jsx src/native/nativeLifecycle.js src/native/nativeRuntime.js src/main.jsx
+      - run: npm run build
