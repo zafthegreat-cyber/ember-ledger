@@ -1,5 +1,6 @@
 import { useId, useRef } from "react";
 import SocialSignInButtons from "../auth/SocialSignIn.jsx";
+import { SignupFieldPrivacy } from "../auth/EmailConfirmationHelp.jsx";
 import { useModalFocus } from "../../components/operations/useModalFocus.js";
 import MenuNavigation from "./MenuNavigation.jsx";
 import MenuItemIcon from "./MenuItemIcon.jsx";
@@ -26,6 +27,7 @@ export default function MenuDrawerContent({ scope }) {
     PUBLIC_APP_VERSION_LABEL,
     SIGNUP_BETA_ACK_TEXT,
     SIGNUP_NAME_HELPER,
+    renderEmailConfirmationHelp,
     SIGNUP_TERMS_TEXT,
     TCG_OS_MODES,
     TIER_LABELS,
@@ -340,7 +342,7 @@ export default function MenuDrawerContent({ scope }) {
                       <form className="drawer-info-card" onSubmit={handleAuth} noValidate>
                         <SocialSignInButtons />
                         <strong>{authMode === "login" ? "Sign in with Supabase" : "Create Supabase account"}</strong>
-                        <p className="compact-subtitle">Sign in for admin tools and future cloud sync. User-owned beta data stays local for now.</p>
+                        <p className="compact-subtitle">Sign in to your Code 3 TCG account. Confirm your email if needed; no beta access request is required.</p>
                         {!isSupabaseConfigured ? <p className="compact-subtitle danger-text">Supabase anon auth is not configured in this frontend.</p> : null}
                         {authMode === "signup" ? (
                           <>
@@ -371,6 +373,7 @@ export default function MenuDrawerContent({ scope }) {
                               autoComplete="nickname"
                             />
                             <p className="compact-subtitle">{SIGNUP_NAME_HELPER}</p>
+                            <SignupFieldPrivacy />
                             {renderUsernameRulesCard({ compact: true })}
                             <label className="checkbox-row">
                               <input type="checkbox" checked={authTermsAccepted} onChange={(event) => setAuthTermsAccepted(event.target.checked)} />
@@ -432,6 +435,7 @@ export default function MenuDrawerContent({ scope }) {
                           {authMode === "login" ? "Create Account" : "Use Login"}
                         </button>
                         </div>
+                        {renderEmailConfirmationHelp()}
                       </form>
                     )
                   ) : (

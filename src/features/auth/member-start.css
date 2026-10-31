@@ -1,0 +1,21 @@
+.member-start, .member-coverage, .member-help, .member-field-privacy { box-sizing: border-box; min-width: 0; margin: 1rem 0; padding: clamp(1rem, 3vw, 1.4rem); border: 1px solid var(--border-strong, #ab8546); border-radius: 14px; color: var(--text-primary, #281a1b); background: var(--surface-primary, #fffcf7); }
+.member-start p, .member-coverage p, .member-help p, .member-field-privacy p { line-height: 1.6; overflow-wrap: anywhere; margin: .5rem 0 .85rem; }
+.member-start h2, .member-start h3, .member-coverage h3 { margin: .25rem 0 .75rem; }
+.member-start-heading { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; justify-content: space-between; }
+.member-start label, .member-help label { display: block; margin: .65rem 0; font-weight: 600; }
+.member-start select, .member-help input { box-sizing: border-box; max-width: 100%; width: 100%; min-height: 44px; padding: .75rem; border: 1px solid var(--border-strong, #ab8546); border-radius: 8px; background: var(--surface-primary, #fffcf7); color: inherit; font: inherit; }
+.member-start button, .member-help button, .member-start-action { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; min-height: 44px; padding: .7rem 1rem; border: 1px solid var(--border-strong, #ab8546); border-radius: 8px; font: inherit; white-space: normal; text-align: center; cursor: pointer; }
+.member-start-task { margin: 1rem 0; padding: 1rem; background: var(--surface-secondary, #faf2e7); border-radius: 10px; }
+.member-start-action { background: var(--action-primary, #7a0f1e); color: var(--on-primary, #fff); text-decoration: none; }
+.member-start-meta { font-size: .9rem; }
+.member-start summary, .member-help summary, .member-coverage summary { display: list-item; min-height: 44px; box-sizing: border-box; padding: .7rem 0; cursor: pointer; font-weight: 600; }
+.member-coverage summary:focus-visible { outline: 3px solid var(--focus-ring, #cc9d2d); outline-offset: 3px; }
+.member-start :is(button, select, a, summary):focus-visible, .member-help :is(button, input, a, summary):focus-visible { outline: 3px solid var(--focus-ring, #cc9d2d); outline-offset: 3px; }
+.member-destinations { display: grid; gap: .6rem; }
+.member-destinations div { display: flex; flex-wrap: wrap; gap: .5rem; }
+.member-destinations dt { font-weight: 700; }
+.member-destinations dd { margin: 0; }
+.member-start--closed { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; justify-content: space-between; }
+.member-field-privacy { font-size: .9rem; }
+.public-beta-submit-state code { overflow-wrap: anywhere; word-break: break-word; }
+@media (max-width: 420px) { .member-start-action { width: 100%; } }

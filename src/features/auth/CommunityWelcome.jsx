@@ -9,13 +9,14 @@ export const COMMUNITY_LINKS = Object.freeze({
 export default function CommunityWelcome({ onFeedback, compact = false }) {
   return <section className={`community-welcome${compact ? " community-welcome--compact" : ""}`} aria-label="Help develop Code 3 TCG">
     <h3>Help shape Code 3 TCG</h3>
-    <p>Join, explore, and tell us what would make collecting easier. Feedback and community groups are optional.</p>
+    <p>Feedback and community groups are optional. Your app account works without joining a social network.</p>
     <div className="community-welcome-actions">
       {onFeedback ? <button type="button" className="secondary-button" onClick={onFeedback}>Share feedback</button>
         : <a href={`mailto:${PRIVACY_PUBLISHER.supportEmail}?subject=Code%203%20TCG%20feedback`}>Email feedback</a>}
-      <a href={COMMUNITY_LINKS.discord} target="_blank" rel="noopener noreferrer">Join Discord<span className="community-link-context"> (opens a new tab)</span></a>
-      <a href={COMMUNITY_LINKS.facebook} target="_blank" rel="noopener noreferrer">Facebook group<span className="community-link-context"> (opens a new tab)</span></a>
+      <a href={COMMUNITY_LINKS.discord} target="_blank" rel="noopener noreferrer">Discord · discussion &amp; opt-in alerts<span className="community-link-context"> (opens a new tab)</span></a>
+      <a href={COMMUNITY_LINKS.facebook} target="_blank" rel="noopener noreferrer">Facebook · collecting &amp; development feedback<span className="community-link-context"> (opens a new tab)</span></a>
     </div>
+    <details><summary>Community accounts and notifications</summary><p>Discord is for community discussion, restock submissions, and optional game and area/Online alert roles. Facebook is for group discussion and development feedback. Each network has its own account and privacy settings.</p><p>Joining a group or signing in with Discord does not subscribe you to alerts. In Discord, use #choose-roles to choose your game and area/Online interests separately. App and device notification settings are separate from Discord role pings.</p></details>
   </section>;
 }
 
