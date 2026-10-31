@@ -1,5 +1,7 @@
 .community-welcome { margin: 24px 0; padding: 20px; border: 1px solid #ab854660; border-radius: 16px; background: transparent; color: inherit; }
 .community-welcome h3 { margin: 0 0 8px; font-size: 1.05rem; }
+.community-welcome summary { min-height: 44px; padding: .75rem 0; box-sizing: border-box; cursor: pointer; }
+.community-welcome summary:focus-visible { outline: 3px solid #cc9d2d; outline-offset: 3px; }
 .community-welcome p { margin: 0 0 12px; font-size: .9rem; line-height: 1.6; }
 .community-welcome-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .community-welcome-actions a, .community-welcome-actions button { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 14px; border: 1px solid #ab8546; border-radius: 10px; color: inherit; background: transparent; font: inherit; font-size: .85rem; text-decoration: none; cursor: pointer; }

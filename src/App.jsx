@@ -1,5 +1,10 @@
 import DeferredModalBoundary from "./features/deferredViews/DeferredModalBoundary";
 import SocialSignInButtons, { ConnectedSignIns } from "./features/auth/SocialSignIn.jsx";
+import EmailConfirmationHelp, { SignupFieldPrivacy } from "./features/auth/EmailConfirmationHelp.jsx";
+import MemberStartGuide from "./features/auth/MemberStartGuide.jsx";
+import SourceCoverage from "./features/auth/SourceCoverage.jsx";
+import { createEmailRequestController, expiredEmailLink, isAuthEmail, safeAuthMessage } from "./features/auth/emailAssistance.mjs";
+import { readFeedbackDraft, saveFeedbackDraft, clearFeedbackDraft } from "./features/auth/feedbackDraft.mjs";
 import CommunityWelcome, { MemberAccessNotice } from "./features/auth/CommunityWelcome.jsx";
 import { hasServerAppAccessDecision } from "./features/auth/memberAccess.mjs";
 import { isNativePlatform, getNativeAuthRedirect } from "./native/nativeRuntime.js";
@@ -7107,6 +7112,23 @@ export default function App() {
   const [authMode, setAuthMode] = useState("login");
   const [accountDeletionCompletedForId, setAccountDeletionCompletedForId] = useState("");
   const [authEmail, setAuthEmail] = useState("");
+  const authEmailRequestsRef = useRef(null);
+  if (!authEmailRequestsRef.current) authEmailRequestsRef.current = createEmailRequestController();
+  const [emailLinkExpired] = useState(() => typeof window !== "undefined" && expiredEmailLink(window.location));
+  const feedbackDraftOwnerRef = useRef("");
+  const feedbackAccountRef = useRef(user?.id || "");
+  const feedbackSendingRef = useRef(false);
+  const [feedbackDraftNotice, setFeedbackDraftNotice] = useState("");
+  useEffect(() => {
+    if (feedbackAccountRef.current !== (user?.id || "")) {
+      clearFeedbackDraft(sessionStorage, feedbackDraftOwnerRef.current);
+      feedbackDraftOwnerRef.current = "";
+      setFeedbackDialog(null);
+      setFeedbackForm({});
+      setFeedbackDraftNotice("");
+    }
+    feedbackAccountRef.current = user?.id || "";
+  }, [user?.id]);
   const [authPassword, setAuthPassword] = useState("");
   const [authFirstName, setAuthFirstName] = useState("");
   const [authLastName, setAuthLastName] = useState("");
@@ -10389,6 +10411,8 @@ export default function App() {
 
   function openFeedbackDialog(type, defaults = {}) {
     const now = new Date().toISOString();
+    feedbackDraftOwnerRef.current = signedInWithSupabase ? user?.id || "" : "";
+    setFeedbackDraftNotice("");
     setFeedbackDialog(type);
     setFeedbackSubmitState({ status: "idle", message: "", error: "", persisted: "" });
     const feedbackNameDefault = String(defaults.name || currentUserProfile?.displayName || currentUserProfile?.display_name || currentUserProfile?.firstName || "").trim();
@@ -10410,6 +10434,7 @@ export default function App() {
         }
       : {};
     setFeedbackForm({
+      reference: crypto.randomUUID(),
       whatHappened: defaults.whatHappened || "",
       page: defaults.page || activeTabLabel,
       steps: defaults.steps || "",
@@ -10487,6 +10512,21 @@ export default function App() {
     return true;
   }
 
+  function keepFeedbackDraft() {
+    if (!user?.id || feedbackDraftOwnerRef.current !== user.id) return;
+    const saved = saveFeedbackDraft(sessionStorage, user.id, feedbackForm);
+    setFeedbackDraftNotice(saved ? "Draft saved for this account in this browser tab. It has not been submitted. Closing the tab clears this draft." : "Could not save the draft. Your text is still in this form; copy it before leaving.");
+  }
+
+  function restoreFeedbackDraft() {
+    if (!user?.id || feedbackDraftOwnerRef.current !== user.id) return;
+    const draft = readFeedbackDraft(sessionStorage, user.id);
+    if (!draft) { setFeedbackDraftNotice("No saved draft is available for this account in this tab."); return; }
+    if (feedbackForm.message && !window.confirm("Replace this message with your saved draft?")) return;
+    setFeedbackForm(current => ({ ...current, ...draft, safetyConsent: false }));
+    setFeedbackDraftNotice("Draft restored. Review it and confirm the privacy reminder before submitting.");
+  }
+
   function openPublicBetaFeedback(defaults = {}) {
     if (!user && !guestPreviewActive) {
       startGuestPreview();
@@ -10546,6 +10586,7 @@ export default function App() {
     const safeUserId = signedInWithSupabase && isUuidLike(user?.id) ? user.id : null;
     const safeWorkspaceId = signedInWithSupabase && isUuidLike(activeWorkspace?.id) ? activeWorkspace.id : null;
     const row = {
+      id: payload.reference,
       user_id: safeUserId,
       workspace_id: safeWorkspaceId,
       guest_email: payload.email || null,
@@ -10576,7 +10617,7 @@ export default function App() {
       related_entity_type: "public_beta_feedback",
       related_entity_id: null,
     };
-    const { error } = await supabase.from("beta_feedback").insert(row);
+    const { error } = await supabase.from("beta_feedback").insert(row).abortSignal(AbortSignal.timeout(12_000));
     if (error) {
       logAppError("public_beta_feedback_backend_insert", error, {
         reason: payload.mainReason,
@@ -10590,6 +10631,10 @@ export default function App() {
 
   async function submitPublicBetaFeedbackDialog(event) {
     event.preventDefault();
+    if (feedbackSendingRef.current) return;
+    if (feedbackDraftOwnerRef.current !== (signedInWithSupabase ? user?.id || "" : "")) {
+      setFeedbackSubmitState({ status: "error", message: "", error: "Your account changed. Close this form and reopen feedback from your current account.", persisted: "" }); return;
+    }
     const form = {
       ...feedbackForm,
       name: String(feedbackForm.name || "").trim(),
@@ -10620,7 +10665,10 @@ export default function App() {
       return;
     }
 
-    setFeedbackSubmitState({ status: "submitting", message: "Submitting public beta feedback...", error: "", persisted: "" });
+    feedbackSendingRef.current = true;
+    const submissionOwner = feedbackDraftOwnerRef.current;
+    try {
+    setFeedbackSubmitState({ status: "submitting", message: "Submitting feedback...", error: "", persisted: "" });
     const createdAt = new Date().toISOString();
     const payload = {
       id: makeId("public-beta-feedback"),
@@ -10651,9 +10699,10 @@ export default function App() {
       setFeedbackSubmitState({
         status: "error",
         message: "",
-        error: "Could not queue feedback on this device. Please try again.",
+        error: "Could not queue feedback on this device. Your draft remains in this form. Copy it before leaving, or try again.",
         persisted: "",
       });
+      feedbackSendingRef.current = false;
       return;
     }
 
@@ -10680,21 +10729,29 @@ export default function App() {
       ].slice(0, 250),
     }));
 
-    const backendResult = await trySubmitPublicBetaFeedbackToBackend(payload);
+    let backendResult;
+    try { backendResult = await trySubmitPublicBetaFeedbackToBackend(payload); }
+    catch { backendResult = { ok: false, reason: "connection-unavailable" }; }
+    if (submissionOwner !== feedbackDraftOwnerRef.current) return;
+    if (backendResult.ok && feedbackDraftOwnerRef.current === user?.id) clearFeedbackDraft(sessionStorage, user.id);
     const isWaitlist = payload.mainReason === "Join waitlist" || payload.mainReason === "Request my state";
     const successCopy = isWaitlist
       ? "Thank you - we'll use state requests to decide where Code 3 TCG opens next."
       : "Thank you - your beta feedback helps shape Code 3 TCG.";
     const fallbackCopy = backendResult.ok
       ? successCopy
-      : `${duplicate ? "Already queued - thank you again." : "Queued locally for beta review."} Feedback capture connection is unavailable, so this public beta response is saved on this device for now.`;
+      : `${duplicate ? "A similar response is already saved here." : "Saved on this device."} A cloud receipt was not confirmed. Keep the reference for support before resending if you are unsure whether the request completed.`;
     setFeedbackSubmitState({
       status: "success",
       message: backendResult.ok ? (duplicate ? `Already submitted here too. ${successCopy}` : successCopy) : fallbackCopy,
       error: "",
       persisted: backendResult.ok ? "backend" : "local",
+      reference: payload.reference,
     });
     setVaultToast(backendResult.ok ? "Public beta feedback submitted." : "Public beta feedback queued locally.");
+    } catch {
+      if (submissionOwner === feedbackDraftOwnerRef.current) setFeedbackSubmitState({ status: "error", message: "", error: "Feedback could not be completed. Your text remains in this form; save or copy the draft before leaving.", persisted: "" });
+    } finally { feedbackSendingRef.current = false; }
   }
 
   function updateBetaReadinessData(updater) {
@@ -17283,14 +17340,19 @@ export default function App() {
     return message;
   }
 
-  function normalizeAuthErrorMessage(message = "") {
-    const text = String(message || "").trim();
-    if (!text) return "Sign-up is temporarily unavailable. Try again.";
-    if (/already registered|already exists|user already/i.test(text)) return "Email already registered. Try logging in.";
-    if (/password/i.test(text) && /(weak|short|least|minimum|6|8)/i.test(text)) return "Use a strong password with at least 8 characters.";
-    if (/invalid.*email|email.*invalid/i.test(text)) return "Enter a valid email address.";
-    if (/signup|sign-up|signups|disabled|not allowed/i.test(text)) return "Sign-up is temporarily unavailable.";
-    return text;
+  function normalizeAuthErrorMessage(error) {
+    return safeAuthMessage(error, authMode);
+  }
+
+  function renderEmailConfirmationHelp() {
+    return <EmailConfirmationHelp email={authEmail} onEmailChange={setAuthEmail} expired={emailLinkExpired} available={isSupabaseConfigured}
+      onRequest={email => authEmailRequestsRef.current.send({ auth: supabase?.auth, kind: "confirmation", email, redirectTo: getAuthEmailRedirectTo() })} />;
+  }
+
+  function renderMemberStartGuide() {
+    return <MemberStartGuide userId={signedInWithSupabase ? user?.id : ""} hasCollectionItems={activeVaultItems.length > 0}
+      onCollect={() => openVaultQuickAdd({ category: "Personal collection" })}
+      onSell={() => { prepareRouteNavigation(); setActiveTab("inventory"); }} />;
   }
 
   function openPasswordResetRequest() {
@@ -17366,35 +17428,17 @@ export default function App() {
     setVaultToast("");
   }
 
-  async function sendPasswordResetEmail(email) {
-    if (!isSupabaseConfigured || !supabase) {
-      throw new Error("Supabase auth is not configured yet.");
-    }
-    const { error } = await supabase.auth.resetPasswordForEmail(String(email || "").trim(), {
-      redirectTo: getPasswordResetRedirectTo(),
-    });
-    if (error) throw error;
-  }
-
   async function handlePasswordResetRequest(event, emailOverride = "") {
     event?.preventDefault?.();
     const email = String(emailOverride || passwordResetEmail || authEmail || user?.email || currentUserProfile?.email || "").trim();
-    setPasswordResetError("");
-    setPasswordResetMessage("");
-    if (!email) {
-      setPasswordResetError("Enter your account email.");
-      return;
-    }
+    setPasswordResetError(""); setPasswordResetMessage("");
+    if (!isAuthEmail(email)) { setPasswordResetError("Enter a valid email address."); return; }
     setPasswordResetLoading(true);
     try {
-      await sendPasswordResetEmail(email);
-      setPasswordResetMessage("If an account exists for that email, a reset link has been sent.");
-      setVaultToast("If an account exists for that email, a reset link has been sent.");
-    } catch (error) {
-      setPasswordResetError(error.message || "Could not send a reset link. Try again.");
-    } finally {
-      setPasswordResetLoading(false);
-    }
+      const result = await authEmailRequestsRef.current.send({ auth: supabase?.auth, kind: "recovery", email, redirectTo: getPasswordResetRedirectTo() });
+      if (result.ok) { setPasswordResetMessage(result.message); setVaultToast(result.message); }
+      else setPasswordResetError(result.message);
+    } finally { setPasswordResetLoading(false); }
   }
 
   async function handleSignedInPasswordReset() {
@@ -17552,7 +17596,7 @@ export default function App() {
           },
         });
         if (error) {
-          const message = normalizeAuthErrorMessage(error.message);
+          const message = normalizeAuthErrorMessage(error);
           setAuthError(message);
           setVaultToast(message);
           return;
@@ -17598,7 +17642,7 @@ export default function App() {
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) {
-          const message = normalizeAuthErrorMessage(error.message);
+          const message = normalizeAuthErrorMessage(error);
           setAuthError(message);
           setVaultToast(message);
           return;
@@ -17617,7 +17661,7 @@ export default function App() {
       setAuthMessage(authMode === "signup" ? "Account created. Welcome to Code 3 TCG!" : "Signed in.");
       setVaultToast(authMode === "signup" ? "Account created. Welcome to Code 3 TCG!" : "Signed in.");
     } catch (error) {
-      const message = normalizeAuthErrorMessage(error.message);
+      const message = normalizeAuthErrorMessage(error);
       setAuthError(message);
       setVaultToast(message);
     } finally {
@@ -31922,13 +31966,13 @@ function renderForgeBusinessLedgerPanel() {
   ];
   const feedbackDialogCopy = {
     [PUBLIC_BETA_FEEDBACK_DIALOG]: {
-      title: "Join the Public Beta",
+      title: "Share feedback",
       intro: "Help build a fairer way to collect. Families, collectors, sellers, shops, and Spark supporters all help shape Code 3 TCG.",
       label: "Message",
       placeholder: "Tell us what would make Code 3 TCG more useful for your family, collection, shop, or community.",
       stepsLabel: "Extra context",
       stepsPlaceholder: "Optional: what page, role, state, or beta flow should we review?",
-      submit: "Send Public Beta Feedback",
+      submit: "Send feedback",
     },
     bug: {
       title: "Report a Bug",
@@ -31996,17 +32040,23 @@ function renderForgeBusinessLedgerPanel() {
             <span className="section-kicker">{feedbackSubmitState.persisted === "backend" ? "Submitted" : "Queued locally"}</span>
             <h3>{feedbackSubmitState.persisted === "backend" ? "Thank you - your beta feedback helps shape Code 3 TCG." : "Feedback capture connection coming soon."}</h3>
             <p>{feedbackSubmitState.message}</p>
+            <p>Reference: <code>{feedbackSubmitState.reference}</code>. Keep this with any follow-up. A reference for a local queue is not confirmation that staff received it.</p>
             {feedbackSubmitState.persisted !== "backend" ? (
-              <small>Nothing was uploaded, paid, messaged, or shared publicly. This response is stored locally on this device until the feedback connection is available.</small>
+              <small>The local copy stays on this device. A missing cloud receipt does not prove the request was cancelled. This form does not create a public community post.</small>
             ) : null}
           </div>
         ) : (
           <>
             <div className="public-beta-intake-card">
-              <strong>Help build a fairer way to collect.</strong>
+              <strong>Help make collecting easier.</strong>
               <p>Tell us what state should open next, report a bug, request a feature, or share how you want to support The Spark, shops, families, and collectors.</p>
-              <span>Public Beta</span>
+              <span>Optional feedback · not required for app access</span>
             </div>
+            <aside className="small-empty-state" aria-label="Feedback visibility">
+              <strong>Who can review this?</strong>
+              <p>Cloud submissions can be reviewed by Code 3 TCG administrators and moderators. This form does not publish a community post. If the connection fails, the response may be queued on this device; staff have not received that local copy.</p>
+              <p>Keep passwords, bot tokens, payment details, private backups, and children’s personal information out of feedback. For an account or safety concern, <a href="/support">use private support</a>.</p>
+            </aside>
             <div className="inline-input-grid">
               <Field label="Name optional">
                 <input
@@ -45575,6 +45625,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         <main className="main auth-main">
           <section className="panel auth-panel">
             <h2>Update Password</h2>
+            {emailLinkExpired && <aside className="member-help" role="alert"><p>This reset link has expired or is no longer valid. Return to Log In, choose Forgot password, and request a fresh reset link. Use only the newest email.</p><a href="/">Return to Log In</a></aside>}
             <p className="compact-subtitle">Enter a new password for your account. Passwords are sent directly to Supabase Auth and are not stored by this app.</p>
             <form onSubmit={handleUpdatePassword} className="form auth-form" noValidate>
               <Field label="New password">
@@ -46181,8 +46232,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
           <section className="signed-out-landing auth-login-story-panel" aria-label={`${BRAND_CONFIG.applicationDisplayName} sign in`}>
             <div className="auth-login-scene">
               <div className="auth-login-scene-copy">
-                <h2>Your private collecting and resale workspace</h2>
-                <p>Sign in to review opportunities, collection records, and business activity.</p>
+                <h2>Know what’s in your collection</h2>
+                <p>Save one card or sealed product in Vault, then see it in your collection. Seller inventory and shop tools have their own introductions after sign-in.</p>
               </div>
               <div className="auth-login-promise-grid" aria-label="Workspace capabilities">
                 {[
@@ -46279,7 +46330,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                           placeholder="public_username"
                         />
                       </Field>
-                      <p className="compact-subtitle auth-name-helper">{SIGNUP_NAME_HELPER}</p>
+                      <p className="compact-subtitle auth-name-helper">{SIGNUP_NAME_HELPER}</p><SignupFieldPrivacy />
                       {renderUsernameRulesCard({ compact: true })}
                     </div>
                   ) : null}
@@ -46359,6 +46410,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                     </>
                   )}
                 </div>
+                {renderEmailConfirmationHelp()}
                 <CommunityWelcome compact />
               </>
             )}
@@ -46968,6 +47020,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             {actualAdminUser ? <span className="status-badge">{actualAdminRole}</span> : null}
           </div>
 
+          {!signedInWithSupabase && renderEmailConfirmationHelp()}
           {renderAccountSetupOverviewCard()}
 
           {guestPreviewActive ? (
@@ -47006,7 +47059,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
                       <input className="drawer-field" type="text" value={authLastName} onChange={(event) => setAuthLastName(event.target.value)} placeholder="Last name" autoComplete="family-name" />
                     </div>
                     <input className="drawer-field" type="text" value={authPublicUsername} onChange={(event) => setAuthPublicUsername(normalizePublicUsername(event.target.value))} placeholder="public_username" autoComplete="nickname" />
-                    <p className="compact-subtitle">{SIGNUP_NAME_HELPER}</p>
+                    <p className="compact-subtitle">{SIGNUP_NAME_HELPER}</p><SignupFieldPrivacy />
                     {renderUsernameRulesCard({ compact: true })}
                     <label className="checkbox-row"><input type="checkbox" checked={authTermsAccepted} onChange={(event) => setAuthTermsAccepted(event.target.checked)} /><span>{SIGNUP_TERMS_TEXT}</span></label>
                     <label className="checkbox-row"><input type="checkbox" checked={authBetaAcknowledged} onChange={(event) => setAuthBetaAcknowledged(event.target.checked)} /><span>{SIGNUP_BETA_ACK_TEXT}</span></label>
@@ -47028,6 +47081,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
               <strong>{actualAdminUser ? "Signed in with admin role" : "Signed in"}</strong>
               <p className="compact-subtitle">Supabase session is active. Log out only clears the account session; it does not erase private beta records on this device.</p>
               <details><summary>Little Sparks family program (optional)</summary>{shorelineState.error && <p role="alert">{shorelineState.error}</p>}{shorelineState.message && <p role="status">{shorelineState.message}</p>}{renderLittleSparksApplicationForm()}</details>
+              {renderMemberStartGuide()}
               <ConnectedSignIns user={user} />
               <CommunityWelcome onFeedback={() => openPublicBetaFeedback({ page: "Account", mainReason: "General feedback" })} />
               {passwordResetError ? <p className="auth-status-message error" role="alert">{passwordResetError}</p> : null}
@@ -48407,6 +48461,7 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         PUBLIC_APP_VERSION_LABEL,
         SIGNUP_BETA_ACK_TEXT,
         SIGNUP_NAME_HELPER,
+        renderEmailConfirmationHelp,
         SIGNUP_TERMS_TEXT,
         TCG_OS_MODES,
         TIER_LABELS,
@@ -49411,6 +49466,12 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
             {!publicBetaFeedbackActive && feedbackSubmitState.error ? (
               <p className="flow-inline-message is-warning" role="alert">{feedbackSubmitState.error}</p>
             ) : null}
+            {publicBetaFeedbackActive && signedInWithSupabase && !publicBetaSubmissionComplete && <div className="location-modal-actions">
+              <button type="button" className="secondary-button" onClick={keepFeedbackDraft}>Save draft for this tab</button>
+              <button type="button" className="secondary-button" onClick={restoreFeedbackDraft}>Restore saved draft</button>
+              <button type="button" className="secondary-button" onClick={() => { clearFeedbackDraft(sessionStorage, user?.id); setFeedbackDraftNotice("Saved draft removed from this tab. The open form is unchanged."); }}>Remove saved draft</button>
+            </div>}
+            {feedbackDraftNotice && <p role="status">{feedbackDraftNotice}</p>}
             <dl className="drawer-status-list feedback-metadata">
               <div><dt>Version</dt><dd>{feedbackForm.metadata?.appVersion || "Beta"}</dd></div>
               <div><dt>Screen</dt><dd>{feedbackForm.metadata?.route || activeTab}</dd></div>
@@ -51294,6 +51355,8 @@ const groupedSortedFilteredItems = useMemo(() => [...filteredForgeGroups].sort((
         {!activeTabLocked && activeTab === "onboarding" && renderLiveOnboardingPage()}
         {!activeTabLocked && activeTab === "betaReadiness" && adminToolsVisible && renderBetaReadinessPanel()}
         {!activeTabLocked && activeTab === "dailyTide" && renderTodaysTideCommandCenter()}
+        {!activeTabLocked && signedInWithSupabase && ["dashboard", "workspaceHome"].includes(activeTab) && renderMemberStartGuide()}
+        {!activeTabLocked && activeTab === "scout" && <SourceCoverage compact />}
         {!activeTabLocked && ["dashboard", "workspaceHome"].includes(activeTab) && <CommunityWelcome onFeedback={() => openPublicBetaFeedback({ page: "Welcome", mainReason: "General feedback" })} />}
         {!activeTabLocked && activeTab === "dashboard" && (
           <LazyToolBoundary label="Loading Home...">

@@ -4,11 +4,16 @@ on:
     paths:
       - .github/workflows/social-sign-in-checks.yml
       - src/features/auth/**
+      - src/features/privacy/**
+      - src/features/deferredViews/MenuDrawerContent.jsx
+      - src/App.jsx
+      - docs/member-improvements/**
       - src/supabaseClient.js
       - src/native/**
       - src/main.jsx
       - scripts/test-social-sign-in*.mjs
       - scripts/test-open-registration.mjs
+      - scripts/test-member-improvements*.mjs
       - scripts/test-account-sessions-postgres.mjs
       - supabase/migrations/*open_member_registration.sql
       - src/lib/userProfile.js
@@ -18,6 +23,7 @@ on:
   push:
     branches:
       - codex/social-login-20261030
+      - codex/member-improvements-01-20-20261030
 permissions:
   contents: read
 jobs:
@@ -46,6 +52,8 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npm run test:social-sign-in
       - run: node --test scripts/test-open-registration.mjs
+      - run: node --no-warnings --test scripts/test-member-improvements.mjs scripts/test-member-improvements-ui.mjs
+      - run: node --no-warnings scripts/test-privacy-support.mjs
       - run: node scripts/test-account-sessions-postgres.mjs
       - run: npm run test:native
       - run: npm run test:account-sessions
